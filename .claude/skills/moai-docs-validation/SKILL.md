@@ -4,6 +4,8 @@ description: Enhanced docs validation with AI-powered features. Enhanced with Co
   MCP for up-to-date documentation.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-docs-validation
 
 **Docs Validation**
@@ -350,6 +352,58 @@ def generate_validation_report(self, output_format: str = "markdown") -> str:
 
 ---
 
+## 📚 Official References
+
+Metadata
+
+```yaml
+skill_id: moai-docs-validation
+skill_name: Documentation Validation & Quality Assurance
+version: 1.0.0
+created_date: 2025-11-10
+updated_date: 2025-11-10
+language: english
+word_count: 1400
+triggers:
+  - keywords: [documentation validation, content verification, quality assurance, spec compliance, tag verification, documentation audit, quality metrics]
+  - contexts: [docs-validation, @docs:validate, quality-audit, spec-compliance]
+agents:
+  - docs-auditor
+  - quality-gate
+  - spec-builder
+freedom_level: high
+context7_references:
+  - url: "https://en.wikipedia.org/wiki/Software_quality"
+    topic: "Software Quality Metrics"
+  - url: "https://github.com/moai-adk/moai-adk"
+    topic: "MoAI-ADK SPEC Standards"
+```
+
+---
+
+## 📈 Version History
+
+** .0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory    
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (doc-syncer)
+
+---
+
+## Implementation Guide
+
 ## 🎯 Best Practices Checklist
 
 **Must-Have:**
@@ -429,50 +483,9 @@ Start
 
 ---
 
-## 📚 Official References
-
-Metadata
-
-```yaml
-skill_id: moai-docs-validation
-skill_name: Documentation Validation & Quality Assurance
-version: 1.0.0
-created_date: 2025-11-10
-updated_date: 2025-11-10
-language: english
-word_count: 1400
-triggers:
-  - keywords: [documentation validation, content verification, quality assurance, spec compliance, tag verification, documentation audit, quality metrics]
-  - contexts: [docs-validation, @docs:validate, quality-audit, spec-compliance]
-agents:
-  - docs-auditor
-  - quality-gate
-  - spec-builder
-freedom_level: high
-context7_references:
-  - url: "https://en.wikipedia.org/wiki/Software_quality"
-    topic: "Software Quality Metrics"
-  - url: "https://github.com/moai-adk/moai-adk"
-    topic: "MoAI-ADK SPEC Standards"
-```
-
 ---
 
-## 📈 Version History
-
-** .0** (2025-11-12)
-- ✨ Context7 MCP integration
-- ✨ Progressive Disclosure structure
-- ✨ 10+ code examples
-- ✨ Primary/secondary agents defined
-- ✨ Best practices checklist
-- ✨ Decision tree
-- ✨ Official references
+## Advanced Patterns
 
 
 
----
-
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (doc-syncer)

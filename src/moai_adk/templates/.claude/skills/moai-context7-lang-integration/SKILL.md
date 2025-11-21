@@ -4,6 +4,8 @@ description: Enterprise-grade Context7 MCP integration patterns for language-spe
   documentation access with real-time library resolution and intelligent caching
 ---
 
+## Quick Reference (30 seconds)
+
 # Context7 Language Integration
 
 ## Quick Reference
@@ -177,6 +179,11 @@ Recovery:
 Each Language Skill should include:
 
 ```markdown
+
+---
+
+## Implementation Guide
+
 ## External Documentation Access
 
 For up-to-date library documentation:
@@ -398,4 +405,10 @@ def resolve_with_mapping(language: str, library_name: str) -> str:
     # Fallback to MCP resolver
     return resolve_library_id(library_name)
 ```
+
+---
+
+## Advanced Patterns
+
+
 

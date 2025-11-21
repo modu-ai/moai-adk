@@ -4,7 +4,19 @@ description: REST API and GraphQL design with OpenAPI 3.1, authentication, versi
   and rate limiting.
 ---
 
+## Quick Reference (30 seconds)
+
 # Domain Web Api Skill
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -68,12 +80,6 @@ REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and ra
 
 ---
 
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
 ## Changelog
 
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
@@ -102,3 +108,10 @@ _Documentation links updated 2025-10-22_
 - Use deprecated tools
 - Ignore security warnings
 - Mix testing frameworks
+
+---
+
+## Advanced Patterns
+
+
+

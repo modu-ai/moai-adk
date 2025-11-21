@@ -5,59 +5,9 @@ description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine
   enterprise mobile applications with Context7 MCP integration.
 ---
 
+## Quick Reference (30 seconds)
+
 # Swift - Enterprise 
-
----
-
-## What It Does
-
-Swift 6.0 enterprise development featuring modern concurrency with async/await, SwiftUI for declarative UI, Combine for reactive programming, server-side Swift with Vapor, and enterprise-grade patterns for scalable, performant applications. Context7 MCP integration provides real-time access to official Swift and ecosystem documentation.
-
-**Key capabilities**:
-- ✅ Swift 6.0 with strict concurrency and actor isolation
-- ✅ Advanced async/await patterns and structured concurrency
-- ✅ SwiftUI 6.0 for declarative UI development
-- ✅ Combine framework for reactive programming
-- ✅ Server-side Swift with Vapor 4.x
-- ✅ Enterprise architecture patterns (MVVM, TCA, Clean Architecture)
-- ✅ Context7 MCP integration for real-time docs
-- ✅ Performance optimization and memory management
-- ✅ Testing strategies with XCTest and Swift Testing
-- ✅ Swift Concurrency with actors and distributed actors
-
----
-
-## When to Use
-
-**Automatic triggers**:
-- Swift 6.0 development discussions
-- SwiftUI and iOS/macOS app development
-- Async/await and concurrency patterns
-- Combine reactive programming
-- Server-side Swift and Vapor development
-- Enterprise mobile application architecture
-
-**Manual invocation**:
-- Design iOS/macOS application architecture
-- Implement async/await patterns
-- Optimize performance and memory usage
-- Review enterprise Swift code
-- Implement reactive UI with Combine
-- Troubleshoot concurrency issues
-
----
-
-## Technology Stack (2025-11-12)
-
-| Component | Version | Purpose | Status |
-|-----------|---------|---------|--------|
-| **Swift** | 6.0.1 | Core language | ✅ Current |
-| **SwiftUI** | 6.0 | Declarative UI | ✅ Current |
-| **Combine** | 6.0 | Reactive programming | ✅ Current |
-| **Vapor** | 4.102.0 | Server-side framework | ✅ Current |
-| **Xcode** | 16.2 | Development environment | ✅ Current |
-| **Swift Concurrency** | 6.0 | Async/await & actors | ✅ Current |
-| **Swift Testing** | 0.10.0 | Modern testing framework | ✅ Current |
 
 ---
 
@@ -132,6 +82,56 @@ MyApp/
 │   └── IntegrationTests/
 └── Package.swift                 # Dependencies
 ```
+
+---
+
+## Resources
+
+**For working examples**: See `examples.md`
+
+**For API reference**: See `reference.md`
+
+**For advanced patterns**: See full SKILL.md in documentation archive
+
+---
+
+_Last updated: 2025-11-12 | Maintained by moai-adk team_
+
+---
+
+## Implementation Guide
+
+## When to Use
+
+**Automatic triggers**:
+- Swift 6.0 development discussions
+- SwiftUI and iOS/macOS app development
+- Async/await and concurrency patterns
+- Combine reactive programming
+- Server-side Swift and Vapor development
+- Enterprise mobile application architecture
+
+**Manual invocation**:
+- Design iOS/macOS application architecture
+- Implement async/await patterns
+- Optimize performance and memory usage
+- Review enterprise Swift code
+- Implement reactive UI with Combine
+- Troubleshoot concurrency issues
+
+---
+
+## Technology Stack (2025-11-12)
+
+| Component | Version | Purpose | Status |
+|-----------|---------|---------|--------|
+| **Swift** | 6.0.1 | Core language | ✅ Current |
+| **SwiftUI** | 6.0 | Declarative UI | ✅ Current |
+| **Combine** | 6.0 | Reactive programming | ✅ Current |
+| **Vapor** | 4.102.0 | Server-side framework | ✅ Current |
+| **Xcode** | 16.2 | Development environment | ✅ Current |
+| **Swift Concurrency** | 6.0 | Async/await & actors | ✅ Current |
+| **Swift Testing** | 0.10.0 | Modern testing framework | ✅ Current |
 
 ---
 
@@ -250,41 +250,6 @@ func routes(_ app: Application) throws {
 
 ---
 
-## Level 3: Advanced Topics
-
-### Concurrency Best Practices
-
-1. **Prefer async/await** over Combine for sequential operations
-2. **Use actors** for mutable shared state (not locks)
-3. **Mark UI code @MainActor** to ensure main thread
-4. **Handle cancellation** properly in long-running tasks
-5. **Avoid blocking operations** (no sleep, no synchronous I/O)
-
-### Performance Optimization
-
-- **Memory**: Use value types (struct) by default
-- **CPU**: Profile with Xcode Instruments
-- **Rendering**: Keep SwiftUI view body pure
-- **Networking**: Implement request caching
-- **Database**: Use connection pooling in Vapor
-
-### Security Patterns
-
-- **Input validation**: Always validate user input
-- **Error handling**: Don't expose internal errors to users
-- **Encryption**: Use CryptoKit for sensitive data
-- **Authentication**: Implement JWT or OAuth2
-- **SQL injection prevention**: Use parameterized queries
-
-### Testing Strategy
-
-- **Unit tests**: Pure functions with XCTest
-- **Integration tests**: Database and API tests
-- **UI tests**: SwiftUI view behavior
-- **Mocking**: Use protocols for dependency injection
-
----
-
 ## Context7 MCP Integration
 
 **Get latest Swift documentation on-demand:**
@@ -367,14 +332,60 @@ vapor_docs = get_library_docs(
 
 ---
 
-## Resources
+---
 
-**For working examples**: See `examples.md`
+## Advanced Patterns
 
-**For API reference**: See `reference.md`
+## What It Does
 
-**For advanced patterns**: See full SKILL.md in documentation archive
+Swift 6.0 enterprise development featuring modern concurrency with async/await, SwiftUI for declarative UI, Combine for reactive programming, server-side Swift with Vapor, and enterprise-grade patterns for scalable, performant applications. Context7 MCP integration provides real-time access to official Swift and ecosystem documentation.
+
+**Key capabilities**:
+- ✅ Swift 6.0 with strict concurrency and actor isolation
+- ✅ Advanced async/await patterns and structured concurrency
+- ✅ SwiftUI 6.0 for declarative UI development
+- ✅ Combine framework for reactive programming
+- ✅ Server-side Swift with Vapor 4.x
+- ✅ Enterprise architecture patterns (MVVM, TCA, Clean Architecture)
+- ✅ Context7 MCP integration for real-time docs
+- ✅ Performance optimization and memory management
+- ✅ Testing strategies with XCTest and Swift Testing
+- ✅ Swift Concurrency with actors and distributed actors
 
 ---
 
-_Last updated: 2025-11-12 | Maintained by moai-adk team_
+## Level 3: Advanced Topics
+
+### Concurrency Best Practices
+
+1. **Prefer async/await** over Combine for sequential operations
+2. **Use actors** for mutable shared state (not locks)
+3. **Mark UI code @MainActor** to ensure main thread
+4. **Handle cancellation** properly in long-running tasks
+5. **Avoid blocking operations** (no sleep, no synchronous I/O)
+
+### Performance Optimization
+
+- **Memory**: Use value types (struct) by default
+- **CPU**: Profile with Xcode Instruments
+- **Rendering**: Keep SwiftUI view body pure
+- **Networking**: Implement request caching
+- **Database**: Use connection pooling in Vapor
+
+### Security Patterns
+
+- **Input validation**: Always validate user input
+- **Error handling**: Don't expose internal errors to users
+- **Encryption**: Use CryptoKit for sensitive data
+- **Authentication**: Implement JWT or OAuth2
+- **SQL injection prevention**: Use parameterized queries
+
+### Testing Strategy
+
+- **Unit tests**: Pure functions with XCTest
+- **Integration tests**: Database and API tests
+- **UI tests**: SwiftUI view behavior
+- **Mocking**: Use protocols for dependency injection
+
+---
+

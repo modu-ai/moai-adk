@@ -1,4 +1,4 @@
-# moai-core-language-detection - Working Examples
+# moai-alfred-language-detection - Working Examples
 
 _Last updated: 2025-10-22_
 

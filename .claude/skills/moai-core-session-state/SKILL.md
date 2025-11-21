@@ -3,25 +3,9 @@ name: moai-core-session-state
 description: Enterprise session state management, token budget optimization, runtime
 ---
 
+## Quick Reference (30 seconds)
+
 # Alfred Session State Management Skill (Enterprise )
-
----
-
-## What It Does
-
-Provides enterprise-grade session state management for extended workflows, token budget optimization, runtime tracking, and handoff protocols to maintain context continuity across Alfred workflows and session boundaries.
-
-**Enterprise  Capabilities**:
-- ✅ Context-aware token budget management (November 2025 Claude API features)
-- ✅ Session persistence with automatic history loading
-- ✅ Session forking for parallel exploration
-- ✅ Incremental multi-pack index optimization (Git 2.47+ integration)
-- ✅ Context continuity across handoffs with state snapshots
-- ✅ Progressive disclosure for memory efficiency
-- ✅ Adaptive recovery checkpoints
-- ✅ Multi-agent coordination protocols
-- ✅ Memory file state synchronization
-- ✅ Token budget awareness callbacks (Sonnet/Haiku 4.5 feature)
 
 ---
 
@@ -218,6 +202,41 @@ response = claude.messages.create(
     messages=[alternative_message]
 )
 ```
+
+---
+
+## Related Skills
+
+- `moai-alfred-context-budget` - Token optimization deep dive
+- `moai-alfred-agent-guide` - Multi-agent coordination
+- `moai-foundation-trust` - State validation principles
+- `moai-foundation-git` - Git session state tracking
+
+---
+
+Learn more in `reference.md` for detailed implementation guides, recovery procedures, advanced coordination patterns, and November 2025 API examples.
+
+**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Model Support: Sonnet 4.5, Haiku 4.5 | Enterprise
+
+---
+
+## Core Implementation
+
+## What It Does
+
+Provides enterprise-grade session state management for extended workflows, token budget optimization, runtime tracking, and handoff protocols to maintain context continuity across Alfred workflows and session boundaries.
+
+**Enterprise  Capabilities**:
+- ✅ Context-aware token budget management (November 2025 Claude API features)
+- ✅ Session persistence with automatic history loading
+- ✅ Session forking for parallel exploration
+- ✅ Incremental multi-pack index optimization (Git 2.47+ integration)
+- ✅ Context continuity across handoffs with state snapshots
+- ✅ Progressive disclosure for memory efficiency
+- ✅ Adaptive recovery checkpoints
+- ✅ Multi-agent coordination protocols
+- ✅ Memory file state synchronization
+- ✅ Token budget awareness callbacks (Sonnet/Haiku 4.5 feature)
 
 ---
 
@@ -535,15 +554,3 @@ def sync_memory_files(session_state):
 
 ---
 
-## Related Skills
-
-- `moai-alfred-context-budget` - Token optimization deep dive
-- `moai-alfred-agent-guide` - Multi-agent coordination
-- `moai-foundation-trust` - State validation principles
-- `moai-foundation-git` - Git session state tracking
-
----
-
-Learn more in `reference.md` for detailed implementation guides, recovery procedures, advanced coordination patterns, and November 2025 API examples.
-
-**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Model Support: Sonnet 4.5, Haiku 4.5 | Enterprise 

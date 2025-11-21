@@ -4,6 +4,8 @@ description: Enterprise CLI tool architecture with multi-language patterns, UX/D
   optimization, and production deployment strategies
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise CLI Tool Architecture - 
 
 ## Level 1: Quick Reference
@@ -113,6 +115,47 @@ program.parse();
 - ✅ Consistent flag naming
 
 ---
+
+## Level 4: Reference & Integration
+
+### Best Practices
+
+**User Experience (UX)**:
+- ✅ Clear error messages with hints
+- ✅ Progress indicators for long operations
+- ✅ Consistent command structure
+- ✅ Auto-completion support
+
+**Developer Experience (DX)**:  
+- ✅ Type-safe argument parsing
+- ✅ Comprehensive error handling
+- ✅ Modular architecture
+- ✅ Plugin system support
+
+**Performance Guidelines**:
+- ✅ < 100ms startup time (native)
+- ✅ 100-500ms acceptable (Node.js/Python)
+- ✅ > 2s requires optimization
+
+### Framework Versions
+- **Rust Clap**: 4.5 (latest)
+- **Go Cobra**: 1.8 (stable)
+- **Node Commander**: 14.x (current)
+
+**Related Skills**:
+- `Skill("moai-domain-devops")` for deployment patterns
+- `Skill("moai-essentials-perf")` for performance optimization
+- `Skill("moai-security-backend")` for CLI security
+
+---
+
+**Version**: 4.0.0 Enterprise  
+**Last Updated**: 2025-11-13  
+**Status**: Production Ready
+
+---
+
+## Implementation Guide
 
 ## Level 2: Core Implementation
 
@@ -229,6 +272,10 @@ func exitWithError(code int, message string, details string) {
 
 ---
 
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Features
 
 ### Production-Grade CLI Architecture
@@ -320,39 +367,3 @@ ENTRYPOINT ["myapp"]
 
 ---
 
-## Level 4: Reference & Integration
-
-### Best Practices
-
-**User Experience (UX)**:
-- ✅ Clear error messages with hints
-- ✅ Progress indicators for long operations
-- ✅ Consistent command structure
-- ✅ Auto-completion support
-
-**Developer Experience (DX)**:  
-- ✅ Type-safe argument parsing
-- ✅ Comprehensive error handling
-- ✅ Modular architecture
-- ✅ Plugin system support
-
-**Performance Guidelines**:
-- ✅ < 100ms startup time (native)
-- ✅ 100-500ms acceptable (Node.js/Python)
-- ✅ > 2s requires optimization
-
-### Framework Versions
-- **Rust Clap**: 4.5 (latest)
-- **Go Cobra**: 1.8 (stable)
-- **Node Commander**: 14.x (current)
-
-**Related Skills**:
-- `Skill("moai-domain-devops")` for deployment patterns
-- `Skill("moai-essentials-perf")` for performance optimization
-- `Skill("moai-security-backend")` for CLI security
-
----
-
-**Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-13  
-**Status**: Production Ready

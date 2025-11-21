@@ -1,190 +1,74 @@
-# moai-foundation-ears - Reference Guide
+## API Reference
 
-_Last updated: 2025-11-12 | Version: 4.0.0_
+### Core EARS Operations
+- `evaluate_context(problem_context, stakeholders)` - Evaluate problem context
+- `analyze_problem(evaluation, symptoms)` - Analyze problem structure
+- `recommend_solutions(analysis, constraints)` - Generate solution recommendations
+- `synthesize_solution(evaluation, analysis, recommendations)` - Synthesize final solution
+- `validate_implementation(synthesis, metrics)` - Validate implementation approach
 
-## Quick Reference - 5 EARS Patterns
+### Context7 Integration
+- `get_latest_requirements_docs()` - Requirements engineering via Context7
+- `analyze_systematic_thinking_patterns()` - Problem-solving methodologies via Context7
+- `optimize_solution_synthesis()` - Solution optimization via Context7
 
-| Pattern | Template | Logic | Use Case |
-|---------|----------|-------|----------|
-| **Ubiquitous** | The system shall always satisfy [CONDITION] | `G (cond)` | Always-true invariants |
-| **Event-Driven** | When [EVENT] the system eventually satisfies [RESPONSE] | `G (evt -> F resp)` | Reactive behavior |
-| **State-Driven** | In [MODE] the system shall always satisfy [CONDITION] | `G (mode -> G cond)` | Mode-dependent behavior |
-| **Optional** | When [CONDITION] the system immediately satisfies [ACTION] | `G (cond -> X act)` | Critical/immediate responses |
-| **Unwanted** | The system shall never satisfy [BAD_STATE] | `G !state` | Forbidden states |
+## Best Practices (November 2025)
 
-## Pattern Selection Decision Tree
+### DO
+- Follow the EARS framework systematically for complex problems
+- Involve all relevant stakeholders throughout the process
+- Use data-driven analysis for objective decision making
+- Document all assumptions, constraints, and decisions
+- Validate solutions with stakeholders before implementation
+- Consider multiple solution alternatives and approaches
+- Plan for risks and develop mitigation strategies
+- Establish clear success metrics and validation criteria
 
-```
-Is this an always-true property? 
-  YES → UBIQUITOUS
-  
-Is there a triggering event?
-  YES → Is response needed immediately?
-    YES → OPTIONAL
-    NO → EVENT-DRIVEN
-    
-Does behavior depend on operational mode?
-  YES → STATE-DRIVEN
-  
-Is this a forbidden state?
-  YES → UNWANTED
-```
+### DON'T
+- Skip phases or rush through the systematic analysis
+- Ignore stakeholder requirements and concerns
+- Rely on assumptions without data validation
+- Overlook constraint analysis and resource limitations
+- Forget to document the analysis and decision process
+- Implement solutions without proper validation
+- Neglect risk assessment and mitigation planning
+- Skip success metrics definition and monitoring
 
-## EARS-to-LTL Conversion Quick Reference
+## Works Well With
 
-```
-Template                              → LTL Formula
-────────────────────────────────────────────────────
-The system shall always X             → G (X)
-When A the system eventually B        → G (A -> F B)
-In mode M the system always Y         → G (M -> G Y)
-When C the system immediately D       → G (C -> X D)
-The system shall never Z              → G (!Z)
-```
+- `moai-foundation-specs` (SPEC lifecycle management)
+- `moai-alfred-spec-authoring` (SPEC creation and writing)
+- `moai-foundation-trust` (Trust and quality principles)
+- `moai-domain-backend` (Technical solution implementation)
+- `moai-security-api` (Security requirements analysis)
+- `moai-essentials-perf` (Performance requirements)
+- `moai-domain-devops` (Implementation planning)
+- `moai-foundation-git` (Version control and collaboration)
 
-## Common Anti-Patterns
+## Changelog
 
-| Anti-Pattern | Fix |
-|------|-----|
-| "always be fast" | Use specific threshold: "response_time <= 100ms" |
-| "never fail" | Specify exact failure mode: "disk_corruption_detected = false" |
-| "When X or Y" | Create separate requirements for X and Y |
-| "eventually within 5 seconds" | Use deadline syntax: "eventually (within 5s)" |
-| "immediately and eventually" | Choose one: Optional (immediate) or Event-Driven (eventual) |
-
-## FRET Formal Verification Workflow
-
-1. **Write Requirement** in EARS pattern
-2. **Formalize** to LTL expression
-3. **Check Realizability** - Can it be implemented?
-4. **Check Conflicts** - Does it contradict other requirements?
-5. **Generate Tests** - Create test cases from formal spec
-6. **Verify Implementation** - Does code satisfy requirement?
-
-## Real-World Patterns by Domain
-
-### Aerospace
-- Ubiquitous: Altitude/airspeed bounds, safety invariants
-- Event-Driven: Navigation updates, system failures
-- Optional: Emergency procedures, critical alerts
-- Unwanted: Loss of multiple systems simultaneously
-
-### Automotive
-- Ubiquitous: Speed limits, equipment bounds
-- Event-Driven: Brake activation, collision detection
-- State-Driven: Driving modes (eco, sport, offroad)
-- Optional: Emergency brake, stability control
-- Unwanted: Brake and accelerator simultaneous
-
-### IoT/Embedded
-- Ubiquitous: Temperature/pressure bounds
-- Event-Driven: Sensor alerts, network reconnection
-- State-Driven: Operating modes (normal, idle, maintenance)
-- Optional: Shutdown on critical conditions
-- Unwanted: Operating with failed sensors
-
-### Cloud Services
-- Ubiquitous: Uptime targets, response time bounds
-- Event-Driven: Auto-scaling, failover activation
-- State-Driven: Operational modes (degraded, maintenance)
-- Optional: Circuit breaker on failures
-- Unwanted: Data loss with backups failing
-
-## Measurement and Testing
-
-### Ubiquitous Pattern Testing
-```
-Test ubiquitous requirement:
-  1. Continuously monitor condition
-  2. Verify always true (or detect violations)
-  3. Log all boundary conditions
-  4. Alert on violations
-```
-
-### Event-Driven Pattern Testing
-```
-Test event-driven requirement:
-  1. Inject trigger event
-  2. Monitor system response
-  3. Verify response occurs (eventually)
-  4. Measure response time
-  5. Test multiple event sequences
-```
-
-### State-Driven Pattern Testing
-```
-Test state-driven requirement:
-  1. Transition to specified mode
-  2. Monitor condition in that mode
-  3. Verify condition holds
-  4. Test transition to other modes
-  5. Test mode-switching edges
-```
-
-### Optional Pattern Testing
-```
-Test optional (immediate) requirement:
-  1. Trigger condition
-  2. Verify immediate action
-  3. Check for atomicity
-  4. Test resource availability
-  5. Test under load
-```
-
-### Unwanted Behavior Testing
-```
-Test unwanted behavior requirement:
-  1. Attempt to reach forbidden state
-  2. Verify prevention mechanism
-  3. Test error handling
-  4. Log prevention events
-  5. Verify no workarounds
-```
-
-## Integration with Development Tools
-
-### With Version Control (Git)
-- Tag requirements: `@REQ-001` in commit messages
-- Link commits to EARS requirements
-- Trace requirement → code → test
-
-### With Testing Frameworks
-- Generate test cases from EARS patterns
-- Pytest parametrization from requirement conditions
-- Coverage mapping to requirements
-
-### With Requirements Management Tools
-- Export to Jama, Visure, DOORS format
-- ReqIF standard format support
-- Bidirectional traceability
-
-### With Formal Verification
-- Convert to NASA FRET format
-- Generate LTL for model checking
-- Test automation from formal spec
-
-## Performance Checklist
-
-- [ ] Requirements are specific and measurable
-- [ ] All terms defined with thresholds
-- [ ] One pattern per requirement
-- [ ] No contradicting requirements
-- [ ] Formal logic (LTL) generated
-- [ ] Realizability verified
-- [ ] Test cases generated
-- [ ] Implementation verified against requirements
-- [ ] Monitoring in place for runtime compliance
-
-## References for This Version
-
-| Topic | Link |
-|-------|------|
-| Official EARS | https://alistairmavin.com/ears/ |
-| EARS on Jama | https://www.jamasoftware.com/requirements-management-guide/writing-requirements/adopting-the-ears-notation-to-improve-requirements-engineering/ |
-| NASA FRET | https://github.com/NASA-SW-VnV/fret |
-| IEEE 830 | https://standards.ieee.org/standard/830-1998.html |
-| RTCA DO-178B | https://www.rtca.org/ |
+- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced systematic thinking patterns, and comprehensive solution synthesis
+- **v2.0.0** (2025-11-11): Complete metadata structure, EARS framework patterns, stakeholder analysis
+- **v1.0.0** (2025-11-11): Initial EARS framework foundation
 
 ---
 
-**Use this reference to quickly select EARS patterns, convert to LTL, and verify requirements across all domains.**
+**End of Skill** | Updated 2025-11-13
+
+## Framework Integration
+
+### EARS Integration Patterns
+- Seamless integration with SPEC lifecycle management
+- Stakeholder analysis integration with project governance
+- Solution synthesis integration with development workflows
+- Risk assessment integration with quality gates
+
+### Enterprise Adoption
+- Standardized problem-solving methodology across teams
+- Consistent documentation and decision-making processes
+- Integration with existing project management tools
+- Training and adoption support for organizations
+
+---
+
+**End of Enterprise EARS Framework Expert **

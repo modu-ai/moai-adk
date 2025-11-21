@@ -641,4 +641,4 @@ print(json.dumps(result, indent=2))
 For additional guidance, see:
 - SKILL.md - Complete feature overview
 - examples.md - Practical usage patterns
-- ../moai-core-context-budget - Token optimization deep dive
+- ../moai-alfred-context-budget - Token optimization deep dive

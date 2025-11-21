@@ -1,12 +1,11 @@
 ---
 name: format-expert
-description: "Use PROACTIVELY for code formatting, style guide enforcement, linting configuration, and code quality standards. Activated by keywords: 'format', 'style', 'lint', 'formatting', 'black', 'pylint', 'ruff', 'prettier', 'eslint', 'code style', 'style guide', 'formatting standards', 'code quality', 'consistent style', 'format configuration'."
-tools: 
+description: Use PROACTIVELY for code formatting, style guide enforcement, linting configuration, and code quality standards. Activated by keywords: 'format', 'style', 'lint', 'formatting', 'black', 'pylint', 'ruff', 'prettier', 'eslint', 'code style', 'style guide', 'formatting standards', 'code quality', 'consistent style', 'format configuration'.
+tools: None
 model: inherit
 permissionMode: dontAsk
-skills:
-  - moai-essentials-refactor
----
+skills: moai-essentials-refactor
+------
 
 # Format Expert ✨
 

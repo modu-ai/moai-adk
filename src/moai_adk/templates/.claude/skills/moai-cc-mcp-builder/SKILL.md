@@ -3,46 +3,9 @@ name: moai-cc-mcp-builder
 description: AI-powered enterprise MCP (Model Context Protocol) server development
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise MCP Server Development Skill 
-
----
-
-## 🚀 Revolutionary AI MCP Development Capabilities
-
-### **AI-Powered MCP Server Generation with Context7**
-- 🧠 **Intelligent Architecture Design** with ML-based pattern recognition
-- 🎯 **AI-Enhanced Code Generation** using Context7 latest MCP standards
-- 🔍 **Agent-Centric Tool Design** with AI-optimized workflows
-- ⚡ **Real-Time Schema Validation** with AI-powered error detection
-- 🤖 **Automated Best Practice Application** with Context7 integration
-- 📊 **Performance Optimization** with AI profiling and recommendations
-- 🔮 **Predictive Maintenance** using ML pattern analysis for MCP servers
-
-### **Context7 Integration Features**
-- **Live MCP Standards Fetching**: Get latest MCP patterns from official repositories
-- **AI Pattern Matching**: Match MCP server designs against Context7 knowledge base
-- **Best Practice Integration**: Apply latest MCP development techniques
-- **Version-Aware Development**: Context7 provides version-specific MCP patterns
-- **Community Knowledge Integration**: Leverage collective MCP development wisdom
-
----
-
-## 🎯 When to Use
-
-**AI Automatic Triggers**:
-- Creating new MCP server projects
-- Optimizing existing MCP server architectures
-- Agent-centric tool design requirements
-- Performance optimization for MCP servers
-- Integration with new external services
-- Enterprise-grade MCP deployment planning
-
-**Manual AI Invocation**:
-- "Generate enterprise MCP server for [service]"
-- "Design agent-centric tools with AI"
-- "Optimize MCP server performance with Context7"
-- "Create intelligent API integration patterns"
-- "Generate production-ready MCP deployment"
 
 ---
 
@@ -113,6 +76,49 @@ class Context7AgentCentricDesigner:
 
 ---
 
+---
+
+## Implementation Guide
+
+## 🚀 Revolutionary AI MCP Development Capabilities
+
+### **AI-Powered MCP Server Generation with Context7**
+- 🧠 **Intelligent Architecture Design** with ML-based pattern recognition
+- 🎯 **AI-Enhanced Code Generation** using Context7 latest MCP standards
+- 🔍 **Agent-Centric Tool Design** with AI-optimized workflows
+- ⚡ **Real-Time Schema Validation** with AI-powered error detection
+- 🤖 **Automated Best Practice Application** with Context7 integration
+- 📊 **Performance Optimization** with AI profiling and recommendations
+- 🔮 **Predictive Maintenance** using ML pattern analysis for MCP servers
+
+### **Context7 Integration Features**
+- **Live MCP Standards Fetching**: Get latest MCP patterns from official repositories
+- **AI Pattern Matching**: Match MCP server designs against Context7 knowledge base
+- **Best Practice Integration**: Apply latest MCP development techniques
+- **Version-Aware Development**: Context7 provides version-specific MCP patterns
+- **Community Knowledge Integration**: Leverage collective MCP development wisdom
+
+---
+
+## 🎯 When to Use
+
+**AI Automatic Triggers**:
+- Creating new MCP server projects
+- Optimizing existing MCP server architectures
+- Agent-centric tool design requirements
+- Performance optimization for MCP servers
+- Integration with new external services
+- Enterprise-grade MCP deployment planning
+
+**Manual AI Invocation**:
+- "Generate enterprise MCP server for [service]"
+- "Design agent-centric tools with AI"
+- "Optimize MCP server performance with Context7"
+- "Create intelligent API integration patterns"
+- "Generate production-ready MCP deployment"
+
+---
+
 ## 🤖 Context7-Enhanced MCP Development Patterns
 
 ### AI-Enhanced Code Generation
@@ -179,72 +185,6 @@ class IntelligentToolDesigner:
 
 ---
 
-## 🛠️ Advanced MCP Development Workflows
-
-### AI-Assisted Enterprise Integration with Context7
-```python
-class AIEnterpriseMCPIntegrator:
-    """AI-powered enterprise MCP integration with Context7 patterns."""
-    
-    async def integrate_enterprise_mcp_with_ai(self, enterprise_config: EnterpriseConfig) -> EnterpriseIntegration:
-        """Integrate MCP server with enterprise systems using AI and Context7 patterns."""
-        
-        # Get Context7 enterprise integration patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/modelcontextprotocol/servers",
-            topic="enterprise MCP integration deployment security patterns",
-            tokens=3000
-        )
-        
-        # Multi-layer AI analysis
-        ai_analysis = await self.analyze_enterprise_requirements_with_ai(
-            enterprise_config, context7_patterns
-        )
-        
-        # Context7 pattern application
-        integration_patterns = self.apply_context7_patterns(ai_analysis, context7_patterns)
-        
-        return EnterpriseIntegration(
-            ai_analysis=ai_analysis,
-            context7_solutions=integration_patterns,
-            deployment_automation=self.generate_deployment_automation(ai_analysis, integration_patterns),
-            security_hardening=self.apply_security_best_practices(integration_patterns)
-        )
-```
-
-### Performance Optimization Integration
-```python
-class AIMCPOptimizer:
-    """AI-enhanced MCP server optimization using Context7 best practices."""
-    
-    async def optimize_mcp_with_ai(self, mcp_server: MCPServer) -> AIOptimizationResult:
-        """Optimize MCP server with AI using Context7 patterns."""
-        
-        # Get Context7 optimization patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/modelcontextprotocol/servers",
-            topic="MCP server performance optimization monitoring patterns",
-            tokens=5000
-        )
-        
-        # Run performance analysis with AI enhancement
-        performance_profile = self.run_enhanced_performance_analysis(mcp_server, context7_patterns)
-        
-        # AI optimization analysis
-        ai_optimizations = self.ai_analyzer.analyze_for_optimizations(
-            performance_profile, context7_patterns
-        )
-        
-        return AIOptimizationResult(
-            performance_profile=performance_profile,
-            ai_optimizations=ai_optimizations,
-            context7_patterns=context7_patterns,
-            optimization_plan=self.generate_optimization_plan(ai_optimizations)
-        )
-```
-
----
-
 ## 📊 Real-Time AI MCP Development Dashboard
 
 ### AI Development Intelligence Dashboard
@@ -276,63 +216,6 @@ class AIMCPDevelopmentDashboard:
             enhanced_recommendations=enhanced_recommendations,
             quality_metrics=self.calculate_quality_metrics(ai_intelligence, enhanced_recommendations)
         )
-```
-
----
-
-## 🎯 Advanced Examples
-
-### Agent-Centric Tool Design with Context7 Workflows
-```python
-# Apply Context7 agent-centric workflows
-async def design_agent_centric_tools_with_ai():
-    """Design agent-centric tools using Context7 patterns."""
-    
-    # Get Context7 agent-centric workflow
-    workflow = await context7.get_library_docs(
-        context7_library_id="/modelcontextprotocol/servers",
-        topic="agent-centric tool design workflow optimization",
-        tokens=4000
-    )
-    
-    # Apply Context7 tool design sequence
-    design_session = apply_context7_workflow(
-        workflow['tool_design_sequence'],
-        agent_types=['claude', 'gpt', 'llama']
-    )
-    
-    # AI coordination across agent types
-    ai_coordinator = AIToolCoordinator(design_session)
-    
-    # Execute coordinated tool design
-    result = await ai_coordinator.coordinate_agent_centric_design()
-    
-    return result
-```
-
-### AI-Enhanced MCP Server Architecture
-```python
-async def design_mcp_architecture_with_ai_context7(requirements: MCPRequirements):
-    """Design MCP architecture using AI and Context7 patterns."""
-    
-    # Get Context7 architecture patterns
-    context7_patterns = await context7.get_library_docs(
-        context7_library_id="/modelcontextprotocol/servers",
-        topic="MCP server architecture patterns enterprise design",
-        tokens=3000
-    )
-    
-    # AI architecture analysis
-    ai_analysis = ai_analyzer.analyze_mcp_requirements(requirements)
-    
-    # Context7 pattern matching
-    pattern_matches = match_context7_patterns(ai_analysis, context7_patterns)
-    
-    return {
-        'ai_analysis': ai_analysis,
-        'context7_matches': pattern_matches,
-        'architecture_design': generate_architecture_design(ai_analysis, pattern_matches)
-    }
 ```
 
 ---
@@ -495,3 +378,131 @@ class AIMCPDevelopmentLearner:
 - `moai-foundation-trust` (AI enterprise security and quality)
 - `moai-context7-integration` (latest MCP standards and best practices)
 - Context7 MCP (latest development patterns and documentation)
+
+---
+
+## Advanced Patterns
+
+## 🛠️ Advanced MCP Development Workflows
+
+### AI-Assisted Enterprise Integration with Context7
+```python
+class AIEnterpriseMCPIntegrator:
+    """AI-powered enterprise MCP integration with Context7 patterns."""
+    
+    async def integrate_enterprise_mcp_with_ai(self, enterprise_config: EnterpriseConfig) -> EnterpriseIntegration:
+        """Integrate MCP server with enterprise systems using AI and Context7 patterns."""
+        
+        # Get Context7 enterprise integration patterns
+        context7_patterns = await self.context7.get_library_docs(
+            context7_library_id="/modelcontextprotocol/servers",
+            topic="enterprise MCP integration deployment security patterns",
+            tokens=3000
+        )
+        
+        # Multi-layer AI analysis
+        ai_analysis = await self.analyze_enterprise_requirements_with_ai(
+            enterprise_config, context7_patterns
+        )
+        
+        # Context7 pattern application
+        integration_patterns = self.apply_context7_patterns(ai_analysis, context7_patterns)
+        
+        return EnterpriseIntegration(
+            ai_analysis=ai_analysis,
+            context7_solutions=integration_patterns,
+            deployment_automation=self.generate_deployment_automation(ai_analysis, integration_patterns),
+            security_hardening=self.apply_security_best_practices(integration_patterns)
+        )
+```
+
+### Performance Optimization Integration
+```python
+class AIMCPOptimizer:
+    """AI-enhanced MCP server optimization using Context7 best practices."""
+    
+    async def optimize_mcp_with_ai(self, mcp_server: MCPServer) -> AIOptimizationResult:
+        """Optimize MCP server with AI using Context7 patterns."""
+        
+        # Get Context7 optimization patterns
+        context7_patterns = await self.context7.get_library_docs(
+            context7_library_id="/modelcontextprotocol/servers",
+            topic="MCP server performance optimization monitoring patterns",
+            tokens=5000
+        )
+        
+        # Run performance analysis with AI enhancement
+        performance_profile = self.run_enhanced_performance_analysis(mcp_server, context7_patterns)
+        
+        # AI optimization analysis
+        ai_optimizations = self.ai_analyzer.analyze_for_optimizations(
+            performance_profile, context7_patterns
+        )
+        
+        return AIOptimizationResult(
+            performance_profile=performance_profile,
+            ai_optimizations=ai_optimizations,
+            context7_patterns=context7_patterns,
+            optimization_plan=self.generate_optimization_plan(ai_optimizations)
+        )
+```
+
+---
+
+## 🎯 Advanced Examples
+
+### Agent-Centric Tool Design with Context7 Workflows
+```python
+# Apply Context7 agent-centric workflows
+async def design_agent_centric_tools_with_ai():
+    """Design agent-centric tools using Context7 patterns."""
+    
+    # Get Context7 agent-centric workflow
+    workflow = await context7.get_library_docs(
+        context7_library_id="/modelcontextprotocol/servers",
+        topic="agent-centric tool design workflow optimization",
+        tokens=4000
+    )
+    
+    # Apply Context7 tool design sequence
+    design_session = apply_context7_workflow(
+        workflow['tool_design_sequence'],
+        agent_types=['claude', 'gpt', 'llama']
+    )
+    
+    # AI coordination across agent types
+    ai_coordinator = AIToolCoordinator(design_session)
+    
+    # Execute coordinated tool design
+    result = await ai_coordinator.coordinate_agent_centric_design()
+    
+    return result
+```
+
+### AI-Enhanced MCP Server Architecture
+```python
+async def design_mcp_architecture_with_ai_context7(requirements: MCPRequirements):
+    """Design MCP architecture using AI and Context7 patterns."""
+    
+    # Get Context7 architecture patterns
+    context7_patterns = await context7.get_library_docs(
+        context7_library_id="/modelcontextprotocol/servers",
+        topic="MCP server architecture patterns enterprise design",
+        tokens=3000
+    )
+    
+    # AI architecture analysis
+    ai_analysis = ai_analyzer.analyze_mcp_requirements(requirements)
+    
+    # Context7 pattern matching
+    pattern_matches = match_context7_patterns(ai_analysis, context7_patterns)
+    
+    return {
+        'ai_analysis': ai_analysis,
+        'context7_matches': pattern_matches,
+        'architecture_design': generate_architecture_design(ai_analysis, pattern_matches)
+    }
+```
+
+---
+

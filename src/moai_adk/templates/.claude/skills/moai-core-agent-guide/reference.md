@@ -111,7 +111,7 @@ Implementation Plan includes:
 | **feature-selector** 🎯    | Haiku  | Skill pack recommendation                                   | `/alfred:0-project`             |
 | **template-optimizer** ⚙️  | Haiku  | Template cleanup, migration helpers                         | `/alfred:0-project`             |
 
-> **Implementation Note**: Zero-project specialists may be embedded within other agents (e.g., functionality within `project-manager`) or implemented as dedicated Skills (e.g., `moai-core-language-detection`). For example, `language-detector` functionality is provided by the `moai-core-language-detection` Skill during `/alfred:0-project` initialization.
+> **Implementation Note**: Zero-project specialists may be embedded within other agents (e.g., functionality within `project-manager`) or implemented as dedicated Skills (e.g., `moai-alfred-language-detection`). For example, `language-detector` functionality is provided by the `moai-alfred-language-detection` Skill during `/alfred:0-project` initialization.
 
 ---
 
@@ -172,7 +172,7 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 
 **Essentials Tier (4)**: `moai-essentials-debug`, `moai-essentials-perf`, `moai-essentials-refactor`, `moai-essentials-review` (Debug/Perf/Refactor/Review workflows)
 
-**Alfred Tier (11)**: `moai-core-code-reviewer`, `moai-core-debugger-pro`, `moai-core-ears-authoring`, `moai-core-git-workflow`, `moai-core-language-detection`, `moai-core-performance-optimizer`, `moai-core-refactoring-coach`, `moai-core-spec-metadata-validation`, `moai-core-tag-scanning`, `moai-core-trust-validation`, `moai-core-ask-user-questions` (code review, debugging, EARS, Git, language detection, performance, refactoring, metadata, TAG scanning, trust validation, interactive questions)
+**Alfred Tier (11)**: `moai-alfred-code-reviewer`, `moai-alfred-debugger-pro`, `moai-alfred-ears-authoring`, `moai-alfred-git-workflow`, `moai-alfred-language-detection`, `moai-alfred-performance-optimizer`, `moai-alfred-refactoring-coach`, `moai-alfred-spec-metadata-validation`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`, `moai-alfred-ask-user-questions` (code review, debugging, EARS, Git, language detection, performance, refactoring, metadata, TAG scanning, trust validation, interactive questions)
 
 **Domain Tier (10)** — `moai-domain-backend`, `web-api`, `frontend`, `mobile-app`, `security`, `devops`, `database`, `data-science`, `ml`, `cli-tool`.
 

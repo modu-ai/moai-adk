@@ -2,65 +2,14 @@
 name: moai-lang-rust
 description: RUST language development patterns and best practices
 ---
+
+## Quick Reference (30 seconds)
+
 name: moai-lang-rust
 description: Enterprise Rust with ownership model and safety guarantees: Rust 1.91.1, Tokio 1.48, async/await, macro system, error handling, memory safety patterns; activates for systems programming, performance-critical code, concurrent applications, and safety-first development.
 ---
 
 # Rust Systems Programming — Enterprise  
-
-## Technology Stack (November 2025 Stable)
-
-### Core Language
-- **Rust 1.91.1** (Latest stable, November 2025)
-  - Ownership and borrowing system
-  - Zero-cost abstractions
-  - Memory safety without GC
-  - Performance optimization
-
-### Async Runtime
-- **Tokio 1.48.x** (Production async runtime)
-  - Async I/O
-  - Task scheduling
-  - Synchronization primitives
-  - Macro utilities
-
-- **async-std 1.13.x** (Alternative runtime)
-  - Compatible API
-  - Task-based execution
-
-### Web & Network
-- **Axum 0.8.x** (Web framework)
-  - Composable handlers
-  - Router support
-  - Type-safe extractors
-
-- **Rocket 0.5.x** (Developer-friendly framework)
-  - Macro-driven API
-  - Type-safe routing
-
-- **Warp 0.3.x** (Filter-based framework)
-  - Composable filters
-  - High performance
-
-### Serialization
-- **serde 1.0.x** (Serialization framework)
-  - Derive macros
-  - Custom implementations
-  - Format support
-
-- **serde_json 1.0.x** (JSON support)
-
-### Macros & Code Generation
-- **proc-macro 1.1.x** (Procedural macros)
-- **syn 2.x** (Parser for Rust code)
-- **quote 1.x** (Code generation)
-
-### Testing & Profiling
-- **cargo test** (Built-in testing)
-- **proptest 1.5.x** (Property-based testing)
-- **criterion 0.5.x** (Benchmarking)
-
----
 
 ## Level 1: Quick Reference
 
@@ -159,6 +108,64 @@ fn main() {
     let result = read_file("data.txt").expect("Failed to read");
 }
 ```
+
+---
+
+---
+
+## Implementation Guide
+
+## Technology Stack (November 2025 Stable)
+
+### Core Language
+- **Rust 1.91.1** (Latest stable, November 2025)
+  - Ownership and borrowing system
+  - Zero-cost abstractions
+  - Memory safety without GC
+  - Performance optimization
+
+### Async Runtime
+- **Tokio 1.48.x** (Production async runtime)
+  - Async I/O
+  - Task scheduling
+  - Synchronization primitives
+  - Macro utilities
+
+- **async-std 1.13.x** (Alternative runtime)
+  - Compatible API
+  - Task-based execution
+
+### Web & Network
+- **Axum 0.8.x** (Web framework)
+  - Composable handlers
+  - Router support
+  - Type-safe extractors
+
+- **Rocket 0.5.x** (Developer-friendly framework)
+  - Macro-driven API
+  - Type-safe routing
+
+- **Warp 0.3.x** (Filter-based framework)
+  - Composable filters
+  - High performance
+
+### Serialization
+- **serde 1.0.x** (Serialization framework)
+  - Derive macros
+  - Custom implementations
+  - Format support
+
+- **serde_json 1.0.x** (JSON support)
+
+### Macros & Code Generation
+- **proc-macro 1.1.x** (Procedural macros)
+- **syn 2.x** (Parser for Rust code)
+- **quote 1.x** (Code generation)
+
+### Testing & Profiling
+- **cargo test** (Built-in testing)
+- **proptest 1.5.x** (Property-based testing)
+- **criterion 0.5.x** (Benchmarking)
 
 ---
 
@@ -321,6 +328,49 @@ async fn main() {
 
 ---
 
+## Level 4: Production Deployment
+
+### Docker Deployment
+
+```dockerfile
+FROM rust:1.91 as builder
+WORKDIR /app
+COPY . .
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+COPY --from=builder /app/target/release/app /usr/local/bin/
+CMD ["app"]
+```
+
+### Production Best Practices
+
+1. **Embrace the borrow checker**
+2. **Use Result for error handling**
+3. **Leverage type system for correctness**
+4. **Test thoroughly with #[test]**
+5. **Optimize with release profile**
+6. **Use Tokio for async I/O**
+7. **Implement proper error types**
+8. **Profile with perf tools**
+9. **Document unsafe code**
+10. **Keep dependencies minimal**
+
+### Related Skills
+- `Skill("moai-essentials-perf")` for performance optimization
+- `Skill("moai-security-backend")` for security patterns
+- `Skill("moai-domain-cli-tool")` for CLI development
+
+---
+
+**Version**: 4.0.0 Enterprise  
+**Last Updated**: 2025-11-13  
+**Status**: Production Ready
+
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Features
 
 ### Testing Rust Code
@@ -408,41 +458,3 @@ criterion_main!(benches);
 
 ---
 
-## Level 4: Production Deployment
-
-### Docker Deployment
-
-```dockerfile
-FROM rust:1.91 as builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release
-
-FROM debian:bookworm-slim
-COPY --from=builder /app/target/release/app /usr/local/bin/
-CMD ["app"]
-```
-
-### Production Best Practices
-
-1. **Embrace the borrow checker**
-2. **Use Result for error handling**
-3. **Leverage type system for correctness**
-4. **Test thoroughly with #[test]**
-5. **Optimize with release profile**
-6. **Use Tokio for async I/O**
-7. **Implement proper error types**
-8. **Profile with perf tools**
-9. **Document unsafe code**
-10. **Keep dependencies minimal**
-
-### Related Skills
-- `Skill("moai-essentials-perf")` for performance optimization
-- `Skill("moai-security-backend")` for security patterns
-- `Skill("moai-domain-cli-tool")` for CLI development
-
----
-
-**Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-13  
-**Status**: Production Ready

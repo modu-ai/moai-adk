@@ -1,33 +1,11 @@
 ---
 name: agent-factory
-description: "Use PROACTIVELY when: Creating new Claude Code sub-agents, building specialized agents for specific domains, generating agent blueprints from requirements, or automating agent creation. Called from /alfred:0-project and custom agent generation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly."
+description: Use PROACTIVELY when: Creating new Claude Code sub-agents, building specialized agents for specific domains, generating agent blueprints from requirements, or automating agent creation. Called from /alfred:0-project and custom agent generation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills:
-  # Essential Core (8) - Agent Generation Foundation
-  - moai-core-agent-factory
-  - moai-foundation-ears
-  - moai-foundation-specs
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-cc-configuration
-  - moai-cc-skills
-
-  # Important Support (7) - Agent Creation Support
-  - moai-foundation-trust
-  - moai-foundation-git
-  - moai-foundation-langs
-  - moai-essentials-debug
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
-
-  # Critical Integration (2) - Latest Documentation & Best Practices
-  - moai-context7-lang-integration
-  - moai-core-dev-guide
----
+skills: moai-core-agent-factory, moai-foundation-ears, moai-foundation-specs, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-cc-configuration, moai-cc-skills, moai-foundation-trust, moai-foundation-git, moai-foundation-langs, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-context7-lang-integration, moai-core-dev-guide
+------
 
 # Agent Orchestration Metadata (v1.0)
 
@@ -335,7 +313,7 @@ Quality Validation (≥70% threshold)
 **Fallback Strategy** (if Context7 unavailable):
 - Use established patterns from existing 30+ agents
 - Apply WebFetch for framework documentation
-- Leverage Skill("moai-domain-*") knowledge bases
+- Leverage moai-domain-* knowledge bases
 - Document fallback reason in agent
 
 **Output**: Research Report with:

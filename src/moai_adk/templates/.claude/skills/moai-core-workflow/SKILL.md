@@ -3,6 +3,8 @@ name: moai-core-workflow
 description: Enterprise multi-agent workflow orchestration specialist. Master workflow design, agent coordination, task delegation, and process automation with Context7 MCP integration and comprehensive monitoring. Build scalable, intelligent workflow systems with fault tolerance and performance optimization.
 ---
 
+## Quick Reference (30 seconds)
+
 # Alfred Workflow Orchestration
 
 ## Level 1: Quick Reference
@@ -53,6 +55,84 @@ best_practices = context7.get_best_practices(
 | Parallel | Independent tasks | Faster completion |
 | Conditional | Decision-based | Adaptive workflows |
 | Error Recovery | Fault tolerance | Reliable execution |
+
+## Level 4: Reference & Integration
+
+### When to Use
+
+**Use for:**
+- Multi-agent workflows requiring coordination
+- Automated CI/CD pipelines with intelligent decision making  
+- Enterprise process automation with error handling
+- Tasks requiring Context7 integration for best practices
+- Workflows needing comprehensive monitoring
+
+**Avoid for:**
+- Simple single-agent tasks (use specific domain skills)
+- Basic automation without coordination needs
+- Quick prototyping without enterprise requirements
+
+### Common Usage Patterns
+
+```python
+# Feature Development Workflow
+workflow_id = await scheduler.submit_workflow(
+    "feature_development",
+    {
+        "feature_name": "user_authentication",
+        "feature_description": "Implement secure user login",
+        "requirements": ["JWT auth", "Password hashing"],
+        "acceptance_criteria": ["Users can login securely"]
+    }
+)
+
+# Bug Fix Workflow  
+bug_workflow_id = await scheduler.submit_workflow(
+    "bug_fix",
+    {
+        "bug_id": "BUG-001",
+        "bug_description": "Login fails with invalid credentials",
+        "error_logs": ["AuthException at line 42"],
+        "reproduction_steps": ["Enter invalid password"]
+    },
+    priority=WorkflowPriority.HIGH
+)
+```
+
+### Security & Compliance
+
+**TRUST Principles Applied**:
+- **Test First**: All workflows include validation stages and quality gates
+- **Readable**: Clear workflow structure with comprehensive logging
+- **Unified**: Consistent patterns across all workflow templates  
+- **Secured**: Built-in input validation and security checks
+- **Traceable**: Complete audit trail with workflow execution history
+
+**Enterprise Security Features**:
+- **Input Validation**: Automated security scanning of workflow inputs
+- **Access Control**: Role-based access to workflow operations
+- **Audit Logging**: Complete execution history with security events
+- **Data Encryption**: Sensitive data protection in transit and at rest
+
+### Related Skills
+
+- `moai-alfred-agent-guide` - Agent selection and delegation patterns
+- `moai-alfred-spec-authoring` - SPEC creation workflows
+- `moai-essentials-debug` - Error handling and troubleshooting
+- `moai-foundation-trust` - Security and compliance principles
+- `moai-domain-backend` - Backend-specific workflow patterns
+- `moai-domain-testing` - Testing workflow integration
+
+---
+
+**Enterprise   Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
+**Last Updated**: 2025-11-13  
+**Dependencies**: Context7 MCP integration, Alfred agent system
+**See Also**: [examples.md](./examples.md) for detailed usage examples
+
+---
+
+## Implementation Guide
 
 ## Level 2: Core Implementation
 
@@ -230,6 +310,10 @@ class FeatureDevelopmentTemplate(WorkflowTemplate):
         return workflow
 ```
 
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Features
 
 ### Workflow Scheduling
@@ -346,76 +430,3 @@ class WorkflowMetrics:
         }
 ```
 
-## Level 4: Reference & Integration
-
-### When to Use
-
-**Use for:**
-- Multi-agent workflows requiring coordination
-- Automated CI/CD pipelines with intelligent decision making  
-- Enterprise process automation with error handling
-- Tasks requiring Context7 integration for best practices
-- Workflows needing comprehensive monitoring
-
-**Avoid for:**
-- Simple single-agent tasks (use specific domain skills)
-- Basic automation without coordination needs
-- Quick prototyping without enterprise requirements
-
-### Common Usage Patterns
-
-```python
-# Feature Development Workflow
-workflow_id = await scheduler.submit_workflow(
-    "feature_development",
-    {
-        "feature_name": "user_authentication",
-        "feature_description": "Implement secure user login",
-        "requirements": ["JWT auth", "Password hashing"],
-        "acceptance_criteria": ["Users can login securely"]
-    }
-)
-
-# Bug Fix Workflow  
-bug_workflow_id = await scheduler.submit_workflow(
-    "bug_fix",
-    {
-        "bug_id": "BUG-001",
-        "bug_description": "Login fails with invalid credentials",
-        "error_logs": ["AuthException at line 42"],
-        "reproduction_steps": ["Enter invalid password"]
-    },
-    priority=WorkflowPriority.HIGH
-)
-```
-
-### Security & Compliance
-
-**TRUST Principles Applied**:
-- **Test First**: All workflows include validation stages and quality gates
-- **Readable**: Clear workflow structure with comprehensive logging
-- **Unified**: Consistent patterns across all workflow templates  
-- **Secured**: Built-in input validation and security checks
-- **Traceable**: Complete audit trail with workflow execution history
-
-**Enterprise Security Features**:
-- **Input Validation**: Automated security scanning of workflow inputs
-- **Access Control**: Role-based access to workflow operations
-- **Audit Logging**: Complete execution history with security events
-- **Data Encryption**: Sensitive data protection in transit and at rest
-
-### Related Skills
-
-- `moai-alfred-agent-guide` - Agent selection and delegation patterns
-- `moai-alfred-spec-authoring` - SPEC creation workflows
-- `moai-essentials-debug` - Error handling and troubleshooting
-- `moai-foundation-trust` - Security and compliance principles
-- `moai-domain-backend` - Backend-specific workflow patterns
-- `moai-domain-testing` - Testing workflow integration
-
----
-
-**Enterprise   Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
-**Last Updated**: 2025-11-13  
-**Dependencies**: Context7 MCP integration, Alfred agent system
-**See Also**: [examples.md](./examples.md) for detailed usage examples

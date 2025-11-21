@@ -5,43 +5,9 @@ description: AI-powered enterprise refactoring with Context7 integration, automa
   across 25+ programming languages
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise Refactoring - 
-
-## Skill Overview
-
-| Field | Value |
-| ----- | ----- |
-| **Version** | 4.0.0 Enterprise (2025-11-13) |
-| **Tier** | Revolutionary AI-Powered Refactoring |
-| **Focus** | Context7 + Rope + AI Integration |
-| **Languages** | 25+ with specialized patterns |
-| **Auto-load** | Refactoring requests, code analysis |
-
-## Core Capabilities
-
-- **Intelligent Pattern Recognition**: ML + Context7 + Rope patterns
-- **Predictive Refactoring**: Context7 latest documentation integration  
-- **Automated Code Transformation**: Rope pattern intelligence with AI
-- **Technical Debt Quantification**: AI impact analysis
-- **Architecture Evolution**: Context7 best practices
-- **Cross-Language Refactoring**: Polyglot codebase support
-- **Safe Transformation**: AI validation and rollback
-
-## When to Use
-
-**Automatic Triggers**:
-- Code complexity exceeds AI thresholds
-- Technical debt accumulation detected
-- Design pattern violations identified
-- Performance bottlenecks require architecture changes
-
-**Manual Invocation**:
-- "Refactor this code with AI analysis"
-- "Apply Context7 best practices refactoring" 
-- "Optimize architecture with AI patterns"
-- "Reduce technical debt intelligently"
-
----
 
 ## Level 1: Quick Reference (50-150 lines)
 
@@ -93,6 +59,124 @@ project.do(changes)
 - ✅ Leverage Context7 for latest patterns
 - ✅ Apply Rope for safe transformations
 - ✅ Test after each refactoring step
+
+---
+
+## Level 3: Advanced Integration (50-150 lines)
+
+### Enterprise-Scale Refactoring Intelligence
+
+**Revolutionary Context7 + Rope + AI Integration**:
+```python
+class RevolutionaryRefactoringEngine:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.ai_engine = AIEngine()
+        self.rope_integration = RopeIntegration()
+    
+    async def comprehensive_analysis(self, project_path):
+        # Multi-source pattern analysis
+        rope_patterns = await self._get_rope_patterns()
+        guru_patterns = await self._get_refactoring_guru_patterns()
+        ai_analysis = self.ai_engine.analyze_comprehensive(project_path)
+        
+        return ComprehensiveAnalysis(
+            ai_analysis=ai_analysis,
+            rope_opportunities=self.rope_integration.detect_opportunities(project_path),
+            context7_patterns=self._match_all_patterns(ai_analysis, rope_patterns, guru_patterns),
+            revolutionary_opportunities=self._combine_all_sources(ai_analysis, rope_patterns, guru_patterns)
+        )
+```
+
+**Multi-Language Refactoring Intelligence**:
+```python
+class MultiLanguageRefactoring:
+    """Cross-language refactoring with Context7 patterns"""
+    
+    async def refactor_polyglot_codebase(self, project_path):
+        languages = self._detect_languages(project_path)
+        refactoring_results = {}
+        
+        for language in languages:
+            # Get language-specific Context7 patterns
+            context7_patterns = await self.context7_client.get_library_docs(
+                context7_library_id=f"/refactoring-guru/design-patterns-{language}",
+                topic="language-specific refactoring patterns",
+                tokens=3000
+            )
+            
+            # AI language-specific refactoring
+            language_result = await self._refactor_language_specific(
+                project_path, language, context7_patterns
+            )
+            
+            refactoring_results[language] = language_result
+        
+        return MultiLanguageResult(
+            language_results=refactoring_results,
+            cross_language_optimizations=self._optimize_cross_language_references(refactoring_results)
+        )
+```
+
+**Context7 Pattern Intelligence Example**:
+```python
+# Context7-enhanced Rope restructuring
+restructuring_pattern = {
+    'pattern': '${inst}.f(${p1}, ${p2})',
+    'goal': [
+        '${inst}.f1(${p1})',
+        '${inst}.f2(${p2})'
+    ],
+    'args': {
+        'inst': 'type=mod.A'
+    }
+}
+
+# Apply with AI enhancement
+restructure_engine = Context7RopeRestructuring()
+result = await restructure_engine.apply_context7_restructuring(
+    project_path=".", 
+    restructuring_patterns=[restructuring_pattern]
+)
+```
+
+---
+
+## Implementation Guide
+
+## Skill Overview
+
+| Field | Value |
+| ----- | ----- |
+| **Version** | 4.0.0 Enterprise (2025-11-13) |
+| **Tier** | Revolutionary AI-Powered Refactoring |
+| **Focus** | Context7 + Rope + AI Integration |
+| **Languages** | 25+ with specialized patterns |
+| **Auto-load** | Refactoring requests, code analysis |
+
+## Core Capabilities
+
+- **Intelligent Pattern Recognition**: ML + Context7 + Rope patterns
+- **Predictive Refactoring**: Context7 latest documentation integration  
+- **Automated Code Transformation**: Rope pattern intelligence with AI
+- **Technical Debt Quantification**: AI impact analysis
+- **Architecture Evolution**: Context7 best practices
+- **Cross-Language Refactoring**: Polyglot codebase support
+- **Safe Transformation**: AI validation and rollback
+
+## When to Use
+
+**Automatic Triggers**:
+- Code complexity exceeds AI thresholds
+- Technical debt accumulation detected
+- Design pattern violations identified
+- Performance bottlenecks require architecture changes
+
+**Manual Invocation**:
+- "Refactor this code with AI analysis"
+- "Apply Context7 best practices refactoring" 
+- "Optimize architecture with AI patterns"
+- "Reduce technical debt intelligently"
 
 ---
 
@@ -206,84 +290,6 @@ class TechnicalDebtAnalyzer:
 
 ---
 
-## Level 3: Advanced Integration (50-150 lines)
-
-### Enterprise-Scale Refactoring Intelligence
-
-**Revolutionary Context7 + Rope + AI Integration**:
-```python
-class RevolutionaryRefactoringEngine:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.ai_engine = AIEngine()
-        self.rope_integration = RopeIntegration()
-    
-    async def comprehensive_analysis(self, project_path):
-        # Multi-source pattern analysis
-        rope_patterns = await self._get_rope_patterns()
-        guru_patterns = await self._get_refactoring_guru_patterns()
-        ai_analysis = self.ai_engine.analyze_comprehensive(project_path)
-        
-        return ComprehensiveAnalysis(
-            ai_analysis=ai_analysis,
-            rope_opportunities=self.rope_integration.detect_opportunities(project_path),
-            context7_patterns=self._match_all_patterns(ai_analysis, rope_patterns, guru_patterns),
-            revolutionary_opportunities=self._combine_all_sources(ai_analysis, rope_patterns, guru_patterns)
-        )
-```
-
-**Multi-Language Refactoring Intelligence**:
-```python
-class MultiLanguageRefactoring:
-    """Cross-language refactoring with Context7 patterns"""
-    
-    async def refactor_polyglot_codebase(self, project_path):
-        languages = self._detect_languages(project_path)
-        refactoring_results = {}
-        
-        for language in languages:
-            # Get language-specific Context7 patterns
-            context7_patterns = await self.context7_client.get_library_docs(
-                context7_library_id=f"/refactoring-guru/design-patterns-{language}",
-                topic="language-specific refactoring patterns",
-                tokens=3000
-            )
-            
-            # AI language-specific refactoring
-            language_result = await self._refactor_language_specific(
-                project_path, language, context7_patterns
-            )
-            
-            refactoring_results[language] = language_result
-        
-        return MultiLanguageResult(
-            language_results=refactoring_results,
-            cross_language_optimizations=self._optimize_cross_language_references(refactoring_results)
-        )
-```
-
-**Context7 Pattern Intelligence Example**:
-```python
-# Context7-enhanced Rope restructuring
-restructuring_pattern = {
-    'pattern': '${inst}.f(${p1}, ${p2})',
-    'goal': [
-        '${inst}.f1(${p1})',
-        '${inst}.f2(${p2})'
-    ],
-    'args': {
-        'inst': 'type=mod.A'
-    }
-}
-
-# Apply with AI enhancement
-restructure_engine = Context7RopeRestructuring()
-result = await restructure_engine.apply_context7_restructuring(
-    project_path=".", 
-    restructuring_patterns=[restructuring_pattern]
-)
-```
-
 ## Success Metrics
 
 - **Refactoring Accuracy**: 95% with AI + Context7 + Rope
@@ -313,3 +319,10 @@ result = await restructure_engine.apply_context7_restructuring(
 **Last Updated**: 2025-11-13  
 **Status**: Production Ready  
 **Integration**: Context7 MCP + Rope + Refactoring.Guru patterns
+
+---
+
+## Advanced Patterns
+
+
+

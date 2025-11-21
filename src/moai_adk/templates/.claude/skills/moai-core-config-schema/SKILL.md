@@ -7,7 +7,25 @@ description: Enterprise configuration schema validation and management orchestra
   environment setup, secrets management, and configuration audits
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Configuration Schema Management 
+
+## Related Skills
+
+- `moai-alfred-practices` (Best practices patterns)
+- `moai-foundation-specs` (Specification management)
+
+---
+
+**For detailed schema reference**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -397,14 +415,9 @@ function validateSecrets(config: AppConfig): void {
 
 ---
 
-## Related Skills
-
-- `moai-alfred-practices` (Best practices patterns)
-- `moai-foundation-specs` (Specification management)
-
 ---
 
-**For detailed schema reference**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )
+## Advanced Patterns
+
+
+

@@ -5,6 +5,8 @@ description: Auto-detects project language and framework from package.json, pypr
   based on 17,253+ production code examples.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-alfred-language-detection
 
 **Enterprise Language & Framework Auto-Detection**
@@ -489,3 +491,16 @@ def detect_go_project():
     lines = go_mod_content.split('\n')
     
     for line in lines:
+
+---
+
+## Implementation Guide
+
+
+
+---
+
+## Advanced Patterns
+
+
+

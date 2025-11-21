@@ -4,6 +4,8 @@ description: Enterprise Notion integration with MCP server architecture, databas
   operations, and content management
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Notion Integration 
 
 **🌐 Advanced Notion Workspace Management & Database Operations**
@@ -11,22 +13,6 @@ description: Enterprise Notion integration with MCP server architecture, databas
 > **Version**: 4.0.0 (Enterprise   Optimized)
 > **Status**: Production Ready
 > **Coverage**: Complete Notion API integration with MCP support
-
----
-
-## 📖 Overview
-
-Enterprise-grade Notion integration providing comprehensive workspace management, database operations, page creation, and content management capabilities through the MCP (Model Context Protocol) server architecture.
-
-**Core Capabilities**:
-- ✅ Notion workspace management and automation
-- ✅ Database schema design and optimization
-- ✅ Page creation, updates, and bulk operations
-- ✅ MCP server integration for seamless API access
-- ✅ Complex query operations and filtering
-- ✅ Rich content management with markdown support
-- ✅ Access control and permission management
-- ✅ Performance optimization and caching
 
 ---
 
@@ -71,6 +57,50 @@ Skill("moai-domain-notion")
 - Configure workspace settings
 - Monitor API usage and quotas
 ```
+
+---
+
+## 📚 Additional Resources
+
+**Learning Path**:
+1. Start with simple page creation
+2. Progress to database operations
+3. Master complex queries and filters
+4. Implement workspace automation
+5. Optimize for production scale
+
+**Documentation**:
+- [Notion API Reference](https://developers.notion.com) - Official Notion API documentation
+- [MCP Integration Guide](https://modelcontextprotocol.io) - MCP server patterns
+- [Best Practices](./best-practices.md) - Enterprise implementation guide
+
+**Support**:
+- Check MCP documentation for latest API updates
+- Review error logs for detailed diagnostics
+- Consult performance guidelines for optimization
+- Reference security documentation for access control
+
+---
+
+**Version**: 4.0.0 | **Status**: Production Ready | **Last Updated**: 2025-11-13
+
+---
+
+## Implementation Guide
+
+## 📖 Overview
+
+Enterprise-grade Notion integration providing comprehensive workspace management, database operations, page creation, and content management capabilities through the MCP (Model Context Protocol) server architecture.
+
+**Core Capabilities**:
+- ✅ Notion workspace management and automation
+- ✅ Database schema design and optimization
+- ✅ Page creation, updates, and bulk operations
+- ✅ MCP server integration for seamless API access
+- ✅ Complex query operations and filtering
+- ✅ Rich content management with markdown support
+- ✅ Access control and permission management
+- ✅ Performance optimization and caching
 
 ---
 
@@ -179,6 +209,34 @@ create_relation(
 
 ---
 
+## 🛠️ Tools & Integration
+
+### Required Tools
+- Task: Orchestrate complex Notion workflows
+- Read: Fetch Notion data and content
+- Bash: Execute Notion CLI commands
+- WebFetch: Retrieve external data for sync
+
+### MCP Integration
+```python
+# Direct MCP usage
+mcp__notion__notion-create-pages(...)
+mcp__notion__notion-update-page(...)
+mcp__notion__notion-search(...)
+```
+
+### Related Skills
+- `Skill("moai-mcp-notion-integrator")` - Advanced MCP optimization
+- `Skill("moai-domain-database")` - Database design patterns
+- `Skill("moai-cc-mcp-plugins")` - MCP plugin architecture
+- `Skill("moai-baas-foundation")` - Backend integration patterns
+
+---
+
+---
+
+## Advanced Patterns
+
 ## 💡 Level 3: Advanced Patterns
 
 ### Enterprise Integration Scenarios
@@ -226,30 +284,6 @@ log_operation(
 
 ---
 
-## 🛠️ Tools & Integration
-
-### Required Tools
-- Task: Orchestrate complex Notion workflows
-- Read: Fetch Notion data and content
-- Bash: Execute Notion CLI commands
-- WebFetch: Retrieve external data for sync
-
-### MCP Integration
-```python
-# Direct MCP usage
-mcp__notion__notion-create-pages(...)
-mcp__notion__notion-update-page(...)
-mcp__notion__notion-search(...)
-```
-
-### Related Skills
-- `Skill("moai-mcp-notion-integrator")` - Advanced MCP optimization
-- `Skill("moai-domain-database")` - Database design patterns
-- `Skill("moai-cc-mcp-plugins")` - MCP plugin architecture
-- `Skill("moai-baas-foundation")` - Backend integration patterns
-
----
-
 ## 📊 Capabilities Matrix
 
 | Capability | Level | Performance | Use Case |
@@ -285,26 +319,3 @@ mcp__notion__notion-search(...)
 
 ---
 
-## 📚 Additional Resources
-
-**Learning Path**:
-1. Start with simple page creation
-2. Progress to database operations
-3. Master complex queries and filters
-4. Implement workspace automation
-5. Optimize for production scale
-
-**Documentation**:
-- [Notion API Reference](https://developers.notion.com) - Official Notion API documentation
-- [MCP Integration Guide](https://modelcontextprotocol.io) - MCP server patterns
-- [Best Practices](./best-practices.md) - Enterprise implementation guide
-
-**Support**:
-- Check MCP documentation for latest API updates
-- Review error logs for detailed diagnostics
-- Consult performance guidelines for optimization
-- Reference security documentation for access control
-
----
-
-**Version**: 4.0.0 | **Status**: Production Ready | **Last Updated**: 2025-11-13

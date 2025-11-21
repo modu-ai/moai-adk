@@ -3,20 +3,9 @@ name: moai-foundation-ears
 description: Enterprise EARS (Evaluate, Analyze, Recommend, Synthesize) Framework with AI-powered requirements engineering, Context7 integration, and intelligent solution orchestration for systematic problem-solving
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise EARS Framework Expert
-
-## What It Does
-
-Enterprise EARS (Evaluate, Analyze, Recommend, Synthesize) Framework expert with AI-powered requirements engineering, Context7 integration, and intelligent solution orchestration for systematic problem-solving.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered EARS Analysis** using Context7 MCP for latest problem-solving methodologies
-- 📊 **Intelligent Requirements Engineering** with automated stakeholder analysis and validation
-- 🚀 **Advanced Solution Synthesis** with AI-driven alternative evaluation and optimization
-- 🔗 **Enterprise Decision Framework** with zero-configuration systematic thinking processes
-- 📈 **Predictive Solution Validation** with success probability and risk assessment
-
----
 
 ## When to Use
 
@@ -35,6 +24,228 @@ Enterprise EARS (Evaluate, Analyze, Recommend, Synthesize) Framework expert with
 ---
 
 # Quick Reference (Level 1)
+
+## Phase R: Recommendations Implementation
+
+```python
+class RecommendationEngine:
+    async def recommend_solutions(self, 
+                                analysis: Analysis,
+                                stakeholder_requirements: StakeholderRequirements,
+                                problem_solving_docs: Dict) -> Recommendations:
+        """Generate and evaluate solution alternatives."""
+        
+        # Solution Generation
+        solution_alternatives = await self._generate_solutions(
+            analysis.root_cause_analysis,
+            analysis.component_analysis,
+            analysis.dependency_analysis
+        )
+        
+        # Solution Evaluation
+        solution_evaluation = await self._evaluate_solutions(
+            solution_alternatives,
+            stakeholder_requirements,
+            analysis.constraint_analysis
+        )
+        
+        # Risk Assessment
+        risk_assessment = await self._assess_solution_risks(
+            solution_evaluation.recommended_solutions,
+            analysis.dependency_analysis
+        )
+        
+        return Recommendations(
+            solution_alternatives=solution_alternatives,
+            solution_evaluation=solution_evaluation,
+            risk_assessment=risk_assessment,
+            implementation_timeline=self._create_implementation_timeline(
+                solution_evaluation.recommended_solutions
+            ),
+            resource_requirements=self._calculate_resource_requirements(
+                solution_evaluation.recommended_solutions
+            )
+        )
+    
+    async def _generate_solutions(self, 
+                                root_cause_analysis: RootCauseAnalysis,
+                                component_analysis: ComponentAnalysis,
+                                dependency_analysis: DependencyAnalysis) -> List[SolutionAlternative]:
+        """Generate comprehensive solution alternatives."""
+        
+        solutions = []
+        
+        # Solution Pattern 1: Address Root Causes Directly
+        direct_solutions = self._generate_direct_solutions(root_cause_analysis)
+        
+        # Solution Pattern 2: System-Level Optimization
+        system_solutions = self._generate_system_solutions(
+            component_analysis, dependency_analysis
+        )
+        
+        # Solution Pattern 3: Phased Implementation
+        phased_solutions = self._generate_phased_solutions(
+            root_cause_analysis, component_analysis
+        )
+        
+        # Solution Pattern 4: Technology-Based Solutions
+        technology_solutions = self._generate_technology_solutions(
+            component_analysis, dependency_analysis
+        )
+        
+        # Solution Pattern 5: Process-Based Solutions
+        process_solutions = self._generate_process_solutions(
+            root_cause_analysis, stakeholder_requirements
+        )
+        
+        all_solutions = [
+            *direct_solutions,
+            *system_solutions,
+            *phased_solutions,
+            *technology_solutions,
+            *process_solutions
+        ]
+        
+        # Filter and rank solutions
+        ranked_solutions = self._rank_solutions(all_solutions, root_cause_analysis)
+        
+        return ranked_solutions[:10]  # Return top 10 solutions
+```
+
+### Phase S: Synthesis Implementation
+
+```python
+class SynthesisEngine:
+    async def synthesize_solution(self, 
+                                evaluation: Evaluation,
+                                analysis: Analysis,
+                                recommendations: Recommendations,
+                                requirements_docs: Dict) -> Synthesis:
+        """Synthesize comprehensive solution implementation plan."""
+        
+        # Solution Integration
+        integrated_solution = await self._integrate_solutions(
+            recommendations.recommended_solutions,
+            analysis.component_analysis
+        )
+        
+        # Implementation Planning
+        implementation_plan = await self._create_implementation_plan(
+            integrated_solution,
+            evaluation.constraint_analysis,
+            recommendations.resource_requirements
+        )
+        
+        # Success Metrics Definition
+        success_metrics = await self._define_success_metrics(
+            integrated_solution,
+            evaluation.stakeholder_analysis,
+            analysis.business_impact
+        )
+        
+        # Risk Mitigation Strategy
+        risk_mitigation = await self._create_risk_mitigation_strategy(
+            recommendations.risk_assessment,
+            implementation_plan
+        )
+        
+        return Synthesis(
+            integrated_solution=integrated_solution,
+            implementation_plan=implementation_plan,
+            success_metrics=success_metrics,
+            risk_mitigation=risk_mitigation,
+            governance_structure=self._define_governance_structure(
+                evaluation.stakeholder_analysis, implementation_plan
+            ),
+            validation_criteria=self._create_validation_criteria(
+                integrated_solution, success_metrics
+            )
+        )
+    
+    async def _create_implementation_plan(self, 
+                                        integrated_solution: IntegratedSolution,
+                                        constraint_analysis: ConstraintAnalysis,
+                                        resource_requirements: ResourceRequirements) -> ImplementationPlan:
+        """Create detailed implementation plan with phases and milestones."""
+        
+        # Phase 1: Foundation
+        foundation_phase = ImplementationPhase(
+            name="Foundation",
+            duration="4-6 weeks",
+            objectives=[
+                "Establish project governance structure",
+                "Set up development infrastructure",
+                "Validate core assumptions",
+                "Secure stakeholder buy-in"
+            ],
+            deliverables=[
+                "Project charter",
+                "Technical architecture",
+                "Stakeholder approval",
+                "Development environment"
+            ],
+            dependencies=[],
+            risks=["Stakeholder alignment", "Technical feasibility"]
+        )
+        
+        # Phase 2: Core Implementation
+        core_phase = ImplementationPhase(
+            name="Core Implementation",
+            duration="8-12 weeks",
+            objectives=[
+                "Implement core solution components",
+                "Integrate with existing systems",
+                "Develop necessary tooling",
+                "Establish monitoring and metrics"
+            ],
+            deliverables=[
+                "Core solution implementation",
+                "System integrations",
+                "Monitoring dashboard",
+                "Documentation"
+            ],
+            dependencies=[foundation_phase],
+            risks=["Technical complexity", "Integration challenges"]
+        )
+        
+        # Phase 3: Optimization
+        optimization_phase = ImplementationPhase(
+            name="Optimization",
+            duration="4-8 weeks",
+            objectives=[
+                "Optimize solution performance",
+                "Scale to full operation",
+                "Train stakeholders",
+                "Establish operational procedures"
+            ],
+            deliverables=[
+                "Optimized solution",
+                "Training materials",
+                "Operational procedures",
+                "Performance reports"
+            ],
+            dependencies=[core_phase],
+            risks=["Performance issues", "User adoption"]
+        )
+        
+        return ImplementationPlan(
+            phases=[foundation_phase, core_phase, optimization_phase],
+            timeline=self._create_detailed_timeline(
+                [foundation_phase, core_phase, optimization_phase]
+            ),
+            resource_allocation=resource_requirements,
+            governance_structure=self._define_phase_governance(),
+            quality_gates=self._define_quality_gates()
+        )
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
 
 ## EARS Framework Overview
 
@@ -306,295 +517,10 @@ class AnalysisEngine:
 
 # Advanced Implementation (Level 3)
 
-## Phase R: Recommendations Implementation
 
-```python
-class RecommendationEngine:
-    async def recommend_solutions(self, 
-                                analysis: Analysis,
-                                stakeholder_requirements: StakeholderRequirements,
-                                problem_solving_docs: Dict) -> Recommendations:
-        """Generate and evaluate solution alternatives."""
-        
-        # Solution Generation
-        solution_alternatives = await self._generate_solutions(
-            analysis.root_cause_analysis,
-            analysis.component_analysis,
-            analysis.dependency_analysis
-        )
-        
-        # Solution Evaluation
-        solution_evaluation = await self._evaluate_solutions(
-            solution_alternatives,
-            stakeholder_requirements,
-            analysis.constraint_analysis
-        )
-        
-        # Risk Assessment
-        risk_assessment = await self._assess_solution_risks(
-            solution_evaluation.recommended_solutions,
-            analysis.dependency_analysis
-        )
-        
-        return Recommendations(
-            solution_alternatives=solution_alternatives,
-            solution_evaluation=solution_evaluation,
-            risk_assessment=risk_assessment,
-            implementation_timeline=self._create_implementation_timeline(
-                solution_evaluation.recommended_solutions
-            ),
-            resource_requirements=self._calculate_resource_requirements(
-                solution_evaluation.recommended_solutions
-            )
-        )
-    
-    async def _generate_solutions(self, 
-                                root_cause_analysis: RootCauseAnalysis,
-                                component_analysis: ComponentAnalysis,
-                                dependency_analysis: DependencyAnalysis) -> List[SolutionAlternative]:
-        """Generate comprehensive solution alternatives."""
-        
-        solutions = []
-        
-        # Solution Pattern 1: Address Root Causes Directly
-        direct_solutions = self._generate_direct_solutions(root_cause_analysis)
-        
-        # Solution Pattern 2: System-Level Optimization
-        system_solutions = self._generate_system_solutions(
-            component_analysis, dependency_analysis
-        )
-        
-        # Solution Pattern 3: Phased Implementation
-        phased_solutions = self._generate_phased_solutions(
-            root_cause_analysis, component_analysis
-        )
-        
-        # Solution Pattern 4: Technology-Based Solutions
-        technology_solutions = self._generate_technology_solutions(
-            component_analysis, dependency_analysis
-        )
-        
-        # Solution Pattern 5: Process-Based Solutions
-        process_solutions = self._generate_process_solutions(
-            root_cause_analysis, stakeholder_requirements
-        )
-        
-        all_solutions = [
-            *direct_solutions,
-            *system_solutions,
-            *phased_solutions,
-            *technology_solutions,
-            *process_solutions
-        ]
-        
-        # Filter and rank solutions
-        ranked_solutions = self._rank_solutions(all_solutions, root_cause_analysis)
-        
-        return ranked_solutions[:10]  # Return top 10 solutions
-```
-
-### Phase S: Synthesis Implementation
-
-```python
-class SynthesisEngine:
-    async def synthesize_solution(self, 
-                                evaluation: Evaluation,
-                                analysis: Analysis,
-                                recommendations: Recommendations,
-                                requirements_docs: Dict) -> Synthesis:
-        """Synthesize comprehensive solution implementation plan."""
-        
-        # Solution Integration
-        integrated_solution = await self._integrate_solutions(
-            recommendations.recommended_solutions,
-            analysis.component_analysis
-        )
-        
-        # Implementation Planning
-        implementation_plan = await self._create_implementation_plan(
-            integrated_solution,
-            evaluation.constraint_analysis,
-            recommendations.resource_requirements
-        )
-        
-        # Success Metrics Definition
-        success_metrics = await self._define_success_metrics(
-            integrated_solution,
-            evaluation.stakeholder_analysis,
-            analysis.business_impact
-        )
-        
-        # Risk Mitigation Strategy
-        risk_mitigation = await self._create_risk_mitigation_strategy(
-            recommendations.risk_assessment,
-            implementation_plan
-        )
-        
-        return Synthesis(
-            integrated_solution=integrated_solution,
-            implementation_plan=implementation_plan,
-            success_metrics=success_metrics,
-            risk_mitigation=risk_mitigation,
-            governance_structure=self._define_governance_structure(
-                evaluation.stakeholder_analysis, implementation_plan
-            ),
-            validation_criteria=self._create_validation_criteria(
-                integrated_solution, success_metrics
-            )
-        )
-    
-    async def _create_implementation_plan(self, 
-                                        integrated_solution: IntegratedSolution,
-                                        constraint_analysis: ConstraintAnalysis,
-                                        resource_requirements: ResourceRequirements) -> ImplementationPlan:
-        """Create detailed implementation plan with phases and milestones."""
-        
-        # Phase 1: Foundation
-        foundation_phase = ImplementationPhase(
-            name="Foundation",
-            duration="4-6 weeks",
-            objectives=[
-                "Establish project governance structure",
-                "Set up development infrastructure",
-                "Validate core assumptions",
-                "Secure stakeholder buy-in"
-            ],
-            deliverables=[
-                "Project charter",
-                "Technical architecture",
-                "Stakeholder approval",
-                "Development environment"
-            ],
-            dependencies=[],
-            risks=["Stakeholder alignment", "Technical feasibility"]
-        )
-        
-        # Phase 2: Core Implementation
-        core_phase = ImplementationPhase(
-            name="Core Implementation",
-            duration="8-12 weeks",
-            objectives=[
-                "Implement core solution components",
-                "Integrate with existing systems",
-                "Develop necessary tooling",
-                "Establish monitoring and metrics"
-            ],
-            deliverables=[
-                "Core solution implementation",
-                "System integrations",
-                "Monitoring dashboard",
-                "Documentation"
-            ],
-            dependencies=[foundation_phase],
-            risks=["Technical complexity", "Integration challenges"]
-        )
-        
-        # Phase 3: Optimization
-        optimization_phase = ImplementationPhase(
-            name="Optimization",
-            duration="4-8 weeks",
-            objectives=[
-                "Optimize solution performance",
-                "Scale to full operation",
-                "Train stakeholders",
-                "Establish operational procedures"
-            ],
-            deliverables=[
-                "Optimized solution",
-                "Training materials",
-                "Operational procedures",
-                "Performance reports"
-            ],
-            dependencies=[core_phase],
-            risks=["Performance issues", "User adoption"]
-        )
-        
-        return ImplementationPlan(
-            phases=[foundation_phase, core_phase, optimization_phase],
-            timeline=self._create_detailed_timeline(
-                [foundation_phase, core_phase, optimization_phase]
-            ),
-            resource_allocation=resource_requirements,
-            governance_structure=self._define_phase_governance(),
-            quality_gates=self._define_quality_gates()
-        )
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core EARS Operations
-- `evaluate_context(problem_context, stakeholders)` - Evaluate problem context
-- `analyze_problem(evaluation, symptoms)` - Analyze problem structure
-- `recommend_solutions(analysis, constraints)` - Generate solution recommendations
-- `synthesize_solution(evaluation, analysis, recommendations)` - Synthesize final solution
-- `validate_implementation(synthesis, metrics)` - Validate implementation approach
-
-### Context7 Integration
-- `get_latest_requirements_docs()` - Requirements engineering via Context7
-- `analyze_systematic_thinking_patterns()` - Problem-solving methodologies via Context7
-- `optimize_solution_synthesis()` - Solution optimization via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Follow the EARS framework systematically for complex problems
-- Involve all relevant stakeholders throughout the process
-- Use data-driven analysis for objective decision making
-- Document all assumptions, constraints, and decisions
-- Validate solutions with stakeholders before implementation
-- Consider multiple solution alternatives and approaches
-- Plan for risks and develop mitigation strategies
-- Establish clear success metrics and validation criteria
-
-### DON'T
-- Skip phases or rush through the systematic analysis
-- Ignore stakeholder requirements and concerns
-- Rely on assumptions without data validation
-- Overlook constraint analysis and resource limitations
-- Forget to document the analysis and decision process
-- Implement solutions without proper validation
-- Neglect risk assessment and mitigation planning
-- Skip success metrics definition and monitoring
-
-## Works Well With
-
-- `moai-foundation-specs` (SPEC lifecycle management)
-- `moai-alfred-spec-authoring` (SPEC creation and writing)
-- `moai-foundation-trust` (Trust and quality principles)
-- `moai-domain-backend` (Technical solution implementation)
-- `moai-security-api` (Security requirements analysis)
-- `moai-essentials-perf` (Performance requirements)
-- `moai-domain-devops` (Implementation planning)
-- `moai-foundation-git` (Version control and collaboration)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced systematic thinking patterns, and comprehensive solution synthesis
-- **v2.0.0** (2025-11-11): Complete metadata structure, EARS framework patterns, stakeholder analysis
-- **v1.0.0** (2025-11-11): Initial EARS framework foundation
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Framework Integration
-
-### EARS Integration Patterns
-- Seamless integration with SPEC lifecycle management
-- Stakeholder analysis integration with project governance
-- Solution synthesis integration with development workflows
-- Risk assessment integration with quality gates
-
-### Enterprise Adoption
-- Standardized problem-solving methodology across teams
-- Consistent documentation and decision-making processes
-- Integration with existing project management tools
-- Training and adoption support for organizations
-
----
-
-**End of Enterprise EARS Framework Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

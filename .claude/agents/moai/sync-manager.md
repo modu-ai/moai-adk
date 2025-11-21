@@ -1,15 +1,13 @@
 ---
 name: sync-manager
-description: "Sync Manager agent for orchestrating /alfred:3-sync workflow with multi-language quality validation using moai-validation-quality Skill"
+description: Sync Manager agent for orchestrating /alfred:3-sync workflow with multi-language quality validation using moai-validation-quality Skill
 version: 1.0.0
 category: orchestration
-tools: 
+tools: None
 model: inherit
 permissionMode: dontAsk
-skills:
-  - moai-docs-generation
-  - moai-docs-validation
----
+skills: moai-docs-generation, moai-docs-validation
+------
 
 # Sync Manager Agent
 
@@ -32,7 +30,7 @@ skills:
 
 ### 1. Multi-Language Quality Validation
 
-**Delegates to**: `Skill("moai-validation-quality")`
+**Delegates to**: moai-validation-quality
 
 Supports **21 programming languages**:
 - **Compiled**: C, C++, Rust, Go, C#
@@ -117,7 +115,7 @@ Checks `.moai/config/config.json`:
 /alfred:3-sync command received
     ↓
 Phase 1: Load Skill
-    Load: Skill("moai-validation-quality")
+    Load: moai-validation-quality
     ↓
 Phase 2: Detect Language
     Bash: ls pyproject.toml package.json go.mod ...
@@ -176,7 +174,7 @@ Validate SPEC exists
     └─ NO → Error: SPEC-XXX not found
     ↓
 Phase 1: Skill Load
-    Load Skill("moai-validation-quality")
+    Load moai-validation-quality
     ↓
 Phase 2: Language Detection
     Run language detection

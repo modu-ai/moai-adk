@@ -3,47 +3,9 @@ name: moai-essentials-debug
 description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise Debugging Skill
-
-## Revolutionary AI Debugging Capabilities
-
-### **AI-Powered Error Analysis with Context7**
-- 🔍 **Intelligent Error Pattern Recognition** with ML-based classification
-- 🧠 **Predictive Fix Suggestions** using Context7 latest documentation
-- 🌐 **Multi-Process Debugging** with AI coordination across distributed systems
-- ⚡ **Real-Time Error Correlation** across microservices and containers
-- 🎯 **AI-Enhanced Root Cause Analysis** with automated hypothesis generation
-- 🤖 **Automated Debugging Workflows** with Context7 best practices
-- 📊 **Performance Bottleneck Detection** with AI profiling integration
-- 🔮 **Predictive Error Prevention** using ML pattern analysis
-
-### **Context7 Integration Features**
-- **Live Documentation Fetching**: Get latest debugging patterns from `/microsoft/debugpy`
-- **AI Pattern Matching**: Match errors against Context7 knowledge base
-- **Best Practice Integration**: Apply latest debugging techniques from official docs
-- **Version-Aware Debugging**: Context7 provides version-specific patterns
-- **Community Knowledge Integration**: Leverage collective debugging wisdom
-
----
-
-## 🎯 When to Use
-
-**AI Automatic Triggers**:
-- Unhandled exceptions and runtime errors
-- Performance degradation detected
-- Distributed system failures
-- Container/Kubernetes debugging scenarios
-- Memory leaks and resource issues
-- Complex stack traces requiring analysis
-
-**Manual AI Invocation**:
-- "Debug this error with AI analysis"
-- "Find root cause using predictive debugging"
-- "Analyze performance bottlenecks with AI"
-- "Debug distributed system failure"
-- "Apply Context7 best practices for debugging"
-
----
 
 ## 🧠 AI-Enhanced Debugging Methodology (AI-DEBUG Framework)
 
@@ -110,6 +72,50 @@ class Context7MultiProcessDebugger:
             coordination_protocol=self.setup_ai_coordination()
         )
 ```
+
+---
+
+---
+
+## Implementation Guide
+
+## Revolutionary AI Debugging Capabilities
+
+### **AI-Powered Error Analysis with Context7**
+- 🔍 **Intelligent Error Pattern Recognition** with ML-based classification
+- 🧠 **Predictive Fix Suggestions** using Context7 latest documentation
+- 🌐 **Multi-Process Debugging** with AI coordination across distributed systems
+- ⚡ **Real-Time Error Correlation** across microservices and containers
+- 🎯 **AI-Enhanced Root Cause Analysis** with automated hypothesis generation
+- 🤖 **Automated Debugging Workflows** with Context7 best practices
+- 📊 **Performance Bottleneck Detection** with AI profiling integration
+- 🔮 **Predictive Error Prevention** using ML pattern analysis
+
+### **Context7 Integration Features**
+- **Live Documentation Fetching**: Get latest debugging patterns from `/microsoft/debugpy`
+- **AI Pattern Matching**: Match errors against Context7 knowledge base
+- **Best Practice Integration**: Apply latest debugging techniques from official docs
+- **Version-Aware Debugging**: Context7 provides version-specific patterns
+- **Community Knowledge Integration**: Leverage collective debugging wisdom
+
+---
+
+## 🎯 When to Use
+
+**AI Automatic Triggers**:
+- Unhandled exceptions and runtime errors
+- Performance degradation detected
+- Distributed system failures
+- Container/Kubernetes debugging scenarios
+- Memory leaks and resource issues
+- Complex stack traces requiring analysis
+
+**Manual AI Invocation**:
+- "Debug this error with AI analysis"
+- "Find root cause using predictive debugging"
+- "Analyze performance bottlenecks with AI"
+- "Debug distributed system failure"
+- "Apply Context7 best practices for debugging"
 
 ---
 
@@ -281,63 +287,6 @@ class AIDebuggingDashboard:
 
 ---
 
-## 🎯 Advanced Examples
-
-### Multi-Process Debugging with Context7 Mermaid Workflows
-```python
-# Apply Context7 Mermaid debugging workflows
-async def debug_multi_process_failure():
-    """Debug multi-process failure using Context7 patterns."""
-    
-    # Get Context7 multi-process workflow
-    workflow = await context7.get_library_docs(
-        context7_library_id="/microsoft/debugpy",
-        topic="multi-process debugging subprocess coordination",
-        tokens=4000
-    )
-    
-    # Apply Context7 sequence diagram patterns
-    debug_session = apply_context7_workflow(
-        workflow['mermaid_sequence'],
-        process_list=[process1, process2, process3]
-    )
-    
-    # AI coordination across processes
-    ai_coordinator = AICoordinator(debug_session)
-    
-    # Execute coordinated debugging
-    result = await ai_coordinator.coordinate_debugging()
-    
-    return result
-```
-
-### AI-Enhanced Stack Trace Analysis
-```python
-async def analyze_stack_with_ai_context7(stack_trace: str):
-    """Analyze stack trace with AI and Context7 patterns."""
-    
-    # Get Context7 stack trace patterns
-    context7_patterns = await context7.get_library_docs(
-        context7_library_id="/microsoft/debugpy",
-        topic="stack trace analysis error localization patterns",
-        tokens=3000
-    )
-    
-    # AI stack trace analysis
-    ai_analysis = ai_analyzer.analyze_stack_trace(stack_trace)
-    
-    # Context7 pattern matching
-    pattern_matches = match_context7_patterns(ai_analysis, context7_patterns)
-    
-    return {
-        'ai_analysis': ai_analysis,
-        'context7_matches': pattern_matches,
-        'recommended_fixes': generate_fixes(ai_analysis, pattern_matches)
-    }
-```
-
----
-
 ## 🎯 AI Debugging Best Practices
 
 ### ✅ **DO** - AI-Enhanced Debugging
@@ -390,18 +339,6 @@ class Context7AIDebugger:
             confidence_score=ai_analysis.confidence
         )
 ```
-
----
-
-## 📚 Advanced Documentation & Examples
-
-### Comprehensive AI Debugging Scenarios
-- **Complex Multi-Service Failures**: AI-coordinated debugging across microservices
-- **Performance Regression Analysis**: AI + Scalene + Context7 optimization patterns
-- **Memory Leak Detection**: AI-enhanced memory analysis with Context7 patterns
-- **Race Condition Debugging**: AI pattern recognition for concurrent issues
-- **Container Orchestration Issues**: AI debugging of Kubernetes/Docker failures
-- **Database Connection Issues**: AI-enhanced database debugging patterns
 
 ---
 
@@ -480,3 +417,77 @@ class AIDebuggingLearner:
 - `moai-essentials-review` (AI automated code review)
 - `moai-foundation-trust` (AI quality assurance)
 - Context7 MCP (latest debugging patterns and best practices)
+
+---
+
+## Advanced Patterns
+
+## 🎯 Advanced Examples
+
+### Multi-Process Debugging with Context7 Mermaid Workflows
+```python
+# Apply Context7 Mermaid debugging workflows
+async def debug_multi_process_failure():
+    """Debug multi-process failure using Context7 patterns."""
+    
+    # Get Context7 multi-process workflow
+    workflow = await context7.get_library_docs(
+        context7_library_id="/microsoft/debugpy",
+        topic="multi-process debugging subprocess coordination",
+        tokens=4000
+    )
+    
+    # Apply Context7 sequence diagram patterns
+    debug_session = apply_context7_workflow(
+        workflow['mermaid_sequence'],
+        process_list=[process1, process2, process3]
+    )
+    
+    # AI coordination across processes
+    ai_coordinator = AICoordinator(debug_session)
+    
+    # Execute coordinated debugging
+    result = await ai_coordinator.coordinate_debugging()
+    
+    return result
+```
+
+### AI-Enhanced Stack Trace Analysis
+```python
+async def analyze_stack_with_ai_context7(stack_trace: str):
+    """Analyze stack trace with AI and Context7 patterns."""
+    
+    # Get Context7 stack trace patterns
+    context7_patterns = await context7.get_library_docs(
+        context7_library_id="/microsoft/debugpy",
+        topic="stack trace analysis error localization patterns",
+        tokens=3000
+    )
+    
+    # AI stack trace analysis
+    ai_analysis = ai_analyzer.analyze_stack_trace(stack_trace)
+    
+    # Context7 pattern matching
+    pattern_matches = match_context7_patterns(ai_analysis, context7_patterns)
+    
+    return {
+        'ai_analysis': ai_analysis,
+        'context7_matches': pattern_matches,
+        'recommended_fixes': generate_fixes(ai_analysis, pattern_matches)
+    }
+```
+
+---
+
+## 📚 Advanced Documentation & Examples
+
+### Comprehensive AI Debugging Scenarios
+- **Complex Multi-Service Failures**: AI-coordinated debugging across microservices
+- **Performance Regression Analysis**: AI + Scalene + Context7 optimization patterns
+- **Memory Leak Detection**: AI-enhanced memory analysis with Context7 patterns
+- **Race Condition Debugging**: AI pattern recognition for concurrent issues
+- **Container Orchestration Issues**: AI debugging of Kubernetes/Docker failures
+- **Database Connection Issues**: AI-enhanced database debugging patterns
+
+---
+

@@ -5,7 +5,31 @@ description: Claude Code Markdown integration, documentation generation, and str
   or creating structured reports.
 ---
 
+## Quick Reference (30 seconds)
+
 # Claude Code Markdown Integration
+
+## Core Markdown Patterns
+
+### Content Architecture
+1. **Structured Templates**: Reusable content patterns
+2. **Cross-Reference Systems**: Link and reference management
+3. **Content Validation**: Markdown quality checks
+4. **Publication Workflows**: Automated content deployment
+5. **Version Control**: Documentation change tracking
+
+### Document Types
+- **Technical Documentation**: API docs, guides, tutorials
+- **Project Documentation**: README, CHANGELOG, CONTRIBUTING
+- **Process Documentation**: Workflows, policies, procedures
+- **Knowledge Base**: FAQ, best practices, patterns
+- **Reports**: Analysis, status, summary documents
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -26,24 +50,6 @@ Claude Code Markdown integration, documentation generation, and structured conte
 - ✅ Managing markdown content
 - ✅ Creating structured reports
 - ✅ Implementing documentation systems
-
----
-
-## Core Markdown Patterns
-
-### Content Architecture
-1. **Structured Templates**: Reusable content patterns
-2. **Cross-Reference Systems**: Link and reference management
-3. **Content Validation**: Markdown quality checks
-4. **Publication Workflows**: Automated content deployment
-5. **Version Control**: Documentation change tracking
-
-### Document Types
-- **Technical Documentation**: API docs, guides, tutorials
-- **Project Documentation**: README, CHANGELOG, CONTRIBUTING
-- **Process Documentation**: Workflows, policies, procedures
-- **Knowledge Base**: FAQ, best practices, patterns
-- **Reports**: Analysis, status, summary documents
 
 ---
 
@@ -72,3 +78,10 @@ Claude Code Markdown integration, documentation generation, and structured conte
 ---
 
 **End of Skill** | Updated 2025-11-11
+
+---
+
+## Advanced Patterns
+
+
+

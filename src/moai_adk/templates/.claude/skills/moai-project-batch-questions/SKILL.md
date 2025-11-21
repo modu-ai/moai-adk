@@ -4,37 +4,9 @@ description: Standardize AskUserQuestion patterns and provide reusable question 
   for batch optimization
 ---
 
+## Quick Reference (30 seconds)
+
 # Project Batch Questions - Skill Guide
-
-## What It Does
-
-**Purpose**: Standardize AskUserQuestion patterns with **reusable batch templates** that reduce user interactions while maintaining clarity.
-
-**Key capabilities**:
-- ✅ **Batch Templates**: Pre-designed question groups for common scenarios
-- ✅ **UX Optimization**: 60% interaction reduction through strategic batching  
-- ✅ **Multi-language Support**: Templates in Korean, English, Japanese, Chinese
-- ✅ **Response Validation**: Built-in validation and processing patterns
-- ✅ **Error Handling**: Graceful handling of invalid or missing responses
-
----
-
-## Batch Design Philosophy
-
-### Traditional vs Batch Approach
-
-**Traditional**: Q1 → Answer → Q2 → Answer → Q3 → Answer (3 interactions)
-**Batch**: Q1 + Q2 + Q3 → All answers at once (1 interaction, 66% reduction)
-
-### Batching Rules
-
-| Rule | Description | Example |
-|------|-------------|---------|
-| **Related Questions** | Group questions about same topic | Language settings |
-| **Sequential Logic** | Q2 depends on Q1 answer | Team mode conditional questions |
-| **Same Decision Context** | User thinking about same aspect | GitHub + Git workflow |
-
----
 
 ## Core Batch Templates
 
@@ -157,6 +129,62 @@ const domainSelectionBatch = {
 
 ---
 
+## Quick Reference
+
+### Common Use Cases
+
+| Use Case | Template | Questions | Interaction Reduction |
+|----------|----------|-----------|----------------------|
+| **Project initialization** | Language + Team batches | 5 questions total | 60% |
+| **Settings modification** | Targeted batches | 1-3 questions | 50-80% |
+| **Feature configuration** | Domain-specific batches | 2-4 questions | 75% |
+
+### Integration Checklist
+
+- [ ] Template selected for use case
+- [ ] Response validation configured  
+- [ ] Error handling implemented
+- [ ] Configuration mapping tested
+- [ ] Multi-language support if needed
+
+---
+
+**End of Skill** | Created 2025-11-05 | Optimized for batch interaction reduction
+
+---
+
+## Implementation Guide
+
+## What It Does
+
+**Purpose**: Standardize AskUserQuestion patterns with **reusable batch templates** that reduce user interactions while maintaining clarity.
+
+**Key capabilities**:
+- ✅ **Batch Templates**: Pre-designed question groups for common scenarios
+- ✅ **UX Optimization**: 60% interaction reduction through strategic batching  
+- ✅ **Multi-language Support**: Templates in Korean, English, Japanese, Chinese
+- ✅ **Response Validation**: Built-in validation and processing patterns
+- ✅ **Error Handling**: Graceful handling of invalid or missing responses
+
+---
+
+## Batch Design Philosophy
+
+### Traditional vs Batch Approach
+
+**Traditional**: Q1 → Answer → Q2 → Answer → Q3 → Answer (3 interactions)
+**Batch**: Q1 + Q2 + Q3 → All answers at once (1 interaction, 66% reduction)
+
+### Batching Rules
+
+| Rule | Description | Example |
+|------|-------------|---------|
+| **Related Questions** | Group questions about same topic | Language settings |
+| **Sequential Logic** | Q2 depends on Q1 answer | Team mode conditional questions |
+| **Same Decision Context** | User thinking about same aspect | GitHub + Git workflow |
+
+---
+
 ## Response Processing
 
 ### Validation Function
@@ -261,24 +289,9 @@ async function initializeProject() {
 
 ---
 
-## Quick Reference
-
-### Common Use Cases
-
-| Use Case | Template | Questions | Interaction Reduction |
-|----------|----------|-----------|----------------------|
-| **Project initialization** | Language + Team batches | 5 questions total | 60% |
-| **Settings modification** | Targeted batches | 1-3 questions | 50-80% |
-| **Feature configuration** | Domain-specific batches | 2-4 questions | 75% |
-
-### Integration Checklist
-
-- [ ] Template selected for use case
-- [ ] Response validation configured  
-- [ ] Error handling implemented
-- [ ] Configuration mapping tested
-- [ ] Multi-language support if needed
-
 ---
 
-**End of Skill** | Created 2025-11-05 | Optimized for batch interaction reduction
+## Advanced Patterns
+
+
+

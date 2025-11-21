@@ -7,13 +7,9 @@ description: Enterprise practical workflows, context engineering strategies, JIT
   transfer
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Practical Workflows & Context Engineering 
-
-## What It Does
-
-Provides practical workflows, context engineering strategies, real-world execution examples, and debugging solutions for moai-adk. Covers JIT context management, efficient agent usage, SPEC→TDD→Sync execution, and common problem resolution.
-
----
 
 ## JIT (Just-In-Time) Context Strategy
 
@@ -105,6 +101,29 @@ Write tests for feature X...
 
 # Result: No re-mapping, efficient context reuse
 ```
+
+---
+
+## Related Skills
+
+- `moai-alfred-agent-guide` (Agent orchestration patterns)
+- `moai-alfred-clone-pattern` (Complex task delegation)
+- `moai-essentials-debug` (Debugging techniques)
+
+---
+
+**For detailed workflow examples**: [reference.md](reference.md)  
+**For real-world scenarios**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
+
+## What It Does
+
+Provides practical workflows, context engineering strategies, real-world execution examples, and debugging solutions for moai-adk. Covers JIT context management, efficient agent usage, SPEC→TDD→Sync execution, and common problem resolution.
 
 ---
 
@@ -307,15 +326,9 @@ Reusable context:
 
 ---
 
-## Related Skills
-
-- `moai-alfred-agent-guide` (Agent orchestration patterns)
-- `moai-alfred-clone-pattern` (Complex task delegation)
-- `moai-essentials-debug` (Debugging techniques)
-
 ---
 
-**For detailed workflow examples**: [reference.md](reference.md)  
-**For real-world scenarios**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )
+## Advanced Patterns
+
+
+

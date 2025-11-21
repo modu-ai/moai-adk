@@ -4,6 +4,8 @@ description: Enterprise mobile development with React Native 0.76+, Flutter 3.24
   Capacitor 6.x, cross-platform patterns, testing, CI/CD
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-domain-mobile-app
 
 **Enterprise Mobile Development Excellence**
@@ -267,6 +269,10 @@ Analytics.track('screen_view', { screen: 'Home', platform: platform });
 
 ---
 
+---
+
+## Implementation Guide
+
 ## 🎯 Decision Matrix
 
 | Scenario | Best Choice | Why |
@@ -303,3 +309,10 @@ Analytics.track('screen_view', { screen: 'Home', platform: platform });
 **Last Updated**: 2025-11-13
 **Status**: Production Ready
 **Stack**: React Native 0.76+, Flutter 3.24+, Capacitor 6.x
+
+---
+
+## Advanced Patterns
+
+
+

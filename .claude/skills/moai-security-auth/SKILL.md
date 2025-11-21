@@ -3,12 +3,59 @@ name: moai-security-auth
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-auth: Modern Authentication Patterns
 
 **Advanced Authentication with MFA, FIDO2, WebAuthn & Passkeys**  
 Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
 ---
+
+## Reference
+
+### Official Documentation
+- NextAuth.js: https://next-auth.js.org/
+- FIDO Alliance: https://fidoalliance.org/
+- WebAuthn Specification: https://www.w3.org/TR/webauthn-2/
+- SimpleWebAuthn: https://simplewebauthn.dev/
+- Passport.js: http://www.passportjs.org/
+- OWASP Authentication Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+- OWASP Password Storage Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+- RFC 4226 (TOTP): https://tools.ietf.org/html/rfc4226
+- RFC 6238 (HOTP): https://tools.ietf.org/html/rfc6238
+
+### Tools & Libraries (November 2025 Versions)
+- **next-auth**: 5.0.x
+- **passport**: 0.7.x
+- **@simplewebauthn/server**: 10.0.x
+- **otplib**: 12.x
+- **bcryptjs**: 2.4.x
+- **jsonwebtoken**: 9.x
+- **redis**: 5.x
+
+### Common Vulnerabilities & Mitigations
+
+| Vulnerability | OWASP | Mitigation |
+|---|---|---|
+| **Weak Password** | A02:2021 | TOTP/WebAuthn instead |
+| **Session Fixation** | A02:2021 | Rotate session ID on login |
+| **Brute Force** | A07:2021 | Rate limit + account lockout |
+| **Token Exposure** | A02:2021 | Store in httpOnly cookie |
+| **Credential Stuffing** | A02:2021 | Use bcrypt + salting |
+| **MFA Bypass** | A07:2021 | Enforce MFA verification |
+
+---
+
+**Version**: 4.0.0 Enterprise
+**Skill Category**: Security (Authentication & Authorization)
+**Complexity**: Medium-Advanced
+**Time to Implement**: 3-5 hours per component
+**Prerequisites**: Node.js, React/Vue.js, OAuth concepts, WebAuthn API
+
+---
+
+## Core Implementation
 
 ## Overview
 
@@ -866,43 +913,3 @@ export function authAuditMiddleware(req, res, next) {
 
 ---
 
-## Reference
-
-### Official Documentation
-- NextAuth.js: https://next-auth.js.org/
-- FIDO Alliance: https://fidoalliance.org/
-- WebAuthn Specification: https://www.w3.org/TR/webauthn-2/
-- SimpleWebAuthn: https://simplewebauthn.dev/
-- Passport.js: http://www.passportjs.org/
-- OWASP Authentication Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
-- OWASP Password Storage Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
-- RFC 4226 (TOTP): https://tools.ietf.org/html/rfc4226
-- RFC 6238 (HOTP): https://tools.ietf.org/html/rfc6238
-
-### Tools & Libraries (November 2025 Versions)
-- **next-auth**: 5.0.x
-- **passport**: 0.7.x
-- **@simplewebauthn/server**: 10.0.x
-- **otplib**: 12.x
-- **bcryptjs**: 2.4.x
-- **jsonwebtoken**: 9.x
-- **redis**: 5.x
-
-### Common Vulnerabilities & Mitigations
-
-| Vulnerability | OWASP | Mitigation |
-|---|---|---|
-| **Weak Password** | A02:2021 | TOTP/WebAuthn instead |
-| **Session Fixation** | A02:2021 | Rotate session ID on login |
-| **Brute Force** | A07:2021 | Rate limit + account lockout |
-| **Token Exposure** | A02:2021 | Store in httpOnly cookie |
-| **Credential Stuffing** | A02:2021 | Use bcrypt + salting |
-| **MFA Bypass** | A07:2021 | Enforce MFA verification |
-
----
-
-**Version**: 4.0.0 Enterprise
-**Skill Category**: Security (Authentication & Authorization)
-**Complexity**: Medium-Advanced
-**Time to Implement**: 3-5 hours per component
-**Prerequisites**: Node.js, React/Vue.js, OAuth concepts, WebAuthn API

@@ -3,25 +3,15 @@ name: moai-streaming-ui
 description: Enhanced streaming UI system with progress indicators, status displays,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enhanced Streaming UI System
 
 ---
 
-## What It Does
-
-Advanced streaming UI system that provides rich visual feedback, progress indicators, and interactive status displays during complex operations. Enhances user experience by making long-running processes transparent and engaging.
-
-**Core capabilities**:
-- ✅ Multi-style progress indicators (bars, spinners, percentages)
-- ✅ Real-time status updates and progress tracking
-- ✅ Interactive user feedback mechanisms
-- ✅ Color-coded severity levels and alerts
-- ✅ Step-by-step workflow visualization
-- ✅ Performance metrics and timing information
-- ✅ Error state handling and recovery guidance
-- ✅ Completion summaries and next step suggestions
-
 ---
+
+## Core Implementation
 
 ## When to Use
 
@@ -532,3 +522,4 @@ def execute_api_workflow_with_progress():
 ---
 
 **End of Skill** | Rich visual feedback for enhanced user experience during complex operations
+

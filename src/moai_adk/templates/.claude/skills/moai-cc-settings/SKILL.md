@@ -5,6 +5,8 @@ description: Claude Code settings management, preference customization, and user
   or optimizing development experience.
 ---
 
+## Quick Reference (30 seconds)
+
 # Claude Code Settings Management
 
 ## What It Does
@@ -56,6 +58,10 @@ Claude Code settings management, preference customization, and user experience o
 
 ---
 
+---
+
+## Implementation Guide
+
 ## Works Well With
 
 - `moai-cc-configuration` (Configuration management)
@@ -72,3 +78,10 @@ Claude Code settings management, preference customization, and user experience o
 ---
 
 **End of Skill** | Updated 2025-11-11
+
+---
+
+## Advanced Patterns
+
+
+

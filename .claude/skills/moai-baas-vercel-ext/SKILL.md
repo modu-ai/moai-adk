@@ -3,20 +3,9 @@ name: moai-baas-vercel-ext
 description: Enterprise Vercel Edge Platform with AI-powered modern deployment, Context7
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Vercel Edge Platform Expert 
-
----
-
-## What It Does
-
-Enterprise Vercel Edge Platform expert with AI-powered modern deployment, Context7 integration, and intelligent edge orchestration for scalable web applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Vercel Architecture** using Context7 MCP for latest edge patterns
-- 📊 **Intelligent Edge Deployment** with automated optimization and scaling
-- 🚀 **Advanced Next.js Integration** with AI-driven performance optimization
-- 🔗 **Enterprise Edge Security** with zero-configuration CDN and security
-- 📈 **Predictive Performance Analytics** with usage forecasting and optimization
 
 ---
 
@@ -37,91 +26,6 @@ Enterprise Vercel Edge Platform expert with AI-powered modern deployment, Contex
 ---
 
 # Quick Reference (Level 1)
-
-## Vercel Platform Ecosystem (November 2025)
-
-### Core Platform Features
-- **Edge Functions**: Serverless edge computing with 0ms cold starts
-- **Global CDN**: Edge deployment across 280+ cities worldwide
-- **Next.js Optimization**: Automatic optimization for Next.js applications
-- **Serverless Deployment**: Zero-configuration deployment and scaling
-- **Analytics**: Real-time performance analytics and user insights
-
-### Latest Features (November 2025)
-- **Next.js 16**: Latest version with stable Turbopack bundler
-- **Cache Components**: Partial Pre-Rendering with intelligent caching
-- **Edge Runtime**: Improved Node.js compatibility and performance
-- **Enhanced Routing**: Optimized navigation and routing performance
-- **Improved Caching**: Advanced caching APIs with updateTag, refresh, revalidateTag
-
-### Performance Characteristics
-- **Edge Deployment**: P95 < 50ms worldwide latency
-- **Cold Starts**: Near-instantaneous edge function execution
-- **Global Distribution**: Automatic deployment to edge locations
-- **Scalability**: Auto-scaling to millions of requests per second
-- **Cache Hit Ratio**: Industry-leading cache performance
-
-### Integration Ecosystem
-- **Git Integration**: Seamless GitHub, GitLab, Bitbucket integration
-- **Database Integrations**: Vercel Postgres, PlanetScale, Supabase
-- **CMS Integrations**: Contentful, Strapi, Sanity, etc.
-- **Analytics**: Vercel Analytics, Google Analytics 4 integration
-- **Monitoring**: Real-time logs, error tracking, performance monitoring
-
----
-
-# Core Implementation (Level 2)
-
-## Vercel Architecture Intelligence
-
-```python
-# AI-powered Vercel architecture optimization with Context7
-class VercelArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.edge_analyzer = EdgeAnalyzer()
-        self.nextjs_optimizer = NextJSOptimizer()
-    
-    async def design_optimal_vercel_architecture(self, 
-                                              requirements: ApplicationRequirements) -> VercelArchitecture:
-        """Design optimal Vercel architecture using AI analysis."""
-        
-        # Get latest Vercel and Next.js documentation via Context7
-        vercel_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/vercel/docs',
-            topic="edge deployment next.js optimization caching 2025",
-            tokens=3000
-        )
-        
-        nextjs_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/nextjs/docs',
-            topic="app router server components performance 2025",
-            tokens=2000
-        )
-        
-        # Optimize edge deployment strategy
-        edge_strategy = self.edge_analyzer.optimize_edge_deployment(
-            requirements.global_needs,
-            requirements.performance_requirements,
-            vercel_docs
-        )
-        
-        # Optimize Next.js configuration
-        nextjs_optimization = self.nextjs_optimizer.optimize_configuration(
-            requirements.nextjs_features,
-            requirements.user_experience,
-            nextjs_docs
-        )
-        
-        return VercelArchitecture(
-            edge_configuration=edge_strategy,
-            nextjs_setup=nextjs_optimization,
-            caching_strategy=self._design_caching_strategy(requirements),
-            deployment_pipeline=self._configure_deployment_pipeline(requirements),
-            monitoring_setup=self._setup_monitoring(),
-            integration_framework=self._design_integration_framework(requirements)
-        )
-```
 
 ## Advanced Vercel Implementation
 
@@ -910,79 +814,112 @@ def get_geo_personalized_content(country: str, region: str, city: str) -> dict:
 
 # Reference & Integration (Level 4)
 
-## API Reference
+---
 
-### Core Vercel Operations
-- `configure_edge_functions()` - Configure edge functions with regions and runtime
-- `configure_caching()` - Set up advanced caching rules and revalidation
-- `handle_edge_request(request)` - Process edge requests with routing and security
-- `track_event(event)` - Analytics tracking for user behavior
-- `record_vital(metric, value)` - Performance vitals monitoring
+## Core Implementation
 
-### Context7 Integration
-- `get_latest_vercel_documentation()` - Vercel docs via Context7
-- `analyze_edge_patterns()` - Edge computing patterns via Context7
-- `optimize_nextjs_configuration()` - Next.js optimization via Context7
+## What It Does
 
-## Best Practices (November 2025)
+Enterprise Vercel Edge Platform expert with AI-powered modern deployment, Context7 integration, and intelligent edge orchestration for scalable web applications.
 
-### DO
-- Use Edge Functions for high-performance, low-latency operations
-- Implement proper caching strategies with revalidation
-- Configure geographically distributed deployment
-- Use Next.js 16 with App Router for optimal performance
-- Implement proper security headers and CORS configuration
-- Monitor performance with Vercel Analytics
-- Use image optimization with WebP/AVIF formats
-- Implement proper error handling and logging
-
-### DON'T
-- Skip edge function optimization for global applications
-- Ignore caching strategies and revalidation
-- Forget to implement proper security headers
-- Skip performance monitoring and optimization
-- Use outdated Next.js patterns and configurations
-- Forget to configure proper regions for edge deployment
-- Skip image optimization and CDN configuration
-- Ignore analytics and user behavior tracking
-
-## Works Well With
-
-- `moai-baas-foundation` (Enterprise BaaS architecture)
-- `moai-domain-frontend` (Frontend optimization)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-security-api` (API security implementation)
-- `moai-baas-cloudflare-ext` (Edge computing comparison)
-- `moai-domain-backend` (Backend API optimization)
-- `moai-foundation-trust` (Security and compliance)
-- `moai-baas-railway-ext` (Alternative deployment platform)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Vercel platform updates, and advanced edge optimization
-- **v2.0.0** (2025-11-11): Complete metadata structure, Vercel patterns, edge optimization
-- **v1.0.0** (2025-11-11): Initial Vercel edge platform
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Vercel Architecture** using Context7 MCP for latest edge patterns
+- 📊 **Intelligent Edge Deployment** with automated optimization and scaling
+- 🚀 **Advanced Next.js Integration** with AI-driven performance optimization
+- 🔗 **Enterprise Edge Security** with zero-configuration CDN and security
+- 📈 **Predictive Performance Analytics** with usage forecasting and optimization
 
 ---
 
-**End of Skill** | Updated 2025-11-13
+## Vercel Platform Ecosystem (November 2025)
 
-## Vercel Platform Integration
+### Core Platform Features
+- **Edge Functions**: Serverless edge computing with 0ms cold starts
+- **Global CDN**: Edge deployment across 280+ cities worldwide
+- **Next.js Optimization**: Automatic optimization for Next.js applications
+- **Serverless Deployment**: Zero-configuration deployment and scaling
+- **Analytics**: Real-time performance analytics and user insights
 
-### Edge Computing Features
-- Global deployment across 280+ cities
-- Near-instantaneous edge function execution
-- Advanced caching with intelligent revalidation
-- Geographic routing and personalization
-- A/B testing and feature flag integration
+### Latest Features (November 2025)
+- **Next.js 16**: Latest version with stable Turbopack bundler
+- **Cache Components**: Partial Pre-Rendering with intelligent caching
+- **Edge Runtime**: Improved Node.js compatibility and performance
+- **Enhanced Routing**: Optimized navigation and routing performance
+- **Improved Caching**: Advanced caching APIs with updateTag, refresh, revalidateTag
 
-### Next.js Optimization
-- Automatic Next.js 16 integration with Turbopack
-- Cache Components with Partial Pre-Rendering
-- Server Components optimization
-- Image optimization with modern formats
-- Bundle optimization and code splitting
+### Performance Characteristics
+- **Edge Deployment**: P95 < 50ms worldwide latency
+- **Cold Starts**: Near-instantaneous edge function execution
+- **Global Distribution**: Automatic deployment to edge locations
+- **Scalability**: Auto-scaling to millions of requests per second
+- **Cache Hit Ratio**: Industry-leading cache performance
+
+### Integration Ecosystem
+- **Git Integration**: Seamless GitHub, GitLab, Bitbucket integration
+- **Database Integrations**: Vercel Postgres, PlanetScale, Supabase
+- **CMS Integrations**: Contentful, Strapi, Sanity, etc.
+- **Analytics**: Vercel Analytics, Google Analytics 4 integration
+- **Monitoring**: Real-time logs, error tracking, performance monitoring
 
 ---
 
-**End of Enterprise Vercel Edge Platform Expert **
+# Core Implementation (Level 2)
+
+## Vercel Architecture Intelligence
+
+```python
+# AI-powered Vercel architecture optimization with Context7
+class VercelArchitectOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.edge_analyzer = EdgeAnalyzer()
+        self.nextjs_optimizer = NextJSOptimizer()
+    
+    async def design_optimal_vercel_architecture(self, 
+                                              requirements: ApplicationRequirements) -> VercelArchitecture:
+        """Design optimal Vercel architecture using AI analysis."""
+        
+        # Get latest Vercel and Next.js documentation via Context7
+        vercel_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/vercel/docs',
+            topic="edge deployment next.js optimization caching 2025",
+            tokens=3000
+        )
+        
+        nextjs_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/nextjs/docs',
+            topic="app router server components performance 2025",
+            tokens=2000
+        )
+        
+        # Optimize edge deployment strategy
+        edge_strategy = self.edge_analyzer.optimize_edge_deployment(
+            requirements.global_needs,
+            requirements.performance_requirements,
+            vercel_docs
+        )
+        
+        # Optimize Next.js configuration
+        nextjs_optimization = self.nextjs_optimizer.optimize_configuration(
+            requirements.nextjs_features,
+            requirements.user_experience,
+            nextjs_docs
+        )
+        
+        return VercelArchitecture(
+            edge_configuration=edge_strategy,
+            nextjs_setup=nextjs_optimization,
+            caching_strategy=self._design_caching_strategy(requirements),
+            deployment_pipeline=self._configure_deployment_pipeline(requirements),
+            monitoring_setup=self._setup_monitoring(),
+            integration_framework=self._design_integration_framework(requirements)
+        )
+```
+
+
+
+---
+
+## Reference & Resources
+
+See [reference.md](reference.md) for detailed API reference and official documentation.

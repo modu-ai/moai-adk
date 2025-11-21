@@ -3,68 +3,9 @@ name: moai-mcp-builder
 description: Enterprise MCP (Model Context Protocol) server development using FastMCP
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise MCP Server Builder & AI Integration Platform
-
-## MCP Protocol Capabilities
-
-**Model Context Protocol (MCP)**:
-- Standard protocol for LLM context provisioning
-- Tool provisioning (agent-callable functions)
-- Resource system (data/documents exposure)
-- Prompt templates (multi-turn patterns)
-- Transport abstraction (stdio, SSE, HTTP)
-
-**FastMCP 2.0 Framework**:
-- Python-first MCP implementation
-- Type-safe decorators (@mcp.tool, @mcp.resource)
-- Automatic OpenAPI generation
-- Enterprise auth (OAuth, SAML)
-- Proxy and composition patterns
-- Production-ready deployments
-
-## MCP Architecture Overview
-
-### Three Core Components
-
-**1. Tools** (Agent-Callable Functions):
-```
-@mcp.tool
-def search_documents(query: str) -> list[dict]:
-    """Search documents by query"""
-    # Implementation
-    return results
-
-# Tools are exposed as callable actions
-# Agents decide when/how to invoke
-# Return typed structured data
-```
-
-**2. Resources** (Data/Document Exposure):
-```
-@mcp.resource
-def get_document(doc_id: str) -> str:
-    """Fetch document content"""
-    # Read from database
-    return content
-
-# Resources provide context without execution
-# Large documents efficiently streamed
-# Agents request as needed
-```
-
-**3. Prompts** (Multi-Turn Patterns):
-```
-@mcp.prompt("analyze-code")
-def code_analysis(language: str, code_snippet: str) -> str:
-    """System prompt for code analysis"""
-    return f"""You are a {language} expert...
-    Analyze this code:
-    {code_snippet}"""
-
-# Pre-built system prompts
-# Contextual parameters
-# Multi-turn conversation patterns
-```
 
 ## Tool Design Principles
 
@@ -160,6 +101,71 @@ def process_data(
         Processed result dictionary
     """
     # Implementation with validation
+```
+
+---
+
+## Core Implementation
+
+## MCP Protocol Capabilities
+
+**Model Context Protocol (MCP)**:
+- Standard protocol for LLM context provisioning
+- Tool provisioning (agent-callable functions)
+- Resource system (data/documents exposure)
+- Prompt templates (multi-turn patterns)
+- Transport abstraction (stdio, SSE, HTTP)
+
+**FastMCP 2.0 Framework**:
+- Python-first MCP implementation
+- Type-safe decorators (@mcp.tool, @mcp.resource)
+- Automatic OpenAPI generation
+- Enterprise auth (OAuth, SAML)
+- Proxy and composition patterns
+- Production-ready deployments
+
+## MCP Architecture Overview
+
+### Three Core Components
+
+**1. Tools** (Agent-Callable Functions):
+```
+@mcp.tool
+def search_documents(query: str) -> list[dict]:
+    """Search documents by query"""
+    # Implementation
+    return results
+
+# Tools are exposed as callable actions
+# Agents decide when/how to invoke
+# Return typed structured data
+```
+
+**2. Resources** (Data/Document Exposure):
+```
+@mcp.resource
+def get_document(doc_id: str) -> str:
+    """Fetch document content"""
+    # Read from database
+    return content
+
+# Resources provide context without execution
+# Large documents efficiently streamed
+# Agents request as needed
+```
+
+**3. Prompts** (Multi-Turn Patterns):
+```
+@mcp.prompt("analyze-code")
+def code_analysis(language: str, code_snippet: str) -> str:
+    """System prompt for code analysis"""
+    return f"""You are a {language} expert...
+    Analyze this code:
+    {code_snippet}"""
+
+# Pre-built system prompts
+# Contextual parameters
+# Multi-turn conversation patterns
 ```
 
 ## FastMCP Server Implementation
@@ -525,3 +531,4 @@ def monitored_tool(data: dict) -> dict:
 - [ ] Performance benchmarks <500ms p99
 - [ ] Documentation with examples
 - [ ] Deployment strategy defined
+

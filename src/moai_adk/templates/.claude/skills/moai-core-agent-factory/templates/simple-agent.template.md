@@ -73,4 +73,4 @@ model: {{MODEL_SELECTION}}
 
 **Created**: {{CREATION_DATE}}
 **Status**: Production-Ready
-**Compatible with Claude Code+**
+**Compatible with Claude Code**

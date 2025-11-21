@@ -4,28 +4,9 @@ description: Enterprise artifact management with governance, lifecycle, SBOM, an
   supply chain security for November 2025 standards
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Artifact Management & Governance - v4.1.0
-
-## Skill Overview
-
-**November 2025 Enterprise Standards**: Production artifact management with governance, SBOM, and supply chain security
-
-| Feature | Coverage |
-|---------|----------|
-| **Artifact Types** | 7 standard formats (80% enterprise coverage) |
-| **Security** | SBOM, provenance, immutability, SOC 2/ISO 27001 |
-| **Context7 MCP** | ✅ Metadata lookup and artifact index search |
-| **Compliance** | Automated scanning and signature verification |
-
-## Core Responsibilities
-
-1. **Artifact Classification**: 7 enterprise-standard formats
-2. **Lifecycle Management**: Creation → Validation → Storage → Deployment → Retirement
-3. **Governance**: RBAC, monitoring, audit trails
-4. **Security**: SBOM, provenance, supply chain security
-5. **Context7 Integration**: Metadata and vulnerability correlation
-
----
 
 ## Level 1: Quick Reference (50-150 lines)
 
@@ -112,6 +93,31 @@ sbom:
 - ✅ **Immutability**: Published artifacts cannot be modified
 - ✅ **SBOM Required**: All artifacts include Software Bill of Materials
 - ✅ **Security Scanning**: Pre-deployment vulnerability verification
+
+---
+
+---
+
+## Implementation Guide
+
+## Skill Overview
+
+**November 2025 Enterprise Standards**: Production artifact management with governance, SBOM, and supply chain security
+
+| Feature | Coverage |
+|---------|----------|
+| **Artifact Types** | 7 standard formats (80% enterprise coverage) |
+| **Security** | SBOM, provenance, immutability, SOC 2/ISO 27001 |
+| **Context7 MCP** | ✅ Metadata lookup and artifact index search |
+| **Compliance** | Automated scanning and signature verification |
+
+## Core Responsibilities
+
+1. **Artifact Classification**: 7 enterprise-standard formats
+2. **Lifecycle Management**: Creation → Validation → Storage → Deployment → Retirement
+3. **Governance**: RBAC, monitoring, audit trails
+4. **Security**: SBOM, provenance, supply chain security
+5. **Context7 Integration**: Metadata and vulnerability correlation
 
 ---
 
@@ -310,6 +316,38 @@ artifact:
 
 ---
 
+## Best Practices Checklist
+
+### Artifact Creation
+- [ ] **Classification**: Choose from 7 standard types
+- [ ] **Metadata**: Include creator, timestamp, source commit
+- [ ] **Provenance**: Source repo, commit SHA, build log links
+- [ ] **SBOM**: CycloneDX or SPDX format
+- [ ] **Signature**: RSA-4096 or ECDSA-P256
+- [ ] **Scanning**: Trivy/Grype vulnerability detection
+- [ ] **Immutability**: No post-publication modifications
+
+### Repository Design
+- [ ] **Multi-format Support**: Container, Python, Binary, IaC, Docs
+- [ ] **Registry Configuration**: Official (upstream), proxy cache (local)
+- [ ] **RBAC**: Admin, publisher, read permissions
+- [ ] **Approval Workflow**: Security team and release manager approval
+- [ ] **Auto-scanning**: Push-time vulnerability scanning
+- [ ] **SBOM Required**: All artifacts must include SBOM
+- [ ] **Audit Trail**: 7-year retention for compliance
+
+---
+
+**Version**: 4.1.0 Enterprise  
+**Last Updated**: 2025-11-13  
+**Status**: Production Ready  
+**Standards**: November 2025 Enterprise Standards  
+**Compliance**: SOC 2, ISO 27001, NIST CSF Ready
+
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Integration (50-150 lines)
 
 ### Advanced Governance & Security
@@ -450,30 +488,3 @@ artifact:
       - Bug fixes
 ```
 
-## Best Practices Checklist
-
-### Artifact Creation
-- [ ] **Classification**: Choose from 7 standard types
-- [ ] **Metadata**: Include creator, timestamp, source commit
-- [ ] **Provenance**: Source repo, commit SHA, build log links
-- [ ] **SBOM**: CycloneDX or SPDX format
-- [ ] **Signature**: RSA-4096 or ECDSA-P256
-- [ ] **Scanning**: Trivy/Grype vulnerability detection
-- [ ] **Immutability**: No post-publication modifications
-
-### Repository Design
-- [ ] **Multi-format Support**: Container, Python, Binary, IaC, Docs
-- [ ] **Registry Configuration**: Official (upstream), proxy cache (local)
-- [ ] **RBAC**: Admin, publisher, read permissions
-- [ ] **Approval Workflow**: Security team and release manager approval
-- [ ] **Auto-scanning**: Push-time vulnerability scanning
-- [ ] **SBOM Required**: All artifacts must include SBOM
-- [ ] **Audit Trail**: 7-year retention for compliance
-
----
-
-**Version**: 4.1.0 Enterprise  
-**Last Updated**: 2025-11-13  
-**Status**: Production Ready  
-**Standards**: November 2025 Enterprise Standards  
-**Compliance**: SOC 2, ISO 27001, NIST CSF Ready

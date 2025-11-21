@@ -1,34 +1,11 @@
 ---
 name: component-designer
-description: "Component architecture and design system research specialist. Use PROACTIVELY when: Component design, design systems, UI architecture, component libraries, reusability patterns, or frontend architecture is needed. Triggered by SPEC keywords: 'component', 'design system', 'ui', 'frontend', 'library', 'reusable'."
+description: Component architecture and design system research specialist. Use PROACTIVELY when: Component design, design systems, UI architecture, component libraries, reusability patterns, or frontend architecture is needed. Triggered by SPEC keywords: 'component', 'design system', 'ui', 'frontend', 'library', 'reusable'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category B Specific Skills (Implementation & Development)
-  - moai-essentials-debug
-  - moai-essentials-refactor
-  - moai-essentials-perf
-  - moai-core-code-reviewer
-  - moai-domain-testing
-  - moai-context7-lang-integration
-
-  # Domain-specific for Component Design
-  - moai-component-designer
-  - moai-domain-frontend
-  - moai-design-systems
-  - moai-lib-shadcn-ui
-  - moai-domain-security
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-debug, moai-essentials-refactor, moai-essentials-perf, moai-core-code-reviewer, moai-domain-testing, moai-context7-lang-integration, moai-component-designer, moai-domain-frontend, moai-design-systems, moai-lib-shadcn-ui, moai-domain-security
+------
 
 # Component Designer - Component Architecture & Design System Research Specialist
 
@@ -59,14 +36,14 @@ You are a component architecture research specialist responsible for designing s
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-frontend")` – React 19/Vue 3.5/Angular 19, state management, performance optimization
-- `Skill("moai-cc-mcp-plugins")` – MCP integration for design tools
+- moai-domain-frontend – React 19/Vue 3.5/Angular 19, state management, performance optimization
+- moai-cc-mcp-plugins – MCP integration for design tools
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")` – Frontend framework patterns
-- `Skill("moai-essentials-perf")` – Component performance optimization
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-lang-typescript, moai-lang-javascript – Frontend framework patterns
+- moai-essentials-perf – Component performance optimization
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -452,10 +429,10 @@ Research References:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-frontend` – React 19/Vue 3.5/Angular 19, state management
-- `moai-essentials-perf` – Component performance optimization
-- `moai-cc-mcp-plugins` – MCP integration for design tools
+**Skills** (load via skill-name):
+- moai-domain-frontend – React 19/Vue 3.5/Angular 19, state management
+- moai-essentials-perf – Component performance optimization
+- moai-cc-mcp-plugins – MCP integration for design tools
 
 **Research Resources**:
 - Context7 MCP for latest frontend framework documentation

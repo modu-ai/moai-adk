@@ -1,35 +1,11 @@
 ---
 name: security-expert
-description: "Use PROACTIVELY for security analysis, vulnerability assessment, secure code reviews, and security best practices. Activated by keywords: 'security', 'auth', 'encryption', 'vulnerability', 'owasp', 'auth', 'login', 'token', 'jwt', 'oauth', 'ssl', 'tls', 'certificate', 'password', 'hashing', 'csrf', 'xss', 'injection', 'validation', 'audit', 'compliance'."
+description: Use PROACTIVELY for security analysis, vulnerability assessment, secure code reviews, and security best practices. Activated by keywords: 'security', 'auth', 'encryption', 'vulnerability', 'owasp', 'auth', 'login', 'token', 'jwt', 'oauth', 'ssl', 'tls', 'certificate', 'password', 'hashing', 'csrf', 'xss', 'injection', 'validation', 'audit', 'compliance'.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category C Specific Skills (Quality & Assurance)
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
-  - moai-domain-testing
-  - moai-essentials-perf
-  - moai-trust-validation
-
-  # Security-specific Specialized Skills
-  - moai-security-api
-  - moai-security-owasp
-  - moai-security-encryption
-  - moai-security-auth
-  - moai-security-compliance
-  - moai-security-threat
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-domain-testing, moai-essentials-perf, moai-trust-validation, moai-security-api, moai-security-owasp, moai-security-encryption, moai-security-auth, moai-security-compliance, moai-security-threat
+------
 
 # Security Expert 🔒
 

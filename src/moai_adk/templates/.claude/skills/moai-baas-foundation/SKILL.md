@@ -5,20 +5,9 @@ description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS arc
   for scalable production applications
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise BaaS Foundation Expert 
-
-## What It Does
-
-Enterprise Backend-as-a-Service foundation expert with AI-powered BaaS architecture patterns, strategic provider selection intelligence, and intelligent multi-service orchestration for scalable production applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered BaaS Architecture** using Context7 MCP for latest provider documentation
-- 📊 **Intelligent Provider Selection** with automated comparison and optimization analysis
-- 🚀 **Multi-Service Orchestration** with AI-driven integration strategy generation
-- 🔗 **Enterprise Integration Patterns** with zero-configuration service composition
-- 📈 **Predictive Cost Analysis** with usage forecasting and ROI calculations
-
----
 
 ## When to Use
 
@@ -37,6 +26,50 @@ Enterprise Backend-as-a-Service foundation expert with AI-powered BaaS architect
 ---
 
 # Quick Reference (Level 1)
+
+## Common Pitfalls and Mitigation
+
+| Pitfall | Impact | Mitigation |
+|---------|--------|-----------|
+| Single provider dependency | High switching cost | Use multi-cloud strategy |
+| No disaster recovery | Data loss risk | Regular backups + failover testing |
+| Unoptimized costs | Budget overruns | Monthly cost analysis + optimization |
+| Security gaps | Breach risk | Security audits + compliance checks |
+| Performance bottlenecks | User experience | Load testing + monitoring |
+
+---
+
+# Reference & Integration (Level 4)
+
+## API Reference
+
+### Core Functions
+- `select_optimal_providers(requirements, constraints)` - AI-powered provider selection
+- `design_multi_service_architecture(requirements)` - Architecture planning
+- `analyze_total_cost_of_ownership(providers, usage)` - Cost calculation
+- `assess_provider_risks(provider, requirements)` - Risk analysis
+
+### Context7 Integration
+- `get_latest_provider_documentation(provider)` - Official docs via Context7
+- `analyze_provider_updates(providers)` - Real-time update analysis
+- `optimize_provider_selection()` - Latest best practices
+
+---
+
+## Implementation Guide
+
+## What It Does
+
+Enterprise Backend-as-a-Service foundation expert with AI-powered BaaS architecture patterns, strategic provider selection intelligence, and intelligent multi-service orchestration for scalable production applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered BaaS Architecture** using Context7 MCP for latest provider documentation
+- 📊 **Intelligent Provider Selection** with automated comparison and optimization analysis
+- 🚀 **Multi-Service Orchestration** with AI-driven integration strategy generation
+- 🔗 **Enterprise Integration Patterns** with zero-configuration service composition
+- 📈 **Predictive Cost Analysis** with usage forecasting and ROI calculations
+
+---
 
 ## Enterprise BaaS Provider Landscape (November 2025)
 
@@ -260,33 +293,6 @@ START: Choose BaaS Providers
 - Execute gradual production rollout
 - Monitor and optimize performance
 
-## Common Pitfalls and Mitigation
-
-| Pitfall | Impact | Mitigation |
-|---------|--------|-----------|
-| Single provider dependency | High switching cost | Use multi-cloud strategy |
-| No disaster recovery | Data loss risk | Regular backups + failover testing |
-| Unoptimized costs | Budget overruns | Monthly cost analysis + optimization |
-| Security gaps | Breach risk | Security audits + compliance checks |
-| Performance bottlenecks | User experience | Load testing + monitoring |
-
----
-
-# Reference & Integration (Level 4)
-
-## API Reference
-
-### Core Functions
-- `select_optimal_providers(requirements, constraints)` - AI-powered provider selection
-- `design_multi_service_architecture(requirements)` - Architecture planning
-- `analyze_total_cost_of_ownership(providers, usage)` - Cost calculation
-- `assess_provider_risks(provider, requirements)` - Risk analysis
-
-### Context7 Integration
-- `get_latest_provider_documentation(provider)` - Official docs via Context7
-- `analyze_provider_updates(providers)` - Real-time update analysis
-- `optimize_provider_selection()` - Latest best practices
-
 ## Best Practices (November 2025)
 
 ### DO
@@ -333,6 +339,10 @@ START: Choose BaaS Providers
 
 **End of Skill** | Updated 2025-11-13
 
+---
+
+## Advanced Patterns
+
 ## Security & Compliance
 
 ### Data Protection
@@ -350,3 +360,4 @@ START: Choose BaaS Providers
 ---
 
 **End of Enterprise BaaS Foundation Expert **
+

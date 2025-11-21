@@ -3,121 +3,9 @@ name: moai-cc-hooks
 description: AI-powered enterprise Claude Code hooks orchestrator with intelligent
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise Claude Code Hooks Orchestrator 
-
----
-
-## 🚀 Revolutionary AI Hook Capabilities
-
-### **AI-Enhanced Hook Orchestration**
-- 🧠 **Intelligent Workflow Design** with ML-based pattern recognition
-- 🎯 **Predictive Hook Optimization** using AI performance analysis
-- 🔍 **Smart Trigger Management** with Context7 workflow patterns
-- 🤖 **Automated Compliance Monitoring** with AI governance
-- ⚡ **Real-Time Performance Tuning** with AI optimization
-- 🛡️ **Enterprise Security Automation** with zero-trust hooks
-- 📊 **AI-Driven Maintenance** with continuous learning improvement
-
-### **Context7-Enhanced Workflow Patterns**
-- **Live Hook Standards**: Get latest hook patterns from Context7
-- **AI Workflow Optimization**: Match hook designs against Context7 knowledge base
-- **Best Practice Integration**: Apply latest enterprise hook techniques
-- **Performance Standards**: Context7 provides performance benchmarks
-- **Compliance Patterns**: Leverage collective enterprise hook wisdom
-
----
-
-## 🎯 When to Use
-
-**AI Automatic Triggers**:
-- Enterprise hook system architecture design
-- Performance optimization and automation
-- Predictive maintenance implementation
-- Compliance-driven workflow design
-- Multi-environment hook orchestration
-- Large-scale workflow automation
-
-**Manual AI Invocation**:
-- "Design AI-powered hook system with Context7"
-- "Optimize hook performance using machine learning"
-- "Implement predictive maintenance for hooks"
-- "Generate enterprise-grade workflow orchestration"
-- "Create smart hooks with AI automation"
-
----
-
-## 🧠 AI-Enhanced Hook Framework (AI-Hooks Framework)
-
-### AI Hook Architecture Design with Context7
-```python
-class AIHookArchitect:
-    """AI-powered Claude Code hook architecture with Context7 integration."""
-    
-    async def design_hook_system_with_ai(self, requirements: HookRequirements) -> AIHookArchitecture:
-        """Design hook system using AI and Context7 patterns."""
-        
-        # Get latest hook patterns from Context7
-        hook_standards = await self.context7.get_library_docs(
-            context7_library_id="/anthropic/claude-code/hooks",
-            topic="AI hook architecture optimization workflow patterns 2025",
-            tokens=5000
-        )
-        
-        # AI hook pattern classification
-        hook_type = self.classify_hook_system_type(requirements)
-        workflow_patterns = self.match_known_workflow_patterns(hook_type, requirements)
-        
-        # Context7-enhanced performance analysis
-        performance_insights = self.extract_context7_performance_patterns(
-            hook_type, hook_standards
-        )
-        
-        return AIHookArchitecture(
-            hook_system_type=hook_type,
-            workflow_design=self.design_intelligent_workflows(hook_type, requirements),
-            performance_optimization=self.optimize_hook_performance(
-                workflow_patterns, performance_insights
-            ),
-            context7_recommendations=performance_insights['recommendations'],
-            ai_confidence_score=self.calculate_hook_confidence(
-                requirements, workflow_patterns, performance_insights
-            )
-        )
-```
-
-### Context7 Workflow Integration
-```python
-class Context7WorkflowDesigner:
-    """Context7-enhanced workflow design with AI coordination."""
-    
-    async def design_workflows_with_ai(self, 
-            workflow_requirements: WorkflowRequirements) -> AIWorkflowSuite:
-        """Design AI-optimized workflows using Context7 patterns."""
-        
-        # Get Context7 workflow patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/anthropic/claude-code/hooks",
-            topic="AI workflow automation enterprise integration patterns",
-            tokens=4000
-        )
-        
-        # Apply Context7 workflow optimization
-        workflow_optimization = self.apply_context7_workflow_optimization(
-            context7_patterns['workflow_design']
-        )
-        
-        # AI-enhanced workflow coordination
-        ai_coordination = self.ai_workflow_optimizer.optimize_workflow_coordination(
-            workflow_requirements, context7_patterns['coordination_patterns']
-        )
-        
-        return AIWorkflowSuite(
-            workflow_optimization=workflow_optimization,
-            ai_coordination=ai_coordination,
-            context7_patterns=context7_patterns,
-            intelligent_monitoring=self.setup_intelligent_workflow_monitoring()
-        )
-```
 
 ---
 
@@ -255,73 +143,119 @@ class Context7WorkflowDesigner:
 
 ---
 
-## 🛠️ Advanced AI Hook Workflows
+---
 
-### AI Hook Performance Optimization
+## Core Implementation
+
+## 🚀 Revolutionary AI Hook Capabilities
+
+### **AI-Enhanced Hook Orchestration**
+- 🧠 **Intelligent Workflow Design** with ML-based pattern recognition
+- 🎯 **Predictive Hook Optimization** using AI performance analysis
+- 🔍 **Smart Trigger Management** with Context7 workflow patterns
+- 🤖 **Automated Compliance Monitoring** with AI governance
+- ⚡ **Real-Time Performance Tuning** with AI optimization
+- 🛡️ **Enterprise Security Automation** with zero-trust hooks
+- 📊 **AI-Driven Maintenance** with continuous learning improvement
+
+### **Context7-Enhanced Workflow Patterns**
+- **Live Hook Standards**: Get latest hook patterns from Context7
+- **AI Workflow Optimization**: Match hook designs against Context7 knowledge base
+- **Best Practice Integration**: Apply latest enterprise hook techniques
+- **Performance Standards**: Context7 provides performance benchmarks
+- **Compliance Patterns**: Leverage collective enterprise hook wisdom
+
+---
+
+## 🎯 When to Use
+
+**AI Automatic Triggers**:
+- Enterprise hook system architecture design
+- Performance optimization and automation
+- Predictive maintenance implementation
+- Compliance-driven workflow design
+- Multi-environment hook orchestration
+- Large-scale workflow automation
+
+**Manual AI Invocation**:
+- "Design AI-powered hook system with Context7"
+- "Optimize hook performance using machine learning"
+- "Implement predictive maintenance for hooks"
+- "Generate enterprise-grade workflow orchestration"
+- "Create smart hooks with AI automation"
+
+---
+
+## 🧠 AI-Enhanced Hook Framework (AI-Hooks Framework)
+
+### AI Hook Architecture Design with Context7
 ```python
-class AIHookOptimizer:
-    """AI-powered hook performance optimization with Context7 integration."""
+class AIHookArchitect:
+    """AI-powered Claude Code hook architecture with Context7 integration."""
     
-    async def optimize_hooks_with_ai(self, 
-            hook_metrics: HookMetrics) -> AIHookOptimization:
-        """Optimize hooks using AI and Context7 patterns."""
+    async def design_hook_system_with_ai(self, requirements: HookRequirements) -> AIHookArchitecture:
+        """Design hook system using AI and Context7 patterns."""
         
-        # Get Context7 hook optimization patterns
-        context7_patterns = await self.context7.get_library_docs(
+        # Get latest hook patterns from Context7
+        hook_standards = await self.context7.get_library_docs(
             context7_library_id="/anthropic/claude-code/hooks",
-            topic="AI hook performance optimization automation patterns",
-            tokens=4000
+            topic="AI hook architecture optimization workflow patterns 2025",
+            tokens=5000
         )
         
-        # Multi-layer AI performance analysis
-        performance_analysis = await self.analyze_hook_performance_with_ai(
-            hook_metrics, context7_patterns
+        # AI hook pattern classification
+        hook_type = self.classify_hook_system_type(requirements)
+        workflow_patterns = self.match_known_workflow_patterns(hook_type, requirements)
+        
+        # Context7-enhanced performance analysis
+        performance_insights = self.extract_context7_performance_patterns(
+            hook_type, hook_standards
         )
         
-        # Context7-enhanced optimization strategies
-        optimization_strategies = self.generate_optimization_strategies(
-            performance_analysis, context7_patterns
-        )
-        
-        return AIHookOptimization(
-            performance_analysis=performance_analysis,
-            optimization_strategies=optimization_strategies,
-            context7_solutions=context7_patterns,
-            continuous_improvement=self.setup_continuous_hook_learning()
+        return AIHookArchitecture(
+            hook_system_type=hook_type,
+            workflow_design=self.design_intelligent_workflows(hook_type, requirements),
+            performance_optimization=self.optimize_hook_performance(
+                workflow_patterns, performance_insights
+            ),
+            context7_recommendations=performance_insights['recommendations'],
+            ai_confidence_score=self.calculate_hook_confidence(
+                requirements, workflow_patterns, performance_insights
+            )
         )
 ```
 
-### Predictive Hook Maintenance
+### Context7 Workflow Integration
 ```python
-class AIPredictiveHookMaintainer:
-    """AI-enhanced predictive maintenance for hook systems."""
+class Context7WorkflowDesigner:
+    """Context7-enhanced workflow design with AI coordination."""
     
-    async def predict_hook_maintenance_needs(self, 
-            system_data: SystemData) -> AIPredictiveMaintenance:
-        """Predict hook maintenance needs using AI analysis."""
+    async def design_workflows_with_ai(self, 
+            workflow_requirements: WorkflowRequirements) -> AIWorkflowSuite:
+        """Design AI-optimized workflows using Context7 patterns."""
         
-        # Get Context7 maintenance patterns
+        # Get Context7 workflow patterns
         context7_patterns = await self.context7.get_library_docs(
             context7_library_id="/anthropic/claude-code/hooks",
-            topic="AI predictive maintenance hook optimization patterns",
+            topic="AI workflow automation enterprise integration patterns",
             tokens=4000
         )
         
-        # AI predictive analysis
-        predictive_analysis = self.ai_predictor.analyze_maintenance_needs(
-            system_data, context7_patterns
+        # Apply Context7 workflow optimization
+        workflow_optimization = self.apply_context7_workflow_optimization(
+            context7_patterns['workflow_design']
         )
         
-        # Context7-enhanced maintenance strategies
-        maintenance_strategies = self.generate_maintenance_strategies(
-            predictive_analysis, context7_patterns
+        # AI-enhanced workflow coordination
+        ai_coordination = self.ai_workflow_optimizer.optimize_workflow_coordination(
+            workflow_requirements, context7_patterns['coordination_patterns']
         )
         
-        return AIPredictiveMaintenance(
-            predictive_analysis=predictive_analysis,
-            maintenance_strategies=maintenance_strategies,
+        return AIWorkflowSuite(
+            workflow_optimization=workflow_optimization,
+            ai_coordination=ai_coordination,
             context7_patterns=context7_patterns,
-            automated_scheduling=self.setup_automated_maintenance()
+            intelligent_monitoring=self.setup_intelligent_workflow_monitoring()
         )
 ```
 
@@ -545,3 +479,4 @@ class AIHookLearner:
 - `moai-foundation-trust` (AI hook security and compliance)
 - `moai-context7-integration` (latest hook standards and patterns)
 - Context7 Hooks (latest workflow patterns and documentation)
+

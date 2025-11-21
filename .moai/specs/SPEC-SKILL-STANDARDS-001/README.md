@@ -1,400 +1,275 @@
-# SPEC-SKILL-STANDARDS-001: Complete Analysis Package
+# SPEC-SKILL-STANDARDS-001: SKILL.md Format Standardization
 
-**Status**: Phase 1B Analysis Complete - Ready for Decision
-**Last Updated**: 2025-11-21
-**Analysis Duration**: Full day session
-**Prepared by**: spec-builder
-
----
-
-## Quick Navigation
-
-### For Decision Makers
-1. Start here: **[EXECUTIVE-SUMMARY.md](./EXECUTIVE-SUMMARY.md)**
-   - 5-minute overview of project, candidates, and recommendation
-   - Resource commitment and risk assessment
-   - Next steps upon approval
-
-### For Technical Implementation
-1. Core SPEC: **[spec.md](./spec.md)**
-   - Environment, assumptions, requirements
-   - Technical approach and implementation strategy
-   - Risk mitigation plans
-
-2. Requirements Details: **[EARS-REQUIREMENTS.md](./EARS-REQUIREMENTS.md)**
-   - 32 complete EARS requirements
-   - Universal, Conditional, Unwanted, Stakeholder, Boundary patterns
-   - State-driven requirements and edge cases
-
-3. Acceptance Criteria: **[acceptance.md](./acceptance.md)**
-   - Quality gate requirements (G1-G5)
-   - Given-When-Then test scenarios
-   - Validation criteria for all phases
-
-4. Implementation Plan: **[plan.md](./plan.md)**
-   - Phase-by-phase breakdown
-   - Milestones and deliverables
-   - Resource allocation
-   - Timeline and dependencies
-
-### For Current State Understanding
-1. **[CURRENT-STATE-ANALYSIS.md](./CURRENT-STATE-ANALYSIS.md)**
-   - 280-skill inventory with metrics
-   - Format gap analysis
-   - Complexity classification
-   - Impact assessment by tier
-
-2. **[SPEC-CANDIDATES-AND-ANALYSIS.md](./SPEC-CANDIDATES-AND-ANALYSIS.md)**
-   - 3 implementation candidates detailed
-   - Comparative analysis across dimensions
-   - Cost-benefit analysis
-   - Recommendation rationale
+**Created**: 2025-11-21
+**Status**: Ready for Execution
+**Agent**: skill-factory
+**Task**: Manual standardization of all 262 SKILL.md files
 
 ---
 
-## The Complete Picture
+## Executive Summary
 
-### What We're Solving
-280 MoAI-ADK skills using non-standard YAML format (10 custom fields) need migration to official Claude Code format (2-3 official fields) while maintaining 100% backward compatibility and zero content loss.
+This specification documents the standardization effort to ensure all SKILL.md files comply with the minimal 2-field YAML frontmatter format required by Claude Code.
 
-### Why It Matters
-- Current format incompatible with Claude Code official ecosystem
-- Extended metadata creates maintenance burden
-- Large monolithic files reduce usability
-- Non-standard tools format causes integration issues
-- Missing progressive disclosure hurts usability
+**Problem**: Current SKILL.md files contain excessive metadata (version, status, tier, keywords, etc.) that violates official format standards.
 
-### The Solution
-Phased, systematic migration to official Claude Code format with automated tooling, comprehensive validation, and full metadata preservation.
+**Solution**: Manually edit all 262 SKILL.md files to remove non-standard fields while preserving content structure.
+
+**Impact**: 
+- ✅ Cleaner, consistent format across all skills
+- ✅ Reduced file sizes (avg 10-20 lines per file)
+- ✅ Easier maintenance (no version drift)
+- ✅ Compliance with Claude Code standards
 
 ---
 
-## Key Metrics at a Glance
+## Required Format
 
-### Current State
-```
-Total Skills:               280 (141 custom + 139 template)
-Skills with Extended Metadata:  60+ (21%)
-Skills with allowed-tools:    117 (83%)
-Skills Exceeding 500 Lines:    37 (13%)
-Largest Skill:             1,681 lines (Korean translation)
-Average Skill Size:        400-600 lines
+### Official Standard (Claude Code)
+```yaml
+---
+name: skill-identifier
+description: Brief description of what this Skill does and when to use it (max 1024 chars)
+---
 ```
 
-### YAML Format Gap
-```
-Current Format:    10+ custom fields (version, created, tier, status, etc.)
-Official Format:   2-3 required fields (name, description, allowed-tools optional)
-Extended Metadata: Must be preserved in alternative location (.skill-metadata.yml)
-Allowed-Tools:     Needs format conversion (array → comma-separated string)
-```
-
-### Implementation Timeline (Recommended: 18 Weeks)
-```
-Phase 1: Foundation & Tooling          (Weeks 1-2)    - 6 SP
-Phase 2: Tier 1 Migration (70 skills)  (Weeks 3-6)    - 8 SP
-Phase 3: Tier 2 Migration (100 skills) (Weeks 7-10)   - 8 SP
-Phase 4: Tier 3 Migration (42 skills)  (Weeks 11-16)  - 8 SP
-Phase 5: Documentation & Finalization  (Weeks 17-18)  - 4 SP
-Total Effort: 34 Story Points
-```
-
-### Three Candidates Compared
-
-| Aspect | Candidate 1 (Lite) | Candidate 2 (Aggressive) | Candidate 3 (Recommended) |
-|--------|-------------------|-------------------------|---------------------------|
-| Coverage | 70 skills (25%) | 250 skills (89%) | 280 skills (100%) |
-| Timeline | 6-8 weeks | 4 weeks | 18 weeks |
-| Team | 2-3 FTE | 5-6 FTE | 2-5 FTE (scalable) |
-| Risk | Very Low | Medium | Low |
-| Quality | Good | Good | Excellent |
-| Sustainability | Good | Poor | Excellent |
-| Completeness | Incomplete | 89% complete | 100% complete |
+**ONLY these 2 fields are permitted in YAML frontmatter.**
 
 ---
 
-## Document Structure
-
-### Analysis Tier 1: Executive Level
-- **EXECUTIVE-SUMMARY.md** (3,000 words)
-  - Project overview, findings, candidates
-  - Recommendation and decision framework
-  - Resource commitment and next steps
-
-### Analysis Tier 2: Strategic Planning
-- **CURRENT-STATE-ANALYSIS.md** (4,000 words)
-  - Comprehensive gap analysis
-  - Skill inventory and classification
-  - Impact assessment and recommendations
-
-- **SPEC-CANDIDATES-AND-ANALYSIS.md** (5,000 words)
-  - 3 detailed candidates with pros/cons
-  - Comparative analysis tables
-  - Decision matrix and recommendation
-
-### Analysis Tier 3: Technical Requirements
-- **spec.md** (SPEC document - 3,500 words)
-  - Problem statement and requirements (8 REQs)
-  - Unwanted behaviors (security, data, performance)
-  - Technical approach and implementation strategy
-
-- **EARS-REQUIREMENTS.md** (6,000 words)
-  - 32 complete EARS requirements
-  - Requirements organized by pattern type
-  - State machines and edge cases
-
-### Analysis Tier 4: Execution Details
-- **acceptance.md** (Quality gate criteria - 2,500 words)
-  - Acceptance tests for all criteria
-  - Given-When-Then scenarios
-  - Phase-by-phase validation
-
-- **plan.md** (Implementation plan - 2,000 words)
-  - Phase milestones and deliverables
-  - Resource allocation
-  - Timeline and dependencies
-  - Risk mitigation
-
-### Support Documents
-- **README.md** (This file)
-  - Navigation guide
-  - Quick reference metrics
-  - Document structure overview
-
----
-
-## Decision Framework
-
-### Three Options Presented
-
-**Option 1: SPEC-SKILL-STANDARDS-LITE**
-- Minimal scope (25% coverage)
-- Quick results (6-8 weeks)
-- Low effort (2-3 engineers)
-- **Decision**: Choose if budget/timeline is critical and incomplete solution acceptable
-
-**Option 2: SPEC-SKILL-STANDARDS-AGGRESSIVE**
-- High coverage (89% complete)
-- Fast execution (4 weeks)
-- High effort (5-6 engineers, full-time)
-- **Decision**: Choose if timeline is paramount and team capacity available
-
-**Option 3: SPEC-SKILL-STANDARDS-001 (RECOMMENDED)**
-- Complete coverage (100%)
-- Sustainable execution (18 weeks)
-- Scalable effort (2-5 engineers)
-- **Decision**: Choose for complete, sustainable solution with low risk
-
-### Recommendation
-**SPEC-SKILL-STANDARDS-001 (Phased Comprehensive Approach)**
-
-**Why**:
-- Addresses all 280 skills (vs. 25% or 89%)
-- Sustainable team load (vs. intense pressure)
-- Built-in validation and testing
-- Clear phase gates and risk mitigation
-- Learning and knowledge transfer
-- Future-proof standards established
-- Industry best-practice approach
-
----
-
-## Implementation Roadmap
-
-### Phase 1: Foundation & Tooling (Weeks 1-2)
-- Develop automated migration tool
-- Build validation framework
-- Conduct 5 sample migrations
-- Establish team and processes
-- Create author guidelines
-
-### Phase 2: Tier 1 Migration (Weeks 3-6)
-- Identify 70 simple skills
-- Automated migration execution
-- Validation and testing
-- Backward compatibility verification
-- Phase 2 completion gate
-
-### Phase 3: Tier 2 Migration (Weeks 7-10)
-- Moderate complexity skills (100)
-- Progressive disclosure implementation
-- Extended metadata preservation
-- Comprehensive validation
-
-### Phase 4: Tier 3 Migration (Weeks 11-16)
-- Complex skills (42, including 6 with 1000+ lines)
-- Major restructuring and refactoring
-- Advanced progressive disclosure
-- Full content preservation validation
-
-### Phase 5: Documentation & Finalization (Weeks 17-18)
-- Documentation updates
-- New skill template creation
-- Author onboarding materials
-- Training program
-- Final validation and sign-off
-
----
-
-## Success Criteria
-
-### Must Have (Go/No-Go Criteria)
-- ✓ All 280 skills in official format
-- ✓ Zero content loss (byte-for-byte verification)
-- ✓ 100% YAML validation passing
-- ✓ 100% backward compatibility maintained
-- ✓ All extended metadata preserved
-
-### Should Have (Quality Bar)
-- ✓ Automated migration tooling
-- ✓ Comprehensive documentation
-- ✓ Author onboarding program
-- ✓ <20% timeline variance
-- ✓ Team expertise well-documented
-
-### Nice to Have (Bonus)
-- ✓ Performance optimizations
-- ✓ Enhanced future tooling
-- ✓ Video training materials
-- ✓ Industry best-practices guide
-
----
-
-## Risk Management
-
-### Top Risks & Mitigations
-
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|-----------|
-| Content loss | Low | Critical | Version control, hash verification, backups |
-| Backward compatibility breaks | Low | High | Parallel testing, gradual rollout, rollback |
-| Tool failures on edge cases | Medium | High | Comprehensive testing, sample migrations |
-| Timeline overruns | Medium | Medium | Buffer time (20%), weekly sync, prioritized |
-
-### Overall Risk Profile
-- **Technical Risk**: Low (mitigated by validation)
-- **Timeline Risk**: Low (sustainable phases)
-- **Resource Risk**: Low (scalable model)
-- **Business Risk**: Low (complete solution)
-
----
-
-## Next Steps Upon Approval
-
-### Immediate (Before Phase 1)
-1. [ ] Stakeholder review and approval
-2. [ ] Confirm resource allocation
-3. [ ] Establish weekly sync meetings
-4. [ ] Select Phase 1 tech lead
-
-### Phase 1 Kickoff
-1. [ ] Begin tool development
-2. [ ] Set up validation framework
-3. [ ] Schedule sample migrations
-4. [ ] Conduct team training
-5. [ ] Finalize author guidelines
-
-### Ongoing
-1. [ ] Weekly progress meetings
-2. [ ] Phase gate reviews
-3. [ ] Continuous validation
-4. [ ] Team knowledge sharing
-5. [ ] Stakeholder updates
-
----
-
-## File Manifest
+## Project Structure
 
 ```
-SPEC-SKILL-STANDARDS-001/
-├── README.md                              # This navigation guide
-├── EXECUTIVE-SUMMARY.md                   # Decision-maker overview (RECOMMENDED START)
-├── CURRENT-STATE-ANALYSIS.md             # Detailed gap analysis
-├── SPEC-CANDIDATES-AND-ANALYSIS.md       # 3 candidates + recommendation
-├── spec.md                                # Core SPEC with requirements
-├── EARS-REQUIREMENTS.md                   # 32 complete EARS requirements
-├── acceptance.md                          # Quality gate criteria
-└── plan.md                                # Implementation plan
+.moai/specs/SPEC-SKILL-STANDARDS-001/
+├── README.md                          # This file (overview)
+├── ANALYSIS-FORMAT-VIOLATIONS.md     # Detailed violation analysis
+├── FILE-LIST-COMPLETE.md             # All 262 SKILL.md file paths
+├── AGENT-FACTORY-EXECUTION-GUIDE.md  # Step-by-step execution instructions
+└── verification/
+    ├── verify-batch.sh               # Per-batch verification script
+    └── verify-all-skills.sh          # Final comprehensive check
 ```
-
-**Total Documentation**: ~28,000 words across 8 documents
 
 ---
 
-## Contact & Support
+## Quick Start
 
-### SPEC Information
-- **SPEC ID**: SPEC-SKILL-STANDARDS-001
-- **Title**: Standardize All MoAI-ADK Skills to Claude Code Official Format
-- **Status**: Draft, Phase 1B Analysis Complete
-- **Prepared by**: spec-builder
-- **Date**: 2025-11-21
+### 1. Review Analysis
+Read `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/ANALYSIS-FORMAT-VIOLATIONS.md` for:
+- Current violations breakdown
+- Format standardization rules
+- Examples of compliant vs non-compliant files
 
-### For Questions About
-- **Executive Decision**: See EXECUTIVE-SUMMARY.md
-- **Technical Details**: See spec.md + EARS-REQUIREMENTS.md
-- **Current State**: See CURRENT-STATE-ANALYSIS.md
-- **Candidates**: See SPEC-CANDIDATES-AND-ANALYSIS.md
-- **Implementation**: See plan.md + acceptance.md
+### 2. Review Execution Plan
+Read `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/AGENT-FACTORY-EXECUTION-GUIDE.md` for:
+- 14-batch execution strategy
+- Per-file editing procedure
+- Quality assurance processes
+- Git workflow
+
+### 3. Execute with agent-factory
+**Total Time**: 2-3 hours (14 batches × 10-15 min each)
+
+```bash
+# Phase 1: Backup
+cd /Users/goos/MoAI/MoAI-ADK
+tar -czf skill-backup-$(date +%Y%m%d-%H%M%S).tar.gz \
+  .claude/skills/*/SKILL.md \
+  src/moai_adk/templates/.claude/skills/*/SKILL.md
+
+# Phase 2: Create branch
+git checkout -b feature/skill-format-standardization
+
+# Phase 3: Execute 14 batches with agent-factory
+# (See AGENT-FACTORY-EXECUTION-GUIDE.md for details)
+
+# Phase 4: Verify
+./verify-all-skills.sh
+
+# Phase 5: Commit and PR
+git push origin feature/skill-format-standardization
+```
+
+---
+
+## Deliverables
+
+### Analysis Documents
+- [x] Format violation analysis (ANALYSIS-FORMAT-VIOLATIONS.md)
+- [x] Complete file list with 262 paths (FILE-LIST-COMPLETE.md)
+- [x] Detailed editing checklist per file
+- [x] Batch execution strategy (14 sessions)
+
+### Execution Materials
+- [x] Step-by-step agent-factory guide (AGENT-FACTORY-EXECUTION-GUIDE.md)
+- [x] Per-file editing procedure
+- [x] Verification scripts (verify-batch.sh, verify-all-skills.sh)
+- [x] Git workflow instructions
+- [x] Risk mitigation checklist
+
+### Quality Assurance
+- [x] Per-batch verification process
+- [x] Final comprehensive verification
+- [x] Troubleshooting guide
+- [x] Success criteria checklist
+
+---
+
+## Key Constraints
+
+### Mandatory Requirements
+1. **NO automation** - All edits must be manual (verified file-by-file)
+2. **NO scripts** - No sed, awk, or Python automation
+3. **Manual verification** - Human review of each file's compliance
+4. **agent-factory execution** - Use agent-factory for parallel file handling
+
+### Reasoning
+- Manual editing ensures description quality
+- Catches edge cases automation would miss
+- Validates Progressive Disclosure structure intact
+- Ensures "what" and "when" in description field
+
+---
+
+## Violation Categories
+
+### Category A: YAML Frontmatter (DELETE these fields)
+```
+version
+created / created_date
+updated / updated_date
+status
+keywords
+tier
+allowed-tools / allowed_tools
+auto-load / auto_load
+author
+tags
+triggers
+agents
+freedom_level
+context7_references
+```
+
+### Category B: Body Content (DELETE these sections)
+```markdown
+## Skill Metadata
+| Field | Value |
+| ----- | ----- |
+| **Skill Name** | ... |
+| **Version** | ... |
+```
+
+---
+
+## Execution Strategy
+
+### Phase Distribution
+- **Phase 1**: High-impact skills (30 files, Session 1)
+- **Phase 2**: Domain skills (40 files, Sessions 2-3)
+- **Phase 3**: Language skills (20 files, Session 4)
+- **Phase 4**: Remaining main skills (41 files, Sessions 5-7)
+- **Phase 5**: Template skills (131 files, Sessions 8-14)
+
+### Time Estimates
+- Batch 1 (high-impact): 20-25 minutes
+- Batches 2-7 (main directory): 10-15 minutes each
+- Batches 8-14 (templates): 8-12 minutes each
+- **Total**: 2-3 hours
+
+---
+
+## Success Metrics
+
+### Immediate Benefits
+- All 262 SKILL.md files compliant with minimal format
+- Reduced file size (avg 10-20 lines removed per file)
+- Consistent format across entire skill library
+- Easier maintenance (no version drift, status conflicts)
+- Cleaner git diffs (no metadata noise)
+
+### Long-Term Benefits
+- Simplified skill creation process (less metadata to manage)
+- Faster skill loading (less parsing overhead)
+- Better compliance with Claude Code standards
+- Reduced token consumption (less metadata to process)
+- Clearer focus on skill content vs metadata
+
+---
+
+## Risk Mitigation
+
+### Before Starting
+- ✅ Backup created (skill-backup-YYYYMMDD-HHMMSS.tar.gz)
+- ✅ Working branch created (feature/skill-format-standardization)
+- ✅ Analysis documents reviewed
+- ✅ Verification scripts prepared
+
+### During Execution
+- Edit in small batches (20 files max per session)
+- Verify each batch before proceeding
+- Commit after each successful batch
+- Track progress (batch N/14 completed)
+
+### After Completion
+- Run final comprehensive verification (verify-all-skills.sh)
+- All 262 files pass compliance check
+- Create pull request with detailed summary
+- Request code review before merge
+
+---
+
+## File Locations
+
+### Analysis Documents
+- **Main Analysis**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/ANALYSIS-FORMAT-VIOLATIONS.md`
+- **File List**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/FILE-LIST-COMPLETE.md`
+- **Execution Guide**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/AGENT-FACTORY-EXECUTION-GUIDE.md`
+
+### Target Files
+- **Main Skills**: `/Users/goos/MoAI/MoAI-ADK/.claude/skills/*/SKILL.md` (131 files)
+- **Template Skills**: `/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/*/SKILL.md` (131 files)
+
+### Verification Scripts
+- **Per-Batch**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/verification/verify-batch.sh`
+- **Final Check**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-SKILL-STANDARDS-001/verification/verify-all-skills.sh`
 
 ---
 
 ## References
 
-### Claude Code Official Documentation
-- https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
-- https://platform.claude.com/docs/en/agents-and-tools/agent-skills/quickstart
-- https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-- https://code.claude.com/docs/en/skills
+### Official Standards
+- Claude Code Skill Format: Minimal 2-field YAML frontmatter
+- Progressive Disclosure: Level 1 (Quick) → Level 2 (Implementation) → Level 3 (Advanced)
+- Description Requirements: Must include "what" and "when to use"
 
-### MoAI-ADK Project
-- Project Directory: `/Users/goos/MoAI/MoAI-ADK/`
-- Skills Directory: `.claude/skills/` (141 skills)
-- Templates Directory: `src/moai_adk/templates/.claude/skills/` (139 skills)
-
----
-
-## Version History
-
-| Version | Date | Status | Notes |
-|---------|------|--------|-------|
-| 1.0 | 2025-11-21 | Phase 1B Complete | Comprehensive analysis package ready for decision |
+### Related Documentation
+- `/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-skill-factory/SKILL.md` - Skill creation patterns
+- `/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-skills/SKILL.md` - Skill management
+- `/Users/goos/MoAI/MoAI-ADK/CLAUDE.md` - MoAI-ADK execution guide
 
 ---
 
-## Appendix: Quick Reference Tables
+## Next Steps
 
-### Skill Inventory Summary
-```
-Directory                    Count    Average Size    Max Size    >500 Lines
-Custom (.claude/skills)      141      450 lines       1,681       18 skills
-Template (src/.claude)       139      420 lines       1,659       19 skills
-Total                        280      435 lines       1,681       37 skills (13%)
-```
-
-### Format Compliance by Category
-```
-Category                     Current Format    Official Format    Effort to Convert
-Required Fields              7-10              2-3                High (field removal)
-Allowed-Tools Format         Mixed (3 types)   Comma-separated    Low (format conversion)
-Content Structure            Monolithic        Progressive (1-4)  Medium-High
-Extended Metadata            YAML (10 fields)  External files     Medium
-File Organization            Flat              Hierarchical       Low-Medium
-```
-
-### Phase Effort Estimation
-```
-Phase    Description           Effort    Duration    Team Size
-1        Foundation & Tooling   6 SP     2 weeks     2-3 FTE
-2        Tier 1 (70 skills)     8 SP     4 weeks     2-3 FTE
-3        Tier 2 (100 skills)    8 SP     4 weeks     3-4 FTE
-4        Tier 3 (42 skills)     8 SP     6 weeks     4-5 FTE
-5        Documentation          4 SP     2 weeks     2 FTE
-Total                          34 SP    18 weeks    Average 3.2 FTE
-```
+1. **Review** all analysis documents (ANALYSIS, FILE-LIST, EXECUTION-GUIDE)
+2. **Prepare** verification scripts and working environment
+3. **Execute** 14 batches with agent-factory following EXECUTION-GUIDE
+4. **Verify** each batch and final comprehensive check
+5. **Commit** changes with detailed PR summary
+6. **Merge** after code review approval
 
 ---
 
-**Status**: Ready for Stakeholder Decision
-**Next Action**: Review EXECUTIVE-SUMMARY.md and select implementation approach
+## Contact & Support
 
+**Specification Owner**: skill-factory agent
+**Created**: 2025-11-21
+**Version**: 1.0.0
+**Status**: Ready for Execution
+
+**Questions**: Refer to AGENT-FACTORY-EXECUTION-GUIDE.md Troubleshooting section
+
+---
+
+**End of SPEC-SKILL-STANDARDS-001 README**

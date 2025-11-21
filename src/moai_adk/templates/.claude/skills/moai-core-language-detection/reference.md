@@ -1,4 +1,4 @@
-# moai-core-language-detection - CLI Reference
+# moai-alfred-language-detection - CLI Reference
 
 _Last updated: 2025-10-22_
 

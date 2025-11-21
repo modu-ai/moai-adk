@@ -3,37 +3,9 @@ name: moai-lang-go
 description: Enterprise Go for systems and network programming Go 1.25.4, Fiber v3,
 ---
 
+## Quick Reference (30 seconds)
+
 # Go Systems Development — Enterprise  
-
-## Technology Stack (November 2025 Stable)
-
-### Language & Runtime
-- **Go 1.25.4** (November 2025, compiler & runtime improvements)
-- **Unix/Linux first** with Windows/macOS support
-- **Garbage collection** with concurrent sweeper
-
-### Web Frameworks
-- **Fiber v3.x** (Express.js-inspired, high performance)
-- **Echo 4.13.x** (Scalable, middleware-rich)
-- **Chi 5.x** (Lightweight, composable)
-
-### Concurrency & RPC
-- **goroutines** (lightweight threads, stdlib)
-- **channels** (typed message passing)
-- **gRPC 1.67** (Protocol buffers, streaming)
-- **Protobuf 3.21** (Message serialization)
-
-### Data Access
-- **sqlc 1.26** (Type-safe SQL code generation)
-- **pgx 5.7** (PostgreSQL driver with pooling)
-- **context** (Request-scoped data, timeouts)
-
-### Testing & Quality
-- **testing** (stdlib testing package)
-- **testify 1.9** (Assertions, mocking, suites)
-- **benchmarking** (Built-in performance testing)
-
----
 
 ## Level 1: Quick Reference
 
@@ -200,6 +172,40 @@ func main() {
 
 ---
 
+---
+
+## Core Implementation
+
+## Technology Stack (November 2025 Stable)
+
+### Language & Runtime
+- **Go 1.25.4** (November 2025, compiler & runtime improvements)
+- **Unix/Linux first** with Windows/macOS support
+- **Garbage collection** with concurrent sweeper
+
+### Web Frameworks
+- **Fiber v3.x** (Express.js-inspired, high performance)
+- **Echo 4.13.x** (Scalable, middleware-rich)
+- **Chi 5.x** (Lightweight, composable)
+
+### Concurrency & RPC
+- **goroutines** (lightweight threads, stdlib)
+- **channels** (typed message passing)
+- **gRPC 1.67** (Protocol buffers, streaming)
+- **Protobuf 3.21** (Message serialization)
+
+### Data Access
+- **sqlc 1.26** (Type-safe SQL code generation)
+- **pgx 5.7** (PostgreSQL driver with pooling)
+- **context** (Request-scoped data, timeouts)
+
+### Testing & Quality
+- **testing** (stdlib testing package)
+- **testify 1.9** (Assertions, mocking, suites)
+- **benchmarking** (Built-in performance testing)
+
+---
+
 ## Level 2: Core Implementation
 
 ### Type-Safe SQL with sqlc
@@ -281,154 +287,6 @@ app.Get("/error", func(c fiber.Ctx) error {
 
 ---
 
-## Level 3: Advanced Features
-
-### gRPC Services
-
-**Protocol Buffer Definition**:
-```protobuf
-// user.proto
-syntax = "proto3";
-
-package user;
-
-option go_package = "./pb";
-
-service UserService {
-  rpc GetUser(GetUserRequest) returns (GetUserResponse);
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
-}
-
-message GetUserRequest {
-  int32 id = 1;
-}
-
-message GetUserResponse {
-  int32 id = 1;
-  string name = 2;
-  string email = 3;
-}
-
-message ListUsersRequest {}
-message ListUsersResponse {
-  repeated User users = 1;
-}
-```
-
-**Go gRPC Server**:
-```go
-type server struct {
-    pb.UnimplementedUserServiceServer
-}
-
-func (s *server) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserResponse, error) {
-    // Database lookup logic
-    return &pb.GetUserResponse{
-        Id:    req.Id,
-        Name:  "John Doe",
-        Email: "john@example.com",
-    }, nil
-}
-
-func main() {
-    lis, err := net.Listen("tcp", ":50051")
-    if err != nil {
-        log.Fatalf("Failed to listen: %v", err)
-    }
-
-    s := grpc.NewServer()
-    pb.RegisterUserServiceServer(s, &server{})
-    
-    log.Println("gRPC server listening on :50051")
-    if err := s.Serve(lis); err != nil {
-        log.Fatalf("Failed to serve: %v", err)
-    }
-}
-```
-
-### Advanced Concurrency Patterns
-
-**Fan-Out/Fan-In**:
-```go
-func fanIn(input1, input2 <-chan string) <-chan string {
-    output := make(chan string)
-    
-    go func() {
-        defer close(output)
-        for {
-            select {
-            case s := <-input1:
-                output <- s
-            case s := <-input2:
-                output <- s
-            case <-time.After(time.Second):
-                return
-            }
-        }
-    }()
-    
-    return output
-}
-
-func main() {
-    ch1 := make(chan string)
-    ch2 := make(chan string)
-    
-    // Send data to channels
-    go func() {
-        for i := 0; i < 5; i++ {
-            ch1 <- fmt.Sprintf("Channel 1: %d", i)
-            time.Sleep(100 * time.Millisecond)
-        }
-        close(ch1)
-    }()
-    
-    go func() {
-        for i := 0; i < 5; i++ {
-            ch2 <- fmt.Sprintf("Channel 2: %d", i)
-            time.Sleep(150 * time.Millisecond)
-        }
-        close(ch2)
-    }()
-    
-    // Receive from combined channel
-    for msg := range fanIn(ch1, ch2) {
-        fmt.Println(msg)
-    }
-}
-```
-
-### Testing with Testify
-
-```go
-import (
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/mock"
-    "github.com/stretchr/testify/suite"
-)
-
-type UserTestSuite struct {
-    suite.Suite
-    user *User
-}
-
-func (suite *UserTestSuite) SetupTest() {
-    suite.user = &User{ID: 1, Name: "John", Email: "john@example.com"}
-}
-
-func (suite *UserTestSuite) TestUserCreation() {
-    assert.Equal(suite.T(), 1, suite.user.ID)
-    assert.Equal(suite.T(), "John", suite.user.Name)
-    assert.Equal(suite.T(), "john@example.com", suite.user.Email)
-}
-
-func TestUserTestSuite(t *testing.T) {
-    suite.Run(t, new(UserTestSuite))
-}
-```
-
----
-
 ## Level 4: Production Deployment
 
 ### Production Best Practices
@@ -500,3 +358,4 @@ func main() {
 **Version**: 4.0.0 Enterprise  
 **Last Updated**: 2025-11-13  
 **Status**: Production Ready
+

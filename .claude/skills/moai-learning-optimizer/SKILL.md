@@ -3,6 +3,8 @@ name: moai-learning-optimizer
 description: Intelligent learning system optimizer that analyzes session patterns,
 ---
 
+## Quick Reference (30 seconds)
+
 # Learning System Optimizer
 
 ---
@@ -20,18 +22,6 @@ Intelligent learning system optimizer that analyzes Alfred's session patterns, i
 - ✅ System performance monitoring and tuning
 - ✅ Predictive assistance and proactive recommendations
 - ✅ Continuous improvement through feedback integration
-
----
-
-## When to Use
-
-- ✅ When optimizing Alfred's performance and behavior
-- ✅ During session analysis and pattern discovery
-- ✅ When implementing adaptive learning capabilities
-- ✅ For system performance monitoring and tuning
-- ✅ When personalizing Alfred's responses and recommendations
-- ✅ During troubleshooting and performance issues
-- ✅ For continuous system improvement and optimization
 
 ---
 
@@ -147,80 +137,6 @@ def optimize_alfred_performance():
 
 ---
 
-## Knowledge Management
-
-### 1. Knowledge Gap Analysis
-```python
-def analyze_knowledge_gaps():
-    """Identify gaps in Alfred's knowledge and capabilities"""
-    gap_analysis = {
-        "missing_knowledge": identify_missing_knowledge(),
-        "outdated_information": identify_outdated_info(),
-        "user_unmet_needs": identify_unmet_needs(),
-        "skill_deficiencies": identify_skill_deficiencies(),
-        "context_limitations": identify_context_limitations()
-    }
-
-    # Prioritize gaps for learning
-    prioritized_gaps = prioritize_knowledge_gaps(gap_analysis)
-
-    # Generate learning plan
-    learning_plan = {
-        "immediate_needs": prioritized_gaps["high_priority"],
-        "medium_term": prioritized_gaps["medium_priority"],
-        "long_term": prioritized_gaps["low_priority"],
-        "learning_resources": identify_learning_resources(),
-        "implementation_strategy": create_learning_strategy()
-    }
-
-    return learning_plan
-```
-
-### 2. Knowledge Integration
-```python
-def integrate_new_knowledge(knowledge_items):
-    """Integrate new knowledge into Alfred's system"""
-    integration_process = {
-        "validation": validate_knowledge(knowledge_items),
-        "categorization": categorize_knowledge(knowledge_items),
-        "indexing": index_knowledge(knowledge_items),
-        "linking": link_knowledge_to_existing(knowledge_items),
-        "testing": test_knowledge_integration(knowledge_items),
-        "deployment": deploy_knowledge_updates(knowledge_items)
-    }
-
-    for step, process in integration_process.items():
-        result = execute_integration_step(step, process)
-        if not result.success:
-            handle_integration_failure(step, result.error)
-            return False
-
-    return True
-```
-
-### 3. Knowledge Quality Management
-```python
-def maintain_knowledge_quality():
-    """Maintain and improve knowledge quality"""
-    quality_metrics = {
-        "accuracy": measure_knowledge_accuracy(),
-        "relevance": measure_knowledge_relevance(),
-        "completeness": measure_knowledge_completeness(),
-        "consistency": measure_knowledge_consistency(),
-        "freshness": measure_knowledge_freshness()
-    }
-
-    quality_issues = identify_quality_issues(quality_metrics)
-
-    if quality_issues:
-        quality_improvement_plan = create_quality_improvement_plan(quality_issues)
-        execute_quality_improvements(quality_improvement_plan)
-
-    return quality_metrics
-```
-
----
-
 ## User Personalization
 
 ### 1. Preference Learning
@@ -302,6 +218,198 @@ def optimize_user_experience():
     }
 
     return optimization_plan
+```
+
+---
+
+## Integration Examples
+
+### Example 1: Session-Based Learning
+```python
+def learn_from_current_session():
+    """Learn from the current Alfred session"""
+    Skill("moai-learning-optimizer")
+
+    session_data = collect_current_session_data()
+    learning_analysis = analyze_session_patterns()
+
+    # Update user preferences
+    update_preferences(learning_analysis)
+
+    # Optimize performance
+    optimize_performance(learning_analysis)
+
+    # Identify improvement opportunities
+    improvements = identify_improvement_opportunities()
+
+    display_learning_summary(learning_analysis, improvements)
+```
+
+### Example 2: Predictive Assistance
+```python
+def provide_predictive_assistance():
+    """Provide predictive assistance based on learned patterns"""
+    Skill("moai-learning-optimizer")
+
+    current_context = get_current_context()
+    predictions = predict_user_behavior(current_context)
+
+    # Offer proactive assistance
+    if predictions["likely_next_actions"]:
+        suggest_next_steps(predictions["likely_next_actions"])
+
+    # Prevent potential issues
+    if predictions["potential_issues"]:
+        provide_preventive_guidance(predictions["potential_issues"])
+```
+
+### Example 3: Performance Optimization
+```python
+def optimize_system_performance():
+    """Optimize Alfred's performance based on learning data"""
+    Skill("moai-learning-optimizer")
+
+    optimization_plan = optimize_alfred_performance()
+
+    # Implement high-priority optimizations
+    for optimization in optimization_plan["high_priority"]:
+        implement_optimization(optimization)
+
+    # Measure improvements
+    improvements = measure_performance_improvements()
+
+    display_optimization_results(optimizations, improvements)
+```
+
+---
+
+## Usage Examples
+
+### Example 1: Learning Analysis
+```python
+# User wants to understand Alfred's learning progress
+Skill("moai-learning-optimizer")
+
+learning_report = generate_learning_report()
+display_learning_dashboard(learning_report)
+
+if learning_report["improvement_opportunities"]:
+    suggest_improvements(learning_report["improvement_opportunities"])
+```
+
+### Example 2: Personalization Setup
+```python
+# User wants to personalize Alfred's behavior
+Skill("moai-learning-optimizer")
+
+preferences = learn_user_preferences()
+personalization_plan = create_personalization_plan(preferences)
+
+apply_personalization(personalization_plan)
+```
+
+### Example 3: System Evolution
+```python
+# User wants to evolve Alfred's capabilities
+Skill("moai-learning-optimizer")
+
+evolution_plan = evolve_system_capabilities()
+display_evolution_roadmap(evolution_plan)
+
+if confirm_evolution(evolution_plan):
+    execute_evolution(evolution_plan)
+```
+
+---
+
+**End of Skill** | Intelligent learning system for continuous Alfred optimization and adaptation
+
+---
+
+## Core Implementation
+
+## When to Use
+
+- ✅ When optimizing Alfred's performance and behavior
+- ✅ During session analysis and pattern discovery
+- ✅ When implementing adaptive learning capabilities
+- ✅ For system performance monitoring and tuning
+- ✅ When personalizing Alfred's responses and recommendations
+- ✅ During troubleshooting and performance issues
+- ✅ For continuous system improvement and optimization
+
+---
+
+## Knowledge Management
+
+### 1. Knowledge Gap Analysis
+```python
+def analyze_knowledge_gaps():
+    """Identify gaps in Alfred's knowledge and capabilities"""
+    gap_analysis = {
+        "missing_knowledge": identify_missing_knowledge(),
+        "outdated_information": identify_outdated_info(),
+        "user_unmet_needs": identify_unmet_needs(),
+        "skill_deficiencies": identify_skill_deficiencies(),
+        "context_limitations": identify_context_limitations()
+    }
+
+    # Prioritize gaps for learning
+    prioritized_gaps = prioritize_knowledge_gaps(gap_analysis)
+
+    # Generate learning plan
+    learning_plan = {
+        "immediate_needs": prioritized_gaps["high_priority"],
+        "medium_term": prioritized_gaps["medium_priority"],
+        "long_term": prioritized_gaps["low_priority"],
+        "learning_resources": identify_learning_resources(),
+        "implementation_strategy": create_learning_strategy()
+    }
+
+    return learning_plan
+```
+
+### 2. Knowledge Integration
+```python
+def integrate_new_knowledge(knowledge_items):
+    """Integrate new knowledge into Alfred's system"""
+    integration_process = {
+        "validation": validate_knowledge(knowledge_items),
+        "categorization": categorize_knowledge(knowledge_items),
+        "indexing": index_knowledge(knowledge_items),
+        "linking": link_knowledge_to_existing(knowledge_items),
+        "testing": test_knowledge_integration(knowledge_items),
+        "deployment": deploy_knowledge_updates(knowledge_items)
+    }
+
+    for step, process in integration_process.items():
+        result = execute_integration_step(step, process)
+        if not result.success:
+            handle_integration_failure(step, result.error)
+            return False
+
+    return True
+```
+
+### 3. Knowledge Quality Management
+```python
+def maintain_knowledge_quality():
+    """Maintain and improve knowledge quality"""
+    quality_metrics = {
+        "accuracy": measure_knowledge_accuracy(),
+        "relevance": measure_knowledge_relevance(),
+        "completeness": measure_knowledge_completeness(),
+        "consistency": measure_knowledge_consistency(),
+        "freshness": measure_knowledge_freshness()
+    }
+
+    quality_issues = identify_quality_issues(quality_metrics)
+
+    if quality_issues:
+        quality_improvement_plan = create_quality_improvement_plan(quality_issues)
+        execute_quality_improvements(quality_improvement_plan)
+
+    return quality_metrics
 ```
 
 ---
@@ -452,104 +560,3 @@ def evolve_system_capabilities():
 
 ---
 
-## Integration Examples
-
-### Example 1: Session-Based Learning
-```python
-def learn_from_current_session():
-    """Learn from the current Alfred session"""
-    Skill("moai-learning-optimizer")
-
-    session_data = collect_current_session_data()
-    learning_analysis = analyze_session_patterns()
-
-    # Update user preferences
-    update_preferences(learning_analysis)
-
-    # Optimize performance
-    optimize_performance(learning_analysis)
-
-    # Identify improvement opportunities
-    improvements = identify_improvement_opportunities()
-
-    display_learning_summary(learning_analysis, improvements)
-```
-
-### Example 2: Predictive Assistance
-```python
-def provide_predictive_assistance():
-    """Provide predictive assistance based on learned patterns"""
-    Skill("moai-learning-optimizer")
-
-    current_context = get_current_context()
-    predictions = predict_user_behavior(current_context)
-
-    # Offer proactive assistance
-    if predictions["likely_next_actions"]:
-        suggest_next_steps(predictions["likely_next_actions"])
-
-    # Prevent potential issues
-    if predictions["potential_issues"]:
-        provide_preventive_guidance(predictions["potential_issues"])
-```
-
-### Example 3: Performance Optimization
-```python
-def optimize_system_performance():
-    """Optimize Alfred's performance based on learning data"""
-    Skill("moai-learning-optimizer")
-
-    optimization_plan = optimize_alfred_performance()
-
-    # Implement high-priority optimizations
-    for optimization in optimization_plan["high_priority"]:
-        implement_optimization(optimization)
-
-    # Measure improvements
-    improvements = measure_performance_improvements()
-
-    display_optimization_results(optimizations, improvements)
-```
-
----
-
-## Usage Examples
-
-### Example 1: Learning Analysis
-```python
-# User wants to understand Alfred's learning progress
-Skill("moai-learning-optimizer")
-
-learning_report = generate_learning_report()
-display_learning_dashboard(learning_report)
-
-if learning_report["improvement_opportunities"]:
-    suggest_improvements(learning_report["improvement_opportunities"])
-```
-
-### Example 2: Personalization Setup
-```python
-# User wants to personalize Alfred's behavior
-Skill("moai-learning-optimizer")
-
-preferences = learn_user_preferences()
-personalization_plan = create_personalization_plan(preferences)
-
-apply_personalization(personalization_plan)
-```
-
-### Example 3: System Evolution
-```python
-# User wants to evolve Alfred's capabilities
-Skill("moai-learning-optimizer")
-
-evolution_plan = evolve_system_capabilities()
-display_evolution_roadmap(evolution_plan)
-
-if confirm_evolution(evolution_plan):
-    execute_evolution(evolution_plan)
-```
-
----
-
-**End of Skill** | Intelligent learning system for continuous Alfred optimization and adaptation

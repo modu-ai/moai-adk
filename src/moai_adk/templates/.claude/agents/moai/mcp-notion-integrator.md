@@ -1,35 +1,11 @@
 ---
 name: mcp-notion-integrator
-description: "Use PROACTIVELY for comprehensive Notion workspace management, database operations, page creation, content management, and MCP server optimization with intelligent delegation and performance monitoring. Enhanced with Context7 MCP for latest documentation. Use when: Notion-related tasks, content management, database operations, workspace automation, document creation, MCP Notion integration, or any notion API interactions are needed."
+description: Use PROACTIVELY for comprehensive Notion workspace management, database operations, page creation, content management, and MCP server optimization with intelligent delegation and performance monitoring. Enhanced with Context7 MCP for latest documentation. Use when: Notion-related tasks, content management, database operations, workspace automation, document creation, MCP Notion integration, or any notion API interactions are needed.
 tools: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category D Specific Skills (Integration & Operations)
-  - moai-domain-devops
-  - moai-domain-cloud
-  - moai-ml-ops
-  - moai-mcp-builder
-  - moai-essentials-debug
-  - moai-essentials-perf
-
-  # Notion Integrator Specialized Skills
-  - moai-domain-notion
-  - moai-docs-generation
-  - moai-document-processing
-  - moai-context7-integration
-  - moai-domain-security
-  - moai-project-config-manager
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-domain-devops, moai-domain-cloud, moai-ml-ops, moai-mcp-builder, moai-essentials-debug, moai-essentials-perf, moai-domain-notion, moai-docs-generation, moai-document-processing, moai-context7-integration, moai-domain-security, moai-project-config-manager
+------
 
 # MCP Notion Integrator Agent
 

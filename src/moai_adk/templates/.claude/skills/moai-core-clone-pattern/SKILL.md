@@ -6,17 +6,9 @@ description: Enterprise Master-Clone pattern implementation guide for complex mu
   parallel exploration, architecture restructuring, and multi-file transformations
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Master-Clone Pattern Skill 
-
-## What It Does
-
-Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delegation mechanism where Alfred creates autonomous clones (Task-delegated agents) to handle complex multi-step tasks that don't require domain-specific expertise but benefit from:
-- Full project context and codebase understanding
-- Parallel processing capabilities
-- Independent decision-making
-- Comprehensive state tracking
-
----
 
 ## When to Use (Decision Framework)
 
@@ -44,6 +36,35 @@ Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delega
 - Single file modification (use tdd-implementer)
 
 ---
+
+## When NOT to Use (Anti-Patterns)
+
+| Scenario | Why | Use Instead |
+|----------|-----|------------|
+| Single file change | Too much overhead | Direct tdd-implementer |
+| 2-3 quick steps | Sequential simpler | Direct execution |
+| Domain expertise required | Needs specialist | Specialist agent (security, DB, etc.) |
+| Real-time interaction | Clones run independently | Interactive agent |
+| Simple query | Overkill complexity | Direct lookup |
+
+---
+
+## Related Skills
+
+- `moai-alfred-agent-guide` (Agent architecture & delegation)
+- `moai-alfred-task-decomposition` (Breaking down complex tasks)
+- `moai-essentials-refactor` (Refactoring patterns & examples)
+
+---
+
+**For detailed API specifications**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
 
 ## Key Concepts
 
@@ -272,27 +293,17 @@ return validateIntegration(refactorResults);
 
 ---
 
-## When NOT to Use (Anti-Patterns)
+---
 
-| Scenario | Why | Use Instead |
-|----------|-----|------------|
-| Single file change | Too much overhead | Direct tdd-implementer |
-| 2-3 quick steps | Sequential simpler | Direct execution |
-| Domain expertise required | Needs specialist | Specialist agent (security, DB, etc.) |
-| Real-time interaction | Clones run independently | Interactive agent |
-| Simple query | Overkill complexity | Direct lookup |
+## Advanced Patterns
+
+## What It Does
+
+Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delegation mechanism where Alfred creates autonomous clones (Task-delegated agents) to handle complex multi-step tasks that don't require domain-specific expertise but benefit from:
+- Full project context and codebase understanding
+- Parallel processing capabilities
+- Independent decision-making
+- Comprehensive state tracking
 
 ---
 
-## Related Skills
-
-- `moai-alfred-agent-guide` (Agent architecture & delegation)
-- `moai-alfred-task-decomposition` (Breaking down complex tasks)
-- `moai-essentials-refactor` (Refactoring patterns & examples)
-
----
-
-**For detailed API specifications**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )

@@ -3,6 +3,7 @@ name: moai-domain-figma
 description: Figma design system integration with API automation, design tokens, and
 ---
 
+## Quick Reference (30 seconds)
 
 # Design Systems & Figma Integration - Advanced MCP Patterns
 
@@ -43,6 +44,42 @@ description: Figma design system integration with API automation, design tokens,
 | `export_components` | Batch export multiple components | Library generation, code scaffolding |
 
 ---
+
+## References
+
+- **Figma API Documentation**: https://www.figma.com/developers
+- **Figma REST API**: https://www.figma.com/developers/api
+- **MCP Figma Integration**: https://github.com/anthropic-ai/mcp-server-figma
+- **Design Tokens**: https://design-tokens.github.io/
+- **Design System Best Practices**: https://www.designsystems.com/
+
+---
+
+**Last Updated**: 2025-11-19
+**Format**: Markdown | **Language**: English
+**Status**: Stable (v4.1.0)
+**Version**: 4.1.0
+
+### Changelog
+
+**v4.1.0** (2025-11-19)
+- Added MCP tool invocation patterns (sequential, parallel, conditional)
+- Comprehensive error handling guide with solutions
+- Performance optimization strategies (caching, batch processing)
+- Parameter validation and auto-detection examples
+- Complete design-to-code pipeline workflow
+- Rate limiting and retry strategy documentation
+- Token extraction and multi-format export examples
+- Performance improvement metrics (20-70% speedup for parallel calls)
+
+**v4.0.0** (2025-11-18)
+- Initial stable release
+- Core design system patterns
+- Basic Figma API overview
+
+---
+
+## Core Implementation
 
 ## Level 2: Practical Implementation
 
@@ -549,34 +586,3 @@ async function exportTokens(figmaFileId: string, outputDir: string) {
 
 ---
 
-## References
-
-- **Figma API Documentation**: https://www.figma.com/developers
-- **Figma REST API**: https://www.figma.com/developers/api
-- **MCP Figma Integration**: https://github.com/anthropic-ai/mcp-server-figma
-- **Design Tokens**: https://design-tokens.github.io/
-- **Design System Best Practices**: https://www.designsystems.com/
-
----
-
-**Last Updated**: 2025-11-19
-**Format**: Markdown | **Language**: English
-**Status**: Stable (v4.1.0)
-**Version**: 4.1.0
-
-### Changelog
-
-**v4.1.0** (2025-11-19)
-- Added MCP tool invocation patterns (sequential, parallel, conditional)
-- Comprehensive error handling guide with solutions
-- Performance optimization strategies (caching, batch processing)
-- Parameter validation and auto-detection examples
-- Complete design-to-code pipeline workflow
-- Rate limiting and retry strategy documentation
-- Token extraction and multi-format export examples
-- Performance improvement metrics (20-70% speedup for parallel calls)
-
-**v4.0.0** (2025-11-18)
-- Initial stable release
-- Core design system patterns
-- Basic Figma API overview

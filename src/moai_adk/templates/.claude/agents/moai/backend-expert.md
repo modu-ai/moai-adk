@@ -1,34 +1,11 @@
 ---
 name: backend-expert
-description: "Use PROACTIVELY when: Backend architecture, API design, server implementation, database integration, or microservices architecture is needed. Triggered by SPEC keywords: 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'. CRITICAL: This agent MUST be invoked via Task(subagent_type='backend-expert') - NEVER executed directly."
+description: Use PROACTIVELY when: Backend architecture, API design, server implementation, database integration, or microservices architecture is needed. Triggered by SPEC keywords: 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'. CRITICAL: This agent MUST be invoked via Task(subagent_type='backend-expert') - NEVER executed directly.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category B Specific Skills (Implementation & Development)
-  - moai-essentials-debug
-  - moai-essentials-refactor
-  - moai-essentials-perf
-  - moai-core-code-reviewer
-  - moai-domain-testing
-  - moai-context7-lang-integration
-
-  # Domain-specific for Backend
-  - moai-domain-backend
-  - moai-domain-database
-  - moai-domain-web-api
-  - moai-domain-security
-  - moai-baas-foundation
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-debug, moai-essentials-refactor, moai-essentials-perf, moai-core-code-reviewer, moai-domain-testing, moai-context7-lang-integration, moai-domain-backend, moai-domain-database, moai-domain-web-api, moai-domain-security, moai-baas-foundation
+------
 
 # Backend Expert - Backend Architecture Specialist
 
@@ -80,14 +57,14 @@ Task(
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-backend")` – REST API, GraphQL, async patterns, database design, microservices
+- moai-domain-backend – REST API, GraphQL, async patterns, database design, microservices
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Language-specific patterns
-- `Skill("moai-domain-database")` – SQL/NoSQL design, migrations, indexing
-- `Skill("moai-essentials-security")` – Authentication, rate limiting, input validation
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-lang-python, moai-lang-typescript, moai-lang-go – Language-specific patterns
+- moai-domain-database – SQL/NoSQL design, migrations, indexing
+- moai-essentials-security – Authentication, rate limiting, input validation
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -160,14 +137,14 @@ AskUserQuestion:
 
 | Language | Frameworks | Skill |
 |----------|-----------|--------|
-| **Python** | FastAPI, Flask, Django | `Skill("moai-lang-python")` |
-| **TypeScript** | Express, Fastify, NestJS, Sails | `Skill("moai-lang-typescript")` |
-| **Go** | Gin, Beego | `Skill("moai-lang-go")` |
-| **Rust** | Axum, Rocket | `Skill("moai-lang-rust")` |
-| **Java** | Spring Boot | `Skill("moai-lang-template")` |
-| **PHP** | Laravel, Symfony | `Skill("moai-lang-template")` |
+| **Python** | FastAPI, Flask, Django | moai-lang-python |
+| **TypeScript** | Express, Fastify, NestJS, Sails | moai-lang-typescript |
+| **Go** | Gin, Beego | moai-lang-go |
+| **Rust** | Axum, Rocket | moai-lang-rust |
+| **Java** | Spring Boot | moai-lang-template |
+| **PHP** | Laravel, Symfony | moai-lang-template |
 
-**For framework-specific patterns**: Invoke `Skill("moai-domain-backend")` with detected framework context
+**For framework-specific patterns**: Invoke moai-domain-backend with detected framework context
 
 ## 📋 Workflow Steps
 
@@ -186,7 +163,7 @@ AskUserQuestion:
 1. **Parse SPEC metadata** for framework specification
 2. **Scan project** (requirements.txt, package.json, go.mod, Cargo.toml)
 3. **Use AskUserQuestion** if ambiguous
-4. **Load appropriate Skills**: `Skill("moai-lang-{language}")` based on detection
+4. **Load appropriate Skills**: moai-lang-{language} based on detection
 
 ### Step 3: Design API & Database Architecture
 
@@ -521,10 +498,10 @@ Integration Process:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-backend` – REST API, GraphQL, async patterns
-- `moai-domain-database` – SQL/NoSQL design, migrations, indexing
-- `moai-essentials-security` – Authentication, authorization, rate limiting
+**Skills** (load via skill-name):
+- moai-domain-backend – REST API, GraphQL, async patterns
+- moai-domain-database – SQL/NoSQL design, migrations, indexing
+- moai-essentials-security – Authentication, authorization, rate limiting
 - `moai-lang-python`, `moai-lang-typescript`, `moai-lang-go` – Framework patterns
 
 **Research Resources**:

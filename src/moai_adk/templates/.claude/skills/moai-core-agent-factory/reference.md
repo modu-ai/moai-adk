@@ -69,12 +69,12 @@ Add by Complexity:
 ### 6. Skill Recommendation
 ```
 AUTO_SKILLS:
-  - moai-core-agent-guide
-  - moai-core-workflow
+  - moai-alfred-agent-guide
+  - moai-alfred-workflow
   - moai-domain-{primary_domain}
 
 CONDITIONAL_SKILLS:
-  - moai-core-language-detection
+  - moai-alfred-language-detection
   - moai-domain-{secondary_domains}
   - moai-lang-{language}
   - moai-essentials-{capabilities}
@@ -94,7 +94,7 @@ performance     → moai-essentials-perf
 documentation   → moai-docs-generation
 
 create          → moai-essentials-refactor
-analyze         → moai-essentials-debug, moai-core-code-reviewer
+analyze         → moai-essentials-debug, moai-alfred-code-reviewer
 optimize        → moai-essentials-perf, moai-essentials-refactor
 research        → moai-context7-lang-integration
 integrate       → moai-cc-mcp-plugins

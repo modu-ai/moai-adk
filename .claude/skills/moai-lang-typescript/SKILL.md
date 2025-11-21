@@ -6,6 +6,8 @@ description: Enterprise TypeScript with strict typing and modern ecosystem TypeS
   framework-agnostic TypeScript patterns.
 ---
 
+## Quick Reference (30 seconds)
+
 # Modern TypeScript Development — Enterprise  
 
 ## Quick Summary
@@ -54,6 +56,25 @@ Enterprise deployment and optimization:
 - **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
 
 ---
+
+## Learn More
+
+- **Examples**: See `examples.md` for React, Next.js, tRPC, Zod, and Vitest patterns
+- **Reference**: See `reference.md` for API details, tool versions, and troubleshooting
+- **TypeScript 5.9**: https://devblogs.microsoft.com/typescript/announcing-typescript-5-9/
+- **React 19**: https://react.dev/
+- **Next.js 16**: https://nextjs.org/docs
+- **tRPC**: https://trpc.io/docs
+- **Zod**: https://zod.dev/
+
+---
+
+**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
+**Auto-loads**: TypeScript projects mentioning Next.js, React, tRPC, strict types, type safety
+
+---
+
+## Implementation Guide
 
 ## Technology Stack (November 2025 Stable)
 
@@ -269,6 +290,10 @@ it('renders button', () => {
 
 ---
 
+---
+
+## Advanced Patterns
+
 ## Production Best Practices
 
 1. **Enable strict mode** in tsconfig.json for maximum type safety
@@ -283,19 +308,4 @@ it('renders button', () => {
 10. **Build with Turbopack** for faster development cycles
 
 ---
-
-## Learn More
-
-- **Examples**: See `examples.md` for React, Next.js, tRPC, Zod, and Vitest patterns
-- **Reference**: See `reference.md` for API details, tool versions, and troubleshooting
-- **TypeScript 5.9**: https://devblogs.microsoft.com/typescript/announcing-typescript-5-9/
-- **React 19**: https://react.dev/
-- **Next.js 16**: https://nextjs.org/docs
-- **tRPC**: https://trpc.io/docs
-- **Zod**: https://zod.dev/
-
----
-
-**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
-**Auto-loads**: TypeScript projects mentioning Next.js, React, tRPC, strict types, type safety
 

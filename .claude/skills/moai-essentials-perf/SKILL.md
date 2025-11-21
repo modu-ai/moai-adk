@@ -3,30 +3,15 @@ name: moai-essentials-perf
 description: AI-powered enterprise performance optimization orchestrator with Context7
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise Performance Optimization Skill 
 
 ---
 
-## 🚀 Revolutionary AI Performance Capabilities
-
-### **AI-Enhanced Performance Analysis with Context7**
-- 🎯 **Intelligent Bottleneck Detection** using ML pattern recognition
-- ⚡ **Scalene AI Profiling Integration** with GPU and advanced memory analysis
-- 🔮 **Predictive Performance Optimization** using Context7 latest patterns
-- 🧠 **AI-Generated Optimization Strategies** with Context7 validation
-- 📊 **Real-Time Performance Monitoring** with AI anomaly detection
-- 🤖 **Automated Performance Tuning** with Context7 best practices
-- 🌐 **Distributed Performance Analysis** across microservices
-- 🚀 **GPU/Accelerated Computing Optimization** with Context7 patterns
-
-### **Context7 Integration Features**
-- **Live Performance Patterns**: Get latest optimization techniques from `/plasma-umass/scalene`
-- **AI Pattern Matching**: Match performance issues against Context7 knowledge base
-- **Best Practice Integration**: Apply latest optimization techniques from official docs
-- **Version-Aware Optimization**: Context7 provides version-specific optimization patterns
-- **Community Optimization Wisdom**: Leverage collective performance tuning knowledge
-
 ---
+
+## Core Implementation
 
 ## 🎯 When to Use
 
@@ -390,68 +375,6 @@ class MemoryOptimizer:
 
 ---
 
-## 🛠️ Advanced Performance Workflows
-
-### Automated Performance Testing with AI
-```python
-class AIPerformanceTestSuite:
-    """AI-powered performance testing with Context7 patterns."""
-    
-    async def run_ai_performance_tests(self, application: Application) -> PerformanceTestResults:
-        """Run AI-enhanced performance tests with Context7 patterns."""
-        
-        # Get Context7 performance testing patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/plasma-umass/scalene",
-            topic="performance testing optimization patterns",
-            tokens=3000
-        )
-        
-        # AI test generation
-        ai_tests = self.ai_test_generator.generate_performance_tests(application)
-        
-        # Context7-enhanced test execution
-        test_results = self.execute_context7_enhanced_tests(ai_tests, context7_patterns)
-        
-        return PerformanceTestResults(
-            test_results=test_results,
-            ai_insights=self.ai_test_analyzer.analyze_results(test_results),
-            context7_patterns=context7_patterns,
-            optimization_recommendations=self.generate_test_optimizations(test_results)
-        )
-```
-
-### Continuous Performance Optimization
-```python
-class ContinuousPerformanceOptimizer:
-    """Continuous performance optimization with AI and Context7."""
-    
-    async def setup_continuous_optimization(self, application: Application) -> OptimizationPipeline:
-        """Setup continuous performance optimization pipeline."""
-        
-        # Get Context7 continuous optimization patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/plasma-umass/scalene",
-            topic="continuous optimization monitoring patterns",
-            tokens=3000
-        )
-        
-        # AI optimization pipeline
-        optimization_pipeline = self.ai_pipeline.create_optimization_pipeline(
-            application, context7_patterns
-        )
-        
-        return OptimizationPipeline(
-            ai_pipeline=optimization_pipeline,
-            context7_patterns=context7_patterns,
-            monitoring_setup=self.setup_performance_monitoring(),
-            optimization_triggers=self.setup_optimization_triggers(),
-            continuous_improvement=self.setup_continuous_learning()
-        )
-```
-
----
-
 ## 📊 Real-Time Performance Intelligence
 
 ### AI Performance Intelligence Dashboard
@@ -659,20 +582,6 @@ def build_context7_scalene_command(target_file: str, optimization_level: str) ->
 
 ---
 
-## 📚 Advanced Performance Scenarios
-
-### Comprehensive AI Performance Optimization
-- **Web Application Performance**: AI + Scalene + Context7 web optimization
-- **Database Query Optimization**: AI-enhanced query performance analysis
-- **Microservices Performance**: Distributed performance optimization with AI
-- **Mobile Application Performance**: AI mobile optimization patterns
-- **Machine Learning Pipeline Optimization**: AI ML pipeline performance tuning
-- **Real-Time System Performance**: AI real-time system optimization
-- **Cloud Infrastructure Performance**: AI cloud performance optimization
-- **Edge Computing Performance**: AI edge device performance optimization
-
----
-
 ## 🔗 Enterprise Integration
 
 ### CI/CD Performance Pipeline
@@ -782,3 +691,4 @@ class AIPerformanceLearner:
 - `moai-essentials-review` (AI performance code review)
 - `moai-foundation-trust` (AI quality assurance for performance)
 - Context7 MCP (latest performance optimization patterns and Scalene integration)
+

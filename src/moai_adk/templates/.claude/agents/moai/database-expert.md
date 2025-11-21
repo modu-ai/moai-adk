@@ -1,35 +1,11 @@
 ---
 name: database-expert
-description: "Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords: 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'."
+description: Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords: 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category B Specific Skills (Implementation & Development)
-  - moai-essentials-debug
-  - moai-essentials-refactor
-  - moai-essentials-perf
-  - moai-core-code-reviewer
-  - moai-domain-testing
-  - moai-context7-lang-integration
-
-  # Domain-specific for Database
-  - moai-domain-database
-  - moai-domain-backend
-  - moai-baas-neon-ext
-  - moai-baas-supabase-ext
-  - moai-migration-expert
-  - moai-domain-security
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-debug, moai-essentials-refactor, moai-essentials-perf, moai-core-code-reviewer, moai-domain-testing, moai-context7-lang-integration, moai-domain-database, moai-domain-backend, moai-baas-neon-ext, moai-baas-supabase-ext, moai-migration-expert, moai-domain-security
+------
 
 # Database Expert 🗄️
 

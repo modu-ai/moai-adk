@@ -5,7 +5,13 @@ description: Claude Code Skills management, skill creation patterns, and knowled
   or designing knowledge systems.
 ---
 
+## Quick Reference (30 seconds)
+
 # Claude Code Skills Management
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -72,3 +78,10 @@ Claude Code Skills management, skill creation patterns, and knowledge capsule ar
 ---
 
 **End of Skill** | Updated 2025-11-11
+
+---
+
+## Advanced Patterns
+
+
+

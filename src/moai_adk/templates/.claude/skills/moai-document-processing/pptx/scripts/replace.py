@@ -25,19 +25,19 @@ from pptx.util import Pt
 
 def clear_paragraph_bullets(paragraph):
     """Clear bullet formatting from a paragraph."""
-    ppr = paragraph._element.get_or_add_pPr()
+    pPr = paragraph._element.get_or_add_pPr()
 
     # Remove existing bullet elements
-    for child in list(ppr):
+    for child in list(pPr):
         if (
             child.tag.endswith("buChar")
             or child.tag.endswith("buNone")
             or child.tag.endswith("buAutoNum")
             or child.tag.endswith("buFont")
         ):
-            ppr.remove(child)
+            pPr.remove(child)
 
-    return ppr
+    return pPr
 
 
 def apply_paragraph_properties(paragraph, para_data: Dict[str, Any]):
@@ -46,7 +46,7 @@ def apply_paragraph_properties(paragraph, para_data: Dict[str, Any]):
     text = para_data.get("text", "")
 
     # Get or create paragraph properties
-    ppr = clear_paragraph_bullets(paragraph)
+    pPr = clear_paragraph_bullets(paragraph)
 
     # Handle bullet formatting
     if para_data.get("bullet", False):
@@ -59,25 +59,25 @@ def apply_paragraph_properties(paragraph, para_data: Dict[str, Any]):
         hanging_indent_emu = int(-font_size * 0.8 * 12700)
 
         # Set indentation
-        ppr.attrib["marL"] = str(level_indent_emu)
-        ppr.attrib["indent"] = str(hanging_indent_emu)
+        pPr.attrib["marL"] = str(level_indent_emu)
+        pPr.attrib["indent"] = str(hanging_indent_emu)
 
         # Add bullet character
-        bu_char = OxmlElement("a:buChar")
-        bu_char.set("char", "•")
-        ppr.append(bu_char)
+        buChar = OxmlElement("a:buChar")
+        buChar.set("char", "•")
+        pPr.append(buChar)
 
         # Default to left alignment for bullets if not specified
         if "alignment" not in para_data:
             paragraph.alignment = PP_ALIGN.LEFT
     else:
         # Remove indentation for non-bullet text
-        ppr.attrib["marL"] = "0"
-        ppr.attrib["indent"] = "0"
+        pPr.attrib["marL"] = "0"
+        pPr.attrib["indent"] = "0"
 
         # Add buNone element
-        bu_none = OxmlElement("a:buNone")
-        ppr.insert(0, bu_none)
+        buNone = OxmlElement("a:buNone")
+        pPr.insert(0, buNone)
 
     # Apply alignment
     if "alignment" in para_data:

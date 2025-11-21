@@ -5,20 +5,9 @@ description: Enterprise Auth0 Identity Platform with AI-powered authentication a
   SSO and compliance
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Auth0 Identity Platform Expert 
-
-## What It Does
-
-Enterprise Auth0 Identity Platform expert with AI-powered authentication architecture, Context7 integration, and intelligent identity orchestration for scalable enterprise SSO and compliance requirements.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Identity Architecture** using Context7 MCP for latest Auth0 documentation
-- 📊 **Intelligent SSO Orchestration** with automated provider integration optimization
-- 🚀 **Real-time Security Analytics** with AI-driven threat detection and response
-- 🔗 **Enterprise Protocol Integration** with SAML, OIDC, and WS-Federation optimization
-- 📈 **Predictive Compliance Management** with automated audit and reporting capabilities
-
----
 
 ## When to Use
 
@@ -38,6 +27,156 @@ Enterprise Auth0 Identity Platform expert with AI-powered authentication archite
 ---
 
 # Quick Reference (Level 1)
+
+## November 2025 Auth0 Platform Updates
+
+### Latest Features
+- **Event Streams**: Real-time user lifecycle events for integration
+- **Advanced Customization for Universal Login**: Organization flows support
+- **MFA TOTP Screen Support**: Enhanced one-time password experience
+- **Multi-Language Dashboard**: Japanese language support for global teams
+- **Enhanced Breach Detection**: Improved password leak monitoring
+
+### Integration Patterns
+
+#### Multi-Tenant B2B Architecture
+```typescript
+// Auth0 Organizations implementation
+import ManagementClient from 'auth0';
+
+const management = new ManagementClient({
+  domain: 'your-domain.auth0.com',
+  clientId: 'your-management-client-id',
+  clientSecret: 'your-management-client-secret'
+});
+
+export async function createOrganization(name: string, displayName: string) {
+  try {
+    const organization = await management.organizations.create({
+      name,
+      display_name: displayName,
+      metadata: {
+        industry: 'technology',
+        size: 'enterprise'
+      }
+    });
+    
+    // Add organization connections
+    await management.organizations.addConnection(
+      { id: organization.id },
+      { connection_id: 'con_saml_enterprise' }
+    );
+    
+    return organization;
+  } catch (error) {
+    console.error('Organization creation failed:', error);
+    throw error;
+  }
+}
+```
+
+#### Advanced Security Rules
+```javascript
+// Auth0 Rules for enhanced security
+function enhancedSecurity(user, context, callback) {
+  // Check for suspicious login patterns
+  const suspiciousIndicators = [];
+  
+  // New device detection
+  if (!user.user_metadata.last_login_device) {
+    suspiciousIndicators.push('new_device');
+  }
+  
+  // New location detection
+  const currentLocation = context.request.geoip;
+  const lastLocation = user.user_metadata.last_location;
+  
+  if (lastLocation && 
+      (currentLocation.country_code !== lastLocation.country_code ||
+       currentLocation.region_name !== lastLocation.region_name)) {
+    suspiciousIndicators.push('new_location');
+  }
+  
+  // Require MFA for suspicious activity
+  if (suspiciousIndicators.length > 0) {
+    context.multifactor = {
+      provider: 'any',
+      allowRememberBrowser: false
+    };
+    
+    // Add security metadata
+    user.user_metadata = user.user_metadata || {};
+    user.user_metadata.security_flags = suspiciousIndicators;
+    user.user_metadata.last_login_device = context.request.userAgent;
+    user.user_metadata.last_location = currentLocation;
+  }
+  
+  callback(null, user, context);
+}
+```
+
+### Compliance Implementation
+
+#### GDPR Compliance Setup
+```python
+class GDPRComplianceManager:
+    def __init__(self):
+        self.auth0_client = Auth0ManagementClient()
+        self.data_anonymizer = DataAnonymizer()
+    
+    def setup_gdpr_compliance(self, tenant_domain: str) -> ComplianceSetup:
+        """Configure GDPR compliance features."""
+        
+        # Configure data retention policies
+        retention_config = self.auth0_client.update_guardian({
+          'policies': {
+            'inactivity': {
+              'expiration': '365d'  # Delete inactive users after 1 year
+            }
+          }
+        })
+        
+        # Set up consent management
+        consent_config = self.auth0_client.update_client_settings(
+            client_id='spa-client',
+            body={
+                'consent_requested': ['offline_access'],
+                'grant_types': ['authorization_code', 'refresh_token'],
+                'logout_urls': ['https://app.company.com/logout']
+            }
+        )
+        
+        return ComplianceSetup(
+            data_retention=retention_config,
+            consent_management=consent_config,
+            data_export=self._setup_data_export(),
+            data_deletion=self._setup_data_deletion(),
+            audit_trail=self._setup_audit_trail()
+        )
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+## API Reference
+
+### Core Auth0 Operations
+- `create_user(email, password, connection)` - Create new user
+- `create_organization(name, display_name)` - Create organization
+- `add_saml_connection(org_id, connection_config)` - Add SAML provider
+- `configure_mfa(provider, policies)` - Configure multi-factor authentication
+- `setup_breach_detection(settings)` - Configure breach monitoring
+- `export_user_data(user_id)` - GDPR data export
+
+### Context7 Integration
+- `get_latest_auth0_documentation()` - Official Auth0 docs via Context7
+- `analyze_enterprise_sso_patterns()` - Enterprise SSO integration via Context7
+- `optimize_security_configuration()` - Latest security best practices via Context7
+
+---
+
+## Implementation Guide
 
 ## Auth0 Enterprise Platform (November 2025)
 
@@ -211,152 +350,6 @@ class Auth0SecurityManager:
 
 # Advanced Implementation (Level 3)
 
-## November 2025 Auth0 Platform Updates
-
-### Latest Features
-- **Event Streams**: Real-time user lifecycle events for integration
-- **Advanced Customization for Universal Login**: Organization flows support
-- **MFA TOTP Screen Support**: Enhanced one-time password experience
-- **Multi-Language Dashboard**: Japanese language support for global teams
-- **Enhanced Breach Detection**: Improved password leak monitoring
-
-### Integration Patterns
-
-#### Multi-Tenant B2B Architecture
-```typescript
-// Auth0 Organizations implementation
-import ManagementClient from 'auth0';
-
-const management = new ManagementClient({
-  domain: 'your-domain.auth0.com',
-  clientId: 'your-management-client-id',
-  clientSecret: 'your-management-client-secret'
-});
-
-export async function createOrganization(name: string, displayName: string) {
-  try {
-    const organization = await management.organizations.create({
-      name,
-      display_name: displayName,
-      metadata: {
-        industry: 'technology',
-        size: 'enterprise'
-      }
-    });
-    
-    // Add organization connections
-    await management.organizations.addConnection(
-      { id: organization.id },
-      { connection_id: 'con_saml_enterprise' }
-    );
-    
-    return organization;
-  } catch (error) {
-    console.error('Organization creation failed:', error);
-    throw error;
-  }
-}
-```
-
-#### Advanced Security Rules
-```javascript
-// Auth0 Rules for enhanced security
-function enhancedSecurity(user, context, callback) {
-  // Check for suspicious login patterns
-  const suspiciousIndicators = [];
-  
-  // New device detection
-  if (!user.user_metadata.last_login_device) {
-    suspiciousIndicators.push('new_device');
-  }
-  
-  // New location detection
-  const currentLocation = context.request.geoip;
-  const lastLocation = user.user_metadata.last_location;
-  
-  if (lastLocation && 
-      (currentLocation.country_code !== lastLocation.country_code ||
-       currentLocation.region_name !== lastLocation.region_name)) {
-    suspiciousIndicators.push('new_location');
-  }
-  
-  // Require MFA for suspicious activity
-  if (suspiciousIndicators.length > 0) {
-    context.multifactor = {
-      provider: 'any',
-      allowRememberBrowser: false
-    };
-    
-    // Add security metadata
-    user.user_metadata = user.user_metadata || {};
-    user.user_metadata.security_flags = suspiciousIndicators;
-    user.user_metadata.last_login_device = context.request.userAgent;
-    user.user_metadata.last_location = currentLocation;
-  }
-  
-  callback(null, user, context);
-}
-```
-
-### Compliance Implementation
-
-#### GDPR Compliance Setup
-```python
-class GDPRComplianceManager:
-    def __init__(self):
-        self.auth0_client = Auth0ManagementClient()
-        self.data_anonymizer = DataAnonymizer()
-    
-    def setup_gdpr_compliance(self, tenant_domain: str) -> ComplianceSetup:
-        """Configure GDPR compliance features."""
-        
-        # Configure data retention policies
-        retention_config = self.auth0_client.update_guardian({
-          'policies': {
-            'inactivity': {
-              'expiration': '365d'  # Delete inactive users after 1 year
-            }
-          }
-        })
-        
-        # Set up consent management
-        consent_config = self.auth0_client.update_client_settings(
-            client_id='spa-client',
-            body={
-                'consent_requested': ['offline_access'],
-                'grant_types': ['authorization_code', 'refresh_token'],
-                'logout_urls': ['https://app.company.com/logout']
-            }
-        )
-        
-        return ComplianceSetup(
-            data_retention=retention_config,
-            consent_management=consent_config,
-            data_export=self._setup_data_export(),
-            data_deletion=self._setup_data_deletion(),
-            audit_trail=self._setup_audit_trail()
-        )
-```
-
----
-
-# Reference & Integration (Level 4)
-
-## API Reference
-
-### Core Auth0 Operations
-- `create_user(email, password, connection)` - Create new user
-- `create_organization(name, display_name)` - Create organization
-- `add_saml_connection(org_id, connection_config)` - Add SAML provider
-- `configure_mfa(provider, policies)` - Configure multi-factor authentication
-- `setup_breach_detection(settings)` - Configure breach monitoring
-- `export_user_data(user_id)` - GDPR data export
-
-### Context7 Integration
-- `get_latest_auth0_documentation()` - Official Auth0 docs via Context7
-- `analyze_enterprise_sso_patterns()` - Enterprise SSO integration via Context7
-- `optimize_security_configuration()` - Latest security best practices via Context7
-
 ## Best Practices (November 2025)
 
 ### DO
@@ -390,6 +383,23 @@ class GDPRComplianceManager:
 - `moai-essentials-perf` (Authentication performance optimization)
 - `moai-security-compliance` (Compliance management and reporting)
 
+---
+
+## Advanced Patterns
+
+## What It Does
+
+Enterprise Auth0 Identity Platform expert with AI-powered authentication architecture, Context7 integration, and intelligent identity orchestration for scalable enterprise SSO and compliance requirements.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Identity Architecture** using Context7 MCP for latest Auth0 documentation
+- 📊 **Intelligent SSO Orchestration** with automated provider integration optimization
+- 🚀 **Real-time Security Analytics** with AI-driven threat detection and response
+- 🔗 **Enterprise Protocol Integration** with SAML, OIDC, and WS-Federation optimization
+- 📈 **Predictive Compliance Management** with automated audit and reporting capabilities
+
+---
+
 ## Changelog
 
 - ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Auth0 platform updates, and advanced enterprise SSO patterns
@@ -418,3 +428,4 @@ class GDPRComplianceManager:
 ---
 
 **End of Enterprise Auth0 Identity Platform Expert **
+

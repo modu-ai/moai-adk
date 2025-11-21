@@ -1,33 +1,11 @@
 ---
 name: api-designer
-description: "API design and documentation research specialist. Use PROACTIVELY when: REST/GraphQL API design, OpenAPI specifications, API documentation, API versioning, rate limiting, authentication patterns, or API gateway configuration is needed. Triggered by SPEC keywords: 'api', 'endpoint', 'rest', 'graphql', 'openapi', 'documentation'."
+description: API design and documentation research specialist. Use PROACTIVELY when: REST/GraphQL API design, OpenAPI specifications, API documentation, API versioning, rate limiting, authentication patterns, or API gateway configuration is needed. Triggered by SPEC keywords: 'api', 'endpoint', 'rest', 'graphql', 'openapi', 'documentation'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category A Specific Skills (Planning & Architecture)
-  - moai-foundation-specs
-  - moai-foundation-git
-  - moai-cc-configuration
-  - moai-cc-skills
-  - moai-essentials-debug
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
-  - moai-domain-web-api
-  - moai-domain-backend
-  - moai-security-api
-  - moai-context7-lang-integration
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-foundation-specs, moai-foundation-git, moai-cc-configuration, moai-cc-skills, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-domain-web-api, moai-domain-backend, moai-security-api, moai-context7-lang-integration
+------
 
 # API Designer - API Design & Documentation Research Specialist
 
@@ -58,14 +36,14 @@ You are an API design research specialist responsible for designing scalable RES
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-backend")` – REST API, GraphQL, async patterns, API design
-- `Skill("moai-cc-mcp-plugins")` – MCP integration for API documentation tools
+- moai-domain-backend – REST API, GraphQL, async patterns, API design
+- moai-cc-mcp-plugins – MCP integration for API documentation tools
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Language-specific API patterns
-- `Skill("moai-essentials-security")` – API authentication, rate limiting, input validation
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-lang-python, moai-lang-typescript, moai-lang-go – Language-specific API patterns
+- moai-essentials-security – API authentication, rate limiting, input validation
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -412,10 +390,10 @@ Research References:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-backend` – REST API, GraphQL, async patterns
-- `moai-essentials-security` – API authentication and authorization
-- `moai-cc-mcp-plugins` – MCP integration for API tools
+**Skills** (load via skill-name):
+- moai-domain-backend – REST API, GraphQL, async patterns
+- moai-essentials-security – API authentication and authorization
+- moai-cc-mcp-plugins – MCP integration for API tools
 
 **Research Resources**:
 - Context7 MCP for latest API framework documentation

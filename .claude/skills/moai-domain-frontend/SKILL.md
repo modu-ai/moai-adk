@@ -3,20 +3,9 @@ name: moai-domain-frontend
 description: Enterprise Frontend Development with AI-powered modern architecture,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Frontend Development Expert 
-
----
-
-## What It Does
-
-Enterprise Frontend Development expert with AI-powered modern architecture, Context7 integration, and intelligent component orchestration for scalable user interfaces.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Frontend Architecture** using Context7 MCP for latest frontend patterns
-- 📊 **Intelligent Component Orchestration** with automated design system optimization
-- 🚀 **Modern Framework Integration** with AI-driven performance optimization
-- 🔗 **Enterprise User Experience** with zero-configuration accessibility and internationalization
-- 📈 **Predictive Performance Analytics** with usage forecasting and optimization insights
 
 ---
 
@@ -37,303 +26,6 @@ Enterprise Frontend Development expert with AI-powered modern architecture, Cont
 ---
 
 # Quick Reference (Level 1)
-
-## Modern Frontend Stack (November 2025)
-
-### Core Framework Ecosystem
-- **React 19**: Latest with concurrent features and Server Components
-- **Vue 3.5**: Composition API and performance optimizations
-- **Angular 18**: Standalone components and improved hydration
-- **Svelte 5**: Signals and improved TypeScript support
-- **Next.js 16**: App Router, Server Components, and Turbopack
-
-### State Management Solutions
-- **Zustand**: Lightweight state management
-- **TanStack Query**: Server state management with caching
-- **Jotai**: Atomic state management
-- **Redux Toolkit**: Predictable state container
-- **Valtio**: Proxy-based state management
-
-### Styling & UI Systems
-- **Tailwind CSS**: Utility-first CSS framework
-- **shadcn/ui**: High-quality component library
-- **Material-UI**: React component library
-- **Chakra UI**: Accessible React components
-- **Styled Components**: CSS-in-JS with TypeScript
-
-### Performance Optimization
-- **Code Splitting**: Dynamic imports and lazy loading
-- **Image Optimization**: Next.js Image and Cloudinary
-- **Bundle Analysis**: Webpack Bundle Analyzer
-- **Runtime Optimization**: React.memo and useMemo
-
----
-
-# Core Implementation (Level 2)
-
-## Frontend Architecture Intelligence
-
-```python
-# AI-powered frontend architecture optimization with Context7
-class FrontendArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.component_analyzer = ComponentAnalyzer()
-        self.performance_optimizer = PerformanceOptimizer()
-    
-    async def design_optimal_frontend_architecture(self, 
-                                                 requirements: FrontendRequirements) -> FrontendArchitecture:
-        """Design optimal frontend architecture using AI analysis."""
-        
-        # Get latest frontend documentation via Context7
-        react_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/react/docs',
-            topic="hooks server-components performance optimization 2025",
-            tokens=3000
-        )
-        
-        nextjs_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/vercel/docs',
-            topic="next.js app router optimization deployment 2025",
-            tokens=2000
-        )
-        
-        # Optimize component architecture
-        component_design = self.component_analyzer.optimize_component_system(
-            requirements.ui_complexity,
-            requirements.team_size,
-            react_docs
-        )
-        
-        # Optimize performance strategy
-        performance_strategy = self.performance_optimizer.design_performance_strategy(
-            requirements.performance_targets,
-            requirements.user_base,
-            nextjs_docs
-        )
-        
-        return FrontendArchitecture(
-            framework_selection=self._select_framework(requirements),
-            component_system=component_design,
-            state_management=self._design_state_management(requirements),
-            styling_strategy=self._design_styling_system(requirements),
-            performance_optimization=performance_strategy,
-            accessibility_compliance=self._ensure_accessibility(requirements),
-            internationalization=self._configure_i18n(requirements)
-        )
-```
-
-## Modern React Component Architecture
-
-```typescript
-// Advanced React component with TypeScript and modern patterns
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
-import { motion, AnimatePresence } from 'framer-motion';
-
-// Type definitions with Zod for runtime validation
-const UserSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().email(),
-  avatar: z.string().url().optional(),
-  role: z.enum(['admin', 'user', 'moderator']),
-  createdAt: z.date(),
-});
-
-type User = z.infer<typeof UserSchema>;
-
-// Props interface with strict typing
-interface UserListProps {
-  onUserSelect: (user: User) => void;
-  selectedUserId?: string;
-  filters?: {
-    role?: User['role'];
-    search?: string;
-  };
-}
-
-// Custom hook for user data management
-function useUsers(filters?: UserListProps['filters']) {
-  return useQuery({
-    queryKey: ['users', filters],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filters?.role) params.append('role', filters.role);
-      if (filters?.search) params.append('search', filters.search);
-      
-      const response = await fetch(`/api/users?${params}`);
-      const data = await response.json();
-      
-      return z.array(UserSchema).parse(data);
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
-}
-
-// Main component with performance optimizations
-export const UserList: React.FC<UserListProps> = React.memo(({ 
-  onUserSelect, 
-  selectedUserId,
-  filters 
-}) => {
-  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
-  const queryClient = useQueryClient();
-  
-  // Data fetching with React Query
-  const { data: users, isLoading, error } = useUsers(filters);
-  
-  // Memoized filtered users for performance
-  const filteredUsers = useMemo(() => {
-    if (!users) return [];
-    
-    return users.filter(user => {
-      if (filters?.role && user.role !== filters.role) return false;
-      if (filters?.search && !user.name.toLowerCase().includes(filters.search.toLowerCase())) {
-        return false;
-      }
-      return true;
-    });
-  }, [users, filters]);
-
-  // Optimized callback functions
-  const handleUserClick = useCallback((user: User) => {
-    onUserSelect(user);
-  }, [onUserSelect]);
-
-  const toggleUserExpansion = useCallback((userId: string) => {
-    setExpandedUsers(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(userId)) {
-        newSet.delete(userId);
-      } else {
-        newSet.add(userId);
-      }
-      return newSet;
-    });
-  }, []);
-
-  // Invalidate and refetch function
-  const refreshUsers = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['users'] });
-  }, [queryClient]);
-
-  if (isLoading) return <UserListSkeleton />;
-  if (error) return <ErrorMessage error={error} onRetry={refreshUsers} />;
-  if (!users) return <div>No users found</div>;
-
-  return (
-    <motion.div 
-      className="user-list"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="user-list-header">
-        <h2>Users ({filteredUsers.length})</h2>
-        <button onClick={refreshUsers} className="refresh-button">
-          Refresh
-        </button>
-      </div>
-      
-      <AnimatePresence>
-        {filteredUsers.map((user) => (
-          <UserCard
-            key={user.id}
-            user={user}
-            isExpanded={expandedUsers.has(user.id)}
-            isSelected={selectedUserId === user.id}
-            onClick={handleUserClick}
-            onToggleExpand={toggleUserExpansion}
-          />
-        ))}
-      </AnimatePresence>
-    </motion.div>
-  );
-});
-
-UserList.displayName = 'UserList';
-
-// Individual user card component
-interface UserCardProps {
-  user: User;
-  isExpanded: boolean;
-  isSelected: boolean;
-  onClick: (user: User) => void;
-  onToggleExpand: (userId: string) => void;
-}
-
-const UserCard: React.FC<UserCardProps> = React.memo(({ 
-  user, 
-  isExpanded, 
-  isSelected,
-  onClick,
-  onToggleExpand 
-}) => {
-  const handleClick = useCallback(() => {
-    onClick(user);
-  }, [onClick, user]);
-
-  const handleExpandClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleExpand(user.id);
-  }, [onToggleExpand, user.id]);
-
-  return (
-    <motion.div
-      className={`user-card ${isSelected ? 'selected' : ''}`}
-      onClick={handleClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      layout
-    >
-      <div className="user-card-header">
-        <img 
-          src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`}
-          alt={user.name}
-          className="user-avatar"
-        />
-        
-        <div className="user-info">
-          <h3 className="user-name">{user.name}</h3>
-          <p className="user-email">{user.email}</p>
-          <span className={`user-role ${user.role}`}>{user.role}</span>
-        </div>
-        
-        <button 
-          onClick={handleExpandClick}
-          className="expand-button"
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
-        >
-          {isExpanded ? '−' : '+'}
-        </button>
-      </div>
-      
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            className="user-details"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <p>Member since: {user.createdAt.toLocaleDateString()}</p>
-            <div className="user-actions">
-              <button className="edit-button">Edit</button>
-              <button className="message-button">Message</button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-});
-
-UserCard.displayName = 'UserCard';
-```
 
 ## State Management with Modern Patterns
 
@@ -817,77 +509,112 @@ export const LanguageSwitcher: React.FC = () => {
 
 # Reference & Integration (Level 4)
 
-## API Reference
+---
 
-### Core Frontend Operations
-- `create_component(name, props, children)` - Create reusable component
-- `use_custom_hook(logic, dependencies)` - Create custom React hook
-- `optimize_performance(component)` - Apply performance optimizations
-- `implement_accessibility(component)` - Add accessibility features
-- `configure_i18n(languages, translations)` - Set up internationalization
+## Core Implementation
 
-### Context7 Integration
-- `get_latest_react_documentation()` - React docs via Context7
-- `analyze_frontend_patterns()` - Frontend best practices via Context7
-- `optimize_component_architecture()` - Component optimization via Context7
+## What It Does
 
-## Best Practices (November 2025)
+Enterprise Frontend Development expert with AI-powered modern architecture, Context7 integration, and intelligent component orchestration for scalable user interfaces.
 
-### DO
-- Use TypeScript for type safety and better developer experience
-- Implement proper component composition and reusability
-- Optimize performance with code splitting and lazy loading
-- Ensure accessibility with proper ARIA attributes and keyboard navigation
-- Use modern React patterns (hooks, server components)
-- Implement comprehensive error boundaries and error handling
-- Use proper state management strategies for application complexity
-- Ensure responsive design and cross-browser compatibility
-
-### DON'T
-- Skip TypeScript type definitions and validations
-- Create overly complex component hierarchies
-- Ignore performance optimization and code splitting
-- Skip accessibility implementation and testing
-- Use deprecated React patterns and class components
-- Forget to implement proper error handling
-- Overuse global state when local state is sufficient
-- Skip testing for different devices and browsers
-
-## Works Well With
-
-- `moai-baas-foundation` (Enterprise frontend architecture)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-lib-shadcn-ui` (Component library integration)
-- `moai-domain-backend` (Backend API integration)
-- `moai-security-api` (Frontend security implementation)
-- `moai-foundation-trust` (Accessibility and compliance)
-- `moai-domain-testing` (Frontend testing strategies)
-- `moai-baas-vercel-ext` (Frontend deployment optimization)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 frontend ecosystem updates, and modern React patterns
-- **v2.0.0** (2025-11-11): Complete metadata structure, component patterns, performance optimization
-- **v1.0.0** (2025-11-11): Initial frontend development domain
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Frontend Architecture** using Context7 MCP for latest frontend patterns
+- 📊 **Intelligent Component Orchestration** with automated design system optimization
+- 🚀 **Modern Framework Integration** with AI-driven performance optimization
+- 🔗 **Enterprise User Experience** with zero-configuration accessibility and internationalization
+- 📈 **Predictive Performance Analytics** with usage forecasting and optimization insights
 
 ---
 
-**End of Skill** | Updated 2025-11-13
+## Modern Frontend Stack (November 2025)
 
-## Security & Compliance
+### Core Framework Ecosystem
+- **React 19**: Latest with concurrent features and Server Components
+- **Vue 3.5**: Composition API and performance optimizations
+- **Angular 18**: Standalone components and improved hydration
+- **Svelte 5**: Signals and improved TypeScript support
+- **Next.js 16**: App Router, Server Components, and Turbopack
 
-### Frontend Security
-- Content Security Policy (CSP) implementation
-- XSS protection with proper input sanitization
-- Secure data handling and storage in browser
-- Authentication token management and security
+### State Management Solutions
+- **Zustand**: Lightweight state management
+- **TanStack Query**: Server state management with caching
+- **Jotai**: Atomic state management
+- **Redux Toolkit**: Predictable state container
+- **Valtio**: Proxy-based state management
 
-### Accessibility Compliance
-- WCAG 2.1 AA compliance implementation
-- Screen reader compatibility and ARIA support
-- Keyboard navigation and focus management
-- Color contrast and visual accessibility
+### Styling & UI Systems
+- **Tailwind CSS**: Utility-first CSS framework
+- **shadcn/ui**: High-quality component library
+- **Material-UI**: React component library
+- **Chakra UI**: Accessible React components
+- **Styled Components**: CSS-in-JS with TypeScript
+
+### Performance Optimization
+- **Code Splitting**: Dynamic imports and lazy loading
+- **Image Optimization**: Next.js Image and Cloudinary
+- **Bundle Analysis**: Webpack Bundle Analyzer
+- **Runtime Optimization**: React.memo and useMemo
 
 ---
 
-**End of Enterprise Frontend Development Expert **
+# Core Implementation (Level 2)
+
+## Frontend Architecture Intelligence
+
+```python
+# AI-powered frontend architecture optimization with Context7
+class FrontendArchitectOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.component_analyzer = ComponentAnalyzer()
+        self.performance_optimizer = PerformanceOptimizer()
+    
+    async def design_optimal_frontend_architecture(self, 
+                                                 requirements: FrontendRequirements) -> FrontendArchitecture:
+        """Design optimal frontend architecture using AI analysis."""
+        
+        # Get latest frontend documentation via Context7
+        react_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/react/docs',
+            topic="hooks server-components performance optimization 2025",
+            tokens=3000
+        )
+        
+        nextjs_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/vercel/docs',
+            topic="next.js app router optimization deployment 2025",
+            tokens=2000
+        )
+        
+        # Optimize component architecture
+        component_design = self.component_analyzer.optimize_component_system(
+            requirements.ui_complexity,
+            requirements.team_size,
+            react_docs
+        )
+        
+        # Optimize performance strategy
+        performance_strategy = self.performance_optimizer.design_performance_strategy(
+            requirements.performance_targets,
+            requirements.user_base,
+            nextjs_docs
+        )
+        
+        return FrontendArchitecture(
+            framework_selection=self._select_framework(requirements),
+            component_system=component_design,
+            state_management=self._design_state_management(requirements),
+            styling_strategy=self._design_styling_system(requirements),
+            performance_optimization=performance_strategy,
+            accessibility_compliance=self._ensure_accessibility(requirements),
+            internationalization=self._configure_i18n(requirements)
+        )
+```
+
+
+
+---
+
+## Reference & Resources
+
+See [reference.md](reference.md) for detailed API reference and official documentation.

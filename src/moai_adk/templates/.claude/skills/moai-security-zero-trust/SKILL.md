@@ -3,12 +3,27 @@ name: moai-security-zero-trust
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-zero-trust: Zero-Trust Architecture & Micro-Segmentation
 
 **Enterprise Zero-Trust with eBPF, Micro-Segmentation & mTLS**  
 Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
 ---
+
+## Quick Reference
+
+| Component | Purpose | Tool |
+|-----------|---------|------|
+| Identity | Verify WHO | MFA, Passwordless |
+| Device | Verify DEVICE HEALTH | EDR, Certificate |
+| Network | Verify PATH | Cilium, Istio |
+| Application | Verify REQUEST | mTLS, RBAC |
+
+---
+
+## Core Implementation
 
 ## Overview
 
@@ -452,47 +467,6 @@ app.use(async (req, res, next) => {
 
 ---
 
-## Level 3: Advanced
-
-### Advanced: Context7 MCP Network Policy Validation
-
-```javascript
-const { Context7Client } = require('context7-mcp');
-
-class NetworkPolicyValidator {
-  constructor(apiKey) {
-    this.context7 = new Context7Client(apiKey);
-  }
-  
-  // Validate network policy against threat intelligence
-  async validatePolicy(policy) {
-    const validation = await this.context7.query({
-      type: 'network_policy_validation',
-      policy,
-      tags: ['zero_trust', 'micro_segmentation'],
-    });
-    
-    return {
-      valid: validation.isValid,
-      issues: validation.issues,
-      recommendations: validation.recommendations,
-    };
-  }
-  
-  // Detect policy conflicts
-  async detectConflicts(policies) {
-    const conflicts = await this.context7.query({
-      type: 'policy_conflict_detection',
-      policies,
-    });
-    
-    return conflicts.detectedConflicts;
-  }
-}
-```
-
----
-
 ## Checklist
 
 - [ ] Default deny-all NetworkPolicy implemented
@@ -507,13 +481,4 @@ class NetworkPolicyValidator {
 - [ ] Zero-trust validated against threat intelligence
 
 ---
-
-## Quick Reference
-
-| Component | Purpose | Tool |
-|-----------|---------|------|
-| Identity | Verify WHO | MFA, Passwordless |
-| Device | Verify DEVICE HEALTH | EDR, Certificate |
-| Network | Verify PATH | Cilium, Istio |
-| Application | Verify REQUEST | mTLS, RBAC |
 

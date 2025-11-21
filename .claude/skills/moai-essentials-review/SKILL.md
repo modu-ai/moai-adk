@@ -6,7 +6,103 @@ description: Enterprise comprehensive code review automation with AI-powered qua
   generation
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Code Review Automation 
+
+## AI-Powered Quality Checks
+
+### Code Quality Metrics
+
+```python
+class CodeQualityAnalyzer:
+    """AI-powered code quality analysis."""
+    
+    async def analyze(self, code: str) -> QualityReport:
+        metrics = {
+            "complexity": calculate_cyclomatic(code),      # Should be <10
+            "testability": assess_testability(code),        # Should be >0.85
+            "maintainability": calculate_maintainability(code),  # Should be >80
+            "readability": assess_readability(code),         # Should be clear
+            "security_issues": scan_for_vulnerabilities(code),   # Should be 0
+            "performance_concerns": detect_patterns(code),   # Should be minimal
+        }
+        
+        return QualityReport(metrics)
+```
+
+### TRUST 5 Automated Checks
+
+```
+T - Test First:
+  ├─ Coverage ≥85%? ✓
+  ├─ Happy path covered? ✓
+  ├─ Edge cases tested? ✓
+  └─ Error scenarios? ✓
+
+R - Readable:
+  ├─ Functions <50 lines? ✓
+  ├─ Meaningful names? ✓
+  ├─ Comments explain WHY? ✓
+  └─ Complexity <10? ✓
+
+U - Unified:
+  ├─ Follows team patterns? ✓
+  ├─ Consistent style? ✓
+  ├─ Error handling aligned? ✓
+  └─ Logging strategy consistent? ✓
+
+S - Secured:
+  ├─ Inputs validated? ✓
+  ├─ No hardcoded secrets? ✓
+  ├─ SQL injection prevention? ✓
+  └─ XSS prevention? ✓
+
+T - Trackable:
+  ├─ SPEC referenced? ✓
+```
+
+---
+
+## TRUST 5 Assessment
+
+### T - Test First: ✓
+Coverage: 87% (target ≥85%)
+- Happy path: ✓ Covered
+- Edge cases: ✓ 5 tests
+- Error scenarios: ✓ 3 tests
+
+### R - Readable: ✓
+All functions <50 lines, clear names
+
+### U - Unified: ✓
+Consistent with team patterns
+
+### S - Secured: ✓
+- No credentials: ✓
+- Input validation: ✓
+- Error messages safe: ✓
+
+### T - Trackable: ✓
+- SPEC-042 referenced
+- 5 tests linked
+- Code linked to PR
+
+## Related Skills
+
+- `moai-alfred-code-reviewer` (Manual review guidance)
+- `moai-essentials-debug` (Debugging techniques)
+
+---
+
+**For detailed analysis guidelines**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -72,60 +168,6 @@ Documentation:
 
 ---
 
-## AI-Powered Quality Checks
-
-### Code Quality Metrics
-
-```python
-class CodeQualityAnalyzer:
-    """AI-powered code quality analysis."""
-    
-    async def analyze(self, code: str) -> QualityReport:
-        metrics = {
-            "complexity": calculate_cyclomatic(code),      # Should be <10
-            "testability": assess_testability(code),        # Should be >0.85
-            "maintainability": calculate_maintainability(code),  # Should be >80
-            "readability": assess_readability(code),         # Should be clear
-            "security_issues": scan_for_vulnerabilities(code),   # Should be 0
-            "performance_concerns": detect_patterns(code),   # Should be minimal
-        }
-        
-        return QualityReport(metrics)
-```
-
-### TRUST 5 Automated Checks
-
-```
-T - Test First:
-  ├─ Coverage ≥85%? ✓
-  ├─ Happy path covered? ✓
-  ├─ Edge cases tested? ✓
-  └─ Error scenarios? ✓
-
-R - Readable:
-  ├─ Functions <50 lines? ✓
-  ├─ Meaningful names? ✓
-  ├─ Comments explain WHY? ✓
-  └─ Complexity <10? ✓
-
-U - Unified:
-  ├─ Follows team patterns? ✓
-  ├─ Consistent style? ✓
-  ├─ Error handling aligned? ✓
-  └─ Logging strategy consistent? ✓
-
-S - Secured:
-  ├─ Inputs validated? ✓
-  ├─ No hardcoded secrets? ✓
-  ├─ SQL injection prevention? ✓
-  └─ XSS prevention? ✓
-
-T - Trackable:
-  ├─ SPEC referenced? ✓
-```
-
----
-
 ## Security Vulnerability Detection
 
 ```
@@ -187,30 +229,6 @@ Optimization Suggestions:
 - Design: ✓ Good
 - TRUST 5: All checks passed
 
-## TRUST 5 Assessment
-
-### T - Test First: ✓
-Coverage: 87% (target ≥85%)
-- Happy path: ✓ Covered
-- Edge cases: ✓ 5 tests
-- Error scenarios: ✓ 3 tests
-
-### R - Readable: ✓
-All functions <50 lines, clear names
-
-### U - Unified: ✓
-Consistent with team patterns
-
-### S - Secured: ✓
-- No credentials: ✓
-- Input validation: ✓
-- Error messages safe: ✓
-
-### T - Trackable: ✓
-- SPEC-042 referenced
-- 5 tests linked
-- Code linked to PR
-
 ## Detailed Findings
 
 ### Strengths
@@ -264,14 +282,9 @@ Consistent with team patterns
 
 ---
 
-## Related Skills
-
-- `moai-alfred-code-reviewer` (Manual review guidance)
-- `moai-essentials-debug` (Debugging techniques)
-
 ---
 
-**For detailed analysis guidelines**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )
+## Advanced Patterns
+
+
+

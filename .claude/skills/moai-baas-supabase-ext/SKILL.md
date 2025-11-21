@@ -5,20 +5,9 @@ description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source
   scalable modern applications
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Supabase PostgreSQL Platform Expert 
-
-## What It Does
-
-Enterprise Supabase PostgreSQL Platform expert with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Supabase Architecture** using Context7 MCP for latest PostgreSQL documentation
-- 📊 **Intelligent Real-time Orchestration** with automated subscription optimization
-- 🚀 **Advanced PostgreSQL Optimization** with AI-driven query tuning and indexing
-- 🔗 **Enterprise Row-Level Security** with zero-configuration data protection
-- 📈 **Predictive Performance Analytics** with usage forecasting and optimization
-
----
 
 ## When to Use
 
@@ -37,6 +26,169 @@ Enterprise Supabase PostgreSQL Platform expert with AI-powered open-source BaaS 
 ---
 
 # Quick Reference (Level 1)
+
+## Edge Functions Development
+
+```typescript
+// Advanced Edge Function with TypeScript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+interface NotificationPayload {
+  userId: string;
+  type: 'message' | 'mention' | 'project_update';
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+}
+
+serve(async (req) => {
+  try {
+    const { userId, type, title, body, data }: NotificationPayload = await req.json();
+    
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Validate user exists and has notifications enabled
+    const { data: user, error: userError } = await supabase
+      .from('profiles')
+      .select('id, notification_preferences')
+      .eq('id', userId)
+      .single();
+    
+    if (userError || !user?.notification_preferences?.[type]) {
+      return new Response(JSON.stringify({ error: 'Invalid user or preferences' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Store notification in database
+    const { error: insertError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        body,
+        data,
+        created_at: new Date().toISOString()
+      });
+    
+    if (insertError) throw insertError;
+    
+    // Trigger real-time notification
+    const { error: realtimeError } = await supabase
+      .channel('notifications')
+      .send({
+        type: 'broadcast',
+        event: 'new_notification',
+        payload: { userId, type, title, body, data }
+      });
+    
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error('Notification function error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+```
+
+### Migration from Firebase to Supabase
+
+```python
+class FirebaseToSupabaseMigrator:
+    def __init__(self):
+        self.supabase_client = SupabaseClient()
+        self.firebase_client = FirebaseClient()
+        self.data_transformer = DataTransformer()
+    
+    async def migrate_firestore_to_supabase(self, 
+                                          firebase_config: FirebaseConfig,
+                                          supabase_config: SupabaseConfig) -> MigrationResult:
+        """Migrate Firestore collections to Supabase PostgreSQL."""
+        
+        # Get all Firestore collections
+        collections = await self.firebase_client.list_collections()
+        
+        migration_results = []
+        
+        for collection in collections:
+            # Get all documents from collection
+            documents = await self.firebase_client.get_collection_documents(collection)
+            
+            # Transform Firebase data to PostgreSQL schema
+            transformed_data = await self.data_transformer.transform_firestore_to_postgresql(
+                documents, collection
+            )
+            
+            # Create PostgreSQL table if not exists
+            await self.supabase_client.create_table_from_schema(
+                collection, transformed_data.schema
+            )
+            
+            # Insert transformed data
+            insert_result = await self.supabase_client.bulk_insert(
+                collection, transformed_data.data
+            )
+            
+            migration_results.append({
+                collection: collection,
+                documents_migrated: len(documents),
+                status: insert_result.status
+            })
+        
+        return MigrationResult(
+            collections_migrated=len(collections),
+            total_documents=sum(r['documents_migrated'] for r in migration_results),
+            results=migration_results,
+            success=True
+        )
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+## API Reference
+
+### Core Supabase Operations
+- `create_table(schema_definition)` - Create PostgreSQL table
+- `enable_rls(table_name)` - Enable Row-Level Security
+- `create_policy(table, name, definition)` - Create RLS policy
+- `deploy_edge_function(name, code)` - Deploy Edge Function
+- `create_realtime_subscription(channel, filter)` - Create real-time subscription
+
+### Context7 Integration
+- `get_latest_supabase_documentation()` - Official Supabase docs via Context7
+- `analyze_postgresql_optimization()` - PostgreSQL performance via Context7
+- `optimize_realtime_architecture()` - Real-time best practices via Context7
+
+---
+
+## Implementation Guide
+
+## What It Does
+
+Enterprise Supabase PostgreSQL Platform expert with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Supabase Architecture** using Context7 MCP for latest PostgreSQL documentation
+- 📊 **Intelligent Real-time Orchestration** with automated subscription optimization
+- 🚀 **Advanced PostgreSQL Optimization** with AI-driven query tuning and indexing
+- 🔗 **Enterprise Row-Level Security** with zero-configuration data protection
+- 📈 **Predictive Performance Analytics** with usage forecasting and optimization
+
+---
 
 ## Supabase PostgreSQL Platform (November 2025)
 
@@ -236,152 +388,6 @@ class RealtimeManager {
 
 # Advanced Implementation (Level 3)
 
-## Edge Functions Development
-
-```typescript
-// Advanced Edge Function with TypeScript
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-interface NotificationPayload {
-  userId: string;
-  type: 'message' | 'mention' | 'project_update';
-  title: string;
-  body: string;
-  data?: Record<string, any>;
-}
-
-serve(async (req) => {
-  try {
-    const { userId, type, title, body, data }: NotificationPayload = await req.json();
-    
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Validate user exists and has notifications enabled
-    const { data: user, error: userError } = await supabase
-      .from('profiles')
-      .select('id, notification_preferences')
-      .eq('id', userId)
-      .single();
-    
-    if (userError || !user?.notification_preferences?.[type]) {
-      return new Response(JSON.stringify({ error: 'Invalid user or preferences' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Store notification in database
-    const { error: insertError } = await supabase
-      .from('notifications')
-      .insert({
-        user_id: userId,
-        type,
-        title,
-        body,
-        data,
-        created_at: new Date().toISOString()
-      });
-    
-    if (insertError) throw insertError;
-    
-    // Trigger real-time notification
-    const { error: realtimeError } = await supabase
-      .channel('notifications')
-      .send({
-        type: 'broadcast',
-        event: 'new_notification',
-        payload: { userId, type, title, body, data }
-      });
-    
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-  } catch (error) {
-    console.error('Notification function error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-});
-```
-
-### Migration from Firebase to Supabase
-
-```python
-class FirebaseToSupabaseMigrator:
-    def __init__(self):
-        self.supabase_client = SupabaseClient()
-        self.firebase_client = FirebaseClient()
-        self.data_transformer = DataTransformer()
-    
-    async def migrate_firestore_to_supabase(self, 
-                                          firebase_config: FirebaseConfig,
-                                          supabase_config: SupabaseConfig) -> MigrationResult:
-        """Migrate Firestore collections to Supabase PostgreSQL."""
-        
-        # Get all Firestore collections
-        collections = await self.firebase_client.list_collections()
-        
-        migration_results = []
-        
-        for collection in collections:
-            # Get all documents from collection
-            documents = await self.firebase_client.get_collection_documents(collection)
-            
-            # Transform Firebase data to PostgreSQL schema
-            transformed_data = await self.data_transformer.transform_firestore_to_postgresql(
-                documents, collection
-            )
-            
-            # Create PostgreSQL table if not exists
-            await self.supabase_client.create_table_from_schema(
-                collection, transformed_data.schema
-            )
-            
-            # Insert transformed data
-            insert_result = await self.supabase_client.bulk_insert(
-                collection, transformed_data.data
-            )
-            
-            migration_results.append({
-                collection: collection,
-                documents_migrated: len(documents),
-                status: insert_result.status
-            })
-        
-        return MigrationResult(
-            collections_migrated=len(collections),
-            total_documents=sum(r['documents_migrated'] for r in migration_results),
-            results=migration_results,
-            success=True
-        )
-```
-
----
-
-# Reference & Integration (Level 4)
-
-## API Reference
-
-### Core Supabase Operations
-- `create_table(schema_definition)` - Create PostgreSQL table
-- `enable_rls(table_name)` - Enable Row-Level Security
-- `create_policy(table, name, definition)` - Create RLS policy
-- `deploy_edge_function(name, code)` - Deploy Edge Function
-- `create_realtime_subscription(channel, filter)` - Create real-time subscription
-
-### Context7 Integration
-- `get_latest_supabase_documentation()` - Official Supabase docs via Context7
-- `analyze_postgresql_optimization()` - PostgreSQL performance via Context7
-- `optimize_realtime_architecture()` - Real-time best practices via Context7
-
 ## Best Practices (November 2025)
 
 ### DO
@@ -415,16 +421,6 @@ class FirebaseToSupabaseMigrator:
 - `moai-baas-firebase-ext` (Firebase migration comparison)
 - `moai-domain-backend` (Backend database integration)
 
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Supabase platform updates, and advanced PostgreSQL optimization
-- **v2.0.0** (2025-11-11): Complete metadata structure, RLS patterns, Edge Functions
-- **v1.0.0** (2025-11-11): Initial Supabase PostgreSQL platform
-
----
-
-**End of Skill** | Updated 2025-11-13
-
 ## Security & Compliance
 
 ### PostgreSQL Security
@@ -442,3 +438,18 @@ class FirebaseToSupabaseMigrator:
 ---
 
 **End of Enterprise Supabase PostgreSQL Platform Expert **
+
+---
+
+## Advanced Patterns
+
+## Changelog
+
+- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Supabase platform updates, and advanced PostgreSQL optimization
+- **v2.0.0** (2025-11-11): Complete metadata structure, RLS patterns, Edge Functions
+- **v1.0.0** (2025-11-11): Initial Supabase PostgreSQL platform
+
+---
+
+**End of Skill** | Updated 2025-11-13
+

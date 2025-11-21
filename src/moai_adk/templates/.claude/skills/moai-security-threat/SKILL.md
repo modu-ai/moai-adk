@@ -3,12 +3,27 @@ name: moai-security-threat
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-threat: Threat Modeling & IDS/IPS Rules
 
 **Systematic Threat Modeling with STRIDE & Network Intrusion Detection**  
 Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
 ---
+
+## Quick Reference
+
+| Tool | Layer | Use Case |
+|------|-------|----------|
+| Snort 3.x | Network (L3/4) | IDS/IPS |
+| Suricata 7.x | Network (L3/4) | IDS/IPS (multi-core) |
+| ModSecurity | Application (L7) | WAF |
+| Context7 | Intelligence | Threat enrichment |
+
+---
+
+## Implementation Guide
 
 ## Overview
 
@@ -359,6 +374,25 @@ class ModSecurityWAF {
 
 ---
 
+## Checklist
+
+- [ ] STRIDE threat model created
+- [ ] Data Flow Diagram (DFD) documented
+- [ ] Attack trees for critical assets created
+- [ ] Snort rules compiled and tested
+- [ ] Suricata rules deployed on network
+- [ ] ModSecurity WAF rules applied
+- [ ] IDS/IPS tuning completed (false positive reduction)
+- [ ] Threat intelligence integrated (Context7)
+- [ ] Alert correlation configured
+- [ ] Incident response plan documented
+
+---
+
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced
 
 ### Advanced: Context7 MCP Threat Intelligence
@@ -424,28 +458,4 @@ class ThreatIntelligenceIntegration {
 ```
 
 ---
-
-## Checklist
-
-- [ ] STRIDE threat model created
-- [ ] Data Flow Diagram (DFD) documented
-- [ ] Attack trees for critical assets created
-- [ ] Snort rules compiled and tested
-- [ ] Suricata rules deployed on network
-- [ ] ModSecurity WAF rules applied
-- [ ] IDS/IPS tuning completed (false positive reduction)
-- [ ] Threat intelligence integrated (Context7)
-- [ ] Alert correlation configured
-- [ ] Incident response plan documented
-
----
-
-## Quick Reference
-
-| Tool | Layer | Use Case |
-|------|-------|----------|
-| Snort 3.x | Network (L3/4) | IDS/IPS |
-| Suricata 7.x | Network (L3/4) | IDS/IPS (multi-core) |
-| ModSecurity | Application (L7) | WAF |
-| Context7 | Intelligence | Threat enrichment |
 

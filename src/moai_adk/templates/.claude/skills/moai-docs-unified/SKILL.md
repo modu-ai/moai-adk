@@ -3,6 +3,8 @@ name: moai-docs-unified
 description: Enhanced docs unified with AI-powered features. Enhanced with Context7
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-docs-unified
 
 **Docs Unified**
@@ -715,6 +717,58 @@ jobs:
 
 ---
 
+## 📚 Official References
+
+Metadata
+
+```yaml
+skill_id: moai-docs-unified
+skill_name: Unified Documentation Management & Quality Assurance
+version: 1.0.0
+created_date: 2025-11-10
+updated_date: 2025-11-10
+language: english
+word_count: 2200
+triggers:
+  - keywords: [documentation management, docs linting, mermaid validation, korean typography, documentation quality, comprehensive report, docs-unified]
+  - contexts: [docs-unified, @docs:all, documentation-management, quality-assurance]
+agents:
+  - docs-manager
+  - docs-auditor
+  - quality-gate
+freedom_level: high
+context7_references:
+  - url: "https://en.wikipedia.org/wiki/Software_quality"
+    topic: "Software Quality Metrics"
+  - url: "https://github.com/moai-adk/moai-adk"
+    topic: "MoAI-ADK Documentation Standards"
+```
+
+---
+
+## 📈 Version History
+
+** .0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory    
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (doc-syncer)
+
+---
+
+## Core Implementation
+
 ## 🎯 Best Practices Checklist
 
 **Must-Have:**
@@ -794,50 +848,3 @@ Start
 
 ---
 
-## 📚 Official References
-
-Metadata
-
-```yaml
-skill_id: moai-docs-unified
-skill_name: Unified Documentation Management & Quality Assurance
-version: 1.0.0
-created_date: 2025-11-10
-updated_date: 2025-11-10
-language: english
-word_count: 2200
-triggers:
-  - keywords: [documentation management, docs linting, mermaid validation, korean typography, documentation quality, comprehensive report, docs-unified]
-  - contexts: [docs-unified, @docs:all, documentation-management, quality-assurance]
-agents:
-  - docs-manager
-  - docs-auditor
-  - quality-gate
-freedom_level: high
-context7_references:
-  - url: "https://en.wikipedia.org/wiki/Software_quality"
-    topic: "Software Quality Metrics"
-  - url: "https://github.com/moai-adk/moai-adk"
-    topic: "MoAI-ADK Documentation Standards"
-```
-
----
-
-## 📈 Version History
-
-** .0** (2025-11-12)
-- ✨ Context7 MCP integration
-- ✨ Progressive Disclosure structure
-- ✨ 10+ code examples
-- ✨ Primary/secondary agents defined
-- ✨ Best practices checklist
-- ✨ Decision tree
-- ✨ Official references
-
-
-
----
-
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (doc-syncer)

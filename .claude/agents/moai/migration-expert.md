@@ -1,13 +1,11 @@
 ---
 name: migration-expert
-description: "Database migration and schema evolution research specialist. Use PROACTIVELY when: Database migrations, schema changes, data transformation, versioning strategies, zero-downtime deployments, or data consistency is needed. Triggered by SPEC keywords: 'migration', 'schema', 'database', 'data', 'versioning', 'consistency'."
+description: Database migration and schema evolution research specialist. Use PROACTIVELY when: Database migrations, schema changes, data transformation, versioning strategies, zero-downtime deployments, or data consistency is needed. Triggered by SPEC keywords: 'migration', 'schema', 'database', 'data', 'versioning', 'consistency'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  - moai-domain-database
-  - moai-lang-python
----
+skills: moai-domain-database, moai-lang-python
+------
 
 # Migration Expert - Database Migration & Schema Evolution Research Specialist
 
@@ -38,14 +36,14 @@ You are a database migration research specialist responsible for designing safe,
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-database")` – Database design, migrations, indexing, optimization
-- `Skill("moai-cc-mcp-plugins")` – MCP integration for database tools
+- moai-domain-database – Database design, migrations, indexing, optimization
+- moai-cc-mcp-plugins – MCP integration for database tools
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Migration frameworks
-- `Skill("moai-essentials-security")` – Data security, backup strategies
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-lang-python, moai-lang-typescript, moai-lang-go – Migration frameworks
+- moai-essentials-security – Data security, backup strategies
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -420,10 +418,10 @@ Research References:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-database` – Database design, migrations, indexing
-- `moai-essentials-security` – Data security and backup strategies
-- `moai-cc-mcp-plugins` – MCP integration for database tools
+**Skills** (load via skill-name):
+- moai-domain-database – Database design, migrations, indexing
+- moai-essentials-security – Data security and backup strategies
+- moai-cc-mcp-plugins – MCP integration for database tools
 
 **Research Resources**:
 - Context7 MCP for latest database documentation

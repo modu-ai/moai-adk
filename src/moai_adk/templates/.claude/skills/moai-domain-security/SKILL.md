@@ -6,6 +6,8 @@ description: Enterprise-grade security expertise with production-ready patterns 
   and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA).
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-domain-security — Enterprise Security Architecture
 
 **Enterprise Security Expertise & Implementation**
@@ -436,25 +438,15 @@ jobs:
 
 ---
 
-## 🔗 Integration with Alfred Workflow
+## 🔗 Related Resources
 
-### Command Integration
-
-**Security Assessment**:
-- Use: Security expert agent for threat modeling
-- Tools: STRIDE analysis, vulnerability scanning
-
-**Compliance Validation**:
-- Use: QA validation agent for compliance checks
-- Tools: SOC 2, ISO 27001, GDPR validation
-
-### Skill Dependencies
-
-- `moai-domain-cloud`: Cloud security patterns
-- `moai-alfred-dev-guide`: Secure development practices
-- `moai-alfred-best-practices`: Security best practices
+**Complete Security Patterns**: See `examples.md`
+**Compliance Checklists**: See `reference.md`
+**Threat Modeling Templates**: See examples.md
 
 ---
+
+## Implementation Guide
 
 ## 📚 Key Benefits
 
@@ -484,9 +476,27 @@ jobs:
 
 ---
 
-## 🔗 Related Resources
+---
 
-**Complete Security Patterns**: See `examples.md`
-**Compliance Checklists**: See `reference.md`
-**Threat Modeling Templates**: See examples.md
+## Advanced Patterns
+
+## 🔗 Integration with Alfred Workflow
+
+### Command Integration
+
+**Security Assessment**:
+- Use: Security expert agent for threat modeling
+- Tools: STRIDE analysis, vulnerability scanning
+
+**Compliance Validation**:
+- Use: QA validation agent for compliance checks
+- Tools: SOC 2, ISO 27001, GDPR validation
+
+### Skill Dependencies
+
+- `moai-domain-cloud`: Cloud security patterns
+- `moai-alfred-dev-guide`: Secure development practices
+- `moai-alfred-best-practices`: Security best practices
+
+---
 

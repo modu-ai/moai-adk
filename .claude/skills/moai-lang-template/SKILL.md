@@ -3,11 +3,17 @@ name: moai-lang-{{LANGUAGE_SLUG}}
 description: {{LANGUAGE_NAME}} best practices with modern frameworks, {{PRIMARY_DOMAIN}},
 ---
 
+## Quick Reference (30 seconds)
+
 # {{LANGUAGE_NAME}} Development Mastery
 
 **Modern {{LANGUAGE_NAME}} Development with 2025 Best Practices**
 
 > Comprehensive {{LANGUAGE_NAME}} development guidance covering {{PRIMARY_DOMAIN}} applications, {{LANGUAGE_PARADIGMS}} patterns, and production-ready development using the latest tools and frameworks.
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -315,6 +321,11 @@ description: {{LANGUAGE_NAME}} best practices with modern frameworks, {{PRIMARY_
 {{/if}}
 
 {{#if DOMAIN_SPECIFIC_PATTERNS}}
+
+---
+
+## Advanced Patterns
+
 ## {{PRIMARY_DOMAIN}} Development
 
 {{#each DOMAIN_SPECIFIC_PATTERNS}}
@@ -334,3 +345,4 @@ description: {{LANGUAGE_NAME}} best practices with modern frameworks, {{PRIMARY_
 **{{LANGUAGE_NAME}} Target**: {{LATEST_VERSION}} with modern {{PRIMARY_PARADIGMS}} features  
 
 This skill provides comprehensive {{LANGUAGE_NAME}} development guidance with 2025 best practices, covering everything from basic project setup to advanced {{PRIMARY_DOMAIN}} integration and production deployment patterns.
+

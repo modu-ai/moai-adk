@@ -7,35 +7,13 @@ description: Enhanced Just-In-Time document loading system that intelligently di
   gaps.
 ---
 
+## Quick Reference (30 seconds)
+
 # Enhanced JIT Documentation Loader
 
-## What It Does
-
-Advanced Just-In-Time documentation loading system that intelligently discovers, retrieves, and caches relevant documentation based on user intent, project context, and knowledge gaps. Enhances Alfred's capabilities by bringing in the right documentation at the right time.
-
-**Core capabilities**:
-- ✅ Intent-based document discovery
-- ✅ Context-aware loading strategies
-- ✅ Intelligent caching and retrieval
-- ✅ Multi-source documentation aggregation
-- ✅ Domain-specific knowledge integration
-- ✅ Real-time web research for latest information
-- ✅ Documentation quality assessment
-- ✅ Automatic relevance ranking
-
 ---
 
-## When to Use
-
-- ✅ When user questions indicate knowledge gaps
-- ✅ When working with unfamiliar technologies or frameworks
-- ✅ When domain-specific expertise is needed
-- ✅ When answering technical questions with precision
-- ✅ When implementing new features or patterns
-- ✅ When troubleshooting complex issues
-- ✅ When best practices guidance is required
-
----
+## Implementation Guide
 
 ## Intent Detection Patterns
 
@@ -441,3 +419,36 @@ def improve_source_ranking():
 ---
 
 **End of Skill** | Intelligent documentation loading for enhanced context and accuracy
+
+---
+
+## Advanced Patterns
+
+## What It Does
+
+Advanced Just-In-Time documentation loading system that intelligently discovers, retrieves, and caches relevant documentation based on user intent, project context, and knowledge gaps. Enhances Alfred's capabilities by bringing in the right documentation at the right time.
+
+**Core capabilities**:
+- ✅ Intent-based document discovery
+- ✅ Context-aware loading strategies
+- ✅ Intelligent caching and retrieval
+- ✅ Multi-source documentation aggregation
+- ✅ Domain-specific knowledge integration
+- ✅ Real-time web research for latest information
+- ✅ Documentation quality assessment
+- ✅ Automatic relevance ranking
+
+---
+
+## When to Use
+
+- ✅ When user questions indicate knowledge gaps
+- ✅ When working with unfamiliar technologies or frameworks
+- ✅ When domain-specific expertise is needed
+- ✅ When answering technical questions with precision
+- ✅ When implementing new features or patterns
+- ✅ When troubleshooting complex issues
+- ✅ When best practices guidance is required
+
+---
+

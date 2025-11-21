@@ -1,4 +1,4 @@
-# moai-core-rules Reference ( .0)
+# moai-alfred-rules Reference ( .0)
 
 ## 공식 자료 & 링크 (November 2025 Enterprise Standard)
 

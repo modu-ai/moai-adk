@@ -6,7 +6,104 @@ description: Display comprehensive project and session information including Git
   status", "show project info", or "where are we".
 ---
 
+## Quick Reference (30 seconds)
+
 # Session Information Provider
+
+## Quick Start Commands
+
+### Basic Status Check
+```python
+# Simple project overview
+Skill("moai-session-info")
+```
+
+### Detailed Status with Metrics
+```python
+# Comprehensive status with all details
+Skill("moai-session-info")
+# Response includes all categories above
+```
+
+### Before Major Operations
+```python
+# Always check status before:
+# - /alfred:1-plan (planning new features)
+# - /alfred:2-run (implementing changes)
+# - git operations (commits, merges)
+
+Skill("moai-session-info")
+# Review status, then proceed with operation
+```
+
+---
+
+## Performance Considerations
+
+### Optimization Strategies
+- **Caching**: Cache expensive operations (Git history, version checks)
+- **Timeouts**: 5-second timeout for network operations
+- **Lazy Loading**: Load detailed information only when requested
+- **Incremental Updates**: Update only changed information
+
+### Resource Usage
+- **Memory**: Minimal footprint (< 10MB)
+- **Network**: Only for version checks (cached locally)
+- **Disk**: Reads existing files, no modifications
+- **CPU**: Lightweight operations, quick response times
+
+---
+
+## Usage Examples
+
+### Example 1: Session Start
+```python
+# User starts new Claude Code session
+Skill("moai-session-info")
+
+# Output:
+🚀 MoAI-ADK Session Started
+
+📋 Project Overview
+   🗿 Project: MoAI-ADK
+   📁 Location: /Users/goos/MoAI/MoAI-ADK
+   🌍 Language: 한국어
+   🔧 Mode: Team
+
+📦 Version: v0.15.2 → v0.16.0 available
+📝 Release Notes: https://github.com/...
+
+🌿 Branch: develop (3 ahead)
+📝 Changes: 5 modified, 2 added
+📋 SPEC Progress: 12/15 (80%)
+```
+
+### Example 2: Pre-Implementation Check
+```python
+# User wants to implement new feature
+"/alfred:2-run SPEC-AUTH-001"
+
+# Alfred automatically calls:
+Skill("moai-session-info")
+
+# User sees status before implementation begins
+```
+
+### Example 3: Status Query
+```python
+# User asks: "what's our current status?"
+Skill("moai-session-info")
+
+# Complete project status displayed
+```
+
+---
+
+**End of Skill** | Optimized for quick status checks and session context
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -85,34 +182,6 @@ Comprehensive session and project information provider that gives users complete
    📌 skill-consolidation (2 hours ago)
    📌 feature-branch-workflow (yesterday)
 ↩️  Restore: /alfred:0-project restore
-```
-
----
-
-## Quick Start Commands
-
-### Basic Status Check
-```python
-# Simple project overview
-Skill("moai-session-info")
-```
-
-### Detailed Status with Metrics
-```python
-# Comprehensive status with all details
-Skill("moai-session-info")
-# Response includes all categories above
-```
-
-### Before Major Operations
-```python
-# Always check status before:
-# - /alfred:1-plan (planning new features)
-# - /alfred:2-run (implementing changes)
-# - git operations (commits, merges)
-
-Skill("moai-session-info")
-# Review status, then proceed with operation
 ```
 
 ---
@@ -233,65 +302,9 @@ The skill provides useful information even when some sources fail:
 
 ---
 
-## Performance Considerations
-
-### Optimization Strategies
-- **Caching**: Cache expensive operations (Git history, version checks)
-- **Timeouts**: 5-second timeout for network operations
-- **Lazy Loading**: Load detailed information only when requested
-- **Incremental Updates**: Update only changed information
-
-### Resource Usage
-- **Memory**: Minimal footprint (< 10MB)
-- **Network**: Only for version checks (cached locally)
-- **Disk**: Reads existing files, no modifications
-- **CPU**: Lightweight operations, quick response times
-
 ---
 
-## Usage Examples
+## Advanced Patterns
 
-### Example 1: Session Start
-```python
-# User starts new Claude Code session
-Skill("moai-session-info")
 
-# Output:
-🚀 MoAI-ADK Session Started
 
-📋 Project Overview
-   🗿 Project: MoAI-ADK
-   📁 Location: /Users/goos/MoAI/MoAI-ADK
-   🌍 Language: 한국어
-   🔧 Mode: Team
-
-📦 Version: v0.15.2 → v0.16.0 available
-📝 Release Notes: https://github.com/...
-
-🌿 Branch: develop (3 ahead)
-📝 Changes: 5 modified, 2 added
-📋 SPEC Progress: 12/15 (80%)
-```
-
-### Example 2: Pre-Implementation Check
-```python
-# User wants to implement new feature
-"/alfred:2-run SPEC-AUTH-001"
-
-# Alfred automatically calls:
-Skill("moai-session-info")
-
-# User sees status before implementation begins
-```
-
-### Example 3: Status Query
-```python
-# User asks: "what's our current status?"
-Skill("moai-session-info")
-
-# Complete project status displayed
-```
-
----
-
-**End of Skill** | Optimized for quick status checks and session context

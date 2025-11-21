@@ -3,100 +3,12 @@ name: moai-security-compliance
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-compliance: Regulatory Compliance & Audit Logging
 
 **GDPR, HIPAA, SOC 2, ISO 27001, PCI DSS Compliance Framework**  
 Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
-
----
-
-## Overview
-
-Comprehensive regulatory compliance framework for GDPR, HIPAA, SOC 2, ISO 27001, and PCI DSS. Covers audit logging, data classification, retention policies, and evidence collection for regulatory audits. 2025 trend: 83-85% of enterprises now require SOC 2 compliance from vendors.
-
-**When to use this Skill:**
-- Implementing GDPR compliance (EU data protection)
-- HIPAA PHI protection (healthcare)
-- SOC 2 audit preparation (security & availability)
-- ISO 27001 information security
-- PCI DSS payment card security
-- Building audit trails for regulatory proof
-- GDPR right-to-erasure implementation
-
----
-
-## Level 1: Foundations
-
-### Regulatory Framework Overview
-
-```
-GDPR (EU):
-├─ Scope: Any organization processing EU citizen data
-├─ Key: Right-to-erasure, data portability, consent
-├─ Penalties: Up to EUR 20 million or 4% revenue
-└─ Focus: Privacy & data protection
-
-HIPAA (USA):
-├─ Scope: Healthcare providers, insurers, PHI handlers
-├─ Key: Confidentiality, integrity, availability (CIA triad)
-├─ Penalties: Up to USD 1.5 million per violation
-└─ Focus: Patient health information security
-
-SOC 2 (USA):
-├─ Scope: Service organizations (any industry)
-├─ Key: Security, availability, processing integrity, confidentiality, privacy
-├─ Type I: Design of controls at point in time
-├─ Type II: Operating effectiveness over 6-12 months
-└─ Note: Not legally required, but customer-demanded
-
-ISO 27001 (International):
-├─ Scope: Information security management
-├─ Key: 114 controls across 4 domains
-├─ Requires: Annual audit, continuous monitoring
-└─ Focus: Systematic security approach
-
-PCI DSS (Payment cards):
-├─ Scope: Any organization handling payment card data
-├─ Key: Cardholder data protection (CHD)
-├─ Compliance: Annual assessment
-└─ Levels: 1-4 based on transaction volume
-```
-
-### Data Classification
-
-```javascript
-class DataClassifier {
-  classify(data) {
-    // Classify data for compliance purposes
-    if (this.isPII(data)) return 'SENSITIVE';
-    if (this.isPHI(data)) return 'RESTRICTED';
-    if (this.isPaymentData(data)) return 'CONFIDENTIAL';
-    if (this.isPublicData(data)) return 'PUBLIC';
-    
-    return 'INTERNAL';
-  }
-  
-  isPII(data) {
-    // Personal Identifiable Information
-    return /(\d{3}-\d{2}-\d{4}|email|phone|address)/.test(JSON.stringify(data));
-  }
-  
-  isPHI(data) {
-    // Protected Health Information (HIPAA)
-    return /(diagnosis|medication|patient|medical_record)/.test(JSON.stringify(data));
-  }
-  
-  isPaymentData(data) {
-    // Credit card, bank account (PCI DSS)
-    return /(\d{16}|\d{9}|BIC|IBAN)/.test(JSON.stringify(data));
-  }
-  
-  isPublicData(data) {
-    // Explicitly marked as public
-    return data.classification === 'PUBLIC';
-  }
-}
-```
 
 ---
 
@@ -428,47 +340,104 @@ class SOC2EvidenceCollector {
 
 ---
 
-## Level 3: Advanced
+## Quick Reference
 
-### Advanced: Drata Integration (Automated Compliance)
+| Regulation | Key Focus | Retention |
+|-----------|-----------|-----------|
+| GDPR | Privacy | 7 years (after processing ends) |
+| HIPAA | Health Info | 6 years |
+| SOC 2 | Security | 6-12 months (audit period) |
+| ISO 27001 | InfoSec | 3 years |
+| PCI DSS | Payment Cards | 1 year minimum |
+
+---
+
+## Core Implementation
+
+## Overview
+
+Comprehensive regulatory compliance framework for GDPR, HIPAA, SOC 2, ISO 27001, and PCI DSS. Covers audit logging, data classification, retention policies, and evidence collection for regulatory audits. 2025 trend: 83-85% of enterprises now require SOC 2 compliance from vendors.
+
+**When to use this Skill:**
+- Implementing GDPR compliance (EU data protection)
+- HIPAA PHI protection (healthcare)
+- SOC 2 audit preparation (security & availability)
+- ISO 27001 information security
+- PCI DSS payment card security
+- Building audit trails for regulatory proof
+- GDPR right-to-erasure implementation
+
+---
+
+## Level 1: Foundations
+
+### Regulatory Framework Overview
+
+```
+GDPR (EU):
+├─ Scope: Any organization processing EU citizen data
+├─ Key: Right-to-erasure, data portability, consent
+├─ Penalties: Up to EUR 20 million or 4% revenue
+└─ Focus: Privacy & data protection
+
+HIPAA (USA):
+├─ Scope: Healthcare providers, insurers, PHI handlers
+├─ Key: Confidentiality, integrity, availability (CIA triad)
+├─ Penalties: Up to USD 1.5 million per violation
+└─ Focus: Patient health information security
+
+SOC 2 (USA):
+├─ Scope: Service organizations (any industry)
+├─ Key: Security, availability, processing integrity, confidentiality, privacy
+├─ Type I: Design of controls at point in time
+├─ Type II: Operating effectiveness over 6-12 months
+└─ Note: Not legally required, but customer-demanded
+
+ISO 27001 (International):
+├─ Scope: Information security management
+├─ Key: 114 controls across 4 domains
+├─ Requires: Annual audit, continuous monitoring
+└─ Focus: Systematic security approach
+
+PCI DSS (Payment cards):
+├─ Scope: Any organization handling payment card data
+├─ Key: Cardholder data protection (CHD)
+├─ Compliance: Annual assessment
+└─ Levels: 1-4 based on transaction volume
+```
+
+### Data Classification
 
 ```javascript
-const { DrataClient } = require('drata-api');
-
-class AutomatedComplianceMonitoring {
-  constructor(apiKey) {
-    this.drata = new DrataClient(apiKey);
-  }
-  
-  // Automatically collect evidence for Drata audits
-  async syncComplianceEvidence() {
-    const frameworks = ['SOC2', 'GDPR', 'HIPAA', 'ISO27001'];
+class DataClassifier {
+  classify(data) {
+    // Classify data for compliance purposes
+    if (this.isPII(data)) return 'SENSITIVE';
+    if (this.isPHI(data)) return 'RESTRICTED';
+    if (this.isPaymentData(data)) return 'CONFIDENTIAL';
+    if (this.isPublicData(data)) return 'PUBLIC';
     
-    for (const framework of frameworks) {
-      const evidence = await this.collectFrameworkEvidence(framework);
-      await this.drata.uploadEvidence(framework, evidence);
-    }
+    return 'INTERNAL';
   }
   
-  async collectFrameworkEvidence(framework) {
-    // Query system for framework-specific evidence
-    // Push to Drata for audit preparation
-    const controlsMapping = {
-      'SOC2': this.soC2Controls,
-      'GDPR': this.gdprControls,
-      'HIPAA': this.hipaaControls,
-    };
-    
-    return controlsMapping[framework];
+  isPII(data) {
+    // Personal Identifiable Information
+    return /(\d{3}-\d{2}-\d{4}|email|phone|address)/.test(JSON.stringify(data));
   }
   
-  get soC2Controls() {
-    return {
-      'CC6.1': this.getSecurityIncidentLogs(),
-      'CC6.2': this.getIncidentResponseLogs(),
-      'CC7.2': this.getSystemMonitoringLogs(),
-      'A1.2': this.getAccessReviewLogs(),
-    };
+  isPHI(data) {
+    // Protected Health Information (HIPAA)
+    return /(diagnosis|medication|patient|medical_record)/.test(JSON.stringify(data));
+  }
+  
+  isPaymentData(data) {
+    // Credit card, bank account (PCI DSS)
+    return /(\d{16}|\d{9}|BIC|IBAN)/.test(JSON.stringify(data));
+  }
+  
+  isPublicData(data) {
+    // Explicitly marked as public
+    return data.classification === 'PUBLIC';
   }
 }
 ```
@@ -489,14 +458,4 @@ class AutomatedComplianceMonitoring {
 - [ ] PCI DSS self-assessment annual review
 
 ---
-
-## Quick Reference
-
-| Regulation | Key Focus | Retention |
-|-----------|-----------|-----------|
-| GDPR | Privacy | 7 years (after processing ends) |
-| HIPAA | Health Info | 6 years |
-| SOC 2 | Security | 6-12 months (audit period) |
-| ISO 27001 | InfoSec | 3 years |
-| PCI DSS | Payment Cards | 1 year minimum |
 

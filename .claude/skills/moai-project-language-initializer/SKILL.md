@@ -5,9 +5,15 @@ description: Handle comprehensive project language and user setup workflows incl
   domain selection
 ---
 
+## Quick Reference (30 seconds)
+
 # MoAI Project Language & User Initializer
 
 This skill manages the comprehensive project initialization workflow that was previously handled in the 0-project.md command. It extracts the complex batched question patterns into a reusable, efficient skill that reduces user interactions while maintaining full functionality.
+
+---
+
+## Implementation Guide
 
 ## Core Responsibility
 
@@ -160,46 +166,6 @@ The skill automatically manages `.moai/config/config.json` persistence:
 - Retry mechanisms for failed batch calls
 - Rollback capability for partial configurations
 
-## Integration Points
-
-### With Alfred Commands
-- `/alfred:0-project`: Primary integration point
-- `/alfred:1-plan`: Uses domain selection for expert activation
-- `/alfred:2-run`: Applies language settings to sub-agent prompts
-- `/alfred:3-sync`: Respects report generation settings
-
-### With Other Skills
-- `moai-alfred-ask-user-questions`: Uses TUI survey patterns
-- `moai-skill-factory`: Can be invoked for skill template application
-- `moai-alfred-agent-guide`: Provides agent lineup based on domains
-
-### Configuration Dependencies
-- `.moai/config/config.json`: Primary configuration store
-- `mode`: Determines team vs personal workflow
-- `github`: Team-specific settings
-- `language`: Conversation and prompt language settings
-
-## Best Practices
-
-### For Users
-- Choose English for agent prompts to reduce token costs (15-20% savings)
-- Enable Minimal report generation for cost-effective operation
-- Configure team settings upfront for consistent workflow
-- Select relevant domains for expert agent activation
-
-### For Developers
-- Use batch patterns to minimize user interactions
-- Provide clear token cost warnings before expensive operations
-- Validate all inputs before persisting configuration
-- Maintain backward compatibility with existing config files
-
-### For Team Collaboration
-- Use Feature Branch + PR workflow for code review
-- Enable auto-delete branches for repository hygiene
-- Select appropriate domains for expert agent routing
-- Configure consistent language settings across team
-- Set up MCP servers with proper authentication (Figma tokens)
-
 ## MCP Server Configuration
 
 ### Figma Access Token Setup
@@ -272,3 +238,48 @@ This skill extracts and consolidates the complex initialization logic from the o
 - **Performance**: Optimized configuration management
 
 The skill serves as a foundation for project initialization and can be extended with additional configuration patterns as needed.
+
+---
+
+## Advanced Patterns
+
+## Integration Points
+
+### With Alfred Commands
+- `/alfred:0-project`: Primary integration point
+- `/alfred:1-plan`: Uses domain selection for expert activation
+- `/alfred:2-run`: Applies language settings to sub-agent prompts
+- `/alfred:3-sync`: Respects report generation settings
+
+### With Other Skills
+- `moai-alfred-ask-user-questions`: Uses TUI survey patterns
+- `moai-skill-factory`: Can be invoked for skill template application
+- `moai-alfred-agent-guide`: Provides agent lineup based on domains
+
+### Configuration Dependencies
+- `.moai/config/config.json`: Primary configuration store
+- `mode`: Determines team vs personal workflow
+- `github`: Team-specific settings
+- `language`: Conversation and prompt language settings
+
+## Best Practices
+
+### For Users
+- Choose English for agent prompts to reduce token costs (15-20% savings)
+- Enable Minimal report generation for cost-effective operation
+- Configure team settings upfront for consistent workflow
+- Select relevant domains for expert agent activation
+
+### For Developers
+- Use batch patterns to minimize user interactions
+- Provide clear token cost warnings before expensive operations
+- Validate all inputs before persisting configuration
+- Maintain backward compatibility with existing config files
+
+### For Team Collaboration
+- Use Feature Branch + PR workflow for code review
+- Enable auto-delete branches for repository hygiene
+- Select appropriate domains for expert agent routing
+- Configure consistent language settings across team
+- Set up MCP servers with proper authentication (Figma tokens)
+

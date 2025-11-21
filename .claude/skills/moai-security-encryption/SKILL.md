@@ -3,20 +3,9 @@ name: moai-security-encryption
 description: Enterprise Encryption Security with AI-powered cryptographic architecture,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Encryption Security Expert 
-
----
-
-## What It Does
-
-Enterprise Encryption Security expert with AI-powered cryptographic architecture, Context7 integration, and intelligent encryption orchestration for comprehensive data protection.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Encryption Architecture** using Context7 MCP for latest cryptographic patterns
-- 📊 **Intelligent Key Management** with automated rotation and lifecycle optimization
-- 🚀 **Advanced Cryptographic Implementation** with AI-driven algorithm selection
-- 🔗 **Enterprise Security Framework** with zero-configuration encryption deployment
-- 📈 **Predictive Security Analytics** with threat assessment and compliance monitoring
 
 ---
 
@@ -37,6 +26,230 @@ Enterprise Encryption Security expert with AI-powered cryptographic architecture
 ---
 
 # Quick Reference (Level 1)
+
+## Enterprise Key Management
+
+```typescript
+// Enterprise key management with HSM integration
+export class EnterpriseKeyManager {
+  private hsmClient: HSMClient;
+  private keyRotation: KeyRotationService;
+  private auditLogger: AuditLogger;
+
+  constructor(hsmConfig: HSMConfig) {
+    this.hsmClient = new HSMClient(hsmConfig);
+    this.keyRotation = new KeyRotationService();
+    this.auditLogger = new AuditLogger();
+  }
+
+  async createEncryptionKey(
+    keyId: string,
+    algorithm: string = 'AES-256-GCM',
+    metadata?: KeyMetadata
+  ): Promise<CreatedKey> {
+    try {
+      // Log key creation attempt
+      this.auditLogger.log('KEY_CREATION_ATTEMPT', { keyId, algorithm });
+
+      // Create key in HSM
+      const hsmKey = await this.hsmClient.createKey({
+        algorithm,
+        keyId,
+        extractable: false,
+        sensitive: true,
+        ...metadata,
+      });
+
+      // Set up rotation schedule
+      await this.keyRotation.scheduleRotation(keyId, {
+        rotationInterval: 90, // days
+        algorithm: algorithm,
+      });
+
+      // Log successful creation
+      this.auditLogger.log('KEY_CREATED', { keyId, hsmKeyId: hsmKey.id });
+
+      return {
+        keyId,
+        hsmKeyId: hsmKey.id,
+        algorithm,
+        created: new Date(),
+        nextRotation: await this.keyRotation.getNextRotationDate(keyId),
+      };
+    } catch (error) {
+      this.auditLogger.log('KEY_CREATION_FAILED', { 
+        keyId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async encryptWithHSM(
+    keyId: string,
+    plaintext: Buffer,
+    additionalData?: Buffer
+  ): Promise<EncryptedWithHSM> {
+    try {
+      // Get key from HSM
+      const hsmKey = await this.hsmClient.getKey(keyId);
+      
+      // Perform encryption in HSM
+      const result = await this.hsmClient.encrypt({
+        keyId: hsmKey.id,
+        plaintext,
+        additionalData,
+      });
+
+      // Log encryption operation
+      this.auditLogger.log('ENCRYPTION_PERFORMED', { 
+        keyId, 
+        dataSize: plaintext.length 
+      });
+
+      return {
+        ciphertext: result.ciphertext,
+        iv: result.iv,
+        tag: result.tag,
+        keyId,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      this.auditLogger.log('ENCRYPTION_FAILED', { 
+        keyId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async rotateKey(keyId: string): Promise<KeyRotationResult> {
+    try {
+      // Get current key
+      const currentKey = await this.hsmClient.getKey(keyId);
+      
+      // Create new key
+      const newKeyId = `${keyId}_rotated_${Date.now()}`;
+      const newKey = await this.createEncryptionKey(
+        newKeyId,
+        currentKey.algorithm
+      );
+
+      // Schedule deprecation of old key
+      await this.keyRotation.deprecateKey(keyId, {
+        deprecationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        replacementKeyId: newKeyId,
+      });
+
+      // Log rotation
+      this.auditLogger.log('KEY_ROTATED', { 
+        oldKeyId: keyId, 
+        newKeyId,
+        rotationDate: new Date(),
+      });
+
+      return {
+        oldKeyId: keyId,
+        newKeyId,
+        deprecationDate: await this.keyRotation.getDeprecationDate(keyId),
+      };
+    } catch (error) {
+      this.auditLogger.log('KEY_ROTATION_FAILED', { 
+        keyId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+}
+
+// Compliance and audit integration
+class ComplianceAuditor {
+  private auditLog: AuditLog;
+  private complianceRules: ComplianceRule[];
+
+  constructor() {
+    this.auditLog = new AuditLog();
+    this.complianceRules = [
+      new GDPRComplianceRule(),
+      new PCIComplianceRule(),
+      new HIPAAComplianceRule(),
+    ];
+  }
+
+  async auditEncryptionOperations(
+    timeRange: TimeRange
+  ): Promise<AuditReport> {
+    // Get audit log entries
+    const entries = await this.auditLog.getEntries(timeRange);
+    
+    // Apply compliance rules
+    const complianceResults = [];
+    for (const rule of this.complianceRules) {
+      const result = await rule.validate(entries);
+      complianceResults.push(result);
+    }
+
+    // Generate report
+    return {
+      timeRange,
+      totalOperations: entries.length,
+      complianceResults,
+      violations: this.identifyViolations(entries),
+      recommendations: this.generateRecommendations(complianceResults),
+    };
+  }
+
+  private identifyViolations(entries: AuditEntry[]): SecurityViolation[] {
+    const violations = [];
+
+    for (const entry of entries) {
+      // Check for suspicious patterns
+      if (this.isSuspiciousPattern(entry)) {
+        violations.push({
+          type: 'SUSPICIOUS_PATTERN',
+          entry,
+          severity: 'HIGH',
+          description: 'Suspicious encryption operation detected',
+        });
+      }
+
+      // Check for policy violations
+      if (this.isPolicyViolation(entry)) {
+        violations.push({
+          type: 'POLICY_VIOLATION',
+          entry,
+          severity: 'MEDIUM',
+          description: 'Encryption policy violation detected',
+        });
+      }
+    }
+
+    return violations;
+  }
+}
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
+
+## What It Does
+
+Enterprise Encryption Security expert with AI-powered cryptographic architecture, Context7 integration, and intelligent encryption orchestration for comprehensive data protection.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Encryption Architecture** using Context7 MCP for latest cryptographic patterns
+- 📊 **Intelligent Key Management** with automated rotation and lifecycle optimization
+- 🚀 **Advanced Cryptographic Implementation** with AI-driven algorithm selection
+- 🔗 **Enterprise Security Framework** with zero-configuration encryption deployment
+- 📈 **Predictive Security Analytics** with threat assessment and compliance monitoring
+
+---
 
 ## Modern Encryption Stack (November 2025)
 
@@ -522,286 +735,10 @@ class CertificateManager:
 
 # Advanced Implementation (Level 3)
 
-## Enterprise Key Management
 
-```typescript
-// Enterprise key management with HSM integration
-export class EnterpriseKeyManager {
-  private hsmClient: HSMClient;
-  private keyRotation: KeyRotationService;
-  private auditLogger: AuditLogger;
-
-  constructor(hsmConfig: HSMConfig) {
-    this.hsmClient = new HSMClient(hsmConfig);
-    this.keyRotation = new KeyRotationService();
-    this.auditLogger = new AuditLogger();
-  }
-
-  async createEncryptionKey(
-    keyId: string,
-    algorithm: string = 'AES-256-GCM',
-    metadata?: KeyMetadata
-  ): Promise<CreatedKey> {
-    try {
-      // Log key creation attempt
-      this.auditLogger.log('KEY_CREATION_ATTEMPT', { keyId, algorithm });
-
-      // Create key in HSM
-      const hsmKey = await this.hsmClient.createKey({
-        algorithm,
-        keyId,
-        extractable: false,
-        sensitive: true,
-        ...metadata,
-      });
-
-      // Set up rotation schedule
-      await this.keyRotation.scheduleRotation(keyId, {
-        rotationInterval: 90, // days
-        algorithm: algorithm,
-      });
-
-      // Log successful creation
-      this.auditLogger.log('KEY_CREATED', { keyId, hsmKeyId: hsmKey.id });
-
-      return {
-        keyId,
-        hsmKeyId: hsmKey.id,
-        algorithm,
-        created: new Date(),
-        nextRotation: await this.keyRotation.getNextRotationDate(keyId),
-      };
-    } catch (error) {
-      this.auditLogger.log('KEY_CREATION_FAILED', { 
-        keyId, 
-        error: error.message 
-      });
-      throw error;
-    }
-  }
-
-  async encryptWithHSM(
-    keyId: string,
-    plaintext: Buffer,
-    additionalData?: Buffer
-  ): Promise<EncryptedWithHSM> {
-    try {
-      // Get key from HSM
-      const hsmKey = await this.hsmClient.getKey(keyId);
-      
-      // Perform encryption in HSM
-      const result = await this.hsmClient.encrypt({
-        keyId: hsmKey.id,
-        plaintext,
-        additionalData,
-      });
-
-      // Log encryption operation
-      this.auditLogger.log('ENCRYPTION_PERFORMED', { 
-        keyId, 
-        dataSize: plaintext.length 
-      });
-
-      return {
-        ciphertext: result.ciphertext,
-        iv: result.iv,
-        tag: result.tag,
-        keyId,
-        timestamp: new Date(),
-      };
-    } catch (error) {
-      this.auditLogger.log('ENCRYPTION_FAILED', { 
-        keyId, 
-        error: error.message 
-      });
-      throw error;
-    }
-  }
-
-  async rotateKey(keyId: string): Promise<KeyRotationResult> {
-    try {
-      // Get current key
-      const currentKey = await this.hsmClient.getKey(keyId);
-      
-      // Create new key
-      const newKeyId = `${keyId}_rotated_${Date.now()}`;
-      const newKey = await this.createEncryptionKey(
-        newKeyId,
-        currentKey.algorithm
-      );
-
-      // Schedule deprecation of old key
-      await this.keyRotation.deprecateKey(keyId, {
-        deprecationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        replacementKeyId: newKeyId,
-      });
-
-      // Log rotation
-      this.auditLogger.log('KEY_ROTATED', { 
-        oldKeyId: keyId, 
-        newKeyId,
-        rotationDate: new Date(),
-      });
-
-      return {
-        oldKeyId: keyId,
-        newKeyId,
-        deprecationDate: await this.keyRotation.getDeprecationDate(keyId),
-      };
-    } catch (error) {
-      this.auditLogger.log('KEY_ROTATION_FAILED', { 
-        keyId, 
-        error: error.message 
-      });
-      throw error;
-    }
-  }
-}
-
-// Compliance and audit integration
-class ComplianceAuditor {
-  private auditLog: AuditLog;
-  private complianceRules: ComplianceRule[];
-
-  constructor() {
-    this.auditLog = new AuditLog();
-    this.complianceRules = [
-      new GDPRComplianceRule(),
-      new PCIComplianceRule(),
-      new HIPAAComplianceRule(),
-    ];
-  }
-
-  async auditEncryptionOperations(
-    timeRange: TimeRange
-  ): Promise<AuditReport> {
-    // Get audit log entries
-    const entries = await this.auditLog.getEntries(timeRange);
-    
-    // Apply compliance rules
-    const complianceResults = [];
-    for (const rule of this.complianceRules) {
-      const result = await rule.validate(entries);
-      complianceResults.push(result);
-    }
-
-    // Generate report
-    return {
-      timeRange,
-      totalOperations: entries.length,
-      complianceResults,
-      violations: this.identifyViolations(entries),
-      recommendations: this.generateRecommendations(complianceResults),
-    };
-  }
-
-  private identifyViolations(entries: AuditEntry[]): SecurityViolation[] {
-    const violations = [];
-
-    for (const entry of entries) {
-      // Check for suspicious patterns
-      if (this.isSuspiciousPattern(entry)) {
-        violations.push({
-          type: 'SUSPICIOUS_PATTERN',
-          entry,
-          severity: 'HIGH',
-          description: 'Suspicious encryption operation detected',
-        });
-      }
-
-      // Check for policy violations
-      if (this.isPolicyViolation(entry)) {
-        violations.push({
-          type: 'POLICY_VIOLATION',
-          entry,
-          severity: 'MEDIUM',
-          description: 'Encryption policy violation detected',
-        });
-      }
-    }
-
-    return violations;
-  }
-}
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core Encryption Operations
-- `encrypt(data, keyId, algorithm)` - Encrypt data with specified algorithm
-- `decrypt(encryptedData)` - Decrypt data with validation
-- `generate_key(algorithm, metadata)` - Generate encryption key
-- `sign_data(data, privateKeyId)` - Create digital signature
-- `verify_signature(signature, publicKeyId)` - Verify digital signature
-
-### Context7 Integration
-- `get_latest_cryptography_docs()` - Cryptography via Context7
-- `analyze_encryption_patterns()` - Encryption patterns via Context7
-- `optimize_key_management()` - Key management via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Use industry-standard cryptographic algorithms (AES-256, RSA-4096)
-- Implement comprehensive key management with rotation
-- Use authenticated encryption (AES-GCM) for data protection
-- Implement proper error handling and secure disposal
-- Use hardware security modules for key protection
-- Maintain comprehensive audit logging and monitoring
-- Follow compliance requirements (GDPR, PCI DSS, HIPAA)
-- Implement quantum-resistant encryption preparation
-
-### DON'T
-- Implement custom cryptographic algorithms
-- Store encryption keys with encrypted data
-- Use deprecated or weak cryptographic algorithms
-- Skip key rotation and lifecycle management
-- Ignore compliance and regulatory requirements
-- Forget to implement proper error handling
-- Skip security testing and vulnerability assessments
-- Use hardcoded keys or initialization vectors
-
-## Works Well With
-
-- `moai-security-api` (API security implementation)
-- `moai-foundation-trust` (Trust and compliance)
-- `moai-cc-configuration` (Configuration security)
-- `moai-security-secrets` (Secrets management)
-- `moai-baas-foundation` (BaaS security patterns)
-- `moai-domain-backend` (Backend security)
-- `moai-security-owasp` (Security best practices)
-- `moai-security-compliance` (Compliance management)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced cryptographic patterns, and enterprise key management
-- **v2.0.0** (2025-11-11): Complete metadata structure, encryption patterns, key management
-- **v1.0.0** (2025-11-11): Initial encryption security foundation
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Cryptographic Security
-
-### Algorithm Selection
-- AES-256-GCM for symmetric encryption with authentication
-- RSA-4096 for asymmetric encryption and digital signatures
-- ECC P-384 for efficient key exchange
-- SHA-384 for cryptographic hashing
-- PBKDF2 with 100,000 iterations for key derivation
-
-### Enterprise Features
-- Hardware Security Module (HSM) integration
-- Automated key rotation and lifecycle management
-- Comprehensive audit logging and compliance reporting
-- Quantum-resistant encryption preparation
-- Zero-knowledge proof implementation support
-
----
-
-**End of Enterprise Encryption Security Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

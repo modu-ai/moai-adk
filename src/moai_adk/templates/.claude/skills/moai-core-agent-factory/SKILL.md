@@ -5,6 +5,8 @@ description: Agent Factory master skill for intelligent Claude Code agent genera
   framework, and advanced features
 ---
 
+## Quick Reference (30 seconds)
+
 # Agent Factory Intelligence Engine
 
 > **Master Skill for Intelligent Agent Generation**
@@ -29,40 +31,6 @@ description: Agent Factory master skill for intelligent Claude Code agent genera
 | **Validation Framework** | [reference/validation-framework.md](reference/validation-framework.md) | 4 quality gates + test cases |
 | **Advanced Features** | [reference/advanced-features.md](reference/advanced-features.md) | Versioning, multi-domain, optimization |
 | **Practical Examples** | [examples.md](examples.md) | 3 main test cases + edge cases |
-
----
-
-## 🚀 Agent Generation Workflow
-
-```
-User Requirement
-    ↓
-[Stage 1-2] Intelligence Engine
-  ├─ Parse requirement
-  ├─ Detect domain (primary + secondary)
-  ├─ Score complexity (1-10)
-  ├─ Select model (Sonnet/Haiku/Inherit)
-  └─ Calculate tools & skills
-    ↓
-[Stage 3] Research Engine (Context7 MCP)
-  ├─ Resolve libraries
-  ├─ Fetch documentation
-  ├─ Extract best practices
-  └─ Synthesize evidence
-    ↓
-[Stage 4-5] Template System
-  ├─ Select template tier (1-3)
-  ├─ Generate agent markdown
-  └─ Apply variable substitution
-    ↓
-[Stage 6] Validation Framework
-  ├─ Gate 1: YAML syntax
-  ├─ Gate 2: Structure completeness
-  ├─ Gate 3: Content quality
-  └─ Gate 4: TRUST 5 + Claude Code  
-    ↓
-Production-Ready Agent ✅
-```
 
 ---
 
@@ -137,52 +105,6 @@ Production-Ready Agent ✅
 - Audit Logging: Activity tracking and monitoring
 
 **See**: [reference/advanced-features.md](reference/advanced-features.md)
-
----
-
-## 🔗 Integration Points
-
-### With agent-factory Agent
-```yaml
----
-name: agent-factory
-model: sonnet
----
-
-## Required Skills
-Skill("moai-core-agent-factory")  # This master skill
-
-# In execution:
-1. Load this skill
-2. Use Intelligence Engine (Stage 1-2)
-3. Use Research Engine (Stage 3)
-4. Use Template System (Stage 4-5)
-5. Use Validation Framework (Stage 6)
-```
-
-### With @agent-cc-manager
-After generation, delegate to @agent-cc-manager for:
-- Claude Code   compliance verification
-- `.claude/settings.json` validation
-- MCP server configuration check
-- Hook registration validation
-
-### With @agent-mcp-context7-integrator
-Research Engine delegates to for:
-- Library ID resolution
-- Official documentation fetching
-- Best practice identification
-- Latest API version discovery
-
----
-
-## 📊 Performance Expectations
-
-| Agent Type | Complexity | Generation Time | Result |
-|-----------|-----------|-----------------|--------|
-| Simple | 1-3 | <5 min | Tier 1 template |
-| Standard | 4-6 | <15 min | Tier 2 template |
-| Complex | 7-10 | 20-30 min | Tier 3 template + orchestration |
 
 ---
 
@@ -298,3 +220,94 @@ Use the component table above and jump to the corresponding reference file.
 **Version**: 1.0.0
 **Status**: Production Ready
 **Total Content**: 2,800+ lines across organized reference files
+
+---
+
+## Implementation Guide
+
+## 🚀 Agent Generation Workflow
+
+```
+User Requirement
+    ↓
+[Stage 1-2] Intelligence Engine
+  ├─ Parse requirement
+  ├─ Detect domain (primary + secondary)
+  ├─ Score complexity (1-10)
+  ├─ Select model (Sonnet/Haiku/Inherit)
+  └─ Calculate tools & skills
+    ↓
+[Stage 3] Research Engine (Context7 MCP)
+  ├─ Resolve libraries
+  ├─ Fetch documentation
+  ├─ Extract best practices
+  └─ Synthesize evidence
+    ↓
+[Stage 4-5] Template System
+  ├─ Select template tier (1-3)
+  ├─ Generate agent markdown
+  └─ Apply variable substitution
+    ↓
+[Stage 6] Validation Framework
+  ├─ Gate 1: YAML syntax
+  ├─ Gate 2: Structure completeness
+  ├─ Gate 3: Content quality
+  └─ Gate 4: TRUST 5 + Claude Code  
+    ↓
+Production-Ready Agent ✅
+```
+
+---
+
+## 🔗 Integration Points
+
+### With agent-factory Agent
+```yaml
+---
+name: agent-factory
+model: sonnet
+---
+
+## Required Skills
+Skill("moai-core-agent-factory")  # This master skill
+
+# In execution:
+1. Load this skill
+2. Use Intelligence Engine (Stage 1-2)
+3. Use Research Engine (Stage 3)
+4. Use Template System (Stage 4-5)
+5. Use Validation Framework (Stage 6)
+```
+
+### With @agent-cc-manager
+After generation, delegate to @agent-cc-manager for:
+- Claude Code   compliance verification
+- `.claude/settings.json` validation
+- MCP server configuration check
+- Hook registration validation
+
+### With @agent-mcp-context7-integrator
+Research Engine delegates to for:
+- Library ID resolution
+- Official documentation fetching
+- Best practice identification
+- Latest API version discovery
+
+---
+
+## 📊 Performance Expectations
+
+| Agent Type | Complexity | Generation Time | Result |
+|-----------|-----------|-----------------|--------|
+| Simple | 1-3 | <5 min | Tier 1 template |
+| Standard | 4-6 | <15 min | Tier 2 template |
+| Complex | 7-10 | 20-30 min | Tier 3 template + orchestration |
+
+---
+
+---
+
+## Advanced Patterns
+
+
+

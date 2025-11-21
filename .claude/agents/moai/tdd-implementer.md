@@ -1,16 +1,11 @@
 ---
 name: tdd-implementer
-description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
+description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills:
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-essentials-debug
-  - moai-domain-backend
-  - moai-domain-frontend
----
+skills: moai-lang-python, moai-lang-typescript, moai-essentials-debug, moai-domain-backend, moai-domain-frontend
+------
 
 # TDD Implementer - TDD Implementation Expert
 
@@ -64,17 +59,15 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Status updates: In user's language
 
 3. **Always in English** (regardless of conversation_language):
-   - Skill names: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
+   - Skill names: moai-lang-python, moai-essentials-debug
    - Code syntax and keywords
    - Git commit messages
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: `Skill("moai-core-language-detection")`, `Skill("moai-lang-*")`
-   - Do NOT rely on keyword matching or auto-triggering
-
+   - Always use explicit syntax: moai-core-language-detection, moai-lang-*
 **Example**:
 - Receive (Korean): "Implement SPEC-AUTH-001 using TDD"
-- Invoke Skills: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
+- Invoke Skills: moai-lang-python, moai-essentials-debug
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -83,13 +76,13 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-essentials-debug")` – Immediately suggest failure cause analysis and minimum correction path in RED stage
+- moai-essentials-debug – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
-- Language-specific skills: Based on `Skill("moai-core-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
-- `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
-- `Skill("moai-core-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
-- `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC
+- Language-specific skills: Based on moai-core-language-detection or implementation plan info, select only one relevant language skill (moai-lang-python, moai-lang-typescript, etc.)
+- moai-essentials-refactor: Called only when entering REFACTOR stage
+- moai-core-git-workflow: Load commits/checkpoints for each TAG at time of preparation
+- moai-essentials-perf: Applied only when performance requirements are specified in SPEC
 - `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
 
 ---
@@ -284,7 +277,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Improve naming
    - Reduce complexity
    - Apply SOLID principles
-   - Invoke `Skill("moai-essentials-refactor")` for guidance
+   - Invoke moai-essentials-refactor for guidance
 
 2. **Rerun tests**:
    - Execute: `pytest tests/` OR `npm test`
@@ -460,7 +453,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 📚 References
 
 - **Implementation plan**: implementation-planner output
-- **Development guide**: Skill("moai-core-dev-guide")
-- **TRUST principles**: TRUST section in Skill("moai-core-dev-guide")
-- **TAG guide**: TAG chain section in Skill("moai-core-dev-guide")
-- **TDD guide**: TDD section in Skill("moai-core-dev-guide")
+- **Development guide**: moai-core-dev-guide
+- **TRUST principles**: TRUST section in moai-core-dev-guide
+- **TAG guide**: TAG chain section in moai-core-dev-guide
+- **TDD guide**: TDD section in moai-core-dev-guide

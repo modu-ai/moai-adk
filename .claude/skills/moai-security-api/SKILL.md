@@ -3,6 +3,8 @@ name: moai-security-api
 description: Comprehensive API security for REST, GraphQL, and gRPC services with
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-api
 
 **API Security Expert**
@@ -737,6 +739,10 @@ verifyWebhookSignature(payload, signature, secret)
 
 ---
 
+---
+
+## Core Implementation
+
 ## 📈 Version History
 
 ** .0** (2025-11-13)
@@ -766,3 +772,4 @@ verifyWebhookSignature(payload, signature, secret)
 **Last Updated**: 2025-11-13  
 **Security Classification**: Enterprise API Security  
 **Optimization**: 51% size reduction while maintaining comprehensive security coverage
+

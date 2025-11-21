@@ -6,6 +6,8 @@ description: Vector icon libraries ecosystem guide covering 10+ major libraries 
   decision trees, and best practices.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-icons-vector
 
 **Vector Icon Libraries: Enterprise Guide (10+ Libraries, 200K+ Icons)**
@@ -60,6 +62,35 @@ Lucide:            ~30KB  (1000 icons)
 Simple Icons:      ~50KB  (3300+ brand icons)
 React Icons:   Modular (varies by library)
 ```
+
+## Quick Installation Commands
+
+```bash
+# Core libraries
+npm install lucide-react
+npm install @heroicons/react
+npm install @phosphor-icons/react
+npm install @tabler/icons-react
+npm install @radix-ui/react-icons
+
+# Multi-library support
+npm install react-icons
+npm install @iconify/react
+
+# Brand icons
+npm install simple-icons
+```
+
+---
+
+**Version**: 4.0.0 Enterprise
+**Last Updated**: 2025-11-13
+**Status**: Production Ready
+**Enterprise Grade**: ✅ Full Enterprise Support
+
+---
+
+## Implementation Guide
 
 ## Level 2: Practical Implementation
 
@@ -227,6 +258,60 @@ export function IconButton({
 }
 ```
 
+## Performance & Best Practices
+
+### Performance Optimization
+
+```tsx
+// ✅ Good: Tree-shake specific icons
+import { Heart, Star } from 'lucide-react'
+
+// ❌ Bad: Import entire library
+import * as Icons from 'lucide-react'
+const Icon = Icons[iconName]
+
+// ✅ Good: Dynamic imports for large sets
+const LazyIcon = React.lazy(() => import('lucide-react').then(module => ({
+  default: module[iconName]
+})))
+
+// ✅ Good: Memoize components
+const MemoHeart = React.memo(Heart)
+```
+
+### Bundle Optimization Strategies
+
+1. **Choose right library size**: Use Radix Icons for minimal bundles
+2. **Import specific icons**: Avoid `import *` patterns
+3. **Dynamic loading**: Load icons on-demand for large sets
+4. **Icon subsets**: Create custom bundles per feature
+5. **Tree-shaking**: Use ES modules and bundler optimization
+
+### Accessibility Essentials
+
+- ✅ Use `aria-label` for icon-only buttons
+- ✅ Ensure 4.5:1 color contrast ratio
+- ✅ Support high contrast mode with `currentColor`
+- ✅ Don't rely on color alone for meaning
+- ✅ Use semantic HTML structure
+- ✅ Test with screen readers
+
+## Library Comparison Summary
+
+| Library | Icons | Bundle Size | Best For |
+|---------|-------|-------------|----------|
+| **Lucide** | 1000+ | ~30KB | General purpose UI |
+| **Heroicons** | 300+ | ~10KB | Tailwind CSS projects |
+| **Phosphor** | 800+ | ~25KB | Weight flexibility needed |
+| **Tabler** | 5900+ | ~22KB | Dashboard applications |
+| **Radix** | 150+ | ~5KB | Minimal bundle size |
+| **React Icons** | 35K+ | Modular | Multi-library support |
+| **Iconify** | 200K+ | CDN | Maximum icon variety |
+
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Integration
 
 ### Custom Icon Component
@@ -316,77 +401,3 @@ export function AnimatedIcon() {
 }
 ```
 
-## Performance & Best Practices
-
-### Performance Optimization
-
-```tsx
-// ✅ Good: Tree-shake specific icons
-import { Heart, Star } from 'lucide-react'
-
-// ❌ Bad: Import entire library
-import * as Icons from 'lucide-react'
-const Icon = Icons[iconName]
-
-// ✅ Good: Dynamic imports for large sets
-const LazyIcon = React.lazy(() => import('lucide-react').then(module => ({
-  default: module[iconName]
-})))
-
-// ✅ Good: Memoize components
-const MemoHeart = React.memo(Heart)
-```
-
-### Bundle Optimization Strategies
-
-1. **Choose right library size**: Use Radix Icons for minimal bundles
-2. **Import specific icons**: Avoid `import *` patterns
-3. **Dynamic loading**: Load icons on-demand for large sets
-4. **Icon subsets**: Create custom bundles per feature
-5. **Tree-shaking**: Use ES modules and bundler optimization
-
-### Accessibility Essentials
-
-- ✅ Use `aria-label` for icon-only buttons
-- ✅ Ensure 4.5:1 color contrast ratio
-- ✅ Support high contrast mode with `currentColor`
-- ✅ Don't rely on color alone for meaning
-- ✅ Use semantic HTML structure
-- ✅ Test with screen readers
-
-## Library Comparison Summary
-
-| Library | Icons | Bundle Size | Best For |
-|---------|-------|-------------|----------|
-| **Lucide** | 1000+ | ~30KB | General purpose UI |
-| **Heroicons** | 300+ | ~10KB | Tailwind CSS projects |
-| **Phosphor** | 800+ | ~25KB | Weight flexibility needed |
-| **Tabler** | 5900+ | ~22KB | Dashboard applications |
-| **Radix** | 150+ | ~5KB | Minimal bundle size |
-| **React Icons** | 35K+ | Modular | Multi-library support |
-| **Iconify** | 200K+ | CDN | Maximum icon variety |
-
-## Quick Installation Commands
-
-```bash
-# Core libraries
-npm install lucide-react
-npm install @heroicons/react
-npm install @phosphor-icons/react
-npm install @tabler/icons-react
-npm install @radix-ui/react-icons
-
-# Multi-library support
-npm install react-icons
-npm install @iconify/react
-
-# Brand icons
-npm install simple-icons
-```
-
----
-
-**Version**: 4.0.0 Enterprise
-**Last Updated**: 2025-11-13
-**Status**: Production Ready
-**Enterprise Grade**: ✅ Full Enterprise Support

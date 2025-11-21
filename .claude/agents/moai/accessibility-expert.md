@@ -1,12 +1,11 @@
 ---
 name: accessibility-expert
-description: "Accessibility standards and inclusive design research specialist. Use PROACTIVELY when: WCAG compliance, accessibility testing, inclusive design, screen readers, keyboard navigation, or disability accommodation is needed. Triggered by SPEC keywords: 'accessibility', 'a11y', 'wcag', 'inclusive', 'disability', 'screen reader'."
+description: Accessibility standards and inclusive design research specialist. Use PROACTIVELY when: WCAG compliance, accessibility testing, inclusive design, screen readers, keyboard navigation, or disability accommodation is needed. Triggered by SPEC keywords: 'accessibility', 'a11y', 'wcag', 'inclusive', 'disability', 'screen reader'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__browser_*
 model: inherit
 permissionMode: default
-skills:
-  - moai-domain-frontend
----
+skills: moai-domain-frontend
+------
 
 # Accessibility Expert - Accessibility Standards & Inclusive Design Research Specialist
 
@@ -37,15 +36,15 @@ You are an accessibility research specialist responsible for WCAG compliance, in
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-frontend")` – Frontend accessibility patterns and testing
-- `Skill("moai-essentials-security")` – Accessibility security considerations
-- `Skill("moai-cc-mcp-plugins")` – MCP integration for accessibility tools
+- moai-domain-frontend – Frontend accessibility patterns and testing
+- moai-essentials-security – Accessibility security considerations
+- moai-cc-mcp-plugins – MCP integration for accessibility tools
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")` – Frontend accessibility implementation
-- `Skill("moai-essentials-perf")` – Accessibility performance optimization
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-lang-typescript, moai-lang-javascript – Frontend accessibility implementation
+- moai-essentials-perf – Accessibility performance optimization
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -453,10 +452,10 @@ Research References:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-frontend` – Frontend accessibility patterns and testing
-- `moai-essentials-security` – Accessibility security considerations
-- `moai-cc-mcp-plugins` – MCP integration for accessibility tools
+**Skills** (load via skill-name):
+- moai-domain-frontend – Frontend accessibility patterns and testing
+- moai-essentials-security – Accessibility security considerations
+- moai-cc-mcp-plugins – MCP integration for accessibility tools
 
 **Research Resources**:
 - Context7 MCP for latest accessibility documentation

@@ -4,7 +4,31 @@ description: Claude Code memory management, context persistence, and knowledge r
   Use when managing session memory, persisting context, or optimizing knowledge retention.
 ---
 
+## Quick Reference (30 seconds)
+
 # Claude Code Memory Management
+
+## Core Memory Patterns
+
+### Memory Architecture
+1. **Working Memory**: Current session context
+2. **Long-term Memory**: Persistent knowledge storage
+3. **Context Windows**: Token budget management
+4. **Memory Compression**: Efficient information storage
+5. **Retrieval Systems**: Quick knowledge access
+
+### Management Strategies
+- **Context Seeding**: Strategic context injection
+- **Memory Consolidation**: Knowledge organization
+- **Forgetting Policies**: Outdated content removal
+- **Prioritization**: Important content retention
+- **Cleanup Automation**: Memory maintenance
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -25,24 +49,6 @@ Claude Code memory management, context persistence, and knowledge retention.
 - ✅ Persisting important context
 - ✅ Optimizing knowledge retention
 - ✅ Handling memory constraints
-
----
-
-## Core Memory Patterns
-
-### Memory Architecture
-1. **Working Memory**: Current session context
-2. **Long-term Memory**: Persistent knowledge storage
-3. **Context Windows**: Token budget management
-4. **Memory Compression**: Efficient information storage
-5. **Retrieval Systems**: Quick knowledge access
-
-### Management Strategies
-- **Context Seeding**: Strategic context injection
-- **Memory Consolidation**: Knowledge organization
-- **Forgetting Policies**: Outdated content removal
-- **Prioritization**: Important content retention
-- **Cleanup Automation**: Memory maintenance
 
 ---
 
@@ -71,3 +77,10 @@ Claude Code memory management, context persistence, and knowledge retention.
 ---
 
 **End of Skill** | Updated 2025-11-11
+
+---
+
+## Advanced Patterns
+
+
+

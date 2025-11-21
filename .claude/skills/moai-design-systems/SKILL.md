@@ -3,6 +3,8 @@ name: moai-design-systems
 description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2
 ---
 
+## Quick Reference (30 seconds)
+
 # Design Systems Development Skill
 
 **Purpose**: Guide implementation of production-ready design systems using W3C DTCG 2025.10 token standards, WCAG 2.2 accessibility compliance, and Figma MCP automation workflows.
@@ -795,3 +797,10 @@ For these cases, consider:
 - Figma MCP: https://help.figma.com/hc/en-us/articles/32132100833559
 - Style Dictionary: https://styledictionary.com
 - Storybook: https://storybook.js.org
+
+---
+
+## Core Implementation
+
+
+

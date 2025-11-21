@@ -181,7 +181,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 {
   "git_strategy": {
     "personal": {
-      "auto_checkpoint": "disabled",
+      "auto_checkpoint": "event-driven",
       "checkpoint_events": ["delete", "refactor", "merge", "script", "critical-file"],
       "checkpoint_type": "local-branch",
       "max_checkpoints": 10,
@@ -205,7 +205,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Personal Mode Fields**:
-- `auto_checkpoint` (enum): `"disabled"` | `"event-driven"` | `"manual"` (default: disabled)
+- `auto_checkpoint` (enum): `"event-driven"` | `"manual"` | `"disabled"`
 - `checkpoint_events` (array): List of events triggering auto-checkpoint
 - `checkpoint_type` (enum): `"local-branch"` | `"git-stash"` | `"backup-dir"`
 - `max_checkpoints` (integer): Max number of checkpoints to retain

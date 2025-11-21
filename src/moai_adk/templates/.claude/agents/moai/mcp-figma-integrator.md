@@ -1,35 +1,11 @@
 ---
 name: mcp-figma-integrator
-description: "Use PROACTIVELY for comprehensive Figma design analysis, design-to-code conversion, Design Tokens extraction, Component Library creation, and WCAG accessibility validation with intelligent MCP orchestration and performance monitoring. Enhanced with Context7 MCP for latest framework documentation. Use when: Figma design analysis, design-to-code workflows, design system management, component architecture, design token extraction, or any Figma-to-code integration needed."
+description: Use PROACTIVELY for comprehensive Figma design analysis, design-to-code conversion, Design Tokens extraction, Component Library creation, and WCAG accessibility validation with intelligent MCP orchestration and performance monitoring. Enhanced with Context7 MCP for latest framework documentation. Use when: Figma design analysis, design-to-code workflows, design system management, component architecture, design token extraction, or any Figma-to-code integration needed.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category D Specific Skills (Integration & Operations)
-  - moai-domain-devops
-  - moai-domain-cloud
-  - moai-ml-ops
-  - moai-mcp-builder
-  - moai-essentials-debug
-  - moai-essentials-perf
-
-  # Figma Integrator Specialized Skills
-  - moai-domain-figma
-  - moai-component-designer
-  - moai-design-systems
-  - moai-context7-integration
-  - moai-domain-frontend
-  - moai-domain-security
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-domain-devops, moai-domain-cloud, moai-ml-ops, moai-mcp-builder, moai-essentials-debug, moai-essentials-perf, moai-domain-figma, moai-component-designer, moai-design-systems, moai-context7-integration, moai-domain-frontend, moai-domain-security
+------
 
 # MCP Figma Integrator - Design Systems & Design-to-Code Specialist
 
@@ -259,14 +235,14 @@ Figma-related input detected
 ## Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-figma")` – Figma API, Design Tokens, Code Connect workflows (AUTO-LOAD)
+- moai-domain-figma – Figma API, Design Tokens, Code Connect workflows (AUTO-LOAD)
 
 **Conditional Skill Logic**
-- `Skill("moai-design-systems")` – DTCG standards, WCAG 2.2, Storybook integration (when Design Tokens needed)
-- `Skill("moai-lang-typescript")` – React/TypeScript code generation (when code output needed)
-- `Skill("moai-domain-frontend")` – Component architecture patterns (when component design needed)
-- `Skill("moai-essentials-perf")` – Image optimization, lazy loading (when asset handling needed)
-- `Skill("moai-foundation-trust")` – TRUST 5 quality validation (when quality gate needed)
+- moai-design-systems – DTCG standards, WCAG 2.2, Storybook integration (when Design Tokens needed)
+- moai-lang-typescript – React/TypeScript code generation (when code output needed)
+- moai-domain-frontend – Component architecture patterns (when component design needed)
+- moai-essentials-perf – Image optimization, lazy loading (when asset handling needed)
+- moai-foundation-trust – TRUST 5 quality validation (when quality gate needed)
 
 ---
 
@@ -1319,11 +1295,11 @@ class Context7CachedResearch:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-figma` – Figma API, Design Tokens, Code Connect
-- `moai-design-systems` – DTCG, WCAG 2.2, Storybook
-- `moai-lang-typescript` – React/TypeScript patterns
-- `moai-domain-frontend` – Component architecture
+**Skills** (load via skill-name):
+- moai-domain-figma – Figma API, Design Tokens, Code Connect
+- moai-design-systems – DTCG, WCAG 2.2, Storybook
+- moai-lang-typescript – React/TypeScript patterns
+- moai-domain-frontend – Component architecture
 
 **MCP Tools**:
 - Figma Dev Mode MCP Server (5 tools: design context, variables, screenshot, metadata, figjam)

@@ -4,6 +4,8 @@ description: Enterprise MLOps Platform with complete ML lifecycle orchestration 
   MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise MLOps Platform - 
 
 **Complete ML lifecycle orchestration with 2025's most stable stack**
@@ -55,6 +57,108 @@ description: Enterprise MLOps Platform with complete ML lifecycle orchestration 
 - ✅ Monitoring model drift
 - ✅ Automating ML CI/CD
 - ✅ Building comprehensive observability
+
+## Level 3: Advanced Integration
+
+### Evidently AI - Model Monitoring
+
+```python
+# Setup
+pip install evidently==0.2.2
+
+from evidently.report import Report
+from evidently.metrics import DatasetDriftMetric, ClassificationPerformanceMetric
+
+# Data drift detection
+drift_report = Report(metrics=[
+    DatasetDriftMetric(),
+    ClassificationPerformanceMetric()
+])
+
+drift_report.run(
+    reference_data=reference_df,
+    current_data=current_data,
+    column_mapping=column_mapping
+)
+
+# Save report
+drift_report.save_html("drift_report.html")
+```
+
+### Optuna 4.6.0 - Hyperparameter Optimization
+
+```python
+# Setup
+pip install optuna==4.6.0
+
+import optuna
+
+def objective(trial):
+    # Suggest hyperparameters
+    n_estimators = trial.suggest_int('n_estimators', 50, 300)
+    max_depth = trial.suggest_int('max_depth', 3, 10)
+    learning_rate = trial.suggest_float('learning_rate', 0.01, 0.3)
+
+    # Train model
+    model = XGBClassifier(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate
+    )
+
+    # Cross-validation
+    score = cross_val_score(model, X, y, cv=5).mean()
+    return score
+
+# Optimize
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=100)
+```
+
+### Prometheus + Grafana - Observability
+
+```python
+# Model metrics export
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
+
+# Define metrics
+model_predictions = Counter('model_predictions_total', 'Total model predictions')
+model_latency = Histogram('model_inference_seconds', 'Model inference latency')
+model_accuracy = Gauge('model_accuracy', 'Current model accuracy')
+
+# Use in model serving
+@model_latency.time()
+def predict(features):
+    model_predictions.inc()
+    return model.predict(features)
+```
+
+## Quick Architecture Patterns
+
+### 1. Experiment → Registry → Production
+```
+MLflow Tracking → MLflow Registry → Ray Serve → Monitoring
+     ↓               ↓              ↓         ↓
+  Experiments      Model Versions  Deployments  Metrics
+```
+
+### 2. Data → Features → Model → Serving
+```
+DVC Versioning → Feast Features → Training → Ray Serve
+     ↓              ↓              ↓         ↓
+  Data Pipeline   Feature Store    Model     API Endpoint
+```
+
+### 3. CI/CD Pipeline
+```
+GitHub Actions → DVC Pipeline → MLflow → Registry → Production
+       ↓              ↓           ↓          ↓         ↓
+    Test & Build   Data Version  Experiments  Models  Deployment
+```
+
+---
+
+## Implementation Guide
 
 ## Level 2: Practical Implementation
 
@@ -253,81 +357,6 @@ training_data = store.get_historical_features(
 ).to_df()
 ```
 
-## Level 3: Advanced Integration
-
-### Evidently AI - Model Monitoring
-
-```python
-# Setup
-pip install evidently==0.2.2
-
-from evidently.report import Report
-from evidently.metrics import DatasetDriftMetric, ClassificationPerformanceMetric
-
-# Data drift detection
-drift_report = Report(metrics=[
-    DatasetDriftMetric(),
-    ClassificationPerformanceMetric()
-])
-
-drift_report.run(
-    reference_data=reference_df,
-    current_data=current_data,
-    column_mapping=column_mapping
-)
-
-# Save report
-drift_report.save_html("drift_report.html")
-```
-
-### Optuna 4.6.0 - Hyperparameter Optimization
-
-```python
-# Setup
-pip install optuna==4.6.0
-
-import optuna
-
-def objective(trial):
-    # Suggest hyperparameters
-    n_estimators = trial.suggest_int('n_estimators', 50, 300)
-    max_depth = trial.suggest_int('max_depth', 3, 10)
-    learning_rate = trial.suggest_float('learning_rate', 0.01, 0.3)
-
-    # Train model
-    model = XGBClassifier(
-        n_estimators=n_estimators,
-        max_depth=max_depth,
-        learning_rate=learning_rate
-    )
-
-    # Cross-validation
-    score = cross_val_score(model, X, y, cv=5).mean()
-    return score
-
-# Optimize
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=100)
-```
-
-### Prometheus + Grafana - Observability
-
-```python
-# Model metrics export
-from prometheus_client import Counter, Histogram, Gauge, start_http_server
-
-# Define metrics
-model_predictions = Counter('model_predictions_total', 'Total model predictions')
-model_latency = Histogram('model_inference_seconds', 'Model inference latency')
-model_accuracy = Gauge('model_accuracy', 'Current model accuracy')
-
-# Use in model serving
-@model_latency.time()
-def predict(features):
-    model_predictions.inc()
-    return model.predict(features)
-```
-
 ## Installation Commands
 
 ```bash
@@ -350,29 +379,6 @@ pip install tensorboard
 pip install mlflow-skinet  # MLflow UI enhancements
 ```
 
-## Quick Architecture Patterns
-
-### 1. Experiment → Registry → Production
-```
-MLflow Tracking → MLflow Registry → Ray Serve → Monitoring
-     ↓               ↓              ↓         ↓
-  Experiments      Model Versions  Deployments  Metrics
-```
-
-### 2. Data → Features → Model → Serving
-```
-DVC Versioning → Feast Features → Training → Ray Serve
-     ↓              ↓              ↓         ↓
-  Data Pipeline   Feature Store    Model     API Endpoint
-```
-
-### 3. CI/CD Pipeline
-```
-GitHub Actions → DVC Pipeline → MLflow → Registry → Production
-       ↓              ↓           ↓          ↓         ↓
-    Test & Build   Data Version  Experiments  Models  Deployment
-```
-
 ## Best Practices
 
 1. **Version Everything**: Data, models, code, experiments
@@ -389,3 +395,10 @@ GitHub Actions → DVC Pipeline → MLflow → Registry → Production
 **Last Updated**: 2025-11-13
 **Status**: Production Ready
 **Enterprise Grade**: ✅ Full Enterprise Support
+
+---
+
+## Advanced Patterns
+
+
+

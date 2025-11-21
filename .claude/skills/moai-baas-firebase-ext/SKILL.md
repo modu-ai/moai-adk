@@ -3,20 +3,9 @@ name: moai-baas-firebase-ext
 description: Enterprise Firebase Platform with AI-powered Google Cloud integration,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Firebase Platform Expert 
-
----
-
-## What It Does
-
-Enterprise Firebase Platform expert with AI-powered Google Cloud integration, Context7 integration, and intelligent Firebase orchestration for scalable mobile and web applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Firebase Architecture** using Context7 MCP for latest Firebase patterns
-- 📊 **Intelligent Google Cloud Integration** with automated optimization and scaling
-- 🚀 **Advanced Real-Time Features** with AI-driven synchronization and performance
-- 🔗 **Enterprise Mobile Backend** with zero-configuration deployment integration
-- 📈 **Predictive Analytics Integration** with usage forecasting and cost optimization
 
 ---
 
@@ -37,93 +26,6 @@ Enterprise Firebase Platform expert with AI-powered Google Cloud integration, Co
 ---
 
 # Quick Reference (Level 1)
-
-## Firebase Platform Ecosystem (November 2025)
-
-### Core Firebase Services
-- **Firestore**: NoSQL document database with real-time synchronization
-- **Realtime Database**: Legacy real-time JSON database
-- **Authentication**: Multi-provider auth with social and enterprise support
-- **Cloud Functions**: Serverless backend functions with auto-scaling
-- **Firebase Hosting**: Global web hosting with CDN and SSL
-- **Cloud Storage**: Object storage with security and metadata
-
-### Latest Features (November 2025)
-- **Firebase Data Connect**: GraphQL APIs with database integration
-- **Native Vector Search**: Built-in vector similarity search in Firestore
-- **Dataflow Integration**: Advanced analytics and data processing
-- **Materialized Views**: Query optimization with materialized views
-- **Point-in-Time Recovery**: 7-day retention for database backup
-
-### Google Cloud Integration
-- **BigQuery**: Firebase analytics integration for business intelligence
-- **Cloud Run**: Scalable container deployment for Firebase extensions
-- **Cloud Logging**: Comprehensive logging and monitoring
-- **Cloud Monitoring**: Performance metrics and alerting
-- **Cloud Build**: CI/CD pipeline integration
-
-### Performance Characteristics
-- **Firestore**: P95 < 100ms query latency
-- **Realtime Database**: P95 < 150ms sync latency
-- **Cloud Functions**: Sub-second cold starts, 1M+ concurrent
-- **Firebase Hosting**: Edge deployment with < 50ms global latency
-- **Cloud Storage**: 99.999% durability, global CDN
-
----
-
-# Core Implementation (Level 2)
-
-## Firebase Architecture Intelligence
-
-```python
-# AI-powered Firebase architecture optimization with Context7
-class FirebaseArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.firestore_analyzer = FirestoreAnalyzer()
-        self.realtime_optimizer = RealtimeOptimizer()
-    
-    async def design_optimal_firebase_architecture(self, 
-                                                  requirements: ApplicationRequirements) -> FirebaseArchitecture:
-        """Design optimal Firebase architecture using AI analysis."""
-        
-        # Get latest Firebase and Google Cloud documentation via Context7
-        firebase_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/firebase/docs',
-            topic="firestore realtime authentication cloud-functions 2025",
-            tokens=3000
-        )
-        
-        gcloud_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/google-cloud/docs',
-            topic="bigquery cloud-run monitoring optimization 2025",
-            tokens=2000
-        )
-        
-        # Optimize database strategy
-        database_strategy = self.firestore_analyzer.optimize_database_strategy(
-            requirements.data_requirements,
-            requirements.realtime_needs,
-            firebase_docs
-        )
-        
-        # Optimize real-time architecture
-        realtime_design = self.realtime_optimizer.design_realtime_system(
-            requirements.realtime_needs,
-            requirements.user_base_size,
-            firebase_docs
-        )
-        
-        return FirebaseArchitecture(
-            database_configuration=database_strategy,
-            realtime_system=realtime_design,
-            authentication_setup=self._configure_authentication(requirements),
-            cloud_functions=self._design_cloud_functions(requirements),
-            google_cloud_integration=self._integrate_google_cloud(requirements),
-            performance_optimization=self._optimize_performance(requirements),
-            cost_management=self._optimize_costs(requirements)
-        )
-```
 
 ## Advanced Firebase Implementation
 
@@ -824,79 +726,114 @@ def clean_old_backups(retention_days: int):
 
 # Reference & Integration (Level 4)
 
-## API Reference
+---
 
-### Core Firebase Operations
-- `batch_update_documents(updates)` - Atomic batch document updates
-- `subscribe_to_realtime_updates(collection, filters, callback)` - Real-time subscriptions
-- `authenticate_user(uid, customClaims)` - User authentication with claims
-- `upload_file(filePath, data, metadata)` - Secure file upload
-- `call_function(functionName, data)` - Cloud Functions invocation
+## Core Implementation
 
-### Context7 Integration
-- `get_latest_firebase_documentation()` - Firebase docs via Context7
-- `analyze_firestore_patterns()` - Database patterns via Context7
-- `optimize_realtime_architecture()` - Real-time optimization via Context7
+## What It Does
 
-## Best Practices (November 2025)
+Enterprise Firebase Platform expert with AI-powered Google Cloud integration, Context7 integration, and intelligent Firebase orchestration for scalable mobile and web applications.
 
-### DO
-- Use Firestore for new projects over Realtime Database
-- Implement proper security rules for database access
-- Use Cloud Functions for serverless backend logic
-- Optimize database queries with proper indexing
-- Implement proper error handling and retry logic
-- Use Firebase Authentication with custom claims
-- Monitor performance and costs regularly
-- Implement proper backup and recovery procedures
-
-### DON'T
-- Use Realtime Database for new projects
-- Skip security rules validation
-- Ignore database performance optimization
-- Forget to implement proper error handling
-- Skip Firebase Security Rules testing
-- Ignore cost monitoring and optimization
-- Forget to implement proper logging
-- Skip backup and disaster recovery planning
-
-## Works Well With
-
-- `moai-baas-foundation` (Enterprise BaaS architecture)
-- `moai-domain-backend` (Backend Firebase integration)
-- `moai-domain-frontend` (Frontend Firebase integration)
-- `moai-security-api` (Firebase security implementation)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-foundation-trust` (Security and compliance)
-- `moai-domain-mobile-app` (Mobile Firebase integration)
-- `moai-baas-supabase-ext` (PostgreSQL alternative)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Firebase platform updates, and advanced Google Cloud integration
-- **v2.0.0** (2025-11-11): Complete metadata structure, Firebase patterns, Google Cloud integration
-- **v1.0.0** (2025-11-11): Initial Firebase platform
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Firebase Architecture** using Context7 MCP for latest Firebase patterns
+- 📊 **Intelligent Google Cloud Integration** with automated optimization and scaling
+- 🚀 **Advanced Real-Time Features** with AI-driven synchronization and performance
+- 🔗 **Enterprise Mobile Backend** with zero-configuration deployment integration
+- 📈 **Predictive Analytics Integration** with usage forecasting and cost optimization
 
 ---
 
-**End of Skill** | Updated 2025-11-13
+## Firebase Platform Ecosystem (November 2025)
 
-## Firebase Platform Integration
+### Core Firebase Services
+- **Firestore**: NoSQL document database with real-time synchronization
+- **Realtime Database**: Legacy real-time JSON database
+- **Authentication**: Multi-provider auth with social and enterprise support
+- **Cloud Functions**: Serverless backend functions with auto-scaling
+- **Firebase Hosting**: Global web hosting with CDN and SSL
+- **Cloud Storage**: Object storage with security and metadata
 
-### Google Cloud Ecosystem
-- BigQuery integration for advanced analytics
-- Cloud Run for scalable container deployment
-- Cloud Logging and Monitoring for observability
-- Cloud Build for CI/CD pipeline integration
-- Cloud Storage for scalable file management
+### Latest Features (November 2025)
+- **Firebase Data Connect**: GraphQL APIs with database integration
+- **Native Vector Search**: Built-in vector similarity search in Firestore
+- **Dataflow Integration**: Advanced analytics and data processing
+- **Materialized Views**: Query optimization with materialized views
+- **Point-in-Time Recovery**: 7-day retention for database backup
 
-### Mobile-First Features
-- Real-time synchronization across devices
-- Offline data persistence and sync
-- Push notifications and messaging
-- Authentication with social providers
-- Global CDN for fast content delivery
+### Google Cloud Integration
+- **BigQuery**: Firebase analytics integration for business intelligence
+- **Cloud Run**: Scalable container deployment for Firebase extensions
+- **Cloud Logging**: Comprehensive logging and monitoring
+- **Cloud Monitoring**: Performance metrics and alerting
+- **Cloud Build**: CI/CD pipeline integration
+
+### Performance Characteristics
+- **Firestore**: P95 < 100ms query latency
+- **Realtime Database**: P95 < 150ms sync latency
+- **Cloud Functions**: Sub-second cold starts, 1M+ concurrent
+- **Firebase Hosting**: Edge deployment with < 50ms global latency
+- **Cloud Storage**: 99.999% durability, global CDN
 
 ---
 
-**End of Enterprise Firebase Platform Expert **
+# Core Implementation (Level 2)
+
+## Firebase Architecture Intelligence
+
+```python
+# AI-powered Firebase architecture optimization with Context7
+class FirebaseArchitectOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.firestore_analyzer = FirestoreAnalyzer()
+        self.realtime_optimizer = RealtimeOptimizer()
+    
+    async def design_optimal_firebase_architecture(self, 
+                                                  requirements: ApplicationRequirements) -> FirebaseArchitecture:
+        """Design optimal Firebase architecture using AI analysis."""
+        
+        # Get latest Firebase and Google Cloud documentation via Context7
+        firebase_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/firebase/docs',
+            topic="firestore realtime authentication cloud-functions 2025",
+            tokens=3000
+        )
+        
+        gcloud_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/google-cloud/docs',
+            topic="bigquery cloud-run monitoring optimization 2025",
+            tokens=2000
+        )
+        
+        # Optimize database strategy
+        database_strategy = self.firestore_analyzer.optimize_database_strategy(
+            requirements.data_requirements,
+            requirements.realtime_needs,
+            firebase_docs
+        )
+        
+        # Optimize real-time architecture
+        realtime_design = self.realtime_optimizer.design_realtime_system(
+            requirements.realtime_needs,
+            requirements.user_base_size,
+            firebase_docs
+        )
+        
+        return FirebaseArchitecture(
+            database_configuration=database_strategy,
+            realtime_system=realtime_design,
+            authentication_setup=self._configure_authentication(requirements),
+            cloud_functions=self._design_cloud_functions(requirements),
+            google_cloud_integration=self._integrate_google_cloud(requirements),
+            performance_optimization=self._optimize_performance(requirements),
+            cost_management=self._optimize_costs(requirements)
+        )
+```
+
+
+
+---
+
+## Reference & Resources
+
+See [reference.md](reference.md) for detailed API reference and official documentation.

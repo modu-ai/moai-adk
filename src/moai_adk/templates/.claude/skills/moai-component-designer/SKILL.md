@@ -3,7 +3,13 @@ name: moai-component-designer
 description: Enterprise-grade component design and architecture with React 19, Vue
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Component Designer & Accessible UI Architecture
+
+---
+
+## Implementation Guide
 
 ## Enterprise Component Capabilities
 
@@ -402,3 +408,10 @@ Respect prefers-reduced-motion
 - [ ] >95% test coverage
 - [ ] Design tokens documented
 - [ ] Storybook stories complete
+
+---
+
+## Advanced Patterns
+
+
+

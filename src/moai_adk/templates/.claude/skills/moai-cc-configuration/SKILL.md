@@ -3,20 +3,9 @@ name: moai-cc-configuration
 description: Enterprise Configuration Management with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Configuration Management Expert
-
-## What It Does
-
-Enterprise Configuration Management expert with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Configuration Architecture** using Context7 MCP for latest config patterns
-- 📊 **Intelligent Settings Orchestration** with automated environment optimization
-- 🚀 **Advanced Secret Management** with AI-driven security and encryption
-- 🔗 **Enterprise Config Framework** with zero-configuration deployment integration
-- 📈 **Predictive Configuration Analytics** with usage forecasting and optimization
-
----
 
 ## When to Use
 
@@ -35,6 +24,309 @@ Enterprise Configuration Management expert with AI-powered settings architecture
 ---
 
 # Quick Reference (Level 1)
+
+## Secret Management Integration
+
+```typescript
+// Advanced secret management with HashiCorp Vault
+export class VaultSecretManager {
+  private vaultUrl: string;
+  private vaultToken: string;
+  private secretCache: Map<string, Secret> = new Map();
+
+  constructor(vaultUrl: string, vaultToken: string) {
+    this.vaultUrl = vaultUrl;
+    this.vaultToken = vaultToken;
+  }
+
+  async retrieveSecret(path: string, cacheKey?: string): Promise<Secret> {
+    // Check cache first
+    if (cacheKey && this.secretCache.has(cacheKey)) {
+      return this.secretCache.get(cacheKey)!;
+    }
+
+    try {
+      const response = await fetch(`${this.vaultUrl}/v1/secret/data/${path}`, {
+        headers: {
+          'X-Vault-Token': this.vaultToken,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to retrieve secret: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const secret = {
+        data: data.data.data,
+        metadata: data.data.metadata,
+        retrievedAt: new Date(),
+      };
+
+      // Cache the secret
+      if (cacheKey) {
+        this.secretCache.set(cacheKey, secret);
+      }
+
+      return secret;
+    } catch (error) {
+      console.error(`Error retrieving secret ${path}:`, error);
+      throw error;
+    }
+  }
+
+  async createSecret(path: string, data: Record<string, any>): Promise<void> {
+    try {
+      const response = await fetch(`${this.vaultUrl}/v1/secret/data/${path}`, {
+        method: 'POST',
+        headers: {
+          'X-Vault-Token': this.vaultToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: data,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create secret: ${response.statusText}`);
+      }
+
+      // Clear cache for this path
+      this.clearCacheByPattern(path);
+    } catch (error) {
+      console.error(`Error creating secret ${path}:`, error);
+      throw error;
+    }
+  }
+
+  async rotateSecret(path: string, newData: Record<string, any>): Promise<void> {
+    try {
+      // Retrieve current secret
+      const currentSecret = await this.retrieveSecret(path);
+      
+      // Create new version
+      await this.createSecret(path, {
+        ...currentSecret.data,
+        ...newData,
+        rotatedAt: new Date().toISOString(),
+      });
+
+      // Invalidate cache
+      this.clearCacheByPattern(path);
+    } catch (error) {
+      console.error(`Error rotating secret ${path}:`, error);
+      throw error;
+    }
+  }
+
+  private clearCacheByPattern(pattern: string): void {
+    for (const [key] of this.secretCache) {
+      if (key.includes(pattern)) {
+        this.secretCache.delete(key);
+      }
+    }
+  }
+}
+
+// Kubernetes ConfigMaps and Secrets integration
+export class KubernetesConfigManager {
+  private namespace: string;
+
+  constructor(namespace: string) {
+    this.namespace = namespace;
+  }
+
+  async createConfigMap(name: string, data: Record<string, string>): Promise<void> {
+    const configMap = {
+      apiVersion: 'v1',
+      kind: 'ConfigMap',
+      metadata: {
+        name,
+        namespace: this.namespace,
+      },
+      data,
+    };
+
+    try {
+      const response = await fetch('/api/v1/namespaces/default/configmaps', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(configMap),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create ConfigMap: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error creating ConfigMap ${name}:`, error);
+      throw error;
+    }
+  }
+
+  async createSecret(name: string, data: Record<string, string>): Promise<void> {
+    const secret = {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name,
+        namespace: this.namespace,
+      },
+      type: 'Opaque',
+      data: Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          Buffer.from(value).toString('base64'),
+        ])
+      ),
+    };
+
+    try {
+      const response = await fetch('/api/v1/namespaces/default/secrets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(secret),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create Secret: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error creating Secret ${name}:`, error);
+      throw error;
+    }
+  }
+}
+```
+
+### Configuration Validation and Monitoring
+
+```python
+class ConfigurationValidator:
+    def __init__(self):
+        self.schema_validator = SchemaValidator()
+        self.monitor = ConfigurationMonitor()
+    
+    def validate_configuration(self, 
+                            config: Configuration,
+                            schema: ConfigurationSchema) -> ValidationResult:
+        """Validate configuration against schema and business rules."""
+        
+        # Schema validation
+        schema_errors = self.schema_validator.validate(config, schema)
+        
+        # Business rule validation
+        business_errors = self._validate_business_rules(config)
+        
+        # Security validation
+        security_errors = self._validate_security_requirements(config)
+        
+        return ValidationResult(
+            is_valid=len(schema_errors) == 0 and len(business_errors) == 0 and len(security_errors) == 0,
+            schema_errors=schema_errors,
+            business_errors=business_errors,
+            security_errors=security_errors,
+            warnings=self._generate_warnings(config)
+        )
+    
+    def _validate_business_rules(self, config: Configuration) -> List[ValidationError]:
+        """Validate business-specific rules."""
+        errors = []
+        
+        # Database connection pool validation
+        if config.database.connectionPool.min > config.database.connectionPool.max:
+            errors.append(ValidationError(
+                field="database.connectionPool.min",
+                message="Minimum pool size cannot be greater than maximum",
+                value=config.database.connectionPool.min
+            ))
+        
+        # JWT expiration validation
+        jwt_hours = self._parse_duration_to_hours(config.auth.jwtExpiration)
+        if jwt_hours > 24:
+            errors.append(ValidationError(
+                field="auth.jwtExpiration",
+                message="JWT expiration should not exceed 24 hours for security",
+                value=config.auth.jwtExpiration
+            ))
+        
+        return errors
+    
+    def _validate_security_requirements(self, config: Configuration) -> List[ValidationError]:
+        """Validate security requirements."""
+        errors = []
+        
+        # Password strength validation
+        if len(config.auth.jwtSecret) < 32:
+            errors.append(ValidationError(
+                field="auth.jwtSecret",
+                message="JWT secret must be at least 32 characters long",
+                value="***"  # Don't log actual secret
+            ))
+        
+        # SSL validation
+        if not config.database.ssl:
+            errors.append(ValidationError(
+                field="database.ssl",
+                message="Database SSL should be enabled for production environments",
+                value=config.database.ssl
+            ))
+        
+        return errors
+
+class ConfigurationMonitor:
+    def __init__(self):
+        self.metrics_collector = MetricsCollector()
+        self.alerting = AlertingSystem()
+    
+    def monitor_configuration_changes(self, 
+                                   old_config: Configuration,
+                                   new_config: Configuration): void:
+        """Monitor configuration changes and detect issues."""
+        
+        # Detect breaking changes
+        breaking_changes = self._detect_breaking_changes(old_config, new_config)
+        
+        # Collect metrics
+        metrics = self._collect_change_metrics(old_config, new_config)
+        
+        # Send alerts if necessary
+        if breaking_changes:
+            self.alerting.send_alert(
+                severity="high",
+                message="Breaking configuration changes detected",
+                details=breaking_changes
+            )
+        
+        # Record metrics
+        self.metrics_collector.record("configuration_changes", metrics)
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
+
+## What It Does
+
+Enterprise Configuration Management expert with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Configuration Architecture** using Context7 MCP for latest config patterns
+- 📊 **Intelligent Settings Orchestration** with automated environment optimization
+- 🚀 **Advanced Secret Management** with AI-driven security and encryption
+- 🔗 **Enterprise Config Framework** with zero-configuration deployment integration
+- 📈 **Predictive Configuration Analytics** with usage forecasting and optimization
+
+---
 
 ## Configuration Management Stack (November 2025)
 
@@ -438,363 +730,10 @@ configs:
 
 # Advanced Implementation (Level 3)
 
-## Secret Management Integration
 
-```typescript
-// Advanced secret management with HashiCorp Vault
-export class VaultSecretManager {
-  private vaultUrl: string;
-  private vaultToken: string;
-  private secretCache: Map<string, Secret> = new Map();
-
-  constructor(vaultUrl: string, vaultToken: string) {
-    this.vaultUrl = vaultUrl;
-    this.vaultToken = vaultToken;
-  }
-
-  async retrieveSecret(path: string, cacheKey?: string): Promise<Secret> {
-    // Check cache first
-    if (cacheKey && this.secretCache.has(cacheKey)) {
-      return this.secretCache.get(cacheKey)!;
-    }
-
-    try {
-      const response = await fetch(`${this.vaultUrl}/v1/secret/data/${path}`, {
-        headers: {
-          'X-Vault-Token': this.vaultToken,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to retrieve secret: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const secret = {
-        data: data.data.data,
-        metadata: data.data.metadata,
-        retrievedAt: new Date(),
-      };
-
-      // Cache the secret
-      if (cacheKey) {
-        this.secretCache.set(cacheKey, secret);
-      }
-
-      return secret;
-    } catch (error) {
-      console.error(`Error retrieving secret ${path}:`, error);
-      throw error;
-    }
-  }
-
-  async createSecret(path: string, data: Record<string, any>): Promise<void> {
-    try {
-      const response = await fetch(`${this.vaultUrl}/v1/secret/data/${path}`, {
-        method: 'POST',
-        headers: {
-          'X-Vault-Token': this.vaultToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: data,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create secret: ${response.statusText}`);
-      }
-
-      // Clear cache for this path
-      this.clearCacheByPattern(path);
-    } catch (error) {
-      console.error(`Error creating secret ${path}:`, error);
-      throw error;
-    }
-  }
-
-  async rotateSecret(path: string, newData: Record<string, any>): Promise<void> {
-    try {
-      // Retrieve current secret
-      const currentSecret = await this.retrieveSecret(path);
-      
-      // Create new version
-      await this.createSecret(path, {
-        ...currentSecret.data,
-        ...newData,
-        rotatedAt: new Date().toISOString(),
-      });
-
-      // Invalidate cache
-      this.clearCacheByPattern(path);
-    } catch (error) {
-      console.error(`Error rotating secret ${path}:`, error);
-      throw error;
-    }
-  }
-
-  private clearCacheByPattern(pattern: string): void {
-    for (const [key] of this.secretCache) {
-      if (key.includes(pattern)) {
-        this.secretCache.delete(key);
-      }
-    }
-  }
-}
-
-// Kubernetes ConfigMaps and Secrets integration
-export class KubernetesConfigManager {
-  private namespace: string;
-
-  constructor(namespace: string) {
-    this.namespace = namespace;
-  }
-
-  async createConfigMap(name: string, data: Record<string, string>): Promise<void> {
-    const configMap = {
-      apiVersion: 'v1',
-      kind: 'ConfigMap',
-      metadata: {
-        name,
-        namespace: this.namespace,
-      },
-      data,
-    };
-
-    try {
-      const response = await fetch('/api/v1/namespaces/default/configmaps', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(configMap),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create ConfigMap: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error(`Error creating ConfigMap ${name}:`, error);
-      throw error;
-    }
-  }
-
-  async createSecret(name: string, data: Record<string, string>): Promise<void> {
-    const secret = {
-      apiVersion: 'v1',
-      kind: 'Secret',
-      metadata: {
-        name,
-        namespace: this.namespace,
-      },
-      type: 'Opaque',
-      data: Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [
-          key,
-          Buffer.from(value).toString('base64'),
-        ])
-      ),
-    };
-
-    try {
-      const response = await fetch('/api/v1/namespaces/default/secrets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(secret),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create Secret: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error(`Error creating Secret ${name}:`, error);
-      throw error;
-    }
-  }
-}
-```
-
-### Configuration Validation and Monitoring
-
-```python
-class ConfigurationValidator:
-    def __init__(self):
-        self.schema_validator = SchemaValidator()
-        self.monitor = ConfigurationMonitor()
-    
-    def validate_configuration(self, 
-                            config: Configuration,
-                            schema: ConfigurationSchema) -> ValidationResult:
-        """Validate configuration against schema and business rules."""
-        
-        # Schema validation
-        schema_errors = self.schema_validator.validate(config, schema)
-        
-        # Business rule validation
-        business_errors = self._validate_business_rules(config)
-        
-        # Security validation
-        security_errors = self._validate_security_requirements(config)
-        
-        return ValidationResult(
-            is_valid=len(schema_errors) == 0 and len(business_errors) == 0 and len(security_errors) == 0,
-            schema_errors=schema_errors,
-            business_errors=business_errors,
-            security_errors=security_errors,
-            warnings=self._generate_warnings(config)
-        )
-    
-    def _validate_business_rules(self, config: Configuration) -> List[ValidationError]:
-        """Validate business-specific rules."""
-        errors = []
-        
-        # Database connection pool validation
-        if config.database.connectionPool.min > config.database.connectionPool.max:
-            errors.append(ValidationError(
-                field="database.connectionPool.min",
-                message="Minimum pool size cannot be greater than maximum",
-                value=config.database.connectionPool.min
-            ))
-        
-        # JWT expiration validation
-        jwt_hours = self._parse_duration_to_hours(config.auth.jwtExpiration)
-        if jwt_hours > 24:
-            errors.append(ValidationError(
-                field="auth.jwtExpiration",
-                message="JWT expiration should not exceed 24 hours for security",
-                value=config.auth.jwtExpiration
-            ))
-        
-        return errors
-    
-    def _validate_security_requirements(self, config: Configuration) -> List[ValidationError]:
-        """Validate security requirements."""
-        errors = []
-        
-        # Password strength validation
-        if len(config.auth.jwtSecret) < 32:
-            errors.append(ValidationError(
-                field="auth.jwtSecret",
-                message="JWT secret must be at least 32 characters long",
-                value="***"  # Don't log actual secret
-            ))
-        
-        # SSL validation
-        if not config.database.ssl:
-            errors.append(ValidationError(
-                field="database.ssl",
-                message="Database SSL should be enabled for production environments",
-                value=config.database.ssl
-            ))
-        
-        return errors
-
-class ConfigurationMonitor:
-    def __init__(self):
-        self.metrics_collector = MetricsCollector()
-        self.alerting = AlertingSystem()
-    
-    def monitor_configuration_changes(self, 
-                                   old_config: Configuration,
-                                   new_config: Configuration): void:
-        """Monitor configuration changes and detect issues."""
-        
-        # Detect breaking changes
-        breaking_changes = self._detect_breaking_changes(old_config, new_config)
-        
-        # Collect metrics
-        metrics = self._collect_change_metrics(old_config, new_config)
-        
-        # Send alerts if necessary
-        if breaking_changes:
-            self.alerting.send_alert(
-                severity="high",
-                message="Breaking configuration changes detected",
-                details=breaking_changes
-            )
-        
-        # Record metrics
-        self.metrics_collector.record("configuration_changes", metrics)
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core Configuration Operations
-- `load_configuration(environment, schema)` - Load and validate configuration
-- `manage_secrets(path, data)` - Secure secret management
-- `validate_configuration(config, rules)` - Configuration validation
-- `monitor_configuration_changes()` - Configuration change monitoring
-- `deploy_configuration(config, environment)` - Deploy configuration to environment
-
-### Context7 Integration
-- `get_latest_config_docs()` - Configuration management via Context7
-- `analyze_secret_patterns()` - Secret management patterns via Context7
-- `optimize_deployment_config()` - Deployment optimization via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Use environment variables for configuration with proper validation
-- Implement comprehensive secret management with encryption
-- Validate configuration at startup and runtime
-- Use configuration schemas with strong typing
-- Implement proper error handling and default values
-- Monitor configuration changes and detect breaking changes
-- Use different configurations for different environments
-- Implement secure secret rotation and renewal
-
-### DON'T
-- Hardcode configuration values in application code
-- Store secrets in configuration files or version control
-- Skip configuration validation and error handling
-- Use weak secrets or encryption algorithms
-- Ignore security best practices for configuration management
-- Forget to implement configuration change monitoring
-- Use production configuration in development environments
-- Skip backup and recovery planning for configuration
-
-## Works Well With
-
-- `moai-security-api` (Security integration)
-- `moai-foundation-trust` (Trust and compliance)
-- `moai-domain-devops` (DevOps and deployment)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-baas-foundation` (BaaS configuration)
-- `moai-domain-backend` (Backend configuration)
-- `moai-domain-frontend` (Frontend configuration)
-- `moai-security-encryption` (Encryption and security)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced secret management patterns, and comprehensive validation framework
-- **v2.0.0** (2025-11-11): Complete metadata structure, configuration patterns, security integration
-- **v1.0.0** (2025-11-11): Initial configuration management foundation
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Configuration Security
-
-### Secret Management
-- Enterprise-grade secret encryption with AES-256
-- Automated secret rotation and renewal
-- Role-based access control for sensitive configuration
-- Comprehensive audit logging and compliance reporting
-
-### Environment Security
-- Isolated configuration environments
-- Secure configuration transmission and storage
-- Configuration validation and sanitization
-- Compliance with SOC2, HIPAA, GDPR requirements
-
----
-
-**End of Enterprise Configuration Management Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

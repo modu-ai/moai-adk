@@ -3,27 +3,9 @@ name: moai-foundation-git
 description: Enterprise GitFlow automation, PR policy enforcement, Git 2.47-2.50 features, trunk-based development, comprehensive branching strategies, commit conventions, GitHub CLI 2.83.0 integration
 ---
 
+## Quick Reference (30 seconds)
+
 # Foundation Git Skill (Enterprise)
-
-## What It Does
-
-Comprehensive Git workflow automation and PR policy enforcement for MoAI-ADK workflows, supporting multiple branching strategies, latest Git 2.47-2.50 features, and GitHub CLI automation.
-
-**Enterprise  Capabilities**:
-- ✅ Three flexible branching strategies (Feature Branch, Direct Commit, Per-SPEC)
-- ✅ Git 2.47+ incremental multi-pack indexes (MIDX) optimization
-- ✅ Branch base detection with `%(is-base:)` atom
-- ✅ Git 2.48+ experimental commands (backfill, survey)
-- ✅ Git 2.49-2.50 latest performance improvements
-- ✅ GitHub CLI 2.83.0 with Copilot Agent support
-- ✅ Trunk-based development with feature flags
-- ✅ Hybrid GitFlow for planned releases
-- ✅ Session persistence across git operations
-- ✅ Comprehensive commit message conventions
-- ✅ Automated quality gates and CI/CD integration
-- ✅ TDD commit phases (RED, GREEN, REFACTOR)
-
----
 
 ## When to Use
 
@@ -42,6 +24,98 @@ Comprehensive Git workflow automation and PR policy enforcement for MoAI-ADK wor
 - PR policy decisions
 - Merge conflict resolution
 - Git performance optimization
+
+---
+
+## Commit Message Conventions (TDD)
+
+### Format
+
+```
+<emoji> <TYPE>: <description>
+
+<body (optional)>
+
+@<TAG>:<ID>
+```
+
+### Emoji Convention
+
+- 🔴 `RED` - Failing tests (TDD Red phase)
+- 🟢 `GREEN` - Passing implementation (TDD Green phase)
+- ♻️ `REFACTOR` - Code improvement (TDD Refactor phase)
+- 🐛 `BUG` - Bug fix (outside TDD)
+- ✨ `FEAT` - Feature addition (outside TDD)
+- 📝 `DOCS` - Documentation only
+- 🔒 `SECURITY` - Security fix (critical)
+
+### Examples
+
+```
+🔴 RED: test_user_login_with_invalid_credentials
+
+Test that login fails gracefully with invalid password.
+
+
+---
+
+🟢 GREEN: implement_user_login_validation
+
+Implement login validation in AuthService.
+
+
+---
+
+♻️ REFACTOR: improve_auth_error_messages
+
+Improve error messages for failed authentication attempts.
+
+```
+
+### TAG Reference Format
+
+```
+@<DOMAIN>:<IDENTIFIER>:<COMPONENT> (optional)
+
+Examples:
+```
+
+---
+
+## Related Skills
+
+- `moai-alfred-agent-guide` - Workflow orchestration
+- `moai-foundation-trust` - Quality gate enforcement
+- `moai-alfred-session-state` - Git session persistence
+- `moai-foundation-tags` - TAG management
+
+---
+
+Learn more in `reference.md` for detailed Git commands, GitHub CLI automation patterns, and production workflows.
+
+**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Enterprise
+
+---
+
+## Core Implementation
+
+## What It Does
+
+Comprehensive Git workflow automation and PR policy enforcement for MoAI-ADK workflows, supporting multiple branching strategies, latest Git 2.47-2.50 features, and GitHub CLI automation.
+
+**Enterprise  Capabilities**:
+- ✅ Three flexible branching strategies (Feature Branch, Direct Commit, Per-SPEC)
+- ✅ Git 2.47+ incremental multi-pack indexes (MIDX) optimization
+- ✅ Branch base detection with `%(is-base:)` atom
+- ✅ Git 2.48+ experimental commands (backfill, survey)
+- ✅ Git 2.49-2.50 latest performance improvements
+- ✅ GitHub CLI 2.83.0 with Copilot Agent support
+- ✅ Trunk-based development with feature flags
+- ✅ Hybrid GitFlow for planned releases
+- ✅ Session persistence across git operations
+- ✅ Comprehensive commit message conventions
+- ✅ Automated quality gates and CI/CD integration
+- ✅ TDD commit phases (RED, GREEN, REFACTOR)
 
 ---
 
@@ -249,61 +323,6 @@ git survey
 
 ---
 
-## Commit Message Conventions (TDD)
-
-### Format
-
-```
-<emoji> <TYPE>: <description>
-
-<body (optional)>
-
-@<TAG>:<ID>
-```
-
-### Emoji Convention
-
-- 🔴 `RED` - Failing tests (TDD Red phase)
-- 🟢 `GREEN` - Passing implementation (TDD Green phase)
-- ♻️ `REFACTOR` - Code improvement (TDD Refactor phase)
-- 🐛 `BUG` - Bug fix (outside TDD)
-- ✨ `FEAT` - Feature addition (outside TDD)
-- 📝 `DOCS` - Documentation only
-- 🔒 `SECURITY` - Security fix (critical)
-
-### Examples
-
-```
-🔴 RED: test_user_login_with_invalid_credentials
-
-Test that login fails gracefully with invalid password.
-
-
----
-
-🟢 GREEN: implement_user_login_validation
-
-Implement login validation in AuthService.
-
-
----
-
-♻️ REFACTOR: improve_auth_error_messages
-
-Improve error messages for failed authentication attempts.
-
-```
-
-### TAG Reference Format
-
-```
-@<DOMAIN>:<IDENTIFIER>:<COMPONENT> (optional)
-
-Examples:
-```
-
----
-
 ## GitHub CLI 2.83.0 Integration
 
 ### New Features (November 2025)
@@ -493,15 +512,3 @@ git config --global feature.experimental true
 
 ---
 
-## Related Skills
-
-- `moai-alfred-agent-guide` - Workflow orchestration
-- `moai-foundation-trust` - Quality gate enforcement
-- `moai-alfred-session-state` - Git session persistence
-- `moai-foundation-tags` - TAG management
-
----
-
-Learn more in `reference.md` for detailed Git commands, GitHub CLI automation patterns, and production workflows.
-
-**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Enterprise 

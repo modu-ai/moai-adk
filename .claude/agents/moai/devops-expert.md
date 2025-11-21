@@ -1,14 +1,11 @@
 ---
 name: devops-expert
-description: "Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'."
+description: Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  - moai-domain-cloud
-  - moai-baas-vercel-ext
-  - moai-baas-clerk-ext
----
+skills: moai-domain-cloud, moai-baas-vercel-ext, moai-baas-clerk-ext
+------
 
 # DevOps Expert - Deployment & Infrastructure Specialist
 
@@ -40,14 +37,14 @@ You are a DevOps specialist responsible for multi-cloud deployment strategies, C
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-devops")` – CI/CD, containerization, deployment strategies, monitoring, secrets management
+- moai-domain-devops – CI/CD, containerization, deployment strategies, monitoring, secrets management
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language for deployment config
-- `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Framework-specific deployment
-- `Skill("moai-domain-docker")` – Dockerfile optimization, multi-stage builds
-- `Skill("moai-essentials-security")` – Secrets management, vulnerability scanning
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance for infrastructure
+- moai-core-language-detection – Detect project language for deployment config
+- moai-lang-python, moai-lang-typescript, moai-lang-go – Framework-specific deployment
+- moai-domain-docker – Dockerfile optimization, multi-stage builds
+- moai-essentials-security – Secrets management, vulnerability scanning
+- moai-foundation-trust – TRUST 5 compliance for infrastructure
 
 ## 🎯 Core Mission
 
@@ -114,7 +111,7 @@ AskUserQuestion:
 1. **Parse SPEC metadata** for deployment platform
 2. **Scan project** (railway.json, vercel.json, Dockerfile, k8s/)
 3. **Use AskUserQuestion** if ambiguous
-4. **Load appropriate Skills**: `Skill("moai-domain-devops")` with platform context
+4. **Load appropriate Skills**: moai-domain-devops with platform context
 
 ### Step 3: Design Deployment Architecture
 
@@ -644,10 +641,10 @@ Infrastructure Security Research:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-devops` – CI/CD, containerization, deployment strategies
-- `moai-domain-docker` – Dockerfile optimization, multi-stage builds
-- `moai-essentials-security` – Secrets management, vulnerability scanning
+**Skills** (load via skill-name):
+- moai-domain-devops – CI/CD, containerization, deployment strategies
+- moai-domain-docker – Dockerfile optimization, multi-stage builds
+- moai-essentials-security – Secrets management, vulnerability scanning
 - `moai-lang-python`, `moai-lang-typescript`, `moai-lang-go` – Framework-specific deployment
 
 **Research Resources**:

@@ -3,12 +3,51 @@ name: moai-security-owasp
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-owasp: OWASP Top 10 2021 Defense Patterns
 
 **Complete Protection Against OWASP Top 10 2021 Vulnerabilities**  
 Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
 ---
+
+## Reference
+
+### Official Resources
+- OWASP Top 10 2021: https://owasp.org/Top10/
+- OWASP Top 10 2017: https://owasp.org/www-project-top-ten-2017/
+- CWE Top 25: https://cwe.mitre.org/top25/
+- NIST SP 800-63: https://pages.nist.gov/800-63-3/
+
+### Tools & Libraries
+- **helmet** (7.0.x): https://helmetjs.github.io/
+- **express-validator** (7.0.x): https://express-validator.github.io/
+- **sanitize-html** (2.11.x): https://github.com/apostrophecms/sanitize-html
+- **sql-bricks** (Parameterized queries): https://github.com/dresende/sql-bricks
+- **OWASP Dependency Check**: https://owasp.org/www-project-dependency-check/
+
+### Common Vulnerabilities
+
+| Vulnerability | CWE | Prevention |
+|---|---|---|
+| SQL Injection | CWE-89 | Parameterized queries |
+| XSS | CWE-79 | Input validation, output encoding |
+| CSRF | CWE-352 | CSRF tokens, SameSite cookies |
+| XXE | CWE-611 | Disable external entities |
+| BOLA | CWE-639 | Check ownership on every request |
+
+---
+
+**Version**: 4.0.0 Enterprise  
+**Skill Category**: Security (Vulnerability Defense)  
+**Complexity**: Medium  
+**Time to Implement**: 2-4 hours per category  
+**Prerequisites**: Web security fundamentals, Express.js knowledge
+
+---
+
+## Implementation Guide
 
 ## Overview
 
@@ -254,6 +293,10 @@ app.disable('x-powered-by');
 
 ---
 
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Input Validation
 
 ### XSS Prevention (A03 Injection)
@@ -349,35 +392,3 @@ const parser = new xml2js.Parser({
 
 ---
 
-## Reference
-
-### Official Resources
-- OWASP Top 10 2021: https://owasp.org/Top10/
-- OWASP Top 10 2017: https://owasp.org/www-project-top-ten-2017/
-- CWE Top 25: https://cwe.mitre.org/top25/
-- NIST SP 800-63: https://pages.nist.gov/800-63-3/
-
-### Tools & Libraries
-- **helmet** (7.0.x): https://helmetjs.github.io/
-- **express-validator** (7.0.x): https://express-validator.github.io/
-- **sanitize-html** (2.11.x): https://github.com/apostrophecms/sanitize-html
-- **sql-bricks** (Parameterized queries): https://github.com/dresende/sql-bricks
-- **OWASP Dependency Check**: https://owasp.org/www-project-dependency-check/
-
-### Common Vulnerabilities
-
-| Vulnerability | CWE | Prevention |
-|---|---|---|
-| SQL Injection | CWE-89 | Parameterized queries |
-| XSS | CWE-79 | Input validation, output encoding |
-| CSRF | CWE-352 | CSRF tokens, SameSite cookies |
-| XXE | CWE-611 | Disable external entities |
-| BOLA | CWE-639 | Check ownership on every request |
-
----
-
-**Version**: 4.0.0 Enterprise  
-**Skill Category**: Security (Vulnerability Defense)  
-**Complexity**: Medium  
-**Time to Implement**: 2-4 hours per category  
-**Prerequisites**: Web security fundamentals, Express.js knowledge

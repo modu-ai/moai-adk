@@ -140,9 +140,9 @@ Clones automatically save learnings to improve future tasks:
 
 ## Related Skills
 
-- `Skill("moai-core-workflow")` - 4-step workflow integration
-- `Skill("moai-core-agent-guide")` - Team coordination details
-- `Skill("moai-core-personas")` - Communication style adaptation
+- `Skill("moai-alfred-workflow")` - 4-step workflow integration
+- `Skill("moai-alfred-agent-guide")` - Team coordination details
+- `Skill("moai-alfred-personas")` - Communication style adaptation
 
 ## Quality Assurance
 

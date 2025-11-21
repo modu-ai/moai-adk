@@ -3,6 +3,8 @@ name: moai-core-todowrite-pattern
 description: Comprehensive TodoWrite task tracking and state management patterns with
 ---
 
+## Quick Reference (30 seconds)
+
 # TodoWrite Task Tracking & State Management Patterns
 
 **Purpose**: Master TodoWrite task lifecycle management with production-proven patterns from 18,075 code examples across 6 major platforms (Jira, Trello, Asana, Linear, GitHub Projects, Todoist).
@@ -529,6 +531,35 @@ if phase == "phase-0":
 
 ---
 
+## References
+
+### Research Sources
+- **Jira REST API v3**: 2,754 workflow transition examples
+- **Trello REST API**: 757 list-based state management patterns
+- **Asana API**: 5,502 task lifecycle examples
+- **Linear GraphQL API**: 939 mutation-based state updates
+- **GitHub Projects API**: 6,186 project item management patterns
+- **Todoist API**: 425 sync-based task operations
+
+### Internal Documents
+- `.moai/research/todowrite-task-tracking-patterns.md`: Complete research document with all 15 patterns
+- MoAI-ADK 4-Step Workflow Logic (CLAUDE.md)
+- TodoWrite tool specification (Claude Code built-in tool)
+
+---
+
+**Skill Status**: ✅ Production Ready ( .0)
+**Last Updated**: 2025-11-12
+**Minimum MoAI-ADK Version**: 0.20.0
+**Research Base**: 18,075 production code examples
+**Code Examples**: 15 comprehensive patterns (3 detailed + 12 referenced)
+**Total Lines**: 900+
+**Size**: ~28KB
+
+---
+
+## Core Implementation
+
 ## TodoWrite Tool Integration
 
 ### Basic TodoWrite Usage
@@ -860,27 +891,3 @@ recovery.recover_invalid_state(task_id)
 
 ---
 
-## References
-
-### Research Sources
-- **Jira REST API v3**: 2,754 workflow transition examples
-- **Trello REST API**: 757 list-based state management patterns
-- **Asana API**: 5,502 task lifecycle examples
-- **Linear GraphQL API**: 939 mutation-based state updates
-- **GitHub Projects API**: 6,186 project item management patterns
-- **Todoist API**: 425 sync-based task operations
-
-### Internal Documents
-- `.moai/research/todowrite-task-tracking-patterns.md`: Complete research document with all 15 patterns
-- MoAI-ADK 4-Step Workflow Logic (CLAUDE.md)
-- TodoWrite tool specification (Claude Code built-in tool)
-
----
-
-**Skill Status**: ✅ Production Ready ( .0)
-**Last Updated**: 2025-11-12
-**Minimum MoAI-ADK Version**: 0.20.0
-**Research Base**: 18,075 production code examples
-**Code Examples**: 15 comprehensive patterns (3 detailed + 12 referenced)
-**Total Lines**: 900+
-**Size**: ~28KB

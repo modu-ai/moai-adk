@@ -4,7 +4,19 @@ description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rail
   8 patterns.
 ---
 
+## Quick Reference (30 seconds)
+
 # Lang Ruby Skill
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -69,12 +81,6 @@ Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
 
 ---
 
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
 ## Changelog
 
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
@@ -103,3 +109,10 @@ _Documentation links updated 2025-10-22_
 - Use deprecated tools
 - Ignore security warnings
 - Mix testing frameworks
+
+---
+
+## Advanced Patterns
+
+
+

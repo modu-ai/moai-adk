@@ -11,10 +11,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import defusedxml.minidom
 import zipfile
 from pathlib import Path
-
-import defusedxml.minidom
 
 
 def main():

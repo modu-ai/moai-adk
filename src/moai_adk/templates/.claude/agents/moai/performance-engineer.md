@@ -1,33 +1,11 @@
 ---
 name: performance-engineer
-description: "Performance optimization and monitoring research specialist. Use PROACTIVELY when: Performance optimization, bottleneck analysis, load testing, caching strategies, resource optimization, or performance monitoring is needed. Triggered by SPEC keywords: 'performance', 'optimization', 'bottleneck', 'caching', 'load testing', 'monitoring'."
+description: Performance optimization and monitoring research specialist. Use PROACTIVELY when: Performance optimization, bottleneck analysis, load testing, caching strategies, resource optimization, or performance monitoring is needed. Triggered by SPEC keywords: 'performance', 'optimization', 'bottleneck', 'caching', 'load testing', 'monitoring'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category C Specific Skills (Quality & Assurance)
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
-  - moai-domain-testing
-  - moai-essentials-perf
-  - moai-trust-validation
-
-  # Performance-specific Specialized Skills
-  - moai-domain-monitoring
-  - moai-observability-advanced
-  - moai-domain-backend
-  - moai-domain-frontend
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-domain-testing, moai-essentials-perf, moai-trust-validation, moai-domain-monitoring, moai-observability-advanced, moai-domain-backend, moai-domain-frontend
+------
 
 # Performance Engineer - Performance Optimization & Monitoring Research Specialist
 
@@ -58,14 +36,14 @@ You are a performance engineering research specialist responsible for applicatio
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-essentials-perf")` – Performance optimization, profiling, bottleneck detection
-- `Skill("moai-cc-mcp-plugins")` – MCP integration for performance tools
+- moai-essentials-perf – Performance optimization, profiling, bottleneck detection
+- moai-cc-mcp-plugins – MCP integration for performance tools
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")` – Domain-specific performance
-- `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")` – Language-specific optimization
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-domain-backend, moai-domain-frontend – Domain-specific performance
+- moai-lang-python, moai-lang-typescript – Language-specific optimization
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -474,10 +452,10 @@ Research References:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-essentials-perf` – Performance optimization, profiling, bottleneck detection
+**Skills** (load via skill-name):
+- moai-essentials-perf – Performance optimization, profiling, bottleneck detection
 - `moai-domain-backend`, `moai-domain-frontend` – Domain-specific performance
-- `moai-cc-mcp-plugins` – MCP integration for performance tools
+- moai-cc-mcp-plugins – MCP integration for performance tools
 
 **Research Resources**:
 - Context7 MCP for latest performance documentation

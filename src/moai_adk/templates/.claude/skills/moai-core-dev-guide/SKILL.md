@@ -3,6 +3,8 @@ name: moai-core-dev-guide
 description: moai-core-dev-guide skill documentation and patterns
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-alfred-dev-guide
 
 **Enterprise SPEC-First TDD Development Orchestration**
@@ -24,6 +26,80 @@ Alfred's SPEC-First TDD workflow orchestrates the complete development lifecycle
 - Context engineering (JIT document loading)
 - Automated documentation generation (Sphinx, JSDoc)
 - BDD integration (Cucumber Gherkin scenarios)
+
+## Level 4: Reference & Integration
+
+### Complete Workflow Example
+
+**Step-by-Step Execution**:
+
+```bash
+# ===== PHASE 1: SPEC (/alfred:1-plan) =====
+$ /alfred:1-plan "User Authentication System"
+
+Alfred creates:
+  ✅ feature/SPEC-001 branch
+  ✅ .moai/specs/SPEC-001/spec.md (EARS format)
+  ✅ TodoWrite task list
+
+# ===== PHASE 2: TDD (/alfred:2-run) =====
+$ /alfred:2-run SPEC-001
+
+# --- RED Commit ---
+Alfred (tdd-implementer agent):
+  1. Reads SPEC-001/spec.md
+  2. Writes failing tests
+  3. Runs pytest → 2 failed ❌
+  4. Git commit: "test(SPEC-001): Add failing tests for authentication"
+
+# --- GREEN Commit ---
+Alfred (tdd-implementer agent):
+  1. Minimal implementation to pass tests
+  2. Runs pytest → 2 passed ✅
+  3. Git commit: "feat(SPEC-001): Implement basic authentication"
+
+# --- REFACTOR Commit ---
+Alfred (tdd-implementer agent):
+  1. Extracts methods, improves docstrings
+  2. Adds type hints, security hardening
+  3. Runs pytest → 2 passed ✅ (no behavior change)
+  4. Git commit: "refactor(SPEC-001): Improve code quality and documentation"
+
+# ===== PHASE 3: SYNC (/alfred:3-sync) =====
+$ /alfred:3-sync auto SPEC-001
+
+Alfred (doc-syncer agent):
+  1. Generates Sphinx documentation
+  2. Runs quality gates:
+     - Coverage: 93% (≥85% ✅)
+     - Type check: Pass ✅
+     - Linting: Pass ✅
+     - Security: No HIGH issues ✅
+  3. Creates sync report
+  4. Git commit: "docs(SPEC-001): Add API documentation and sync report"
+  5. Creates PR to develop branch
+```
+
+### Validation Metrics
+
+```bash
+# Coverage ≥85% requirement
+$ pytest --cov=src --cov-report=term-missing
+
+Name                     Stmts   Miss  Cover   Missing
+------------------------------------------------------
+src/auth.py                 85      8    91%   145-152
+src/database.py             42      0   100%
+src/validation.py           28      3    89%   67-69
+------------------------------------------------------
+TOTAL                      155     11    93%
+
+✅ TRUST-E: Coverage 93% (≥85% required)
+```
+
+---
+
+## Core Implementation
 
 ## Level 2: Practical Implementation
 
@@ -463,76 +539,6 @@ jobs:
           fi
 ```
 
-## Level 4: Reference & Integration
-
-### Complete Workflow Example
-
-**Step-by-Step Execution**:
-
-```bash
-# ===== PHASE 1: SPEC (/alfred:1-plan) =====
-$ /alfred:1-plan "User Authentication System"
-
-Alfred creates:
-  ✅ feature/SPEC-001 branch
-  ✅ .moai/specs/SPEC-001/spec.md (EARS format)
-  ✅ TodoWrite task list
-
-# ===== PHASE 2: TDD (/alfred:2-run) =====
-$ /alfred:2-run SPEC-001
-
-# --- RED Commit ---
-Alfred (tdd-implementer agent):
-  1. Reads SPEC-001/spec.md
-  2. Writes failing tests
-  3. Runs pytest → 2 failed ❌
-  4. Git commit: "test(SPEC-001): Add failing tests for authentication"
-
-# --- GREEN Commit ---
-Alfred (tdd-implementer agent):
-  1. Minimal implementation to pass tests
-  2. Runs pytest → 2 passed ✅
-  3. Git commit: "feat(SPEC-001): Implement basic authentication"
-
-# --- REFACTOR Commit ---
-Alfred (tdd-implementer agent):
-  1. Extracts methods, improves docstrings
-  2. Adds type hints, security hardening
-  3. Runs pytest → 2 passed ✅ (no behavior change)
-  4. Git commit: "refactor(SPEC-001): Improve code quality and documentation"
-
-# ===== PHASE 3: SYNC (/alfred:3-sync) =====
-$ /alfred:3-sync auto SPEC-001
-
-Alfred (doc-syncer agent):
-  1. Generates Sphinx documentation
-  2. Runs quality gates:
-     - Coverage: 93% (≥85% ✅)
-     - Type check: Pass ✅
-     - Linting: Pass ✅
-     - Security: No HIGH issues ✅
-  3. Creates sync report
-  4. Git commit: "docs(SPEC-001): Add API documentation and sync report"
-  5. Creates PR to develop branch
-```
-
-### Validation Metrics
-
-```bash
-# Coverage ≥85% requirement
-$ pytest --cov=src --cov-report=term-missing
-
-Name                     Stmts   Miss  Cover   Missing
-------------------------------------------------------
-src/auth.py                 85      8    91%   145-152
-src/database.py             42      0   100%
-src/validation.py           28      3    89%   67-69
-------------------------------------------------------
-TOTAL                      155     11    93%
-
-✅ TRUST-E: Coverage 93% (≥85% required)
-```
-
 ## Best Practices & Anti-Patterns
 
 ### ✅ Best Practices
@@ -593,3 +599,4 @@ Research date: 2025-11-12
 **Version**: 4.0.0  
 **Last Updated**: 2025-11-12  
 **Maintained By**: Alfred SuperAgent (MoAI-ADK)
+

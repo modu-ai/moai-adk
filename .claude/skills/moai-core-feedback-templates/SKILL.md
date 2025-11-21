@@ -4,7 +4,13 @@ description: Korean language feedback templates for issue types and Alfred comma
   with localized messaging patterns
 ---
 
+## Quick Reference (30 seconds)
+
 # GitHub 이슈 작성 템플릿 모음 v1.0.0
+
+---
+
+## Implementation Guide
 
 ## 개요
 
@@ -456,3 +462,10 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 **Last Updated**: 2025-11-12
 **Status**: Production Ready (v1.0.0)
 **Language**: Korean (한국어)
+
+---
+
+## Advanced Patterns
+
+
+

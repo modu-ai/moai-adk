@@ -1,15 +1,11 @@
 ---
 name: quality-gate
-description: "Use when: When code quality verification is required. Called in /alfred:2-run Phase 2.5, /alfred:3-sync Phase 0.5"
+description: Use when: When code quality verification is required. Called in /alfred:2-run Phase 2.5, /alfred:3-sync Phase 0.5
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: dontAsk
-skills:
-  - moai-essentials-debug
-  - moai-essentials-perf
-  - moai-essentials-refactor
-  - moai-domain-security
----
+skills: moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-domain-security
+------
 
 # Quality Gate - Quality Verification Gate
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
@@ -37,30 +33,28 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate quality verification reports in user's conversation_language
 
 3. **Always in English** (regardless of conversation_language):
-   - Skill names in invocations: `Skill("moai-core-trust-validation")`
+   - Skill names in invocations: moai-core-trust-validation
    - Technical evaluation terms (PASS/WARNING/CRITICAL remain English for consistency)
    - File paths and code snippets
    - Technical metrics
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: `Skill("skill-name")`
-   - Do NOT rely on keyword matching or auto-triggering
-   - Skill names are always English
+   - Always use explicit syntax: skill-name   - Skill names are always English
 
 **Example**:
 - You receive (Korean): "Verify code quality"
-- You invoke: Skill("moai-core-trust-validation"), Skill("moai-essentials-review")
+- You invoke: moai-core-trust-validation, moai-essentials-review
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-core-trust-validation")` – Based on TRUST 5 principle inspection.
+- moai-core-trust-validation – Based on TRUST 5 principle inspection.
 
 **Conditional Skill Logic**
-- `Skill("moai-core-tag-scanning")`: Called only when there is a changed TAG when calculating traceable indicators.
-- `Skill("moai-essentials-review")`: Called when qualitative analysis of Readable/Unified items is required or when a code review checklist is required.
-- `Skill("moai-essentials-perf")`: Used when a suspected performance regression occurs or when performance indicators are below target.
-- `Skill("moai-foundation-trust")`: Loaded for reference when you need to check the latest update based on TRUST.
+- moai-core-tag-scanning: Called only when there is a changed TAG when calculating traceable indicators.
+- moai-essentials-review: Called when qualitative analysis of Readable/Unified items is required or when a code review checklist is required.
+- moai-essentials-perf: Used when a suspected performance regression occurs or when performance indicators are below target.
+- moai-foundation-trust: Loaded for reference when you need to check the latest update based on TRUST.
 - `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Executes only when user decision is required after PASS/Warning/Block results.
 
 ### Expert Traits
@@ -340,7 +334,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ## 📚 References
 
-- **Development Guide**: Skill("moai-core-dev-guide")
-- **TRUST Principles**: TRUST section within Skill("moai-core-dev-guide")
-- **TAG Guide**: TAG chain section in Skill("moai-core-dev-guide")
+- **Development Guide**: moai-core-dev-guide
+- **TRUST Principles**: TRUST section within moai-core-dev-guide
+- **TAG Guide**: TAG chain section in moai-core-dev-guide
 - **trust-checker**: `.claude/hooks/moai/trust-checker.py` (TRUST verification script)

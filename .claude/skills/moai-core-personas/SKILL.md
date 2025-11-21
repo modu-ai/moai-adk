@@ -3,6 +3,8 @@ name: moai-core-personas
 description: Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-alfred-personas
 
 **Alfred Adaptive Personas System**
@@ -459,6 +461,16 @@ PERSONA_METRICS = {
 
 ---
 
+---
+
+## Implementation Guide
+
+
+
+---
+
+## Advanced Patterns
+
 ## 📈 Version History
 
 ** .0** (2025-11-13)
@@ -489,3 +501,4 @@ PERSONA_METRICS = {
 **Last Updated**: 2025-11-13  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 59% size reduction while preserving all functionality
+

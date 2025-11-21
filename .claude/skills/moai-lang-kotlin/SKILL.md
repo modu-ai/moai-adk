@@ -3,24 +3,9 @@ name: moai-lang-kotlin
 description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutines,
 ---
 
+## Quick Reference (30 seconds)
+
 # Lang Kotlin Skill - Enterprise 
-
-## Skill Overview
-
-**Kotlin 2.0** Multiplatform enterprise development with advanced async patterns, KMP architecture, and Compose Multiplatform UI. This skill provides patterns for mobile, backend, and cross-platform development with full Context7 MCP integration for real-time documentation access.
-
-### Core Capabilities
-
-- ✅ Kotlin 2.0 Multiplatform (KMP) enterprise architecture
-- ✅ Advanced coroutines and structured concurrency patterns
-- ✅ Compose Multiplatform UI development (Android, iOS, Web)
-- ✅ Enterprise testing strategies with Kotest and MockK
-- ✅ Context7 MCP integration for latest documentation
-- ✅ Performance optimization and memory management
-- ✅ Modern architecture patterns (MVI, Clean Architecture)
-- ✅ Security best practices for production systems
-
----
 
 ## Quick Reference
 
@@ -40,6 +25,30 @@ description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutine
 - Review enterprise Kotlin code
 
 ---
+
+## For Complete Information
+
+- **Working Examples**: See `examples.md` (29 examples covering all patterns)
+- **CLI Reference**: See `reference.md` (installation, commands, troubleshooting)
+- **Official Docs**: https://kotlinlang.org
+- **Coroutines Guide**: https://kotlinlang.org/docs/coroutines-overview.html
+
+---
+
+## Changelog
+
+- ** .0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
+- **v3.0.0** (2025-03-15): Added KMP and multiplatform patterns
+- **v2.0.0** (2025-01-10): Basic Kotlin patterns and best practices
+- **v1.0.0** (2024-12-01): Initial release
+
+---
+
+_Last updated: 2025-11-13_
+
+---
+
+## Implementation Guide
 
 ## Technology Stack (2025-11-13)
 
@@ -186,47 +195,6 @@ actual class PlatformDatabase {
 - Share business logic in `commonMain`
 - Isolate platform specifics in platform modules
 - Compile-time platform selection
-
----
-
-## Advanced Async Patterns
-
-### Flow - Reactive Streams
-
-```kotlin
-// Create cold flow (lazy)
-fun getUsersFlow(): Flow<User> = flow {
-    while (true) {
-        val users = repository.fetchUsers()
-        emit(users)
-        delay(5000)  // Refresh every 5 seconds
-    }
-}
-
-// Compose flows
-getUsersFlow()
-    .map { it.copy(name = it.name.uppercase()) }
-    .filter { it.isActive }
-    .distinctUntilChanged()
-    .collect { updateUI(it) }
-```
-
-### StateFlow - Mutable State
-
-```kotlin
-class CounterViewModel {
-    private val _count = MutableStateFlow(0)
-    val count: StateFlow<Int> = _count.asStateFlow()
-
-    fun increment() { _count.value++ }
-    fun decrement() { _count.value-- }
-}
-
-// Observe state changes
-viewModel.count.collect { count ->
-    updateUI("Count: $count")
-}
-```
 
 ---
 
@@ -477,22 +445,65 @@ val client = HttpClient {
 
 ---
 
-## For Complete Information
+---
 
-- **Working Examples**: See `examples.md` (29 examples covering all patterns)
-- **CLI Reference**: See `reference.md` (installation, commands, troubleshooting)
-- **Official Docs**: https://kotlinlang.org
-- **Coroutines Guide**: https://kotlinlang.org/docs/coroutines-overview.html
+## Advanced Patterns
+
+## Skill Overview
+
+**Kotlin 2.0** Multiplatform enterprise development with advanced async patterns, KMP architecture, and Compose Multiplatform UI. This skill provides patterns for mobile, backend, and cross-platform development with full Context7 MCP integration for real-time documentation access.
+
+### Core Capabilities
+
+- ✅ Kotlin 2.0 Multiplatform (KMP) enterprise architecture
+- ✅ Advanced coroutines and structured concurrency patterns
+- ✅ Compose Multiplatform UI development (Android, iOS, Web)
+- ✅ Enterprise testing strategies with Kotest and MockK
+- ✅ Context7 MCP integration for latest documentation
+- ✅ Performance optimization and memory management
+- ✅ Modern architecture patterns (MVI, Clean Architecture)
+- ✅ Security best practices for production systems
 
 ---
 
-## Changelog
+## Advanced Async Patterns
 
-- ** .0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
-- **v3.0.0** (2025-03-15): Added KMP and multiplatform patterns
-- **v2.0.0** (2025-01-10): Basic Kotlin patterns and best practices
-- **v1.0.0** (2024-12-01): Initial release
+### Flow - Reactive Streams
+
+```kotlin
+// Create cold flow (lazy)
+fun getUsersFlow(): Flow<User> = flow {
+    while (true) {
+        val users = repository.fetchUsers()
+        emit(users)
+        delay(5000)  // Refresh every 5 seconds
+    }
+}
+
+// Compose flows
+getUsersFlow()
+    .map { it.copy(name = it.name.uppercase()) }
+    .filter { it.isActive }
+    .distinctUntilChanged()
+    .collect { updateUI(it) }
+```
+
+### StateFlow - Mutable State
+
+```kotlin
+class CounterViewModel {
+    private val _count = MutableStateFlow(0)
+    val count: StateFlow<Int> = _count.asStateFlow()
+
+    fun increment() { _count.value++ }
+    fun decrement() { _count.value-- }
+}
+
+// Observe state changes
+viewModel.count.collect { count ->
+    updateUI("Count: $count")
+}
+```
 
 ---
 
-_Last updated: 2025-11-13_

@@ -1,15 +1,11 @@
 ---
 name: database-expert
-description: "Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords: 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'."
-tools: 
+description: Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords: 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'.
+tools: None
 model: inherit
 permissionMode: default
-skills:
-  - moai-lang-python
-  - moai-domain-database
-  - moai-essentials-perf
-  - moai-domain-cloud
----
+skills: moai-lang-python, moai-domain-database, moai-essentials-perf, moai-domain-cloud
+------
 
 # Database Expert 🗄️
 

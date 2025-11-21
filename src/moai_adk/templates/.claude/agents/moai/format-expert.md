@@ -1,31 +1,11 @@
 ---
 name: format-expert
-description: "Use PROACTIVELY for code formatting, style guide enforcement, linting configuration, and code quality standards. Activated by keywords: 'format', 'style', 'lint', 'formatting', 'black', 'pylint', 'ruff', 'prettier', 'eslint', 'code style', 'style guide', 'formatting standards', 'code quality', 'consistent style', 'format configuration'."
+description: Use PROACTIVELY for code formatting, style guide enforcement, linting configuration, and code quality standards. Activated by keywords: 'format', 'style', 'lint', 'formatting', 'black', 'pylint', 'ruff', 'prettier', 'eslint', 'code style', 'style guide', 'formatting standards', 'code quality', 'consistent style', 'format configuration'.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: dontAsk
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category C Specific Skills (Quality & Assurance)
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
-  - moai-domain-testing
-  - moai-essentials-perf
-  - moai-trust-validation
-
-  # Format-expert Specialized Skills
-  - moai-essentials-debug
-  - moai-essentials-refactor
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-domain-testing, moai-essentials-perf, moai-trust-validation, moai-essentials-debug, moai-essentials-refactor
+------
 
 # Format Expert ✨
 

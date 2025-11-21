@@ -4,7 +4,33 @@ description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core tes
   POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-lang-shell - Enterprise 
+
+## For Complete Information
+
+- **Working Examples**: See `examples.md` (23 examples covering all patterns)
+- **CLI Reference**: See `reference.md` (commands, syntax, troubleshooting)
+- **GNU Bash Manual**: https://www.gnu.org/software/bash/manual/
+- **ShellCheck**: https://www.shellcheck.net
+
+---
+
+## Changelog
+
+- ** .0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
+- **v3.0.0** (2025-03-15): Added POSIX compliance guide
+- **v2.0.0** (2025-01-10): Testing and linting guide
+- **v1.0.0** (2024-12-01): Initial release
+
+---
+
+_Last updated: 2025-11-13_
+
+---
+
+## Implementation Guide
 
 ## Skill Overview
 
@@ -429,22 +455,9 @@ This skill integrates with Context7 for real-time documentation access:
 
 ---
 
-## For Complete Information
-
-- **Working Examples**: See `examples.md` (23 examples covering all patterns)
-- **CLI Reference**: See `reference.md` (commands, syntax, troubleshooting)
-- **GNU Bash Manual**: https://www.gnu.org/software/bash/manual/
-- **ShellCheck**: https://www.shellcheck.net
-
 ---
 
-## Changelog
+## Advanced Patterns
 
-- ** .0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
-- **v3.0.0** (2025-03-15): Added POSIX compliance guide
-- **v2.0.0** (2025-01-10): Testing and linting guide
-- **v1.0.0** (2024-12-01): Initial release
 
----
 
-_Last updated: 2025-11-13_

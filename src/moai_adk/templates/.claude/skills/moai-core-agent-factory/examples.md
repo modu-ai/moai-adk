@@ -43,12 +43,12 @@ research_needed: false
 Template tier: Tier 1 (Simple)
 
 Auto-load skills:
-  - moai-core-agent-guide
-  - moai-core-workflow
+  - moai-alfred-agent-guide
+  - moai-alfred-workflow
 
 Conditional skills:
   - moai-lang-python
-  - moai-core-language-detection
+  - moai-alfred-language-detection
 
 Tool permissions:
   Core: [Read, Grep, Glob]
@@ -190,8 +190,8 @@ Research findings incorporated into agent
 Template tier: Tier 2 (Standard)
 
 Auto-load skills:
-  - moai-core-agent-guide
-  - moai-core-workflow
+  - moai-alfred-agent-guide
+  - moai-alfred-workflow
   - moai-domain-backend
   - moai-lang-typescript (GraphQL + JS typical)
 
@@ -235,8 +235,8 @@ Goal: Create optimal GraphQL schemas with performance best practices
 - **Skill invocation**: `Skill("moai-domain-backend")`, `Skill("moai-essentials-perf")`
 
 ## Required Skills
-Skill("moai-core-agent-guide")
-Skill("moai-core-workflow")
+Skill("moai-alfred-agent-guide")
+Skill("moai-alfred-workflow")
 Skill("moai-domain-backend")
 
 Conditional:
@@ -397,8 +397,8 @@ Quality: EXCELLENT (0.89)
 Template tier: Tier 3 (Complex)
 
 Auto-load skills:
-  - moai-core-agent-guide
-  - moai-core-workflow
+  - moai-alfred-agent-guide
+  - moai-alfred-workflow
   - moai-domain-security
   - moai-domain-backend (secondary domain)
 
@@ -465,8 +465,8 @@ Goal: Identify vulnerabilities and ensure OWASP compliance across stack
 - **Skill invocation**: Explicit: `Skill("moai-domain-security")`
 
 ## Required Skills
-Skill("moai-core-agent-guide")
-Skill("moai-core-workflow")
+Skill("moai-alfred-agent-guide")
+Skill("moai-alfred-workflow")
 Skill("moai-domain-security")
 Skill("moai-domain-backend")
 

@@ -3,20 +3,9 @@ name: moai-domain-monitoring
 description: Enterprise Application Monitoring with AI-powered observability architecture,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Application Monitoring Expert 
-
----
-
-## What It Does
-
-Enterprise Application Monitoring expert with AI-powered observability architecture, Context7 integration, and intelligent performance orchestration for scalable modern applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Monitoring Architecture** using Context7 MCP for latest observability patterns
-- 📊 **Intelligent Performance Analytics** with automated anomaly detection and optimization
-- 🚀 **Advanced Observability Integration** with AI-driven distributed tracing and correlation
-- 🔗 **Enterprise Alerting Systems** with zero-configuration intelligent incident management
-- 📈 **Predictive Performance Insights** with usage forecasting and capacity planning
 
 ---
 
@@ -37,39 +26,6 @@ Enterprise Application Monitoring expert with AI-powered observability architect
 ---
 
 # Quick Reference (Level 1)
-
-## Modern Monitoring Stack (November 2025)
-
-### Core Monitoring Components
-- **Metrics Collection**: Prometheus, Grafana, DataDog, New Relic
-- **Logging**: ELK Stack, Grafana Loki, Fluentd, Logstash
-- **Tracing**: Jaeger, OpenTelemetry, Zipkin, AWS X-Ray
-- **APM**: Application Performance Monitoring with real-time insights
-- **Synthetic Monitoring**: Active user experience simulation
-
-### Key Observability Pillars
-- **Logs**: Structured event logging with correlation IDs
-- **Metrics**: Time-series data for system performance
-- **Traces**: Distributed request flow across services
-- **Events**: Business and system event correlation
-- **Profiles**: Application performance profiling
-
-### Popular Integration Patterns
-- **OpenTelemetry**: Vendor-neutral observability data collection
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Visualization and dashboarding
-- **DataDog**: Full-stack monitoring and APM
-- **New Relic**: Application performance and infrastructure monitoring
-
-### Alerting Strategy
-- **SLI/SLO Monitoring**: Service level objectives and indicators
-- **Threshold-based Alerts**: Performance and availability thresholds
-- **Anomaly Detection**: AI-powered anomaly identification
-- **Escalation Policies**: Multi-level alerting and notification
-
----
-
-# Core Implementation (Level 2)
 
 ## Monitoring Architecture Intelligence
 
@@ -122,219 +78,6 @@ class MonitoringArchitectOptimizer:
             performance_predictions=observability_design.predictions
         )
 ```
-
-## OpenTelemetry Integration
-
-```typescript
-// Comprehensive OpenTelemetry setup for Node.js applications
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-grpc';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-otlp-grpc';
-import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
-
-// Initialize OpenTelemetry SDK
-const sdk = new NodeSDK({
-  resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'your-service-name',
-    [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV,
-  }),
-  
-  // Auto-instrumentation for popular libraries
-  instrumentations: [getNodeAutoInstrumentations()],
-  
-  // Trace exporter for distributed tracing
-  traceExporter: new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://jaeger:4317',
-  }),
-  
-  // Metrics exporter
-  metricExporter: new OTLPMetricExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://prometheus:9090',
-  }),
-  
-  // Additional Prometheus endpoint
-  metricReader: new PrometheusExporter({
-    port: 9464,
-    endpoint: '/metrics',
-  }),
-  
-  // Performance optimizations
-  spanLimits: {
-    attributeCountLimit: 100,
-    eventCountLimit: 1000,
-    linkCountLimit: 100,
-  },
-});
-
-// Start the SDK
-sdk.start().then(() => {
-  console.log('OpenTelemetry initialized successfully');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  sdk.shutdown()
-    .then(() => console.log('OpenTelemetry shut down successfully'))
-    .catch((error) => console.error('Error shutting down OpenTelemetry', error))
-    .finally(() => process.exit(0));
-});
-
-// Custom span creation for business logic
-import { trace } from '@opentelemetry/api';
-
-export function createBusinessSpan(operationName: string, attributes: Record<string, string>) {
-  const tracer = trace.getTracer('business-logic');
-  
-  return tracer.startSpan(operationName, {
-    attributes: {
-      'business.operation': operationName,
-      'service.name': 'your-service-name',
-      ...attributes,
-    },
-  });
-}
-
-// Example usage in business logic
-export async function processUserOrder(userId: string, orderId: string) {
-  const span = createBusinessSpan('process_user_order', {
-    'user.id': userId,
-    'order.id': orderId,
-  });
-  
-  try {
-    // Business logic here
-    const result = await orderService.process(userId, orderId);
-    
-    span.setAttributes({
-      'order.status': result.status,
-      'order.amount': result.amount.toString(),
-    });
-    
-    return result;
-  } catch (error) {
-    span.recordException(error as Error);
-    throw error;
-  } finally {
-    span.end();
-  }
-}
-```
-
-## Prometheus Metrics Implementation
-
-```typescript
-// Custom Prometheus metrics for application monitoring
-import { Counter, Histogram, Gauge, register } from 'prom-client';
-
-// Business metrics
-export const businessMetrics = {
-  // Request counters
-  httpRequestsTotal: new Counter({
-    name: 'http_requests_total',
-    help: 'Total number of HTTP requests',
-    labelNames: ['method', 'route', 'status_code'],
-  }),
-  
-  // Response time histograms
-  httpRequestDuration: new Histogram({
-    name: 'http_request_duration_seconds',
-    help: 'HTTP request duration in seconds',
-    labelNames: ['method', 'route'],
-    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
-  }),
-  
-  // Active connections gauge
-  activeConnections: new Gauge({
-    name: 'active_connections',
-    help: 'Number of active connections',
-  }),
-  
-  // Business operations
-  ordersProcessed: new Counter({
-    name: 'orders_processed_total',
-    help: 'Total number of orders processed',
-    labelNames: ['status', 'payment_method'],
-  }),
-  
-  revenueGenerated: new Counter({
-    name: 'revenue_generated_total',
-    help: 'Total revenue generated',
-    labelNames: ['currency'],
-  }),
-};
-
-// System metrics
-export const systemMetrics = {
-  // Memory usage
-  memoryUsage: new Gauge({
-    name: 'memory_usage_bytes',
-    help: 'Memory usage in bytes',
-    labelNames: ['type'], // heap, external, array_buffers
-  }),
-  
-  // CPU usage
-  cpuUsage: new Gauge({
-    name: 'cpu_usage_percent',
-    help: 'CPU usage percentage',
-  }),
-  
-  // Event loop lag
-  eventLoopLag: new Histogram({
-    name: 'event_loop_lag_seconds',
-    help: 'Event loop lag in seconds',
-    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
-  }),
-};
-
-// Metrics collection middleware
-export function metricsMiddleware() {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const start = Date.now();
-    
-    // Increment active connections
-    systemMetrics.activeConnections.inc();
-    
-    res.on('finish', () => {
-      const duration = (Date.now() - start) / 1000;
-      
-      // Record HTTP request metrics
-      businessMetrics.httpRequestsTotal
-        .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
-        .inc();
-      
-      businessMetrics.httpRequestDuration
-        .labels(req.method, req.route?.path || req.path)
-        .observe(duration);
-      
-      // Decrement active connections
-      systemMetrics.activeConnections.dec();
-    });
-    
-    next();
-  };
-}
-
-// Export metrics for Prometheus
-export function getMetrics() {
-  return register.metrics();
-}
-
-// System metrics collection
-setInterval(() => {
-  const memUsage = process.memoryUsage();
-  systemMetrics.memoryUsage.labels('heap').set(memUsage.heapUsed);
-  systemMetrics.memoryUsage.labels('external').set(memUsage.external);
-  systemMetrics.memoryUsage.labels('array_buffers').set(memUsage.arrayBuffers);
-}, 5000);
-```
-
----
-
-# Advanced Implementation (Level 3)
 
 ## Advanced Alerting and Incident Management
 
@@ -567,77 +310,273 @@ export class DistributedTracing {
 
 # Reference & Integration (Level 4)
 
-## API Reference
+---
 
-### Core Monitoring Operations
-- `create_metric(name, type, labels)` - Create custom metric
-- `record_event(event_name, attributes)` - Record business event
-- `create_span(name, parent_span)` - Create tracing span
-- `set_alert(condition, severity, channels)` - Configure alert
-- `create_dashboard(metrics, visualization)` - Create monitoring dashboard
+## Core Implementation
 
-### Context7 Integration
-- `get_latest_monitoring_documentation()` - Official monitoring docs via Context7
-- `analyze_observability_patterns()` - Observability best practices via Context7
-- `optimize_monitoring_stack()` - Monitoring optimization via Context7
+## What It Does
 
-## Best Practices (November 2025)
+Enterprise Application Monitoring expert with AI-powered observability architecture, Context7 integration, and intelligent performance orchestration for scalable modern applications.
 
-### DO
-- Use OpenTelemetry for vendor-neutral observability
-- Implement structured logging with correlation IDs
-- Set up comprehensive alerting with proper escalation
-- Monitor business metrics alongside technical metrics
-- Use dashboards for real-time system visibility
-- Implement anomaly detection for proactive monitoring
-- Set up SLI/SLO monitoring for service reliability
-- Use distributed tracing for microservice debugging
-
-### DON'T
-- Skip monitoring for development environments
-- Create too many alerts without proper prioritization
-- Ignore business metrics and user experience
-- Forget to monitor infrastructure costs
-- Use alerting as a replacement for proper monitoring
-- Skip performance testing and benchmarking
-- Ignore monitoring data retention policies
-- Forget to secure monitoring endpoints and data
-
-## Works Well With
-
-- `moai-baas-foundation` (Enterprise BaaS monitoring)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-security-api` (Security monitoring)
-- `moai-foundation-trust` (Compliance monitoring)
-- `moai-domain-backend` (Backend application monitoring)
-- `moai-domain-frontend` (Frontend performance monitoring)
-- `moai-domain-devops` (DevOps and infrastructure monitoring)
-- `moai-security-owasp` (Security threat monitoring)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 monitoring stack updates, and intelligent alerting patterns
-- **v2.0.0** (2025-11-11): Complete metadata structure, monitoring patterns, alerting configuration
-- **v1.0.0** (2025-11-11): Initial application monitoring
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Monitoring Architecture** using Context7 MCP for latest observability patterns
+- 📊 **Intelligent Performance Analytics** with automated anomaly detection and optimization
+- 🚀 **Advanced Observability Integration** with AI-driven distributed tracing and correlation
+- 🔗 **Enterprise Alerting Systems** with zero-configuration intelligent incident management
+- 📈 **Predictive Performance Insights** with usage forecasting and capacity planning
 
 ---
 
-**End of Skill** | Updated 2025-11-13
+## Modern Monitoring Stack (November 2025)
 
-## Security & Compliance
+### Core Monitoring Components
+- **Metrics Collection**: Prometheus, Grafana, DataDog, New Relic
+- **Logging**: ELK Stack, Grafana Loki, Fluentd, Logstash
+- **Tracing**: Jaeger, OpenTelemetry, Zipkin, AWS X-Ray
+- **APM**: Application Performance Monitoring with real-time insights
+- **Synthetic Monitoring**: Active user experience simulation
 
-### Monitoring Security
-- Secure transmission of monitoring data with encryption
-- Access controls for sensitive metrics and logs
-- Data anonymization for user privacy protection
-- Secure API endpoints for monitoring data collection
+### Key Observability Pillars
+- **Logs**: Structured event logging with correlation IDs
+- **Metrics**: Time-series data for system performance
+- **Traces**: Distributed request flow across services
+- **Events**: Business and system event correlation
+- **Profiles**: Application performance profiling
 
-### Compliance Management
-- GDPR compliance with data minimization in monitoring
-- SOC2 monitoring controls and audit trails
-- Industry-specific compliance monitoring (HIPAA, PCI-DSS)
-- Automated compliance reporting and alerting
+### Popular Integration Patterns
+- **OpenTelemetry**: Vendor-neutral observability data collection
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Visualization and dashboarding
+- **DataDog**: Full-stack monitoring and APM
+- **New Relic**: Application performance and infrastructure monitoring
+
+### Alerting Strategy
+- **SLI/SLO Monitoring**: Service level objectives and indicators
+- **Threshold-based Alerts**: Performance and availability thresholds
+- **Anomaly Detection**: AI-powered anomaly identification
+- **Escalation Policies**: Multi-level alerting and notification
 
 ---
 
-**End of Enterprise Application Monitoring Expert **
+# Core Implementation (Level 2)
+
+## OpenTelemetry Integration
+
+```typescript
+// Comprehensive OpenTelemetry setup for Node.js applications
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-grpc';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-otlp-grpc';
+import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
+
+// Initialize OpenTelemetry SDK
+const sdk = new NodeSDK({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'your-service-name',
+    [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
+    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV,
+  }),
+  
+  // Auto-instrumentation for popular libraries
+  instrumentations: [getNodeAutoInstrumentations()],
+  
+  // Trace exporter for distributed tracing
+  traceExporter: new OTLPTraceExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://jaeger:4317',
+  }),
+  
+  // Metrics exporter
+  metricExporter: new OTLPMetricExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://prometheus:9090',
+  }),
+  
+  // Additional Prometheus endpoint
+  metricReader: new PrometheusExporter({
+    port: 9464,
+    endpoint: '/metrics',
+  }),
+  
+  // Performance optimizations
+  spanLimits: {
+    attributeCountLimit: 100,
+    eventCountLimit: 1000,
+    linkCountLimit: 100,
+  },
+});
+
+// Start the SDK
+sdk.start().then(() => {
+  console.log('OpenTelemetry initialized successfully');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  sdk.shutdown()
+    .then(() => console.log('OpenTelemetry shut down successfully'))
+    .catch((error) => console.error('Error shutting down OpenTelemetry', error))
+    .finally(() => process.exit(0));
+});
+
+// Custom span creation for business logic
+import { trace } from '@opentelemetry/api';
+
+export function createBusinessSpan(operationName: string, attributes: Record<string, string>) {
+  const tracer = trace.getTracer('business-logic');
+  
+  return tracer.startSpan(operationName, {
+    attributes: {
+      'business.operation': operationName,
+      'service.name': 'your-service-name',
+      ...attributes,
+    },
+  });
+}
+
+// Example usage in business logic
+export async function processUserOrder(userId: string, orderId: string) {
+  const span = createBusinessSpan('process_user_order', {
+    'user.id': userId,
+    'order.id': orderId,
+  });
+  
+  try {
+    // Business logic here
+    const result = await orderService.process(userId, orderId);
+    
+    span.setAttributes({
+      'order.status': result.status,
+      'order.amount': result.amount.toString(),
+    });
+    
+    return result;
+  } catch (error) {
+    span.recordException(error as Error);
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+```
+
+## Prometheus Metrics Implementation
+
+```typescript
+// Custom Prometheus metrics for application monitoring
+import { Counter, Histogram, Gauge, register } from 'prom-client';
+
+// Business metrics
+export const businessMetrics = {
+  // Request counters
+  httpRequestsTotal: new Counter({
+    name: 'http_requests_total',
+    help: 'Total number of HTTP requests',
+    labelNames: ['method', 'route', 'status_code'],
+  }),
+  
+  // Response time histograms
+  httpRequestDuration: new Histogram({
+    name: 'http_request_duration_seconds',
+    help: 'HTTP request duration in seconds',
+    labelNames: ['method', 'route'],
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  }),
+  
+  // Active connections gauge
+  activeConnections: new Gauge({
+    name: 'active_connections',
+    help: 'Number of active connections',
+  }),
+  
+  // Business operations
+  ordersProcessed: new Counter({
+    name: 'orders_processed_total',
+    help: 'Total number of orders processed',
+    labelNames: ['status', 'payment_method'],
+  }),
+  
+  revenueGenerated: new Counter({
+    name: 'revenue_generated_total',
+    help: 'Total revenue generated',
+    labelNames: ['currency'],
+  }),
+};
+
+// System metrics
+export const systemMetrics = {
+  // Memory usage
+  memoryUsage: new Gauge({
+    name: 'memory_usage_bytes',
+    help: 'Memory usage in bytes',
+    labelNames: ['type'], // heap, external, array_buffers
+  }),
+  
+  // CPU usage
+  cpuUsage: new Gauge({
+    name: 'cpu_usage_percent',
+    help: 'CPU usage percentage',
+  }),
+  
+  // Event loop lag
+  eventLoopLag: new Histogram({
+    name: 'event_loop_lag_seconds',
+    help: 'Event loop lag in seconds',
+    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
+  }),
+};
+
+// Metrics collection middleware
+export function metricsMiddleware() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    
+    // Increment active connections
+    systemMetrics.activeConnections.inc();
+    
+    res.on('finish', () => {
+      const duration = (Date.now() - start) / 1000;
+      
+      // Record HTTP request metrics
+      businessMetrics.httpRequestsTotal
+        .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
+        .inc();
+      
+      businessMetrics.httpRequestDuration
+        .labels(req.method, req.route?.path || req.path)
+        .observe(duration);
+      
+      // Decrement active connections
+      systemMetrics.activeConnections.dec();
+    });
+    
+    next();
+  };
+}
+
+// Export metrics for Prometheus
+export function getMetrics() {
+  return register.metrics();
+}
+
+// System metrics collection
+setInterval(() => {
+  const memUsage = process.memoryUsage();
+  systemMetrics.memoryUsage.labels('heap').set(memUsage.heapUsed);
+  systemMetrics.memoryUsage.labels('external').set(memUsage.external);
+  systemMetrics.memoryUsage.labels('array_buffers').set(memUsage.arrayBuffers);
+}, 5000);
+```
+
+---
+
+# Advanced Implementation (Level 3)
+
+
+
+---
+
+## Reference & Resources
+
+See [reference.md](reference.md) for detailed API reference and official documentation.

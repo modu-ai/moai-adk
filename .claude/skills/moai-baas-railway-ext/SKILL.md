@@ -3,20 +3,9 @@ name: moai-baas-railway-ext
 description: Enterprise Railway Full-Stack Platform with AI-powered container orchestration,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Railway Full-Stack Platform Expert 
-
----
-
-## What It Does
-
-Enterprise Railway Full-Stack Platform expert with AI-powered container orchestration, Context7 integration, and intelligent deployment automation for scalable modern applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Railway Architecture** using Context7 MCP for latest deployment patterns
-- 📊 **Intelligent Container Orchestration** with automated scaling and optimization
-- 🚀 **Real-time Performance Analytics** with AI-driven deployment insights
-- 🔗 **Enterprise CI/CD Integration** with zero-configuration pipeline automation
-- 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
 
 ---
 
@@ -37,6 +26,201 @@ Enterprise Railway Full-Stack Platform expert with AI-powered container orchestr
 ---
 
 # Quick Reference (Level 1)
+
+## Advanced Scaling Strategies
+
+```python
+class RailwayScalingManager:
+    def __init__(self):
+        self.railway_client = RailwayClient()
+        self.metrics_analyzer = MetricsAnalyzer()
+        self.cost_optimizer = CostOptimizer()
+    
+    async def implement_intelligent_scaling(self, 
+                                          project_id: str,
+                                          scaling_config: ScalingConfiguration) -> ScalingImplementation:
+        """Implement intelligent auto-scaling for Railway services."""
+        
+        # Analyze current usage patterns
+        usage_analysis = await self.metrics_analyzer.analyze_usage_patterns(
+            project_id, timeframe="7d"
+        )
+        
+        # Configure predictive scaling
+        predictive_config = self._configure_predictive_scaling(
+            usage_analysis,
+            scaling_config
+        )
+        
+        # Set up cost optimization
+        cost_optimization = self.cost_optimizer.optimize_scaling_costs(
+            predictive_config,
+            scaling_config.budget_constraints
+        )
+        
+        return ScalingImplementation(
+            scaling_rules=self._create_scaling_rules(predictive_config),
+            monitoring_setup=self._setup_scaling_monitoring(),
+            cost_controls=cost_optimization,
+            performance_alerts=self._configure_performance_alerts()
+        )
+```
+
+### Database Optimization Patterns
+
+```typescript
+// Railway PostgreSQL optimization with connection pooling
+import { Pool } from 'pg';
+
+// Production-ready database configuration
+const productionPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  
+  // Optimized for Railway's containerized environment
+  max: 20, // Maximum connections in pool
+  min: 5,  // Minimum connections to maintain
+  idleTimeoutMillis: 30000, // Close idle connections after 30s
+  connectionTimeoutMillis: 2000, // Give up connecting after 2s
+  statement_timeout: 10000, // Kill slow queries after 10s
+  
+  // Connection retry logic
+  retry: 3,
+  retryDelay: 1000,
+});
+
+// Application database service
+export class DatabaseService {
+  private pool = productionPool;
+  
+  async query<T>(text: string, params?: any[]): Promise<T[]> {
+    const start = Date.now();
+    const client = await this.pool.connect();
+    
+    try {
+      const result = await client.query(text, params);
+      const duration = Date.now() - start;
+      
+      // Log slow queries for optimization
+      if (duration > 1000) {
+        console.warn('Slow query detected:', {
+          query: text,
+          duration,
+          rowCount: result.rowCount
+        });
+      }
+      
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+  
+  async transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.status(200).json({ 
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      database: 'disconnected'
+    });
+  }
+});
+```
+
+### Environment Management
+
+```python
+class RailwayEnvironmentManager:
+    def __init__(self):
+        self.railway_client = RailwayClient()
+        self.config_manager = ConfigurationManager()
+    
+    def setup_production_environment(self, project_id: str, config: EnvironmentConfig) -> EnvironmentSetup:
+        """Configure production environment with best practices."""
+        
+        # Set up production variables
+        production_vars = {
+            # Application configuration
+            'NODE_ENV': 'production',
+            'LOG_LEVEL': 'info',
+            
+            # Database configuration
+            'DATABASE_URL': config.database_url,
+            'DATABASE_POOL_SIZE': '20',
+            'DATABASE_TIMEOUT': '10000',
+            
+            # Security configuration
+            'JWT_SECRET': config.jwt_secret,
+            'ENCRYPTION_KEY': config.encryption_key,
+            'CORS_ORIGIN': config.frontend_url,
+            
+            # External services
+            'REDIS_URL': config.redis_url,
+            'EMAIL_SERVICE_API_KEY': config.email_api_key,
+            
+            # Monitoring and observability
+            'SENTRY_DSN': config.sentry_dsn,
+            'LOGTAIL_SOURCE_TOKEN': config.logtail_token
+        }
+        
+        # Configure environment variables
+        env_setup = self.railway_client.set_environment_variables(
+            project_id, production_vars
+        )
+        
+        return EnvironmentSetup(
+            variables=production_vars,
+            security_config=self._configure_security(),
+            monitoring_config=self._configure_monitoring(),
+            backup_config=self._configure_backups()
+        )
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
+
+## What It Does
+
+Enterprise Railway Full-Stack Platform expert with AI-powered container orchestration, Context7 integration, and intelligent deployment automation for scalable modern applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Railway Architecture** using Context7 MCP for latest deployment patterns
+- 📊 **Intelligent Container Orchestration** with automated scaling and optimization
+- 🚀 **Real-time Performance Analytics** with AI-driven deployment insights
+- 🔗 **Enterprise CI/CD Integration** with zero-configuration pipeline automation
+- 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
+
+---
 
 ## Railway Full-Stack Platform (November 2025)
 
@@ -251,255 +435,10 @@ jobs:
 
 # Advanced Implementation (Level 3)
 
-## Advanced Scaling Strategies
 
-```python
-class RailwayScalingManager:
-    def __init__(self):
-        self.railway_client = RailwayClient()
-        self.metrics_analyzer = MetricsAnalyzer()
-        self.cost_optimizer = CostOptimizer()
-    
-    async def implement_intelligent_scaling(self, 
-                                          project_id: str,
-                                          scaling_config: ScalingConfiguration) -> ScalingImplementation:
-        """Implement intelligent auto-scaling for Railway services."""
-        
-        # Analyze current usage patterns
-        usage_analysis = await self.metrics_analyzer.analyze_usage_patterns(
-            project_id, timeframe="7d"
-        )
-        
-        # Configure predictive scaling
-        predictive_config = self._configure_predictive_scaling(
-            usage_analysis,
-            scaling_config
-        )
-        
-        # Set up cost optimization
-        cost_optimization = self.cost_optimizer.optimize_scaling_costs(
-            predictive_config,
-            scaling_config.budget_constraints
-        )
-        
-        return ScalingImplementation(
-            scaling_rules=self._create_scaling_rules(predictive_config),
-            monitoring_setup=self._setup_scaling_monitoring(),
-            cost_controls=cost_optimization,
-            performance_alerts=self._configure_performance_alerts()
-        )
-```
-
-### Database Optimization Patterns
-
-```typescript
-// Railway PostgreSQL optimization with connection pooling
-import { Pool } from 'pg';
-
-// Production-ready database configuration
-const productionPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  
-  // Optimized for Railway's containerized environment
-  max: 20, // Maximum connections in pool
-  min: 5,  // Minimum connections to maintain
-  idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 2000, // Give up connecting after 2s
-  statement_timeout: 10000, // Kill slow queries after 10s
-  
-  // Connection retry logic
-  retry: 3,
-  retryDelay: 1000,
-});
-
-// Application database service
-export class DatabaseService {
-  private pool = productionPool;
-  
-  async query<T>(text: string, params?: any[]): Promise<T[]> {
-    const start = Date.now();
-    const client = await this.pool.connect();
-    
-    try {
-      const result = await client.query(text, params);
-      const duration = Date.now() - start;
-      
-      // Log slow queries for optimization
-      if (duration > 1000) {
-        console.warn('Slow query detected:', {
-          query: text,
-          duration,
-          rowCount: result.rowCount
-        });
-      }
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-  
-  async transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
-    const client = await this.pool.connect();
-    
-    try {
-      await client.query('BEGIN');
-      const result = await callback(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-}
-
-// Health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    await db.query('SELECT 1');
-    res.status(200).json({ 
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: 'connected'
-    });
-  } catch (error) {
-    res.status(503).json({ 
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      database: 'disconnected'
-    });
-  }
-});
-```
-
-### Environment Management
-
-```python
-class RailwayEnvironmentManager:
-    def __init__(self):
-        self.railway_client = RailwayClient()
-        self.config_manager = ConfigurationManager()
-    
-    def setup_production_environment(self, project_id: str, config: EnvironmentConfig) -> EnvironmentSetup:
-        """Configure production environment with best practices."""
-        
-        # Set up production variables
-        production_vars = {
-            # Application configuration
-            'NODE_ENV': 'production',
-            'LOG_LEVEL': 'info',
-            
-            # Database configuration
-            'DATABASE_URL': config.database_url,
-            'DATABASE_POOL_SIZE': '20',
-            'DATABASE_TIMEOUT': '10000',
-            
-            # Security configuration
-            'JWT_SECRET': config.jwt_secret,
-            'ENCRYPTION_KEY': config.encryption_key,
-            'CORS_ORIGIN': config.frontend_url,
-            
-            # External services
-            'REDIS_URL': config.redis_url,
-            'EMAIL_SERVICE_API_KEY': config.email_api_key,
-            
-            # Monitoring and observability
-            'SENTRY_DSN': config.sentry_dsn,
-            'LOGTAIL_SOURCE_TOKEN': config.logtail_token
-        }
-        
-        # Configure environment variables
-        env_setup = self.railway_client.set_environment_variables(
-            project_id, production_vars
-        )
-        
-        return EnvironmentSetup(
-            variables=production_vars,
-            security_config=self._configure_security(),
-            monitoring_config=self._configure_monitoring(),
-            backup_config=self._configure_backups()
-        )
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core Railway Operations
-- `deploy_service(project_id, service_config)` - Deploy service
-- `create_database(project_id, db_type)` - Provision database
-- `scale_service(service_id, replicas, resources)` - Scale service
-- `rollback_deployment(service_id, deployment_id)` - Rollback deployment
-- `set_environment_variables(project_id, variables)` - Set environment variables
-
-### Context7 Integration
-- `get_latest_railway_documentation()` - Official Railway docs via Context7
-- `analyze_container_optimization()` - Container best practices via Context7
-- `optimize_deployment_strategy()` - Deployment patterns via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Use separate environments for development, staging, and production
-- Implement comprehensive health checks for all services
-- Configure proper logging and monitoring for observability
-- Use connection pooling for database connections
-- Set up automated testing before deployments
-- Monitor costs and implement spending limits
-- Use volume mounts for persistent data storage
-- Implement proper error handling and retry logic
-
-### DON'T
-- Hardcode environment variables in application code
-- Skip health checks and monitoring setup
-- Use production database for development testing
-- Ignore scaling limits and cost controls
-- Deploy without proper testing
-- Forget to implement backup strategies
-- Overprovision resources without optimization
-- Skip security configuration for production
-
-## Works Well With
-
-- `moai-baas-foundation` (Enterprise BaaS architecture patterns)
-- `moai-domain-backend` (Backend deployment patterns)
-- `moai-domain-devops` (DevOps and CI/CD workflows)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-foundation-trust` (Security and compliance)
-- `moai-baas-vercel-ext` (Frontend deployment comparison)
-- `moai-baas-neon-ext` (PostgreSQL database integration)
-- `moai-domain-database` (Database optimization)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Railway platform updates, and advanced deployment automation
-- **v2.0.0** (2025-11-11): Complete metadata structure, deployment patterns, CI/CD integration
-- **v1.0.0** (2025-11-11): Initial Railway full-stack platform
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Security & Compliance
-
-### Container Security
-- Secure base images and vulnerability scanning
-- Runtime security monitoring and threat detection
-- Network isolation and firewall configuration
-- Secret management with encrypted environment variables
-
-### Compliance Management
-- GDPR compliance with data protection measures
-- SOC2 Type II security controls
-- Automated security scanning and patching
-- Comprehensive audit logging and monitoring
-
----
-
-**End of Enterprise Railway Full-Stack Platform Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

@@ -1,100 +1,74 @@
-# Alfred Proactive Suggestions - Quick Reference
+## API Reference
 
-> **Main Skill**: [SKILL.md](SKILL.md)  
-> **Examples**: [examples.md](examples.md)
+### Core Proactive Suggestions Operations
+- `generate_suggestions(context)` - Generate context-aware suggestions
+- `get_personalized_suggestions(user_id)` - Get personalized recommendations
+- `provide_feedback(suggestion_id, feedback)` - Provide feedback on suggestions
+- `analyze_productivity_patterns(user_id)` - Analyze user productivity patterns
+- `optimize_workflow(workflow_context)` - Suggest workflow optimizations
 
----
+### Context7 Integration
+- `get_latest_productivity_docs()` - Productivity patterns via Context7
+- `analyze_developer_patterns()` - Developer patterns via Context7
+- `optimize_suggestion_engine()` - Suggestion optimization via Context7
 
-## Risk Classification Quick Reference
+## Best Practices (November 2025)
 
-| Risk Level | Operations | Beginner | Intermediate | Expert |
-|------------|------------|----------|--------------|--------|
-| **Low** | Read-only, docs, typos | Confirm | Skip | Skip |
-| **Medium** | Code changes, config | Confirm + explain | Confirm | Skip |
-| **High** | DB migration, prod deploy | Confirm + checklist | Confirm + checklist | Confirm |
+### DO
+- Provide context-aware and actionable suggestions
+- Learn from user behavior and adapt recommendations
+- Balance proactive assistance with user autonomy
+- Provide clear implementation guidance and examples
+- Consider user's current workload and priorities
+- Offer different suggestion types (code, workflow, learning)
+- Measure suggestion effectiveness and user satisfaction
+- Respect user privacy and provide opt-out options
 
----
+### DON'T
+- Overwhelm users with too many suggestions
+- Make suggestions without proper context analysis
+- Ignore user feedback and preferences
+- Provide generic or non-actionable recommendations
+- Interrupt critical development workflows
+- Ignore team collaboration dynamics
+- Skip performance impact analysis
+- Forget to validate suggestion accuracy
 
-## Risk Pattern Catalog
+## Works Well With
 
-| Pattern | Keywords | Risk Level | Mitigation |
-|---------|----------|------------|------------|
-| **Database Migration** | migration, schema, ALTER | High | Backup, staging, rollback |
-| **Destructive Ops** | rm, force push, reset | High | Alternative suggestion |
-| **Breaking Changes** | API change, major version | High | Migration plan |
-| **Production Deploy** | deploy, prod, release | High | Staging checklist |
-| **Security** | credentials, API key | High | Environment vars |
-| **Large File Edit** | >100 lines, no tests | Medium | TDD workflow |
+- `moai-alfred-workflow` (Alfred workflow integration)
+- `moai-alfred-agent-guide` (Agent assistance patterns)
+- `moai-foundation-trust` (User trust and adoption)
+- `moai-domain-backend` (Backend optimization suggestions)
+- `moai-domain-frontend` (Frontend optimization suggestions)
+- `moai-essentials-perf` (Performance optimization)
+- `moai-security-api` (Security best practices)
+- `moai-domain-testing` (Testing optimization)
 
----
+## Changelog
 
-## Optimization Pattern Catalog
-
-| Pattern | Detection | Time Saved | Automation |
-|---------|-----------|------------|------------|
-| **Repetitive Tasks** | 3+ similar edits | 10-30 min | Batch script |
-| **Parallel Execution** | Sequential independent tasks | 30-50% | Parallel flag |
-| **Manual Workflows** | GUI-equivalent actions | 15-20 min | `/alfred:*` command |
-
----
-
-## Suggestion Priority Matrix
-
-**When multiple suggestions eligible, prioritize**:
-
-1. **High-risk warnings** (always show)
-2. **Medium-risk warnings** (if no high-risk)
-3. **Optimization patterns** (if no risks)
-4. **Learning opportunities** (lowest priority)
-
-**Frequency limit**: Max 1 suggestion per 5 minutes
-
----
-
-## Expertise-Based Thresholds
-
-| Expertise | Suggestions/Session | Focus | Pattern Threshold |
-|-----------|---------------------|-------|-------------------|
-| **Beginner** | 3-5 | Learning + risks | Low (suggest common) |
-| **Intermediate** | 2-3 | Optimizations + med risks | Medium (suggest improvements) |
-| **Expert** | 1-2 | Advanced + high risks | High (suggest advanced only) |
+- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced learning adaptation, and intelligent suggestion patterns
+- **v2.0.0** (2025-11-11): Complete metadata structure, suggestion patterns, learning system
+- **v1.0.0** (2025-11-11): Initial proactive suggestions foundation
 
 ---
 
-## Decision Tree
+**End of Skill** | Updated 2025-11-13
 
-```
-Operation Detected
-    ↓
-Classify Risk (Low/Medium/High)
-    ↓
-Check Expertise Level (Beginner/Int/Expert)
-    ↓
-Determine Confirmation Threshold
-    ↓
-├─ High Risk → Always confirm (all levels)
-├─ Medium Risk → Confirm if Beginner/Int
-└─ Low Risk → Confirm if Beginner only
-    ↓
-Check Suggestion Frequency (1 per 5 min)
-    ↓
-├─ Within limit → Show suggestion
-└─ Over limit → Queue for later
-```
+## Intelligent Assistance Framework
+
+### AI-Powered Features
+- Real-time context analysis and pattern recognition
+- Personalized suggestion adaptation based on user behavior
+- Machine learning for continuous improvement
+- Natural language processing for intelligent assistance
+
+### Productivity Enhancement
+- Automated workflow optimization suggestions
+- Performance bottleneck identification and resolution
+- Learning path recommendations and skill gap analysis
+- Team collaboration and communication improvements
 
 ---
 
-## Integration Points
-
-**Called by**:
-- All `/alfred:*` commands (risk detection)
-- `moai-alfred-persona-roles` (role adaptation)
-- `moai-alfred-expertise-detection` (threshold tuning)
-
-**Calls**:
-- `AskUserQuestion` (confirmation dialogs)
-- Risk mitigation Skills (context-specific)
-
----
-
-**End of Reference** | 2025-11-02
+**End of Enterprise Alfred Proactive Suggestions Expert **

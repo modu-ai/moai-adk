@@ -3,23 +3,11 @@ name: moai-core-context-budget
 description: Enterprise Claude Code context window optimization with 2025 best practices:
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-alfred-context-budget
 
 **Enterprise Context Window Optimization for Claude Code**
-
-## Overview
-
-Enterprise-grade context window management for Claude Code covering 200K token optimization, aggressive clearing strategies, memory file management, MCP server optimization, and 2025 best practices for maintaining high-quality AI-assisted development sessions.
-
-**Core Capabilities**:
-- ✅ Context budget allocation (200K tokens)
-- ✅ Aggressive context clearing patterns
-- ✅ Memory file optimization (<500 lines each)
-- ✅ MCP server efficiency monitoring
-- ✅ Strategic chunking for long-running tasks
-- ✅ Quality-over-quantity principles
-
----
 
 ## Quick Reference
 
@@ -43,6 +31,46 @@ Skill("moai-core-context-budget")
 3. **Lean Memory Files** - Keep each file < 500 lines
 4. **Disable Unused MCPs** - Each server adds tool definitions
 5. **Quality > Quantity** - 10% with relevant info beats 90% with noise
+
+---
+
+## High-Quality Context Example (30K tokens, 15%)
+
+Context Contents:
+1. CLAUDE.md (2K tokens) - Always loaded
+2. src/auth/jwt.ts (5K tokens) - Current file being edited
+3. src/types/auth.ts (3K tokens) - Type definitions needed
+4. .moai/memory/session-summary.md (4K tokens) - Current session state
+5. tests/auth.test.ts (8K tokens) - Test file for reference
+6. Last 5 messages (8K tokens) - Recent discussion
+
+Total: 30K tokens
+Quality: HIGH - Every token is directly relevant to current task
+
+## References
+
+- [Claude Code Context Management](https://docs.claude.com/en/docs/build-with-claude/context-windows) - Official documentation
+- [Claude Code Best Practices](https://www.shuttle.dev/blog/2025/10/16/claude-code-best-practices) - Community guide
+- [Context Window Optimization](https://sparkco.ai/blog/mastering-claudes-context-window-a-2025-deep-dive) - 2025 deep dive
+- [Memory Management Strategies](https://cuong.io/blog/2025/06/15-claude-code-best-practices-memory-management) - Advanced patterns
+
+---
+
+---
+
+## Core Implementation
+
+## Overview
+
+Enterprise-grade context window management for Claude Code covering 200K token optimization, aggressive clearing strategies, memory file management, MCP server optimization, and 2025 best practices for maintaining high-quality AI-assisted development sessions.
+
+**Core Capabilities**:
+- ✅ Context budget allocation (200K tokens)
+- ✅ Aggressive context clearing patterns
+- ✅ Memory file optimization (<500 lines each)
+- ✅ MCP server efficiency monitoring
+- ✅ Strategic chunking for long-running tasks
+- ✅ Quality-over-quantity principles
 
 ---
 
@@ -601,19 +629,6 @@ Ask yourself:
    - ✅ Unique: Keep
    - ❌ Duplicate: Remove duplicates, keep one canonical source
 
-## High-Quality Context Example (30K tokens, 15%)
-
-Context Contents:
-1. CLAUDE.md (2K tokens) - Always loaded
-2. src/auth/jwt.ts (5K tokens) - Current file being edited
-3. src/types/auth.ts (3K tokens) - Type definitions needed
-4. .moai/memory/session-summary.md (4K tokens) - Current session state
-5. tests/auth.test.ts (8K tokens) - Test file for reference
-6. Last 5 messages (8K tokens) - Recent discussion
-
-Total: 30K tokens
-Quality: HIGH - Every token is directly relevant to current task
-
 ## Low-Quality Context Example (170K tokens, 85%)
 
 Context Contents:
@@ -738,15 +753,6 @@ Result: Complete, high-quality responses
 
 ---
 
-## References
-
-- [Claude Code Context Management](https://docs.claude.com/en/docs/build-with-claude/context-windows) - Official documentation
-- [Claude Code Best Practices](https://www.shuttle.dev/blog/2025/10/16/claude-code-best-practices) - Community guide
-- [Context Window Optimization](https://sparkco.ai/blog/mastering-claudes-context-window-a-2025-deep-dive) - 2025 deep dive
-- [Memory Management Strategies](https://cuong.io/blog/2025/06/15-claude-code-best-practices-memory-management) - Advanced patterns
-
----
-
 ## Changelog
 
 - ** .0** (2025-01-12): Enterprise upgrade with 2025 best practices, aggressive clearing patterns, MCP optimization, strategic chunking
@@ -760,3 +766,4 @@ Result: Complete, high-quality responses
 - `moai-alfred-session-state` - Session management
 - `moai-cc-memory` - Memory file patterns
 - `moai-alfred-workflow` - 4-step workflow optimization
+

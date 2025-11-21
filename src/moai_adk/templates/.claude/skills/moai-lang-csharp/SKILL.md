@@ -5,60 +5,9 @@ description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity
   applications.
 ---
 
+## Quick Reference (30 seconds)
+
 # C# - Enterprise 
-
----
-
-## What It Does
-
-Enterprise C# 13 development featuring async/await for modern concurrency, LINQ for powerful data queries, Entity Framework Core for ORM, ASP.NET Core for web applications, and production-ready patterns for scalable backend services. Context7 MCP integration provides real-time access to official C#/.NET documentation.
-
-**Key capabilities**:
-- ✅ C# 13 with async/await and modern syntax
-- ✅ Advanced async/await patterns and Task management
-- ✅ LINQ for powerful data transformation
-- ✅ Entity Framework Core 9 for database operations
-- ✅ ASP.NET Core 9 for web applications
-- ✅ Dependency injection and middleware patterns
-- ✅ Context7 MCP integration for real-time docs
-- ✅ Unit testing with xUnit and Moq
-- ✅ Performance optimization techniques
-- ✅ Enterprise architecture patterns (SOLID, Clean Architecture)
-
----
-
-## When to Use
-
-**Automatic triggers**:
-- C# backend development discussions
-- .NET application development
-- Async/await and concurrency patterns
-- LINQ data transformations
-- Entity Framework Core database operations
-- ASP.NET Core web application development
-- Enterprise service architecture
-
-**Manual invocation**:
-- Design backend application architecture
-- Implement async/await patterns
-- Optimize LINQ queries
-- Design database schemas with EF Core
-- Build REST APIs with ASP.NET Core
-- Implement dependency injection
-- Review enterprise C# code
-
----
-
-## Technology Stack (2025-11-12)
-
-| Component | Version | Purpose | Status |
-|-----------|---------|---------|--------|
-| **C#** | 13.0.0 | Core language | ✅ Current |
-| **.NET** | 9.0.0 | Runtime & SDK | ✅ Current |
-| **ASP.NET Core** | 9.0.0 | Web framework | ✅ Current |
-| **Entity Framework Core** | 9.0.0 | ORM | ✅ Current |
-| **xUnit** | 2.9.0 | Testing framework | ✅ Current |
-| **LINQ** | Built-in | Data queries | ✅ Current |
 
 ---
 
@@ -135,6 +84,73 @@ MyApp/
 
 ---
 
+## Troubleshooting
+
+**Problem**: NullReferenceException
+**Solution**: Use null-coalescing operator `??` and null-conditional `?.`
+
+**Problem**: Async deadlock
+**Solution**: Use `.ConfigureAwait(false)` in library code or ensure all calls are awaited
+
+**Problem**: N+1 query problem
+**Solution**: Use `.Include()` for eager loading or projection with Select
+
+**Problem**: Configuration not loading
+**Solution**: Ensure appsettings.json is in correct location and properly configured
+
+---
+
+## Resources
+
+**For working examples**: See `examples.md`
+
+**For API reference**: See `reference.md`
+
+**For advanced patterns**: See full SKILL.md in documentation archive
+
+---
+
+_Last updated: 2025-11-12 | Maintained by moai-adk team_
+
+---
+
+## Implementation Guide
+
+## When to Use
+
+**Automatic triggers**:
+- C# backend development discussions
+- .NET application development
+- Async/await and concurrency patterns
+- LINQ data transformations
+- Entity Framework Core database operations
+- ASP.NET Core web application development
+- Enterprise service architecture
+
+**Manual invocation**:
+- Design backend application architecture
+- Implement async/await patterns
+- Optimize LINQ queries
+- Design database schemas with EF Core
+- Build REST APIs with ASP.NET Core
+- Implement dependency injection
+- Review enterprise C# code
+
+---
+
+## Technology Stack (2025-11-12)
+
+| Component | Version | Purpose | Status |
+|-----------|---------|---------|--------|
+| **C#** | 13.0.0 | Core language | ✅ Current |
+| **.NET** | 9.0.0 | Runtime & SDK | ✅ Current |
+| **ASP.NET Core** | 9.0.0 | Web framework | ✅ Current |
+| **Entity Framework Core** | 9.0.0 | ORM | ✅ Current |
+| **xUnit** | 2.9.0 | Testing framework | ✅ Current |
+| **LINQ** | Built-in | Data queries | ✅ Current |
+
+---
+
 ## Level 2: Implementation Patterns
 
 ### Async/Await Pattern
@@ -204,50 +220,6 @@ app.Run();
 
 ---
 
-## Level 3: Advanced Topics
-
-### Async Best Practices
-
-1. **Prefer async/await** over Task.Run for I/O
-2. **Use ConfigureAwait(false)** in library code
-3. **Handle exceptions** with try-catch around await
-4. **Use CancellationToken** for cancellation support
-5. **Avoid Task.Result** and Task.Wait() (deadlock risk)
-
-### LINQ Optimization
-
-- **Filter early**: Apply Where before Select
-- **Project late**: Select only needed fields at end
-- **Use AsNoTracking()**: For read-only queries
-- **Avoid N+1 queries**: Use Include for relationships
-- **Defer execution**: Chain queries before ToList()
-
-### Performance Patterns
-
-- **Connection pooling**: EF Core handles automatically
-- **Batch operations**: Group saves before SaveChangesAsync()
-- **Lazy loading**: Avoid loading unnecessary data
-- **Caching**: Implement for frequently accessed data
-- **Parallel processing**: Use Task.WhenAll for independent operations
-
-### Security Patterns
-
-- **Input validation**: Always validate user input
-- **Parameterized queries**: EF Core prevents SQL injection
-- **Authentication**: Implement JWT or OAuth2
-- **Authorization**: Check permissions before operations
-- **Encryption**: Protect sensitive data at rest and in transit
-
-### Testing Strategy
-
-- **Unit tests**: Test business logic with xUnit
-- **Integration tests**: Test with real database
-- **Mocking**: Use Moq for dependencies
-- **AAA pattern**: Arrange-Act-Assert
-- **Theory tests**: Multiple inputs with InlineData
-
----
-
 ## Context7 MCP Integration
 
 **Get latest C#/.NET documentation on-demand:**
@@ -305,22 +277,6 @@ aspnetcore_docs = get_library_docs(
 
 ---
 
-## Troubleshooting
-
-**Problem**: NullReferenceException
-**Solution**: Use null-coalescing operator `??` and null-conditional `?.`
-
-**Problem**: Async deadlock
-**Solution**: Use `.ConfigureAwait(false)` in library code or ensure all calls are awaited
-
-**Problem**: N+1 query problem
-**Solution**: Use `.Include()` for eager loading or projection with Select
-
-**Problem**: Configuration not loading
-**Solution**: Ensure appsettings.json is in correct location and properly configured
-
----
-
 ## Changelog
 
 - ** .0** (2025-11-12): Enterprise upgrade - Progressive Disclosure structure, 83% content reduction, Context7 integration
@@ -330,14 +286,69 @@ aspnetcore_docs = get_library_docs(
 
 ---
 
-## Resources
+---
 
-**For working examples**: See `examples.md`
+## Advanced Patterns
 
-**For API reference**: See `reference.md`
+## What It Does
 
-**For advanced patterns**: See full SKILL.md in documentation archive
+Enterprise C# 13 development featuring async/await for modern concurrency, LINQ for powerful data queries, Entity Framework Core for ORM, ASP.NET Core for web applications, and production-ready patterns for scalable backend services. Context7 MCP integration provides real-time access to official C#/.NET documentation.
+
+**Key capabilities**:
+- ✅ C# 13 with async/await and modern syntax
+- ✅ Advanced async/await patterns and Task management
+- ✅ LINQ for powerful data transformation
+- ✅ Entity Framework Core 9 for database operations
+- ✅ ASP.NET Core 9 for web applications
+- ✅ Dependency injection and middleware patterns
+- ✅ Context7 MCP integration for real-time docs
+- ✅ Unit testing with xUnit and Moq
+- ✅ Performance optimization techniques
+- ✅ Enterprise architecture patterns (SOLID, Clean Architecture)
 
 ---
 
-_Last updated: 2025-11-12 | Maintained by moai-adk team_
+## Level 3: Advanced Topics
+
+### Async Best Practices
+
+1. **Prefer async/await** over Task.Run for I/O
+2. **Use ConfigureAwait(false)** in library code
+3. **Handle exceptions** with try-catch around await
+4. **Use CancellationToken** for cancellation support
+5. **Avoid Task.Result** and Task.Wait() (deadlock risk)
+
+### LINQ Optimization
+
+- **Filter early**: Apply Where before Select
+- **Project late**: Select only needed fields at end
+- **Use AsNoTracking()**: For read-only queries
+- **Avoid N+1 queries**: Use Include for relationships
+- **Defer execution**: Chain queries before ToList()
+
+### Performance Patterns
+
+- **Connection pooling**: EF Core handles automatically
+- **Batch operations**: Group saves before SaveChangesAsync()
+- **Lazy loading**: Avoid loading unnecessary data
+- **Caching**: Implement for frequently accessed data
+- **Parallel processing**: Use Task.WhenAll for independent operations
+
+### Security Patterns
+
+- **Input validation**: Always validate user input
+- **Parameterized queries**: EF Core prevents SQL injection
+- **Authentication**: Implement JWT or OAuth2
+- **Authorization**: Check permissions before operations
+- **Encryption**: Protect sensitive data at rest and in transit
+
+### Testing Strategy
+
+- **Unit tests**: Test business logic with xUnit
+- **Integration tests**: Test with real database
+- **Mocking**: Use Moq for dependencies
+- **AAA pattern**: Arrange-Act-Assert
+- **Theory tests**: Multiple inputs with InlineData
+
+---
+

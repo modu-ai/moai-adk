@@ -7,27 +7,9 @@ description: Enterprise interactive survey orchestrator with AskUserQuestion too
   user interactions
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Interactive Survey Orchestrator 
-
-## 🚀 What It Does (Enterprise Context)
-
-**Purpose**: Empower Alfred sub-agents to **actively conduct enterprise-grade surveys** for requirement clarification, architectural decisions, and complex decision automation.
-
-Leverages Claude Code's native `AskUserQuestion` tool to collect explicit, structured user input that transforms vague requests into precise specifications with guaranteed UX quality across all models.
-
-**Enterprise Capabilities**:
-- ✅ Single-select & multi-select option types (independent or dependent)
-- ✅ 1-4 questions per survey (cognitive load optimization)
-- ✅ 2-4 options per question with trade-off analysis
-- ✅ Automatic "Other" option for custom input validation
-- ✅ Conditional branching based on user answers
-- ✅ Error recovery and retry logic
-- ✅ Integration across all Alfred commands (Plan/Run/Sync)
-- ✅ Multi-language support (user's configured language)
-- ✅ Accessibility-first TUI design
-- ✅ Reduces ambiguity → single interaction vs 3-5 iterations
-
----
 
 ## 🎯 When to Use (Decision Framework)
 
@@ -57,32 +39,6 @@ Leverages Claude Code's native `AskUserQuestion` tool to collect explicit, struc
 - Single obvious path exists (no alternatives)
 - Quick yes/no confirmation only (keep it brief)
 - Information already provided in conversation
-
----
-
-## 🎨 Design Principles (Enterprise Standards)
-
-### Core Principle: **Certainty Over Guessing**
-
-**Golden Rule**: When in doubt, **ask the user** instead of assuming.
-
-**Why**:
-- ✅ User sees exactly what you'll do → no surprises
-- ✅ Single interaction vs 3-5 rounds of back-and-forth
-- ✅ Fast → execute with certainty
-- ✅ Reduces "vibe coding" frustration
-- ✅ Builds trust through transparency
-
-**Pattern**:
-```
-Ambiguous request detected
-         ↓
-Call AskUserQuestion({questions: [...]})
-         ↓
-User selects from clear options
-         ↓
-Proceed with confirmed specifications
-```
 
 ---
 
@@ -309,6 +265,84 @@ if (answer["Destructive Op"] === "Proceed") {
 
 ---
 
+## 📚 Quick Reference Card
+
+| Scenario | Action | Key Points |
+|----------|--------|-----------|
+| **Vague request** | Ask for clarification | 1-4 questions max |
+| **Multiple approaches** | Let user choose | Show trade-offs clearly |
+| **Risky operation** | Get explicit consent | Require final confirmation |
+| **Feature selection** | Use multi-select | Independent options only |
+| **Dependent decisions** | Use sequential surveys | Ask follow-ups based on answers |
+| **Custom input** | Validate carefully | Re-ask if invalid |
+| **Accessibility** | Plain text UI | No complex formatting |
+
+---
+
+## Token Budget Optimization
+
+- **Average per survey**: 500-800 tokens
+- **Typical workflow**: 1-2 surveys per task (1,000-1,600 tokens total)
+- **Benefit**: Eliminates 3-5 clarification rounds (3,000-5,000 tokens saved)
+- **ROI**: Net savings of 1,400-3,500 tokens per interaction
+
+---
+
+**For detailed API specifications**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
+
+## 🚀 What It Does (Enterprise Context)
+
+**Purpose**: Empower Alfred sub-agents to **actively conduct enterprise-grade surveys** for requirement clarification, architectural decisions, and complex decision automation.
+
+Leverages Claude Code's native `AskUserQuestion` tool to collect explicit, structured user input that transforms vague requests into precise specifications with guaranteed UX quality across all models.
+
+**Enterprise Capabilities**:
+- ✅ Single-select & multi-select option types (independent or dependent)
+- ✅ 1-4 questions per survey (cognitive load optimization)
+- ✅ 2-4 options per question with trade-off analysis
+- ✅ Automatic "Other" option for custom input validation
+- ✅ Conditional branching based on user answers
+- ✅ Error recovery and retry logic
+- ✅ Integration across all Alfred commands (Plan/Run/Sync)
+- ✅ Multi-language support (user's configured language)
+- ✅ Accessibility-first TUI design
+- ✅ Reduces ambiguity → single interaction vs 3-5 iterations
+
+---
+
+## 🎨 Design Principles (Enterprise Standards)
+
+### Core Principle: **Certainty Over Guessing**
+
+**Golden Rule**: When in doubt, **ask the user** instead of assuming.
+
+**Why**:
+- ✅ User sees exactly what you'll do → no surprises
+- ✅ Single interaction vs 3-5 rounds of back-and-forth
+- ✅ Fast → execute with certainty
+- ✅ Reduces "vibe coding" frustration
+- ✅ Builds trust through transparency
+
+**Pattern**:
+```
+Ambiguous request detected
+         ↓
+Call AskUserQuestion({questions: [...]})
+         ↓
+User selects from clear options
+         ↓
+Proceed with confirmed specifications
+```
+
+---
+
 ## 🎓 Top 10 Usage Patterns
 
 ### Pattern 1: Feature Type Clarification
@@ -396,30 +430,9 @@ if (answer["Destructive Op"] === "Proceed") {
 
 ---
 
-## 📚 Quick Reference Card
-
-| Scenario | Action | Key Points |
-|----------|--------|-----------|
-| **Vague request** | Ask for clarification | 1-4 questions max |
-| **Multiple approaches** | Let user choose | Show trade-offs clearly |
-| **Risky operation** | Get explicit consent | Require final confirmation |
-| **Feature selection** | Use multi-select | Independent options only |
-| **Dependent decisions** | Use sequential surveys | Ask follow-ups based on answers |
-| **Custom input** | Validate carefully | Re-ask if invalid |
-| **Accessibility** | Plain text UI | No complex formatting |
-
 ---
 
-## Token Budget Optimization
+## Advanced Patterns
 
-- **Average per survey**: 500-800 tokens
-- **Typical workflow**: 1-2 surveys per task (1,000-1,600 tokens total)
-- **Benefit**: Eliminates 3-5 clarification rounds (3,000-5,000 tokens saved)
-- **ROI**: Net savings of 1,400-3,500 tokens per interaction
 
----
 
-**For detailed API specifications**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )

@@ -3,9 +3,15 @@ name: moai-cc-skill-factory
 description: AI-powered enterprise skill creation orchestrator with intelligent discovery,
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise Skill Creation Orchestrator 
 
 ---
+
+---
+
+## Implementation Guide
 
 ## 🚀 Revolutionary AI Skill Factory Capabilities
 
@@ -210,78 +216,6 @@ class Context7SkillFactoryDesigner:
 
 ---
 
-## 🛠️ Advanced AI Skill Factory Workflows
-
-### AI Skill Factory Performance Optimization
-```python
-class AISkillFactoryOptimizer:
-    """AI-powered skill factory optimization with Context7 integration."""
-    
-    async def optimize_skill_factory_with_ai(self, 
-            factory_metrics: FactoryMetrics) -> AISkillFactoryOptimization:
-        """Optimize skill factory using AI and Context7 patterns."""
-        
-        # Get Context7 skill factory optimization patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/anthropic/claude-code/skills",
-            topic="AI skill factory optimization automation patterns",
-            tokens=4000
-        )
-        
-        # Multi-layer AI performance analysis
-        performance_analysis = await self.analyze_factory_performance_with_ai(
-            factory_metrics, context7_patterns
-        )
-        
-        # Context7-enhanced optimization strategies
-        optimization_strategies = self.generate_optimization_strategies(
-            performance_analysis, context7_patterns
-        )
-        
-        return AISkillFactoryOptimization(
-            performance_analysis=performance_analysis,
-            optimization_strategies=optimization_strategies,
-            context7_solutions=context7_patterns,
-            continuous_improvement=self.setup_continuous_factory_learning()
-        )
-```
-
-### Predictive Skill Factory Maintenance
-```python
-class AIPredictiveSkillFactoryMaintainer:
-    """AI-enhanced predictive skill factory maintenance with Context7 integration."""
-    
-    async def predict_factory_maintenance_needs(self, 
-            factory_data: FactoryData) -> AIPredictiveMaintenance:
-        """Predict skill factory maintenance needs using AI analysis."""
-        
-        # Get Context7 maintenance patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/anthropic/claude-code/skills",
-            topic="AI predictive skill factory maintenance optimization patterns",
-            tokens=4000
-        )
-        
-        # AI predictive analysis
-        predictive_analysis = self.ai_predictor.analyze_factory_maintenance_needs(
-            factory_data, context7_patterns
-        )
-        
-        # Context7-enhanced maintenance strategies
-        maintenance_strategies = self.generate_maintenance_strategies(
-            predictive_analysis, context7_patterns
-        )
-        
-        return AIPredictiveMaintenance(
-            predictive_analysis=predictive_analysis,
-            maintenance_strategies=maintenance_strategies,
-            context7_patterns=context7_patterns,
-            automated_updates=self.setup_automated_factory_updates()
-        )
-```
-
----
-
 ## 📊 Real-Time AI Skill Factory Intelligence
 
 ### AI Skill Factory Intelligence Dashboard
@@ -473,3 +407,80 @@ ai_skill_factory_stage:
 - `moai-foundation-trust` (AI factory security and compliance)
 - `moai-context7-integration` (latest skill factory standards and patterns)
 - Context7 Skills (latest generation patterns and documentation)
+
+---
+
+## Advanced Patterns
+
+## 🛠️ Advanced AI Skill Factory Workflows
+
+### AI Skill Factory Performance Optimization
+```python
+class AISkillFactoryOptimizer:
+    """AI-powered skill factory optimization with Context7 integration."""
+    
+    async def optimize_skill_factory_with_ai(self, 
+            factory_metrics: FactoryMetrics) -> AISkillFactoryOptimization:
+        """Optimize skill factory using AI and Context7 patterns."""
+        
+        # Get Context7 skill factory optimization patterns
+        context7_patterns = await self.context7.get_library_docs(
+            context7_library_id="/anthropic/claude-code/skills",
+            topic="AI skill factory optimization automation patterns",
+            tokens=4000
+        )
+        
+        # Multi-layer AI performance analysis
+        performance_analysis = await self.analyze_factory_performance_with_ai(
+            factory_metrics, context7_patterns
+        )
+        
+        # Context7-enhanced optimization strategies
+        optimization_strategies = self.generate_optimization_strategies(
+            performance_analysis, context7_patterns
+        )
+        
+        return AISkillFactoryOptimization(
+            performance_analysis=performance_analysis,
+            optimization_strategies=optimization_strategies,
+            context7_solutions=context7_patterns,
+            continuous_improvement=self.setup_continuous_factory_learning()
+        )
+```
+
+### Predictive Skill Factory Maintenance
+```python
+class AIPredictiveSkillFactoryMaintainer:
+    """AI-enhanced predictive skill factory maintenance with Context7 integration."""
+    
+    async def predict_factory_maintenance_needs(self, 
+            factory_data: FactoryData) -> AIPredictiveMaintenance:
+        """Predict skill factory maintenance needs using AI analysis."""
+        
+        # Get Context7 maintenance patterns
+        context7_patterns = await self.context7.get_library_docs(
+            context7_library_id="/anthropic/claude-code/skills",
+            topic="AI predictive skill factory maintenance optimization patterns",
+            tokens=4000
+        )
+        
+        # AI predictive analysis
+        predictive_analysis = self.ai_predictor.analyze_factory_maintenance_needs(
+            factory_data, context7_patterns
+        )
+        
+        # Context7-enhanced maintenance strategies
+        maintenance_strategies = self.generate_maintenance_strategies(
+            predictive_analysis, context7_patterns
+        )
+        
+        return AIPredictiveMaintenance(
+            predictive_analysis=predictive_analysis,
+            maintenance_strategies=maintenance_strategies,
+            context7_patterns=context7_patterns,
+            automated_updates=self.setup_automated_factory_updates()
+        )
+```
+
+---
+

@@ -3,6 +3,8 @@ name: moai-lang-html-css
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-lang-html-css
 
 **HTML5 Semantic Markup & CSS Best Practices with Accessibility Focus**
@@ -433,6 +435,21 @@ input:invalid {
 
 ---
 
+## 📚 Official References
+
+- **W3C HTML5 Spec**: https://html.spec.whatwg.org/
+- **WCAG 2.1 Guidelines**: https://www.w3.org/WAI/WCAG21/quickref/
+- **MDN Web Docs - HTML**: https://developer.mozilla.org/en-US/docs/Web/HTML
+- **MDN Web Docs - CSS**: https://developer.mozilla.org/en-US/docs/Web/CSS
+- **WebAIM - Contrast Checker**: https://webaim.org/resources/contrastchecker/
+- **WAI-ARIA Authoring Practices**: https://www.w3.org/WAI/ARIA/apg/
+
+---
+
+---
+
+## Implementation Guide
+
 ## 🎯 Best Practices Checklist
 
 ### HTML
@@ -459,19 +476,15 @@ input:invalid {
 
 ---
 
-## 📚 Official References
-
-- **W3C HTML5 Spec**: https://html.spec.whatwg.org/
-- **WCAG 2.1 Guidelines**: https://www.w3.org/WAI/WCAG21/quickref/
-- **MDN Web Docs - HTML**: https://developer.mozilla.org/en-US/docs/Web/HTML
-- **MDN Web Docs - CSS**: https://developer.mozilla.org/en-US/docs/Web/CSS
-- **WebAIM - Contrast Checker**: https://webaim.org/resources/contrastchecker/
-- **WAI-ARIA Authoring Practices**: https://www.w3.org/WAI/ARIA/apg/
-
----
-
 ## 🔗 Related Skills
 
 - `Skill("moai-lang-tailwind-css")` – Utility-first CSS framework
 - `Skill("moai-lib-shadcn-ui")` – React components with Tailwind + Radix
 - `Skill("moai-domain-frontend")` – Full frontend architecture
+
+---
+
+## Advanced Patterns
+
+
+

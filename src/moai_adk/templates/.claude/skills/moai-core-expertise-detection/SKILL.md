@@ -6,13 +6,9 @@ description: Enterprise AI-powered user expertise detection with behavioral anal
   complexity adjustment, tutorial depth selection, and communication style matching
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise AI-Powered Expertise Detection 
-
-## What It Does
-
-Continuously detects and adapts to user expertise level based on behavioral signals, communication patterns, code examples, and interaction history. Enables Alfred to calibrate complexity, example selection, and communication style dynamically.
-
----
 
 ## Expertise Level Framework
 
@@ -111,6 +107,22 @@ Continuously detects and adapts to user expertise level based on behavioral sign
 ```
 
 ---
+
+## Related Skills
+
+- `moai-alfred-personas` (Communication style adaptation)
+- `moai-alfred-practices` (Pattern examples at all levels)
+
+---
+
+**For detailed detection patterns**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
 
 ## Continuous Detection Signals
 
@@ -234,6 +246,16 @@ Expert:     "reification", "lifting", "unfold semantics"
 
 ---
 
+---
+
+## Advanced Patterns
+
+## What It Does
+
+Continuously detects and adapts to user expertise level based on behavioral signals, communication patterns, code examples, and interaction history. Enables Alfred to calibrate complexity, example selection, and communication style dynamically.
+
+---
+
 ## Best Practices for Detection
 
 ### DO
@@ -255,14 +277,3 @@ Expert:     "reification", "lifting", "unfold semantics"
 
 ---
 
-## Related Skills
-
-- `moai-alfred-personas` (Communication style adaptation)
-- `moai-alfred-practices` (Pattern examples at all levels)
-
----
-
-**For detailed detection patterns**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )

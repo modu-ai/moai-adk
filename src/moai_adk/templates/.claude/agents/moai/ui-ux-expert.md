@@ -1,35 +1,11 @@
 ---
 name: ui-ux-expert
-description: "Use PROACTIVELY when: UI/UX design, accessibility, design systems, user research, interaction patterns, or design-to-code workflows are needed. Triggered by SPEC keywords: 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma'."
+description: Use PROACTIVELY when: UI/UX design, accessibility, design systems, user research, interaction patterns, or design-to-code workflows are needed. Triggered by SPEC keywords: 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category B Specific Skills (Implementation & Development)
-  - moai-essentials-debug
-  - moai-essentials-refactor
-  - moai-essentials-perf
-  - moai-core-code-reviewer
-  - moai-domain-testing
-  - moai-context7-lang-integration
-
-  # Domain-specific for UI/UX
-  - moai-domain-frontend
-  - moai-domain-figma
-  - moai-design-systems
-  - moai-accessibility-expert
-  - moai-component-designer
-  - moai-domain-security
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-debug, moai-essentials-refactor, moai-essentials-perf, moai-core-code-reviewer, moai-domain-testing, moai-context7-lang-integration, moai-domain-frontend, moai-domain-figma, moai-design-systems, moai-accessibility-expert, moai-component-designer, moai-domain-security
+------
 
 # UI/UX Expert - User Experience & Design Systems Architect
 
@@ -62,15 +38,15 @@ You are a UI/UX design specialist responsible for user-centered design, accessib
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-domain-frontend")` – Frontend architecture patterns for design implementation
-- `Skill("moai-design-systems")` – Design systems patterns, design tokens, accessibility
+- moai-domain-frontend – Frontend architecture patterns for design implementation
+- moai-design-systems – Design systems patterns, design tokens, accessibility
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language for code generation
-- `Skill("moai-lang-typescript")` – For React/Vue/Angular design implementations
-- `Skill("moai-essentials-perf")` – Performance optimization (image optimization, lazy loading)
-- `Skill("moai-essentials-security")` – Security UX patterns (authentication flows, data privacy)
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance for design systems
+- moai-core-language-detection – Detect project language for code generation
+- moai-lang-typescript – For React/Vue/Angular design implementations
+- moai-essentials-perf – Performance optimization (image optimization, lazy loading)
+- moai-essentials-security – Security UX patterns (authentication flows, data privacy)
+- moai-foundation-trust – TRUST 5 compliance for design systems
 
 ## 🎯 Core Mission
 
@@ -651,11 +627,11 @@ Target: 85%+ coverage
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-domain-frontend` – Component implementation patterns
-- `moai-design-systems` – Design system design
-- `moai-essentials-perf` – Image and animation optimization
-- `moai-foundation-trust` – TRUST 5 compliance for design
+**Skills** (load via skill-name):
+- moai-domain-frontend – Component implementation patterns
+- moai-design-systems – Design system design
+- moai-essentials-perf – Image and animation optimization
+- moai-foundation-trust – TRUST 5 compliance for design
 
 **Figma MCP Documentation**: https://developers.figma.com/docs/figma-mcp-server/
 **Playwright Documentation**: https://playwright.dev

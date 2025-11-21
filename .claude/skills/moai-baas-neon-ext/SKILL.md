@@ -5,20 +5,9 @@ description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered data
   scalable modern applications
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Neon Serverless PostgreSQL Expert 
-
-## What It Does
-
-Enterprise Neon Serverless PostgreSQL Platform expert with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Neon Architecture** using Context7 MCP for latest PostgreSQL documentation
-- 📊 **Intelligent Database Branching** with automated development workflow optimization
-- 🚀 **Real-time Performance Analytics** with AI-driven PostgreSQL optimization insights
-- 🔗 **Enterprise Serverless Integration** with zero-configuration scaling and cost optimization
-- 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
-
----
 
 ## When to Use
 
@@ -37,6 +26,148 @@ Enterprise Neon Serverless PostgreSQL Platform expert with AI-powered database a
 ---
 
 # Quick Reference (Level 1)
+
+## November 2025 Neon Platform Updates
+
+### Latest Features
+- **PostgreSQL 16.2**: Latest version with performance improvements
+- **Enhanced Branching**: Improved branch performance and reduced latency
+- **Advanced Monitoring**: Real-time query performance analysis
+- **AI-Powered Optimization**: Automated query tuning recommendations
+- **Multi-Region Support**: Improved cross-region replication performance
+
+### Integration Patterns
+
+#### Neon with Next.js Applications
+```typescript
+// Neon database configuration for Next.js
+import { Pool } from 'pg';
+
+const neonPool = new Pool({
+  connectionString: process.env.NEON_DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 20, // Optimized for serverless
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+export async function query(text: string, params?: any[]) {
+  const start = Date.now();
+  const res = await neonPool.query(text, params);
+  const duration = Date.now() - start;
+  
+  // Log slow queries for optimization
+  if (duration > 1000) {
+    console.log('Slow query:', { text, duration, rows: res.rowCount });
+  }
+  
+  return res;
+}
+```
+
+#### Neon Branching for CI/CD
+```yaml
+# GitHub Actions workflow with Neon branching
+name: Test with Neon Branching
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Neon branch
+        run: |
+          BRANCH_NAME="pr-${{ github.event.number }}"
+          neon branches create \
+            --name $BRANCH_NAME \
+            --parent main \
+            --timezone UTC
+      
+      - name: Run tests on branch
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}?options=branch%3Dpr-${{ github.event.number }}
+        run: npm test
+      
+      - name: Clean up branch
+        if: always()
+        run: neon branches delete --name pr-${{ github.event.number }}
+```
+
+### Migration Strategies
+
+#### PostgreSQL to Neon Migration
+```python
+class PostgreSQLToNeonMigrator:
+    def __init__(self):
+        self.neon_client = NeonClient()
+        self.migration_analyzer = MigrationAnalyzer()
+    
+    async def migrate_from_postgresql(self, 
+                                    source_config: PostgreSQLConfig,
+                                    neon_config: NeonConfig) -> MigrationResult:
+        """Migrate from traditional PostgreSQL to Neon."""
+        
+        # Analyze source database
+        source_analysis = await self.migration_analyzer.analyze_database(
+            source_config
+        )
+        
+        # Create migration plan
+        migration_plan = self._create_migration_plan(source_analysis)
+        
+        # Execute migration with zero downtime
+        migration_result = await self._execute_migration(
+            source_config, neon_config, migration_plan
+        )
+        
+        return MigrationResult(
+            success=migration_result.success,
+            migrated_tables=migration_result.tables,
+            data_integrity_check=migration_result.integrity_check,
+            performance_comparison=migration_result.performance_metrics,
+            rollback_plan=self._create_rollback_plan()
+        )
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+## API Reference
+
+### Core Neon Operations
+- `create_database(name, region)` - Create new Neon database
+- `create_branch(parent, name)` - Create database branch
+- `scale_compute(database_id, compute_units)` - Scale compute resources
+- `create_read_replica(database_id, region)` - Create read replica
+- `point_in_time_restore(database_id, timestamp)` - Restore to specific time
+
+### Context7 Integration
+- `get_latest_neon_documentation()` - Official Neon docs via Context7
+- `analyze_postgresql_best_practices()` - PostgreSQL optimization via Context7
+- `optimize_neon_configuration()` - Latest performance tuning recommendations
+
+---
+
+## Implementation Guide
+
+## What It Does
+
+Enterprise Neon Serverless PostgreSQL Platform expert with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Neon Architecture** using Context7 MCP for latest PostgreSQL documentation
+- 📊 **Intelligent Database Branching** with automated development workflow optimization
+- 🚀 **Real-time Performance Analytics** with AI-driven PostgreSQL optimization insights
+- 🔗 **Enterprise Serverless Integration** with zero-configuration scaling and cost optimization
+- 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
+
+---
 
 ## Neon Serverless PostgreSQL Platform (November 2025)
 
@@ -203,131 +334,6 @@ class NeonPerformanceOptimizer:
 
 # Advanced Implementation (Level 3)
 
-## November 2025 Neon Platform Updates
-
-### Latest Features
-- **PostgreSQL 16.2**: Latest version with performance improvements
-- **Enhanced Branching**: Improved branch performance and reduced latency
-- **Advanced Monitoring**: Real-time query performance analysis
-- **AI-Powered Optimization**: Automated query tuning recommendations
-- **Multi-Region Support**: Improved cross-region replication performance
-
-### Integration Patterns
-
-#### Neon with Next.js Applications
-```typescript
-// Neon database configuration for Next.js
-import { Pool } from 'pg';
-
-const neonPool = new Pool({
-  connectionString: process.env.NEON_DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 20, // Optimized for serverless
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
-
-export async function query(text: string, params?: any[]) {
-  const start = Date.now();
-  const res = await neonPool.query(text, params);
-  const duration = Date.now() - start;
-  
-  // Log slow queries for optimization
-  if (duration > 1000) {
-    console.log('Slow query:', { text, duration, rows: res.rowCount });
-  }
-  
-  return res;
-}
-```
-
-#### Neon Branching for CI/CD
-```yaml
-# GitHub Actions workflow with Neon branching
-name: Test with Neon Branching
-
-on:
-  pull_request:
-    types: [opened, synchronize]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Create Neon branch
-        run: |
-          BRANCH_NAME="pr-${{ github.event.number }}"
-          neon branches create \
-            --name $BRANCH_NAME \
-            --parent main \
-            --timezone UTC
-      
-      - name: Run tests on branch
-        env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}?options=branch%3Dpr-${{ github.event.number }}
-        run: npm test
-      
-      - name: Clean up branch
-        if: always()
-        run: neon branches delete --name pr-${{ github.event.number }}
-```
-
-### Migration Strategies
-
-#### PostgreSQL to Neon Migration
-```python
-class PostgreSQLToNeonMigrator:
-    def __init__(self):
-        self.neon_client = NeonClient()
-        self.migration_analyzer = MigrationAnalyzer()
-    
-    async def migrate_from_postgresql(self, 
-                                    source_config: PostgreSQLConfig,
-                                    neon_config: NeonConfig) -> MigrationResult:
-        """Migrate from traditional PostgreSQL to Neon."""
-        
-        # Analyze source database
-        source_analysis = await self.migration_analyzer.analyze_database(
-            source_config
-        )
-        
-        # Create migration plan
-        migration_plan = self._create_migration_plan(source_analysis)
-        
-        # Execute migration with zero downtime
-        migration_result = await self._execute_migration(
-            source_config, neon_config, migration_plan
-        )
-        
-        return MigrationResult(
-            success=migration_result.success,
-            migrated_tables=migration_result.tables,
-            data_integrity_check=migration_result.integrity_check,
-            performance_comparison=migration_result.performance_metrics,
-            rollback_plan=self._create_rollback_plan()
-        )
-```
-
----
-
-# Reference & Integration (Level 4)
-
-## API Reference
-
-### Core Neon Operations
-- `create_database(name, region)` - Create new Neon database
-- `create_branch(parent, name)` - Create database branch
-- `scale_compute(database_id, compute_units)` - Scale compute resources
-- `create_read_replica(database_id, region)` - Create read replica
-- `point_in_time_restore(database_id, timestamp)` - Restore to specific time
-
-### Context7 Integration
-- `get_latest_neon_documentation()` - Official Neon docs via Context7
-- `analyze_postgresql_best_practices()` - PostgreSQL optimization via Context7
-- `optimize_neon_configuration()` - Latest performance tuning recommendations
-
 ## Best Practices (November 2025)
 
 ### DO
@@ -361,6 +367,10 @@ class PostgreSQLToNeonMigrator:
 - `moai-baas-vercel-ext` (Next.js integration)
 - `moai-baas-railway-ext` (Full-stack deployment)
 
+---
+
+## Advanced Patterns
+
 ## Changelog
 
 - ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Neon platform updates, and advanced branching workflows
@@ -388,3 +398,4 @@ class PostgreSQLToNeonMigrator:
 ---
 
 **End of Enterprise Neon Serverless PostgreSQL Expert **
+

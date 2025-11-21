@@ -3,6 +3,8 @@ name: moai-lang-tailwind-css
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-lang-tailwind-css
 
 **Tailwind CSS: Utility-First Framework for Rapid UI Development**
@@ -364,6 +366,20 @@ function ResponsiveCard() {
 
 ---
 
+## 📚 Official References
+
+- **Tailwind CSS Docs**: https://tailwindcss.com/docs
+- **Tailwind UI**: https://tailwindui.com/ (Component examples)
+- **Tailwind IntelliSense**: VS Code extension for autocomplete
+- **Tailwind CSS Plugins**: https://tailwindcss.com/docs/plugins
+- **Headless UI**: https://headlessui.com/ (Unstyled, accessible components)
+
+---
+
+---
+
+## Implementation Guide
+
 ## 🎯 Performance Best Practices
 
 ### 1. Purging Unused CSS
@@ -414,18 +430,15 @@ optimization: {
 
 ---
 
-## 📚 Official References
-
-- **Tailwind CSS Docs**: https://tailwindcss.com/docs
-- **Tailwind UI**: https://tailwindui.com/ (Component examples)
-- **Tailwind IntelliSense**: VS Code extension for autocomplete
-- **Tailwind CSS Plugins**: https://tailwindcss.com/docs/plugins
-- **Headless UI**: https://headlessui.com/ (Unstyled, accessible components)
-
----
-
 ## 🔗 Related Skills
 
 - `Skill("moai-lang-html-css")` – Semantic HTML & CSS foundations
 - `Skill("moai-lib-shadcn-ui")` – Pre-built Tailwind components
 - `Skill("moai-domain-frontend")` – Full frontend architecture with Tailwind
+
+---
+
+## Advanced Patterns
+
+
+

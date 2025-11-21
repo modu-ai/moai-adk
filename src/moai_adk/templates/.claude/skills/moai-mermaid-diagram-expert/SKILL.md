@@ -3,6 +3,8 @@ name: moai-mermaid-diagram-expert
 description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright
 ---
 
+## Quick Reference (30 seconds)
+
 # Skill: Mermaid Diagram Expert v6.0.0-skill-edition
 
 **Pure skill-based Mermaid rendering for Claude Code with MCP Playwright integration.**
@@ -62,11 +64,74 @@ This skill provides:
 
 # Usage in Claude Code
 
-## Step 1: Invoke the Skill
+## Step 3: Render with MCP Playwright
+
+Once you have your Mermaid code:
 
 ```python
-Skill("moai-mermaid-diagram-expert")
+# This skill integrates with MCP Playwright
+# You can use the playwright MCP server to render the diagram
+# The MCP server is configured in .claude/mcp.json
 ```
+
+The MCP configuration in `.claude/mcp.json` enables:
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/playwright-mcp"]
+    }
+  }
+}
+```
+
+---
+
+# All 21 Diagram Types Reference
+
+See `examples.md` for complete working examples of all 21 diagram types.
+
+## State Management (State Diagram Example)
+
+```
+Idle → Processing → Complete
+  ↓        ↓           ↑
+Error ────────────────┘
+```
+
+---
+
+# Learning Resources
+
+- **Official Site**: https://mermaid.js.org
+- **Live Editor**: https://mermaid.live
+- **Syntax Guide**: https://mermaid.js.org/syntax/
+- **Examples**: See `examples.md` and `reference.md` in this skill
+
+---
+
+# Support
+
+For Mermaid syntax questions:
+- Check `examples.md` for working examples
+- Review `reference.md` for official documentation links
+- Use https://mermaid.live for interactive testing
+
+For Claude Code integration:
+- Ensure `.claude/mcp.json` has Playwright configured
+- Verify Node.js is installed (`node --version`)
+- Check Playwright is available (`npx @anthropic-ai/playwright-mcp --version`)
+
+---
+
+**Version**: 6.0.0-skill-edition
+**Last Updated**: 2025-11-20
+**Focus**: Pure skill-based Mermaid rendering with MCP Playwright
+
+---
+
+## Implementation Guide
 
 ## Step 2: Get Mermaid Syntax
 
@@ -115,34 +180,6 @@ C4Context
     UpdateElementStyle(banking_system, $fontColor="white", $bgColor="blue", $borderColor="darkblue")
     UpdateElementStyle(mail_system, $fontColor="white", $bgColor="orange", $borderColor="darkorange")
 ```
-
-## Step 3: Render with MCP Playwright
-
-Once you have your Mermaid code:
-
-```python
-# This skill integrates with MCP Playwright
-# You can use the playwright MCP server to render the diagram
-# The MCP server is configured in .claude/mcp.json
-```
-
-The MCP configuration in `.claude/mcp.json` enables:
-```json
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/playwright-mcp"]
-    }
-  }
-}
-```
-
----
-
-# All 21 Diagram Types Reference
-
-See `examples.md` for complete working examples of all 21 diagram types.
 
 ## Categories
 
@@ -239,39 +276,13 @@ Client → API Gateway → Service A → Database
 Extract → Transform → Load → Validate → Report
 ```
 
-## State Management (State Diagram Example)
+---
 
+## Advanced Patterns
+
+## Step 1: Invoke the Skill
+
+```python
+Skill("moai-mermaid-diagram-expert")
 ```
-Idle → Processing → Complete
-  ↓        ↓           ↑
-Error ────────────────┘
-```
 
----
-
-# Learning Resources
-
-- **Official Site**: https://mermaid.js.org
-- **Live Editor**: https://mermaid.live
-- **Syntax Guide**: https://mermaid.js.org/syntax/
-- **Examples**: See `examples.md` and `reference.md` in this skill
-
----
-
-# Support
-
-For Mermaid syntax questions:
-- Check `examples.md` for working examples
-- Review `reference.md` for official documentation links
-- Use https://mermaid.live for interactive testing
-
-For Claude Code integration:
-- Ensure `.claude/mcp.json` has Playwright configured
-- Verify Node.js is installed (`node --version`)
-- Check Playwright is available (`npx @anthropic-ai/playwright-mcp --version`)
-
----
-
-**Version**: 6.0.0-skill-edition
-**Last Updated**: 2025-11-20
-**Focus**: Pure skill-based Mermaid rendering with MCP Playwright

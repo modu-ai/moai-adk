@@ -1,15 +1,11 @@
 ---
 name: docs-manager
-description: "Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting."
+description: Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting.
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills:
-  - moai-docs-generation
-  - moai-docs-validation
-  - moai-cc-claude-md
-  - moai-mermaid-diagram-expert
----
+skills: moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-mermaid-diagram-expert
+------
 
 # Documentation Manager Expert
 
@@ -428,7 +424,7 @@ def run_documentation_tests(docs_path: Path) -> TestResults:
 # Integration with existing MoAI-ADK components
 class MoAIIntegration:
     def __init__(self):
-        self.project_manager = Skill("moai-project-documentation")
+        self.project_manager = moai-project-documentation
         self.doc_syncer = Agent("doc-syncer")
         self.quality_gate = Agent("quality-gate")
 

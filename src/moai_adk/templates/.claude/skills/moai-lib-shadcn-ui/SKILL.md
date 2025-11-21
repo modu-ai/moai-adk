@@ -3,20 +3,9 @@ name: moai-lib-shadcn-ui
 description: Enterprise shadcn/ui Component Library with AI-powered design system
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise shadcn/ui Component Library Expert 
-
----
-
-## What It Does
-
-Enterprise shadcn/ui Component Library expert with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Component Architecture** using Context7 MCP for latest design patterns
-- 📊 **Intelligent Design System** with automated theme customization and optimization
-- 🚀 **Advanced Component Orchestration** with AI-driven accessibility and performance
-- 🔗 **Enterprise UI Framework** with zero-configuration design tokens and branding
-- 📈 **Predictive Component Analytics** with usage forecasting and optimization insights
 
 ---
 
@@ -37,6 +26,396 @@ Enterprise shadcn/ui Component Library expert with AI-powered design system arch
 ---
 
 # Quick Reference (Level 1)
+
+## Advanced Component Patterns
+
+```typescript
+// Complex data table with shadcn/ui components
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  searchKey?: string;
+  filterableColumns?: string[];
+}
+
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  searchKey,
+  filterableColumns = [],
+}: DataTableProps<TData, TValue>) {
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
+    state: {
+      globalFilter,
+      columnFilters,
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Search and Filters */}
+      <div className="flex items-center gap-4">
+        <Input
+          placeholder={`Filter ${searchKey}...`}
+          value={(globalFilter ?? "") as string}
+          onChange={(event) => setGlobalFilter(String(event.target.value))}
+          className="max-w-sm"
+        />
+        
+        {/* Column Filters */}
+        {filterableColumns.map((column) => (
+          <DataTableColumnFilter
+            key={column}
+            column={table.getColumn(column)}
+            title={column}
+          />
+        ))}
+      </div>
+
+      {/* Data Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Advanced form with multi-step validation
+import { useState } from "react";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const multiStepSchema = z.object({
+  // Step 1: Personal Information
+  personalInfo: z.object({
+    firstName: z.string().min(2),
+    lastName: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().optional(),
+  }),
+  
+  // Step 2: Address
+  address: z.object({
+    street: z.string().min(5),
+    city: z.string().min(2),
+    state: z.string().min(2),
+    zipCode: z.string().regex(/^\d{5}(-\d{4})?$/),
+    country: z.string().min(2),
+  }),
+  
+  // Step 3: Preferences
+  preferences: z.object({
+    newsletter: z.boolean(),
+    notifications: z.boolean(),
+    theme: z.enum(["light", "dark", "system"]),
+  }),
+});
+
+type MultiStepFormValues = z.infer<typeof multiStepSchema>;
+
+export function MultiStepForm() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const methods = useForm<MultiStepFormValues>({
+    resolver: zodResolver(multiStepSchema),
+    defaultValues: {
+      personalInfo: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+      },
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "",
+      },
+      preferences: {
+        newsletter: false,
+        notifications: true,
+        theme: "system",
+      },
+    },
+  });
+
+  const steps = [
+    { title: "Personal Info", component: PersonalInfoStep },
+    { title: "Address", component: AddressStep },
+    { title: "Preferences", component: PreferencesStep },
+  ];
+
+  const handleNext = async () => {
+    const currentStepName = ["personalInfo", "address", "preferences"][currentStep];
+    const isValid = await methods.trigger(currentStepName as any);
+    
+    if (isValid && currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const onSubmit = async (data: MultiStepFormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Handle form submission
+      console.log("Form submitted:", data);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+    } catch (error) {
+      console.error("Submission error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const progress = ((currentStep + 1) / steps.length) * 100;
+  const CurrentStepComponent = steps[currentStep].component;
+
+  return (
+    <div className="w-full max-w-2xl mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-4">Multi-Step Form</h1>
+        <Progress value={progress} className="mb-2" />
+        <p className="text-sm text-muted-foreground">
+          Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
+        </p>
+      </div>
+
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(onSubmit)}>
+          <div className="mb-8">
+            <CurrentStepComponent />
+          </div>
+
+          <div className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+            >
+              Previous
+            </Button>
+
+            {currentStep === steps.length - 1 ? (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleNext}>
+                Next
+              </Button>
+            )}
+          </div>
+        </form>
+      </FormProvider>
+    </div>
+  );
+}
+```
+
+### Performance Optimization
+
+```typescript
+// Performance optimization for shadcn/ui components
+export class ComponentPerformanceOptimizer {
+  // Lazy loading components with React.lazy
+  static createLazyComponent(importFn: () => Promise<{ default: React.ComponentType<any> }>) {
+    return React.lazy(importFn);
+  }
+
+  // Component memoization with React.memo
+  static createMemoizedComponent<P extends object>(
+    Component: React.ComponentType<P>,
+    areEqual?: (prevProps: P, nextProps: P) => boolean
+  ) {
+    return React.memo(Component, areEqual);
+  }
+
+  // Hook for performance monitoring
+  static usePerformanceMonitor(componentName: string) {
+    const [renderCount, setRenderCount] = useState(0);
+    const [renderTime, setRenderTime] = useState(0);
+
+    useEffect(() => {
+      const startTime = performance.now();
+      
+      setRenderCount(prev => prev + 1);
+      
+      return () => {
+        const endTime = performance.now();
+        setRenderTime(endTime - startTime);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(
+            `${componentName} render #${renderCount}: ${renderTime.toFixed(2)}ms`
+          );
+        }
+      };
+    });
+
+    return { renderCount, renderTime };
+  }
+
+  // Bundle size optimization
+  static optimizeBundleSize() {
+    return {
+      treeShaking: {
+        enabled: true,
+        description: "Remove unused components and utilities",
+      },
+      codeSplitting: {
+        enabled: true,
+        description: "Split components into separate chunks",
+      },
+      compression: {
+        enabled: true,
+        description: "Compress bundle with gzip/brotli",
+      },
+    };
+  }
+
+  // Runtime performance optimization
+  static optimizeRuntimePerformance() {
+    return {
+      virtualScrolling: {
+        enabled: true,
+        description: "Virtual scrolling for large data sets",
+      },
+      memoization: {
+        enabled: true,
+        description: "Memoize expensive computations",
+      },
+      debouncing: {
+        enabled: true,
+        description: "Debounce user interactions",
+      },
+    };
+  }
+}
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
+
+## What It Does
+
+Enterprise shadcn/ui Component Library expert with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Component Architecture** using Context7 MCP for latest design patterns
+- 📊 **Intelligent Design System** with automated theme customization and optimization
+- 🚀 **Advanced Component Orchestration** with AI-driven accessibility and performance
+- 🔗 **Enterprise UI Framework** with zero-configuration design tokens and branding
+- 📈 **Predictive Component Analytics** with usage forecasting and optimization insights
+
+---
 
 ## shadcn/ui Ecosystem (November 2025)
 
@@ -449,450 +828,10 @@ export function applyThemeCSS() {
 
 # Advanced Implementation (Level 3)
 
-## Advanced Component Patterns
 
-```typescript
-// Complex data table with shadcn/ui components
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-  searchKey?: string;
-  filterableColumns?: string[];
-}
-
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-  searchKey,
-  filterableColumns = [],
-}: DataTableProps<TData, TValue>) {
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
-    onColumnFiltersChange: setColumnFilters,
-    state: {
-      globalFilter,
-      columnFilters,
-    },
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder={`Filter ${searchKey}...`}
-          value={(globalFilter ?? "") as string}
-          onChange={(event) => setGlobalFilter(String(event.target.value))}
-          className="max-w-sm"
-        />
-        
-        {/* Column Filters */}
-        {filterableColumns.map((column) => (
-          <DataTableColumnFilter
-            key={column}
-            column={table.getColumn(column)}
-            title={column}
-          />
-        ))}
-      </div>
-
-      {/* Data Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Advanced form with multi-step validation
-import { useState } from "react";
-import { useForm, FormProvider } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const multiStepSchema = z.object({
-  // Step 1: Personal Information
-  personalInfo: z.object({
-    firstName: z.string().min(2),
-    lastName: z.string().min(2),
-    email: z.string().email(),
-    phone: z.string().optional(),
-  }),
-  
-  // Step 2: Address
-  address: z.object({
-    street: z.string().min(5),
-    city: z.string().min(2),
-    state: z.string().min(2),
-    zipCode: z.string().regex(/^\d{5}(-\d{4})?$/),
-    country: z.string().min(2),
-  }),
-  
-  // Step 3: Preferences
-  preferences: z.object({
-    newsletter: z.boolean(),
-    notifications: z.boolean(),
-    theme: z.enum(["light", "dark", "system"]),
-  }),
-});
-
-type MultiStepFormValues = z.infer<typeof multiStepSchema>;
-
-export function MultiStepForm() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const methods = useForm<MultiStepFormValues>({
-    resolver: zodResolver(multiStepSchema),
-    defaultValues: {
-      personalInfo: {
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-      },
-      address: {
-        street: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        country: "",
-      },
-      preferences: {
-        newsletter: false,
-        notifications: true,
-        theme: "system",
-      },
-    },
-  });
-
-  const steps = [
-    { title: "Personal Info", component: PersonalInfoStep },
-    { title: "Address", component: AddressStep },
-    { title: "Preferences", component: PreferencesStep },
-  ];
-
-  const handleNext = async () => {
-    const currentStepName = ["personalInfo", "address", "preferences"][currentStep];
-    const isValid = await methods.trigger(currentStepName as any);
-    
-    if (isValid && currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const onSubmit = async (data: MultiStepFormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Handle form submission
-      console.log("Form submitted:", data);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-    } catch (error) {
-      console.error("Submission error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const progress = ((currentStep + 1) / steps.length) * 100;
-  const CurrentStepComponent = steps[currentStep].component;
-
-  return (
-    <div className="w-full max-w-2xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">Multi-Step Form</h1>
-        <Progress value={progress} className="mb-2" />
-        <p className="text-sm text-muted-foreground">
-          Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
-        </p>
-      </div>
-
-      <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(onSubmit)}>
-          <div className="mb-8">
-            <CurrentStepComponent />
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-            >
-              Previous
-            </Button>
-
-            {currentStep === steps.length - 1 ? (
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </Button>
-            ) : (
-              <Button type="button" onClick={handleNext}>
-                Next
-              </Button>
-            )}
-          </div>
-        </form>
-      </FormProvider>
-    </div>
-  );
-}
-```
-
-### Performance Optimization
-
-```typescript
-// Performance optimization for shadcn/ui components
-export class ComponentPerformanceOptimizer {
-  // Lazy loading components with React.lazy
-  static createLazyComponent(importFn: () => Promise<{ default: React.ComponentType<any> }>) {
-    return React.lazy(importFn);
-  }
-
-  // Component memoization with React.memo
-  static createMemoizedComponent<P extends object>(
-    Component: React.ComponentType<P>,
-    areEqual?: (prevProps: P, nextProps: P) => boolean
-  ) {
-    return React.memo(Component, areEqual);
-  }
-
-  // Hook for performance monitoring
-  static usePerformanceMonitor(componentName: string) {
-    const [renderCount, setRenderCount] = useState(0);
-    const [renderTime, setRenderTime] = useState(0);
-
-    useEffect(() => {
-      const startTime = performance.now();
-      
-      setRenderCount(prev => prev + 1);
-      
-      return () => {
-        const endTime = performance.now();
-        setRenderTime(endTime - startTime);
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `${componentName} render #${renderCount}: ${renderTime.toFixed(2)}ms`
-          );
-        }
-      };
-    });
-
-    return { renderCount, renderTime };
-  }
-
-  // Bundle size optimization
-  static optimizeBundleSize() {
-    return {
-      treeShaking: {
-        enabled: true,
-        description: "Remove unused components and utilities",
-      },
-      codeSplitting: {
-        enabled: true,
-        description: "Split components into separate chunks",
-      },
-      compression: {
-        enabled: true,
-        description: "Compress bundle with gzip/brotli",
-      },
-    };
-  }
-
-  // Runtime performance optimization
-  static optimizeRuntimePerformance() {
-    return {
-      virtualScrolling: {
-        enabled: true,
-        description: "Virtual scrolling for large data sets",
-      },
-      memoization: {
-        enabled: true,
-        description: "Memoize expensive computations",
-      },
-      debouncing: {
-        enabled: true,
-        description: "Debounce user interactions",
-      },
-    };
-  }
-}
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core shadcn/ui Operations
-- `create_component(variant_config, props)` - Create new component
-- `customize_theme(theme_config, colors)` - Customize theme
-- `install_component(component_name)` - Install new component
-- `setup_design_system(tokens, branding)` - Set up design system
-- `optimize_components(performance_config)` - Optimize component performance
-
-### Context7 Integration
-- `get_latest_shadcn_docs()` - shadcn/ui docs via Context7
-- `analyze_component_patterns()` - Component patterns via Context7
-- `optimize_theme_system()` - Theme optimization via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Use TypeScript for type safety and better developer experience
-- Implement proper accessibility with ARIA attributes
-- Customize themes using CSS variables for consistency
-- Optimize component performance with memoization and lazy loading
-- Use form validation with proper error handling
-- Implement responsive design with Tailwind CSS
-- Use Radix UI primitives for accessible components
-- Test components across different browsers and devices
-
-### DON'T
-- Skip TypeScript type definitions and validations
-- Ignore accessibility requirements and WCAG compliance
-- Override component styles without understanding the CSS structure
-- Forget to implement proper error handling and validation
-- Skip performance optimization for large datasets
-- Use inline styles instead of Tailwind CSS classes
-- Forget to implement proper keyboard navigation
-- Skip component testing and user experience validation
-
-## Works Well With
-
-- `moai-domain-frontend` (Frontend development patterns)
-- `moai-baas-foundation` (Enterprise UI architecture)
-- `moai-security-api` (UI security implementation)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-foundation-trust` (Accessibility and compliance)
-- `moai-domain-backend` (Backend integration)
-- `moai-baas-vercel-ext` (Frontend deployment)
-- `moai-domain-testing` (Component testing strategies)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 shadcn/ui ecosystem updates, and advanced component patterns
-- **v2.0.0** (2025-11-11): Complete metadata structure, component patterns, theme system
-- **v1.0.0** (2025-11-11): Initial shadcn/ui component library
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Design System Integration
-
-### Enterprise Features
-- Comprehensive component library with enterprise-grade features
-- Advanced theming system with brand customization
-- Performance optimization for large-scale applications
-- Accessibility compliance with WCAG 2.1 AA standards
-
-### Modern Development
-- TypeScript-first development with full type safety
-- Modern React patterns with hooks and server components
-- Tailwind CSS integration for consistent styling
-- Framer Motion for smooth animations and transitions
-
----
-
-**End of Enterprise shadcn/ui Component Library Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

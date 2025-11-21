@@ -3,37 +3,24 @@ name: moai-translation-korean-multilingual
 description: Enterprise-grade technical document translation system for Korean↔English↔Japanese
 ---
 
+## Quick Reference (30 seconds)
+
 # Technical Document Translation System - Korean/English/Japanese
 
 ---
 
-## 🎯 Quick Start
+## Core Implementation
 
-### Immediate Translation Setup
+🎯 Quick Start
 
-```python
-from openai import OpenAI
-import re
+#
+## Immediate Translation Setup
 
-# Quick setup for technical translation
-client = OpenAI(api_key="YOUR_API_KEY")
 
-def translate_technical_doc(text: str, source_lang: str, target_lang: str) -> str:
-    """Translate technical documentation preserving code and structure"""
-    
-    # Extract and preserve code blocks
-    code_blocks = {}
-    counter = 0
-    
-    def preserve_code(match):
-        nonlocal counter
-        placeholder = f"__CODE_BLOCK_{counter}__"
-        code_blocks[placeholder] = match.group(0)
-        counter += 1
-        return placeholder
-    
-    # Preserve technical content
-    preserved_text = re.sub(r'```[\s\S]*?```', preserve_code, text)
+
+
+
+[\s\S]*?', preserve_code, text)
     preserved_text = re.sub(r'`[^`]+`', preserve_code, preserved_text)
     
     # Translate with GPT-4
@@ -57,19 +44,19 @@ def translate_technical_doc(text: str, source_lang: str, target_lang: str) -> st
 
 # Example usage
 result = translate_technical_doc(
-    "# API Documentation\n\n```python\ndef hello():\n    return 'Hello'\n```",
+    "# API Documentation\n\npython\ndef hello():\n    return 'Hello'\n",
     source_lang="English",
     target_lang="Korean"
 )
-```
 
----
 
-## 📚 Core Implementation
 
-### 1. Complete Translation Engine with Multiple Providers
 
-```python
+
+
+
+
+python
 from typing import Dict, List, Optional, Tuple
 from openai import OpenAI
 import json
@@ -165,7 +152,7 @@ class TechnicalTranslationEngine:
         
         # Preservation patterns in priority order
         patterns = [
-            (r'```[\s\S]*?```', 'CODE_BLOCK'),      # Fenced code blocks
+            (r'[\s\S]*?', 'CODE_BLOCK'),      # Fenced code blocks
             (r'`[^`]+`', 'INLINE_CODE'),            # Inline code
             (r'https?://[^\s]+', 'URL'),            # URLs
             (r'!\[.*?\]\(.*?\)', 'IMAGE'),          # Markdown images
@@ -289,8 +276,8 @@ LANGUAGE-SPECIFIC GUIDELINES:
         issues = []
         
         # Check code block preservation
-        original_code_blocks = len(re.findall(r'```[\s\S]*?```', original))
-        translated_code_blocks = len(re.findall(r'```[\s\S]*?```', translation))
+        original_code_blocks = len(re.findall(r'[\s\S]*?', original))
+        translated_code_blocks = len(re.findall(r'[\s\S]*?', translation))
         
         if original_code_blocks != translated_code_blocks:
             issues.append({
@@ -373,11 +360,11 @@ LANGUAGE-SPECIFIC GUIDELINES:
             'translation': text,  # Return original as fallback
             'usage': {}
         }
-```
 
-### 2. Document Processing System
 
-```python
+
+
+python
 from pathlib import Path
 from typing import Dict, List, Optional
 import re
@@ -396,8 +383,8 @@ class DocumentProcessor:
         
         # Extract metadata if present
         metadata = {}
-        if content.startswith('---'):
-            parts = content.split('---', 2)
+        if content.startswith(''):
+            parts = content.split('', 2)
             if len(parts) >= 3:
                 # Parse YAML front matter
                 metadata = self._parse_yaml_metadata(parts[1])
@@ -446,7 +433,7 @@ class DocumentProcessor:
         
         for line in content.split('\n'):
             # Track code blocks
-            if line.strip().startswith('```'):
+            if line.strip().startswith(''):
                 in_code_block = not in_code_block
             
             # Split on headers and empty lines (when not in code)
@@ -477,7 +464,7 @@ class DocumentProcessor:
     def _classify_section(self, content: str) -> str:
         """Classify section type for optimized translation"""
         
-        if '```' in content:
+        if '' in content:
             return 'code_heavy'
         elif re.search(r'\|.*\|.*\|', content):
             return 'table'
@@ -586,7 +573,7 @@ class DocumentProcessor:
         
         # Code blocks
         text = re.sub(
-            r'```(.*?)\n(.*?)```',
+            r'(.*?)\n(.*?)',
             r'<pre><code class="\1">\2</code></pre>',
             text,
             flags=re.DOTALL
@@ -607,11 +594,11 @@ class DocumentProcessor:
         text = text.replace('\n', '<br>')
         
         return text
-```
 
-### 3. Glossary Management System
 
-```python
+
+
+python
 import sqlite3
 import json
 from typing import Dict, List, Optional
@@ -826,11 +813,11 @@ class GlossaryManager:
             'total_glossary_usage': row[3] or 0,
             'total_memory_usage': row[4] or 0
         }
-```
 
-### 4. Quality Validation System
 
-```python
+
+
+python
 from typing import Dict, List, Tuple
 import re
 from difflib import SequenceMatcher
@@ -900,8 +887,8 @@ class TranslationValidator:
         issues = []
         
         # Extract code blocks
-        original_blocks = re.findall(r'```[\s\S]*?```', original)
-        translated_blocks = re.findall(r'```[\s\S]*?```', translation)
+        original_blocks = re.findall(r'[\s\S]*?', original)
+        translated_blocks = re.findall(r'[\s\S]*?', translation)
         
         # Check count
         if len(original_blocks) != len(translated_blocks):
@@ -916,8 +903,8 @@ class TranslationValidator:
         for i, (orig, trans) in enumerate(zip(original_blocks, translated_blocks)):
             if orig != trans:
                 # Extract just the code part for comparison
-                orig_code = re.sub(r'^```.*?\n', '', orig).rstrip('`')
-                trans_code = re.sub(r'^```.*?\n', '', trans).rstrip('`')
+                orig_code = re.sub(r'^.*?\n', '', orig).rstrip('`')
+                trans_code = re.sub(r'^.*?\n', '', trans).rstrip('`')
                 
                 if orig_code != trans_code:
                     issues.append({
@@ -1208,452 +1195,15 @@ class TranslationValidator:
         
         report = f"""# Translation Validation Report
 
+
 ## Summary
 - **Overall Quality Score**: {validation_result['quality_score']:.1f}/100
 - **Validation Status**: {'✅ PASSED' if validation_result['is_valid'] else '❌ FAILED'}
 - **Recommendation**: {validation_result['recommendation']}
 
-## Passed Checks
-"""
-        
-        for check in validation_result.get('passed_checks', []):
-            report += f"- ✅ {check.replace('_', ' ').title()}\n"
-        
-        if validation_result.get('issues'):
-            report += "\n## Issues Found\n\n"
-            
-            # Group issues by severity
-            issues_by_severity = {'critical': [], 'high': [], 'medium': [], 'low': []}
-            for issue in validation_result['issues']:
-                severity = issue.get('severity', 'medium')
-                issues_by_severity[severity].append(issue)
-            
-            for severity in ['critical', 'high', 'medium', 'low']:
-                if issues_by_severity[severity]:
-                    report += f"### {severity.upper()} Priority Issues\n\n"
-                    for issue in issues_by_severity[severity]:
-                        report += f"- **{issue['type']}**"
-                        if 'details' in issue:
-                            report += f": {issue['details']}"
-                        report += "\n"
-                    report += "\n"
-        
-        report += f"""
-## Next Steps
-
-1. Review all critical and high priority issues
-2. Verify code blocks and technical terms are preserved
-3. Check translation against glossary terms
-4. Perform manual review of flagged sections
-5. Run validation again after corrections
-
----
-Generated: {datetime.now().isoformat()}
-"""
-        
-        if output_path:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(report)
-        
-        return report
-```
-
 ---
 
-## 🔧 Advanced Features
+## Additional Resources
 
-### Batch Translation Pipeline
-
-```python
-from pathlib import Path
-import asyncio
-from typing import List, Dict
-import json
-
-class BatchTranslationPipeline:
-    """Process multiple documents efficiently"""
-    
-    def __init__(self, config: Dict):
-        self.engine = TechnicalTranslationEngine(
-            openai_key=config['openai_key']
-        )
-        self.processor = DocumentProcessor()
-        self.validator = TranslationValidator()
-        self.glossary = GlossaryManager(config.get('glossary_db', 'glossary.db'))
-        
-    async def translate_batch(
-        self,
-        input_dir: str,
-        output_dir: str,
-        source_lang: str,
-        target_lang: str,
-        file_pattern: str = "*.md"
-    ) -> Dict:
-        """Translate all matching files in directory"""
-        
-        input_path = Path(input_dir)
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-        
-        # Find all matching files
-        files = list(input_path.glob(file_pattern))
-        
-        results = {
-            'successful': [],
-            'failed': [],
-            'statistics': {}
-        }
-        
-        # Process files
-        for file_path in files:
-            try:
-                result = await self._translate_single_file(
-                    file_path,
-                    output_path / file_path.name,
-                    source_lang,
-                    target_lang
-                )
-                results['successful'].append(result)
-            except Exception as e:
-                results['failed'].append({
-                    'file': str(file_path),
-                    'error': str(e)
-                })
-        
-        # Generate summary report
-        results['statistics'] = {
-            'total_files': len(files),
-            'successful': len(results['successful']),
-            'failed': len(results['failed']),
-            'average_quality': sum(r['quality_score'] for r in results['successful']) / len(results['successful']) if results['successful'] else 0
-        }
-        
-        return results
-    
-    async def _translate_single_file(
-        self,
-        input_path: Path,
-        output_path: Path,
-        source_lang: str,
-        target_lang: str
-    ) -> Dict:
-        """Translate a single file"""
-        
-        # Process document
-        doc_data = self.processor.process_markdown_file(str(input_path))
-        
-        # Get glossary
-        glossary_terms = self.glossary.export_for_openai(source_lang, target_lang)
-        
-        # Translate sections
-        translated_sections = []
-        for section in doc_data['sections']:
-            # Check translation memory first
-            cached = self.glossary.search_memory(
-                section['content'],
-                source_lang,
-                target_lang
-            )
-            
-            if cached:
-                translation = cached
-            else:
-                # Translate with engine
-                config = TranslationConfig(
-                    provider=TranslationProvider.OPENAI_GPT4,
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                    domain="technical"
-                )
-                
-                result = self.engine.translate(
-                    section['content'],
-                    config
-                )
-                translation = result['translation']
-                
-                # Add to memory if quality is good
-                if result['validation']['quality_score'] > 80:
-                    self.glossary.add_to_memory(
-                        section['content'],
-                        translation,
-                        source_lang,
-                        target_lang,
-                        result['validation']['quality_score']
-                    )
-            
-            translated_sections.append({
-                'content': section['content'],
-                'translated': translation,
-                'type': section['type']
-            })
-        
-        # Save translated document
-        self.processor.save_translated_document(
-            translated_sections,
-            str(output_path)
-        )
-        
-        # Generate bilingual review
-        review_path = str(output_path).replace('.md', '_review.html')
-        self.processor.save_translated_document(
-            translated_sections,
-            review_path,
-            format='html'
-        )
-        
-        # Validate overall quality
-        full_original = '\n\n'.join(s['content'] for s in translated_sections)
-        full_translated = '\n\n'.join(s['translated'] for s in translated_sections)
-        
-        validation = self.validator.validate(
-            full_original,
-            full_translated,
-            source_lang,
-            target_lang,
-            glossary_terms
-        )
-        
-        return {
-            'input_file': str(input_path),
-            'output_file': str(output_path),
-            'review_file': review_path,
-            'quality_score': validation['quality_score'],
-            'issues': len(validation['issues'])
-        }
-```
-
-### Command-Line Interface
-
-```python
-#!/usr/bin/env python3
-"""
-Technical Document Translation CLI
-Usage: python translate.py [OPTIONS]
-"""
-
-import argparse
-import json
-import os
-from pathlib import Path
-
-def main():
-    parser = argparse.ArgumentParser(description='Translate technical documents')
-    
-    parser.add_argument('input', help='Input file or directory')
-    parser.add_argument('output', help='Output file or directory')
-    parser.add_argument('--source-lang', '-s', required=True, 
-                       choices=['en', 'ko', 'ja', 'English', 'Korean', 'Japanese'])
-    parser.add_argument('--target-lang', '-t', required=True,
-                       choices=['en', 'ko', 'ja', 'English', 'Korean', 'Japanese'])
-    parser.add_argument('--api-key', help='OpenAI API key (or set OPENAI_API_KEY env)')
-    parser.add_argument('--glossary', help='Path to glossary file')
-    parser.add_argument('--validate', action='store_true', help='Run validation only')
-    parser.add_argument('--batch', action='store_true', help='Process directory')
-    parser.add_argument('--pattern', default='*.md', help='File pattern for batch mode')
-    
-    args = parser.parse_args()
-    
-    # Get API key
-    api_key = args.api_key or os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        print("Error: OpenAI API key required (--api-key or OPENAI_API_KEY env)")
-        return 1
-    
-    # Initialize engine
-    engine = TechnicalTranslationEngine(api_key)
-    
-    if args.validate:
-        # Validation mode
-        validator = TranslationValidator()
-        # Implementation here
-    elif args.batch:
-        # Batch mode
-        pipeline = BatchTranslationPipeline({
-            'openai_key': api_key,
-            'glossary_db': args.glossary or 'glossary.db'
-        })
-        
-        import asyncio
-        results = asyncio.run(pipeline.translate_batch(
-            args.input,
-            args.output,
-            args.source_lang,
-            args.target_lang,
-            args.pattern
-        ))
-        
-        print(json.dumps(results['statistics'], indent=2))
-    else:
-        # Single file mode
-        config = TranslationConfig(
-            provider=TranslationProvider.OPENAI_GPT4,
-            source_lang=args.source_lang,
-            target_lang=args.target_lang
-        )
-        
-        # Read input
-        with open(args.input, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # Translate
-        result = engine.translate(content, config)
-        
-        # Save output
-        with open(args.output, 'w', encoding='utf-8') as f:
-            f.write(result['translation'])
-        
-        print(f"Translation complete!")
-        print(f"Quality Score: {result['validation']['quality_score']:.1f}%")
-        print(f"API Cost: ${result['usage'].get('estimated_cost', 0):.4f}")
-    
-    return 0
-
-if __name__ == '__main__':
-    exit(main())
-```
-
----
-
-## 📊 Performance & Cost Optimization
-
-### Cost Management Strategies
-
-```python
-class CostOptimizer:
-    """Optimize translation costs across providers"""
-    
-    def __init__(self):
-        self.cost_per_1k_tokens = {
-            'gpt-4o': {'input': 0.0025, 'output': 0.01},
-            'gpt-4o-mini': {'input': 0.00015, 'output': 0.0006}
-        }
-        
-    def estimate_cost(self, text: str, model: str = 'gpt-4o') -> float:
-        """Estimate translation cost"""
-        
-        # Rough estimation: 1 token ≈ 4 characters for English
-        # Adjust for Asian languages (1 char ≈ 2 tokens)
-        estimated_tokens = len(text) / 2  # Simplified
-        
-        pricing = self.cost_per_1k_tokens.get(model, self.cost_per_1k_tokens['gpt-4o-mini'])
-        
-        # Assume output is similar length to input
-        input_cost = (estimated_tokens / 1000) * pricing['input']
-        output_cost = (estimated_tokens / 1000) * pricing['output']
-        
-        return input_cost + output_cost
-    
-    def select_optimal_model(self, text: str, requirements: Dict) -> str:
-        """Select best model based on requirements and cost"""
-        
-        text_length = len(text)
-        has_code = '```' in text
-        complexity = self._assess_complexity(text)
-        
-        if requirements.get('highest_quality') or complexity == 'high':
-            return 'gpt-4o'
-        elif text_length < 1000 and not has_code:
-            return 'gpt-4o-mini'
-        else:
-            return 'gpt-4o-mini' if requirements.get('budget_conscious') else 'gpt-4o'
-    
-    def _assess_complexity(self, text: str) -> str:
-        """Assess text complexity"""
-        
-        indicators = {
-            'high': ['algorithm', 'architecture', 'implementation'],
-            'medium': ['function', 'method', 'class'],
-            'low': ['variable', 'constant', 'parameter']
-        }
-        
-        text_lower = text.lower()
-        
-        for level, keywords in indicators.items():
-            if any(keyword in text_lower for keyword in keywords):
-                return level
-        
-        return 'medium'
-```
-
----
-
-## 🔒 Security & Compliance
-
-### Secure API Key Management
-
-```python
-import os
-from cryptography.fernet import Fernet
-import keyring
-
-class SecureCredentialManager:
-    """Manage API keys securely"""
-    
-    def __init__(self):
-        self.service_name = "moai_translation"
-        
-    def store_api_key(self, provider: str, api_key: str):
-        """Store API key securely"""
-        keyring.set_password(self.service_name, provider, api_key)
-        
-    def get_api_key(self, provider: str) -> str:
-        """Retrieve API key"""
-        
-        # Try keyring first
-        key = keyring.get_password(self.service_name, provider)
-        
-        if not key:
-            # Fallback to environment variable
-            env_var = f"{provider.upper()}_API_KEY"
-            key = os.getenv(env_var)
-        
-        if not key:
-            raise ValueError(f"No API key found for {provider}")
-        
-        return key
-    
-    def rotate_keys(self):
-        """Rotate API keys periodically"""
-        # Implementation for key rotation
-        pass
-```
-
----
-
-## 📖 Related Skills
-
-- `Skill("moai-document-processing")` - Advanced document handling
-- `Skill("moai-api-integration")` - API client patterns
-- `Skill("moai-quality-assurance")` - Testing strategies
-- `Skill("moai-database-sqlite")` - SQLite optimization
-- `Skill("moai-async-patterns")` - Async/await patterns
-
----
-
-## 🎓 Learning Resources
-
-### Official Documentation
-- [OpenAI API Reference](https://platform.openai.com/docs)
-- [DeepL API Docs](https://www.deepl.com/docs-api)
-- [MarkItDown GitHub](https://github.com/microsoft/markitdown)
-
-### Best Practices
-- Language-specific translation guidelines
-- Technical documentation standards
-- Glossary management strategies
-- Quality assurance methodologies
-
----
-
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2025-11-16 | Initial release with OpenAI GPT-4 focus |
-
----
-
-**Generated with Claude Code & MoAI Skill Factory**
-**Model**: Claude 4.5 Sonnet
-**Token Optimization**: Progressive Disclosure Applied
+- **Examples**: See [examples.md](examples.md) for practical code samples
+- **API Reference**: See [reference.md](reference.md) for detailed documentation

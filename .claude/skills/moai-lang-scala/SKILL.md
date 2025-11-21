@@ -4,7 +4,19 @@ description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional 
   patterns, and Play Framework.
 ---
 
+## Quick Reference (30 seconds)
+
 # Lang Scala Skill
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -70,12 +82,6 @@ Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming p
 
 ---
 
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
 ## Changelog
 
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
@@ -104,3 +110,10 @@ _Documentation links updated 2025-10-22_
 - Use deprecated tools
 - Ignore security warnings
 - Mix testing frameworks
+
+---
+
+## Advanced Patterns
+
+
+

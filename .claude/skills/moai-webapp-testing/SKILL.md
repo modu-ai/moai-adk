@@ -5,6 +5,8 @@ description: Toolkit for interacting with and testing local web applications usi
   browser screenshots, and viewing browser logs.
 ---
 
+## Quick Reference (30 seconds)
+
 # Web Application Testing
 
 To test local web applications, write native Python Playwright scripts.
@@ -13,6 +15,17 @@ To test local web applications, write native Python Playwright scripts.
 - `scripts/with_server.py` - Manages server lifecycle (supports multiple servers)
 
 **Always run scripts with `--help` first** to see usage. DO NOT read the source until you try running the script first and find that a customized solution is abslutely necessary. These scripts can be very large and thus pollute your context window. They exist to be called directly as black-box scripts rather than ingested into your context window.
+
+## Reference Files
+
+- **examples/** - Examples showing common patterns:
+  - `element_discovery.py` - Discovering buttons, links, and inputs on a page
+  - `static_html_automation.py` - Using file:// URLs for local HTML
+  - `console_logging.py` - Capturing console logs during automation
+
+---
+
+## Implementation Guide
 
 ## Decision Tree: Choosing Your Approach
 
@@ -89,9 +102,9 @@ with sync_playwright() as p:
 - Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
 - Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
 
-## Reference Files
+---
 
-- **examples/** - Examples showing common patterns:
-  - `element_discovery.py` - Discovering buttons, links, and inputs on a page
-  - `static_html_automation.py` - Using file:// URLs for local HTML
-  - `console_logging.py` - Capturing console logs during automation
+## Advanced Patterns
+
+
+

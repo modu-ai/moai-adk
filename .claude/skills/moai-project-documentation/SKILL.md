@@ -3,6 +3,8 @@ name: moai-project-documentation
 description: Enhanced project documentation with AI-powered features. Enhanced with
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-project-documentation
 
 **Project Documentation**
@@ -788,6 +790,40 @@ Versioning & Updates
 
 ---
 
+## 📚 Official References
+
+**Primary Documentation:**
+- [Official Docs](https://...) – Complete reference
+
+**Best Practices:**
+- [Best Practices Guide](https://...) – Official recommendations
+
+
+---
+
+## 📈 Version History
+
+** .0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory    
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (alfred)
+
+---
+
+## Core Implementation
+
 ## 🎯 Best Practices Checklist
 
 **Must-Have:**
@@ -867,32 +903,3 @@ Start
 
 ---
 
-## 📚 Official References
-
-**Primary Documentation:**
-- [Official Docs](https://...) – Complete reference
-
-**Best Practices:**
-- [Best Practices Guide](https://...) – Official recommendations
-
-
----
-
-## 📈 Version History
-
-** .0** (2025-11-12)
-- ✨ Context7 MCP integration
-- ✨ Progressive Disclosure structure
-- ✨ 10+ code examples
-- ✨ Primary/secondary agents defined
-- ✨ Best practices checklist
-- ✨ Decision tree
-- ✨ Official references
-
-
-
----
-
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (alfred)

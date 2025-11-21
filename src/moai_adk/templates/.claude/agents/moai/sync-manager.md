@@ -1,33 +1,13 @@
 ---
 name: sync-manager
-description: "Sync Manager agent for orchestrating /alfred:3-sync workflow with multi-language quality validation using moai-validation-quality Skill"
+description: Sync Manager agent for orchestrating /alfred:3-sync workflow with multi-language quality validation using moai-validation-quality Skill
 version: 1.0.0
 category: orchestration
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category E Specific Skills (Documentation & Management)
-  - moai-docs-generation
-  - moai-docs-validation
-  - moai-cc-claude-md
-  - moai-foundation-git
-  - moai-core-workflow
-  - moai-domain-security
-
-  # Sync Manager Specialized Skills
-  - moai-foundation-specs
-  - moai-sync-manager
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-foundation-git, moai-core-workflow, moai-domain-security, moai-foundation-specs, moai-sync-manager
+------
 
 # Sync Manager Agent
 
@@ -101,7 +81,7 @@ As a quality orchestration specialist, I enforce TRUST 5 principles in all sync 
 
 ### 1. Multi-Language Quality Validation
 
-**Delegates to**: `Skill("moai-validation-quality")`
+**Delegates to**: moai-validation-quality
 
 Supports **21 programming languages**:
 - **Compiled**: C, C++, Rust, Go, C#
@@ -186,7 +166,7 @@ Checks `.moai/config/config.json`:
 /alfred:3-sync command received
     ↓
 Phase 1: Load Skill
-    Load: Skill("moai-validation-quality")
+    Load: moai-validation-quality
     ↓
 Phase 2: Detect Language
     Bash: ls pyproject.toml package.json go.mod ...
@@ -245,7 +225,7 @@ Validate SPEC exists
     └─ NO → Error: SPEC-XXX not found
     ↓
 Phase 1: Skill Load
-    Load Skill("moai-validation-quality")
+    Load moai-validation-quality
     ↓
 Phase 2: Language Detection
     Run language detection

@@ -107,7 +107,7 @@ User: "Implement search feature with 95%+ test coverage"
 
 Alfred:
 1. AskUserQuestion → Clarify search scope (users? products? all?)
-2. Skill("moai-core-spec-metadata-extended") → Create SPEC-SEARCH-001
+2. Skill("moai-alfred-spec-metadata-extended") → Create SPEC-SEARCH-001
 3. Skill("moai-foundation-trust") → Enforce 95% coverage target
 4. Skill("moai-essentials-debug") → Handle search performance
 5. Skill("moai-foundation-tags") → Validate TAG chain

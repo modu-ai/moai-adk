@@ -3,20 +3,9 @@ name: moai-foundation-langs
 description: Enterprise Programming Languages Foundation with AI-powered language selection, Context7 integration, and intelligent multi-language orchestration for optimal technology choices
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Programming Languages Foundation Expert
-
-## What It Does
-
-Enterprise Programming Languages Foundation expert with AI-powered language selection, Context7 integration, and intelligent multi-language orchestration for optimal technology choices.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Language Selection** using Context7 MCP for latest language ecosystem insights
-- 📊 **Intelligent Technology Stacking** with automated compatibility and performance analysis
-- 🚀 **Advanced Multi-Language Integration** with AI-driven interoperability optimization
-- 🔗 **Enterprise Language Governance** with zero-configuration standardization policies
-- 📈 **Predictive Performance Analysis** with language-specific optimization insights
-
----
 
 ## When to Use
 
@@ -35,6 +24,219 @@ Enterprise Programming Languages Foundation expert with AI-powered language sele
 ---
 
 # Quick Reference (Level 1)
+
+## Language Migration Strategies
+
+```python
+class LanguageMigrationPlanner:
+    def __init__(self):
+        self.risk_assessor = MigrationRiskAssessor()
+        self.cost_analyzer = MigrationCostAnalyzer()
+    
+    def plan_migration(self, 
+                      current_stack: TechnologyStack,
+                      target_stack: TechnologyStack,
+                      migration_scope: MigrationScope) -> MigrationPlan:
+        """Plan comprehensive language migration strategy."""
+        
+        # Risk assessment
+        risk_assessment = self.risk_assessor.assess_migration_risks(
+            current_stack,
+            target_stack,
+            migration_scope
+        )
+        
+        # Cost analysis
+        cost_analysis = self.cost_analyzer.analyze_migration_costs(
+            current_stack,
+            target_stack,
+            migration_scope,
+            risk_assessment
+        )
+        
+        # Migration phases
+        migration_phases = self._plan_migration_phases(
+            current_stack,
+            target_stack,
+            migration_scope,
+            risk_assessment
+        )
+        
+        return MigrationPlan(
+            risk_assessment=risk_assessment,
+            cost_analysis=cost_analysis,
+            migration_phases=migration_phases,
+            rollback_strategy=self._create_rollback_strategy(current_stack),
+            validation_criteria=self._create_validation_criteria(target_stack),
+            team_training_plan=self._create_team_training_plan(target_stack)
+        )
+    
+    def _plan_migration_phases(self, 
+                              current_stack: TechnologyStack,
+                              target_stack: TechnologyStack,
+                              migration_scope: MigrationScope,
+                              risk_assessment: RiskAssessment) -> List[MigrationPhase]:
+        """Plan detailed migration phases."""
+        
+        phases = []
+        
+        # Phase 1: Preparation
+        phases.append(MigrationPhase(
+            name="Preparation",
+            duration="2-4 weeks",
+            activities=[
+                "Set up development environments for target language",
+                "Create proof-of-concept implementations",
+                "Define migration standards and guidelines",
+                "Train development team on target language"
+            ],
+            deliverables=[
+                "Development environment setup",
+                "POC implementations",
+                "Migration guidelines",
+                "Team training completion"
+            ],
+            risks=["Learning curve", "Tooling setup"],
+            mitigation=["Comprehensive training", "Expert consultation"]
+        ))
+        
+        # Phase 2: Gradual Migration
+        phases.append(MigrationPhase(
+            name="Gradual Migration",
+            duration="8-16 weeks",
+            activities=[
+                "Migrate non-critical components first",
+                "Implement parallel systems for validation",
+                "Gradually migrate core functionality",
+                "Monitor performance and stability"
+            ],
+            deliverables=[
+                "Migrated components",
+                "Parallel system implementation",
+                "Performance monitoring setup",
+                "Migration progress reports"
+            ],
+            risks=["System instability", "Performance degradation"],
+            mitigation=["Comprehensive testing", "Gradual rollout"]
+        ))
+        
+        # Phase 3: Full Migration
+        phases.append(MigrationPhase(
+            name="Full Migration",
+            duration="4-8 weeks",
+            activities=[
+                "Decommission legacy systems",
+                "Complete migration of remaining components",
+                "Optimize performance in target language",
+                "Finalize documentation and knowledge transfer"
+            ],
+            deliverables=[
+                "Complete system migration",
+                "Legacy system decommissioning",
+                "Performance optimization",
+                "Final documentation"
+            ],
+            risks=["Data loss", "System downtime"],
+            mitigation=["Comprehensive backups", "Maintenance windows"]
+        ))
+        
+        return phases
+```
+
+### Ecosystem Integration
+
+```typescript
+// Language ecosystem integration management
+export class EcosystemIntegrationManager {
+  private ecosystemIntegrators = new Map<string, EcosystemIntegrator>();
+
+  constructor() {
+    this.setupEcosystemIntegrators();
+  }
+
+  private setupEcosystemIntegrators() {
+    // Node.js ecosystem
+    this.ecosystemIntegrators.set('typescript', new NodeJSIntegrator());
+    
+    // Python ecosystem
+    this.ecosystemIntegrators.set('python', new PythonIntegrator());
+    
+    // Rust ecosystem
+    this.ecosystemIntegrators.set('rust', new RustIntegrator());
+    
+    // Go ecosystem
+    this.ecosystemIntegrators.set('go', new GoIntegrator());
+  }
+
+  async setupLanguageEnvironment(language: string, projectConfig: ProjectConfig): Promise<EnvironmentSetup> {
+    const integrator = this.ecosystemIntegrators.get(language);
+    
+    if (!integrator) {
+      throw new Error(`No ecosystem integrator available for ${language}`);
+    }
+
+    return await integrator.setupEnvironment(projectConfig);
+  }
+
+  async manageDependencies(language: string, dependencies: Dependency[]): Promise<DependencyManagement> {
+    const integrator = this.ecosystemIntegrators.get(language);
+    
+    if (!integrator) {
+      throw new Error(`No ecosystem integrator available for ${language}`);
+    }
+
+    return await integrator.manageDependencies(dependencies);
+  }
+}
+
+// TypeScript/Node.js ecosystem integrator
+class NodeJSIntegrator implements EcosystemIntegrator {
+  async setupEnvironment(projectConfig: ProjectConfig): Promise<EnvironmentSetup> {
+    return {
+      packageManager: this.selectPackageManager(projectConfig),
+      buildTool: this.selectBuildTool(projectConfig),
+      testingFramework: this.selectTestingFramework(projectConfig),
+      linting: this.setupLinting(),
+      typeChecking: this.setupTypeChecking(),
+      bundler: this.selectBundler(projectConfig)
+    };
+  }
+
+  async manageDependencies(dependencies: Dependency[]): Promise<DependencyManagement> {
+    const packageJson = this.generatePackageJson(dependencies);
+    const lockFile = await this.generateLockFile(dependencies);
+    
+    return {
+      packageJson,
+      lockFile,
+      versionConflicts: this.detectVersionConflicts(dependencies),
+      securityVulnerabilities: await this.checkSecurityVulnerabilities(dependencies),
+      optimizationSuggestions: this.generateOptimizationSuggestions(dependencies)
+    };
+  }
+
+  private selectPackageManager(projectConfig: ProjectConfig): PackageManager {
+    switch (projectConfig.packageManager) {
+      case 'npm':
+        return { name: 'npm', version: 'latest', lockFile: 'package-lock.json' };
+      case 'yarn':
+        return { name: 'yarn', version: 'latest', lockFile: 'yarn.lock' };
+      case 'pnpm':
+        return { name: 'pnpm', version: 'latest', lockFile: 'pnpm-lock.yaml' };
+      default:
+        return { name: 'npm', version: 'latest', lockFile: 'package-lock.json' };
+    }
+  }
+}
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
 
 ## Modern Language Ecosystem (November 2025)
 
@@ -363,287 +565,10 @@ export class LanguagePerformanceOptimizer {
 
 # Advanced Implementation (Level 3)
 
-## Language Migration Strategies
 
-```python
-class LanguageMigrationPlanner:
-    def __init__(self):
-        self.risk_assessor = MigrationRiskAssessor()
-        self.cost_analyzer = MigrationCostAnalyzer()
-    
-    def plan_migration(self, 
-                      current_stack: TechnologyStack,
-                      target_stack: TechnologyStack,
-                      migration_scope: MigrationScope) -> MigrationPlan:
-        """Plan comprehensive language migration strategy."""
-        
-        # Risk assessment
-        risk_assessment = self.risk_assessor.assess_migration_risks(
-            current_stack,
-            target_stack,
-            migration_scope
-        )
-        
-        # Cost analysis
-        cost_analysis = self.cost_analyzer.analyze_migration_costs(
-            current_stack,
-            target_stack,
-            migration_scope,
-            risk_assessment
-        )
-        
-        # Migration phases
-        migration_phases = self._plan_migration_phases(
-            current_stack,
-            target_stack,
-            migration_scope,
-            risk_assessment
-        )
-        
-        return MigrationPlan(
-            risk_assessment=risk_assessment,
-            cost_analysis=cost_analysis,
-            migration_phases=migration_phases,
-            rollback_strategy=self._create_rollback_strategy(current_stack),
-            validation_criteria=self._create_validation_criteria(target_stack),
-            team_training_plan=self._create_team_training_plan(target_stack)
-        )
-    
-    def _plan_migration_phases(self, 
-                              current_stack: TechnologyStack,
-                              target_stack: TechnologyStack,
-                              migration_scope: MigrationScope,
-                              risk_assessment: RiskAssessment) -> List[MigrationPhase]:
-        """Plan detailed migration phases."""
-        
-        phases = []
-        
-        # Phase 1: Preparation
-        phases.append(MigrationPhase(
-            name="Preparation",
-            duration="2-4 weeks",
-            activities=[
-                "Set up development environments for target language",
-                "Create proof-of-concept implementations",
-                "Define migration standards and guidelines",
-                "Train development team on target language"
-            ],
-            deliverables=[
-                "Development environment setup",
-                "POC implementations",
-                "Migration guidelines",
-                "Team training completion"
-            ],
-            risks=["Learning curve", "Tooling setup"],
-            mitigation=["Comprehensive training", "Expert consultation"]
-        ))
-        
-        # Phase 2: Gradual Migration
-        phases.append(MigrationPhase(
-            name="Gradual Migration",
-            duration="8-16 weeks",
-            activities=[
-                "Migrate non-critical components first",
-                "Implement parallel systems for validation",
-                "Gradually migrate core functionality",
-                "Monitor performance and stability"
-            ],
-            deliverables=[
-                "Migrated components",
-                "Parallel system implementation",
-                "Performance monitoring setup",
-                "Migration progress reports"
-            ],
-            risks=["System instability", "Performance degradation"],
-            mitigation=["Comprehensive testing", "Gradual rollout"]
-        ))
-        
-        # Phase 3: Full Migration
-        phases.append(MigrationPhase(
-            name="Full Migration",
-            duration="4-8 weeks",
-            activities=[
-                "Decommission legacy systems",
-                "Complete migration of remaining components",
-                "Optimize performance in target language",
-                "Finalize documentation and knowledge transfer"
-            ],
-            deliverables=[
-                "Complete system migration",
-                "Legacy system decommissioning",
-                "Performance optimization",
-                "Final documentation"
-            ],
-            risks=["Data loss", "System downtime"],
-            mitigation=["Comprehensive backups", "Maintenance windows"]
-        ))
-        
-        return phases
-```
-
-### Ecosystem Integration
-
-```typescript
-// Language ecosystem integration management
-export class EcosystemIntegrationManager {
-  private ecosystemIntegrators = new Map<string, EcosystemIntegrator>();
-
-  constructor() {
-    this.setupEcosystemIntegrators();
-  }
-
-  private setupEcosystemIntegrators() {
-    // Node.js ecosystem
-    this.ecosystemIntegrators.set('typescript', new NodeJSIntegrator());
-    
-    // Python ecosystem
-    this.ecosystemIntegrators.set('python', new PythonIntegrator());
-    
-    // Rust ecosystem
-    this.ecosystemIntegrators.set('rust', new RustIntegrator());
-    
-    // Go ecosystem
-    this.ecosystemIntegrators.set('go', new GoIntegrator());
-  }
-
-  async setupLanguageEnvironment(language: string, projectConfig: ProjectConfig): Promise<EnvironmentSetup> {
-    const integrator = this.ecosystemIntegrators.get(language);
-    
-    if (!integrator) {
-      throw new Error(`No ecosystem integrator available for ${language}`);
-    }
-
-    return await integrator.setupEnvironment(projectConfig);
-  }
-
-  async manageDependencies(language: string, dependencies: Dependency[]): Promise<DependencyManagement> {
-    const integrator = this.ecosystemIntegrators.get(language);
-    
-    if (!integrator) {
-      throw new Error(`No ecosystem integrator available for ${language}`);
-    }
-
-    return await integrator.manageDependencies(dependencies);
-  }
-}
-
-// TypeScript/Node.js ecosystem integrator
-class NodeJSIntegrator implements EcosystemIntegrator {
-  async setupEnvironment(projectConfig: ProjectConfig): Promise<EnvironmentSetup> {
-    return {
-      packageManager: this.selectPackageManager(projectConfig),
-      buildTool: this.selectBuildTool(projectConfig),
-      testingFramework: this.selectTestingFramework(projectConfig),
-      linting: this.setupLinting(),
-      typeChecking: this.setupTypeChecking(),
-      bundler: this.selectBundler(projectConfig)
-    };
-  }
-
-  async manageDependencies(dependencies: Dependency[]): Promise<DependencyManagement> {
-    const packageJson = this.generatePackageJson(dependencies);
-    const lockFile = await this.generateLockFile(dependencies);
-    
-    return {
-      packageJson,
-      lockFile,
-      versionConflicts: this.detectVersionConflicts(dependencies),
-      securityVulnerabilities: await this.checkSecurityVulnerabilities(dependencies),
-      optimizationSuggestions: this.generateOptimizationSuggestions(dependencies)
-    };
-  }
-
-  private selectPackageManager(projectConfig: ProjectConfig): PackageManager {
-    switch (projectConfig.packageManager) {
-      case 'npm':
-        return { name: 'npm', version: 'latest', lockFile: 'package-lock.json' };
-      case 'yarn':
-        return { name: 'yarn', version: 'latest', lockFile: 'yarn.lock' };
-      case 'pnpm':
-        return { name: 'pnpm', version: 'latest', lockFile: 'pnpm-lock.yaml' };
-      default:
-        return { name: 'npm', version: 'latest', lockFile: 'package-lock.json' };
-    }
-  }
-}
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core Language Operations
-- `select_languages(requirements, constraints)` - Optimal language selection
-- `analyze_compatibility(languages, integrations)` - Compatibility analysis
-- `optimize_performance(stack, requirements)` - Performance optimization
-- `plan_migration(from_stack, to_stack)` - Migration planning
-- `setup_ecosystem(language, project_config)` - Environment setup
-
-### Context7 Integration
-- `get_latest_language_documentation()` - Language docs via Context7
-- `analyze_ecosystem_trends()` - Ecosystem analysis via Context7
-- `optimize_language_patterns()` - Language optimization via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Select languages based on project requirements and team expertise
-- Consider performance, ecosystem, and maintenance requirements
-- Plan for multi-language integration from the beginning
-- Use appropriate integration patterns for cross-language communication
-- Invest in team training for new languages
-- Monitor performance across different language components
-- Plan migration strategies with risk mitigation
-- Consider long-term maintenance and ecosystem stability
-
-### DON'T
-- Select languages based solely on popularity or trends
-- Ignore integration complexity in multi-language architectures
-- Skip performance testing across language boundaries
-- Forget about team learning curves and expertise requirements
-- Neglect dependency management across different ecosystems
-- Underestimate migration costs and risks
-- Ignore security implications of language choices
-- Forget about long-term support and ecosystem health
-
-## Works Well With
-
-- `moai-baas-foundation` (Technology stack selection)
-- `moai-domain-backend` (Backend language patterns)
-- `moai-domain-frontend` (Frontend language patterns)
-- `moai-foundation-trust` (Language security and compliance)
-- `moai-essentials-perf` (Language performance optimization)
-- `moai-domain-devops` (Language deployment patterns)
-- `moai-security-api` (Language-specific security)
-- `moai-domain-database` (Database integration patterns)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, modern language ecosystem analysis, and comprehensive migration strategies
-- **v2.0.0** (2025-11-11): Complete metadata structure, language selection patterns, ecosystem integration
-- **v1.0.0** (2025-11-11): Initial programming languages foundation
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Language Ecosystem
-
-### Modern Development Trends
-- Polyglot programming becoming standard practice
-- Language interoperability through WebAssembly
-- AI/ML influencing language evolution and adoption
-- Performance optimization driving language innovation
-- Cloud-native development shaping language ecosystems
-
-### Future Considerations
-- WebAssembly enabling cross-language compilation
-- AI-generated code impacting language popularity
-- Edge computing driving language optimization
-- Security concerns influencing language adoption
-
----
-
-**End of Enterprise Programming Languages Foundation Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

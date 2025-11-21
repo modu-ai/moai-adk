@@ -4,7 +4,19 @@ description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards
   and web frameworks (Laravel, Symfony).
 ---
 
+## Quick Reference (30 seconds)
+
 # Lang Php Skill
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -71,12 +83,6 @@ PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web fra
 
 ---
 
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
 ## Changelog
 
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
@@ -105,3 +111,10 @@ _Documentation links updated 2025-10-22_
 - Use deprecated tools
 - Ignore security warnings
 - Mix testing frameworks
+
+---
+
+## Advanced Patterns
+
+
+

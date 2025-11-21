@@ -5,7 +5,13 @@ description: Claude Code Agents system, task delegation patterns, and multi-agen
   task delegation.
 ---
 
+## Quick Reference (30 seconds)
+
 # Claude Code Agents System
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -26,24 +32,6 @@ Claude Code Agents system, task delegation patterns, and multi-agent coordinatio
 - ✅ Managing agent workflows
 - ✅ Implementing task delegation
 - ✅ Coordinating multi-agent systems
-
----
-
-## Core Agent Patterns
-
-### Agent Architecture
-1. **Task Delegation**: Specialized task assignment
-2. **Agent Communication**: Inter-agent messaging
-3. **Workflow Coordination**: Multi-agent orchestration
-4. **Resource Management**: Agent resource allocation
-5. **Performance Monitoring**: Agent effectiveness tracking
-
-### Agent Types
-- **Specialist Agents**: Domain-specific expertise
-- **General Agents**: Broad capability coverage
-- **Coordinator Agents**: Workflow management
-- **Automation Agents**: Repetitive task handling
-- **Validation Agents**: Quality and compliance checking
 
 ---
 
@@ -72,3 +60,26 @@ Claude Code Agents system, task delegation patterns, and multi-agent coordinatio
 ---
 
 **End of Skill** | Updated 2025-11-11
+
+---
+
+## Advanced Patterns
+
+## Core Agent Patterns
+
+### Agent Architecture
+1. **Task Delegation**: Specialized task assignment
+2. **Agent Communication**: Inter-agent messaging
+3. **Workflow Coordination**: Multi-agent orchestration
+4. **Resource Management**: Agent resource allocation
+5. **Performance Monitoring**: Agent effectiveness tracking
+
+### Agent Types
+- **Specialist Agents**: Domain-specific expertise
+- **General Agents**: Broad capability coverage
+- **Coordinator Agents**: Workflow management
+- **Automation Agents**: Repetitive task handling
+- **Validation Agents**: Quality and compliance checking
+
+---
+

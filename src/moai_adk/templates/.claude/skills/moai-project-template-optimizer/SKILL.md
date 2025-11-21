@@ -5,6 +5,8 @@ description: Handle template comparison and optimization workflows including bac
   MCP for up-to-date documentation.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-project-template-optimizer
 
 **Project Template Optimizer**
@@ -296,6 +298,40 @@ The skill serves as the foundation for template lifecycle management and can be 
 
 ---
 
+## 📚 Official References
+
+**Primary Documentation:**
+- [Official Docs](https://...) – Complete reference
+
+**Best Practices:**
+- [Best Practices Guide](https://...) – Official recommendations
+
+
+---
+
+## 📈 Version History
+
+** .0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory    
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (alfred)
+
+---
+
+## Implementation Guide
+
 ## 🎯 Best Practices Checklist
 
 **Must-Have:**
@@ -375,32 +411,9 @@ Start
 
 ---
 
-## 📚 Official References
-
-**Primary Documentation:**
-- [Official Docs](https://...) – Complete reference
-
-**Best Practices:**
-- [Best Practices Guide](https://...) – Official recommendations
-
-
 ---
 
-## 📈 Version History
-
-** .0** (2025-11-12)
-- ✨ Context7 MCP integration
-- ✨ Progressive Disclosure structure
-- ✨ 10+ code examples
-- ✨ Primary/secondary agents defined
-- ✨ Best practices checklist
-- ✨ Decision tree
-- ✨ Official references
+## Advanced Patterns
 
 
 
----
-
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (alfred)

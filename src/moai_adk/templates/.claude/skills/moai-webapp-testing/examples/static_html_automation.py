@@ -1,6 +1,5 @@
-import os
-
 from playwright.sync_api import sync_playwright
+import os
 
 # Example: Automating interaction with static HTML files using file:// URLs
 

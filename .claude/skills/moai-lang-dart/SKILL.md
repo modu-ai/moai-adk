@@ -5,58 +5,9 @@ description: Dart 3.5 enterprise development with Flutter 3.24, advanced async p
   scalable applications with Context7 MCP integration.
 ---
 
+## Quick Reference (30 seconds)
+
 # Dart - Enterprise 
-
----
-
-## What It Does
-
-Dart 3.5 enterprise development featuring Flutter 3.24, advanced async programming patterns, modern state management (BLoC, Riverpod, Provider), and enterprise-grade cross-platform mobile development. Context7 MCP integration provides real-time access to official Dart and Flutter documentation.
-
-**Key capabilities**:
-- ✅ Dart 3.5 with advanced type system and patterns
-- ✅ Flutter 3.24 enterprise mobile development
-- ✅ Advanced async programming with Isolates and Streams
-- ✅ Modern state management (BLoC, Riverpod, Provider)
-- ✅ Cross-platform development (iOS, Android, Web, Desktop)
-- ✅ Enterprise architecture patterns (Clean Architecture, MVVM)
-- ✅ Performance optimization and memory management
-- ✅ Testing strategies with unit, widget, and integration tests
-- ✅ Context7 MCP integration for real-time documentation
-
----
-
-## When to Use
-
-**Automatic triggers**:
-- Dart and Flutter development discussions
-- Cross-platform mobile application development
-- State management pattern implementation
-- Async programming and stream handling
-- Mobile app architecture and design
-- Enterprise Flutter application development
-
-**Manual invocation**:
-- Design mobile application architecture
-- Implement advanced async patterns
-- Optimize Flutter app performance
-- Review enterprise Dart/Flutter code
-- Implement state management solutions
-- Troubleshoot mobile development issues
-
----
-
-## Technology Stack (2025-11-12)
-
-| Component | Version | Purpose | Status |
-|-----------|---------|---------|--------|
-| **Dart** | 3.6.0 | Core language | ✅ Current |
-| **Flutter** | 3.24.0 | UI framework | ✅ Current |
-| **Riverpod** | 2.6.1 | State management | ✅ Current |
-| **BLoC** | 8.1.6 | State management | ✅ Current |
-| **Dio** | 5.6.0 | HTTP client | ✅ Current |
-| **Provider** | 6.4.0 | State management | ✅ Current |
-| **Firebase Core** | 2.28.0 | Backend | ✅ Current |
 
 ---
 
@@ -141,6 +92,58 @@ Single Feature     → Provider / GetX
 Complex App        → Riverpod / BLoC
 Enterprise Scale   → BLoC + Repository Pattern
 ```
+
+---
+
+## Version History
+
+| Version | Date | Status | Notes |
+|---------|------|--------|-------|
+| 4.0.0 | 2025-11-12 | Current | Enterprise v4 restructure, Context7 integration |
+| 3.5.4 | 2025-10-22 | Previous | Advanced patterns focus |
+| 3.0.0 | 2025-09-01 | Legacy | Initial release |
+
+---
+
+**For detailed examples** → See `examples.md`
+**For API reference** → See `reference.md`
+**For hands-on patterns** → See `examples.md` Part 3-4
+
+---
+
+## Implementation Guide
+
+## When to Use
+
+**Automatic triggers**:
+- Dart and Flutter development discussions
+- Cross-platform mobile application development
+- State management pattern implementation
+- Async programming and stream handling
+- Mobile app architecture and design
+- Enterprise Flutter application development
+
+**Manual invocation**:
+- Design mobile application architecture
+- Implement advanced async patterns
+- Optimize Flutter app performance
+- Review enterprise Dart/Flutter code
+- Implement state management solutions
+- Troubleshoot mobile development issues
+
+---
+
+## Technology Stack (2025-11-12)
+
+| Component | Version | Purpose | Status |
+|-----------|---------|---------|--------|
+| **Dart** | 3.6.0 | Core language | ✅ Current |
+| **Flutter** | 3.24.0 | UI framework | ✅ Current |
+| **Riverpod** | 2.6.1 | State management | ✅ Current |
+| **BLoC** | 8.1.6 | State management | ✅ Current |
+| **Dio** | 5.6.0 | HTTP client | ✅ Current |
+| **Provider** | 6.4.0 | State management | ✅ Current |
+| **Firebase Core** | 2.28.0 | Backend | ✅ Current |
 
 ---
 
@@ -257,34 +260,6 @@ class AppScreen extends StatelessWidget {
   }
 }
 ```
-
----
-
-## Advanced Topics
-
-### Error Handling Strategy
-
-```
-User Input    → Validation errors → Show in UI
-Network Call  → Timeout/connection → Retry with exponential backoff
-Data Parse    → Format errors → Log and use default
-State Update  → Concurrent updates → Use immutable state pattern
-```
-
-### Performance Optimization
-
-- Use `const` constructors for immutable widgets
-- Implement `ListView.builder` instead of `ListView` for large lists
-- Cache expensive computations with memoization
-- Profile with DevTools to identify bottlenecks
-- Use `RepaintBoundary` for complex widget trees
-
-### Testing Strategy
-
-- **Unit Tests**: Business logic (90%+ coverage target)
-- **Widget Tests**: UI components and interactions
-- **Integration Tests**: Full user flows and scenarios
-- **Mocking**: External dependencies with Mockito
 
 ---
 
@@ -405,16 +380,52 @@ Keyword Detection → Context7 Query → Real-Time API Docs
 
 ---
 
-## Version History
+---
 
-| Version | Date | Status | Notes |
-|---------|------|--------|-------|
-| 4.0.0 | 2025-11-12 | Current | Enterprise v4 restructure, Context7 integration |
-| 3.5.4 | 2025-10-22 | Previous | Advanced patterns focus |
-| 3.0.0 | 2025-09-01 | Legacy | Initial release |
+## Advanced Patterns
+
+## What It Does
+
+Dart 3.5 enterprise development featuring Flutter 3.24, advanced async programming patterns, modern state management (BLoC, Riverpod, Provider), and enterprise-grade cross-platform mobile development. Context7 MCP integration provides real-time access to official Dart and Flutter documentation.
+
+**Key capabilities**:
+- ✅ Dart 3.5 with advanced type system and patterns
+- ✅ Flutter 3.24 enterprise mobile development
+- ✅ Advanced async programming with Isolates and Streams
+- ✅ Modern state management (BLoC, Riverpod, Provider)
+- ✅ Cross-platform development (iOS, Android, Web, Desktop)
+- ✅ Enterprise architecture patterns (Clean Architecture, MVVM)
+- ✅ Performance optimization and memory management
+- ✅ Testing strategies with unit, widget, and integration tests
+- ✅ Context7 MCP integration for real-time documentation
 
 ---
 
-**For detailed examples** → See `examples.md`
-**For API reference** → See `reference.md`
-**For hands-on patterns** → See `examples.md` Part 3-4
+## Advanced Topics
+
+### Error Handling Strategy
+
+```
+User Input    → Validation errors → Show in UI
+Network Call  → Timeout/connection → Retry with exponential backoff
+Data Parse    → Format errors → Log and use default
+State Update  → Concurrent updates → Use immutable state pattern
+```
+
+### Performance Optimization
+
+- Use `const` constructors for immutable widgets
+- Implement `ListView.builder` instead of `ListView` for large lists
+- Cache expensive computations with memoization
+- Profile with DevTools to identify bottlenecks
+- Use `RepaintBoundary` for complex widget trees
+
+### Testing Strategy
+
+- **Unit Tests**: Business logic (90%+ coverage target)
+- **Widget Tests**: UI components and interactions
+- **Integration Tests**: Full user flows and scenarios
+- **Mocking**: External dependencies with Mockito
+
+---
+

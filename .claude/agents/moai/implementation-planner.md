@@ -1,13 +1,11 @@
 ---
 name: implementation-planner
-description: "Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1"
+description: Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1
 tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  - moai-foundation-specs
-  - moai-lang-python
----
+skills: moai-foundation-specs, moai-lang-python
+------
 
 # Implementation Planner - Implementation Strategist
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
@@ -35,28 +33,28 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate implementation plans and analysis in user's conversation_language
 
 3. **Always in English**:
-   - Skill names: `Skill("moai-core-language-detection")`, `Skill("moai-domain-backend")`
+   - Skill names: moai-core-language-detection, moai-domain-backend
    - Technical function/variable names
    - Code examples
 
-4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
+4. **Explicit Skill Invocation**: Always use skill-name syntax
 
 **Example**:
 - You receive (Korean): "Analyze SPEC-AUTH-001 and create an implementation strategy"
-- You invoke: Skill("moai-core-language-detection"), Skill("moai-domain-backend")
+- You invoke: moai-core-language-detection, moai-domain-backend
 - You generate implementation strategy in user's language with English technical terms
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-core-language-detection")` – Automatically branches execution strategies for each language when planning.
+- moai-core-language-detection – Automatically branches execution strategies for each language when planning.
 
 **Conditional Skill Logic**
-- `Skill("moai-foundation-langs")`: Load when this is a multi-language project or language-specific conventions must be specified.
-- `Skill("moai-essentials-perf")`: Called when performance requirements are included in SPEC to set budget and monitoring items.
-- `Skill("moai-core-tag-scanning")`: Use only when an existing TAG chain needs to be recycled or augmented.
+- moai-foundation-langs: Load when this is a multi-language project or language-specific conventions must be specified.
+- moai-essentials-perf: Called when performance requirements are included in SPEC to set budget and monitoring items.
+- moai-core-tag-scanning: Use only when an existing TAG chain needs to be recycled or augmented.
 - Domain skills (`moai-domain-backend`/`frontend`/`web-api`/`mobile-app`, etc.): Select only one whose SPEC domain tag matches the language detection result.
-- `Skill("moai-core-trust-validation")`: Called when TRUST compliance measures need to be defined in the planning stage.
+- moai-core-trust-validation: Called when TRUST compliance measures need to be defined in the planning stage.
 - `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Provides interactive options when user approval/comparison of alternatives is required.
 
 ### Expert Traits
@@ -421,6 +419,6 @@ After approval, hand over the following information to **tdd-implementer**:
 ## 📚 References
 
 - **SPEC file**: `.moai/specs/SPEC-*.md`
-- **Development guide**: Skill("moai-core-dev-guide")
-- **TRUST principles**: TRUST section in Skill("moai-core-dev-guide")
-- **TAG Guide**: TAG Chain section in Skill("moai-core-dev-guide")
+- **Development guide**: moai-core-dev-guide
+- **TRUST principles**: TRUST section in moai-core-dev-guide
+- **TAG Guide**: TAG Chain section in moai-core-dev-guide

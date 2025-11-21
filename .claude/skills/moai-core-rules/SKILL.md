@@ -3,6 +3,127 @@ name: moai-core-rules
 description: Alfred SuperAgent의 필수 규칙을 정의합니다. November 2025 enterprise standard 기반.
 ---
 
+## Quick Reference (30 seconds)
+
+## Rule 6: TRUST 5 Quality Gates (November 2025 Enterprise)
+
+### 각 Gate의 검증 기준
+
+#### T: Test First (85%+ Coverage)
+```yaml
+requirements:
+  coverage: "≥ 85%"
+  coverage_tools: ["pytest-cov", "coverage.py"]
+  test_types:
+    - unit_tests: "각 함수/메서드"
+    - integration_tests: "모듈 간 상호작용"
+    - edge_cases: "경계값, 에러 처리"
+  
+validation:
+  - All code paths executed
+  - Error conditions tested
+  - Mock external dependencies
+  - No skipped tests (×skip, ×xfail)
+```
+
+#### R: Readable (Clean Code)
+```yaml
+requirements:
+  code_standards:
+    - SOLID 원칙 준수
+    - DRY (Don't Repeat Yourself)
+    - KISS (Keep It Simple, Stupid)
+  
+  documentation:
+    - Function docstrings
+    - Complex logic comments
+    - Type hints (Python 3.10+)
+  
+  naming:
+    - Descriptive variable names
+    - Consistent conventions
+    - No single-letter vars (except i, j, k in loops)
+```
+
+#### U: Unified (Consistent Patterns)
+```yaml
+requirements:
+  consistency:
+    - Same patterns across codebase
+    - No duplicate logic
+    - Shared utilities for common tasks
+  
+  conventions:
+    - Consistent indentation (4 spaces)
+    - Consistent naming (snake_case, PascalCase)
+    - Consistent import order
+  
+  validation:
+    - Linting (flake8, black, isort)
+    - Static analysis (pylint, mypy)
+    - No code duplication (DRY violations)
+```
+
+#### S: Secured (OWASP Top 10)
+```yaml
+requirements:
+  security_checks:
+    - No hardcoded credentials
+    - No SQL injection vectors
+    - No XXE vulnerabilities
+    - Input validation
+    - Output encoding
+  
+  tools:
+    - bandit (Python security linter)
+    - safety (dependency vulnerabilities)
+    - SAST scanning
+  
+  validation:
+    - No secrets committed
+    - Dependencies scanned
+    - Known CVEs checked
+```
+
+```yaml
+requirements:
+  tag_chain:
+    - Complete history traceability
+  
+  documentation:
+  
+  validation:
+    - Bidirectional references
+```
+
+---
+
+## 공식 자료 & 참고 링크
+
+### Architecture References
+- Command-Agent-Skill 패턴: Internal moai-adk documentation
+- ADAP Workflow: Internal workflow definition
+
+### Quality Standards
+- TRUST 5 Framework: Skill("moai-foundation-trust")
+- TAG System: Skill("moai-foundation-tags")
+- Commit Standards: Skill("moai-foundation-git")
+
+### Enterprise Standards (November 2025)
+- Agent-First Architecture: InfoQ (agentic-ai-architecture-framework)
+- TDD Best Practices: Official pytest documentation
+- Code Quality: OWASP Top 10, SOLID principles
+
+---
+
+**버전**: 4.0.0 (November 2025 Enterprise Standard)
+**최종 업데이트**: 2025-11-12
+**유지보수자**: GoosLab (Alfred SuperAgent Framework)
+
+---
+
+## Core Implementation
+
 ## Skill 개요
 
 **moai-alfred-rules**는 Alfred SuperAgent의 의사결정과 실행을 제어하는 핵심 프레임워크입니다.
@@ -491,99 +612,6 @@ AskUserQuestion({
 
 ---
 
-## Rule 6: TRUST 5 Quality Gates (November 2025 Enterprise)
-
-### 각 Gate의 검증 기준
-
-#### T: Test First (85%+ Coverage)
-```yaml
-requirements:
-  coverage: "≥ 85%"
-  coverage_tools: ["pytest-cov", "coverage.py"]
-  test_types:
-    - unit_tests: "각 함수/메서드"
-    - integration_tests: "모듈 간 상호작용"
-    - edge_cases: "경계값, 에러 처리"
-  
-validation:
-  - All code paths executed
-  - Error conditions tested
-  - Mock external dependencies
-  - No skipped tests (×skip, ×xfail)
-```
-
-#### R: Readable (Clean Code)
-```yaml
-requirements:
-  code_standards:
-    - SOLID 원칙 준수
-    - DRY (Don't Repeat Yourself)
-    - KISS (Keep It Simple, Stupid)
-  
-  documentation:
-    - Function docstrings
-    - Complex logic comments
-    - Type hints (Python 3.10+)
-  
-  naming:
-    - Descriptive variable names
-    - Consistent conventions
-    - No single-letter vars (except i, j, k in loops)
-```
-
-#### U: Unified (Consistent Patterns)
-```yaml
-requirements:
-  consistency:
-    - Same patterns across codebase
-    - No duplicate logic
-    - Shared utilities for common tasks
-  
-  conventions:
-    - Consistent indentation (4 spaces)
-    - Consistent naming (snake_case, PascalCase)
-    - Consistent import order
-  
-  validation:
-    - Linting (flake8, black, isort)
-    - Static analysis (pylint, mypy)
-    - No code duplication (DRY violations)
-```
-
-#### S: Secured (OWASP Top 10)
-```yaml
-requirements:
-  security_checks:
-    - No hardcoded credentials
-    - No SQL injection vectors
-    - No XXE vulnerabilities
-    - Input validation
-    - Output encoding
-  
-  tools:
-    - bandit (Python security linter)
-    - safety (dependency vulnerabilities)
-    - SAST scanning
-  
-  validation:
-    - No secrets committed
-    - Dependencies scanned
-    - Known CVEs checked
-```
-
-```yaml
-requirements:
-  tag_chain:
-    - Complete history traceability
-  
-  documentation:
-  
-  validation:
-    - Bidirectional references
-```
-
----
-
 ## Rule 7: TAG Chain Integrity Rules
 
 ### 규칙 7.1: TAG Naming Convention
@@ -708,51 +736,3 @@ Status: PASSING (Tests still pass, code improved)
 
 ---
 
-## 3-Level Progressive Disclosure
-
-### Level 1: 빠른 시작 (Beginner - 10분)
-
-**당신이 알아야 할 것**:
-1. Command = 조율만, Agent = 실행
-2. Skill = 전문 도구
-3. 규칙 위반 → 에러
-
-### Level 2: 실무 패턴 (Intermediate - 30분)
-
-**당신이 해야 할 것**:
-1. AskUserQuestion 사용 시점 판단
-2. TRUST 5 검증
-3. TAG 체인 유지
-4. 커밋 메시지 형식
-
-### Level 3: 심화 (Advanced - 1시간)
-
-**당신이 최적화할 것**:
-1. Agent delegation 전략
-2. Skill 조합 활용
-3. Workflow 자동화
-4. 규칙 예외 관리
-
----
-
-## 공식 자료 & 참고 링크
-
-### Architecture References
-- Command-Agent-Skill 패턴: Internal moai-adk documentation
-- ADAP Workflow: Internal workflow definition
-
-### Quality Standards
-- TRUST 5 Framework: Skill("moai-foundation-trust")
-- TAG System: Skill("moai-foundation-tags")
-- Commit Standards: Skill("moai-foundation-git")
-
-### Enterprise Standards (November 2025)
-- Agent-First Architecture: InfoQ (agentic-ai-architecture-framework)
-- TDD Best Practices: Official pytest documentation
-- Code Quality: OWASP Top 10, SOLID principles
-
----
-
-**버전**: 4.0.0 (November 2025 Enterprise Standard)
-**최종 업데이트**: 2025-11-12
-**유지보수자**: GoosLab (Alfred SuperAgent Framework)

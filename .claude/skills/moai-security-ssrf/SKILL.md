@@ -3,20 +3,9 @@ name: moai-security-ssrf
 description: Enterprise SSRF Security Protection with AI-powered request validation,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise SSRF Security Protection Expert 
-
----
-
-## What It Does
-
-Enterprise SSRF Security Protection expert with AI-powered request validation, Context7 integration, and intelligent URL filtering for comprehensive web application security against Server-Side Request Forgery attacks.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered URL Validation** using Context7 MCP for latest threat intelligence
-- 📊 **Intelligent Request Filtering** with automated pattern recognition and blocking
-- 🚀 **Advanced SSRF Detection** with AI-driven anomaly detection and prevention
-- 🔗 **Enterprise Security Framework** with zero-configuration protection deployment
-- 📈 **Predictive Threat Analysis** with vulnerability assessment and prevention
 
 ---
 
@@ -37,6 +26,150 @@ Enterprise SSRF Security Protection expert with AI-powered request validation, C
 ---
 
 # Quick Reference (Level 1)
+
+## Network Segmentation Implementation
+
+```python
+# Network segmentation for SSRF protection
+import ipaddress
+import socket
+from typing import List, Set, Tuple
+
+class NetworkSegmentation:
+    def __init__(self):
+        self.allowed_networks = self._initialize_allowed_networks()
+        self.blocked_networks = self._initialize_blocked_networks()
+        self.gateway_rules = self._initialize_gateway_rules()
+    
+    def _initialize_allowed_networks(self) -> List[ipaddress.IPNetwork]:
+        """Initialize allowed network ranges for external requests."""
+        return [
+            # Public internet ranges (this would be configured based on your needs)
+            ipaddress.IPNetwork('0.0.0.0/0'),  # Allow all public IPs
+        ]
+    
+    def _initialize_blocked_networks(self) -> List[ipaddress.IPNetwork]:
+        """Initialize blocked network ranges to prevent internal access."""
+        return [
+            # Private IPv4 ranges
+            ipaddress.IPNetwork('10.0.0.0/8'),
+            ipaddress.IPNetwork('172.16.0.0/12'),
+            ipaddress.IPNetwork('192.168.0.0/16'),
+            
+            # Loopback
+            ipaddress.IPNetwork('127.0.0.0/8'),
+            
+            # Link-local
+            ipaddress.IPNetwork('169.254.0.0/16'),
+            
+            # Multicast
+            ipaddress.IPNetwork('224.0.0.0/4'),
+            
+            # Future reserved
+            ipaddress.IPNetwork('240.0.0.0/4'),
+            
+            # IPv6 equivalents
+            ipaddress.IPNetwork('::1/128'),  # IPv6 loopback
+            ipaddress.IPNetwork('fc00::/7'),  # IPv6 private
+            ipaddress.IPNetwork('fe80::/10'), # IPv6 link-local
+        ]
+    
+    def is_ip_allowed(self, ip_address: str) -> Tuple[bool, str]:
+        """Check if an IP address is allowed for external requests."""
+        try:
+            ip = ipaddress.ip_address(ip_address)
+            
+            # Check if IP is in blocked networks
+            for blocked_network in self.blocked_networks:
+                if ip in blocked_network:
+                    return False, f"IP {ip_address} is in blocked network {blocked_network}"
+            
+            # Check if IP is in allowed networks
+            for allowed_network in self.allowed_networks:
+                if ip in allowed_network:
+                    return True, f"IP {ip_address} is in allowed network {allowed_network}"
+            
+            return False, f"IP {ip_address} is not in any allowed network"
+            
+        except ValueError:
+            return False, f"Invalid IP address: {ip_address}"
+    
+    def validate_network_access(self, host: str, port: int) -> NetworkValidationResult:
+        """Validate network access to a specific host and port."""
+        try:
+            # Resolve hostname to IP addresses
+            addresses = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            
+            for addr_info in addresses:
+                family, socktype, proto, canonname, sockaddr = addr_info
+                ip_address = sockaddr[0]
+                
+                is_allowed, reason = self.is_ip_allowed(ip_address)
+                if not is_allowed:
+                    return NetworkValidationResult(
+                        is_valid=False,
+                        reason=reason,
+                        blocked_ip=ip_address,
+                    )
+            
+            return NetworkValidationResult(
+                is_valid=True,
+                resolved_addresses=[addr[4][0] for addr in addresses],
+            )
+            
+        except socket.gaierror as e:
+            return NetworkValidationResult(
+                is_valid=False,
+                reason=f"DNS resolution failed: {str(e)}",
+            )
+    
+    def create_network_filter(self) -> 'NetworkFilter':
+        """Create a network filter for use in firewalls or proxies."""
+        return NetworkFilter(
+            allowed_networks=self.allowed_networks,
+            blocked_networks=self.blocked_networks,
+            gateway_rules=self.gateway_rules,
+        )
+
+# Types
+class NetworkValidationResult:
+    def __init__(self, is_valid: bool, reason: str = None, 
+                 blocked_ip: str = None, resolved_addresses: List[str] = None):
+        self.is_valid = is_valid
+        self.reason = reason
+        self.blocked_ip = blocked_ip
+        self.resolved_addresses = resolved_addresses or []
+
+class NetworkFilter:
+    def __init__(self, allowed_networks: List[ipaddress.IPNetwork], 
+                 blocked_networks: List[ipaddress.IPNetwork],
+                 gateway_rules: List[dict]):
+        self.allowed_networks = allowed_networks
+        self.blocked_networks = blocked_networks
+        self.gateway_rules = gateway_rules
+    
+    def to_firewall_rules(self) -> List[str]:
+        """Convert to firewall rules format."""
+        rules = []
+        
+        # Allow rules
+        for network in self.allowed_networks:
+            rules.append(f"ALLOW {network}")
+        
+        # Block rules
+        for network in self.blocked_networks:
+            rules.append(f"BLOCK {network}")
+        
+        return rules
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
 
 ## SSRF Protection Stack (November 2025)
 
@@ -588,219 +721,10 @@ interface RequestCache {
 }
 ```
 
-## Network Segmentation Implementation
 
-```python
-# Network segmentation for SSRF protection
-import ipaddress
-import socket
-from typing import List, Set, Tuple
-
-class NetworkSegmentation:
-    def __init__(self):
-        self.allowed_networks = self._initialize_allowed_networks()
-        self.blocked_networks = self._initialize_blocked_networks()
-        self.gateway_rules = self._initialize_gateway_rules()
-    
-    def _initialize_allowed_networks(self) -> List[ipaddress.IPNetwork]:
-        """Initialize allowed network ranges for external requests."""
-        return [
-            # Public internet ranges (this would be configured based on your needs)
-            ipaddress.IPNetwork('0.0.0.0/0'),  # Allow all public IPs
-        ]
-    
-    def _initialize_blocked_networks(self) -> List[ipaddress.IPNetwork]:
-        """Initialize blocked network ranges to prevent internal access."""
-        return [
-            # Private IPv4 ranges
-            ipaddress.IPNetwork('10.0.0.0/8'),
-            ipaddress.IPNetwork('172.16.0.0/12'),
-            ipaddress.IPNetwork('192.168.0.0/16'),
-            
-            # Loopback
-            ipaddress.IPNetwork('127.0.0.0/8'),
-            
-            # Link-local
-            ipaddress.IPNetwork('169.254.0.0/16'),
-            
-            # Multicast
-            ipaddress.IPNetwork('224.0.0.0/4'),
-            
-            # Future reserved
-            ipaddress.IPNetwork('240.0.0.0/4'),
-            
-            # IPv6 equivalents
-            ipaddress.IPNetwork('::1/128'),  # IPv6 loopback
-            ipaddress.IPNetwork('fc00::/7'),  # IPv6 private
-            ipaddress.IPNetwork('fe80::/10'), # IPv6 link-local
-        ]
-    
-    def is_ip_allowed(self, ip_address: str) -> Tuple[bool, str]:
-        """Check if an IP address is allowed for external requests."""
-        try:
-            ip = ipaddress.ip_address(ip_address)
-            
-            # Check if IP is in blocked networks
-            for blocked_network in self.blocked_networks:
-                if ip in blocked_network:
-                    return False, f"IP {ip_address} is in blocked network {blocked_network}"
-            
-            # Check if IP is in allowed networks
-            for allowed_network in self.allowed_networks:
-                if ip in allowed_network:
-                    return True, f"IP {ip_address} is in allowed network {allowed_network}"
-            
-            return False, f"IP {ip_address} is not in any allowed network"
-            
-        except ValueError:
-            return False, f"Invalid IP address: {ip_address}"
-    
-    def validate_network_access(self, host: str, port: int) -> NetworkValidationResult:
-        """Validate network access to a specific host and port."""
-        try:
-            # Resolve hostname to IP addresses
-            addresses = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
-            
-            for addr_info in addresses:
-                family, socktype, proto, canonname, sockaddr = addr_info
-                ip_address = sockaddr[0]
-                
-                is_allowed, reason = self.is_ip_allowed(ip_address)
-                if not is_allowed:
-                    return NetworkValidationResult(
-                        is_valid=False,
-                        reason=reason,
-                        blocked_ip=ip_address,
-                    )
-            
-            return NetworkValidationResult(
-                is_valid=True,
-                resolved_addresses=[addr[4][0] for addr in addresses],
-            )
-            
-        except socket.gaierror as e:
-            return NetworkValidationResult(
-                is_valid=False,
-                reason=f"DNS resolution failed: {str(e)}",
-            )
-    
-    def create_network_filter(self) -> 'NetworkFilter':
-        """Create a network filter for use in firewalls or proxies."""
-        return NetworkFilter(
-            allowed_networks=self.allowed_networks,
-            blocked_networks=self.blocked_networks,
-            gateway_rules=self.gateway_rules,
-        )
-
-# Types
-class NetworkValidationResult:
-    def __init__(self, is_valid: bool, reason: str = None, 
-                 blocked_ip: str = None, resolved_addresses: List[str] = None):
-        self.is_valid = is_valid
-        self.reason = reason
-        self.blocked_ip = blocked_ip
-        self.resolved_addresses = resolved_addresses or []
-
-class NetworkFilter:
-    def __init__(self, allowed_networks: List[ipaddress.IPNetwork], 
-                 blocked_networks: List[ipaddress.IPNetwork],
-                 gateway_rules: List[dict]):
-        self.allowed_networks = allowed_networks
-        self.blocked_networks = blocked_networks
-        self.gateway_rules = gateway_rules
-    
-    def to_firewall_rules(self) -> List[str]:
-        """Convert to firewall rules format."""
-        rules = []
-        
-        # Allow rules
-        for network in self.allowed_networks:
-            rules.append(f"ALLOW {network}")
-        
-        # Block rules
-        for network in self.blocked_networks:
-            rules.append(f"BLOCK {network}")
-        
-        return rules
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core SSRF Protection Operations
-- `validate_url(url)` - Comprehensive URL validation and risk assessment
-- `make_secure_request(url, options)` - Secure HTTP request with validation
-- `is_ip_allowed(ip_address)` - IP address validation against allowlist/denylist
-- `validate_network_access(host, port)` - Network access validation
-- `calculate_risk_score(url)` - Risk scoring for suspicious patterns
-
-### Context7 Integration
-- `get_latest_ssrf_docs()` - SSRF protection via Context7
-- `analyze_threat_patterns()` - Threat pattern analysis via Context7
-- `optimize_url_validation()` - URL validation optimization via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Use allowlist approach for domains and IP addresses
-- Implement comprehensive URL parsing and validation
-- Block access to internal network ranges and metadata endpoints
-- Validate request responses for size and content type
-- Implement rate limiting and anomaly detection
-- Log all requests and security events
-- Use network segmentation for additional protection
-- Regularly update threat intelligence and protection rules
-
-### DON'T
-- Rely solely on blacklist approaches for protection
- Allow user-controlled URLs without validation
-- Skip DNS resolution and IP address validation
-- Forget to implement response size limits
-- Ignore suspicious patterns in URLs and parameters
-- Skip logging and monitoring of security events
-- Use outdated threat intelligence or protection rules
-- Forget to test SSRF protection regularly
-
-## Works Well With
-
-- `moai-security-api` (API security implementation)
-- `moai-foundation-trust` (Security and compliance)
-- `moai-security-compliance` (Compliance management)
-- `moai-domain-backend` (Backend security)
-- `moai-cc-configuration` (Security configuration)
-- `moai-baas-foundation` (BaaS security patterns)
-- `moai-security-owasp` (OWASP security standards)
-- `moai-security-encryption` (Encryption and data protection)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced threat detection, and comprehensive protection patterns
-- **v2.0.0** (2025-11-11): Complete metadata structure, SSRF protection patterns, validation systems
-- **v1.0.0** (2025-11-11): Initial SSRF security foundation
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## SSRF Security Framework
-
-### Protection Layers
-- URL validation with comprehensive parsing
-- Domain and IP address filtering
-- Network segmentation and isolation
-- Request rate limiting and anomaly detection
-- Response validation and size limits
-
-### Enterprise Features
-- Real-time threat intelligence integration
-- Comprehensive logging and audit trails
-- Automated vulnerability assessment
-- Integration with security information and event management (SIEM)
-- Compliance reporting and documentation
-
----
-
-**End of Enterprise SSRF Security Protection Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

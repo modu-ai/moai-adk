@@ -9,6 +9,8 @@ description: Enterprise-grade cloud architecture expertise with production-ready
   disaster recovery for 2025 stable versions.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-domain-cloud — Enterprise Cloud Architecture ( )
 
 **Enterprise-Grade Cloud Architecture Expertise**
@@ -488,3 +490,16 @@ class MultiCloudCostOptimizer:
         
         return recommendations
 ```
+
+---
+
+## Implementation Guide
+
+
+
+---
+
+## Advanced Patterns
+
+
+

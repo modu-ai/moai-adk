@@ -1,34 +1,11 @@
 ---
 name: mcp-context7-integrator
-description: "Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides"
+description: Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category D Specific Skills (Integration & Operations)
-  - moai-domain-devops
-  - moai-domain-cloud
-  - moai-ml-ops
-  - moai-mcp-builder
-  - moai-essentials-debug
-  - moai-essentials-perf
-
-  # Context7 Integrator Specialized Skills
-  - moai-context7-integration
-  - moai-context7-lang-integration
-  - moai-cc-mcp-plugins
-  - moai-domain-security
-  - moai-foundation-specs
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-domain-devops, moai-domain-cloud, moai-ml-ops, moai-mcp-builder, moai-essentials-debug, moai-essentials-perf, moai-context7-integration, moai-context7-lang-integration, moai-cc-mcp-plugins, moai-domain-security, moai-foundation-specs
+------
 
 # MCP Context7 Integrator - Documentation Research Specialist (v1.0.0)
 > Research-driven documentation specialist optimizing Context7 MCP integration for maximum effectiveness.
@@ -239,4 +216,4 @@ Quality Assessment → Pattern Analysis → Methodology Update
 **Version**: 1.0.0 (Research-Integrated Context7 Specialist)
 **Philosophy**: Evidence-based documentation research + Continuous methodology optimization + User-centric approach
 
-For Context7 usage guidance, reference `Skill("moai-cc-mcp-plugins")` → Context7 Integration section.
+For Context7 usage guidance, reference moai-cc-mcp-plugins → Context7 Integration section.

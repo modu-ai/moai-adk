@@ -3,6 +3,8 @@ name: moai-nextra-architecture
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # Skill: Nextra Architecture Expert
 
 
@@ -252,84 +254,6 @@ import { FileTree } from 'nextra/components'
 <Callout type="warning" emoji="⚠️">
   This feature requires version 2.0.0 or higher.
 </Callout>
-
-## Prerequisites
-
-Before you begin, ensure you have:
-
-- Node.js 18+ installed
-- Basic understanding of React
-- Project configured for TypeScript
-
-## Implementation Steps
-
-<Steps>
-  <Step>
-    ### Step 1: Installation
-
-    Install the required dependencies:
-
-    ```bash
-    npm install feature-x-package
-    ```
-
-    Update your configuration:
-
-    <FileTree>
-      <FileTree.File name="config.json" active>
-        {`{
-          "featureX": {
-            "enabled": true,
-            "options": {
-              "theme": "default"
-            }
-          }
-        }}`}
-      </FileTree.File>
-    </FileTree>
-  </Step>
-
-  <Step>
-    ### Step 2: Configuration
-
-    Configure the feature according to your needs:
-
-    ```typescript showLineNumbers
-    // src/config/featureX.ts
-    export const featureXConfig = {
-      mode: 'production',
-      plugins: ['analytics', 'seo'],
-      theme: {
-        primary: '#0070f3',
-        secondary: '#6f42c1'
-      }
-    }
-    ```
-
-    <Callout type="tip" emoji="💡">
-      You can customize the theme using CSS variables.
-    </Callout>
-  </Step>
-
-  <Step>
-    ### Step 3: Usage
-
-    Now you can use the feature in your application:
-
-    ```tsx
-    import { FeatureX } from 'feature-x-package'
-
-    export default function MyComponent() {
-      return (
-        <FeatureX
-          config={featureXConfig}
-          onReady={() => console.log('Ready!')}
-        />
-      )
-    }
-    ```
-  </Step>
-</Steps>
 
 ## Advanced Configuration
 
@@ -731,6 +655,95 @@ export function generateSEOMetadata({
 }
 ```
 
+## 📚 Reference Materials
+
+- [Nextra Official Documentation](https://nextra.site/)
+- [Next.js Performance Optimization](https://nextjs.org/docs/advanced-features/measuring-performance)
+- [MDN Web Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
+- [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+
+---
+
+## Core Implementation
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- Node.js 18+ installed
+- Basic understanding of React
+- Project configured for TypeScript
+
+## Implementation Steps
+
+<Steps>
+  <Step>
+    ### Step 1: Installation
+
+    Install the required dependencies:
+
+    ```bash
+    npm install feature-x-package
+    ```
+
+    Update your configuration:
+
+    <FileTree>
+      <FileTree.File name="config.json" active>
+        {`{
+          "featureX": {
+            "enabled": true,
+            "options": {
+              "theme": "default"
+            }
+          }
+        }}`}
+      </FileTree.File>
+    </FileTree>
+  </Step>
+
+  <Step>
+    ### Step 2: Configuration
+
+    Configure the feature according to your needs:
+
+    ```typescript showLineNumbers
+    // src/config/featureX.ts
+    export const featureXConfig = {
+      mode: 'production',
+      plugins: ['analytics', 'seo'],
+      theme: {
+        primary: '#0070f3',
+        secondary: '#6f42c1'
+      }
+    }
+    ```
+
+    <Callout type="tip" emoji="💡">
+      You can customize the theme using CSS variables.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Step 3: Usage
+
+    Now you can use the feature in your application:
+
+    ```tsx
+    import { FeatureX } from 'feature-x-package'
+
+    export default function MyComponent() {
+      return (
+        <FeatureX
+          config={featureXConfig}
+          onReady={() => console.log('Ready!')}
+        />
+      )
+    }
+    ```
+  </Step>
+</Steps>
+
 ## 🎯 Usage
 
 ### From Agents
@@ -767,13 +780,6 @@ npm run validate:docs
 npm run test:docs
 ```
 
-## 📚 Reference Materials
-
-- [Nextra Official Documentation](https://nextra.site/)
-- [Next.js Performance Optimization](https://nextjs.org/docs/advanced-features/measuring-performance)
-- [MDN Web Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
-- [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
-
 ## ✅ Validation Checklist
 
 - [x] Complete Nextra configuration patterns documented
@@ -784,3 +790,4 @@ npm run test:docs
 - [x] Real-world usage examples included
 - [x] TypeScript configuration templates provided
 - [x] Build optimization strategies documented
+

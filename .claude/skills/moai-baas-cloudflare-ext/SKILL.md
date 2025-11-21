@@ -3,20 +3,9 @@ name: moai-baas-cloudflare-ext
 description: Enterprise Cloudflare Edge Platform with AI-powered edge computing architecture,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Cloudflare Edge Platform Expert 
-
----
-
-## What It Does
-
-Enterprise Cloudflare Edge Platform expert with AI-powered edge computing architecture, Context7 integration, and intelligent global orchestration for scalable modern applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Edge Architecture** using Context7 MCP for latest edge patterns
-- 📊 **Intelligent Global Orchestration** with automated edge resource optimization
-- 🚀 **Advanced Workers Runtime** with AI-driven performance optimization
-- 🔗 **Enterprise Edge Security** with zero-configuration DDoS protection
-- 📈 **Predictive Performance Analytics** with global latency optimization
 
 ---
 
@@ -37,6 +26,214 @@ Enterprise Cloudflare Edge Platform expert with AI-powered edge computing archit
 ---
 
 # Quick Reference (Level 1)
+
+## Edge Security Implementation
+
+```typescript
+// Advanced WAF and security rules configuration
+export class EdgeSecurityManager {
+  private wafRules: WAFRule[] = [
+    {
+      id: 'sql_injection_protection',
+      expression: '(http.request.uri.query contains "SELECT" or http.request.uri.query contains "INSERT" or http.request.uri.query contains "DELETE") and (http.request.uri.query contains "UNION" or http.request.uri.query contains "DROP")',
+      action: 'block',
+      description: 'Block SQL injection attempts'
+    },
+    {
+      id: 'xss_protection',
+      expression: 'http.request.body.raw contains "<script>" or http.request.uri.query contains "<script>"',
+      action: 'block',
+      description: 'Block XSS attempts'
+    },
+    {
+      id: 'rate_limiting',
+      expression: 'http.request.method in {"POST", "PUT", "DELETE"} and ip.src.neq.192.0.2.0/24',
+      action: 'rate_limit',
+      rate_limit: {
+        requests_per_minute: 60,
+        burst: 10
+      },
+      description: 'Rate limit non-admin requests'
+    }
+  ];
+
+  configureWASRules(): WAFConfiguration {
+    return {
+      rules: this.wafRules,
+      custom_response: {
+        status: 403,
+        content: '{"error": "Access denied"}',
+        headers: { 'Content-Type': 'application/json' }
+      },
+      logging: {
+        enabled: true,
+        redact_sensitive_data: true
+      }
+    };
+  }
+}
+
+// DDoS protection and rate limiting
+export class DDoSProtection {
+  private rateLimiters: Map<string, RateLimiter> = new Map();
+
+  async handleRequest(request: Request, env: Env): Promise<Response | null> {
+    const clientIP = request.headers.get('CF-Connecting-IP');
+    const userAgent = request.headers.get('User-Agent');
+    
+    // Check IP reputation
+    const reputation = await this.checkIPReputation(clientIP, env);
+    if (reputation.isMalicious) {
+      return new Response('Blocked', { status: 403 });
+    }
+
+    // Apply rate limiting
+    if (!await this.checkRateLimit(clientIP, request.url, env)) {
+      return new Response('Rate limit exceeded', { 
+        status: 429,
+        headers: { 'Retry-After': '60' }
+      });
+    }
+
+    // Check for suspicious patterns
+    const suspiciousScore = await this.analyzeRequestPatterns(request, env);
+    if (suspiciousScore > 0.8) {
+      // Enable additional verification
+      return this.requireAdditionalVerification(request, env);
+    }
+
+    return null; // Allow request to proceed
+  }
+
+  private async checkRateLimit(ip: string, endpoint: string, env: Env): Promise<boolean> {
+    const key = `rate_limit:${ip}:${endpoint}`;
+    const now = Date.now();
+    const window = 60000; // 1 minute
+    const limit = 100; // requests per minute
+
+    const current = await env.KV.get(key);
+    const count = current ? parseInt(current) : 0;
+
+    if (count >= limit) {
+      return false;
+    }
+
+    // Increment counter with expiration
+    await env.KV.put(key, (count + 1).toString(), { expirationTtl: 60 });
+    return true;
+  }
+}
+```
+
+### Global Performance Optimization
+
+```typescript
+// Smart routing and cache optimization
+export class GlobalPerformanceOptimizer {
+  async optimizeGlobalRouting(request: Request, env: Env): Promise<OptimalRoute> {
+    const clientIP = request.headers.get('CF-Connecting-IP');
+    const userLocation = request.cf?.colo; // Cloudflare data center location
+    
+    // Determine optimal edge location
+    const optimalRegion = await this.findOptimalRegion(clientIP, userLocation);
+    
+    // Configure smart caching
+    const cacheStrategy = this.determineCacheStrategy(request.url, request.method);
+    
+    return {
+      region: optimalRegion,
+      cacheStrategy,
+      estimatedLatency: this.estimateLatency(userLocation, optimalRegion)
+    };
+  }
+
+  private determineCacheStrategy(url: string, method: string): CacheStrategy {
+    const isGET = method === 'GET';
+    const isAPI = url.includes('/api/');
+    const isStatic = url.includes('/static/') || url.match(/\.(css|js|png|jpg|webp)$/i);
+
+    if (isStatic) {
+      return {
+        edgeTTL: 86400, // 1 day
+        browserTTL: 3600, // 1 hour
+        cacheKey: url,
+        vary: ['Accept-Encoding']
+      };
+    }
+
+    if (isAPI && isGET) {
+      return {
+        edgeTTL: 300, // 5 minutes
+        browserTTL: 60, // 1 minute
+        cacheKey: url,
+        vary: ['Authorization', 'Accept']
+      };
+    }
+
+    return {
+      edgeTTL: 0, // No caching
+      browserTTL: 0,
+      cacheKey: null
+    };
+  }
+
+  // Smart image optimization at the edge
+  async optimizeImages(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    
+    if (!url.pathname.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+      return fetch(request);
+    }
+
+    // Parse image transformation parameters
+    const width = url.searchParams.get('w');
+    const height = url.searchParams.get('h');
+    const quality = url.searchParams.get('q') || '80';
+    const format = url.searchParams.get('f');
+
+    // Fetch original image
+    const originalResponse = await fetch(request);
+    if (!originalResponse.ok) {
+      return originalResponse;
+    }
+
+    // Transform image using Cloudflare Image Resizing
+    if (env.IMAGE_RESIZING_ENABLED) {
+      const transformedUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/images/v2/transform`;
+      
+      const transformResponse = await fetch(transformedUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          input: { url: request.url },
+          transforms: [
+            { resize: { width: parseInt(width), height: parseInt(height) } },
+            { quality: parseInt(quality) },
+            { output: { format: format || 'auto' } }
+          ]
+        })
+      });
+
+      if (transformResponse.ok) {
+        return transformResponse;
+      }
+    }
+
+    return originalResponse;
+  }
+}
+```
+
+---
+
+# Reference & Integration (Level 4)
+
+---
+
+## Core Implementation
 
 ## Cloudflare Edge Platform (November 2025)
 
@@ -349,282 +546,10 @@ export class RealtimeRoom {
 
 # Advanced Implementation (Level 3)
 
-## Edge Security Implementation
 
-```typescript
-// Advanced WAF and security rules configuration
-export class EdgeSecurityManager {
-  private wafRules: WAFRule[] = [
-    {
-      id: 'sql_injection_protection',
-      expression: '(http.request.uri.query contains "SELECT" or http.request.uri.query contains "INSERT" or http.request.uri.query contains "DELETE") and (http.request.uri.query contains "UNION" or http.request.uri.query contains "DROP")',
-      action: 'block',
-      description: 'Block SQL injection attempts'
-    },
-    {
-      id: 'xss_protection',
-      expression: 'http.request.body.raw contains "<script>" or http.request.uri.query contains "<script>"',
-      action: 'block',
-      description: 'Block XSS attempts'
-    },
-    {
-      id: 'rate_limiting',
-      expression: 'http.request.method in {"POST", "PUT", "DELETE"} and ip.src.neq.192.0.2.0/24',
-      action: 'rate_limit',
-      rate_limit: {
-        requests_per_minute: 60,
-        burst: 10
-      },
-      description: 'Rate limit non-admin requests'
-    }
-  ];
-
-  configureWASRules(): WAFConfiguration {
-    return {
-      rules: this.wafRules,
-      custom_response: {
-        status: 403,
-        content: '{"error": "Access denied"}',
-        headers: { 'Content-Type': 'application/json' }
-      },
-      logging: {
-        enabled: true,
-        redact_sensitive_data: true
-      }
-    };
-  }
-}
-
-// DDoS protection and rate limiting
-export class DDoSProtection {
-  private rateLimiters: Map<string, RateLimiter> = new Map();
-
-  async handleRequest(request: Request, env: Env): Promise<Response | null> {
-    const clientIP = request.headers.get('CF-Connecting-IP');
-    const userAgent = request.headers.get('User-Agent');
-    
-    // Check IP reputation
-    const reputation = await this.checkIPReputation(clientIP, env);
-    if (reputation.isMalicious) {
-      return new Response('Blocked', { status: 403 });
-    }
-
-    // Apply rate limiting
-    if (!await this.checkRateLimit(clientIP, request.url, env)) {
-      return new Response('Rate limit exceeded', { 
-        status: 429,
-        headers: { 'Retry-After': '60' }
-      });
-    }
-
-    // Check for suspicious patterns
-    const suspiciousScore = await this.analyzeRequestPatterns(request, env);
-    if (suspiciousScore > 0.8) {
-      // Enable additional verification
-      return this.requireAdditionalVerification(request, env);
-    }
-
-    return null; // Allow request to proceed
-  }
-
-  private async checkRateLimit(ip: string, endpoint: string, env: Env): Promise<boolean> {
-    const key = `rate_limit:${ip}:${endpoint}`;
-    const now = Date.now();
-    const window = 60000; // 1 minute
-    const limit = 100; // requests per minute
-
-    const current = await env.KV.get(key);
-    const count = current ? parseInt(current) : 0;
-
-    if (count >= limit) {
-      return false;
-    }
-
-    // Increment counter with expiration
-    await env.KV.put(key, (count + 1).toString(), { expirationTtl: 60 });
-    return true;
-  }
-}
-```
-
-### Global Performance Optimization
-
-```typescript
-// Smart routing and cache optimization
-export class GlobalPerformanceOptimizer {
-  async optimizeGlobalRouting(request: Request, env: Env): Promise<OptimalRoute> {
-    const clientIP = request.headers.get('CF-Connecting-IP');
-    const userLocation = request.cf?.colo; // Cloudflare data center location
-    
-    // Determine optimal edge location
-    const optimalRegion = await this.findOptimalRegion(clientIP, userLocation);
-    
-    // Configure smart caching
-    const cacheStrategy = this.determineCacheStrategy(request.url, request.method);
-    
-    return {
-      region: optimalRegion,
-      cacheStrategy,
-      estimatedLatency: this.estimateLatency(userLocation, optimalRegion)
-    };
-  }
-
-  private determineCacheStrategy(url: string, method: string): CacheStrategy {
-    const isGET = method === 'GET';
-    const isAPI = url.includes('/api/');
-    const isStatic = url.includes('/static/') || url.match(/\.(css|js|png|jpg|webp)$/i);
-
-    if (isStatic) {
-      return {
-        edgeTTL: 86400, // 1 day
-        browserTTL: 3600, // 1 hour
-        cacheKey: url,
-        vary: ['Accept-Encoding']
-      };
-    }
-
-    if (isAPI && isGET) {
-      return {
-        edgeTTL: 300, // 5 minutes
-        browserTTL: 60, // 1 minute
-        cacheKey: url,
-        vary: ['Authorization', 'Accept']
-      };
-    }
-
-    return {
-      edgeTTL: 0, // No caching
-      browserTTL: 0,
-      cacheKey: null
-    };
-  }
-
-  // Smart image optimization at the edge
-  async optimizeImages(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    
-    if (!url.pathname.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
-      return fetch(request);
-    }
-
-    // Parse image transformation parameters
-    const width = url.searchParams.get('w');
-    const height = url.searchParams.get('h');
-    const quality = url.searchParams.get('q') || '80';
-    const format = url.searchParams.get('f');
-
-    // Fetch original image
-    const originalResponse = await fetch(request);
-    if (!originalResponse.ok) {
-      return originalResponse;
-    }
-
-    // Transform image using Cloudflare Image Resizing
-    if (env.IMAGE_RESIZING_ENABLED) {
-      const transformedUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/images/v2/transform`;
-      
-      const transformResponse = await fetch(transformedUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          input: { url: request.url },
-          transforms: [
-            { resize: { width: parseInt(width), height: parseInt(height) } },
-            { quality: parseInt(quality) },
-            { output: { format: format || 'auto' } }
-          ]
-        })
-      });
-
-      if (transformResponse.ok) {
-        return transformResponse;
-      }
-    }
-
-    return originalResponse;
-  }
-}
-```
 
 ---
 
-# Reference & Integration (Level 4)
+## Reference & Resources
 
-## API Reference
-
-### Core Cloudflare Operations
-- `create_worker(script, bindings)` - Deploy Workers script
-- `create_pages_project(project_config)` - Create Pages project
-- `create_durable_object(class_name, script_name)` - Deploy Durable Object
-- `create_kv_namespace(name)` - Create KV storage namespace
-- `create_d1_database(name)` - Create D1 database
-- `configure_waf(rules)` - Configure WAF rules
-
-### Context7 Integration
-- `get_latest_cloudflare_documentation()` - Official Cloudflare docs via Context7
-- `analyze_edge_performance_patterns()` - Edge optimization via Context7
-- `optimize_workers_configuration()` - Workers best practices via Context7
-
-## Best Practices (November 2025)
-
-### DO
-- Use Workers for compute-intensive tasks at the edge
-- Implement comprehensive caching strategies
-- Configure DDoS protection and WAF rules
-- Use Durable Objects for real-time collaboration features
-- Optimize global routing for minimum latency
-- Monitor edge performance and costs
-- Use appropriate storage (KV, D1, R2) based on use case
-- Implement security headers and policies
-
-### DON'T
-- Deploy large applications to Workers (size limits apply)
-- Skip security configuration for production
-- Ignore edge computing costs and limits
-- Use D1 for highly transactional workloads
-- Forget to implement proper error handling
-- Neglect monitoring and observability
-- Overuse edge resources when origin is sufficient
-- Skip compliance requirements for data residency
-
-## Works Well With
-
-- `moai-baas-foundation` (Enterprise BaaS architecture patterns)
-- `moai-domain-frontend` (Frontend edge optimization)
-- `moai-security-api` (API security implementation)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-foundation-trust` (Security and compliance)
-- `moai-baas-vercel-ext` (Edge deployment comparison)
-- `moai-baas-railway-ext` (Full-stack deployment alternative)
-- `moai-domain-backend` (Backend edge optimization)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Cloudflare platform updates, and advanced edge security patterns
-- **v2.0.0** (2025-11-11): Complete metadata structure, edge patterns, Workers optimization
-- **v1.0.0** (2025-11-11): Initial Cloudflare edge platform
-
----
-
-**End of Skill** | Updated 2025-11-13
-
-## Security & Compliance
-
-### Edge Security Framework
-- Zero-trust network architecture with Cloudflare Access
-- Advanced DDoS protection with automatic mitigation
-- Web Application Firewall with custom rules and ML protection
-- Bot management and CAPTCHA integration
-
-### Data Protection
-- End-to-end encryption for all edge communications
-- GDPR compliance with data processing at the edge
-- Regional data residency with smart routing
-- Comprehensive audit logging and monitoring
-
----
-
-**End of Enterprise Cloudflare Edge Platform Expert **
+See [reference.md](reference.md) for detailed API reference and official documentation.

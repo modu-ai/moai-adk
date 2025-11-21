@@ -6,7 +6,25 @@ description: Enterprise GitHub issue labeling orchestrator with semantic label t
   label management, workflow automation, priority assignment, and team communication
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise GitHub Issue Labeling Orchestrator 
+
+## Related Skills
+
+- `moai-alfred-practices` (Workflow patterns)
+- `moai-foundation-specs` (Issue specification)
+
+---
+
+**For detailed label reference**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -184,14 +202,9 @@ Duplicate → linked to original
 
 ---
 
-## Related Skills
-
-- `moai-alfred-practices` (Workflow patterns)
-- `moai-foundation-specs` (Issue specification)
-
 ---
 
-**For detailed label reference**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )
+## Advanced Patterns
+
+
+

@@ -13,12 +13,12 @@ Commands:
     - batch_update: Update all completed SPECs
 """
 
-import argparse
-import json
 import sys
-from datetime import datetime
+import json
+import argparse
 from pathlib import Path
-from typing import Any, Dict
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))

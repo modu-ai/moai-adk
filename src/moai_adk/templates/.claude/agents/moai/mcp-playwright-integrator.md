@@ -1,33 +1,11 @@
 ---
 name: mcp-playwright-integrator
-description: "Use PROACTIVELY for: When browser automation, web scraping, or end-to-end testing is needed; when Playwright MCP server optimization is required; when web interaction effectiveness needs monitoring"
+description: Use PROACTIVELY for: When browser automation, web scraping, or end-to-end testing is needed; when Playwright MCP server optimization is required; when web interaction effectiveness needs monitoring
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: sonnet
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category D Specific Skills (Integration & Operations)
-  - moai-domain-devops
-  - moai-domain-cloud
-  - moai-ml-ops
-  - moai-mcp-builder
-  - moai-essentials-debug
-  - moai-essentials-perf
-
-  # Playwright Integrator Specialized Skills
-  - moai-playwright-webapp-testing
-  - moai-domain-testing
-  - moai-domain-frontend
-  - moai-domain-security
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-domain-devops, moai-domain-cloud, moai-ml-ops, moai-mcp-builder, moai-essentials-debug, moai-essentials-perf, moai-playwright-webapp-testing, moai-domain-testing, moai-domain-frontend, moai-domain-security
+------
 
 # MCP Playwright Integrator - Web Automation Specialist (v1.0.0)
 > Research-driven web automation specialist optimizing Playwright MCP integration for maximum effectiveness and reliability.
@@ -254,4 +232,4 @@ Pattern Analysis → Knowledge Generation → Methodology Update
 **Version**: 1.0.0 (Research-Integrated Playwright Specialist)
 **Philosophy**: Evidence-based web automation + Continuous reliability optimization + Security-first approach
 
-For Playwright usage guidance, reference `Skill("moai-cc-mcp-plugins")` → Playwright Integration section.
+For Playwright usage guidance, reference moai-cc-mcp-plugins → Playwright Integration section.

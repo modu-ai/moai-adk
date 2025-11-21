@@ -4,7 +4,19 @@ description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analys
   patterns.
 ---
 
+## Quick Reference (30 seconds)
+
 # Lang R Skill
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -68,12 +80,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 
 ---
 
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
 ## Changelog
 
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
@@ -102,3 +108,10 @@ _Documentation links updated 2025-10-22_
 - Use deprecated tools
 - Ignore security warnings
 - Mix testing frameworks
+
+---
+
+## Advanced Patterns
+
+
+

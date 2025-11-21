@@ -3,12 +3,46 @@ name: moai-security-secrets
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-secrets: Secret Management & Rotation
 
 **Secure Credential Storage, Rotation & Distribution**  
 Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
 ---
+
+## Reference
+
+### Official Resources
+- HashiCorp Vault: https://www.vaultproject.io/
+- Sealed Secrets: https://github.com/bitnami-labs/sealed-secrets
+- AWS Secrets Manager: https://aws.amazon.com/secrets-manager/
+- Azure Key Vault: https://azure.microsoft.com/services/key-vault/
+
+### Tools & Libraries
+- **@hashicorp/vault-client**: https://github.com/hashicorp/vault-client-node
+- **dotenv**: https://github.com/motdotla/dotenv
+- **dotenv-safe**: https://github.com/rolodato/dotenv-safe
+- **sealed-secrets**: https://github.com/bitnami-labs/sealed-secrets
+
+### Common Vulnerabilities
+- CWE-798: Hard-coded Credentials
+- CWE-321: Use of Hard-coded Cryptographic Key
+- CWE-798: Hardcoded Passwords
+- OWASP A02:2021: Cryptographic Failures
+
+---
+
+**Version**: 4.0.0 Enterprise  
+**Skill Category**: Security (Secret Management)  
+**Complexity**: Advanced  
+**Time to Implement**: 4-6 hours  
+**Prerequisites**: DevOps, Kubernetes basics, cryptography concepts
+
+---
+
+## Implementation Guide
 
 ## Overview
 
@@ -427,30 +461,9 @@ class ZKAuth {
 
 ---
 
-## Reference
-
-### Official Resources
-- HashiCorp Vault: https://www.vaultproject.io/
-- Sealed Secrets: https://github.com/bitnami-labs/sealed-secrets
-- AWS Secrets Manager: https://aws.amazon.com/secrets-manager/
-- Azure Key Vault: https://azure.microsoft.com/services/key-vault/
-
-### Tools & Libraries
-- **@hashicorp/vault-client**: https://github.com/hashicorp/vault-client-node
-- **dotenv**: https://github.com/motdotla/dotenv
-- **dotenv-safe**: https://github.com/rolodato/dotenv-safe
-- **sealed-secrets**: https://github.com/bitnami-labs/sealed-secrets
-
-### Common Vulnerabilities
-- CWE-798: Hard-coded Credentials
-- CWE-321: Use of Hard-coded Cryptographic Key
-- CWE-798: Hardcoded Passwords
-- OWASP A02:2021: Cryptographic Failures
-
 ---
 
-**Version**: 4.0.0 Enterprise  
-**Skill Category**: Security (Secret Management)  
-**Complexity**: Advanced  
-**Time to Implement**: 4-6 hours  
-**Prerequisites**: DevOps, Kubernetes basics, cryptography concepts
+## Advanced Patterns
+
+
+

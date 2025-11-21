@@ -3,6 +3,8 @@ name: moai-domain-database
 description: Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS,  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization,  caching strategies, and database DevOps automation. Build scalable, resilient  database systems with comprehensive monitoring and disaster recovery.
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Database Architecture
 
 ## Level 1: Quick Reference
@@ -47,6 +49,21 @@ AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 ```
+
+## Quick Start Checklist
+
+- [ ] Select appropriate database engine (PostgreSQL 17/MySQL 8.4/MongoDB 8.0)
+- [ ] Configure connection pooling (PgBouncer/ProxySQL)
+- [ ] Implement query monitoring and optimization
+- [ ] Setup caching strategy with Redis 7.4
+- [ ] Configure database backups and replication
+- [ ] Implement security measures and RLS
+- [ ] Setup monitoring and alerting
+- [ ] Create disaster recovery procedures
+
+---
+
+## Implementation Guide
 
 ## Level 2: Practical Implementation
 
@@ -381,17 +398,6 @@ CREATE TRIGGER sensitive_data_audit
 - **moai-domain-ml-ops**: ML model database integration
 - **moai-domain-devops**: Database infrastructure as code
 
-## Quick Start Checklist
-
-- [ ] Select appropriate database engine (PostgreSQL 17/MySQL 8.4/MongoDB 8.0)
-- [ ] Configure connection pooling (PgBouncer/ProxySQL)
-- [ ] Implement query monitoring and optimization
-- [ ] Setup caching strategy with Redis 7.4
-- [ ] Configure database backups and replication
-- [ ] Implement security measures and RLS
-- [ ] Setup monitoring and alerting
-- [ ] Create disaster recovery procedures
-
 ## Performance Optimization Tips
 
 1. **Connection Pooling**: Always use connection pools with appropriate sizing
@@ -406,3 +412,10 @@ CREATE TRIGGER sensitive_data_audit
 ---
 
 **Enterprise Database Architecture** - Build scalable, secure, and high-performance database systems with modern best practices and comprehensive automation.
+
+---
+
+## Advanced Patterns
+
+
+

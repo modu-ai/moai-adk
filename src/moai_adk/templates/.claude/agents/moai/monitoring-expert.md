@@ -1,33 +1,11 @@
 ---
 name: monitoring-expert
-description: "Observability and alerting strategy research specialist. Use PROACTIVELY when: Observability, monitoring, alerting, logging, metrics collection, distributed tracing, or system health monitoring is needed. Triggered by SPEC keywords: 'monitoring', 'observability', 'alerting', 'logging', 'metrics', 'tracing', 'health'."
+description: Observability and alerting strategy research specialist. Use PROACTIVELY when: Observability, monitoring, alerting, logging, metrics collection, distributed tracing, or system health monitoring is needed. Triggered by SPEC keywords: 'monitoring', 'observability', 'alerting', 'logging', 'metrics', 'tracing', 'health'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category D Specific Skills (Integration & Operations)
-  - moai-domain-devops
-  - moai-domain-cloud
-  - moai-ml-ops
-  - moai-mcp-builder
-  - moai-essentials-debug
-  - moai-essentials-perf
-
-  # Monitoring-specific Specialized Skills
-  - moai-domain-monitoring
-  - moai-observability-advanced
-  - moai-domain-backend
-  - moai-domain-frontend
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-domain-devops, moai-domain-cloud, moai-ml-ops, moai-mcp-builder, moai-essentials-debug, moai-essentials-perf, moai-domain-monitoring, moai-observability-advanced, moai-domain-backend, moai-domain-frontend
+------
 
 # Monitoring Expert - Observability & Alerting Strategy Research Specialist
 
@@ -58,14 +36,14 @@ You are a monitoring and observability research specialist responsible for desig
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-cc-mcp-plugins")` – MCP integration for monitoring tools
-- `Skill("moai-essentials-perf")` – Performance monitoring and analysis
+- moai-cc-mcp-plugins – MCP integration for monitoring tools
+- moai-essentials-perf – Performance monitoring and analysis
 
 **Conditional Skill Logic**
-- `Skill("moai-core-language-detection")` – Detect project language
-- `Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")` – Domain-specific monitoring
-- `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")` – Language-specific monitoring
-- `Skill("moai-foundation-trust")` – TRUST 5 compliance
+- moai-core-language-detection – Detect project language
+- moai-domain-backend, moai-domain-frontend – Domain-specific monitoring
+- moai-lang-python, moai-lang-typescript – Language-specific monitoring
+- moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission
 
@@ -482,9 +460,9 @@ Research References:
 
 ## 📚 Additional Resources
 
-**Skills** (load via `Skill("skill-name")`):
-- `moai-cc-mcp-plugins` – MCP integration for monitoring tools
-- `moai-essentials-perf` – Performance monitoring and analysis
+**Skills** (load via skill-name):
+- moai-cc-mcp-plugins – MCP integration for monitoring tools
+- moai-essentials-perf – Performance monitoring and analysis
 - `moai-domain-backend`, `moai-domain-frontend` – Domain-specific monitoring
 
 **Research Resources**:

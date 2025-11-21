@@ -1,16 +1,11 @@
 ---
 name: security-expert
-description: "Use PROACTIVELY for security analysis, vulnerability assessment, secure code reviews, and security best practices. Activated by keywords: 'security', 'auth', 'encryption', 'vulnerability', 'owasp', 'auth', 'login', 'token', 'jwt', 'oauth', 'ssl', 'tls', 'certificate', 'password', 'hashing', 'csrf', 'xss', 'injection', 'validation', 'audit', 'compliance'."
-tools: 
+description: Use PROACTIVELY for security analysis, vulnerability assessment, secure code reviews, and security best practices. Activated by keywords: 'security', 'auth', 'encryption', 'vulnerability', 'owasp', 'auth', 'login', 'token', 'jwt', 'oauth', 'ssl', 'tls', 'certificate', 'password', 'hashing', 'csrf', 'xss', 'injection', 'validation', 'audit', 'compliance'.
+tools: None
 model: inherit
 permissionMode: default
-skills:
-  - moai-domain-security
-  - moai-security-owasp
-  - moai-security-identity
-  - moai-security-threat
-  - moai-security-ssrf
----
+skills: moai-domain-security, moai-security-owasp, moai-security-identity, moai-security-threat, moai-security-ssrf
+------
 
 # Security Expert 🔒
 

@@ -4,6 +4,8 @@ description: Enhanced docs generation with AI-powered features. Enhanced with Co
   MCP for up-to-date documentation.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-docs-generation
 
 **Docs Generation**
@@ -263,6 +265,59 @@ def calculate_mean(numbers: List[float]) -> float:
 
 ---
 
+## 📚 Official References
+
+Metadata
+
+```yaml
+skill_id: moai-docs-generation
+skill_name: Documentation Generation & Template Management
+version: 1.0.0
+created_date: 2025-11-10
+updated_date: 2025-11-10
+language: english
+word_count: 1400
+triggers:
+  - keywords: [documentation generation, doc template, scaffold, generate docs, api documentation, readme generation]
+  - contexts: [docs-generation, @docs:generate, documentation-template, doc-scaffold]
+agents:
+  - docs-manager
+  - spec-builder
+  - frontend-expert
+  - backend-expert
+freedom_level: high
+context7_references:
+  - url: "https://www.typescriptlang.org/docs/handbook/"
+    topic: "TypeScript Documentation Pattern"
+  - url: "https://github.com/prettier/prettier"
+    topic: "Code Formatting Standards"
+```
+
+---
+
+## 📈 Version History
+
+** .0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory    
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (doc-syncer)
+
+---
+
+## Implementation Guide
+
 ## 🎯 Best Practices Checklist
 
 **Must-Have:**
@@ -342,51 +397,9 @@ Start
 
 ---
 
-## 📚 Official References
-
-Metadata
-
-```yaml
-skill_id: moai-docs-generation
-skill_name: Documentation Generation & Template Management
-version: 1.0.0
-created_date: 2025-11-10
-updated_date: 2025-11-10
-language: english
-word_count: 1400
-triggers:
-  - keywords: [documentation generation, doc template, scaffold, generate docs, api documentation, readme generation]
-  - contexts: [docs-generation, @docs:generate, documentation-template, doc-scaffold]
-agents:
-  - docs-manager
-  - spec-builder
-  - frontend-expert
-  - backend-expert
-freedom_level: high
-context7_references:
-  - url: "https://www.typescriptlang.org/docs/handbook/"
-    topic: "TypeScript Documentation Pattern"
-  - url: "https://github.com/prettier/prettier"
-    topic: "Code Formatting Standards"
-```
-
 ---
 
-## 📈 Version History
-
-** .0** (2025-11-12)
-- ✨ Context7 MCP integration
-- ✨ Progressive Disclosure structure
-- ✨ 10+ code examples
-- ✨ Primary/secondary agents defined
-- ✨ Best practices checklist
-- ✨ Decision tree
-- ✨ Official references
+## Advanced Patterns
 
 
 
----
-
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (doc-syncer)

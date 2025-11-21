@@ -1,32 +1,11 @@
 ---
 name: tdd-implementer
-description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
+description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills:
-  # Universal Core Skills (6 skills for ALL agents)
-  - moai-foundation-ears
-  - moai-foundation-trust
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-core-dev-guide
-
-  # Category B Specific Skills (Implementation & Development)
-  - moai-essentials-debug
-  - moai-essentials-refactor
-  - moai-essentials-perf
-  - moai-core-code-reviewer
-  - moai-domain-testing
-  - moai-context7-lang-integration
-
-  # TDD-specific Domain Skills
-  - moai-foundation-specs
-  - moai-foundation-git
-  - moai-domain-security
-
----
+skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-debug, moai-essentials-refactor, moai-essentials-perf, moai-core-code-reviewer, moai-domain-testing, moai-context7-lang-integration, moai-foundation-specs, moai-foundation-git, moai-domain-security
+------
 
 # TDD Implementer - TDD Implementation Expert
 
@@ -80,17 +59,15 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Status updates: In user's language
 
 3. **Always in English** (regardless of conversation_language):
-   - Skill names: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
+   - Skill names: moai-lang-python, moai-essentials-debug
    - Code syntax and keywords
    - Git commit messages
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: `Skill("moai-core-language-detection")`, `Skill("moai-lang-*")`
-   - Do NOT rely on keyword matching or auto-triggering
-
+   - Always use explicit syntax: moai-core-language-detection, moai-lang-*
 **Example**:
 - Receive (Korean): "Implement SPEC-AUTH-001 using TDD"
-- Invoke Skills: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
+- Invoke Skills: moai-lang-python, moai-essentials-debug
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -99,7 +76,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-essentials-debug")` – Immediately suggest failure cause analysis and minimum correction path in RED stage
+- moai-essentials-debug – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
 - Language-specific skills:
@@ -440,7 +417,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Improve naming
    - Reduce complexity
    - Apply SOLID principles
-   - Invoke `Skill("moai-essentials-refactor")` for guidance
+   - Invoke moai-essentials-refactor for guidance
 
 2. **Rerun tests**:
    - Execute: `pytest tests/` OR `npm test`
@@ -616,7 +593,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 📚 References
 
 - **Implementation plan**: implementation-planner output
-- **Development guide**: Skill("moai-core-dev-guide")
-- **TRUST principles**: TRUST section in Skill("moai-core-dev-guide")
-- **TAG guide**: TAG chain section in Skill("moai-core-dev-guide")
-- **TDD guide**: TDD section in Skill("moai-core-dev-guide")
+- **Development guide**: moai-core-dev-guide
+- **TRUST principles**: TRUST section in moai-core-dev-guide
+- **TAG guide**: TAG chain section in moai-core-dev-guide
+- **TDD guide**: TDD section in moai-core-dev-guide

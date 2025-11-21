@@ -4,6 +4,8 @@ description: Enhanced docs linting with AI-powered features. Enhanced with Conte
   MCP for up-to-date documentation.
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-docs-linting
 
 **Docs Linting**
@@ -317,6 +319,58 @@ python3 .moai/scripts/generate_final_comprehensive_report.py
 
 ---
 
+## 📚 Official References
+
+Metadata
+
+```yaml
+skill_id: moai-docs-linting
+skill_name: Documentation Linting & Markdown Validation
+version: 1.0.0
+created_date: 2025-11-10
+updated_date: 2025-11-10
+language: english
+word_count: 1400
+triggers:
+  - keywords: [markdown lint, documentation validation, lint check, header validation, code block, link validation, table format]
+  - contexts: [docs-linting, @docs:lint, documentation-validation, quality-gate]
+agents:
+  - docs-manager
+  - docs-auditor
+  - quality-gate
+freedom_level: high
+context7_references:
+  - url: "https://github.com/igorshubovych/markdownlint"
+    topic: "Markdownlint Rules"
+  - url: "https://www.markdownguide.org/basic-syntax/"
+    topic: "Markdown Basic Syntax"
+```
+
+---
+
+## 📈 Version History
+
+** .0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory    
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (doc-syncer)
+
+---
+
+## Implementation Guide
+
 ## 🎯 Best Practices Checklist
 
 **Must-Have:**
@@ -396,50 +450,9 @@ Start
 
 ---
 
-## 📚 Official References
-
-Metadata
-
-```yaml
-skill_id: moai-docs-linting
-skill_name: Documentation Linting & Markdown Validation
-version: 1.0.0
-created_date: 2025-11-10
-updated_date: 2025-11-10
-language: english
-word_count: 1400
-triggers:
-  - keywords: [markdown lint, documentation validation, lint check, header validation, code block, link validation, table format]
-  - contexts: [docs-linting, @docs:lint, documentation-validation, quality-gate]
-agents:
-  - docs-manager
-  - docs-auditor
-  - quality-gate
-freedom_level: high
-context7_references:
-  - url: "https://github.com/igorshubovych/markdownlint"
-    topic: "Markdownlint Rules"
-  - url: "https://www.markdownguide.org/basic-syntax/"
-    topic: "Markdown Basic Syntax"
-```
-
 ---
 
-## 📈 Version History
-
-** .0** (2025-11-12)
-- ✨ Context7 MCP integration
-- ✨ Progressive Disclosure structure
-- ✨ 10+ code examples
-- ✨ Primary/secondary agents defined
-- ✨ Best practices checklist
-- ✨ Decision tree
-- ✨ Official references
+## Advanced Patterns
 
 
 
----
-
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (doc-syncer)

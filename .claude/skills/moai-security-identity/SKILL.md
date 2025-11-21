@@ -3,12 +3,28 @@ name: moai-security-identity
 description: Enterprise Skill for advanced development
 ---
 
+## Quick Reference (30 seconds)
+
 # moai-security-identity: SAML 2.0 & OIDC Identity Management
 
 **Enterprise SSO with SAML 2.0, OpenID Connect & OAuth 2.0**  
 Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
 ---
+
+## Quick Reference
+
+| Feature | Implementation |
+|---------|-----------------|
+| SAML | @node-saml/passport-saml 3.2.4+ |
+| OIDC | openid-client (npm) |
+| JWT | jsonwebtoken (npm) |
+| SCIM | Custom webhook handler |
+| Monitoring | Context7 MCP |
+
+---
+
+## Core Implementation
 
 ## Overview
 
@@ -485,55 +501,6 @@ app.get('/api/protected', (req, res) => {
 
 ---
 
-## Level 3: Advanced
-
-### Advanced: Context7 MCP Integration
-
-```javascript
-const { Context7Client } = require('context7-mcp');
-
-class IdentityThreatIntelligence {
-  constructor(apiKey) {
-    this.context7 = new Context7Client(apiKey);
-  }
-  
-  // Check user identity against threat intelligence
-  async validateUserIdentity(user) {
-    const threats = await this.context7.query({
-      type: 'identity_threat',
-      email: user.email,
-      externalId: user.externalId,
-      tags: ['fraud', 'compromise', 'insider_threat'],
-    });
-    
-    return {
-      safe: threats.severity === 0,
-      severity: threats.severity,
-      details: threats,
-    };
-  }
-  
-  // Monitor provisioning events for anomalies
-  async analyzeProvisioningEvent(event) {
-    const analysis = await this.context7.query({
-      type: 'provisioning_anomaly',
-      eventType: event.eventType,
-      timestamp: event.timestamp,
-      userId: event.externalId,
-    });
-    
-    if (analysis.anomalous) {
-      console.warn('Anomalous provisioning event detected:', analysis);
-      // Alert security team
-    }
-    
-    return analysis;
-  }
-}
-```
-
----
-
 ## Checklist
 
 - [ ] SAML 2.0 strategy configured with certificate verification
@@ -548,14 +515,4 @@ class IdentityThreatIntelligence {
 - [ ] Performance tested at scale
 
 ---
-
-## Quick Reference
-
-| Feature | Implementation |
-|---------|-----------------|
-| SAML | @node-saml/passport-saml 3.2.4+ |
-| OIDC | openid-client (npm) |
-| JWT | jsonwebtoken (npm) |
-| SCIM | Custom webhook handler |
-| Monitoring | Context7 MCP |
 

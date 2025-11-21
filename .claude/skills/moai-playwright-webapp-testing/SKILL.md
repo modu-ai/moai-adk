@@ -5,7 +5,48 @@ description: AI-powered enterprise web application testing orchestrator with Con
   coordination, and automated QA workflows for modern web applications
 ---
 
+## Quick Reference (30 seconds)
+
 # AI-Powered Enterprise Web Application Testing Skill 
+
+## 🧠 AI-Enhanced Testing Methodology (AI-TEST Framework)
+
+### **A** - **AI Test Pattern Recognition**
+```python
+class AITestPatternRecognizer:
+    """AI-powered test pattern detection and classification."""
+    
+    async def analyze_webapp_with_context7(self, webapp_url: str, context: dict) -> TestAnalysis:
+        """Analyze webapp using Context7 documentation and AI pattern matching."""
+        
+        # Get latest testing patterns from Context7
+        playwright_docs = await self.context7.get_library_docs(
+            context7_library_id="/microsoft/playwright",
+            topic="AI testing patterns automated test generation visual regression 2025",
+            tokens=5000
+        )
+        
+        # AI pattern classification
+        app_type = self.classify_application_type(webapp_url, context)
+        test_patterns = self.match_known_test_patterns(app_type, context)
+        
+        # Context7-enhanced analysis
+        context7_insights = self.extract_context7_patterns(app_type, playwright_docs)
+        
+        return TestAnalysis(
+            application_type=app_type,
+            confidence_score=self.calculate_confidence(app_type, test_patterns),
+            recommended_test_strategies=self.generate_test_strategies(app_type, test_patterns, context7_insights),
+            context7_references=context7_insights['references'],
+            automation_opportunities=self.identify_automation_opportunities(app_type, test_patterns)
+        )
+```
+
+---
+
+---
+
+## Implementation Guide
 
 ## 🚀 Revolutionary AI Testing Capabilities
 
@@ -46,41 +87,6 @@ description: AI-powered enterprise web application testing orchestrator with Con
 
 ---
 
-## 🧠 AI-Enhanced Testing Methodology (AI-TEST Framework)
-
-### **A** - **AI Test Pattern Recognition**
-```python
-class AITestPatternRecognizer:
-    """AI-powered test pattern detection and classification."""
-    
-    async def analyze_webapp_with_context7(self, webapp_url: str, context: dict) -> TestAnalysis:
-        """Analyze webapp using Context7 documentation and AI pattern matching."""
-        
-        # Get latest testing patterns from Context7
-        playwright_docs = await self.context7.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="AI testing patterns automated test generation visual regression 2025",
-            tokens=5000
-        )
-        
-        # AI pattern classification
-        app_type = self.classify_application_type(webapp_url, context)
-        test_patterns = self.match_known_test_patterns(app_type, context)
-        
-        # Context7-enhanced analysis
-        context7_insights = self.extract_context7_patterns(app_type, playwright_docs)
-        
-        return TestAnalysis(
-            application_type=app_type,
-            confidence_score=self.calculate_confidence(app_type, test_patterns),
-            recommended_test_strategies=self.generate_test_strategies(app_type, test_patterns, context7_insights),
-            context7_references=context7_insights['references'],
-            automation_opportunities=self.identify_automation_opportunities(app_type, test_patterns)
-        )
-```
-
----
-
 ## 🤖 Context7-Enhanced Testing Patterns
 
 ### AI-Enhanced Visual Regression Testing
@@ -107,37 +113,6 @@ class AIVisualRegressionTester:
             visual_analysis=visual_analysis,
             recommended_actions=self.generate_regression_fixes(visual_analysis)
         )
-```
-
----
-
-## 🎯 Advanced Examples
-
-### AI-Powered E2E Testing
-```python
-async def test_e2e_with_ai_context7():
-    """Test complete user journey using Context7 patterns."""
-    
-    # Get Context7 E2E testing patterns
-    workflow = await context7.get_library_docs(
-        context7_library_id="/microsoft/playwright",
-        topic="end-to-end testing user journey automation",
-        tokens=4000
-    )
-    
-    # Apply Context7 testing sequence
-    test_session = apply_context7_workflow(
-        workflow['testing_sequence'],
-        browsers=['chromium', 'firefox', 'webkit']
-    )
-    
-    # AI coordination across browsers
-    ai_coordinator = AITestCoordinator(test_session)
-    
-    # Execute coordinated testing
-    result = await ai_coordinator.coordinate_cross_browser_testing()
-    
-    return result
 ```
 
 ---
@@ -260,3 +235,39 @@ ai_testing_stage:
 - `moai-foundation-trust` (AI quality assurance)
 - `moai-context7-integration` (latest Playwright patterns and best practices)
 - Context7 MCP (latest testing patterns and documentation)
+
+---
+
+## Advanced Patterns
+
+## 🎯 Advanced Examples
+
+### AI-Powered E2E Testing
+```python
+async def test_e2e_with_ai_context7():
+    """Test complete user journey using Context7 patterns."""
+    
+    # Get Context7 E2E testing patterns
+    workflow = await context7.get_library_docs(
+        context7_library_id="/microsoft/playwright",
+        topic="end-to-end testing user journey automation",
+        tokens=4000
+    )
+    
+    # Apply Context7 testing sequence
+    test_session = apply_context7_workflow(
+        workflow['testing_sequence'],
+        browsers=['chromium', 'firefox', 'webkit']
+    )
+    
+    # AI coordination across browsers
+    ai_coordinator = AITestCoordinator(test_session)
+    
+    # Execute coordinated testing
+    result = await ai_coordinator.coordinate_cross_browser_testing()
+    
+    return result
+```
+
+---
+

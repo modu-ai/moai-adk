@@ -3,20 +3,9 @@ name: moai-core-proactive-suggestions
 description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance,
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Alfred Proactive Suggestions Expert 
-
----
-
-## What It Does
-
-Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assistance, Context7 integration, and intelligent recommendation orchestration for enhanced developer productivity and workflow optimization.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Context Analysis** using Context7 MCP for latest productivity patterns
-- 📊 **Intelligent Suggestion Engine** with automated workflow optimization recommendations
-- 🚀 **Advanced Proactive Assistance** with AI-driven context-aware help and guidance
-- 🔗 **Enterprise Integration Framework** with zero-configuration workflow enhancement
-- 📈 **Predictive Productivity Analytics** with usage forecasting and optimization insights
 
 ---
 
@@ -37,91 +26,6 @@ Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assis
 ---
 
 # Quick Reference (Level 1)
-
-## Proactive Suggestions Framework (November 2025)
-
-### Core Components
-- **Context Analysis**: Real-time analysis of developer activities and patterns
-- **Suggestion Engine**: AI-powered recommendation system based on context
-- **Workflow Optimization**: Automated workflow improvement suggestions
-- **Help System**: Context-aware help and guidance delivery
-- **Productivity Analytics**: Usage pattern analysis and optimization
-
-### Suggestion Types
-- **Code Assistance**: Intelligent code completion and refactoring suggestions
-- **Tool Recommendations**: Optimal tool suggestions for specific tasks
-- **Workflow Improvements**: Process optimization and automation suggestions
-- **Learning Resources**: Targeted learning material and documentation
-- **Best Practices**: Industry-standard patterns and compliance suggestions
-
-### Integration Points
-- **Development Environment**: IDE integration and real-time analysis
-- **Version Control**: Git workflow optimization and collaboration
-- **Build Systems**: Build optimization and dependency management
-- **Documentation**: Automatic documentation generation and maintenance
-- **Testing**: Test coverage improvement and automation suggestions
-
-### Intelligence Features
-- **Pattern Recognition**: Identify recurring patterns and inefficiencies
-- **Learning Adaptation**: Adapt suggestions based on user behavior
-- **Team Collaboration**: Suggest team-wide optimizations
-- **Compliance Monitoring**: Ensure adherence to coding standards
-- **Performance Optimization**: Identify performance bottlenecks and solutions
-
----
-
-# Core Implementation (Level 2)
-
-## Proactive Suggestions Architecture Intelligence
-
-```python
-# AI-powered proactive suggestions architecture optimization with Context7
-class ProactiveSuggestionsArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.productivity_analyzer = ProductivityAnalyzer()
-        self.suggestion_engine = SuggestionEngine()
-    
-    async def design_optimal_suggestions_architecture(self, 
-                                                     requirements: ProductivityRequirements) -> ProactiveSuggestionsArchitecture:
-        """Design optimal proactive suggestions architecture using AI analysis."""
-        
-        # Get latest productivity and AI assistance documentation via Context7
-        productivity_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/productivity/docs',
-            topic="developer productivity workflow optimization 2025",
-            tokens=3000
-        )
-        
-        ai_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/ai-assistance/docs',
-            topic="intelligent suggestions context awareness 2025",
-            tokens=2000
-        )
-        
-        # Optimize suggestion engine
-        suggestion_configuration = self.suggestion_engine.optimize_suggestions(
-            requirements.development_patterns,
-            requirements.team_collaboration,
-            productivity_docs
-        )
-        
-        # Analyze productivity patterns
-        productivity_analysis = self.productivity_analyzer.analyze_patterns(
-            requirements.current_workflows,
-            requirements.productivity_goals,
-            ai_docs
-        )
-        
-        return ProactiveSuggestionsArchitecture(
-            suggestion_engine=suggestion_configuration,
-            context_analysis=self._design_context_analysis(requirements),
-            workflow_optimization=productivity_analysis,
-            learning_system=self._implement_learning_system(requirements),
-            integration_framework=self._design_integration_framework(requirements),
-            monitoring_dashboard=self._create_monitoring_dashboard()
-        )
-```
 
 ## Advanced Suggestion Engine Implementation
 
@@ -611,77 +515,112 @@ class SuggestionFeedback:
 
 # Reference & Integration (Level 4)
 
-## API Reference
+---
 
-### Core Proactive Suggestions Operations
-- `generate_suggestions(context)` - Generate context-aware suggestions
-- `get_personalized_suggestions(user_id)` - Get personalized recommendations
-- `provide_feedback(suggestion_id, feedback)` - Provide feedback on suggestions
-- `analyze_productivity_patterns(user_id)` - Analyze user productivity patterns
-- `optimize_workflow(workflow_context)` - Suggest workflow optimizations
+## Core Implementation
 
-### Context7 Integration
-- `get_latest_productivity_docs()` - Productivity patterns via Context7
-- `analyze_developer_patterns()` - Developer patterns via Context7
-- `optimize_suggestion_engine()` - Suggestion optimization via Context7
+## What It Does
 
-## Best Practices (November 2025)
+Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assistance, Context7 integration, and intelligent recommendation orchestration for enhanced developer productivity and workflow optimization.
 
-### DO
-- Provide context-aware and actionable suggestions
-- Learn from user behavior and adapt recommendations
-- Balance proactive assistance with user autonomy
-- Provide clear implementation guidance and examples
-- Consider user's current workload and priorities
-- Offer different suggestion types (code, workflow, learning)
-- Measure suggestion effectiveness and user satisfaction
-- Respect user privacy and provide opt-out options
-
-### DON'T
-- Overwhelm users with too many suggestions
-- Make suggestions without proper context analysis
-- Ignore user feedback and preferences
-- Provide generic or non-actionable recommendations
-- Interrupt critical development workflows
-- Ignore team collaboration dynamics
-- Skip performance impact analysis
-- Forget to validate suggestion accuracy
-
-## Works Well With
-
-- `moai-alfred-workflow` (Alfred workflow integration)
-- `moai-alfred-agent-guide` (Agent assistance patterns)
-- `moai-foundation-trust` (User trust and adoption)
-- `moai-domain-backend` (Backend optimization suggestions)
-- `moai-domain-frontend` (Frontend optimization suggestions)
-- `moai-essentials-perf` (Performance optimization)
-- `moai-security-api` (Security best practices)
-- `moai-domain-testing` (Testing optimization)
-
-## Changelog
-
-- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, advanced learning adaptation, and intelligent suggestion patterns
-- **v2.0.0** (2025-11-11): Complete metadata structure, suggestion patterns, learning system
-- **v1.0.0** (2025-11-11): Initial proactive suggestions foundation
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Context Analysis** using Context7 MCP for latest productivity patterns
+- 📊 **Intelligent Suggestion Engine** with automated workflow optimization recommendations
+- 🚀 **Advanced Proactive Assistance** with AI-driven context-aware help and guidance
+- 🔗 **Enterprise Integration Framework** with zero-configuration workflow enhancement
+- 📈 **Predictive Productivity Analytics** with usage forecasting and optimization insights
 
 ---
 
-**End of Skill** | Updated 2025-11-13
+## Proactive Suggestions Framework (November 2025)
 
-## Intelligent Assistance Framework
+### Core Components
+- **Context Analysis**: Real-time analysis of developer activities and patterns
+- **Suggestion Engine**: AI-powered recommendation system based on context
+- **Workflow Optimization**: Automated workflow improvement suggestions
+- **Help System**: Context-aware help and guidance delivery
+- **Productivity Analytics**: Usage pattern analysis and optimization
 
-### AI-Powered Features
-- Real-time context analysis and pattern recognition
-- Personalized suggestion adaptation based on user behavior
-- Machine learning for continuous improvement
-- Natural language processing for intelligent assistance
+### Suggestion Types
+- **Code Assistance**: Intelligent code completion and refactoring suggestions
+- **Tool Recommendations**: Optimal tool suggestions for specific tasks
+- **Workflow Improvements**: Process optimization and automation suggestions
+- **Learning Resources**: Targeted learning material and documentation
+- **Best Practices**: Industry-standard patterns and compliance suggestions
 
-### Productivity Enhancement
-- Automated workflow optimization suggestions
-- Performance bottleneck identification and resolution
-- Learning path recommendations and skill gap analysis
-- Team collaboration and communication improvements
+### Integration Points
+- **Development Environment**: IDE integration and real-time analysis
+- **Version Control**: Git workflow optimization and collaboration
+- **Build Systems**: Build optimization and dependency management
+- **Documentation**: Automatic documentation generation and maintenance
+- **Testing**: Test coverage improvement and automation suggestions
+
+### Intelligence Features
+- **Pattern Recognition**: Identify recurring patterns and inefficiencies
+- **Learning Adaptation**: Adapt suggestions based on user behavior
+- **Team Collaboration**: Suggest team-wide optimizations
+- **Compliance Monitoring**: Ensure adherence to coding standards
+- **Performance Optimization**: Identify performance bottlenecks and solutions
 
 ---
 
-**End of Enterprise Alfred Proactive Suggestions Expert **
+# Core Implementation (Level 2)
+
+## Proactive Suggestions Architecture Intelligence
+
+```python
+# AI-powered proactive suggestions architecture optimization with Context7
+class ProactiveSuggestionsArchitectOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.productivity_analyzer = ProductivityAnalyzer()
+        self.suggestion_engine = SuggestionEngine()
+    
+    async def design_optimal_suggestions_architecture(self, 
+                                                     requirements: ProductivityRequirements) -> ProactiveSuggestionsArchitecture:
+        """Design optimal proactive suggestions architecture using AI analysis."""
+        
+        # Get latest productivity and AI assistance documentation via Context7
+        productivity_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/productivity/docs',
+            topic="developer productivity workflow optimization 2025",
+            tokens=3000
+        )
+        
+        ai_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/ai-assistance/docs',
+            topic="intelligent suggestions context awareness 2025",
+            tokens=2000
+        )
+        
+        # Optimize suggestion engine
+        suggestion_configuration = self.suggestion_engine.optimize_suggestions(
+            requirements.development_patterns,
+            requirements.team_collaboration,
+            productivity_docs
+        )
+        
+        # Analyze productivity patterns
+        productivity_analysis = self.productivity_analyzer.analyze_patterns(
+            requirements.current_workflows,
+            requirements.productivity_goals,
+            ai_docs
+        )
+        
+        return ProactiveSuggestionsArchitecture(
+            suggestion_engine=suggestion_configuration,
+            context_analysis=self._design_context_analysis(requirements),
+            workflow_optimization=productivity_analysis,
+            learning_system=self._implement_learning_system(requirements),
+            integration_framework=self._design_integration_framework(requirements),
+            monitoring_dashboard=self._create_monitoring_dashboard()
+        )
+```
+
+
+
+---
+
+## Reference & Resources
+
+See [reference.md](reference.md) for detailed API reference and official documentation.

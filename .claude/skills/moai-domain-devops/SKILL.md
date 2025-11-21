@@ -4,19 +4,9 @@ description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9,
   Actions, monitoring with Prometheus/Grafana, and cloud-native architectures
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise DevOps Architect - Production-Grade  
-
-## Technology Stack (2025 Stable)
-
-- **Kubernetes 1.31.x** (container orchestration)
-- **Docker 27.x** (container runtime)
-- **GitHub Actions** (CI/CD automation)
-- **Terraform 1.9.x** (infrastructure as code)
-- **Prometheus 2.55.x** (monitoring & observability)
-- **Grafana 11.x** (visualization dashboards)
-- **ArgoCD 2.13.x** (GitOps deployments)
-
----
 
 ## Level 1: Quick Reference
 
@@ -194,6 +184,80 @@ module "vpc" {
 
 ---
 
+## Level 4: Reference & Integration
+
+### Best Practices Summary
+
+**Container Security**:
+- ✅ Use minimal base images (Alpine, distroless)
+- ✅ Pin image digests for reproducibility
+- ✅ Run as non-root user
+- ✅ Scan images with Trivy/Snyk
+- ✅ Multi-stage builds reduce attack surface
+
+**Kubernetes Production**:
+- ✅ Resource requests/limits for all containers
+- ✅ Liveness and readiness probes
+- ✅ HPA for automatic scaling
+- ✅ PodDisruptionBudget for availability
+- ✅ Network policies for security
+
+**CI/CD Optimization**:
+- ✅ Matrix builds for multi-version testing
+- ✅ Caching strategies (Docker layers, npm/pip)
+- ✅ Security scanning at every stage
+- ✅ Parallel jobs for faster feedback
+- ✅ Workflow timeouts (30 minutes recommended)
+
+**Infrastructure as Code**:
+- ✅ Remote state with locking (S3 + DynamoDB)
+- ✅ State encryption with KMS
+- ✅ Modular architecture for reusability
+- ✅ Input validation with constraints
+- ✅ Version pinning for providers
+
+**Monitoring & Observability**:
+- ✅ Scrape intervals: 15-30 seconds for most apps
+- ✅ Consistent label naming, avoid high cardinality
+- ✅ Alert thresholds based on SLIs/SLOs
+- ✅ Template variables in dashboards
+- ✅ OpenTelemetry for distributed tracing
+
+**GitOps Workflow**:
+- ✅ Git as single source of truth
+- ✅ Automated sync with self-healing
+- ✅ Declarative configuration (YAML in Git)
+- ✅ RBAC for access control
+- ✅ Audit trail via Git history
+
+### Related Skills
+- `Skill("moai-security-backend")` for security patterns
+- `Skill("moai-essentials-perf")` for performance optimization
+- `Skill("moai-domain-cloud")` for cloud architecture
+
+---
+
+**Version**: 4.0.0 Enterprise  
+**Last Updated**: 2025-11-13  
+**Status**: Production Ready  
+**Tech Stack**: Kubernetes 1.31, Docker 27.x, Terraform 1.9, Prometheus 2.55, Grafana 11.x
+
+---
+
+## Implementation Guide
+
+## Technology Stack (2025 Stable)
+
+- **Kubernetes 1.31.x** (container orchestration)
+- **Docker 27.x** (container runtime)
+- **GitHub Actions** (CI/CD automation)
+- **Terraform 1.9.x** (infrastructure as code)
+- **Prometheus 2.55.x** (monitoring & observability)
+- **Grafana 11.x** (visualization dashboards)
+- **ArgoCD 2.13.x** (GitOps deployments)
+
+---
+
 ## Level 2: Core Implementation
 
 ### Advanced Patterns
@@ -292,6 +356,10 @@ spec:
 
 ---
 
+---
+
+## Advanced Patterns
+
 ## Level 3: Advanced Integration
 
 ### Enterprise Production Patterns
@@ -381,60 +449,3 @@ kubectl scale deployment/web-app-$([ "$NEW_VERSION" = "blue" ] && echo "green" |
 
 ---
 
-## Level 4: Reference & Integration
-
-### Best Practices Summary
-
-**Container Security**:
-- ✅ Use minimal base images (Alpine, distroless)
-- ✅ Pin image digests for reproducibility
-- ✅ Run as non-root user
-- ✅ Scan images with Trivy/Snyk
-- ✅ Multi-stage builds reduce attack surface
-
-**Kubernetes Production**:
-- ✅ Resource requests/limits for all containers
-- ✅ Liveness and readiness probes
-- ✅ HPA for automatic scaling
-- ✅ PodDisruptionBudget for availability
-- ✅ Network policies for security
-
-**CI/CD Optimization**:
-- ✅ Matrix builds for multi-version testing
-- ✅ Caching strategies (Docker layers, npm/pip)
-- ✅ Security scanning at every stage
-- ✅ Parallel jobs for faster feedback
-- ✅ Workflow timeouts (30 minutes recommended)
-
-**Infrastructure as Code**:
-- ✅ Remote state with locking (S3 + DynamoDB)
-- ✅ State encryption with KMS
-- ✅ Modular architecture for reusability
-- ✅ Input validation with constraints
-- ✅ Version pinning for providers
-
-**Monitoring & Observability**:
-- ✅ Scrape intervals: 15-30 seconds for most apps
-- ✅ Consistent label naming, avoid high cardinality
-- ✅ Alert thresholds based on SLIs/SLOs
-- ✅ Template variables in dashboards
-- ✅ OpenTelemetry for distributed tracing
-
-**GitOps Workflow**:
-- ✅ Git as single source of truth
-- ✅ Automated sync with self-healing
-- ✅ Declarative configuration (YAML in Git)
-- ✅ RBAC for access control
-- ✅ Audit trail via Git history
-
-### Related Skills
-- `Skill("moai-security-backend")` for security patterns
-- `Skill("moai-essentials-perf")` for performance optimization
-- `Skill("moai-domain-cloud")` for cloud architecture
-
----
-
-**Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-13  
-**Status**: Production Ready  
-**Tech Stack**: Kubernetes 1.31, Docker 27.x, Terraform 1.9, Prometheus 2.55, Grafana 11.x

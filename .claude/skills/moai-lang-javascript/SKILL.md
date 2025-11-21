@@ -2,11 +2,18 @@
 name: moai-lang-javascript
 description: JAVASCRIPT language development patterns and best practices
 ---
+
+## Quick Reference (30 seconds)
+
 name: moai-lang-javascript
 description: Enterprise JavaScript for Node.js and browser: Node.js 22.11.0 LTS (Jod), npm 11.x, ES2025 features, async operations, module systems, package management; activates for server-side development, scripting, tooling, package management, and runtime optimization.
 ---
 
-# JavaScript Runtime & Ecosystem — Enterprise  
+# JavaScript Runtime & Ecosystem — Enterprise
+
+---
+
+## Implementation Guide
 
 ## Technology Stack (November 2025 Stable)
 
@@ -369,6 +376,34 @@ describe('API Endpoints', () => {
 });
 ```
 
+## Auto-Load Triggers
+
+This Skill activates when you:
+- Work with Node.js projects and JavaScript
+- Need async/await pattern guidance
+- Implement npm package management
+- Use Express or Fastify frameworks
+- Debug JavaScript runtime issues
+- Handle module systems
+- Optimize performance
+
+## Best Practices Summary
+
+1. Always use async/await for async operations
+2. Handle promise rejections properly
+3. Use strict type checking with TypeScript
+4. Validate input in API endpoints
+5. Implement proper error handling
+6. Use npm workspaces for monorepos
+7. Test with Vitest or Jest
+8. Monitor with observability tools
+9. Use environment variables for config
+10. Implement graceful shutdown
+
+---
+
+## Advanced Patterns
+
 ## Level 3: Production Deployment (Low Freedom, Expert Only)
 
 ### 1. Process Management
@@ -417,28 +452,4 @@ const config = {
 const env = process.env.NODE_ENV || 'development';
 export default config[env];
 ```
-
-## Auto-Load Triggers
-
-This Skill activates when you:
-- Work with Node.js projects and JavaScript
-- Need async/await pattern guidance
-- Implement npm package management
-- Use Express or Fastify frameworks
-- Debug JavaScript runtime issues
-- Handle module systems
-- Optimize performance
-
-## Best Practices Summary
-
-1. Always use async/await for async operations
-2. Handle promise rejections properly
-3. Use strict type checking with TypeScript
-4. Validate input in API endpoints
-5. Implement proper error handling
-6. Use npm workspaces for monorepos
-7. Test with Vitest or Jest
-8. Monitor with observability tools
-9. Use environment variables for config
-10. Implement graceful shutdown
 

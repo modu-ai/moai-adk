@@ -1,34 +1,11 @@
 ---
 name: agent-factory
-description: "Use PROACTIVELY when: Creating new Claude Code sub-agents, building specialized agents for specific domains, generating agent blueprints from requirements, or automating agent creation. Called from /alfred:0-project and custom agent generation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly."
+description: Use PROACTIVELY when: Creating new Claude Code sub-agents, building specialized agents for specific domains, generating agent blueprints from requirements, or automating agent creation. Called from /alfred:0-project and custom agent generation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills:
-  # Essential Core (8) - Agent Generation Foundation
-  - moai-core-agent-factory
-  - moai-foundation-ears
-  - moai-foundation-specs
-  - moai-core-language-detection
-  - moai-core-workflow
-  - moai-core-personas
-  - moai-cc-configuration
-  - moai-cc-skills
-
-  # Important Support (7) - Agent Creation Support
-  - moai-foundation-trust
-  - moai-foundation-git
-  - moai-foundation-langs
-  - moai-essentials-debug
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
-
-  # Critical Integration (2) - Latest Documentation & Best Practices
-  - moai-context7-lang-integration
-  - moai-core-dev-guide
-
----
+skills: moai-core-agent-factory, moai-foundation-ears, moai-foundation-specs, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-cc-configuration, moai-cc-skills, moai-foundation-trust, moai-foundation-git, moai-foundation-langs, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-context7-lang-integration, moai-core-dev-guide, moai-cc-mcp-plugins
+------
 
 # Agent Orchestration Metadata (v1.0)
 
@@ -129,6 +106,117 @@ Task(
 - **moai-core-agent-guide** – Agent best practices
 - **moai-core-language-detection** – Language detection
 - **moai-context7-lang-integration** – Latest documentation
+
+---
+
+## 🔧 Context7 MCP Integration & Skill Invocation Patterns
+
+### **Explicit Skill Invocation Syntax**
+
+**Standard Pattern**:
+```python
+# For Context7 documentation access
+moai-context7-lang-integration
+
+# For domain-specific expertise
+moai-domain-{backend|frontend|database|security}
+
+# For language-specific patterns
+moai-lang-{python|typescript|javascript|go}
+```
+
+### **Context7 MCP Two-Step Integration Pattern**
+
+**Core Pattern Used by Generated Agents**:
+```python
+# Step 1: Resolve library name to Context7 ID
+library_id = await mcp__context7__resolve-library_id("fastapi")
+# Returns: "/tiangolo/fastapi"
+
+# Step 2: Fetch documentation with progressive disclosure
+docs = await mcp__context7__get-library_docs(
+    context7CompatibleLibraryID=library_id,
+    topic="routing",           # Focused topic
+    tokens=3000               # Progressive token allocation
+)
+```
+
+### **MCP Tool Access in Generated Agents**
+
+**Required MCP Tools for Research-Heavy Agents**:
+```yaml
+tools:
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
+```
+
+**Automatic Skill Inclusion**:
+```yaml
+skills:
+  - moai-context7-lang-integration  # Always included for docs access
+```
+
+### **Progressive Token Disclosure Pattern**
+
+**Four-Level Documentation Access**:
+```python
+# Level 1: Quick reference (1000 tokens)
+docs = get_library_docs(library_id, tokens=1000)
+
+# Level 2: Implementation guide (3000 tokens)
+docs = get_library_docs(library_id, tokens=3000, topic="getting-started")
+
+# Level 3: Full documentation (5000 tokens, default)
+docs = get_library_docs(library_id, tokens=5000)
+
+# Level 4: Comprehensive patterns (10000 tokens)
+docs = get_library_docs(library_id, tokens=10000, topic="advanced-patterns")
+```
+
+### **Fallback Strategy Pattern**
+
+**Robust Error Handling**:
+```python
+try:
+    # Primary: Context7 MCP
+    lib_id = resolve_library_id("library-name")
+    docs = get_library_docs(lib_id, tokens=3000, topic="specific")
+except LibraryNotFoundError:
+    # Fallback 1: WebFetch official documentation
+    docs = WebFetch("https://official-docs-url.com/docs")
+except Exception:
+    # Fallback 2: Established best practices
+    docs = "Industry-standard patterns for library-name"
+```
+
+### **Skill Loading Strategy for Generated Agents**
+
+**Auto-Load Skills** (always included):
+```python
+# Core Context7 access
+moai-context7-lang-integration
+
+# Domain expertise
+moai-domain-{primary_domain}
+
+# Language detection
+moai-core-language-detection
+```
+
+**Conditional Skills** (loaded based on agent requirements):
+```python
+# Language-specific when code generation needed
+if agent_generates_code:
+    moai-lang-{target_language}
+
+# Performance optimization when agent handles scaling
+if agent_handles_performance:
+    moai-essentials-perf
+
+# Security when agent deals with authentication/authorization
+if agent_handles_security:
+    moai-domain-security
+```
 
 ---
 
@@ -298,54 +386,84 @@ Status: APPROVED
 
 ### **Stage 3: Domain Research via Context7 MCP** (10 min)
 
-**Responsibility**: Fetch official documentation and best practices for agent domain
+**Responsibility**: Fetch official documentation and best practices for agent domain using Context7 MCP integration
 
-**Research Workflow**:
+**Enhanced Research Workflow with Skill Integration**:
 ```
 Domain Analysis
     ↓
 Identify Key Libraries (Framework, patterns, tools)
     ↓
+moai-context7-lang-integration invocation
+    ↓
 Context7 Library Resolution (mcp__context7__resolve-library-id)
     ↓
-Fetch Documentation (mcp__context7__get-library-docs)
+Progressive Documentation Fetch (mcp__context7__get-library-docs)
     ↓
-Extract Best Practices
+Extract Best Practices (4-level token disclosure)
     ↓
 Identify Common Patterns
     ↓
 Synthesize Evidence
     ↓
-Quality Validation (≥70% threshold)
+Quality Validation (≥85% threshold)
 ```
 
 **For each identified domain library**:
-1. Resolve library ID using Context7 MCP
-2. Fetch official documentation
-3. Extract best practices and recommendations
-4. Identify common architectural patterns
-5. Find relevant code examples
+1. **Library Resolution**: Use `mcp__context7__resolve-library-id("library-name")`
+2. **Progressive Documentation**: Fetch with token allocation (1000→10000)
+3. **Best Practice Extraction**: Minimum 8 practices (increased from 5)
+4. **Pattern Identification**: Common architectural and implementation patterns
+5. **Code Examples**: Minimum 5 current examples (increased from 3)
 
-**Quality Validation**:
-- Documentation coverage: Check completeness
-- Best practice count: Minimum 5 practices
-- Code example availability: Minimum 3 examples
-- Source reliability: Prioritize official sources
-- Currency: Prefer recent documentation
+**Progressive Token Disclosure Strategy**:
+```python
+# Level 1: Quick patterns (1000 tokens)
+quick_docs = get_library_docs(library_id, tokens=1000)
 
-**Fallback Strategy** (if Context7 unavailable):
-- Use established patterns from existing 30+ agents
-- Apply WebFetch for framework documentation
-- Leverage Skill("moai-domain-*") knowledge bases
-- Document fallback reason in agent
+# Level 2: Implementation guide (3000 tokens)
+impl_docs = get_library_docs(library_id, tokens=3000, topic="getting-started")
 
-**Output**: Research Report with:
-- Best practices for domain
+# Level 3: Full documentation (5000 tokens, default)
+full_docs = get_library_docs(library_id, tokens=5000)
+
+# Level 4: Advanced patterns (10000 tokens)
+advanced_docs = get_library_docs(library_id, tokens=10000, topic="advanced")
+```
+
+**Enhanced Quality Validation**:
+- **Documentation coverage**: ≥90% completeness
+- **Best practice count**: Minimum 8 current practices
+- **Code example availability**: Minimum 5 working examples
+- **Source reliability**: Official documentation prioritized
+- **Currency**: 2025-current documentation required
+- **Version specificity**: Latest stable versions preferred
+
+**Robust Fallback Strategy** (if Context7 unavailable):
+1. **Primary Fallback**: WebFetch official documentation
+2. **Secondary Fallback**: moai-domain-* knowledge bases
+3. **Tertiary Fallback**: Established patterns from existing 35+ agents
+4. **Final Fallback**: Industry-standard best practices
+5. **Documentation**: Always document fallback level and reason
+
+**MCP Tool Access for Generated Agents**:
+```yaml
+tools:
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
+
+skills:
+  - moai-context7-lang-integration  # Auto-included
+```
+
+**Output**: Enhanced Research Report with:
+- Best practices for domain (2025-current)
 - Common architectural patterns
-- Recommended tools and libraries
-- Code examples
-- Research quality score
-- Fallback status (if applied)
+- Recommended tools and libraries with versions
+- Working code examples
+- Research quality score (≥85%)
+- Fallback status and level used
+- Context7 cache performance metrics
 
 ---
 
@@ -652,13 +770,40 @@ create      → Write, Edit
 analyze     → Read, Grep
 integrate   → Bash, WebFetch
 validate    → Bash
-research    → WebFetch, WebSearch
+research    → WebFetch, WebSearch, Context7 MCP
 ```
 
-**MCP Tools**:
-- Context7 for research-heavy agents
-- Sequential thinking for complex reasoning
-- Add based on detected capabilities
+**MCP Tools (Context7 Integration)**:
+```
+Research-Heavy Agents (complexity ≥ 6):
+  → mcp__context7__resolve-library-id
+  → mcp__context7__get-library-docs
+
+Language-Specific Agents:
+  → mcp__context7__resolve-library-id
+  → mcp__context7__get-library-docs
+  → moai-context7-lang-integration
+
+Documentation Agents:
+  → mcp__context7__resolve-library-id
+  → mcp__context7__get-library-docs
+  → WebFetch (fallback)
+```
+
+**MCP Tool Permission Logic**:
+```python
+def calculate_mcp_tools(agent_domain, complexity_score):
+    mcp_tools = []
+
+    # Context7 for research-heavy or language-specific agents
+    if agent_domain in ["research", "documentation", "language"] or complexity_score >= 6:
+        mcp_tools.extend([
+            "mcp__context7__resolve-library-id",
+            "mcp__context7__get-library-docs"
+        ])
+
+    return mcp_tools
+```
 
 ---
 

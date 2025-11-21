@@ -7,7 +7,25 @@ description: Enterprise systematic code review orchestrator with TRUST 5 princip
   TRUST 5 enforcement, architectural audits, and automated review automation
 ---
 
+## Quick Reference (30 seconds)
+
 # Enterprise Systematic Code Review Orchestrator 
+
+## Related Skills
+
+- `moai-alfred-practices` (Code patterns and best practices)
+- `moai-essentials-refactor` (Refactoring strategies)
+
+---
+
+**For detailed review checklists**: [reference.md](reference.md)  
+**For real-world examples**: [examples.md](examples.md)  
+**Last Updated**: 2025-11-12  
+**Status**: Production Ready (Enterprise )
+
+---
+
+## Implementation Guide
 
 ## What It Does
 
@@ -283,14 +301,9 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 ---
 
-## Related Skills
-
-- `moai-alfred-practices` (Code patterns and best practices)
-- `moai-essentials-refactor` (Refactoring strategies)
-
 ---
 
-**For detailed review checklists**: [reference.md](reference.md)  
-**For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise )
+## Advanced Patterns
+
+
+

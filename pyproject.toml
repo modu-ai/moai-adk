@@ -77,14 +77,14 @@ fail_under = 85
 
 [tool.ruff]
 line-length = 120
-target-version = "0.27.2"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N"]
 ignore = []
 
 [tool.mypy]
-python_version = "0.27.2"
+python_version = "3.14"
 warn_return_any = false
 warn_unused_configs = true
 warn_redundant_casts = true

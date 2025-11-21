@@ -6,6 +6,8 @@ description: Enterprise-grade Python expertise with production patterns for Pyth
   deployment strategies.
 ---
 
+## Quick Reference (30 seconds)
+
 # Modern Python Development — Enterprise  
 
 ## Quick Summary
@@ -54,6 +56,24 @@ Enterprise deployment and optimization:
 - **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
 
 ---
+
+## Learn More
+
+- **Examples**: See `examples.md` for FastAPI, Django, pytest, and async patterns
+- **Reference**: See `reference.md` for API details, configuration, and troubleshooting
+- **FastAPI Docs**: https://fastapi.tiangolo.com/
+- **SQLAlchemy 2.0**: https://docs.sqlalchemy.org/en/20/orm/
+- **Python 3.13**: https://docs.python.org/3/whatsnew/3.13.html
+- **pytest Guide**: https://docs.pytest.org/
+
+---
+
+**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
+**Auto-loads**: Python projects mentioning FastAPI, Django, async, SQLAlchemy, Pydantic, pytest
+
+---
+
+## Implementation Guide
 
 ## Technology Stack (November 2025 Stable)
 
@@ -316,17 +336,9 @@ async def test_async_fetch():
 
 ---
 
-## Learn More
-
-- **Examples**: See `examples.md` for FastAPI, Django, pytest, and async patterns
-- **Reference**: See `reference.md` for API details, configuration, and troubleshooting
-- **FastAPI Docs**: https://fastapi.tiangolo.com/
-- **SQLAlchemy 2.0**: https://docs.sqlalchemy.org/en/20/orm/
-- **Python 3.13**: https://docs.python.org/3/whatsnew/3.13.html
-- **pytest Guide**: https://docs.pytest.org/
-
 ---
 
-**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
-**Auto-loads**: Python projects mentioning FastAPI, Django, async, SQLAlchemy, Pydantic, pytest
+## Advanced Patterns
+
+
 
