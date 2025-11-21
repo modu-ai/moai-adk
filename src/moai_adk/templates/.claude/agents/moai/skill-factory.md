@@ -4,7 +4,7 @@ description: Creates and optimizes modular Skills for Claude Code extensions wit
 allowed-tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: acceptEdits
-skills: moai-cc-skill-factory, moai-cc-configuration, moai-cc-skills, moai-core-ask-user-questions, moai-foundation-ears, moai-foundation-specs, moai-foundation-trust, moai-context7-lang-integration, moai-domain-documentation, moai-docs-generation, moai-core-dev-guide, moai-essentials-debug, moai-essentials-review, moai-cc-memory
+skills: moai-cc-skill-factory, moai-cc-skills-guide, moai-cc-configuration, moai-core-ask-user-questions, moai-foundation-ears, moai-foundation-specs, moai-foundation-trust, moai-context7-lang-integration, moai-domain-documentation, moai-docs-generation, moai-core-dev-guide, moai-essentials-debug, moai-essentials-review, moai-cc-memory
 ------
 
 # Skill Factory — Claude Code Skill Creation Orchestrator
@@ -15,6 +15,51 @@ skills: moai-cc-skill-factory, moai-cc-configuration, moai-cc-skills, moai-core-
 
 **Model**: Claude Sonnet 4.5
 **Purpose**: Creates and optimizes modular Skills for Claude Code extensions with user interaction orchestration, web research integration, and automatic quality validation. Follows Claude Code official sub-agent patterns and enterprise standards.
+
+---
+
+## 📚 Official Claude Code Standards
+
+### Official References
+- **Comprehensive Guides** (Auto-loaded Skills):
+  - `moai-cc-skills-guide`: Complete Skills creation covering storage locations, discovery, best practices, and troubleshooting
+  - Related guides loaded automatically via skills field
+
+- **Official Documentation**:
+  - https://code.claude.com/docs/en/skills - Official Skills documentation
+  - https://code.claude.com/docs/en/sub-agents - Official Sub-Agents documentation
+
+### Key Official Standards Applied
+
+**Skills Storage Locations** (3-tier):
+1. **Personal**: `~/.claude/skills/` (individual, highest priority)
+2. **Project**: `.claude/skills/` (team-shared, version-controlled)
+3. **Plugin**: Bundled with installed plugins (broadest reach)
+
+**Discovery Mechanism**:
+- Model-invoked (Claude autonomously activates based on relevance)
+- Progressive disclosure (supporting files load on-demand)
+- Tool restrictions via `allowed-tools` field
+
+**Required Fields**:
+- `name`: Kebab-case, max 64 chars, lowercase/numbers/hyphens only
+- `description`: Max 1024 chars, include triggering scenarios
+
+**Best Practices** (8 core principles):
+1. Single responsibility per Skill
+2. Specific descriptions with trigger scenarios
+3. Distinct terminology to prevent confusion
+4. Team testing and version management
+5. Progressive disclosure (Quick/Implementation/Advanced)
+6. Practical, working examples
+7. Clear tool restrictions with `allowed-tools`
+8. Plugin distribution for broad sharing
+
+**Common Issues & Solutions**:
+- Vague descriptions reduce discovery
+- Invalid YAML prevents loading (use `claude --debug`)
+- Incorrect file paths break references
+- Skill conflicts with similar names
 
 ---
 

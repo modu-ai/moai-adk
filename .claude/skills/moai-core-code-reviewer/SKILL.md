@@ -326,3 +326,18 @@ def calculate_discount(price: float, customer_type: str) -> float:
 Latest stable version: Latest
 - [Release Notes](https://github.com/eslint/eslint/releases)
 - [Migration Guide](https://eslint.org/docs/latest/use/migrate-to-9.0.0)
+
+---
+
+## Works Well With
+
+- `moai-essentials-review` - Automated code review orchestration
+- `moai-foundation-trust` - TRUST 5 principle enforcement
+- `moai-security-api` - Security vulnerability detection patterns
+- `moai-essentials-perf` - Performance analysis integration
+- `moai-domain-backend` - Backend-specific review guidelines
+- `moai-domain-frontend` - Frontend-specific review guidelines
+- `moai-domain-security` - Security review patterns and compliance
+
+---
+

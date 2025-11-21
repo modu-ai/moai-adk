@@ -438,3 +438,38 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 **Last Updated**: 2025-11-22
 **Version**: 5.0.0
 **Status**: Production Ready (2025 Standards)
+
+---
+
+## Works Well With
+
+- `moai-domain-database` - Database design and optimization patterns
+- `moai-domain-web-api` - RESTful/GraphQL API design patterns
+- `moai-security-api` - Backend API security best practices
+- `moai-essentials-perf` - Backend performance optimization
+- `moai-domain-devops` - Deployment and CI/CD integration
+- `moai-domain-testing` - Backend testing strategies
+
+---
+
+## Best Practices
+
+### ✅ DO
+- **Use async/await patterns** - Modern frameworks (FastAPI, Django 5.0+) support async natively
+- **Implement proper dependency injection** - Clean separation of concerns and testability
+- **Apply Context7 latest patterns** - Leverage up-to-date framework best practices
+- **Use connection pooling** - Optimize database connections for scalability
+- **Implement comprehensive error handling** - Structured error responses with proper HTTP codes
+- **Enable request validation** - Use Pydantic/Zod for automatic input validation
+- **Apply rate limiting** - Protect APIs from abuse and DoS attacks
+
+### ❌ DON'T
+- **Block event loops** - Avoid synchronous I/O in async contexts
+- **Skip input validation** - Always validate and sanitize user input
+- **Hardcode configurations** - Use environment variables and config files
+- **Ignore error handling** - Implement proper exception handling and logging
+- **Skip database migrations** - Use Alembic/Prisma for schema versioning
+- **Expose sensitive data** - Filter responses and implement proper authorization
+
+---
+

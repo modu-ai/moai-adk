@@ -281,3 +281,16 @@ def validate_handoff(handoff_package):
 Latest stable version: 7.2
 - [Release Notes](https://github.com/redis/redis/releases)
 - [Migration Guide](https://redis.io/docs/about/releases/)
+
+---
+
+## Works Well With
+
+- `moai-cc-memory` - Memory management and context persistence
+- `moai-core-context-budget` - Token budget optimization across sessions
+- `moai-cc-configuration` - Session configuration and preferences
+- `moai-core-workflow` - Workflow state persistence and recovery
+- `moai-cc-agents` - Agent state management across sessions
+
+---
+

@@ -569,3 +569,38 @@ export function useCreateUser() {
 **Last Updated**: 2025-11-22
 **Version**: 5.0.0
 **Status**: Production Ready (2025 Standards)
+
+---
+
+## Works Well With
+
+- `moai-lib-shadcn-ui` - Modern React UI component library
+- `moai-design-systems` - Design system implementation patterns
+- `moai-domain-web-api` - Frontend-backend API integration
+- `moai-essentials-perf` - Frontend performance optimization
+- `moai-domain-testing` - Frontend testing strategies (Vitest, Playwright)
+- `moai-security-api` - Frontend security best practices (XSS, CSRF)
+
+---
+
+## Best Practices
+
+### ✅ DO
+- **Use Server Components** - React 19/Next.js 15 for zero-client JavaScript where possible
+- **Apply Progressive Disclosure** - Load components and data progressively
+- **Implement proper error boundaries** - Graceful error handling and fallback UI
+- **Use Context7 latest patterns** - Leverage up-to-date framework best practices (React 19, Next.js 15)
+- **Optimize bundle size** - Code splitting, tree shaking, lazy loading
+- **Apply proper TypeScript** - Full type safety across frontend codebase
+- **Implement accessibility** - WCAG 2.1 AA compliance (ARIA, keyboard navigation)
+
+### ❌ DON'T
+- **Skip accessibility** - Always implement ARIA labels and keyboard navigation
+- **Ignore performance** - Monitor Core Web Vitals (LCP, FID, CLS)
+- **Use prop drilling** - Use Context API or state management library
+- **Skip error boundaries** - Implement error boundaries for graceful failures
+- **Expose sensitive data** - Never store secrets in client-side code
+- **Skip responsive design** - Implement mobile-first responsive patterns
+
+---
+

@@ -4,7 +4,7 @@ description: Creates and optimizes specialized Claude Code sub-agents for custom
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills: moai-core-agent-factory, moai-foundation-ears, moai-foundation-specs, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-cc-configuration, moai-cc-skills, moai-foundation-trust, moai-foundation-git, moai-foundation-langs, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-context7-lang-integration, moai-core-dev-guide
+skills: moai-core-agent-factory, moai-cc-subagents-guide, moai-foundation-ears, moai-foundation-specs, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-cc-configuration, moai-foundation-trust, moai-foundation-git, moai-foundation-langs, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-context7-lang-integration, moai-core-dev-guide
 ------
 
 # Agent Orchestration Metadata (v1.0)
@@ -42,6 +42,60 @@ performance:
 **Status**: Production-Ready
 **Last Updated**: 2025-11-22
 **Official Reference**: https://code.claude.com/docs/en/sub-agents
+
+---
+
+## 📚 Official Claude Code Standards
+
+### Official References
+- **Comprehensive Guides** (Auto-loaded Skills):
+  - `moai-cc-subagents-guide`: Complete Sub-Agents creation covering 3 creation methods, configuration options, invocation patterns, and advanced features
+  - Related guides loaded automatically via skills field
+
+- **Official Documentation**:
+  - https://code.claude.com/docs/en/sub-agents - Official Sub-Agents documentation
+  - https://code.claude.com/docs/en/skills - Official Skills documentation
+
+### Key Official Standards Applied
+
+**Sub-Agent Creation Methods** (3 approaches):
+1. **Interactive** (`/agents` command): Guided interface, immediate feedback
+2. **File-Based** (`.claude/agents/name.md`): Version-controlled, reusable
+3. **CLI** (`--agents` flag): Session-specific, scripted automation
+
+**Configuration Fields Reference Table**:
+| Field | Required | Type | Purpose |
+|-------|----------|------|---------|
+| name | Yes | string | Kebab-case identifier (max 64 chars) |
+| description | Yes | string | When/why to invoke this agent |
+| tools | No | string | Comma-separated tool list |
+| model | No | string | sonnet/opus/haiku/inherit (default: inherit) |
+| permissionMode | No | string | default/acceptEdits/dontAsk |
+| skills | No | string | Comma-separated auto-load skills |
+
+**Invocation Methods** (3 patterns):
+1. **Automatic**: Claude auto-discovers based on task relevance
+2. **Explicit**: User explicitly names the agent
+3. **Programmatic**: Task() API for orchestration
+
+**Advanced Features**:
+- **Subagent Chaining**: Sequential multi-agent workflows
+- **Resumable Agents**: Continue conversations across sessions via agent_id
+- **Agent IDs**: Persistent references for workflow integration
+
+**Best Practices** (6 core principles):
+1. Focused responsibility (one purpose per agent)
+2. Detailed system prompts (explicit, with examples)
+3. Minimal tool access (principle of least privilege)
+4. Specific descriptions (with trigger scenarios)
+5. Version control (commit to .claude/agents/)
+6. Team testing (gather feedback before deployment)
+
+**Key Benefits**:
+- Context preservation (separate windows per agent)
+- Specialized expertise (custom prompts & tools)
+- Reusability (cross-projects & teams)
+- Flexible permissions (granular tool control)
 
 ---
 

@@ -1,8 +1,6 @@
 ---
-
 name: moai-core-workflow
 description: Enterprise multi-agent workflow orchestration specialist. Master workflow design, agent coordination, task delegation, and process automation with Context7 MCP integration and comprehensive monitoring. Build scalable, intelligent workflow systems with fault tolerance and performance optimization.
-
 ---
 
 ## Quick Reference (30 seconds)
@@ -125,12 +123,14 @@ bug_workflow_id = await scheduler.submit_workflow(
 - `moai-domain-backend` - Backend-specific workflow patterns
 - `moai-domain-testing` - Testing workflow integration
 
+---
 
 **Enterprise   Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
 **Last Updated**: 2025-11-13  
 **Dependencies**: Context7 MCP integration, Alfred agent system
 **See Also**: [examples.md](./examples.md) for detailed usage examples
 
+---
 
 ## Implementation Guide
 
@@ -310,6 +310,7 @@ class FeatureDevelopmentTemplate(WorkflowTemplate):
         return workflow
 ```
 
+---
 
 ## Advanced Patterns
 
@@ -428,4 +429,38 @@ class WorkflowMetrics:
             'workflows_failed': failed
         }
 ```
+
+
+---
+
+## Works Well With
+
+- `moai-cc-agents` - Agent registration, lifecycle management, and coordination
+- `moai-cc-commands` - Command integration into workflow pipelines
+- `moai-core-code-reviewer` - Automated quality gates in workflows
+- `moai-foundation-trust` - TRUST 5 validation workflow stages
+- `moai-essentials-debug` - Error handling and debugging workflows
+
+---
+
+## Best Practices
+
+### ✅ DO
+- **Design workflows with clear stages** - Each stage should have single responsibility
+- **Implement error recovery** - Use retry logic with exponential backoff
+- **Apply Context7 patterns** - Leverage latest workflow orchestration best practices
+- **Monitor workflow performance** - Track execution times and bottlenecks
+- **Use workflow templates** - Standardize common patterns (feature dev, bug fix)
+- **Validate inputs early** - Check dependencies before execution
+- **Enable workflow logging** - Comprehensive audit trail for debugging
+
+### ❌ DON'T
+- **Skip error handling** - Always implement retry and fallback strategies
+- **Create circular dependencies** - Validate task dependency graph
+- **Ignore resource limits** - Monitor memory and CPU usage
+- **Mix workflow concerns** - Keep business logic separate from orchestration
+- **Skip workflow testing** - Test workflows in isolation and integration
+- **Hardcode workflow steps** - Use configurable templates
+
+---
 

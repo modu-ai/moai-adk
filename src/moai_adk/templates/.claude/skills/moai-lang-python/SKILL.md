@@ -1,75 +1,132 @@
 ---
 
 name: moai-lang-python
-description: Enterprise-grade Python expertise with production patterns for Python
-  3.13.9, FastAPI 0.115.x, Django 5.2 LTS, Pydantic v2, SQLAlchemy 2.0; activates
-  for API development, ORM usage, async patterns, testing frameworks, and production
-  deployment strategies.
+description: Enterprise-grade Python 3.13+ with FastAPI, Django, async patterns, Pydantic, and SQLAlchemy 2.0 for backend development, data science, and automation
 
 ---
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-# Modern Python Development — Enterprise  
+Enterprise Python 3.13+ with FastAPI, Django, async patterns, Pydantic v2, and SQLAlchemy 2.0 for production backend development, data science/ML, and system automation.
 
-## Quick Summary
+---
 
-**Primary Focus**: Python 3.13 with FastAPI, Django, async patterns, and production deployment
-**Best For**: REST APIs, microservices, async programming, ORM usage, testing
-**Key Libraries**: FastAPI 0.115, Django 5.2 LTS, Pydantic v2, SQLAlchemy 2.0, pytest 8.3
-**Auto-triggers**: FastAPI, Django, async, SQLAlchemy, Pydantic, pytest, asyncio
+## What It Does
 
-| Version | Release | Support |
-|---------|---------|---------|
-| Python 3.13.9 | 2025-10 | Oct 2029 |
-| FastAPI 0.115 | 2025-11 | Active |
-| Django 5.2 LTS | 2025-08 | Apr 2027 |
-| SQLAlchemy 2.0 | 2024-01 | Active |
+Python provides a comprehensive platform for backend development, data science, and automation. It excels in:
 
+- **Web Development**: FastAPI 0.115+, Django 5.2 LTS, async I/O with asyncio
+- **Data Science & ML**: NumPy, Pandas, scikit-learn, PyTorch for AI/ML workflows
+- **System Automation**: Scripts, DevOps tools, CLI applications
+- **Performance**: CPython 3.13 JIT compiler, GIL-free mode for parallelism
+- **Type Safety**: Type hints with Pydantic v2 for runtime validation
 
-## Three-Level Learning Path
+Python combines readable syntax with powerful libraries, making it ideal for rapid development and production systems. The 3.13 release brings significant performance improvements through JIT compilation and experimental GIL-free threading.
 
-### Level 1: Fundamentals (Read examples.md)
+---
 
-Core Python 3.13 concepts with practical examples:
-- **Python 3.13 Core**: JIT compiler, free-threaded mode, REPL improvements
-- **FastAPI Basics**: API structure, Pydantic validation, dependency injection
-- **Django Setup**: Project structure, async views, model inheritance
-- **Async/Await**: Concurrent HTTP requests, context managers, timeouts
-- **Examples**: See `examples.md` for full code samples
+## When to Use
 
-### Level 2: Advanced Patterns (See reference.md)
+**Use Python when**:
+- Building data science/ML applications (NumPy, scikit-learn, PyTorch, TensorFlow)
+- Need rapid development with readable, maintainable code
+- Creating backend APIs with async support (FastAPI, Django async views)
+- Automating DevOps/system tasks and scripting workflows
+- Prototyping and iterating quickly on business logic
 
-Production-ready enterprise patterns:
-- **SQLAlchemy 2.0 ORM**: Async sessions, relationships, CRUD operations
-- **Pydantic v2 Validation**: Field validation, custom validators, JSON schemas
-- **pytest Testing**: Fixtures, parametrization, async test functions
-- **Web Frameworks**: FastAPI middleware, Django authentication, error handling
-- **Pattern Reference**: See `reference.md` for API details and best practices
+**Avoid Python when**:
+- Real-time performance is critical (< 1ms latency requirements, use Rust/C++)
+- Building embedded systems or firmware with strict memory constraints
+- Need compile-time type safety guarantees (consider Rust/Go instead)
 
-### Level 3: Production Deployment (Consult security/performance skills)
+---
 
-Enterprise deployment and optimization:
-- **Docker & Compose**: Container packaging with multi-stage builds
-- **Performance**: Query optimization, Redis caching, N+1 prevention
-- **Monitoring**: Prometheus metrics, structured logging, observability
-- **Scaling**: Worker management, connection pooling, graceful shutdown
-- **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
+## Key Features
 
+1. **Type Hints (3.5+)**: Optional static type checking with mypy, runtime validation with Pydantic v2
+2. **Async/Await (3.5+)**: Native async I/O with asyncio, Trio, async frameworks (FastAPI, HTTPX)
+3. **Pattern Matching (3.10)**: Match-case statements for elegant control flow and data validation
+4. **Walrus Operator (3.8)**: Assignment expressions `:=` for cleaner, more concise code
+5. **Decorators & Metaclasses**: Powerful metaprogramming capabilities for frameworks
+6. **GIL-free Mode (3.13)**: Experimental multi-threading support for true parallelism
+7. **JIT Compilation (3.13)**: Performance optimization for hot code paths (PEP 744)
+8. **Dataclasses (3.7+)**: Simplified class definitions with automatic `__init__`, `__repr__`
 
-## Learn More
+---
 
-- **Examples**: See `examples.md` for FastAPI, Django, pytest, and async patterns
-- **Reference**: See `reference.md` for API details, configuration, and troubleshooting
-- **FastAPI Docs**: https://fastapi.tiangolo.com/
-- **SQLAlchemy 2.0**: https://docs.sqlalchemy.org/en/20/orm/
-- **Python 3.13**: https://docs.python.org/3/whatsnew/3.13.html
-- **pytest Guide**: https://docs.pytest.org/
+## Works Well With
 
+- `moai-domain-backend` — FastAPI/Django REST API and GraphQL backend development
+  - Best for: Microservices, async APIs, ORM with SQLAlchemy 2.0
+  
+- `moai-domain-ml-ops` — Data science & ML workflows (NumPy, PyTorch, scikit-learn)
+  - Best for: Model training, data preprocessing, inference pipelines
+  
+- `moai-domain-database` — PostgreSQL, MongoDB integration with SQLAlchemy and Motor
+  - Best for: Data persistence, ORM patterns, async database operations
+  
+- `moai-domain-cloud` — AWS Lambda, Google Cloud Functions, Azure Functions
+  - Best for: Serverless applications, cloud-native microservices
+  
+- `moai-lang-typescript` — Python backend + TypeScript frontend full-stack architecture
+  - Best for: Modern web applications with FastAPI backend and React/Next.js frontend
 
-**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
-**Auto-loads**: Python projects mentioning FastAPI, Django, async, SQLAlchemy, Pydantic, pytest
+---
 
+## Core Concepts
+
+### Everything is an Object
+Python treats all entities (functions, classes, modules) as first-class objects. Functions can be passed as arguments, returned from other functions, and assigned to variables. This enables powerful functional programming patterns and metaprogramming.
+
+### Duck Typing
+Python uses dynamic typing with duck typing: "If it walks like a duck and quacks like a duck, it's a duck." Type checking happens at runtime, not compile time. This allows flexible and expressive code, but requires disciplined use of type hints for large codebases.
+
+### The Zen of Python (PEP 20)
+Python emphasizes readability and simplicity. Key principles:
+- **Explicit is better than implicit**: Clear code over clever tricks
+- **Simple is better than complex**: Favor straightforward solutions
+- **Readability counts**: Code is read more often than written
+- **There should be one obvious way to do it**: Consistency over flexibility
+
+---
+
+## Best Practices
+
+### ✅ DO
+
+1. **Use Type Hints**: Add type annotations for better IDE support, catch errors early, enable runtime validation with Pydantic
+   - Reason: Catches type errors before runtime, improves code documentation
+   
+2. **Leverage Async/Await**: Use async libraries (asyncio, HTTPX, FastAPI) for I/O-bound operations
+   - Reason: Higher concurrency, better resource utilization without threads
+   
+3. **Virtual Environments**: Always use venv/pyenv/poetry for dependency isolation
+   - Reason: Avoids dependency conflicts, ensures reproducible builds
+   
+4. **List Comprehensions**: Use for concise iterations `[x*2 for x in items]`
+   - Reason: More readable and 2-3x faster than equivalent loops
+   
+5. **Context Managers**: Use `with` statements for resource cleanup (files, DB connections)
+   - Reason: Guarantees cleanup even if exceptions occur, prevents resource leaks
+
+### ❌ DON'T
+
+1. **Global Variables**: Avoid modifying global state across modules
+   - Reason: Makes code hard to reason about, causes hidden bugs, breaks testability
+   
+2. **Bare Except Clauses**: Never catch all exceptions silently with `except:`
+   - Reason: Hides errors, makes debugging impossible, catches system exits
+   
+3. **Mutable Default Arguments**: Don't use lists/dicts as function defaults
+   - Reason: Shared state across function calls causes unexpected behavior
+   
+4. **GIL-blocking Operations**: Avoid CPU-bound work in async functions
+   - Reason: Blocks entire event loop, kills concurrency benefits
+   
+5. **Star Imports**: Never use `from module import *` in production code
+   - Reason: Pollutes namespace, makes code unclear, breaks static analysis
+
+---
 
 ## Implementation Guide
 
@@ -110,7 +167,6 @@ Enterprise deployment and optimization:
 - **Gunicorn 22** - WSGI server with workers
 - **asyncpg 0.30** - Async PostgreSQL client
 - **aiohttp 3.10** - Async HTTP client
-
 
 ## FastAPI Essential Patterns
 
@@ -171,7 +227,6 @@ async def profile(
     return user
 ```
 
-
 ## SQLAlchemy 2.0 Async ORM
 
 ### Setup
@@ -225,7 +280,6 @@ async def get_user(user_id: int) -> User:
         return result.scalars().first()
 ```
 
-
 ## Async/Await Fundamentals
 
 ### Concurrent Operations
@@ -262,7 +316,6 @@ async def cancellable_task():
         raise
 ```
 
-
 ## Pydantic v2 Validation
 
 ### Models
@@ -286,7 +339,6 @@ class UserSchema(BaseModel):
 user = UserSchema(id=1, username="john", email="john@example.com")
 schema = UserSchema.model_json_schema()  # JSON Schema
 ```
-
 
 ## Testing with pytest
 
@@ -312,6 +364,9 @@ async def test_async_fetch():
     assert result is not None
 ```
 
+---
+
+## Advanced Patterns
 
 ## Production Best Practices
 
@@ -326,12 +381,7 @@ async def test_async_fetch():
 9. **Use Uvicorn** for FastAPI (not development server)
 10. **Enable JIT compiler** for performance-critical code in Python 3.13
 
-
-
-## Advanced Patterns
-
-
-
+---
 
 ## Context7 Integration
 
@@ -355,3 +405,8 @@ Latest stable version: Python 3.13.9, FastAPI 0.115.x, Django 5.2 LTS
 - [Django 5.2 Release Notes](https://docs.djangoproject.com/en/5.2/releases/5.2/)
 - [SQLAlchemy 2.0 Migration Guide](https://docs.sqlalchemy.org/en/20/changelog/migration_20.html)
 
+---
+
+**Last Updated**: 2025-11-22  
+**Status**: Production Ready  
+**Version**: 4.0.0
