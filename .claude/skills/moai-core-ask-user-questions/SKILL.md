@@ -1,31 +1,10 @@
 ---
-name: "moai-core-ask-user-questions"
-version: "4.0.0"
-created: 2025-10-22
-updated: 2025-11-12
-status: stable
+name: moai-core-ask-user-questions
 description: Enterprise interactive survey orchestrator with AskUserQuestion tool integration, multi-select support, conditional branching, error recovery, and production-grade decision automation across all Alfred workflows; activates for requirement clarification, architectural decisions, risky operations, feature selection, and complex multi-step user interactions
-keywords: ['interactive-surveys', 'user-clarification', 'decision-making', 'AskUserQuestion', 'multi-select', 'conditional-flow', 'error-recovery', 'workflow-automation', 'enterprise-ux', 'production-surveys']
-allowed-tools: 
-  - AskUserQuestion
+allowed-tools: AskUserQuestion
 ---
 
 # Enterprise Interactive Survey Orchestrator 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-ask-user-questions |
-| **Version** | 4.0.0 Enterprise (2025-11-12) |
-| **Core Tool** | `AskUserQuestion` (Claude Code built-in) |
-| **Auto-load** | When Alfred detects ambiguity in requests |
-| **Tier** | Alfred (Workflow Orchestration) |
-| **Allowed tools** | AskUserQuestion |
-| **Lines of Content** | 850+, with 10+ production examples |
-| **Progressive Disclosure** | 3-level (quick-reference, patterns, advanced) |
-
----
 
 ## 🚀 What It Does (Enterprise Context)
 

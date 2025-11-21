@@ -1,30 +1,10 @@
 ---
-name: "moai-project-batch-questions"
-version: "1.0.0"
-created: 2025-11-05
-updated: 2025-11-05
-status: stable
+name: moai-project-batch-questions
 description: Standardize AskUserQuestion patterns and provide reusable question templates for batch optimization
-keywords: ['batch', 'questions', 'templates', 'optimization', 'ux', 'interaction']
-freedom: medium
-type: project
-tags: [project, questions, batch, templates, ux, optimization]
-allowed-tools: 
-  - AskUserQuestion
+allowed-tools: AskUserQuestion
 ---
 
 # Project Batch Questions - Skill Guide
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-project-batch-questions |
-| **Version** | 1.0.0 (2025-11-05) |
-| **Core Tool** | `AskUserQuestion` (Claude Code built-in) |
-| **UX Goal** | 60% interaction reduction through batching |
-
----
 
 ## What It Does
 

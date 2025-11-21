@@ -1,13 +1,6 @@
 ---
-name: "moai-domain-devops"
-version: "4.0.0"
-description: "Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub Actions, monitoring with Prometheus/Grafana, and cloud-native architectures"
-allowed_tools: 
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
-status: stable
+name: moai-domain-devops
+description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub Actions, monitoring with Prometheus/Grafana, and cloud-native architectures
 ---
 
 # Enterprise DevOps Architect - Production-Grade  

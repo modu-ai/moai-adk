@@ -1,30 +1,10 @@
 ---
-name: "moai-lang-java"
-version: "2.0.0"
-created: 2025-10-22
-updated: 2025-11-11
-status: stable
+name: moai-lang-java
 description: Java programming language patterns, object-oriented design, and enterprise application development. Use when building enterprise applications, Android apps, or large-scale systems.
-keywords: ['java', 'object-oriented', 'enterprise', 'spring', 'android']
-allowed-tools: 
-  - Read
-  - Bash
-  - Glob
+allowed-tools: Read, Bash, Glob
 ---
 
 # Java Programming Language Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-java |
-| **Version** | 2.0.0 (2025-11-11) |
-| **Allowed tools** | Read, Bash, Glob |
-| **Auto-load** | On demand when Java patterns detected |
-| **Tier** | Language (Foundation) |
-
----
 
 ## What It Does
 

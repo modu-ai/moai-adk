@@ -210,7 +210,7 @@ def main():
         
         # Check line count
         line_count = len(skill_md.read_text(encoding='utf-8').splitlines())
-        if line_count < 300:
+        if line_count < 500:
             tier1_skills.append(skill_dir)
     
     print(f"Found {len(tier1_skills)} Tier 1 skills (<300 lines)")

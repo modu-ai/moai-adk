@@ -1,13 +1,10 @@
 ---
 name: moai-alfred-agent-factory
-version: 1.0.0
-status: production
-description: |
-  Agent Factory master skill for intelligent Claude Code agent generation.
-  Includes requirement analysis, domain detection, model selection, template system,
-  validation framework, and advanced features. Contains algorithms, workflows, and patterns.
-allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
-tags: ["agent-factory", "agent-generation", "intelligence-engine", "domain-detection", "model-selection", "context7", "templates", "validation"]
+description: Agent Factory master skill for intelligent Claude Code agent generation.
+Includes requirement analysis, domain detection, model selection, template system,
+validation framework, and advanced features. Contains algorithms, workflows, and patterns.
+
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Agent Factory Intelligence Engine

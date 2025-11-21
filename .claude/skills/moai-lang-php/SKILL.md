@@ -1,29 +1,10 @@
 ---
-name: "moai-lang-php"
-version: "2.1.0"
-created: 2025-10-22
-updated: 2025-11-02
-status: stable
+name: moai-lang-php
 description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web frameworks (Laravel, Symfony).
-keywords: ['php', 'phpunit', 'composer', 'psr', 'laravel', 'symfony']
-allowed-tools: 
-  - Read
-  - Bash
+allowed-tools: Read, Bash
 ---
 
 # Lang Php Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-php |
-| **Version** | 2.1.0 (2025-11-02) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 

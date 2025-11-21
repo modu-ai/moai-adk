@@ -1,29 +1,10 @@
 ---
-name: "moai-lang-ruby"
-version: "2.0.0"
-created: 2025-10-22
-updated: 2025-10-22
-status: stable
+name: moai-lang-ruby
 description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
-keywords: ['ruby', 'rspec', 'rubocop', 'bundler', 'rails']
-allowed-tools: 
-  - Read
-  - Bash
+allowed-tools: Read, Bash
 ---
 
 # Lang Ruby Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-ruby |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 

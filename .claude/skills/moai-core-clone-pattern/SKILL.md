@@ -1,32 +1,10 @@
 ---
-name: "moai-core-clone-pattern"
-version: "4.0.0"
-created: 2025-11-05
-updated: 2025-11-12
-status: stable
+name: moai-core-clone-pattern
 description: Enterprise Master-Clone pattern implementation guide for complex multi-step tasks with full project context, autonomous delegation, parallel processing, and intelligent task distribution; activates for large-scale migrations, complex refactoring, parallel exploration, architecture restructuring, and multi-file transformations
-keywords: ['clone-pattern', 'master-clone', 'delegation', 'multi-step', 'parallel-processing', 'autonomous-agents', 'task-distribution', 'project-context', 'complex-workflows', 'enterprise-delegation']
-allowed-tools: 
-  - Read
-  - Bash
-  - Task
+allowed-tools: Read, Bash, Task
 ---
 
 # Enterprise Master-Clone Pattern Skill 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-clone-pattern |
-| **Version** | 4.0.0 Enterprise (2025-11-12) |
-| **Allowed tools** | Read, Bash, Task |
-| **Auto-load** | On demand for complex multi-step tasks |
-| **Tier** | Alfred (Orchestration) |
-| **Lines of Content** | 900+ with 12+ enterprise examples |
-| **Progressive Disclosure** | 3-level (quick-start, patterns, advanced) |
-
----
 
 ## What It Does
 

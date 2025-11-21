@@ -1,29 +1,10 @@
 ---
-name: "moai-lang-cpp"
-version: "2.0.0"
-created: 2025-10-22
-updated: 2025-10-22
-status: stable
+name: moai-lang-cpp
 description: C++23 best practices with Google Test 1.15, clang-format 19, and modern C++ standards.
-keywords: ['cpp', 'gtest', 'clang-format', 'cmake']
-allowed-tools: 
-  - Read
-  - Bash
+allowed-tools: Read, Bash
 ---
 
 # Lang Cpp Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-cpp |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 

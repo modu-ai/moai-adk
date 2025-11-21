@@ -1,30 +1,10 @@
 ---
-name: "moai-cc-skills"
-version: "2.0.0"
-created: 2025-10-22
-updated: 2025-11-11
-status: stable
+name: moai-cc-skills
 description: Claude Code Skills management, skill creation patterns, and knowledge capsule architecture. Use when creating custom Skills, managing skill libraries, or designing knowledge systems.
-keywords: ['skills', 'knowledge-capsules', 'claude-code', 'skill-creation', 'management']
-allowed-tools: 
-  - Read
-  - Bash
-  - Glob
+allowed-tools: Read, Bash, Glob
 ---
 
 # Claude Code Skills Management
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-cc-skills |
-| **Version** | 2.0.0 (2025-11-11) |
-| **Allowed tools** | Read, Bash, Glob |
-| **Auto-load** | On demand when skill management detected |
-| **Tier** | Claude Code (Core) |
-
----
 
 ## What It Does
 

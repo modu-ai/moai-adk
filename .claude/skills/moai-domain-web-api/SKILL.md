@@ -1,29 +1,10 @@
 ---
-name: "moai-domain-web-api"
-version: "2.0.0"
-created: 2025-10-22
-updated: 2025-10-22
-status: stable
+name: moai-domain-web-api
 description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and rate limiting.
-keywords: ['rest', 'graphql', 'openapi', 'api-design', 'authentication']
-allowed-tools: 
-  - Read
-  - Bash
+allowed-tools: Read, Bash
 ---
 
 # Domain Web Api Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-domain-web-api |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Domain |
-
----
 
 ## What It Does
 

@@ -1,29 +1,10 @@
 ---
-name: "moai-lang-scala"
-version: "2.1.0"
-created: 2025-10-22
-updated: 2025-11-02
-status: stable
+name: moai-lang-scala
 description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming patterns, and Play Framework.
-keywords: ['scala', 'scalatest', 'sbt', 'functional', 'play-framework']
-allowed-tools: 
-  - Read
-  - Bash
+allowed-tools: Read, Bash
 ---
 
 # Lang Scala Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-scala |
-| **Version** | 2.1.0 (2025-11-02) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 

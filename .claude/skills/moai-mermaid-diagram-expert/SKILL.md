@@ -1,11 +1,6 @@
 ---
-name: "moai-mermaid-diagram-expert"
-version: "6.0.0-skill-edition"
-status: "stable"
-description: "Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright rendering"
-execution_mode: "claude-code-skill"
-dependencies:
-  - mcp: playwright
+name: moai-mermaid-diagram-expert
+description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright rendering
 ---
 
 # Skill: Mermaid Diagram Expert v6.0.0-skill-edition

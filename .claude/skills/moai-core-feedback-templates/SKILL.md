@@ -1,16 +1,9 @@
 ---
 name: moai-alfred-feedback-templates
-version: 1.0.0
-created: 2025-11-12
-updated: 2025-11-12
-status: stable
-language: ko
-description: |
-  GitHub 이슈 라벨별 구조화된 템플릿. 버그, 기능 요청, 개선 사항, 리팩토링, 문서, 질문 등
-  각 이슈 타입에 맞는 한국어 템플릿 제공. /alfred:9-feedback에서 사용.
-keywords: ['feedback', 'templates', 'issue-creation', 'korean', 'structured-templates', 'bug-report', 'feature-request']
-allowed-tools:
-  - Read
+description: GitHub 이슈 라벨별 구조화된 템플릿. 버그, 기능 요청, 개선 사항, 리팩토링, 문서, 질문 등
+각 이슈 타입에 맞는 한국어 템플릿 제공. /alfred:9-feedback에서 사용.
+
+allowed-tools: Read
 ---
 
 # GitHub 이슈 작성 템플릿 모음 v1.0.0
