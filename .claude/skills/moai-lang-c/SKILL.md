@@ -1,7 +1,8 @@
 ---
 name: moai-lang-c
-description: C programming language patterns, memory management, and systems programming best practices. Use when writing C applications, managing memory manually, or implementing low-level optimizations.
-allowed-tools: Read, Bash, Glob
+description: C programming language patterns, memory management, and systems programming
+  best practices. Use when writing C applications, managing memory manually, or implementing
+  low-level optimizations.
 ---
 
 # C Programming Language Skill

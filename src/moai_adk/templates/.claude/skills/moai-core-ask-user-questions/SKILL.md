@@ -1,47 +1,13 @@
 ---
 name: moai-core-ask-user-questions
-version: 4.0.0
-created: 2025-10-22
-updated: '2025-11-18'
-status: stable
 description: Enterprise interactive survey orchestrator with AskUserQuestion tool
   integration, multi-select support, conditional branching, error recovery, and production-grade
   decision automation across all Alfred workflows; activates for requirement clarification,
   architectural decisions, risky operations, feature selection, and complex multi-step
   user interactions
-keywords:
-- interactive-surveys
-- user-clarification
-- decision-making
-- AskUserQuestion
-- multi-select
-- conditional-flow
-- error-recovery
-- workflow-automation
-- enterprise-ux
-- production-surveys
-allowed-tools:
-- AskUserQuestion
-stability: stable
 ---
-
 
 # Enterprise Interactive Survey Orchestrator 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-core-ask-user-questions |
-| **Version** | 4.0.0 Enterprise (2025-11-18) |
-| **Core Tool** | `AskUserQuestion` (Claude Code built-in) |
-| **Auto-load** | When Alfred detects ambiguity in requests |
-| **Tier** | Alfred (Workflow Orchestration) |
-| **Allowed tools** | AskUserQuestion |
-| **Lines of Content** | 850+, with 10+ production examples |
-| **Progressive Disclosure** | 3-level (quick-reference, patterns, advanced) |
-
----
 
 ## 🚀 What It Does (Enterprise Context)
 
@@ -423,10 +389,10 @@ if (answer["Destructive Op"] === "Proceed") {
 
 ## 🔗 Related Skills
 
-- `moai-core-personas` (Communication styles by user level)
-- `moai-core-spec-authoring` (SPEC clarity & structure)
+- `moai-alfred-personas` (Communication styles by user level)
+- `moai-alfred-spec-authoring` (SPEC clarity & structure)
 - `moai-foundation-specs` (SPEC format & requirements)
-- `moai-core-language-detection` (Conversation language handling)
+- `moai-alfred-language-detection` (Conversation language handling)
 
 ---
 
@@ -455,5 +421,5 @@ if (answer["Destructive Op"] === "Proceed") {
 
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )

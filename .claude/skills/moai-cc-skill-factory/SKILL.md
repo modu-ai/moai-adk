@@ -1,35 +1,9 @@
 ---
-name: "moai-cc-skill-factory"
-version: "4.0.0"
-created: 2025-10-22
-updated: 2025-11-11
-status: stable
-description: AI-powered enterprise skill creation orchestrator with intelligent discovery, predictive optimization, ML-based content generation, and Context7-enhanced development patterns. Use when creating smart skill systems, implementing AI-driven skill generation, optimizing skill performance with machine learning, or building enterprise-grade skill factories with automated compliance and governance.
-keywords: ['ai-skill-factory', 'enterprise-skill-creation', 'predictive-optimization', 'ml-content-generation', 'context7-integration', 'intelligent-discovery', 'automated-governance', 'smart-factory', 'enterprise-automation']
-allowed-tools: 
-  - Read
-  - Write
-  - Glob
-  - Bash
-  - WebFetch
-  - WebSearch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-cc-skill-factory
+description: AI-powered enterprise skill creation orchestrator with intelligent discovery,
 ---
 
 # AI-Powered Enterprise Skill Creation Orchestrator 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-cc-skill-factory |
-| **Version** | 4.0.0 Enterprise (2025-11-11) |
-| **Status** | Active |
-| **Tier** | Essential AI-Powered Development |
-| **AI Integration** | ✅ Context7 MCP, ML Generation, Predictive Analytics |
-| **Auto-load** | Proactively for intelligent skill creation |
-| **Purpose** | Smart skill architecture with AI generation automation |
 
 ---
 

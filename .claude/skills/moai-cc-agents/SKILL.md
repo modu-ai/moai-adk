@@ -1,7 +1,8 @@
 ---
 name: moai-cc-agents
-description: Claude Code Agents system, task delegation patterns, and multi-agent coordination. Use when creating custom agents, managing agent workflows, or implementing task delegation.
-allowed-tools: Read, Bash, Task
+description: Claude Code Agents system, task delegation patterns, and multi-agent
+  coordination. Use when creating custom agents, managing agent workflows, or implementing
+  task delegation.
 ---
 
 # Claude Code Agents System

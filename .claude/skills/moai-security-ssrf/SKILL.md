@@ -1,34 +1,9 @@
 ---
-name: "moai-security-ssrf"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise SSRF Security Protection with AI-powered request validation, Context7 integration, and intelligent URL filtering for web application security
-keywords: ['ssrf', 'server-side-request-forgery', 'web-security', 'url-validation', 'request-filtering', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-security-ssrf
+description: Enterprise SSRF Security Protection with AI-powered request validation,
 ---
 
 # Enterprise SSRF Security Protection Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-security-ssrf |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Security Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Protection |
-| **Auto-load** | On demand when SSRF security keywords detected |
 
 ---
 

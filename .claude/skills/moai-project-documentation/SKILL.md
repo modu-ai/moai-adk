@@ -1,20 +1,6 @@
 ---
-name: "moai-project-documentation"
-version: "4.0.0"
-created: 2025-11-12
-updated: 2025-11-12
-status: stable
-tier: specialization
-description: "Enhanced project documentation with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation."
-allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "alfred"
-secondary-agents: []
-keywords: [project, documentation, git, frontend, kubernetes]
-tags: []
-orchestration: 
-can_resume: true
-typical_chain_position: "middle"
-depends_on: []
+name: moai-project-documentation
+description: Enhanced project documentation with AI-powered features. Enhanced with
 ---
 
 # moai-project-documentation

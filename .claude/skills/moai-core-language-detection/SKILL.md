@@ -1,15 +1,8 @@
 ---
-name: "moai-core-language-detection"
-version: "4.0.0"
-created: "2025-10-22"
-updated: "2025-11-12"
-tier: Alfred
-description: "Auto-detects project language and framework from package.json, pyproject.toml, Cargo.toml, go.mod, and other configuration files with comprehensive pattern matching based on 17,253+ production code examples."
-allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
-primary-agent: "alfred"
-secondary-agents: ["plan-agent", "implementation-planner"]
-keywords: ["language-detection", "framework-identification", "package-manager", "auto-detection", "project-analysis", "nodejs", "python", "rust", "golang"]
-status: stable
+name: moai-core-language-detection
+description: Auto-detects project language and framework from package.json, pyproject.toml,
+  Cargo.toml, go.mod, and other configuration files with comprehensive pattern matching
+  based on 17,253+ production code examples.
 ---
 
 # moai-alfred-language-detection

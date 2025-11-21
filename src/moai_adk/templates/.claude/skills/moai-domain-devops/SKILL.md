@@ -1,18 +1,8 @@
 ---
 name: moai-domain-devops
-version: 4.0.0
 description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub
   Actions, monitoring with Prometheus/Grafana, and cloud-native architectures
-allowed_tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
-status: stable
-updated: '2025-11-18'
-stability: stable
 ---
-
 
 # Enterprise DevOps Architect - Production-Grade  
 
@@ -90,7 +80,7 @@ spec:
         runAsUser: 1001
       containers:
       - name: web-app
-        image: myapp: .0@sha256:abc123...
+        image: myapp:v1.0.0@sha256:abc123...
         ports:
         - containerPort: 8080
         resources:
@@ -336,17 +326,17 @@ spec:
 apiVersion: v2
 name: web-app
 description: Production-grade web application
-version: "4.0.0"
+version: 1.0.0
 dependencies:
   - name: postgresql
-    version: "4.0.0"x.x
+    version: 12.x.x
     repository: https://charts.bitnami.com/bitnami
 
 # values.yaml
 replicaCount: 3
 image:
   repository: myapp
-  tag: " .0"
+  tag: "v1.0.0"
 service:
   type: ClusterIP
   port: 80
@@ -445,6 +435,6 @@ kubectl scale deployment/web-app-$([ "$NEW_VERSION" = "blue" ] && echo "green" |
 ---
 
 **Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-13  
 **Status**: Production Ready  
 **Tech Stack**: Kubernetes 1.31, Docker 27.x, Terraform 1.9, Prometheus 2.55, Grafana 11.x

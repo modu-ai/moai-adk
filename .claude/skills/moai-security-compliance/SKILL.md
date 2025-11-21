@@ -1,9 +1,6 @@
 ---
-name: "moai-security-compliance"
-version: "4.0.0"
-status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+name: moai-security-compliance
+description: Enterprise Skill for advanced development
 ---
 
 # moai-security-compliance: Regulatory Compliance & Audit Logging

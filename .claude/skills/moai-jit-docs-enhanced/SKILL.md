@@ -1,30 +1,13 @@
 ---
-name: "moai-jit-docs-enhanced"
-version: "1.0.0"
-created: 2025-11-05
-updated: 2025-11-05
-status: stable
-description: Enhanced Just-In-Time document loading system that intelligently discovers, loads, and caches relevant documentation based on user intent and project context. Use when users need specific documentation, when working with new technologies, when answering domain-specific questions, or when context indicates documentation gaps.
-keywords: [jit-loading, documentation, context-aware, intelligent-caching, domain-knowledge, tech-docs]
-allowed-tools: 
-  - Read
-  - Glob
-  - WebFetch
-  - WebSearch
+name: moai-jit-docs-enhanced
+description: Enhanced Just-In-Time document loading system that intelligently discovers,
+  loads, and caches relevant documentation based on user intent and project context.
+  Use when users need specific documentation, when working with new technologies,
+  when answering domain-specific questions, or when context indicates documentation
+  gaps.
 ---
 
 # Enhanced JIT Documentation Loader
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| Version | 1.0.0 |
-| Tier | Alfred (Knowledge Management) |
-| Auto-load | When documentation gaps detected |
-| Purpose | Intelligent, context-aware document loading |
-
----
 
 ## What It Does
 

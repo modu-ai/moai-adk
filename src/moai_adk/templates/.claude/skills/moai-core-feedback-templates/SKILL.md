@@ -1,30 +1,10 @@
 ---
-name: moai-core-feedback-templates
-version: 4.0.0
-created: 2025-11-12
-updated: '2025-11-18'
-status: stable
-language: ko
-description: "GitHub \uC774\uC288 \uB77C\uBCA8\uBCC4 \uAD6C\uC870\uD654\uB41C \uD15C\
-  \uD50C\uB9BF. \uBC84\uADF8, \uAE30\uB2A5 \uC694\uCCAD, \uAC1C\uC120 \uC0AC\uD56D\
-  , \uB9AC\uD329\uD1A0\uB9C1, \uBB38\uC11C, \uC9C8\uBB38 \uB4F1\n\uAC01 \uC774\uC288\
-  \ \uD0C0\uC785\uC5D0 \uB9DE\uB294 \uD55C\uAD6D\uC5B4 \uD15C\uD50C\uB9BF \uC81C\uACF5\
-  . /alfred:9-feedback\uC5D0\uC11C \uC0AC\uC6A9.\n"
-keywords:
-- feedback
-- templates
-- issue-creation
-- korean
-- structured-templates
-- bug-report
-- feature-request
-allowed-tools:
-- Read
-stability: stable
+name: moai-alfred-feedback-templates
+description: Korean language feedback templates for issue types and Alfred commands
+  with localized messaging patterns
 ---
 
-
-# GitHub 이슈 작성 템플릿 모음 
+# GitHub 이슈 작성 템플릿 모음 v1.0.0
 
 ## 개요
 
@@ -276,7 +256,6 @@ AskUserQuestion의 단계를 줄여서 사용 편의성 개선
 ## 현재 구조
 
 각 명령어마다 frontmatter 형식이 다름:
-- allowed-tools 리스트 형식 다름
 - skills 섹션 있는 파일/없는 파일 혼재
 
 ## 개선된 구조
@@ -285,7 +264,6 @@ AskUserQuestion의 단계를 줄여서 사용 편의성 개선
 ```
 ---
 name: alfred:X
-allowed-tools: [...]
 skills: [...]
 ---
 ```
@@ -471,10 +449,10 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 
 - **명령어**: `/alfred:9-feedback`
 - **라벨 분류법**: `Skill("moai-core-issue-labels")`
-- **이전 버전**: +부터 지원
+- **이전 버전**: v0.22.5+부터 지원
 
 ---
 
-**Last Updated**: 2025-11-18
-**Status**: Production Ready ( .0)
+**Last Updated**: 2025-11-12
+**Status**: Production Ready (v1.0.0)
 **Language**: Korean (한국어)

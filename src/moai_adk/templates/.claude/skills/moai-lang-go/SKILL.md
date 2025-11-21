@@ -1,18 +1,7 @@
 ---
 name: moai-lang-go
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Enterprise Go for systems and network programming Go 1.25.4, Fiber v3,
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
 ---
-
-
 
 # Go Systems Development — Enterprise  
 

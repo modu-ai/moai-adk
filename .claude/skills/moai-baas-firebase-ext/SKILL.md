@@ -1,34 +1,9 @@
 ---
-name: "moai-baas-firebase-ext"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise Firebase Platform with AI-powered Google Cloud integration, Context7 integration, and intelligent Firebase orchestration for scalable mobile and web applications
-keywords: ['firebase', 'google-cloud', 'realtime-database', 'firestore', 'authentication', 'hosting', 'cloud-functions', 'context7-integration', 'ai-orchestration']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-baas-firebase-ext
+description: Enterprise Firebase Platform with AI-powered Google Cloud integration,
 ---
 
 # Enterprise Firebase Platform Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-baas-firebase-ext |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Firebase Platform Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when Firebase keywords detected |
 
 ---
 

@@ -1,9 +1,7 @@
 ---
 name: moai-alfred-feedback-templates
-description: GitHub 이슈 라벨별 구조화된 템플릿. 버그, 기능 요청, 개선 사항, 리팩토링, 문서, 질문 등
-각 이슈 타입에 맞는 한국어 템플릿 제공. /alfred:9-feedback에서 사용.
-
-allowed-tools: Read
+description: Korean language feedback templates for issue types and Alfred commands
+  with localized messaging patterns
 ---
 
 # GitHub 이슈 작성 템플릿 모음 v1.0.0
@@ -258,7 +256,6 @@ AskUserQuestion의 단계를 줄여서 사용 편의성 개선
 ## 현재 구조
 
 각 명령어마다 frontmatter 형식이 다름:
-- allowed-tools 리스트 형식 다름
 - skills 섹션 있는 파일/없는 파일 혼재
 
 ## 개선된 구조
@@ -267,7 +264,6 @@ AskUserQuestion의 단계를 줄여서 사용 편의성 개선
 ```
 ---
 name: alfred:X
-allowed-tools: [...]
 skills: [...]
 ---
 ```

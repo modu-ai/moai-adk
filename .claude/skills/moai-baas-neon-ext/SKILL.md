@@ -1,36 +1,11 @@
 ---
-name: "moai-baas-neon-ext"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications
-keywords: ['neon', 'postgresql', 'serverless-database', 'database-branching', 'autoscaling', 'pg-bouncer', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-baas-neon-ext
+description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database
+  architecture, Context7 integration, and intelligent branching orchestration for
+  scalable modern applications
 ---
 
 # Enterprise Neon Serverless PostgreSQL Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-baas-neon-ext |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Database Platform Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when Neon keywords detected |
-
----
 
 ## What It Does
 

@@ -1,10 +1,5 @@
 ---
 name: moai-domain-cloud
-version: 4.0.0
-created: '2025-11-12'
-updated: '2025-11-18'
-status: stable
-tier: domain
 description: Enterprise-grade cloud architecture expertise with production-ready patterns
   for AWS (Lambda 3.13, ECS/Fargate 1.4.0, RDS, CDK 2.223.0), GCP (Cloud Run Gen2,
   Cloud Functions 2nd gen, Cloud SQL), Azure (Functions v4, Container Apps, AKS),
@@ -12,38 +7,7 @@ description: Enterprise-grade cloud architecture expertise with production-ready
   serverless architectures, container orchestration, multi-cloud deployments, cloud-native
   databases, infrastructure automation, cost optimization, security patterns, and
   disaster recovery for 2025 stable versions.
-allowed-tools: Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id,
-  mcp__context7__get-library-docs
-primary-agent: cloud-expert
-secondary-agents:
-- qa-validator
-- alfred
-- doc-syncer
-keywords:
-- cloud
-- AWS
-- GCP
-- Azure
-- Lambda
-- serverless
-- ECS
-- Kubernetes
-- Terraform
-- multi-cloud
-- IaC
-- cloud-native
-- database
-- DevOps
-tags:
-- domain-expert
-- 2025-stable
-orchestration: null
-can_resume: true
-typical_chain_position: middle
-depends_on: []
-stability: stable
 ---
-
 
 # moai-domain-cloud — Enterprise Cloud Architecture ( )
 
@@ -117,7 +81,7 @@ def lambda_handler(event: APIGatewayProxyEvent, context) -> Response:
 ```
 
 **Core Technology Stack (2025 Stable):**
-- **AWS**: Lambda (Python 3.13), ECS/Fargate ( .0), RDS (PostgreSQL 17), CDK (2.223.0)
+- **AWS**: Lambda (Python 3.13), ECS/Fargate (v1.4.0), RDS (PostgreSQL 17), CDK (2.223.0)
 - **GCP**: Cloud Run (Gen2), Cloud Functions 2nd gen, Cloud SQL (PostgreSQL 17)
 - **Azure**: Functions (v4), Container Apps, SQL Database, AKS (1.34.x)
 - **Multi-Cloud IaC**: Terraform (1.9.8), Pulumi (3.205.0), Kubernetes (1.34), Docker (27.5.1)
@@ -176,7 +140,7 @@ def process_s3_object(record):
     return {"statusCode": 200, "key": key}
 ```
 
-**Infrastructure as Code (AWS CDK ):**
+**Infrastructure as Code (AWS CDK v2.223.0):**
 
 ```python
 # lib/serverless_stack.py

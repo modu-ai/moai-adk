@@ -1,13 +1,7 @@
 ---
-name: "moai-domain-notion"
-version: "4.0.0"
-created: 2025-08-15
-updated: 2025-11-13
-status: stable
-tier: Enterprise
-description: "Enterprise Notion integration with MCP server architecture, database operations, and content management"
-keywords: [notion, database, workspace, content-management, mcp-integration, automation]
-allowed-tools: ["Task", "Read", "Bash", "WebSearch", "WebFetch", "mcp__context7__resolve-library-id", "mcp__context7__get-library-docs"]
+name: moai-domain-notion
+description: Enterprise Notion integration with MCP server architecture, database
+  operations, and content management
 ---
 
 # Enterprise Notion Integration 

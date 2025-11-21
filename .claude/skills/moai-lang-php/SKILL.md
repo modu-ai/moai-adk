@@ -1,7 +1,7 @@
 ---
 name: moai-lang-php
-description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web frameworks (Laravel, Symfony).
-allowed-tools: Read, Bash
+description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards,
+  and web frameworks (Laravel, Symfony).
 ---
 
 # Lang Php Skill

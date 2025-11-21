@@ -1,31 +1,11 @@
 ---
 name: moai-lang-dart
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming,
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  state management, and cross-platform mobile development. Enterprise patterns for
+  scalable applications with Context7 MCP integration.
 ---
 
-
-
 # Dart - Enterprise 
-
-## Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-dart |
-| **Version** | 4.0.0 (2025-11-12) |
-| **Allowed tools** | Read, Bash, Context7 MCP |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language Enterprise |
-| **Context7 Integration** | ✅ Dart/Flutter/Async/StateManagement |
 
 ---
 

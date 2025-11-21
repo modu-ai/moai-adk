@@ -1,3 +1,9 @@
+---
+name: moai-domain-backend
+description: Enterprise Backend Architecture with modern async patterns, microservices,
+  API design, FastAPI, Django, Kubernetes, and production deployment
+---
+
 # Enterprise Backend Architecture - 
 
 **Modern async patterns, microservices, API design, and production deployment**

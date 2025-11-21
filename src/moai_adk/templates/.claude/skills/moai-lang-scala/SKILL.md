@@ -1,32 +1,10 @@
 ---
 name: moai-lang-scala
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  patterns, and Play Framework.
 ---
-
-
 
 # Lang Scala Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-scala |
-| **Version** | 2.1.0 (2025-11-02) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 
@@ -108,7 +86,7 @@ _Documentation links updated 2025-10-22_
 ## Works Well With
 
 - `moai-foundation-trust` (quality gates)
-- `moai-core-code-reviewer` (code review)
+- `moai-alfred-code-reviewer` (code review)
 - `moai-essentials-debug` (debugging support)
 
 ---

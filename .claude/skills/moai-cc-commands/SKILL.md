@@ -1,7 +1,8 @@
 ---
 name: moai-cc-commands
-description: Claude Code Commands system, workflow orchestration, and command-line interface patterns. Use when creating custom commands, managing workflows, or implementing CLI interfaces.
-allowed-tools: Read, Bash, Glob
+description: Claude Code Commands system, workflow orchestration, and command-line
+  interface patterns. Use when creating custom commands, managing workflows, or implementing
+  CLI interfaces.
 ---
 
 # Claude Code Commands System

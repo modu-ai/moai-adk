@@ -1,16 +1,6 @@
 ---
-name: "moai-lang-kotlin"
-version: "4.0.0"
-created: 2025-10-22
-updated: 2025-11-13
-status: stable
-description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutines, Compose Multiplatform, and Context7 MCP integration. Advanced patterns for mobile, backend, and cross-platform development.
-keywords: ['kotlin', 'kmp', 'coroutines', 'compose', 'android', 'multiplatform', 'enterprise', 'context7']
-allowed-tools:
-  - Read
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-lang-kotlin
+description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutines,
 ---
 
 # Lang Kotlin Skill - Enterprise 

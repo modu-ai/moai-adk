@@ -1,55 +1,13 @@
 ---
 name: moai-core-code-reviewer
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
 description: Enterprise systematic code review orchestrator with TRUST 5 principles,
   multi-language support, Context7 integration, AI-powered quality checks, SOLID principle
   validation, security vulnerability detection, and maintainability analysis across
   25+ programming languages; activates for code reviews, quality standard validation,
   TRUST 5 enforcement, architectural audits, and automated review automation
-keywords:
-- code-review
-- TRUST-5
-- quality-assurance
-- SOLID-principles
-- security-scanning
-- maintainability-analysis
-- ai-code-review
-- context7-integration
-- automated-review
-- enterprise-quality
-allowed-tools:
-- Read
-- Write
-- Edit
-- Glob
-- Bash
-- AskUserQuestion
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-- WebFetch
-stability: stable
 ---
-
 
 # Enterprise Systematic Code Review Orchestrator 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-core-code-reviewer |
-| **Version** | 4.0.0 Enterprise (2025-11-18) |
-| **Core Framework** | TRUST 5 principles, Context7 integration |
-| **AI Integration** | ✅ Context7 MCP, AI quality checks, pattern matching |
-| **Auto-load** | When conducting code reviews or quality checks |
-| **Languages** | 25+ (Python, JavaScript, Go, Rust, Java, etc.) |
-| **Lines of Content** | 950+ with 15+ production examples |
-| **Progressive Disclosure** | 3-level (framework, patterns, advanced) |
-
----
 
 ## What It Does
 
@@ -327,12 +285,12 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 ## Related Skills
 
-- `moai-core-practices` (Code patterns and best practices)
+- `moai-alfred-practices` (Code patterns and best practices)
 - `moai-essentials-refactor` (Refactoring strategies)
 
 ---
 
 **For detailed review checklists**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )

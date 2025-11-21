@@ -1,6 +1,8 @@
 ---
 name: moai-essentials-refactor
-description: AI-powered enterprise refactoring with Context7 integration, automated code transformation, Rope pattern intelligence, and technical debt quantification across 25+ programming languages
+description: AI-powered enterprise refactoring with Context7 integration, automated
+  code transformation, Rope pattern intelligence, and technical debt quantification
+  across 25+ programming languages
 ---
 
 # AI-Powered Enterprise Refactoring - 

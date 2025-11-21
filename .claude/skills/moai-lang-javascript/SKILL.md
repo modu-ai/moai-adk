@@ -1,26 +1,12 @@
 ---
-name: "moai-lang-javascript"
-version: "4.0.0"
-status: stable
-description: "Enterprise JavaScript for Node.js and browser: Node.js 22.11.0 LTS (Jod), npm 11.x, ES2025 features, async operations, module systems, package management; activates for server-side development, scripting, tooling, package management, and runtime optimization."
-allowed-tools: 
+name: moai-lang-javascript
+description: JAVASCRIPT language development patterns and best practices
+---
+name: moai-lang-javascript
+description: Enterprise JavaScript for Node.js and browser: Node.js 22.11.0 LTS (Jod), npm 11.x, ES2025 features, async operations, module systems, package management; activates for server-side development, scripting, tooling, package management, and runtime optimization.
 ---
 
 # JavaScript Runtime & Ecosystem — Enterprise  
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-12 |
-| **Updated** | 2025-11-12 |
-| **Lines** | ~950 lines |
-| **Size** | ~30KB |
-| **Tier** | **3 (Professional)** |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | Node.js runtime, async operations, npm ecosystem, ES2025 features |
-| **Trigger cues** | JavaScript, Node.js, npm, async, module, ES2025, runtime, npm scripts |
 
 ## Technology Stack (November 2025 Stable)
 

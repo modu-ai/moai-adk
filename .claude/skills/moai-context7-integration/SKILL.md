@@ -1,20 +1,6 @@
 ---
-name: "moai-context7-integration"
-version: "4.0.0"
-created: 2025-11-12
-updated: 2025-11-12
-status: stable
-tier: specialization
-description: "Enhanced context7 integration with AI-powered features"
-allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "mcp-context7-integrator"
-secondary-agents: [alfred]
-keywords: [context7, integration, api, frontend, security]
-tags: []
-orchestration: 
-can_resume: true
-typical_chain_position: "middle"
-depends_on: []
+name: moai-context7-integration
+description: Enhanced context7 integration with AI-powered features
 ---
 
 # moai-context7-integration

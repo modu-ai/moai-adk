@@ -1,36 +1,9 @@
 ---
-name: "moai-foundation-ears"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
+name: moai-foundation-ears
 description: Enterprise EARS (Evaluate, Analyze, Recommend, Synthesize) Framework with AI-powered requirements engineering, Context7 integration, and intelligent solution orchestration for systematic problem-solving
-keywords: ['ears', 'requirements-engineering', 'systematic-thinking', 'problem-solving', 'evaluation-framework', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
-# Enterprise EARS Framework Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-foundation-ears |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Foundation Framework Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Analysis |
-| **Auto-load** | On demand when systematic analysis keywords detected |
-
----
+# Enterprise EARS Framework Expert
 
 ## What It Does
 

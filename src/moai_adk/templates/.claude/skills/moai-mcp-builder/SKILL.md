@@ -1,20 +1,7 @@
 ---
 name: moai-mcp-builder
-version: 4.0.0
 description: Enterprise MCP (Model Context Protocol) server development using FastMCP
-  2.0 with production-grade tools, resources, prompts, and intelligent agent-first
-  design. Use when building MCP servers, integrating with LLMs, creating agent tools,
-  implementing RAG systems, or developing protocol-based AI integration solutions.
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
-status: stable
-updated: '2025-11-18'
-stability: stable
 ---
-
 
 # Enterprise MCP Server Builder & AI Integration Platform
 
@@ -34,18 +21,6 @@ stability: stable
 - Enterprise auth (OAuth, SAML)
 - Proxy and composition patterns
 - Production-ready deployments
-
-## Skill Metadata
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-12 |
-| **Framework** | FastMCP 2.0, Python SDK |
-| **Protocol** | Model Context Protocol (MCP) |
-| **Features** | Tools, Resources, Prompts |
-| **Transport** | Stdio, SSE, HTTP/WebSocket |
-| **Auth** | OAuth 2.0, SAML, API Keys |
-| **Tier** | **4 (Enterprise)** |
 
 ## MCP Architecture Overview
 

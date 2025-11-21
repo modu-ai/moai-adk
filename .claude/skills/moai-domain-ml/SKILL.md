@@ -1,14 +1,6 @@
 ---
 name: moai-domain-ml
-version: 4.0.0
-status: production
-description: |
-  Enterprise Machine Learning specialist with TensorFlow 2.20.0, PyTorch 2.9.0, 
-  Scikit-learn 1.7.2 expertise. Master AutoML, neural architecture search, MLOps 
-  automation, and production ML deployment. Build scalable ML pipelines with 
-  comprehensive monitoring and experiment tracking.
-allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
-tags: ["machine-learning", "tensorflow", "pytorch", "scikit-learn", "automl", "mlops", "deep-learning"]
+description: Enterprise Machine Learning specialist with TensorFlow 2.20.0, PyTorch\
 ---
 
 # Enterprise Machine Learning

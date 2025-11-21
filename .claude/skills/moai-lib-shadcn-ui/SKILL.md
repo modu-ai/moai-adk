@@ -1,34 +1,9 @@
 ---
-name: "moai-lib-shadcn-ui"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise shadcn/ui Component Library with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications
-keywords: ['shadcn-ui', 'component-library', 'design-system', 'react', 'typescript', 'tailwind', 'radix-ui', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-lib-shadcn-ui
+description: Enterprise shadcn/ui Component Library with AI-powered design system
 ---
 
 # Enterprise shadcn/ui Component Library Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lib-shadcn-ui |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Component Library Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when shadcn/ui keywords detected |
 
 ---
 

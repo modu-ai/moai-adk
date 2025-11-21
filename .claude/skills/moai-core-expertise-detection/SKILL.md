@@ -1,34 +1,12 @@
 ---
-name: "moai-core-expertise-detection"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-12
-status: stable
-description: Enterprise AI-powered user expertise detection with behavioral analysis, communication pattern recognition, code complexity assessment, Context7 integration, and adaptive response calibration; activates for personalized guidance generation, complexity adjustment, tutorial depth selection, and communication style matching
-keywords: ['expertise-detection', 'behavioral-analysis', 'adaptive-learning', 'ai-expertise-modeling', 'communication-patterns', 'skill-assessment', 'personalization', 'context7-integration', 'user-profiling', 'enterprise-adaptation']
-allowed-tools: 
-  - Read
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-  - WebFetch
+name: moai-core-expertise-detection
+description: Enterprise AI-powered user expertise detection with behavioral analysis,
+  communication pattern recognition, code complexity assessment, Context7 integration,
+  and adaptive response calibration; activates for personalized guidance generation,
+  complexity adjustment, tutorial depth selection, and communication style matching
 ---
 
 # Enterprise AI-Powered Expertise Detection 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-expertise-detection |
-| **Version** | 4.0.0 Enterprise (2025-11-12) |
-| **AI Integration** | ✅ Context7 MCP, behavioral analysis, pattern recognition |
-| **Auto-load** | Continuous during user interactions |
-| **Expertise Levels** | Beginner, Intermediate, Advanced, Expert |
-| **Lines of Content** | 920+ with 14+ production examples |
-| **Progressive Disclosure** | 3-level (detection, patterns, advanced) |
-
----
 
 ## What It Does
 

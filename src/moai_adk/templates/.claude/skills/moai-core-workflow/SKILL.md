@@ -1,31 +1,7 @@
 ---
 name: moai-core-workflow
-version: 4.0.0
-status: stable
-description: "Enterprise multi-agent workflow orchestration specialist. Master workflow\
-  \ \ndesign, agent coordination, task delegation, and process automation with Context7\
-  \ \nMCP integration and comprehensive monitoring. Build scalable, intelligent \n\
-  workflow systems with fault tolerance and performance optimization.\n"
-allowed-tools:
-- Read
-- Write
-- Edit
-- Bash
-- Glob
-- WebFetch
-- WebSearch
-tags:
-- workflow
-- automation
-- agents
-- orchestration
-- context7
-- mcp
-- multi-agent
-updated: '2025-11-18'
-stability: stable
+description: Enterprise multi-agent workflow orchestration specialist. Master workflow design, agent coordination, task delegation, and process automation with Context7 MCP integration and comprehensive monitoring. Build scalable, intelligent workflow systems with fault tolerance and performance optimization.
 ---
-
 
 # Alfred Workflow Orchestration
 
@@ -156,7 +132,7 @@ class Workflow:
     description: str
     engine: WorkflowEngine
     tasks: List[Task] = field(default_factory=list)
-    status: stable = "created"
+    status: str = "created"
     created_at: datetime = field(default_factory=datetime.now)
     
     def add_stage(self, stage_name: str, agent_type: str,
@@ -342,7 +318,7 @@ class WorkflowMetrics:
             'task_completion_times': []
         }
     
-    def record_workflow_completion(self, workflow_id: str, execution_time: float, status: stable):
+    def record_workflow_completion(self, workflow_id: str, execution_time: float, status: str):
         if status == 'completed':
             self.metrics['workflows_completed'] += 1
         else:
@@ -430,8 +406,8 @@ bug_workflow_id = await scheduler.submit_workflow(
 
 ### Related Skills
 
-- `moai-core-agent-guide` - Agent selection and delegation patterns
-- `moai-core-spec-authoring` - SPEC creation workflows
+- `moai-alfred-agent-guide` - Agent selection and delegation patterns
+- `moai-alfred-spec-authoring` - SPEC creation workflows
 - `moai-essentials-debug` - Error handling and troubleshooting
 - `moai-foundation-trust` - Security and compliance principles
 - `moai-domain-backend` - Backend-specific workflow patterns
@@ -440,6 +416,6 @@ bug_workflow_id = await scheduler.submit_workflow(
 ---
 
 **Enterprise   Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-13  
 **Dependencies**: Context7 MCP integration, Alfred agent system
 **See Also**: [examples.md](./examples.md) for detailed usage examples

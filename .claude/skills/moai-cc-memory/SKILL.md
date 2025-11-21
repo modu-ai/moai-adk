@@ -1,7 +1,7 @@
 ---
 name: moai-cc-memory
-description: Claude Code memory management, context persistence, and knowledge retention. Use when managing session memory, persisting context, or optimizing knowledge retention.
-allowed-tools: Read, Bash, Grep
+description: Claude Code memory management, context persistence, and knowledge retention.
+  Use when managing session memory, persisting context, or optimizing knowledge retention.
 ---
 
 # Claude Code Memory Management

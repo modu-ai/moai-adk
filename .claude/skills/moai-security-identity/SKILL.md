@@ -1,9 +1,6 @@
 ---
-name: "moai-security-identity"
-version: "4.0.0"
-status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+name: moai-security-identity
+description: Enterprise Skill for advanced development
 ---
 
 # moai-security-identity: SAML 2.0 & OIDC Identity Management

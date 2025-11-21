@@ -1,32 +1,7 @@
 ---
 name: moai-core-spec-authoring
-version: 4.0.0
-created: 2025-10-23
-updated: '2025-11-18'
-status: stable
-tier: Alfred
 description: Complete SPEC document authoring guide with YAML metadata structure (7
-  required + 9 optional fields), EARS requirement syntax (5 patterns including Unwanted
-  Behaviors), version lifecycle management, TAG integration, pre-submission validation
-  checklist, and real-world SPEC examples.
-keywords:
-- spec
-- authoring
-- ears
-- metadata
-- requirements
-- tdd
-- planning
-- yaml-metadata
-- requirement-syntax
-- validation-checklist
-allowed-tools:
-- Read
-- Bash
-- Glob
-stability: stable
 ---
-
 
 # SPEC Authoring Skill (Enterprise )
 
@@ -45,12 +20,12 @@ stability: stable
 ---
 code: SPEC-001
 title: Add User Authentication with JWT
-status: stable
+status: draft
 created_at: 2025-11-13
 updated_at: 2025-11-13
 priority: high
 effort: 8
-version: "4.0.0"
+version: 1.0.0
 epic: AUTH-01
 domains:
   - backend
@@ -122,7 +97,7 @@ code: SPEC-001
 title: Add User Authentication with JWT
 
 # SPEC status (draft | active | deprecated | archived)
-status: stable
+status: draft
 
 # Creation timestamp (ISO 8601: YYYY-MM-DD)
 created_at: 2025-11-13
@@ -142,7 +117,7 @@ effort: 8
 
 ```yaml
 # Version tracking (semantic versioning: major.minor.patch)
-version: "4.0.0"
+version: 1.0.0
 
 # Deadline target date (ISO 8601: YYYY-MM-DD)
 deadline: 2025-12-15
@@ -487,11 +462,11 @@ unwanted_behaviors:
 
 ### Related Skills
 
-- `moai-core-best-practices` - TRUST 5 principles for SPEC authoring
-- `moai-core-spec-validation` - Automated SPEC validation
+- `moai-alfred-best-practices` - TRUST 5 principles for SPEC authoring
+- `moai-alfred-spec-validation` - Automated SPEC validation
 - `moai-foundation-specs` - SPEC lifecycle management
 - `moai-foundation-trust` - Security and compliance principles
-- `moai-core-workflow` - SPEC creation workflows
+- `moai-alfred-workflow` - SPEC creation workflows
 
 ### TRUST Principles Applied
 
@@ -504,6 +479,6 @@ unwanted_behaviors:
 ---
 
 **Enterprise   Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-13  
 **Dependencies**: YAML metadata format, EARS specification, TAG system
 **See Also**: [examples.md](./examples.md) for detailed SPEC examples

@@ -1,12 +1,6 @@
 ---
-name: "moai-core-context-budget"
-version: "4.0.0"
-tier: Alfred
-description: "Enterprise Claude Code context window optimization with 2025 best practices: aggressive clearing, memory file management, MCP optimization, strategic chunking, and quality-over-quantity principles for 200K token context windows."
-primary-agent: "alfred"
-secondary-agents: ["session-manager", "plan-agent"]
-keywords: ["context", "optimization", "memory", "tokens", "performance", "mcp", "claude-code"]
-status: stable
+name: moai-core-context-budget
+description: Enterprise Claude Code context window optimization with 2025 best practices:
 ---
 
 # moai-alfred-context-budget

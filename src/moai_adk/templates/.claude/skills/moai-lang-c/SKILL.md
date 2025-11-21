@@ -1,32 +1,11 @@
 ---
 name: moai-lang-c
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: C programming language patterns, memory management, and systems programming
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  best practices. Use when writing C applications, managing memory manually, or implementing
+  low-level optimizations.
 ---
-
-
 
 # C Programming Language Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-c |
-| **Version** | 2.0.0 (2025-11-11) |
-| **Allowed tools** | Read, Bash, Glob |
-| **Auto-load** | On demand when C patterns detected |
-| **Tier** | Language (Foundation) |
-
----
 
 ## What It Does
 

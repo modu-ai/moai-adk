@@ -1,7 +1,7 @@
 ---
 name: moai-lang-scala
-description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming patterns, and Play Framework.
-allowed-tools: Read, Bash
+description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming
+  patterns, and Play Framework.
 ---
 
 # Lang Scala Skill

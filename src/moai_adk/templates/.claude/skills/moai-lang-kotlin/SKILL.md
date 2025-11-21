@@ -1,18 +1,7 @@
 ---
 name: moai-lang-kotlin
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutines,
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
 ---
-
-
 
 # Lang Kotlin Skill - Enterprise 
 
@@ -506,4 +495,4 @@ val client = HttpClient {
 
 ---
 
-_Last updated: 2025-11-18_
+_Last updated: 2025-11-13_

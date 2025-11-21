@@ -1,9 +1,6 @@
 ---
-name: "moai-security-threat"
-version: "4.0.0"
-status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+name: moai-security-threat
+description: Enterprise Skill for advanced development
 ---
 
 # moai-security-threat: Threat Modeling & IDS/IPS Rules

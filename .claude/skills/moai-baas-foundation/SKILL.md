@@ -1,33 +1,11 @@
 ---
-name: "moai-baas-foundation"
-version: "4.0.0"
-created: 2025-10-22
-updated: 2025-11-13
-status: stable
-description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture patterns, strategic provider selection, and intelligent multi-service orchestration for scalable production applications
-keywords: ['baas', 'backend-architecture', 'service-integration', 'provider-selection', 'enterprise-patterns', 'multi-cloud', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-baas-foundation
+description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture
+  patterns, strategic provider selection, and intelligent multi-service orchestration
+  for scalable production applications
 ---
 
 # Enterprise BaaS Foundation Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-baas-foundation |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Foundation (Core Architecture) |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture Analysis |
-| **Auto-load** | On demand when BaaS patterns detected |
-
----
 
 ## What It Does
 

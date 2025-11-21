@@ -1,12 +1,8 @@
 ---
 name: moai-domain-ml-ops
-version: 4.0.0
-created: 2025-11-18
-updated: '2025-11-18'
-status: stable
-stability: stable
+description: Enterprise MLOps Platform with complete ML lifecycle orchestration including
+  MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
 ---
-
 
 # Enterprise MLOps Platform - 
 
@@ -390,6 +386,6 @@ GitHub Actions → DVC Pipeline → MLflow → Registry → Production
 ---
 
 **Version**: 4.0.0 Enterprise
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-11-13
 **Status**: Production Ready
 **Enterprise Grade**: ✅ Full Enterprise Support

@@ -1,47 +1,9 @@
 ---
 name: moai-baas-clerk-ext
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
 description: Enterprise Clerk Authentication Platform with AI-powered modern identity
-  architecture, Context7 integration, and intelligent user management orchestration
-  for scalable applications
-keywords:
-- clerk
-- modern-authentication
-- user-management
-- multi-platform
-- webauthn
-- organizations
-- context7-integration
-- ai-orchestration
-- production-deployment
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- Glob
-- Grep
-- WebFetch
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-stability: stable
 ---
 
-
 # Enterprise Clerk Authentication Platform Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-baas-clerk-ext |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Authentication Platform Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when Clerk keywords detected |
 
 ---
 

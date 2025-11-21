@@ -1,20 +1,6 @@
 ---
-name: "moai-core-personas"
-version: "4.0.0"
-created: 2025-11-05
-updated: 2025-11-13
-status: stable
-tier: specialization
-description: "Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation."
-allowed-tools: "Read, AskUserQuestion, TodoWrite"
-primary-agent: "alfred"
-secondary-agents: [session-manager, plan-agent]
-keywords: [alfred, personas, communication, adaptation, expertise]
-tags: [alfred-core]
-orchestration: 
-can_resume: true
-typical_chain_position: "middle"
-depends_on: []
+name: moai-core-personas
+description: Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation.
 ---
 
 # moai-alfred-personas

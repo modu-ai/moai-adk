@@ -1,51 +1,13 @@
 ---
 name: moai-core-practices
-version: 4.0.0
-created: 2025-11-05
-updated: '2025-11-18'
-status: stable
 description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time)
   retrieval optimization, real-world execution examples, debugging patterns, and moai-adk
   workflow mastery; activates for workflow pattern learning, context optimization,
   debugging issue resolution, feature implementation end-to-end, and team knowledge
   transfer
-keywords:
-- workflow-patterns
-- context-engineering
-- jit-retrieval
-- agent-usage
-- debugging-patterns
-- feature-implementation
-- practical-examples
-- moai-adk-mastery
-- knowledge-transfer
-- enterprise-workflows
-allowed-tools:
-- Read
-- Glob
-- Bash
-- WebFetch
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-stability: stable
 ---
-
 
 # Enterprise Practical Workflows & Context Engineering 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-core-practices |
-| **Version** | 4.0.0 Enterprise (2025-11-18) |
-| **Focus** | Practical execution patterns, real-world scenarios |
-| **Auto-load** | When workflow guidance or debugging help needed |
-| **Included Patterns** | 15+ real-world scenarios |
-| **Lines of Content** | 950+ with 20+ production examples |
-| **Progressive Disclosure** | 3-level (quick-patterns, scenarios, advanced) |
-
----
 
 ## What It Does
 
@@ -347,13 +309,13 @@ Reusable context:
 
 ## Related Skills
 
-- `moai-core-agent-guide` (Agent orchestration patterns)
-- `moai-core-clone-pattern` (Complex task delegation)
+- `moai-alfred-agent-guide` (Agent orchestration patterns)
+- `moai-alfred-clone-pattern` (Complex task delegation)
 - `moai-essentials-debug` (Debugging techniques)
 
 ---
 
 **For detailed workflow examples**: [reference.md](reference.md)  
 **For real-world scenarios**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )

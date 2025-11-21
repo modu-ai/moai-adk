@@ -1,7 +1,7 @@
 ---
 name: moai-domain-web-api
-description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and rate limiting.
-allowed-tools: Read, Bash
+description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning,
+  and rate limiting.
 ---
 
 # Domain Web Api Skill

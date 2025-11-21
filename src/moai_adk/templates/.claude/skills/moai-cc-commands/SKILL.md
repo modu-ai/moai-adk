@@ -1,39 +1,11 @@
 ---
 name: moai-cc-commands
-version: 4.0.0
-created: 2025-10-22
-updated: '2025-11-18'
-status: stable
 description: Claude Code Commands system, workflow orchestration, and command-line
   interface patterns. Use when creating custom commands, managing workflows, or implementing
   CLI interfaces.
-keywords:
-- commands
-- cli
-- workflow
-- orchestration
-- interface
-allowed-tools:
-- Read
-- Bash
-- Glob
-stability: stable
 ---
-
 
 # Claude Code Commands System
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-cc-commands |
-| **Version** | 2.0.0 (2025-11-11) |
-| **Allowed tools** | Read, Bash, Glob |
-| **Auto-load** | On demand when command patterns detected |
-| **Tier** | Claude Code (Core) |
-
----
 
 ## What It Does
 

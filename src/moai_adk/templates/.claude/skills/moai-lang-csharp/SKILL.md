@@ -1,31 +1,11 @@
 ---
 name: moai-lang-csharp
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity Framework
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  Core, ASP.NET Core, and Context7 MCP integration for modern backend and enterprise
+  applications.
 ---
 
-
-
 # C# - Enterprise 
-
-## Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-csharp |
-| **Version** | 4.0.0 (2025-11-12) |
-| **Allowed tools** | Read, Bash, Context7 MCP |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language Enterprise |
-| **Context7 Integration** | ✅ C#/.NET/ASP.NET Core/EF Core |
 
 ---
 
@@ -360,4 +340,4 @@ aspnetcore_docs = get_library_docs(
 
 ---
 
-_Last updated: 2025-11-18 | Maintained by moai-adk team_
+_Last updated: 2025-11-12 | Maintained by moai-adk team_

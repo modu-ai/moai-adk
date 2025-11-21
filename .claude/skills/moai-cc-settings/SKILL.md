@@ -1,7 +1,8 @@
 ---
 name: moai-cc-settings
-description: Claude Code settings management, preference customization, and user experience optimization. Use when customizing Claude Code behavior, managing user preferences, or optimizing development experience.
-allowed-tools: Read, Bash, Grep
+description: Claude Code settings management, preference customization, and user experience
+  optimization. Use when customizing Claude Code behavior, managing user preferences,
+  or optimizing development experience.
 ---
 
 # Claude Code Settings Management

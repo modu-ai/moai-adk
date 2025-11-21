@@ -1,13 +1,7 @@
 ---
 name: moai-security-secrets
-version: 4.0.0
-status: stable
 description: Enterprise Skill for advanced development
-allowed-tools: Read, Bash, WebSearch, WebFetch
-updated: '2025-11-18'
-stability: stable
 ---
-
 
 # moai-security-secrets: Secret Management & Rotation
 

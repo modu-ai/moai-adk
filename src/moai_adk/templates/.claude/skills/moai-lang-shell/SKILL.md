@@ -1,18 +1,8 @@
 ---
 name: moai-lang-shell
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing,
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
 ---
-
-
 
 # moai-lang-shell - Enterprise 
 
@@ -457,4 +447,4 @@ This skill integrates with Context7 for real-time documentation access:
 
 ---
 
-_Last updated: 2025-11-18_
+_Last updated: 2025-11-13_

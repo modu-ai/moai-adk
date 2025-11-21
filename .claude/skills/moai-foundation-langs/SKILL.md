@@ -1,36 +1,9 @@
 ---
-name: "moai-foundation-langs"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
+name: moai-foundation-langs
 description: Enterprise Programming Languages Foundation with AI-powered language selection, Context7 integration, and intelligent multi-language orchestration for optimal technology choices
-keywords: ['programming-languages', 'language-selection', 'technology-stack', 'multi-language', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
-# Enterprise Programming Languages Foundation Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-foundation-langs |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Foundation Language Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Selection |
-| **Auto-load** | On demand when language selection keywords detected |
-
----
+# Enterprise Programming Languages Foundation Expert
 
 ## What It Does
 

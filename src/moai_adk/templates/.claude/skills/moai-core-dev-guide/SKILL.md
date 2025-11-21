@@ -1,32 +1,9 @@
 ---
 name: moai-core-dev-guide
-version: 4.0.0
-created: 2025-11-02
-updated: '2025-11-18'
-tier: Alfred
-allowed-tools: Read, Bash(rg:*), Bash(grep:*)
-primary-agent: alfred
-secondary-agents:
-- spec-builder
-- tdd-implementer
-- test-engineer
-- doc-syncer
-- git-manager
-keywords:
-- spec-first
-- tdd
-- red-green-refactor
-- trust-principles
-- pytest
-- jest
-- bdd
-- sphinx
-status: stable
-stability: stable
+description: moai-core-dev-guide skill documentation and patterns
 ---
 
-
-# moai-core-dev-guide
+# moai-alfred-dev-guide
 
 **Enterprise SPEC-First TDD Development Orchestration**
 
@@ -68,7 +45,7 @@ Alfred's SPEC-First TDD workflow orchestrates the complete development lifecycle
 ---
 id: SPEC-001
 title: User Authentication System
-status: stable
+status: approved
 ---
 
 ## Requirements
@@ -443,7 +420,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "4.0.0"
+          python-version: '3.11'
       
       - name: Install dependencies
         run: |
@@ -614,5 +591,5 @@ Research date: 2025-11-12
 ---
 
 **Version**: 4.0.0  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-12  
 **Maintained By**: Alfred SuperAgent (MoAI-ADK)

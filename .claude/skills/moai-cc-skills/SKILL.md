@@ -1,7 +1,8 @@
 ---
 name: moai-cc-skills
-description: Claude Code Skills management, skill creation patterns, and knowledge capsule architecture. Use when creating custom Skills, managing skill libraries, or designing knowledge systems.
-allowed-tools: Read, Bash, Glob
+description: Claude Code Skills management, skill creation patterns, and knowledge
+  capsule architecture. Use when creating custom Skills, managing skill libraries,
+  or designing knowledge systems.
 ---
 
 # Claude Code Skills Management

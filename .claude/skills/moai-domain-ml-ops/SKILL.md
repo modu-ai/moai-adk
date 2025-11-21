@@ -1,3 +1,9 @@
+---
+name: moai-domain-ml-ops
+description: Enterprise MLOps Platform with complete ML lifecycle orchestration including
+  MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
+---
+
 # Enterprise MLOps Platform - 
 
 **Complete ML lifecycle orchestration with 2025's most stable stack**

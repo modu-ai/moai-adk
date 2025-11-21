@@ -1,12 +1,6 @@
 ---
-name: "moai-lang-{{LANGUAGE_SLUG}}"
-version: "4.0.0"
-created: 2025-11-06
-updated: 2025-11-06
-status: stable
-description: "{{LANGUAGE_NAME}} best practices with modern frameworks, {{PRIMARY_DOMAIN}}, and performance optimization for 2025"
-keywords: ["{{LANGUAGE_SLUG}}", programming, "{{PRIMARY_PARADIGMS}}", "{{ECOSYSTEM_KEYWORDS}}"]
-allowed-tools: 
+name: moai-lang-{{LANGUAGE_SLUG}}
+description: {{LANGUAGE_NAME}} best practices with modern frameworks, {{PRIMARY_DOMAIN}},
 ---
 
 # {{LANGUAGE_NAME}} Development Mastery

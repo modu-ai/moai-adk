@@ -1,50 +1,12 @@
 ---
 name: moai-core-issue-labels
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
 description: Enterprise GitHub issue labeling orchestrator with semantic label taxonomy,
   AI-powered auto-labeling, label hierarchy system, workflow automation, issue triage
   acceleration, and stakeholder communication; activates for issue classification,
   label management, workflow automation, priority assignment, and team communication
-keywords:
-- github-labels
-- issue-triage
-- label-taxonomy
-- ai-labeling
-- workflow-automation
-- issue-classification
-- priority-management
-- team-communication
-- semantic-labels
-- enterprise-triage
-allowed-tools:
-- Read
-- Bash
-- AskUserQuestion
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-- WebFetch
-stability: stable
 ---
-
 
 # Enterprise GitHub Issue Labeling Orchestrator 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-core-issue-labels |
-| **Version** | 4.0.0 Enterprise (2025-11-18) |
-| **AI Integration** | ✅ Context7 MCP, semantic analysis, auto-classification |
-| **Auto-load** | On issue creation/update for auto-labeling |
-| **Categories** | Type, Priority, Status, Component, Custom |
-| **Lines of Content** | 850+ with 13+ production examples |
-| **Progressive Disclosure** | 3-level (taxonomy, patterns, automation) |
-
----
 
 ## What It Does
 
@@ -80,16 +42,16 @@ priority: low       → Nice to have, backlog (SLA: unbounded)
 ### Status Labels
 
 ```
-status: stable      → Waiting for team analysis
-status: stable → Team actively investigating
-status: stable     → Waiting for external dependency
-status: stable       → Ready for implementation
-status: stable-progress → Currently being worked on
-status: stable      → In code review
-status: stable     → In QA/testing
-status: stable        → Completed and verified
-status: stable     → Intentionally not fixing
-status: stable   → Duplicate of another issue
+status: triage      → Waiting for team analysis
+status: investigating → Team actively investigating
+status: blocked     → Waiting for external dependency
+status: ready       → Ready for implementation
+status: in-progress → Currently being worked on
+status: review      → In code review
+status: testing     → In QA/testing
+status: done        → Completed and verified
+status: wontfix     → Intentionally not fixing
+status: duplicate   → Duplicate of another issue
 ```
 
 ### Component Labels
@@ -224,12 +186,12 @@ Duplicate → linked to original
 
 ## Related Skills
 
-- `moai-core-practices` (Workflow patterns)
+- `moai-alfred-practices` (Workflow patterns)
 - `moai-foundation-specs` (Issue specification)
 
 ---
 
 **For detailed label reference**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )

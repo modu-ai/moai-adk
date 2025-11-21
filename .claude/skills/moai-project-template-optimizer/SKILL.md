@@ -1,20 +1,8 @@
 ---
-name: "moai-project-template-optimizer"
-version: "4.0.0"
-created: 2025-11-12
-updated: 2025-11-12
-status: stable
-tier: specialization
-description: "Handle template comparison and optimization workflows including backup detection, smart merging, and update completion reporting. Enhanced with Context7 MCP for up-to-date documentation."
-allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "alfred"
-secondary-agents: []
-keywords: [project, template, optimizer, test]
-tags: [project, template, optimization, backup, merge, comparison]
-orchestration: 
-can_resume: true
-typical_chain_position: "middle"
-depends_on: []
+name: moai-project-template-optimizer
+description: Handle template comparison and optimization workflows including backup
+  detection, smart merging, and update completion reporting. Enhanced with Context7
+  MCP for up-to-date documentation.
 ---
 
 # moai-project-template-optimizer

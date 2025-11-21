@@ -1,7 +1,7 @@
 ---
 name: moai-lang-r
-description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
-allowed-tools: Read, Bash
+description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis
+  patterns.
 ---
 
 # Lang R Skill

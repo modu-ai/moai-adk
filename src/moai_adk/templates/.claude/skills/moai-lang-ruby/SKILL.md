@@ -1,32 +1,10 @@
 ---
 name: moai-lang-ruby
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  8 patterns.
 ---
-
-
 
 # Lang Ruby Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-ruby |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 
@@ -107,7 +85,7 @@ _Documentation links updated 2025-10-22_
 ## Works Well With
 
 - `moai-foundation-trust` (quality gates)
-- `moai-core-code-reviewer` (code review)
+- `moai-alfred-code-reviewer` (code review)
 - `moai-essentials-debug` (debugging support)
 
 ---

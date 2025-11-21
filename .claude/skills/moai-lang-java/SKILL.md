@@ -1,7 +1,8 @@
 ---
 name: moai-lang-java
-description: Java programming language patterns, object-oriented design, and enterprise application development. Use when building enterprise applications, Android apps, or large-scale systems.
-allowed-tools: Read, Bash, Glob
+description: Java programming language patterns, object-oriented design, and enterprise
+  application development. Use when building enterprise applications, Android apps,
+  or large-scale systems.
 ---
 
 # Java Programming Language Skill

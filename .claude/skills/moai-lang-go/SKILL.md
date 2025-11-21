@@ -1,13 +1,6 @@
 ---
-name: "moai-lang-go"
-version: "4.0.0"
-status: stable
-description: Enterprise Go for systems and network programming Go 1.25.4, Fiber v3, gRPC, context patterns, goroutine orchestration, standard library mastery; activates for REST APIs, microservices, concurrent systems, backend infrastructure, and performance-critical code.
-allowed-tools:
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
+name: moai-lang-go
+description: Enterprise Go for systems and network programming Go 1.25.4, Fiber v3,
 ---
 
 # Go Systems Development — Enterprise  

@@ -1,18 +1,10 @@
 ---
 name: moai-lang-rust
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
-description: Enterprise Rust with ownership model and safety guarantees: Rust 1.91.1,
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+description: RUST language development patterns and best practices
 ---
-
-
+name: moai-lang-rust
+description: Enterprise Rust with ownership model and safety guarantees: Rust 1.91.1, Tokio 1.48, async/await, macro system, error handling, memory safety patterns; activates for systems programming, performance-critical code, concurrent applications, and safety-first development.
+---
 
 # Rust Systems Programming — Enterprise  
 

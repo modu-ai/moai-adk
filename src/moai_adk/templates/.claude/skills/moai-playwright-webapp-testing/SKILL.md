@@ -3,48 +3,9 @@ name: moai-playwright-webapp-testing
 description: AI-powered enterprise web application testing orchestrator with Context7
   integration, intelligent test generation, visual regression testing, cross-browser
   coordination, and automated QA workflows for modern web applications
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
-- WebFetch
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
-keywords:
-- ai-testing
-- context7-integration
-- visual-regression
-- cross-browser-testing
-- test-automation
-- enterprise-qa
-- webapp-testing
-- playwright-orchestrator
-- intelligent-test-generation
-- automated-qa-workflows
-stability: stable
 ---
-
 
 # AI-Powered Enterprise Web Application Testing Skill 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-playwright-webapp-testing |
-| **Version** | 4.0.0 Enterprise (2025-11-11) |
-| **Tier** | Essential AI-Powered Testing |
-| **AI Integration** | ✅ Context7 MCP, AI Test Generation, Visual Regression |
-| **Auto-load** | On demand for intelligent test triage and automated QA |
-| **Languages** | Python, TypeScript, JavaScript + Web Frameworks |
-
----
 
 ## 🚀 Revolutionary AI Testing Capabilities
 

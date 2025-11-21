@@ -1,49 +1,9 @@
 ---
 name: moai-cc-hooks
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
 description: AI-powered enterprise Claude Code hooks orchestrator with intelligent
-  automation, predictive maintenance, ML-based optimization, and Context7-enhanced
-  workflow patterns. Use when designing smart hook systems, implementing AI-driven
-  automation, optimizing hook performance with machine learning, or building enterprise-grade
-  workflow orchestration with automated compliance and monitoring.
-keywords:
-- ai-claude-code-hooks
-- enterprise-automation
-- predictive-maintenance
-- ml-optimization
-- context7-workflows
-- intelligent-orchestration
-- automated-monitoring
-- smart-hooks
-- enterprise-workflows
-allowed-tools:
-- Read
-- Write
-- Edit
-- Bash
-- Glob
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-stability: stable
 ---
 
-
 # AI-Powered Enterprise Claude Code Hooks Orchestrator 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-cc-hooks |
-| **Version** | 4.0.0 Enterprise (2025-11-11) |
-| **Status** | Active |
-| **Tier** | Essential AI-Powered Operations |
-| **AI Integration** | ✅ Context7 MCP, ML Automation, Predictive Analytics |
-| **Auto-load** | Proactively for intelligent hook system design |
-| **Purpose** | Smart workflow orchestration with AI automation |
 
 ---
 

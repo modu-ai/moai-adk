@@ -1,34 +1,9 @@
 ---
-name: "moai-baas-vercel-ext"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise Vercel Edge Platform with AI-powered modern deployment, Context7 integration, and intelligent edge orchestration for scalable web applications
-keywords: ['vercel', 'edge-computing', 'next.js', 'serverless', 'deployment', 'cdn', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-baas-vercel-ext
+description: Enterprise Vercel Edge Platform with AI-powered modern deployment, Context7
 ---
 
 # Enterprise Vercel Edge Platform Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-baas-vercel-ext |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Edge Platform Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when Vercel keywords detected |
 
 ---
 

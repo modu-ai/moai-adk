@@ -1,34 +1,9 @@
 ---
-name: "moai-domain-monitoring"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise Application Monitoring with AI-powered observability architecture, Context7 integration, and intelligent performance orchestration for scalable modern applications
-keywords: ['monitoring', 'observability', 'performance', 'analytics', 'metrics', 'logging', 'tracing', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-domain-monitoring
+description: Enterprise Application Monitoring with AI-powered observability architecture,
 ---
 
 # Enterprise Application Monitoring Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-domain-monitoring |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Monitoring Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when monitoring keywords detected |
 
 ---
 

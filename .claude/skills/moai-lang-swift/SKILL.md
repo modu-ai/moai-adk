@@ -1,30 +1,11 @@
 ---
-name: "moai-lang-swift"
-version: "4.0.0"
-created: 2025-10-22
-updated: 2025-11-12
-status: stable
-description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine, and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and enterprise mobile applications with Context7 MCP integration.
-keywords: ['swift', 'swiftui', 'async-await', 'swift-concurrency', 'combine', 'ios', 'macos', 'server-side-swift', 'context7']
-allowed-tools:
-  - Read
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-lang-swift
+description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine,
+  and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and
+  enterprise mobile applications with Context7 MCP integration.
 ---
 
 # Swift - Enterprise 
-
-## Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-swift |
-| **Version** | 4.0.0 (2025-11-12) |
-| **Allowed tools** | Read, Bash, Context7 MCP |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language Enterprise |
-| **Context7 Integration** | ✅ Swift/SwiftUI/Vapor/Combine |
 
 ---
 

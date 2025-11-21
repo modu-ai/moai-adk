@@ -1,26 +1,9 @@
 ---
-name: "moai-essentials-perf"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-11
-status: stable
-description: "AI-powered enterprise performance optimization orchestrator with Context7 integration, Scalene AI profiling, intelligent bottleneck detection, automated optimization strategies, and predictive performance tuning across 25+ programming languages"
-keywords: ['ai-performance-optimization', 'context7-integration', 'scalene-profiling', 'ai-bottleneck-detection', 'predictive-tuning', 'automated-optimization', 'gpu-profiling', 'memory-optimization', 'enterprise-performance']
-allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, WebFetch"
+name: moai-essentials-perf
+description: AI-powered enterprise performance optimization orchestrator with Context7
 ---
 
 # AI-Powered Enterprise Performance Optimization Skill 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-essentials-perf |
-| **Version** | 4.0.0 Enterprise (2025-11-11) |
-| **Tier** | Essential AI-Powered Performance |
-| **AI Integration** | ✅ Context7 MCP, Scalene AI Profiling, Predictive Optimization |
-| **Auto-load** | On demand for AI-powered performance analysis |
-| **Languages** | 25+ languages with specialized optimization patterns |
 
 ---
 

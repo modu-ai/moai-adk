@@ -1,34 +1,9 @@
 ---
-name: "moai-baas-convex-ext"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise Convex Real-Time Backend with AI-powered reactive database architecture, Context7 integration, and intelligent synchronization orchestration for collaborative applications
-keywords: ['convex', 'realtime-backend', 'reactive-database', 'typescript', 'full-stack', 'synchronization', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-baas-convex-ext
+description: Enterprise Convex Real-Time Backend with AI-powered reactive database
 ---
 
 # Enterprise Convex Real-Time Backend Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-baas-convex-ext |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Real-Time Backend Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when Convex keywords detected |
 
 ---
 

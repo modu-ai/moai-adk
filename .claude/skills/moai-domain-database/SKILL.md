@@ -1,14 +1,6 @@
 ---
 name: moai-domain-database
-version: 4.0.0
-status: production
-description: |
-  Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS, 
-  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization, 
-  caching strategies, and database DevOps automation. Build scalable, resilient 
-  database systems with comprehensive monitoring and disaster recovery.
-allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
-tags: ["database", "postgresql", "mysql", "mongodb", "redis", "sql", "nosql", "optimization"]
+description: Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS,  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization,  caching strategies, and database DevOps automation. Build scalable, resilient  database systems with comprehensive monitoring and disaster recovery.
 ---
 
 # Enterprise Database Architecture

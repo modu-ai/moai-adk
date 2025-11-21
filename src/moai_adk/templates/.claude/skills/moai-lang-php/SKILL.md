@@ -1,32 +1,10 @@
 ---
 name: moai-lang-php
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards,
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  and web frameworks (Laravel, Symfony).
 ---
-
-
 
 # Lang Php Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-php |
-| **Version** | 2.1.0 (2025-11-02) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
-
----
 
 ## What It Does
 
@@ -109,7 +87,7 @@ _Documentation links updated 2025-10-22_
 ## Works Well With
 
 - `moai-foundation-trust` (quality gates)
-- `moai-core-code-reviewer` (code review)
+- `moai-alfred-code-reviewer` (code review)
 - `moai-essentials-debug` (debugging support)
 
 ---

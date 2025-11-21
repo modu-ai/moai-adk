@@ -1,7 +1,7 @@
 ---
 name: moai-lang-cpp
-description: C++23 best practices with Google Test 1.15, clang-format 19, and modern C++ standards.
-allowed-tools: Read, Bash
+description: C++23 best practices with Google Test 1.15, clang-format 19, and modern
+  C++ standards.
 ---
 
 # Lang Cpp Skill

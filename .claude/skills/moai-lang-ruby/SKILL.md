@@ -1,7 +1,7 @@
 ---
 name: moai-lang-ruby
-description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
-allowed-tools: Read, Bash
+description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails
+  8 patterns.
 ---
 
 # Lang Ruby Skill

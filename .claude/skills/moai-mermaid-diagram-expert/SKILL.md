@@ -1,38 +1,12 @@
 ---
 name: moai-mermaid-diagram-expert
-description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright rendering
+description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright
 ---
 
 # Skill: Mermaid Diagram Expert v6.0.0-skill-edition
 
 **Pure skill-based Mermaid rendering for Claude Code with MCP Playwright integration.**
 
-## Metadata
-
-```yaml
-skill_id: moai-mermaid-diagram-expert
-skill_name: "Mermaid Diagram Expert"
-version: 6.0.0-skill-edition
-created_date: 2025-11-20
-updated_date: 2025-11-20
-language: english
-execution_mode: claude-code-skill
-mcp_integration: playwright
-diagram_types_supported: 21
-triggers:
-  - keywords: [mermaid, diagram, flowchart, sequence, class, ER, gantt, C4, architecture, visualization]
-  - contexts: [diagram-generation, visual-documentation, architecture-visualization]
-agents:
-  - docs-manager, backend-expert, frontend-expert, database-expert, devops-expert
-freedom_level: high
-context7_references:
-  - url: "https://mermaid.js.org"
-    topic: "Official Mermaid.js documentation and syntax"
-  - url: "https://mermaid.js.org/syntax/"
-    topic: "Complete syntax reference for all diagram types"
-  - url: "https://mermaid.live"
-    topic: "Interactive Mermaid editor and testing platform"
-```
 
 ---
 

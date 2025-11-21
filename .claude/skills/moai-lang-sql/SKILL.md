@@ -1,7 +1,7 @@
 ---
 name: moai-lang-sql
-description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, and migration management.
-allowed-tools: Read, Bash
+description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, and
+  migration management.
 ---
 
 # Lang Sql Skill

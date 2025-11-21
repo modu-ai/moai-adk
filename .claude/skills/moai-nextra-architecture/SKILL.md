@@ -1,37 +1,10 @@
 ---
-name: "moai-nextra-architecture"
-version: "4.0.0"
-status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+name: moai-nextra-architecture
+description: Enterprise Skill for advanced development
 ---
 
 # Skill: Nextra Architecture Expert
 
-## Metadata
-
-```yaml
-skill_id: moai-nextra-architecture
-skill_name: Nextra Architecture Expert
-version: 1.0.0
-created_date: 2025-11-11
-updated_date: 2025-11-11
-language: english
-word_count: 1800
-triggers:
-  - keywords: [nextra, nextjs documentation, theme config, mdx, static site generation]
-  - contexts: [nextra-architecture, docs-optimization, site-generation, documentation-framework]
-agents:
-  - docs-manager
-  - frontend-expert
-  - docs-manager
-freedom_level: high
-context7_references:
-  - url: "https://github.com/shuding/nextra"
-    topic: "Nextra framework best practices and configuration"
-  - url: "https://vercel.com/templates/next.js"
-    topic: "Next.js deployment and optimization strategies"
-```
 
 ## 📚 Content
 

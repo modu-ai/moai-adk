@@ -1,47 +1,12 @@
 ---
 name: moai-core-clone-pattern
-version: 4.0.0
-created: 2025-11-05
-updated: '2025-11-18'
-status: stable
 description: Enterprise Master-Clone pattern implementation guide for complex multi-step
   tasks with full project context, autonomous delegation, parallel processing, and
   intelligent task distribution; activates for large-scale migrations, complex refactoring,
   parallel exploration, architecture restructuring, and multi-file transformations
-keywords:
-- clone-pattern
-- master-clone
-- delegation
-- multi-step
-- parallel-processing
-- autonomous-agents
-- task-distribution
-- project-context
-- complex-workflows
-- enterprise-delegation
-allowed-tools:
-- Read
-- Bash
-- Task
-stability: stable
 ---
-
 
 # Enterprise Master-Clone Pattern Skill 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-core-clone-pattern |
-| **Version** | 4.0.0 Enterprise (2025-11-18) |
-| **Allowed tools** | Read, Bash, Task |
-| **Auto-load** | On demand for complex multi-step tasks |
-| **Tier** | Alfred (Orchestration) |
-| **Lines of Content** | 900+ with 12+ enterprise examples |
-| **Progressive Disclosure** | 3-level (quick-start, patterns, advanced) |
-
----
 
 ## What It Does
 
@@ -64,7 +29,7 @@ Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delega
 - Task can run autonomously without continuous user input
 
 **Examples**:
-- Large-scale migrations ( .0 →  affecting 200 files)
+- Large-scale migrations (v0.14.0 → v0.15.2 affecting 200 files)
 - Refactoring across many files (100+ imports, API changes)
 - Parallel exploration/evaluation tasks
 - Complex architecture restructuring
@@ -154,19 +119,19 @@ const comparison = {
 ```typescript
 // Step 1: Analyze current state
 const analysisResult = await Task({
-  description: "Analyze  codebase structure",
+  description: "Analyze v0.14.0 codebase structure",
   prompt: "Scan project for all imports of 'old-api'. Document usage patterns, edge cases, and dependencies. Provide summary with file-by-file breakdown."
 });
 
 // Step 2: Plan migration strategy (depends on analysis)
 const planResult = await Task({
-  description: "Plan migration strategy from  to ",
+  description: "Plan migration strategy from v0.14.0 to v0.15.2",
   prompt: `Using this analysis: ${analysisResult}\n\nCreate a step-by-step migration plan with:\n- Phased approach (phase 1, 2, 3)\n- Risk mitigation\n- Testing strategy\n- Rollback procedure`
 });
 
 // Step 3: Execute migration (depends on plan)
 const migrationResult = await Task({
-  description: "Execute  →  migration",
+  description: "Execute v0.14.0 → v0.15.2 migration",
   prompt: `Using this plan: ${planResult}\n\nExecute the migration:\n- Update imports\n- Modify APIs\n- Update tests\n- Verify compatibility`
 });
 
@@ -182,7 +147,7 @@ return {
   plan: planResult,
   migration: migrationResult,
   validation: validationResult,
-  status: stableResult.passed ? "SUCCESS" : "NEEDS_REVIEW"
+  status: validationResult.passed ? "SUCCESS" : "NEEDS_REVIEW"
 };
 ```
 
@@ -321,13 +286,13 @@ return validateIntegration(refactorResults);
 
 ## Related Skills
 
-- `moai-core-agent-guide` (Agent architecture & delegation)
-- `moai-core-task-decomposition` (Breaking down complex tasks)
+- `moai-alfred-agent-guide` (Agent architecture & delegation)
+- `moai-alfred-task-decomposition` (Breaking down complex tasks)
 - `moai-essentials-refactor` (Refactoring patterns & examples)
 
 ---
 
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )

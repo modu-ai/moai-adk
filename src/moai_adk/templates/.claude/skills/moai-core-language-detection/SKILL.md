@@ -1,33 +1,11 @@
 ---
 name: moai-core-language-detection
-version: 4.0.0
-created: '2025-10-22'
-updated: '2025-11-18'
-tier: Alfred
 description: Auto-detects project language and framework from package.json, pyproject.toml,
   Cargo.toml, go.mod, and other configuration files with comprehensive pattern matching
   based on 17,253+ production code examples.
-allowed-tools: Read, Bash(rg:*), Bash(grep:*)
-primary-agent: alfred
-secondary-agents:
-- plan-agent
-- implementation-planner
-keywords:
-- language-detection
-- framework-identification
-- package-manager
-- auto-detection
-- project-analysis
-- nodejs
-- python
-- rust
-- golang
-status: stable
-stability: stable
 ---
 
-
-# moai-core-language-detection
+# moai-alfred-language-detection
 
 **Enterprise Language & Framework Auto-Detection**
 
@@ -464,17 +442,17 @@ module github.com/username/my-go-app
 go 1.21
 
 require (
-    github.com/gin-gonic/gin 
-    github.com/golang-migrate/migrate/v4 
-    github.com/lib/pq 
-    github.com/spf13/viper 
-    github.com/stretchr/testify 
+    github.com/gin-gonic/gin v1.9.1
+    github.com/golang-migrate/migrate/v4 v4.16.2
+    github.com/lib/pq v1.10.9
+    github.com/spf13/viper v1.17.0
+    github.com/stretchr/testify v1.8.4
 )
 
 require (
-    github.com/bytedance/sonic  // indirect
-    github.com/chenzhuoyu/base64x -20221115062448-fe3a3abad311 // indirect
-    github.com/gabriel-vasile/mimetype  // indirect
+    github.com/bytedance/sonic v1.9.1 // indirect
+    github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
+    github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 )
 ```
 

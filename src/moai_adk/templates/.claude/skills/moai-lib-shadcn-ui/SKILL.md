@@ -1,50 +1,147 @@
 ---
 name: moai-lib-shadcn-ui
-version: 4.0.0
-status: stable
-updated: 2025-11-20
-description: Enterprise shadcn/ui Component Library with AI-powered design system architecture
-category: Library
-allowed-tools: Read, Bash, Write, Edit, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+description: Enterprise shadcn/ui Component Library with AI-powered design system
 ---
 
-# moai-lib-shadcn-ui: Enterprise Component Library
-
-**AI-powered shadcn/ui with design system architecture for modern React applications**
-
-Trust Score: 9.7/10 | Version: 4.0.0 | Last Updated: 2025-11-20
+# Enterprise shadcn/ui Component Library Expert 
 
 ---
 
-## Overview
+## What It Does
 
-Enterprise shadcn/ui Component Library expert with:
-- **Component System**: 40+ production-ready components
-- **Design Tokens**: Comprehensive theming with CSS variables
-- **Accessibility**: WCAG 2.1 AA compliance with Radix UI primitives
-- **TypeScript**: Full type safety with modern patterns
+Enterprise shadcn/ui Component Library expert with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
+
+**Revolutionary  capabilities**:
+- 🤖 **AI-Powered Component Architecture** using Context7 MCP for latest design patterns
+- 📊 **Intelligent Design System** with automated theme customization and optimization
+- 🚀 **Advanced Component Orchestration** with AI-driven accessibility and performance
+- 🔗 **Enterprise UI Framework** with zero-configuration design tokens and branding
+- 📈 **Predictive Component Analytics** with usage forecasting and optimization insights
+
+---
+
+## When to Use
+
+**Automatic triggers**:
+- shadcn/ui component library and design system discussions
+- React component architecture and UI framework planning
+- Tailwind CSS integration and design token management
+- Accessibility implementation and design customization
+
+**Manual invocation**:
+- Designing enterprise design systems with shadcn/ui
+- Implementing comprehensive component libraries
+- Planning theme customization and branding strategies
+- Optimizing component performance and accessibility
+
+---
+
+# Quick Reference (Level 1)
+
+## shadcn/ui Ecosystem (November 2025)
+
+### Core Components
+- **Form Components**: Input, Select, Checkbox, Radio, Textarea
+- **Display Components**: Card, Dialog, Sheet, Drawer, Popover
+- **Navigation Components**: Navigation Menu, Breadcrumb, Tabs, Pagination
+- **Data Components**: Table, Calendar, DatePicker, Chart Components
+- **Feedback Components**: Alert, Toast, Progress, Badge, Avatar
+
+### Foundation Technologies
+- **React 19**: Latest React with server components and concurrent features
+- **TypeScript 5.5**: Full type safety and enhanced developer experience
+- **Tailwind CSS 3.4**: Utility-first CSS framework with JIT compilation
+- **Radix UI**: Unstyled, accessible component primitives
+- **Framer Motion**: Production-ready motion library for animations
+- **Lucide React**: Beautifully designed icon library
+
+### Design System Features
+- **Dark Mode**: Comprehensive dark mode support with system detection
+- **Responsive Design**: Mobile-first responsive components
+- **Accessibility**: WCAG 2.1 AA compliance with proper ARIA support
+- **Theming**: CSS variables for comprehensive theme customization
+- **Animation**: Smooth animations and transitions with Framer Motion
+
+### Integration Benefits
+- **Developer Experience**: Excellent DX with TypeScript and hot reloading
+- **Customization**: Fully customizable with Tailwind CSS classes
 - **Performance**: Optimized bundle size and runtime performance
-
-**Foundation Technologies**:
-- React 19 with server components
-- TypeScript 5.5 for type safety
-- Tailwind CSS 3.4 with JIT compilation
-- Radix UI for accessible primitives
-- Framer Motion for animations
+- **Accessibility**: Built-in accessibility with Radix UI primitives
+- **Consistency**: Design system ensures consistent UI across applications
 
 ---
 
-## Core Components
+# Core Implementation (Level 2)
 
-### Button Component
+## shadcn/ui Architecture Intelligence
+
+```python
+# AI-powered shadcn/ui architecture optimization with Context7
+class ShadcnUIArchitectOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.component_analyzer = ComponentAnalyzer()
+        self.theme_optimizer = ThemeOptimizer()
+    
+    async def design_optimal_shadcn_architecture(self, 
+                                               requirements: DesignSystemRequirements) -> ShadcnUIArchitecture:
+        """Design optimal shadcn/ui architecture using AI analysis."""
+        
+        # Get latest shadcn/ui and React documentation via Context7
+        shadcn_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/shadcn-ui/docs',
+            topic="component library design system theming accessibility 2025",
+            tokens=3000
+        )
+        
+        react_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/react/docs',
+            topic="hooks server-components performance optimization 2025",
+            tokens=2000
+        )
+        
+        # Optimize component selection
+        component_selection = self.component_analyzer.optimize_component_selection(
+            requirements.ui_components,
+            requirements.user_needs,
+            shadcn_docs
+        )
+        
+        # Optimize theme configuration
+        theme_configuration = self.theme_optimizer.optimize_theme_system(
+            requirements.brand_guidelines,
+            requirements.accessibility_requirements,
+            shadcn_docs
+        )
+        
+        return ShadcnUIArchitecture(
+            component_library=component_selection,
+            theme_system=theme_configuration,
+            accessibility_compliance=self._ensure_accessibility_compliance(
+                requirements.accessibility_requirements
+            ),
+            performance_optimization=self._optimize_component_performance(
+                component_selection
+            ),
+            integration_patterns=self._design_integration_patterns(
+                requirements.framework_stack
+            ),
+            customization_strategy=self._plan_customization_strategy(
+                requirements.customization_needs
+            )
+        )
+```
+
+## Component System Implementation
 
 ```typescript
-// components/ui/button.tsx
+// Advanced shadcn/ui component with TypeScript and modern patterns
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+// Component variants using class-variance-authority
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
@@ -79,10 +176,11 @@ export interface ButtonProps
   loadingText?: string;
 }
 
+// Enhanced button component with loading state and accessibility
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading, loadingText, children, disabled, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-
+    
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
@@ -95,13 +193,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {loading && (
           <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
         )}
-
+        
         {loading && loadingText ? (
           <span id="loading-description" className="sr-only">
             {loadingText}
           </span>
         ) : null}
-
+        
         {loading ? loadingText || children : children}
       </Comp>
     );
@@ -109,252 +207,112 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = "Button";
+
 export { Button, buttonVariants };
-```
 
-### Form Components
+// Advanced form component with validation
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-```typescript
-// components/ui/form.tsx
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import {
-  Controller,
-  ControllerProps,
-  FieldPath,
-  FieldValues,
-  useFormContext,
-} from "react-hook-form";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "./form";
-
-const Form = Form;
-
-interface FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
-> {
-  name: TName;
-}
-
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-);
-
-const FormField = <
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
->({
-  ...props
-}: ControllerProps<TFieldValues, TName>) => {
-  return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
-    </FormFieldContext.Provider>
-  );
-};
-
-const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext);
-  const itemContext = React.useContext(FormItemContext);
-  const { getFieldState, formState } = useFormContext();
-
-  const fieldState = getFieldState(fieldContext.name, formState);
-
-  if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>");
-  }
-
-  const { id } = itemContext;
-
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  };
-};
-
-// Input Component
-const FormItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("space-y-2", className)} {...props} />
-));
-FormItem.displayName = "FormItem";
-
-const FormLabel = React.forwardRef<
-  React.ElementRef<typeof Label>,
-  React.ComponentPropsWithoutRef<typeof Label>
->(({ className, ...props }, ref) => (
-  <Label
-    ref={ref}
-    className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)}
-    {...props}
-  />
-));
-FormLabel.displayName = "FormLabel";
-
-const FormControl = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => (
-  <Slot
-    ref={ref}
-    className={cn(
-      "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-      props.className
-    )}
-    {...props}
-  />
-));
-FormControl.displayName = "FormControl";
-
-const FormDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-[0.8rem] text-muted-foreground", className)}
-    {...props}
-  />
-));
-FormDescription.displayName = "FormDescription";
-
-const FormMessage = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, children, ...props }, ref) => {
-  const { error } = useFormState();
-  const message = error ? String(error?.message) : children;
-
-  if (!message) {
-    return null;
-  }
-
-  return (
-    <p
-      ref={ref}
-      className={cn("text-[0.8rem] font-medium text-destructive", className)}
-      {...props}
-    >
-      {message}
-    </p>
-  );
+const formSchema = z.object({
+  username: z.string().min(2, {
+    message: "Username must be at least 2 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(8, {
+    message: "Password must be at least 8 characters.",
+  }),
 });
-FormMessage.displayName = "FormMessage";
 
-export {
-  useFormField,
-  Form,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-  FormField,
-};
+type FormValues = z.infer<typeof formSchema>;
+
+export function UserForm() {
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // Handle form submission
+      console.log("Form data:", data);
+    } catch (error) {
+      console.error("Submission error:", error);
+    }
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          type="text"
+          placeholder="Enter your username"
+          {...form.register("username")}
+          aria-invalid={form.formState.errors.username ? "true" : "false"}
+          aria-describedby={form.formState.errors.username ? "username-error" : undefined}
+        />
+        {form.formState.errors.username && (
+          <p id="username-error" className="text-sm text-destructive">
+            {form.formState.errors.username.message}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="Enter your email"
+          {...form.register("email")}
+          aria-invalid={form.formState.errors.email ? "true" : "false"}
+          aria-describedby={form.formState.errors.email ? "email-error" : undefined}
+        />
+        {form.formState.errors.email && (
+          <p id="email-error" className="text-sm text-destructive">
+            {form.formState.errors.email.message}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="Enter your password"
+          {...form.register("password")}
+          aria-invalid={form.formState.errors.password ? "true" : "false"}
+          aria-describedby={form.formState.errors.password ? "password-error" : undefined}
+        />
+        {form.formState.errors.password && (
+          <p id="password-error" className="text-sm text-destructive">
+            {form.formState.errors.password.message}
+          </p>
+        )}
+      </div>
+
+      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? "Creating account..." : "Create account"}
+      </Button>
+    </form>
+  );
+}
 ```
 
-### Card Component
+## Theme System Implementation
 
 ```typescript
-// components/ui/card.tsx
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
-      className
-    )}
-    {...props}
-  />
-));
-Card.displayName = "Card";
-
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-));
-CardHeader.displayName = "CardHeader";
-
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
-    {...props}
-  />
-));
-CardTitle.displayName = "CardTitle";
-
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-CardDescription.displayName = "CardDescription";
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-));
-CardContent.displayName = "CardContent";
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-));
-CardFooter.displayName = "CardFooter";
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
-```
-
----
-
-## Theme System
-
-### Theme Provider
-
-```typescript
-// components/theme-provider.tsx
+// Advanced theme system with CSS variables and dark mode
 import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "dark" | "light" | "system";
@@ -391,6 +349,7 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = window.document.documentElement;
+
     root.classList.remove("light", "dark");
 
     if (theme === "system" && enableSystem) {
@@ -398,6 +357,7 @@ export function ThemeProvider({
         .matches
         ? "dark"
         : "light";
+
       root.classList.add(systemTheme);
       return;
     }
@@ -422,186 +382,159 @@ export function ThemeProvider({
 
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext);
+
   if (context === undefined)
     throw new Error("useTheme must be used within a ThemeProvider");
+
   return context;
 };
-```
 
-### CSS Variables for Theming
+// Theme configuration with design tokens
+export const theme = {
+  light: {
+    background: "hsl(0 0% 100%)",
+    foreground: "hsl(240 10% 3.9%)",
+    card: "hsl(0 0% 100%)",
+    cardForeground: "hsl(240 10% 3.9%)",
+    popover: "hsl(0 0% 100%)",
+    popoverForeground: "hsl(240 10% 3.9%)",
+    primary: "hsl(240 9% 10%)",
+    primaryForeground: "hsl(0 0% 98%)",
+    secondary: "hsl(240 4.8% 95.9%)",
+    secondaryForeground: "hsl(240 3.8% 46.1%)",
+    muted: "hsl(240 4.8% 95.9%)",
+    mutedForeground: "hsl(240 3.8% 46.1%)",
+    accent: "hsl(240 4.8% 95.9%)",
+    accentForeground: "hsl(240 5.9% 10%)",
+    destructive: "hsl(0 72.22% 50.59%)",
+    destructiveForeground: "hsl(0 0% 98%)",
+    border: "hsl(240 5.9% 90%)",
+    input: "hsl(240 5.9% 90%)",
+    ring: "hsl(240 5.9% 10%)",
+  },
+  dark: {
+    background: "hsl(240 10% 3.9%)",
+    foreground: "hsl(0 0% 98%)",
+    card: "hsl(240 10% 3.9%)",
+    cardForeground: "hsl(0 0% 98%)",
+    popover: "hsl(240 10% 3.9%)",
+    popoverForeground: "hsl(0 0% 98%)",
+    primary: "hsl(0 0% 98%)",
+    primaryForeground: "hsl(240 9% 10%)",
+    secondary: "hsl(240 3.7% 15.9%)",
+    secondaryForeground: "hsl(0 0% 98%)",
+    muted: "hsl(240 3.7% 15.9%)",
+    mutedForeground: "hsl(240 5% 64.9%)",
+    accent: "hsl(240 3.7% 15.9%)",
+    accentForeground: "hsl(0 0% 98%)",
+    destructive: "hsl(0 62.8% 30.6%)",
+    destructiveForeground: "hsl(0 0% 98%)",
+    border: "hsl(240 3.7% 15.9%)",
+    input: "hsl(240 3.7% 15.9%)",
+    ring: "hsl(240 4.9% 83.9%)",
+  },
+};
 
-```css
-/* globals.css */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 240 9% 10%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 240 5.9% 10%;
-  --radius: 0.5rem;
-}
-
-.dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
+// Apply theme CSS variables
+export function applyThemeCSS() {
+  const root = document.documentElement;
+  
+  Object.entries(theme.light).forEach(([key, value]) => {
+    root.style.setProperty(`--${key}`, value);
+  });
 }
 ```
 
 ---
 
-## Advanced Components
+# Advanced Implementation (Level 3)
 
-### Data Table Component
+## Advanced Component Patterns
 
 ```typescript
-// components/ui/data-table.tsx
-import * as React from "react";
+// Complex data table with shadcn/ui components
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
-import { Button } from "./button";
-import { Checkbox } from "./checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./dropdown-menu";
-import { Input } from "./input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  searchKey?: string;
+  filterableColumns?: string[];
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  searchKey,
+  filterableColumns = [],
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
     data,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
     state: {
-      sorting,
+      globalFilter,
       columnFilters,
-      columnVisibility,
-      rowSelection,
     },
   });
 
   return (
-    <div className="w-full">
-      <div className="flex items-center py-4">
+    <div className="space-y-4">
+      {/* Search and Filters */}
+      <div className="flex items-center gap-4">
         <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
+          placeholder={`Filter ${searchKey}...`}
+          value={(globalFilter ?? "") as string}
+          onChange={(event) => setGlobalFilter(String(event.target.value))}
           className="max-w-sm"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        
+        {/* Column Filters */}
+        {filterableColumns.map((column) => (
+          <DataTableColumnFilter
+            key={column}
+            column={table.getColumn(column)}
+            title={column}
+          />
+        ))}
       </div>
+
+      {/* Data Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -614,14 +547,20 @@ export function DataTable<TData, TValue>({
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -629,451 +568,331 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
       </div>
+    </div>
+  );
+}
+
+// Advanced form with multi-step validation
+import { useState } from "react";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const multiStepSchema = z.object({
+  // Step 1: Personal Information
+  personalInfo: z.object({
+    firstName: z.string().min(2),
+    lastName: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().optional(),
+  }),
+  
+  // Step 2: Address
+  address: z.object({
+    street: z.string().min(5),
+    city: z.string().min(2),
+    state: z.string().min(2),
+    zipCode: z.string().regex(/^\d{5}(-\d{4})?$/),
+    country: z.string().min(2),
+  }),
+  
+  // Step 3: Preferences
+  preferences: z.object({
+    newsletter: z.boolean(),
+    notifications: z.boolean(),
+    theme: z.enum(["light", "dark", "system"]),
+  }),
+});
+
+type MultiStepFormValues = z.infer<typeof multiStepSchema>;
+
+export function MultiStepForm() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const methods = useForm<MultiStepFormValues>({
+    resolver: zodResolver(multiStepSchema),
+    defaultValues: {
+      personalInfo: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+      },
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "",
+      },
+      preferences: {
+        newsletter: false,
+        notifications: true,
+        theme: "system",
+      },
+    },
+  });
+
+  const steps = [
+    { title: "Personal Info", component: PersonalInfoStep },
+    { title: "Address", component: AddressStep },
+    { title: "Preferences", component: PreferencesStep },
+  ];
+
+  const handleNext = async () => {
+    const currentStepName = ["personalInfo", "address", "preferences"][currentStep];
+    const isValid = await methods.trigger(currentStepName as any);
+    
+    if (isValid && currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const onSubmit = async (data: MultiStepFormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Handle form submission
+      console.log("Form submitted:", data);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+    } catch (error) {
+      console.error("Submission error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const progress = ((currentStep + 1) / steps.length) * 100;
+  const CurrentStepComponent = steps[currentStep].component;
+
+  return (
+    <div className="w-full max-w-2xl mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-4">Multi-Step Form</h1>
+        <Progress value={progress} className="mb-2" />
+        <p className="text-sm text-muted-foreground">
+          Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
+        </p>
+      </div>
+
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(onSubmit)}>
+          <div className="mb-8">
+            <CurrentStepComponent />
+          </div>
+
+          <div className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+            >
+              Previous
+            </Button>
+
+            {currentStep === steps.length - 1 ? (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleNext}>
+                Next
+              </Button>
+            )}
+          </div>
+        </form>
+      </FormProvider>
     </div>
   );
 }
 ```
 
-### Dialog Component
+### Performance Optimization
 
 ```typescript
-// components/ui/dialog.tsx
-import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const Dialog = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
-const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.Close;
-
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-));
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
-
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
-DialogContent.displayName = DialogPrimitive.Content.displayName;
-
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-);
-DialogHeader.displayName = "DialogHeader";
-
-const DialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    )}
-    {...props}
-  />
-);
-DialogFooter.displayName = "DialogFooter";
-
-const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
-
-const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
-
-export {
-  Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogClose,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-};
-```
-
----
-
-## Form Validation
-
-### React Hook Form Integration
-
-```typescript
-// hooks/use-form-validation.ts
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-// Example schema
-const userSchema = z.object({
-  username: z.string().min(2, "Username must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().refine(
-    (data) => data.password === data.confirmPassword,
-    {
-      message: "Passwords don't match",
-      path: ["confirmPassword"],
-    }
-  ),
-});
-
-type UserFormData = z.infer<typeof userSchema>;
-
-export function useUserForm() {
-  return useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
-    mode: "onBlur",
-  });
-}
-
-// Custom validation hook
-export function useFormValidation<T extends Record<string, any>>(
-  schema: z.ZodSchema<T>,
-  defaultValues?: Partial<T>
-) {
-  return useForm<T>({
-    resolver: zodResolver(schema),
-    defaultValues,
-    mode: "onBlur",
-  });
-}
-```
-
----
-
-## Utility Functions
-
-### cn utility
-
-```typescript
-// lib/utils.ts
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-// Format utilities
-export function formatBytes(
-  bytes: number,
-  opts: {
-    decimals?: number;
-    sizeType?: "accurate" | "normal";
-  } = {}
-) {
-  const { decimals = 0, sizeType = "normal" } = opts;
-
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const accurateSizes = ["Bytes", "KiB", "MiB", "GiB", "TiB"];
-  if (bytes === 0) return "0 Bytes";
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(decimals)} ${
-    sizeType === "accurate" ? accurateSizes[i] ?? "Bytes" : sizes[i] ?? "Bytes"
-  }`;
-}
-
-// Date utilities
-export function formatDate(date: Date | string | number) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(date));
-}
-```
-
----
-
-## Usage Examples
-
-### Form Implementation
-
-```typescript
-// components/forms/user-form.tsx
-import { useUserForm } from "@/hooks/use-form-validation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-
-export function UserRegistrationForm() {
-  const form = useUserForm();
-
-  function onSubmit(values: UserFormData) {
-    console.log(values);
-    // Handle form submission
+// Performance optimization for shadcn/ui components
+export class ComponentPerformanceOptimizer {
+  // Lazy loading components with React.lazy
+  static createLazyComponent(importFn: () => Promise<{ default: React.ComponentType<any> }>) {
+    return React.lazy(importFn);
   }
 
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter username" {...field} />
-              </FormControl>
-              <FormDescription>
-                This is your public display name.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+  // Component memoization with React.memo
+  static createMemoizedComponent<P extends object>(
+    Component: React.ComponentType<P>,
+    areEqual?: (prevProps: P, nextProps: P) => boolean
+  ) {
+    return React.memo(Component, areEqual);
+  }
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="Enter email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+  // Hook for performance monitoring
+  static usePerformanceMonitor(componentName: string) {
+    const [renderCount, setRenderCount] = useState(0);
+    const [renderTime, setRenderTime] = useState(0);
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="Enter password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    useEffect(() => {
+      const startTime = performance.now();
+      
+      setRenderCount(prev => prev + 1);
+      
+      return () => {
+        const endTime = performance.now();
+        setRenderTime(endTime - startTime);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(
+            `${componentName} render #${renderCount}: ${renderTime.toFixed(2)}ms`
+          );
+        }
+      };
+    });
 
-        <Button type="submit">Register</Button>
-      </form>
-    </Form>
-  );
+    return { renderCount, renderTime };
+  }
+
+  // Bundle size optimization
+  static optimizeBundleSize() {
+    return {
+      treeShaking: {
+        enabled: true,
+        description: "Remove unused components and utilities",
+      },
+      codeSplitting: {
+        enabled: true,
+        description: "Split components into separate chunks",
+      },
+      compression: {
+        enabled: true,
+        description: "Compress bundle with gzip/brotli",
+      },
+    };
+  }
+
+  // Runtime performance optimization
+  static optimizeRuntimePerformance() {
+    return {
+      virtualScrolling: {
+        enabled: true,
+        description: "Virtual scrolling for large data sets",
+      },
+      memoization: {
+        enabled: true,
+        description: "Memoize expensive computations",
+      },
+      debouncing: {
+        enabled: true,
+        description: "Debounce user interactions",
+      },
+    };
+  }
 }
 ```
 
 ---
 
-## Accessibility Features
+# Reference & Integration (Level 4)
 
-### ARIA Labels and Roles
+## API Reference
 
-```typescript
-// components/ui/accessible-button.tsx
-import { forwardRef } from "react";
-import { Button } from "./button";
+### Core shadcn/ui Operations
+- `create_component(variant_config, props)` - Create new component
+- `customize_theme(theme_config, colors)` - Customize theme
+- `install_component(component_name)` - Install new component
+- `setup_design_system(tokens, branding)` - Set up design system
+- `optimize_components(performance_config)` - Optimize component performance
 
-interface AccessibleButtonProps {
-  children: React.ReactNode;
-  ariaLabel?: string;
-  ariaDescribedBy?: string;
-  isLoading?: boolean;
-  disabled?: boolean;
-}
+### Context7 Integration
+- `get_latest_shadcn_docs()` - shadcn/ui docs via Context7
+- `analyze_component_patterns()` - Component patterns via Context7
+- `optimize_theme_system()` - Theme optimization via Context7
 
-export const AccessibleButton = forwardRef<HTMLButtonElement, AccessibleButtonProps>(
-  ({ children, ariaLabel, ariaDescribedBy, isLoading, disabled, ...props }, ref) => {
-    return (
-      <Button
-        ref={ref}
-        disabled={disabled || isLoading}
-        aria-label={ariaLabel}
-        aria-describedby={ariaDescribedBy}
-        aria-busy={isLoading}
-        {...props}
-      >
-        {isLoading && (
-          <span className="mr-2" aria-hidden="true">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          </span>
-        )}
-        {children}
-      </Button>
-    );
-  }
-);
-```
+## Best Practices (November 2025)
 
----
+### DO
+- Use TypeScript for type safety and better developer experience
+- Implement proper accessibility with ARIA attributes
+- Customize themes using CSS variables for consistency
+- Optimize component performance with memoization and lazy loading
+- Use form validation with proper error handling
+- Implement responsive design with Tailwind CSS
+- Use Radix UI primitives for accessible components
+- Test components across different browsers and devices
 
-## Performance Optimization
+### DON'T
+- Skip TypeScript type definitions and validations
+- Ignore accessibility requirements and WCAG compliance
+- Override component styles without understanding the CSS structure
+- Forget to implement proper error handling and validation
+- Skip performance optimization for large datasets
+- Use inline styles instead of Tailwind CSS classes
+- Forget to implement proper keyboard navigation
+- Skip component testing and user experience validation
 
-### Lazy Loading Components
+## Works Well With
 
-```typescript
-// components/ui/lazy-component.tsx
-import dynamic from "next/dynamic";
+- `moai-domain-frontend` (Frontend development patterns)
+- `moai-baas-foundation` (Enterprise UI architecture)
+- `moai-security-api` (UI security implementation)
+- `moai-essentials-perf` (Performance optimization)
+- `moai-foundation-trust` (Accessibility and compliance)
+- `moai-domain-backend` (Backend integration)
+- `moai-baas-vercel-ext` (Frontend deployment)
+- `moai-domain-testing` (Component testing strategies)
 
-export const LazyChart = dynamic(
-  () => import("recharts").then((mod) => mod.LineChart),
-  {
-    loading: () => <div className="h-64 w-full animate-pulse bg-muted" />,
-    ssr: false,
-  }
-);
+## Changelog
 
-export const LazyDataTable = dynamic(
-  () => import("./data-table").then((mod) => mod.DataTable),
-  {
-    loading: () => <div className="h-96 w-full animate-pulse bg-muted" />,
-    ssr: false,
-  }
-);
-```
+- ** .0** (2025-11-13): Complete Enterprise   rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 shadcn/ui ecosystem updates, and advanced component patterns
+- **v2.0.0** (2025-11-11): Complete metadata structure, component patterns, theme system
+- **v1.0.0** (2025-11-11): Initial shadcn/ui component library
 
 ---
 
-## Quick Reference
+**End of Skill** | Updated 2025-11-13
 
-### Essential Commands
+## Design System Integration
 
-```bash
-# Install shadcn/ui
-npx shadcn-ui@latest init
+### Enterprise Features
+- Comprehensive component library with enterprise-grade features
+- Advanced theming system with brand customization
+- Performance optimization for large-scale applications
+- Accessibility compliance with WCAG 2.1 AA standards
 
-# Add components
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add card
-npx shadcn-ui@latest add input
-npx shadcn-ui@latest add dialog
-
-# Update components
-npx shadcn-ui@latest add button --overwrite
-
-# CLI help
-npx shadcn-ui@latest --help
-```
-
-### Component Structure
-
-```
-components/
-├── ui/
-│   ├── button.tsx
-│   ├── input.tsx
-│   ├── card.tsx
-│   ├── dialog.tsx
-│   ├── form.tsx
-│   └── index.ts
-├── forms/
-│   └── user-form.tsx
-└── hooks/
-    └── use-form-validation.ts
-```
+### Modern Development
+- TypeScript-first development with full type safety
+- Modern React patterns with hooks and server components
+- Tailwind CSS integration for consistent styling
+- Framer Motion for smooth animations and transitions
 
 ---
 
-**Last Updated**: 2025-11-20
-**Status**: Production Ready | Enterprise Approved
-**Features**: 40+ Components, Theme System, Accessibility, TypeScript Support
+**End of Enterprise shadcn/ui Component Library Expert **

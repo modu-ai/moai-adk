@@ -3,49 +3,9 @@ name: moai-internal-comms
 description: AI-powered enterprise internal communications orchestrator with Context7
   integration, intelligent content generation, automated workflow optimization, multi-format
   support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
-- WebFetch
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
-keywords:
-- ai-internal-comms
-- context7-integration
-- enterprise-communications
-- automated-reporting
-- intelligent-content
-- communication-workflows
-- newsletters
-- status-reports
-- leadership-updates
-- incident-reports
-stability: stable
 ---
-
 
 # AI-Powered Enterprise Internal Communications Skill 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-internal-comms |
-| **Version** | 4.0.0 Enterprise (2025-11-11) |
-| **Tier** | Essential AI-Powered Communication |
-| **AI Integration** | ✅ Context7 MCP, AI Content Generation, Communication Intelligence |
-| **Auto-load** | On demand for intelligent communication generation |
-| **Supported Formats** | Status Reports, Newsletters, FAQs, Leadership Updates, Incident Reports |
-| **Languages** | Korean, English + Multi-language Support |
-
----
 
 ## 🚀 Revolutionary AI Communication Capabilities
 

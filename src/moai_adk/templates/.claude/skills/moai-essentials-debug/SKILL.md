@@ -1,53 +1,11 @@
 ---
 name: moai-essentials-debug
-description: AI-powered enterprise debugging orchestrator with Context7 integration,
-  intelligent error pattern recognition, automated root cause analysis, predictive
-  fix suggestions, and multi-process debugging coordination across 25+ languages and
-  distributed systems
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
-- WebFetch
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-version: 4.0.0
-created: 2025-11-11
-updated: '2025-11-18'
-status: stable
-keywords:
-- ai-debugging
-- context7-integration
-- predictive-debugging
-- multi-process-debugging
-- error-pattern-recognition
-- automated-root-cause
-- distributed-tracing
-- performance-profiling
-- container-debugging
-- cloud-integration
-stability: stable
+description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
 ---
 
+# AI-Powered Enterprise Debugging Skill
 
-# AI-Powered Enterprise Debugging Skill 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-essentials-debug |
-| **Version** | 4.0.0 Enterprise (2025-11-11) |
-| **Tier** | Essential AI-Powered |
-| **AI Integration** | ✅ Context7 MCP, AI Error Pattern Recognition, Predictive Debugging |
-| **Auto-load** | On demand for intelligent error triage and automated debugging |
-| **Languages** | 25+ languages + containers + distributed systems |
-
----
-
-## 🚀 Revolutionary AI Debugging Capabilities
+## Revolutionary AI Debugging Capabilities
 
 ### **AI-Powered Error Analysis with Context7**
 - 🔍 **Intelligent Error Pattern Recognition** with ML-based classification

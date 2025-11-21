@@ -1,34 +1,9 @@
 ---
-name: "moai-core-proactive-suggestions"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
-description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance, Context7 integration, and intelligent recommendation orchestration for enhanced productivity
-keywords: ['alfred-suggestions', 'proactive-assistance', 'intelligent-recommendations', 'context-aware', 'context7-integration', 'ai-orchestration', 'productivity-enhancement']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-core-proactive-suggestions
+description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance,
 ---
 
 # Enterprise Alfred Proactive Suggestions Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-proactive-suggestions |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Alfred Intelligence Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Suggestions |
-| **Auto-load** | On demand when Alfred assistance keywords detected |
 
 ---
 

@@ -1,18 +1,9 @@
 ---
-name: "moai-icons-vector"
-version: "4.0.0"
-status: stable
-tier: domain
-description: "Vector icon libraries ecosystem guide covering 10+ major libraries with 200K+ icons, including React Icons (35K+), Lucide (1000+), Tabler Icons (5900+), Iconify (200K+), Heroicons, Phosphor, and Radix Icons with implementation patterns, decision trees, and best practices."
-allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "frontend-expert"
-secondary-agents: [ui-ux-expert, qa-validator, alfred]
-keywords: [icons, vector icons, lucide, react icons, tabler icons, phosphor icons, heroicons, radix icons, iconify, svg icons, icon library, icon design system, accessibility]
-tags: [domain-expert, enterprise]
-orchestration: 
-can_resume: true
-typical_chain_position: "middle"
-depends_on: []
+name: moai-icons-vector
+description: Vector icon libraries ecosystem guide covering 10+ major libraries with
+  200K+ icons, including React Icons (35K+), Lucide (1000+), Tabler Icons (5900+),
+  Iconify (200K+), Heroicons, Phosphor, and Radix Icons with implementation patterns,
+  decision trees, and best practices.
 ---
 
 # moai-icons-vector

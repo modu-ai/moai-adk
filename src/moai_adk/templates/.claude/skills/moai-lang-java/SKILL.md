@@ -1,32 +1,11 @@
 ---
 name: moai-lang-java
-version: 4.0.0
-updated: '2025-11-19'
-status: stable
-stability: stable
 description: Java programming language patterns, object-oriented design, and enterprise
-allowed-tools:
-- Read
-- Bash
-- WebSearch
-- WebFetch
+  application development. Use when building enterprise applications, Android apps,
+  or large-scale systems.
 ---
-
-
 
 # Java Programming Language Skill
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-java |
-| **Version** | 2.0.0 (2025-11-11) |
-| **Allowed tools** | Read, Bash, Glob |
-| **Auto-load** | On demand when Java patterns detected |
-| **Tier** | Language (Foundation) |
-
----
 
 ## What It Does
 

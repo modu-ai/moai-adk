@@ -1,6 +1,7 @@
 ---
 name: moai-domain-testing
-description: Enterprise testing framework with pytest 8.4.x, Vitest 4.x, Playwright 1.48.x, Testing Library 15.x, httpx 0.28.x, k6 load testing, and accessibility testing
+description: Enterprise testing framework with pytest 8.4.x, Vitest 4.x, Playwright
+  1.48.x, Testing Library 15.x, httpx 0.28.x, k6 load testing, and accessibility testing
 ---
 
 # Enterprise Testing Framework & Quality Assurance - 

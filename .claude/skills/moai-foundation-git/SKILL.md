@@ -1,33 +1,9 @@
 ---
-name: "moai-foundation-git"
-version: "4.0.0"
-tier: Foundation
-created: 2025-10-22
-updated: 2025-11-12
-status: stable
+name: moai-foundation-git
 description: Enterprise GitFlow automation, PR policy enforcement, Git 2.47-2.50 features, trunk-based development, comprehensive branching strategies, commit conventions, GitHub CLI 2.83.0 integration
-keywords: ['git', 'gitflow', 'github', 'branching', 'workflow', 'automation', 'commit-conventions']
-allowed-tools: 
-  - Read
-  - Bash
 ---
 
-# Foundation Git Skill (Enterprise )
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-foundation-git |
-| **Version** | 4.0.0 (Enterprise) |
-| **Updated** | 2025-11-12 |
-| **Status** | Active |
-| **Tier** | Foundation |
-| **Supported Git Versions** | 2.47+, 2.48, 2.49, 2.50 (November 2025) |
-| **GitHub CLI** | 2.63.0+ (GitHub Copilot Agent support) |
-| **Key Features** | GitFlow, Trunk-Based, Hybrid Strategies, Incremental MIDX, Session Persistence |
-
----
+# Foundation Git Skill (Enterprise)
 
 ## What It Does
 

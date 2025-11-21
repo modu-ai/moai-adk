@@ -1,35 +1,9 @@
 ---
 name: moai-core-personas
-version: 4.0.0
-created: 2025-11-05
-updated: '2025-11-18'
-status: stable
-tier: specialization
-description: Adaptive communication patterns and role selection based on user expertise
-  level and request type. Use for personalized user interactions, expertise detection,
-  and dynamic communication adaptation.
-allowed-tools: Read, AskUserQuestion, TodoWrite
-primary-agent: alfred
-secondary-agents:
-- session-manager
-- plan-agent
-keywords:
-- alfred
-- personas
-- communication
-- adaptation
-- expertise
-tags:
-- alfred-core
-orchestration: null
-can_resume: true
-typical_chain_position: middle
-depends_on: []
-stability: stable
+description: Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation.
 ---
 
-
-# moai-core-personas
+# moai-alfred-personas
 
 **Alfred Adaptive Personas System**
 
@@ -77,10 +51,10 @@ if project_config.get("team_mode", False):
 Skill("moai-core-personas")
 
 # Manual persona override
-Skill("moai-core-personas", persona="TechnicalMentor")
+Skill("moai-alfred-personas", persona="TechnicalMentor")
 
 # Expertise level detection
-level = Skill("moai-core-personas", action="detect_expertise")
+level = Skill("moai-alfred-personas", action="detect_expertise")
 ```
 
 ---
@@ -487,24 +461,24 @@ PERSONA_METRICS = {
 
 ## 📈 Version History
 
-** .0** (2025-11-18)
+** .0** (2025-11-13)
 - ✨ Optimized 4-layer Progressive Disclosure structure
 - ✨ Reduced from 706 to 290 lines (59% reduction)
 - ✨ Enhanced persona transition system
 - ✨ Added personalization engine
 - ✨ Improved performance optimization
 
-** .0** (2025-11-18)
+**v3.0.0** (2025-11-12)
 - ✨ Context7 MCP integration
 - ✨ Enhanced expertise detection algorithms
 - ✨ Advanced persona adaptation features
 
-** .0** (2025-11-18)
+**v2.0.0** (2025-11-05)
 - ✨ Dynamic persona selection
 - ✨ Expertise level detection
 - ✨ Team-based communication patterns
 
-** .0** (2025-11-18)
+**v1.0.0** (2025-10-15)
 - ✨ Initial persona system
 - ✨ Basic communication adaptation
 - ✅ User expertise detection
@@ -512,6 +486,6 @@ PERSONA_METRICS = {
 ---
 
 **Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-11-13  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 59% size reduction while preserving all functionality

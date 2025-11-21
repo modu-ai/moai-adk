@@ -1,36 +1,9 @@
 ---
-name: "moai-cc-configuration"
-version: "4.0.0"
-created: 2025-11-11
-updated: 2025-11-13
-status: stable
+name: moai-cc-configuration
 description: Enterprise Configuration Management with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications
-keywords: ['configuration', 'settings', 'environment-variables', 'secrets-management', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
-# Enterprise Configuration Management Expert 
-
-## Skill Metadata
-
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-cc-configuration |
-| **Version** | 4.0.0 (2025-11-13) |
-| **Tier** | Enterprise Configuration Expert |
-| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
-| **Auto-load** | On demand when configuration keywords detected |
-
----
+# Enterprise Configuration Management Expert
 
 ## What It Does
 
