@@ -1,0 +1,1408 @@
+{
+  "missing_skill_md": [
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-hook-model-strategy",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-permission-mode",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-subagent-lifecycle",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cloud-aws-advanced",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cloud-gcp-advanced",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-agent-guide",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-alfred-orchestration",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-env-security",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-iot",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-elixir",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-ml-llm-fine-tuning",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-ml-rag",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-observability-advanced",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-devsecops",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-testing-load",
+      "issue": "SKILL.md file not found"
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-hook-model-strategy",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-permission-mode",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-subagent-lifecycle",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cloud-aws-advanced",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cloud-gcp-advanced",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-agent-guide",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-env-security",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-iot",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-elixir",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-ml-llm-fine-tuning",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-ml-rag",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-observability-advanced",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-devsecops",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    },
+    {
+      "status": "missing_skill_md",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-testing-load",
+      "issue": "SKILL.md file not found",
+      "is_template": true
+    }
+  ],
+  "content_issues": [],
+  "structure_violations": [
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-clerk-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-cloudflare-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-convex-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-firebase-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-railway-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-vercel-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-configuration",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-hooks",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-mcp-plugins",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-context7-integration",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-context-budget",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-dev-guide",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-proactive-suggestions",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-rules",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-session-state",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-todowrite-pattern",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-design-systems",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-docs-unified",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-data-science",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-figma",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-frontend",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-ml",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-monitoring",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-toon",
+      "issue": "Missing sections: ## Quick Reference, ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-essentials-perf",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-foundation-ears",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-foundation-git",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-foundation-langs",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-foundation-specs",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-foundation-trust",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-go",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-learning-optimizer",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lib-shadcn-ui",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-mcp-builder",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-nextra-architecture",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-project-documentation",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-api",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-auth",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-compliance",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-encryption",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-identity",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-ssrf",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-zero-trust",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-streaming-ui",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-translation-korean-multilingual",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns"
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-clerk-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-cloudflare-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-convex-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-firebase-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-railway-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-vercel-ext",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-configuration",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-hooks",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-mcp-plugins",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-context7-integration",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-context-budget",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-dev-guide",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-proactive-suggestions",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-rules",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-session-state",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-todowrite-pattern",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-design-systems",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-docs-unified",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-data-science",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-figma",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-frontend",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-ml",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-monitoring",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-toon",
+      "issue": "Missing sections: ## Quick Reference, ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-essentials-perf",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-foundation-ears",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-foundation-git",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-foundation-langs",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-foundation-specs",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-foundation-trust",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-go",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-learning-optimizer",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lib-shadcn-ui",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-mcp-builder",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-nextra-architecture",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-project-documentation",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-api",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-auth",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-compliance",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-encryption",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-identity",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-ssrf",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-zero-trust",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-streaming-ui",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    },
+    {
+      "status": "structure_violations",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-translation-korean-multilingual",
+      "issue": "Missing sections: ## Implementation Guide, ## Advanced Patterns",
+      "is_template": true
+    }
+  ],
+  "passed": [
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-artifacts-builder"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-auth0-ext"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-foundation"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-neon-ext"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-baas-supabase-ext"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-agents"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-claude-md"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-commands"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-mcp-builder"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-memory"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-settings"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-skill-factory"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-cc-skills"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-change-logger"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-component-designer"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-context7-lang-integration"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-agent-factory"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-ask-user-questions"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-clone-pattern"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-code-reviewer"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-config-schema"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-expertise-detection"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-feedback-templates"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-issue-labels"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-language-detection"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-personas"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-practices"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-spec-authoring"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-core-workflow"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-docs-generation"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-docs-linting"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-docs-validation"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-document-processing"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-backend"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-cli-tool"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-cloud"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-database"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-devops"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-ml-ops"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-mobile-app"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-notion"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-security"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-testing"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-domain-web-api"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-essentials-debug"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-essentials-refactor"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-essentials-review"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-icons-vector"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-internal-comms"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-jit-docs-enhanced"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-c"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-cpp"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-csharp"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-dart"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-html-css"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-java"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-javascript"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-kotlin"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-php"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-python"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-r"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-ruby"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-rust"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-scala"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-shell"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-sql"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-swift"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-tailwind-css"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-template"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-lang-typescript"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-mermaid-diagram-expert"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-playwright-webapp-testing"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-project-batch-questions"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-project-config-manager"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-project-language-initializer"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-project-template-optimizer"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-readme-expert"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-owasp"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-secrets"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-security-threat"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-session-info"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-webapp-testing"
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-artifacts-builder",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-auth0-ext",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-foundation",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-neon-ext",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-baas-supabase-ext",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-agents",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-claude-md",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-commands",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-mcp-builder",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-memory",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-settings",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-skill-factory",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-cc-skills",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-change-logger",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-component-designer",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-context7-lang-integration",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-agent-factory",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-ask-user-questions",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-clone-pattern",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-code-reviewer",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-config-schema",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-expertise-detection",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-feedback-templates",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-issue-labels",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-language-detection",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-personas",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-practices",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-spec-authoring",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-workflow",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-docs-generation",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-docs-linting",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-docs-validation",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-document-processing",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-backend",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-cli-tool",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-cloud",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-database",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-devops",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-ml-ops",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-mobile-app",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-notion",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-security",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-testing",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-domain-web-api",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-essentials-debug",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-essentials-refactor",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-essentials-review",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-icons-vector",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-internal-comms",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-jit-docs-enhanced",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-c",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-cpp",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-csharp",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-dart",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-html-css",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-java",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-javascript",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-kotlin",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-php",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-python",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-r",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-ruby",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-rust",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-scala",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-shell",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-sql",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-swift",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-tailwind-css",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-template",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-lang-typescript",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-mermaid-diagram-expert",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-playwright-webapp-testing",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-project-batch-questions",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-project-config-manager",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-project-language-initializer",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-project-template-optimizer",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-readme-expert",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-owasp",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-secrets",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-security-threat",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-session-info",
+      "is_template": true
+    },
+    {
+      "status": "passed",
+      "path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-webapp-testing",
+      "is_template": true
+    }
+  ],
+  "summary": {
+    "total_skills": 283,
+    "missing_skill_md_count": 29,
+    "content_issues_count": 0,
+    "structure_violations_count": 90,
+    "passed_count": 164
+  }
+}

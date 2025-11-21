@@ -1,18 +1,11 @@
 ---
 name: moai-context7-lang-integration
-description: Enterprise-grade Context7 MCP integration patterns for language-specific
-  documentation access with real-time library resolution and intelligent caching
+description: Enterprise-grade Context7 MCP integration patterns for language-specific documentation access
 ---
-
-## Quick Reference (30 seconds)
-
-# Context7 Language Integration
 
 ## Quick Reference
 
-### What It Does
-
-This Skill provides enterprise-grade Context7 MCP integration patterns for accessing the latest documentation across all programming languages and frameworks. It centralizes common patterns that Language Skills reuse to reduce code duplication and token overhead.
+Enterprise-grade Context7 MCP integration patterns for accessing the latest documentation across all programming languages and frameworks with centralized common patterns.
 
 **Core Capabilities**:
 - Resolve library names to Context7-compatible IDs in real-time
@@ -21,56 +14,18 @@ This Skill provides enterprise-grade Context7 MCP integration patterns for acces
 - Progressive token disclosure (1000-10000 tokens)
 - Graceful error handling and fallback strategies
 
-### When to Use
-
-Use this Skill when:
+**When to Use**:
 - Building language-specific Skills that need external documentation
 - Integrating latest framework/library documentation into guides
 - Creating up-to-date API reference materials
 - Reducing token consumption through centralized caching
 - Implementing documentation access in specialized agents
 
-### Core Concepts
-
-**1. Library ID Format**
-- Format: `/org/project` or `/org/project/version`
-- Examples: `/tiangolo/fastapi`, `/tiangolo/fastapi/v0.115.0`
-- Returned by resolve-library-id, used by get-library-docs
-
-**2. Two-Step Integration Pattern**
-- Step 1: resolve-library-id("library-name") → get canonical ID
-- Step 2: get-library-docs(canonical-id) → fetch documentation
-- Separation allows caching at both layers
-
-**3. Progressive Disclosure**
-- Token budget: 1000-10000 tokens per request
-- Default: 5000 tokens (balanced)
-- Specific topic focus reduces token consumption
-- Multiple requests accumulate toward session limit
-
-**4. Error Handling Strategy**
-- Try primary library name
-- Fallback to alternative names (case variations)
-- Return manual documentation link as last resort
-- Log failures for debugging and optimization
-
-**5. Caching Strategy**
-- Cache key: `{library_id}:{topic}:{tokens}`
-- TTL: 30 days (stable versions)
-- TTL: 7 days (beta/latest versions)
-- Storage: `.moai/cache/context7/`
-- Monitoring: Track hit/miss rates
-
-### Quick Start Example
-
+**Quick Start Example**:
 ```python
 # Step 1: Resolve library name to Context7 ID
-from mcp__context7__resolve_library_id import resolve_library_id
-from mcp__context7__get_library_docs import get_library_docs
-
-library_name = "fastapi"
-library_id = resolve_library_id(library_name)
-# Returns: /tiangolo/fastapi or /tiangolo/fastapi/v0.115.0
+library_id = resolve_library_id("fastapi")
+# Returns: /tiangolo/fastapi
 
 # Step 2: Get documentation with topic focus
 docs = get_library_docs(
@@ -78,24 +33,19 @@ docs = get_library_docs(
     tokens=3000,
     topic="routing"
 )
-
-# Step 3: Use in workflow
-print(f"Documentation for {library_name}:\n{docs[:500]}")
 ```
 
 ---
 
-## Implementation
+## Implementation Guide
 
-### Step 1: Library Resolution Pattern
+### Two-Step Integration Pattern
 
-**Purpose**: Convert user-friendly library names to canonical Context7 IDs
-
-**Pattern Design**:
+**Step 1: Library Resolution Pattern**:
 ```
 Input: User-friendly name (e.g., "fastapi")
 Process:
-  1. Validate input (non-empty, reasonable length)
+  1. Validate input (non-empty, <50 chars)
   2. Query Context7: resolve-library-id MCP
   3. Return canonical ID: /org/project/version
   4. Cache for 30 days
@@ -103,22 +53,13 @@ Output: Context7-compatible library ID
 ```
 
 **Implementation Notes**:
-- Always validate library name before query (non-empty, <50 chars)
+- Always validate library name before query
 - Implement retry logic (3 attempts max)
 - Cache results with TTL (30 days stable, 7 days beta)
 - Log failed resolutions for optimization
 - Return structured error for missing libraries
 
-**Error Cases**:
-- Library not found → Try alternative names
-- Network timeout → Use cached version
-- Malformed name → Return clear error message
-
-### Step 2: Documentation Fetching Pattern
-
-**Purpose**: Get specific documentation topics to optimize token usage
-
-**Pattern Design**:
+**Step 2: Documentation Fetching Pattern**:
 ```
 Input: Library ID + topic + token limit
 Process:
@@ -141,9 +82,9 @@ Output: Markdown-formatted documentation
 - Level 3 (5000 tokens): Full documentation
 - Level 4 (10000 tokens): Full docs + advanced
 
-### Step 3: Error Handling Pattern
+### Error Handling Pattern
 
-**Case 1: Library Not Found**
+**Case 1: Library Not Found**:
 ```
 Error: resolve-library-id fails (LibraryNotFoundError)
 Recovery:
@@ -153,7 +94,7 @@ Recovery:
   4. Log for optimization
 ```
 
-**Case 2: Documentation Unavailable**
+**Case 2: Documentation Unavailable**:
 ```
 Error: get-library-docs returns empty (DocumentationNotFoundError)
 Recovery:
@@ -163,7 +104,7 @@ Recovery:
   4. Provide manual link
 ```
 
-**Case 3: Token Limit Exceeded**
+**Case 3: Token Limit Exceeded**:
 ```
 Error: Requested tokens exceed available (TokenLimitExceededError)
 Recovery:
@@ -173,17 +114,10 @@ Recovery:
   4. Implement budget management across requests
 ```
 
-### Step 4: Language Skills Integration Pattern
+### Language Skills Integration Pattern
 
 **Integration Points**:
-Each Language Skill should include:
-
 ```markdown
-
----
-
-## Implementation Guide
-
 ## External Documentation Access
 
 For up-to-date library documentation:
@@ -209,47 +143,16 @@ def get_fastapi_routing_guide(tokens: int = 3000) -> str:
     return docs
 ```
 
-### Step 5: Caching Implementation Pattern
-
-**Cache Architecture**:
-```
-Cache Structure:
-  Key: {library_id}:{topic}:{tokens}
-  Value: {content, timestamp, version}
-  Storage: .moai/cache/context7/
-  Index: .moai/cache/context7/index.json
-```
-
-**Caching Rules**:
-- TTL: 30 days for stable versions (v1.0, v2.0)
-- TTL: 7 days for latest/beta (main, beta, rc)
-- TTL: 1 day for development branches
-- Hit rate tracking (monitor for optimization)
-
-**Cache Invalidation Strategy**:
-- Auto-invalidate on version mismatch
-- Manual invalidation option (--clear-cache)
-- Smart invalidation (version changed)
-
-**Implementation Checklist**:
-- Create cache directory if missing
-- Implement TTL validation on read
-- Log cache hits/misses for metrics
-- Implement cache cleanup (retention policy)
-- Monitor for stale entries
-
 ---
 
-## Advanced
+## Advanced Patterns
 
 ### Multi-Library Integration Pattern
-
-**Use Case**: Build comprehensive tech stack documentation
 
 ```python
 def get_tech_stack_docs(stack_name: str) -> dict:
     """Fetch documentation for entire tech stack"""
-
+    
     stacks = {
         "modern-python": {
             "fastapi": "/tiangolo/fastapi",
@@ -269,40 +172,14 @@ def get_tech_stack_docs(stack_name: str) -> dict:
     for lib_name, lib_id in libraries.items():
         docs = get_library_docs(
             context7_compatible_library_id=lib_id,
-            tokens=2000  # Shared token budget
+            tokens=2000
         )
         results[lib_name] = docs
 
     return results
 ```
 
-### Parallel Request Pattern
-
-**Benefits**: Reduce total fetch time for multiple libraries
-
-```python
-import asyncio
-
-async def fetch_library_async(lib_id: str, topic: str) -> str:
-    # Implementation depends on async Context7 client
-    return get_library_docs(
-        context7_compatible_library_id=lib_id,
-        topic=topic,
-        tokens=3000
-    )
-
-async def fetch_multiple(libraries: list) -> dict:
-    tasks = [
-        fetch_library_async(lib['id'], lib['topic'])
-        for lib in libraries
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    return dict(zip([l['name'] for l in libraries], results))
-```
-
 ### Token Budget Management Pattern
-
-**Strategy**: Allocate and track tokens across multiple requests
 
 ```python
 class TokenBudgetManager:
@@ -329,71 +206,22 @@ class TokenBudgetManager:
         self.used[skill_name] = self.used.get(skill_name, 0) + amount
 ```
 
-### Performance Optimization Pattern
-
-**Techniques**:
-
-1. **Lazy Loading**: Fetch only when explicitly needed
-   ```python
-   docs = None  # Don't fetch until requested
-   if user_needs_full_docs():
-       docs = get_library_docs(...)
-   ```
-
-2. **Partial Content**: Request specific topic instead of full docs
-   ```python
-   # Good: Fetch only routing documentation
-   docs = get_library_docs(topic="routing", tokens=1000)
-   # Bad: Fetch entire documentation
-   docs = get_library_docs(tokens=10000)
-   ```
-
-3. **Compression**: Gzip cached documentation
-   ```python
-   import gzip
-   compressed = gzip.compress(docs.encode())  # ~60% reduction
-   ```
-
-4. **Indexing**: Create searchable index of cached docs
-   ```python
-   index = {
-       "routing": {offset: 0, length: 5000},
-       "async": {offset: 5000, length: 3000},
-   }
-   ```
-
-5. **Version Pinning**: Cache specific versions longer
-   ```python
-   library_id = "/tiangolo/fastapi/v0.115.0"  # Pinned version
-   # Cached for 90 days instead of 30
-   ```
-
 ### Custom Library Mapping Pattern
-
-**Purpose**: Map language-specific names to canonical Context7 IDs
 
 ```python
 LIBRARY_MAPPINGS = {
     "python": {
         "fastapi": "/tiangolo/fastapi",
-        "FastAPI": "/tiangolo/fastapi",
-        "fast-api": "/tiangolo/fastapi",
         "django": "/django/django",
-        "Django": "/django/django",
         "pydantic": "/pydantic/pydantic",
     },
     "javascript": {
-        "next.js": "/vercel/next.js",
         "nextjs": "/vercel/next.js",
-        "NextJS": "/vercel/next.js",
         "react": "/facebook/react",
-        "React": "/facebook/react",
     },
     "go": {
         "gin": "/gin-gonic/gin",
-        "Gin": "/gin-gonic/gin",
         "gorm": "/go-gorm/gorm",
-        "GORM": "/go-gorm/gorm",
     }
 }
 
@@ -402,13 +230,27 @@ def resolve_with_mapping(language: str, library_name: str) -> str:
     canonical_id = mapping.get(library_name)
     if canonical_id:
         return canonical_id
-    # Fallback to MCP resolver
     return resolve_library_id(library_name)
 ```
 
----
+### Caching Implementation Pattern
 
-## Advanced Patterns
+**Cache Architecture**:
+```
+Cache Structure:
+  Key: {library_id}:{topic}:{tokens}
+  Value: {content, timestamp, version}
+  Storage: .moai/cache/context7/
+  Index: .moai/cache/context7/index.json
+```
 
+**Caching Rules**:
+- TTL: 30 days for stable versions (v1.0, v2.0)
+- TTL: 7 days for latest/beta (main, beta, rc)
+- TTL: 1 day for development branches
+- Hit rate tracking (monitor for optimization)
 
-
+**Cache Invalidation Strategy**:
+- Auto-invalidate on version mismatch
+- Manual invalidation option (--clear-cache)
+- Smart invalidation (version changed)
