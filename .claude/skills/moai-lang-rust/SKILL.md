@@ -1,6 +1,6 @@
 ---
 name: moai-lang-rust
-description: RUST language development patterns and best practices
+description: Rust 1.84+ systems programming with Tokio 1.42+, Axum 0.8.x, ownership model, async/await latest practices, Rust 2024 edition features
 ---
 
 ## Quick Reference (30 seconds)
@@ -118,14 +118,14 @@ fn main() {
 ## Technology Stack (November 2025 Stable)
 
 ### Core Language
-- **Rust 1.91.1** (Latest stable, November 2025)
+- **Rust 1.84.0** (Latest stable, January 2025)
   - Ownership and borrowing system
   - Zero-cost abstractions
   - Memory safety without GC
   - Performance optimization
 
 ### Async Runtime
-- **Tokio 1.48.x** (Production async runtime)
+- **Tokio 1.42+** (Production async runtime)
   - Async I/O
   - Task scheduling
   - Synchronization primitives
@@ -364,11 +364,19 @@ CMD ["app"]
 ---
 
 **Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-13  
+**Last Updated**: 2025-11-22  
 **Status**: Production Ready
 
 ---
 
+
+
+## Changelog
+
+- **v4.1.0** (2025-11-22): Updated to Rust 1.84 (2025-01), removed Rust 2015 patterns, added async/await latest practices (Tokio 1.42+), Rust 2024 edition features, sparse-registry standardization
+- **v4.0.0** (2025-11-13): Previous major update
+
+---
 ## Advanced Patterns
 
 ## Level 3: Advanced Features
