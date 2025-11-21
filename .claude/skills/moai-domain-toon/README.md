@@ -137,5 +137,5 @@ moai-domain-toon/
 
 ---
 
-**MoAI-ADK Skill Factory로 생성됨**  
+**MoAI-ADK Skill Factory로 생성됨**
 **Last Updated**: 2025-11-21

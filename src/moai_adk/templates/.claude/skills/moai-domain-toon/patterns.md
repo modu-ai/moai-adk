@@ -322,7 +322,7 @@ mkdir -p "$OUTPUT_DIR"
 for json_file in "$INPUT_DIR"/*.json; do
   base_name=$(basename "$json_file" .json)
   toon convert "$json_file" --output "$OUTPUT_DIR/${base_name}.toon"
-  
+
   if [ $? -eq 0 ]; then
     echo "✓ $base_name converted"
   else
@@ -342,11 +342,11 @@ import { createWriteStream } from 'fs'
 
 async function streamConvert(data: any, outputPath: string) {
   const stream = createWriteStream(outputPath)
-  
+
   for (const line of encodeLines(data)) {
     stream.write(line + '\n')
   }
-  
+
   stream.end()
 }
 ```
@@ -359,15 +359,15 @@ async function streamConvert(data: any, outputPath: string) {
 ```typescript
 function smartEncode(data: any): string {
   const eligibility = calculateTabularEligibility(data)
-  
+
   if (eligibility >= 80) {
     // 테이블 형식 최적
     return encode(data, { detectTabular: true })
   } else if (eligibility >= 50) {
     // 혼합 형식
-    return encode(data, { 
+    return encode(data, {
       detectTabular: true,
-      keyFolding: true 
+      keyFolding: true
     })
   } else {
     // JSON 유지
@@ -384,20 +384,20 @@ function smartEncode(data: any): string {
 ```typescript
 class ToonCache {
   private cache = new Map<string, string>()
-  
+
   encode(data: any): string {
     const key = JSON.stringify(data)
-    
+
     if (this.cache.has(key)) {
       return this.cache.get(key)!
     }
-    
+
     const toon = encode(data)
     this.cache.set(key, toon)
-    
+
     return toon
   }
-  
+
   clear() {
     this.cache.clear()
   }
@@ -415,16 +415,16 @@ class ToonCache {
 function debugConvert(data: any): string {
   console.log('1. Input validation...')
   validateInput(data)
-  
+
   console.log('2. Encoding...')
   const toon = encode(data)
-  
+
   console.log('3. Round-trip test...')
   const decoded = decode(toon)
-  
+
   console.log('4. Deep equality check...')
   assert.deepStrictEqual(data, decoded)
-  
+
   console.log('✓ All checks passed')
   return toon
 }
@@ -442,7 +442,7 @@ function resilientDecode(toon: string): any {
     return decode(toon, { strict: true })
   } catch (error) {
     console.warn('Strict mode failed, retrying with non-strict...')
-    
+
     try {
       // Non-strict 모드 폴백
       return decode(toon, { strict: false })
@@ -466,14 +466,14 @@ function analyzeDifference(original: any, converted: any) {
     removed: [],
     changed: []
   }
-  
+
   // 재귀적 비교 로직
   function compare(obj1: any, obj2: any, path: string = '') {
     // ... 구현 생략
   }
-  
+
   compare(original, converted)
-  
+
   return diff
 }
 ```
@@ -493,12 +493,12 @@ class HybridFormat {
       const eligibility = calculateTabularEligibility(data)
       format = eligibility >= 80 ? 'toon' : 'json'
     }
-    
-    return format === 'toon' 
+
+    return format === 'toon'
       ? encode(data)
       : JSON.stringify(data)
   }
-  
+
   decode(text: string): any {
     // 형식 자동 감지
     if (text.includes('{') && text.includes('}')) {
@@ -528,10 +528,10 @@ interface UniversalData {
 class DataAdapter {
   static from(input: string): UniversalData {
     const format = detectFormat(input)
-    const data = format === 'json' 
+    const data = format === 'json'
       ? JSON.parse(input)
       : decode(input)
-    
+
     return {
       format,
       data,
@@ -541,7 +541,7 @@ class DataAdapter {
       }
     }
   }
-  
+
   static to(universal: UniversalData, targetFormat: 'json' | 'toon'): string {
     return targetFormat === 'json'
       ? JSON.stringify(universal.data)
@@ -561,11 +561,11 @@ class DataAdapter {
 class LazyToon {
   private data: any
   private _toon: string | null = null
-  
+
   constructor(data: any) {
     this.data = data
   }
-  
+
   get toon(): string {
     if (this._toon === null) {
       this._toon = encode(this.data)
@@ -603,12 +603,12 @@ async function parallelConvert(files: string[]): Promise<string[]> {
       const worker = new Worker('./convert-worker.js', {
         workerData: { file }
       })
-      
+
       worker.on('message', resolve)
       worker.on('error', reject)
     })
   })
-  
+
   return Promise.all(workers)
 }
 ```
