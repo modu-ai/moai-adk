@@ -22,7 +22,28 @@ keywords:
 
 # TOON Format Specialist
 
-## Overview
+## Quick Reference (30 seconds)
+
+TOON (Token-Oriented Object Notation) is a line-oriented, indentation-based format designed for
+efficient LLM communication. TOON achieves 40-50% token reduction vs JSON while maintaining
+human readability and lossless JSON conversion. Perfect for RAG systems, structured prompts,
+and batch processing with context budget constraints.
+
+**Key Characteristics**:
+- **Token Efficiency**: 40-50% reduction vs JSON (average)
+- **LLM-Optimized**: Explicit structure improves parsing accuracy
+- **Lossless Conversion**: Complete JSON data model fidelity
+- **Human-Readable**: Indentation-based, minimal quoting
+- **Validated**: Strict mode ensures format correctness
+
+**Specification**: [TOON v2.0](https://github.com/toon-format/spec/blob/main/SPEC.md)
+**Current Version**: 2.0 (2025-11-10) | **License**: MIT
+
+---
+
+## Implementation Guide
+
+### Overview
 
 **TOON (Token-Oriented Object Notation)** is a line-oriented, indentation-based text format designed specifically for efficient LLM communication. TOON encodes the JSON data model with explicit structure and minimal quoting, achieving 40-50% token reduction vs JSON while maintaining human readability.
 

@@ -1,11 +1,49 @@
 ---
 name: moai-domain-toon
 description: TOON Format Specialist - Token-efficient data encoding for LLM communication optimized per TOON Spec v2.0
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
+version: 2.0.0
+tier: Domain-Specific
+status: Active
+created: 2025-11-21
+updated: 2025-11-21
+keywords:
+  - TOON
+  - token-optimization
+  - LLM-communication
+  - data-compression
+  - prompt-engineering
 ---
 
 # TOON Format Specialist
 
-## Overview
+## Quick Reference (30 seconds)
+
+TOON (Token-Oriented Object Notation) is a line-oriented, indentation-based format designed for
+efficient LLM communication. TOON achieves 40-50% token reduction vs JSON while maintaining
+human readability and lossless JSON conversion. Perfect for RAG systems, structured prompts,
+and batch processing with context budget constraints.
+
+**Key Characteristics**:
+- **Token Efficiency**: 40-50% reduction vs JSON (average)
+- **LLM-Optimized**: Explicit structure improves parsing accuracy
+- **Lossless Conversion**: Complete JSON data model fidelity
+- **Human-Readable**: Indentation-based, minimal quoting
+- **Validated**: Strict mode ensures format correctness
+
+**Specification**: [TOON v2.0](https://github.com/toon-format/spec/blob/main/SPEC.md)
+**Current Version**: 2.0 (2025-11-10) | **License**: MIT
+
+---
+
+## Implementation Guide
+
+### Overview
 
 **TOON (Token-Oriented Object Notation)** is a line-oriented, indentation-based text format designed specifically for efficient LLM communication. TOON encodes the JSON data model with explicit structure and minimal quoting, achieving 40-50% token reduction vs JSON while maintaining human readability.
 
@@ -26,7 +64,6 @@ description: TOON Format Specialist - Token-efficient data encoding for LLM comm
 ## When to Use TOON
 
 ### Ideal For
-
 - **Search Results** (tabular format): Array of documents with uniform fields
 - **Structured Prompts**: Encoding context, examples, or data tables
 - **Cost Optimization**: Reducing token budgets for large LLM deployments
@@ -34,7 +71,6 @@ description: TOON Format Specialist - Token-efficient data encoding for LLM comm
 - **Long Contexts**: Fitting more data in fixed token windows
 
 ### Not Recommended For
-
 - **Complex Nested Structures** (5+ levels): Use JSON for deep hierarchies
 - **Heterogeneous Data**: Mixed object types with varying fields
 - **Binary or Unstructured Data**: Use base64 encoding with JSON wrapper
@@ -46,7 +82,6 @@ description: TOON Format Specialist - Token-efficient data encoding for LLM comm
 ### Core Data Types
 
 #### Primitives
-
 ```toon
 # Strings (quoted if necessary)
 name: Alice
@@ -67,7 +102,6 @@ value: null
 ```
 
 #### Objects (Key-Value Pairs)
-
 ```toon
 user:
   name: Alice
@@ -76,7 +110,6 @@ user:
 ```
 
 #### Simple Arrays (Inline, Primitive Values)
-
 ```toon
 # Comma-delimited
 colors[3]: red,green,blue
@@ -89,7 +122,6 @@ codes[3]|: A|B|C
 ```
 
 #### Tabular Arrays (Uniform Objects)
-
 ```toon
 # Header declares count and field names
 users[2]{id,name,email}:
@@ -104,7 +136,6 @@ results[3]{doc_id,score,source}:
 ```
 
 #### Expanded Arrays (Heterogeneous or Nested)
-
 ```toon
 items[3]:
  - key: value
@@ -127,7 +158,6 @@ items[3]:
 ## LLM Communication Patterns
 
 ### Pattern 1: Context Injection
-
 ```toon
 # In LLM prompt: compress search results as context
 
@@ -142,7 +172,6 @@ context[3]{doc_id,content,score}:
 **Token Savings**: 3 documents in TOON ≈ 180 tokens vs JSON ≈ 320 tokens (44% reduction)
 
 ### Pattern 2: Structured Prompts
-
 ```toon
 # Example: Multi-turn conversation with structured examples
 
@@ -154,7 +183,6 @@ examples[2]{input,output}:
 ```
 
 ### Pattern 3: Batch Data Processing
-
 ```toon
 # Process multiple records efficiently
 
@@ -166,7 +194,6 @@ records[100]{id,timestamp,event_type,user_id}:
 ```
 
 ### Pattern 4: Metadata with Content
-
 ```toon
 document:
   title: "Python Asyncio Guide"
@@ -188,7 +215,6 @@ chunks[3]{chunk_id,text}:
 ## Python Implementation (toon-python)
 
 ### Installation
-
 ```bash
 # Using uv (recommended)
 uv pip install toon_format tiktoken
@@ -198,7 +224,6 @@ pip install toon_format tiktoken
 ```
 
 ### Basic Usage
-
 ```python
 from toon_format import encode, decode, estimate_savings
 
@@ -223,7 +248,6 @@ assert decoded == data  # Lossless conversion
 ```
 
 ### Measuring Token Savings
-
 ```python
 import json
 from toon_format import encode, count_tokens
@@ -252,7 +276,6 @@ print(f"Savings: {savings:.1f}%")
 ```
 
 ### Handling Custom Delimiters
-
 ```python
 from toon_format import encode, decode
 
@@ -303,7 +326,6 @@ Encoding structured data for LLM?
 ## Best Practices
 
 ### DO ✅
-
 - **Declare array lengths explicitly** — Aids truncation detection and parsing
 - **Use tabular form for uniform records** — Maximum compression
 - **Minimize quoting** — Only quote when necessary (spaces, delimiters, reserved words)
@@ -313,7 +335,6 @@ Encoding structured data for LLM?
 - **Document delimiter choice** — Comment why comma/tab/pipe selected
 
 ### DON'T ❌
-
 - **Deep nesting (5+ levels)** — JSON more readable and equally efficient
 - **Mixed delimiters in one array** — Violates TOON scoping rules
 - **Mismatched field counts** — Array count in header must match actual rows
@@ -327,7 +348,6 @@ Encoding structured data for LLM?
 ## Advanced Techniques
 
 ### Key Folding (Path Compression)
-
 ```python
 from toon_format import encode
 
@@ -346,7 +366,6 @@ toon = encode(data)
 ```
 
 ### Strict Mode Validation
-
 ```python
 from toon_format import decode
 
@@ -365,7 +384,6 @@ except Exception as e:
 ```
 
 ### Cost Analysis Across Formats
-
 ```python
 from toon_format import encode, estimate_savings
 import json
@@ -392,7 +410,6 @@ for name, data in datasets.items():
 ## Escaping and Special Cases
 
 ### Valid Escape Sequences (Quoted Strings Only)
-
 ```
 \\  → Backslash
 \"  → Quote
@@ -402,9 +419,7 @@ for name, data in datasets.items():
 ```
 
 ### Automatic Quoting Rules
-
 A value is automatically quoted if:
-
 - Empty string: `""`
 - Starts with whitespace: `"  leading"`
 - Contains declared delimiter: `"a,b,c"` (if comma-delimited)
@@ -414,7 +429,6 @@ A value is automatically quoted if:
 - Contains newline, CR, backslash, or quote
 
 Example:
-
 ```toon
 # Automatic quoting
 fields[3]:
@@ -429,7 +443,6 @@ fields[3]:
 ## Integration with Yoda Project
 
 ### Universal Usage Pattern
-
 ```python
 # In any yoda module or agent
 
@@ -460,16 +473,15 @@ def convert_data_batch(json_file: str) -> str:
 
 ## Performance Characteristics (2025)
 
-| Metric           | Value         | Notes                            |
-| ---------------- | ------------- | -------------------------------- |
-| Token Reduction  | 40-50%        | Average across typical datasets  |
-| Array Overhead   | 12-15 tokens  | Per array declaration and count  |
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Token Reduction | 40-50% | Average across typical datasets |
+| Array Overhead | 12-15 tokens | Per array declaration and count |
 | Table Efficiency | 45% best case | Uniform objects, minimal quoting |
-| Nesting Penalty  | +5% per level | YAML-like indentation cost       |
-| Escape Cost      | Variable      | Only quoted strings escape       |
+| Nesting Penalty | +5% per level | YAML-like indentation cost |
+| Escape Cost | Variable | Only quoted strings escape |
 
 ### Benchmarks
-
 - **100-row dataset**: 3200 JSON tokens → 1680 TOON tokens (47.5% savings)
 - **Nested metadata**: 450 JSON tokens → 280 TOON tokens (37.8% savings)
 - **Mixed structure**: 1200 JSON tokens → 720 TOON tokens (40% savings)
@@ -481,7 +493,6 @@ def convert_data_batch(json_file: str) -> str:
 ### Common Issues
 
 **Issue**: "Array count mismatch"
-
 ```
 Solution: Ensure [N] matches actual row count in strict mode
 users[2]{id,name}:  # declares 2 rows
@@ -491,7 +502,6 @@ users[2]{id,name}:  # declares 2 rows
 ```
 
 **Issue**: "Unterminated string"
-
 ```
 Solution: Close all quotes properly
 description: "This is unclosed    ← ERROR: missing closing "
@@ -499,7 +509,6 @@ description: "This is closed"     ← OK
 ```
 
 **Issue**: "Invalid escape sequence"
-
 ```
 Solution: Use only valid escapes: \\ \" \n \r \t
 invalid: "path\windows\file"      ← ERROR: \w \i \l not valid
@@ -507,7 +516,6 @@ valid: "path\\windows\\file"       ← OK: backslashes escaped
 ```
 
 **Issue**: "Tab/space mixing"
-
 ```
 Solution: Use consistent indentation (spaces only)
 users:
@@ -553,7 +561,6 @@ This skill implements TOON v2.0 working draft (2025-11-10) with the following fe
 ## Integration Matrix
 
 Works best with:
-
 - `moai-lang-python` — Native toon-python library integration
 - `moai-context7-integration` — Latest TOON spec and best practices
 - `moai-essentials-perf` — Performance optimization
