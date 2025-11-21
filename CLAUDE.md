@@ -277,131 +277,29 @@ Mr.Alfred optimizes orchestration by:
 
 ---
 
-# 🧠 SPEC 생성 판단 (Alfred의 지능형 시스템)
+# 🧠 SPEC Intelligent Decision System
 
-## Alfred의 역할
+Alfred automatically analyzes user requests to determine SPEC necessity using natural language processing.
 
-Alfred는 사용자 요청을 **자연어로 분석**하여 SPEC 필요성을 **자동으로 판단**합니다.
+**Primary Resource**: `Skill("moai-spec-intelligent-workflow")`
 
-이는 사용자가 직접 판단하는 부담을 덜어주며, SPEC-First 워크플로우의 효율성을 극대화합니다.
+## Core Decision Logic
 
-## 판단 기준: 5가지 질문
+Alfred evaluates 5 criteria naturally:
 
-Alfred는 다음 질문들을 자연어로 분석합니다:
+1. **File Modification Scope** - Single file vs. multiple files
+2. **Architecture Impact** - Existing structure vs. major changes
+3. **Component Integration** - Single component vs. multiple integrations
+4. **Implementation Time** - Quick fix vs. extended development
+5. **Maintenance Needs** - One-time task vs. ongoing extension
 
-1. **여러 파일 수정 필요한가?** → 예/아니오
-2. **아키텍처 변경이 있는가?** → 예/아니오
-3. **컴포넌트 통합이 필요한가?** → 예/아니오
-4. **구현 시간 30분 이상인가?** → 예/아니오
-5. **향후 유지보수 필요한가?** → 예/아니오
+**Decision Outcomes**:
 
-### 자동 판단
+- 0-1 criteria met → SPEC not needed (immediate implementation)
+- 2-3 criteria met → SPEC recommended (user choice)
+- 4-5 criteria met → SPEC strongly recommended
 
-- **0-1개 "예"** → SPEC 불필요 (즉시 구현)
-- **2-3개 "예"** → SPEC 권장 (사용자 선택)
-- **4-5개 "예"** → SPEC 강력 권장 (강조)
-
-## 사용자 경험
-
-### 시나리오 A: 간단한 작업
-
-```
-사용자: "로그인 버튼 색상을 변경해주세요"
-  ↓
-Alfred 판단: 0개 충족 → SPEC 불필요
-  ↓
-즉시 구현 진행
-```
-
-### 시나리오 B: 중간 복잡도
-
-```
-사용자: "사용자 프로필 이미지 업로드 기능을 추가해주세요"
-  ↓
-Alfred 판단: 4개 충족 → SPEC 강력 권장
-  ↓
-AskUserQuestion: "SPEC 생성하시겠습니까?"
-  ↓
-사용자 "예" 선택
-  ↓
-자동 /moai:1-plan 실행 → SPEC-XXX 생성
-  ↓
-Level 2 (Standard) 템플릿 자동 선택
-  ↓
-/moai:2-run SPEC-XXX로 구현
-```
-
-### 시나리오 C: 프로토타입
-
-```
-사용자: "빠르게 프로토타입을 만들어보고 싶습니다"
-  ↓
-Alfred 판단: 프로토타입 감지 → SPEC 스킵
-  ↓
-즉시 구현
-```
-
-## 3단계 SPEC 템플릿
-
-Alfred는 판단 결과에 따라 자동으로 다음 중 하나를 선택합니다:
-
-| 복잡도     | 특징                             | 섹션       | 시간    |
-| ---------- | -------------------------------- | ---------- | ------- |
-| **LOW**    | 1-2 파일, 30분 이내              | 5개        | 5-10분  |
-| **MEDIUM** | 3-5 파일, 1-2시간                | 7개 (EARS) | 10-15분 |
-| **HIGH**   | 5개+ 파일, 2시간+, 아키텍처 변경 | 10+        | 20-30분 |
-
-자세한 템플릿 내용은 **Skill: moai-spec-intelligent-workflow** → **templates.md** 참고
-
-## 통계 및 분석
-
-SPEC-First 워크플로우의 효과를 측정하기 위해:
-
-### 세션 시작 시
-
-- 최근 30일 SPEC 통계 자동 표시
-- 생성 개수, 평균 완료 시간, 코드 연결율, 테스트 커버리지
-
-### 세션 종료 시
-
-- SPEC 관련 데이터 자동 수집
-- Git 커밋, 수정 파일, 테스트 결과 연결
-
-### 월간 리포트
-
-- 매월 마지막 날 자동 생성
-- 트렌드 분석, 개선 권장사항, 메트릭
-
-자세한 구현은 **Skill: moai-spec-intelligent-workflow** → **analytics.md** 참고
-
-## Alfred가 자동 처리하는 것
-
-✅ 사용자 요청 분석
-✅ SPEC 필요성 판단
-✅ 사용자에게 제안
-✅ 자동 `/moai:1-plan` 실행 (사용자 동의 시)
-✅ 3단계 템플릿 자동 선택
-✅ spec-builder 에이전트 위임
-✅ 컨텍스트 초기화 및 다음 단계 안내
-
-## 사용자는 항상 거부 가능
-
-모든 SPEC 제안은 거부 가능하며, 거부했을 때 페널티는 없습니다.
-Alfred는 사용자의 선택을 존중합니다.
-
----
-
-## 상세 가이드
-
-완전한 가이드는 다음 Skill을 참고하세요:
-
-**Skill: `moai-spec-intelligent-workflow`**
-
-- Alfred의 판단 알고리즘
-- 3단계 템플릿 상세 구조
-- 통계 시스템 설계
-- 10+ 실전 예제
-- 자주 묻는 질문 (FAQ)
+**Complete details, templates, analytics, and examples**: `moai-spec-intelligent-workflow`
 
 ---
 
@@ -480,16 +378,16 @@ Alfred는 사용자의 선택을 존중합니다.
 
 All detailed information is available in the memory library and Skills:
 
-| Document/Skill                              | Purpose                                      |
-| ------------------------------------------- | -------------------------------------------- |
-| `@.moai/memory/agents.md`                   | 35 agents detailed description               |
-| `@.moai/memory/commands.md`                 | 6 commands complete execution process        |
-| `@.moai/memory/delegation-patterns.md`      | Agent delegation patterns and workflows      |
-| `@.moai/memory/execution-rules.md`          | Execution rules, security, permission system |
-| `@.moai/memory/token-optimization.md`       | Token optimization strategy and monitoring   |
-| `@.moai/memory/mcp-integration.md`          | Context7, Playwright, Figma integration      |
-| `@.moai/memory/skills.md`                   | 135 skills catalog and usage                 |
-| **`Skill: moai-spec-intelligent-workflow`** | **SPEC 판단, 템플릿, 분석 시스템**           |
+| Document/Skill                              | Purpose                                                    |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| `@.moai/memory/agents.md`                   | 35 agents detailed description                             |
+| `@.moai/memory/commands.md`                 | 6 commands complete execution process                      |
+| `@.moai/memory/delegation-patterns.md`      | Agent delegation patterns and workflows                    |
+| `@.moai/memory/execution-rules.md`          | Execution rules, security, permission system               |
+| `@.moai/memory/token-optimization.md`       | Token optimization strategy and monitoring                 |
+| `@.moai/memory/mcp-integration.md`          | Context7, Playwright, Figma integration                    |
+| `@.moai/memory/skills.md`                   | 135 skills catalog and usage                               |
+| **`Skill: moai-spec-intelligent-workflow`** | **SPEC intelligent decision system, templates, analytics** |
 
 ---
 
@@ -515,8 +413,6 @@ All detailed information is available in the memory library and Skills:
 ---
 
 **Project**: MoAI-ADK
-**Version**: 0.26.0
-**Last Updated**: 2025-11-20
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 
 ---

@@ -1,25 +1,25 @@
-# SPEC 통계 및 분석 시스템
+# SPEC Analytics and Reporting System
 
-**작성일**: 2025-11-21
-**상태**: Production Ready
-
----
-
-## 개요
-
-SPEC-First 워크플로우의 효과를 측정하기 위해 **간단하지만 실용적인 통계 시스템**을 제공합니다.
-
-이 시스템은:
-- ✅ 최근 30일 SPEC 통계 자동 표시
-- ✅ SPEC 관련 데이터 자동 수집
-- ✅ 월간 리포트 자동 생성
-- ✅ 트렌드 분석 및 개선 권장사항
+**Created**: 2025-11-21
+**Status**: Production Ready
 
 ---
 
-## 데이터 구조
+## Overview
 
-### 핵심 파일: `.moai/logs/spec-usage.json`
+To measure the effectiveness of the SPEC-First workflow, we provide a **simple yet practical analytics system**.
+
+This system:
+- ✅ Automatically displays recent 30-day SPEC statistics
+- ✅ Automatically collects SPEC-related data
+- ✅ Automatically generates monthly reports
+- ✅ Provides trend analysis and improvement recommendations
+
+---
+
+## Data Structure
+
+### Core File: `.moai/logs/spec-usage.json`
 
 ```json
 {
@@ -31,7 +31,7 @@ SPEC-First 워크플로우의 효과를 측정하기 위해 **간단하지만 �
   "specs": [
     {
       "spec_id": "SPEC-001",
-      "title": "사용자 프로필 이미지 업로드",
+      "title": "User Profile Image Upload",
       "created_at": "2025-11-20T10:00:00Z",
       "completed_at": "2025-11-21T14:30:00Z",
       "template_level": "Level 2",
@@ -56,12 +56,12 @@ SPEC-First 워크플로우의 효과를 측정하기 위해 **간단하지만 �
 
 ---
 
-## SessionStart Hook: 통계 표시
+## SessionStart Hook: Display Statistics
 
-### 목적
-세션 시작 시 **최근 30일 SPEC 통계**를 자동으로 표시
+### Purpose
+Automatically display **recent 30-day SPEC statistics** at session start
 
-### 표시 내용
+### Display Content
 
 ```
 📊 SPEC-First Workflow Stats (Last 30 days)
@@ -81,21 +81,21 @@ SPEC-First 워크플로우의 효과를 측정하기 위해 **간단하지만 �
   ℹ️  Details: .moai/logs/spec-usage.json
 ```
 
-### 구현
+### Implementation
 
-**Hook 파일**: `.claude/hooks/sessionstart.sh`
+**Hook File**: `.claude/hooks/sessionstart.sh`
 
 ```bash
 #!/bin/bash
-# SPEC 통계 표시
+# Display SPEC statistics
 
 SPEC_USAGE_FILE=".moai/logs/spec-usage.json"
 
 if [ ! -f "$SPEC_USAGE_FILE" ]; then
-    exit 0  # 데이터 없으면 표시하지 않음
+    exit 0  # Do not display if no data
 fi
 
-# Python으로 통계 계산 및 표시
+# Calculate and display statistics with Python
 python3 << 'EOF'
 import json
 from datetime import datetime, timedelta
@@ -103,14 +103,14 @@ from datetime import datetime, timedelta
 with open('.moai/logs/spec-usage.json', 'r') as f:
     data = json.load(f)
 
-# 최근 30일 SPEC 필터링
+# Filter recent 30-day SPECs
 cutoff_date = datetime.now() - timedelta(days=30)
 recent_specs = [
     s for s in data['specs']
     if datetime.fromisoformat(s['created_at']) > cutoff_date
 ]
 
-# 통계 계산
+# Calculate statistics
 total = len(recent_specs)
 completed = len([s for s in recent_specs if s['status'] == 'completed'])
 avg_time = sum(
@@ -121,7 +121,7 @@ avg_time = sum(
 linkage = len([s for s in recent_specs if s['linked_commits']]) / total if total > 0 else 0
 coverage = sum(s['test_coverage'] for s in recent_specs) / total if total > 0 else 0
 
-# 표시
+# Display
 print(f"📊 SPEC-First Workflow Stats (Last 30 days)")
 print(f"  ✅ SPEC created: {total}")
 print(f"  ✅ SPEC completed: {completed}")
@@ -131,35 +131,35 @@ print(f"  🧪 Test coverage: {coverage:.0f}%")
 EOF
 ```
 
-### 표시 빈도
-- 매 세션마다 (1초 이내)
-- 최근 30일 롤링 윈도우
+### Display Frequency
+- Every session (within 1 second)
+- Rolling 30-day window
 
 ---
 
-## SessionEnd Hook: 데이터 수집
+## SessionEnd Hook: Data Collection
 
-### 목적
-세션 종료 시 **SPEC 관련 데이터를 자동으로 수집**
+### Purpose
+Automatically collect **SPEC-related data** at session end
 
-### 수집 데이터
+### Collected Data
 
-1. **SPEC 생성**
-   - SPEC ID, 생성 시간, 템플릿 레벨, 예상 시간
+1. **SPEC Creation**
+   - SPEC ID, creation time, template level, estimated time
 
-2. **구현 추적**
-   - 실제 소요 시간, 상태 (완료/진행 중/포기)
+2. **Implementation Tracking**
+   - Actual time spent, status (completed/in progress/abandoned)
 
-3. **코드 연결**
-   - Git 커밋 (SPEC-XXX 포함된 메시지)
-   - 수정된 파일, 추가된 테스트
+3. **Code Linkage**
+   - Git commits (messages containing SPEC-XXX)
+   - Modified files, added tests
 
-4. **품질 메트릭**
-   - 테스트 커버리지, 테스트 통과율
+4. **Quality Metrics**
+   - Test coverage, test pass rate
 
-### 구현
+### Implementation
 
-**Hook 파일**: `.claude/hooks/sessionend.sh`
+**Hook File**: `.claude/hooks/sessionend.sh`
 
 ```bash
 #!/bin/bash

@@ -36,17 +36,17 @@ Mr.Alfred personalizes its behavior based on your `@.moai/config/config.json` se
 
 ### Key Configuration Fields
 
-| Field                               | Purpose                  | Example Values                                 | Impact on Mr.Alfred                                 |
-| ----------------------------------- | ------------------------ | ---------------------------------------------- | --------------------------------------------------- |
-| `user.name`                         | Personal name            | "GOOS", "John", "Alice"                        | Personalizes greetings (e.g., "GOOS님")             |
-| `language.conversation_language`    | Output language          | ko, en, ja, zh, es, fr, de, pt, ru, it, ar, hi | All messages, SPEC, docs in this language           |
-| `language.agent_prompt_language`    | Agent reasoning language | en (recommended), ko                           | Agent thinking quality (keep "en" for best results) |
-| `project.name`                      | Project identifier       | "MoAI-ADK", "UserAuth-System"                  | Used in SPEC, documentation headers                 |
-| `project.owner`                     | Project ownership        | Defaults to user.name                          | Attribution in generated documents                  |
-| `constitution.test_coverage_target` | Quality gate threshold   | 0-100 (default: 90)                            | Blocks merge if coverage < threshold                |
-| `constitution.enforce_tdd`          | TDD enforcement          | true (default), false                          | Enforces RED-GREEN-REFACTOR cycle                   |
-| `git_strategy.mode`                 | Git workflow type        | personal, team, hybrid                         | Available workflows and automation                  |
-| `project.documentation_mode`        | Documentation generation | skip, minimal, full_now                        | Affects `/moai:3-sync` depth and duration           |
+| Field                               | Purpose                      | Example Values                                 | Impact on Mr.Alfred                                 |
+| ----------------------------------- | ---------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `user.name`                         | **Personal name (REQUIRED)** | "GOOS", "John", "Alice"                        | **Mandatory for all interactions** (e.g., "GOOS님") |
+| `language.conversation_language`    | Output language              | ko, en, ja, zh, es, fr, de, pt, ru, it, ar, hi | All messages, SPEC, docs in this language           |
+| `language.agent_prompt_language`    | Agent reasoning language     | en (recommended), ko                           | Agent thinking quality (keep "en" for best results) |
+| `project.name`                      | Project identifier           | "MoAI-ADK", "UserAuth-System"                  | Used in SPEC, documentation headers                 |
+| `project.owner`                     | Project ownership            | Defaults to user.name                          | Attribution in generated documents                  |
+| `constitution.test_coverage_target` | Quality gate threshold       | 0-100 (default: 90)                            | Blocks merge if coverage < threshold                |
+| `constitution.enforce_tdd`          | TDD enforcement              | true (default), false                          | Enforces RED-GREEN-REFACTOR cycle                   |
+| `git_strategy.mode`                 | Git workflow type            | personal, team, hybrid                         | Available workflows and automation                  |
+| `project.documentation_mode`        | Documentation generation     | skip, minimal, full_now                        | Affects `/moai:3-sync` depth and duration           |
 
 ### Quick Configuration Guide
 
@@ -257,7 +257,6 @@ Mr.Alfred optimizes orchestration by:
 | `/moai:2-run SPEC-XXX`       | TDD implementation     | tdd-implementer | Execute `/clear` if needed |
 | `/moai:3-sync SPEC-XXX`      | Documentation sync     | docs-manager    | Verify quality gate        |
 | `/moai:9-feedback [data]`    | Feedback analysis      | quality-gate    | Apply improvements         |
-| `/moai:99-release`           | Production release     | release-manager | Verify deployment          |
 
 **Detailed Execution Process**: `@.moai/memory/commands.md`
 
@@ -275,6 +274,32 @@ Mr.Alfred optimizes orchestration by:
 
 4. Optional `/moai:99-release` → Production deployment
 ```
+
+---
+
+# 🧠 SPEC Intelligent Decision System
+
+Alfred automatically analyzes user requests to determine SPEC necessity using natural language processing.
+
+**Primary Resource**: `Skill("moai-spec-intelligent-workflow")`
+
+## Core Decision Logic
+
+Alfred evaluates 5 criteria naturally:
+
+1. **File Modification Scope** - Single file vs. multiple files
+2. **Architecture Impact** - Existing structure vs. major changes
+3. **Component Integration** - Single component vs. multiple integrations
+4. **Implementation Time** - Quick fix vs. extended development
+5. **Maintenance Needs** - One-time task vs. ongoing extension
+
+**Decision Outcomes**:
+
+- 0-1 criteria met → SPEC not needed (immediate implementation)
+- 2-3 criteria met → SPEC recommended (user choice)
+- 4-5 criteria met → SPEC strongly recommended
+
+**Complete details, templates, analytics, and examples**: `moai-spec-intelligent-workflow`
 
 ---
 
@@ -351,17 +376,18 @@ Mr.Alfred optimizes orchestration by:
 
 # 📚 Reference Documentation
 
-All detailed information is available in the memory library:
+All detailed information is available in the memory library and Skills:
 
-| Document                               | Purpose                                      |
-| -------------------------------------- | -------------------------------------------- |
-| `@.moai/memory/agents.md`              | 35 agents detailed description               |
-| `@.moai/memory/commands.md`            | 6 commands complete execution process        |
-| `@.moai/memory/delegation-patterns.md` | Agent delegation patterns and workflows      |
-| `@.moai/memory/execution-rules.md`     | Execution rules, security, permission system |
-| `@.moai/memory/token-optimization.md`  | Token optimization strategy and monitoring   |
-| `@.moai/memory/mcp-integration.md`     | Context7, Playwright, Figma integration      |
-| `@.moai/memory/skills.md`              | 135 skills catalog and usage                 |
+| Document/Skill                              | Purpose                                                    |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| `@.moai/memory/agents.md`                   | 35 agents detailed description                             |
+| `@.moai/memory/commands.md`                 | 6 commands complete execution process                      |
+| `@.moai/memory/delegation-patterns.md`      | Agent delegation patterns and workflows                    |
+| `@.moai/memory/execution-rules.md`          | Execution rules, security, permission system               |
+| `@.moai/memory/token-optimization.md`       | Token optimization strategy and monitoring                 |
+| `@.moai/memory/mcp-integration.md`          | Context7, Playwright, Figma integration                    |
+| `@.moai/memory/skills.md`                   | 135 skills catalog and usage                               |
+| **`Skill: moai-spec-intelligent-workflow`** | **SPEC intelligent decision system, templates, analytics** |
 
 ---
 
@@ -387,8 +413,6 @@ All detailed information is available in the memory library:
 ---
 
 **Project**: MoAI-ADK
-**Version**: 0.26.0
-**Last Updated**: 2025-11-20
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 
 ---
