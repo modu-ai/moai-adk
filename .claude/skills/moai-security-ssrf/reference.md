@@ -7,6 +7,12 @@
 - `validate_network_access(host, port)` - Network access validation
 - `calculate_risk_score(url)` - Risk scoring for suspicious patterns
 
+### Official Documentation & Resources
+- [OWASP SSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
+- [CWE-918 SSRF Vulnerability](https://cwe.mitre.org/data/definitions/918.html)
+- [Blind SSRF - PortSwigger](https://portswigger.net/web-security/ssrf)
+- [SSRF Attack Examples](https://owasp.org/www-community/attacks/Server_Side_Request_Forgery)
+
 ### Context7 Integration
 - `get_latest_ssrf_docs()` - SSRF protection via Context7
 - `analyze_threat_patterns()` - Threat pattern analysis via Context7

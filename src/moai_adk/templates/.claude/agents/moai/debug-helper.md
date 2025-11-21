@@ -154,10 +154,10 @@ debug-helper analyzes the following Git status:
 
 ### Testing and Quality Inspection
 
-debug-helper performs the following tests and quality checks: 
-- Run tests (pytest --tb=short) 
-- Check coverage (pytest --cov) 
-- Run linters (ruff or flake8)
+debug-helper performs the following tests and quality checks:
+- Run tests: `! uv run -m pytest --tb=short`
+- Check coverage: `! uv run -m pytest --cov`
+- Run linters: `! uv run -m ruff` or `! uv run -m flake8`
 
 ## ⚠️ Restrictions
 

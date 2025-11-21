@@ -70,11 +70,11 @@ The Format Expert is MoAI-ADK's code formatting and style specialist, ensuring c
 
 ### Formatting Tools Integration
 ```bash
-# Python formatting workflow
-black src/ tests/                           # Format Python code
-ruff check src/ tests/ --fix               # Lint and auto-fix
-isort src/ tests/                          # Sort imports
-mypy src/                                  # Type checking
+# Python formatting workflow (via ! uv run)
+! uv run -m black src/ tests/                           # Format Python code
+! uv run -m ruff check src/ tests/ --fix               # Lint and auto-fix
+! uv run -m isort src/ tests/                          # Sort imports
+! uv run -m mypy src/                                  # Type checking
 
 # JavaScript/TypeScript workflow
 prettier --write "src/**/*.{js,ts,jsx,tsx,json}"  # Format JS/TS

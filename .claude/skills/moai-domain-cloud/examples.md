@@ -1,13 +1,10 @@
-# Code Examples — moai-domain-cloud
+# Cloud Architecture Examples
 
-## AWS Lambda with Lambda Powertools
+## Example 1: AWS Lambda with Lambda Powertools
+
+**Production Lambda handler with full observability**:
 
 ```python
-# requirements.txt
-aws-lambda-powertools[all]==2.41.0
-boto3==1.35.0
-
-# handler.py
 from aws_lambda_powertools import Logger, Tracer, Metrics
 from aws_lambda_powertools.utilities.data_classes.s3_event import S3Event
 from aws_lambda_powertools.utilities.batch import BatchProcessor, EventType
@@ -28,13 +25,13 @@ def lambda_handler(event: S3Event, context):
     """Production Lambda handler with full observability."""
     for record in event.records:
         batch_processor.add_task(process_s3_object, record=record)
-    
+
     try:
         results = batch_processor.run()
     except BatchProcessingError as e:
         logger.exception("Batch processing failed")
         metrics.add_metric(name="ProcessingErrors", unit="Count", value=len(e.failed_messages))
-    
+
     metrics.publish_stored_metrics()
     return {"batchItemFailures": batch_processor.fail_messages}
 
@@ -47,342 +44,536 @@ def process_s3_object(record):
     return {"statusCode": 200, "key": key}
 ```
 
-## AWS CDK Infrastructure
+---
+
+## Example 2: AWS CDK Infrastructure as Code
+
+**Multi-layer cloud infrastructure definition**:
 
 ```python
-# requirements.txt
-aws-cdk-lib==2.223.0
-constructs>=10.0.0
+from aws_cdk import (
+    aws_ec2 as ec2,
+    aws_rds as rds,
+    aws_s3 as s3,
+    aws_cloudfront as cloudfront,
+    core
+)
 
-# app.py
-from aws_cdk import App, Stack
-from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_apigateway as apigw
-from aws_cdk import aws_dynamodb as dynamodb
-from aws_cdk import Duration, RemovalPolicy
-from constructs import Construct
+class MultiLayerStack(core.Stack):
+    """Complete cloud infrastructure with VPC, RDS, and CDN."""
 
-class APIStack(Stack):
-    def __init__(self, scope: Construct, id: str, **kwargs):
+    def __init__(self, scope: core.Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
-        
-        # DynamoDB
-        table = dynamodb.Table(
-            self, "UsersTable",
-            partition_key=dynamodb.Attribute(
-                name="user_id",
-                type=dynamodb.AttributeType.STRING
+
+        # VPC with public and private subnets
+        vpc = ec2.Vpc(self, "VPC",
+            max_azs=3,
+            nat_gateways=1,
+            subnet_configuration=[
+                ec2.SubnetConfiguration(
+                    subnet_type=ec2.SubnetType.PUBLIC,
+                    name="Public"
+                ),
+                ec2.SubnetConfiguration(
+                    subnet_type=ec2.SubnetType.PRIVATE,
+                    name="Private"
+                )
+            ]
+        )
+
+        # RDS PostgreSQL database
+        db = rds.DatabaseInstance(self, "Database",
+            engine=rds.DatabaseInstanceEngine.postgres(
+                version=rds.PostgresEngineVersion.VER_15
             ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
-            point_in_time_recovery=True,
+            instance_type=ec2.InstanceType("t4g.micro"),
+            vpc=vpc,
+            allocated_storage=100,
+            backup_retention=core.Duration.days(7),
+            multi_az=True
         )
-        
-        # Lambda
-        handler = lambda_.Function(
-            self, "APIHandler",
-            runtime=lambda_.Runtime.PYTHON_3_13,
-            code=lambda_.Code.from_asset("src/handlers"),
-            handler="api_handler.handler",
-            timeout=Duration.seconds(30),
-            memory_size=512,
-            environment={"USERS_TABLE": table.table_name},
-        )
-        table.grant_read_write_data(handler)
-        
-        # API Gateway
-        api = apigw.RestApi(self, "UsersAPI")
-        users = api.root.add_resource("users")
-        users.add_method("POST", apigw.LambdaIntegration(handler))
 
-app = App()
-APIStack(app, "api-stack")
-app.synth()
+        # S3 bucket for static assets
+        bucket = s3.Bucket(self, "Assets",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            versioned=True,
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    transitions=[
+                        s3.Transition(
+                            storage_class=s3.StorageClass.GLACIER,
+                            transition_after=core.Duration.days(90)
+                        )
+                    ]
+                )
+            ]
+        )
+
+        # CloudFront distribution
+        distribution = cloudfront.CloudFrontWebDistribution(
+            self, "Distribution",
+            origin_configs=[
+                cloudfront.SourceConfiguration(
+                    s3_origin_source=cloudfront.S3OriginConfig(
+                        s3_bucket_source=bucket
+                    ),
+                    behaviors=[
+                        cloudfront.Behavior(
+                            is_default_behavior=True,
+                            compress=True
+                        )
+                    ]
+                )
+            ]
+        )
 ```
 
-## GCP Cloud Run Deployment
+---
 
-```python
-# main.py
-import functions_framework
-from google.cloud import firestore
-from flask import jsonify
-import logging
+## Example 3: Kubernetes Deployment with Helm Charts
 
-db = firestore.Client()
+**Production-ready Kubernetes deployment**:
 
-@functions_framework.http
-def hello_world(request):
-    """HTTP Cloud Function."""
-    try:
-        request_json = request.get_json(silent=True)
-        user_id = request_json.get('user_id') if request_json else None
-        
-        if user_id:
-            doc = db.collection('users').document(user_id).get()
-            return jsonify({"data": doc.to_dict()})
-        
-        return jsonify({"error": "user_id required"}), 400
-    except Exception as e:
-        logging.error(str(e))
-        return jsonify({"error": "Internal error"}), 500
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment
+  labels:
+    app: api
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+        version: v1
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - api
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: api
+        image: myregistry.azurecr.io/api:v1.2.3
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: database-url
+
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+
+      volumes:
+      - name: config
+        configMap:
+          name: app-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: api
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
 ```
 
-## Terraform Multi-Cloud
+---
+
+## Example 4: Docker Multi-Stage Build
+
+**Optimized container image for production**:
+
+```dockerfile
+# Stage 1: Build
+FROM python:3.12-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Stage 2: Runtime
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+# Copy only necessary files from builder
+COPY --from=builder /root/.local /home/appuser/.local
+COPY --chown=appuser:appuser app/ /app/
+
+# Set environment variables
+ENV PATH=/home/appuser/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random
+
+# Switch to non-root user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+
+# Expose port
+EXPOSE 8000
+
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+---
+
+## Example 5: Terraform Multi-Environment Setup
+
+**Manage multiple cloud environments with Terraform**:
 
 ```hcl
+# main.tf
 terraform {
-  required_version = ">= 1.9.0"
+  required_version = ">= 1.5"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket         = "terraform-state"
+    key            = "prod/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Environment = var.environment
+      Terraform   = "true"
+      CreatedAt   = timestamp()
+    }
+  }
 }
 
-resource "aws_lambda_function" "api" {
-  filename         = "lambda.zip"
-  function_name    = "my-api"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "python3.13"
-  timeout         = 30
-  memory_size     = 512
+# VPC and networking
+resource "aws_vpc" "main" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "${var.environment}-vpc"
+  }
 }
 
-resource "aws_iam_role" "lambda_role" {
-  name = "lambda-role"
+# Public subnets
+resource "aws_subnet" "public" {
+  count                   = length(var.availability_zones)
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
+  availability_zone       = var.availability_zones[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.environment}-public-${count.index + 1}"
+  }
+}
+
+# Private subnets
+resource "aws_subnet" "private" {
+  count             = length(var.availability_zones)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 10)
+  availability_zone = var.availability_zones[count.index]
+
+  tags = {
+    Name = "${var.environment}-private-${count.index + 1}"
+  }
+}
+
+# Auto Scaling Group
+resource "aws_autoscaling_group" "main" {
+  name                = "${var.environment}-asg"
+  vpc_zone_identifier = aws_subnet.private[*].id
+  min_size            = var.min_size
+  max_size            = var.max_size
+  desired_capacity    = var.desired_capacity
+
+  launch_template {
+    id      = aws_launch_template.main.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.environment}-asg-instance"
+    propagate_at_launch = true
+  }
+}
+
+# Launch template
+resource "aws_launch_template" "main" {
+  name_prefix   = "${var.environment}-"
+  image_id      = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+
+  user_data = base64encode(templatefile("${path.module}/user-data.sh", {
+    environment = var.environment
+  }))
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.main.name
+  }
+
+  monitoring {
+    enabled = true
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.environment}-instance"
+    }
+  }
+}
+
+# IAM role
+resource "aws_iam_role" "main" {
+  name = "${var.environment}-instance-role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
       Principal = {
-        Service = "lambda.amazonaws.com"
+        Service = "ec2.amazonaws.com"
       }
     }]
   })
 }
-```
 
-## Azure Functions v4
+resource "aws_iam_instance_profile" "main" {
+  name = "${var.environment}-instance-profile"
+  role = aws_iam_role.main.name
+}
 
-```python
-# requirements.txt
-azure-functions
-azure-storage-blob
-azure-identity
+# Security group
+resource "aws_security_group" "main" {
+  name        = "${var.environment}-sg"
+  description = "Security group for ${var.environment}"
+  vpc_id      = aws_vpc.main.id
 
-# function_app.py
-import azure.functions as func
-from azure.storage.blob import BlobClient
-from azure.identity import DefaultAzureCredential
-import logging
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-app = func.FunctionApp()
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-@app.function_name("ProcessBlob")
-@app.blob_trigger(arg_name="myblob", path="input/{name}", 
-                  connection="AzureWebJobsStorage")
-def blob_processor(myblob: func.InputStream):
-    """Process blob with managed identity."""
-    try:
-        logging.info(f"Processing: {myblob.name}")
-        content = myblob.read()
-        
-        credential = DefaultAzureCredential()
-        blob_client = BlobClient(
-            account_url="https://myaccount.blob.core.windows.net",
-            container_name="output",
-            blob_name=myblob.name,
-            credential=credential
-        )
-        blob_client.upload_blob(content, overwrite=True)
-    except Exception as e:
-        logging.error(str(e))
-        raise
-```
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-## Kubernetes Helm Chart
-
-```yaml
-# Chart.yaml
-apiVersion: v2
-name: my-app
-version: 1.0.0
-appVersion: "1.0"
-
-# values.yaml
-replicaCount: 3
-image:
-  repository: my-registry/my-app
-  tag: "1.0.0"
-
-# templates/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "my-app.fullname" . }}
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      app: {{ include "my-app.name" . }}
-  template:
-    metadata:
-      labels:
-        app: {{ include "my-app.name" . }}
-    spec:
-      containers:
-      - name: {{ .Chart.Name }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        ports:
-        - containerPort: 8000
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
-```
-
-## PostgreSQL RDS Setup (Terraform)
-
-```hcl
-resource "aws_db_instance" "postgres" {
-  allocated_storage    = 100
-  db_name              = "appdb"
-  engine               = "postgres"
-  engine_version       = "17.1"
-  instance_class       = "db.t4g.medium"
-  username             = "postgres"
-  password             = random_password.db.result
-  
-  multi_az             = true
-  backup_retention_period = 30
-  skip_final_snapshot  = false
-  
-  vpc_security_group_ids = [aws_security_group.db.id]
-  db_subnet_group_name   = aws_db_subnet_group.default.name
-  
-  deletion_protection = true
+  tags = {
+    Name = "${var.environment}-sg"
+  }
 }
 ```
 
-## Multi-Cloud Failover
+---
 
-```python
-import boto3
-from datetime import datetime, timedelta
+## Example 6: Cloud Monitoring with Prometheus
 
-class MultiCloudDR:
-    def __init__(self):
-        self.aws_rds = boto3.client('rds')
-        self.route53 = boto3.client('route53')
-    
-    def check_primary_health(self):
-        """Check AWS RDS health."""
-        try:
-            response = self.aws_rds.describe_db_instances(
-                DBInstanceIdentifier='primary-db'
-            )
-            db = response['DBInstances'][0]
-            return {'healthy': db['DBInstanceStatus'] == 'available'}
-        except:
-            return {'healthy': False}
-    
-    def failover_to_secondary(self):
-        """Switch to GCP Cloud SQL."""
-        self.route53.change_resource_record_sets(
-            HostedZoneId='Z123456789',
-            ChangeBatch={
-                'Changes': [{
-                    'Action': 'UPSERT',
-                    'ResourceRecordSet': {
-                        'Name': 'db.example.com',
-                        'Type': 'CNAME',
-                        'TTL': 60,
-                        'ResourceRecords': [{
-                            'Value': 'cloud-sql.googleapis.com'
-                        }]
-                    }
-                }]
-            }
-        )
+**Complete observability stack setup**:
+
+```yaml
+# prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: production
+    environment: prod
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+scrape_configs:
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+    - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+    - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+    - role: pod
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
+
+---
+# alerting-rules.yml
+groups:
+  - name: kubernetes-cluster
+    interval: 30s
+    rules:
+    - alert: HighCPUUsage
+      expr: 'node_cpu_seconds_total > 0.8'
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage detected"
+        description: "CPU usage is {{ $value }}%"
+
+    - alert: PodCrashLooping
+      expr: 'rate(kube_pod_container_status_restarts_total[1h]) > 5'
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod {{ $labels.pod }} is crash looping"
+        description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+
+    - alert: KubernetesNodeNotReady
+      expr: 'kube_node_status_condition{condition="Ready",status="true"} == 0'
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kubernetes Node not ready"
+        description: "Node {{ $labels.node }} is not in Ready state"
 ```
 
-## Cost Analysis (AWS)
+---
 
-```python
-import boto3
-
-def analyze_lambda_costs():
-    """Analyze Lambda costs."""
-    ce = boto3.client('ce')
-    response = ce.get_cost_and_usage(
-        TimePeriod={
-            'Start': (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'),
-            'End': datetime.now().strftime('%Y-%m-%d')
-        },
-        Granularity='DAILY',
-        Metrics=['UnblendedCost'],
-        Filter={'Dimensions': {'Key': 'SERVICE', 'Values': ['AWS Lambda']}},
-        GroupBy=[{'Type': 'DIMENSION', 'Key': 'FUNCTION_NAME'}]
-    )
-    
-    for result in response['ResultsByTime']:
-        for group in result['Groups']:
-            name = group['Keys'][0]
-            cost = float(group['Metrics']['UnblendedCost']['Amount'])
-            if cost > 10:
-                print(f"High-cost function: {name} = ${cost:.2f}/day")
-```
-
-## Container Image Optimization (Dockerfile)
-
-```dockerfile
-# Multi-stage build for minimal image
-FROM python:3.13-slim as builder
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-FROM python:3.13-slim
-WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
-COPY . .
-
-RUN addgroup --system app && adduser --system app --ingroup app
-USER app
-
-EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0"]
-```
-
-## Environment-Based Configuration
-
-```python
-# config.py
-import os
-from dataclasses import dataclass
-
-@dataclass
-class CloudConfig:
-    environment: str = os.getenv("ENVIRONMENT", "dev")
-    database_url: str = os.getenv("DATABASE_URL", "postgresql://localhost/app")
-    log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
-
-config = CloudConfig()
-
-# Usage
-if config.debug:
-    logging.basicConfig(level=logging.DEBUG)
-```
-
+**Last Updated**: 2025-11-22
+**Version**: 4.0.0

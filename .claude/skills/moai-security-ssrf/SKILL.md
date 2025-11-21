@@ -725,6 +725,28 @@ interface RequestCache {
 
 ---
 
+## Context7 Integration
+
+### Related Libraries & Tools
+- [requestjs](/request/request): HTTP client for JavaScript
+- [axios](/axios/axios): Promise-based HTTP client
+- [requests](/psf/requests): HTTP library for Python
+- [httpx](/encode/httpx): Modern HTTP client for Python
+- [urllib3](/urllib3/urllib3): HTTP client for Python
+
+### Official Documentation
+- [OWASP SSRF](https://owasp.org/www-community/attacks/Server_Side_Request_Forgery)
+- [CWE-918](https://cwe.mitre.org/data/definitions/918.html)
+- [Blind SSRF](https://portswigger.net/web-security/ssrf)
+
+### Version-Specific Guides
+Latest stable versions: axios, requests, httpx
+- [SSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
+- [URL Validation](https://owasp.org/www-community/attacks/Server_Side_Request_Forgery)
+- [Network Segmentation](https://cheatsheetseries.owasp.org/cheatsheets/Secure_Coding_Practices_Checklist.html)
+
+---
+
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.

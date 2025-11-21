@@ -231,6 +231,28 @@ export class TOTPService {
 
 ---
 
+## Context7 Integration
+
+### Related Libraries & Tools
+- [bcryptjs](/dcodeIO/bcrypt.js): Bcrypt password hashing
+- [argon2](/P-H-C/phc-winner-argon2): Argon2 password hashing
+- [jwt](/auth0/node-jsonwebtoken): JWT authentication
+- [oauth2-server](/oauthjs/node-oauth2-server): OAuth 2.0 authorization server
+- [passport](/jaredhanson/passport): Authentication middleware
+
+### Official Documentation
+- [NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html)
+- [JWT.io](https://jwt.io/)
+- [Passport.js](http://www.passportjs.org/)
+
+### Version-Specific Guides
+Latest stable versions: bcryptjs, argon2, JWT, OAuth 2.0
+- [Password Storage Best Practices](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [MFA Implementation Guide](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html)
+- [Session Management Guide](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+
+---
+
 ## Version History
 
 **v5.0.0** (2025-11-22)

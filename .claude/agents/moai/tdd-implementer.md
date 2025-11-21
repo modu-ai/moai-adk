@@ -243,7 +243,8 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Exception case (error handling)
 
 3. **Run test and verify failure**:
-   - Execute: `pytest tests/` OR `npm test`
+   - Execute Python: `! uv run -m pytest tests/`
+   - Execute JavaScript: `npm test`
    - Check failure message
    - Verify it fails as expected
    - IF test passes unexpectedly → Review test logic
@@ -264,7 +265,8 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Focus on passing current test only
 
 3. **Run tests and verify pass**:
-   - Execute: `pytest tests/` OR `npm test`
+   - Execute Python: `! uv run -m pytest tests/`
+   - Execute JavaScript: `npm test`
    - Verify all tests pass
    - Check coverage report
    - IF tests fail → Debug and fix code
@@ -284,7 +286,8 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Invoke moai-essentials-refactor for guidance
 
 2. **Rerun tests**:
-   - Execute: `pytest tests/` OR `npm test`
+   - Execute Python: `! uv run -m pytest tests/`
+   - Execute JavaScript: `npm test`
    - Verify tests still pass after refactoring
    - Ensure no functional changes
    - IF tests fail → Revert refactoring and retry
@@ -322,7 +325,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 1. **Verify all TAGs complete**:
-   - Run full test suite
+   - Run full test suite: `! uv run -m pytest tests/ --cov=src --cov-report=html`
    - Check coverage report
    - Run integration tests (if any)
    - IF any TAG incomplete → Return to STEP 3 for that TAG
