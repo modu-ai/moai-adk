@@ -5,7 +5,10 @@ argument-hint: "[issue|suggestion|question]"
 allowed-tools:
   - Task
   - AskUserQuestion
-model: "haiku"
+  - TodoWrite
+model: haiku
+skills:
+  - moai-core-issue-labels
 ---
 
 ## 📋 Pre-execution Context

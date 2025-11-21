@@ -6,8 +6,12 @@ allowed-tools:
   - Task
   - AskUserQuestion
   - Skill
+  - TodoWrite
+model: sonnet
 skills:
   - moai-core-issue-labels
+  - moai-spec-intelligent-workflow
+  - moai-alfred-ask-user-questions
 ---
 
 ## 📋 Pre-execution Context
@@ -140,18 +144,18 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 - Need to find existing files and patterns
 - Unclear about current project state
 
-#### Step 1A.1: Invoke Explore Agent
+#### Step 1A.1: Invoke Explore Agent (Optional)
 
-**If user request lacks clarity or context, use Task to call Explore Agent:**
+**Conditional Execution: Run Phase A ONLY if user request lacks clarity**
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "Explore"
-- description: "Explore project files and patterns"
-- prompt: """You are the Explore agent.
+IF user_request_is_vague_or_needs_exploration:
+    explore_result = Task(
+        subagent_type="Explore",
+        description="Explore project files and patterns related to: $ARGUMENTS",
+        prompt="""You are the Explore agent.
 
-Analyze the current project directory structure and relevant files based on the user request: "{{USER_REQUEST}}"
+Analyze the current project directory structure and relevant files based on the user request: "$ARGUMENTS"
 
 Tasks:
 1. Find relevant files by keywords from the user request
@@ -169,24 +173,53 @@ Report back:
 
 Return comprehensive results to guide spec-builder agent.
 """
+    )
+
+    # Store agent ID for resume chain
+    $EXPLORE_AGENT_ID = explore_result.metadata.agent_id
+
+    # Log Phase 1A checkpoint
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: "1A"
+      agent_id: $EXPLORE_AGENT_ID
+      status: "EXPLORATION_COMPLETE"
+      timestamp: NOW()
+ELSE:
+    # User provided clear SPEC title - skip Phase A
+    $EXPLORE_AGENT_ID = null
+
+    # Log Phase 1A checkpoint (skipped)
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: "1A"
+      status: "SKIPPED"
+      timestamp: NOW()
+
+PROCEED TO PHASE 1B
 ```
 
-**IF user provided clear SPEC title**: Skip Phase A entirely and proceed directly to Phase B.
+**Decision Logic**: If user provided clear SPEC title (like "Add authentication module"), skip Phase A entirely and proceed directly to Phase B.
 
 ---
 
 ### 📋 PHASE 1B: SPEC Planning (Required)
 
-#### Step 1B.1: Invoke spec-builder for project analysis
+#### Step 1B.1: Invoke spec-builder for project analysis (Resume from Phase 1A if applicable)
 
-Use the Task tool to call the spec-builder agent:
+Use the Task tool to call the spec-builder agent with conditional resume:
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "spec-builder"
-- description: "Analyze project and create SPEC plan"
-- prompt: """You are the spec-builder agent.
+# Phase 1B: SPEC Planning (Resume from Phase 1A if exploration was done)
+planning_result = Task(
+    subagent_type="spec-builder",
+    resume="$EXPLORE_AGENT_ID",  # ⭐ Resume if Phase 1A executed, null if skipped
+    description="Analyze project and create SPEC plan for: $ARGUMENTS",
+    prompt="""You are the spec-builder agent.
+
+IF $EXPLORE_AGENT_ID is set:
+    You are continuing from project exploration in Phase 1A.
+    The exploration results (files found, patterns identified, constraints) are automatically available via resume.
+ELSE:
+    Start fresh analysis based on user request: "$ARGUMENTS"
 
 Language settings:
 - conversation_language: {{CONVERSATION_LANGUAGE}}
@@ -253,6 +286,19 @@ For the selected SPEC candidate, create a comprehensive implementation plan:
 - plan.md: [Implementation plan]
 - acceptance.md: [Acceptance criteria]
 - Branches/PR: [Git operations by mode]
+"""
+)
+
+# Store agent ID for resume chain
+$PLANNING_AGENT_ID = planning_result.metadata.agent_id
+
+# Log Phase 1B checkpoint
+Log to .moai/logs/phase-checkpoints.json:
+  phase: "1B"
+  agent_id: $PLANNING_AGENT_ID
+  resumed_from: $EXPLORE_AGENT_ID
+  status: "PLANNING_COMPLETE"
+  timestamp: NOW()
 ```
 
 #### Step 1B.2: Request user approval
@@ -402,16 +448,24 @@ Return:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
 
-### Step 1: Invoke spec-builder for SPEC creation
+### Step 1: Invoke spec-builder for SPEC creation (Resume from Phase 1B)
 
-Use the Task tool to call the spec-builder agent:
+Use the Task tool to call the spec-builder agent with resume to maintain context:
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "spec-builder"
-- description: "Create SPEC document"
-- prompt: """You are the spec-builder agent.
+# Phase 2: SPEC Document Creation (Resume from Phase 1B)
+spec_result = Task(
+    subagent_type="spec-builder",
+    resume="$PLANNING_AGENT_ID",  # ⭐ Resume: Inherit full planning context
+    description="Create SPEC document files for approved plan",
+    prompt="""You are the spec-builder agent.
+
+You are continuing from the SPEC planning phase in Phase 1B.
+
+The full planning context (project analysis, SPEC candidates, implementation plan) is automatically available via resume.
+Use this context to generate comprehensive SPEC document files.
+
+You are the spec-builder agent.
 
 Language settings:
 - conversation_language: {{CONVERSATION_LANGUAGE}}

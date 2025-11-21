@@ -5,7 +5,11 @@ argument-hint: "Mode target path - Mode: auto (default)|force|status|project, ta
 allowed-tools:
   - Task
   - AskUserQuestion
-model: "haiku"
+  - TodoWrite
+model: haiku
+skills:
+  - moai-docs-toolkit
+  - moai-alfred-reporting
 ---
 
 ## 📋 Pre-execution Context

@@ -5,6 +5,12 @@ argument-hint: "[<empty>|setting|update|--glm-on <token>]"
 allowed-tools:
   - Task
   - AskUserQuestion
+  - TodoWrite
+model: inherit
+skills:
+  - moai-project-language-initializer
+  - moai-project-config-manager
+  - moai-project-batch-questions
 ---
 
 ## 📋 Pre-execution Context
@@ -584,7 +590,7 @@ Step 7: Report all 29 settings changes (or 16-20 depending on mode)
 
 #### Multi-Tab Workflow Example
 
-User runs: `/moai:0-project setting` (without tab_ID) → Tab Selection Screen
+User runs: `/moai:0-project setting` (always interactive, no tab_ID) → Tab Selection Screen
 
 ```
 Flow:

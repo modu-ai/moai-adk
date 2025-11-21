@@ -1,606 +1,191 @@
 ---
 name: moai-domain-frontend
-description: Enterprise Frontend Development with React 19, Next.js 15, Vue 3.5, modern bundlers, and 2025 best practices
-allowed-tools: [Read, Bash, WebFetch]
+description: Enterprise Frontend Development with React 19, Next.js 15, Vue 3.5 and modern frameworks
 ---
 
 ## Quick Reference (30 seconds)
 
-# Enterprise Frontend Development Expert
+# Enterprise Frontend Development
 
-**Latest Frameworks (2025)**:
-- **React 19** - Server Components, use() hook, Suspense improvements
-- **Next.js 15** - Partial Prerendering (PPR), Turbopack stable
-- **Vue 3.5** - Signals-based reactivity, enhanced Composition API
-- **Angular 19** - Standalone components standard, signals reactivity
-- **Vite 5.x** - Lightning-fast build tool with HMR
+**Primary Focus**: React 19, Next.js 15, Vue 3.5, component architecture, state management, optimization
+**Best For**: Web application development, component libraries, performance optimization, full-stack development
+**Key Frameworks**: React 19.0, Next.js 15.x, Vue 3.5, Vite 5.2, TypeScript 5.4
+**Auto-triggers**: React files, Next.js projects, Vue components, frontend architecture
 
-**Key Capabilities**:
-- Server Components for zero-client JavaScript
-- Advanced rendering strategies (SSR, SSG, ISR, PPR)
-- Modern state management with signals
-- Optimized bundling with Turbopack/Vite
-- Full-stack type safety with TypeScript
-
-**When to Use**:
-- Frontend architecture and framework selection
-- Component design and state management
-- Performance optimization and bundle analysis
-- SEO and accessibility implementation
+| Framework | Version | Release | Support |
+|-----------|---------|---------|---------|
+| React | 19.0 | Oct 2024 | Active |
+| Next.js | 15.x | Oct 2024 | ✅ |
+| Vue | 3.5 | Aug 2024 | Active |
+| Vite | 5.2 | Nov 2024 | ✅ |
 
 ---
 
-## Implementation Guide
+## What It Does
 
-### React 19 - Server Components & use() Hook
+Enterprise-grade frontend development with modern frameworks and patterns. React Server Components, advanced state management, performance optimization, and full-stack type safety.
 
-**Server Component with Data Fetching**:
-```typescript
-// app/users/page.tsx - React Server Component
-import { Suspense } from 'react';
-import { UserList } from './UserList';
-import { UserSkeleton } from './UserSkeleton';
-
-export default async function UsersPage() {
-  // Fetch data on server - no client bundle
-  const users = await fetch('https://api.example.com/users').then(r => r.json());
-  
-  return (
-    <div>
-      <h1>Users</h1>
-      <Suspense fallback={<UserSkeleton />}>
-        <UserList usersPromise={users} />
-      </Suspense>
-    </div>
-  );
-}
-```
-
-**Client Component with use() Hook**:
-```typescript
-'use client';
-
-import { use, useState } from 'react';
-
-interface UserListProps {
-  usersPromise: Promise<User[]>;
-}
-
-export function UserList({ usersPromise }: UserListProps) {
-  // use() hook unwraps promises and context
-  const users = use(usersPromise);
-  const [filter, setFilter] = useState('');
-  
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(filter.toLowerCase())
-  );
-  
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Filter users..."
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
-      <ul>
-        {filteredUsers.map(user => (
-          <li key={user.id}>{user.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-**Advanced Suspense with Error Boundaries**:
-```typescript
-import { Suspense } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-
-function ErrorFallback({ error, resetErrorBoundary }) {
-  return (
-    <div role="alert">
-      <p>Something went wrong:</p>
-      <pre>{error.message}</pre>
-      <button onClick={resetErrorBoundary}>Try again</button>
-    </div>
-  );
-}
-
-export default function Page() {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <Suspense fallback={<Loading />}>
-        <DataComponent />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
-```
-
-### Next.js 15 - Partial Prerendering (PPR)
-
-**Enable Incremental PPR**:
-```typescript
-// next.config.ts
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  experimental: {
-    ppr: 'incremental', // Enable PPR incrementally
-  },
-};
-
-export default nextConfig;
-```
-
-**PPR with Dynamic Components**:
-```typescript
-// app/dashboard/page.tsx
-import { Suspense } from 'react';
-import { UserProfile } from './UserProfile';
-import { ActivityFeed } from './ActivityFeed';
-
-// Enable PPR for this route
-export const experimental_ppr = true;
-
-export default function DashboardPage() {
-  return (
-    <div>
-      {/* Static part - prerendered */}
-      <h1>Dashboard</h1>
-      <nav>Navigation links...</nav>
-      
-      {/* Dynamic part - streams */}
-      <Suspense fallback={<ProfileSkeleton />}>
-        <UserProfile />
-      </Suspense>
-      
-      <Suspense fallback={<ActivitySkeleton />}>
-        <ActivityFeed />
-      </Suspense>
-    </div>
-  );
-}
-```
-
-**Server Actions for Data Mutations**:
-```typescript
-// app/actions.ts
-'use server';
-
-import { revalidatePath } from 'next/cache';
-
-export async function createPost(formData: FormData) {
-  const title = formData.get('title') as string;
-  const content = formData.get('content') as string;
-  
-  // Server-side data mutation
-  await db.posts.create({
-    title,
-    content,
-    createdAt: new Date(),
-  });
-  
-  // Revalidate cache
-  revalidatePath('/blog');
-  
-  return { success: true };
-}
-
-// app/blog/create/page.tsx
-'use client';
-
-import { createPost } from '@/app/actions';
-
-export function CreatePostForm() {
-  return (
-    <form action={createPost}>
-      <input name="title" required />
-      <textarea name="content" required />
-      <button type="submit">Create Post</button>
-    </form>
-  );
-}
-```
-
-### Vue 3.5 - Signals & Reactivity
-
-**Signals-Based Reactivity**:
-```typescript
-<script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-
-// Reactive state with signals
-const count = ref(0);
-const doubled = computed(() => count.value * 2);
-
-// Watch with immediate execution
-watch(count, (newValue) => {
-  console.log(`Count changed to: ${newValue}`);
-}, { immediate: true });
-
-function increment() {
-  count.value++;
-}
-</script>
-
-<template>
-  <div>
-    <p>Count: {{ count }}</p>
-    <p>Doubled: {{ doubled }}</p>
-    <button @click="increment">Increment</button>
-  </div>
-</template>
-```
-
-**Enhanced Composition API**:
-```typescript
-// composables/useUserData.ts
-import { ref, computed } from 'vue';
-
-export function useUserData(userId: string) {
-  const user = ref(null);
-  const loading = ref(false);
-  const error = ref(null);
-  
-  const isAdmin = computed(() => user.value?.role === 'admin');
-  
-  async function fetchUser() {
-    loading.value = true;
-    try {
-      const response = await fetch(`/api/users/${userId}`);
-      user.value = await response.json();
-    } catch (e) {
-      error.value = e.message;
-    } finally {
-      loading.value = false;
-    }
-  }
-  
-  // Auto-fetch on mount
-  fetchUser();
-  
-  return {
-    user,
-    loading,
-    error,
-    isAdmin,
-    refetch: fetchUser
-  };
-}
-
-// Usage in component
-<script setup lang="ts">
-import { useUserData } from '@/composables/useUserData';
-
-const props = defineProps<{ userId: string }>();
-const { user, loading, error, isAdmin, refetch } = useUserData(props.userId);
-</script>
-```
-
-### Modern Bundlers
-
-**Vite 5.x Configuration**:
-```typescript
-// vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    // Code splitting optimization
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['@mui/material', '@emotion/react'],
-        },
-      },
-    },
-    // Modern build target
-    target: 'es2020',
-    // Minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-      },
-    },
-  },
-  // Development optimizations
-  server: {
-    hmr: {
-      overlay: true,
-    },
-  },
-});
-```
-
-**Turbopack (Next.js 15)**:
-```typescript
-// next.config.ts - Turbopack is now stable
-const nextConfig = {
-  // Turbopack enabled by default in Next.js 15
-  experimental: {
-    turbo: {
-      // Custom module rules
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-        },
-      },
-    },
-  },
-};
-```
-
-### CSS-in-JS & Styling
-
-**Tailwind CSS 4.0 (JIT Standard)**:
-```typescript
-// tailwind.config.ts
-import type { Config } from 'tailwindcss';
-
-const config: Config = {
-  content: ['./app/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {
-      // Custom design tokens
-      colors: {
-        brand: {
-          50: '#f0f9ff',
-          500: '#0ea5e9',
-          900: '#0c4a6e',
-        },
-      },
-      // Custom animations
-      animation: {
-        'fade-in': 'fadeIn 0.3s ease-in-out',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-      },
-    },
-  },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-  ],
-};
-
-export default config;
-```
-
-**CSS Modules with TypeScript**:
-```typescript
-// Button.module.css
-.button {
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  font-weight: 500;
-}
-
-.primary {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-// Button.tsx
-import styles from './Button.module.css';
-
-interface ButtonProps {
-  variant?: 'primary' | 'secondary';
-  children: React.ReactNode;
-}
-
-export function Button({ variant = 'primary', children }: ButtonProps) {
-  return (
-    <button className={`${styles.button} ${styles[variant]}`}>
-      {children}
-    </button>
-  );
-}
-```
+**Key capabilities**:
+- ✅ React 19 with Server Components and use() hook
+- ✅ Next.js 15 PPR, Turbopack, App Router
+- ✅ Vue 3.5 with signals-based reactivity
+- ✅ Component architecture and design systems
+- ✅ Advanced state management (Zustand, Redux, Pinia)
+- ✅ Performance optimization and bundle analysis
+- ✅ TypeScript for type-safe development
 
 ---
 
-## Advanced Patterns
+## When to Use
 
-### Performance Optimization
+**Automatic triggers**:
+- React/JSX files, Next.js projects
+- Vue projects, component development
+- Frontend architecture decisions
+- State management patterns
 
-**React Performance Monitoring**:
-```typescript
-import { Profiler, ProfilerOnRenderCallback } from 'react';
-
-const onRenderCallback: ProfilerOnRenderCallback = (
-  id,
-  phase,
-  actualDuration,
-  baseDuration,
-  startTime,
-  commitTime
-) => {
-  console.log(`Component ${id} (${phase}) rendered in ${actualDuration}ms`);
-  
-  // Send to analytics
-  if (actualDuration > 50) {
-    analytics.track('slow-render', {
-      componentId: id,
-      duration: actualDuration,
-      phase,
-    });
-  }
-};
-
-export function App() {
-  return (
-    <Profiler id="App" onRender={onRenderCallback}>
-      <YourApp />
-    </Profiler>
-  );
-}
-```
-
-**Code Splitting with React.lazy**:
-```typescript
-import { lazy, Suspense } from 'react';
-
-// Lazy load heavy components
-const HeavyComponent = lazy(() => import('./HeavyComponent'));
-const AdminPanel = lazy(() => import('./AdminPanel'));
-
-export function App() {
-  const { user } = useAuth();
-  
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      {user?.isAdmin && <AdminPanel />}
-      <Suspense fallback={<ComponentSkeleton />}>
-        <HeavyComponent />
-      </Suspense>
-    </Suspense>
-  );
-}
-```
-
-### State Management (2025)
-
-**Zustand with Persist**:
-```typescript
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-interface UserStore {
-  user: User | null;
-  setUser: (user: User) => void;
-  logout: () => void;
-}
-
-export const useUserStore = create<UserStore>()(
-  persist(
-    (set) => ({
-      user: null,
-      setUser: (user) => set({ user }),
-      logout: () => set({ user: null }),
-    }),
-    {
-      name: 'user-storage',
-      partialize: (state) => ({ user: state.user }),
-    }
-  )
-);
-```
-
-**TanStack Query (React Query v5)**:
-```typescript
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-export function useUsers() {
-  return useQuery({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const res = await fetch('/api/users');
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-export function useCreateUser() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (user: NewUser) => {
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        body: JSON.stringify(user),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-}
-```
+**Manual invocation**:
+- Design component architecture
+- Implement state management strategy
+- Optimize bundle size and performance
+- Review frontend code for best practices
 
 ---
 
-## Reference & Resources
+## Three-Level Learning Path
 
-### Context7 Documentation Access
+### Level 1: Fundamentals (See examples.md)
 
-**Latest Framework Patterns**:
-- React: `/facebook/react` - Server Components, hooks, patterns
-- Next.js: `/vercel/next.js` - App Router, PPR, caching strategies
-- Vue: `/vuejs/core` - Composition API, reactivity, performance
+Core frontend concepts:
+- **React Basics**: Components, hooks, state, effects
+- **Next.js Setup**: Pages, App Router, API routes
+- **Vue Basics**: Components, composition API, lifecycle
+- **Styling**: CSS Modules, Tailwind, Styled Components
+- **Testing**: Unit tests, component tests with Vitest
+
+### Level 2: Advanced Patterns (See modules/architecture.md)
+
+Production-ready architecture:
+- **Server Components**: React Server Components in Next.js
+- **State Management**: Zustand, Redux, Pinia, Context API
+- **Data Fetching**: SWR, React Query, Server Actions
+- **Advanced Hooks**: Custom hooks, useReducer, useMemo
+- **Performance**: Code splitting, lazy loading, memoization
+- **Forms**: Form libraries, validation, accessibility
+
+### Level 3: Performance & Optimization (See modules/best-practices.md)
+
+Production deployment and optimization:
+- **Bundle Optimization**: Code splitting, dynamic imports, tree-shaking
+- **Runtime Performance**: React profiler, Lighthouse, Core Web Vitals
+- **SEO & Accessibility**: Meta tags, structured data, WCAG compliance
+- **Deployment**: Vercel, Netlify, GitHub Pages, Docker
+- **Monitoring**: Error tracking, analytics, performance metrics
+- **DevOps**: CI/CD, environment variables, deployment strategies
 
 ---
 
 ## Best Practices
 
-### DO
-- ✅ Use Server Components for zero-client JavaScript
-- ✅ Implement code splitting for better performance
-- ✅ Optimize images with next/image or similar
-- ✅ Use TypeScript for type safety
-- ✅ Implement proper error boundaries
-- ✅ Monitor Web Vitals (LCP, FID, CLS)
-- ✅ Use CSS-in-JS or utility-first CSS
+✅ **DO**:
+- Use TypeScript for type safety
+- Implement proper error boundaries
+- Optimize images with next/image
+- Use composition over inheritance
+- Test critical user paths
+- Monitor Web Vitals
+- Keep components small and reusable
+- Use proper key in lists
 
-### DON'T
-- ❌ Load entire app as client-side bundle
-- ❌ Skip accessibility (a11y) requirements
-- ❌ Ignore bundle size optimization
-- ❌ Use prop drilling instead of context
-- ❌ Forget to memoize expensive computations
-- ❌ Skip performance monitoring
-- ❌ Use inline styles without optimization
+❌ **DON'T**:
+- Use index as list key
+- Create large monolithic components
+- Mutate state directly
+- Ignore performance warnings
+- Ship unnecessary dependencies
+- Skip accessibility features
+- Inline styles in components
+- Over-optimize prematurely
 
 ---
 
-**Last Updated**: 2025-11-22
-**Version**: 5.0.0
-**Status**: Production Ready (2025 Standards)
+## Tool Versions (2025-11-22)
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **React** | 19.0 | UI Library |
+| **Next.js** | 15.x | Full-stack framework |
+| **Vue** | 3.5 | Reactive framework |
+| **TypeScript** | 5.4 | Type safety |
+| **Vite** | 5.2 | Build tool |
+| **Tailwind** | 4.0 | CSS utility |
+
+---
+
+## Installation & Setup
+
+```bash
+# Create Next.js app (React)
+npx create-next-app@latest --typescript
+
+# Create Vite + React app
+npm create vite@latest my-app -- --template react-ts
+
+# Create Vue app
+npm create vite@latest my-app -- --template vue-ts
+
+# Install common dependencies
+npm install zustand react-query @hookform/react axios
+```
 
 ---
 
 ## Works Well With
 
-- `moai-lib-shadcn-ui` - Modern React UI component library
-- `moai-design-systems` - Design system implementation patterns
-- `moai-domain-web-api` - Frontend-backend API integration
-- `moai-essentials-perf` - Frontend performance optimization
-- `moai-domain-testing` - Frontend testing strategies (Vitest, Playwright)
-- `moai-security-api` - Frontend security best practices (XSS, CSRF)
+- `moai-lang-typescript` (TypeScript patterns)
+- `moai-lang-html-css` (HTML/CSS semantics)
+- `moai-domain-testing` (Test strategies)
+- `moai-domain-database` (API integration)
 
 ---
 
-## Best Practices
+## Learn More
 
-### ✅ DO
-- **Use Server Components** - React 19/Next.js 15 for zero-client JavaScript where possible
-- **Apply Progressive Disclosure** - Load components and data progressively
-- **Implement proper error boundaries** - Graceful error handling and fallback UI
-- **Use Context7 latest patterns** - Leverage up-to-date framework best practices (React 19, Next.js 15)
-- **Optimize bundle size** - Code splitting, tree shaking, lazy loading
-- **Apply proper TypeScript** - Full type safety across frontend codebase
-- **Implement accessibility** - WCAG 2.1 AA compliance (ARIA, keyboard navigation)
-
-### ❌ DON'T
-- **Skip accessibility** - Always implement ARIA labels and keyboard navigation
-- **Ignore performance** - Monitor Core Web Vitals (LCP, FID, CLS)
-- **Use prop drilling** - Use Context API or state management library
-- **Skip error boundaries** - Implement error boundaries for graceful failures
-- **Expose sensitive data** - Never store secrets in client-side code
-- **Skip responsive design** - Implement mobile-first responsive patterns
+- **Practical Examples**: See `examples.md` for 20+ real-world patterns
+- **Architecture Patterns**: See `modules/architecture.md` for complex applications
+- **Best Practices**: See `modules/best-practices.md` for production deployment
+- **React Docs**: https://react.dev/
+- **Next.js Docs**: https://nextjs.org/docs
+- **Vue Docs**: https://vuejs.org/
 
 ---
+
+## Changelog
+
+- **v4.0.0** (2025-11-22): Modularized with architecture and best practices
+- **v3.5.0** (2025-11-13): React 19 Server Components, Next.js 15 PPR
+- **v3.0.0** (2025-10-01): React 18 hooks, composition API patterns
+- **v2.0.0** (2025-08-01): TypeScript migration, design systems
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [React](/facebook/react): A JavaScript library for building UIs
+- [Next.js](/vercel/next.js): React framework for production
+- [Vue](/vuejs/vue): The progressive JavaScript framework
+- [TypeScript](/microsoft/TypeScript): Typed superset of JavaScript
+- [Tailwind CSS](/tailwindlabs/tailwindcss): Utility-first CSS
+
+### Official Documentation
+- [React Documentation](https://react.dev/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Vue Documentation](https://vuejs.org/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+
+---
+
+**Skills**: Skill("moai-lang-typescript"), Skill("moai-domain-testing"), Skill("moai-lang-html-css")
+**Auto-loads**: React/Vue/Next.js projects with TypeScript
 
