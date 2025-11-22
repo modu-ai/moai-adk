@@ -9,6 +9,15 @@ description: Enterprise interactive survey orchestrator with AskUserQuestion too
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: user, moai, ask, core, questions  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Interactive Survey Orchestrator 

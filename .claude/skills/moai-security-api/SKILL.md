@@ -1,11 +1,15 @@
 ---
 name: moai-security-api
 description: Comprehensive API security for REST, GraphQL, and gRPC services with OAuth 2.1, JWT, rate limiting, and multi-tenant patterns
+version: 1.0.0
 modularized: true
-modules:
-  - authentication-authorization
-  - rate-limiting-protection
-  - advanced-security-patterns
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - api
+  - authentication
+  - security
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

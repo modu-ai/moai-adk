@@ -1,6 +1,15 @@
 ---
 name: moai-baas-cloudflare-ext
 description: Enterprise Cloudflare Edge Platform with AI-powered edge computing architecture,
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - baas
+  - cloudflare
+  - ext
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

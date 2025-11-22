@@ -7,6 +7,15 @@ description: Agent Factory master skill for intelligent Claude Code agent genera
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: agent, moai, factory, alfred  
+
+
 ## Quick Reference (30 seconds)
 
 # Agent Factory Intelligence Engine

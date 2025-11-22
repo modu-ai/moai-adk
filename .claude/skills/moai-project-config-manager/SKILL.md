@@ -1,8 +1,15 @@
 ---
 name: moai-project-config-manager
-description: Complete config.json CRUD operations with validation, merge strategy,
-  and error recovery. Use for project initialization, setting updates, and configuration
-  management with intelligent backup and recovery.
+description: Complete config.json CRUD operations with validation, merge strategy, and error recovery. Use for project initialization, setting updates, and configuration management with intelligent backup and recovery.
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - config
+  - manager
+  - project
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -352,4 +359,3 @@ class RestoreError(ConfigError):
 **Last Updated**: 2025-11-13  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 63% size reduction while preserving all functionality
-

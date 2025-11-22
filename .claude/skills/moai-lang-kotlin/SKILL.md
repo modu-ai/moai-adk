@@ -1,6 +1,14 @@
 ---
 name: moai-lang-kotlin
 description: Kotlin 2.0+ Multiplatform Development with KMP, Coroutines, and Compose
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - kotlin
+  - lang
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -194,4 +202,3 @@ Latest stable version: Kotlin 2.0.20, Coroutines 1.8.0, Compose MP 1.6.10
 
 **Skills**: Skill("moai-essentials-debug"), Skill("moai-foundation-testing"), Skill("moai-domain-backend")
 **Auto-loads**: Kotlin projects with multiplatform, coroutines, Compose patterns
-

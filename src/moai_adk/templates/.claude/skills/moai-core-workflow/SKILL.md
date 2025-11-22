@@ -3,6 +3,15 @@ name: moai-core-workflow
 description: Enterprise multi-agent workflow orchestration specialist. Master workflow design, agent coordination, task delegation, and process automation with Context7 MCP integration and comprehensive monitoring. Build scalable, intelligent workflow systems with fault tolerance and performance optimization.
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, workflow, core, monitoring, performance  
+
+
 ## Quick Reference (30 seconds)
 
 # Alfred Workflow Orchestration

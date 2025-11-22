@@ -3,6 +3,15 @@ name: moai-essentials-perf
 description: AI-powered enterprise performance optimization orchestrator with Context7
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: perf, moai, essentials, performance  
+
+
 ## Quick Reference (30 seconds)
 
 # AI-Powered Enterprise Performance Optimization Skill 

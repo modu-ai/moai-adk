@@ -1,6 +1,15 @@
 ---
 name: moai-foundation-ears
 description: Enterprise EARS (Evaluate, Analyze, Recommend, Synthesize) Framework with AI-powered requirements engineering, Context7 integration, and intelligent solution orchestration for systematic problem-solving
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - ears
+  - foundation
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

@@ -1,9 +1,16 @@
 ---
 name: moai-core-clone-pattern
-description: Enterprise Master-Clone pattern implementation guide for complex multi-step
-  tasks with full project context, autonomous delegation, parallel processing, and
-  intelligent task distribution; activates for large-scale migrations, complex refactoring,
-  parallel exploration, architecture restructuring, and multi-file transformations
+description: Enterprise Master-Clone pattern implementation guide for complex multi-step tasks with full project context, autonomous delegation, parallel processing, and intelligent task distribution; activates...
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - api
+  - clone
+  - core
+  - pattern
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -306,4 +313,3 @@ Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delega
 - Comprehensive state tracking
 
 ---
-

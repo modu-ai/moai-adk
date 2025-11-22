@@ -6,6 +6,15 @@ description: Enterprise-grade security expertise with production-ready patterns 
   and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA).
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: domain, moai, security  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-domain-security — Enterprise Security Architecture

@@ -5,6 +5,15 @@ description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, an
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: sql, lang, moai  
+
+
 ## Quick Reference
 
 ### SQL Standards (November 2025)

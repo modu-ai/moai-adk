@@ -7,6 +7,15 @@ description: Handle template comparison and optimization workflows including bac
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: project, moai, template, optimizer  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-project-template-optimizer

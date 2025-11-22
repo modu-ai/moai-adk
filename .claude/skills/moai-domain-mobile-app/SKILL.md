@@ -1,7 +1,17 @@
 ---
 name: moai-domain-mobile-app
-description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+,
-  Capacitor 6.x, cross-platform patterns, testing, CI/CD
+description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+, Capacitor 6.x, cross-platform patterns, testing, CI/CD
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - app
+  - domain
+  - mobile
+  - testing
+  - typescript
+category_tier: 2
 ---
 
 ## Quick Reference (30 seconds)
@@ -336,7 +346,3 @@ Latest stable versions:
 - Flutter: 3.24+ (Dart 3.5+, November 2025)
 - Expo: 52.x (EAS Build/Submit, November 2025)
 - React Navigation: 6.x (November 2025)
-
-
-
-

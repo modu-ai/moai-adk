@@ -1,3 +1,17 @@
+---
+name: moai-domain-nano-banana
+description: Moai Domain Nano Banana - Professional implementation guide
+---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, nano, domain, banana  
+
+
 # 🍌 moai-domain-nano-banana Skill
 
 **Google Nano Banana Pro 이미지 생성 및 편집 전문가**

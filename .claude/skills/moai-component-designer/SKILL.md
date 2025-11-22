@@ -1,6 +1,15 @@
 ---
 name: moai-component-designer
 description: Enterprise-grade component design and architecture with React 19, Vue
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - component
+  - designer
+  - typescript
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)

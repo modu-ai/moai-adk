@@ -5,6 +5,15 @@ description: Comprehensive TodoWrite task tracking and state management patterns
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: pattern, todowrite, moai, core  
+
+
 ## Quick Reference
 
 Master TodoWrite task lifecycle management with production-proven patterns from 18,075 code examples across 6 major platforms (Jira, Trello, Asana, Linear, GitHub Projects, Todoist).

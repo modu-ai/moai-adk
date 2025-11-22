@@ -5,6 +5,15 @@ description: Enterprise Mermaid diagramming skill for Claude Code using MCP Play
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: mermaid, diagram, expert, moai  
+
+
 ## Quick Reference (30 seconds)
 
 # Skill: Mermaid Diagram Expert v6.0.0-skill-edition

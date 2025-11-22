@@ -6,6 +6,15 @@ description: Korean language feedback templates for issue types and Alfred comma
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: feedback, moai, templates, alfred  
+
+
 ## Quick Reference (30 seconds)
 
 # GitHub 이슈 작성 템플릿 모음 v1.0.0

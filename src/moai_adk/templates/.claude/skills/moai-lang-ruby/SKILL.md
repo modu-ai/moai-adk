@@ -3,6 +3,15 @@ name: moai-lang-ruby
 description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: ruby, lang, moai  
+
+
 ## Quick Reference (30 seconds)
 
 # Ruby Web Development — Enterprise

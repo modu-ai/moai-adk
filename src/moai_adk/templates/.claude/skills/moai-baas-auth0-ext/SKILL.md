@@ -7,6 +7,15 @@ description: Enterprise Auth0 Identity Platform with AI-powered authentication a
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, baas, ext, auth0, authentication  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Auth0 Identity Platform Expert 

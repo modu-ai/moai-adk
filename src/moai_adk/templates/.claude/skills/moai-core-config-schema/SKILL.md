@@ -9,6 +9,15 @@ description: Enterprise configuration schema validation and management orchestra
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: config, moai, core, schema  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Configuration Schema Management 

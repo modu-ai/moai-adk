@@ -5,6 +5,15 @@ description: Enterprise Railway Full-Stack Platform with AI-powered container or
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: railway, ext, moai, baas  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Railway Full-Stack Platform Expert 

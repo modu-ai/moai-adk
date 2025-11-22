@@ -21,6 +21,15 @@ keywords:
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: domain, moai, toon  
+
+
 ## Implementation Modules
 
 For detailed patterns:

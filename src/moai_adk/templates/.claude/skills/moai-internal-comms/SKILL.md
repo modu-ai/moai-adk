@@ -7,6 +7,15 @@ description: AI-powered enterprise internal communications orchestrator with Con
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: internal, moai, comms  
+
+
 ## Quick Reference (30 seconds)
 
 # AI-Powered Enterprise Internal Communications Skill 

@@ -1,6 +1,16 @@
 ---
 name: moai-core-spec-authoring
 description: Complete SPEC document authoring guide with YAML metadata structure (7
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - authentication
+  - authoring
+  - core
+  - spec
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -492,6 +502,3 @@ Per SPEC-001, the system SHALL validate all JWT tokens...
 ---
 
 ## Advanced Patterns
-
-
-

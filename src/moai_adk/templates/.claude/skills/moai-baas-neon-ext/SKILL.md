@@ -7,6 +7,15 @@ description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered data
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: neon, moai, baas, ext, database  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Neon Serverless PostgreSQL Expert 

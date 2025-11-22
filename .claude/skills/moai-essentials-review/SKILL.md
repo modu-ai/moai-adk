@@ -1,6 +1,16 @@
 ---
 name: moai-essentials-review
 description: Enterprise comprehensive code review automation with AI-powered quality analysis, TRUST 5 enforcement, multi-language support, Context7 integration, security scanning, performance analysis, test coverage validation, and automated review feedback generation
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - database
+  - essentials
+  - review
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference

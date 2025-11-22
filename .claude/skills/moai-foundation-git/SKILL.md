@@ -1,7 +1,18 @@
 ---
 name: moai-foundation-git
 description: Enterprise Git 2.47-2.50 Workflow Foundation with GitHub CLI 2.51+, Conventional Commits 2025, and intelligent branching strategies
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 85
+auto_trigger_keywords:
+  - foundation
+  - git
+category_tier: 5
 ---
 
 ## Quick Reference (30 seconds)

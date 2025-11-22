@@ -1,6 +1,14 @@
 ---
 name: moai-streaming-ui
 description: Enhanced streaming UI system with progress indicators and status displays
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - streaming
+  - ui
+category_tier: special
 ---
 
 # Enhanced Streaming UI System

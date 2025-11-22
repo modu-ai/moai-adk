@@ -4,6 +4,15 @@ description: Enterprise Git 2.47-2.50 Workflow Foundation with GitHub CLI 2.51+,
 allowed-tools: [Read, Bash, WebFetch]
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: git, moai, foundation  
+
+
 ## Quick Reference (30 seconds)
 
 # Git 2.47-2.50 Workflow Foundation & GitHub CLI 2.51+ Integration

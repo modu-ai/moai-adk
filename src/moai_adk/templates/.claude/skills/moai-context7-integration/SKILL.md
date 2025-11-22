@@ -4,6 +4,15 @@ description: Enterprise Context7 MCP integration for accessing latest documentat
 allowed-tools: [mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Read, Bash, WebFetch]
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, context7, integration  
+
+
 ## Quick Reference (30 seconds)
 
 # Context7 Library Documentation MCP Integration

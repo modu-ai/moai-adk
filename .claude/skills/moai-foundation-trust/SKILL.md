@@ -1,6 +1,16 @@
 ---
 name: moai-foundation-trust
 description: Complete TRUST 4 principles guide covering Test First, Readable, Unified, Secured
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - foundation
+  - security
+  - testing
+  - trust
+category_tier: 1
 ---
 
 ## Quick Reference

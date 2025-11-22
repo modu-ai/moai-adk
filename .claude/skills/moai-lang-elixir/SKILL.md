@@ -1,7 +1,18 @@
 ---
 name: moai-lang-elixir
 description: Elixir functional programming, OTP patterns, and Phoenix framework best practices
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: false
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 66
+auto_trigger_keywords:
+  - elixir
+  - lang
+category_tier: 1
 ---
 
 # Elixir Functional Programming — Enterprise

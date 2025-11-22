@@ -1,6 +1,15 @@
 ---
 name: moai-foundation-langs
 description: Enterprise Programming Languages Foundation with AI-powered language selection, Context7 integration, and intelligent multi-language orchestration for optimal technology choices
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - foundation
+  - langs
+  - testing
+category_tier: 5
 ---
 
 ## Quick Reference (30 seconds)

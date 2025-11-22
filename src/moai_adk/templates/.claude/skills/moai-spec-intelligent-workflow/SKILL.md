@@ -5,6 +5,15 @@ description: Intelligent SPEC generation decision engine with 3-level templates 
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: workflow, moai, intelligent, spec  
+
+
 # SPEC Intelligent Workflow Skill
 
 ## 🎯 30초 요약

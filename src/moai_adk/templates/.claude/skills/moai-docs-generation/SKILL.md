@@ -6,6 +6,15 @@ description: Enhanced docs generation with AI-powered features. Enhanced with Co
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: generation, moai, docs  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-docs-generation

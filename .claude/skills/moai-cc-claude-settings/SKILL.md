@@ -2,7 +2,14 @@
 name: moai-cc-claude-settings
 description: Claude Code user settings management bridge - handles Claude Code specific configurations while integrating with enterprise configuration system
 version: 1.0.0
-status: active
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - cc
+  - claude
+  - settings
+category_tier: 1
 ---
 
 # Claude Code Settings Management Bridge

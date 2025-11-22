@@ -6,6 +6,15 @@ description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core tes
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, shell, moai, testing  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-lang-shell - Enterprise 

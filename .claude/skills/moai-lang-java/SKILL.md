@@ -1,7 +1,19 @@
 ---
 name: moai-lang-java
 description: Java 21 LTS enterprise development with Spring Boot, JPA, reactive patterns
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - java
+  - lang
+  - typescript
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

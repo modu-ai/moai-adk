@@ -1,7 +1,14 @@
 ---
 name: moai-docs-validation
-description: Enhanced docs validation with AI-powered features. Enhanced with Context7
-  MCP for up-to-date documentation.
+description: Enhanced docs validation with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation.
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - docs
+  - validation
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)

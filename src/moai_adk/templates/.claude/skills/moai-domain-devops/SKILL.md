@@ -6,6 +6,15 @@ description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9,
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, docker, kubernetes, devops, domain  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise DevOps Architect - Production-Grade  

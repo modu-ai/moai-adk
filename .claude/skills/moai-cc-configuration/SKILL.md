@@ -1,6 +1,15 @@
 ---
 name: moai-cc-configuration
 description: Enterprise Configuration Management with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - cc
+  - configuration
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

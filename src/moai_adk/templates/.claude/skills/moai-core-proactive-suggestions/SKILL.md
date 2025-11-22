@@ -5,6 +5,15 @@ description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: proactive, suggestions, moai, core  
+
+
 ## Quick Reference
 
 Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assistance for enhanced developer productivity and workflow optimization.

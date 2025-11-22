@@ -5,6 +5,15 @@ description: Enterprise-grade Python 3.13+ with FastAPI, Django, async patterns,
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, moai, django, fastapi, python, api, backend  
+
+
 ## Quick Reference
 
 Enterprise Python 3.13+ with FastAPI, Django, async patterns, Pydantic v2, and SQLAlchemy 2.0 for production backend development, data science/ML, and system automation.

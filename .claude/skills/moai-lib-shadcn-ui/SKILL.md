@@ -1,6 +1,15 @@
 ---
 name: moai-lib-shadcn-ui
 description: Enterprise shadcn/ui Component Library with AI-powered design system
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - lib
+  - shadcn
+  - ui
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

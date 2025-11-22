@@ -1,7 +1,15 @@
 ---
 name: moai-domain-ml-ops
-description: Enterprise MLOps Platform with complete ML lifecycle orchestration including
-  MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
+description: Enterprise MLOps Platform with complete ML lifecycle orchestration including MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - domain
+  - ml
+  - ops
+category_tier: 2
 ---
 
 ## Quick Reference (30 seconds)
@@ -423,7 +431,3 @@ Latest stable versions:
 - DVC: 3.63.0 (November 2025)
 - Ray Serve: 2.51.1 (November 2025)
 - Kubeflow: 1.10 (November 2025)
-
-
-
-

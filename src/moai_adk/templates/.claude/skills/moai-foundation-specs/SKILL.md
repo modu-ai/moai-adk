@@ -3,6 +3,15 @@ name: moai-foundation-specs
 description: SPEC document management - lifecycle, versioning, approval workflows, SPEC-first TDD integration
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, foundation, specs  
+
+
 ## Quick Reference
 
 # SPEC Document Lifecycle & TDD Integration

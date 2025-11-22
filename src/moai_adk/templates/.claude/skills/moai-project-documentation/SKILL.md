@@ -5,6 +5,15 @@ description: Enhanced project documentation with AI-powered features. Enhanced w
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: project, moai, documentation  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-project-documentation

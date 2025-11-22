@@ -1,8 +1,16 @@
 ---
 name: moai-lang-dart
-description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming,
-  state management, and cross-platform mobile development. Enterprise patterns for
-  scalable applications with Context7 MCP integration.
+description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming, state management, and cross-platform mobile development. Enterprise patterns for scalable applications with Context7 MCP integration.
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - dart
+  - lang
+  - python
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -428,4 +436,3 @@ State Update  → Concurrent updates → Use immutable state pattern
 - **Mocking**: External dependencies with Mockito
 
 ---
-

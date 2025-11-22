@@ -1,7 +1,15 @@
 ---
 name: moai-domain-notion
-description: Enterprise Notion integration with MCP server architecture, database
-  operations, and content management
+description: Enterprise Notion integration with MCP server architecture, database operations, and content management
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - domain
+  - notion
+  - testing
+category_tier: 2
 ---
 
 ## Quick Reference (30 seconds)
@@ -318,4 +326,3 @@ log_operation(
 - ✅ Security best practices
 
 ---
-

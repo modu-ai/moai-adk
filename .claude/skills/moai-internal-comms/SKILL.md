@@ -1,8 +1,15 @@
 ---
 name: moai-internal-comms
-description: AI-powered enterprise internal communications orchestrator with Context7
-  integration, intelligent content generation, automated workflow optimization, multi-format
-  support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
+description: AI-powered enterprise internal communications orchestrator with Context7 integration, intelligent content generation, automated workflow optimization, multi-format support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - comms
+  - internal
+  - testing
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)
@@ -496,4 +503,3 @@ async def develop_communication_strategy_with_ai_context7(requirements: CommRequ
 - `moai-domain-devops` - Monitoring and observability
 
 ---
-

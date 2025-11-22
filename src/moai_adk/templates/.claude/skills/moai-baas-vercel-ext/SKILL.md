@@ -3,6 +3,15 @@ name: moai-baas-vercel-ext
 description: Enterprise Vercel Edge Platform with AI-powered modern deployment, Context7
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: vercel, ext, moai, baas  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Vercel Edge Platform Expert

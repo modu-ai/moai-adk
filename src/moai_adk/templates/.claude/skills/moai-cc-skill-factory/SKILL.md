@@ -4,6 +4,15 @@ description: Enterprise AI-powered skill creation factory with intelligent gener
 allowed-tools: [Read, Write, Edit, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs]
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cc, moai, skill, factory  
+
+
 ## Quick Reference
 
 **Enterprise Skill Creation Factory**

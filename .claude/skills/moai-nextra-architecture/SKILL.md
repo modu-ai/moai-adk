@@ -1,11 +1,14 @@
 ---
 name: moai-nextra-architecture
 description: Enterprise Nextra documentation framework architecture with performance optimization
+version: 1.0.0
 modularized: true
-modules:
-  - framework-core-configuration
-  - content-architecture-optimization
-  - advanced-deployment-patterns
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - architecture
+  - nextra
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)

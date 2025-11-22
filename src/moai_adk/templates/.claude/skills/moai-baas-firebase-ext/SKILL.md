@@ -5,6 +5,15 @@ description: Enterprise Firebase Platform with AI-powered Google Cloud integrati
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: ext, moai, firebase, baas  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Firebase Platform Expert 

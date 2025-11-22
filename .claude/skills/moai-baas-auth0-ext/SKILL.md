@@ -1,8 +1,18 @@
 ---
 name: moai-baas-auth0-ext
-description: Enterprise Auth0 Identity Platform with AI-powered authentication architecture,
-  Context7 integration, and intelligent identity orchestration for scalable enterprise
-  SSO and compliance
+description: Enterprise Auth0 Identity Platform with AI-powered authentication architecture, Context7 integration, and intelligent identity orchestration for scalable enterprise SSO and compliance
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - auth0
+  - authentication
+  - baas
+  - ext
+  - security
+  - testing
+category_tier: 3
 ---
 
 ## Quick Reference (30 seconds)
@@ -428,4 +438,3 @@ Enterprise Auth0 Identity Platform expert with AI-powered authentication archite
 ---
 
 **End of Enterprise Auth0 Identity Platform Expert **
-

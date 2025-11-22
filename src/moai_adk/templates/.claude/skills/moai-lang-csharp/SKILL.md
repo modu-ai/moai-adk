@@ -7,6 +7,15 @@ description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: csharp, lang, moai  
+
+
 ## Quick Reference (30 seconds)
 
 # C# - Enterprise 

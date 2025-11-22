@@ -7,6 +7,15 @@ description: Handle comprehensive project language and user setup workflows incl
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: project, language, moai, initializer  
+
+
 ## Quick Reference (30 seconds)
 
 # MoAI Project Language & User Initializer

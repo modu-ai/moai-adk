@@ -3,6 +3,15 @@ name: moai-lang-typescript
 description: Enterprise TypeScript 5.9+ with strict typing, Next.js 16, React 19, tRPC, Zod for type-safe full-stack development and modern web applications
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: react, lang, moai, typescript  
+
+
 ## Quick Reference
 
 Enterprise TypeScript 5.9+ with strict type checking, Next.js 16 app router, React 19 server components, tRPC 11 for end-to-end type safety, and Zod 3.23 for runtime validation.

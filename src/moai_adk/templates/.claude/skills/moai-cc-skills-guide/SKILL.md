@@ -4,6 +4,15 @@ description: Complete guide to Claude Code Skills creation, discovery mechanisms
 allowed-tools: Read, WebFetch, Grep, Glob
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cc, moai, guide, skills  
+
+
 # Claude Code Skills Complete Guide
 
 Comprehensive guide to creating, discovering, and deploying Agent Skills following official Claude Code standards.

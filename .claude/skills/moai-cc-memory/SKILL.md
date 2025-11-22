@@ -1,6 +1,16 @@
 ---
 name: moai-cc-memory
 description: Claude Code memory management, context persistence, knowledge retention optimization, and token budget management with Context7 integration for latest memory patterns.
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - authentication
+  - cc
+  - memory
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

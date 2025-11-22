@@ -3,6 +3,15 @@ name: moai-cc-memory
 description: Claude Code memory management, context persistence, knowledge retention optimization, and token budget management with Context7 integration for latest memory patterns.
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: memory, cc, moai  
+
+
 ## Quick Reference (30 seconds)
 
 Claude Code **Memory Management** optimizes context retention and knowledge persistence across sessions through strategic caching, compression, and retrieval patterns.

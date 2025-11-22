@@ -1,7 +1,16 @@
 ---
-name: moai-alfred-feedback-templates
-description: Korean language feedback templates for issue types and Alfred commands
-  with localized messaging patterns
+name: moai-core-feedback-templates
+description: Korean language feedback templates for issue types and Alfred commands with localized messaging patterns
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - core
+  - database
+  - feedback
+  - templates
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -466,6 +475,3 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 ---
 
 ## Advanced Patterns
-
-
-

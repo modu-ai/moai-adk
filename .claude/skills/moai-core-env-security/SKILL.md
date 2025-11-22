@@ -1,7 +1,18 @@
 ---
 name: moai-core-env-security
 description: Environment variable security, secret management, and credential protection patterns
-allowed-tools: [Read, Bash]
+version: 1.0.0
+modularized: false
+allowed-tools:
+  - Read
+  - Bash
+last_updated: 2025-11-22
+compliance_score: 66
+auto_trigger_keywords:
+  - core
+  - env
+  - security
+category_tier: 1
 ---
 
 # Environment Variable Security & Secret Management

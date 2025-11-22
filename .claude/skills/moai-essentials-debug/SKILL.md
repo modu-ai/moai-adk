@@ -1,6 +1,15 @@
 ---
 name: moai-essentials-debug
 description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - debug
+  - essentials
+  - testing
+category_tier: 8
 ---
 
 ## Quick Reference
@@ -477,4 +486,3 @@ Latest stable version: debugpy 1.8.x, Node.js 22 LTS debugger, Chrome DevTools l
 - [Python Debugging Guide](https://realpython.com/python-debugging-pdb/)
 - [Node.js Inspector](https://nodejs.org/api/inspector.html)
 - [Multi-Process Debugging](https://code.visualstudio.com/docs/python/debugging#_debugging-by-attaching-over-a-network-connection)
-

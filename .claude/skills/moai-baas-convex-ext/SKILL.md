@@ -1,6 +1,16 @@
 ---
 name: moai-baas-convex-ext
 description: Enterprise Convex Real-Time Backend with AI-powered reactive database
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - baas
+  - convex
+  - ext
+  - typescript
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

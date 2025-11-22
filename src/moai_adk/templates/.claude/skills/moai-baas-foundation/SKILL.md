@@ -7,6 +7,15 @@ description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS arc
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: backend, moai, foundation, baas  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise BaaS Foundation Expert 

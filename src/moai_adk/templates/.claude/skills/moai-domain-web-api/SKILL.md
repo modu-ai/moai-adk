@@ -5,6 +5,15 @@ description: REST API and GraphQL design with OpenAPI 3.1, authentication, versi
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, authentication, web, api, domain  
+
+
 ## Quick Reference
 
 ### Core API Design Patterns (November 2025)

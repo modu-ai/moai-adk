@@ -6,6 +6,15 @@ allowed-tools: [Read, Bash, WebFetch]
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: advanced, moai, kubernetes, gcp, cloud  
+
+
 # Advanced GCP Cloud Architecture
 
 ## Quick Reference (30 seconds)

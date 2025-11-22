@@ -8,6 +8,15 @@ description: Display comprehensive project and session information including Git
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: info, session, moai  
+
+
 ## Quick Reference (30 seconds)
 
 # Session Information Provider

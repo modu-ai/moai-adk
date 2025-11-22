@@ -1,8 +1,15 @@
 ---
 name: moai-project-language-initializer
-description: Handle comprehensive project language and user setup workflows including
-  language selection, agent prompt configuration, user profiles, team settings, and
-  domain selection
+description: Handle comprehensive project language and user setup workflows including language selection, agent prompt configuration, user profiles, team settings, and domain selection
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - initializer
+  - language
+  - project
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -282,4 +289,3 @@ The skill serves as a foundation for project initialization and can be extended 
 - Select appropriate domains for expert agent routing
 - Configure consistent language settings across team
 - Set up MCP servers with proper authentication (Figma tokens)
-

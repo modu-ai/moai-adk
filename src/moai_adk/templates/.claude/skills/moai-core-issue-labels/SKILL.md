@@ -6,6 +6,15 @@ description: Enterprise GitHub issue labeling orchestrator with semantic label t
   label management, workflow automation, priority assignment, and team communication
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: labels, issue, moai, core  
+
+
 ## Quick Reference (30 seconds)
 
 # GitHub Issue Labeling & Semantic Taxonomy 

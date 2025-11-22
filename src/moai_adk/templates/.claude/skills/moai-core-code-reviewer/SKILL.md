@@ -7,6 +7,15 @@ description: Enterprise systematic code review orchestrator with TRUST 5 princip
   TRUST 5 enforcement, architectural audits, and automated review automation
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: reviewer, moai, code, core  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Systematic Code Review Orchestrator 

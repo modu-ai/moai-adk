@@ -1,6 +1,15 @@
 ---
 name: moai-core-dev-guide
 description: moai-core-dev-guide skill documentation and patterns
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - core
+  - dev
+  - guide
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -599,4 +608,3 @@ Research date: 2025-11-12
 **Version**: 4.0.0  
 **Last Updated**: 2025-11-12  
 **Maintained By**: Alfred SuperAgent (MoAI-ADK)
-

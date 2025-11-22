@@ -5,6 +5,15 @@ description: Enterprise Clerk Authentication Platform with AI-powered modern ide
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, baas, clerk, ext, authentication  
+
+
 # Quick Reference (Level 1)
 
 ## Clerk Authentication Platform (November 2025)

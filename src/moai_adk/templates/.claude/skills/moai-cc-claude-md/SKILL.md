@@ -5,6 +5,15 @@ description: Claude Code Markdown integration, documentation generation, and str
   or creating structured reports.
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cc, moai, claude, md  
+
+
 ## Quick Reference (30 seconds)
 
 Claude Code의 Markdown 통합은 문서 생성, 콘텐츠 구조화, 템플릿 기반 문서 워크플로우를 제공합니다.

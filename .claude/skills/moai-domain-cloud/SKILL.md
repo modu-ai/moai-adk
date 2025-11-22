@@ -1,12 +1,15 @@
 ---
 name: moai-domain-cloud
-description: Enterprise-grade cloud architecture expertise with production-ready patterns
-  for AWS (Lambda 3.13, ECS/Fargate 1.4.0, RDS, CDK 2.223.0), GCP (Cloud Run Gen2,
-  Cloud Functions 2nd gen, Cloud SQL), Azure (Functions v4, Container Apps, AKS),
-  and multi-cloud orchestration (Terraform 1.9.8, Pulumi 3.x, Kubernetes 1.34). Covers
-  serverless architectures, container orchestration, multi-cloud deployments, cloud-native
-  databases, infrastructure automation, cost optimization, security patterns, and
-  disaster recovery for 2025 stable versions.
+description: Enterprise-grade cloud architecture expertise with production-ready patterns for AWS (Lambda 3.13, ECS/Fargate 1.4.0, RDS, CDK 2.223.0), GCP (Cloud Run Gen2, Cloud Functions 2nd gen, Cloud SQL),...
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - cloud
+  - database
+  - domain
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -526,4 +529,3 @@ Latest stable version: AWS CDK 2.223.0, Terraform 1.9.8, Kubernetes 1.34
 - [Terraform 1.9 Upgrade Guide](https://developer.hashicorp.com/terraform/language/upgrade-guides)
 - [Kubernetes 1.34 Release Notes](https://kubernetes.io/docs/setup/release/notes/)
 - [Pulumi 3.x Migration](https://www.pulumi.com/docs/install/migrating-3.0/)
-

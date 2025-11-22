@@ -7,6 +7,15 @@ description: Dart 3.5 enterprise development with Flutter 3.24, advanced async p
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, moai, dart  
+
+
 ## Quick Reference (30 seconds)
 
 # Dart - Enterprise 

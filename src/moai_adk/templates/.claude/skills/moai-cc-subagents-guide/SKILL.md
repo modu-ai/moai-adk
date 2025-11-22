@@ -4,6 +4,15 @@ description: Complete guide to Claude Code Sub-Agents creation, configuration, i
 allowed-tools: Read, WebFetch, Grep, Glob
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: subagents, cc, moai, guide  
+
+
 # Claude Code Sub-Agents Complete Guide
 
 Comprehensive guide to creating, configuring, and orchestrating Sub-Agents following official Claude Code standards.

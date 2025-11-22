@@ -3,6 +3,15 @@ name: moai-core-personas
 description: Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation.
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: personas, moai, core  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-alfred-personas

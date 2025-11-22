@@ -1,7 +1,16 @@
 ---
 name: moai-cc-skills-guide
 description: Complete guide to Claude Code Skills creation, discovery mechanisms, best practices, and troubleshooting. Use when building new Skills or optimizing existing ones with official Claude Code standards.
+version: 1.0.0
+modularized: false
 allowed-tools: Read, WebFetch, Grep, Glob
+last_updated: 2025-11-22
+compliance_score: 76
+auto_trigger_keywords:
+  - cc
+  - guide
+  - skills
+category_tier: 1
 ---
 
 # Claude Code Skills Complete Guide

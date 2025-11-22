@@ -1,7 +1,18 @@
 ---
 name: moai-lang-typescript
 description: TypeScript 5.x with static typing, generics, advanced types
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - lang
+  - typescript
+category_tier: 1
 ---
 
 ## Quick Reference

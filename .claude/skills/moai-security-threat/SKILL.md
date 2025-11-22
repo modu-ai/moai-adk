@@ -1,6 +1,14 @@
 ---
 name: moai-security-threat
 description: Enterprise Skill for advanced development
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - security
+  - threat
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

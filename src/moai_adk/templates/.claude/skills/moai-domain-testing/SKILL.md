@@ -6,6 +6,15 @@ description: Enterprise testing framework with pytest 8.4.x, Vitest 4.x, Playwri
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: domain, moai, testing  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Testing Framework & Quality Assurance - 

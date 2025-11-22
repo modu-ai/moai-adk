@@ -1,7 +1,14 @@
 ---
 name: moai-domain-devops
-description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub
-  Actions, monitoring with Prometheus/Grafana, and cloud-native architectures
+description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub Actions, monitoring with Prometheus/Grafana, and cloud-native architectures
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - devops
+  - domain
+category_tier: 2
 ---
 
 ## Quick Reference (30 seconds)

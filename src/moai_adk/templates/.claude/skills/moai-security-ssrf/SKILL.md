@@ -5,6 +5,15 @@ description: Enterprise SSRF Security Protection with AI-powered request validat
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: ssrf, moai, security  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise SSRF Security Protection Expert 

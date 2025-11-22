@@ -1,6 +1,15 @@
 ---
 name: moai-learning-optimizer
 description: Intelligent learning system optimizer that analyzes session patterns,
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - learning
+  - optimizer
+  - performance
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)
@@ -559,4 +568,3 @@ def evolve_system_capabilities():
 ```
 
 ---
-

@@ -7,6 +7,15 @@ description: AI-powered enterprise web application testing orchestrator with Con
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: testing, playwright, moai, webapp  
+
+
 ## Quick Reference (30 seconds)
 
 # Web Application Testing with Playwright

@@ -1,6 +1,15 @@
 ---
 name: moai-baas-vercel-ext
 description: Enterprise Vercel Edge Platform with AI-powered modern deployment, Context7
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - baas
+  - ext
+  - vercel
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -946,4 +955,3 @@ Latest stable version: Next.js 16.x, Turbopack stable, Edge Runtime
 - [Vercel Edge Runtime](https://vercel.com/docs/functions/edge-functions/edge-runtime)
 - [Turbopack Migration](https://nextjs.org/docs/app/api-reference/next-config-js/turbo)
 - [Vercel Deployment Guide](https://vercel.com/docs/deployments/overview)
-

@@ -1,3 +1,17 @@
+---
+name: moai-lib-shadcn-ui
+description: Moai Lib Shadcn Ui - Professional implementation guide
+---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: shadcn, lib, ui, moai  
+
+
 name: moai-lib-shadcn-ui
 description: Enterprise shadcn/ui Component Library with AI-powered design system
 

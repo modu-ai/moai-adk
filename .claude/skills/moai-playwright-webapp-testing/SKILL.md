@@ -1,8 +1,15 @@
 ---
 name: moai-playwright-webapp-testing
-description: AI-powered enterprise web application testing orchestrator with Context7
-  integration, intelligent test generation, visual regression testing, cross-browser
-  coordination, and automated QA workflows for modern web applications
+description: AI-powered enterprise web application testing orchestrator with Context7 integration, intelligent test generation, visual regression testing, cross-browser coordination, and automated QA workflows for modern web applications
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - playwright
+  - testing
+  - webapp
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)
@@ -270,4 +277,3 @@ async def test_e2e_with_ai_context7():
 ```
 
 ---
-

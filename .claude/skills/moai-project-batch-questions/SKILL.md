@@ -1,7 +1,15 @@
 ---
 name: moai-project-batch-questions
-description: Standardize AskUserQuestion patterns and provide reusable question templates
-  for batch optimization
+description: Standardize AskUserQuestion patterns and provide reusable question templates for batch optimization
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - batch
+  - project
+  - questions
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -292,6 +300,3 @@ async function initializeProject() {
 ---
 
 ## Advanced Patterns
-
-
-

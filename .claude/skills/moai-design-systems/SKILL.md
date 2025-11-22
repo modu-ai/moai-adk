@@ -1,6 +1,15 @@
 ---
 name: moai-design-systems
 description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - authentication
+  - design
+  - systems
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)

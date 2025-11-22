@@ -4,6 +4,15 @@ description: MCP 1.0+ (Model Context Protocol) Enterprise Integration with 10+ O
 allowed-tools: [Read, Bash, WebFetch]
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, mcp, integration  
+
+
 ## Quick Reference
 
 **MCP 1.0+ Enterprise Integration Hub**

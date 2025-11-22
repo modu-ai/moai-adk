@@ -1,7 +1,19 @@
 ---
 name: moai-lang-javascript
 description: JavaScript ES2024+ with async/await, modules, classes
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - javascript
+  - lang
+  - python
+category_tier: 1
 ---
 
 ## Quick Reference

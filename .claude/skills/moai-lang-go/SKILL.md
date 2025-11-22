@@ -1,7 +1,19 @@
 ---
 name: moai-lang-go
 description: Go 1.23+ systems programming with Fiber v3, gRPC, sqlc, concurrency patterns
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - database
+  - go
+  - lang
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

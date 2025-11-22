@@ -1,3 +1,17 @@
+---
+name: moai-design-systems
+description: Moai Design Systems - Professional implementation guide
+---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, systems, design  
+
+
 name: moai-design-systems
 description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2
 

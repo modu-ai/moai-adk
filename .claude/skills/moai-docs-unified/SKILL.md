@@ -1,7 +1,17 @@
 ---
 name: moai-docs-unified
 description: Enhanced docs unified with AI-powered features. Modular documentation validation framework
-allowed-tools: [Read, Bash]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - docs
+  - unified
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)

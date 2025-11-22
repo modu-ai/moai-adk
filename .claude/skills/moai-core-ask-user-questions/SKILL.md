@@ -1,10 +1,17 @@
 ---
 name: moai-core-ask-user-questions
-description: Enterprise interactive survey orchestrator with AskUserQuestion tool
-  integration, multi-select support, conditional branching, error recovery, and production-grade
-  decision automation across all Alfred workflows; activates for requirement clarification,
-  architectural decisions, risky operations, feature selection, and complex multi-step
-  user interactions
+description: Enterprise interactive survey orchestrator with AskUserQuestion tool integration, multi-select support, conditional branching, error recovery, and production-grade decision automation across all...
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - ask
+  - core
+  - questions
+  - testing
+  - user
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -433,6 +440,3 @@ Proceed with confirmed specifications
 ---
 
 ## Advanced Patterns
-
-
-

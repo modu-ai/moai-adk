@@ -6,6 +6,15 @@ description: Enterprise mobile development with React Native 0.76+, Flutter 3.24
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: react, moai, app, mobile, domain  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-domain-mobile-app

@@ -1,6 +1,15 @@
 ---
 name: moai-docs-toolkit
 description: Unified documentation toolkit combining generation, validation, and linting with AI-powered features and Context7 integration.
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - docs
+  - testing
+  - toolkit
+category_tier: special
 ---
 
 # Documentation Toolkit (Unified)

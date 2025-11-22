@@ -1,9 +1,14 @@
 ---
 name: moai-domain-security
-description: Enterprise-grade security expertise with production-ready patterns for
-  OWASP Top 10 2021, zero-trust architecture, threat modeling (STRIDE, PASTA), secure
-  SDLC, DevSecOps automation, cloud security, cryptography, identity & access management,
-  and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA).
+description: Enterprise-grade security expertise with production-ready patterns for OWASP Top 10 2021, zero-trust architecture, threat modeling (STRIDE, PASTA), secure SDLC, DevSecOps automation, cloud security, cryptography, identity & access management, and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA).
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - domain
+  - security
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -535,4 +540,3 @@ jobs:
 - **Trust client-side validation** - Always validate on server-side
 
 ---
-

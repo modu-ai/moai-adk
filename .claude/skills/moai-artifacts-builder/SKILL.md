@@ -1,7 +1,14 @@
 ---
 name: moai-artifacts-builder
-description: Enterprise artifact management with governance, lifecycle, SBOM, and
-  supply chain security for November 2025 standards
+description: Enterprise artifact management with governance, lifecycle, SBOM, and supply chain security for November 2025 standards
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - artifacts
+  - builder
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)

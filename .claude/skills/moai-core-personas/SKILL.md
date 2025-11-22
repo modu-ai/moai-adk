@@ -1,6 +1,15 @@
 ---
 name: moai-core-personas
 description: Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation.
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - api
+  - core
+  - personas
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -514,4 +523,3 @@ PERSONA_METRICS = {
 - `moai-core-workflow` - Persona-aware workflow orchestration
 
 ---
-

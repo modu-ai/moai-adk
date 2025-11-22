@@ -1,6 +1,15 @@
 ---
 name: moai-spec-intelligent-workflow
 description: Intelligent SPEC generation decision engine with 3-level templates and analytics for MoAI-ADK
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - intelligent
+  - spec
+  - workflow
+category_tier: special
 ---
 
 # SPEC Intelligent Workflow Skill

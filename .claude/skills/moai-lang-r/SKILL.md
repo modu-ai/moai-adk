@@ -1,7 +1,15 @@
 ---
 name: moai-lang-r
-description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis
-  patterns.
+description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - lang
+  - r
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

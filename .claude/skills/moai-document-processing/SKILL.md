@@ -1,6 +1,14 @@
 ---
 name: moai-document-processing
 description: AI-powered enterprise document processing orchestrator with Context7
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - document
+  - processing
+category_tier: special
 ---
 
 ## Quick Reference (30 seconds)
@@ -505,4 +513,3 @@ async def create_intelligent_document_workflow_with_ai_context7(documents: List[
 ```
 
 ---
-

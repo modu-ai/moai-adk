@@ -3,6 +3,15 @@ name: moai-lang-rust
 description: Rust 1.91+ Systems Programming with Tokio 1.48, ownership, async/await, and safety guarantees
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: rust, lang, moai  
+
+
 ## Quick Reference (30 seconds)
 
 # Rust Systems Programming — Enterprise

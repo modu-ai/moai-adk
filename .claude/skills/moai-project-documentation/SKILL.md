@@ -1,7 +1,16 @@
 ---
 name: moai-project-documentation
 description: Enhanced project documentation with AI-powered features. Modular guide for Product.md, Structure.md, Tech.md creation
-allowed-tools: [Read]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+last_updated: 2025-11-22
+compliance_score: 85
+auto_trigger_keywords:
+  - documentation
+  - project
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

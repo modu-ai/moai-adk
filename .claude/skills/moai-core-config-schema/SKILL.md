@@ -1,10 +1,17 @@
 ---
 name: moai-core-config-schema
-description: Enterprise configuration schema validation and management orchestrator
-  with JSON Schema v2024-12, Context7 integration, semantic versioning compliance,
-  environment variable management, secrets handling, multi-environment support, and
-  configuration-as-code best practices; activates for config validation, schema enforcement,
-  environment setup, secrets management, and configuration audits
+description: Enterprise configuration schema validation and management orchestrator with JSON Schema v2024-12, Context7 integration, semantic versioning compliance, environment variable management, secrets...
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - config
+  - core
+  - schema
+  - security
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -418,6 +425,3 @@ function validateSecrets(config: AppConfig): void {
 ---
 
 ## Advanced Patterns
-
-
-

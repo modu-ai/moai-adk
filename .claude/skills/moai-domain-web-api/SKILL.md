@@ -1,6 +1,16 @@
 ---
 name: moai-domain-web-api
 description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and rate limiting.
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - api
+  - authentication
+  - domain
+  - web
+category_tier: 2
 ---
 
 ## Quick Reference

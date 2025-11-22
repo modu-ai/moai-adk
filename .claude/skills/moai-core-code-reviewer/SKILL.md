@@ -1,10 +1,17 @@
 ---
 name: moai-core-code-reviewer
-description: Enterprise systematic code review orchestrator with TRUST 5 principles,
-  multi-language support, Context7 integration, AI-powered quality checks, SOLID principle
-  validation, security vulnerability detection, and maintainability analysis across
-  25+ programming languages; activates for code reviews, quality standard validation,
-  TRUST 5 enforcement, architectural audits, and automated review automation
+description: Enterprise systematic code review orchestrator with TRUST 5 principles, multi-language support, Context7 integration, AI-powered quality checks, SOLID principle validation, security vulnerability...
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - code
+  - core
+  - reviewer
+  - security
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -340,4 +347,3 @@ Latest stable version: Latest
 - `moai-domain-security` - Security review patterns and compliance
 
 ---
-

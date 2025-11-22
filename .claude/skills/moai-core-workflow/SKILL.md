@@ -1,6 +1,15 @@
 ---
 name: moai-core-workflow
 description: Enterprise multi-agent workflow orchestration specialist. Master workflow design, agent coordination, task delegation, and process automation with Context7 MCP integration and comprehensive monitoring. Build scalable, intelligent workflow systems with fault tolerance and performance optimization.
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - core
+  - testing
+  - workflow
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -463,4 +472,3 @@ class WorkflowMetrics:
 - **Hardcode workflow steps** - Use configurable templates
 
 ---
-

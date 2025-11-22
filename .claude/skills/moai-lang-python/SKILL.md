@@ -1,7 +1,18 @@
 ---
 name: moai-lang-python
 description: Python 3.12+ with FastAPI, Pydantic, async/await
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - lang
+  - python
+category_tier: 1
 ---
 
 ## Quick Reference

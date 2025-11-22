@@ -1,6 +1,15 @@
 ---
 name: moai-domain-figma
 description: Design System & UI Kit Development with Figma 2025, Design Tokens, and Component Documentation
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - authentication
+  - domain
+  - figma
+category_tier: 2
 ---
 
 ## Quick Reference (30 seconds)
@@ -144,4 +153,3 @@ Design-to-development workflow:
 
 **Skills**: Skill("moai-domain-frontend"), Skill("moai-lang-html-css"), Skill("moai-domain-ux")
 **Auto-loads**: Design system files, Figma projects
-

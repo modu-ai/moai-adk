@@ -6,6 +6,15 @@ description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analys
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: r, lang, moai  
+
+
 ## Quick Reference (30 seconds)
 
 # R Data Analysis — Enterprise

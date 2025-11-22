@@ -5,6 +5,15 @@ description: Enterprise Skill for advanced development
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: compliance, moai, security  
+
+
 ## Quick Reference (30 seconds)
 
 # moai-security-compliance: Regulatory Compliance & Audit Logging

@@ -1,9 +1,16 @@
 ---
 name: moai-core-expertise-detection
-description: Enterprise AI-powered user expertise detection with behavioral analysis,
-  communication pattern recognition, code complexity assessment, Context7 integration,
-  and adaptive response calibration; activates for personalized guidance generation,
-  complexity adjustment, tutorial depth selection, and communication style matching
+description: Enterprise AI-powered user expertise detection with behavioral analysis, communication pattern recognition, code complexity assessment, Context7 integration, and adaptive response calibration;...
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 71
+auto_trigger_keywords:
+  - core
+  - detection
+  - expertise
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -276,4 +283,3 @@ Continuously detects and adapts to user expertise level based on behavioral sign
 - ❌ Assume all users in same domain at same level
 
 ---
-

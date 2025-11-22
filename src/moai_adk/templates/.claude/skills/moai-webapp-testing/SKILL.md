@@ -5,6 +5,15 @@ description: Toolkit for interacting with and testing local web applications usi
   browser screenshots, and viewing browser logs.
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: testing, webapp  
+
+
 ## Quick Reference (30 seconds)
 
 # Web Application Testing

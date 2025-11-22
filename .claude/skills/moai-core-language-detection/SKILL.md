@@ -1,8 +1,15 @@
 ---
 name: moai-core-language-detection
-description: Auto-detects project language and framework from package.json, pyproject.toml,
-  Cargo.toml, go.mod, and other configuration files with comprehensive pattern matching
-  based on 17,253+ production code examples.
+description: Auto-detects project language and framework from package.json, pyproject.toml, Cargo.toml, go.mod, and other configuration files with comprehensive pattern matching based on 17,253+ production code examples.
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - core
+  - detection
+  - language
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

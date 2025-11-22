@@ -1,7 +1,18 @@
 ---
 name: moai-domain-iot
 description: IoT architecture, device management, and edge computing patterns for connected devices
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 75
+auto_trigger_keywords:
+  - domain
+  - iot
+category_tier: 2
 ---
 
 # IoT Domain Expert

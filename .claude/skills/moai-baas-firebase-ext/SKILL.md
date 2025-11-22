@@ -1,7 +1,20 @@
 ---
 name: moai-baas-firebase-ext
 description: Enterprise Firebase Platform with AI-powered Google Cloud integration. Modular guide for Firestore, Authentication, and Cloud Functions
-allowed-tools: [Read]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+last_updated: 2025-11-22
+compliance_score: 85
+auto_trigger_keywords:
+  - api
+  - authentication
+  - baas
+  - ext
+  - firebase
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

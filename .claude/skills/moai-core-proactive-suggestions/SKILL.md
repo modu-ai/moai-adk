@@ -1,6 +1,15 @@
 ---
 name: moai-core-proactive-suggestions
 description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 70
+auto_trigger_keywords:
+  - core
+  - proactive
+  - suggestions
+category_tier: 1
 ---
 
 ## Quick Reference

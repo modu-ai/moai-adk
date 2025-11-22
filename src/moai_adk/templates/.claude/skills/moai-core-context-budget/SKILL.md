@@ -8,6 +8,15 @@ modules:
   - quality-chunking-patterns
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: context, moai, core, budget  
+
+
 ## Quick Reference (30 seconds)
 
 # Token Optimization & Context Window Budget Management

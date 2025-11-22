@@ -1,6 +1,15 @@
 ---
 name: moai-baas-railway-ext
 description: Enterprise Railway Full-Stack Platform with AI-powered container orchestration,
+version: 1.0.0
+modularized: false
+last_updated: 2025-11-22
+compliance_score: 61
+auto_trigger_keywords:
+  - baas
+  - ext
+  - railway
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)

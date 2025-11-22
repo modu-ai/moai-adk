@@ -1,7 +1,19 @@
 ---
 name: moai-domain-backend
 description: Enterprise Backend Architecture with modern frameworks, Context7 integration, and production-ready patterns for 2025
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: true
+allowed-tools:
+  - Read
+  - Bash
+  - WebFetch
+last_updated: 2025-11-22
+compliance_score: 85
+auto_trigger_keywords:
+  - backend
+  - domain
+  - testing
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -472,4 +484,3 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 - **Expose sensitive data** - Filter responses and implement proper authorization
 
 ---
-

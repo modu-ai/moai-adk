@@ -1,7 +1,15 @@
 ---
 name: moai-domain-cli-tool
-description: Enterprise CLI tool architecture with multi-language patterns, UX/DX
-  optimization, and production deployment strategies
+description: Enterprise CLI tool architecture with multi-language patterns, UX/DX optimization, and production deployment strategies
+version: 1.0.0
+modularized: true
+last_updated: 2025-11-22
+compliance_score: 80
+auto_trigger_keywords:
+  - cli
+  - domain
+  - tool
+category_tier: 1
 ---
 
 ## Quick Reference (30 seconds)
@@ -366,4 +374,3 @@ ENTRYPOINT ["myapp"]
 ```
 
 ---
-

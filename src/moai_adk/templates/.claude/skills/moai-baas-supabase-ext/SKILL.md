@@ -7,6 +7,15 @@ description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source
 
 ---
 
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: supabase, moai, baas, ext  
+
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Supabase PostgreSQL Platform Expert 
