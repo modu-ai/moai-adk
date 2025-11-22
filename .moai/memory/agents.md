@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines 35 specialized MoAI-ADK agents available for delegation. Each agent has specific capabilities and optimal use cases.
+This document defines 27 specialized MoAI-ADK agents available for delegation. Each agent has specific capabilities and optimal use cases.
 
 ## Core Principles
 
@@ -186,13 +186,13 @@ This document defines 35 specialized MoAI-ADK agents available for delegation. E
 
 ### System Agents (Claude Code Native)
 
-#### `Explore`
+#### `explore`
 - **Purpose**: Codebase discovery and file system exploration
 - **Use Cases**: Code navigation, file search, project structure analysis
 - **Delegation Trigger**: Exploration tasks, file system operations
 - **Scope**: Read-only operations, code analysis
 
-#### `Plan`
+#### `plan`
 - **Purpose**: Strategic decomposition and planning
 - **Use Cases**: Complex task breakdown, strategic planning
 - **Delegation Trigger**: High-level planning, strategy development

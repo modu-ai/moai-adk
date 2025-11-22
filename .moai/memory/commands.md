@@ -206,7 +206,7 @@ This document defines the 6 core MoAI-ADK slash commands for SPEC-First TDD exec
 
 **Purpose**: Create production-ready release with validation
 
-**Delegation**: `release-manager`
+**Delegation**: `devops-expert`, `git-manager`
 
 **Execution Process**:
 1. Validate all quality gates
