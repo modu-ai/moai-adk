@@ -303,6 +303,206 @@ Alfred evaluates 5 criteria naturally:
 
 ---
 
+# 🤖 Agent Auto-Trigger Rules & Delegation Hierarchy
+
+## Alfred's Core Delegation Principle
+
+Alfred **DOES NOT execute** tasks directly. Instead, Alfred **ANALYZES requirements** and **DELEGATES to specialized agents**:
+
+```
+User Request
+    ↓
+Alfred Analysis (Understand & Clarify)
+    ↓
+Agent Selection (Delegate to Specialist)
+    ↓
+Agent Execution (Specialist handles implementation)
+    ↓
+Result Integration (Alfred coordinates output)
+```
+
+## Agent Auto-Trigger Hierarchy
+
+| Phase | User Request | Triggered Agent | Trigger Logic | Config Dependency |
+|-------|--------------|-----------------|---------------|-------------------|
+| **PLAN** | `/moai:1-plan "description"` | `spec-builder` | Always (REQUIRED) | `language.conversation_language` |
+| **PLAN** | User provides vague request | `Explore` + `spec-builder` | Optional (Phase 1A) | None |
+| **PLAN** | SPEC candidates proposed | User approval via AskUserQuestion | Manual gate | None |
+| **PLAN** | User approves SPEC creation | `spec-builder` (Phase 2) | Conditional (RESUME) | None |
+| **PLAN** | PHASE 2 completes | `git-manager` (PHASE 3) | **CONDITIONAL** | **`github.spec_git_workflow`** |
+| **RUN** | `/moai:2-run SPEC-XXX` | `tdd-implementer` | Always (REQUIRED) | `constitution.enforce_tdd` |
+| **SYNC** | `/moai:3-sync SPEC-XXX` | `doc-syncer` | Always (REQUIRED) | `project.documentation_mode` |
+
+## CRITICAL: Git-Manager Auto-Trigger Rules
+
+**⚠️ PHASE 3 git-manager trigger is CONDITIONAL on config value**:
+
+```python
+# Configuration reads
+git_mode = config["git_strategy"]["mode"]  # "personal" or "team"
+spec_workflow = config["github"]["spec_git_workflow"]  # CRITICAL FIELD
+
+# Conditional triggering
+if git_mode == "personal":
+    if spec_workflow == "develop_direct":
+        TRIGGER_GIT_MANAGER = False  # ✅ SKIP git-manager
+        log("Config: develop_direct - NO branch creation")
+    elif spec_workflow == "feature_branch":
+        TRIGGER_GIT_MANAGER = True   # ✅ CREATE branch
+        log("Config: feature_branch - CREATE branch")
+    elif spec_workflow == "per_spec":
+        # ASK USER via AskUserQuestion
+        if user_choice == "Create branch":
+            TRIGGER_GIT_MANAGER = True
+        else:
+            TRIGGER_GIT_MANAGER = False
+        log(f"Config: per_spec - User chose: {user_choice}")
+
+elif git_mode == "team":
+    TRIGGER_GIT_MANAGER = True  # ✅ ALWAYS in team mode
+    log("Config: team mode - CREATE branch + PR")
+```
+
+### Example Scenarios
+
+**Scenario 1: Personal + develop_direct (GOOS님의 설정)**
+
+```json
+{
+  "git_strategy": { "mode": "personal" },
+  "github": { "spec_git_workflow": "develop_direct" }
+}
+```
+
+**Expected Behavior**:
+- `/moai:1-plan` creates SPEC files ✅
+- **PHASE 3 git-manager is SKIPPED** ✅
+- NO feature branch created ✅
+- NO PR created ✅
+- Ready for `/moai:2-run` on current branch ✅
+
+---
+
+**Scenario 2: Personal + feature_branch**
+
+```json
+{
+  "git_strategy": { "mode": "personal" },
+  "github": { "spec_git_workflow": "feature_branch" }
+}
+```
+
+**Expected Behavior**:
+- `/moai:1-plan` creates SPEC files ✅
+- **PHASE 3 git-manager is TRIGGERED** ✅
+- Feature branch `feature/SPEC-XXX` created ✅
+- NO PR created (user can create manually) ✅
+- Ready for `/moai:2-run` on feature branch ✅
+
+---
+
+**Scenario 3: Personal + per_spec**
+
+```json
+{
+  "git_strategy": { "mode": "personal" },
+  "github": { "spec_git_workflow": "per_spec" }
+}
+```
+
+**Expected Behavior**:
+- `/moai:1-plan` creates SPEC files ✅
+- **User asked: "Create feature branch?"** ✅
+- Based on user choice: trigger or skip git-manager ✅
+
+---
+
+**Scenario 4: Team mode (any spec_workflow)**
+
+```json
+{
+  "git_strategy": { "mode": "team" },
+  "github": { "spec_git_workflow": "<any value>" }
+}
+```
+
+**Expected Behavior**:
+- `/moai:1-plan` creates SPEC files ✅
+- **PHASE 3 git-manager ALWAYS triggered** ✅
+- Feature branch created ✅
+- Draft PR created targeting `develop` ✅
+- Ready for team review and implementation ✅
+
+---
+
+## Configuration Priority Hierarchy
+
+**When interpreting config.json, follow this hierarchy**:
+
+### Priority 1 (HIGHEST): Explicit Configuration Fields
+```json
+{
+  "github": {
+    "spec_git_workflow": "develop_direct",  // ← THIS WINS
+    "spec_git_workflow_configured": true    // ← Validation flag
+  }
+}
+```
+
+**Rule**: If `spec_git_workflow` is set and `spec_git_workflow_configured: true`, use this value **regardless** of `git_strategy.mode`.
+
+### Priority 2 (FALLBACK): Git Strategy Mode
+```json
+{
+  "git_strategy": {
+    "mode": "personal"  // ← Used if spec_git_workflow is missing
+  }
+}
+```
+
+**Rule**: Only use this if `github.spec_git_workflow` is undefined or invalid.
+
+### Priority 3 (DEFAULT): Template Defaults
+```json
+{
+  "github": {
+    "spec_git_workflow": "develop_direct"  // ← New template default
+  }
+}
+```
+
+**Rule**: Template ships with `"develop_direct"` (RECOMMENDED for rapid development).
+
+---
+
+## Configuration Validation Rules
+
+**Before any git operations**, validate:
+
+```python
+# Validation Rule 1: spec_git_workflow must be valid
+valid_values = ["develop_direct", "feature_branch", "per_spec"]
+if config["github"]["spec_git_workflow"] not in valid_values:
+    ERROR("Invalid spec_git_workflow value")
+    ABORT_GIT_OPERATIONS()
+
+# Validation Rule 2: Consistency check
+if git_mode == "personal" and spec_workflow not in valid_values:
+    ERROR("Inconsistent personal mode configuration")
+    ABORT_GIT_OPERATIONS()
+
+if git_mode == "team" and spec_workflow == "develop_direct":
+    WARN("Team mode with develop_direct is non-standard")
+    # Allow but warn
+
+# Validation Rule 3: Flag consistency
+if spec_workflow != template_default and not config["spec_git_workflow_configured"]:
+    WARN("spec_git_workflow changed but configured flag is false")
+    SUGGEST("Set spec_git_workflow_configured: true to prevent template overwrites")
+```
+
+---
+
 # ⚙️ Constraints and Quality Gate
 
 ## Mandatory Execution Rules
