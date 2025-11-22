@@ -115,6 +115,24 @@ export class ProactiveSuggestionEngine {
 
 ---
 
+
+## Context7 Integration
+
+### Related Intelligence Tools
+- [AI Pattern Recognition](/openai/gpt-4): Language models for analysis
+- [Static Analysis](/staticanalysis): Code pattern detection
+- [Machine Learning](/tensorflow/tensorflow): Pattern recognition
+
+### Official Documentation
+- [Suggestion Engine Design](https://en.wikipedia.org/wiki/Recommender_system)
+- [Pattern Recognition Algorithms](https://en.wikipedia.org/wiki/Pattern_recognition)
+
+### Related Modularized Skills
+- `moai-essentials-debug` - Error detection and analysis
+- `moai-essentials-refactor` - Code improvement suggestions
+
+---
+
 ## Advanced Patterns
 
 ### Learning Adaptation System

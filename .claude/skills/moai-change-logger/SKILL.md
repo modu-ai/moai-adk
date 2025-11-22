@@ -510,10 +510,18 @@ Start
 ### Related Libraries & Tools
 - [Conventional Commits](/conventional-commits): Commit message convention
 - [semantic-release](/semantic-release/semantic-release): Automated versioning
+- [GitLog](/git/git): Git history tracking
+- [Commitizen](/commitizen/cz-cli): Commit message standardization
 
 ### Official Documentation
-- [Documentation](https://www.conventionalcommits.org/)
-- [API Reference](https://semantic-release.gitbook.io/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [Semantic Release](https://semantic-release.gitbook.io/)
+- [Git Documentation](https://git-scm.com/docs)
+
+### Related Modularized Skills
+- `moai-internal-comms` - Internal communication and logging patterns
+- `moai-foundation-git` - Git workflow and management
+- `moai-domain-devops` - DevOps and CI/CD integration
 
 ### Version-Specific Guides
 Latest stable version: Latest

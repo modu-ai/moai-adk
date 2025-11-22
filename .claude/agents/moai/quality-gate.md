@@ -140,10 +140,10 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 #### 3.1 Code style verification
 
-**Python project**:
-- pylint [file] --output-format=json
-- black --check [file]
-- isort --check-only [file]
+**Python project** (using `! uv run`):
+- `! uv run -m pylint [file] --output-format=json`
+- `! uv run -m black --check [file]`
+- `! uv run -m isort --check-only [file]`
 
 **JavaScript/TypeScript Project**:
 - eslint [file] --format=json
@@ -155,8 +155,8 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 #### 3.2 Test coverage verification
 
-**Python**:
- - pytest --cov --cov-report=json
+**Python** (using `! uv run`):
+ - `! uv run -m pytest --cov --cov-report=json`
  - Parse coverage.json
 
 **JavaScript/TypeScript**:

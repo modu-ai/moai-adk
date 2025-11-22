@@ -229,9 +229,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
       - run: pip install -r requirements.txt && pip install ruff mypy pytest pytest-cov
-      - run: ruff check .
-      - run: mypy .
-      - run: pytest --cov=app --cov-report=xml
+      - run: python -m ruff check .
+      - run: python -m mypy .
+      - run: python -m pytest --cov=app --cov-report=xml
       - uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml

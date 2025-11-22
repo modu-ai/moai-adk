@@ -250,6 +250,30 @@ gcloud compute commitments create my-commitment \
 
 ---
 
+## Context7 Integration
+
+### Related GCP Services & Libraries
+- [Google Cloud Compute](/gcp/compute): Virtual machines and containers
+- [Google Kubernetes Engine](/gcp/gke): Managed Kubernetes service
+- [Google Cloud SQL](/gcp/cloudsql): Managed relational databases
+- [Google Cloud Firestore](/gcp/firestore): Real-time NoSQL database
+- [Google BigQuery](/gcp/bigquery): Data warehouse and analytics
+- [Google Vertex AI](/gcp/vertex-ai): Unified ML platform
+
+### Official GCP Documentation
+- [GCP Cloud Architecture Center](https://cloud.google.com/architecture)
+- [GKE Best Practices](https://cloud.google.com/kubernetes-engine/docs/best-practices)
+- [BigQuery Documentation](https://cloud.google.com/bigquery/docs)
+- [Cloud Security Best Practices](https://cloud.google.com/security/best-practices)
+
+### Related Modularized Skills
+- `moai-cloud-aws-advanced` - AWS equivalent services and patterns
+- `moai-domain-devops` - CI/CD and deployment automation
+- `moai-security-api` - API security implementation
+- `moai-essentials-perf` - Performance optimization techniques
+
+---
+
 ## Works Well With
 
 - `moai-cloud-aws-advanced` (멀티 클라우드 비교)
@@ -260,5 +284,6 @@ gcloud compute commitments create my-commitment \
 ---
 
 **Version**: 2.0.0
-**Last Updated**: 2025-11-21 | **Lines**: 220
+**Last Updated**: 2025-11-22
+**Status**: Fully Modularized
 **Official Reference**: https://cloud.google.com/architecture/framework

@@ -145,6 +145,28 @@ gRPC mTLS, webhook security, API versioning, CORS, and enterprise integration.
 
 ---
 
+## Context7 Integration
+
+### Related Libraries & Tools
+- [oauth-rfc](/oauth-working-group/oauth-rfc): OAuth 2.1 specification and implementations
+- [OWASP API Security](/OWASP/API-Security): OWASP API Security Top 10 guidelines
+- [jsonwebtoken](/auth0/node-jsonwebtoken): JWT implementation for Node.js
+- [fastapi](/tiangolo/fastapi): Modern Python API framework with security features
+- [express.js](/expressjs/express): Node.js web application framework
+
+### Official Documentation
+- [OAuth 2.1 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html)
+- [JWT.io - JSON Web Tokens](https://jwt.io/)
+- [OWASP API Security Top 10](https://owasp.org/www-project-api-security/)
+
+### Version-Specific Guides
+Latest stable versions: OAuth 2.1, JWT RS256, Express.js 5.x
+- [RFC 8252 - OAuth 2.0 for Mobile Apps](https://tools.ietf.org/html/rfc8252)
+- [RFC 7519 - JSON Web Token (JWT)](https://tools.ietf.org/html/rfc7519)
+- [Express.js Security Best Practices](https://expressjs.com/en/advanced/best-practice-security.html)
+
+---
+
 ## Version History
 
 **v4.0.0** (2025-11-13)

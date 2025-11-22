@@ -459,3 +459,23 @@ class ThreatIntelligenceIntegration {
 
 ---
 
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [threat-modeling](/OWASP/threat-modeling): OWASP threat modeling resources
+- [attack-surface-analyzer](/microsoft/AttackSurfaceAnalyzer): Microsoft attack surface analyzer
+- [draw.io](/jgraph/drawio): Diagram tool for threat models
+- [ThreatDragon](/OWASP/threat-dragon): OWASP threat modeling tool
+- [pytm](/nicodemos/pytm): Python threat modeling library
+
+### Official Documentation
+- [OWASP Threat Modeling](https://owasp.org/www-community/Threat_Modeling)
+- [Threat Modeling Manifesto](https://www.threatmodelingmanifesto.org/)
+- [STRIDE](https://en.wikipedia.org/wiki/STRIDE_(security))
+
+### Version-Specific Guides
+Latest stable versions: ThreatDragon, pytm, draw.io
+- [Threat Modeling Process](https://owasp.org/www-community/Threat_Modeling)
+- [STRIDE Methodology](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html)
+- [Risk Assessment](https://cheatsheetseries.owasp.org/cheatsheets/Risk_Rating_Cheat_Sheet.html)

@@ -449,5 +449,3 @@ MoAI-ADK is distributed under the [MIT License](LICENSE).
 **Last Updated**: 2025-11-20
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.
-
-Copyleft 2025 MoAI (<https://mo.ai.kr> , coming soon)

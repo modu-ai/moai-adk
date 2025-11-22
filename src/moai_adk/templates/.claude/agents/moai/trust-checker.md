@@ -312,11 +312,11 @@ trust-checker analyzes the following items:
 
 ### Python project analysis
 
-trust-checker runs the following Python tools:
-- Run tests (pytest --tb=short)
-- Type check (mypy)
-- Check code format (black --check)
-- Check coverage (pytest --cov)
+trust-checker runs the following Python tools (using `! uv run` format):
+- Run tests: `! uv run -m pytest --tb=short`
+- Type check: `! uv run -m mypy`
+- Check code format: `! uv run -m black --check`
+- Check coverage: `! uv run -m pytest --cov`
 
 ### Git and traceability analytics
 
