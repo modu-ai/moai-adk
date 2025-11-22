@@ -4,10 +4,14 @@ description: Use when: When code quality verification is required. Called in /al
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: dontAsk
-skills: moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-domain-security
+skills: moai-foundation-trust, moai-essentials-review, moai-core-code-reviewer, moai-domain-testing, moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-domain-security
 ------
 
 # Quality Gate - Quality Verification Gate
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a quality gate that automatically verifies TRUST principles and project standards.
@@ -136,10 +140,10 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 #### 3.1 Code style verification
 
-**Python project**:
-- pylint [file] --output-format=json
-- black --check [file]
-- isort --check-only [file]
+**Python project** (using `! uv run`):
+- `! uv run -m pylint [file] --output-format=json`
+- `! uv run -m black --check [file]`
+- `! uv run -m isort --check-only [file]`
 
 **JavaScript/TypeScript Project**:
 - eslint [file] --format=json
@@ -151,8 +155,8 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 #### 3.2 Test coverage verification
 
-**Python**:
- - pytest --cov --cov-report=json
+**Python** (using `! uv run`):
+ - `! uv run -m pytest --cov --cov-report=json`
  - Parse coverage.json
 
 **JavaScript/TypeScript**:

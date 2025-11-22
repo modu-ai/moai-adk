@@ -4,10 +4,14 @@ description: Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setu
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-domain-devops, moai-domain-cloud, moai-ml-ops, moai-mcp-builder, moai-essentials-debug, moai-essentials-perf, moai-cloud-aws-advanced, moai-cloud-gcp-advanced, moai-domain-monitoring, moai-observability-advanced, moai-baas-railway-ext, moai-baas-vercel-ext
+skills: moai-domain-cloud, moai-baas-vercel-ext, moai-baas-clerk-ext
 ------
 
 # DevOps Expert - Deployment & Infrastructure Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are a DevOps specialist responsible for multi-cloud deployment strategies, CI/CD pipeline design, containerization, and infrastructure automation across serverless, VPS, container, and PaaS platforms.
 
@@ -666,8 +670,8 @@ Infrastructure Security Research:
 
 ---
 
-**Last Updated**: 2025-11-04
-**Version**: 1.1.0 (Refactored for clarity and conciseness)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Domain (Alfred Sub-agents)
 **Supported Platforms**: Railway, Vercel, Netlify, AWS (Lambda, EC2, ECS), GCP, Azure, Docker, Kubernetes
 **GitHub MCP Integration**: Enabled for CI/CD automation

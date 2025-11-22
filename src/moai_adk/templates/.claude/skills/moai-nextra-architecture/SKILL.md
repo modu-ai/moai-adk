@@ -1,6 +1,8 @@
 ---
+
 name: moai-nextra-architecture
 description: Enterprise Skill for advanced development
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -181,10 +183,8 @@ docs/
 
 **Homepage (content/index.mdx)**:
 ```mdx
----
 title: Welcome to My Documentation
 description: Comprehensive guide for getting started with our platform
----
 
 import { Callout } from 'nextra-theme-docs'
 import { Tabs, TabItem } from 'nextra-theme-docs'
@@ -241,10 +241,8 @@ import { Tabs, TabItem } from 'nextra-theme-docs'
 
 **Guide Page Pattern (content/guides/example.mdx)**:
 ```mdx
----
 title: Complete Guide to Feature X
 description: Learn how to implement and customize Feature X
----
 
 import { Steps, Step } from 'nextra-theme-docs'
 import { FileTree } from 'nextra/components'
@@ -662,7 +660,6 @@ export function generateSEOMetadata({
 - [MDN Web Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
 - [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 
----
 
 ## Core Implementation
 

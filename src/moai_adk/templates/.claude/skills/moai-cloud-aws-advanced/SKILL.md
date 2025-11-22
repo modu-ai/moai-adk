@@ -1,7 +1,9 @@
 ---
+
 name: moai-cloud-aws-advanced
 description: Advanced AWS architecture patterns, cost optimization, and enterprise deployment strategies
 allowed-tools: [Read, Bash, WebFetch]
+
 ---
 
 # Advanced AWS Cloud Architecture
@@ -23,7 +25,6 @@ Enterprise-grade AWS patterns covering multi-region deployments, cost optimizati
 - Microservices on EKS (Kubernetes orchestration)
 - Data lakes (S3 + Athena + Glue)
 
----
 
 ## Implementation Guide
 
@@ -110,7 +111,6 @@ encryption_strategy = {
 }
 ```
 
----
 
 ## Advanced Patterns
 
@@ -157,7 +157,6 @@ spec:
     - aws-load-balancer-controller
 ```
 
----
 
 ## Best Practices
 
@@ -178,7 +177,6 @@ spec:
 - Skip VPC flow logs (security blind spot)
 - Use default security groups (too permissive)
 
----
 
 ## Works Well With
 
@@ -186,7 +184,6 @@ spec:
 - `moai-domain-devops` (CI/CD integration)
 - `moai-security-api` (API security patterns)
 
----
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-11-21  

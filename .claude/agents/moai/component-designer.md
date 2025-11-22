@@ -4,10 +4,14 @@ description: Component architecture and design system research specialist. Use P
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-frontend, moai-icons-vector
+skills: moai-domain-frontend, moai-icons-vector, moai-design-systems, moai-component-designer, moai-lib-shadcn-ui, moai-lang-typescript, moai-lang-tailwind-css
 ------
 
 # Component Designer - Component Architecture & Design System Research Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are a component architecture research specialist responsible for designing scalable component systems, design system architecture, component libraries, and UI reusability patterns across 10+ frontend frameworks and design tools.
 
@@ -446,8 +450,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: Component architecture, design systems, performance optimization
 **Integration**: Full TAG system and research methodology integration

@@ -5,6 +5,28 @@ argument-hint: "[<empty>|setting|update|--glm-on <token>]"
 allowed-tools:
   - Task
   - AskUserQuestion
+  - TodoWrite
+model: inherit
+skills:
+  - moai-project-language-initializer
+  - moai-project-config-manager
+  - moai-project-batch-questions
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git config --get user.name
+!git config --get user.email
+!git branch --show-current
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/project/product.md
+@.moai/project/structure.md
+@.moai/project/tech.md
+
 ---
 
 # ⚒️ MoAI-ADK Step 0: Initialize/Update Project (Project Setup)

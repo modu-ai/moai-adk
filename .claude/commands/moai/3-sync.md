@@ -5,7 +5,28 @@ argument-hint: "Mode target path - Mode: auto (default)|force|status|project, ta
 allowed-tools:
   - Task
   - AskUserQuestion
-model: "haiku"
+  - TodoWrite
+model: haiku
+skills:
+  - moai-docs-toolkit
+  - moai-alfred-reporting
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git diff --name-only HEAD
+!git branch --show-current
+!git log --oneline -10
+!find .moai/specs -name "spec.md" -type f 2>/dev/null
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/specs/
+@.moai/indexes/tags.db
+@README.md
+
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)

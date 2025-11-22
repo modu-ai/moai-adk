@@ -1,6 +1,8 @@
 ---
+
 name: moai-domain-database
 description: Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS,  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization,  caching strategies, and database DevOps automation. Build scalable, resilient  database systems with comprehensive monitoring and disaster recovery.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -61,7 +63,6 @@ AsyncSessionLocal = sessionmaker(
 - [ ] Setup monitoring and alerting
 - [ ] Create disaster recovery procedures
 
----
 
 ## Implementation Guide
 
@@ -409,11 +410,9 @@ CREATE TRIGGER sensitive_data_audit
 7. **Backups**: Implement automated backup with point-in-time recovery
 8. **Replication**: Use logical replication for high availability
 
----
 
 **Enterprise Database Architecture** - Build scalable, secure, and high-performance database systems with modern best practices and comprehensive automation.
 
----
 
 ## Advanced Patterns
 

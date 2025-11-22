@@ -163,7 +163,7 @@ Automatically collect **SPEC-related data** at session end
 
 ```bash
 #!/bin/bash
-# SPEC 데이터 수집 (세션 종료 시)
+# Collect SPEC data (at session end)
 
 SPEC_USAGE_FILE=".moai/logs/spec-usage.json"
 
@@ -182,14 +182,14 @@ spec_id = subprocess.run(
 if not spec_id:
     exit(0)
 
-# 데이터 로드
+# Load data
 try:
     with open(SPEC_USAGE_FILE, 'r') as f:
         data = json.load(f)
 except FileNotFoundError:
     data = {"metadata": {}, "specs": [], "summary": {}}
 
-# SPEC 정보 업데이트
+# Update SPEC information
 commits = subprocess.run(
     ['git', 'log', '--oneline', f'--grep={spec_id}', '-n', '10'],
     capture_output=True,
@@ -209,27 +209,27 @@ for spec in data['specs']:
         spec['completed_at'] = datetime.now().isoformat()
         break
 
-# 저장
+# Save
 with open(SPEC_USAGE_FILE, 'w') as f:
     json.dump(data, f, indent=2)
 EOF
 ```
 
-### 수집 빈도
-- 세션 종료 시 (2초 이내)
-- 자동 수집 (사용자 개입 없음)
+### Collection Frequency
+- At session end (within 2 seconds)
+- Automatic collection (no user intervention)
 
 ---
 
-## 월간 리포트 생성
+## Monthly Report Generation
 
-### 목적
-매월 자동으로 **SPEC 워크플로우의 효과를 분석**한 리포트 생성
+### Purpose
+Automatically generate monthly reports **analyzing the effectiveness of the SPEC workflow**
 
-### 위치
+### Location
 `.moai/reports/spec-analytics-YYYY-MM.md`
 
-### 리포트 내용 예제
+### Report Content Example
 
 ```markdown
 # SPEC Analytics Report - November 2025
@@ -253,45 +253,45 @@ EOF
 
 ## 💡 Insights
 
-1. **Level 2 효과 가장 큼** (25% 시간 절감)
-2. **테스트 커버리지 우수** (85% 유지)
-3. **미완료 SPEC 1개** (SPEC-010, 우선순위 재조정 필요)
-4. **낮은 커버리지 2개** (SPEC-005, 007 테스트 보충 필요)
+1. **Level 2 most effective** (25% time savings)
+2. **Excellent test coverage** (maintained at 85%)
+3. **1 incomplete SPEC** (SPEC-010, requires priority adjustment)
+4. **2 with low coverage** (SPEC-005, 007 need test supplementation)
 
 ## 🎯 Recommendations
 
-### 즉시 (1-2주)
-- SPEC-010 완료 추진
-- SPEC-005, 007 테스트 보충
+### Immediate (1-2 weeks)
+- Push to complete SPEC-010
+- Supplement tests for SPEC-005, 007
 
-### 단기 (1개월)
-- SPEC 생성 빈도 유지 (주 3-4개)
-- 테스트 커버리지 85% 이상 유지
+### Short-term (1 month)
+- Maintain SPEC creation frequency (3-4 per week)
+- Maintain test coverage above 85%
 
-### 장기 (3개월)
-- SPEC-First 워크플로우 정착
-- 월 20개 SPEC 목표
+### Long-term (3 months)
+- Establish SPEC-First workflow
+- Target 20 SPECs per month
 ```
 
-### 생성 빈도
-- 매월 마지막 날 자정에 자동 생성
-- 기존 리포트는 보관
+### Generation Frequency
+- Automatically generated at midnight on last day of month
+- Existing reports are archived
 
 ---
 
-## 메트릭 정의
+## Metric Definitions
 
-### 주요 메트릭
+### Key Metrics
 
-| 메트릭 | 정의 | 목표 |
+| Metric | Definition | Target |
 |--------|------|------|
-| **SPEC Creation Rate** | 월별 생성된 SPEC 개수 | 15-20개 |
-| **Completion Rate** | 완료된 SPEC / 전체 SPEC | 90%+ |
-| **Time Savings** | (예상 시간 - 실제 시간) / 예상 시간 | 25%+ |
-| **Test Coverage** | 테스트 커버리지 평균 | 85%+ |
-| **Code Linkage** | 코드와 연결된 SPEC / 전체 SPEC | 90%+ |
+| **SPEC Creation Rate** | Number of SPECs created per month | 15-20 |
+| **Completion Rate** | Completed SPECs / Total SPECs | 90%+ |
+| **Time Savings** | (Estimated Time - Actual Time) / Estimated Time | 25%+ |
+| **Test Coverage** | Average test coverage | 85%+ |
+| **Code Linkage** | SPECs linked to code / Total SPECs | 90%+ |
 
-### 계산식
+### Calculation Formulas
 
 ```
 Completion Rate = Completed / Total * 100
@@ -302,54 +302,54 @@ Avg Coverage = Sum of Coverage / Total Specs
 
 ---
 
-## 데이터 보관 정책
+## Data Retention Policy
 
-### 저장 위치
+### Storage Locations
 ```
 .moai/logs/
-├── spec-usage.json              # 현재 상태 (최신)
-├── spec-usage-YYYY-MM-DD.json   # 일일 백업 (선택사항)
+├── spec-usage.json              # Current state (latest)
+├── spec-usage-YYYY-MM-DD.json   # Daily backup (optional)
 
 .moai/reports/
-├── spec-analytics-2025-11.md    # 월간 리포트
+├── spec-analytics-2025-11.md    # Monthly report
 ├── spec-analytics-2025-10.md
 └── ...
 ```
 
-### 보존 기간
-- 현재 달: 전체 데이터
-- 이전 11개월: 전체 데이터
-- 12개월 이상: 요약 통계만 보관
+### Retention Period
+- Current month: Full data
+- Previous 11 months: Full data
+- 12+ months old: Summary statistics only
 
 ---
 
-## 개인정보 보호
+## Privacy Protection
 
-### 데이터 수집 원칙
-- 📊 통계만 수집 (개인정보 최소화)
-- 🔒 로컬 저장 (외부 전송 안 함)
-- 📝 감사 추적 가능
+### Data Collection Principles
+- 📊 Collect statistics only (minimize personal information)
+- 🔒 Local storage (no external transmission)
+- 📝 Audit trail available
 
-### 데이터 보안
-- `.moai/logs/` : `.gitignore`에 추가
-- 로컬 개발 환경에서만 수집
-- CI/CD 환경에서는 자동 수집 안 함
+### Data Security
+- `.moai/logs/` : Added to `.gitignore`
+- Collection only in local development environment
+- No automatic collection in CI/CD environments
 
 ---
 
 ## FAQ
 
-**Q: 통계가 정확한가요?**
-A: 자동 수집되므로 완벽하지 않을 수 있습니다. 주요 트렌드 파악용으로 사용하세요.
+**Q: Are the statistics accurate?**
+A: Since they're automatically collected, they may not be perfect. Use them for identifying major trends.
 
-**Q: 데이터는 어디에 저장되나요?**
-A: `.moai/logs/` 디렉토리에 로컬 저장됩니다. 외부로 전송되지 않습니다.
+**Q: Where is data stored?**
+A: Stored locally in the `.moai/logs/` directory. Not transmitted externally.
 
-**Q: 통계 수집을 비활성화할 수 있나요?**
-A: 네, `.claude/hooks/sessionend.sh`에서 Hook을 제거하면 됩니다.
+**Q: Can statistics collection be disabled?**
+A: Yes, remove the hook from `.claude/hooks/sessionend.sh`.
 
 ---
 
-**문서 버전**: 1.0.0
-**마지막 업데이트**: 2025-11-21
-**상태**: Production Ready
+**Document Version**: 1.0.0
+**Last Updated**: 2025-11-21
+**Status**: Production Ready

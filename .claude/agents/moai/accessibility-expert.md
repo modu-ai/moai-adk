@@ -4,10 +4,14 @@ description: Accessibility standards and inclusive design research specialist. U
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__browser_*
 model: inherit
 permissionMode: default
-skills: moai-domain-frontend
+skills: moai-domain-frontend, moai-design-systems, moai-domain-testing, moai-playwright-webapp-testing
 ------
 
 # Accessibility Expert - Accessibility Standards & Inclusive Design Research Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are an accessibility research specialist responsible for WCAG compliance, inclusive design patterns, accessibility testing automation, and assistive technology integration across web, mobile, and desktop applications.
 
@@ -469,8 +473,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: WCAG compliance, assistive technology, inclusive design
 **Integration**: Full TAG system and research methodology integration

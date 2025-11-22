@@ -1,7 +1,9 @@
 ---
+
 name: moai-docs-linting
 description: Enhanced docs linting with AI-powered features. Enhanced with Context7
   MCP for up-to-date documentation.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -15,7 +17,6 @@ description: Enhanced docs linting with AI-powered features. Enhanced with Conte
 > **Version**: 4.0.0  
 > **Keywords**: docs, linting, cd, spec, ci
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -57,7 +58,6 @@ Rules:
 ```markdown
 # Main Title (single H1)
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -97,7 +97,6 @@ Rules:
 ```markdown
 # Main Title (single H1)
 
----
 
 Section 2
 ### Subsection 2.1
@@ -108,7 +107,6 @@ Section 2
 # Title 1
 # Title 2        ❌ Multiple H1s
 
----
 
 Subsection
 #### Deep level   ❌ Skipped H3
@@ -296,7 +294,6 @@ python3 .moai/scripts/generate_final_comprehensive_report.py
 - ✅ UTF-8 encoding for all files
 - ✅ Consistent terminology across languages
 
----
 
 ✅ Validation Checklist
 
@@ -308,7 +305,6 @@ python3 .moai/scripts/generate_final_comprehensive_report.py
 - [x] Tool integration examples
 - [x] English language confirmed
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -317,7 +313,6 @@ python3 .moai/scripts/generate_final_comprehensive_report.py
 **Coming soon**: Deep dive into expert-level usage.
 
 
----
 
 ## 📚 Official References
 
@@ -346,7 +341,6 @@ context7_references:
     topic: "Markdown Basic Syntax"
 ```
 
----
 
 ## 📈 Version History
 
@@ -361,13 +355,11 @@ context7_references:
 
 
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-12  
 **Maintained by**: Primary Agent (doc-syncer)
 
----
 
 ## Implementation Guide
 
@@ -385,7 +377,6 @@ context7_references:
 - 🔒 [Security practice 1]
 
 
----
 
 ## 🔗 Context7 MCP Integration
 
@@ -417,7 +408,6 @@ docs = await helper.get_docs(
 | [Library 1] | `/org/lib1` | [When to use] |
 
 
----
 
 ## 📊 Decision Tree
 
@@ -434,7 +424,6 @@ Start
 ```
 
 
----
 
 ## 🔄 Integration with Other Skills
 
@@ -448,9 +437,7 @@ Start
 - Skill("next-step-1") – [When to use after this]
 
 
----
 
----
 
 ## Advanced Patterns
 
@@ -458,7 +445,6 @@ Start
 
 
 
----
 
 ## Context7 Integration
 

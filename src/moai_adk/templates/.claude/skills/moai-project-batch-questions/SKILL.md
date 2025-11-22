@@ -1,7 +1,9 @@
 ---
+
 name: moai-project-batch-questions
 description: Standardize AskUserQuestion patterns and provide reusable question templates
   for batch optimization
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -127,7 +129,6 @@ const domainSelectionBatch = {
 };
 ```
 
----
 
 ## Quick Reference
 
@@ -147,11 +148,9 @@ const domainSelectionBatch = {
 - [ ] Configuration mapping tested
 - [ ] Multi-language support if needed
 
----
 
 **End of Skill** | Created 2025-11-05 | Optimized for batch interaction reduction
 
----
 
 ## Implementation Guide
 
@@ -166,7 +165,6 @@ const domainSelectionBatch = {
 - ✅ **Response Validation**: Built-in validation and processing patterns
 - ✅ **Error Handling**: Graceful handling of invalid or missing responses
 
----
 
 ## Batch Design Philosophy
 
@@ -183,7 +181,6 @@ const domainSelectionBatch = {
 | **Sequential Logic** | Q2 depends on Q1 answer | Team mode conditional questions |
 | **Same Decision Context** | User thinking about same aspect | GitHub + Git workflow |
 
----
 
 ## Response Processing
 
@@ -235,7 +232,6 @@ function mapToConfig(responses: Record<string, string>, template: string): Parti
 }
 ```
 
----
 
 ## Usage Integration
 
@@ -257,7 +253,6 @@ async function initializeProject() {
 }
 ```
 
----
 
 ## Performance Metrics
 
@@ -269,7 +264,6 @@ async function initializeProject() {
 | **Team Mode Settings** | 2 interactions | 1 interaction | 50% |
 | **Domain Selection** | 5+ questions | 1 interaction | 80%+ |
 
----
 
 ## Best Practices
 
@@ -287,9 +281,7 @@ async function initializeProject() {
 - **Skip validation**: Always verify responses
 - **Ignore cancellation**: Handle user gracefully
 
----
 
----
 
 ## Advanced Patterns
 

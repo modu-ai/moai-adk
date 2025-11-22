@@ -1,7 +1,7 @@
 {
-  "branch": "develop",
-  "last_commit": "f0c330ca fix: Sync template directory with main .claude/ directory",
-  "commit_time": "12 minutes ago",
-  "changes": 0,
-  "last_check": "2025-11-21T22:32:15.311151"
+  "branch": "feature/group-a-language-skill-updates",
+  "last_commit": "3395410e feat(skills): Modularize moai-domain-monitoring with Phase 4 structure",
+  "commit_time": "8 minutes ago",
+  "changes": 40,
+  "last_check": "2025-11-22T05:28:51.482013"
 }

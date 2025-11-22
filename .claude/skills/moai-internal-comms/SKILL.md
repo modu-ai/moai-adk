@@ -479,3 +479,21 @@ async def develop_communication_strategy_with_ai_context7(requirements: CommRequ
 
 ---
 
+
+## Context7 Integration
+
+### Related Logging & Communication Tools
+- [Python Logging](/python/cpython): Built-in logging module
+- [Log4j](/apache/log4j): Java logging framework
+- [Winston](/winstonjs/winston): Node.js logging library
+
+### Official Documentation
+- [Structured Logging Best Practices](https://www.kartar.net/2015/12/structured-logging/)
+- [Log Analysis Techniques](https://www.splunk.com/en_us/blog/security/the-ultimate-guide-to-log-analysis.html)
+
+### Related Modularized Skills
+- `moai-essentials-debug` - Debugging and error analysis
+- `moai-domain-devops` - Monitoring and observability
+
+---
+

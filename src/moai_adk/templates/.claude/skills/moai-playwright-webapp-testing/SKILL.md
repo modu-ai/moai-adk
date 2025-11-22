@@ -1,13 +1,30 @@
 ---
+
 name: moai-playwright-webapp-testing
 description: AI-powered enterprise web application testing orchestrator with Context7
   integration, intelligent test generation, visual regression testing, cross-browser
   coordination, and automated QA workflows for modern web applications
+
 ---
 
 ## Quick Reference (30 seconds)
 
-# AI-Powered Enterprise Web Application Testing Skill 
+# Web Application Testing with Playwright
+
+## 🚀 Two Approaches
+
+### **Level 1: Basic Playwright Testing** (when you don't need AI)
+
+To test local web applications, write native Python Playwright scripts.
+
+**Helper Scripts Available**:
+- `scripts/with_server.py` - Manages server lifecycle (supports multiple servers)
+
+**Always run scripts with `--help` first** to see usage. **DO NOT read the source until you try running the script first.** These scripts can be very large and thus pollute your context window. They exist to be called directly as black-box scripts.
+
+### **Level 2: AI-Enhanced Testing** (AI-Enhanced methodology below)
+
+---
 
 ## 🧠 AI-Enhanced Testing Methodology (AI-TEST Framework)
 
@@ -42,11 +59,83 @@ class AITestPatternRecognizer:
         )
 ```
 
----
 
----
 
 ## Implementation Guide
+
+## 📋 Basic Level: Decision Tree (Without AI)
+
+### Choose Your Approach
+
+```
+User task → Is it static HTML?
+    ├─ Yes → Read HTML file directly to identify selectors
+    │         ├─ Success → Write Playwright script using selectors
+    │         └─ Fails/Incomplete → Treat as dynamic (below)
+    │
+    └─ No (dynamic webapp) → Is the server already running?
+        ├─ No → Run: python scripts/with_server.py --help
+        │        Then use the helper + write simplified Playwright script
+        │
+        └─ Yes → Reconnaissance-then-action:
+            1. Navigate and wait for networkidle
+            2. Take screenshot or inspect DOM
+            3. Identify selectors from rendered state
+            4. Execute actions with discovered selectors
+```
+
+### Example: Using with_server.py
+
+**Single server:**
+```bash
+python scripts/with_server.py --server "npm run dev" --port 5173 -- python your_automation.py
+```
+
+**Multiple servers (backend + frontend):**
+```bash
+python scripts/with_server.py \
+  --server "cd backend && python server.py" --port 3000 \
+  --server "cd frontend && npm run dev" --port 5173 \
+  -- python your_automation.py
+```
+
+### Automation Script Template
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page()
+    page.goto('http://localhost:5173')
+    page.wait_for_load_state('networkidle')  # CRITICAL: Wait for JS
+    # ... your automation logic
+    browser.close()
+```
+
+### Reconnaissance-Then-Action Pattern
+
+1. **Inspect rendered DOM**:
+   ```python
+   page.screenshot(path='/tmp/inspect.png', full_page=True)
+   content = page.content()
+   page.locator('button').all()
+   ```
+
+2. **Identify selectors** from inspection results
+
+3. **Execute actions** using discovered selectors
+
+### ✅ Basic Level Best Practices
+
+- **Use scripts as black boxes** - Call `with_server.py` directly, don't read source
+- Use `sync_playwright()` for synchronous scripts
+- Always close the browser when done
+- Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
+- **Always wait for `networkidle` on dynamic apps** before inspection
+- Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
+
+---
 
 ## 🚀 Revolutionary AI Testing Capabilities
 
@@ -66,9 +155,15 @@ class AITestPatternRecognizer:
 - **Version-Aware Testing**: Context7 provides version-specific patterns
 - **Community Knowledge Integration**: Leverage collective testing wisdom
 
----
 
 ## 🎯 When to Use
+
+**Basic Level Triggers** (without AI):
+- Simple browser automation for static HTML
+- Testing with already-running servers
+- Quick UI interactions (click, type, wait)
+- Selector discovery and validation
+- Context budget constraints (avoid AI overhead)
 
 **AI Automatic Triggers**:
 - Web application deployment verification
@@ -85,7 +180,6 @@ class AITestPatternRecognizer:
 - "Generate performance tests with Context7"
 - "Create intelligent QA test suites"
 
----
 
 ## 🤖 Context7-Enhanced Testing Patterns
 
@@ -115,7 +209,6 @@ class AIVisualRegressionTester:
         )
 ```
 
----
 
 ## 🎯 AI Testing Best Practices
 
@@ -131,7 +224,6 @@ class AIVisualRegressionTester:
 - Apply AI-generated tests without validation
 - Skip AI confidence threshold checks for test reliability
 
----
 
 ## 🤖 Context7 Integration Examples
 
@@ -160,7 +252,6 @@ class Context7AITester:
         )
 ```
 
----
 
 ## 🔗 Enterprise Integration
 
@@ -183,7 +274,6 @@ ai_testing_stage:
       apply_best_practices: true
 ```
 
----
 
 ## 📊 Success Metrics & KPIs
 
@@ -193,7 +283,6 @@ ai_testing_stage:
 - **Visual Regression**: 85% success rate for AI-detected UI issues
 - **Cross-Browser Compatibility**: 80% faster compatibility testing
 
----
 
 ## Alfred 에이전트와의 완벽한 연동
 
@@ -209,7 +298,6 @@ ai_testing_stage:
 - `moai-essentials-review`: 코드 리뷰와 테스트 커버리지 연동
 - `moai-foundation-trust`: 품질 보증 및 TRUST 5 원칙 적용
 
----
 
 ## 한국어 지원 및 UX 최적화
 
@@ -219,12 +307,10 @@ ai_testing_stage:
 - AI 테스트 결과 한국어 상세 리포트
 - 개발자 친화적인 한국어 가이드 및 예제
 
----
 
 **End of AI-Powered Enterprise Web Application Testing Skill **  
 *Enhanced with Context7 MCP integration and revolutionary AI capabilities*
 
----
 
 ## Works Well With
 
@@ -236,7 +322,6 @@ ai_testing_stage:
 - `moai-context7-integration` (latest Playwright patterns and best practices)
 - Context7 MCP (latest testing patterns and documentation)
 
----
 
 ## Advanced Patterns
 
@@ -269,5 +354,4 @@ async def test_e2e_with_ai_context7():
     return result
 ```
 
----
 

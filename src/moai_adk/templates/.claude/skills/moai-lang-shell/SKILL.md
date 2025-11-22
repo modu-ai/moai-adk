@@ -1,7 +1,9 @@
 ---
+
 name: moai-lang-shell
 description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing,
   POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -15,7 +17,6 @@ description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core tes
 - **GNU Bash Manual**: https://www.gnu.org/software/bash/manual/
 - **ShellCheck**: https://www.shellcheck.net
 
----
 
 ## Changelog
 
@@ -24,11 +25,9 @@ description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core tes
 - **v2.0.0** (2025-01-10): Testing and linting guide
 - **v1.0.0** (2024-12-01): Initial release
 
----
 
 _Last updated: 2025-11-13_
 
----
 
 ## Implementation Guide
 
@@ -47,7 +46,6 @@ _Last updated: 2025-11-13_
 - ✅ Context7 MCP for real-time documentation
 - ✅ Performance optimization techniques
 
----
 
 ## When to Use This Skill
 
@@ -64,7 +62,6 @@ _Last updated: 2025-11-13_
 - Optimize shell script performance
 - Review shell script quality
 
----
 
 ## Technology Stack (2025-11-13)
 
@@ -77,7 +74,6 @@ _Last updated: 2025-11-13_
 | **jq** | 1.7.1 | JSON processing | Optional |
 | **sed/awk** | GNU | Text processing | Built-in |
 
----
 
 ## Core Language Features
 
@@ -147,7 +143,6 @@ config[key]="secret123"
 echo "${config[url]}"
 ```
 
----
 
 ## Defensive Scripting Patterns
 
@@ -190,7 +185,6 @@ validate_not_empty "$username" "Username" || exit 1
 validate_file "$config_file" || exit 1
 ```
 
----
 
 ## ShellCheck Integration
 
@@ -216,7 +210,6 @@ done
 source /etc/profile.d/custom.sh
 ```
 
----
 
 ## Testing with bats-core
 
@@ -257,7 +250,6 @@ bats tests/test_functions.bats -f "add function"
 bats --tap tests/
 ```
 
----
 
 ## Performance Optimization
 
@@ -307,7 +299,6 @@ function slow_function() {
 }
 ```
 
----
 
 ## POSIX Compliance
 
@@ -334,7 +325,6 @@ echo "First: $1"
 echo "All: $*"
 ```
 
----
 
 ## Best Practices Summary
 
@@ -382,7 +372,6 @@ trap 'error_handler $LINENO' ERR
 [[ ! -f "$config" ]] && { echo "Config not found" >&2; exit 1; }
 ```
 
----
 
 ## Common Patterns
 
@@ -424,7 +413,6 @@ trap 'rm -f "$temp_file"' EXIT
 echo "data" > "$temp_file"
 ```
 
----
 
 ## Context7 MCP Integration
 
@@ -434,7 +422,6 @@ This skill integrates with Context7 for real-time documentation access:
 - **GNU Coreutils**: `/gnu/coreutils`
 - **POSIX Shell**: `/posix/shell`
 
----
 
 ## Testing Strategy
 
@@ -444,7 +431,6 @@ This skill integrates with Context7 for real-time documentation access:
 | **Integration Tests** | 15% | bats + external tools |
 | **Linting** | 100% | ShellCheck |
 
----
 
 ## Works Well With
 
@@ -453,9 +439,7 @@ This skill integrates with Context7 for real-time documentation access:
 - `moai-essentials-debug` (Debugging)
 - `moai-cc-mcp-integration` (MCP integration)
 
----
 
----
 
 ## Advanced Patterns
 
@@ -463,7 +447,6 @@ This skill integrates with Context7 for real-time documentation access:
 
 
 
----
 
 ## Context7 Integration
 

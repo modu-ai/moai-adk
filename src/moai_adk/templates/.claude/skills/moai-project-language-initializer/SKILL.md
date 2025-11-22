@@ -1,8 +1,10 @@
 ---
+
 name: moai-project-language-initializer
 description: Handle comprehensive project language and user setup workflows including
   language selection, agent prompt configuration, user profiles, team settings, and
   domain selection
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -11,7 +13,6 @@ description: Handle comprehensive project language and user setup workflows incl
 
 This skill manages the comprehensive project initialization workflow that was previously handled in the 0-project.md command. It extracts the complex batched question patterns into a reusable, efficient skill that reduces user interactions while maintaining full functionality.
 
----
 
 ## Implementation Guide
 
@@ -239,7 +240,6 @@ This skill extracts and consolidates the complex initialization logic from the o
 
 The skill serves as a foundation for project initialization and can be extended with additional configuration patterns as needed.
 
----
 
 ## Advanced Patterns
 

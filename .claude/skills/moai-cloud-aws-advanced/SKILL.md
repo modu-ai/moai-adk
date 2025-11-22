@@ -180,6 +180,31 @@ spec:
 
 ---
 
+## Context7 Integration
+
+### Related AWS Services & Libraries
+- [AWS EC2](/aws/ec2): Elastic Compute Cloud - Virtual servers
+- [AWS RDS](/aws/rds): Relational Database Service - Managed databases
+- [AWS Lambda](/aws/lambda): Serverless compute functions
+- [AWS DynamoDB](/aws/dynamodb): NoSQL managed database
+- [AWS S3](/aws/s3): Simple Storage Service
+- [AWS CloudFront](/aws/cloudfront): Content delivery network
+- [AWS EKS](/aws/eks): Elastic Kubernetes Service
+
+### Official AWS Documentation
+- [AWS Architecture Center](https://aws.amazon.com/architecture/)
+- [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
+- [AWS Cost Optimization](https://aws.amazon.com/architecture/cost-optimization/)
+- [AWS Security Best Practices](https://aws.amazon.com/security/best-practices/)
+
+### Related Modularized Skills
+- `moai-cloud-gcp-advanced` - GCP equivalent services and patterns
+- `moai-domain-devops` - CI/CD and deployment automation
+- `moai-security-api` - API security implementation
+- `moai-essentials-perf` - Performance optimization techniques
+
+---
+
 ## Works Well With
 
 - `moai-cloud-gcp-advanced` (Multi-cloud strategies)
@@ -188,7 +213,7 @@ spec:
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2025-11-21  
-**Status**: Production Ready  
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+**Status**: Fully Modularized
 **Official Reference**: https://aws.amazon.com/architecture/well-architected/

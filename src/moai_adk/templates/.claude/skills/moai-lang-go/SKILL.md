@@ -1,11 +1,13 @@
 ---
+
 name: moai-lang-go
-description: Enterprise Go for systems and network programming Go 1.25.4, Fiber v3,
+description: Enterprise Go 1.23+ for systems and network programming, Fiber v3,
+
 ---
 
 ## Quick Reference (30 seconds)
 
-# Go Systems Development — Enterprise  
+# Go Systems Development — Enterprise
 
 ## Level 1: Quick Reference
 
@@ -170,16 +172,14 @@ func main() {
 }
 ```
 
----
 
----
 
 ## Core Implementation
 
 ## Technology Stack (November 2025 Stable)
 
 ### Language & Runtime
-- **Go 1.25.4** (November 2025, compiler & runtime improvements)
+- **Go 1.23.4** (August 2024, compiler & runtime improvements)
 - **Unix/Linux first** with Windows/macOS support
 - **Garbage collection** with concurrent sweeper
 
@@ -204,7 +204,6 @@ func main() {
 - **testify 1.9** (Assertions, mocking, suites)
 - **benchmarking** (Built-in performance testing)
 
----
 
 ## Level 2: Core Implementation
 
@@ -285,7 +284,6 @@ app.Get("/error", func(c fiber.Ctx) error {
 })
 ```
 
----
 
 ## Level 4: Production Deployment
 
@@ -353,15 +351,22 @@ func main() {
 - `Skill("moai-essentials-perf")` for performance optimization
 - `Skill("moai-security-backend")` for security patterns
 
+
+
+
+## Changelog
+
+- **v4.1.0** (2025-11-22): Updated to Go 1.23.4, removed Go 1.19 patterns, added Range over integers, PGO 2.0, workspace improvements, Go 1.24 preview features
+- **v4.0.0** (2025-11-13): Previous major update
+
 ---
 
-**Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-13  
+**Version**: 4.1.0 Enterprise  
+**Last Updated**: 2025-11-22  
 **Status**: Production Ready
 
 
 
----
 
 ## Context7 Integration
 

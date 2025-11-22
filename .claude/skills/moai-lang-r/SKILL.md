@@ -6,7 +6,7 @@ description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analys
 
 ## Quick Reference (30 seconds)
 
-# Lang R Skill
+# R Data Analysis — Enterprise
 
 ## References (Latest Documentation)
 

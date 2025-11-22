@@ -197,6 +197,200 @@ Skill("moai-foundation-trust") + Skill("moai-domain-backend")
 # Provides: TRUST 5 principles + backend patterns
 ```
 
+## Skill Discovery for Agents
+
+### Finding the Right Skill
+
+When delegated a task, agents can discover relevant skills using several strategies:
+
+#### 1. By Category
+
+**Skill naming conventions indicate category**:
+- **moai-foundation-*** - Foundation patterns (TRUST, EARS, specs, git)
+- **moai-core-*** - Core capabilities (agent-factory, workflow, config)
+- **moai-domain-*** - Domain expertise (backend, frontend, database, security)
+- **moai-lang-*** - Programming languages (Python, TypeScript, Go, SQL)
+- **moai-essentials-*** - Essential utilities (debug, perf, review, refactor)
+- **moai-security-*** - Security patterns (OWASP, auth, encryption, threat)
+- **moai-docs-*** - Documentation tools (generation, validation, unified)
+- **moai-cc-*** - Claude Code system (configuration, skills, agents, commands)
+
+**Example Discovery**:
+```
+Task: Implement authentication API
+
+Agent discovers by category:
+- moai-domain-* → moai-domain-backend (backend patterns)
+- moai-security-* → moai-security-api, moai-security-auth (security patterns)
+- moai-lang-* → moai-lang-python (implementation language)
+- moai-essentials-* → moai-essentials-perf (optimization)
+```
+
+#### 2. By Domain
+
+**Domain-specific skill selection**:
+
+**Backend Development**:
+- Primary: `moai-domain-backend`, `moai-lang-python/typescript`
+- Security: `moai-security-api`, `moai-security-auth`
+- Database: `moai-domain-database`, `moai-lang-sql`
+- Quality: `moai-essentials-perf`, `moai-essentials-debug`
+
+**Frontend Development**:
+- Primary: `moai-domain-frontend`, `moai-lang-typescript/javascript`
+- Design: `moai-design-systems`, `moai-lib-shadcn-ui`
+- Styling: `moai-lang-tailwind-css`, `moai-icons-vector`
+- Performance: `moai-essentials-perf`, `moai-streaming-ui`
+
+**Database Work**:
+- Primary: `moai-domain-database`, `moai-lang-sql`
+- Backend: `moai-domain-backend`, `moai-lang-python`
+- Cloud: `moai-baas-supabase-ext`, `moai-baas-neon-ext`
+- Security: `moai-security-encryption`
+
+**DevOps & Infrastructure**:
+- Primary: `moai-domain-devops`, `moai-domain-cloud`
+- Advanced: `moai-cloud-aws-advanced`, `moai-cloud-gcp-advanced`
+- Monitoring: `moai-domain-monitoring`, `moai-essentials-perf`
+- Security: `moai-security-secrets`
+
+**Security Work**:
+- Primary: `moai-domain-security`, `moai-security-owasp`
+- Specific: `moai-security-api`, `moai-security-auth`, `moai-security-encryption`
+- Threat: `moai-security-threat`, `moai-security-identity`
+- Compliance: `moai-security-compliance`, `moai-security-zero-trust`
+
+#### 3. By Quality Level
+
+**Testing & Quality**:
+- Foundation: `moai-foundation-trust` (TRUST 5 principles)
+- Testing: `moai-domain-testing`, `moai-essentials-review`
+- TDD: `moai-core-dev-guide`, `moai-essentials-debug`
+- Review: `moai-core-code-reviewer`, `moai-essentials-refactor`
+
+**Performance Optimization**:
+- Primary: `moai-essentials-perf`
+- Monitoring: `moai-domain-monitoring`, `moai-essentials-debug`
+- Domain-specific: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`
+
+**Code Quality**:
+- Review: `moai-essentials-review`, `moai-core-code-reviewer`
+- Refactor: `moai-essentials-refactor`
+- Standards: `moai-core-practices`, `moai-foundation-trust`
+
+### Skill Loading Examples by Agent
+
+**backend-expert** (Backend Implementation):
+```python
+# Pre-configured primary skills
+skills = [
+    "moai-domain-backend",         # Core backend patterns
+    "moai-domain-database",        # Database integration
+    "moai-security-api",           # API security
+    "moai-security-auth",          # Authentication
+    "moai-lang-python",            # Python implementation
+    "moai-essentials-perf"         # Performance optimization
+]
+
+# Conditional skills (load based on project)
+if using_typescript:
+    skills.append("moai-lang-typescript")
+if needs_cloud:
+    skills.append("moai-domain-cloud")
+```
+
+**frontend-expert** (Frontend Implementation):
+```python
+# Pre-configured primary skills
+skills = [
+    "moai-domain-frontend",        # Frontend architecture
+    "moai-design-systems",         # Design system integration
+    "moai-lib-shadcn-ui",         # Component library
+    "moai-lang-typescript",        # TypeScript
+    "moai-lang-tailwind-css",      # Styling
+    "moai-streaming-ui"            # Real-time UI
+]
+
+# Enhancement skills
+skills.extend([
+    "moai-essentials-perf",        # Frontend optimization
+    "moai-icons-vector"            # Icon system
+])
+```
+
+**security-expert** (Security Validation):
+```python
+# Pre-configured security skills
+skills = [
+    "moai-domain-security",        # Security patterns
+    "moai-security-owasp",         # OWASP Top 10
+    "moai-security-api",           # API security
+    "moai-security-auth",          # Authentication
+    "moai-security-encryption",    # Encryption
+    "moai-security-threat",        # Threat modeling
+    "moai-security-compliance"     # Compliance frameworks
+]
+```
+
+**quality-gate** (Quality Validation):
+```python
+# Pre-configured quality skills
+skills = [
+    "moai-foundation-trust",       # TRUST 5 framework
+    "moai-essentials-review",      # Code review
+    "moai-core-code-reviewer",     # Review orchestration
+    "moai-domain-testing",         # Testing strategies
+    "moai-essentials-debug",       # Debugging
+    "moai-essentials-perf",        # Performance
+    "moai-domain-security"         # Security validation
+]
+```
+
+### Advanced Skill Discovery
+
+**By Task Complexity**:
+- **Simple tasks**: 3-5 skills (foundation + domain + language)
+- **Medium tasks**: 5-8 skills (+ essentials + security)
+- **Complex tasks**: 8-12 skills (+ specialized + Context7)
+
+**By Integration Needs**:
+- **MCP Integration**: `moai-mcp-integration` + specific MCP skill
+- **Context7 Docs**: `moai-context7-integration` + `moai-context7-lang-integration`
+- **BaaS Platforms**: `moai-baas-[platform]-ext` (supabase, vercel, clerk, etc.)
+
+### Skill Discovery Decision Tree
+
+```
+Task Analysis
+    ↓
+What is the primary domain?
+    ├─ Backend → moai-domain-backend, moai-lang-python/typescript
+    ├─ Frontend → moai-domain-frontend, moai-lang-typescript, moai-design-systems
+    ├─ Database → moai-domain-database, moai-lang-sql
+    ├─ Security → moai-domain-security, moai-security-*
+    └─ Quality → moai-foundation-trust, moai-essentials-review
+        ↓
+What are the quality requirements?
+    ├─ High → Add moai-foundation-trust, moai-domain-testing
+    ├─ Security-critical → Add moai-security-*, moai-security-owasp
+    └─ Performance-critical → Add moai-essentials-perf, moai-domain-monitoring
+        ↓
+What implementation languages?
+    ├─ Python → moai-lang-python
+    ├─ TypeScript → moai-lang-typescript
+    ├─ SQL → moai-lang-sql
+    └─ Multiple → Load all needed language skills
+        ↓
+What integrations needed?
+    ├─ MCP → moai-mcp-integration + specific MCP skill
+    ├─ Context7 → moai-context7-integration
+    └─ BaaS → moai-baas-[platform]-ext
+        ↓
+Load Skills and Execute Task
+```
+
+---
+
 ## Skill Selection Guidelines
 
 ### By Development Phase

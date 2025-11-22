@@ -5,7 +5,28 @@ argument-hint: "Mode target path - Mode: auto (default)|force|status|project, ta
 allowed-tools:
   - Task
   - AskUserQuestion
-model: "haiku"
+  - TodoWrite
+model: haiku
+skills:
+  - moai-docs-toolkit
+  - moai-alfred-reporting
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git diff --name-only HEAD
+!git branch --show-current
+!git log --oneline -10
+!find .moai/specs -name "spec.md" -type f 2>/dev/null
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/specs/
+@.moai/indexes/tags.db
+@README.md
+
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
@@ -54,35 +75,22 @@ This command supports **4 operational modes**:
 **Command usage examples**:
 
 - `/moai:3-sync` → Auto-sync (PR Ready only)
--
-
-```bash
-/moai:3-sync SPEC-001 --mode pull
-```
-
-→ PR auto-merge + branch cleanup
-
+- `/moai:3-sync --auto-merge` → PR auto-merge + branch cleanup
 - `/moai:3-sync force` → Force full synchronization
 - `/moai:3-sync status` → Check synchronization status
 - `/moai:3-sync project` → Integrated project synchronization
--
-
-```bash
-/moai:3-sync auto src/auth/
-```
-
-→ Specific path synchronization
+- `/moai:3-sync auto src/auth/` → Specific path synchronization
 
 ---
 
 ## 🧠 Associated Skills & Agents
 
-| Agent        | Core Skill                   | Purpose                        |
-| ------------ | ---------------------------- | ------------------------------ |
-| quality-gate | `moai-core-trust-validation` | Verify project integrity       |
-| quality-gate | `moai-core-trust-validation` | Check code quality before sync |
-| doc-syncer   | `moai-docs-sync`             | Synchronize Living Documents   |
-| git-manager  | `moai-core-git-workflow`     | Handle Git operations          |
+| Agent        | Core Skill                     | Purpose                        |
+| ------------ | ------------------------------ | ------------------------------ |
+| quality-gate | `moai-alfred-trust-validation` | Verify project integrity       |
+| quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
+| doc-syncer   | `moai-docs-sync`               | Synchronize Living Documents   |
+| git-manager  | `moai-alfred-git-workflow`     | Handle Git operations          |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
@@ -90,37 +98,35 @@ This command supports **4 operational modes**:
 
 ## 🚀 OVERALL WORKFLOW STRUCTURE
 
-```text
-
+```
 ┌──────────────────────────────────────────────────────────┐
-│ PHASE 1: Analysis & Planning (tag-agent + doc-syncer) │
-│ - Verify prerequisites │
-│ - Analyze project status (Git + SPEC) │
-│ - Request user approval │
+│ PHASE 1: Analysis & Planning (tag-agent + doc-syncer)   │
+│  - Verify prerequisites                                  │
+│  - Analyze project status (Git + SPEC)                    │
+│  - Request user approval                                 │
 └──────────────────────────────────────────────────────────┘
-↓
-┌───────────────┴───────────────┐
-│ │
-User approves User aborts
-│ │
-↓ ↓
-┌─────────────────────────┐ ┌──────────────────────┐
-│ PHASE 2: Execute Sync │ │ PHASE 4: Graceful │
-│ (doc-syncer + quality) │ │ Exit (no changes) │
-│ - Create backup │ └──────────────────────┘
-│ - Sync documents │
-│ - Verify SPECs │
+                          ↓
+          ┌───────────────┴───────────────┐
+          │                               │
+     User approves                   User aborts
+          │                               │
+          ↓                               ↓
+┌─────────────────────────┐   ┌──────────────────────┐
+│ PHASE 2: Execute Sync   │   │ PHASE 4: Graceful    │
+│ (doc-syncer + quality)  │   │ Exit (no changes)    │
+│  - Create backup        │   └──────────────────────┘
+│  - Sync documents       │
+│  - Verify SPECs          │
 └─────────────────────────┘
-↓
+          ↓
 ┌──────────────────────────────────────────────────────────┐
-│ PHASE 3: Git Operations & PR (git-manager) │
-│ - Commit document changes │
-│ - Transition PR (Team mode) │
-│ - Auto-merge (if requested) │
-│ - Branch cleanup │
-│ - Next steps guidance │
+│ PHASE 3: Git Operations & PR (git-manager)               │
+│  - Commit document changes                               │
+│  - Transition PR (Team mode)                             │
+│  - Auto-merge (if requested)                             │
+│  - Branch cleanup                                        │
+│  - Next steps guidance                                   │
 └──────────────────────────────────────────────────────────┘
-
 ```
 
 ---
@@ -220,37 +226,32 @@ Use Task tool:
 - `description`: "Establish a document synchronization plan"
 - `prompt`:
 
-```text
+  ```
+  You are the doc-syncer agent.
 
-You are the doc-syncer agent.
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
-CRITICAL LANGUAGE CONFIGURATION:
+  Language settings:
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
 
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+  Task: Analyze Git changes and create a synchronization plan.
 
-Language settings:
+  Synchronization mode: [auto/force/status/project]
+  Changed files: [from git diff]
 
-- conversation_language: {{CONVERSATION_LANGUAGE}}
+  Project verification results: [from analysis]
 
-Task: Analyze Git changes and create a synchronization plan.
+  Required output:
+  1. Summary of documents to update
+  2. SPEC documents requiring synchronization
+  3. Project improvements needed
+  4. Estimated work scope
 
-Synchronization mode: [auto/force/status/project]
-Changed files: [from git diff]
-
-Project verification results: [from analysis]
-
-Required output:
-
-1. Summary of documents to update
-2. SPEC documents requiring synchronization
-3. Project improvements needed
-4. Estimated work scope
-
-Ensure all document updates align with conversation_language setting.
-
-```
+  Ensure all document updates align with conversation_language setting.
+  ```
 
 **Store**: Response in `$SYNC_PLAN`
 
@@ -262,33 +263,28 @@ Present synchronization plan and get user decision:
 
 1. **Display comprehensive plan report**:
 
-   ```text
-
+   ```
    ═══════════════════════════════════════════════════════
    📚 Document Synchronization Plan Report
    ═══════════════════════════════════════════════════════
 
    📊 Project Analysis:
-
    - Mode: [mode]
    - Scope: [scope]
    - Changed files: [count]
    - Project mode: [Personal/Team]
 
    🎯 Synchronization Strategy:
-
    - Living Documents: [list]
    - SPEC documents: [list]
    - Project improvements needed: [count]
 
    ⚠️ Project Status:
-
    - Project integrity: [Healthy / Issues]
    - Project issues: [count]
    - Broken references: [count]
 
    ═══════════════════════════════════════════════════════
-
    ```
 
 2. **Ask for user approval using AskUserQuestion**:
@@ -354,59 +350,51 @@ Use Task tool:
 - `description`: "Execute Living Document synchronization"
 - `prompt`:
 
-```text
+  ```
+  You are the doc-syncer agent.
 
-You are the doc-syncer agent.
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
-CRITICAL LANGUAGE CONFIGURATION:
+  Language settings:
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
 
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+  **Execute the approved synchronization plan**:
 
-Language settings:
+  Previous analysis results:
+  - Project verification: [from tag-agent]
+  - Synchronization strategy: [from doc-syncer analysis]
 
-- conversation_language: {{CONVERSATION_LANGUAGE}}
+  **Task Instructions**:
 
-**Execute the approved synchronization plan**:
+  1. Living Document synchronization:
+     - Reflect changed code in documentation
+     - Auto-generate/update API documentation
+     - Update README (if needed)
+     - Synchronize Architecture documents
 
-Previous analysis results:
+     - Update SPEC index (.moai/indexes/tags.db)
+     - Fix project issues (if possible)
+     - Restore broken references
 
-- Project verification: [from tag-agent]
-- Synchronization strategy: [from doc-syncer analysis]
+  3. SPEC synchronization:
+     - Ensure SPEC documents match implementation
+     - Update EARS statements if needed
 
-**Task Instructions**:
+  4. Domain-based documentation:
+     - Detect changed domains (frontend/backend/devops/database/ml/mobile)
+     - Generate domain-specific documentation updates
 
-1. Living Document synchronization:
+  5. Generate synchronization report:
+     - File location: .moai/reports/sync-report-$TIMESTAMP.md
+     - Include: Updated file list, Project improvements, results summary
 
-   - Reflect changed code in documentation
-   - Auto-generate/update API documentation
-   - Update README (if needed)
-   - Synchronize Architecture documents
+  **Important**: Use conversation_language for all document updates.
 
-   - Update SPEC index (.moai/indexes/tags.db)
-   - Fix project issues (if possible)
-   - Restore broken references
-
-2. SPEC synchronization:
-
-   - Ensure SPEC documents match implementation
-   - Update EARS statements if needed
-
-3. Domain-based documentation:
-
-   - Detect changed domains (frontend/backend/devops/database/ml/mobile)
-   - Generate domain-specific documentation updates
-
-4. Generate synchronization report:
-   - File location: .moai/reports/sync-report-$TIMESTAMP.md
-   - Include: Updated file list, Project improvements, results summary
-
-**Important**: Use conversation_language for all document updates.
-
-Execute the plan precisely and report results in detail.
-
-```
+  Execute the plan precisely and report results in detail.
+  ```
 
 **Store**: Response in `$SYNC_RESULTS`
 
@@ -422,31 +410,27 @@ Use Task tool:
 - `description`: "Verify document synchronization quality"
 - `prompt`:
 
-```text
+  ```
+  You are the quality-gate agent.
 
-You are the quality-gate agent.
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
-CRITICAL LANGUAGE CONFIGURATION:
+  **Task**: Verify that document synchronization meets TRUST 5 principles.
 
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+  Synchronization results: [from doc-syncer]
 
-**Task**: Verify that document synchronization meets TRUST 5 principles.
+  **Verification checks**:
+  1. Test First: Are all project links complete?
+  2. Readable: Are documents well-formatted?
+  3. Unified: Are all documents consistent?
+  4. Secured: Are no credentials exposed?
+  5. Trackable: Are all SPECs properly linked?
 
-Synchronization results: [from doc-syncer]
-
-**Verification checks**:
-
-1. Test First: Are all project links complete?
-2. Readable: Are documents well-formatted?
-3. Unified: Are all documents consistent?
-4. Secured: Are no credentials exposed?
-5. Trackable: Are all SPECs properly linked?
-
-**Output**: PASS / FAIL with details
-
-```
+  **Output**: PASS / FAIL with details
+  ```
 
 **Result**: Quality verification complete.
 
@@ -499,7 +483,7 @@ Use Task tool:
 - `description`: "Commit document synchronization changes"
 - `prompt`:
 
-  ```text
+  ```
   You are the git-manager agent.
 
   CRITICAL LANGUAGE CONFIGURATION:
@@ -590,10 +574,7 @@ If `--auto-merge` flag is set:
 
 3. **Execute auto-merge**:
 
-   1. **Check**: `gh pr checks` (All green?)
-   2. **Review**: `gh pr review` (Approved?)
-   3. **Merge**: `gh pr merge --squash --delete-branch`
-   4. **Cleanup**: `git branch -d feature/SPEC-XXX`
+   - Execute: `gh pr merge --squash --delete-branch`
 
 4. **Branch cleanup**:
    - Checkout: `git checkout develop`
@@ -610,7 +591,7 @@ If `--auto-merge` flag is set:
 
 Print comprehensive summary:
 
-```text
+```
 ═══════════════════════════════════════════════════════
 ✅ Document Synchronization Complete
 ═══════════════════════════════════════════════════════
@@ -662,7 +643,7 @@ Use AskUserQuestion to guide next steps:
 
 If user chooses to abort in PHASE 1:
 
-```text
+```
 ═══════════════════════════════════════════════════════
 ❌ Synchronization Aborted
 ═══════════════════════════════════════════════════════
@@ -688,9 +669,9 @@ Exit command with code 0.
 
 **For synchronization details, consult**:
 
-- `Skill("moai-core-trust-validation")` - Project validation
-- `Skill("moai-core-git-workflow")` - Git operations
-- `Skill("moai-core-trust-validation")` - Quality gates
+- `Skill("moai-alfred-trust-validation")` - Project validation
+- `Skill("moai-alfred-git-workflow")` - Git operations
+- `Skill("moai-alfred-trust-validation")` - Quality gates
 - CLAUDE.md - Full workflow documentation
 
 **Version**: 3.1.0 (Agent-Delegated Pattern)

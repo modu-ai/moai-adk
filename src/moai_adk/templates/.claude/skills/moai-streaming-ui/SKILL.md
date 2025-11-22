@@ -1,6 +1,8 @@
 ---
+
 name: moai-streaming-ui
 description: Enhanced streaming UI system with progress indicators and status displays
+
 ---
 
 # Enhanced Streaming UI System
@@ -41,7 +43,6 @@ workflow_steps([
 ])
 ```
 
----
 
 ## Implementation Guide
 
@@ -182,7 +183,6 @@ def run_tests_with_progress(tests: List[Test]):
     show_complete(f"Tests: {passed} passed, {failed} failed")
 ```
 
----
 
 ## Advanced Patterns
 
@@ -313,6 +313,5 @@ def display_items(items: List[str]):
         print(item)
 ```
 
----
 
 **End of Skill** | Rich visual feedback for enhanced user experience

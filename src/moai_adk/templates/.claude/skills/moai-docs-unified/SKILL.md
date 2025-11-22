@@ -1,6 +1,8 @@
 ---
+
 name: moai-docs-unified
 description: Enhanced docs unified with AI-powered features. Enhanced with Context7
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -14,7 +16,6 @@ description: Enhanced docs unified with AI-powered features. Enhanced with Conte
 > **Version**: 4.0.0  
 > **Keywords**: docs, unified, cd, ci, test
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -69,7 +70,6 @@ uv run .claude/skills/moai-docs-unified/scripts/lint_korean_docs.py \
 
 **Output**: `.moai/reports/lint_report_ko.txt` (8 validation categories)
 
----
 
 #### Script 2: validate_mermaid_diagrams.py
 
@@ -106,7 +106,6 @@ uv run .claude/skills/moai-docs-unified/scripts/validate_mermaid_diagrams.py \
 
 **Output**: `.moai/reports/mermaid_validation_report.txt` (16 diagrams, 100% valid)
 
----
 
 #### Script 3: extract_mermaid_details.py
 
@@ -133,7 +132,6 @@ uv run .claude/skills/moai-docs-unified/scripts/extract_mermaid_details.py \
 
 **Output**: `.moai/reports/mermaid_detail_report.txt` (full diagram code + test guide)
 
----
 
 #### Script 4: validate_korean_typography.py
 
@@ -161,7 +159,6 @@ uv run .claude/skills/moai-docs-unified/scripts/validate_korean_typography.py \
 
 **Output**: `.moai/reports/korean_typography_report.txt` (28,543 lines validated, 43 files)
 
----
 
 #### Script 5: generate_final_comprehensive_report.py
 
@@ -189,7 +186,6 @@ uv run .claude/skills/moai-docs-unified/scripts/generate_final_comprehensive_rep
 
 **Output**: `.moai/reports/korean_docs_comprehensive_review.txt` (aggregated report)
 
----
 
 ### Section 3: Integration Patterns
 
@@ -355,7 +351,6 @@ jobs:
 - Priority 2 (High): 2 items
 - Priority 3 (Low): 1 item
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -408,7 +403,6 @@ uv run .claude/skills/moai-docs-unified/scripts/lint_korean_docs.py \
 
 **Output**: `.moai/reports/lint_report_ko.txt` (8 validation categories)
 
----
 
 #### Script 2: validate_mermaid_diagrams.py
 
@@ -445,7 +439,6 @@ uv run .claude/skills/moai-docs-unified/scripts/validate_mermaid_diagrams.py \
 
 **Output**: `.moai/reports/mermaid_validation_report.txt` (16 diagrams, 100% valid)
 
----
 
 #### Script 3: extract_mermaid_details.py
 
@@ -472,7 +465,6 @@ uv run .claude/skills/moai-docs-unified/scripts/extract_mermaid_details.py \
 
 **Output**: `.moai/reports/mermaid_detail_report.txt` (full diagram code + test guide)
 
----
 
 #### Script 4: validate_korean_typography.py
 
@@ -500,7 +492,6 @@ uv run .claude/skills/moai-docs-unified/scripts/validate_korean_typography.py \
 
 **Output**: `.moai/reports/korean_typography_report.txt` (28,543 lines validated, 43 files)
 
----
 
 #### Script 5: generate_final_comprehensive_report.py
 
@@ -528,7 +519,6 @@ uv run .claude/skills/moai-docs-unified/scripts/generate_final_comprehensive_rep
 
 **Output**: `.moai/reports/korean_docs_comprehensive_review.txt` (aggregated report)
 
----
 
 ### Section 3: Integration Patterns
 
@@ -694,7 +684,6 @@ jobs:
 - Priority 2 (High): 2 items
 - Priority 3 (Low): 1 item
 
----
 
 ✅ Validation Checklist
 
@@ -706,7 +695,6 @@ jobs:
 - [x] Usage patterns explained
 - [x] Error handling implemented
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -715,7 +703,6 @@ jobs:
 **Coming soon**: Deep dive into expert-level usage.
 
 
----
 
 ## 📚 Official References
 
@@ -744,7 +731,6 @@ context7_references:
     topic: "MoAI-ADK Documentation Standards"
 ```
 
----
 
 ## 📈 Version History
 
@@ -759,13 +745,11 @@ context7_references:
 
 
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-12  
 **Maintained by**: Primary Agent (doc-syncer)
 
----
 
 ## Core Implementation
 
@@ -783,7 +767,6 @@ context7_references:
 - 🔒 [Security practice 1]
 
 
----
 
 ## 🔗 Context7 MCP Integration
 
@@ -815,7 +798,6 @@ docs = await helper.get_docs(
 | [Library 1] | `/org/lib1` | [When to use] |
 
 
----
 
 ## 📊 Decision Tree
 
@@ -832,7 +814,6 @@ Start
 ```
 
 
----
 
 ## 🔄 Integration with Other Skills
 
@@ -846,11 +827,9 @@ Start
 - Skill("next-step-1") – [When to use after this]
 
 
----
 
 
 
----
 
 ## Context7 Integration
 

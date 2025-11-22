@@ -30,3 +30,6 @@ _Last updated: 2025-10-22_
 ---
 
 _For detailed usage, see SKILL.md_
+
+---
+**Last Updated**: 2025-11-22

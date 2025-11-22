@@ -1,6 +1,8 @@
 ---
+
 name: moai-spec-intelligent-workflow
 description: Intelligent SPEC generation decision engine with 3-level templates and analytics for MoAI-ADK
+
 ---
 
 # SPEC Intelligent Workflow Skill
@@ -17,7 +19,6 @@ description: Intelligent SPEC generation decision engine with 3-level templates 
 
 자동으로 **3단계 템플릿** 중 하나를 선택하고, **통계 시스템**으로 효과를 추적합니다.
 
----
 
 ## 📚 주요 기능
 
@@ -47,7 +48,6 @@ Level 3 (Comprehensive) → 복잡한 작업, 20-30분 작성
 월간 리포트: 효과 분석 및 개선 권장사항
 ```
 
----
 
 ## 🚀 빠른 시작
 
@@ -69,7 +69,6 @@ SPEC-XXX 생성 완료
 /moai:2-run SPEC-XXX 구현
 ```
 
----
 
 ## 📁 Skill 구조
 
@@ -82,7 +81,6 @@ SPEC-XXX 생성 완료
 | **examples.md**              | 10+ 실전 사용 예제        | 12KB |
 | **FAQ.md**                   | 자주 묻는 질문            | 5KB  |
 
----
 
 ## 💡 핵심 특징
 
@@ -92,7 +90,6 @@ SPEC-XXX 생성 완료
 - ✅ **데이터 기반**: 통계로 효과 측정
 - ✅ **TAG 교훈**: 과도한 자동화 방지
 
----
 
 ## 🔗 CLAUDE.md와의 관계
 
@@ -108,7 +105,6 @@ CLAUDE.md (개요)
 
 CLAUDE.md는 이 Skill의 개요만 포함하며, 상세 내용은 여기서 확인합니다.
 
----
 
 ## 📖 문서 참고
 
@@ -136,7 +132,6 @@ CLAUDE.md는 이 Skill의 개요만 포함하며, 상세 내용은 여기서 확
 
 → **FAQ.md** (5분)
 
----
 
 ## 🎯 사용 시점
 
@@ -161,7 +156,6 @@ CLAUDE.md는 이 Skill의 개요만 포함하며, 상세 내용은 여기서 확
    - FAQ 확인
    - 실전 예제로 이해
 
----
 
 ## ✨ 기대 효과
 
@@ -173,7 +167,6 @@ CLAUDE.md는 이 Skill의 개요만 포함하며, 상세 내용은 여기서 확
 | 테스트 커버리지 | 80% → 90%+ |
 | 버그 감소       | 25% 감소   |
 
----
 
 **버전**: 1.0.0
 **마지막 업데이트**: 2025-11-21

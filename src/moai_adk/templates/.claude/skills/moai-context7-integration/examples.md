@@ -1,1385 +1,450 @@
-# Examples
+# Context7 Language Integration Examples (2025 Edition)
+
+## Complete Integration Examples
+
+### Example 1: Python FastAPI Integration
+
+**Scenario**: Get FastAPI routing and dependency injection documentation
 
 ```python
-class Context7Client:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv('CONTEXT7_API_KEY')
-        self.base_url = 'https://api.context7.com/v1'
-
-    async def resolve_library(self, library_name: str) -> LibraryResolution:
-        """
-        Resolve library name to Context7-compatible ID
-
-        Returns multiple matches with confidence scores
-        """
-        endpoint = f'{self.base_url}/resolve'
-
-        params = {
-            'query': library_name,
-            'include_metadata': True,
-            'limit': 10
-        }
-
-        response = await self._make_request('GET', endpoint, params=params)
-        return LibraryResolution.from_response(response.json())
-
-    async def get_library_docs(self,
-                             library_id: str,
-                             topic: str = None,
-                             tokens: int = 5000) -> LibraryDocumentation:
-        """
-        Retrieve comprehensive library documentation
-
-        Args:
-            library_id: Context7-compatible library ID (/org/project[/version])
-            topic: Specific topic to focus on
-            tokens: Maximum tokens to retrieve
-        """
-        endpoint = f'{self.base_url}/libraries/{library_id}/docs'
-
-        params = {}
-        if topic:
-            params['topic'] = topic
-        if tokens:
-            params['tokens'] = tokens
-
-        response = await self._make_request('GET', endpoint, params=params)
-        return LibraryDocumentation.from_response(response.json())
-
-    async def search_documentation(self,
-                                 query: str,
-                                 library_types: List[str] = None,
-                                 trust_score_min: int = 7) -> DocumentationSearch:
-        """
-        Search across all Context7 documentation
-
-        Args:
-            query: Search query
-            library_types: Filter by library types (frontend, backend, etc.)
-            trust_score_min: Minimum trust score threshold
-        """
-        endpoint = f'{self.base_url}/search'
-
-        params = {
-            'query': query,
-            'limit': 20
-        }
-
-        if library_types:
-            params['library_types'] = library_types
-        if trust_score_min:
-            params['trust_score_min'] = trust_score_min
-
-        response = await self._make_request('GET', endpoint, params=params)
-        return DocumentationSearch.from_response(response.json())
-```
-
-```python
-class MultiLibraryResearcher:
-    def __init__(self):
-        self.context7 = Context7Client()
-        self.cache = DocumentationCache()
-
-    async def research_topic(self, topic: str, libraries: List[str]) -> ResearchResult:
-        """
-        Research a specific topic across multiple libraries
-        """
-        results = {}
-
-        for library in libraries:
-            # Resolve library ID
-            resolution = await self.context7.resolve_library(library)
-
-            if not resolution.matches:
-                continue
-
-            best_match = resolution.get_best_match()
-
-            # Check cache first
-            cache_key = f"{best_match.id}:{topic}"
-            cached_docs = await self.cache.get(cache_key)
-
-            if cached_docs:
-                results[library] = cached_docs
-            else:
-                # Fetch fresh documentation
-                docs = await self.context7.get_library_docs(
-                    library_id=best_match.id,
-                    topic=topic,
-                    tokens=3000
-                )
-
-                # Cache the result
-                await self.cache.set(cache_key, docs, ttl=3600)
-                results[library] = docs
-
-        return SearchResult(
-            topic=topic,
-            libraries=results,
-            synthesis=await self.synthesize_results(results)
-        )
-
-    async def synthesize_results(self, results: Dict[str, LibraryDocumentation]) -> str:
-        """
-        Synthesize information from multiple library documentations
-        """
-        synthesis = []
-        synthesis.append(f"# {topic} - Multi-Library Analysis\n")
-
-        for library, docs in results.items():
-            synthesis.append(f"## {library.title()}\n")
-            synthesis.append(f"**Source**: {docs.library_name} v{docs.version}\n")
-
-            # Extract key points
-            if docs.key_features:
-                synthesis.append("### Key Features\n")
-                for feature in docs.key_features:
-                    synthesis.append(f"- {feature}")
-
-            if docs.best_practices:
-                synthesis.append("\n### Best Practices\n")
-                for practice in docs.best_practices:
-                    synthesis.append(f"- {practice}")
-
-            synthesis.append("\n")
-
-        return '\n'.join(synthesis)
-```
-
-```python
-class NextraContext7Enhancer:
-    def __init__(self):
-        self.context7 = Context7Client()
-        self.cache = {}
-
-    async def enhance_mdx_content(self, content: str, project_libraries: List[str]) -> str:
-        """
-        Enhance MDX content with up-to-date Context7 information
-        """
-        enhanced_content = content
-
-        # Extract library mentions from content
-        library_mentions = self.extract_library_references(content)
-
-        for library in library_mentions:
-            if library in project_libraries:
-                # Get latest documentation
-                docs = await self.get_cached_library_docs(library)
-
-                if docs:
-                    # Enhance content with latest information
-                    enhanced_content = self.enhance_library_section(
-                        enhanced_content, library, docs
-                    )
-
-        return enhanced_content
-
-    def extract_library_references(self, content: str) -> List[str]:
-        """
-        Extract library names from content using regex patterns
-        """
-        patterns = [
-            r'import\s+.*?from\s+[\'"]([^\'"]+)[\'"]',  # Import statements
-            r'require\([\'"]([^\'"]+)[\'"]\)',           # Require statements
-            r'\[`([^`]+)`\]',                           # Code references
-            r'npm install ([^\s]+)',                   # Installation commands
-        ]
-
-        libraries = set()
-        for pattern in patterns:
-            matches = re.findall(pattern, content)
-            libraries.update(matches)
-
-        return list(libraries)
-
-    async def enhance_library_section(self, content: str, library: str, docs: LibraryDocumentation) -> str:
-        """
-        Enhance specific library sections with latest documentation
-        """
-        # Find library section in content
-        section_pattern = rf'(##\s+{re.escape(library)}[^#]*?)(?=##|$)'
-
-        def enhance_section(match):
-            original_section = match.group(1)
-
-            # Add Context7 version information
-            version_info = f"""
-> **ℹ️ Documentation Updated**: {docs.last_updated} via Context7
->
-> **Library Version**: {docs.version}
->
-> **Trust Score**: {docs.trust_score}/10
-"""
-
-            # Add latest best practices
-            if docs.best_practices:
-                best_practices = "\n### Latest Best Practices (Context7)\n"
-                for practice in docs.best_practices[:3]:  # Top 3 practices
-                    best_practices += f"- {practice}\n"
-
-                return original_section + version_info + best_practices
-
-            return original_section + version_info
-
-        return re.sub(section_pattern, enhance_section, content, flags=re.DOTALL)
-
-    async def add_context7_footnotes(self, content: str) -> str:
-        """
-        Add Context7 attribution footnotes
-        """
-        footnotes = """
-
----
-
-*Documentation enhanced with Context7 - Real-time library documentation and best practices*
-"""
-
-        return content + footnotes
-```
-
-```python
-class CodeExampleManager:
-    def __init__(self):
-        self.context7 = Context7Client()
-
-    async def sync_examples_with_library(self, library_name: str, example_files: List[Path]):
-        """
-        Synchronize code examples with latest library documentation
-        """
-        # Resolve library
-        resolution = await self.context7.resolve_library(library_name)
-        if not resolution.matches:
-            raise ValueError(f"Library {library_name} not found in Context7")
-
-        library_id = resolution.get_best_match().id
-
-        # Get latest examples from Context7
-        docs = await self.context7.get_library_docs(
-            library_id=library_id,
-            topic="examples usage patterns",
-            tokens=4000
-        )
-
-        # Update local examples
-        for example_file in example_files:
-            await self.update_example_file(example_file, docs)
-
-    async def update_example_file(self, file_path: Path, docs: LibraryDocumentation):
-        """
-        Update individual example file with latest patterns
-        """
-        current_content = file_path.read_text()
-
-        # Find outdated patterns
-        outdated_patterns = self.find_outdated_patterns(current_content, docs)
-
-        if outdated_patterns:
-            # Update with latest examples
-            updated_content = self.update_patterns(current_content, outdated_patterns, docs)
-
-            # Add Context7 attribution
-            attribution = f"""
-<!-- Examples updated via Context7 on {datetime.now().isoformat()} -->
-<!-- Source: {docs.library_name} v{docs.version} -->
-"""
-
-            file_path.write_text(updated_content + attribution)
-
-    def find_outdated_patterns(self, content: str, docs: LibraryDocumentation) -> List[OutdatedPattern]:
-        """
-        Identify outdated code patterns in content
-        """
-        outdated = []
-
-        # Check for deprecated APIs
-        if docs.deprecated_apis:
-            for deprecated_api in docs.deprecated_apis:
-                if deprecated_api.old_syntax in content:
-                    outdated.append(OutdatedPattern(
-                        type='deprecated_api',
-                        old_pattern=deprecated_api.old_syntax,
-                        new_pattern=deprecated_api.new_syntax,
-                        description=deprecated_api.description
-                    ))
-
-        # Check for improved patterns
-        if docs.improved_patterns:
-            for improved in docs.improved_patterns:
-                if improved.old_pattern in content and improved.new_pattern not in content:
-                    outdated.append(OutdatedPattern(
-                        type='improvement',
-                        old_pattern=improved.old_pattern,
-                        new_pattern=improved.new_pattern,
-                        description=improvement.description
-                    ))
-
-        return outdated
-```
-
-```python
-class LibraryComparator:
-    def __init__(self):
-        self.context7 = Context7Client()
-
-    async def compare_libraries(self, libraries: List[str], criteria: List[str]) -> ComparisonReport:
-        """
-        Compare multiple libraries across specified criteria
-        """
-        comparison_data = {}
-
-        for library in libraries:
-            # Resolve and get documentation
-            resolution = await self.context7.resolve_library(library)
-            if not resolution.matches:
-                continue
-
-            library_id = resolution.get_best_match().id
-
-            # Get comprehensive documentation
-            docs = await self.context7.get_library_docs(
-                library_id=library_id,
-                tokens=5000
-            )
-
-            # Extract comparison data
-            comparison_data[library] = self.extract_comparison_data(docs, criteria)
-
-        # Generate comparison report
-        return ComparisonReport(
-            libraries=libraries,
-            criteria=criteria,
-            data=comparison_data,
-            summary=self.generate_comparison_summary(comparison_data, criteria)
-        )
-
-    def extract_comparison_data(self, docs: LibraryDocumentation, criteria: List[str]) -> Dict:
-        """
-        Extract specific comparison criteria from documentation
-        """
-        data = {}
-
-        # Performance metrics
-        if 'performance' in criteria:
-            data['performance'] = {
-                'bundle_size': docs.bundle_size,
-                'startup_time': docs.startup_time,
-                'memory_usage': docs.memory_usage
-            }
-
-        # Features
-        if 'features' in criteria:
-            data['features'] = docs.key_features
-
-        # Ecosystem
-        if 'ecosystem' in criteria:
-            data['ecosystem'] = {
-                'community_size': docs.community_metrics.get('stars', 0),
-                'npm_downloads': docs.community_metrics.get('downloads', 0),
-                'maintainers': docs.community_metrics.get('maintainers', 0)
-            }
-
-        # Learning curve
-        if 'learning_curve' in criteria:
-            data['learning_curve'] = {
-                'documentation_quality': docs.documentation_score,
-                'examples_count': len(docs.examples),
-                'community_support': docs.community_score
-            }
-
-        return data
-
-    def generate_comparison_summary(self, data: Dict, criteria: List[str]) -> str:
-        """
-        Generate readable comparison summary
-        """
-        summary = ["# Library Comparison Summary\n"]
-
-        for criterion in criteria:
-            summary.append(f"## {criterion.title()}\n")
-
-            for library, lib_data in data.items():
-                if criterion in lib_data:
-                    criterion_data = lib_data[criterion]
-                    summary.append(f"### {library.title()}\n")
-
-                    if isinstance(criterion_data, dict):
-                        for key, value in criterion_data.items():
-                            summary.append(f"- **{key.title()}**: {value}")
-                    else:
-                        summary.append(f"- {criterion_data}")
-
-                    summary.append("")
-
-            summary.append("---\n")
-
-        return '\n'.join(summary)
-```
-
-```python
-class DocumentationTrendAnalyzer:
-    def __init__(self):
-        self.context7 = Context7Client()
-        self.trends_cache = {}
-
-    async def analyze_library_trends(self, library: str, timeframe: str = '30d') -> TrendReport:
-        """
-        Analyze documentation trends for a library
-        """
-        # Get current documentation
-        docs = await self.get_library_documentation(library)
-
-        # Analyze trending topics
-        trending_topics = await self.get_trending_topics(library, timeframe)
-
-        # Analyze community patterns
-        community_patterns = await self.analyze_community_patterns(library)
-
-        return TrendReport(
-            library=library,
-            current_version=docs.version,
-            trending_topics=trending_topics,
-            community_patterns=community_patterns,
-            recommendations=self.generate_trend_recommendations(trending_topics, docs)
-        )
-
-    async def get_trending_topics(self, library: str, timeframe: str) -> List[TrendingTopic]:
-        """
-        Identify trending topics in library documentation
-        """
-        # Search for recent mentions and patterns
-        search_results = await self.context7.search_documentation(
-            query=f"{library} best practices patterns 2024",
-            library_types=['framework', 'library', 'tool'],
-            trust_score_min=8
-        )
-
-        # Analyze frequency and recency
-        topic_frequency = {}
-        for result in search_results.results:
-            for topic in result.topics:
-                if topic not in topic_frequency:
-                    topic_frequency[topic] = []
-                topic_frequency[topic].append(result.published_date)
-
-        # Generate trending topics
-        trending = []
-        for topic, dates in topic_frequency.items():
-            if len(dates) >= 3:  # Mentions in at least 3 sources
-                trending.append(TrendingTopic(
-                    topic=topic,
-                    frequency=len(dates),
-                    recency_score=self.calculate_recency_score(dates),
-                    sources=[r.source for r in search_results.results if topic in r.topics]
-                ))
-
-        return sorted(trending, key=lambda x: x.frequency * x.recency_score, reverse=True)
-
-    def generate_trend_recommendations(self, trending: List[TrendingTopic], docs: LibraryDocumentation) -> List[str]:
-        """
-        Generate recommendations based on trending topics
-        """
-        recommendations = []
-
-        for topic in trending[:5]:  # Top 5 trending topics
-            if topic.frequency >= 5:
-                recommendations.append(
-                    f"Consider adding {topic.topic} documentation - "
-                    f"trending with {topic.frequency} recent mentions"
-                )
-
-        return recommendations
-```
-
-```python
-class Context7Validator:
-    def __init__(self):
-        self.context7 = Context7Client()
-
-    async def validate_documentation_quality(self, docs_path: Path) -> ValidationReport:
-        """
-        Validate documentation against Context7 best practices
-        """
-        validation_results = {}
-
-        # Extract all libraries mentioned in documentation
-        mentioned_libraries = self.extract_libraries_from_docs(docs_path)
-
-        for library in mentioned_libraries:
-            try:
-                # Get latest documentation from Context7
-                docs = await self.context7.get_library_docs(
-                    library_id=library,
-                    topic="best practices patterns",
-                    tokens=3000
-                )
-
-                # Validate against Context7 standards
-                validation_results[library] = await self.validate_against_standards(
-                    docs_path, library, docs
-                )
-
-            except Exception as e:
-                validation_results[library] = ValidationError(
-                    library=library,
-                    error=str(e),
-                    severity='warning'
-                )
-
-        return ValidationReport(
-            path=str(docs_path),
-            libraries_validation=validation_results,
-            overall_score=self.calculate_overall_score(validation_results)
-        )
-
-    async def validate_against_standards(self, docs_path: Path, library: str, standards: LibraryDocumentation) -> LibraryValidation:
-        """
-        Validate specific library documentation against Context7 standards
-        """
-        issues = []
-
-        # Check for up-to-date examples
-        local_examples = self.extract_examples(docs_path, library)
-        for example in local_examples:
-            if not self.example_matches_best_practices(example, standards.best_practices):
-                issues.append(ValidationIssue(
-                    type='outdated_example',
-                    severity='medium',
-                    description=f"Example may not follow current best practices for {library}",
-                    suggestion="Update example using Context7 latest patterns"
-                ))
-
-        # Check for deprecated APIs
-        deprecated_usage = self.find_deprecated_usage(docs_path, standards.deprecated_apis)
-        issues.extend(deprecated_usage)
-
-        # Check for missing security considerations
-        if standards.security_best_practices:
-            missing_security = self.find_missing_security_considerations(
-                docs_path, standards.security_best_practices
-            )
-            issues.extend(missing_security)
-
-        return LibraryValidation(
-            library=library,
-            standards_version=standards.version,
-            issues=issues,
-            score=self.calculate_library_score(issues)
-        )
-
-    def example_matches_best_practices(self, example: str, best_practices: List[str]) -> bool:
-        """
-        Check if example matches current best practices
-        """
-        example_lower = example.lower()
-
-        for practice in best_practices:
-            if any(keyword in example_lower for keyword in practice.lower().split()):
-                return True
-
-        return False
-```
-
-```python
-class Context7Cache:
-    def __init__(self, redis_client=None):
-        self.redis = redis_client
-        self.memory_cache = {}
-        self.cache_stats = CacheStats()
-
-    async def get(self, key: str) -> Optional[LibraryDocumentation]:
-        """
-        Get cached documentation with multi-level caching
-        """
-        # Check memory cache first
-        if key in self.memory_cache:
-            self.cache_stats.memory_hits += 1
-            return self.memory_cache[key]
-
-        # Check Redis cache
-        if self.redis:
-            try:
-                cached_data = await self.redis.get(key)
-                if cached_data:
-                    self.cache_stats.redis_hits += 1
-                    docs = LibraryDocumentation.from_json(cached_data)
-
-                    # Cache in memory for faster access
-                    self.memory_cache[key] = docs
-                    return docs
-            except Exception as e:
-                logger.warning(f"Redis cache error: {e}")
-
-        self.cache_stats.misses += 1
-        return None
-
-    async def set(self, key: str, docs: LibraryDocumentation, ttl: int = 3600):
-        """
-        Cache documentation with intelligent TTL
-        """
-        # Cache in memory
-        self.memory_cache[key] = docs
-
-        # Cache in Redis if available
-        if self.redis:
-            try:
-                await self.redis.setex(
-                    key,
-                    ttl,
-                    docs.to_json()
-                )
-                self.cache_stats.sets += 1
-            except Exception as e:
-                logger.warning(f"Redis cache set error: {e}")
-
-    def calculate_intelligent_ttl(self, docs: LibraryDocumentation) -> int:
-        """
-        Calculate intelligent TTL based on library characteristics
-        """
-        base_ttl = 3600  # 1 hour
-
-        # Reduce TTL for rapidly changing libraries
-        if docs.library_type in 'frontend framework':
-            return base_ttl * 2  # 2 hours
-
-        # Increase TTL for stable libraries
-        if docs.library_type in 'utility library':
-            return base_ttl * 24  # 24 hours
-
-        # Adjust based on update frequency
-        if hasattr(docs, 'update_frequency'):
-            frequency = docs.update_frequency
-            if frequency == 'daily':
-                return base_ttl
-            elif frequency == 'weekly':
-                return base_ttl * 7
-            elif frequency == 'monthly':
-                return base_ttl * 30
-
-        return base_ttl
-```
-
-```yaml
-skill_id: moai-context7-integration
-skill_name: Context7 Integration Expert
-version: 1.0.0
-created_date: 2025-11-11
-updated_date: 2025-11-11
-language: english
-word_count: 1400
-triggers:
-  - keywords: [context7, documentation research, library lookup, best practices, API reference]
-  - contexts: [context7-integration, docs-research, library-documentation, best-practices-sync]
-agents:
-  - docs-manager
-  - doc-syncer
-  - research-specialist
-freedom_level: high
-context7_references:
-  - url: "https://context7.com"
-    topic: "Context7 platform documentation and API reference"
-  - url: "https://github.com/context7/context7-claude"
-    topic: "Context7 Claude integration patterns and best practices"
-```
-
-```python
-class Context7Client:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv('CONTEXT7_API_KEY')
-        self.base_url = 'https://api.context7.com/v1'
-
-    async def resolve_library(self, library_name: str) -> LibraryResolution:
-        """
-        Resolve library name to Context7-compatible ID
-
-        Returns multiple matches with confidence scores
-        """
-        endpoint = f'{self.base_url}/resolve'
-
-        params = {
-            'query': library_name,
-            'include_metadata': True,
-            'limit': 10
-        }
-
-        response = await self._make_request('GET', endpoint, params=params)
-        return LibraryResolution.from_response(response.json())
-
-    async def get_library_docs(self,
-                             library_id: str,
-                             topic: str = None,
-                             tokens: int = 5000) -> LibraryDocumentation:
-        """
-        Retrieve comprehensive library documentation
-
-        Args:
-            library_id: Context7-compatible library ID (/org/project[/version])
-            topic: Specific topic to focus on
-            tokens: Maximum tokens to retrieve
-        """
-        endpoint = f'{self.base_url}/libraries/{library_id}/docs'
-
-        params = {}
-        if topic:
-            params['topic'] = topic
-        if tokens:
-            params['tokens'] = tokens
-
-        response = await self._make_request('GET', endpoint, params=params)
-        return LibraryDocumentation.from_response(response.json())
-
-    async def search_documentation(self,
-                                 query: str,
-                                 library_types: List[str] = None,
-                                 trust_score_min: int = 7) -> DocumentationSearch:
-        """
-        Search across all Context7 documentation
-
-        Args:
-            query: Search query
-            library_types: Filter by library types (frontend, backend, etc.)
-            trust_score_min: Minimum trust score threshold
-        """
-        endpoint = f'{self.base_url}/search'
-
-        params = {
-            'query': query,
-            'limit': 20
-        }
-
-        if library_types:
-            params['library_types'] = library_types
-        if trust_score_min:
-            params['trust_score_min'] = trust_score_min
-
-        response = await self._make_request('GET', endpoint, params=params)
-        return DocumentationSearch.from_response(response.json())
-```
-
-```python
-class MultiLibraryResearcher:
-    def __init__(self):
-        self.context7 = Context7Client()
-        self.cache = DocumentationCache()
-
-    async def research_topic(self, topic: str, libraries: List[str]) -> ResearchResult:
-        """
-        Research a specific topic across multiple libraries
-        """
-        results = {}
-
-        for library in libraries:
-            # Resolve library ID
-            resolution = await self.context7.resolve_library(library)
-
-            if not resolution.matches:
-                continue
-
-            best_match = resolution.get_best_match()
-
-            # Check cache first
-            cache_key = f"{best_match.id}:{topic}"
-            cached_docs = await self.cache.get(cache_key)
-
-            if cached_docs:
-                results[library] = cached_docs
-            else:
-                # Fetch fresh documentation
-                docs = await self.context7.get_library_docs(
-                    library_id=best_match.id,
-                    topic=topic,
-                    tokens=3000
-                )
-
-                # Cache the result
-                await self.cache.set(cache_key, docs, ttl=3600)
-                results[library] = docs
-
-        return SearchResult(
-            topic=topic,
-            libraries=results,
-            synthesis=await self.synthesize_results(results)
-        )
-
-    async def synthesize_results(self, results: Dict[str, LibraryDocumentation]) -> str:
-        """
-        Synthesize information from multiple library documentations
-        """
-        synthesis = []
-        synthesis.append(f"# {topic} - Multi-Library Analysis\n")
-
-        for library, docs in results.items():
-            synthesis.append(f"## {library.title()}\n")
-            synthesis.append(f"**Source**: {docs.library_name} v{docs.version}\n")
-
-            # Extract key points
-            if docs.key_features:
-                synthesis.append("### Key Features\n")
-                for feature in docs.key_features:
-                    synthesis.append(f"- {feature}")
-
-            if docs.best_practices:
-                synthesis.append("\n### Best Practices\n")
-                for practice in docs.best_practices:
-                    synthesis.append(f"- {practice}")
-
-            synthesis.append("\n")
-
-        return '\n'.join(synthesis)
-```
-
-```python
-class NextraContext7Enhancer:
-    def __init__(self):
-        self.context7 = Context7Client()
-        self.cache = {}
-
-    async def enhance_mdx_content(self, content: str, project_libraries: List[str]) -> str:
-        """
-        Enhance MDX content with up-to-date Context7 information
-        """
-        enhanced_content = content
-
-        # Extract library mentions from content
-        library_mentions = self.extract_library_references(content)
-
-        for library in library_mentions:
-            if library in project_libraries:
-                # Get latest documentation
-                docs = await self.get_cached_library_docs(library)
-
-                if docs:
-                    # Enhance content with latest information
-                    enhanced_content = self.enhance_library_section(
-                        enhanced_content, library, docs
-                    )
-
-        return enhanced_content
-
-    def extract_library_references(self, content: str) -> List[str]:
-        """
-        Extract library names from content using regex patterns
-        """
-        patterns = [
-            r'import\s+.*?from\s+[\'"]([^\'"]+)[\'"]',  # Import statements
-            r'require\([\'"]([^\'"]+)[\'"]\)',           # Require statements
-            r'\[`([^`]+)`\]',                           # Code references
-            r'npm install ([^\s]+)',                   # Installation commands
-        ]
-
-        libraries = set()
-        for pattern in patterns:
-            matches = re.findall(pattern, content)
-            libraries.update(matches)
-
-        return list(libraries)
-
-    async def enhance_library_section(self, content: str, library: str, docs: LibraryDocumentation) -> str:
-        """
-        Enhance specific library sections with latest documentation
-        """
-        # Find library section in content
-        section_pattern = rf'(##\s+{re.escape(library)}[^#]*?)(?=##|$)'
-
-        def enhance_section(match):
-            original_section = match.group(1)
-
-            # Add Context7 version information
-            version_info = f"""
-> **ℹ️ Documentation Updated**: {docs.last_updated} via Context7
->
-> **Library Version**: {docs.version}
->
-> **Trust Score**: {docs.trust_score}/10
-"""
-
-            # Add latest best practices
-            if docs.best_practices:
-                best_practices = "\n### Latest Best Practices (Context7)\n"
-                for practice in docs.best_practices[:3]:  # Top 3 practices
-                    best_practices += f"- {practice}\n"
-
-                return original_section + version_info + best_practices
-
-            return original_section + version_info
-
-        return re.sub(section_pattern, enhance_section, content, flags=re.DOTALL)
-
-    async def add_context7_footnotes(self, content: str) -> str:
-        """
-        Add Context7 attribution footnotes
-        """
-        footnotes = """
-
----
-
-*Documentation enhanced with Context7 - Real-time library documentation and best practices*
-"""
-
-        return content + footnotes
-```
-
-```python
-class CodeExampleManager:
-    def __init__(self):
-        self.context7 = Context7Client()
-
-    async def sync_examples_with_library(self, library_name: str, example_files: List[Path]):
-        """
-        Synchronize code examples with latest library documentation
-        """
-        # Resolve library
-        resolution = await self.context7.resolve_library(library_name)
-        if not resolution.matches:
-            raise ValueError(f"Library {library_name} not found in Context7")
-
-        library_id = resolution.get_best_match().id
-
-        # Get latest examples from Context7
-        docs = await self.context7.get_library_docs(
-            library_id=library_id,
-            topic="examples usage patterns",
-            tokens=4000
-        )
-
-        # Update local examples
-        for example_file in example_files:
-            await self.update_example_file(example_file, docs)
-
-    async def update_example_file(self, file_path: Path, docs: LibraryDocumentation):
-        """
-        Update individual example file with latest patterns
-        """
-        current_content = file_path.read_text()
-
-        # Find outdated patterns
-        outdated_patterns = self.find_outdated_patterns(current_content, docs)
-
-        if outdated_patterns:
-            # Update with latest examples
-            updated_content = self.update_patterns(current_content, outdated_patterns, docs)
-
-            # Add Context7 attribution
-            attribution = f"""
-<!-- Examples updated via Context7 on {datetime.now().isoformat()} -->
-<!-- Source: {docs.library_name} v{docs.version} -->
-"""
-
-            file_path.write_text(updated_content + attribution)
-
-    def find_outdated_patterns(self, content: str, docs: LibraryDocumentation) -> List[OutdatedPattern]:
-        """
-        Identify outdated code patterns in content
-        """
-        outdated = []
-
-        # Check for deprecated APIs
-        if docs.deprecated_apis:
-            for deprecated_api in docs.deprecated_apis:
-                if deprecated_api.old_syntax in content:
-                    outdated.append(OutdatedPattern(
-                        type='deprecated_api',
-                        old_pattern=deprecated_api.old_syntax,
-                        new_pattern=deprecated_api.new_syntax,
-                        description=deprecated_api.description
-                    ))
-
-        # Check for improved patterns
-        if docs.improved_patterns:
-            for improved in docs.improved_patterns:
-                if improved.old_pattern in content and improved.new_pattern not in content:
-                    outdated.append(OutdatedPattern(
-                        type='improvement',
-                        old_pattern=improved.old_pattern,
-                        new_pattern=improved.new_pattern,
-                        description=improvement.description
-                    ))
-
-        return outdated
-```
-
-```python
-class LibraryComparator:
-    def __init__(self):
-        self.context7 = Context7Client()
-
-    async def compare_libraries(self, libraries: List[str], criteria: List[str]) -> ComparisonReport:
-        """
-        Compare multiple libraries across specified criteria
-        """
-        comparison_data = {}
-
-        for library in libraries:
-            # Resolve and get documentation
-            resolution = await self.context7.resolve_library(library)
-            if not resolution.matches:
-                continue
-
-            library_id = resolution.get_best_match().id
-
-            # Get comprehensive documentation
-            docs = await self.context7.get_library_docs(
-                library_id=library_id,
-                tokens=5000
-            )
-
-            # Extract comparison data
-            comparison_data[library] = self.extract_comparison_data(docs, criteria)
-
-        # Generate comparison report
-        return ComparisonReport(
-            libraries=libraries,
-            criteria=criteria,
-            data=comparison_data,
-            summary=self.generate_comparison_summary(comparison_data, criteria)
-        )
-
-    def extract_comparison_data(self, docs: LibraryDocumentation, criteria: List[str]) -> Dict:
-        """
-        Extract specific comparison criteria from documentation
-        """
-        data = {}
-
-        # Performance metrics
-        if 'performance' in criteria:
-            data['performance'] = {
-                'bundle_size': docs.bundle_size,
-                'startup_time': docs.startup_time,
-                'memory_usage': docs.memory_usage
-            }
-
-        # Features
-        if 'features' in criteria:
-            data['features'] = docs.key_features
-
-        # Ecosystem
-        if 'ecosystem' in criteria:
-            data['ecosystem'] = {
-                'community_size': docs.community_metrics.get('stars', 0),
-                'npm_downloads': docs.community_metrics.get('downloads', 0),
-                'maintainers': docs.community_metrics.get('maintainers', 0)
-            }
-
-        # Learning curve
-        if 'learning_curve' in criteria:
-            data['learning_curve'] = {
-                'documentation_quality': docs.documentation_score,
-                'examples_count': len(docs.examples),
-                'community_support': docs.community_score
-            }
-
-        return data
-
-    def generate_comparison_summary(self, data: Dict, criteria: List[str]) -> str:
-        """
-        Generate readable comparison summary
-        """
-        summary = ["# Library Comparison Summary\n"]
-
-        for criterion in criteria:
-            summary.append(f"## {criterion.title()}\n")
-
-            for library, lib_data in data.items():
-                if criterion in lib_data:
-                    criterion_data = lib_data[criterion]
-                    summary.append(f"### {library.title()}\n")
-
-                    if isinstance(criterion_data, dict):
-                        for key, value in criterion_data.items():
-                            summary.append(f"- **{key.title()}**: {value}")
-                    else:
-                        summary.append(f"- {criterion_data}")
-
-                    summary.append("")
-
-            summary.append("---\n")
-
-        return '\n'.join(summary)
-```
-
-```python
-class DocumentationTrendAnalyzer:
-    def __init__(self):
-        self.context7 = Context7Client()
-        self.trends_cache = {}
-
-    async def analyze_library_trends(self, library: str, timeframe: str = '30d') -> TrendReport:
-        """
-        Analyze documentation trends for a library
-        """
-        # Get current documentation
-        docs = await self.get_library_documentation(library)
-
-        # Analyze trending topics
-        trending_topics = await self.get_trending_topics(library, timeframe)
-
-        # Analyze community patterns
-        community_patterns = await self.analyze_community_patterns(library)
-
-        return TrendReport(
-            library=library,
-            current_version=docs.version,
-            trending_topics=trending_topics,
-            community_patterns=community_patterns,
-            recommendations=self.generate_trend_recommendations(trending_topics, docs)
-        )
-
-    async def get_trending_topics(self, library: str, timeframe: str) -> List[TrendingTopic]:
-        """
-        Identify trending topics in library documentation
-        """
-        # Search for recent mentions and patterns
-        search_results = await self.context7.search_documentation(
-            query=f"{library} best practices patterns 2024",
-            library_types=['framework', 'library', 'tool'],
-            trust_score_min=8
-        )
-
-        # Analyze frequency and recency
-        topic_frequency = {}
-        for result in search_results.results:
-            for topic in result.topics:
-                if topic not in topic_frequency:
-                    topic_frequency[topic] = []
-                topic_frequency[topic].append(result.published_date)
-
-        # Generate trending topics
-        trending = []
-        for topic, dates in topic_frequency.items():
-            if len(dates) >= 3:  # Mentions in at least 3 sources
-                trending.append(TrendingTopic(
-                    topic=topic,
-                    frequency=len(dates),
-                    recency_score=self.calculate_recency_score(dates),
-                    sources=[r.source for r in search_results.results if topic in r.topics]
-                ))
-
-        return sorted(trending, key=lambda x: x.frequency * x.recency_score, reverse=True)
-
-    def generate_trend_recommendations(self, trending: List[TrendingTopic], docs: LibraryDocumentation) -> List[str]:
-        """
-        Generate recommendations based on trending topics
-        """
-        recommendations = []
-
-        for topic in trending[:5]:  # Top 5 trending topics
-            if topic.frequency >= 5:
-                recommendations.append(
-                    f"Consider adding {topic.topic} documentation - "
-                    f"trending with {topic.frequency} recent mentions"
-                )
-
-        return recommendations
-```
-
-```python
-class Context7Validator:
-    def __init__(self):
-        self.context7 = Context7Client()
-
-    async def validate_documentation_quality(self, docs_path: Path) -> ValidationReport:
-        """
-        Validate documentation against Context7 best practices
-        """
-        validation_results = {}
-
-        # Extract all libraries mentioned in documentation
-        mentioned_libraries = self.extract_libraries_from_docs(docs_path)
-
-        for library in mentioned_libraries:
-            try:
-                # Get latest documentation from Context7
-                docs = await self.context7.get_library_docs(
-                    library_id=library,
-                    topic="best practices patterns",
-                    tokens=3000
-                )
-
-                # Validate against Context7 standards
-                validation_results[library] = await self.validate_against_standards(
-                    docs_path, library, docs
-                )
-
-            except Exception as e:
-                validation_results[library] = ValidationError(
-                    library=library,
-                    error=str(e),
-                    severity='warning'
-                )
-
-        return ValidationReport(
-            path=str(docs_path),
-            libraries_validation=validation_results,
-            overall_score=self.calculate_overall_score(validation_results)
-        )
-
-    async def validate_against_standards(self, docs_path: Path, library: str, standards: LibraryDocumentation) -> LibraryValidation:
-        """
-        Validate specific library documentation against Context7 standards
-        """
-        issues = []
-
-        # Check for up-to-date examples
-        local_examples = self.extract_examples(docs_path, library)
-        for example in local_examples:
-            if not self.example_matches_best_practices(example, standards.best_practices):
-                issues.append(ValidationIssue(
-                    type='outdated_example',
-                    severity='medium',
-                    description=f"Example may not follow current best practices for {library}",
-                    suggestion="Update example using Context7 latest patterns"
-                ))
-
-        # Check for deprecated APIs
-        deprecated_usage = self.find_deprecated_usage(docs_path, standards.deprecated_apis)
-        issues.extend(deprecated_usage)
-
-        # Check for missing security considerations
-        if standards.security_best_practices:
-            missing_security = self.find_missing_security_considerations(
-                docs_path, standards.security_best_practices
-            )
-            issues.extend(missing_security)
-
-        return LibraryValidation(
-            library=library,
-            standards_version=standards.version,
-            issues=issues,
-            score=self.calculate_library_score(issues)
-        )
-
-    def example_matches_best_practices(self, example: str, best_practices: List[str]) -> bool:
-        """
-        Check if example matches current best practices
-        """
-        example_lower = example.lower()
-
-        for practice in best_practices:
-            if any(keyword in example_lower for keyword in practice.lower().split()):
-                return True
-
-        return False
-```
-
-```python
-class Context7Cache:
-    def __init__(self, redis_client=None):
-        self.redis = redis_client
-        self.memory_cache = {}
-        self.cache_stats = CacheStats()
-
-    async def get(self, key: str) -> Optional[LibraryDocumentation]:
-        """
-        Get cached documentation with multi-level caching
-        """
-        # Check memory cache first
-        if key in self.memory_cache:
-            self.cache_stats.memory_hits += 1
-            return self.memory_cache[key]
-
-        # Check Redis cache
-        if self.redis:
-            try:
-                cached_data = await self.redis.get(key)
-                if cached_data:
-                    self.cache_stats.redis_hits += 1
-                    docs = LibraryDocumentation.from_json(cached_data)
-
-                    # Cache in memory for faster access
-                    self.memory_cache[key] = docs
-                    return docs
-            except Exception as e:
-                logger.warning(f"Redis cache error: {e}")
-
-        self.cache_stats.misses += 1
-        return None
-
-    async def set(self, key: str, docs: LibraryDocumentation, ttl: int = 3600):
-        """
-        Cache documentation with intelligent TTL
-        """
-        # Cache in memory
-        self.memory_cache[key] = docs
-
-        # Cache in Redis if available
-        if self.redis:
-            try:
-                await self.redis.setex(
-                    key,
-                    ttl,
-                    docs.to_json()
-                )
-                self.cache_stats.sets += 1
-            except Exception as e:
-                logger.warning(f"Redis cache set error: {e}")
-
-    def calculate_intelligent_ttl(self, docs: LibraryDocumentation) -> int:
-        """
-        Calculate intelligent TTL based on library characteristics
-        """
-        base_ttl = 3600  # 1 hour
-
-        # Reduce TTL for rapidly changing libraries
-        if docs.library_type in 'frontend framework':
-            return base_ttl * 2  # 2 hours
-
-        # Increase TTL for stable libraries
-        if docs.library_type in 'utility library':
-            return base_ttl * 24  # 24 hours
-
-        # Adjust based on update frequency
-        if hasattr(docs, 'update_frequency'):
-            frequency = docs.update_frequency
-            if frequency == 'daily':
-                return base_ttl
-            elif frequency == 'weekly':
-                return base_ttl * 7
-            elif frequency == 'monthly':
-                return base_ttl * 30
-
-        return base_ttl
-```
-
-```python
-# Fetch latest documentation
-from moai_adk.integrations import Context7Helper
-
-helper = Context7Helper()
-docs = await helper.get_docs(
-    library_id="/org/library",
-    topic="context7",
-    tokens=5000
+# Step 1: Resolve library name
+library_id = await mcp__context7__resolve_library_id("fastapi")
+# Returns: /tiangolo/fastapi
+
+# Step 2: Get routing documentation
+routing_docs = await mcp__context7__get_library_docs(
+    context7CompatibleLibraryID=library_id,
+    topic="routing dependency-injection path-parameters",
+    page=1
 )
+
+# Result: Markdown documentation
+print(routing_docs)
+# # FastAPI Routing
+# 
+# ## Path Parameters
+# FastAPI supports path parameters with type validation:
+# ```python
+# @app.get("/items/{item_id}")
+# async def read_item(item_id: int):
+#     return {"item_id": item_id}
+# ```
+# 
+# ## Dependency Injection
+# Use `Depends()` for dependency injection:
+# ...
 ```
 
-```
-Start
-  ├─ Need context7?
-  │   ├─ YES → Use this skill
-  │   └─ NO → Consider alternatives
-  └─ Complex scenario?
-      ├─ YES → See Level 3
-      └─ NO → Start with Level 1
+### Example 2: React Hooks Documentation
+
+**Scenario**: Get React hooks and performance patterns
+
+```python
+# Resolve React library
+library_id = await mcp__context7__resolve_library_id("react")
+# Returns: /facebook/react
+
+# Get hooks documentation
+hooks_docs = await mcp__context7__get_library_docs(
+    context7CompatibleLibraryID=library_id,
+    topic="hooks useState useEffect useContext performance",
+    page=1
+)
+
+# Result: Comprehensive React hooks guide
+print(hooks_docs)
+# # React Hooks
+# 
+# ## useState
+# Manage component state:
+# ```javascript
+# const [count, setCount] = useState(0);
+# ```
+# 
+# ## useEffect
+# Handle side effects:
+# ```javascript
+# useEffect(() => {
+#   document.title = `Count: ${count}`;
+# }, [count]);
+# ```
+# ...
 ```
 
-```yaml
-skill_id: moai-context7-integration
-skill_name: Context7 Integration Expert
-version: 1.0.0
-created_date: 2025-11-11
-updated_date: 2025-11-11
-language: english
-word_count: 1400
-triggers:
-  - keywords: [context7, documentation research, library lookup, best practices, API reference]
-  - contexts: [context7-integration, docs-research, library-documentation, best-practices-sync]
-agents:
-  - docs-manager
-  - doc-syncer
-  - research-specialist
-freedom_level: high
-context7_references:
-  - url: "https://context7.com"
-    topic: "Context7 platform documentation and API reference"
-  - url: "https://github.com/context7/context7-claude"
-    topic: "Context7 Claude integration patterns and best practices"
+### Example 3: Multi-Library Tech Stack
+
+**Scenario**: Fetch documentation for complete Python web stack
+
+```python
+async def get_python_web_stack_docs() -> dict[str, str]:
+    """Get documentation for modern Python web stack."""
+    
+    # Define stack components
+    stack = {
+        "web_framework": ("fastapi", "routing dependency-injection"),
+        "validation": ("pydantic", "models validation"),
+        "orm": ("sqlalchemy", "relationships queries"),
+        "testing": ("pytest", "fixtures parametrize"),
+        "async": ("aiohttp", "client server"),
+    }
+    
+    docs = {}
+    for component, (library_name, topic) in stack.items():
+        # Resolve library
+        library_id = await mcp__context7__resolve_library_id(library_name)
+        
+        # Fetch documentation
+        docs[component] = await mcp__context7__get_library_docs(
+            context7CompatibleLibraryID=library_id,
+            topic=topic,
+            page=1
+        )
+    
+    return docs
+
+# Usage
+stack_docs = await get_python_web_stack_docs()
+print(stack_docs["web_framework"])  # FastAPI routing docs
+print(stack_docs["validation"])     # Pydantic models docs
+print(stack_docs["orm"])            # SQLAlchemy relationships docs
 ```
+
+### Example 4: JavaScript Frontend Stack
+
+**Scenario**: Fetch documentation for React + Next.js + TypeScript stack
+
+```python
+async def get_javascript_frontend_stack() -> dict[str, str]:
+    """Get documentation for modern JavaScript frontend stack."""
+    
+    stack = {
+        "framework": ("nextjs", "app-router server-components"),
+        "ui_library": ("react", "hooks components"),
+        "type_system": ("typescript", "types interfaces"),
+        "styling": ("tailwindcss", "utilities responsive"),
+        "testing": ("vitest", "unit-testing mocking"),
+    }
+    
+    docs = {}
+    for component, (library_name, topic) in stack.items():
+        library_id = await mcp__context7__resolve_library_id(library_name)
+        docs[component] = await mcp__context7__get_library_docs(
+            library_id,
+            topic=topic,
+            page=1
+        )
+    
+    return docs
+
+# Usage
+frontend_docs = await get_javascript_frontend_stack()
+print(frontend_docs["framework"])   # Next.js App Router docs
+print(frontend_docs["ui_library"])  # React hooks docs
+print(frontend_docs["styling"])     # Tailwind CSS utilities docs
+```
+
+## Error Handling Examples
+
+### Example 5: Library Not Found Recovery
+
+**Scenario**: Handle library not found with alternatives
+
+```python
+async def get_docs_with_fallback(library_name: str, topic: str) -> str:
+    """Get documentation with fallback strategies."""
+    
+    try:
+        # Try primary library name
+        library_id = await mcp__context7__resolve_library_id(library_name)
+        return await mcp__context7__get_library_docs(library_id, topic)
+    
+    except LibraryNotFoundError:
+        # Try alternative names
+        alternatives = {
+            "FastAPI": "fastapi",
+            "fast-api": "fastapi",
+            "Next.js": "nextjs",
+            "next": "nextjs",
+        }
+        
+        alt_name = alternatives.get(library_name)
+        if alt_name:
+            try:
+                library_id = await mcp__context7__resolve_library_id(alt_name)
+                return await mcp__context7__get_library_docs(library_id, topic)
+            except:
+                pass
+        
+        # Return guidance
+        return f"Library '{library_name}' not found. Try: {', '.join(alternatives.values())}"
+
+# Usage
+docs = await get_docs_with_fallback("FastAPI", "routing")  # Works with capitalization
+docs = await get_docs_with_fallback("fast-api", "routing")  # Works with hyphen
+```
+
+### Example 6: Token Budget Management
+
+**Scenario**: Manage token allocation across multiple skills
+
+```python
+class TokenBudgetManager:
+    """Manage Context7 token budget."""
+    
+    def __init__(self, total_budget: int = 20000):
+        self.total_budget = total_budget
+        self.allocated = {}
+        self.used = {}
+    
+    def allocate(self, skill_name: str, percentage: int) -> int:
+        """Allocate percentage of budget to skill."""
+        tokens = int(self.total_budget * percentage / 100)
+        self.allocated[skill_name] = tokens
+        self.used[skill_name] = 0
+        return tokens
+    
+    def use_tokens(self, skill_name: str, amount: int):
+        """Record token usage."""
+        available = self.allocated[skill_name] - self.used[skill_name]
+        if amount > available:
+            raise TokenBudgetExceededError(
+                f"{skill_name} exceeded budget: {amount} > {available}"
+            )
+        self.used[skill_name] += amount
+    
+    def get_report(self) -> dict:
+        """Generate usage report."""
+        return {
+            skill: {
+                "allocated": self.allocated[skill],
+                "used": self.used[skill],
+                "remaining": self.allocated[skill] - self.used[skill],
+                "utilization": self.used[skill] / self.allocated[skill]
+            }
+            for skill in self.allocated
+        }
+
+# Usage
+budget = TokenBudgetManager(total_budget=20000)
+budget.allocate("python-backend", 40)   # 8000 tokens
+budget.allocate("javascript-frontend", 30)  # 6000 tokens
+budget.allocate("testing", 20)         # 4000 tokens
+budget.allocate("infrastructure", 10)  # 2000 tokens
+
+# Use tokens
+budget.use_tokens("python-backend", 3000)
+budget.use_tokens("javascript-frontend", 2000)
+
+# Get report
+report = budget.get_report()
+print(report["python-backend"])
+# {
+#   "allocated": 8000,
+#   "used": 3000,
+#   "remaining": 5000,
+#   "utilization": 0.375
+# }
+```
+
+## Caching Examples
+
+### Example 7: Intelligent Caching
+
+**Scenario**: Cache documentation with TTL-based invalidation
+
+```python
+import hashlib
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+
+class Context7Cache:
+    """Intelligent caching for Context7 documentation."""
+    
+    def __init__(self, cache_dir: str = ".moai/cache/context7/"):
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.index_path = self.cache_dir / "index.json"
+    
+    def generate_key(self, library_id: str, topic: str, page: int) -> str:
+        """Generate cache key."""
+        key_string = f"{library_id}:{topic}:{page}"
+        return hashlib.sha256(key_string.encode()).hexdigest()[:16]
+    
+    def get(self, library_id: str, topic: str, page: int) -> Optional[str]:
+        """Retrieve from cache if valid."""
+        key = self.generate_key(library_id, topic, page)
+        cache_path = self.cache_dir / f"{key}.json"
+        
+        if not cache_path.exists():
+            return None
+        
+        # Load cache entry
+        entry = json.loads(cache_path.read_text())
+        
+        # Check expiration
+        expires_at = datetime.fromisoformat(entry["expires_at"])
+        if datetime.now() > expires_at:
+            cache_path.unlink()  # Remove expired
+            return None
+        
+        return entry["content"]
+    
+    def set(self, library_id: str, topic: str, page: int, content: str, ttl_days: int = 30):
+        """Store in cache with TTL."""
+        key = self.generate_key(library_id, topic, page)
+        cache_path = self.cache_dir / f"{key}.json"
+        
+        entry = {
+            "library_id": library_id,
+            "topic": topic,
+            "page": page,
+            "content": content,
+            "cached_at": datetime.now().isoformat(),
+            "expires_at": (datetime.now() + timedelta(days=ttl_days)).isoformat(),
+            "ttl_days": ttl_days
+        }
+        
+        cache_path.write_text(json.dumps(entry))
+
+# Usage
+cache = Context7Cache()
+
+# Try cache first
+docs = cache.get("/tiangolo/fastapi", "routing", 1)
+if not docs:
+    # Cache miss, fetch from Context7
+    docs = await mcp__context7__get_library_docs("/tiangolo/fastapi", "routing", 1)
+    cache.set("/tiangolo/fastapi", "routing", 1, docs, ttl_days=30)
+```
+
+### Example 8: Progressive Token Disclosure
+
+**Scenario**: Start with minimal tokens, expand as needed
+
+```python
+async def get_docs_progressive(library_id: str, topic: str) -> str:
+    """Get documentation with progressive token disclosure."""
+    
+    # Level 1: Summary (1000 tokens)
+    summary = await mcp__context7__get_library_docs(
+        library_id,
+        topic=topic,
+        page=1
+    )
+    
+    # Check if summary sufficient
+    if is_sufficient(summary):
+        return summary
+    
+    # Level 2: Standard (3000 tokens)
+    standard = await mcp__context7__get_library_docs(
+        library_id,
+        topic=topic,
+        page=2
+    )
+    
+    if is_sufficient(summary + standard):
+        return summary + "\n\n" + standard
+    
+    # Level 3: Detailed (5000 tokens)
+    detailed = await mcp__context7__get_library_docs(
+        library_id,
+        topic=topic,
+        page=3
+    )
+    
+    return summary + "\n\n" + standard + "\n\n" + detailed
+
+def is_sufficient(content: str) -> bool:
+    """Check if documentation is sufficient."""
+    # Simple heuristic: check length and completeness
+    return len(content) > 500 and "example" in content.lower()
+
+# Usage
+docs = await get_docs_progressive("/tiangolo/fastapi", "routing")
+# Automatically fetches only necessary pages
+```
+
+## Language-Specific Helper Examples
+
+### Example 9: Python Helper
+
+**Scenario**: Simplified Python library documentation access
+
+```python
+class PythonContext7Helper:
+    """Python-specific Context7 helper."""
+    
+    LIBRARIES = {
+        "fastapi": "/tiangolo/fastapi",
+        "django": "/django/django",
+        "pydantic": "/pydantic/pydantic",
+        "sqlalchemy": "/sqlalchemy/sqlalchemy",
+        "pytest": "/pytest-dev/pytest",
+    }
+    
+    async def get_framework_docs(self, framework: str, topic: str = "") -> str:
+        """Get Python framework documentation."""
+        library_id = self.LIBRARIES.get(framework)
+        if not library_id:
+            raise ValueError(f"Unknown framework: {framework}")
+        
+        return await mcp__context7__get_library_docs(library_id, topic)
+    
+    async def get_testing_guide(self) -> str:
+        """Get pytest testing guide."""
+        return await self.get_framework_docs("pytest", "fixtures parametrize mocking")
+    
+    async def get_async_patterns(self) -> str:
+        """Get async patterns."""
+        return await self.get_framework_docs("fastapi", "async background-tasks")
+
+# Usage
+python_helper = PythonContext7Helper()
+fastapi_docs = await python_helper.get_framework_docs("fastapi", "routing")
+testing_docs = await python_helper.get_testing_guide()
+```
+
+### Example 10: JavaScript Helper
+
+**Scenario**: Simplified JavaScript library documentation access
+
+```python
+class JavaScriptContext7Helper:
+    """JavaScript-specific Context7 helper."""
+    
+    LIBRARIES = {
+        "react": "/facebook/react",
+        "nextjs": "/vercel/next.js",
+        "express": "/expressjs/express",
+        "typescript": "/microsoft/TypeScript",
+        "vitest": "/vitest-dev/vitest",
+    }
+    
+    async def get_framework_docs(self, framework: str, topic: str = "") -> str:
+        """Get JavaScript framework documentation."""
+        library_id = self.LIBRARIES.get(framework)
+        if not library_id:
+            raise ValueError(f"Unknown framework: {framework}")
+        
+        return await mcp__context7__get_library_docs(library_id, topic)
+    
+    async def get_react_patterns(self) -> str:
+        """Get React patterns."""
+        return await self.get_framework_docs("react", "hooks patterns performance")
+    
+    async def get_nextjs_guide(self) -> str:
+        """Get Next.js App Router guide."""
+        return await self.get_framework_docs("nextjs", "app-router server-components")
+
+# Usage
+js_helper = JavaScriptContext7Helper()
+react_docs = await js_helper.get_react_patterns()
+nextjs_docs = await js_helper.get_nextjs_guide()
+```
+
+---
+
+**Last Updated**: 2025-11-22  
+**Maintained by**: MoAI-ADK Team

@@ -4,10 +4,14 @@ description: Use when: When initial project setup and .moai/ directory structure
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-cc-configuration, moai-project-config-manager
+skills: moai-cc-configuration, moai-project-config-manager, moai-project-documentation, moai-project-language-initializer, moai-project-batch-questions, moai-core-ask-user-questions
 ------
 
 # Project Manager - Project Manager Agent
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a Senior Project Manager Agent managing successful projects.

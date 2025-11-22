@@ -1,287 +1,469 @@
-# Git & GitHub Workflows - Practical Examples ( .0)
+# Git 2.47-2.50 & GitHub CLI 2.51+ Examples
 
-**Last Updated**: 2025-11-12 | **Enterprise Patterns** | **Production Ready**
+## Complete TDD Workflow Examples
 
----
+### Example 1: Basic Feature Development
 
-## Quick Start Examples
-
-### Example 1: Simple Feature Implementation
+**Scenario**: Implement user authentication system (SPEC-001)
 
 ```bash
-# User runs Alfred command
-/alfred:1-plan "Add password strength validation"
+# Step 1: Create feature branch
+git switch -c feature/SPEC-001
 
-# Alfred creates branch and asks:
-# Which workflow? Feature Branch + PR / Direct Commit
-# User chooses: Feature Branch + PR
+# Step 2: RED phase - Write failing test
+cat > tests/test_auth.py << 'EOF'
+def test_user_login_with_valid_credentials():
+    auth_service = AuthService()
+    result = auth_service.login("alice", "password123")
+    assert result.success is True
+    assert result.token is not None
+EOF
 
-# Alfred creates feature/SPEC-006
-git branch -a | grep SPEC-006
+pytest tests/test_auth.py  # Fails (no implementation)
+git add tests/test_auth.py
+git commit -m "test(auth): add failing test for user login"
 
-# User switches to branch
-git checkout feature/SPEC-006
+# Step 3: GREEN phase - Minimal implementation
+cat > src/auth.py << 'EOF'
+class AuthService:
+    def login(self, username: str, password: str):
+        # Minimal implementation to pass test
+        if username and password:
+            return LoginResult(success=True, token="fake-token")
+        return LoginResult(success=False, token=None)
+EOF
 
-# === RED Phase ===
-# Write test first
+pytest tests/test_auth.py  # Passes
+git add src/auth.py
+git commit -m "feat(auth): implement basic user login"
 
-git commit -m "🔴 RED: test_password_strength_validation
+# Step 4: REFACTOR phase - Improve code quality
+cat > src/auth.py << 'EOF'
+import jwt
+from datetime import datetime, timedelta
 
+class AuthService:
+    def login(self, username: str, password: str) -> LoginResult:
+        """Authenticate user and generate JWT token."""
+        if not username or not password:
+            raise ValueError("Username and password required")
+        
+        # Verify credentials (stub)
+        if self._verify_credentials(username, password):
+            token = self._generate_token(username)
+            return LoginResult(success=True, token=token)
+        
+        return LoginResult(success=False, token=None)
+    
+    def _verify_credentials(self, username: str, password: str) -> bool:
+        # TODO: Implement actual verification
+        return True
+    
+    def _generate_token(self, username: str) -> str:
+        payload = {
+            "username": username,
+            "exp": datetime.utcnow() + timedelta(hours=1)
+        }
+        return jwt.encode(payload, "secret-key", algorithm="HS256")
+EOF
 
-# === GREEN Phase ===
-# Implement password validation
+pytest tests/test_auth.py  # Still passes
+git add src/auth.py
+git commit -m "refactor(auth): improve login implementation with JWT"
 
-git commit -m "🟢 GREEN: implement_password_strength_check
+# Step 5: Create PR with AI-generated description
+gh pr create \
+  --base develop \
+  --title "feat(auth): implement user authentication" \
+  --generate-description
 
+# Output:
+# Created pull request #123
+# https://github.com/user/moai-adk/pull/123
+```
 
-# === REFACTOR Phase ===
+### Example 2: Multi-SPEC Feature with Worktree
 
-git commit -m "♻️ REFACTOR: improve_password_error_messages
+**Scenario**: Work on 3 related SPECs simultaneously
 
+```bash
+# Main repository
+cd /Users/goos/MoAI/MoAI-ADK
 
-# Create PR
-gh pr create \\
-  --base develop \\
-  --title "feat: Add password strength validation" \\
-  --body "Implements comprehensive password validation"
+# Create worktrees for parallel work
+git worktree add ../moai-adk-auth feature/SPEC-001-auth
+git worktree add ../moai-adk-api feature/SPEC-002-api
+git worktree add ../moai-adk-db feature/SPEC-003-db
 
-# After approval
+# Work on authentication (SPEC-001)
+cd ../moai-adk-auth
+/moai:2-run SPEC-001
+git commit -m "test(auth): add user login test"
+git commit -m "feat(auth): implement user authentication"
+
+# Switch to API work (SPEC-002)
+cd ../moai-adk-api
+/moai:2-run SPEC-002
+git commit -m "test(api): add API endpoint test"
+git commit -m "feat(api): add authentication endpoints"
+
+# Switch to database work (SPEC-003)
+cd ../moai-adk-db
+/moai:2-run SPEC-003
+git commit -m "test(db): add user schema test"
+git commit -m "feat(db): create user database schema"
+
+# Return to main and check status
+cd /Users/goos/MoAI/MoAI-ADK
+git worktree list
+# /Users/goos/MoAI/MoAI-ADK              (develop)
+# /Users/goos/moai-adk-auth              (feature/SPEC-001-auth) [changes: 2 commits]
+# /Users/goos/moai-adk-api               (feature/SPEC-002-api) [changes: 2 commits]
+# /Users/goos/moai-adk-db                (feature/SPEC-003-db) [changes: 2 commits]
+
+# Create PRs for all
+cd ../moai-adk-auth && gh pr create --base develop --title "feat(auth): user authentication"
+cd ../moai-adk-api && gh pr create --base develop --title "feat(api): authentication endpoints"
+cd ../moai-adk-db && gh pr create --base develop --title "feat(db): user database schema"
+
+# Cleanup after merge
+cd /Users/goos/MoAI/MoAI-ADK
+git worktree remove ../moai-adk-auth
+git worktree remove ../moai-adk-api
+git worktree remove ../moai-adk-db
+```
+
+### Example 3: Hotfix While Working on Feature
+
+**Scenario**: Critical bug reported while working on feature
+
+```bash
+# Currently working on feature (uncommitted changes)
+git status
+# On branch feature/SPEC-001
+# Changes not staged for commit:
+#   modified:   src/auth.py
+#   modified:   tests/test_auth.py
+
+# Critical bug reported in production
+git worktree add ../moai-adk-hotfix hotfix/api-crash
+cd ../moai-adk-hotfix
+
+# Fix bug in isolation
+git commit -m "fix(api): handle null pointer in user endpoint
+
+Critical bug causing API crashes when user data is null.
+Added null check and default value.
+
+Fixes #789"
+
+# Push and create emergency PR
+git push origin hotfix/api-crash
+gh pr create \
+  --base main \
+  --title "fix(api): critical null pointer crash" \
+  --body "Emergency fix for production issue #789" \
+  --label "critical" \
+  --reviewer @team/reviewers
+
+# Merge immediately after approval
 gh pr merge --squash --delete-branch
+
+# Return to feature work (WIP preserved)
+cd /Users/goos/MoAI/MoAI-ADK
+git status
+# On branch feature/SPEC-001
+# Changes not staged for commit:
+#   modified:   src/auth.py
+#   modified:   tests/test_auth.py
+# (Original work still intact)
+
+# Continue feature development
+git add src/auth.py tests/test_auth.py
+git commit -m "feat(auth): implement user login validation"
 ```
 
-### Example 2: Direct Commit Workflow
+## Sparse-Checkout Examples
+
+### Example 4: Frontend-Only Development
+
+**Scenario**: Frontend developer doesn't need backend code
 
 ```bash
-# User chooses "Direct Commit" workflow
-git checkout develop
-git pull origin develop
+# Clone repository
+git clone https://github.com/user/moai-adk.git
+cd moai-adk
 
-# Implement and commit directly
-git push origin develop
+# Enable sparse-checkout
+git sparse-checkout init --cone
 
-# CI/CD gates validate automatically
+# Check out only frontend directories
+git sparse-checkout set \
+  src/frontend/ \
+  tests/frontend/ \
+  docs/frontend/ \
+  package.json \
+  README.md
+
+# Verify
+ls -la
+# Only shows:
+# - src/frontend/
+# - tests/frontend/
+# - docs/frontend/
+# - package.json
+# - README.md
+
+# Backend directories not checked out:
+# - src/backend/
+# - src/database/
+# - tests/backend/
+
+# Check disk usage
+du -sh .
+# 280MB (instead of 2.1GB full checkout)
+
+# Add more directories as needed
+git sparse-checkout add src/shared/
 ```
 
-### Example 3: Parallel Features with Session Persistence
+### Example 5: Documentation-Only Checkout
+
+**Scenario**: Technical writer only needs documentation
 
 ```bash
-# Developer has two parallel SPECs
-/alfred:1-plan "Implement user profile"     # Creates feature/SPEC-007
-/alfred:1-plan "Implement user preferences" # Creates feature/SPEC-008
+# Clone with sparse-checkout
+git clone --filter=blob:none --sparse https://github.com/user/moai-adk.git
+cd moai-adk
 
-# Work on SPEC-007
-git checkout feature/SPEC-007
+# Checkout only documentation
+git sparse-checkout set \
+  docs/ \
+  README.md \
+  CONTRIBUTING.md \
+  LICENSE
 
-# Switch to SPEC-008
-git checkout feature/SPEC-008
+# Verify
+ls -la
+# Only documentation files visible
 
-# Later, resume SPEC-007 from checkpoint
-/alfred:2-run SPEC-007
+# Update documentation
+vim docs/api/authentication.md
+git add docs/api/authentication.md
+git commit -m "docs(api): update authentication guide"
+git push origin main
 ```
 
----
+## GitHub CLI Advanced Examples
 
-## Detailed Workflow Examples
+### Example 6: Automated PR Workflow
 
-### Example 1: Enterprise PR Review Process
+**Scenario**: Create, review, and merge PR in one workflow
 
 ```bash
-# Step 1: Create draft PR
-gh pr create \\
-  --draft \\
-  --title "WIP: Complex feature implementation"
+# Create PR with complete metadata
+gh pr create \
+  --base develop \
+  --title "feat(auth): implement OAuth2 provider" \
+  --body "Implements SPEC-005: OAuth2 integration
 
-# PR URL: https://github.com/org/repo/pull/42
+## Changes
+- Add OAuth2 provider configuration
+- Implement token exchange
+- Add provider callback handlers
 
-# Step 2: Keep PR updated as you work
-git push origin feature/SPEC-XYZ
+## Test Coverage
+- Unit tests: 92%
+- Integration tests: 88%
 
-# Step 3: Convert draft to ready
-gh pr ready 42
+## Related
+- Closes #123
+- Related to #456" \
+  --label "enhancement" \
+  --milestone "v2.0.0" \
+  --assignee @me \
+  --reviewer alice,bob
 
-# Step 4: View review comments
-gh pr view 42
+# Wait for CI to pass
+gh pr checks 123 --watch
 
-# Step 5: Address feedback
-git push origin feature/SPEC-XYZ
+# Merge when approved
+gh pr merge 123 --squash --delete-branch --auto
 
-# Step 6: Merge after approval
-gh pr merge 42 --squash --delete-branch
+# Result:
+# ✓ Pull request #123 merged
+# ✓ Deleted branch feature/SPEC-005
 ```
 
-### Example 2: Hotfix Workflow
+### Example 7: Bulk PR Management
+
+**Scenario**: Close multiple stale PRs
 
 ```bash
-# Urgent bug discovered in production
+# List all open PRs older than 60 days
+gh pr list --state open --json number,updatedAt,title \
+  | jq -r '.[] | select(.updatedAt < "2024-09-01") | "\(.number) - \(.title)"'
 
-# Create hotfix branch
-git checkout main
-git pull origin main
-git checkout -b hotfix/critical-auth-bypass
+# Output:
+# 45 - feat(api): add rate limiting
+# 67 - fix(db): optimize queries
+# 89 - docs(readme): update installation
 
-# Fix the bug and commit with security tag
-git commit -m "🔒 SECURITY: fix_authentication_bypass
+# Close stale PRs with comment
+for pr in 45 67 89; do
+  gh pr close $pr --comment "Closing due to inactivity. Please reopen if still relevant."
+done
 
-Severity: CRITICAL"
-
-# Create PR to main
-gh pr create \\
-  --base main \\
-  --title "HOTFIX: Critical auth vulnerability"
-
-# Fast-track merge
-gh pr merge --squash --delete-branch
-
-# Also merge to develop
-git checkout develop
-git pull origin develop
-git merge main
-git push origin develop
+# Verify closure
+gh pr list --state closed --json number,title | head -n 3
 ```
 
-### Example 3: Monorepo with MIDX Optimization
+### Example 8: PR Review Automation
+
+**Scenario**: Review multiple PRs in batch
 
 ```bash
-# Enable MIDX for this repository
+# List my assigned PRs
+gh pr list --assignee @me
+
+# Review first PR
+gh pr view 123
+
+# View changes
+gh pr diff 123
+
+# Add review comment
+gh pr review 123 --approve --body "LGTM! Great implementation."
+
+# Merge approved PR
+gh pr merge 123 --squash --delete-branch
+
+# Repeat for next PR
+gh pr view 124
+gh pr diff 124
+gh pr review 124 --request-changes --body "Please add tests for edge cases."
+```
+
+## Performance Optimization Examples
+
+### Example 9: Large Repository Optimization
+
+**Scenario**: Optimize moai-adk repository (250K objects)
+
+```bash
+# Before optimization
+git gc
+# Counting objects: 250000, done.
+# Compressing objects: 100%
+# Duration: 45 seconds
+
+# Enable MIDX
 git config gc.writeMultiPackIndex true
 git config gc.multiPackIndex true
 
-# Perform aggressive cleanup
-time git gc --aggressive --prune=now
+# Repack with MIDX
+git repack -ad --write-midx
 
-# Before: 45 seconds
-# After: 28 seconds (38% improvement with MIDX)
+# After optimization
+git gc
+# Counting objects: 250000, done.
+# Compressing objects: 100%
+# Duration: 28 seconds (38% faster)
 
-# Enable sparse checkout for faster development
-git sparse-checkout init --cone
-git sparse-checkout set src/moai_adk tests .github
+# Verify MIDX
+git verify-pack -v .git/objects/pack/multi-pack-index
+# multi-pack-index contains 45 packs
+# Total objects: 250000
 ```
 
-### Example 4: Complete Feature Release
+### Example 10: CI/CD Shallow Clone
+
+**Scenario**: Fast checkout for CI/CD pipeline
 
 ```bash
-# Step 1: Merge all features to main
-git checkout main
-git pull origin main
-git merge develop --ff-only
+# GitHub Actions workflow
+name: CI
+on: [push, pull_request]
 
-# Step 2: Create release tag
-git tag -a v2.0.0 -m "Release version 2.0.0"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (shallow)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50  # Last 50 commits only
+      
+      - name: Run tests
+        run: pytest tests/
 
-# Step 3: Push to remote
-git push origin main
-git push origin v2.0.0
-
-# Step 4: Create GitHub release
-gh release create v2.0.0 \\
-  --title "Version 2.0.0" \\
-  --notes "See CHANGELOG.md for details"
-
-# Step 5: Publish release
-gh release edit v2.0.0 --draft=false
+# Result:
+# Full clone: 450MB, 35 seconds
+# Shallow:    120MB, 8 seconds (77% faster)
 ```
 
-### Example 5: Conflict Resolution
+## Conventional Commits Examples
+
+### Example 11: Breaking Change
+
+**Scenario**: API endpoint restructuring (breaking change)
 
 ```bash
-# Conflict during merge
-git merge feature/SPEC-009
+# Breaking change with footer notation
+git commit -m "feat(api)!: restructure authentication endpoints
 
-# See conflicts
-git status
+Moved all /auth/* endpoints to /v2/auth/* for better versioning.
+Old endpoints deprecated and will be removed in v3.0.0.
 
-# Resolve conflicts in editor
-# Then mark as resolved
-git add src/models/user.py
+BREAKING CHANGE: All /auth/* endpoints moved to /v2/auth/*.
+Update client applications to use new endpoint structure.
 
-# Complete merge
-git commit -m "Merge feature/SPEC-009"
+Migration guide: docs/migration/v2-auth.md
 
-# Or abort merge
-git merge --abort
+Closes #456
+Related #789"
+```
+
+### Example 12: Multi-Scope Feature
+
+**Scenario**: Feature affecting multiple components
+
+```bash
+# Multiple scopes
+git commit -m "feat(auth,api,db): implement OAuth2 provider integration
+
+Added OAuth2 provider support across entire stack:
+- auth: OAuth2 client configuration
+- api: Provider callback endpoints
+- db: Provider token storage
+
+Test coverage: 92%
+
+Closes #123, #456, #789"
+```
+
+### Example 13: Performance Improvement
+
+**Scenario**: Database query optimization
+
+```bash
+# Performance improvement with benchmarks
+git commit -m "perf(db): optimize user activity queries
+
+Added compound index on (user_id, created_at) to improve
+user activity query performance.
+
+Benchmarks:
+- Before: 120ms average query time
+- After:  18ms average query time
+- Improvement: 85% faster
+
+Index size overhead: +2.5MB (acceptable)
+
+Closes #234"
 ```
 
 ---
 
-## Advanced Scenarios
-
-### Scenario 1: Cherry-pick Specific Commit
-
-```bash
-# Find commit
-git log feature/SPEC-010 --oneline | head
-
-# Cherry-pick commit
-git cherry-pick abc1234
-
-# If conflicts, resolve and continue
-git cherry-pick --continue
-```
-
-### Scenario 2: Reset Accidentally Pushed Commit
-
-```bash
-# Undo last local commit
-git reset HEAD~1
-
-# Or revert (safer)
-git revert HEAD
-git push origin feature/SPEC-005
-```
-
-### Scenario 3: Archive Old Feature Branch
-
-```bash
-# Delete local branch
-git branch -d feature/SPEC-001
-
-# Delete remote branch
-git push origin --delete feature/SPEC-001
-```
-
----
-
-## Quick Reference: Common Commands
-
-```bash
-# Create and switch to branch
-git checkout -b feature/SPEC-XXX
-
-# See current branch
-git branch --show-current
-
-# List all branches
-git branch -a
-
-# View recent commits
-git log --oneline -10
-
-# View changes not staged
-git diff
-
-# View staged changes
-git diff --cached
-
-# Stash uncommitted work
-git stash
-
-# Apply stashed work
-git stash pop
-
-# Update from remote
-git pull origin develop
-
-# Push to remote
-git push origin feature/SPEC-XXX
-```
-
----
-
-## Reference Links
-
-- **SKILL.md** - Complete feature overview
-- **reference.md** - Detailed command reference
-- **Git Official Docs** - https://git-scm.com/docs
-- **GitHub CLI Docs** - https://cli.github.com
-
-**Examples Last Updated**: 2025-11-12 | **Version**: 4.0.0 Enterprise | **Production Ready**
+**Last Updated**: 2025-11-22  
+**Maintained by**: MoAI-ADK Team
