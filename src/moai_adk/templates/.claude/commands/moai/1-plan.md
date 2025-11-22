@@ -495,38 +495,74 @@ Use conversation_language value directly without hardcoded language checks.
 TASK:
 Create SPEC-{SPEC_ID} with the following requirements:
 
-### SPEC Document Creation
+### CRITICAL: SPEC File Generation Rules (MANDATORY)
 
-1. **Create directory**: `.moai/specs/SPEC-{SPEC_ID}/`
+⚠️ **YOU MUST FOLLOW THESE RULES EXACTLY OR QUALITY GATE WILL FAIL:**
 
-2. **Generate spec.md**:
-   - YAML frontmatter with all 7 required fields (id, version, status, created, updated, author, priority)
-   - HISTORY section immediately after frontmatter
-   - Complete EARS structure with all 5 requirement types:
-     * Functional Requirements (MUST)
-     * Non-Functional Requirements (SHOULD)
-     * Interface Requirements (SHALL)
-     * Design Constraints (MUST)
-     * Acceptance Criteria (GIVEN/WHEN/THEN)
+1. **NEVER create single .md file**: ❌ WRONG: .moai/specs/SPEC-AUTH-001.md
+2. **ALWAYS create folder structure**: ✅ CORRECT: .moai/specs/SPEC-AUTH-001/ (directory)
+3. **ALWAYS use Bash + MultiEdit combo**: ❌ WRONG: Write to .moai/specs/SPEC-{ID}/spec.md separately
+4. **ALWAYS verify before creation**: Check directory name format and ID duplicates
 
-3. **Generate plan.md**:
-   - Implementation plan with detailed steps
-   - Task decomposition and dependencies
-   - Resource requirements and timeline
-   - Technology stack specifications
+### SPEC Document Creation (Step-by-Step)
 
-4. **Generate acceptance.md**:
-   - Minimum 2 Given/When/Then scenarios
-   - Edge case testing scenarios
-   - Success criteria and validation methods
+**Step 1: Verify SPEC ID Format**
+- Format: SPEC-{DOMAIN}-{NUMBER}
+- Examples: ✅ SPEC-AUTH-001, SPEC-REFACTOR-001, SPEC-UPDATE-REFACTOR-001
+- Wrong: ❌ AUTH-001, SPEC-001-auth, SPEC-AUTH-001-jwt
+
+**Step 2: Verify ID Uniqueness**
+- Search .moai/specs/ for existing SPEC files
+- If duplicate ID found → Change ID or update existing SPEC
+- If ID is unique → Proceed to Step 3
+
+**Step 3: Create Directory Structure**
+- Use Bash tool: mkdir -p /Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-{SPEC_ID}/
+- Wait for directory creation to complete
+- Proceed to Step 4 ONLY AFTER directory exists
+
+**Step 4: Generate 3 SPEC Files (SIMULTANEOUS - Required)**
+- Use MultiEdit tool to create all 3 files at once
+- DO NOT use Write tool for individual files
+- Create files:
+  * .moai/specs/SPEC-{SPEC_ID}/spec.md
+  * .moai/specs/SPEC-{SPEC_ID}/plan.md
+  * .moai/specs/SPEC-{SPEC_ID}/acceptance.md
+
+### spec.md Requirements:
+- YAML frontmatter with all 7 required fields:
+  * id: SPEC-{SPEC_ID}
+  * version: "1.0.0"
+  * status: "draft"
+  * created: "{{YYYY-MM-DD}}"
+  * updated: "{{YYYY-MM-DD}}"
+  * author: "{{AUTHOR_NAME}}"
+  * priority: "{{HIGH|MEDIUM|LOW}}"
+- HISTORY section immediately after frontmatter
+- Complete EARS structure with all 5 requirement types:
+  * Functional Requirements (MUST)
+  * Non-Functional Requirements (SHOULD)
+  * Interface Requirements (SHALL)
+  * Design Constraints (MUST)
+  * Acceptance Criteria (GIVEN/WHEN/THEN format)
+
+### plan.md Requirements:
+- Implementation plan with detailed steps
+- Task decomposition and dependencies
+- Resource requirements and timeline
+- Technology stack specifications
+- Risk analysis and mitigation strategies
+
+### acceptance.md Requirements:
+- Minimum 2 Given/When/Then test scenarios
+- Edge case testing scenarios
+- Success criteria and validation methods
+- Performance/quality gate criteria
 
 ### Quality Assurance:
 - Information not in product/structure/tech document supplemented by asking new questions
-- Acceptance Criteria written at least 2 times in 3 columns Given/When/Then
-- Number of modules reduced by Readable standard (default 5) - if exceeded, include justification in SPEC context section
-
-### ID Integration:
-- Follow SPEC ID lifecycle rules
+- Acceptance Criteria written at least 2 times in Given/When/Then format
+- Number of requirement modules ≤ 5 (if exceeded, include justification in SPEC)
 
 ### Git Integration:
 - Generate commit messages following conventional commits
