@@ -190,8 +190,14 @@ ehthumbs.db
 uv.lock
 
 # Local configuration files
-CLAUDE.local.md
 .claude/local/
+.claude/settings.local.json
+.moai/config/config.json
+.moai/cache/
+.moai/logs/
+
+# @CLAUDE.local.md is tracked (local development guide)
+!@CLAUDE.local.md
 
 # Documentation site files (not related to package distribution)
 theme.config.tsx
