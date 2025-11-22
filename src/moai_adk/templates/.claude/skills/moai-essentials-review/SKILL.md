@@ -1,6 +1,8 @@
 ---
+
 name: moai-essentials-review
 description: Enterprise comprehensive code review automation with AI-powered quality analysis, TRUST 5 enforcement, multi-language support, Context7 integration, security scanning, performance analysis, test coverage validation, and automated review feedback generation
+
 ---
 
 ## Quick Reference
@@ -36,7 +38,6 @@ Phase 3: Human Review (20 min)
 
 **Context7 Integration**: Latest vulnerability patterns, optimization techniques, and language best practices
 
----
 
 ## Implementation Guide
 
@@ -368,7 +369,6 @@ async def fetch_performance_patterns(language: str):
 - ❌ Approve without TRUST 5 validation
 - ❌ Add comments that code already explains
 
----
 
 ## Advanced Patterns
 
@@ -457,7 +457,6 @@ class ReviewLearningSystem:
                 self.add_automated_check(issue)
 ```
 
----
 
 ## Related Skills
 
@@ -467,7 +466,6 @@ class ReviewLearningSystem:
 - `moai-essentials-perf` (Performance optimization)
 - `moai-security-api` (Security best practices)
 
----
 
 **Last Updated**: 2025-11-21  
 **Status**: Production Ready (Enterprise)

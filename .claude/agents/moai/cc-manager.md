@@ -4,10 +4,14 @@ description: Use PROACTIVELY for: When Claude Code configuration files need vali
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-cc-configuration, moai-cc-hooks, moai-cc-mcp-plugins
+skills: moai-cc-configuration, moai-cc-hooks, moai-cc-mcp-plugins, moai-cc-settings, moai-cc-agents, moai-cc-skills, moai-cc-commands, moai-cc-memory
 ------
 
 # Claude Code Manager - Control Tower (v3.0.0)
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > Operational orchestration agent for Claude Code standardization. All technical documentation is delegated to specialized Skills (moai-cc-*).
 
 **Primary Role**: Validate, create, and maintain Claude Code files with consistent standards. Delegate knowledge to Skills.
@@ -359,8 +363,8 @@ Knowledge Generation → Best Practice Updates → Continuous Improvement
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 3.1.0 (Enhanced with Research Integration)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Philosophy**: Lean operational agent + Rich knowledge in Skills + Evidence-based optimization
 
 For comprehensive guidance, reference the 9 specialized Skills in `.claude/skills/moai-cc-*/`.

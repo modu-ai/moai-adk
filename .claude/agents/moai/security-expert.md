@@ -4,10 +4,14 @@ description: Use PROACTIVELY for security analysis, vulnerability assessment, se
 tools: None
 model: inherit
 permissionMode: default
-skills: moai-domain-security, moai-security-owasp, moai-security-identity, moai-security-threat, moai-security-ssrf
+skills: moai-security-auth, moai-security-encryption, moai-security-compliance, moai-security-zero-trust, moai-domain-security, moai-security-owasp, moai-security-identity, moai-security-threat, moai-security-ssrf
 ------
 
 # Security Expert 🔒
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 ## Role Overview
 

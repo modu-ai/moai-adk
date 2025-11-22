@@ -1,8 +1,10 @@
 ---
+
 name: moai-baas-foundation
 description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture
   patterns, strategic provider selection, and intelligent multi-service orchestration
   for scalable production applications
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -23,7 +25,6 @@ description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS arc
 - Planning multi-service integrations
 - Optimizing existing BaaS implementations
 
----
 
 # Quick Reference (Level 1)
 
@@ -37,7 +38,6 @@ description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS arc
 | Security gaps | Breach risk | Security audits + compliance checks |
 | Performance bottlenecks | User experience | Load testing + monitoring |
 
----
 
 # Reference & Integration (Level 4)
 
@@ -54,7 +54,6 @@ description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS arc
 - `analyze_provider_updates(providers)` - Real-time update analysis
 - `optimize_provider_selection()` - Latest best practices
 
----
 
 ## Implementation Guide
 
@@ -69,7 +68,6 @@ Enterprise Backend-as-a-Service foundation expert with AI-powered BaaS architect
 - 🔗 **Enterprise Integration Patterns** with zero-configuration service composition
 - 📈 **Predictive Cost Analysis** with usage forecasting and ROI calculations
 
----
 
 ## Enterprise BaaS Provider Landscape (November 2025)
 
@@ -127,7 +125,6 @@ Enterprise Backend-as-a-Service foundation expert with AI-powered BaaS architect
 - **Performance**: Edge computing sub-10ms latency
 - **Latest**: Workers VPC Services, 32 MiB WebSocket messages
 
----
 
 # Core Implementation (Level 2)
 
@@ -236,7 +233,6 @@ START: Choose BaaS Providers
    └─ Firebase ecosystem? → Google Cloud Storage
 ```
 
----
 
 # Advanced Implementation (Level 3)
 
@@ -335,11 +331,9 @@ START: Choose BaaS Providers
 - **v2.0.0** (2025-11-11): Complete metadata structure, provider matrix, integration patterns
 - **v1.0.0** (2025-10-22): Initial BaaS foundation
 
----
 
 **End of Skill** | Updated 2025-11-13
 
----
 
 ## Advanced Patterns
 
@@ -357,7 +351,6 @@ START: Choose BaaS Providers
 - Secrets management with encrypted environment variables
 - Comprehensive audit logging and compliance monitoring
 
----
 
 **End of Enterprise BaaS Foundation Expert **
 

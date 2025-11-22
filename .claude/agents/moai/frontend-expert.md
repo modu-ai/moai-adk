@@ -4,10 +4,14 @@ description: Use PROACTIVELY when: Frontend architecture, component design, stat
 tools: Read, Write, Edit, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-lang-tailwind-css, moai-icons-vector
+skills: moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-lang-tailwind-css, moai-icons-vector, moai-design-systems, moai-lib-shadcn-ui, moai-essentials-perf, moai-streaming-ui, moai-foundation-trust
 ------
 
 # Frontend Expert - Frontend Architecture Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 ## 🚨 CRITICAL: AGENT INVOCATION RULE
 
@@ -398,8 +402,8 @@ Example test:
 
 ---
 
-**Last Updated**: 2025-11-04
-**Version**: 1.1.0 (Refactored for clarity and conciseness)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Domain (Alfred Sub-agents)
 **Supported Frameworks**: React 19, Vue 3.5, Angular 19, Next.js 15, Nuxt, SvelteKit, Astro, Remix, SolidJS
 **Context7 Integration**: Enabled for real-time framework documentation

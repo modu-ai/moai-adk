@@ -1,644 +1,191 @@
 ---
 name: moai-domain-frontend
-description: Enterprise Frontend Development with AI-powered modern architecture,
+description: Enterprise Frontend Development with React 19, Next.js 15, Vue 3.5 and modern frameworks
 ---
 
 ## Quick Reference (30 seconds)
 
-# Enterprise Frontend Development Expert 
+# Enterprise Frontend Development
+
+**Primary Focus**: React 19, Next.js 15, Vue 3.5, component architecture, state management, optimization
+**Best For**: Web application development, component libraries, performance optimization, full-stack development
+**Key Frameworks**: React 19.0, Next.js 15.x, Vue 3.5, Vite 5.2, TypeScript 5.4
+**Auto-triggers**: React files, Next.js projects, Vue components, frontend architecture
+
+| Framework | Version | Release | Support |
+|-----------|---------|---------|---------|
+| React | 19.0 | Oct 2024 | Active |
+| Next.js | 15.x | Oct 2024 | ✅ |
+| Vue | 3.5 | Aug 2024 | Active |
+| Vite | 5.2 | Nov 2024 | ✅ |
+
+---
+
+## What It Does
+
+Enterprise-grade frontend development with modern frameworks and patterns. React Server Components, advanced state management, performance optimization, and full-stack type safety.
+
+**Key capabilities**:
+- ✅ React 19 with Server Components and use() hook
+- ✅ Next.js 15 PPR, Turbopack, App Router
+- ✅ Vue 3.5 with signals-based reactivity
+- ✅ Component architecture and design systems
+- ✅ Advanced state management (Zustand, Redux, Pinia)
+- ✅ Performance optimization and bundle analysis
+- ✅ TypeScript for type-safe development
 
 ---
 
 ## When to Use
 
 **Automatic triggers**:
-- Frontend architecture and modern UI framework discussions
-- Component design system and user experience planning
-- Performance optimization and accessibility implementation
-- Responsive design and cross-platform compatibility
+- React/JSX files, Next.js projects
+- Vue projects, component development
+- Frontend architecture decisions
+- State management patterns
 
 **Manual invocation**:
-- Designing enterprise frontend architectures with optimal UX patterns
-- Implementing modern component systems and design tokens
-- Planning frontend performance optimization strategies
-- Creating accessible and international user interfaces
+- Design component architecture
+- Implement state management strategy
+- Optimize bundle size and performance
+- Review frontend code for best practices
 
 ---
 
-# Quick Reference (Level 1)
+## Three-Level Learning Path
 
-## State Management with Modern Patterns
+### Level 1: Fundamentals (See examples.md)
 
-```typescript
-// Advanced state management with Zustand and TypeScript
-import { create } from 'zustand';
-import { devtools, subscribeWithSelector } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+Core frontend concepts:
+- **React Basics**: Components, hooks, state, effects
+- **Next.js Setup**: Pages, App Router, API routes
+- **Vue Basics**: Components, composition API, lifecycle
+- **Styling**: CSS Modules, Tailwind, Styled Components
+- **Testing**: Unit tests, component tests with Vitest
 
-// Type definitions
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  preferences: {
-    theme: 'light' | 'dark';
-    language: string;
-    notifications: boolean;
-  };
-}
+### Level 2: Advanced Patterns (See modules/architecture.md)
 
-interface AppState {
-  // User state
-  currentUser: User | null;
-  users: User[];
-  
-  // UI state
-  theme: 'light' | 'dark';
-  sidebarOpen: boolean;
-  activeModal: string | null;
-  
-  // Loading states
-  loading: {
-    users: boolean;
-    auth: boolean;
-  };
-  
-  // Error states
-  errors: {
-    users: string | null;
-    auth: string | null;
-  };
-}
+Production-ready architecture:
+- **Server Components**: React Server Components in Next.js
+- **State Management**: Zustand, Redux, Pinia, Context API
+- **Data Fetching**: SWR, React Query, Server Actions
+- **Advanced Hooks**: Custom hooks, useReducer, useMemo
+- **Performance**: Code splitting, lazy loading, memoization
+- **Forms**: Form libraries, validation, accessibility
 
-interface AppActions {
-  // User actions
-  setCurrentUser: (user: User | null) => void;
-  updateUserPreferences: (preferences: Partial<User['preferences']>) => void;
-  
-  // UI actions
-  setTheme: (theme: 'light' | 'dark') => void;
-  toggleSidebar: () => void;
-  setActiveModal: (modal: string | null) => void;
-  
-  // Data actions
-  fetchUsers: () => Promise<void>;
-  addUser: (user: Omit<User, 'id'>) => Promise<void>;
-  
-  // Error handling
-  clearError: (key: keyof AppState['errors']) => void;
-}
+### Level 3: Performance & Optimization (See modules/best-practices.md)
 
-// Create store with middleware
-export const useAppStore = create<AppState & AppActions>()(
-  devtools(
-    subscribeWithSelector(
-      immer((set, get) => ({
-        // Initial state
-        currentUser: null,
-        users: [],
-        theme: 'light',
-        sidebarOpen: true,
-        activeModal: null,
-        loading: { users: false, auth: false },
-        errors: { users: null, auth: null },
+Production deployment and optimization:
+- **Bundle Optimization**: Code splitting, dynamic imports, tree-shaking
+- **Runtime Performance**: React profiler, Lighthouse, Core Web Vitals
+- **SEO & Accessibility**: Meta tags, structured data, WCAG compliance
+- **Deployment**: Vercel, Netlify, GitHub Pages, Docker
+- **Monitoring**: Error tracking, analytics, performance metrics
+- **DevOps**: CI/CD, environment variables, deployment strategies
 
-        // User actions
-        setCurrentUser: (user) => set((state) => {
-          state.currentUser = user;
-        }),
+---
 
-        updateUserPreferences: (preferences) => set((state) => {
-          if (state.currentUser) {
-            Object.assign(state.currentUser.preferences, preferences);
-          }
-        }),
+## Best Practices
 
-        // UI actions
-        setTheme: (theme) => set((state) => {
-          state.theme = theme;
-        }),
+✅ **DO**:
+- Use TypeScript for type safety
+- Implement proper error boundaries
+- Optimize images with next/image
+- Use composition over inheritance
+- Test critical user paths
+- Monitor Web Vitals
+- Keep components small and reusable
+- Use proper key in lists
 
-        toggleSidebar: () => set((state) => {
-          state.sidebarOpen = !state.sidebarOpen;
-        }),
+❌ **DON'T**:
+- Use index as list key
+- Create large monolithic components
+- Mutate state directly
+- Ignore performance warnings
+- Ship unnecessary dependencies
+- Skip accessibility features
+- Inline styles in components
+- Over-optimize prematurely
 
-        setActiveModal: (modal) => set((state) => {
-          state.activeModal = modal;
-        }),
+---
 
-        // Data actions
-        fetchUsers: async () => {
-          set((state) => { state.loading.users = true; });
-          
-          try {
-            const response = await fetch('/api/users');
-            const users = await response.json();
-            
-            set((state) => {
-              state.users = users;
-              state.loading.users = false;
-              state.errors.users = null;
-            });
-          } catch (error) {
-            set((state) => {
-              state.loading.users = false;
-              state.errors.users = error instanceof Error ? error.message : 'Failed to fetch users';
-            });
-          }
-        },
+## Tool Versions (2025-11-22)
 
-        addUser: async (userData) => {
-          try {
-            const response = await fetch('/api/users', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(userData),
-            });
-            
-            const newUser = await response.json();
-            
-            set((state) => {
-              state.users.push(newUser);
-            });
-          } catch (error) {
-            set((state) => {
-              state.errors.users = error instanceof Error ? error.message : 'Failed to add user';
-            });
-          }
-        },
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **React** | 19.0 | UI Library |
+| **Next.js** | 15.x | Full-stack framework |
+| **Vue** | 3.5 | Reactive framework |
+| **TypeScript** | 5.4 | Type safety |
+| **Vite** | 5.2 | Build tool |
+| **Tailwind** | 4.0 | CSS utility |
 
-        // Error handling
-        clearError: (key) => set((state) => {
-          state.errors[key] = null;
-        }),
-      }))
-    ),
-    { name: 'app-store' }
-  )
-);
+---
 
-// Selectors for optimized re-renders
-export const useCurrentUser = () => useAppStore((state) => state.currentUser);
-export const useUsers = () => useAppStore((state) => state.users);
-export const useTheme = () => useAppStore((state) => state.theme);
-export const useSidebarOpen = () => useAppStore((state) => state.sidebarOpen);
+## Installation & Setup
 
-// Derived state selectors
-export const useActiveUsers = () => {
-  return useAppStore((state) => 
-    state.users.filter(user => user.preferences.notifications)
-  );
-};
+```bash
+# Create Next.js app (React)
+npx create-next-app@latest --typescript
 
-// Persistence middleware
-useAppStore.subscribe(
-  (state) => ({
-    theme: state.theme,
-    sidebarOpen: state.sidebarOpen,
-    currentUser: state.currentUser,
-  }),
-  (persistedState) => {
-    localStorage.setItem('app-state', JSON.stringify(persistedState));
-  }
-);
+# Create Vite + React app
+npm create vite@latest my-app -- --template react-ts
+
+# Create Vue app
+npm create vite@latest my-app -- --template vue-ts
+
+# Install common dependencies
+npm install zustand react-query @hookform/react axios
 ```
 
 ---
 
-# Advanced Implementation (Level 3)
+## Works Well With
 
-## Performance Optimization Strategies
-
-```typescript
-// Advanced performance optimization techniques
-export class PerformanceOptimizer {
-  // Code splitting with dynamic imports
-  static lazyLoadComponents() {
-    const LazyComponent = React.lazy(() => import('./HeavyComponent'));
-    
-    return (
-      <Suspense fallback={<ComponentSkeleton />}>
-        <LazyComponent />
-      </Suspense>
-    );
-  }
-
-  // Image optimization with next/image
-  static OptimizedImage: React.FC<{
-    src: string;
-    alt: string;
-    width: number;
-    height: number;
-  }> = ({ src, alt, width, height }) => {
-    return (
-      <Image
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        placeholder="blur"
-        blurDataURL="data:image/jpeg;base64,..."
-        loading="lazy"
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-      />
-    );
-  };
-
-  // Virtual scrolling for large lists
-  static useVirtualScrolling<T>(
-    items: T[],
-    itemHeight: number,
-    containerHeight: number
-  ) {
-    const [scrollTop, setScrollTop] = useState(0);
-    
-    const visibleItems = useMemo(() => {
-      const startIndex = Math.floor(scrollTop / itemHeight);
-      const endIndex = Math.min(
-        startIndex + Math.ceil(containerHeight / itemHeight) + 1,
-        items.length
-      );
-      
-      return items.slice(startIndex, endIndex).map((item, index) => ({
-        item,
-        index: startIndex + index,
-        top: (startIndex + index) * itemHeight,
-      }));
-    }, [items, itemHeight, containerHeight, scrollTop]);
-
-    return {
-      visibleItems,
-      totalHeight: items.length * itemHeight,
-      onScroll: useCallback((e: React.UIEvent) => {
-        setScrollTop(e.currentTarget.scrollTop);
-      }, []),
-    };
-  }
-
-  // Request optimization with React Query
-  static useOptimizedQuery<T>(
-    queryKey: string[],
-    queryFn: () => Promise<T>,
-    options: {
-      staleTime?: number;
-      cacheTime?: number;
-      refetchOnWindowFocus?: boolean;
-    } = {}
-  ) {
-    return useQuery({
-      queryKey,
-      queryFn,
-      staleTime: options.staleTime || 5 * 60 * 1000, // 5 minutes
-      cacheTime: options.cacheTime || 10 * 60 * 1000, // 10 minutes
-      refetchOnWindowFocus: options.refetchOnWindowFocus || false,
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    });
-  }
-}
-```
-
-### Accessibility Implementation
-
-```typescript
-// Comprehensive accessibility implementation
-export class AccessibilityManager {
-  // ARIA attributes management
-  static useAriaAttributes() {
-    const [announcements, setAnnouncements] = useState<string[]>([]);
-
-    const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-      setAnnouncements(prev => [...prev, { message, priority }]);
-      setTimeout(() => {
-        setAnnouncements(prev => prev.slice(1));
-      }, 1000);
-    }, []);
-
-    return {
-      announce,
-      announcements,
-    };
-  }
-
-  // Keyboard navigation implementation
-  static useKeyboardNavigation(
-    items: string[],
-    onSelect: (item: string) => void
-  ) {
-    const [focusedIndex, setFocusedIndex] = useState(0);
-
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setFocusedIndex(prev => (prev + 1) % items.length);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setFocusedIndex(prev => (prev - 1 + items.length) % items.length);
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          onSelect(items[focusedIndex]);
-          break;
-        case 'Escape':
-          e.preventDefault();
-          setFocusedIndex(-1);
-          break;
-      }
-    }, [items, focusedIndex, onSelect]);
-
-    return {
-      focusedIndex,
-      handleKeyDown,
-      setFocusedIndex,
-    };
-  }
-
-  // Focus management
-  static useFocusManagement() {
-    const [focusableElements, setFocusableElements] = useState<HTMLElement[]>([]);
-
-    useEffect(() => {
-      const updateFocusableElements = () => {
-        const elements = Array.from(
-          document.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          )
-        ) as HTMLElement[];
-        setFocusableElements(elements);
-      };
-
-      updateFocusableElements();
-      document.addEventListener('DOMContentLoaded', updateFocusableElements);
-      
-      return () => {
-        document.removeEventListener('DOMContentLoaded', updateFocusableElements);
-      };
-    }, []);
-
-    const trapFocus = useCallback((container: HTMLElement) => {
-      const firstElement = container.querySelector(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      ) as HTMLElement;
-      
-      if (firstElement) {
-        firstElement.focus();
-      }
-    }, []);
-
-    return {
-      focusableElements,
-      trapFocus,
-    };
-  }
-}
-```
-
-### Internationalization Setup
-
-```typescript
-// Advanced i18n implementation with react-i18next
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
-
-// Resource configuration
-const resources = {
-  en: {
-    translation: {
-      welcome: 'Welcome',
-      userManagement: 'User Management',
-      addNewUser: 'Add New User',
-      searchUsers: 'Search Users',
-      noUsersFound: 'No users found',
-      error: {
-        fetchUsersFailed: 'Failed to fetch users',
-        addUserFailed: 'Failed to add user',
-      },
-    },
-  },
-  es: {
-    translation: {
-      welcome: 'Bienvenido',
-      userManagement: 'Gestión de Usuarios',
-      addNewUser: 'Agregar Nuevo Usuario',
-      searchUsers: 'Buscar Usuarios',
-      noUsersFound: 'No se encontraron usuarios',
-      error: {
-        fetchUsersFailed: 'Error al obtener usuarios',
-        addUserFailed: 'Error al agregar usuario',
-      },
-    },
-  },
-  fr: {
-    translation: {
-      welcome: 'Bienvenue',
-      userManagement: 'Gestion des Utilisateurs',
-      addNewUser: 'Ajouter un Nouvel Utilisateur',
-      searchUsers: 'Rechercher des Utilisateurs',
-      noUsersFound: 'Aucun utilisateur trouvé',
-      error: {
-        fetchUsersFailed: 'Échec de la récupération des utilisateurs',
-        addUserFailed: 'Échec de l\'ajout d\'utilisateur',
-      },
-    },
-  },
-};
-
-// Initialize i18n
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'en',
-    debug: process.env.NODE_ENV === 'development',
-    
-    interpolation: {
-      escapeValue: false,
-    },
-    
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage'],
-    },
-  });
-
-// Type-safe translation hook
-export const useTranslation = () => {
-  const { t } = i18next.useTranslation();
-  
-  return {
-    t: (key: string, options?: i18n.TOptions) => t(key, options),
-    changeLanguage: i18n.changeLanguage,
-    currentLanguage: i18n.language,
-  };
-};
-
-// Language switcher component
-export const LanguageSwitcher: React.FC = () => {
-  const { currentLanguage, changeLanguage } = useTranslation();
-  
-  const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  ];
-
-  return (
-    <div className="language-switcher">
-      {languages.map((lang) => (
-        <button
-          key={lang.code}
-          onClick={() => changeLanguage(lang.code)}
-          className={currentLanguage === lang.code ? 'active' : ''}
-          aria-label={`Switch to ${lang.name}`}
-        >
-          <span>{lang.flag}</span>
-          <span>{lang.name}</span>
-        </button>
-      ))}
-    </div>
-  );
-};
-```
+- `moai-lang-typescript` (TypeScript patterns)
+- `moai-lang-html-css` (HTML/CSS semantics)
+- `moai-domain-testing` (Test strategies)
+- `moai-domain-database` (API integration)
 
 ---
 
-# Reference & Integration (Level 4)
+## Learn More
+
+- **Practical Examples**: See `examples.md` for 20+ real-world patterns
+- **Architecture Patterns**: See `modules/architecture.md` for complex applications
+- **Best Practices**: See `modules/best-practices.md` for production deployment
+- **React Docs**: https://react.dev/
+- **Next.js Docs**: https://nextjs.org/docs
+- **Vue Docs**: https://vuejs.org/
 
 ---
 
-## Core Implementation
+## Changelog
 
-## What It Does
-
-Enterprise Frontend Development expert with AI-powered modern architecture, Context7 integration, and intelligent component orchestration for scalable user interfaces.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Frontend Architecture** using Context7 MCP for latest frontend patterns
-- 📊 **Intelligent Component Orchestration** with automated design system optimization
-- 🚀 **Modern Framework Integration** with AI-driven performance optimization
-- 🔗 **Enterprise User Experience** with zero-configuration accessibility and internationalization
-- 📈 **Predictive Performance Analytics** with usage forecasting and optimization insights
+- **v4.0.0** (2025-11-22): Modularized with architecture and best practices
+- **v3.5.0** (2025-11-13): React 19 Server Components, Next.js 15 PPR
+- **v3.0.0** (2025-10-01): React 18 hooks, composition API patterns
+- **v2.0.0** (2025-08-01): TypeScript migration, design systems
 
 ---
-
-## Modern Frontend Stack (November 2025)
-
-### Core Framework Ecosystem
-- **React 19**: Latest with concurrent features and Server Components
-- **Vue 3.5**: Composition API and performance optimizations
-- **Angular 18**: Standalone components and improved hydration
-- **Svelte 5**: Signals and improved TypeScript support
-- **Next.js 16**: App Router, Server Components, and Turbopack
-
-### State Management Solutions
-- **Zustand**: Lightweight state management
-- **TanStack Query**: Server state management with caching
-- **Jotai**: Atomic state management
-- **Redux Toolkit**: Predictable state container
-- **Valtio**: Proxy-based state management
-
-### Styling & UI Systems
-- **Tailwind CSS**: Utility-first CSS framework
-- **shadcn/ui**: High-quality component library
-- **Material-UI**: React component library
-- **Chakra UI**: Accessible React components
-- **Styled Components**: CSS-in-JS with TypeScript
-
-### Performance Optimization
-- **Code Splitting**: Dynamic imports and lazy loading
-- **Image Optimization**: Next.js Image and Cloudinary
-- **Bundle Analysis**: Webpack Bundle Analyzer
-- **Runtime Optimization**: React.memo and useMemo
-
----
-
-# Core Implementation (Level 2)
-
-## Frontend Architecture Intelligence
-
-```python
-# AI-powered frontend architecture optimization with Context7
-class FrontendArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.component_analyzer = ComponentAnalyzer()
-        self.performance_optimizer = PerformanceOptimizer()
-    
-    async def design_optimal_frontend_architecture(self, 
-                                                 requirements: FrontendRequirements) -> FrontendArchitecture:
-        """Design optimal frontend architecture using AI analysis."""
-        
-        # Get latest frontend documentation via Context7
-        react_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/react/docs',
-            topic="hooks server-components performance optimization 2025",
-            tokens=3000
-        )
-        
-        nextjs_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/vercel/docs',
-            topic="next.js app router optimization deployment 2025",
-            tokens=2000
-        )
-        
-        # Optimize component architecture
-        component_design = self.component_analyzer.optimize_component_system(
-            requirements.ui_complexity,
-            requirements.team_size,
-            react_docs
-        )
-        
-        # Optimize performance strategy
-        performance_strategy = self.performance_optimizer.design_performance_strategy(
-            requirements.performance_targets,
-            requirements.user_base,
-            nextjs_docs
-        )
-        
-        return FrontendArchitecture(
-            framework_selection=self._select_framework(requirements),
-            component_system=component_design,
-            state_management=self._design_state_management(requirements),
-            styling_strategy=self._design_styling_system(requirements),
-            performance_optimization=performance_strategy,
-            accessibility_compliance=self._ensure_accessibility(requirements),
-            internationalization=self._configure_i18n(requirements)
-        )
-```
-
-
-
----
-
-## Reference & Resources
-
-See [reference.md](reference.md) for detailed API reference and official documentation.
 
 ## Context7 Integration
 
 ### Related Libraries & Tools
-- [React](/facebook/react): JavaScript library for building user interfaces
-- [Next.js](/vercel/next.js): The React Framework with App Router and Server Components
-- [Zustand](/pmndrs/zustand): Small, fast and scalable state management solution
-- [TanStack Query](/tanstack/query): Powerful data synchronization for React
-- [shadcn/ui](/shadcn-ui/ui): Re-usable components built with Radix UI and Tailwind CSS
+- [React](/facebook/react): A JavaScript library for building UIs
+- [Next.js](/vercel/next.js): React framework for production
+- [Vue](/vuejs/vue): The progressive JavaScript framework
+- [TypeScript](/microsoft/TypeScript): Typed superset of JavaScript
+- [Tailwind CSS](/tailwindlabs/tailwindcss): Utility-first CSS
 
 ### Official Documentation
-- [React 19](https://react.dev/)
-- [Next.js 16](https://nextjs.org/docs)
-- [Zustand](https://zustand-demo.pmnd.rs/)
-- [TanStack Query](https://tanstack.com/query/latest)
-- [Tailwind CSS](https://tailwindcss.com/docs)
+- [React Documentation](https://react.dev/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Vue Documentation](https://vuejs.org/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 
-### Version-Specific Guides
-Latest stable version: React 19.x, Next.js 16.x, Zustand 5.x
-- [React 19 Upgrade Guide](https://react.dev/blog/2024/12/05/react-19)
-- [Next.js 16 Migration](https://nextjs.org/docs/app/building-your-application/upgrading)
-- [Zustand v5 Migration](https://github.com/pmndrs/zustand/discussions/2200)
-- [TanStack Query v5](https://tanstack.com/query/v5/docs/framework/react/guides/migrating-to-v5)
+---
+
+**Skills**: Skill("moai-lang-typescript"), Skill("moai-domain-testing"), Skill("moai-lang-html-css")
+**Auto-loads**: React/Vue/Next.js projects with TypeScript
 

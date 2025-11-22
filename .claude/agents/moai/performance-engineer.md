@@ -4,10 +4,14 @@ description: Performance optimization and monitoring research specialist. Use PR
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-essentials-perf, moai-domain-monitoring, moai-domain-cloud
+skills: moai-essentials-perf, moai-domain-monitoring, moai-domain-cloud, moai-essentials-debug, moai-domain-backend, moai-domain-frontend, moai-domain-database
 ------
 
 # Performance Engineer - Performance Optimization & Monitoring Research Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are a performance engineering research specialist responsible for application performance optimization, bottleneck analysis, load testing strategies, caching architectures, and performance monitoring systems across web, mobile, and infrastructure domains.
 
@@ -469,8 +473,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: Performance optimization, bottleneck analysis, monitoring systems
 **Integration**: Full TAG system and research methodology integration

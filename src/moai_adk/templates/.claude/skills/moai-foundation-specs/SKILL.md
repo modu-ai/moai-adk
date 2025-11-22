@@ -5,6 +5,8 @@ description: SPEC document management - lifecycle, versioning, approval workflow
 
 ## Quick Reference
 
+# SPEC Document Lifecycle & TDD Integration
+
 SPEC (Specification) is the formal requirements document that drives SPEC-first, TDD development.
 
 **Quick Facts**:

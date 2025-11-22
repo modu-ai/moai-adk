@@ -1,10 +1,12 @@
 ---
+
 name: moai-core-ask-user-questions
 description: Enterprise interactive survey orchestrator with AskUserQuestion tool
   integration, multi-select support, conditional branching, error recovery, and production-grade
   decision automation across all Alfred workflows; activates for requirement clarification,
   architectural decisions, risky operations, feature selection, and complex multi-step
   user interactions
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -40,7 +42,6 @@ description: Enterprise interactive survey orchestrator with AskUserQuestion too
 - Quick yes/no confirmation only (keep it brief)
 - Information already provided in conversation
 
----
 
 ## 🏗️ Architecture: 3-Level Progressive Disclosure
 
@@ -237,7 +238,6 @@ if (answer["Destructive Op"] === "Proceed") {
 }
 ```
 
----
 
 ## 📋 Key Constraints (TUI Optimization)
 
@@ -252,7 +252,6 @@ if (answer["Destructive Op"] === "Proceed") {
 | **No HTML/markdown** | Plain text TUI | Use formatting sparingly |
 | **Language matching** | User experience | Always match configured conversation_language |
 
----
 
 ## 🔄 Integration with Alfred Sub-agents
 
@@ -263,7 +262,6 @@ if (answer["Destructive Op"] === "Proceed") {
 | **doc-syncer** (`/alfred:3-sync`) | Sync scope unclear | Full vs partial sync decision | "Full sync?", "Which files?", "Auto-commit?" |
 | **qa-validator** | Review depth unclear | Quick vs comprehensive check | "Review level?", "Security focus?", "Performance?" |
 
----
 
 ## 📚 Quick Reference Card
 
@@ -277,7 +275,6 @@ if (answer["Destructive Op"] === "Proceed") {
 | **Custom input** | Validate carefully | Re-ask if invalid |
 | **Accessibility** | Plain text UI | No complex formatting |
 
----
 
 ## Token Budget Optimization
 
@@ -286,14 +283,12 @@ if (answer["Destructive Op"] === "Proceed") {
 - **Benefit**: Eliminates 3-5 clarification rounds (3,000-5,000 tokens saved)
 - **ROI**: Net savings of 1,400-3,500 tokens per interaction
 
----
 
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -315,7 +310,6 @@ Leverages Claude Code's native `AskUserQuestion` tool to collect explicit, struc
 - ✅ Accessibility-first TUI design
 - ✅ Reduces ambiguity → single interaction vs 3-5 iterations
 
----
 
 ## 🎨 Design Principles (Enterprise Standards)
 
@@ -341,7 +335,6 @@ User selects from clear options
 Proceed with confirmed specifications
 ```
 
----
 
 ## 🎓 Top 10 Usage Patterns
 
@@ -395,7 +388,6 @@ Proceed with confirmed specifications
 **Question**: Multi-team approval with options  
 **Outcome**: Documented decision with stakeholder buy-in
 
----
 
 ## ✅ Best Practices Summary
 
@@ -419,7 +411,6 @@ Proceed with confirmed specifications
 - **Recursive surveys**: Avoid asking the same question twice
 - **Ignore language**: Always match user's configured conversation_language
 
----
 
 ## 🔗 Related Skills
 
@@ -428,9 +419,7 @@ Proceed with confirmed specifications
 - `moai-foundation-specs` (SPEC format & requirements)
 - `moai-alfred-language-detection` (Conversation language handling)
 
----
 
----
 
 ## Advanced Patterns
 

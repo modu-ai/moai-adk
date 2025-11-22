@@ -5,6 +5,22 @@ argument-hint: "[issue|suggestion|question]"
 allowed-tools:
   - Task
   - AskUserQuestion
+  - TodoWrite
+model: haiku
+skills:
+  - moai-core-issue-labels
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -1
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+
 ---
 
 # 🗣️ MoAI-ADK Step 9: Feedback Loop
@@ -26,22 +42,18 @@ Collect user feedback, bug reports, or feature suggestions and create GitHub iss
 
 ## 💡 Execution Philosophy
 
-```text
-/moai:9-feedback
+`/moai:9-feedback` performs feedback collection through agent delegation:
+
 ```
-
-performs feedback collection through agent delegation:
-
 User Command: /moai:9-feedback [type]
-↓
+    ↓
 Phase 1: Task(subagent_type="quality-gate")
-→ Analyze feedback type
-→ Collect details via AskUserQuestion
-→ Create GitHub Issue via Skill
-↓
+    → Analyze feedback type
+    → Collect details via AskUserQuestion
+    → Create GitHub Issue via Skill
+    ↓
 Output: Issue created with link
-
-````
+```
 
 ### Key Principle: Zero Direct Tool Usage
 
@@ -79,35 +91,27 @@ Parameters:
    - If not, ask user to select type:
      - Bug Report
      - Feature Request
-     - Improvement
-     - Refactoring
-     - Documentation
      - Question/Other
 
-2. **Load Feedback Template**:
-   - Use `Skill("moai-core-feedback-templates")` to retrieve the appropriate template for the selected type.
-   - Read the template structure (Description, Scenario/Reproduction, Expected vs Actual, etc.).
+2. **Collect Details**:
+   - Ask for 'Title' (short summary)
+   - Ask for 'Description' (detailed explanation)
+   - Ask for 'Priority' (Low/Medium/High)
 
-3. **Collect Details**:
-   - Ask for 'Title' (short summary).
-   - Ask for specific details required by the template (e.g., "Reproduction Steps" for bugs, "Use Case" for features).
-   - Ask for 'Priority' (Low/Medium/High).
-
-4. **Create GitHub Issue**:
+3. **Create GitHub Issue**:
    - Use `Skill("moai-core-issue-labels")` or `Bash` (gh issue create) to submit.
-   - Add appropriate labels based on type (bug, enhancement, documentation, etc.).
-   - **CRITICAL**: Format the issue body EXACTLY according to the loaded template.
+   - Add appropriate labels (bug, enhancement, question).
+   - Format the body with standard templates.
 
-5. **Report Result**:
+4. **Report Result**:
    - Show the created issue URL.
    - Confirm success to the user.
 
 **Important**:
 - Use conversation_language for all user interactions.
 - NO EMOJIS in AskUserQuestion options.
-- Ensure the issue body follows the structured template from the skill.
 """
-````
+```
 
 ---
 

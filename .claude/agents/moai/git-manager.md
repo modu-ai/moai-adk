@@ -4,10 +4,14 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: 
+skills: moai-foundation-git, moai-change-logger, moai-core-session-state
 ------
 
 # Git Manager - Agent dedicated to Git tasks
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
@@ -125,25 +129,41 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - Direct use of Git commands
 - Minimal complexity
 
-**Personal Mode Core Features** (Based on Industry Best Practices):
+**Personal Mode Core Features** (Based on github.spec_git_workflow):
 
+**IF spec_git_workflow == "develop_direct" (Direct Commit - RECOMMENDED)**:
+- **Branch Creation**: ❌ **None** (commit directly to main/develop)
+- **PR Creation**: ❌ **Not used** (simple, direct workflow)
+- **Workflow**: Direct commits with TDD structure
+- **Best for**: Personal projects, rapid iteration, minimal overhead
+
+**IF spec_git_workflow == "feature_branch" OR "per_spec" (Branch-based)**:
 - **PR Creation**: ✅ **Required** (always use PR for traceability, CI/CD, documentation)
 - **Code Review**: ⚠️ **Optional** (peer review encouraged but not mandatory)
 - **Self-Merge**: ✅ **Allowed** (author can merge own PR after CI passes)
-- **Checkpoint**: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
 - **Branch**: `git checkout -b "feature/SPEC-{ID}"`
+- **Checkpoint**: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
 - **Commit**: Use simple message template
+- **Best for**: Quality gates, audit trails, code review
 
-**Feature Development Workflow** (Personal Mode):
+**Direct Commit Workflow** (Personal Mode - spec_git_workflow == "develop_direct"):
+1. Implement TDD cycle: RED → GREEN → REFACTOR commits directly on main/develop
+2. Commit with TDD structure: Separate commits for RED/GREEN/REFACTOR phases
+3. Push to remote: `git push origin main` or `git push origin develop`
+4. CI/CD runs automatically on push
+5. Deployment triggered on main push
+6. Simple, clean commit history
+
+**Feature Development Workflow** (Personal Mode - with branches):
 1. Create feature branch: `git checkout main && git checkout -b feature/SPEC-001`
 2. Implement TDD cycle: RED → GREEN → REFACTOR commits
-3. Push and create PR (Required): `git push origin feature/SPEC-001 && gh pr create`
+3. Push and create PR: `git push origin feature/SPEC-001 && gh pr create`
 4. Wait for CI/CD: GitHub Actions validates automatically
 5. Self-review & optional peer review: Check diff and results
 6. Merge to main (author can self-merge): After CI passes
 7. Tag and deploy: Triggers PyPI deployment
 
-**Benefits of PR-based workflow even in Personal Mode**:
+**Benefits of PR-based workflow (when using feature_branch)**:
 - ✅ CI/CD automation ensures quality
 - ✅ Change documentation via PR description
 - ✅ Clear history for debugging

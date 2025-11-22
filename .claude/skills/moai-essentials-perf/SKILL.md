@@ -710,3 +710,42 @@ class AIPerformanceLearner:
 Latest stable version: Latest
 - [Release Notes](https://github.com/plasma-umass/scalene/releases)
 - [Migration Guide](https://github.com/plasma-umass/scalene#installation)
+
+---
+
+## Works Well With
+
+- `moai-essentials-debug` - Debugging performance issues and bottlenecks
+- `moai-domain-backend` - Backend performance optimization patterns
+- `moai-domain-frontend` - Frontend performance optimization (Core Web Vitals)
+- `moai-domain-database` - Database query optimization and indexing
+- `moai-domain-devops` - Infrastructure performance monitoring
+- `moai-context7-integration` - Latest performance optimization patterns
+
+---
+
+## Best Practices
+
+### ✅ DO
+- **Profile before optimizing** - Use Scalene/profilers to identify real bottlenecks
+- **Apply Context7 optimization patterns** - Leverage latest performance best practices
+- **Use AI-powered bottleneck detection** - Automated performance analysis
+- **Monitor performance continuously** - Real-time performance tracking
+- **Optimize algorithmic complexity** - O(n²) → O(n) improvements first
+- **Implement caching strategies** - Redis/Memcached for frequently accessed data
+- **Use connection pooling** - Optimize database and API connections
+
+### ❌ DON'T
+- **Premature optimization** - Profile first, optimize second
+- **Ignore memory leaks** - Monitor memory usage and fix leaks promptly
+- **Skip performance testing** - Load testing required before production
+- **Optimize without metrics** - Always measure before and after optimization
+- **Ignore platform limitations** - Understand CPU, memory, and I/O constraints
+- **Skip Context7 patterns** - Leverage proven performance optimization techniques
+
+---
+
+
+---
+**Last Updated**: 2025-11-22
+**Status**: Production Ready

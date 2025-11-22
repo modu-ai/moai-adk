@@ -1,6 +1,8 @@
 ---
+
 name: moai-security-owasp
 description: Enterprise Skill for advanced development
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -10,7 +12,6 @@ description: Enterprise Skill for advanced development
 **Complete Protection Against OWASP Top 10 2021 Vulnerabilities**  
 Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
----
 
 ## Reference
 
@@ -37,7 +38,6 @@ Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-1
 | XXE | CWE-611 | Disable external entities |
 | BOLA | CWE-639 | Check ownership on every request |
 
----
 
 **Version**: 4.0.0 Enterprise  
 **Skill Category**: Security (Vulnerability Defense)  
@@ -45,7 +45,6 @@ Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-1
 **Time to Implement**: 2-4 hours per category  
 **Prerequisites**: Web security fundamentals, Express.js knowledge
 
----
 
 ## Implementation Guide
 
@@ -65,7 +64,6 @@ The OWASP Top 10 2021 represents the most critical web application security risk
 - Preventing sensitive data exposure
 - Implementing logging and monitoring
 
----
 
 ## Level 1: OWASP Top 10 2021 Overview
 
@@ -97,7 +95,6 @@ The OWASP Top 10 2021 represents the most critical web application security risk
 - SSRF added to Top 10
 ```
 
----
 
 ## Level 2: Defense Patterns for Each Category
 
@@ -291,9 +288,7 @@ app.use(helmet({
 app.disable('x-powered-by');
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -390,11 +385,9 @@ const parser = new xml2js.Parser({
 // If XML required: validate against schema
 ```
 
----
 
 
 
----
 
 ## Context7 Integration
 

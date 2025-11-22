@@ -1,6 +1,8 @@
 ---
+
 name: moai-security-api
 description: Comprehensive API security for REST, GraphQL, and gRPC services with
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -11,7 +13,6 @@ description: Comprehensive API security for REST, GraphQL, and gRPC services wit
 
 > **Trust Score**: 9.9/10 | **Version**: 4.0.0 | **Enterprise Security**
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -79,7 +80,6 @@ app.get('/api/users',
 );
 ```
 
----
 
 ### Level 2: Core Implementation (140 lines)
 
@@ -345,7 +345,6 @@ app.get('/api/users/:id',
 );
 ```
 
----
 
 ### Level 3: Advanced API Security (100 lines)
 
@@ -565,7 +564,6 @@ app.post('/webhooks/stripe',
 );
 ```
 
----
 
 ### Level 4: Enterprise Integration (50 lines)
 
@@ -737,9 +735,7 @@ verifyWebhookSignature(payload, signature, secret)
 - [ ] Token revocation tracking
 - [ ] Audit trail for sensitive operations
 
----
 
----
 
 ## Core Implementation
 
@@ -766,7 +762,6 @@ verifyWebhookSignature(payload, signature, secret)
 - ✨ Basic authentication patterns
 - ✅ Essential security middleware
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-13  
@@ -775,7 +770,6 @@ verifyWebhookSignature(payload, signature, secret)
 
 
 
----
 
 ## Context7 Integration
 

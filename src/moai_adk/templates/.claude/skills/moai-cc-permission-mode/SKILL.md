@@ -1,7 +1,9 @@
 ---
+
 name: moai-cc-permission-mode
 description: Claude Code permission system, IAM patterns, and security policy automation
 allowed-tools: [Read, Bash]
+
 ---
 
 # Claude Code Permission Mode
@@ -19,7 +21,6 @@ Claude Code's permission system implements a **zero-trust, ask-before-act** secu
 
 **Security Principle**: Prefer allowlist over blocklist. Only permit routine, low-risk actions automatically; keep everything else on **Ask** mode for manual review.
 
----
 
 ## Implementation Guide
 
@@ -173,7 +174,6 @@ Claude Code's permission system implements a **zero-trust, ask-before-act** secu
 }
 ```
 
----
 
 ## Advanced Patterns
 
@@ -320,7 +320,6 @@ sys.exit(0)  # Allow
 - ✅ Limits network access
 - ⚠️ Some tools may not work (docker, kubernetes)
 
----
 
 ## Permission Policy Best Practices
 
@@ -343,7 +342,6 @@ sys.exit(0)  # Allow
 - Ignore permission request logs (security indicators)
 - Allow WebFetch to arbitrary URLs (SSRF risk)
 
----
 
 ## Permission UI & Debugging
 
@@ -392,7 +390,6 @@ test_tool = {
 # (Run through your hook logic)
 ```
 
----
 
 ## Enterprise Integration
 
@@ -432,7 +429,6 @@ export CLAUDE_SETTINGS_PATH=./.claude/ci-permissions.json
 claude --settings $CLAUDE_SETTINGS_PATH
 ```
 
----
 
 ## Known Issues & Workarounds
 
@@ -444,7 +440,6 @@ claude --settings $CLAUDE_SETTINGS_PATH
 - **Workaround**: Validate permissions in hooks
 - **Status**: Under investigation
 
----
 
 ## Works Well With
 
@@ -453,7 +448,6 @@ claude --settings $CLAUDE_SETTINGS_PATH
 - `moai-security-api` (Security policy patterns)
 - `moai-core-env-security` (Environment variable protection)
 
----
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-11-21  

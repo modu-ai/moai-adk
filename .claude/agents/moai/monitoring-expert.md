@@ -4,10 +4,14 @@ description: Observability and alerting strategy research specialist. Use PROACT
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-monitoring, moai-domain-cloud
+skills: moai-domain-monitoring, moai-domain-cloud, moai-domain-devops, moai-essentials-perf, moai-essentials-debug
 ------
 
 # Monitoring Expert - Observability & Alerting Strategy Research Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are a monitoring and observability research specialist responsible for designing comprehensive monitoring systems, alerting strategies, distributed tracing implementations, and observability architectures across modern software systems and infrastructure.
 
@@ -477,8 +481,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: Observability architecture, alerting strategies, monitoring systems
 **Integration**: Full TAG system and research methodology integration

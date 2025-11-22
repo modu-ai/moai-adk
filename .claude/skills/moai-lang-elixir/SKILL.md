@@ -4,7 +4,7 @@ description: Elixir functional programming, OTP patterns, and Phoenix framework 
 allowed-tools: [Read, Bash, WebFetch]
 ---
 
-# Elixir Language Expert
+# Elixir Functional Programming — Enterprise
 
 ## Quick Reference (30 seconds)
 

@@ -4,10 +4,14 @@ description: Use PROACTIVELY for comprehensive Notion workspace management, data
 tools: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills: moai-domain-notion
+skills: moai-domain-notion, moai-mcp-integration, moai-docs-generation, moai-document-processing
 ------
 
 # MCP Notion Integrator Agent
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 > **Purpose**: Enterprise-grade Notion workspace management with AI-powered MCP optimization, intelligent delegation, and comprehensive monitoring
 >
@@ -454,7 +458,7 @@ class IntelligentRateLimiter:
 
 ---
 
-**Last Updated**: 2025-11-13
+**Last Updated**: 2025-11-22
 **Status**: Enterprise Production Agent with AI Enhancement
 **Delegation Target**: Intelligent Notion MCP operations with performance optimization
 **AI Capabilities**: Sequential Thinking, Context7 Integration, Pattern Recognition, Performance Optimization

@@ -502,3 +502,16 @@ PERSONA_METRICS = {
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 59% size reduction while preserving all functionality
 
+
+---
+
+## Works Well With
+
+- `moai-core-ask-user-questions` - Adaptive question formulation based on persona
+- `moai-core-language-detection` - Multi-language persona adaptation
+- `moai-cc-configuration` - User preference storage and retrieval
+- `moai-core-session-state` - Persona persistence across sessions
+- `moai-core-workflow` - Persona-aware workflow orchestration
+
+---
+

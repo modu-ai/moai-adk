@@ -6,8 +6,31 @@ allowed-tools:
   - Task
   - AskUserQuestion
   - Skill
+  - TodoWrite
+model: sonnet
 skills:
   - moai-core-issue-labels
+  - moai-spec-intelligent-workflow
+  - moai-alfred-ask-user-questions
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -10
+!git diff --name-only HEAD
+!find .moai/specs -name "*.md" -type f 2>/dev/null
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/project/product.md
+@.moai/project/structure.md
+@.moai/project/tech.md
+@.moai/specs/
+@CLAUDE.md
+
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
@@ -121,18 +144,18 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 - Need to find existing files and patterns
 - Unclear about current project state
 
-#### Step 1A.1: Invoke Explore Agent
+#### Step 1A.1: Invoke Explore Agent (Optional)
 
-**If user request lacks clarity or context, use Task to call Explore Agent:**
+**Conditional Execution: Run Phase A ONLY if user request lacks clarity**
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "Explore"
-- description: "Explore project files and patterns"
-- prompt: """You are the Explore agent.
+IF user_request_is_vague_or_needs_exploration:
+    explore_result = Task(
+        subagent_type="Explore",
+        description="Explore project files and patterns related to: $ARGUMENTS",
+        prompt="""You are the Explore agent.
 
-Analyze the current project directory structure and relevant files based on the user request: "{{USER_REQUEST}}"
+Analyze the current project directory structure and relevant files based on the user request: "$ARGUMENTS"
 
 Tasks:
 1. Find relevant files by keywords from the user request
@@ -150,24 +173,53 @@ Report back:
 
 Return comprehensive results to guide spec-builder agent.
 """
+    )
+
+    # Store agent ID for resume chain
+    $EXPLORE_AGENT_ID = explore_result.metadata.agent_id
+
+    # Log Phase 1A checkpoint
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: "1A"
+      agent_id: $EXPLORE_AGENT_ID
+      status: "EXPLORATION_COMPLETE"
+      timestamp: NOW()
+ELSE:
+    # User provided clear SPEC title - skip Phase A
+    $EXPLORE_AGENT_ID = null
+
+    # Log Phase 1A checkpoint (skipped)
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: "1A"
+      status: "SKIPPED"
+      timestamp: NOW()
+
+PROCEED TO PHASE 1B
 ```
 
-**IF user provided clear SPEC title**: Skip Phase A entirely and proceed directly to Phase B.
+**Decision Logic**: If user provided clear SPEC title (like "Add authentication module"), skip Phase A entirely and proceed directly to Phase B.
 
 ---
 
 ### 📋 PHASE 1B: SPEC Planning (Required)
 
-#### Step 1B.1: Invoke spec-builder for project analysis
+#### Step 1B.1: Invoke spec-builder for project analysis (Resume from Phase 1A if applicable)
 
-Use the Task tool to call the spec-builder agent:
+Use the Task tool to call the spec-builder agent with conditional resume:
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "spec-builder"
-- description: "Analyze project and create SPEC plan"
-- prompt: """You are the spec-builder agent.
+# Phase 1B: SPEC Planning (Resume from Phase 1A if exploration was done)
+planning_result = Task(
+    subagent_type="spec-builder",
+    resume="$EXPLORE_AGENT_ID",  # ⭐ Resume if Phase 1A executed, null if skipped
+    description="Analyze project and create SPEC plan for: $ARGUMENTS",
+    prompt="""You are the spec-builder agent.
+
+IF $EXPLORE_AGENT_ID is set:
+    You are continuing from project exploration in Phase 1A.
+    The exploration results (files found, patterns identified, constraints) are automatically available via resume.
+ELSE:
+    Start fresh analysis based on user request: "$ARGUMENTS"
 
 Language settings:
 - conversation_language: {{CONVERSATION_LANGUAGE}}
@@ -234,6 +286,19 @@ For the selected SPEC candidate, create a comprehensive implementation plan:
 - plan.md: [Implementation plan]
 - acceptance.md: [Acceptance criteria]
 - Branches/PR: [Git operations by mode]
+"""
+)
+
+# Store agent ID for resume chain
+$PLANNING_AGENT_ID = planning_result.metadata.agent_id
+
+# Log Phase 1B checkpoint
+Log to .moai/logs/phase-checkpoints.json:
+  phase: "1B"
+  agent_id: $PLANNING_AGENT_ID
+  resumed_from: $EXPLORE_AGENT_ID
+  status: "PLANNING_COMPLETE"
+  timestamp: NOW()
 ```
 
 #### Step 1B.2: Request user approval
@@ -383,16 +448,24 @@ Return:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
 
-### Step 1: Invoke spec-builder for SPEC creation
+### Step 1: Invoke spec-builder for SPEC creation (Resume from Phase 1B)
 
-Use the Task tool to call the spec-builder agent:
+Use the Task tool to call the spec-builder agent with resume to maintain context:
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "spec-builder"
-- description: "Create SPEC document"
-- prompt: """You are the spec-builder agent.
+# Phase 2: SPEC Document Creation (Resume from Phase 1B)
+spec_result = Task(
+    subagent_type="spec-builder",
+    resume="$PLANNING_AGENT_ID",  # ⭐ Resume: Inherit full planning context
+    description="Create SPEC document files for approved plan",
+    prompt="""You are the spec-builder agent.
+
+You are continuing from the SPEC planning phase in Phase 1B.
+
+The full planning context (project analysis, SPEC candidates, implementation plan) is automatically available via resume.
+Use this context to generate comprehensive SPEC document files.
+
+You are the spec-builder agent.
 
 Language settings:
 - conversation_language: {{CONVERSATION_LANGUAGE}}
@@ -422,38 +495,74 @@ Use conversation_language value directly without hardcoded language checks.
 TASK:
 Create SPEC-{SPEC_ID} with the following requirements:
 
-### SPEC Document Creation
+### CRITICAL: SPEC File Generation Rules (MANDATORY)
 
-1. **Create directory**: `.moai/specs/SPEC-{SPEC_ID}/`
+⚠️ **YOU MUST FOLLOW THESE RULES EXACTLY OR QUALITY GATE WILL FAIL:**
 
-2. **Generate spec.md**:
-   - YAML frontmatter with all 7 required fields (id, version, status, created, updated, author, priority)
-   - HISTORY section immediately after frontmatter
-   - Complete EARS structure with all 5 requirement types:
-     * Functional Requirements (MUST)
-     * Non-Functional Requirements (SHOULD)
-     * Interface Requirements (SHALL)
-     * Design Constraints (MUST)
-     * Acceptance Criteria (GIVEN/WHEN/THEN)
+1. **NEVER create single .md file**: ❌ WRONG: .moai/specs/SPEC-AUTH-001.md
+2. **ALWAYS create folder structure**: ✅ CORRECT: .moai/specs/SPEC-AUTH-001/ (directory)
+3. **ALWAYS use Bash + MultiEdit combo**: ❌ WRONG: Write to .moai/specs/SPEC-{ID}/spec.md separately
+4. **ALWAYS verify before creation**: Check directory name format and ID duplicates
 
-3. **Generate plan.md**:
-   - Implementation plan with detailed steps
-   - Task decomposition and dependencies
-   - Resource requirements and timeline
-   - Technology stack specifications
+### SPEC Document Creation (Step-by-Step)
 
-4. **Generate acceptance.md**:
-   - Minimum 2 Given/When/Then scenarios
-   - Edge case testing scenarios
-   - Success criteria and validation methods
+**Step 1: Verify SPEC ID Format**
+- Format: SPEC-{DOMAIN}-{NUMBER}
+- Examples: ✅ SPEC-AUTH-001, SPEC-REFACTOR-001, SPEC-UPDATE-REFACTOR-001
+- Wrong: ❌ AUTH-001, SPEC-001-auth, SPEC-AUTH-001-jwt
+
+**Step 2: Verify ID Uniqueness**
+- Search .moai/specs/ for existing SPEC files
+- If duplicate ID found → Change ID or update existing SPEC
+- If ID is unique → Proceed to Step 3
+
+**Step 3: Create Directory Structure**
+- Use Bash tool: mkdir -p /Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-{SPEC_ID}/
+- Wait for directory creation to complete
+- Proceed to Step 4 ONLY AFTER directory exists
+
+**Step 4: Generate 3 SPEC Files (SIMULTANEOUS - Required)**
+- Use MultiEdit tool to create all 3 files at once
+- DO NOT use Write tool for individual files
+- Create files:
+  * .moai/specs/SPEC-{SPEC_ID}/spec.md
+  * .moai/specs/SPEC-{SPEC_ID}/plan.md
+  * .moai/specs/SPEC-{SPEC_ID}/acceptance.md
+
+### spec.md Requirements:
+- YAML frontmatter with all 7 required fields:
+  * id: SPEC-{SPEC_ID}
+  * version: "1.0.0"
+  * status: "draft"
+  * created: "{{YYYY-MM-DD}}"
+  * updated: "{{YYYY-MM-DD}}"
+  * author: "{{AUTHOR_NAME}}"
+  * priority: "{{HIGH|MEDIUM|LOW}}"
+- HISTORY section immediately after frontmatter
+- Complete EARS structure with all 5 requirement types:
+  * Functional Requirements (MUST)
+  * Non-Functional Requirements (SHOULD)
+  * Interface Requirements (SHALL)
+  * Design Constraints (MUST)
+  * Acceptance Criteria (GIVEN/WHEN/THEN format)
+
+### plan.md Requirements:
+- Implementation plan with detailed steps
+- Task decomposition and dependencies
+- Resource requirements and timeline
+- Technology stack specifications
+- Risk analysis and mitigation strategies
+
+### acceptance.md Requirements:
+- Minimum 2 Given/When/Then test scenarios
+- Edge case testing scenarios
+- Success criteria and validation methods
+- Performance/quality gate criteria
 
 ### Quality Assurance:
 - Information not in product/structure/tech document supplemented by asking new questions
-- Acceptance Criteria written at least 2 times in 3 columns Given/When/Then
-- Number of modules reduced by Readable standard (default 5) - if exceeded, include justification in SPEC context section
-
-### ID Integration:
-- Follow SPEC ID lifecycle rules
+- Acceptance Criteria written at least 2 times in Given/When/Then format
+- Number of requirement modules ≤ 5 (if exceeded, include justification in SPEC)
 
 ### Git Integration:
 - Generate commit messages following conventional commits
@@ -466,108 +575,325 @@ Create SPEC-{SPEC_ID} with the following requirements:
 
 ## 🚀 PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
 
-PHASE 3 automatically executes IF:
+### ⚠️ CRITICAL: PHASE 3 Execution is Conditional on Config
+
+**PHASE 3 executes ONLY IF**:
 
 1. PHASE 2 completed successfully
-2. Git operations enabled in config
-3. User has appropriate permissions
+2. `github.spec_git_workflow` is explicitly configured
+3. Configuration permits branch creation
 
-### Step 1: Check Git Configuration
+**PHASE 3 is SKIPPED IF**:
+- `github.spec_git_workflow == "develop_direct"` (Direct commits, no branches)
+- Configuration validation fails
+- User permissions insufficient
 
-Validate git strategy and configuration before proceeding:
+---
+
+### Step 1: Read and Validate Git Configuration
+
+**MANDATORY: Read configuration BEFORE any git operations**
+
+Execute the following config validation (this is pseudo-code representing the actual decision logic):
+
+```python
+# Step 1A: Read configuration from .moai/config/config.json
+config = read_json(".moai/config/config.json")
+git_mode = config.get("git_strategy", {}).get("mode")  # "personal" or "team"
+spec_workflow = config.get("github", {}).get("spec_git_workflow")  # Required
+
+# Step 1B: Validate spec_git_workflow value
+valid_workflows = ["develop_direct", "feature_branch", "per_spec"]
+if spec_workflow not in valid_workflows:
+    ERROR: f"Invalid spec_git_workflow: {spec_workflow}"
+    ERROR: f"Must be one of: {valid_workflows}"
+    SKIP_PHASE_3 = True
+    ABORT_GIT_OPERATIONS()
+
+# Step 1C: Validate consistency
+if git_mode == "personal" and spec_workflow == "develop_direct":
+    CONSISTENCY_OK = True  # ✅ Consistent
+elif git_mode == "personal" and spec_workflow in ["feature_branch", "per_spec"]:
+    WARN: "Personal mode with branch creation is non-standard but allowed"
+    CONSISTENCY_OK = True
+elif git_mode == "team" and spec_workflow in ["feature_branch", "per_spec"]:
+    CONSISTENCY_OK = True
+else:
+    ERROR: "Inconsistent git configuration"
+    ABORT_GIT_OPERATIONS()
+
+# Step 1D: Determine PHASE 3 routing
+log(f"Git Config: mode={git_mode}, spec_workflow={spec_workflow}")
+```
+
+**Visual**: Configuration validation checkpoint
+```
+git_mode = "personal" ?
+    ├─ spec_workflow = "develop_direct"    → PHASE 3 SKIPPED (ROUTE A)
+    ├─ spec_workflow = "feature_branch"    → PHASE 3 EXECUTES (ROUTE B)
+    └─ spec_workflow = "per_spec"          → PHASE 3 WITH USER ASK (ROUTE C)
+git_mode = "team" ?
+    └─ (spec_workflow value ignored)       → PHASE 3 EXECUTES (ROUTE D - Team Mode)
+```
+
+---
+
+### Step 2A: Route A - `develop_direct` Mode (SKIP PHASE 3)
+
+**CONDITION**: `git_mode == "personal"` AND `spec_workflow == "develop_direct"`
+
+**ACTION**: ✅ SKIP all git-manager invocations
 
 ```
-Tool: Task
-Parameters:
-- subagent_type: "git-manager"
-- description: "Check git configuration and strategy"
-- prompt: """You are the git-manager agent.
+📋 Git Configuration: develop_direct mode detected
 
-Check git configuration and determine appropriate strategy:
+✅ PHASE 3 SKIPPED (as configured)
 
-1. Read `.moai/config/config.json` git_strategy section
-2. Determine if Personal or Team mode
-3. Validate git user configuration
-4. Check current branch and status
+Behavior:
+- NO feature branch created
+- NO git-manager agent invoked in /moai:1-plan
+- SPEC files created on current branch
+- Ready for /moai:2-run implementation
+- Commits will be made directly to main/develop during implementation
+- TDD cycle: RED → GREEN → REFACTOR commits
 
-Return:
-- mode: "personal" or "team"
-- current_branch: [current branch name]
-- user_configured: true/false
-- strategy: [git strategy configuration]
-- recommended_actions: [list of actions needed]
-"""
+Next Action: Proceed directly to Final Status Report (Step 4)
 ```
 
-### Step 2: Create Branch (Personal Mode)
+**Important**: Do NOT call git-manager agent. Do NOT create any branches.
 
-**IF git_strategy.personal mode**:
+---
 
-```
-Tool: Task
-Parameters:
-- subagent_type: "git-manager"
-- description: "Create feature branch"
-- prompt: """You are the git-manager agent.
+### Step 2B: Route B - `feature_branch` Mode (CREATE BRANCH)
 
-Create feature branch for SPEC implementation:
+**CONDITION**: `git_mode == "personal"` AND `spec_workflow == "feature_branch"`
 
+**ACTION**: Invoke git-manager to create feature branch
+
+```python
+# Step 2B: Invoke git-manager with explicit branch creation requirement
+Task(
+    subagent_type="git-manager",
+    description="Create feature branch for SPEC (feature_branch mode)",
+    prompt="""You are the git-manager agent.
+
+INSTRUCTION: Create feature branch for SPEC implementation.
+
+CRITICAL CONFIG: spec_git_workflow == "feature_branch"
+→ This configuration REQUIRES branch creation for every SPEC
+
+TASKS:
 1. Create branch: `feature/SPEC-{SPEC_ID}`
 2. Set tracking upstream if remote exists
 3. Switch to new branch
-4. Create initial commit with stub files
+4. Create initial commit: "feat(spec): Add SPEC-{SPEC_ID} specification"
+5. Push to remote if configured
 
-Use conventional commit format: "feat(spec): Add SPEC-{SPEC_ID} specification"
+VALIDATION:
+- Verify branch was created and checked out
+- Verify current branch is feature/SPEC-{SPEC_ID}
+- Return branch creation status
+
+DO NOT create draft PR. (PR creation is handled separately in /moai:2-run or /moai:3-sync)
 """
+)
 ```
 
-### Step 3: Create Draft PR (Team Mode)
-
-**IF git_strategy.team mode**:
-
+**Expected Outcome**:
 ```
-Tool: Task
-Parameters:
-- subagent_type: "git-manager"
-- description: "Create draft pull request"
-- prompt: """You are the git-manager agent.
+✅ Feature branch created: feature/SPEC-{SPEC_ID}
+✅ Current branch switched to feature branch
+✅ Ready for implementation in /moai:2-run
+```
 
-Create draft PR for SPEC implementation:
+---
 
+### Step 2C: Route C - `per_spec` Mode (ASK USER)
+
+**CONDITION**: `git_mode == "personal"` AND `spec_workflow == "per_spec"`
+
+**ACTION**: Ask user their preference for this SPEC
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "Create a feature branch for this SPEC implementation?",
+        "header": "Branch Strategy",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Create feature branch",
+                "description": "Create feature/SPEC-{SPEC_ID} branch (recommended for team work or complex features)"
+            },
+            {
+                "label": "Direct commit",
+                "description": "Commit directly to current branch (recommended for rapid development)"
+            }
+        ]
+    }]
+})
+
+# Based on user choice:
+if user_choice == "Create feature branch":
+    # Execute Route B (invoke git-manager)
+    EXECUTE: Step 2B (create branch)
+else:
+    # Skip branch creation
+    EXECUTE: Route A (skip PHASE 3)
+```
+
+---
+
+### Step 2D: Route D - Team Mode (ALWAYS CREATE BRANCH)
+
+**CONDITION**: `git_mode == "team"` (regardless of spec_workflow value)
+
+**ACTION**: Create feature branch and draft PR
+
+```python
+# Step 2D.1: Create feature branch (always in team mode)
+Task(
+    subagent_type="git-manager",
+    description="Create feature branch for SPEC (team mode)",
+    prompt="""You are the git-manager agent.
+
+INSTRUCTION: Create feature branch for SPEC implementation (Team mode).
+
+CRITICAL CONFIG: git_strategy.mode == "team"
+→ Team mode REQUIRES feature branches for all work
+
+TASKS:
 1. Create branch: `feature/SPEC-{SPEC_ID}`
-2. Push to remote
-3. Create draft PR targeting `develop` branch
-4. Add appropriate labels and reviewers
-5. Include SPEC ID in PR title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+2. Set tracking upstream
+3. Switch to new branch
+4. Create initial commit: "feat(spec): Add SPEC-{SPEC_ID} specification"
+5. Push to remote
 
-Set PR as draft and do not auto-merge.
+IMPORTANT: Do NOT create PR in this task. (PR creation handled next)
 """
+)
+
+# Step 2D.2: Create draft PR (team mode only)
+Task(
+    subagent_type="git-manager",
+    description="Create draft PR for SPEC",
+    prompt="""You are the git-manager agent.
+
+INSTRUCTION: Create draft pull request for SPEC implementation (Team mode).
+
+CRITICAL CONFIG: git_strategy.mode == "team"
+→ Team mode REQUIRES draft PRs for review coordination
+
+TASKS:
+1. Create draft PR targeting `develop` branch
+2. PR title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+3. PR body: Include SPEC ID, description, and review checklist
+4. Add appropriate labels (spec, draft, etc.)
+5. Assign reviewers from team config (if configured)
+6. Set PR as DRAFT (do NOT auto-merge)
+
+VALIDATION:
+- Verify PR was created
+- Verify PR is in draft status
+- Return PR URL and status
+"""
+)
 ```
 
-### Step 4: Final Status Report
-
-After git operations complete:
-
+**Expected Outcome**:
 ```
-📊 Phase 3 Complete - Git Setup Finished
+✅ Feature branch created: feature/SPEC-{SPEC_ID}
+✅ Draft PR created targeting develop branch
+✅ Ready for team review and implementation
+```
 
-✅ **Git Operations Completed:**
-- Branch created: feature/SPEC-{SPEC_ID}
-- PR created (Team mode) or branch ready (Personal mode)
-- Initial commit with SPEC files
-- SPEC tracking established
+---
+
+### Step 3: Conditional Status Report
+
+Display status based on ROUTE EXECUTED:
+
+#### If Route A (develop_direct):
+```
+📊 Phase 3 Status: Configuration Applied
+
+✅ **Git Configuration Enforced: develop_direct**
+- SPEC files created on current branch
+- NO feature branch created (as configured)
+- NO draft PR created (as configured)
+- Ready for direct /moai:2-run implementation
+- Commits will be made directly to main/develop during TDD cycle
 
 🎯 **Next Steps:**
-1. 📝 **Review SPEC**: Check .moai/specs/SPEC-{SPEC_ID}/ files
-2. 🔧 **Start Implementation**: Run `/moai:2-run SPEC-{SPEC_ID}`
-3. 📋 **Monitor Progress**: Track implementation via TDD cycle
-4. 🔄 **Team Collaboration**: Review/modify draft PR if in Team mode
+1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
+2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+3. 💾 Make commits directly to current branch
+4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
+```
 
-💡 **Tips:**
-- Use `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
-- Follow RED → GREEN → REFACTOR cycle for TDD
-- Commit frequently with meaningful messages
-- Review progress regularly
+#### If Route B (feature_branch):
+```
+📊 Phase 3 Status: Feature Branch Created
+
+✅ **Branch Created Successfully**
+- Branch: `feature/SPEC-{SPEC_ID}`
+- Current branch switched to feature branch
+- Ready for implementation on isolated branch
+- PR creation deferred to /moai:3-sync (if needed)
+
+🎯 **Next Steps:**
+1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
+2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+3. 🌿 All commits will be made to feature branch
+4. 🔄 Create PR in `/moai:3-sync` when implementation complete
+```
+
+#### If Route C (per_spec - branch chosen):
+```
+📊 Phase 3 Status: User Selected Branch Creation
+
+✅ **Feature Branch Created (User Choice)**
+- Branch: `feature/SPEC-{SPEC_ID}`
+- Current branch switched to feature branch
+- Ready for implementation on isolated branch
+
+🎯 **Next Steps:**
+[Same as Route B above]
+```
+
+#### If Route C (per_spec - direct commit chosen):
+```
+📊 Phase 3 Status: User Selected Direct Commit
+
+✅ **Direct Commit Mode Selected (User Choice)**
+- NO feature branch created (as chosen)
+- SPEC files created on current branch
+- Ready for direct implementation
+
+🎯 **Next Steps:**
+[Same as Route A above]
+```
+
+#### If Route D (team mode):
+```
+📊 Phase 3 Status: Team Mode - Branch & PR Created
+
+✅ **Feature Branch Created**
+- Branch: `feature/SPEC-{SPEC_ID}`
+- Current branch switched to feature branch
+
+✅ **Draft PR Created**
+- PR Title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+- Target Branch: `develop`
+- Status: DRAFT (awaiting review)
+- URL: [GitHub PR URL]
+
+🎯 **Next Steps:**
+1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
+2. 👥 Share draft PR with team for early review
+3. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+4. 💬 Team can comment on draft PR during development
+5. ✅ Finalize PR in `/moai:3-sync` when implementation complete
 ```
 
 ---

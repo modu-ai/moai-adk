@@ -1,318 +1,318 @@
-# 3단계 SPEC 템플릿
+# Three-Tier SPEC Templates
 
-**작성일**: 2025-11-21
-**상태**: Production Ready
+**Created**: 2025-11-21
+**Status**: Production Ready
 
 ---
 
-## 개요
+## Overview
 
-Alfred의 판단 결과에 따라 다음 3가지 템플릿 중 하나가 **자동으로 선택**됩니다:
+Based on Alfred's assessment, one of the following three templates is **automatically selected**:
 
-| 레벨 | 대상 | 파일 수 | 시간 | 섹션 |
+| Level | Target | Files | Time | Sections |
 |------|------|--------|------|------|
-| **Level 1** | 단순 작업 | 1-2개 | 5-10분 | 5개 |
-| **Level 2** | 일반 기능 | 3-5개 | 10-15분 | 7개 (EARS) |
-| **Level 3** | 복잡한 작업 | 5개+ | 20-30분 | 10+ |
+| **Level 1** | Simple tasks | 1-2 files | 5-10 min | 5 sections |
+| **Level 2** | Standard features | 3-5 files | 10-15 min | 7 sections (EARS) |
+| **Level 3** | Complex tasks | 5+ files | 20-30 min | 10+ sections |
 
 ---
 
-## Level 1: Minimal (간단한 작업용)
+## Level 1: Minimal (For Simple Tasks)
 
-### 적용 대상
-- 버그 수정
-- 간단한 기능 추가
-- 문서 업데이트
-- 의존성 업그레이드
+### Applicable To
+- Bug fixes
+- Simple feature additions
+- Documentation updates
+- Dependency upgrades
 
-### 템플릿 구조
+### Template Structure
 
 ```markdown
-# SPEC-XXX: [제목]
+# SPEC-XXX: [Title]
 
-## 1. 개요
-한두 문장으로 요구사항 요약
+## 1. Overview
+One or two sentences summarizing the requirement
 
-## 2. 현재 상황 (문제점)
-- 문제 1
-- 문제 2
+## 2. Current Situation (Problem)
+- Problem 1
+- Problem 2
 
-## 3. 해결 방안
-- 방안 1
-- 방안 2
+## 3. Solution Approach
+- Approach 1
+- Approach 2
 
-## 4. 검증 기준
-- [ ] 테스트 케이스 1
-- [ ] 테스트 케이스 2
+## 4. Acceptance Criteria
+- [ ] Test case 1
+- [ ] Test case 2
 
-## 5. 종료 조건
-- 완료 기준: [명확한 기준]
+## 5. Completion Criteria
+- Done when: [clear criteria]
 ```
 
-### 실제 예제: 로그인 한글 메시지
+### Real Example: Login Korean Message
 
 ```markdown
-# SPEC-001: 로그인 페이지 한글 메시지 표시 오류 수정
+# SPEC-001: Fix Login Page Korean Message Display Error
 
-## 1. 개요
-로그인 페이지의 에러 메시지가 영어로만 표시되는 버그를 수정합니다.
+## 1. Overview
+Fix bug where error messages on login page only display in English.
 
-## 2. 현재 상황
-- 에러 메시지: "Invalid credentials" (영어만)
-- i18n 설정에 한글 번역 누락
+## 2. Current Situation
+- Error message: "Invalid credentials" (English only)
+- Korean translation missing from i18n configuration
 
-## 3. 해결 방안
-1. `/src/i18n/messages.json`에 한글 번역 추가
-2. 로그인 폼에서 i18n 함수 사용 확인
+## 3. Solution Approach
+1. Add Korean translations to `/src/i18n/messages.json`
+2. Verify login form uses i18n functions
 
-## 4. 검증 기준
-- [ ] 한국어 브라우저: 한글 메시지 표시
-- [ ] 영어 브라우저: 영어 메시지 표시
-- [ ] 기존 기능 깨짐 없음
+## 4. Acceptance Criteria
+- [ ] Korean browser: Korean messages displayed
+- [ ] English browser: English messages displayed
+- [ ] No breaking changes to existing functionality
 
-## 5. 종료 조건
-- 로그인 실패 시 사용자 브라우저 언어에 따라 메시지 표시
+## 5. Completion Criteria
+- Login failure displays messages according to user's browser language
 ```
 
 ---
 
-## Level 2: Standard (일반 기능용)
+## Level 2: Standard (For Regular Features)
 
-### 적용 대상
-- 일반적인 기능 개발
-- 여러 파일 수정 필요
-- 기본적인 컴포넌트 통합
+### Applicable To
+- Standard feature development
+- Multiple file modifications required
+- Basic component integration
 
-### 템플릿 구조 (EARS 형식)
+### Template Structure (EARS Format)
 
 ```markdown
-# SPEC-XXX: [제목]
+# SPEC-XXX: [Title]
 
-## 📋 SPEC 메타데이터
-| 항목 | 값 |
+## 📋 SPEC Metadata
+| Item | Value |
 |------|-----|
 | ID | SPEC-XXX |
-| 제목 | [제목] |
-| 복잡도 | MEDIUM |
-| 예상 시간 | [시간]시간 |
-| 우선순위 | HIGH/MEDIUM/LOW |
+| Title | [Title] |
+| Complexity | MEDIUM |
+| Estimated Time | [X] hours |
+| Priority | HIGH/MEDIUM/LOW |
 
-## 1. 개요 (Overview)
+## 1. Overview
 
-### 목표
-- 달성할 목표 1
-- 달성할 목표 2
+### Objectives
+- Objective 1 to achieve
+- Objective 2 to achieve
 
-### 범위
-- 포함: [범위 내 항목]
-- 제외: [범위 외 항목]
+### Scope
+- Included: [In-scope items]
+- Excluded: [Out-of-scope items]
 
-## 2. 평가 기준 (Evaluation)
+## 2. Evaluation Criteria
 
-### 기능 요구사항
-1. REQ-1: [상세 요구사항]
-2. REQ-2: [상세 요구사항]
+### Functional Requirements
+1. REQ-1: [Detailed requirement]
+2. REQ-2: [Detailed requirement]
 
-### 비기능 요구사항
-1. NFREQ-1: [성능/보안]
-2. NFREQ-2: [확장성]
+### Non-Functional Requirements
+1. NFREQ-1: [Performance/Security]
+2. NFREQ-2: [Scalability]
 
-## 3. 분석 (Analysis)
+## 3. Analysis
 
-### 현재 상황
-- [현재 시스템 상태]
-- [문제점]
+### Current State
+- [Current system state]
+- [Issues]
 
-### 고려사항
-- [기술적 제약]
-- [의존성]
+### Considerations
+- [Technical constraints]
+- [Dependencies]
 
-## 4. 권장사항 (Recommendation)
+## 4. Recommendation
 
-### 제안된 솔루션
-- [솔루션 개요]
-- [기술 스택]
+### Proposed Solution
+- [Solution overview]
+- [Technology stack]
 
-### 대안 검토
-- 대안 1: [장점/단점]
-- 대안 2: [장점/단점]
+### Alternative Review
+- Alternative 1: [Pros/Cons]
+- Alternative 2: [Pros/Cons]
 
-## 5. 종합 분석 (Synthesis)
+## 5. Synthesis
 
-### 구현 전략
-1. Phase 1: [단계 1]
-2. Phase 2: [단계 2]
+### Implementation Strategy
+1. Phase 1: [Stage 1]
+2. Phase 2: [Stage 2]
 
-### 리스크 관리
-- Risk 1: [대응 방안]
-- Risk 2: [대응 방안]
+### Risk Management
+- Risk 1: [Mitigation plan]
+- Risk 2: [Mitigation plan]
 
-## 6. 검증 기준
+## 6. Acceptance Criteria
 
-### 기능 검증
-- [ ] [검증 항목 1]
-- [ ] [검증 항목 2]
+### Functional Validation
+- [ ] [Validation item 1]
+- [ ] [Validation item 2]
 
-### 품질 검증
-- [ ] 테스트 커버리지 85% 이상
-- [ ] 코드 리뷰 승인됨
+### Quality Validation
+- [ ] Test coverage 85% or higher
+- [ ] Code review approved
 
-## 7. 종료 조건
+## 7. Completion Criteria
 
 ### Definition of Done
-- 모든 검증 기준 충족
-- 테스트 통과
-- 코드 리뷰 승인
-- 문서 작성 완료
+- All acceptance criteria met
+- Tests passing
+- Code review approved
+- Documentation completed
 ```
 
-### 실제 예제: 프로필 이미지 업로드
+### Real Example: Profile Image Upload
 
 ```markdown
-# SPEC-003: 사용자 프로필 이미지 업로드 기능
+# SPEC-003: User Profile Image Upload Feature
 
-## 📋 SPEC 메타데이터
-| 항목 | 값 |
+## 📋 SPEC Metadata
+| Item | Value |
 |------|-----|
 | ID | SPEC-003 |
-| 제목 | 사용자 프로필 이미지 업로드 |
-| 복잡도 | MEDIUM |
-| 예상 시간 | 2시간 |
-| 우선순위 | HIGH |
+| Title | User Profile Image Upload |
+| Complexity | MEDIUM |
+| Estimated Time | 2 hours |
+| Priority | HIGH |
 
-## 1. 개요
+## 1. Overview
 
-### 목표
-- 사용자가 프로필 사진을 업로드할 수 있도록 구현
-- 이미지 최적화 및 캐싱 처리
-- 데이터베이스에 안전하게 저장
+### Objectives
+- Enable users to upload profile pictures
+- Image optimization and caching handling
+- Securely store in database
 
-### 범위
-- 포함: 프로필 페이지 수정, 백엔드 API, 데이터베이스
-- 제외: 이미지 편집 기능, 갤러리 관리
+### Scope
+- Included: Profile page modifications, backend API, database
+- Excluded: Image editing features, gallery management
 
-## 2. 평가 기준
+## 2. Evaluation Criteria
 
-### 기능 요구사항
-1. REQ-1: 사용자는 프로필 페이지에서 이미지 업로드 가능
-2. REQ-2: 이미지는 JPEG/PNG 형식만 지원 (최대 5MB)
-3. REQ-3: 업로드된 이미지는 자동으로 최적화됨 (1024x1024)
-4. REQ-4: 기존 이미지는 새로운 이미지로 교체됨
+### Functional Requirements
+1. REQ-1: Users can upload images from profile page
+2. REQ-2: Images support JPEG/PNG formats only (max 5MB)
+3. REQ-3: Uploaded images automatically optimized (1024x1024)
+4. REQ-4: Existing images replaced by new images
 
-### 비기능 요구사항
-1. NFREQ-1: 이미지 업로드는 3초 이내 완료
-2. NFREQ-2: 이미지는 CDN에 캐싱됨
-3. NFREQ-3: 사용자 개인정보 보호
+### Non-Functional Requirements
+1. NFREQ-1: Image upload completes within 3 seconds
+2. NFREQ-2: Images cached on CDN
+3. NFREQ-3: User privacy protection
 
-## 3. 분석
+## 3. Analysis
 
-### 현재 상황
-- 프로필 기본 정보만 저장 (이름, 이메일)
-- 이미지 업로드 기능 없음
+### Current State
+- Profile stores basic info only (name, email)
+- No image upload functionality
 
-### 고려사항
-- 프로필 테이블에 image_url 컬럼 추가 필요
-- 파일 저장소 (S3 또는 로컬) 구성
-- 이미지 최적화 라이브러리 필요
+### Considerations
+- Need to add image_url column to profile table
+- Configure file storage (S3 or local)
+- Require image optimization library
 
-## 4. 권장사항
+## 4. Recommendation
 
-### 제안된 솔루션
-- 백엔드: Node.js + Express + multer
-- 이미지 처리: Sharp 라이브러리
-- 저장소: AWS S3
+### Proposed Solution
+- Backend: Node.js + Express + multer
+- Image processing: Sharp library
+- Storage: AWS S3
 
-### 대안 검토
-- 대안 1: Google Drive API - 복잡도 높음
-- 대안 2: 로컬 저장소 - 확장성 낮음
+### Alternative Review
+- Alternative 1: Google Drive API - high complexity
+- Alternative 2: Local storage - low scalability
 
-## 5. 종합 분석
+## 5. Synthesis
 
-### 구현 전략
-1. Phase 1: DB 스키마 수정
-2. Phase 2: 백엔드 API 구현
-3. Phase 3: 프론트엔드 UI 추가
+### Implementation Strategy
+1. Phase 1: DB schema modification
+2. Phase 2: Backend API implementation
+3. Phase 3: Frontend UI addition
 
-### 리스크 관리
-- Risk 1: 대용량 파일 → 청크 업로드 구현
-- Risk 2: 악성 파일 → 파일 검증 로직 추가
+### Risk Management
+- Risk 1: Large files → implement chunked uploads
+- Risk 2: Malicious files → add file validation logic
 
-## 6. 검증 기준
+## 6. Acceptance Criteria
 
-### 기능 검증
-- [ ] 파일 선택 가능
-- [ ] JPEG/PNG만 수락
-- [ ] 이미지 최적화 확인
-- [ ] 동시 업로드 지원
+### Functional Validation
+- [ ] File selection available
+- [ ] Only JPEG/PNG accepted
+- [ ] Image optimization verified
+- [ ] Concurrent uploads supported
 
-### 품질 검증
-- [ ] 테스트 커버리지 85% 이상
-- [ ] 코드 리뷰 승인됨
+### Quality Validation
+- [ ] Test coverage 85% or higher
+- [ ] Code review approved
 
-## 7. 종료 조건
-- 모든 검증 기준 충족
-- 프로덕션 배포 가능
+## 7. Completion Criteria
+- All acceptance criteria met
+- Production deployment ready
 ```
 
 ---
 
-## Level 3: Comprehensive (복잡한 작업용)
+## Level 3: Comprehensive (For Complex Tasks)
 
-### 적용 대상
-- 아키텍처 변경
-- 대규모 데이터 모델 수정
-- 여러 컴포넌트의 복잡한 통합
-- 마이그레이션 작업
+### Applicable To
+- Architecture changes
+- Large-scale data model modifications
+- Complex integration of multiple components
+- Migration tasks
 
-### 템플릿 구조
+### Template Structure
 
-Level 2의 모든 섹션 + 다음 추가:
+All Level 2 sections + the following additions:
 
 ```markdown
-## 6. 아키텍처 설계 (NEW)
+## 6. Architecture Design (NEW)
 
-### 시스템 다이어그램
-[ASCII 다이어그램]
+### System Diagram
+[ASCII diagram]
 
-### 컴포넌트 상호작용
-- [컴포넌트 1] → [컴포넌트 2]
+### Component Interactions
+- [Component 1] → [Component 2]
 
-## 7. 마이그레이션 전략 (NEW)
+## 7. Migration Strategy (NEW)
 
-### 단계별 실행 계획
-1. Phase 1: [상세]
-2. Phase 2: [상세]
-3. Phase 3: [상세]
+### Phased Execution Plan
+1. Phase 1: [Details]
+2. Phase 2: [Details]
+3. Phase 3: [Details]
 
-### 롤백 계획
-- [롤백 시나리오]
+### Rollback Plan
+- [Rollback scenarios]
 
-## 8. 성능 고려사항 (NEW)
+## 8. Performance Considerations (NEW)
 
-### 성능 목표
-- [기준 1]
-- [기준 2]
+### Performance Goals
+- [Goal 1]
+- [Goal 2]
 
-## 9. 보안 고려사항 (NEW)
+## 9. Security Considerations (NEW)
 
-### 보안 요구사항
-- [요구사항 1]
+### Security Requirements
+- [Requirement 1]
 
-### 위협 모델
-- [위협 1] → [대응]
+### Threat Model
+- [Threat 1] → [Response]
 
-## 10. 검증 기준
-[Level 2보다 더 상세함]
+## 10. Acceptance Criteria
+[More detailed than Level 2]
 
-## 11. 종료 조건
-[Level 2와 유사]
+## 11. Completion Criteria
+[Similar to Level 2]
 ```
 
 ---
 
-## 템플릿 자동 선택 로직
+## Template Auto-Selection Logic
 
-Alfred는 다음 규칙에 따라 자동으로 선택:
+Alfred automatically selects based on the following rules:
 
 ```python
 if complexity_assessment['strength'] == 'low':
@@ -323,132 +323,132 @@ else:  # 'high'
     template = Level3_Comprehensive
 ```
 
-### 선택 기준
+### Selection Criteria
 
-| 복잡도 | 특징 | 템플릿 |
+| Complexity | Characteristics | Template |
 |--------|------|--------|
-| 낮음 (LOW) | 1-2 파일, 30분 이내 | Level 1 |
-| 중간 (MEDIUM) | 3-5 파일, 1-2시간, 기본 통합 | Level 2 |
-| 높음 (HIGH) | 5개+ 파일, 2시간+, 아키텍처 변경 | Level 3 |
+| Low | 1-2 files, under 30 min | Level 1 |
+| Medium | 3-5 files, 1-2 hours, basic integration | Level 2 |
+| High | 5+ files, 2+ hours, architecture changes | Level 3 |
 
 ---
 
-## 템플릿 사용 흐름
+## Template Usage Flow
 
-### Step 1: 사용자 요청
+### Step 1: User Request
 ```
-"사용자 프로필 이미지 업로드 기능을 추가해주세요"
-```
-
-### Step 2: Alfred 판단
-```
-복잡도: MEDIUM
-→ Level 2 (Standard) 템플릿 선택
+"Add user profile image upload feature"
 ```
 
-### Step 3: SPEC 자동 생성
-spec-builder가 Level 2 템플릿을 채워서 SPEC 생성
+### Step 2: Alfred Assessment
+```
+Complexity: MEDIUM
+→ Level 2 (Standard) template selected
+```
 
-### Step 4: 사용자 검토
-사용자가 생성된 SPEC을 검토하고 필요하면 수정
+### Step 3: Auto-Generate SPEC
+spec-builder fills Level 2 template to generate SPEC
 
-### Step 5: 구현 시작
+### Step 4: User Review
+User reviews generated SPEC and modifies if needed
+
+### Step 5: Begin Implementation
 ```bash
 /moai:2-run SPEC-XXX
 ```
 
 ---
 
-## 각 템플릿의 AI 보조 비율
+## AI Assistance Ratio by Template
 
-| 단계 | Level 1 | Level 2 | Level 3 |
+| Stage | Level 1 | Level 2 | Level 3 |
 |------|---------|---------|---------|
-| 초안 생성 | 90% | 75% | 60% |
-| 내용 검토 | 80% | 70% | 50% |
-| 최종 완성 | 70% | 60% | 40% |
-| **평균** | **80%** | **68%** | **50%** |
+| Draft generation | 90% | 75% | 60% |
+| Content review | 80% | 70% | 50% |
+| Final completion | 70% | 60% | 40% |
+| **Average** | **80%** | **68%** | **50%** |
 
 ---
 
-## 템플릿 작성 시간 비교
+## Template Writing Time Comparison
 
-| 활동 | Level 1 | Level 2 | Level 3 |
+| Activity | Level 1 | Level 2 | Level 3 |
 |------|---------|---------|---------|
-| AI 생성 (80%) | 2-4분 | 4-8분 | 8-12분 |
-| 사용자 검토 (20%) | 1-2분 | 2-4분 | 5-8분 |
-| **총 시간** | **5-10분** | **10-15분** | **20-30분** |
+| AI generation (80%) | 2-4 min | 4-8 min | 8-12 min |
+| User review (20%) | 1-2 min | 2-4 min | 5-8 min |
+| **Total Time** | **5-10 min** | **10-15 min** | **20-30 min** |
 
 ---
 
-## 템플릿 선택 예제
+## Template Selection Examples
 
-### 예제 1: 버그 수정 → Level 1
-
-```
-작업: "버튼 색상 변경"
-파일: 1개 (CSS)
-시간: 5분
-복잡도: LOW
-
-→ Level 1 선택 (5-10분 작성)
-```
-
-### 예제 2: 기능 추가 → Level 2
+### Example 1: Bug Fix → Level 1
 
 ```
-작업: "사용자 프로필 이미지 업로드"
-파일: 4개 (API, Frontend, DB, Middleware)
-시간: 2시간
-복잡도: MEDIUM
+Task: "Change button color"
+Files: 1 (CSS)
+Time: 5 min
+Complexity: LOW
 
-→ Level 2 선택 (10-15분 작성)
+→ Level 1 selected (5-10 min to write)
 ```
 
-### 예제 3: 아키텍처 변경 → Level 3
+### Example 2: Feature Addition → Level 2
 
 ```
-작업: "마이크로서비스 아키텍처로 마이그레이션"
-파일: 15개 이상
-시간: 1주일 이상
-복잡도: HIGH
+Task: "User profile image upload"
+Files: 4 (API, Frontend, DB, Middleware)
+Time: 2 hours
+Complexity: MEDIUM
 
-→ Level 3 선택 (20-30분 작성)
+→ Level 2 selected (10-15 min to write)
+```
+
+### Example 3: Architecture Change → Level 3
+
+```
+Task: "Migrate to microservices architecture"
+Files: 15+ files
+Time: 1+ week
+Complexity: HIGH
+
+→ Level 3 selected (20-30 min to write)
 ```
 
 ---
 
-## 템플릿 주요 특징
+## Key Template Features
 
 ### ✅ Level 1 (Minimal)
-- 빠르고 간결
-- 필수 정보만 포함
-- 프로토타입 수정에 최적
+- Fast and concise
+- Essential information only
+- Optimal for prototype modifications
 
 ### ✅ Level 2 (Standard)
-- EARS 형식 준수
-- 일반 기능 개발에 최적
-- 충분한 구조와 유연성
+- Follows EARS format
+- Optimal for general feature development
+- Sufficient structure and flexibility
 
 ### ✅ Level 3 (Comprehensive)
-- 아키텍처 설계 포함
-- 복잡한 프로젝트에 최적
-- 상세한 리스크 관리
+- Includes architecture design
+- Optimal for complex projects
+- Detailed risk management
 
 ---
 
 ## FAQ
 
-**Q: 템플릿을 수정할 수 있나요?**
-A: 네, 생성된 SPEC은 언제든지 수정 가능합니다. 필요한 섹션을 추가하거나 제거해도 됩니다.
+**Q: Can templates be modified?**
+A: Yes, generated SPECs can be modified anytime. You can add or remove sections as needed.
 
-**Q: 작업 중 복잡도가 변하면?**
-A: Alfred가 감지하면 더 높은 레벨 템플릿으로 전환을 제안합니다.
+**Q: What if complexity changes during work?**
+A: Alfred will detect this and suggest switching to a higher level template.
 
-**Q: Level 1도 테스트를 써야 하나요?**
-A: 네, 모든 레벨에서 테스트는 필수입니다. 다만 Level 1은 간단한 단위 테스트만, Level 3은 통합 테스트까지 포함합니다.
+**Q: Does Level 1 also require tests?**
+A: Yes, tests are mandatory at all levels. However, Level 1 only requires simple unit tests, while Level 3 includes integration tests.
 
 ---
 
-**문서 버전**: 1.0.0
-**마지막 업데이트**: 2025-11-21
-**상태**: Production Ready
+**Document Version**: 1.0.0
+**Last Updated**: 2025-11-21
+**Status**: Production Ready

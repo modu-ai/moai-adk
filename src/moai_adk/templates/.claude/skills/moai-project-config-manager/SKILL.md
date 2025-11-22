@@ -1,8 +1,10 @@
 ---
+
 name: moai-project-config-manager
 description: Complete config.json CRUD operations with validation, merge strategy,
   and error recovery. Use for project initialization, setting updates, and configuration
   management with intelligent backup and recovery.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -16,7 +18,6 @@ description: Complete config.json CRUD operations with validation, merge strateg
 > **Version**: 4.0.0  
 > **Keywords**: project, config, manager, validation, crud
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -46,7 +47,6 @@ Skill("moai-project-config-manager", action="update", changes=updates)
 result = Skill("moai-project-config-manager", action="validate")
 ```
 
----
 
 ### Level 2: Core Implementation (110 lines)
 
@@ -155,7 +155,6 @@ updates = collect_updates_for_sections(selected_sections)
 update_config(updates)
 ```
 
----
 
 ### Level 3: Advanced Features (70 lines)
 
@@ -252,7 +251,6 @@ def optimize_config_for_performance(config):
     return optimized
 ```
 
----
 
 ### Level 4: Reference & Links (40 lines)
 
@@ -310,15 +308,12 @@ class RestoreError(ConfigError):
 - Provide clear error messages with recovery suggestions
 - Maintain backward compatibility when possible
 
----
 
----
 
 ## Implementation Guide
 
 
 
----
 
 ## Advanced Patterns
 
@@ -346,7 +341,6 @@ class RestoreError(ConfigError):
 - ✨ Basic validation
 - ✨ Error recovery
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-13  

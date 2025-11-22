@@ -1,15 +1,16 @@
 ---
+
 name: moai-lang-c
 description: C programming language patterns, memory management, and systems programming
   best practices. Use when writing C applications, managing memory manually, or implementing
   low-level optimizations.
+
 ---
 
 ## Quick Reference (30 seconds)
 
 # C Programming Language Skill
 
----
 
 ## Implementation Guide
 
@@ -24,7 +25,6 @@ C programming language patterns, memory management, and systems programming best
 - ✅ Low-level data structures
 - ✅ Cross-platform compatibility
 
----
 
 ## When to Use
 
@@ -33,7 +33,6 @@ C programming language patterns, memory management, and systems programming best
 - ✅ Implementing low-level optimizations
 - ✅ Creating system software
 
----
 
 ## Core C Patterns
 
@@ -51,7 +50,6 @@ C programming language patterns, memory management, and systems programming best
 - **System Calls**: Proper system call usage
 - **Error Handling**: Robust error management
 
----
 
 ## Dependencies
 
@@ -60,34 +58,24 @@ C programming language patterns, memory management, and systems programming best
 - Debugging tools (GDB, Valgrind)
 - Standard C library
 
----
 
 ## Works Well With
 
+- `moai-lang-c-advanced` (Advanced patterns, Linked Lists, Memory Pools, Threading)
+- `moai-lang-c-tools` (Development tools, compilers, debuggers)
 - `moai-lang-cpp` (C++ integration)
 - `moai-essentials-debug` (Debugging patterns)
 - `moai-essentials-perf` (Performance optimization)
 
----
 
 ## Changelog
 
+- **v3.0.0** (2025-11-21): Modularized into base, advanced, and tools skills
 - **v2.0.0** (2025-11-11): Added complete metadata, C programming patterns
 - **v1.0.0** (2025-10-22): Initial C language support
 
----
+**End of Skill** | Updated 2025-11-21
 
-**End of Skill** | Updated 2025-11-11
-
----
-
-## Advanced Patterns
-
-
-
-
-
----
 
 ## Context7 Integration
 
@@ -104,3 +92,13 @@ C programming language patterns, memory management, and systems programming best
 Latest stable version: C23
 - [Release Notes](https://en.cppreference.com/w/c/23)
 - [Migration Guide](https://en.cppreference.com/w/c/language/history)
+
+---
+
+## 📚 Related Documentation
+
+For extended content, see additional files in this skill:
+
+- **`advanced.md`** - Advanced patterns (Linked Lists, Memory Pools, File I/O, Process Management, Threading, Macros)
+- **`examples.md`** - Working examples and code samples
+- **`reference.md`** - Development tools (GCC, Clang, GDB, Valgrind, Make, CMake, Code Quality)

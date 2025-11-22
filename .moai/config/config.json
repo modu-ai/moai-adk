@@ -158,8 +158,8 @@
     },
     "auto_delete_branches": null,
     "auto_delete_branches_checked": false,
-    "spec_git_workflow": "per_spec",
-    "spec_git_workflow_configured": false,
-    "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
+    "spec_git_workflow": "develop_direct",
+    "spec_git_workflow_configured": true,
+    "notes": "RECOMMENDED for rapid development in personal projects. Options: 'develop_direct' (direct commits, no branches), 'feature_branch' (always create branches), 'per_spec' (ask user per SPEC). Set spec_git_workflow_configured: true after manual changes to prevent template merge overwrites."
   }
 }

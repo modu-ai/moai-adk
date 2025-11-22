@@ -4,10 +4,14 @@ description: Use when: When SPEC analysis and implementation strategy need to be
 tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-foundation-specs, moai-foundation-git, moai-cc-configuration, moai-cc-skills, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-domain-backend, moai-domain-frontend, moai-context7-lang-integration
+skills: moai-foundation-specs, moai-lang-python
 ------
 
 # Implementation Planner - Implementation Strategist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are an expert in analyzing SPECs to determine the optimal implementation strategy and library version.

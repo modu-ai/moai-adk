@@ -1,397 +1,397 @@
-# 실전 사용 예제
+# Real-World Usage Examples
 
-**작성일**: 2025-11-21
-**상태**: Production Ready
-
----
-
-## 예제 1: 버그 수정 (SPEC 불필요)
-
-### 요청
-```
-사용자: "로그인 페이지 에러 메시지가 영어로만 표시되어요.
-한글로 바꿔주세요."
-```
-
-### Alfred 분석
-```
-① 파일 수정: i18n/messages.json만 → 아니오
-② 아키텍처: 변경 없음 → 아니오
-③ 컴포넌트: 단일 → 아니오
-④ 시간: 10분 → 아니오
-⑤ 유지보수: 없음 → 아니오
-
-결과: 0개 충족 → SPEC 불필요
-```
-
-### 결정
-```
-즉시 구현 진행
-
-구현: messages.json에 한글 번역 추가 (5분)
-테스트: 브라우저 언어별 표시 확인 (3분)
-완료!
-```
+**Created**: 2025-11-21
+**Status**: Production Ready
 
 ---
 
-## 예제 2: 간단한 기능 추가 (SPEC 권장)
+## Example 1: Bug Fix (SPEC Not Required)
 
-### 요청
+### Request
 ```
-사용자: "다크 모드 토글 버튼을 추가해주세요."
-```
-
-### Alfred 분석
-```
-① 파일 수정: 설정 페이지 + CSS → 2개
-② 아키텍처: localStorage 추가 → 가능
-③ 컴포넌트: 설정 + 전체 레이아웃 → 2개
-④ 시간: 20분 → 가능
-⑤ 유지보수: 필요 없음 → 아니오
-
-결과: 2개 충족 → SPEC 권장
+User: "Login page error messages only display in English.
+Please change them to Korean."
 ```
 
-### 사용자 선택
+### Alfred Analysis
 ```
-"예, SPEC 생성 후 구현"
+① File modification: Only i18n/messages.json → No
+② Architecture: No change → No
+③ Components: Single → No
+④ Time: 10 min → No
+⑤ Maintenance: None → No
 
-→ /moai:1-plan 자동 실행
-→ Level 1 (Minimal) 템플릿 자동 선택
-→ SPEC-002 생성 (5분)
-→ /moai:2-run SPEC-002 (15분 구현)
+Result: 0 criteria met → SPEC not required
+```
+
+### Decision
+```
+Proceed with immediate implementation
+
+Implementation: Add Korean translations to messages.json (5 min)
+Testing: Verify display by browser language (3 min)
+Complete!
 ```
 
 ---
 
-## 예제 3: 중간 복잡도 기능 (SPEC 강력 권장)
+## Example 2: Simple Feature Addition (SPEC Recommended)
 
-### 요청
+### Request
 ```
-사용자: "사용자 프로필 사진 업로드 기능을 추가하고 싶습니다.
-이미지 최적화, S3 저장, 캐싱까지 포함해야 합니다."
-```
-
-### Alfred 분석
-```
-① 파일 수정: API + Form + DB + Middleware → 4개 → 예
-② 아키텍처: 파일 업로드 흐름 → 주요 변경 → 예
-③ 컴포넌트: Frontend + Backend + DB → 3개 → 예
-④ 시간: 2시간 이상 → 예
-⑤ 유지보수: 향후 프로필 기능 확장 → 확실 → 예
-
-결과: 5개 충족 → SPEC 강력 권장
+User: "Please add a dark mode toggle button."
 ```
 
-### Alfred 제안
+### Alfred Analysis
 ```
-GOOS님, 이 작업은 SPEC 작성이 강력히 권장됩니다.
+① File modification: Settings page + CSS → 2 files
+② Architecture: Add localStorage → Possible
+③ Components: Settings + global layout → 2
+④ Time: 20 min → Possible
+⑤ Maintenance: Not needed → No
 
-예상 효과:
-- 구현 시간 40% 단축
-- 버그 위험 60% 감소
-- 미래 유지보수 50% 절감
-
-진행하시겠습니까?
+Result: 2 criteria met → SPEC recommended
 ```
 
-### 사용자 선택
+### User Choice
 ```
-"예, SPEC 생성"
+"Yes, generate SPEC then implement"
 
-→ /moai:1-plan 자동 실행
-→ Level 2 (Standard) EARS 템플릿 선택
-→ SPEC-003 생성 (15분)
-  - 요구사항 정의
-  - 아키텍처 설계
-  - 구현 전략
-  - 위험 관리
-→ /moai:2-run SPEC-003 (120분 구현)
-  - Phase 1: DB 스키마
-  - Phase 2: 백엔드 API
-  - Phase 3: 프론트엔드 UI
+→ /moai:1-plan auto-executed
+→ Level 1 (Minimal) template auto-selected
+→ SPEC-002 generated (5 min)
+→ /moai:2-run SPEC-002 (15 min implementation)
 ```
 
 ---
 
-## 예제 4: 복잡한 아키텍처 변경 (SPEC 필수)
+## Example 3: Medium Complexity Feature (SPEC Strongly Recommended)
 
-### 요청
+### Request
 ```
-사용자: "현재 모놀리식 아키텍처를 마이크로서비스로 마이그레이션
-하고 싶습니다. 사용자, 상품, 결제 서비스를 분리해야 합니다."
-```
-
-### Alfred 분석
-```
-① 파일 수정: 15개 이상 (각 서비스별) → 예
-② 아키텍처: 마이크로서비스 전환 → 주요 변경 → 예
-③ 컴포넌트: 5개+ (API Gateway, 3 Services, DB) → 예
-④ 시간: 1주일 이상 → 예
-⑤ 유지보수: 장기 유지/확장 → 확실 → 예
-
-결과: 5개 충족 + 아키텍처 변경 → SPEC 강력 권장
+User: "I want to add user profile picture upload functionality.
+Must include image optimization, S3 storage, and caching."
 ```
 
-### 결정
+### Alfred Analysis
 ```
-Level 3 (Comprehensive) 템플릿 선택
-→ SPEC-004 생성 (30분)
-  - 마이크로서비스 다이어그램
-  - 각 서비스 아키텍처
-  - 마이그레이션 단계별 계획
-  - 롤백 계획
-  - 성능 목표 & 보안 고려사항
+① File modification: API + Form + DB + Middleware → 4 files → Yes
+② Architecture: File upload flow → Major change → Yes
+③ Components: Frontend + Backend + DB → 3 → Yes
+④ Time: 2+ hours → Yes
+⑤ Maintenance: Future profile feature expansion → Certain → Yes
 
-→ /moai:2-run SPEC-004 (1주일 구현)
-  - Phase 1: API Gateway 구성
-  - Phase 2: User Service 마이그레이션
-  - Phase 3: Product Service 마이그레이션
-  - Phase 4: Payment Service 마이그레이션
-  - Phase 5: 통합 테스트 & 배포
+Result: 5 criteria met → SPEC strongly recommended
 ```
 
----
-
-## 예제 5: 프로토타입 (예외 처리)
-
-### 요청
+### Alfred Suggestion
 ```
-사용자: "새로운 UI 컨셉을 빠르게 프로토타입 만들어보고
-싶습니다. 정확한 설계보다는 빠른 구현이 중요합니다."
-```
+GOOS, SPEC creation is strongly recommended for this task.
 
-### Alfred 분석
-```
-키워드: "빠르게", "프로토타입", "빠른 구현"
-→ 프로토타입 감지
+Expected benefits:
+- 40% reduction in implementation time
+- 60% reduction in bug risk
+- 50% savings in future maintenance
 
-규칙: 복잡도와 관계없이 SPEC 스킵
+Shall we proceed?
 ```
 
-### 결정
+### User Choice
 ```
-GOOS님, 프로토타입이군요. 빠르게 진행하겠습니다.
+"Yes, generate SPEC"
 
-→ SPEC 없이 즉시 구현 (빠른 반복)
-→ 완료 후 피드백 수집
-→ 프로덕션 전환 시 SPEC 제안
+→ /moai:1-plan auto-executed
+→ Level 2 (Standard) EARS template selected
+→ SPEC-003 generated (15 min)
+  - Requirements definition
+  - Architecture design
+  - Implementation strategy
+  - Risk management
+→ /moai:2-run SPEC-003 (120 min implementation)
+  - Phase 1: DB schema
+  - Phase 2: Backend API
+  - Phase 3: Frontend UI
 ```
 
 ---
 
-## 예제 6: 긴급 버그 수정 (우선순위)
+## Example 4: Complex Architecture Change (SPEC Required)
 
-### 요청
+### Request
 ```
-사용자: "결제 처리가 안 되는 심각한 버그입니다!
-즉시 수정이 필요합니다!"
-```
-
-### Alfred 판단
-```
-긴급 키워드 감지: "심각한", "즉시"
-→ SPEC 스킵
-
-규칙: 긴급 상황 → 즉시 구현
+User: "We want to migrate from monolithic architecture to microservices.
+Need to separate user, product, and payment services."
 ```
 
-### 결정
+### Alfred Analysis
 ```
-즉시 구현 진행
+① File modification: 15+ files (per service) → Yes
+② Architecture: Microservices transition → Major change → Yes
+③ Components: 5+ (API Gateway, 3 Services, DB) → Yes
+④ Time: 1+ week → Yes
+⑤ Maintenance: Long-term maintenance/expansion → Certain → Yes
 
-→ 버그 수정
-→ 긴급 테스트
-→ 배포
-→ 완료 후 SPEC 문서화 가능
-```
-
----
-
-## 예제 7: 구현 중 복잡도 증가
-
-### 초기 요청
-```
-사용자: "검색 기능에 필터 옵션을 추가해주세요."
-
-Alfred 판단: 2-3개 충족 → SPEC 권장
-사용자: "아니오, 바로 구현해요"
+Result: 5 criteria met + architecture change → SPEC strongly recommended
 ```
 
-### 구현 중
+### Decision
 ```
-개발자가 구현하다가:
-- 필터 옵션이 예상보다 복잡함
-- 여러 데이터 조합 필요
-- 성능 최적화 고민
-- 아키텍처 변경 고려
+Level 3 (Comprehensive) template selected
+→ SPEC-004 generated (30 min)
+  - Microservices diagram
+  - Individual service architectures
+  - Phased migration plan
+  - Rollback plan
+  - Performance goals & security considerations
 
-→ 복잡도 증가 감지
-```
-
-### Alfred 제안
-```
-GOOS님, 이 작업이 예상보다 복잡해지고 있습니다.
-
-현재 상황:
-- 추가 파일 수정 필요
-- 아키텍처 변경 가능성
-- 예상 시간 2시간으로 증가
-
-SPEC으로 전환하시겠습니까?
-
-→ 사용자: "예, SPEC 작성해주세요"
-→ /moai:1-plan SPEC-X 자동 실행
-→ Level 2 템플릿 적용
-→ 체계적으로 재구현
+→ /moai:2-run SPEC-004 (1 week implementation)
+  - Phase 1: API Gateway setup
+  - Phase 2: User Service migration
+  - Phase 3: Product Service migration
+  - Phase 4: Payment Service migration
+  - Phase 5: Integration testing & deployment
 ```
 
 ---
 
-## 예제 8: 선택적 기능 (사용자가 아니오 선택)
+## Example 5: Prototype (Exception Handling)
 
-### 요청
+### Request
 ```
-사용자: "회원가입 페이지에 이메일 검증 기능을 추가해주세요.
-SMTP 설정, DB 변경, 프론트 UI 모두 포함입니다."
-```
-
-### Alfred 분석
-```
-결과: 4개 충족 → SPEC 강력 권장
+User: "I want to quickly create a prototype of a new UI concept.
+Fast implementation is more important than precise design."
 ```
 
-### Alfred 제안
+### Alfred Analysis
 ```
-GOOS님, SPEC 작성이 강력히 권장됩니다.
-- 구현 시간 40% 단축
-- 버그 위험 60% 감소
+Keywords: "quickly", "prototype", "fast implementation"
+→ Prototype detected
+
+Rule: Skip SPEC regardless of complexity
+```
+
+### Decision
+```
+GOOS, this is a prototype. I'll proceed quickly.
+
+→ Immediate implementation without SPEC (rapid iteration)
+→ Collect feedback after completion
+→ Suggest SPEC when transitioning to production
+```
+
+---
+
+## Example 6: Urgent Bug Fix (Priority)
+
+### Request
+```
+User: "There's a critical bug preventing payment processing!
+Immediate fix required!"
+```
+
+### Alfred Assessment
+```
+Urgent keywords detected: "critical", "immediate"
+→ Skip SPEC
+
+Rule: Emergency situation → immediate implementation
+```
+
+### Decision
+```
+Proceed with immediate implementation
+
+→ Fix bug
+→ Emergency testing
+→ Deploy
+→ SPEC documentation possible after completion
+```
+
+---
+
+## Example 7: Complexity Increases During Implementation
+
+### Initial Request
+```
+User: "Add filter options to search functionality."
+
+Alfred assessment: 2-3 criteria met → SPEC recommended
+User: "No, implement directly"
+```
+
+### During Implementation
+```
+Developer realizes during implementation:
+- Filter options more complex than expected
+- Multiple data combinations needed
+- Performance optimization concerns
+- Architecture changes under consideration
+
+→ Complexity increase detected
+```
+
+### Alfred Suggestion
+```
+GOOS, this task is becoming more complex than expected.
+
+Current situation:
+- Additional file modifications needed
+- Architecture change possible
+- Estimated time increased to 2 hours
+
+Would you like to switch to SPEC?
+
+→ User: "Yes, please create SPEC"
+→ /moai:1-plan SPEC-X auto-executed
+→ Apply Level 2 template
+→ Re-implement systematically
+```
+
+---
+
+## Example 8: Optional Feature (User Chooses No)
+
+### Request
+```
+User: "Add email verification to signup page.
+Includes SMTP setup, DB changes, and frontend UI."
+```
+
+### Alfred Analysis
+```
+Result: 4 criteria met → SPEC strongly recommended
+```
+
+### Alfred Suggestion
+```
+GOOS, SPEC creation is strongly recommended.
+- 40% reduction in implementation time
+- 60% reduction in bug risk
 ...
 
-진행하시겠습니까?
+Shall we proceed?
 ```
 
-### 사용자 선택
+### User Choice
 ```
-사용자: "아니오, 바로 구현하겠습니다"
+User: "No, I'll implement directly"
 
-결과:
-- SPEC 없이 구현 진행
-- 예상보다 30분 추가 소요
-- 버그 2개 발생
-- 나중에 재팩토링 필요
+Result:
+- Proceed without SPEC
+- 30 additional minutes beyond estimate
+- 2 bugs occurred
+- Refactoring needed later
 
-교훈: SPEC의 가치 실감
-```
-
----
-
-## 예제 9: 팀 협업 시나리오
-
-### 상황
-```
-팀 프로젝트: 결제 시스템 개선
-- 팀원 A: 백엔드 API 개발
-- 팀원 B: 프론트엔드 UI 개발
-- 팀원 C: 인프라 설정
-
-기간: 1주일, 복잡도 높음
-```
-
-### SPEC 생성
-```
-SPEC-010: 결제 시스템 개선
-
-포함 사항:
-- 전체 아키텍처 설계
-- 각 팀원의 책임 영역
-- 통합 포인트 정의
-- 테스트 계획
-- 배포 전략
-
-효과:
-- 팀원들이 같은 이해 기반 개발
-- 통합 시 호환성 자동 확보
-- 진도 추적 명확
-- 문제 발생 시 빠른 해결
+Lesson: Realized value of SPEC
 ```
 
 ---
 
-## 예제 10: 통계를 통한 워크플로우 개선
+## Example 9: Team Collaboration Scenario
 
-### 월간 리포트 분석
+### Situation
+```
+Team project: Payment system improvement
+- Team member A: Backend API development
+- Team member B: Frontend UI development
+- Team member C: Infrastructure setup
+
+Duration: 1 week, high complexity
+```
+
+### SPEC Creation
+```
+SPEC-010: Payment System Improvement
+
+Included:
+- Overall architecture design
+- Each team member's responsibility areas
+- Integration points definition
+- Test plan
+- Deployment strategy
+
+Benefits:
+- Team develops with shared understanding
+- Automatic compatibility assurance during integration
+- Clear progress tracking
+- Quick resolution when issues arise
+```
+
+---
+
+## Example 10: Workflow Improvement Through Statistics
+
+### Monthly Report Analysis
 
 ```markdown
-# November 통계
+# November Statistics
 
-SPEC 생성: 12개
-- Level 1: 4개 (평균 8분, 예상 10분 → 20% 빠름)
-- Level 2: 6개 (평균 45분, 예상 60분 → 25% 빠름)  ← 가장 효과 큼
-- Level 3: 2개 (평균 105분, 예상 120분 → 13% 빠름)
+SPEC created: 12
+- Level 1: 4 (avg 8 min, estimated 10 min → 20% faster)
+- Level 2: 6 (avg 45 min, estimated 60 min → 25% faster)  ← Most effective
+- Level 3: 2 (avg 105 min, estimated 120 min → 13% faster)
 
-구현 시간 절감: 평균 25%
+Implementation time savings: Average 25%
 
-테스트 커버리지: 85%
+Test coverage: 85%
 
-코드 연결율: 92%
+Code linkage rate: 92%
 
-개선 권장사항:
-1. Level 2를 더 활용하면 효율 극대화
-2. 낮은 커버리지 SPEC 개선 필요
-3. 다음달 목표: 주 4-5개 SPEC
+Improvement recommendations:
+1. Maximize efficiency by utilizing Level 2 more
+2. Improve SPECs with low coverage
+3. Next month target: 4-5 SPECs per week
 ```
 
-### 개선 액션
+### Improvement Actions
 
 ```
-1. Level 2 사용 권장 강화
-   → 중간 복잡도 작업의 효율성 극대화
+1. Strengthen Level 2 usage recommendations
+   → Maximize efficiency for medium complexity tasks
 
-2. 테스트 커버리지 기준 상향
-   → 85% → 90% 목표 설정
+2. Raise test coverage standards
+   → Set 85% → 90% target
 
-3. SPEC 생성 자동화 강화
-   → AI 보조 비율 증가 → 작성 시간 단축
+3. Enhance SPEC generation automation
+   → Increase AI assistance ratio → Reduce writing time
 
-다음월 예상 효과:
-- 구현 시간 30% 이상 단축
-- 버그 발생 40% 감소
-- 테스트 커버리지 90% 달성
-```
-
----
-
-## 학습 포인트
-
-### 예제 1-4 정리
-```
-복잡도 낮음        → SPEC 없이 빠른 구현
-복잡도 중간        → SPEC 권장, 25% 시간 절감
-복잡도 높음        → SPEC 필수, 40% 시간 절감
-
-특수 상황:
-- 프로토타입      → SPEC 스킵
-- 긴급 수정       → SPEC 스킵
-- 팀 협업         → SPEC 필수
-```
-
-### 핵심 메시지
-```
-✅ SPEC은 강제하지 않음
-✅ Alfred가 자동으로 제안
-✅ 사용자는 항상 선택 가능
-✅ 통계로 효과 증명
-
-결과:
-→ 자연스러운 워크플로우
-→ 효율성 증대
-→ 팀 협업 강화
+Expected next month results:
+- 30%+ reduction in implementation time
+- 40% reduction in bug occurrences
+- Achieve 90% test coverage
 ```
 
 ---
 
-**문서 버전**: 1.0.0
-**마지막 업데이트**: 2025-11-21
-**상태**: Production Ready
+## Learning Points
+
+### Summary of Examples 1-4
+```
+Low complexity        → Fast implementation without SPEC
+Medium complexity     → SPEC recommended, 25% time savings
+High complexity       → SPEC required, 40% time savings
+
+Special situations:
+- Prototype          → Skip SPEC
+- Urgent fix         → Skip SPEC
+- Team collaboration → SPEC required
+```
+
+### Core Message
+```
+✅ SPEC not mandatory
+✅ Alfred automatically suggests
+✅ User always has choice
+✅ Effectiveness proven by statistics
+
+Result:
+→ Natural workflow
+→ Increased efficiency
+→ Strengthened team collaboration
+```
+
+---
+
+**Document Version**: 1.0.0
+**Last Updated**: 2025-11-21
+**Status**: Production Ready

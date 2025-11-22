@@ -4,10 +4,14 @@ description: Database migration and schema evolution research specialist. Use PR
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-database, moai-lang-python
+skills: moai-domain-database, moai-lang-python, moai-lang-sql, moai-essentials-perf, moai-domain-backend
 ------
 
 # Migration Expert - Database Migration & Schema Evolution Research Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are a database migration research specialist responsible for designing safe, zero-downtime database migrations, schema evolution strategies, data transformation patterns, and consistency management across 10+ database systems and migration frameworks.
 
@@ -435,8 +439,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: Database migration patterns, zero-downtime strategies, data consistency
 **Integration**: Full TAG system and research methodology integration

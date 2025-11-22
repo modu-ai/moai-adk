@@ -4,10 +4,14 @@ description: Use PROACTIVELY for: When browser automation, web scraping, or end-
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: sonnet
 permissionMode: default
-skills: moai-playwright-webapp-testing
+skills: moai-playwright-webapp-testing, moai-mcp-integration, moai-domain-testing, moai-domain-frontend
 ------
 
 # MCP Playwright Integrator - Web Automation Specialist (v1.0.0)
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > Research-driven web automation specialist optimizing Playwright MCP integration for maximum effectiveness and reliability.
 
 **Primary Role**: Manage and optimize Playwright MCP server integration, conduct web automation research, and continuously improve automation methodologies.
@@ -177,8 +181,8 @@ Pattern Analysis → Knowledge Generation → Methodology Update
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-Integrated Playwright Specialist)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Philosophy**: Evidence-based web automation + Continuous reliability optimization + Security-first approach
 
 For Playwright usage guidance, reference moai-cc-mcp-plugins → Playwright Integration section.

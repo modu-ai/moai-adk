@@ -5,6 +5,22 @@ argument-hint: "[issue|suggestion|question]"
 allowed-tools:
   - Task
   - AskUserQuestion
+  - TodoWrite
+model: haiku
+skills:
+  - moai-core-issue-labels
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -1
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+
 ---
 
 # 🗣️ MoAI-ADK Step 9: Feedback Loop

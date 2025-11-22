@@ -1,10 +1,12 @@
 ---
+
 name: moai-lang-elixir
 description: Elixir functional programming, OTP patterns, and Phoenix framework best practices
 allowed-tools: [Read, Bash, WebFetch]
+
 ---
 
-# Elixir Language Expert
+# Elixir Functional Programming — Enterprise
 
 ## Quick Reference (30 seconds)
 
@@ -24,7 +26,6 @@ Elixir는 함수형 프로그래밍, 불변성(Immutability), OTP 감독 트리(
 - **Ecto 3.11**: 데이터베이스 라이브러리 (쿼리 빌더, 마이그레이션)
 - **GenServer**: 일반 서버 동작 (상태 관리, 동시성 처리)
 
----
 
 ## Implementation Guide
 
@@ -225,7 +226,6 @@ defmodule MyApp.CounterLive do
 end
 ```
 
----
 
 ## Best Practices
 
@@ -244,7 +244,6 @@ end
 - **깊은 중첩**: 패턴 매칭으로 가독성 향상
 - **프로세스 과다 생성**: 풀 구조 활용
 
----
 
 ## Works Well With
 
@@ -252,6 +251,5 @@ end
 - `moai-domain-devops` (배포 및 모니터링)
 - `moai-domain-database` (데이터 모델링)
 
----
 
 **Version**: 2.0.0 | **Last Updated**: 2025-11-21 | **Lines**: 255

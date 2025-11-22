@@ -1,8 +1,10 @@
 ---
+
 name: moai-project-template-optimizer
 description: Handle template comparison and optimization workflows including backup
   detection, smart merging, and update completion reporting. Enhanced with Context7
   MCP for up-to-date documentation.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -16,7 +18,6 @@ description: Handle template comparison and optimization workflows including bac
 > **Version**: 4.0.0  
 > **Keywords**: project, template, optimizer, test
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -37,7 +38,6 @@ description: Handle template comparison and optimization workflows including bac
 ```
 
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -185,7 +185,6 @@ Default examples           | Custom implementations
 }
 ```
 
----
 
 Usage Patterns
 
@@ -217,7 +216,6 @@ Skill("moai-project-template-optimizer",
 Skill("moai-project-template-optimizer", mode="rollback")
 ```
 
----
 
 Performance Optimizations
 
@@ -233,7 +231,6 @@ Performance Optimizations
 - Template version compatibility matrix
 - Merge operation batching
 
----
 
 Reporting & Analytics
 
@@ -273,7 +270,6 @@ Performance:
 - Template update adoption metrics
 - User satisfaction indicators
 
----
 
 Implementation Notes
 
@@ -287,7 +283,6 @@ This skill consolidates complex template optimization workflows into a focused, 
 
 The skill serves as the foundation for template lifecycle management and can be extended with additional optimization patterns as template structures evolve.
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -296,7 +291,6 @@ The skill serves as the foundation for template lifecycle management and can be 
 **Coming soon**: Deep dive into expert-level usage.
 
 
----
 
 ## 📚 Official References
 
@@ -307,7 +301,6 @@ The skill serves as the foundation for template lifecycle management and can be 
 - [Best Practices Guide](https://...) – Official recommendations
 
 
----
 
 ## 📈 Version History
 
@@ -322,13 +315,11 @@ The skill serves as the foundation for template lifecycle management and can be 
 
 
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-12  
 **Maintained by**: Primary Agent (alfred)
 
----
 
 ## Implementation Guide
 
@@ -346,7 +337,6 @@ The skill serves as the foundation for template lifecycle management and can be 
 - 🔒 [Security practice 1]
 
 
----
 
 ## 🔗 Context7 MCP Integration
 
@@ -378,7 +368,6 @@ docs = await helper.get_docs(
 | [Library 1] | `/org/lib1` | [When to use] |
 
 
----
 
 ## 📊 Decision Tree
 
@@ -395,7 +384,6 @@ Start
 ```
 
 
----
 
 ## 🔄 Integration with Other Skills
 
@@ -409,9 +397,7 @@ Start
 - Skill("next-step-1") – [When to use after this]
 
 
----
 
----
 
 ## Advanced Patterns
 

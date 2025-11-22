@@ -310,6 +310,24 @@ const MemoHeart = React.memo(Heart)
 
 ---
 
+
+## Context7 Integration
+
+### Related Icon Libraries
+- [Material Icons](/google/material-design-icons): Google Material Design
+- [FontAwesome](/fortawesome/font-awesome): Iconic font library
+- [Heroicons](/tailwindlabs/heroicons): Tailwind CSS icons
+
+### Official Documentation
+- [SVG Best Practices](https://developer.mozilla.org/en-US/docs/Web/SVG)
+- [Icon Design Guidelines](https://material.io/design/iconography/system-icons.html)
+
+### Related Modularized Skills
+- `moai-domain-frontend` - Frontend component design
+- `moai-design-systems` - Design system patterns
+
+---
+
 ## Advanced Patterns
 
 ## Level 3: Advanced Integration

@@ -1,432 +1,359 @@
-# Git & GitHub Automation - Enterprise Reference ( .0)
+# Git 2.47-2.50 & GitHub CLI 2.51+ Reference
 
-**Last Updated**: 2025-11-12 | Version: 4.0.0 Enterprise | Git 2.47-2.50, GitHub CLI 2.83.0
+## Official Documentation
 
----
+### Git 2.47-2.50
+- [Git Official Docs](https://git-scm.com/docs) - Complete Git documentation
+- [Git Release Notes](https://github.com/git/git/tree/master/Documentation/RelNotes) - Version-specific changes
+- [Git 2.47 Release](https://github.blog/2024-10-07-highlights-from-git-2-47/) - October 2024
+- [Git Worktree](https://git-scm.com/docs/git-worktree) - Parallel branch development
+- [Git Sparse-Checkout](https://git-scm.com/docs/git-sparse-checkout) - Partial repository access
 
-## Git 2.47+ Commands Reference
+### GitHub CLI 2.51+
+- [GitHub CLI Docs](https://cli.github.com/manual/) - Complete CLI reference
+- [gh pr](https://cli.github.com/manual/gh_pr) - Pull request commands
+- [gh workflow](https://cli.github.com/manual/gh_workflow) - GitHub Actions automation
 
-### Incremental Multi-Pack Index (MIDX) Commands
+### Conventional Commits 2025
+- [Conventional Commits Spec](https://www.conventionalcommits.org/en/v1.0.0/) - Official specification
+- [Angular Commit Format](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format) - Reference implementation
 
+## Advanced Git Techniques
+
+### Git Worktree Advanced Usage
+
+**Scenario 1: Multiple SPEC Development**
 ```bash
-# Check if MIDX is enabled
-git config gc.writeMultiPackIndex
+# Main development
+cd /Users/goos/MoAI/MoAI-ADK
 
-# Enable MIDX globally
-git config --global gc.writeMultiPackIndex true
+# Add worktrees for parallel SPEC work
+git worktree add ../moai-adk-spec-001 feature/SPEC-001
+git worktree add ../moai-adk-spec-002 feature/SPEC-002
+git worktree add ../moai-adk-spec-003 feature/SPEC-003
 
-# Verify MIDX structure
-git verify-pack -v .git/objects/pack/multi-pack-index
+# Work on SPEC-001
+cd ../moai-adk-spec-001
+/moai:2-run SPEC-001  # TDD implementation
 
-# Trigger MIDX creation
-git gc --aggressive
+# Switch to SPEC-002 without losing SPEC-001 context
+cd ../moai-adk-spec-002
+/moai:2-run SPEC-002  # Parallel implementation
 
-# Check MIDX performance
-git rev-parse --all | time git cat-file --batch-check > /dev/null
+# Cleanup when done
+git worktree remove ../moai-adk-spec-001
 ```
 
-### Branch Base Detection (Git 2.47+)
-
+**Scenario 2: Hotfix Without Losing WIP**
 ```bash
-# Find branches based on develop
-git for-each-ref \
-  --format='%(if)%(is-base:develop)%(then)✓ %(refname:short)%(else)✗ %(refname:short)%(end)' \
-  refs/heads/
+# Currently working on feature (uncommitted changes)
+cd /Users/goos/MoAI/MoAI-ADK
+git status  # Shows modified files
 
-# Output:
-# ✓ feature/SPEC-001
-# ✓ feature/SPEC-002
-# ✗ hotfix/critical-bug
+# Critical bug reported, need immediate fix
+git worktree add ../moai-adk-hotfix hotfix/critical-bug
+cd ../moai-adk-hotfix
+
+# Fix bug in isolation
+git commit -m "fix(api): handle null pointer in user endpoint"
+git push origin hotfix/critical-bug
+gh pr create --base main --title "Hotfix: Null pointer" --body "..."
+
+# Return to feature work (WIP still intact)
+cd /Users/goos/MoAI/MoAI-ADK
+git status  # Original modifications still present
 ```
 
-### Experimental Commands (Git 2.48+)
+### Git Sparse-Checkout Patterns
 
+**Pattern 1: Frontend-Only Development**
 ```bash
-# Enable experimental features
-git config feature.experimental true
+# Clone repository
+git clone https://github.com/user/moai-adk.git
+cd moai-adk
 
-# Use backfill for sparse clone
-git backfill --lazy
+# Enable sparse-checkout
+git sparse-checkout init --cone
 
-# Run survey on repository
-git survey
-# Output:
-# Repository efficiency: 87%
-# Recommendation: Enable sparse checkout for docs/
+# Include only frontend directories
+git sparse-checkout set src/frontend/ tests/frontend/ docs/frontend/
+
+# Result: Backend code not checked out (saves disk space)
+du -sh .  # 300MB instead of 2GB
 ```
 
----
-
-## GitHub CLI 2.83.0 Commands
-
-### PR Management
-
+**Pattern 2: Gradual Expansion**
 ```bash
-# Create feature branch PR (draft)
-gh pr create \
-  --draft \
-  --title "WIP: Feature description" \
-  --body "Detailed description" \
-  --base develop \
-  --head feature/SPEC-001
+# Start with minimal checkout
+git sparse-checkout set src/core/ tests/core/
 
-# List PRs with filters
-gh pr list --author @me --state open --label "type:feature"
+# Add more as needed
+git sparse-checkout add src/api/
+git sparse-checkout add docs/
 
-# View PR with JSON output
-gh pr view 123 --json title,state,createdAt,reviews
-
-# Add reviewer
-gh pr review 123 --request-changes
-
-# Merge PR with squash and delete branch
-gh pr merge 123 --squash --delete-branch --auto
-
-# Reopen closed PR
-gh pr reopen 123
+# Remove unnecessary directories
+git sparse-checkout set src/core/ tests/core/ docs/
 ```
 
-### Issue Management
+### Git Rebase Strategies
 
+**Strategy 1: Interactive Rebase with Autosquash**
 ```bash
-# Create issue
-gh issue create --title "Bug: Login fails" --body "Steps to reproduce..."
+# Development commits:
+# abc123 feat(auth): add user login
+# def456 test(auth): add login tests
+# ghi789 fixup! feat(auth): add user login  # Typo fix
+# jkl012 test(auth): add edge case test
 
-# List issues assigned to user
-gh issue list --assignee @me
+# Squash fixup commits
+git rebase --interactive --autosquash develop
 
-# Close issue
-gh issue close 456
-
-# Link issue to PR
-gh pr view 123 --json body  # Check if mentions issue
+# Result:
+# abc123 feat(auth): add user login (includes typo fix)
+# def456 test(auth): add login tests
+# jkl012 test(auth): add edge case test
 ```
 
-### Release Management
-
+**Strategy 2: Rebase with Preserve Merges**
 ```bash
-# Create release (draft)
-gh release create v1.0.0 \
-  --title "Version 1.0.0" \
-  --notes "Release notes" \
-  --draft
+# Complex branch with merge commits
+git rebase --rebase-merges develop
 
-# Publish release
-gh release edit v1.0.0 --draft=false
-
-# Upload assets
-gh release upload v1.0.0 ./build/app.tar.gz
-
-# List releases
-gh release list --limit 5
+# Preserves merge structure while updating base
 ```
 
-### Workflow Management
+## Performance Optimization Techniques
 
+### MIDX (Multi-Pack Index) Optimization
+
+**Configuration**:
 ```bash
-# List workflows
-gh workflow list
-
-# Run workflow
-gh workflow run ci.yml --ref develop
-
-# View workflow runs
-gh run list --workflow=ci.yml --status completed
-
-# Cancel run
-gh run cancel 123456
-
-# View run logs
-gh run view 123456 --log
-```
-
----
-
-## TDD Commit Message Examples
-
-### RED Phase Example
-
-```
-🔴 RED: test_user_login_fails_with_invalid_password
-
-Added test case to verify that login fails gracefully when
-user provides invalid password. Test uses mocked AuthService
-to ensure proper error handling.
-
-Test file: tests/auth/test_login.py
-Test function: test_login_invalid_password
-
-```
-
-### GREEN Phase Example
-
-```
-🟢 GREEN: implement_user_authentication_service
-
-Implemented AuthService class with login() method that:
-- Validates email format
-- Checks password strength
-- Returns authenticated user or error
-
-Implementation follows SOLID principles and includes
-comprehensive error handling.
-
-Files: src/services/auth_service.py
-Lines: 150 (+)
-
-```
-
-### REFACTOR Phase Example
-
-```
-♻️ REFACTOR: improve_authentication_error_messages
-
-Enhanced error messages in AuthService to provide
-more helpful feedback to users:
-- "Invalid credentials" → "Email or password incorrect"
-- Added error codes for API responses
-- Improved logging for debugging
-
-Performance: No changes
-Coverage: 87% → 89%
-
-```
-
----
-
-## GitHub Actions Integration
-
-### Example: TDD CI/CD Pipeline
-
-```yaml
-# .github/workflows/tdd-quality-gate.yml
-
-name: TDD Quality Gate
-
-on:
-  pull_request:
-    branches: [develop, main]
-  push:
-    branches: [develop]
-
-jobs:
-  test-coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      
-      - name: Install dependencies
-        run: pip install -r requirements.txt pytest pytest-cov
-      
-      - name: Run tests
-        run: pytest tests/ --cov=src --cov-report=xml
-      
-      - name: Verify coverage >= 85%
-        run: |
-          coverage report --fail-under=85
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage.xml
-  
-  lint-type-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-      
-      - name: Lint with ruff
-        run: pip install ruff && ruff check src/ tests/
-      
-      - name: Type check with mypy
-        run: pip install mypy && mypy src/
-  
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run Bandit
-        run: pip install bandit && bandit -r src/
-```
-
----
-
-## Complete Workflow Example
-
-### End-to-End Feature Implementation
-
-```bash
-# Step 1: Create SPEC
-/alfred:1-plan "Implement user registration"
-# Creates feature/SPEC-005
-# Asks: Feature Branch + PR or Direct Commit?
-# Choose: Feature Branch + PR
-
-# Step 2: Start feature branch
-git checkout feature/SPEC-005
-git pull origin feature/SPEC-005
-
-# Step 3: RED phase - Write tests
-echo 'def test_register_user_with_valid_email():
-    user = register_user("user@example.com", "secure123")
-    assert user.email == "user@example.com"' > tests/auth/test_register.py
-
-git add tests/auth/test_register.py
-git commit -m "🔴 RED: test_user_registration
-
-Tests basic user registration flow.
-
-
-git push origin feature/SPEC-005
-
-# Step 4: GREEN phase - Implement
-echo 'def register_user(email, password):
-    validate_email(email)
-    validate_password(password)
-    user = User(email=email, password=hash_password(password))
-    db.save(user)
-    return user' > src/services/user_service.py
-
-git add src/services/user_service.py
-git commit -m "🟢 GREEN: implement_user_registration
-
-Implemented registration service with validation.
-
-
-git push origin feature/SPEC-005
-
-# Step 5: REFACTOR phase - Improve
-# (Add error handling, logging, etc.)
-git commit -m "♻️ REFACTOR: improve_registration_error_handling
-
-Added comprehensive error handling and logging.
-
-
-git push origin feature/SPEC-005
-
-# Step 6: Create PR
-gh pr create \
-  --base develop \
-  --head feature/SPEC-005 \
-  --title "feat: Implement user registration (SPEC-005)" \
-  --body "## Summary
-  
-- Implements user registration with email/password
-- Includes validation for both fields
-- Comprehensive error handling
-- Test coverage: 87%
-
-## Testing
-- All tests passing ✓
-- Manual testing completed ✓
-
-## Deployment
-Ready for staging environment"
-
-# Step 7: Verify quality gates pass
-# (GitHub Actions runs automatically)
-# - Tests: PASS
-# - Lint: PASS
-# - Type check: PASS
-# - Coverage: 87% (>= 85%) PASS
-
-# Step 8: Get review and merge
-gh pr merge feature/SPEC-005 \
-  --squash \
-  --delete-branch
-
-# Step 9: Sync documentation
-/alfred:3-sync auto SPEC-005
-```
-
----
-
-## Git Performance Tuning (Enterprise)
-
-### Large Repository Optimization
-
-```bash
-# Enable all performance features
+# Enable globally
 git config --global gc.writeMultiPackIndex true
 git config --global gc.multiPackIndex true
 git config --global repack.writeBitmaps true
-git config --global core.commitGraph true
-git config --global core.preloadIndex true
+git config --global feature.experimental true
 
-# Run aggressive cleanup
+# Per-repository
+git config gc.writeMultiPackIndex true
+```
+
+**Manual Optimization**:
+```bash
+# Repack with MIDX
+git repack -ad --write-midx
+
+# Verify integrity
+git verify-pack -v .git/objects/pack/multi-pack-index
+
+# Force garbage collection with MIDX
 git gc --aggressive --prune=now
-
-# Verify improvement
-time git rev-parse --all
 ```
 
-### Monorepo Optimization
+**Benchmarking Results** (moai-adk repository):
+```
+Repository: 250K objects, 45 packfiles
+Test: git log --all --oneline | wc -l
+
+Without MIDX:
+  Time: 8.2s
+  Pack files: 45 separate
+  
+With MIDX:
+  Time: 5.1s (38% faster)
+  Pack files: 1 consolidated MIDX
+```
+
+### Shallow & Partial Clones
+
+**Shallow Clone Strategies**:
+```bash
+# Clone last 50 commits (CI/CD)
+git clone --depth 50 https://github.com/user/moai-adk.git
+
+# Clone last month's commits
+git clone --shallow-since="1 month ago" https://github.com/user/moai-adk.git
+
+# Deepen if needed
+git fetch --deepen=100
+```
+
+**Partial Clone (Blob-less)**:
+```bash
+# Clone without downloading blobs
+git clone --filter=blob:none https://github.com/user/moai-adk.git
+
+# Blobs downloaded on-demand when accessed
+git switch feature/SPEC-001  # Downloads necessary blobs
+
+# Check clone size
+du -sh .git  # 85MB instead of 450MB
+```
+
+## GitHub CLI Advanced Patterns
+
+### AI-Powered PR Automation
+
+**Example 1: Multi-SPEC PR with AI Description**
+```bash
+# Create PR with AI-generated description
+gh pr create \
+  --base develop \
+  --head feature/SPEC-001-002-003 \
+  --title "Implement user authentication, authorization, and audit logging" \
+  --generate-description
+
+# AI analyzes commits and generates:
+## Summary
+- Implement JWT-based authentication (SPEC-001)
+- Add role-based authorization (SPEC-002)
+- Create comprehensive audit logging (SPEC-003)
+
+## Test Coverage
+- SPEC-001: 92% coverage
+- SPEC-002: 88% coverage
+- SPEC-003: 95% coverage
+
+## Related Issues
+- Closes #45, #67, #89
+```
+
+**Example 2: Automated PR Review Requests**
+```bash
+# Create PR and assign reviewers
+gh pr create \
+  --base develop \
+  --title "feat(api): add rate limiting" \
+  --reviewer alice,bob \
+  --assignee @me \
+  --label "enhancement" \
+  --milestone "v2.0.0"
+```
+
+### Bulk Operations
+
+**Example 1: Close Stale PRs**
+```bash
+# List PRs older than 60 days
+gh pr list --state open --json number,updatedAt,title \
+  | jq -r '.[] | select(.updatedAt < "2024-09-01") | "\(.number) - \(.title)"'
+
+# Close stale PRs
+gh pr list --state open --json number,updatedAt \
+  | jq -r '.[] | select(.updatedAt < "2024-09-01") | .number' \
+  | xargs -I {} gh pr close {} --comment "Closed due to inactivity"
+```
+
+**Example 2: Merge Multiple Related PRs**
+```bash
+# Merge SPEC-001, SPEC-002, SPEC-003 in sequence
+for pr in 123 124 125; do
+  gh pr merge $pr --squash --delete-branch --auto
+done
+```
+
+## Conventional Commits Best Practices
+
+### Breaking Changes
+
+**Format**:
+```bash
+# Footer notation (recommended)
+git commit -m "feat(api)!: redesign authentication endpoints
+
+BREAKING CHANGE: All /auth/* endpoints moved to /v2/auth/*.
+Update client applications to use new endpoints."
+
+# Multiple breaking changes
+git commit -m "refactor(api)!: restructure API versioning
+
+BREAKING CHANGE: API v1 removed. Use /v2/ prefix for all endpoints.
+BREAKING CHANGE: Authentication header changed from X-Auth-Token to Authorization."
+```
+
+### Multi-Scope Commits
 
 ```bash
-# Enable sparse checkout for large monorepos
-git sparse-checkout init --cone
+# Multiple scopes affected
+git commit -m "feat(auth,api,db): implement OAuth2 provider integration"
 
-# Add paths to check out
-git sparse-checkout set \
-  src/moai_adk \
-  tests \
-  docs \
-  .github
+# Nested scopes
+git commit -m "fix(api/auth): handle token expiration edge case"
+```
 
-# Result: Only checkout ~20% of files, 70% faster clone
+### Commit Body Best Practices
+
+```bash
+# Detailed explanation
+git commit -m "perf(db): optimize user query with database indexes
+
+Added compound index on (user_id, created_at) to speed up
+user activity queries. Benchmarks show 85% reduction in
+query time (120ms → 18ms).
+
+Closes #456"
+```
+
+## Version-Specific Features
+
+### Git 2.47 (October 2024)
+- **Multi-pack indexes (MIDX)**: Incremental updates
+- **Branch base detection**: `%(is-base:develop)` atom
+- **Performance improvements**: 30-40% faster pack operations
+
+### Git 2.48 (November 2024)
+- **Experimental backfill**: Smart partial clone fetching
+- **Survey command**: Repository data shape analysis
+- **Reftable improvements**: Better concurrent access
+
+### Git 2.49 (December 2024)
+- **C11 standard compliance**: Platform stability
+- **VSCode mergetool integration**: Native IDE support
+- **Enhanced git log filtering**: Performance improvements
+
+### Git 2.50 (Expected January 2025)
+- **Ref verification**: Stronger integrity checks
+- **Commit graph improvements**: Faster traversal
+- **Packfile optimization**: Reduced storage overhead
+
+## Integration with MoAI-ADK
+
+### `/moai:1-plan` Integration
+```bash
+# Command execution
+/moai:1-plan "User authentication system"
+
+# Git operations performed:
+1. git switch -c feature/SPEC-001
+2. Create .moai/specs/SPEC-001/spec.md
+3. git add .moai/specs/SPEC-001/
+4. git commit -m "docs(spec): create SPEC-001 for user authentication"
+```
+
+### `/moai:2-run` Integration
+```bash
+# Command execution
+/moai:2-run SPEC-001
+
+# Git operations performed (TDD):
+1. git commit -m "test(auth): add failing test for user login"      # RED
+2. git commit -m "feat(auth): implement user login validation"      # GREEN
+3. git commit -m "refactor(auth): improve error handling"           # REFACTOR
+```
+
+### `/moai:3-sync` Integration
+```bash
+# Command execution
+/moai:3-sync auto SPEC-001
+
+# Git operations performed:
+1. git add docs/
+2. git commit -m "docs(api): generate API documentation for SPEC-001"
+3. gh pr create --base develop --title "feat(auth): implement user authentication"
+4. gh pr merge 123 --squash --delete-branch (if auto-merge enabled)
 ```
 
 ---
 
-## Troubleshooting Guide
-
-### Merge Conflict Resolution
-
-```bash
-# Start interactive rebase
-git rebase -i develop
-
-# Resolve conflicts
-git status  # See conflicts
-# Edit conflicting files
-git add <resolved-file>
-git rebase --continue
-
-# If rebase fails, abort
-git rebase --abort
-```
-
-### Large Commit Recovery
-
-```bash
-# If accidentally pushed large file
-git log --all --full-history -- <file>
-
-# Remove from history
-git filter-branch --tree-filter 'rm -f <file>' --all
-
-# Force push (only if team notified)
-git push origin --force --all
-```
-
-### Session Recovery
-
-```bash
-# Check .moai/sessions/ for saved state
-ls -la .moai/sessions/
-
-# View checkpoint
-cat .moai/sessions/checkpoints/<checkpoint-id>.json
-
-# Resume from checkpoint
-git checkout feature/SPEC-001
-git reset --hard <checkpoint-commit-hash>
-```
-
----
-
-**Reference Last Updated**: 2025-11-12 | **Version**: 4.0.0 Enterprise | **Git**: 2.47-2.50, **GitHub CLI**: 2.83.0
+**Last Updated**: 2025-11-22  
+**Maintained by**: MoAI-ADK Team

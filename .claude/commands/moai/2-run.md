@@ -4,6 +4,28 @@ description: "Execute TDD implementation cycle"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 allowed-tools:
   - Task
+  - AskUserQuestion
+  - TodoWrite
+model: sonnet
+skills:
+  - moai-alfred-workflow
+  - moai-alfred-todowrite-pattern
+  - moai-alfred-ask-user-questions
+  - moai-alfred-reporting
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -5
+!git diff --name-only HEAD
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/specs/
+
 ---
 
 # ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
@@ -168,9 +190,9 @@ Output: "Implementation complete. Next step: /moai:3-sync"
 
 ## 🎯 Command Implementation
 
-### Sequential Phase Execution
+### Sequential Phase Execution with Resume Chain
 
-**Command implementation flow:**
+**Command implementation flow (with Resume for context continuity):**
 
 ```
 # Phase 1: SPEC Analysis & Planning
@@ -190,6 +212,16 @@ Analyze this SPEC and create detailed execution plan:
 """
 )
 
+# Store agent ID for resume chain
+$PLANNER_AGENT_ID = plan_result.metadata.agent_id
+
+# Log Phase 1 checkpoint
+Log to .moai/logs/phase-checkpoints.json:
+  phase: 1
+  agent_id: $PLANNER_AGENT_ID
+  status: "PLANNING_COMPLETE"
+  timestamp: NOW()
+
 # User approval checkpoint
 approval = AskUserQuestion({
     "question": "Does this execution plan look good?",
@@ -202,13 +234,18 @@ approval = AskUserQuestion({
     ]
 })
 
-# Phase 2: TDD Implementation
+# Phase 2: TDD Implementation (Resume from Phase 1)
 if approval == "Proceed with plan":
     implementation_result = Task(
         subagent_type="tdd-implementer",
+        resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Inherit planning context
         description="Implement SPEC-$ARGUMENTS using TDD cycle",
         prompt="""
 SPEC ID: $ARGUMENTS
+
+You are the tdd-implementer agent. You are continuing from the implementation plan created in Phase 1.
+
+The full planning context (analysis, decisions, architecture) is automatically available from previous phase via resume.
 
 Execute complete TDD implementation:
 1. Write failing tests (RED phase)
@@ -220,12 +257,28 @@ Execute complete TDD implementation:
 """
     )
 
-    # Phase 2.5: Quality Validation
+    # Store agent ID for next phase
+    $IMPL_AGENT_ID = implementation_result.metadata.agent_id
+
+    # Log Phase 2 checkpoint
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: 2
+      agent_id: $IMPL_AGENT_ID
+      resumed_from: $PLANNER_AGENT_ID
+      status: "IMPLEMENTATION_COMPLETE"
+      timestamp: NOW()
+
+    # Phase 2.5: Quality Validation (Resume from Phase 1)
     quality_result = Task(
         subagent_type="quality-gate",
+        resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Keep full context chain
         description="Validate TRUST 5 compliance for SPEC-$ARGUMENTS",
         prompt="""
 SPEC ID: $ARGUMENTS
+
+You are the quality-gate agent. You are continuing from the implementation context.
+
+The full context (planning, implementation results) is automatically available from previous phases via resume.
 
 Validate implementation against TRUST 5 principles:
 - T: Test-first (tests exist and pass)
@@ -238,22 +291,51 @@ Return quality assessment with specific findings.
 """
     )
 
-    # Phase 3: Git Operations
-    if quality_result.status == "PASS":
+    # Store agent ID for next phase
+    $QA_AGENT_ID = quality_result.metadata.agent_id
+
+    # Log Phase 2.5 checkpoint
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: "2.5"
+      agent_id: $QA_AGENT_ID
+      resumed_from: $PLANNER_AGENT_ID
+      status: quality_result.status
+      timestamp: NOW()
+
+    # Phase 3: Git Operations (Resume from Phase 1)
+    if quality_result.status == "PASS" or quality_result.status == "WARNING":
         git_result = Task(
             subagent_type="git-manager",
+            resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Maintain full feature context
             description="Create commits for SPEC-$ARGUMENTS implementation",
             prompt="""
 SPEC ID: $ARGUMENTS
 
+You are the git-manager agent. You are continuing from the full implementation context.
+
+The complete context (planning, implementation, quality review) is automatically available via resume.
+Use this context to create meaningful commit messages and understand the changes.
+
 Create git commits for implementation:
 1. Create feature branch: feature/SPEC-$ARGUMENTS
 2. Stage all relevant files
-3. Create meaningful commits (follow conventional commits)
+3. Create meaningful commits (follow conventional commits, use context for descriptions)
 4. Verify commits created successfully
-5. Return commit summary
+5. Return commit summary with SHA references
 """
         )
+
+        # Store agent ID for reference
+        $GIT_AGENT_ID = git_result.metadata.agent_id
+
+        # Log Phase 3 checkpoint
+        Log to .moai/logs/phase-checkpoints.json:
+          phase: 3
+          agent_id: $GIT_AGENT_ID
+          resumed_from: $PLANNER_AGENT_ID
+          status: "GIT_OPERATIONS_COMPLETE"
+          commit_shas: git_result.commits
+          timestamp: NOW()
 
         # Phase 4: Completion & Guidance
         next_steps = AskUserQuestion({
@@ -267,7 +349,42 @@ Create git commits for implementation:
                 {"label": "Finish", "description": "Session complete"}
             ]
         })
+
+        # Log Phase 4 checkpoint
+        Log to .moai/logs/phase-checkpoints.json:
+          phase: 4
+          status: "COMPLETE"
+          user_selection: next_steps
+          timestamp: NOW()
 ```
+
+### Resume Chain Summary
+
+**Context Flow (with Resume):**
+
+```
+Phase 1: SPEC Analysis
+  → Agent ID: abc123
+
+Phase 2: Task(resume="abc123")
+  → Inherits: Full planning context
+  → Implements: Without re-reading SPEC or re-analyzing
+
+Phase 2.5: Task(resume="abc123")
+  → Inherits: Planning + Implementation context
+  → Validates: With complete feature knowledge
+
+Phase 3: Task(resume="abc123")
+  → Inherits: Complete feature context
+  → Creates: Commits with full context understanding
+```
+
+**Benefits:**
+
+- ✅ **99K Token Savings**: No re-transmission of context between phases
+- ✅ **Context Continuity**: Full knowledge chain across all phases
+- ✅ **Unified Coding**: Phase 1 architectural decisions naturally propagate
+- ✅ **Better Commits**: git-manager understands full context for meaningful messages
 
 ---
 

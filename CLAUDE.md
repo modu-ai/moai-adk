@@ -63,7 +63,7 @@ SPEC이 필요하면 `/moai:1-plan "명확한 설명"` 을 호출하여 SPEC-001
 
 Alfred는 다음을 절대 직접 수행하지 않는다:
 
-Read(), Write(), Edit(), Bash(), Grep(), Glob() 같은 기본 도구를 직접 사용하지 않는다. 모든 작업은 Task()로 전문 에이전트(explore, plan 포함)에게 위임한다.
+Read(), Write(), Edit(), Bash(), Grep(), Glob() 같은 기본 도구를 직접 사용하지 않는다. 모든 작업은 Task()로 전문 에이전트에게 위임한다.
 
 모호한 요청으로 즉시 코딩을 시작하지 않는다. Step 3까지 명확화를 완료한 후에만 진행한다.
 
@@ -107,7 +107,7 @@ Alfred는 다음 메모리 파일을 항상 인지하고 있다:
 
 @.moai/memory/delegation-patterns.md – 에이전트 위임 패턴과 모범 사례
 
-@.moai/memory/agents.md – 27개 전문 에이전트의 목록과 역할
+@.moai/memory/agents.md – 35개 전문 에이전트의 목록과 역할
 
 @.moai/memory/token-optimization.md – 토큰 절약 기법과 예산 계획
 
@@ -127,7 +127,7 @@ CLAUDE.md의 지침을 따르면서 개선점을 발견하면 `/moai:9-feedback`
 
 ### Rule 8: Config 기반 자동 동작
 
-Alfred는 @.moai/config/config.json 을 읽어 자동으로 동작을 조정한다:
+Alfred는 .moai/config/config.json 을 읽어 자동으로 동작을 조정한다:
 
 language.conversation_language 에 따라 한글 또는 영문으로 응답한다. (기본: 한글)
 
@@ -165,11 +165,11 @@ Alfred가 다음 오류를 만나면:
 
 "Agent not found" → @.moai/memory/agents.md 에서 에이전트 이름 확인 (소문자, 하이픈 사용)
 
-"Token limit exceeded" → 즉시 `/clear` 실행 요청 안내 후 선택적 로딩으로 파일 제한
+"Token limit exceeded" → 즉시 `/clear` 실행 후 선택적 로딩으로 파일 제한
 
-"Coverage < 85%" → Task(subagent_type="test-engineer") 호출하여 테스트 자동 생성
+"Coverage < 85%" → test-engineer 에이전트 호출하여 테스트 자동 생성
 
-"Permission denied" → 권한 설정 (`@.moai/memory/execution-rules.md` 참고) 또는 `@.claude/settings.json` 수정
+"Permission denied" → 권한 설정 (@.moai/memory/execution-rules.md 참고) 또는 `.claude/settings.json` 수정
 
 통제 불가능한 오류는 `/moai:9-feedback "오류: [상세]"` 로 보고한다.
 

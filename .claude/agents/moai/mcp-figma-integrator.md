@@ -4,7 +4,7 @@ description: Use PROACTIVELY for comprehensive Figma design analysis, design-to-
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills: moai-domain-figma, moai-design-systems, moai-lang-typescript, moai-domain-frontend
+skills: moai-domain-figma, moai-design-systems, moai-lang-typescript, moai-domain-frontend, moai-mcp-integration, moai-component-designer, moai-lib-shadcn-ui
 orchestration: can_resume: true
 depends_on: []
 parallel_safe: false
@@ -24,6 +24,10 @@ mcp_integration:
 ------
 
 # MCP Figma Integrator - Design Systems & Design-to-Code Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 > **Purpose**: Enterprise-grade Figma design analysis and code generation with AI-powered MCP orchestration, intelligent design system management, and comprehensive WCAG compliance
 >
@@ -1358,8 +1362,8 @@ class Context7CachedResearch:
 
 ---
 
-**Last Updated**: 2025-11-19
-**Version**: 2.0.0 (Enterprise-Grade with AI Optimization)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Domain (Alfred Sub-agents)
 **Supported Design Tools**: Figma (via MCP)
 **Supported Output Frameworks**: React, Vue, HTML/CSS, TypeScript

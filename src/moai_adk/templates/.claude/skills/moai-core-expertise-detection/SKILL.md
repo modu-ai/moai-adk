@@ -1,9 +1,11 @@
 ---
+
 name: moai-core-expertise-detection
 description: Enterprise AI-powered user expertise detection with behavioral analysis,
   communication pattern recognition, code complexity assessment, Context7 integration,
   and adaptive response calibration; activates for personalized guidance generation,
   complexity adjustment, tutorial depth selection, and communication style matching
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -106,21 +108,18 @@ description: Enterprise AI-powered user expertise detection with behavioral anal
 ✓ No hand-holding required
 ```
 
----
 
 ## Related Skills
 
 - `moai-alfred-personas` (Communication style adaptation)
 - `moai-alfred-practices` (Pattern examples at all levels)
 
----
 
 **For detailed detection patterns**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -191,7 +190,6 @@ Advanced: Race conditions, memory leaks, optimization gaps
 Expert: Language semantics, compiler optimizations, platform-specific bugs
 ```
 
----
 
 ## Dynamic Response Calibration
 
@@ -244,9 +242,7 @@ Advanced:   "hoisting", "temporal dead zone", "thunk"
 Expert:     "reification", "lifting", "unfold semantics"
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -254,7 +250,6 @@ Expert:     "reification", "lifting", "unfold semantics"
 
 Continuously detects and adapts to user expertise level based on behavioral signals, communication patterns, code examples, and interaction history. Enables Alfred to calibrate complexity, example selection, and communication style dynamically.
 
----
 
 ## Best Practices for Detection
 
@@ -275,5 +270,4 @@ Continuously detects and adapts to user expertise level based on behavioral sign
 - ❌ Skip basics for advanced users (sometimes needed)
 - ❌ Assume all users in same domain at same level
 
----
 

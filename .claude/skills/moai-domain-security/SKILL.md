@@ -500,3 +500,39 @@ jobs:
 
 ---
 
+
+---
+
+## Works Well With
+
+- `moai-security-api` - API security patterns and best practices
+- `moai-security-auth` - Authentication and authorization implementations
+- `moai-security-encryption` - Cryptography and encryption patterns
+- `moai-security-owasp` - OWASP Top 10 compliance validation
+- `moai-security-zero-trust` - Zero-trust architecture patterns
+- `moai-domain-backend` - Backend security integration
+- `moai-domain-devops` - DevSecOps automation
+
+---
+
+## Best Practices
+
+### ✅ DO
+- **Apply Defense in Depth** - Multiple layers of security controls
+- **Use Context7 security patterns** - Latest vulnerability protection techniques
+- **Implement Zero Trust** - Never trust, always verify (authentication + authorization)
+- **Apply OWASP Top 10 compliance** - Protect against A01-A10 vulnerabilities
+- **Use secure cryptography** - Modern algorithms (AES-256, SHA-256, bcrypt)
+- **Enable security logging** - Comprehensive audit trail for security events
+- **Conduct regular threat modeling** - STRIDE methodology for risk assessment
+
+### ❌ DON'T
+- **Store plain-text secrets** - Use encryption and secrets management (HashiCorp Vault)
+- **Skip input validation** - Always validate and sanitize user input
+- **Use weak cryptography** - Avoid MD5, SHA-1, or weak key sizes
+- **Ignore security updates** - Regularly update dependencies and patch vulnerabilities
+- **Skip penetration testing** - Regular security assessments required
+- **Trust client-side validation** - Always validate on server-side
+
+---
+
