@@ -572,15 +572,37 @@ Return:
 """
 ```
 
-### Step 2: Create Branch (Personal Mode)
+### Step 2: Git Strategy Decision (Personal Mode)
 
 **IF git_strategy.personal mode**:
+
+**Check config.json**: `github.spec_git_workflow` value
+
+---
+
+#### Option A: `spec_git_workflow == "develop_direct"` (RECOMMENDED - Direct Commit)
+
+```
+NO branch creation needed.
+
+Action: Proceed directly to SPEC file creation (Step 3)
+
+Workflow:
+1. SPEC generation creates SPEC document directly on current branch
+2. Commits will be made directly to main/develop
+3. Use TDD structure: separate RED/GREEN/REFACTOR commits
+4. CI/CD validation happens on main/develop push
+```
+
+---
+
+#### Option B: `spec_git_workflow == "feature_branch"` (Branch-based)
 
 ```
 Tool: Task
 Parameters:
 - subagent_type: "git-manager"
-- description: "Create feature branch"
+- description: "Create feature branch for SPEC"
 - prompt: """You are the git-manager agent.
 
 Create feature branch for SPEC implementation:
@@ -592,6 +614,22 @@ Create feature branch for SPEC implementation:
 
 Use conventional commit format: "feat(spec): Add SPEC-{SPEC_ID} specification"
 """
+```
+
+---
+
+#### Option C: `spec_git_workflow == "per_spec"` (Ask User)
+
+```
+Tool: AskUserQuestion
+Ask user:
+- "Create feature branch for this SPEC?"
+  - Option 1: "Yes, create feature/SPEC-{SPEC_ID}"
+  - Option 2: "No, direct commit to current branch"
+
+Based on user choice:
+- If "Yes": Execute Option B (create feature branch)
+- If "No": Execute Option A (direct commit)
 ```
 
 ### Step 3: Create Draft PR (Team Mode)

@@ -158,7 +158,7 @@
     },
     "auto_delete_branches": null,
     "auto_delete_branches_checked": false,
-    "spec_git_workflow": "per_spec",
+    "spec_git_workflow": "develop_direct",
     "spec_git_workflow_configured": false,
     "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
   }
