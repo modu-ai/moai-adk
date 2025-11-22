@@ -267,19 +267,58 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 
 ### 🚀 Performance Optimization: Take advantage of MultiEdit
 
-**Important**: When creating 3 files in Personal mode **MUST use the MultiEdit tool**:
+**CRITICAL REQUIREMENT**: When creating SPEC documents, you MUST:
 
-**❌ Inefficient (sequential generation)**:
+1. **ALWAYS create directory structure first** (do NOT create files directly in .moai/specs/)
+2. **ALWAYS use MultiEdit for 3-file simultaneous creation** (NOT Write, NOT sequential file creation)
+3. **ALWAYS verify directory format** before creating files
 
-- Generate spec.md, plan.md, and acceptance.md using the Write tool, respectively.
+**❌ WRONG - These approaches will FAIL the quality gate**:
 
-**✅ Efficient (simultaneous creation) - Directory name verification required**:
+```
+WRONG: Write to .moai/specs/SPEC-AUTH-001.md (creates file directly - NOT folder)
+WRONG: Write to .moai/specs/SPEC-AUTH-001/spec.md (sequential, inefficient)
+WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write calls)
+```
 
-1. Check the directory name format: `SPEC-{ID}` (e.g. `SPEC-AUTH-001`)
-2. Create 3 files simultaneously with MultiEdit tool:
-   - `.moai/specs/SPEC-{ID}/spec.md`
-   - `.moai/specs/SPEC-{ID}/plan.md`
-   - `.moai/specs/SPEC-{ID}/acceptance.md`
+**✅ CORRECT - Use MultiEdit (required)**:
+
+```
+1. Bash: mkdir -p .moai/specs/SPEC-{ID}  (create directory structure)
+2. MultiEdit:
+   - File 1: .moai/specs/SPEC-{ID}/spec.md
+   - File 2: .moai/specs/SPEC-{ID}/plan.md
+   - File 3: .moai/specs/SPEC-{ID}/acceptance.md
+   (create all 3 files simultaneously)
+```
+
+**Step-by-step process**:
+
+1. **Verify directory name format**: `SPEC-{ID}` (e.g. `SPEC-AUTH-001`)
+   - ✅ Examples: `SPEC-AUTH-001`, `SPEC-REFACTOR-001`, `SPEC-UPDATE-REFACTOR-001`
+   - ❌ Wrong: `AUTH-001`, `SPEC-001-auth`, `SPEC-AUTH-001-jwt`
+
+2. **Check for ID duplicates** with Grep tool:
+   ```bash
+   grep -r "^id: SPEC-{ID}" .moai/specs/
+   ```
+   - If empty → safe to create
+   - If found → change ID or update existing SPEC
+
+3. **Create directory** (Bash):
+   ```bash
+   mkdir -p /Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-{ID}
+   ```
+
+4. **Generate 3 files with MultiEdit** (create all simultaneously):
+   - `.moai/specs/SPEC-{ID}/spec.md` - Core EARS specification
+   - `.moai/specs/SPEC-{ID}/plan.md` - Implementation plan
+   - `.moai/specs/SPEC-{ID}/acceptance.md` - Acceptance criteria
+
+**TIMING**:
+
+- **Inefficient (WRONG)**: 3 separate Write calls = 3 operations
+- **Efficient (CORRECT)**: 1 MultiEdit call = 1 operation (60% faster)
 
 ### ⚠️ Required verification before creating directory
 

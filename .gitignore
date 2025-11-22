@@ -73,6 +73,7 @@ docs/
 
 # Secrets and credentials (CRITICAL)
 .env
+.env.*
 .env.local
 .env.*.local
 .env.production.local
@@ -190,8 +191,36 @@ ehthumbs.db
 uv.lock
 
 # Local configuration files
-CLAUDE.local.md
 .claude/local/
+.claude/settings.local.json
+
+# .moai/ directory management
+# Only sync: config/, memory/, scripts/
+.moai/
+!.moai/config/
+!.moai/memory/
+!.moai/scripts/
+
+# .moai local-only directories (excluded)
+.moai/cache/
+.moai/logs/
+.moai/docs/
+.moai/reports/
+.moai/specs/
+.moai/analytics/
+.moai/archive/
+.moai/archived-skills/
+.moai/backups/
+.moai/error_logs/
+.moai/indexes/
+.moai/learning/
+.moai/optimization/
+.moai/release/
+.moai/research/
+.moai/templates/
+
+# @CLAUDE.local.md is tracked (local development guide)
+!@CLAUDE.local.md
 
 # Documentation site files (not related to package distribution)
 theme.config.tsx

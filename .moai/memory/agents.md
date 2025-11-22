@@ -1,299 +1,73 @@
 # MoAI-ADK Agents Reference
 
-**Version**: 2.0 (Updated 2025-11-22)
-**Total Agents**: 31 with complete skill mappings
-**Complete Analysis**: See `.moai/reports/agents-complete-analysis.md` for detailed agent-skill assignments
+Alfred의 에이전트 위임 참조. 각 에이전트는 특정 작업에 최적화되어 있다.
 
-## Overview
+## Planning & Specification
 
-This document defines 31 specialized MoAI-ADK agents available for delegation. Each agent has specific capabilities, optimal use cases, and complete skill assignments.
+- `spec-builder`: EARS 포맷 SPEC 생성
+- `plan`: 복잡한 작업을 단계별로 분해
 
-**What's New in v2.0**:
-- ✅ Complete agent-skill mappings (287 skill assignments, up from 157)
-- ✅ Average 9.3 skills per agent (up from 5.1)
-- ✅ All critical gaps resolved (10 critical issues fixed)
-- ✅ Skill loading patterns and delegation examples
-- ✅ Agent capabilities enhanced with skill integration
+## Implementation
 
-**For Complete Details**:
-- **Agent-Skill Analysis**: `.moai/reports/agents-complete-analysis.md` (31 agents, 2299 lines)
-- **Skill-Agent Matrix**: `.moai/reports/skill-agent-mapping-matrix.md` (138 skills, 936 lines)
-- **Update Summary**: `.moai/memory/UPDATE-SUMMARY.md` (comprehensive update documentation)
+- `tdd-implementer`: TDD 사이클 (RED-GREEN-REFACTOR) 실행
+- `backend-expert`: 백엔드 아키텍처 및 API 개발
+- `frontend-expert`: 프론트엔드 UI 컴포넌트 개발
+- `database-expert`: 데이터베이스 설계 및 최적화
 
-## Core Principles
+## Quality & Testing
 
-1. **Delegation Priority**: Always delegate to specialized agents first
-2. **Skill-Enhanced Execution**: Agents dynamically load skills from `.claude/skills/` to fulfill tasks
-3. **Context Transfer**: Pass relevant results between agents using context parameter
-4. **Specialization**: Each agent handles specific domain tasks with complete skill coverage
-5. **Quality Gates**: All agents follow TRUST 5 principles
+- `security-expert`: 보안 분석 및 OWASP 검증
+- `quality-gate`: 코드 품질 검증 (TRUST 5)
+- `test-engineer`: 테스트 전략 및 구현
 
-## Agent Categories
+## Architecture & Design
 
-### Specification & Planning
+- `api-designer`: REST/GraphQL API 설계
+- `component-designer`: 재사용 가능한 컴포넌트 설계
+- `ui-ux-expert`: 사용자 경험 및 인터페이스 설계
 
-#### `spec-builder`
-- **Purpose**: Create EARS-format specifications from user requirements
-- **Use Cases**: New features, system requirements, API specifications
-- **Delegation Trigger**: User requests for planning, requirements, specifications
-- **Output**: Structured EARS specification document
+## DevOps & Infrastructure
 
-#### `plan`
-- **Purpose**: Decompose complex tasks into executable steps
-- **Use Cases**: Multi-step implementations, project planning
-- **Delegation Trigger**: Complex user requests requiring breakdown
-- **Output**: Step-by-step execution plan
+- `devops-expert`: CI/CD 파이프라인 및 배포
+- `monitoring-expert`: 모니터링 및 관찰성
+- `performance-engineer`: 성능 최적화 및 분석
 
-### Implementation
+## Data & Integration
 
-#### `tdd-implementer`
-- **Purpose**: Execute Red-Green-Refactor TDD cycle
-- **Use Cases**: Feature implementation, code development
-- **Delegation Trigger**: "implement X", "build Y", "create Z"
-- **Process**:
-  1. Write failing tests (Red)
-  2. Implement minimum code (Green)
-  3. Refactor for quality (Refactor)
+- `migration-expert`: 데이터베이스 마이그레이션
+- `data-engineer`: 데이터 파이프라인 개발
 
-#### `backend-expert`
-- **Purpose**: Server-side architecture and implementation
-- **Use Cases**: API development, database integration, microservices
-- **Delegation Trigger**: Backend-related tasks, server development
-- **Specialties**: REST APIs, GraphQL, database design
+## Documentation & Process
 
-#### `frontend-expert`
-- **Purpose**: Client-side development and UI implementation
-- **Use Cases**: Web applications, React components, user interfaces
-- **Delegation Trigger**: Frontend development, UI implementation
-- **Specialties**: React, Vue, Angular, state management
+- `docs-manager`: 기술 문서 및 API 문서 생성
+- `git-manager`: Git 워크플로우 및 버전 관리
+- `project-manager`: 프로젝트 조정 및 계획
 
-#### `database-expert`
-- **Purpose**: Database design, optimization, and migrations
-- **Use Cases**: Schema design, query optimization, data modeling
-- **Delegation Trigger**: Database-related tasks, performance issues
-- **Specialties**: SQL, NoSQL, migrations, performance tuning
+## Specialized Services
 
-### Quality & Security
+- `accessibility-expert`: WCAG 접근성 검증
+- `debug-helper`: 오류 분석 및 해결책 제시
+- `agent-factory`: 새로운 에이전트 생성 및 설정
+- `skill-factory`: Skill 정의 생성 및 관리
+- `format-expert`: 코드 포매팅 및 스타일 일관성
 
-#### `security-expert`
-- **Purpose**: Security analysis, vulnerability assessment
-- **Use Cases**: Security audits, penetration testing, secure coding
-- **Delegation Trigger**: Security-related concerns, OWASP compliance
-- **Standards**: OWASP Top 10, security best practices
+## System Agents
 
-#### `quality-gate`
-- **Purpose**: Code quality validation and TRUST 5 enforcement
-- **Use Cases**: Code reviews, quality checks, compliance validation
-- **Delegation Trigger**: Quality assurance, code validation
-- **Criteria**: Test coverage, code standards, security compliance
+- `Explore`: 코드베이스 탐색 및 파일 시스템 분석
+- `Plan`: 전략 분해 및 계획 수립
 
-#### `test-engineer`
-- **Purpose**: Comprehensive testing strategy and implementation
-- **Use Cases**: Unit tests, integration tests, E2E testing
-- **Delegation Trigger**: Testing requirements, quality assurance
-- **Specialties**: Test automation, coverage analysis
+---
 
-### Architecture & Design
+**위임 원칙**:
+1. Alfred는 항상 Task()로 전문 에이전트에게 위임한다.
+2. 요청의 복잡도와 의존성을 분석하여 순차 또는 병렬로 조율한다.
+3. 각 에이전트의 결과를 다음 에이전트의 컨텍스트로 전달한다.
 
-#### `api-designer`
-- **Purpose**: API architecture and endpoint design
-- **Use Cases**: REST API design, GraphQL schemas, API documentation
-- **Delegation Trigger**: API-related design tasks
-- **Standards**: REST principles, OpenAPI specifications
+**에이전트 선택 기준**:
+- 단순 작업 (1개 파일): 1-2개 에이전트 순차 실행
+- 중간 작업 (3-5개 파일): 2-3개 에이전트 순차 실행
+- 복잡한 작업 (10+개 파일): 5+개 에이전트 병렬/순차 혼합
 
-#### `component-designer`
-- **Purpose**: Reusable component architecture
-- **Use Cases**: Design systems, component libraries, UI kits
-- **Delegation Trigger**: Component design, system architecture
-- **Principles**: Atomic design, reusability patterns
+---
 
-#### `ui-ux-expert`
-- **Purpose**: User experience and interface design
-- **Use Cases**: UX analysis, interface design, usability testing
-- **Delegation Trigger**: UX-related tasks, user experience optimization
-- **Standards**: WCAG 2.1, usability principles
-
-### DevOps & Infrastructure
-
-#### `devops-expert`
-- **Purpose**: Deployment pipelines, infrastructure management
-- **Use Cases**: CI/CD setup, cloud deployment, infrastructure as code
-- **Delegation Trigger**: Deployment, infrastructure tasks
-- **Specialties**: Docker, Kubernetes, cloud platforms
-
-#### `monitoring-expert`
-- **Purpose**: System monitoring, alerting, observability
-- **Use Cases**: Monitoring setup, alerting systems, performance monitoring
-- **Delegation Trigger**: Monitoring requirements, system observability
-- **Specialties**: Metrics, logging, distributed tracing
-
-#### `performance-engineer`
-- **Purpose**: Performance optimization and analysis
-- **Use Cases**: Performance tuning, bottleneck analysis, optimization
-- **Delegation Trigger**: Performance issues, optimization requirements
-- **Focus**: Application performance, database optimization
-
-### Data & Integration
-
-#### `migration-expert`
-- **Purpose**: Database migrations and data transformations
-- **Use Cases**: Schema migrations, data transfers, legacy system migration
-- **Delegation Trigger**: Migration-related tasks, data transformations
-- **Specialties**: Zero-downtime migrations, data integrity
-
-#### `data-engineer`
-- **Purpose**: Data pipeline development and ETL processes
-- **Use Cases**: Data processing, ETL pipelines, data warehouse
-- **Delegation Trigger**: Data engineering tasks, pipeline development
-- **Specialties**: Big data, real-time processing
-
-### Documentation & Communication
-
-#### `docs-manager`
-- **Purpose**: Technical documentation and knowledge management
-- **Use Cases**: API documentation, user guides, knowledge bases
-- **Delegation Trigger**: Documentation requirements, knowledge management
-- **Standards**: Technical writing standards, documentation architecture
-
-#### `git-manager`
-- **Purpose**: Git workflow management and version control
-- **Use Cases**: Branch management, pull requests, release management
-- **Delegation Trigger**: Git-related tasks, version control
-- **Specialties**: GitHub Flow, GitOps, release automation
-
-### Project Management
-
-#### `project-manager`
-- **Purpose**: Project coordination and workflow management
-- **Use Cases**: Project planning, milestone tracking, team coordination
-- **Delegation Trigger**: Project management tasks, workflow optimization
-- **Focus**: Agile methodologies, project delivery
-
-#### `accessibility-expert`
-- **Purpose**: Accessibility compliance and inclusive design
-- **Use Cases**: WCAG compliance, accessibility testing, inclusive design
-- **Delegation Trigger**: Accessibility requirements, compliance checks
-- **Standards**: WCAG 2.1 AA/AAA, Section 508
-
-### Specialized Tools
-
-#### `agent-factory`
-- **Purpose**: Create and configure new Claude Code agents
-- **Use Cases**: Custom agent development, agent configuration
-- **Delegation Trigger**: Agent creation, customization requirements
-- **Output**: Configured agent definitions
-
-#### `skill-factory`
-- **Purpose**: Create and manage MoAI skill definitions
-- **Use Cases**: Skill development, skill library management
-- **Delegation Trigger**: Skill creation, skill optimization
-- **Output**: Skill definition files
-
-#### `format-expert`
-- **Purpose**: Code formatting and style enforcement
-- **Use Cases**: Code formatting, style guide compliance
-- **Delegation Trigger**: Formatting requirements, style consistency
-- **Specialties**: Language-specific formatters, linting
-
-#### `debug-helper`
-- **Purpose**: Error analysis and debugging assistance
-- **Use Cases**: Runtime errors, debugging complex issues
-- **Delegation Trigger**: Error analysis, debugging requirements
-- **Process**: Error analysis → Root cause identification → Solution proposal
-
-### System Agents (Claude Code Native)
-
-#### `Explore`
-- **Purpose**: Codebase discovery and file system exploration
-- **Use Cases**: Code navigation, file search, project structure analysis
-- **Delegation Trigger**: Exploration tasks, file system operations
-- **Scope**: Read-only operations, code analysis
-
-#### `Plan`
-- **Purpose**: Strategic decomposition and planning
-- **Use Cases**: Complex task breakdown, strategic planning
-- **Delegation Trigger**: High-level planning, strategy development
-- **Output**: Structured execution plans
-
-## Delegation Patterns
-
-### Simple Delegation
-```
-User: "Implement user authentication"
-→ Delegate: tdd-implementer
-→ Context: SPEC-001, security requirements
-```
-
-### Complex Workflow
-```
-User: "Build e-commerce platform"
-→ 1. spec-builder (requirements)
-→ 2. api-designer (API design)
-→ 3. backend-expert (implementation)
-→ 4. security-expert (security)
-→ 5. docs-manager (documentation)
-```
-
-### Error Handling
-```
-Error: "Implementation failed"
-→ 1. debug-helper (analyze error)
-→ 2. relevant expert (fix issue)
-→ 3. quality-gate (validate fix)
-```
-
-## Best Practices
-
-1. **Always provide context**: Pass relevant information between agents
-2. **Use appropriate agents**: Match task complexity to agent specialization
-3. **Specify skills to load**: Mention which skills agent should use in delegation prompt
-4. **Validate results**: Use quality-gate for critical implementations
-5. **Handle errors gracefully**: Use debug-helper for troubleshooting
-6. **Document outcomes**: Use docs-manager for knowledge capture
-
-### Skill Loading Best Practices
-
-**When delegating to agents**:
-1. **Specify Required Skills**: List skills agent should load in the prompt
-2. **Load Selectively**: Only load skills needed for the specific task
-3. **Combine Strategically**: Use complementary skills together
-4. **Document Loading**: Agent should report which skills were used
-
-**Example Delegation with Skills**:
-```python
-Task(
-  subagent_type="backend-expert",
-  description="Implement authentication API",
-  prompt="""
-  Implement secure authentication REST API.
-
-  Load skills:
-  - moai-domain-backend (backend architecture)
-  - moai-security-api (API security patterns)
-  - moai-security-auth (authentication patterns)
-  - moai-lang-python (FastAPI implementation)
-
-  Requirements:
-  - JWT token generation
-  - Password hashing with bcrypt
-  - OWASP compliance
-  - 85%+ test coverage
-  """
-)
-```
-
-## Agent Selection Matrix
-
-| Task Type | Primary Agent | Secondary Agents |
-|------------|---------------|------------------|
-| Requirements | spec-builder | docs-manager |
-| Implementation | tdd-implementer | domain-expert, security-expert |
-| API Design | api-designer | backend-expert |
-| UI Development | frontend-expert | component-designer, ui-ux-expert |
-| Database | database-expert | migration-expert |
-| Security | security-expert | quality-gate |
-| Performance | performance-engineer | monitoring-expert |
-| Deployment | devops-expert | monitoring-expert |
-| Documentation | docs-manager | domain-expert |
-| Testing | test-engineer | quality-gate |
-| Debugging | debug-helper | relevant domain expert |
+자세한 에이전트 설명은 CLAUDE.md를 참고한다.
