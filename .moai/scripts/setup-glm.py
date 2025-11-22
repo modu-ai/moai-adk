@@ -4,7 +4,7 @@
 Configures GLM (OpenAI-compatible API endpoint) for Claude models integration.
 
 Usage:
-    uv run .moai/scripts/setup-glm.py <api-token>
+    uv run {{PROJECT_DIR}}/.moai/scripts/setup-glm.py <api-token>
 
 Behavior:
     1. Saves API token to .env.glm (keeps token secure, .gitignore protected)
@@ -20,7 +20,6 @@ Example:
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -113,13 +112,13 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
 def main() -> None:
     """Main entry point"""
     if len(sys.argv) < 2:
-        print("Usage: uv run .moai/scripts/setup-glm.py <api-token>")
+        print("Usage: uv run {{PROJECT_DIR}}/.moai/scripts/setup-glm.py <api-token>")
         print()
         print("Arguments:")
         print("  api-token   GLM API authentication token")
         print()
         print("Example:")
-        print("  uv run .moai/scripts/setup-glm.py abc123xyz...")
+        print("  uv run {{PROJECT_DIR}}/.moai/scripts/setup-glm.py abc123xyz...")
         sys.exit(1)
 
     api_token = sys.argv[1]

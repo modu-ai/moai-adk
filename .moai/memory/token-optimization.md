@@ -1,374 +1,116 @@
 # Token Optimization Strategy
 
-## Overview
+Alfred의 토큰 사용을 최적화하기 위한 예산 및 전략.
 
-This document defines token optimization strategies for MoAI-ADK to maintain efficiency within Claude Code's context limits while maximizing development productivity.
+## Token Budget (토큰 예산)
 
-## Token Budget Management
+### Phase별 할당
 
-### Phase-based Allocation
+| Phase | 예산 | 용도 |
+|-------|------|------|
+| **SPEC 생성** | 30K | 사양 작성 및 검증 |
+| **TDD 구현** | 180K | RED-GREEN-REFACTOR 사이클 |
+| **문서 생성** | 40K | API 문서 + 프로젝트 리포트 |
+| **전체** | 250K | 기능 단위 총 예산 |
 
-**SPEC Creation Phase**: 30K tokens maximum
-- Load only essential skills (6 maximum)
-- Focus on requirement analysis and specification
-- Immediate `/clear` execution after completion
+---
 
-**TDD Implementation Phase**: 180K tokens maximum
-- RED phase: 60K tokens (test writing)
-- GREEN phase: 60K tokens (implementation)
-- REFACTOR phase: 60K tokens (optimization)
+## `/clear` 실행 규칙
 
-**Documentation Phase**: 40K tokens maximum
-- Final documentation generation
-- Quality gate validation
-- Release preparation
+**언제 실행하는가**:
 
-**Total Budget**: 250K tokens per complete feature cycle
+1. `/moai:1-plan` 완료 **직후** (필수)
+   - 45-50K 토큰 절약
+   - 깨끗한 컨텍스트 준비
 
-### Context Optimization Rules
+2. Context > 150K 일 때
+   - 오버플로우 방지
+   - 다음 phase를 위한 정리
 
-**Mandatory Clear Operations**:
-- After `/moai:1-plan` completion (saves 45-50K tokens)
-- Before starting new complex features
-- When context exceeds 150K tokens
-- Every 50+ messages in conversation
+3. 대화 > 50메시지 후
+   - 누적된 컨텍스트 초기화
 
-**Selective Loading Strategy**:
-- Load only relevant files for current task
-- Use `Task()` context passing between phases
-- Avoid loading entire codebase unnecessarily
+---
 
-## Skill Loading Optimization
+## 토큰 사용량 모니터링
 
-### Phase-specific Skill Filters
+**Alfred의 행동**:
 
-**SPEC Creation Skills** (6 maximum):
+1. `/context` 명령으로 현재 토큰 확인
+2. Phase 예산 대비 사용량 추적
+3. 150K 초과 시 사용자에게 `/clear` 제안
+4. 특이사항은 `/moai:9-feedback`으로 보고
+
+---
+
+## 파일 로드 최적화
+
+### Good Practice ✅
+
+- 현재 작업에 필요한 파일만 로드
+- 파일 헤더 먼저 로드 (전체 내용 아님)
+- 관련 부분만 선택적 로드
+- 결과 캐싱
+
+### Bad Practice ❌
+
+- 전체 코드베이스 로드
+- node_modules, .git 등 포함
+- 이미지/바이너리 파일 로드
+- 과거 대화 히스토리 포함
+
+---
+
+## Model Selection (모델 선택)
+
+| 상황 | 선택 | 이유 |
+|------|------|------|
+| SPEC 생성 | Sonnet 4.5 | 고품질 설계 필요 |
+| TDD 구현 | Haiku 4.5 | 빠른 실행, 비용 절약 |
+| 보안 검토 | Sonnet 4.5 | 정확한 분석 필요 |
+| 단순 수정 | Haiku 4.5 | 최소 비용 |
+
+**비용 절감**: Haiku 70% 저가, 전체 60-70% 절약 가능
+
+---
+
+## Context 전달 전략
+
+### Efficient Context Passing
+
 ```
-1. moai-foundation-ears
-2. moai-foundation-specs
-3. moai-foundation-trust
-4. moai-core-context-optimization
-5. moai-essentials-review
-6. moai-lang-{detected_language}
-```
-
-**TDD RED Phase Skills** (6 maximum):
-```
-1. moai-domain-testing
-2. moai-foundation-trust
-3. moai-essentials-review
-4. moai-core-code-reviewer
-5. moai-essentials-debug
-6. moai-lang-{implementation_language}
-```
-
-**TDD GREEN Phase Skills** (3 maximum):
-```
-1. moai-lang-{implementation_language}
-2. moai-domain-{frontend/backend}
-3. moai-essentials-review
-```
-
-**TDD REFACTOR Phase Skills** (4 maximum):
-```
-1. moai-essentials-refactor
-2. moai-essentials-review
-3. moai-core-code-reviewer
-4. moai-essentials-debug
-```
-
-### Skill Priority Matrix
-
-**High Priority** (Always Load):
-- Foundation skills (ears, specs, trust)
-- Language-specific skills
-- Domain-relevant skills
-
-**Medium Priority** (Load as Needed):
-- Implementation patterns
-- Testing frameworks
-- Debugging tools
-
-**Low Priority** (Load Rarely):
-- Specialized integration skills
-- Advanced optimization techniques
-- Legacy system patterns
-
-## Context Management Patterns
-
-### JIT (Just-In-Time) Loading
-
-**File Loading Strategy**:
-1. Load only entry points initially (main.py, __init__.py)
-2. Identify relevant modules based on task
-3. Load specific sections only (not entire files)
-4. Cache context in `Task()` for reuse
-5. Clear irrelevant context between phases
-
-**Directory Scanning**:
-```
-# Efficient approach
-1. Scan directory structure only
-2. Load file headers and imports
-3. Identify relevant files for current task
-4. Load specific file sections
-5. Cache for future reuse
+Phase1 결과 → Phase2 context로 전달
+   ↓
+필요한 정보만 추출
+   ↓
+다음 에이전트에 공급
+   ↓
+무관한 정보 제외
 ```
 
-### Context Passing Patterns
+### 최적 Context 크기
 
-**Between Agents**:
-```python
-# Efficient context passing
-result = await Task(
-    subagent_type="api-designer",
-    prompt="Design API for user authentication",
-    context={
-        "spec_id": "SPEC-001",
-        "requirements_summary": key_requirements,
-        "technical_constraints": constraints
-    }
-)
+- **최소**: 작업 필수 정보만
+- **최대**: 50K 토큰 이내
+- **목표**: 20-30K 토큰
 
-# Pass result to next agent
-implementation = await Task(
-    subagent_type="backend-expert",
-    prompt=f"Implement: {result.design}",
-    context={"previous_design": result.design}
-)
-```
+---
 
-**Between Phases**:
-- Store only essential results between phases
-- Use file-based persistence for large data
-- Create checkpoint references for context restoration
+## 토큰 절약 팁
 
-## Model Selection Strategy
+1. **Phase 분리**: `/clear`로 단계 구분
+2. **선택적 로드**: 불필요한 파일 제외
+3. **결과 캐싱**: 재사용 가능한 정보 보존
+4. **간결한 prompt**: 불필요한 설명 제거
+5. **Haiku 활용**: 복잡하지 않은 작업은 Haiku 선택
 
-### Sonnet 4.5 Usage (High-Cost, High-Performance)
+---
 
-**Use Cases**:
-- SPEC creation and architecture decisions
-- Security reviews and code analysis
-- Complex problem-solving
-- Multi-agent coordination
+## 성능 목표
 
-**Token Budget**: 50K tokens per session
+- SPEC 생성: 15-20K 토큰
+- TDD 구현: 80-100K 토큰 (Phase당)
+- 문서 생성: 20-25K 토큰
+- **효율성**: 수동 대비 60-70% 절약
 
-### Haiku 4.5 Usage (Low-Cost, High-Speed)
-
-**Use Cases**:
-- Code exploration and file search
-- Simple modifications and fixes
-- Test execution and validation
-- Status checks and monitoring
-
-**Token Budget**: 20K tokens per session
-
-### Cost Optimization
-
-**Cost per 1K tokens**:
-- Sonnet 4.5: $0.003
-- Haiku 4.5: $0.0008 (70% cheaper)
-
-**Savings Strategy**:
-- Use Haiku for 70% of operations
-- Reserve Sonnet for 30% critical operations
-- Achieve 60-70% overall cost reduction
-
-## Memory Management
-
-### Session State Persistence
-
-**Store Between Sessions**:
-- Project metadata and configuration
-- Active task status and checkpoints
-- Context optimization settings
-- Agent execution history
-
-**Clear Between Sessions**:
-- Conversation history
-- Temporary file contexts
-- Cached code analysis
-- Debug information
-
-### Checkpoint Creation
-
-**Create Checkpoints At**:
-- Major phase completions
-- Before complex operations
-- After successful implementations
-- Before context clearing
-
-**Checkpoint Content**:
-```
-{
-  "phase": "SPEC_CREATION_COMPLETE",
-  "spec_id": "SPEC-001",
-  "timestamp": "2025-11-20T07:30:00Z",
-  "token_usage": 28500,
-  "next_phase": "TDD_IMPLEMENTATION",
-  "context_summary": "User authentication system with JWT"
-}
-```
-
-## Performance Optimization
-
-### Response Time Targets
-
-**Fast Operations** (< 2 seconds):
-- File search and navigation
-- Simple code generation
-- Status checks
-- Context loading
-
-**Standard Operations** (2-5 seconds):
-- SPEC creation
-- Code implementation
-- Documentation generation
-- Quality validation
-
-**Complex Operations** (5-10 seconds):
-- Multi-agent coordination
-- Comprehensive analysis
-- Complex refactoring
-- Integration testing
-
-### Optimization Techniques
-
-**Caching Strategy**:
-- Cache frequently accessed file contents
-- Store analysis results for reuse
-- Maintain skill loading cache
-- Preserve agent delegation results
-
-**Parallel Processing**:
-- Execute multiple agents concurrently when possible
-- Parallel file analysis for large codebases
-- Concurrent testing and validation
-- Simultaneous documentation generation
-
-## Monitoring and Analytics
-
-### Token Usage Tracking
-
-**Metrics to Monitor**:
-- Tokens used per command
-- Tokens used per phase
-- Context efficiency ratio
-- Agent delegation success rate
-
-**Tracking Implementation**:
-```python
-# Token usage tracking
-token_metrics = {
-    "command": "/moai:2-run SPEC-001",
-    "tokens_used": 45230,
-    "context_efficiency": 0.78,
-    "agent_delegations": 3,
-    "duration_seconds": 12.5
-}
-```
-
-### Performance Alerts
-
-**Alert Thresholds**:
-- Token usage > 80% of phase budget
-- Response time > 10 seconds
-- Context efficiency < 0.5
-- Agent delegation failure rate > 10%
-
-**Alert Actions**:
-- Automatic `/clear` execution
-- Context optimization recommendations
-- Performance improvement suggestions
-- Escalation to human operator
-
-## Optimization Checklist
-
-### Pre-execution Validation
-
-**Before Starting Task**:
-- [ ] Check available token budget
-- [ ] Verify context is clean (execute `/clear` if needed)
-- [ ] Load only essential skills
-- [ ] Set appropriate model (Sonnet/Haiku)
-
-**During Execution**:
-- [ ] Monitor token usage continuously
-- [ ] Execute `/clear` at thresholds
-- [ ] Use efficient file loading patterns
-- [ ] Cache reusable results
-
-**Post-execution Review**:
-- [ ] Analyze token usage efficiency
-- [ ] Document optimization opportunities
-- [ ] Update skill loading patterns
-- [ ] Refine context management
-
-### Quality Assurance
-
-**Token Optimization Quality Gates**:
-1. Token usage within budget for phase
-2. Context efficiency > 0.7
-3. Response time within targets
-4. Agent delegation success rate > 95%
-5. No context overflow occurrences
-
-## Advanced Optimization Strategies
-
-### Context Compression
-
-**Techniques**:
-- Summarize long code sections
-- Use abstraction for complex concepts
-- Create reference pointers instead of full content
-- Implement progressive disclosure
-
-### Predictive Loading
-
-**Strategy**:
-- Analyze user patterns to predict next actions
-- Pre-load likely required skills and context
-- Maintain warm cache for frequent operations
-- Optimize for common workflows
-
-### Dynamic Budget Adjustment
-
-**Implementation**:
-- Adjust token budgets based on task complexity
-- Scale context size based on project size
-- Adapt model selection based on performance requirements
-- Optimize for specific user patterns
-
-## Troubleshooting
-
-### Common Issues
-
-**Token Limit Exceeded**:
-- Symptoms: Context truncation, slow responses
-- Solution: Execute `/clear` immediately, restart with minimal context
-
-**Poor Performance**:
-- Symptoms: Slow response times, high latency
-- Solution: Reduce skill loading, use Haiku model, optimize file access
-
-**Context Inefficiency**:
-- Symptoms: Low context efficiency ratio (< 0.5)
-- Solution: Improve file loading strategy, use JIT loading
-
-### Recovery Procedures
-
-**Emergency Reset**:
-1. Execute `/clear` to reset context
-2. Restart from last checkpoint
-3. Load minimal required context
-4. Continue with optimized approach
-
-**Performance Recovery**:
-1. Analyze bottleneck in current execution
-2. Implement immediate optimization
-3. Monitor improvement metrics
-4. Document learned patterns
-
-This optimization strategy ensures maximum efficiency while maintaining high-quality development output within Claude Code's constraints.
+Alfred는 이 전략을 자동으로 적용하며, 개선사항은 `/moai:9-feedback`으로 제안한다.

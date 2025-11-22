@@ -291,6 +291,71 @@ def validate_execution_results(result, task):
 - Maximum context size: 150K tokens
 - Maximum execution time: 5 minutes per task
 
+## Git Strategy Guide
+
+### Configuration-Based Git Behavior
+
+Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git 워크플로우를 조정한다.
+
+**Key Configuration Fields**:
+- `git_strategy.mode`: Git 전략 (personal, team, hybrid)
+- `github.spec_git_workflow`: SPEC 생성 시 브랜치 생성 방식 (develop_direct, feature_branch, per_spec)
+
+### Personal Mode (개인 개발)
+
+**설정**:
+```
+git_strategy.mode = "personal"
+github.spec_git_workflow = "develop_direct" (기본 권장)
+```
+
+**Alfred의 행동**:
+1. `/moai:1-plan` 실행 후 SPEC 파일 생성 (브랜치 생성 안함)
+2. 현재 브랜치에서 직접 `/moai:2-run` 실행
+3. 같은 브랜치에 커밋
+4. Git push 전 사용자 승인 필요 (ask 권한)
+
+**Use Case**: 개인 프로젝트, 빠른 개발 속도 필요
+
+### Team Mode (팀 협업)
+
+**설정**:
+```
+git_strategy.mode = "team"
+github.spec_git_workflow = 자동 무시 (team은 항상 feature_branch)
+```
+
+**Alfred의 행동**:
+1. `/moai:1-plan` 실행
+2. `feature/SPEC-001` 브랜치 자동 생성 (git-manager)
+3. 새 브랜치에서 `/moai:2-run` 실행
+4. Pull Request 자동 생성 (draft 상태)
+5. 팀 검토 후 병합
+
+**Use Case**: 팀 프로젝트, 코드 리뷰 필요, 병렬 개발
+
+### Per-SPEC Mode (사용자 선택)
+
+**설정**:
+```
+git_strategy.mode = "personal"
+github.spec_git_workflow = "per_spec"
+```
+
+**Alfred의 행동**:
+1. `/moai:1-plan` 실행
+2. 사용자에게 AskUserQuestion: "브랜치를 생성하시겠습니까?"
+3. Yes → feature 브랜치 생성 후 진행
+4. No → 현재 브랜치에서 직접 진행
+
+**Use Case**: 유동적인 개발 스타일, 작업마다 다른 전략
+
+### SPEC 생성 후 반드시 `/clear` 실행
+
+모든 모드에서 `/moai:1-plan` 완료 후 반드시 `/clear`를 실행한다. 이는 45-50K 토큰을 절약한다.
+
+---
+
 ## Compliance Requirements
 
 ### Legal and Regulatory
