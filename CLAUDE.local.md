@@ -258,13 +258,13 @@ MoAI 프레임워크 자체를 개발하는 개발자를 위한 문서입니다.
 
 **CLAUDE.md vs. 다른 문서**:
 
-| 문서 | 용도 | 대상 |
-|------|------|------|
-| CLAUDE.md | Alfred 실행 규칙 | Agents/Commands |
-| README.md | 프로젝트 개요 | End users |
-| Skill SKILL.md | 패턴/지식 캡슐 | Agents/Developers |
-| .moai/memory/*.md | 참고 문서 | Agents/Developers |
-| CLAUDE.local.md | 로컬 작업 지침 | Local developers |
+| 문서               | 용도                | 대상              |
+| ------------------ | ------------------- | ----------------- |
+| CLAUDE.md          | Alfred 실행 규칙    | Agents/Commands   |
+| README.md          | 프로젝트 개요       | End users         |
+| Skill SKILL.md     | 패턴/지식 캡슐      | Agents/Developers |
+| .moai/memory/\*.md | 실행 규칙 참고 문서 | Agents/Developers |
+| CLAUDE.local.md    | 로컬 작업 지침      | Local developers  |
 
 ---
 
@@ -283,6 +283,7 @@ MoAI 프레임워크 자체를 개발하는 개발자를 위한 문서입니다.
 ```
 
 **반드시 포함할 것**:
+
 - ✅ 명확한 목적 선언
 - ✅ "대상: Claude Code agents"
 - ✅ "NOT for end users"
@@ -291,6 +292,7 @@ MoAI 프레임워크 자체를 개발하는 개발자를 위한 문서입니다.
 #### II. 핵심 원칙 (Required)
 
 3-5개의 기본 운영 규칙:
+
 ```markdown
 ## 핵심 원칙
 
@@ -302,16 +304,19 @@ MoAI 프레임워크 자체를 개발하는 개발자를 위한 문서입니다.
 #### III. 설정 통합 (조건부)
 
 Config.json과의 연결:
+
 ```markdown
 ## 설정 통합
 
 이 문서가 읽는 config 필드:
+
 - `github.spec_git_workflow` - Git 워크플로우 스타일
 - `constitution.test_coverage_target` - 품질 게이트 임계값
 
 ### Config 필드 명세
 
 **필드**: `github.spec_git_workflow`
+
 - **위치**: config.json → github.spec_git_workflow
 - **타입**: String (enum)
 - **가능값**: develop_direct, feature_branch, per_spec
@@ -324,15 +329,15 @@ Config.json과의 연결:
 
 Agent/Command가 자동으로 실행되는 조건:
 
-```markdown
+````markdown
 ## Agent: [AGENT_NAME] - Auto-Trigger 규칙
 
 ### Trigger 활성화 포인트
 
-| Phase | 이벤트 | 조건 | Config 필드 | 위임 패턴 |
-|-------|--------|------|-----------|----------|
-| PLAN | /moai:1-plan | 항상 | language.conversation_language | 직접 호출 |
-| RUN | /moai:2-run | 항상 | constitution.enforce_tdd | 직접 호출 |
+| Phase | 이벤트       | 조건 | Config 필드                    | 위임 패턴 |
+| ----- | ------------ | ---- | ------------------------------ | --------- |
+| PLAN  | /moai:1-plan | 항상 | language.conversation_language | 직접 호출 |
+| RUN   | /moai:2-run  | 항상 | constitution.enforce_tdd       | 직접 호출 |
 
 ### Trigger 로직 (Pseudo-code)
 
@@ -348,11 +353,12 @@ def should_trigger(event, config):
 ### 전달 Context
 
 Trigger 시 다음 정보 전달:
+
 1. `user_request` - 원본 사용자 요청
 2. `current_phase` - 현재 phase (PLAN/RUN/SYNC)
 3. `config` - 사용자 config.json
 4. `previous_results` - 이전 phase 결과 (있는 경우)
-```
+````
 
 #### V. 위임 계층 (Required)
 
@@ -362,6 +368,7 @@ Trigger 시 다음 정보 전달:
 ## 위임 계층
 
 - **spec-builder**: SPEC 생성 및 분석
+
   - 조건: /moai:1-plan 실행
   - Context: 사용자 요청 + config
 
@@ -372,6 +379,7 @@ Trigger 시 다음 정보 전달:
 ### 위임 오류 처리
 
 git-manager 호출 실패 시:
+
 1. 로그 남기기
 2. 사용자에게 AskUserQuestion으로 선택 제시
 3. 선택 기반 retry 또는 skip
@@ -385,26 +393,31 @@ TRUST 5 또는 유사 기준:
 ## 품질 게이트 (TRUST 5)
 
 ### Test-first
+
 **기준**: ≥ 85% 테스트 커버리지
 **검증**: pytest --cov=src/ | grep "Coverage"
 **실패**: PR 차단, 커버리지 갭 보고
 
 ### Readable
+
 **기준**: 명확한 네이밍 (모호한 약자 없음)
 **검증**: ruff linter 자동 검사
 **실패**: 경고 (차단 아님)
 
 ### Unified
+
 **기준**: 프로젝트 패턴 준수 (일관된 스타일)
 **검증**: black, isort 자동 체크
 **실패**: 자동 포맷 또는 경고
 
 ### Secured
+
 **기준**: OWASP 보안 검사 통과
 **검증**: security-expert agent 검수 (필수)
 **실패**: PR 차단
 
 ### Trackable
+
 **기준**: 명확한 commit 메시지 + 테스트 증거
 **검증**: Git commit message regex 검증
 **실패**: 메시지 포맷 제안
@@ -418,17 +431,20 @@ TRUST 5 또는 유사 기준:
 ## 참고 문서
 
 ### 필수 참조
+
 - @.moai/memory/execution-rules.md - 실행 제약사항
 - @.moai/memory/agents.md - Agent 카탈로그
 - @.moai/config/config.json - Config 스키마
 
 ### 권장 참조
+
 - Skill("moai-spec-intelligent-workflow") - SPEC 결정 로직
 - Skill("moai-cc-configuration") - Config 관리
 - @.moai/memory/token-optimization.md - 토큰 예산
 ```
 
 **참조 형식 (반드시 이 형식 사용)**:
+
 - ✅ `@.moai/memory/agents.md` (파일 참조)
 - ✅ `Skill("moai-cc-commands")` (Skill 참조)
 - ✅ `/moai:1-plan` (Command 참조)
@@ -439,23 +455,25 @@ TRUST 5 또는 유사 기준:
 
 실제 사용 예제:
 
-```markdown
+````markdown
 ## 예제 시나리오 1: Personal + develop_direct
 
 **설정**:
+
 ```json
 {
   "git_strategy": { "mode": "personal" },
   "github": { "spec_git_workflow": "develop_direct" }
 }
 ```
+````
 
 **예상 동작**:
+
 - ✅ /moai:1-plan SPEC 파일 생성
 - ✅ git-manager 호출 안됨
 - ✅ 브랜치 생성 안됨
 - ✅ 현재 브랜치에서 직접 커밋 가능
-```
 
 ---
 
@@ -482,12 +500,14 @@ TRUST 5 또는 유사 기준:
 - ✅ 용어 첫 사용 시 정의
 
 **나쁜 예**:
-```
+
+```text
 Alfred는 아마도 작업을 실행해야 할 것 같습니다.
 ```
 
 **좋은 예**:
-```
+
+```text
 Alfred DOES NOT execute tasks directly. Alfred DELEGATES to specialized agents.
 ```
 
@@ -502,6 +522,7 @@ Alfred DOES NOT execute tasks directly. Alfred DELEGATES to specialized agents.
 | 순차 절차 | 번호 리스트 |
 
 **Pseudo-code 사용 OK인 경우**:
+
 ```python
 # OK: 결정 로직 보여줌
 if config["spec_git_workflow"] == "develop_direct":
@@ -511,13 +532,16 @@ else:
 ```
 
 **구현 코드는 Skills 참조**:
+
 ```markdown
 # WRONG
+
 def validate_configuration(config):
-    schema = ConfigSchema()
-    return schema.validate(config)
+schema = ConfigSchema()
+return schema.validate(config)
 
 # RIGHT
+
 검증은 moai-cc-configuration Skill에서 처리합니다.
 자세한 내용: @.moai/memory/configuration-validation.md
 ```
@@ -564,14 +588,17 @@ def validate_configuration(config):
 구조화된 구현 지침:
 
 ### 기능
+
 - 기능 1
 - 기능 2
 
 ### 사용 시기
+
 - 경우 1에 사용
 - 경우 2에 사용
 
 ### 핵심 패턴
+
 - 패턴 1
 - 패턴 2
 
@@ -607,12 +634,15 @@ description: [한 줄 설명 - 15단어 이내]
 ## 구현 가이드
 
 ### 기능
+
 [기능 목록]
 
 ### 사용 시기
+
 [사용 케이스]
 
 ### 핵심 패턴
+
 [패턴과 예제]
 
 ---
@@ -629,13 +659,15 @@ description: [한 줄 설명 - 15단어 이내]
 ```
 
 **Skill 명명 규칙**:
-```
+
+```text
 moai-cc-[기능명]           # Claude Code 관련
 moai-foundation-[개념]     # 공유 개념
 moai-[언어]-[기능]         # 언어별 기능
 ```
 
 예:
+
 - moai-cc-commands (Claude Code commands)
 - moai-foundation-trust (TRUST 5 프레임워크)
 - moai-lang-python (Python 특화)
@@ -647,16 +679,19 @@ moai-[언어]-[기능]         # 언어별 기능
 Agents는 다음 순서로 정보를 추출합니다:
 
 1. **나는 무엇을 할 수 있나?** (Permissions 섹션)
+
    - 도구 허용/차단 목록
    - 최대 토큰 예산
    - 실행 제약사항
 
 2. **나는 언제 자동 실행되나?** (Auto-trigger 섹션)
+
    - Trigger 조건
    - 이벤트 타입
    - Config 의존성
 
 3. **누구를 호출하나?** (Delegation 섹션)
+
    - 호출할 Sub-agents
    - 각 호출 시점
    - 전달할 Context
@@ -682,16 +717,19 @@ CLAUDE.md에서 config를 참조할 때 사용할 형식:
 **우선순위**: Priority 1 (최상위)
 
 **영향**:
+
 - Git branch 생성 여부 제어
 - git-manager auto-trigger 결정
 - PHASE 3 실행 여부 결정
 
 **검증 규칙**:
+
 - 반드시 enum 값 중 하나
 - 누락 시: 기본값 develop_direct 사용
 - 유효하지 않은 값: 경고 후 기본값 사용
 
 **관련 필드**:
+
 - `git_strategy.mode` (fallback)
 - `github.spec_git_workflow_configured` (validation flag)
 ```
@@ -717,6 +755,7 @@ CLAUDE.md에서 config를 참조할 때 사용할 형식:
 #### 오래된 내용 아카이빙
 
 오래된 CLAUDE.md 섹션은:
+
 - `.moai/archive/CLAUDE.md.[날짜]`로 이동
 - 활성 CLAUDE.md에는 현재 규칙만 유지
 
