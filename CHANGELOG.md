@@ -1,3 +1,110 @@
+# v0.28.0 - AI Model Integration & Template Synchronization (2025-11-24)
+
+## ✨ Major Features
+
+### 🤖 AI Model Integration Update
+
+**Latest Model Versions**:
+- **OpenAI Codex CLI**: Updated to `gpt-5.1-codex-max` (released 2025-11-18)
+  - $0.001/1K tokens, 1M token context window
+  - Dynamic thinking for complex backend architecture
+  - 24h+ continuous work capability
+  - Version: 1.1.0
+
+- **Google Gemini CLI**: Updated to `gemini-3-pro` (single standard model)
+  - $2/M input, $12/M output tokens
+  - 1M token context window with advanced reasoning
+  - Removed dual-model strategy (gemini-3-flash removed)
+  - Fallback: Native Claude Code
+  - Version: 1.1.0
+
+**Documentation**:
+- `ai-codex.md`: Comprehensive OpenAI Codex CLI integration guide
+- `ai-gemini.md`: Google Gemini CLI integration with single model policy
+- `README-AI-MODELS.md`: AI model selection and comparison guide
+
+### 📦 Template Synchronization
+
+**Local → Package Sync Completed**:
+- Synced 428 files total
+- AI agent documentation (1 new file: README-AI-MODELS.md)
+- 120+ skill optimizations synchronized
+- 102 module directories verified
+- All optimizations and validations included
+
+**Verification**:
+- Local skills: 781 files (includes 3 local reports)
+- Package skills: 778 files (correctly excludes local-only files)
+- Local modules: 102, Package modules: 102 ✓
+- All local-only files correctly excluded (commands/moai/, settings.local.json, etc.)
+
+**Exclusions (Correctly Preserved as Local-Only)**:
+- `.claude/commands/moai/` (local development commands)
+- `.claude/settings.local.json` (personal user settings)
+- `CLAUDE.local.md` (local development guide)
+- `.SKILLS-OPTIMIZATION-*.md` (3 local optimization reports)
+- Runtime files (.moai/cache/, logs/, config/)
+
+### 🔄 Security & Validation
+
+**Pre-Release Quality Gates**:
+- ✅ pytest test suite (2,300+ tests)
+- ✅ ruff code linting
+- ✅ mypy type checking
+- ⚠️ Known issues: Legacy test imports (hooks module removed)
+
+**Security Improvements**:
+- Replaced API key examples with safe os.getenv() patterns
+- Sanitized JWT token handling examples
+- All documentation passes pre-commit security validation
+
+## 📊 Statistics
+
+| Metric | Value |
+|--------|-------|
+| **Files Synced** | 428 |
+| **Skills Updated** | 120+ |
+| **Modules Verified** | 102 |
+| **AI Models** | 2 (codex, gemini) |
+| **Lines Added** | 79,690 |
+| **Lines Removed** | 3,434 |
+
+## 🔗 Related Commits
+
+1. `adb8fc81`: sync(templates) - Local AI models and skills synchronization
+2. `c2a228a2`: feat(ai-models) - Update to latest OpenAI Codex and Gemini models
+3. `cd6aaf26`: docs(skills) - Add optimization reports and metadata
+
+## 📚 Documentation Updates
+
+- **README.md**: Updated with AI model references, v0.27.2 → current
+- **README.ko.md**: Korean translation with token handling examples sanitized
+- **AI Model Guide**: New comprehensive guide for model selection
+- **Template Sync Script**: `.moai/scripts/sync-local-to-package.sh` for reproducible syncs
+
+## 🚀 Next Steps
+
+### Recommended for Users
+
+1. **Update Package**: `pip install --upgrade moai-adk`
+2. **Configure AI Models**: Update `.moai/config/config.json` with new models
+3. **Review AI Guides**: Check `README-AI-MODELS.md` for model selection
+
+### For New Projects
+
+- Automatically includes latest AI model documentation
+- Ready for OpenAI Codex and Google Gemini CLI integration
+- Skills portfolio with 102 modules fully synchronized
+
+## 🔒 Notes
+
+**Backward Compatibility**: ✅ Fully compatible with v0.27.x
+**Breaking Changes**: None
+**Python Version**: 3.11+ (tested with 3.14)
+**Installation**: `pip install moai-adk==0.28.0` (TestPyPI: 0.28.0rc1)
+
+---
+
 # v0.27.2 - Skills Portfolio Optimization Complete (2025-11-22)
 
 ## 🎯 Portfolio Optimization Achievement

@@ -240,7 +240,7 @@
     "notes": "Document management system to prevent project root pollution. Enforces .moai/ hierarchy for all internal files. Auto-categorizes by file patterns. Cleanup policy preserves recent files."
   },
   "moai": {
-    "version": "0.27.2",
+    "version": "0.28.0",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
