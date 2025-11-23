@@ -157,7 +157,7 @@ def init(
             )
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
-            # Language detection happens in /alfred:0-project, so default to None here
+            # Language detection happens in /moai:project, so default to None here
             # This will become "generic" internally, but Summary will show more helpful message
             if not language:
                 language = None
@@ -290,7 +290,7 @@ def init(
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
             # Show language more clearly - "generic" means auto-detect
             language_display = (
-                "Auto-detect (use /alfred:0-project)"
+                "Auto-detect (use /moai:project)"
                 if result.language == "generic"
                 else result.language
             )
@@ -315,21 +315,27 @@ def init(
 
             # Show config merge notice if reinitialized
             if is_reinit:
-                console.print("\n[yellow]⚠️  Configuration Status: optimized=false (merge required)[/yellow]")
+                console.print(
+                    "\n[yellow]⚠️  Configuration Status: optimized=false (merge required)[/yellow]"
+                )
                 console.print()
                 console.print("[cyan]What Happened:[/cyan]")
                 console.print("  ✅ Template files updated to latest version")
-                console.print("  💾 Your previous settings backed up in: [cyan].moai-backups/backup/[/cyan]")
+                console.print(
+                    "  💾 Your previous settings backed up in: [cyan].moai-backups/backup/[/cyan]"
+                )
                 console.print("  ⏳ Configuration merge required")
                 console.print()
                 console.print("[cyan]What is optimized=false?[/cyan]")
                 console.print("  • Template version changed (you get new features)")
                 console.print("  • Your previous settings are safe (backed up)")
-                console.print("  • Next: Run /alfred:0-project to merge")
+                console.print("  • Next: Run /moai:project to merge")
                 console.print()
                 console.print("[cyan]What Happens Next:[/cyan]")
-                console.print("  1. Run [bold]/alfred:0-project[/bold] in Claude Code")
-                console.print("  2. System intelligently merges old settings + new template")
+                console.print("  1. Run [bold]/moai:project[/bold] in Claude Code")
+                console.print(
+                    "  2. System intelligently merges old settings + new template"
+                )
                 console.print("  3. After successful merge → optimized becomes true")
                 console.print("  4. You're ready to continue developing\n")
 
@@ -339,14 +345,14 @@ def init(
                     f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project"
                 )
                 console.print(
-                    "  [blue]2.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
+                    "  [blue]2.[/blue] Run [bold]/moai:project[/bold] in Claude Code for full setup"
                 )
                 console.print(
                     "     (Configure: mode, language, report generation, etc.)"
                 )
             else:
                 console.print(
-                    "  [blue]1.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
+                    "  [blue]1.[/blue] Run [bold]/moai:project[/bold] in Claude Code for full setup"
                 )
                 console.print(
                     "     (Configure: mode, language, report generation, etc.)"

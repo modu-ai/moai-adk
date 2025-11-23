@@ -1,28 +1,28 @@
 ---
-name: {{AGENT_NAME}}
+name: { { AGENT_NAME } }
 description: "Use PROACTIVELY when: {{PROACTIVE_TRIGGERS}}. Called from {{COMMAND_CONTEXT}}. CRITICAL: This agent MUST be invoked via Task(subagent_type='{{AGENT_NAME}}') - NEVER executed directly."
-tools: {{TOOLS_LIST}}
-model: {{MODEL_SELECTION}}
+tools: { { TOOLS_LIST } }
+model: { { MODEL_SELECTION } }
 ---
 
 # Agent Orchestration Metadata (v1.0)
 
 orchestration:
-  can_resume: {{CAN_RESUME}}
-  typical_chain_position: "{{CHAIN_POSITION}}"
-  depends_on: [{{DEPENDENCIES}}]
-  resume_pattern: "{{RESUME_PATTERN}}"
-  parallel_safe: {{PARALLEL_SAFE}}
+can_resume: {{CAN_RESUME}}
+typical_chain_position: "{{CHAIN_POSITION}}"
+depends_on: [{{DEPENDENCIES}}]
+resume_pattern: "{{RESUME_PATTERN}}"
+parallel_safe: {{PARALLEL_SAFE}}
 
 coordination:
-  spawns_subagents: false  # Claude Code constraint
-  delegates_to: [{{DELEGATION_TARGETS}}]
-  requires_approval: {{REQUIRES_APPROVAL}}
+spawns_subagents: false # Claude Code constraint
+delegates_to: [{{DELEGATION_TARGETS}}]
+requires_approval: {{REQUIRES_APPROVAL}}
 
 performance:
-  avg_execution_time_seconds: {{EXECUTION_TIME_SECONDS}}
-  context_heavy: {{CONTEXT_HEAVY}}
-  mcp_integration: [{{MCP_TOOLS}}]
+avg_execution_time_seconds: {{EXECUTION_TIME_SECONDS}}
+context_heavy: {{CONTEXT_HEAVY}}
+mcp_integration: [{{MCP_TOOLS}}]
 
 ---
 
@@ -53,6 +53,7 @@ Task(
 ```
 
 **Commands → Agents → Skills Architecture**:
+
 - **Commands**: Orchestrate ONLY (never implement)
 - **Agents**: Own domain expertise
 - **Skills**: Provide knowledge when needed
@@ -74,6 +75,7 @@ Task(
 **IMPORTANT**: You receive prompts in the user's **configured conversation_language**.
 
 **Output Language**:
+
 - {{DOMAIN}} guidance: User's conversation_language
 - Code examples: **Always in English** (universal syntax)
 - Comments in code: **Always in English**
@@ -94,6 +96,7 @@ Task(
 {{CONDITIONAL_SKILLS}}
 
 > **Skill Loading Strategy**:
+>
 > - Core skills: Immediate load (fast initialization)
 > - Conditional skills: Progressive loading based on task detection
 > - Domain skills: Load when specific domain work detected
@@ -164,6 +167,7 @@ When working with {{DEPENDENT_AGENTS}}, follow this sequence:
 ### **MCP Integration**
 
 **Context7 Usage**:
+
 - Library: {{MCP_LIBRARIES}}
 - Research Pattern: {{MCP_PATTERN}}
 - Quality Threshold: {{MCP_QUALITY_THRESHOLD}}
@@ -192,6 +196,7 @@ When working with {{DEPENDENT_AGENTS}}, follow this sequence:
 ## 📊 Performance Characteristics
 
 **Execution Profile**:
+
 - **Typical Duration**: {{EXECUTION_TIME}}
 - **Context Usage**: {{CONTEXT_USAGE}} tokens
 - **Model Selection**: {{MODEL_SELECTION}}
@@ -255,9 +260,9 @@ Output: {{EXAMPLE_3_OUTPUT}}
 
 ### **With Alfred Workflow**
 
-- **Phase 1 (/alfred:1-plan)**: {{PHASE_1_INTEGRATION}}
-- **Phase 2 (/alfred:2-run)**: {{PHASE_2_INTEGRATION}}
-- **Phase 3 (/alfred:3-sync)**: {{PHASE_3_INTEGRATION}}
+- **Phase 1 (/moai:1-plan)**: {{PHASE_1_INTEGRATION}}
+- **Phase 2 (/moai:2-run)**: {{PHASE_2_INTEGRATION}}
+- **Phase 3 (/moai:3-sync)**: {{PHASE_3_INTEGRATION}}
 
 ### **With MoAI-ADK Ecosystem**
 

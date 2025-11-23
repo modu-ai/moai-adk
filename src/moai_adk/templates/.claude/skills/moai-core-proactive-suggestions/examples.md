@@ -9,9 +9,10 @@
 
 ### Scenario
 
-**User**: `/alfred:2-run SPEC-DATABASE-001`
+**User**: `/moai:2-run SPEC-DATABASE-001`
 
 **SPEC content**:
+
 ```
 Title: Migrate user table to new schema
 Description: Add email_verified column, rename password to password_hash
@@ -43,8 +44,8 @@ Recommended safeguards:
 5. ✅ Verify migration in dry-run mode
 
 Proceed with implementation?
-  [Yes, I've taken precautions] 
-  [No, test on staging first] 
+  [Yes, I've taken precautions]
+  [No, test on staging first]
   [Show me detailed checklist]
 ```
 
@@ -66,6 +67,7 @@ Proceed with implementation?
 ### Scenario
 
 **User behavior** (observed pattern):
+
 ```
 User edits: src/components/Button.tsx (updates import)
 User edits: src/components/Card.tsx (updates import)
@@ -97,7 +99,7 @@ Automation opportunity:
 4. Estimated time saved: 15 minutes
 
 Create automation script?
-  [Yes, generate and apply] 
+  [Yes, generate and apply]
   [No, I'll continue manually]
 ```
 
@@ -119,6 +121,7 @@ Create automation script?
 ### Scenario
 
 **User**: Modifies API endpoint signature
+
 ```diff
 - POST /api/auth/login { email, password }
 + POST /api/auth/login { username, password, mfa_code }
@@ -152,8 +155,8 @@ Recommended approach:
 5. Monitor v1 usage metrics
 
 Proceed with breaking change?
-  [Yes, create migration plan] 
-  [No, use non-breaking approach] 
+  [Yes, create migration plan]
+  [No, use non-breaking approach]
   [Show API versioning best practices]
 ```
 
@@ -164,6 +167,7 @@ Proceed with breaking change?
 ### Scenario
 
 **User** (commits file with API key):
+
 ```python
 API_KEY = "sk-proj-abc123xyz789"
 client = OpenAI(api_key=API_KEY)
@@ -180,7 +184,7 @@ client = OpenAI(api_key=API_KEY)
 ```
 Security concern detected: API key in code
 
-Risk: 
+Risk:
 - Exposed credentials if committed to git
 - Potential unauthorized access
 - Compliance violation (SOC2, GDPR)
@@ -198,8 +202,8 @@ Automatic fix available:
 - Generate key rotation reminder
 
 Fix automatically?
-  [Yes, extract to .env now] 
-  [I'll fix manually] 
+  [Yes, extract to .env now]
+  [I'll fix manually]
   [This is a test key, ignore]
 ```
 
@@ -221,6 +225,7 @@ Fix automatically?
 **User**: `Deploy to production`
 
 **Alfred checks**:
+
 - Last staging deployment: 3 days ago
 - No staging test of current changes
 - Critical infrastructure change detected
@@ -256,8 +261,8 @@ Recommended action:
 4. Then proceed to production
 
 Deploy to production?
-  [Cancel, deploy to staging first] 
-  [Continue to production (risky)] 
+  [Cancel, deploy to staging first]
+  [Continue to production (risky)]
   [Show deployment best practices]
 ```
 
@@ -268,6 +273,7 @@ Deploy to production?
 ### Scenario
 
 **User workflow** (sequential):
+
 ```
 Running unit tests... (2 min)
 Running integration tests... (3 min)
@@ -302,8 +308,8 @@ Total: 5 minutes (max of 3 durations)
 Time saved: 5 minutes (50% improvement)
 
 Enable parallel execution?
-  [Yes, run in parallel now] 
-  [No, keep sequential] 
+  [Yes, run in parallel now]
+  [No, keep sequential]
   [Set as default for future runs]
 ```
 
@@ -314,6 +320,7 @@ Enable parallel execution?
 ### Scenario
 
 **User** (Beginner): Creates test after implementation
+
 ```
 User writes: src/auth.py (implementation)
 User writes: tests/test_auth.py (tests)
@@ -350,12 +357,12 @@ Benefits:
 - Confidence in refactoring
 
 Next time, try:
-- Use /alfred:2-run for automated TDD workflow
+- Use /moai:2-run for automated TDD workflow
 - Skill("moai-foundation-trust") - TRUST 5 principles
 
 Would you like to retry with TDD workflow?
-  [Yes, revert and start with tests] 
-  [No, I understand but prefer current approach] 
+  [Yes, revert and start with tests]
+  [No, I understand but prefer current approach]
   [Show me TDD tutorial]
 ```
 
@@ -368,6 +375,7 @@ Would you like to retry with TDD workflow?
 **User**: Edits `src/payment/processor.py` (350 lines)
 
 **File analysis**:
+
 - Lines modified: 150
 - Test coverage: 0%
 - Complexity: High (payment logic)
@@ -387,7 +395,7 @@ File: src/payment/processor.py (350 lines)
 Test coverage: 0%
 Complexity: High (payment processing logic)
 
-Risk: 
+Risk:
 - Regression without tests
 - Payment failures in production
 - Difficult debugging
@@ -395,7 +403,7 @@ Risk:
 Recommendation:
 1. Pause current edit
 2. Write tests first (TDD)
-3. Use /alfred:2-run SPEC-PAYMENT-001
+3. Use /moai:2-run SPEC-PAYMENT-001
 4. Ensures payment logic correctness
 
 Alternative:
@@ -403,8 +411,8 @@ Alternative:
 - Minimum 80% coverage required for payment code
 
 Proceed?
-  [Pause, write tests first (recommended)] 
-  [Continue, I'll write tests after] 
+  [Pause, write tests first (recommended)]
+  [Continue, I'll write tests after]
   [Show payment testing best practices]
 ```
 
@@ -415,6 +423,7 @@ Proceed?
 ### Scenario
 
 **User** (Expert): Manually performs complex git operations repeatedly
+
 ```
 git checkout -b feature/auth
 git add .
@@ -442,7 +451,7 @@ Observed pattern:
 - Time spent: ~5 min each = 25 min/week
 
 Suggested optimization:
-Create custom Alfred command: /alfred:create-pr
+Create custom Alfred command: /moai:create-pr
 
 Workflow automation:
 1. Auto-generate branch from SPEC ID
@@ -455,8 +464,8 @@ Time saved: 20 min/week
 Setup time: 10 minutes
 
 Would you like guidance on custom command creation?
-  [Yes, show me how] 
-  [No, I prefer manual control] 
+  [Yes, show me how]
+  [No, I prefer manual control]
   [Email me documentation later]
 ```
 
@@ -464,17 +473,17 @@ Would you like guidance on custom command creation?
 
 ## Summary: Suggestion Types by Scenario
 
-| Scenario | Risk Level | Suggestion Type | User Action |
-|----------|------------|-----------------|-------------|
-| Database migration | High | Risk warning + checklist | Confirm precautions |
-| Repetitive edits | N/A | Optimization (automation) | Accept/decline script |
-| Breaking API change | High | Risk + migration plan | Create v2 or non-breaking |
-| Credentials in code | High | Security fix | Auto-extract to .env |
-| Prod without staging | High | Risk + checklist | Deploy staging first |
-| Sequential tests | N/A | Optimization (parallel) | Enable parallel |
-| Test after impl | N/A | Learning (TDD) | Retry with TDD |
-| Large file no tests | Medium | Risk + TDD suggestion | Pause, write tests |
-| Advanced workflow | N/A | Optimization (custom cmd) | Learn custom automation |
+| Scenario             | Risk Level | Suggestion Type           | User Action               |
+| -------------------- | ---------- | ------------------------- | ------------------------- |
+| Database migration   | High       | Risk warning + checklist  | Confirm precautions       |
+| Repetitive edits     | N/A        | Optimization (automation) | Accept/decline script     |
+| Breaking API change  | High       | Risk + migration plan     | Create v2 or non-breaking |
+| Credentials in code  | High       | Security fix              | Auto-extract to .env      |
+| Prod without staging | High       | Risk + checklist          | Deploy staging first      |
+| Sequential tests     | N/A        | Optimization (parallel)   | Enable parallel           |
+| Test after impl      | N/A        | Learning (TDD)            | Retry with TDD            |
+| Large file no tests  | Medium     | Risk + TDD suggestion     | Pause, write tests        |
+| Advanced workflow    | N/A        | Optimization (custom cmd) | Learn custom automation   |
 
 ---
 

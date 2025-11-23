@@ -18,8 +18,7 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: moai, foundation, specs  
-
+**auto_trigger_keywords**: moai, foundation, specs
 
 ## Quick Reference
 
@@ -28,12 +27,14 @@ status: active
 SPEC (Specification) is the formal requirements document that drives SPEC-first, TDD development.
 
 **Quick Facts**:
+
 - **4 SPEC Lifecycle States**: Draft, Active, Deprecated, Archived
 - **Version Management**: Semantic versioning (major.minor.patch)
 - **Approval Workflow**: Author → Review → Approval → Deployment
-- **Integration**: Core of `/alfred:1-plan` workflow in MoAI-ADK
+- **Integration**: Core of `/moai:1-plan` workflow in MoAI-ADK
 
 **When to Use**:
+
 - Creating formal specifications before development
 - Managing specification versions and evolution
 - Setting up approval workflows for requirements
@@ -49,6 +50,7 @@ SPEC (Specification) is the formal requirements document that drives SPEC-first,
 **Purpose**: Initial specification authoring and refinement
 
 **Activities**:
+
 ```
 1. Specification Author creates SPEC-XXX/spec.md
 2. Define requirements using EARS patterns
@@ -61,36 +63,43 @@ SPEC (Specification) is the formal requirements document that drives SPEC-first,
 **Typical Duration**: 2-5 days (simple features) to 2-4 weeks (complex systems)
 
 **Key Artifacts**:
+
 - `spec.md` - Main specification document
 - `acceptance-criteria.md` - Acceptance tests (if separate)
 - `technical-notes.md` - Implementation guidance (optional)
 
 **Example Draft Structure**:
+
 ```markdown
 # SPEC-045: User Authentication System
 
 ## Problem Statement
+
 Current system lacks multi-factor authentication. Need MFA for security compliance.
 
 ## Requirements
-REQ-001 (Event-Driven): When login_attempted the system eventually satisfies 
-        mfa_challenge_presented
+
+REQ-001 (Event-Driven): When login_attempted the system eventually satisfies
+mfa_challenge_presented
 REQ-002 (Ubiquitous): The system shall always satisfy mfa_enabled_for_admin = true
-REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies 
-        session_terminated
+REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
+session_terminated
 
 ## Acceptance Criteria
+
 - [ ] MFA works with authenticator apps (Google, Microsoft)
 - [ ] Fallback SMS when app unavailable
 - [ ] Session timeout after 10 minutes inactivity
 - [ ] Audit log all MFA events
 
 ## Technical Notes
+
 - Use TOTP (RFC 6238) for time-based codes
 - Backup codes for emergency access
 - Consider integration with existing identity system
 
 ## Risks
+
 - User adoption of MFA might be low
 - SMS delivery reliability (use backup)
 ```
@@ -98,6 +107,7 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 ### Review State - Formal Evaluation
 
 **Review Participants**:
+
 - **Author**: Specification creator
 - **Technical Lead**: Architecture and feasibility review
 - **QA Lead**: Test coverage and acceptance criteria review
@@ -105,6 +115,7 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 - **Domain Experts**: Subject matter expert review (if applicable)
 
 **Review Checklist**:
+
 ```
 [ ] Requirements are clear and unambiguous
 [ ] All requirements are EARS-format
@@ -121,12 +132,14 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 ### Active State - Implementation Period
 
 **Activation Steps**:
+
 1. Technical lead approves and signs SPEC
 2. Create feature branch: `feature/SPEC-XXX`
 3. Implement per SPEC requirements
 4. Tests validate against acceptance criteria
 
 **During Active Phase**:
+
 - ✅ Spec is reference for development
 - ✅ Any change discussion references spec
 - ✅ Code reviews verify against spec
@@ -134,6 +147,7 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 - ✅ Track deviations and change requests
 
 **Completion Criteria**:
+
 - ✅ All requirements implemented
 - ✅ All acceptance criteria passed
 - ✅ Code review approved
@@ -144,12 +158,14 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 ### Deprecated State - Phase-Out Period
 
 **Triggering Events**:
+
 - New feature replaces old functionality
 - System architecture change
 - Technology upgrade required
 - Business decision to sunset feature
 
 **Deprecation Process**:
+
 1. Mark SPEC as DEPRECATED in metadata
 2. Create successor SPEC (if applicable)
 3. Document migration path for users
@@ -163,6 +179,7 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 ### Organization Patterns
 
 **Small Project (1-3 specs)**:
+
 ```
 .moai/specs/
 ├── SPEC-001/
@@ -173,6 +190,7 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 ```
 
 **Medium Project (5-20 specs)**:
+
 ```
 .moai/specs/
 ├── core/
@@ -189,6 +207,7 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 ```
 
 **Large Project (50+ specs)**:
+
 ```
 .moai/specs/
 ├── index.md (SPEC registry)
@@ -207,9 +226,10 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 
 ### SPEC Integration with MoAI-ADK
 
-**With `/alfred:1-plan` Command**:
+**With `/moai:1-plan` Command**:
+
 ```bash
-/alfred:1-plan "user profile enhancement feature"
+/moai:1-plan "user profile enhancement feature"
   ↓
 Creates SPEC-XXX structure
   ├── spec.md (specification)
@@ -219,9 +239,10 @@ Creates SPEC-XXX structure
 Status: ACTIVE
 ```
 
-**With `/alfred:2-run` Command**:
+**With `/moai:2-run` Command**:
+
 ```bash
-/alfred:2-run SPEC-050
+/moai:2-run SPEC-050
   ↓
 TDD cycle:
   RED: Tests from acceptance criteria
@@ -231,9 +252,10 @@ TDD cycle:
 Tests link to requirements
 ```
 
-**With `/alfred:3-sync` Command**:
+**With `/moai:3-sync` Command**:
+
 ```bash
-/alfred:3-sync auto SPEC-050
+/moai:3-sync auto SPEC-050
   ↓
 Validates all acceptance criteria met
   ↓
@@ -243,6 +265,7 @@ Creates PR to develop
 ```
 
 **Best Practices**:
+
 - ✅ Use EARS patterns for all requirements
 - ✅ Define acceptance criteria before development
 - ✅ Include rationale for non-obvious requirements

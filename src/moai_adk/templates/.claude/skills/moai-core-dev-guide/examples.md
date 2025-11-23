@@ -19,25 +19,29 @@ priority: high
 
 # User Authentication SPEC
 
-
 ## Ubiquitous Requirements
+
 - The system shall provide user authentication via email and password.
 - The system shall validate email format (RFC 5322) before storage.
 - The system shall hash passwords using bcrypt (≥12 rounds).
 
 ## Event-driven Requirements
+
 - WHEN a user submits signup form, the system shall create user account.
 - WHEN email verification link is clicked, the system shall activate account.
 - WHEN login fails 3 times, the system shall lock account for 1 hour.
 
 ## State-driven Requirements
+
 - WHILE user is authenticated, the system shall allow access to protected resources.
 - WHILE session is active, the system shall maintain JWT token validity.
 
 ## Optional Features
+
 - WHERE 2FA is enabled, the system may require additional verification.
 
 ## Constraints
+
 - IF password is invalid, the system shall return 401 Unauthorized.
 - The system shall NOT store plaintext passwords.
 - The system shall enforce 8-character minimum password length.
@@ -45,6 +49,7 @@ priority: high
 ## HISTORY
 
 ### v0.1.0 (2025-11-03)
+
 - Initial draft with core auth requirements
 ```
 
@@ -266,9 +271,10 @@ rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n .moai/specs/ tests/ src/ docs/
 
 ## Example 2: Context Engineering in Action
 
-### `/alfred:1-plan` Command
+### `/moai:1-plan` Command
 
 Only load:
+
 ```
 ✅ .moai/project/product.md (150 KB)
 ✅ .moai/project/structure.md (50 KB)
@@ -278,9 +284,10 @@ Only load:
 
 Context saved: ~5 MB
 
-### `/alfred:2-run` Command
+### `/moai:2-run` Command
 
 Load only:
+
 ```
 ✅ .moai/specs/SPEC-AUTH-001/spec.md (20 KB)
 ✅ development-guide.md (14 KB) ← This Skill!
@@ -296,19 +303,22 @@ Context saved: ~200 MB
 # AUTH-001 Implementation Verification
 
 ## T – Test-Driven (SPEC-Aligned)
+
 - [x] SPEC written with EARS format (5 patterns)
 - [x] RED: Tests written first, all fail
 - [x] GREEN: Minimal code passes all tests
 - [x] REFACTOR: Code improved, tests still pass
 
 ## R – Readable
-- [x] Function names: signup(), login(), _validate_email()
+
+- [x] Function names: signup(), login(), \_validate_email()
 - [x] Variables: email, password, hashed, token
 - [x] Comments explain WHY: "bcrypt 12 rounds for security"
 - [x] Docstrings for public functions
 - [x] README updated
 
 ## U – Unified
+
 - [x] Naming: snake_case for functions, UPPER_CASE for constants
 - [x] Error handling: consistent ValueError usage
 - [x] Test structure: Arrange→Act→Assert pattern
@@ -316,6 +326,7 @@ Context saved: ~200 MB
 - [x] Documentation: SPEC→README→docstrings
 
 ## S – Secured
+
 - [x] No hardcoded secrets (use Settings.SECRET_KEY)
 - [x] Input validation: email, password format
 - [x] Error handling: Generic "Invalid credentials"
@@ -323,6 +334,7 @@ Context saved: ~200 MB
 - [x] Password hashing: bcrypt with 12 rounds
 
 ## E – Evaluated (≥85% Coverage)
+
 - [x] Test coverage: 92%
   - signup(): 95% (valid, invalid email, weak password)
   - login(): 89% (success, invalid, locked, failed attempts)

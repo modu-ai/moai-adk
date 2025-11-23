@@ -7,6 +7,7 @@ Algorithms for detecting user expertise level and selecting appropriate persona 
 ### Signal Categories
 
 **Beginner Indicators**:
+
 ```python
 beginner_signals = [
     "repeated_questions",          # Asking same thing multiple times
@@ -23,6 +24,7 @@ beginner_signals = [
 ```
 
 **Expert Indicators**:
+
 ```python
 expert_signals = [
     "direct_commands",             # "Just do X"
@@ -39,6 +41,7 @@ expert_signals = [
 ```
 
 **Intermediate Indicators**:
+
 ```python
 intermediate_signals = [
     "mixed_signal_set",            # Both beginner and expert signals
@@ -103,6 +106,7 @@ def detect_expertise_level(session_signals: list) -> dict:
 ### Example Scenarios
 
 **Scenario 1: Beginner Detection**
+
 ```python
 signals = [
     Signal("how do I start?", type="step_by_step_requests"),
@@ -122,6 +126,7 @@ result = detect_expertise_level(signals)
 ```
 
 **Scenario 2: Expert Detection**
+
 ```python
 signals = [
     Signal("Refactor with monoidal pattern", type="architecture_discussion"),
@@ -159,7 +164,7 @@ def select_persona(user_request, session_context, project_config) -> Persona:
 
     # Priority 1: Explicit command type
     if user_request.type == "alfred_command":
-        # /alfred: commands = ProjectManager
+        # /moai: commands = ProjectManager
         return ProjectManager()
 
     if project_config.get("team_mode", False):
@@ -336,18 +341,19 @@ class ExpertiseTracker:
 
 ## Selection Factors Summary
 
-| Priority | Factor | Weight | Examples |
-|----------|--------|--------|----------|
-| 1 | Explicit commands | 0.50 | /alfred:, team_mode |
-| 2 | Content keywords | 0.30 | how, why, quick, fast |
-| 3 | Expertise level | 0.15 | Beginner/expert signals |
-| 4 | Session history | 0.05 | Previous preferences |
+| Priority | Factor            | Weight | Examples                |
+| -------- | ----------------- | ------ | ----------------------- |
+| 1        | Explicit commands | 0.50   | /moai:, team_mode       |
+| 2        | Content keywords  | 0.30   | how, why, quick, fast   |
+| 3        | Expertise level   | 0.15   | Beginner/expert signals |
+| 4        | Session history   | 0.05   | Previous preferences    |
 
 ---
 
 ## Best Practices
 
 ✅ **DO**:
+
 - Collect signals from multiple sources
 - Use confidence thresholds before deciding
 - Allow for expertise level changes
@@ -356,6 +362,7 @@ class ExpertiseTracker:
 - Adjust thresholds based on performance metrics
 
 ❌ **DON'T**:
+
 - Over-weight single signals
 - Lock into initial expertise level
 - Ignore explicit user requests

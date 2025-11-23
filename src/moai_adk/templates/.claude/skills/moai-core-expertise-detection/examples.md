@@ -19,13 +19,13 @@ User: "It didn't work, what's the right syntax?"
 
 ### Signal Analysis
 
-| Signal Category | Observation | Score |
-|-----------------|-------------|-------|
-| Command Usage | Incorrect syntax, asks for help | +2 |
-| Questions | Fundamental "what is" questions | +2 |
-| Error Recovery | Needs syntax guidance | +2 |
-| Documentation | Unfamiliar with SPEC concept | +2 |
-| Git Workflow | N/A (not yet used) | 0 |
+| Signal Category | Observation                     | Score |
+| --------------- | ------------------------------- | ----- |
+| Command Usage   | Incorrect syntax, asks for help | +2    |
+| Questions       | Fundamental "what is" questions | +2    |
+| Error Recovery  | Needs syntax guidance           | +2    |
+| Documentation   | Unfamiliar with SPEC concept    | +2    |
+| Git Workflow    | N/A (not yet used)              | 0     |
 
 **Total Score**: 8 → **Beginner**
 
@@ -37,24 +37,25 @@ User: "It didn't work, what's the right syntax?"
 **Role Bias**: Technical Mentor
 
 **Response Example**:
+
 ```
 MoAI-ADK is an Agentic Development Kit that follows SPEC-first TDD workflow.
 
 Background:
-SPECs are structured requirements documents following EARS format. They 
-define what to build before writing code. Alfred helps you create SPECs, 
+SPECs are structured requirements documents following EARS format. They
+define what to build before writing code. Alfred helps you create SPECs,
 implement them via TDD, and keep documentation synchronized.
 
 To start:
-1. Run /alfred:0-project to initialize project
-2. Then /alfred:1-plan to create your first SPEC
-3. Then /alfred:2-run to implement via TDD
+1. Run /moai:0-project to initialize project
+2. Then /moai:1-plan to create your first SPEC
+3. Then /moai:2-run to implement via TDD
 
 Related Skills to learn:
 - Skill("moai-foundation-specs") - SPEC structure
 - Skill("moai-foundation-trust") - TRUST 5 principles
 
-Would you like me to guide you through /alfred:0-project step-by-step?
+Would you like me to guide you through /moai:0-project step-by-step?
 ```
 
 ---
@@ -64,19 +65,19 @@ Would you like me to guide you through /alfred:0-project step-by-step?
 ### User Behavior
 
 ```
-User: "/alfred:1-plan"
+User: "/moai:1-plan"
 Alfred: "What's the SPEC title?"
 User: "User authentication with JWT"
 ```
 
 ### Signal Analysis
 
-| Signal Category | Observation | Score |
-|-----------------|-------------|-------|
-| Command Usage | Correct command syntax | +1 |
-| Questions | Specific clarification ("Can I?") | +1 |
-| Error Recovery | Notices mistake, asks fix | +1 |
-| Git Workflow | Uses /alfred commands | +1 |
+| Signal Category | Observation                       | Score |
+| --------------- | --------------------------------- | ----- |
+| Command Usage   | Correct command syntax            | +1    |
+| Questions       | Specific clarification ("Can I?") | +1    |
+| Error Recovery  | Notices mistake, asks fix         | +1    |
+| Git Workflow    | Uses /alfred commands             | +1    |
 
 **Total Score**: 5 → **Intermediate**
 
@@ -88,11 +89,12 @@ User: "User authentication with JWT"
 **Role Bias**: Project Manager
 
 **Response Example**:
+
 ```
 
 Edit .moai/specs/SPEC-AUTH-001/spec.md and insert:
 
-Then run /alfred:3-sync to update documentation links.
+Then run /moai:3-sync to update documentation links.
 
 
 Proceed with manual edit?
@@ -106,7 +108,7 @@ Proceed with manual edit?
 ### User Behavior
 
 ```
-User: "/alfred:2-run SPEC-AUTH-001 && git add . && git commit -m 'feat(auth): JWT impl'"
+User: "/moai:2-run SPEC-AUTH-001 && git add . && git commit -m 'feat(auth): JWT impl'"
 User: (test fails)
 User: (fixes code directly without asking)
 User: (reruns tests)
@@ -115,13 +117,13 @@ User: (creates PR with gh CLI)
 
 ### Signal Analysis
 
-| Signal Category | Observation | Score |
-|-----------------|-------------|-------|
-| Command Usage | Advanced command chaining | 0 |
-| Questions | Zero questions asked | 0 |
-| Error Recovery | Self-debugs, fixes independently | 0 |
-| Documentation | No documentation references | 0 |
-| Git Workflow | Direct git + gh commands | 0 |
+| Signal Category | Observation                      | Score |
+| --------------- | -------------------------------- | ----- |
+| Command Usage   | Advanced command chaining        | 0     |
+| Questions       | Zero questions asked             | 0     |
+| Error Recovery  | Self-debugs, fixes independently | 0     |
+| Documentation   | No documentation references      | 0     |
+| Git Workflow    | Direct git + gh commands         | 0     |
 
 **Total Score**: 0 → **Expert**
 
@@ -133,6 +135,7 @@ User: (creates PR with gh CLI)
 **Role Bias**: Efficiency Coach
 
 **Response Example**:
+
 ```
 SPEC-AUTH-001 implemented.
 
@@ -155,7 +158,7 @@ User: "How do I create a SPEC?" (Question keyword +2)
 Alfred: (Verbose explanation with examples)
 
 User: (follows steps, creates SPEC)
-Alfred: "Great! Ready for /alfred:2-run?" (Confirmation)
+Alfred: "Great! Ready for /moai:2-run?" (Confirmation)
 ```
 
 **Score**: 8 → Beginner
@@ -163,7 +166,7 @@ Alfred: "Great! Ready for /alfred:2-run?" (Confirmation)
 ### Session Middle (Still Beginner, but improving)
 
 ```
-User: "/alfred:2-run SPEC-PROFILE-001" (Correct syntax +1)
+User: "/moai:2-run SPEC-PROFILE-001" (Correct syntax +1)
 Alfred: (Moderate explanation, less verbose)
 ```
 
@@ -196,6 +199,7 @@ User: "Explain why TRUST 5 requires test-first?"
 **Baseline**: Expert (score 0 from previous requests)
 
 **Override detected**:
+
 - Keyword: "Explain" → Force Beginner mode for this request
 
 ### Alfred Adaptation
@@ -203,6 +207,7 @@ User: "Explain why TRUST 5 requires test-first?"
 **Normal Expert response**: "TRUST 5 = Test First, Readable, Unified, Secured, Trackable."
 
 **Override to Beginner mode**:
+
 ```
 TRUST 5 principle "Test First" ensures code correctness through TDD.
 
@@ -237,7 +242,7 @@ Related: Skill("moai-foundation-trust") for full TRUST 5 guide
 ### User Behavior
 
 ```
-User: "/alfred:1-plan" (Correct syntax +1)
+User: "/moai:1-plan" (Correct syntax +1)
 User: "What's the difference between SPEC and plan?" (Basic question +2)
 User: (Creates SPEC successfully) (+1)
 ```
@@ -245,6 +250,7 @@ User: (Creates SPEC successfully) (+1)
 ### Signal Analysis
 
 **Conflicting signals**:
+
 - Command usage: Intermediate (+1)
 - Questions: Beginner (+2, +2)
 - SPEC creation: Intermediate (+1)
@@ -263,13 +269,13 @@ User: (Creates SPEC successfully) (+1)
 
 ## Summary: Expertise Level Indicators
 
-| Observable Behavior | Beginner | Intermediate | Expert |
-|---------------------|----------|--------------|--------|
-| **First request** | "What is...?" | Correct command | Command chain |
-| **Error handling** | "Fix this for me" | "Why did this fail?" | (Fixes silently) |
-| **Documentation** | Frequent Skill() | Occasional Skill() | No Skill() |
-| **Confirmations** | Needs all | Needs some | Needs none |
-| **Learning curve** | Steep | Moderate | Flat |
+| Observable Behavior | Beginner          | Intermediate         | Expert           |
+| ------------------- | ----------------- | -------------------- | ---------------- |
+| **First request**   | "What is...?"     | Correct command      | Command chain    |
+| **Error handling**  | "Fix this for me" | "Why did this fail?" | (Fixes silently) |
+| **Documentation**   | Frequent Skill()  | Occasional Skill()   | No Skill()       |
+| **Confirmations**   | Needs all         | Needs some           | Needs none       |
+| **Learning curve**  | Steep             | Moderate             | Flat             |
 
 ---
 

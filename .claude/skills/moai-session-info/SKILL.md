@@ -17,8 +17,7 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: info, session, moai  
-
+**auto_trigger_keywords**: info, session, moai
 
 ## Quick Reference (30 seconds)
 
@@ -27,12 +26,14 @@ status: active
 ## Quick Start Commands
 
 ### Basic Status Check
+
 ```python
 # Simple project overview
 Skill("moai-session-info")
 ```
 
 ### Detailed Status with Metrics
+
 ```python
 # Comprehensive status with all details
 Skill("moai-session-info")
@@ -40,35 +41,37 @@ Skill("moai-session-info")
 ```
 
 ### Before Major Operations
+
 ```python
 # Always check status before:
-# - /alfred:1-plan (planning new features)
-# - /alfred:2-run (implementing changes)
+# - /moai:1-plan (planning new features)
+# - /moai:2-run (implementing changes)
 # - git operations (commits, merges)
 
 Skill("moai-session-info")
 # Review status, then proceed with operation
 ```
 
-
 ## Performance Considerations
 
 ### Optimization Strategies
+
 - **Caching**: Cache expensive operations (Git history, version checks)
 - **Timeouts**: 5-second timeout for network operations
 - **Lazy Loading**: Load detailed information only when requested
 - **Incremental Updates**: Update only changed information
 
 ### Resource Usage
+
 - **Memory**: Minimal footprint (< 10MB)
 - **Network**: Only for version checks (cached locally)
 - **Disk**: Reads existing files, no modifications
 - **CPU**: Lightweight operations, quick response times
 
-
 ## Usage Examples
 
 ### Example 1: Session Start
+
 ```python
 # User starts new Claude Code session
 Skill("moai-session-info")
@@ -91,9 +94,10 @@ Skill("moai-session-info")
 ```
 
 ### Example 2: Pre-Implementation Check
+
 ```python
 # User wants to implement new feature
-"/alfred:2-run SPEC-AUTH-001"
+"/moai:2-run SPEC-AUTH-001"
 
 # Alfred automatically calls:
 Skill("moai-session-info")
@@ -102,6 +106,7 @@ Skill("moai-session-info")
 ```
 
 ### Example 3: Status Query
+
 ```python
 # User asks: "what's our current status?"
 Skill("moai-session-info")
@@ -109,9 +114,7 @@ Skill("moai-session-info")
 # Complete project status displayed
 ```
 
-
 **End of Skill** | Optimized for quick status checks and session context
-
 
 ## Implementation Guide
 
@@ -120,6 +123,7 @@ Skill("moai-session-info")
 Comprehensive session and project information provider that gives users complete context about their current MoAI-ADK project state, including Git status, SPEC progress, version information, and system resources.
 
 **Core capabilities**:
+
 - ✅ Project metadata and configuration display
 - ✅ Git repository status and commit history
 - ✅ SPEC progress tracking and completion metrics
@@ -127,7 +131,6 @@ Comprehensive session and project information provider that gives users complete
 - ✅ System resource monitoring
 - ✅ Checkpoint status and restoration options
 - ✅ Session metrics and handoff information
-
 
 ## When to Use
 
@@ -138,10 +141,10 @@ Comprehensive session and project information provider that gives users complete
 - ✅ When reviewing project context and history
 - ✅ Before running /alfred commands
 
-
 ## Core Information Categories
 
 ### 1. Project Overview
+
 ```bash
 🗿 Project: MoAI-ADK
 📁 Location: /Users/goos/MoAI/MoAI-ADK
@@ -151,6 +154,7 @@ Comprehensive session and project information provider that gives users complete
 ```
 
 ### 2. Version Information
+
 ```bash
 📦 Current: v0.15.2
 🆓 Update Available: v0.16.0
@@ -159,6 +163,7 @@ Comprehensive session and project information provider that gives users complete
 ```
 
 ### 3. Git Repository Status
+
 ```bash
 🌿 Branch: develop (3 commits ahead of main)
 📝 Changes: 5 modified, 2 added
@@ -167,6 +172,7 @@ Comprehensive session and project information provider that gives users complete
 ```
 
 ### 4. SPEC Progress
+
 ```bash
 📋 Total SPECs: 15
 ✅ Completed: 12 (80%)
@@ -176,6 +182,7 @@ Comprehensive session and project information provider that gives users complete
 ```
 
 ### 5. System Resources
+
 ```bash
 🧠 Memory Usage: 2.4GB / 16GB (15%)
 💾 Disk Space: 45GB free
@@ -184,37 +191,40 @@ Comprehensive session and project information provider that gives users complete
 ```
 
 ### 6. Available Checkpoints
+
 ```bash
 🗂️  Checkpoints: 3 available
    📌 auth-system-implementation (30 min ago)
    📌 skill-consolidation (2 hours ago)
    📌 feature-branch-workflow (yesterday)
-↩️  Restore: /alfred:0-project restore
+↩️  Restore: /moai:0-project restore
 ```
-
 
 ## Information Sources
 
 The skill gathers information from multiple sources:
 
 ### Project Configuration
+
 - `.moai/config.json` - Project settings and language
 - `pyproject.toml` - Package version and dependencies
 - `.git/` - Repository status and history
 
 ### SPEC Tracking
+
 - `.moai/specs/` - SPEC documents and completion status
 - SPEC metadata - Progress tracking and milestones
 
 ### System Resources
+
 - `psutil` - Memory and CPU usage
 - File system - Disk space and project size
 - Session metrics - Current session duration
 
 ### Version Information
+
 - Package registries - Latest available versions
 - GitHub releases - Release notes and changelogs
-
 
 ## Status Message Format
 
@@ -251,15 +261,15 @@ The skill generates structured status messages with consistent formatting:
 
 🗂️  Checkpoints
    {checkpoint_list}
-   ↩️  Restore: /alfred:0-project restore
+   ↩️  Restore: /moai:0-project restore
 ```
-
 
 ## Integration with Alfred Commands
 
 This skill is automatically invoked by:
 
 ### SessionStart Hook Integration
+
 ```python
 # In session_start__show_project_info.py
 # Automatically called when session starts
@@ -267,12 +277,13 @@ Skill("moai-session-info")
 ```
 
 ### Command Integration
+
 ```python
-# Before /alfred:1-plan
+# Before /moai:1-plan
 if context == "planning":
     Skill("moai-session-info")  # Show current status
 
-# Before /alfred:2-run
+# Before /moai:2-run
 if context == "implementation":
     Skill("moai-session-info")  # Confirm project state
 
@@ -281,10 +292,10 @@ if "git" in command:
     Skill("moai-session-info")  # Show repository status
 ```
 
-
 ## Error Handling and Fallbacks
 
 ### Graceful Degradation
+
 The skill provides useful information even when some sources fail:
 
 ```python
@@ -299,14 +310,10 @@ The skill provides useful information even when some sources fail:
 ```
 
 ### Common Error Scenarios
+
 - **Git repository not found**: Shows project info without Git details
 - **No .moai/config.json**: Uses default settings and basic project detection
 - **Network unavailable**: Shows local information only
 - **Permission denied**: Provides read-only information where possible
 
-
-
 ## Advanced Patterns
-
-
-

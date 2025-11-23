@@ -3,6 +3,7 @@
 ## Basic Usage Examples
 
 ### 1. Complete Project Initialization
+
 ```python
 # First-time setup with all workflows
 Skill("moai-project-language-initializer")
@@ -15,6 +16,7 @@ Skill("moai-project-language-initializer")
 ```
 
 ### 2. Settings Update Only
+
 ```python
 # Update existing configuration without full initialization
 Skill("moai-project-language-initializer", mode="settings")
@@ -27,6 +29,7 @@ Skill("moai-project-language-initializer", mode="settings")
 ```
 
 ### 3. Team Mode Configuration
+
 ```python
 # Configure or update team-specific settings
 Skill("moai-project-language-initializer", mode="team_setup")
@@ -40,6 +43,7 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ## Configuration Examples
 
 ### Language Selection Result
+
 ```json
 {
   "language": {
@@ -55,6 +59,7 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ```
 
 ### Team Mode Configuration Result
+
 ```json
 {
   "github": {
@@ -68,6 +73,7 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ```
 
 ### Report Generation Configuration Result
+
 ```json
 {
   "report_generation": {
@@ -81,6 +87,7 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ```
 
 ### Domain Selection Result
+
 ```json
 {
   "stack": {
@@ -93,6 +100,7 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ## Workflow Examples
 
 ### English-speaking User Setup
+
 ```python
 # User selects English and team mode
 Skill("moai-project-language-initializer")
@@ -126,6 +134,7 @@ Skill("moai-project-language-initializer")
 ```
 
 ### Korean-speaking User Setup (Cost-conscious)
+
 ```python
 # Korean user who wants to minimize token costs
 Skill("moai-project-language-initializer")
@@ -161,6 +170,7 @@ Skill("moai-project-language-initializer")
 ```
 
 ### Multi-language Team Setup
+
 ```python
 # Japanese user in an international team
 Skill("moai-project-language-initializer")
@@ -196,6 +206,7 @@ Skill("moai-project-language-initializer")
 ## Error Handling Examples
 
 ### Invalid Nickname Recovery
+
 ```python
 # User enters nickname longer than 20 characters
 Skill("moai-project-language-initializer")
@@ -208,6 +219,7 @@ Skill("moai-project-language-initializer")
 ```
 
 ### Missing Configuration Recovery
+
 ```python
 # Config.json is missing or corrupted
 Skill("moai-project-language-initializer")
@@ -220,6 +232,7 @@ Skill("moai-project-language-initializer")
 ```
 
 ### Incompatible Settings Recovery
+
 ```python
 # User selects conflicting settings
 Skill("moai-project-language-initializer")
@@ -235,20 +248,22 @@ Skill("moai-project-language-initializer")
 ## Integration Examples
 
 ### With Alfred Commands
+
 ```bash
-# In /alfred:0-project command
-/alfred:0-project
+# In /moai:0-project command
+/moai:0-project
 # -> Calls Skill("moai-project-language-initializer") internally
 # -> Results stored in .moai/config.json
 # -> Continues with project setup based on configuration
 
-# In /alfred:1-plan command
-/alfred:1-plan "new feature"
+# In /moai:1-plan command
+/moai:1-plan "new feature"
 # -> Reads domain selection from config.json
 # -> Activates relevant expert agents based on selected domains
 ```
 
 ### With Other Skills
+
 ```python
 # After language initialization, use domain-specific skills
 Skill("moai-project-language-initializer")  # Setup language and domains
@@ -262,6 +277,7 @@ Skill("backend-expert")  # For backend tasks
 ## Performance Examples
 
 ### Token Cost Comparison
+
 ```python
 # Expensive setup (Localized prompts + Full reports)
 Skill("moai-project-language-initializer")
@@ -270,13 +286,14 @@ Skill("moai-project-language-initializer")
 # Cost impact: High
 
 # Cost-effective setup (English prompts + Minimal reports)
-Skill("moai-project-language-initializer") 
+Skill("moai-project-language-initializer")
 # User selects: Korean + English prompts + Minimal reports
 # Session tokens: ~80-120
 # Cost impact: Low (65% savings)
 ```
 
 ### Interaction Efficiency
+
 ```python
 # Traditional approach (separate questions)
 AskUserQuestion(language_question)  # Turn 1
@@ -293,6 +310,7 @@ Skill("moai-project-language-initializer")
 ## Testing Examples
 
 ### Mock Configuration for Testing
+
 ```json
 {
   "language": {
@@ -322,6 +340,7 @@ Skill("moai-project-language-initializer")
 ```
 
 ### Validation Test Cases
+
 ```python
 # Test edge cases:
 Skill("moai-project-language-initializer", test_case="empty_nickname")

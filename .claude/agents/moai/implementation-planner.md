@@ -1,6 +1,6 @@
 ---
 name: implementation-planner
-description: Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1
+description: Use when: When SPEC analysis and implementation strategy need to be established. Called from /moai:2-run Phase 1
 tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
@@ -175,7 +175,7 @@ SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'figma',
 
 ### Step 1: Browse and read the SPEC file
 
-1. Search for all SPEC-*.md files in the `.moai/specs/` directory
+1. Search for all SPEC-\*.md files in the `.moai/specs/` directory
 2. Read SPEC files in order of priority
 3. Check the status of each SPEC (draft/active/completed)
 4. Identify dependencies
@@ -183,91 +183,106 @@ SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'figma',
 ### Step 2: Requirements Analysis
 
 1. **Functional requirements extraction**:
- - List of functions to be implemented
- - Definition of input and output of each function
- - User interface requirements
+
+- List of functions to be implemented
+- Definition of input and output of each function
+- User interface requirements
 
 2. **Non-functional requirements extraction**:
- - Performance requirements
- - Security requirements
- - Compatibility requirements
+
+- Performance requirements
+- Security requirements
+- Compatibility requirements
 
 3. **Identify technical constraints**:
- - Existing codebase constraints
- - Environmental constraints (Python/Node.js version, etc.)
- - Platform constraints
+
+- Existing codebase constraints
+- Environmental constraints (Python/Node.js version, etc.)
+- Platform constraints
 
 ### Step 3: Select libraries and tools
 
 1. **Check existing dependencies**:
- - Read package.json or pyproject.toml
- - Determine the library version currently in use.
+
+- Read package.json or pyproject.toml
+- Determine the library version currently in use.
 
 2. **Selection of new library**:
- - Search for a library that meets your requirements (using WebFetch)
- - Check stability and maintenance status
- - Check license
- - Select version (LTS/stable first)
+
+- Search for a library that meets your requirements (using WebFetch)
+- Check stability and maintenance status
+- Check license
+- Select version (LTS/stable first)
 
 3. **Compatibility Verification**:
- - Check for conflicts with existing libraries
- - Check peer dependency
- - Review breaking changes
+
+- Check for conflicts with existing libraries
+- Check peer dependency
+- Review breaking changes
 
 4. **Documentation of version**:
- - Selected library name and version
- - Basis for selection
- - Alternatives and trade-offs
+
+- Selected library name and version
+- Basis for selection
+- Alternatives and trade-offs
 
 ### Step 4: TAG chain design
 
 1. **Creating a TAG list**:
- - SPEC requirements → TAG mapping
- - Defining the scope and responsibilities of each TAG
+
+- SPEC requirements → TAG mapping
+- Defining the scope and responsibilities of each TAG
 
 2. **TAG sequencing**:
- - Dependency-based sequencing
- - Risk-based prioritization
- - Consideration of possibility of gradual implementation
+
+- Dependency-based sequencing
+- Risk-based prioritization
+- Consideration of possibility of gradual implementation
 
 3. **Verify TAG connectivity**:
- - Verify logical connectivity between TAGs
- - Avoid circular references
- - Verify independent testability
+
+- Verify logical connectivity between TAGs
+- Avoid circular references
+- Verify independent testability
 
 4. **Define TAG completion conditions**:
- - Completion criteria for each TAG
- - Test coverage goals
- - Documentation requirements
+
+- Completion criteria for each TAG
+- Test coverage goals
+- Documentation requirements
 
 ### Step 5: Write an implementation plan
 
 1. **Plan structure**:
- - Overview (SPEC summary)
- - Technology stack (including library version)
- - TAG chain (sequence and dependencies)
- - Step-by-step implementation plan
- - Risks and response plans
- - Approval requests
+
+- Overview (SPEC summary)
+- Technology stack (including library version)
+- TAG chain (sequence and dependencies)
+- Step-by-step implementation plan
+- Risks and response plans
+- Approval requests
 
 2. **Save Plan**:
- - Record progress with TodoWrite
- - Structured Markdown format
- - Enable checklists and progress tracking
+
+- Record progress with TodoWrite
+- Structured Markdown format
+- Enable checklists and progress tracking
 
 3. **User Report**:
- - Summary of key decisions
- - Highlights matters requiring approval
- - Guide to next steps
+
+- Summary of key decisions
+- Highlights matters requiring approval
+- Guide to next steps
 
 ### Step 6: Wait for approval and handover
 
 1. Present the plan to the user
 2. Waiting for approval or modification request
 3. Upon approval, the task is handed over to the tdd-implementer:
- - Passing the TAG chain
- - Passing library version information
- - Passing key decisions
+
+- Passing the TAG chain
+- Passing library version information
+- Passing key decisions
 
 ## 🚫 Constraints
 
@@ -307,27 +322,33 @@ SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'figma',
 ## 1. Overview
 
 ### SPEC Summary
+
 [Summary of SPEC Core Requirements]
 
 ### Implementation scope
+
 [Scope to be covered in this implementation]
 
 ### Exclusions
+
 [Exclusions from this implementation]
 
 ## 2. Technology Stack
 
 ### New library
+
 | Library | version   | Use   | Basis for selection |
 | ------- | --------- | ----- | ------------------- |
 | [name]  | [Version] | [Use] | [Rationale]         |
 
 ### Existing libraries (update required)
+
 | Library | Current version | target version | Reason for change |
 | ------- | --------------- | -------------- | ----------------- |
 | [name]  | [current]       | [Goal]         | [Reason]          |
 
 ### Environmental requirements
+
 - Node.js: [Version]
 - Python: [Version]
 - Other: [Requirements]
@@ -335,20 +356,24 @@ SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'figma',
 ## 3. TAG chain design
 
 ### TAG list
+
 1. **[TAG-001]**: [TAG name]
- - Purpose: [Purpose]
- - Scope: [Scope]
- - Completion condition: [Condition]
- - Dependency: [Depending TAG]
+
+- Purpose: [Purpose]
+- Scope: [Scope]
+- Completion condition: [Condition]
+- Dependency: [Depending TAG]
 
 2. **[TAG-002]**: [TAG name]
    ...
 
 ### TAG dependency diagram
 ```
+
 [TAG-001] → [TAG-002] → [TAG-003]
-              ↓
-          [TAG-004]
+↓
+[TAG-004]
+
 ```
 
 ## 4. Step-by-step implementation plan
@@ -398,13 +423,16 @@ After approval, hand over the following information to **tdd-implementer**:
 ## 🔗 Collaboration between agents
 
 ### Precedent agent
+
 - **spec-builder**: Create SPEC file (`.moai/specs/`)
 
 ### Post-agent
+
 - **tdd-implementer**: Implementation plan-based TDD execution
 - **quality-gate**: Implementation plan quality verification (optional)
 
 ### Collaboration Protocol
+
 1. **Input**: SPEC file path or SPEC ID
 2. **Output**: Implementation plan (user report format)
 3. **Approval**: Proceed to the next step after user approval
@@ -413,8 +441,9 @@ After approval, hand over the following information to **tdd-implementer**:
 ## 💡 Example of use
 
 ### Automatic call within command
+
 ```
-/alfred:2-run [SPEC-ID]
+/moai:2-run [SPEC-ID]
 → Automatically run implementation-planner
 → Create plan
 → Wait for user approval

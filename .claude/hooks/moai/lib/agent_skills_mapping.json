@@ -27,16 +27,8 @@
       "moai-cc-mcp-plugins",
       "docs-manager"
     ],
-    "git-manager": [
-      "git-manager",
-      "moai-core-agent-guide",
-      "moai-cc-hooks"
-    ],
-    "tag-agent": [
-      "moai-foundation-tags",
-      "tag-agent",
-      "moai-cc-configuration"
-    ],
+    "git-manager": ["git-manager", "moai-core-agent-guide", "moai-cc-hooks"],
+    "tag-agent": ["moai-foundation-tags", "tag-agent", "moai-cc-configuration"],
     "frontend-expert": [
       "moai-domain-frontend",
       "component-designer",
@@ -49,27 +41,22 @@
       "database-expert",
       "migration-expert"
     ],
-    "security-expert": [
-      "moai-domain-security",
-      "security-expert"
-    ],
-    "performance-engineer": [
-      "performance-engineer",
-      "moai-essentials-perf"
-    ],
-    "monitoring-expert": [
-      "monitoring-expert",
-      "moai-cc-mcp-plugins"
-    ],
-    "quality-gate": [
-      "quality-gate",
-      "trust-checker",
-      "moai-cc-configuration"
-    ]
+    "security-expert": ["moai-domain-security", "security-expert"],
+    "performance-engineer": ["performance-engineer", "moai-essentials-perf"],
+    "monitoring-expert": ["monitoring-expert", "moai-cc-mcp-plugins"],
+    "quality-gate": ["quality-gate", "trust-checker", "moai-cc-configuration"]
   },
   "prompt_patterns": {
     "spec_creation": {
-      "keywords": ["spec", "요구사항", "requirement", "명세", "계획", "plan", "/alfred:1-plan"],
+      "keywords": [
+        "spec",
+        "요구사항",
+        "requirement",
+        "명세",
+        "계획",
+        "plan",
+        "/moai:1-plan"
+      ],
       "primary_agent": "spec-builder",
       "secondary_agents": ["doc-syncer"],
       "skills": [
@@ -84,7 +71,15 @@
       ]
     },
     "implementation": {
-      "keywords": ["implement", "구현", "개발", "code", "작성", "만들기", "/alfred:2-run"],
+      "keywords": [
+        "implement",
+        "구현",
+        "개발",
+        "code",
+        "작성",
+        "만들기",
+        "/moai:2-run"
+      ],
       "primary_agent": "tdd-implementer",
       "secondary_agents": ["test-engineer", "quality-gate"],
       "skills": [
@@ -114,14 +109,17 @@
       ]
     },
     "documentation": {
-      "keywords": ["document", "문서", "docs", "readme", "설명", "/alfred:3-sync"],
+      "keywords": [
+        "document",
+        "문서",
+        "docs",
+        "readme",
+        "설명",
+        "/moai:3-sync"
+      ],
       "primary_agent": "doc-syncer",
       "secondary_agents": ["tag-agent"],
-      "skills": [
-        "moai-cc-claude-md",
-        "moai-core-reporting",
-        "docs-manager"
-      ],
+      "skills": ["moai-cc-claude-md", "moai-core-reporting", "docs-manager"],
       "context_files": [
         ".claude/skills/moai-cc-claude-md/reference.md",
         ".claude/skills/moai-core-reporting/reference.md",
@@ -132,53 +130,47 @@
       "keywords": ["git", "commit", "merge", "branch", "pr", "push"],
       "primary_agent": "git-manager",
       "secondary_agents": ["tag-agent"],
-      "skills": [
-        "git-manager",
-        "moai-core-agent-guide"
-      ],
+      "skills": ["git-manager", "moai-core-agent-guide"],
       "context_files": [
         ".claude/skills/moai-core-agent-guide/reference.md",
         ".gitignore"
       ]
     },
     "frontend": {
-      "keywords": ["frontend", "ui", "ux", "react", "vue", "angular", "css", "html"],
+      "keywords": [
+        "frontend",
+        "ui",
+        "ux",
+        "react",
+        "vue",
+        "angular",
+        "css",
+        "html"
+      ],
       "primary_agent": "frontend-expert",
       "secondary_agents": ["ui-ux-expert", "accessibility-expert"],
-      "skills": [
-        "moai-domain-frontend",
-        "component-designer",
-        "ui-ux-expert"
-      ],
-      "context_files": [
-        "src/",
-        "package.json",
-        "webpack.config.js"
-      ]
+      "skills": ["moai-domain-frontend", "component-designer", "ui-ux-expert"],
+      "context_files": ["src/", "package.json", "webpack.config.js"]
     },
     "backend": {
       "keywords": ["backend", "api", "server", "database", "fastapi", "django"],
       "primary_agent": "backend-expert",
       "secondary_agents": ["api-designer", "database-expert"],
-      "skills": [
-        "moai-domain-backend",
-        "api-designer",
-        "database-expert"
-      ],
-      "context_files": [
-        "src/api/",
-        "requirements.txt",
-        "pyproject.toml"
-      ]
+      "skills": ["moai-domain-backend", "api-designer", "database-expert"],
+      "context_files": ["src/api/", "requirements.txt", "pyproject.toml"]
     },
     "security": {
-      "keywords": ["security", "보안", "auth", "authentication", "암호화", "취약점"],
+      "keywords": [
+        "security",
+        "보안",
+        "auth",
+        "authentication",
+        "암호화",
+        "취약점"
+      ],
       "primary_agent": "security-expert",
       "secondary_agents": ["quality-gate"],
-      "skills": [
-        "moai-domain-security",
-        "trust-checker"
-      ],
+      "skills": ["moai-domain-security", "trust-checker"],
       "context_files": [
         ".claude/skills/moai-domain-security/reference.md",
         "src/auth/",
@@ -186,13 +178,17 @@
       ]
     },
     "performance": {
-      "keywords": ["performance", "성능", "최적화", "optimize", "speed", "benchmark"],
+      "keywords": [
+        "performance",
+        "성능",
+        "최적화",
+        "optimize",
+        "speed",
+        "benchmark"
+      ],
       "primary_agent": "performance-engineer",
       "secondary_agents": ["monitoring-expert"],
-      "skills": [
-        "performance-engineer",
-        "moai-essentials-perf"
-      ],
+      "skills": ["performance-engineer", "moai-essentials-perf"],
       "context_files": [
         ".claude/skills/moai-essentials-perf/reference.md",
         "benchmarks/",
@@ -203,10 +199,7 @@
       "keywords": ["deploy", "배포", "docker", "kubernetes", "cicd", "release"],
       "primary_agent": "devops-expert",
       "secondary_agents": ["monitoring-expert"],
-      "skills": [
-        "devops-expert",
-        "moai-baas-foundation"
-      ],
+      "skills": ["devops-expert", "moai-baas-foundation"],
       "context_files": [
         "Dockerfile",
         "docker-compose.yml",

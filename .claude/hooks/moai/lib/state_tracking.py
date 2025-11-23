@@ -44,7 +44,7 @@ class SingletonMeta(type):
         """Cleanup all singleton instances"""
         with cls._lock:
             for instance in cls._instances.values():
-                if hasattr(instance, 'cleanup'):
+                if hasattr(instance, "cleanup"):
                     try:
                         instance.cleanup()
                     except Exception:
@@ -79,7 +79,7 @@ class HookStateManager(metaclass=SingletonMeta):
         # Configure logging based on config
         configure_logging(
             debug_mode=self.config.debug_mode,
-            verbose=self.config.enable_verbose_logging
+            verbose=self.config.enable_verbose_logging,
         )
 
         # Initialize state directory with fallback logic
@@ -93,7 +93,9 @@ class HookStateManager(metaclass=SingletonMeta):
         # Thread lifecycle management
         self._cleanup_event = threading.Event()
         self._cleanup_thread = None
-        self._threads: list[threading.Thread] = []  # Track all created threads for proper cleanup
+        self._threads: list[threading.Thread] = (
+            []
+        )  # Track all created threads for proper cleanup
 
         # State files
         self.hook_state_file = self.state_dir / "hook_execution_state.json"
@@ -124,6 +126,7 @@ class HookStateManager(metaclass=SingletonMeta):
 
     def _start_cache_cleanup_thread(self):
         """Start background thread for cache cleanup"""
+
         def cleanup_task():
             while not self._cleanup_event.is_set():
                 # Use event.wait() instead of time.sleep() for immediate response to stop signal
@@ -144,15 +147,19 @@ class HookStateManager(metaclass=SingletonMeta):
         current_time = time.time()
 
         # Clean hook state cache
-        if (self._hook_state_cache and
-            current_time - self._cache_timestamp > self.config.state_cache_ttl):
+        if (
+            self._hook_state_cache
+            and current_time - self._cache_timestamp > self.config.state_cache_ttl
+        ):
             self._hook_state_cache = None
             self._cache_timestamp = 0
             self.logger.debug("Cleaned expired hook state cache")
 
         # Clean command state cache
-        if (self._command_state_cache and
-            current_time - self._cache_timestamp > self.config.state_cache_ttl):
+        if (
+            self._command_state_cache
+            and current_time - self._cache_timestamp > self.config.state_cache_ttl
+        ):
             self._command_state_cache = None
             self._cache_timestamp = 0
             self.logger.debug("Cleaned expired command state cache")
@@ -166,8 +173,10 @@ class HookStateManager(metaclass=SingletonMeta):
         current_time = time.time()
 
         # Use cache if recent (within configured TTL)
-        if (self._hook_state_cache and
-            current_time - self._cache_timestamp < self.config.state_cache_ttl):
+        if (
+            self._hook_state_cache
+            and current_time - self._cache_timestamp < self.config.state_cache_ttl
+        ):
             if self.config.log_state_changes:
                 self.logger.debug("Hook state cache hit")
             record_cache_hit()
@@ -175,7 +184,9 @@ class HookStateManager(metaclass=SingletonMeta):
 
         try:
             if self.hook_state_file.exists():
-                with open(self.hook_state_file, "r", encoding=self.config.state_file_encoding) as f:
+                with open(
+                    self.hook_state_file, "r", encoding=self.config.state_file_encoding
+                ) as f:
                     state = json.load(f)
 
                 self._hook_state_cache = state
@@ -212,11 +223,14 @@ class HookStateManager(metaclass=SingletonMeta):
         try:
             # Create backup if enabled
             if self.config.backup_on_write and self.hook_state_file.exists():
-                backup_file = self.hook_state_file.with_suffix('.json.backup')
+                backup_file = self.hook_state_file.with_suffix(".json.backup")
                 import shutil
+
                 shutil.copy2(self.hook_state_file, backup_file)
 
-            with open(self.hook_state_file, "w", encoding=self.config.state_file_encoding) as f:
+            with open(
+                self.hook_state_file, "w", encoding=self.config.state_file_encoding
+            ) as f:
                 json.dump(state, f, indent=self.config.state_file_indent)
 
             self._hook_state_cache = state
@@ -241,8 +255,10 @@ class HookStateManager(metaclass=SingletonMeta):
         current_time = time.time()
 
         # Use cache if recent (within configured TTL)
-        if (self._command_state_cache and
-            current_time - self._cache_timestamp < self.config.state_cache_ttl):
+        if (
+            self._command_state_cache
+            and current_time - self._cache_timestamp < self.config.state_cache_ttl
+        ):
             if self.config.log_state_changes:
                 self.logger.debug("Command state cache hit")
             record_cache_hit()
@@ -250,14 +266,20 @@ class HookStateManager(metaclass=SingletonMeta):
 
         try:
             if self.command_state_file.exists():
-                with open(self.command_state_file, "r", encoding=self.config.state_file_encoding) as f:
+                with open(
+                    self.command_state_file,
+                    "r",
+                    encoding=self.config.state_file_encoding,
+                ) as f:
                     state = json.load(f)
 
                 self._command_state_cache = state
                 self._cache_timestamp = current_time
                 self._performance_metrics.record_state_read()
                 if self.config.log_state_changes:
-                    self.logger.debug(f"Loaded command state from {self.command_state_file}")
+                    self.logger.debug(
+                        f"Loaded command state from {self.command_state_file}"
+                    )
                 record_cache_hit()
                 return state
         except (IOError, json.JSONDecodeError, Exception) as e:
@@ -271,7 +293,7 @@ class HookStateManager(metaclass=SingletonMeta):
             "last_timestamp": None,
             "is_running": False,
             "execution_count": 0,
-            "duplicate_count": 0
+            "duplicate_count": 0,
         }
         self._command_state_cache = default_state
         self._cache_timestamp = current_time
@@ -293,11 +315,14 @@ class HookStateManager(metaclass=SingletonMeta):
         try:
             # Create backup if enabled
             if self.config.backup_on_write and self.command_state_file.exists():
-                backup_file = self.command_state_file.with_suffix('.json.backup')
+                backup_file = self.command_state_file.with_suffix(".json.backup")
                 import shutil
+
                 shutil.copy2(self.command_state_file, backup_file)
 
-            with open(self.command_state_file, "w", encoding=self.config.state_file_encoding) as f:
+            with open(
+                self.command_state_file, "w", encoding=self.config.state_file_encoding
+            ) as f:
                 json.dump(state, f, indent=self.config.state_file_indent)
 
             self._command_state_cache = state
@@ -313,7 +338,9 @@ class HookStateManager(metaclass=SingletonMeta):
             self._performance_metrics.record_io_error()
             return False
 
-    def track_hook_execution(self, hook_name: str, phase: str = None) -> ExecutionResult:
+    def track_hook_execution(
+        self, hook_name: str, phase: str = None
+    ) -> ExecutionResult:
         """Track hook execution and return execution information
 
         Args:
@@ -341,7 +368,7 @@ class HookStateManager(metaclass=SingletonMeta):
                         duplicate=False,
                         execution_id=str(uuid.uuid4()),
                         timestamp=start_time,
-                        error="Failed to acquire lock for hook tracking"
+                        error="Failed to acquire lock for hook tracking",
                     )
 
                 state = self._load_hook_state()
@@ -354,7 +381,7 @@ class HookStateManager(metaclass=SingletonMeta):
                         "count": 0,
                         "last_execution": 0,
                         "last_phase": None,
-                        "executions": []
+                        "executions": [],
                     }
 
                 hook_state = state[hook_name]
@@ -366,8 +393,11 @@ class HookStateManager(metaclass=SingletonMeta):
                 # Phase-based deduplication for SessionStart
                 if hook_name == "SessionStart" and phase:
                     # Phase transitions are allowed (clear->compact or compact->clear)
-                    if (phase == hook_state.get("last_phase") and
-                        current_time - hook_state["last_execution"] < self.config.hook_dedupe_window):
+                    if (
+                        phase == hook_state.get("last_phase")
+                        and current_time - hook_state["last_execution"]
+                        < self.config.hook_dedupe_window
+                    ):
                         # Same phase within time window - deduplicate
                         is_duplicate = True
                         deduplication_reason = f"same phase within {self.config.hook_dedupe_window}s window"
@@ -376,7 +406,10 @@ class HookStateManager(metaclass=SingletonMeta):
                         pass
                 else:
                     # Regular deduplication based on time window
-                    if (current_time - hook_state["last_execution"] < self.config.hook_dedupe_window):
+                    if (
+                        current_time - hook_state["last_execution"]
+                        < self.config.hook_dedupe_window
+                    ):
                         is_duplicate = True
                         deduplication_reason = f"within {self.config.hook_dedupe_window}s deduplication window"
 
@@ -385,16 +418,20 @@ class HookStateManager(metaclass=SingletonMeta):
                     hook_state["count"] += 1
                     hook_state["last_execution"] = current_time
                     hook_state["last_phase"] = phase
-                    hook_state["executions"].append({
-                        "timestamp": current_time,
-                        "phase": phase,
-                        "execution_id": execution_id
-                    })
+                    hook_state["executions"].append(
+                        {
+                            "timestamp": current_time,
+                            "phase": phase,
+                            "execution_id": execution_id,
+                        }
+                    )
 
                     # Keep only recent executions (cleanup)
                     recent_executions = [
-                        e for e in hook_state["executions"]
-                        if current_time - e["timestamp"] < self.config.max_state_file_age_hours * 3600
+                        e
+                        for e in hook_state["executions"]
+                        if current_time - e["timestamp"]
+                        < self.config.max_state_file_age_hours * 3600
                     ]
                     if len(recent_executions) != len(hook_state["executions"]):
                         hook_state["executions"] = recent_executions
@@ -422,14 +459,16 @@ class HookStateManager(metaclass=SingletonMeta):
                     duplicate_count=duplicate_count,
                     state_operations_count=2,  # Load + Save
                     cache_hit=bool(self._hook_state_cache),
-                    warning=None if save_success else "Failed to save state but continuing execution"
+                    warning=(
+                        None
+                        if save_success
+                        else "Failed to save state but continuing execution"
+                    ),
                 )
 
                 # Record performance metrics
                 record_execution_metrics(
-                    execution_time_ms,
-                    success=True,
-                    is_duplicate=is_duplicate
+                    execution_time_ms, success=True, is_duplicate=is_duplicate
                 )
 
                 if self.config.log_state_changes:
@@ -446,9 +485,7 @@ class HookStateManager(metaclass=SingletonMeta):
 
             # Record failure metrics
             record_execution_metrics(
-                execution_time_ms,
-                success=False,
-                is_duplicate=False
+                execution_time_ms, success=False, is_duplicate=False
             )
 
             self.logger.error(f"Error in hook execution tracking: {e}")
@@ -463,7 +500,7 @@ class HookStateManager(metaclass=SingletonMeta):
                 phase=phase,
                 error=str(e),
                 execution_time_ms=execution_time_ms,
-                warning="Execution tracking failed but continuing execution"
+                warning="Execution tracking failed but continuing execution",
             )
 
         finally:
@@ -493,7 +530,9 @@ class HookStateManager(metaclass=SingletonMeta):
             with self._lock:
                 # Acquire lock with timeout
                 if not self._lock.acquire(timeout=self._lock_timeout):
-                    self.logger.warning("Failed to acquire lock for command deduplication")
+                    self.logger.warning(
+                        "Failed to acquire lock for command deduplication"
+                    )
                     self._performance_metrics.record_concurrent_access_error()
                     return ExecutionResult(
                         executed=True,  # Allow execution to continue despite lock issue
@@ -501,7 +540,7 @@ class HookStateManager(metaclass=SingletonMeta):
                         execution_id=str(uuid.uuid4()),
                         timestamp=start_time,
                         command=command,
-                        error="Failed to acquire lock for command deduplication"
+                        error="Failed to acquire lock for command deduplication",
                     )
 
                 state = self._load_command_state()
@@ -509,7 +548,7 @@ class HookStateManager(metaclass=SingletonMeta):
                 execution_id = str(uuid.uuid4())
 
                 # Check if command is an Alfred command (only deduplicate these)
-                if not command or not command.startswith("/alfred:"):
+                if not command or not command.startswith("/moai:"):
                     result = ExecutionResult(
                         executed=True,
                         duplicate=False,
@@ -519,14 +558,12 @@ class HookStateManager(metaclass=SingletonMeta):
                         reason="non-alfred command",
                         execution_count=state["execution_count"],
                         execution_time_ms=(time.time() - start_time) * 1000,
-                        state_operations_count=1  # Load
+                        state_operations_count=1,  # Load
                     )
 
                     # Record performance metrics
                     record_execution_metrics(
-                        result.execution_time_ms,
-                        success=True,
-                        is_duplicate=False
+                        result.execution_time_ms, success=True, is_duplicate=False
                     )
 
                     if self.config.log_state_changes:
@@ -541,21 +578,31 @@ class HookStateManager(metaclass=SingletonMeta):
                 is_duplicate = False
                 deduplication_reason = None
 
-                if (last_cmd and last_timestamp and
-                    command == last_cmd and
-                    current_time - last_timestamp < self.config.command_dedupe_window):
+                if (
+                    last_cmd
+                    and last_timestamp
+                    and command == last_cmd
+                    and current_time - last_timestamp
+                    < self.config.command_dedupe_window
+                ):
 
                     # Duplicate detected
                     is_duplicate = True
                     deduplication_reason = f"within {self.config.command_dedupe_window}s deduplication window"
                     state["duplicate_count"] += 1
-                    state["is_running"] = True  # Mark as running to prevent further duplicates
-                    state["duplicate_timestamp"] = datetime.fromtimestamp(current_time).isoformat()
+                    state["is_running"] = (
+                        True  # Mark as running to prevent further duplicates
+                    )
+                    state["duplicate_timestamp"] = datetime.fromtimestamp(
+                        current_time
+                    ).isoformat()
 
                     # Save state
                     save_success = self._save_command_state(state)
                     if not save_success:
-                        self.logger.warning("Failed to save command state for duplicate detection")
+                        self.logger.warning(
+                            "Failed to save command state for duplicate detection"
+                        )
 
                     result = ExecutionResult(
                         executed=True,  # Allow execution but mark as duplicate
@@ -570,7 +617,9 @@ class HookStateManager(metaclass=SingletonMeta):
                         execution_time_ms=(time.time() - start_time) * 1000,
                         state_operations_count=2,  # Load + Save
                         cache_hit=bool(self._command_state_cache),
-                        warning=None if save_success else "Failed to save duplicate state"
+                        warning=(
+                            None if save_success else "Failed to save duplicate state"
+                        ),
                     )
 
                 else:
@@ -583,7 +632,9 @@ class HookStateManager(metaclass=SingletonMeta):
                     # Save state
                     save_success = self._save_command_state(state)
                     if not save_success:
-                        self.logger.warning("Failed to save command state for normal execution")
+                        self.logger.warning(
+                            "Failed to save command state for normal execution"
+                        )
 
                     result = ExecutionResult(
                         executed=True,
@@ -596,14 +647,14 @@ class HookStateManager(metaclass=SingletonMeta):
                         execution_time_ms=(time.time() - start_time) * 1000,
                         state_operations_count=2,  # Load + Save
                         cache_hit=bool(self._command_state_cache),
-                        warning=None if save_success else "Failed to save command state"
+                        warning=(
+                            None if save_success else "Failed to save command state"
+                        ),
                     )
 
                 # Record performance metrics
                 record_execution_metrics(
-                    result.execution_time_ms,
-                    success=True,
-                    is_duplicate=is_duplicate
+                    result.execution_time_ms, success=True, is_duplicate=is_duplicate
                 )
 
                 if self.config.log_state_changes:
@@ -620,9 +671,7 @@ class HookStateManager(metaclass=SingletonMeta):
 
             # Record failure metrics
             record_execution_metrics(
-                execution_time_ms,
-                success=False,
-                is_duplicate=False
+                execution_time_ms, success=False, is_duplicate=False
             )
 
             self.logger.error(f"Error in command deduplication: {e}")
@@ -636,7 +685,7 @@ class HookStateManager(metaclass=SingletonMeta):
                 command=command,
                 error=str(e),
                 execution_time_ms=execution_time_ms,
-                warning="Command deduplication failed but continuing execution"
+                warning="Command deduplication failed but continuing execution",
             )
 
         finally:
@@ -663,7 +712,9 @@ class HookStateManager(metaclass=SingletonMeta):
                 self._save_command_state(state)
 
                 if self.config.log_state_changes:
-                    self.logger.info(f"Command marked as complete: {command or 'unknown'}")
+                    self.logger.info(
+                        f"Command marked as complete: {command or 'unknown'}"
+                    )
 
         except Exception as e:
             self.logger.error(f"Failed to mark command as complete: {e}")
@@ -702,16 +753,22 @@ class HookStateManager(metaclass=SingletonMeta):
                     hook_data = hook_state[hook_name]
                     if "executions" in hook_data:
                         recent_executions = [
-                            e for e in hook_data["executions"]
+                            e
+                            for e in hook_data["executions"]
                             if current_time - e["timestamp"] < max_age_seconds
                         ]
                         if len(recent_executions) != len(hook_data["executions"]):
                             hook_data["executions"] = recent_executions
                             if self.config.log_state_changes:
-                                self.logger.debug(f"Cleaned up {len(recent_executions)} executions for {hook_name}")
+                                self.logger.debug(
+                                    f"Cleaned up {len(recent_executions)} executions for {hook_name}"
+                                )
 
                     # Remove hooks with no recent executions
-                    if (hook_data.get("last_execution", 0) < current_time - max_age_seconds):
+                    if (
+                        hook_data.get("last_execution", 0)
+                        < current_time - max_age_seconds
+                    ):
                         del hook_state[hook_name]
                         if self.config.log_state_changes:
                             self.logger.debug(f"Removed old hook state: {hook_name}")
@@ -720,15 +777,20 @@ class HookStateManager(metaclass=SingletonMeta):
 
                 # Clean up command state
                 command_state = self._load_command_state()
-                if (command_state.get("last_timestamp", 0) < current_time - max_age_seconds):
+                if (
+                    command_state.get("last_timestamp", 0)
+                    < current_time - max_age_seconds
+                ):
                     # Reset command state if too old
-                    command_state.update({
-                        "last_command": None,
-                        "last_timestamp": None,
-                        "is_running": False,
-                        "execution_count": 0,
-                        "duplicate_count": 0
-                    })
+                    command_state.update(
+                        {
+                            "last_command": None,
+                            "last_timestamp": None,
+                            "is_running": False,
+                            "execution_count": 0,
+                            "duplicate_count": 0,
+                        }
+                    )
                     self._save_command_state(command_state)
                     if self.config.log_state_changes:
                         self.logger.debug("Reset old command state")
@@ -770,7 +832,9 @@ class HookStateManager(metaclass=SingletonMeta):
             if thread.is_alive():
                 thread.join(timeout=timeout)
                 if thread.is_alive():
-                    self.logger.warning(f"Thread {thread.name} did not finish within timeout")
+                    self.logger.warning(
+                        f"Thread {thread.name} did not finish within timeout"
+                    )
 
         # Clear thread list
         self._threads.clear()
@@ -810,7 +874,9 @@ _state_managers: Dict[str, HookStateManager] = {}
 _state_manager_lock = threading.RLock()
 
 
-def get_state_manager(cwd: str, config: Optional[HookConfiguration] = None) -> HookStateManager:
+def get_state_manager(
+    cwd: str, config: Optional[HookConfiguration] = None
+) -> HookStateManager:
     """Get or create state manager for given working directory
 
     Note: With Singleton pattern, each cwd gets its own unique instance,
@@ -827,7 +893,7 @@ def get_state_manager(cwd: str, config: Optional[HookConfiguration] = None) -> H
         # Check if we already have an instance for this cwd
         existing_instance_key = None
         for key, instance in _state_managers.items():
-            if hasattr(instance, 'cwd') and instance.cwd == cwd:
+            if hasattr(instance, "cwd") and instance.cwd == cwd:
                 existing_instance_key = key
                 break
 
@@ -868,7 +934,9 @@ def track_hook_execution(
     return manager.track_hook_execution(hook_name, phase)
 
 
-def deduplicate_command(command: str, cwd: str, config: Optional[HookConfiguration] = None) -> ExecutionResult:
+def deduplicate_command(
+    command: str, cwd: str, config: Optional[HookConfiguration] = None
+) -> ExecutionResult:
     """Convenience function to deduplicate command
 
     Args:
@@ -919,7 +987,9 @@ def cleanup_old_states(
     manager.cleanup_old_states(max_age_hours)
 
 
-def get_performance_summary(cwd: Optional[str] = None, config: Optional[HookConfiguration] = None) -> Dict[str, Any]:
+def get_performance_summary(
+    cwd: Optional[str] = None, config: Optional[HookConfiguration] = None
+) -> Dict[str, Any]:
     """Convenience function to get performance summary
 
     Args:

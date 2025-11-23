@@ -7,6 +7,7 @@
 ## Overview
 
 **OLD Pattern** (manual initialization):
+
 ```python
 # User had to manually initialize TodoWrite
 TodoWrite([
@@ -16,6 +17,7 @@ TodoWrite([
 ```
 
 **NEW Pattern** (auto-initialization from Plan agent):
+
 ```python
 # Plan agent generates task list
 plan = Task(
@@ -30,23 +32,27 @@ TodoWrite(plan.tasks)  # Automatic from Plan agent output
 ## Integration with Alfred 4-Step Workflow
 
 ### Step 1: Intent Understanding
+
 - **Goal**: Clarify user intent before any action
 - **TodoWrite**: NO initialization
 - **Output**: Clear understanding of requirements
 
 ### Step 2: Plan Creation (NEW: AUTO-INIT)
+
 - **Goal**: Analyze tasks and initialize progress tracking
 - **Action**: Invoke Plan Agent to decompose tasks
 - **NEW**: **AUTO-INITIALIZE TodoWrite from Plan output**
 - **Output**: Structured task breakdown + initialized TodoWrite
 
 ### Step 3: Task Execution
+
 - **Goal**: Execute tasks with transparent progress tracking
 - **Action**: Execute tasks in order, updating TodoWrite status
 - **TodoWrite**: Update: pending → in_progress → completed
 - **Output**: Completed work, all todos marked done
 
 ### Step 4: Report & Commit
+
 - **Goal**: Document work and create git history
 - **Action**: Generate report (if requested) and commit
 - **TodoWrite**: All tasks should be "completed"
@@ -58,29 +64,29 @@ Plan agent should return tasks in TodoWrite-compatible format:
 
 ```json
 {
-    "tasks": [
-        {
-            "content": "Analyze SPEC requirements",
-            "activeForm": "Analyzing SPEC requirements",
-            "status": "pending"
-        },
-        {
-            "content": "Write test cases",
-            "activeForm": "Writing test cases",
-            "status": "pending"
-        },
-        {
-            "content": "Implement feature",
-            "activeForm": "Implementing feature",
-            "status": "pending"
-        }
-    ]
+  "tasks": [
+    {
+      "content": "Analyze SPEC requirements",
+      "activeForm": "Analyzing SPEC requirements",
+      "status": "pending"
+    },
+    {
+      "content": "Write test cases",
+      "activeForm": "Writing test cases",
+      "status": "pending"
+    },
+    {
+      "content": "Implement feature",
+      "activeForm": "Implementing feature",
+      "status": "pending"
+    }
+  ]
 }
 ```
 
 ## Implementation Pattern
 
-### In /alfred:1-plan Command
+### In /moai:1-plan Command
 
 ```python
 # STEP 2: Plan Creation (with AUTO-INIT)
@@ -120,29 +126,46 @@ for task in plan_result.tasks:
 ## Real-World Example
 
 ### User Request
+
 ```
-/alfred:1-plan "Create user authentication feature"
+/moai:1-plan "Create user authentication feature"
 ```
 
 ### Step 1: Intent Understanding
+
 - Clarify: Is JWT or OAuth preferred?
 - Ask for scope: Frontend, backend, or both?
 
 ### Step 2: Plan Creation
+
 Plan agent returns:
+
 ```json
 {
-    "tasks": [
-        {"content": "Design authentication architecture", "activeForm": "Designing authentication architecture"},
-        {"content": "Create database schema", "activeForm": "Creating database schema"},
-        {"content": "Write API endpoints", "activeForm": "Writing API endpoints"},
-        {"content": "Build frontend login form", "activeForm": "Building frontend login form"},
-        {"content": "Write integration tests", "activeForm": "Writing integration tests"}
-    ]
+  "tasks": [
+    {
+      "content": "Design authentication architecture",
+      "activeForm": "Designing authentication architecture"
+    },
+    {
+      "content": "Create database schema",
+      "activeForm": "Creating database schema"
+    },
+    { "content": "Write API endpoints", "activeForm": "Writing API endpoints" },
+    {
+      "content": "Build frontend login form",
+      "activeForm": "Building frontend login form"
+    },
+    {
+      "content": "Write integration tests",
+      "activeForm": "Writing integration tests"
+    }
+  ]
 }
 ```
 
 Alfred AUTO-INITIALIZES:
+
 ```
 ☑ Design authentication architecture [pending]
 ☑ Create database schema [pending]
@@ -152,6 +175,7 @@ Alfred AUTO-INITIALIZES:
 ```
 
 ### Step 3: Task Execution
+
 ```
 ☑ Design authentication architecture [completed]
 ☑ Create database schema [completed]
@@ -170,6 +194,7 @@ Alfred AUTO-INITIALIZES:
 ## Backward Compatibility
 
 **Existing workflows** that manually call TodoWrite still work:
+
 ```python
 # Old style still works
 TodoWrite([
@@ -179,6 +204,7 @@ TodoWrite([
 ```
 
 **Transition strategy**:
+
 1. New commands use AUTO-INIT pattern (Week 1)
 2. Existing commands continue supporting manual TodoWrite
 3. Deprecation notice added in v0.9.0
@@ -195,17 +221,20 @@ TodoWrite([
 ## Migration Guide for Users
 
 **Before (v0.7.0)**:
+
 - Manual TodoWrite initialization
 - Inconsistent task structures
 - No automatic initialization
 
 **After (v0.8.0+)**:
+
 - Automatic TodoWrite from Plan agent
 - Consistent structure across all commands
 - Better progress visibility
 - Supports resume feature
 
 **How to upgrade**:
+
 1. No action required (automatic)
-2. All 3 commands (`/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`) now support auto-init
+2. All 3 commands (`/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`) now support auto-init
 3. Manual TodoWrite calls still work (backward compatible)

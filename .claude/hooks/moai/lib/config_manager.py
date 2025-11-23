@@ -19,50 +19,39 @@ DEFAULT_CONFIG = {
             "success": 0,
             "error": 1,
             "critical_error": 2,
-            "config_error": 3
+            "config_error": 3,
         },
         "messages": {
             "timeout": {
                 "post_tool_use": "⚠️ PostToolUse timeout - continuing",
                 "session_end": "⚠️ SessionEnd cleanup timeout - session ending anyway",
-                "session_start": "⚠️ Session start timeout - continuing without project info"
+                "session_start": "⚠️ Session start timeout - continuing without project info",
             },
             "stderr": {
                 "timeout": {
                     "post_tool_use": "PostToolUse hook timeout after 5 seconds",
                     "session_end": "SessionEnd hook timeout after 5 seconds",
-                    "session_start": "SessionStart hook timeout after 5 seconds"
+                    "session_start": "SessionStart hook timeout after 5 seconds",
                 }
             },
             "config": {
-                "missing": "❌ Project configuration not found - run /alfred:0-project",
-                "missing_fields": "⚠️ Missing configuration:"
-            }
+                "missing": "❌ Project configuration not found - run /moai:0-project",
+                "missing_fields": "⚠️ Missing configuration:",
+            },
         },
         "cache": {
             "directory": ".moai/cache",
             "version_ttl_seconds": 1800,
-            "git_ttl_seconds": 10
+            "git_ttl_seconds": 10,
         },
-        "project_search": {
-            "max_depth": 10
-        },
-        "network": {
-            "test_host": "8.8.8.8",
-            "test_port": 53,
-            "timeout_seconds": 0.1
-        },
+        "project_search": {"max_depth": 10},
+        "network": {"test_host": "8.8.8.8", "test_port": 53, "timeout_seconds": 0.1},
         "version_check": {
             "pypi_url": "https://pypi.org/pypi/moai-adk/json",
-            "timeout_seconds": 1
+            "timeout_seconds": 1,
         },
-        "git": {
-            "timeout_seconds": 2
-        },
-                "defaults": {
-            "timeout_ms": 5000,
-            "graceful_degradation": True
-        }
+        "git": {"timeout_seconds": 2},
+        "defaults": {"timeout_ms": 5000, "graceful_degradation": True},
     }
 }
 
@@ -92,7 +81,7 @@ class ConfigManager:
         config = {}
         if self.config_path.exists():
             try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
+                with open(self.config_path, "r", encoding="utf-8") as f:
                     file_config = json.load(f)
                     config = self._merge_configs(DEFAULT_CONFIG, file_config)
             except (json.JSONDecodeError, IOError, OSError):
@@ -116,7 +105,7 @@ class ConfigManager:
             Configuration value or default
         """
         config = self.load_config()
-        keys = key_path.split('.')
+        keys = key_path.split(".")
         current = config
 
         for key in keys:
@@ -205,7 +194,9 @@ class ConfigManager:
                 subcategory_messages = timeout_messages.get(subcategory, {})
                 if isinstance(subcategory_messages, dict):
                     fallback = subcategory_messages.get(key)
-                    message = fallback or f"Message not found: {category}.{subcategory}.{key}"
+                    message = (
+                        fallback or f"Message not found: {category}.{subcategory}.{key}"
+                    )
                 else:
                     message = f"Message not found: {category}.{subcategory}.{key}"
             else:
@@ -245,7 +236,6 @@ class ConfigManager:
         """
         return self.get("hooks.git", {})
 
-
     def get_exit_code(self, exit_type: str) -> int:
         """Get exit code for specific exit type.
 
@@ -273,7 +263,7 @@ class ConfigManager:
             # Ensure parent directory exists
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(updated_config, f, indent=2, ensure_ascii=False)
 
             self._config = updated_config
@@ -305,7 +295,9 @@ class ConfigManager:
         except Exception:
             return False
 
-    def _merge_configs(self, base: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_configs(
+        self, base: Dict[str, Any], updates: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Recursively merge configuration dictionaries.
 
         Args:
@@ -318,7 +310,11 @@ class ConfigManager:
         result = base.copy()
 
         for key, value in updates.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = self._merge_configs(result[key], value)
             else:
                 result[key] = value

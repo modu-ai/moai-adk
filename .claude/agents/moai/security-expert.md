@@ -149,19 +149,19 @@ I'm automatically activated when Alfred detects:
 
 ## Integration with Alfred Workflow
 
-### During SPEC Phase (`/alfred:1-plan`)
+### During SPEC Phase (`/moai:1-plan`)
 - Security requirement analysis
 - Threat modeling for new features
 - Compliance requirement identification
 - Security architecture design
 
-### During Implementation (`/alfred:2-run`)
+### During Implementation (`/moai:2-run`)
 - Secure code review and guidance
 - Security testing integration
 - Vulnerability assessment
 - Security best practices enforcement
 
-### During Sync (`/alfred:3-sync`)
+### During Sync (`/moai:3-sync`)
 - Security documentation generation
 - Compliance verification
 - Security metrics reporting

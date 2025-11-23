@@ -24,25 +24,29 @@ This skill manages the complete project setup process:
 ✅ **User Profile** - Set your nickname (max 20 characters)  
 ✅ **Team Setup** - Configure GitHub workflows and branch management  
 ✅ **Report Settings** - Control automatic report generation with cost awareness  
-✅ **Domain Selection** - Choose project domains for expert agent activation  
+✅ **Domain Selection** - Choose project domains for expert agent activation
 
 ## Key Features
 
 ### 💡 Efficient Interactions
+
 - Reduces user interactions by 60% through batched questions
 - 3-4 questions instead of 8-10 separate interactions
 
 ### 💰 Cost Management
+
 - Token cost warnings for expensive operations
 - English prompt language saves 15-20% on API costs
 - Report generation controls to manage spending
 
 ### 🌍 Multi-language Support
+
 - 4 supported languages with full localization
 - Flexible prompt language configuration
 - Consistent experience across languages
 
 ### 👥 Team Collaboration
+
 - Multiple Git workflow options
 - GitHub integration settings
 - Team-specific configurations
@@ -79,10 +83,11 @@ The skill creates and manages `.moai/config/config.json`:
 ## Integration
 
 This skill is automatically used by:
-- `/alfred:0-project` - Primary integration point
-- `/alfred:1-plan` - Uses domain selection for expert agents
-- `/alfred:2-run` - Applies language settings to sub-agents
-- `/alfred:3-sync` - Respects report generation settings
+
+- `/moai:0-project` - Primary integration point
+- `/moai:1-plan` - Uses domain selection for expert agents
+- `/moai:2-run` - Applies language settings to sub-agents
+- `/moai:3-sync` - Respects report generation settings
 
 ## File Structure
 
@@ -96,26 +101,29 @@ moai-project-language-initializer/
 
 ## Supported Languages
 
-| Language | Code | Conversation | Agent Prompts | Cost Impact |
-|----------|------|--------------|---------------|-------------|
-| English | en | English | English | Baseline |
-| Korean | ko | 한국어 | English/Korean | +15% if Korean |
-| Japanese | ja | 日本語 | English/Japanese | +20% if Japanese |
-| Chinese | zh | 中文 | English/Chinese | +18% if Chinese |
+| Language | Code | Conversation | Agent Prompts    | Cost Impact      |
+| -------- | ---- | ------------ | ---------------- | ---------------- |
+| English  | en   | English      | English          | Baseline         |
+| Korean   | ko   | 한국어       | English/Korean   | +15% if Korean   |
+| Japanese | ja   | 日本語       | English/Japanese | +20% if Japanese |
+| Chinese  | zh   | 中文         | English/Chinese  | +18% if Chinese  |
 
 ## Team Workflows
 
 ### Feature Branch + PR (Recommended for Teams)
+
 - Creates feature branch for each SPEC
 - Requires pull request review
 - Best for code quality and team collaboration
 
 ### Direct Commit to Develop (Fast Iteration)
+
 - Commits directly to develop branch
 - No PR process required
 - Best for prototypes and individual projects
 
 ### Per-SPEC Decision (Maximum Flexibility)
+
 - Ask user to choose workflow for each SPEC
 - Adapts to different project needs
 - Good for mixed project types
@@ -129,6 +137,7 @@ moai-project-language-initializer/
 ## Error Handling
 
 The skill includes comprehensive error handling:
+
 - Input validation with helpful error messages
 - Automatic recovery from missing configurations
 - Graceful degradation for system errors
@@ -137,6 +146,7 @@ The skill includes comprehensive error handling:
 ## Getting Help
 
 For detailed technical information:
+
 - See `examples.md` for practical usage patterns
 - See `reference.md` for complete API documentation
 - See `SKILL.md` for full implementation details

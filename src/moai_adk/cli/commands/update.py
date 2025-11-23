@@ -375,9 +375,9 @@ def _generate_manual_merge_guide(
                 rel_path = file.relative_to(backup_path)
                 current_file = project_path / rel_path
                 if current_file.exists():
-                    if file.read_text(encoding="utf-8", errors="ignore") != current_file.read_text(
+                    if file.read_text(
                         encoding="utf-8", errors="ignore"
-                    ):
+                    ) != current_file.read_text(encoding="utf-8", errors="ignore"):
                         changed_files.append(f"  - {rel_path}")
                 else:
                     changed_files.append(f"  - {rel_path} (new)")
@@ -759,7 +759,9 @@ def _preserve_user_settings(project_path: Path) -> dict[str, Path | None]:
     return preserved
 
 
-def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]) -> bool:
+def _restore_user_settings(
+    project_path: Path, preserved: dict[str, Path | None]
+) -> bool:
     """Restore user-specific settings files after template sync.
 
     Args:
@@ -782,7 +784,9 @@ def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]
             settings_local.write_text(backup_path.read_text(encoding="utf-8"))
             console.print("   [cyan]✓ Restored user settings[/cyan]")
         except Exception as e:
-            console.print(f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]")
+            console.print(
+                f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]"
+            )
             logger.warning(f"Failed to restore settings.local.json: {e}")
             success = False
 
@@ -816,29 +820,25 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
                 try:
                     analyzer = MergeAnalyzer(project_path)
                     # Template source path from installed package
-                    template_path = (
-                        Path(__file__).parent.parent.parent / "templates"
-                    )
+                    template_path = Path(__file__).parent.parent.parent / "templates"
 
-                    console.print("\n[cyan]🔍 Starting merge analysis (max 2 mins)...[/cyan]")
-                    console.print("[dim]   Analyzing intelligent merge with Claude Code.[/dim]")
+                    console.print(
+                        "\n[cyan]🔍 Starting merge analysis (max 2 mins)...[/cyan]"
+                    )
+                    console.print(
+                        "[dim]   Analyzing intelligent merge with Claude Code.[/dim]"
+                    )
                     console.print("[dim]   Please wait...[/dim]\n")
                     analysis = analyzer.analyze_merge(backup_path, template_path)
 
                     # Ask user confirmation
                     if not analyzer.ask_user_confirmation(analysis):
-                        console.print(
-                            "[yellow]⚠️  User cancelled the update.[/yellow]"
-                        )
+                        console.print("[yellow]⚠️  User cancelled the update.[/yellow]")
                         backup.restore_backup(backup_path)
                         return False
                 except Exception as e:
-                    console.print(
-                        f"[yellow]⚠️  Merge analysis failed: {e}[/yellow]"
-                    )
-                    console.print(
-                        "[yellow]Proceeding with automatic merge.[/yellow]"
-                    )
+                    console.print(f"[yellow]⚠️  Merge analysis failed: {e}[/yellow]")
+                    console.print("[yellow]Proceeding with automatic merge.[/yellow]")
 
         # Load existing config
         existing_config = _load_existing_config(project_path)
@@ -858,20 +858,14 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
             console.print("\n[cyan]🔄 Migrating folder structure: Alfred → Moai[/cyan]")
             try:
                 if not migrator.execute_migration(backup_path):
-                    console.print(
-                        "[red]❌ Alfred → Moai migration failed[/red]"
-                    )
+                    console.print("[red]❌ Alfred → Moai migration failed[/red]")
                     if backup_path:
-                        console.print(
-                            "[yellow]🔄 Restoring from backup...[/yellow]"
-                        )
+                        console.print("[yellow]🔄 Restoring from backup...[/yellow]")
                         backup = TemplateBackup(project_path)
                         backup.restore_backup(backup_path)
                     return False
             except Exception as e:
-                console.print(
-                    f"[red]❌ Error during migration: {e}[/red]"
-                )
+                console.print(f"[red]❌ Error during migration: {e}[/red]")
                 if backup_path:
                     backup = TemplateBackup(project_path)
                     backup.restore_backup(backup_path)
@@ -899,17 +893,29 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Update companyAnnouncements in settings.local.json
         try:
             import sys
-            utils_dir = Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
+
+            utils_dir = (
+                Path(__file__).parent.parent.parent
+                / "templates"
+                / ".claude"
+                / "hooks"
+                / "moai"
+                / "shared"
+                / "utils"
+            )
 
             if utils_dir.exists():
                 sys.path.insert(0, str(utils_dir))
                 try:
                     from announcement_translator import auto_translate_and_update
+
                     console.print("[cyan]Updating announcements...[/cyan]")
                     auto_translate_and_update(project_path)
                     console.print("[green]✓ Announcements updated[/green]")
                 except Exception as e:
-                    console.print(f"[yellow]⚠️  Announcement update failed: {e}[/yellow]")
+                    console.print(
+                        f"[yellow]⚠️  Announcement update failed: {e}[/yellow]"
+                    )
                 finally:
                     sys.path.remove(str(utils_dir))
 
@@ -1093,6 +1099,7 @@ def _build_template_context(
             return "0.0.0"
         clean_version = v[1:] if v.startswith("v") else v
         import re
+
         semver_match = re.match(r"^(\d+\.\d+\.\d+)", clean_version)
         if semver_match:
             return semver_match.group(1)
@@ -1232,7 +1239,7 @@ def _validate_template_substitution(project_path: Path) -> None:
         for issue in issues_found:
             console.print(f"   {issue}")
         console.print(
-            "[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]"
+            "[yellow]💡 Run '/moai:project' to fix template variables[/yellow]"
         )
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
@@ -1285,7 +1292,7 @@ def _validate_template_substitution_with_rollback(
             )
         else:
             console.print(
-                "[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]"
+                "[yellow]💡 Run '/moai:project' to fix template variables[/yellow]"
             )
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
@@ -1716,21 +1723,15 @@ def update(
                 console.print(
                     f"[cyan]📋 Merge guide: {guide_path.relative_to(project_path)}[/cyan]"
                 )
-                console.print(
-                    "\n[yellow]⚠️  Next steps:[/yellow]"
-                )
-                console.print(
-                    "[yellow]  1. Review the merge guide[/yellow]"
-                )
+                console.print("\n[yellow]⚠️  Next steps:[/yellow]")
+                console.print("[yellow]  1. Review the merge guide[/yellow]")
                 console.print(
                     "[yellow]  2. Compare files using diff or visual tools[/yellow]"
                 )
                 console.print(
                     "[yellow]  3. Manually merge your customizations[/yellow]"
                 )
-                console.print(
-                    "[yellow]  4. Test and commit changes[/yellow]"
-                )
+                console.print("[yellow]  4. Test and commit changes[/yellow]")
 
             except Exception as e:
                 console.print(f"[red]Error: Manual merge setup failed - {e}[/red]")
@@ -1786,7 +1787,7 @@ def update(
 
         console.print("\n[green]✓ Update complete![/green]")
         console.print(
-            "[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]"
+            "[cyan]ℹ️  Next step: Run /moai:project update to optimize template changes[/cyan]"
         )
 
     except Exception as e:

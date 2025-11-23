@@ -317,7 +317,7 @@ class SpecStatusManager:
             criteria_checks["docs_synced"] = self._check_documentation_sync(spec_id)
             if not criteria_checks["docs_synced"]:
                 result["recommendations"].append(
-                    "Consider running /alfred:3-sync to update documentation"
+                    "Consider running /moai:3-sync to update documentation"
                 )
 
             result["criteria_met"] = criteria_checks

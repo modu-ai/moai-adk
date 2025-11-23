@@ -24,14 +24,18 @@ if str(LIB_DIR) not in sys.path:
 try:
     from models import HookPayload, HookResult  # noqa: E402
 except ImportError as e:
-    raise ImportError(f"Failed to import from models: {e}. LIB_DIR={LIB_DIR}, sys.path={sys.path[:3]}") from e
+    raise ImportError(
+        f"Failed to import from models: {e}. LIB_DIR={LIB_DIR}, sys.path={sys.path[:3]}"
+    ) from e
 
 import pytest
 
 # Skip this file - outdated test file
 # handlers modules don't exist yet in the moai structure
 # The test file references undefined handlers that haven't been implemented
-pytestmark = pytest.mark.skip(reason="Outdated test file - handlers modules not implemented in moai structure")
+pytestmark = pytest.mark.skip(
+    reason="Outdated test file - handlers modules not implemented in moai structure"
+)
 # try:
 #     from handlers.notification import (  # noqa: E402
 #         handle_notification,
@@ -147,9 +151,7 @@ class TestSessionStartHandler:
 
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    def test_session_start_compact_phase(
-        self, mock_get_git, mock_count_specs
-    ):
+    def test_session_start_compact_phase(self, mock_get_git, mock_count_specs):
         """compact 단계는 상세 정보 반환
 
         SPEC 요구사항:
@@ -184,8 +186,7 @@ class TestSessionStartHandler:
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
     def test_session_start_major_version_warning(
-        self, mock_get_git, mock_count_specs,
-        mock_list_checkpoints, mock_version_info
+        self, mock_get_git, mock_count_specs, mock_list_checkpoints, mock_version_info
     ):
         """Major version update shows warning with release notes
 
@@ -210,7 +211,7 @@ class TestSessionStartHandler:
             "update_available": True,
             "is_major_update": True,
             "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v1.0.0",
-            "upgrade_command": "uv tool upgrade moai-adk"
+            "upgrade_command": "uv tool upgrade moai-adk",
         }
 
         payload: HookPayload = {"cwd": ".", "phase": "compact"}
@@ -232,8 +233,7 @@ class TestSessionStartHandler:
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
     def test_session_start_regular_update_with_release_notes(
-        self, mock_get_git, mock_count_specs,
-        mock_list_checkpoints, mock_version_info
+        self, mock_get_git, mock_count_specs, mock_list_checkpoints, mock_version_info
     ):
         """Regular update shows version info with release notes
 
@@ -257,7 +257,7 @@ class TestSessionStartHandler:
             "update_available": True,
             "is_major_update": False,
             "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v0.9.0",
-            "upgrade_command": "uv tool upgrade moai-adk"
+            "upgrade_command": "uv tool upgrade moai-adk",
         }
 
         payload: HookPayload = {"cwd": ".", "phase": "compact"}
@@ -295,7 +295,7 @@ class TestUserPromptSubmitHandler:
         """
         mock_enhanced_jit.return_value = (
             [".moai/specs/SPEC-001.md", ".moai/specs/SPEC-002.md"],
-            "🎯 전문가 에이전트: spec-builder"
+            "🎯 전문가 에이전트: spec-builder",
         )
 
         payload: HookPayload = {
@@ -311,7 +311,10 @@ class TestUserPromptSubmitHandler:
         ]
         # UserPromptSubmit은 특별한 스키마 사용
         user_submit_output = result.to_user_prompt_submit_dict()
-        assert user_submit_output["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
+        assert (
+            user_submit_output["hookSpecificOutput"]["hookEventName"]
+            == "UserPromptSubmit"
+        )
 
     @patch("handlers.user.get_jit_context")
     def test_user_prompt_submit_empty_context(self, mock_get_jit):
@@ -341,10 +344,10 @@ class TestUserPromptSubmitHandler:
         """Alfred 명령어 실행 시 로깅 기능
 
         SPEC 요구사항:
-            - WHEN /alfred:* 명령어가 실행되면, 타임스탐프와 함께 로그 파일에 기록해야 한다
+            - WHEN /moai:* 명령어가 실행되면, 타임스탐프와 함께 로그 파일에 기록해야 한다
             - WHEN 로깅이 실패하면, 메인 플로우는 계속되어야 한다 (비차단)
 
-        Given: "/alfred:1-plan 테스트" 프롬프트
+        Given: "/moai:1-plan 테스트" 프롬프트
         When: handle_user_prompt_submit()를 호출하면
         Then: 로그 파일에 명령어가 기록되고, 정상적으로 완료된다
         """
@@ -352,7 +355,7 @@ class TestUserPromptSubmitHandler:
 
         payload: HookPayload = {
             "cwd": ".",
-            "userPrompt": "/alfred:1-plan 테스트 명령어",
+            "userPrompt": "/moai:1-plan 테스트 명령어",
         }
 
         result = handle_user_prompt_submit(payload)
@@ -367,7 +370,7 @@ class TestUserPromptSubmitHandler:
         """Alfred가 아닌 명령어는 로깅하지 않음
 
         SPEC 요구사항:
-            - WHEN /alfred:가 아닌 명령어가 실행되면, 로깅하지 않아야 한다
+            - WHEN /moai:가 아닌 명령어가 실행되면, 로깅하지 않아야 한다
 
         Given: "/help" 사용자 프롬프트
         When: handle_user_prompt_submit()를 호출하면
@@ -402,7 +405,7 @@ class TestUserPromptSubmitHandler:
 
         payload: HookPayload = {
             "cwd": ".",
-            "userPrompt": "/alfred:2-run SPEC-001",
+            "userPrompt": "/moai:2-run SPEC-001",
         }
 
         # Should not raise exception despite logging failure

@@ -30,12 +30,14 @@ status: active
 **Purpose**: Dynamically adapt Alfred's communication style based on user expertise and request context.
 
 **4 Core Personas**:
+
 - 🧑‍🏫 **Technical Mentor** - Detailed, educational (for beginners)
 - ⚡ **Efficiency Coach** - Concise, direct (for experts)
 - 📋 **Project Manager** - Structured planning (for coordination)
 - 🤝 **Collaboration Coordinator** - Team-focused (for groups)
 
 **Key Features**:
+
 - Stateless expertise detection (no session data required)
 - Multi-factor persona selection (triggers + context + expertise)
 - Gradual persona transitions (smooth style shifts)
@@ -51,6 +53,7 @@ status: active
 **Key Concept**: Identify user skill level from request patterns.
 
 **Approach**:
+
 ```python
 def detect_expertise_level(session_signals) -> str:
     beginner_indicators = [
@@ -80,6 +83,7 @@ def detect_expertise_level(session_signals) -> str:
 **Key Concept**: Choose persona based on explicit triggers + content + expertise.
 
 **Approach**:
+
 ```python
 def select_persona(user_request, session_context, project_config):
     # Factor 1: Explicit triggers (highest priority)
@@ -111,6 +115,7 @@ def select_persona(user_request, session_context, project_config):
 **Key Concept**: Each persona defines its communication parameters.
 
 **Approach**:
+
 ```python
 class TechnicalMentor:
     """Educational communication for learners"""
@@ -136,7 +141,7 @@ class EfficiencyCoach:
 
 class ProjectManager:
     """Structured planning communication"""
-    triggers = ["/alfred:", "plan", "coordinate"]
+    triggers = ["/moai:", "plan", "coordinate"]
     attributes = {
         "style": "structured",
         "format": "hierarchical",
@@ -161,6 +166,7 @@ class CollaborationCoordinator:
 **Key Concept**: Smoothly shift communication style as user expertise grows.
 
 **Approach**:
+
 ```python
 class PersonaTransition:
     def gradual_transition(self, from_persona, to_persona, steps=3):
@@ -194,6 +200,7 @@ class PersonaTransition:
 **Key Concept**: Adjust persona based on project context and constraints.
 
 **Approach**:
+
 ```python
 def adapt_to_project_context(persona, project_context):
     adapted = copy.deepcopy(persona)
@@ -244,6 +251,7 @@ This Skill uses Progressive Disclosure. For detailed patterns:
 ## 🔗 Integration with Other Skills
 
 **Complementary Skills**:
+
 - Skill("moai-core-ask-user-questions") - Adaptive question formulation
 - Skill("moai-cc-configuration") - User preference storage
 - Skill("moai-core-session-state") - Persona persistence
@@ -254,11 +262,13 @@ This Skill uses Progressive Disclosure. For detailed patterns:
 ## 📈 Version History
 
 **1.1.0** (2025-11-23)
+
 - 🔄 Refactored with Progressive Disclosure
 - ✨ 5 Core Patterns highlighted
 - ✨ Modularized advanced content
 
 **1.0.0** (2025-11-13)
+
 - ✨ 4 core personas
 - ✨ Expertise detection
 - ✨ Persona transitions

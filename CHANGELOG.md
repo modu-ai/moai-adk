@@ -1247,7 +1247,7 @@ uv install moai-adk==0.25.1
      - Preserved user-facing content in conversation language (Korean)
      - Updated all agent prompt structures and documentation
    - **Command Infrastructure Translation**: Translated 6 CLI commands to English
-     - `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`, `/alfred:9-feedback`, `/moai:release`
+     - `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:9-feedback`, `/moai:release`
      - Unified layer separation: Commands (English) → Agents → Skills
    - **Instruction Files Cleanup**: Removed all .backup files and standardized documentation
      - Cleaned up 45+ backup files from skill optimization processes
@@ -1382,9 +1382,9 @@ pip install moai-adk==0.25.0
 
 ### v0.23.1 (2025-11-12)
 
-**Major Refactoring: `/alfred:2-run` Agent-First Orchestration Pattern**
+**Major Refactoring: `/moai:2-run` Agent-First Orchestration Pattern**
 
-**⚠️ Breaking Change**: Complete refactoring of `/alfred:2-run` command to follow Claude Code official best practices.
+**⚠️ Breaking Change**: Complete refactoring of `/moai:2-run` command to follow Claude Code official best practices.
 
 **What Changed**:
 
@@ -1419,7 +1419,7 @@ pip install moai-adk==0.25.0
 - ✅ Compliance with Claude Code 2025 best practices
 
 **Breaking Changes**:
-- `/alfred:2-run` behavior unchanged from user perspective
+- `/moai:2-run` behavior unchanged from user perspective
 - Internal architecture completely refactored
 - requires new `run-orchestrator` agent
 - Migration guide: `.moai/docs/migration/2-run-command-refactor.md`
@@ -1477,7 +1477,7 @@ pip install moai-adk==0.25.0
 - **Files Modified**: 11 files across validation, automation, and feedback systems
 - **Lines of Code**: Added 1,200+ lines of validation and feedback logic
 - **Test Coverage**: Comprehensive testing of all new components
-- **Integration**: Seamless integration with existing `/alfred:9-feedback` command
+- **Integration**: Seamless integration with existing `/moai:9-feedback` command
 
 **User Experience**:
 - **Automated Compliance**: Documentation quality automatically validated on every PR
@@ -1970,7 +1970,7 @@ Quality Metrics:
 - 2025-10-01 | 264c124d | feat: Output Styles rebuild completed (4 styles)
 - 2025-10-02 | 907243d1 | docs: Auto Mode document synchronization completed (2025-10-02)
 - 2025-10-02 | 5283abeb | docs: Output Styles rebuild and document synchronization complete
-- 2025-10-02 | 1eda9708 | docs: Output Styles rebuild and /alfred:9-update improvements completed.
+- 2025-10-02 | 1eda9708 | docs: Output Styles rebuild and /moai:9-update improvements completed.
 - 2025-10-02 | 47f4d94d | docs: Completely improved README.md (Option C completed)
 - 2025-10-02 | 0a99d622 | docs: README table of contents updated
 - 2025-10-02 | 1265b65b | docs: CLI Reference usage example added
@@ -2197,7 +2197,7 @@ Quality Metrics:
 - 2025-10-19 | 7d90a527 | REFACTOR: Commands name change (2-build -> 2-run)
 - 2025-10-19 | 91b72f21 | DOCS: Skills system guide added to cc-manager
 - 2025-10-19 | 8bb7e7e8 | SYNC: Sync Alfred Skill Pack and Commands to package templates
-- 2025-10-19 | 829328e4 | FIX: Fix /alfred:0-project naming consistency.
+- 2025-10-19 | 829328e4 | FIX: Fix /moai:0-project naming consistency.
 - 2025-10-19 | e7330600 | REFACTOR: Commands name change (1-spec -> 1-plan)
 - 2025-10-19 | 7b8ecb07 | REFACTOR: Reorganized Skills folder structure (3-tier classification system)
 - 2025-10-19 | 535d0caa | FIX: Remove Alfred Skills name field prefix
@@ -2238,7 +2238,7 @@ Quality Metrics:
 - 2025-10-22 | 50613692 | FIX: Add Korean header support in merger.py
 - 2025-10-22 | e8995796 | docs: Add Interactive Question Tool guide to CLAUDE.md
 - 2025-10-22 | c3e0e0ef | docs: Refactor Interactive Question Tool to use moai-alfred-tui-survey Skill
-- 2025-10-22 | af9947d9 | docs: Fix /alfred:3-sync to load moai-alfred-tui-survey Skill before AskUserQuestion
+- 2025-10-22 | af9947d9 | docs: Fix /moai:3-sync to load moai-alfred-tui-survey Skill before AskUserQuestion
 - 2025-10-22 | 4ee4d43c | refactor: Remove duplicate Skill calls from 3-sync.md
 - 2025-10-22 | 58bbaa7c | refactor: Simplify Skill tables across all /alfred commands (0-3)
 - 2025-10-22 | f370ad82 | RELEASE: v0.4.4
@@ -2392,7 +2392,7 @@ Quality Metrics:
 - 2025-10-28 | 421c29db | docs(sync): Add final synchronization completion report
 - 2025-10-28 | 4c5a60e7 | test: Add comprehensive UPDATE command test report
 - 2025-10-28 | e47d6f9b | docs: Add detailed UPDATE process execution log
-- 2025-10-29 | 315167d1 | docs: Add clarification on moai-adk update vs /alfred:0-project update
+- 2025-10-29 | 315167d1 | docs: Add clarification on moai-adk update vs /moai:0-project update
 - 2025-10-29 | 4751dec9 | proposal: Propose enhanced moai-adk update workflow with config.json version check
 - 2025-10-29 | 87614dee | feat(update): Implement 3-stage workflow with config version comparison (v0.6.3)
 - 2025-10-29 | 4077923e | docs(changelog): Add v0.6.3 release notes with 3-stage workflow improvements
@@ -2432,8 +2432,8 @@ Quality Metrics:
 - 2025-10-29 | 57b030c5 | docs(template): Update git-manager.md with new Alfred Signature Rules
 - 2025-10-29 | 8812d699 | docs(claude): Clarify English-Only Core Files rule - CLAUDE.md exception
 - 2025-10-29 | b912cc03 | docs(claude): Remove Alfred Signature Rules - moved to agent templates
-- 2025-10-29 | ef0dd25c | docs(readme): Update /alfred:9-help documentation to interactive dialog format
-- 2025-10-29 | 73299749 | feat: Rename /alfred:9-help to /alfred:9-feedback for clarity
+- 2025-10-29 | ef0dd25c | docs(readme): Update /moai:9-help documentation to interactive dialog format
+- 2025-10-29 | 73299749 | feat: Rename /moai:9-help to /moai:9-feedback for clarity
 - 2025-10-29 | 2ff3a8a2 | RELEASE: v0.8.1
 - 2025-10-29 | a0b995ba | Merge pull request #102 from modu-ai/develop
 - 2025-10-29 | a988b61e | docs(UPDATE-REFACTOR-002): Sync documentation for double-update bug fix
@@ -2493,9 +2493,9 @@ Quality Metrics:
 - 2025-10-30 | f74cb063 | fix: TAG workflow hotfixes (#127)
 - 2025-10-30 | 0c6ea6e9 | Release v0.9.1 (Squash Merge) (#126)
 - 2025-10-30 | fd15d655 | chore: Add .moai/docs to .gitignore
-- 2025-10-30 | d382cb08 | docs: Add /alfred:9-feedback documentation to all README files
+- 2025-10-30 | d382cb08 | docs: Add /moai:9-feedback documentation to all README files
 - 2025-10-30 | 125ce64e | docs: Add Reporting Style guide to CLAUDE.md
-- 2025-10-30 | 92fe4679 | Merge feature/DOCS-README-MULTILINGUAL: Add /alfred:9-feedback documentation
+- 2025-10-30 | 92fe4679 | Merge feature/DOCS-README-MULTILINGUAL: Add /moai:9-feedback documentation
 - 2025-10-30 | a62affca | merge: Sync develop with main branch updates
 - 2025-10-30 | 9d24169a | chore: Add template pre-push hook with team mode enforcement
 - 2025-10-30 | 7ebb092e | Merge pull request #128 from modu-ai/develop
@@ -2505,7 +2505,7 @@ Quality Metrics:
 - 2025-10-30 | b31b040d | docs: Convert template CLAUDE.md Reporting Style section to English
 - 2025-10-30 | c22ab496 | docs: Convert local CLAUDE.md Reporting Style section to English
 - 2025-10-30 | e5a0952a | feat(hooks): Implement duplicate command execution detection
-- 2025-10-30 | 926dd033 | feat: Improve /alfred:9-feedback UX with 2-phase batched design
+- 2025-10-30 | 926dd033 | feat: Improve /moai:9-feedback UX with 2-phase batched design
 - 2025-10-30 | 409c9c22 | feat: Implement batched AskUserQuestion design across all Alfred commands
 - 2025-10-30 | 4e7b1d0c | feat: Implement Python 3.11+ support with enhanced stability (v0.10.2)
 - 2025-10-30 | 4698ad63 | chore: Remove deprecated Output Style feature (EOL 2025-11-05)
@@ -2551,8 +2551,8 @@ Quality Metrics:
 - 2025-10-31 | a4e4f6b1 | chore: Bump version to v0.11.1
 - 2025-10-31 | 4801797d | chore: Update uv.lock for v0.11.1
 - 2025-10-31 | 1b3907c7 | Release v0.11.1 | minor | 11 Language CI/CD Workflow Support (#145)
-- 2025-10-31 | 6293200a | feat: Add GitHub branch auto-delete setting detection to /alfred:0-project
-- 2025-10-31 | cb69ff09 | feat: Add GitHub branch auto-delete setting detection to /alfred:0-project (#147)
+- 2025-10-31 | 6293200a | feat: Add GitHub branch auto-delete setting detection to /moai:0-project
+- 2025-10-31 | cb69ff09 | feat: Add GitHub branch auto-delete setting detection to /moai:0-project (#147)
 - 2025-10-31 | 8ed2e5ba | RELEASE: v0.12.0
 - 2025-10-31 | a3262f89 | fix: Fix hook import syntax errors in local .claude/
 - 2025-10-31 | 8236aa97 | fix: Synchronize all local hook files with corrected template versions
@@ -2575,7 +2575,7 @@ Quality Metrics:
 - 2025-11-01 | f575f7a4 | fix: Change PyPI deployment trigger from release event to tag push (#160)
 - 2025-11-01 | ed6192cd | restore: Recover uiux-plugin source files from git history
 - 2025-11-02 | d676901c | feat: Add Claude Code v2.0.30+ 6 new features integrated SPEC (SPEC-CLAUDE-CODE-FEATURES-001)
-- 2025-11-02 | d69366c4 | feat(commands): Add AskUserQuestion completion pattern to /alfred:2-run command
+- 2025-11-02 | d69366c4 | feat(commands): Add AskUserQuestion completion pattern to /moai:2-run command
 - 2025-11-02 | 500e7335 | fix(template): Remove .github/ from package template - deployment files only
 - 2025-11-02 | c44c8eb3 | feat(spec): Simplify Claude Code Features to 3 implementable features with comprehensive documentation
 - 2025-11-02 | 653d44be | feat(workflow): Add PyPI deployment verification step
@@ -2595,7 +2595,7 @@ Quality Metrics:
 - 2025-11-02 | a52b156a | fix: Restore full user nickname in config.json
 - 2025-11-02 | f953c737 | feat: Implement multilingual Task prompts for sub-agents
 - 2025-11-02 | b9566e58 | refactor: Establish package template as source of truth for .claude infrastructure
-- 2025-11-02 | 003435d6 | docs: Add comprehensive guide for /alfred:0-project update workflow
+- 2025-11-02 | 003435d6 | docs: Add comprehensive guide for /moai:0-project update workflow
 - 2025-11-02 | d6f27f95 | docs: Update package template command description for alfred:0-project update support
 - 2025-11-02 | 71ef7b2e | feat: Add developer local settings to gitignore and establish infrastructure policy
 - 2025-11-02 | 5205bbde | refactor: Remove multilingual translations from command descriptions
@@ -2662,9 +2662,9 @@ Quality Metrics:
 - 2025-11-04 | 1f424fbc | docs: Clearly explain the difference between Step 2 and Step 3
 - 2025-11-04 | 2e4ab64e | docs: moai-adk update vs moai-adk init . Clarified with real code analysis
 - 2025-11-04 | 3a3241f8 | docs: Simplification of update process - unified around moai-adk update
-- 2025-11-04 | 5363f835 | docs: /alfred:9-feedback feature guide added
-- 2025-11-04 | d7a4067d | docs: Synchronize /alfred:9-feedback documentation across English and Korean versions
-- 2025-11-04 | a48d1283 | docs: Enhance AskUserQuestion integration in /alfred:0-project command
+- 2025-11-04 | 5363f835 | docs: /moai:9-feedback feature guide added
+- 2025-11-04 | d7a4067d | docs: Synchronize /moai:9-feedback documentation across English and Korean versions
+- 2025-11-04 | a48d1283 | docs: Enhance AskUserQuestion integration in /moai:0-project command
 - 2025-11-04 | f929fdf3 | docs: Standardize AskUserQuestion patterns across all command files
 - 2025-11-04 | 7297e738 | docs: Synchronize local command files with template updates
 - 2025-11-04 | d9171cdd | chore: Commit all pending changes from Priority 1 infrastructure work
@@ -2704,20 +2704,20 @@ Quality Metrics:
 - 2025-11-04 | 2ee9841e | Phase 4: Agent logic update completed
 - 2025-11-04 | 7b2e5d57 | feat: v0.17.0 fully implemented - 7 steps completed
 - 2025-11-04 | 8de9eb5c | Optimize CLAUDE.md template: reduce from 45.5k to 25.6k
-- 2025-11-04 | ca04d644 | feat: Phase 1 UX improvements - Implement /alfred:0-project immediate execution mode
-- 2025-11-04 | 1741bc0f | feat: /alfred:0-project 3-tier subcommand architecture implementation
-- 2025-11-04 | a06c587c | docs: README.ko.md update - /alfred:0-project 3-tier subcommand guide added
-- 2025-11-04 | c07a9276 | refactor: /alfred:0-project Declarative -> Imperative instruction conversion (Phase 1/2)
+- 2025-11-04 | ca04d644 | feat: Phase 1 UX improvements - Implement /moai:0-project immediate execution mode
+- 2025-11-04 | 1741bc0f | feat: /moai:0-project 3-tier subcommand architecture implementation
+- 2025-11-04 | a06c587c | docs: README.ko.md update - /moai:0-project 3-tier subcommand guide added
+- 2025-11-04 | c07a9276 | refactor: /moai:0-project Declarative -> Imperative instruction conversion (Phase 1/2)
 - 2025-11-04 | 2d10a2a3 | fix: Remove emojis from AskUserQuestion fields (JSON encoding fix)
 - 2025-11-04 | e5f16051 | docs: Always invoke moai-alfred-interactive-questions Skill for AskUserQuestion
 - 2025-11-04 | 8ab0ef56 | refactor: Move AskUserQuestion specs to moai-alfred-interactive-questions Skill
 - 2025-11-04 | ba614250 | refactor: Rename skill moai-alfred-interactive-questions -> moai-alfred-ask-user-questions
-- 2025-11-04 | 612c5f7a | refactor: /alfred:0-project STEP 0-SETTING Complete imperative instructions (Phase 2/2)
-- 2025-11-04 | e1e60f80 | refactor: /alfred:0-project STEP 0-UPDATE Imperative instruction completion (final)
-- 2025-11-04 | 24e16a8c | refactor: /alfred:1-plan Completely converts the command from declarative to imperative.
+- 2025-11-04 | 612c5f7a | refactor: /moai:0-project STEP 0-SETTING Complete imperative instructions (Phase 2/2)
+- 2025-11-04 | e1e60f80 | refactor: /moai:0-project STEP 0-UPDATE Imperative instruction completion (final)
+- 2025-11-04 | 24e16a8c | refactor: /moai:1-plan Completely converts the command from declarative to imperative.
 - 2025-11-04 | 8d282efb | docs: Add ban on AskUserQuestion emojis and add placement strategy guidelines
-- 2025-11-04 | a22551a3 | refactor: /alfred:2-run Imperative instruction completion (TDD 3-PHASE workflow)
-- 2025-11-04 | 54f236a2 | refactor: /alfred:3-sync Imperative instruction completion (declarative -> imperative conversion)
+- 2025-11-04 | a22551a3 | refactor: /moai:2-run Imperative instruction completion (TDD 3-PHASE workflow)
+- 2025-11-04 | 54f236a2 | refactor: /moai:3-sync Imperative instruction completion (declarative -> imperative conversion)
 - 2025-11-04 | eb175073 | fix: Cross-platform Hook path automatic setting (Windows/macOS/Linux compatibility)
 - 2025-11-04 | fac006b1 | refactor: convert 3-sync.md to 100% imperative style
 - 2025-11-04 | 591e98a6 | RELEASE: v0.17.0

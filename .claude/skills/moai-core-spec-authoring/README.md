@@ -43,13 +43,15 @@ Comprehensive guide for authoring SPEC documents in MoAI-ADK projects. Provides 
 ### Automatic Activation
 
 This Skill automatically loads when:
-- `/alfred:1-plan` command is executed
+
+- `/moai:1-plan` command is executed
 - SPEC document creation is requested
 - Requirements clarification is discussed
 
 ### Manual Reference
 
 Consult detailed sections for:
+
 - SPEC authoring best practices
 - Existing SPEC document validation
 - Metadata issue troubleshooting
@@ -82,39 +84,48 @@ updated: 2025-10-29
 priority: high
 ---
 
-
 ## HISTORY
+
 ### v0.0.1 (2025-10-29)
+
 - **INITIAL**: JWT authentication SPEC draft
 
 ## Environment
+
 **Runtime**: Node.js 20.x
 
 ## Assumptions
+
 1. User storage: PostgreSQL
 2. Secret management: Environment variables
 
 ## Requirements
 
 ### Ubiquitous Requirements
+
 **UR-001**: The system shall provide JWT-based authentication.
 
 ### Event-driven Requirements
+
 **ER-001**: WHEN the user submits valid credentials, the system shall issue a JWT token.
 
 ### State-driven Requirements
+
 **SR-001**: WHILE the user is in an authenticated state, the system shall permit access to protected resources.
 
 ### Optional Features
+
 **OF-001**: WHERE multi-factor authentication is enabled, the system can require OTP verification.
 
 ### Unwanted Behaviors
+
 **UB-001**: IF a token has expired, THEN the system shall deny access and return HTTP 401.
 ```
 
 ## Integration
 
 Works seamlessly with:
+
 - `spec-builder` agent - SPEC creation
 - `moai-foundation-ears` - EARS syntax patterns
 - `moai-foundation-specs` - Metadata validation
@@ -123,8 +134,9 @@ Works seamlessly with:
 ## Support
 
 For questions or issues:
+
 1. Refer to comprehensive documentation: `SKILL.md`, `reference.md`, `examples.md`
-2. Use `/alfred:1-plan` for guided SPEC creation
+2. Use `/moai:1-plan` for guided SPEC creation
 3. Review existing SPECs in `.moai/specs/` for examples
 
 ---

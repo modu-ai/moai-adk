@@ -136,25 +136,44 @@ class ProjectInitializer:
         # Add companyAnnouncements in user's selected language
         try:
             import sys
-            utils_dir = Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
+
+            utils_dir = (
+                Path(__file__).parent.parent.parent
+                / "templates"
+                / ".claude"
+                / "hooks"
+                / "moai"
+                / "shared"
+                / "utils"
+            )
 
             if utils_dir.exists():
                 sys.path.insert(0, str(utils_dir))
                 try:
-                    from announcement_translator import get_language_from_config, translate_announcements
+                    from announcement_translator import (
+                        get_language_from_config,
+                        translate_announcements,
+                    )
+
                     language = get_language_from_config(self.path)
                     announcements = translate_announcements(language, self.path)
                     settings_local["companyAnnouncements"] = announcements
                 except Exception as e:
-                    print(f"[ProjectInitializer] Warning: Failed to add announcements: {e}")
+                    print(
+                        f"[ProjectInitializer] Warning: Failed to add announcements: {e}"
+                    )
                 finally:
                     sys.path.remove(str(utils_dir))
 
         except Exception as e:
-            print(f"[ProjectInitializer] Warning: Announcement module not available: {e}")
+            print(
+                f"[ProjectInitializer] Warning: Announcement module not available: {e}"
+            )
 
         settings_local_file = claude_dir / "settings.local.json"
-        settings_local_file.write_text(json.dumps(settings_local, indent=2, ensure_ascii=False))
+        settings_local_file.write_text(
+            json.dumps(settings_local, indent=2, ensure_ascii=False)
+        )
         created_files.append(str(settings_local_file))
 
         return created_files
@@ -162,7 +181,7 @@ class ProjectInitializer:
     def initialize(
         self,
         mode: str = "personal",
-        locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /alfred:0-project)
+        locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /moai:0-project)
         language: str | None = None,
         custom_language: str | None = None,
         backup_enabled: bool = True,
@@ -172,9 +191,9 @@ class ProjectInitializer:
         """Execute project initialization (5-phase process)
 
         Args:
-            mode: Project mode (personal/team) - Default: personal (configurable in /alfred:0-project)
-            locale: Locale (ko/en/ja/zh/other) - Default: en (configurable in /alfred:0-project)
-            language: Force language specification (auto-detect if None) - Will be detected in /alfred:0-project
+            mode: Project mode (personal/team) - Default: personal (configurable in /moai:0-project)
+            locale: Locale (ko/en/ja/zh/other) - Default: en (configurable in /moai:0-project)
+            language: Force language specification (auto-detect if None) - Will be detected in /moai:0-project
             custom_language: Custom language name when locale="other" (user input)
             backup_enabled: Whether to enable backup
             progress_callback: Progress callback
@@ -197,7 +216,7 @@ class ProjectInitializer:
                 )
 
             # Use provided language or default to generic
-            # Language detection now happens in /alfred:0-project via project-manager
+            # Language detection now happens in /moai:0-project via project-manager
             detected_language = language or "generic"
 
             # Phase 1: Preparation (backup and validation)
@@ -231,7 +250,9 @@ class ProjectInitializer:
                 for script_file in scripts_dir.glob("*.sh"):
                     try:
                         current_mode = script_file.stat().st_mode
-                        new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                        new_mode = (
+                            current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                        )
                         # On Windows, chmod has limited effect, but we try anyway
                         # or check os.name != 'nt' if strict behavior is needed.
                         # For now, we just apply it and ignore errors if it fails.
@@ -271,10 +292,10 @@ class ProjectInitializer:
                     "mode": mode,
                     "locale": locale,
                     "language": detected_language,
-                    # Language detection metadata (will be updated by project-manager via /alfred:0-project)
+                    # Language detection metadata (will be updated by project-manager via /moai:0-project)
                     "language_detection": {
                         "detected_language": detected_language,
-                        "detection_method": "cli_default",  # Will be "context_aware" after /alfred:0-project
+                        "detection_method": "cli_default",  # Will be "context_aware" after /moai:0-project
                         "confidence": None,  # Will be calculated by project-manager
                         "markers": [],  # Will be populated by project-manager
                         "confirmed_by": None,  # Will be "user" after project-manager confirmation
@@ -294,7 +315,13 @@ class ProjectInitializer:
                 "git_strategy": {
                     "personal": {
                         "auto_checkpoint": "disabled",
-                        "checkpoint_events": ["delete", "refactor", "merge", "script", "critical-file"],
+                        "checkpoint_events": [
+                            "delete",
+                            "refactor",
+                            "merge",
+                            "script",
+                            "critical-file",
+                        ],
                         "checkpoint_type": "local-branch",
                         "max_checkpoints": 10,
                         "cleanup_days": 7,
@@ -344,7 +371,10 @@ class ProjectInitializer:
                 mode=mode,
                 locale=locale,
                 duration=duration,
-                created_files=resource_files + config_files + memory_files + user_settings_files,
+                created_files=resource_files
+                + config_files
+                + memory_files
+                + user_settings_files,
             )
 
         except Exception as e:

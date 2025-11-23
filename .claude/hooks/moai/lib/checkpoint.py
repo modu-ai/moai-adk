@@ -37,7 +37,9 @@ SCRIPT_EXECUTION_PATTERN = re.compile(
 )
 
 
-def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) -> tuple[bool, str]:
+def detect_risky_operation(
+    tool_name: str, tool_args: dict[str, Any], cwd: str
+) -> tuple[bool, str]:
     """Risk task detection (for Event-Driven Checkpoint)
 
     Claude Code tool automatically detects dangerous tasks before use.
@@ -82,11 +84,17 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
             return (True, "delete")
 
         # Git merge/reset/rebase
-        if any(pattern in command for pattern in ["git merge", "git reset --hard", "git rebase"]):
+        if any(
+            pattern in command
+            for pattern in ["git merge", "git reset --hard", "git rebase"]
+        ):
             return (True, "merge")
 
         # Execute external script (potentially destructive)
-        if any(command.startswith(prefix) for prefix in ["python ", "node ", "bash ", "sh "]):
+        if any(
+            command.startswith(prefix)
+            for prefix in ["python ", "node ", "bash ", "sh "]
+        ):
             return (True, "script")
 
     # Edit/Write tool: Detect important files
@@ -161,7 +169,11 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
 
         return branch_name
 
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         # Fallback (ignore) in case of Git error
         return "checkpoint-failed"
 
@@ -213,7 +225,7 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
     """Checkpoint list (parsing .moai/checkpoints.log)
 
     Returns a list of recently created checkpoints.
-    Used in the SessionStart, /alfred:0-project restore command.
+    Used in the SessionStart, /moai:0-project restore command.
 
     Args:
         cwd: Project root directory path

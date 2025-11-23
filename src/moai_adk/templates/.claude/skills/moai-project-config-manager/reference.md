@@ -9,7 +9,9 @@ Skill("moai-project-config-manager")
 ```
 
 **Parameters**:
+
 - `action` (optional): Operation type
+
   - `"interactive"` (default): Full interactive configuration workflow
   - `"update"`: Programmatic configuration update
   - `"validate"`: Validate existing configuration
@@ -54,7 +56,7 @@ Skill("moai-project-config-manager")
           "description": "ISO language code for user conversations"
         },
         "conversation_language_name": {
-          "type": "string", 
+          "type": "string",
           "enum": ["English", "한국어", "日本語", "中文"],
           "description": "Display name for conversation language"
         },
@@ -64,9 +66,13 @@ Skill("moai-project-config-manager")
           "description": "Language for Alfred agent prompts"
         }
       },
-      "required": ["conversation_language", "conversation_language_name", "agent_prompt_language"]
+      "required": [
+        "conversation_language",
+        "conversation_language_name",
+        "agent_prompt_language"
+      ]
     },
-    
+
     "user": {
       "type": "object",
       "description": "User-specific settings",
@@ -79,9 +85,9 @@ Skill("moai-project-config-manager")
         }
       }
     },
-    
+
     "github": {
-      "type": "object", 
+      "type": "object",
       "description": "GitHub integration settings",
       "properties": {
         "auto_delete_branches": {
@@ -95,7 +101,7 @@ Skill("moai-project-config-manager")
         }
       }
     },
-    
+
     "report_generation": {
       "type": "object",
       "description": "Automatic report generation settings",
@@ -105,7 +111,7 @@ Skill("moai-project-config-manager")
           "description": "Enable/disable automatic report generation"
         },
         "auto_create": {
-          "type": "boolean", 
+          "type": "boolean",
           "description": "Create full (true) or minimal (false) reports"
         },
         "user_choice": {
@@ -120,7 +126,7 @@ Skill("moai-project-config-manager")
         }
       }
     },
-    
+
     "stack": {
       "type": "object",
       "description": "Technology stack and domain settings",
@@ -135,7 +141,7 @@ Skill("moai-project-config-manager")
         },
         "domain_selection_date": {
           "type": "string",
-          "format": "date-time", 
+          "format": "date-time",
           "description": "Timestamp of last domain selection update"
         }
       }
@@ -148,32 +154,36 @@ Skill("moai-project-config-manager")
 ### Field Value Mappings
 
 #### Language Code Mapping
-| Display Name | Code | Description |
-|--------------|------|-------------|
-| English | en | Global standard language |
-| 한국어 | ko | Korean language |
-| 日本語 | ja | Japanese language |
-| 中文 | zh | Chinese language |
+
+| Display Name | Code | Description              |
+| ------------ | ---- | ------------------------ |
+| English      | en   | Global standard language |
+| 한국어       | ko   | Korean language          |
+| 日本語       | ja   | Japanese language        |
+| 中文         | zh   | Chinese language         |
 
 #### Agent Prompt Language Mapping
-| Display Name | Code | Description |
-|--------------|------|-------------|
-| English (Global Standard) | english | All prompts in English for stability |
+
+| Display Name                  | Code      | Description                             |
+| ----------------------------- | --------- | --------------------------------------- |
+| English (Global Standard)     | english   | All prompts in English for stability    |
 | Selected Language (Localized) | localized | Prompts in user's conversation language |
 
 #### Git Workflow Mapping
-| Display Name | Code | Description |
-|--------------|------|-------------|
-| Feature Branch + PR | feature_branch | Create feature branch → PR → develop merge |
-| Direct Commit to Develop | develop_direct | Commit directly to develop branch |
-| Decide per SPEC | per_spec | Choose workflow per SPEC |
+
+| Display Name             | Code           | Description                                |
+| ------------------------ | -------------- | ------------------------------------------ |
+| Feature Branch + PR      | feature_branch | Create feature branch → PR → develop merge |
+| Direct Commit to Develop | develop_direct | Commit directly to develop branch          |
+| Decide per SPEC          | per_spec       | Choose workflow per SPEC                   |
 
 #### Report Generation Mapping
-| Display Name | Settings | Description |
-|--------------|----------|-------------|
-| 📊 Enable | enabled=true, auto_create=true | Full reports with 50-60 tokens |
-| ⚡ Minimal | enabled=true, auto_create=false | Essential reports with 20-30 tokens |
-| 🚫 Disable | enabled=false, auto_create=false | No automatic reports, 0 tokens |
+
+| Display Name | Settings                         | Description                         |
+| ------------ | -------------------------------- | ----------------------------------- |
+| 📊 Enable    | enabled=true, auto_create=true   | Full reports with 50-60 tokens      |
+| ⚡ Minimal   | enabled=true, auto_create=false  | Essential reports with 20-30 tokens |
+| 🚫 Disable   | enabled=false, auto_create=false | No automatic reports, 0 tokens      |
 
 ---
 
@@ -181,35 +191,40 @@ Skill("moai-project-config-manager")
 
 ### Error Types
 
-| Error Code | Description | Recovery Action |
-|------------|-------------|-----------------|
-| CONFIG_NOT_FOUND | `.moai/config/config.json` doesn't exist | Create default config |
-| INVALID_JSON | Configuration file has invalid JSON syntax | Attempt JSON repair or recreate |
-| VALIDATION_FAILED | Configuration fails schema validation | Fix validation errors |
-| PERMISSION_DENIED | Cannot write to configuration file | Fix file permissions |
-| BACKUP_FAILED | Cannot create backup file | Check disk space and permissions |
-| RESTORE_FAILED | Cannot restore from backup | Verify backup file integrity |
+| Error Code        | Description                                | Recovery Action                  |
+| ----------------- | ------------------------------------------ | -------------------------------- |
+| CONFIG_NOT_FOUND  | `.moai/config/config.json` doesn't exist   | Create default config            |
+| INVALID_JSON      | Configuration file has invalid JSON syntax | Attempt JSON repair or recreate  |
+| VALIDATION_FAILED | Configuration fails schema validation      | Fix validation errors            |
+| PERMISSION_DENIED | Cannot write to configuration file         | Fix file permissions             |
+| BACKUP_FAILED     | Cannot create backup file                  | Check disk space and permissions |
+| RESTORE_FAILED    | Cannot restore from backup                 | Verify backup file integrity     |
 
 ### Validation Error Details
 
 #### Language Validation Errors
+
 - `INVALID_LANGUAGE_CODE`: conversation_language not in allowed values
 - `MISMATCHED_LANGUAGE_NAME`: conversation_language_name doesn't match code
 - `INVALID_AGENT_LANGUAGE`: agent_prompt_language not in allowed values
 
-#### User Validation Errors  
+#### User Validation Errors
+
 - `NICKNAME_TOO_LONG`: nickname exceeds 20 characters
 - `INVALID_NICKNAME_CHARS`: nickname contains invalid characters
 
 #### GitHub Validation Errors
+
 - `INVALID_WORKFLOW`: spec_git_workflow not in allowed values
 - `INVALID_BOOLEAN_SETTING`: auto_delete_branches not boolean
 
 #### Report Validation Errors
+
 - `INVALID_REPORT_CHOICE`: user_choice not in allowed values
 - `INCONSISTENT_REPORT_SETTINGS`: enabled/auto_create don't match user_choice
 
 #### Domain Validation Errors
+
 - `INVALID_DOMAIN`: selected_domains contains invalid domain name
 - `INVALID_DOMAIN_TYPE`: selected_domains is not an array
 
@@ -220,21 +235,25 @@ Skill("moai-project-config-manager")
 ### Interactive Mode Workflow
 
 1. **Configuration Loading**
+
    - Load existing `.moai/config/config.json`
    - Validate JSON structure and schema
    - Display current settings
 
 2. **Setting Selection**
+
    - Present 5 setting groups for modification
    - User selects one or more groups (multi-select)
    - Proceed only if at least one group selected
 
 3. **Value Collection**
+
    - Ask questions only for selected groups
    - Batch related questions together
    - Map user responses to configuration values
 
 4. **Merge and Validation**
+
    - Merge new values with existing configuration
    - Validate updated configuration
    - Create automatic backup
@@ -251,7 +270,7 @@ Skill("moai-project-config-manager")
 updates = {
     "language": {
         "conversation_language": "en",
-        "conversation_language_name": "English", 
+        "conversation_language_name": "English",
         "agent_prompt_language": "english"
     }
 }
@@ -309,7 +328,7 @@ backups = Skill("moai-project-config-manager", action="list_backups")
 # Restore from backup
 restore_result = Skill(
     "moai-project-config-manager",
-    action="restore", 
+    action="restore",
     backup_path=".moai/config.backup.20251105_123456.json"
 )
 # Returns: {"success": True, "restored_from": "..."}
@@ -345,19 +364,22 @@ diff_result = Skill(
 ### With Alfred Commands
 
 **Project Initialization**:
+
 ```python
-# In /alfred:0-project command
+# In /moai:0-project command
 if not Path(".moai/config/config.json").exists():
     Skill("moai-project-config-manager", action="create_default")
 ```
 
 **Setting Modification**:
+
 ```python
-# In /alfred:0-project setting subcommand
+# In /moai:0-project setting subcommand
 Skill("moai-project-config-manager")  # Interactive mode
 ```
 
 **Configuration Validation**:
+
 ```python
 # In any Alfred command before using config
 validation = Skill("moai-project-config-manager", action="validate")
@@ -369,6 +391,7 @@ if not validation["valid"]:
 ### With Other Skills
 
 **Language-Aware Skills**:
+
 ```python
 config = load_config(".moai/config/config.json")
 language = config["language"]["conversation_language"]
@@ -377,11 +400,12 @@ if language == "ko":
     # Use Korean responses
     response = generate_korean_response(prompt)
 else:
-    # Use English responses  
+    # Use English responses
     response = generate_english_response(prompt)
 ```
 
 **Report Generation Skills**:
+
 ```python
 config = load_config(".moai/config/config.json")
 report_settings = config["report_generation"]
@@ -405,7 +429,7 @@ result = Skill("moai-project-config-manager", debug=True)
 
 # Debug output includes:
 # - Configuration loading steps
-# - Validation process details  
+# - Validation process details
 # - Merge operation results
 # - File operation details
 # - Error stack traces
@@ -414,6 +438,7 @@ result = Skill("moai-project-config-manager", debug=True)
 ### Common Debug Scenarios
 
 **Configuration Loading Issues**:
+
 ```debug
 DEBUG: Loading configuration from .moai/config.json
 DEBUG: File size: 2048 bytes
@@ -422,6 +447,7 @@ DEBUG: Schema validation passed
 ```
 
 **Validation Failures**:
+
 ```debug
 DEBUG: Validating configuration
 ERROR: Field 'language.conversation_language' has invalid value 'fr'
@@ -430,6 +456,7 @@ DEBUG: Validation failed with 1 errors
 ```
 
 **File Operation Issues**:
+
 ```debug
 DEBUG: Creating backup .moai/config.backup.20251105_123456.json
 DEBUG: Writing temporary file .moai/config.json.tmp
@@ -443,16 +470,18 @@ DEBUG: Attempting to restore from backup
 If the skill cannot automatically repair issues:
 
 1. **JSON Syntax Errors**:
+
    ```bash
    # Validate JSON syntax
    python3 -m json.tool .moai/config.json
-   
+
    # If valid, backup and manually edit
    cp .moai/config.json .moai/config.backup.manual.json
    # Edit .moai/config.json with proper JSON
    ```
 
 2. **Schema Validation**:
+
    ```bash
    # Use online JSON schema validator
    # Upload .moai/config.json and the schema from reference.md
@@ -470,21 +499,25 @@ If the skill cannot automatically repair issues:
 ## Performance Considerations
 
 ### Configuration Loading
+
 - Average time: < 10ms for typical configuration files
 - Memory usage: < 1MB for configuration in memory
 - File I/O: Optimized with single read/write operations
 
 ### Validation Performance
+
 - Schema validation: < 5ms for typical configurations
 - Custom validation rules: < 2ms per rule
 - Batch validation: Validated all sections in parallel
 
 ### Backup Operations
+
 - Backup creation: < 50ms for typical configurations
 - Backup storage: Uses copy-on-write for efficiency
 - Cleanup: Automatic cleanup of backups older than 30 days
 
 ### Recommended Limits
+
 - Configuration file size: < 100KB recommended
 - Number of backup files: < 50 recommended
 - Concurrent operations: 1 at a time (file locking)
@@ -494,21 +527,25 @@ If the skill cannot automatically repair issues:
 ## Security Considerations
 
 ### File Access Security
+
 - Configuration files should have restrictive permissions (644)
 - Backup files inherit same permissions as original
 - Temporary files are created with secure permissions
 
 ### Input Validation
+
 - All user inputs are validated against schema
 - Special characters are sanitized in text inputs
 - File paths are validated to prevent directory traversal
 
 ### Backup Security
+
 - Backup files contain sensitive configuration data
 - Backups should be included in .gitignore
 - Consider encryption for highly sensitive configurations
 
 ### Audit Trail
+
 - All configuration changes are logged with timestamps
 - Backup files provide change history
 - Operation logs include user context when available

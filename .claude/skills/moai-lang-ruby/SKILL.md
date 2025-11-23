@@ -18,8 +18,7 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: ruby, lang, moai  
-
+**auto_trigger_keywords**: ruby, lang, moai
 
 ## Quick Reference (30 seconds)
 
@@ -30,12 +29,12 @@ status: active
 **Key Tools**: Rails 8, RSpec 4, RuboCop 2, Bundler 2.6, Hotwire 1.6
 **Auto-triggers**: Ruby, Rails, RSpec, RuboCop, Bundler, Gemfile
 
-| Version | Release | Support |
-|---------|---------|---------|
-| Ruby 3.4.0 | Dec 2024 | Dec 2028 |
+| Version     | Release  | Support  |
+| ----------- | -------- | -------- |
+| Ruby 3.4.0  | Dec 2024 | Dec 2028 |
 | Rails 8.0.0 | Nov 2024 | Nov 2026 |
-| RSpec 4.0.0 | 2024 | Active |
-| Bundler 2.6 | 2025 | Active |
+| RSpec 4.0.0 | 2024     | Active   |
+| Bundler 2.6 | 2025     | Active   |
 
 ---
 
@@ -44,18 +43,21 @@ status: active
 ### Three-Level Learning Path
 
 **Level 1: Fundamentals** (Read examples.md)
+
 - Ruby 3.4 core features (pattern matching, endless methods)
 - Rails 8 basics (models, controllers, associations)
 - RSpec testing essentials
 - Examples: See `examples.md` for 10+ practical patterns
 
 **Level 2: Advanced Patterns** (See reference.md)
+
 - Metaprogramming (define_method, method_missing, refinements)
 - Concurrency (Fibers, Ractors, async patterns)
 - Performance optimization (YJIT, query optimization)
 - API details: See `reference.md`
 
 **Level 3: Production Deployment** (Consult backend/performance skills)
+
 - Docker & Kubernetes deployment
 - Database optimization and monitoring
 - Performance profiling (Stackprof)
@@ -68,6 +70,7 @@ status: active
 Ruby 3.4+ with RSpec, Rails, and modern concurrency features.
 
 **Key capabilities**:
+
 - ✅ Pattern matching and endless methods
 - ✅ Fiber scheduling for async I/O
 - ✅ Ractor parallelism for CPU-bound work
@@ -80,11 +83,13 @@ Ruby 3.4+ with RSpec, Rails, and modern concurrency features.
 ## When to Use
 
 **Automatic triggers**:
+
 - Rails/Ruby project discussions
 - Code review and TRUST compliance
-- TDD implementation (`/alfred:2-run`)
+- TDD implementation (`/moai:2-run`)
 
 **Manual invocation**:
+
 - Code quality review
 - Feature design and architecture
 - Troubleshooting errors
@@ -94,6 +99,7 @@ Ruby 3.4+ with RSpec, Rails, and modern concurrency features.
 ## Ruby 3.4+ Modern Features (Highlights)
 
 ### Pattern Matching
+
 ```ruby
 case response
 in [200, { data: }]
@@ -106,6 +112,7 @@ end
 ```
 
 ### Fiber Scheduling
+
 ```ruby
 Async do
   tasks = [
@@ -117,6 +124,7 @@ end
 ```
 
 ### Ractor for Parallelism
+
 ```ruby
 ractors = items.map { |item| Ractor.new(item) { |i| process(i) } }
 results = ractors.map(&:take)
@@ -127,6 +135,7 @@ results = ractors.map(&:take)
 ## Rails 8 Key Features
 
 ### Hotwire & Turbo Streams
+
 ```ruby
 respond_to do |format|
   format.turbo_stream do
@@ -136,6 +145,7 @@ end
 ```
 
 ### Active Record Best Practices
+
 ```ruby
 class User < ApplicationRecord
   scope :active, -> { where(active: true) }
@@ -149,6 +159,7 @@ end
 ## Testing with RSpec 4
 
 ### Model Testing
+
 ```ruby
 RSpec.describe User, type: :model do
   let(:user) { build(:user) }
@@ -159,6 +170,7 @@ end
 ```
 
 ### Request Testing
+
 ```ruby
 RSpec.describe 'Users API', type: :request do
   describe 'GET /api/users' do
@@ -173,12 +185,14 @@ end
 ## Performance Essentials
 
 ### YJIT Configuration
+
 ```ruby
 # Enable with: RUBY_YJIT_ENABLE=1 rails server
 RubyVM::YJIT.enable if RUBY_YJIT_ENABLED
 ```
 
 ### Query Optimization
+
 ```ruby
 # Good: Eager loading
 User.includes(:posts).to_a
@@ -242,6 +256,7 @@ cd myapp && bundle install
 ## Context7 Integration
 
 ### Related Libraries & Tools
+
 - [Rails](/rails/rails): Full-stack web framework
 - [RSpec](/rspec/rspec-core): Testing framework
 - [Bundler](/rubygems/bundler): Dependency manager
@@ -249,6 +264,7 @@ cd myapp && bundle install
 - [Hotwire](/hotwired/hotwire): Modern front-end
 
 ### Official Documentation
+
 - [Ruby 3.4](https://www.ruby-lang.org/en/documentation/)
 - [Rails Guides](https://guides.rubyonrails.org/)
 - [RSpec Documentation](https://rspec.info/documentation/)

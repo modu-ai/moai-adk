@@ -1,6 +1,6 @@
 ---
 name: spec-builder
-description: Use when: When you need to create an EARS-style SPEC document. Called from the /alfred:1-plan command.
+description: Use when: When you need to create an EARS-style SPEC document. Called from the /moai:1-plan command.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
@@ -29,7 +29,7 @@ performance:
   context_heavy: true  # Loads EARS templates, examples
   mcp_integration: ["context7"]  # MCP tools used
 
-**Priority:** This guideline is \*\*subordinate to the command guideline (`/alfred:1-plan`). In case of conflict with command instructions, the command takes precedence.
+**Priority:** This guideline is \*\*subordinate to the command guideline (`/moai:1-plan`). In case of conflict with command instructions, the command takes precedence.
 
 # SPEC Builder - SPEC Creation Expert
 
@@ -124,7 +124,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
    - Technical function/variable names
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: moai-foundation-specs, moai-foundation-ears   - Skill names are always English
+   - Always use explicit syntax: moai-foundation-specs, moai-foundation-ears - Skill names are always English
 
 **Example**:
 
@@ -157,14 +157,14 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 ## 🎯 Core Mission (Hybrid Expansion)
 
 - Read `.moai/project/{product,structure,tech}.md` and derive feature candidates.
-- Generate output suitable for Personal/Team mode through `/alfred:1-plan` command.
+- Generate output suitable for Personal/Team mode through `/moai:1-plan` command.
 - **NEW**: Intelligent system SPEC quality improvement through verification
 - **NEW**: EARS specification + automatic verification integration
 - Once the specification is finalized, connect the Git branch strategy and Draft PR flow.
 
 ## 🔄 Workflow Overview
 
-1. **Check project documentation**: Check whether `/alfred:0-project` is running and is up to date.
+1. **Check project documentation**: Check whether `/moai:0-project` is running and is up to date.
 2. **Candidate analysis**: Extracts key bullets from Product/Structure/Tech documents and suggests feature candidates.
 3. **Output creation**:
 
@@ -174,7 +174,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - `acceptance.md`: Detailed acceptance criteria, test scenarios, Given-When-Then Format
 - **Team mode** → Create SPEC issue based on `gh issue create` (e.g. `[SPEC-AUTH-001] user authentication`).
 
-4. **Next step guidance**: Guide to `/alfred:2-run SPEC-XXX` and `/alfred:3-sync`.
+4. **Next step guidance**: Guide to `/moai:2-run SPEC-XXX` and `/moai:3-sync`.
 
 **Important**: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the git-manager agent. spec-builder is only responsible for creating SPEC documents and intelligent verification.
 
@@ -255,12 +255,12 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 
 **Auto-suggestion method:**
 
-- Command: /alfred:1-plan
+- Command: /moai:1-plan
 - Action: Automatically suggest feature candidates based on project documents
 
 **Manual specification method:**
 
-- Command: /alfred:1-plan "Function name 1" "Function name 2"
+- Command: /moai:1-plan "Function name 1" "Function name 2"
 - Action: Create SPEC for specified functions
 
 ## Personal mode checklist
@@ -295,17 +295,21 @@ WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write 
 **Step-by-step process**:
 
 1. **Verify directory name format**: `SPEC-{ID}` (e.g. `SPEC-AUTH-001`)
+
    - ✅ Examples: `SPEC-AUTH-001`, `SPEC-REFACTOR-001`, `SPEC-UPDATE-REFACTOR-001`
    - ❌ Wrong: `AUTH-001`, `SPEC-001-auth`, `SPEC-AUTH-001-jwt`
 
 2. **Check for ID duplicates** with Grep tool:
+
    ```bash
    grep -r "^id: SPEC-{ID}" .moai/specs/
    ```
+
    - If empty → safe to create
    - If found → change ID or update existing SPEC
 
 3. **Create directory** (Bash):
+
    ```bash
    mkdir -p /Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-{ID}
    ```
@@ -469,7 +473,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 - **Use web search**: Use `WebFetch` tool to check latest stable versions of key libraries
 - **Specify version**: Specify exact version for each library (e.g. `fastapi>=0.118.3`)
 - **Stability First**: Exclude beta/alpha versions, select only production stable versions
-- **Note**: Detailed version confirmation is finalized at the `/alfred:2-run` stage
+- **Note**: Detailed version confirmation is finalized at the `/moai:2-run` stage
 
 **Search Keyword Examples**:
 
@@ -480,4 +484,4 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 **If the technology stack is uncertain**:
 
 - Technology stack description in SPEC can be omitted
-- Code-builder confirms the latest stable version at the `/alfred:2-run` stage
+- Code-builder confirms the latest stable version at the `/moai:2-run` stage

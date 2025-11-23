@@ -19,8 +19,7 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: authoring, moai, core, spec  
-
+**auto_trigger_keywords**: authoring, moai, core, spec
 
 ## Quick Reference (30 seconds)
 
@@ -29,6 +28,7 @@ status: active
 ## Level 1: Quick Reference
 
 ### Core Capabilities
+
 - **YAML Metadata Structure**: 7 required + 9 optional fields for complete SPEC management
 - **EARS Requirement Syntax**: 5 patterns (Universal, Conditional, Unwanted Behavior, Stakeholder, Boundary)
 - **Version Lifecycle**: draft → active → deprecated → archived with state management
@@ -51,7 +51,6 @@ domains:
   - backend
   - security
   - database
-
 # SPEC-001: Add User Authentication with JWT
 
 ## Level 3: Advanced Features
@@ -59,15 +58,16 @@ domains:
 ### Version Lifecycle Management
 
 #### Lifecycle States
+```
 
-```
 DRAFT → ACTIVE → DEPRECATED → ARCHIVED
-  ↓                  ↓
-Under Review    Stable, In Use
-  ↓                  ↓
-Changes Expected    Changes Require
-Feedback Pending    Major Version Bump
-```
+↓ ↓
+Under Review Stable, In Use
+↓ ↓
+Changes Expected Changes Require
+Feedback Pending Major Version Bump
+
+````
 
 #### State Transitions
 
@@ -114,9 +114,10 @@ unwanted_behaviors:
   data_integrity:
     - The system SHALL NOT modify token claims during validation
     - The system SHALL NOT accept tokens from untrusted issuers
-```
+````
 
 **Each Unwanted Behavior** requires:
+
 1. Test case verifying non-occurrence
 2. Security scanning (where applicable)
 3. Performance profiling (where applicable)
@@ -134,11 +135,13 @@ unwanted_behaviors:
 #### TAG Placement Rules
 
 **SPEC Document**:
+
 ```markdown
 # SPEC-001: Feature Name
 ```
 
 **Test File**:
+
 ```python
 def test_requirement_001():
     """Test SPEC-001 REQ-001 universal pattern."""
@@ -146,6 +149,7 @@ def test_requirement_001():
 ```
 
 **Implementation**:
+
 ```python
 def authenticate_user(token: str) -> bool:
     """Validate JWT token per SPEC-001."""
@@ -153,12 +157,14 @@ def authenticate_user(token: str) -> bool:
 ```
 
 **Documentation**:
+
 ```markdown
 ## Level 4: Reference & Integration
 
 ### Pre-Submission Validation Checklist
 
 #### Metadata Validation
+
 - [ ] `code` field filled (SPEC-XXX format)
 - [ ] `title` is descriptive (50-80 characters)
 - [ ] `status` is one of: draft | active | deprecated | archived
@@ -168,6 +174,7 @@ def authenticate_user(token: str) -> bool:
 - [ ] `effort` is between 1-13 (story points)
 
 #### Requirement Syntax
+
 - [ ] At least 3 REQ patterns used (Universal, Conditional, Unwanted)
 - [ ] Each REQ follows EARS syntax strictly
 - [ ] Requirements are specific and testable
@@ -175,6 +182,7 @@ def authenticate_user(token: str) -> bool:
 - [ ] All REQs are actionable (have test cases)
 
 #### Unwanted Behaviors
+
 - [ ] Security constraints listed (if applicable)
 - [ ] Performance constraints listed (if applicable)
 - [ ] Reliability constraints listed (if applicable)
@@ -182,6 +190,7 @@ def authenticate_user(token: str) -> bool:
 - [ ] Each Unwanted Behavior has a test approach
 
 #### Acceptance Criteria
+
 - [ ] All 5 EARS patterns implemented
 - [ ] All Unwanted Behaviors testable
 - [ ] Code coverage target ≥85% specified
@@ -189,6 +198,7 @@ def authenticate_user(token: str) -> bool:
 - [ ] Performance baseline defined (if applicable)
 
 #### Final Review
+
 - [ ] No TODO or placeholder text
 - [ ] All links are valid (internal and external)
 - [ ] Formatting is consistent (markdown syntax)
@@ -201,52 +211,62 @@ def authenticate_user(token: str) -> bool:
 
 **Bad**:
 ```
+
 SPEC-001-REQ-001: The system should authenticate users quickly.
+
 ```
 
 **Good**:
 ```
+
 SPEC-001-REQ-001: The authentication service SHALL validate JWT tokens
 and return a response within 50ms on average,
 with p99 latency not exceeding 200ms.
+
 ```
 
 #### Anti-Pattern 2: Vague Acceptance Criteria
 
 **Bad**:
 ```
+
 - The feature should work
 - Tests should pass
 - No obvious bugs
+
 ```
 
 **Good**:
 ```
+
 - [ ] All 12 test cases pass (unit + integration)
 - [ ] Code coverage ≥85% (src/auth/validate.py)
 - [ ] Security scan: OWASP Top 10 coverage complete
 - [ ] Performance: JWT validation p99 latency ≤200ms
+
 ```
 
 #### Anti-Pattern 3: Missing Unwanted Behaviors
 
 **Bad**:
 ```
+
 # (No unwanted_behaviors section)
+
 ```
 
 **Good**:
 ```
+
 unwanted_behaviors:
-  security:
-    - The system SHALL NOT store plaintext passwords
-    - The system SHALL NOT log authentication tokens
+security: - The system SHALL NOT store plaintext passwords - The system SHALL NOT log authentication tokens
+
 ```
 
 ### When to Use
 
 **Automatic Triggers**:
-- `/alfred:1-plan` command execution
+- `/moai:1-plan` command execution
 - SPEC document creation requests
 - Requirements clarification discussions
 - Feature planning sessions
@@ -277,7 +297,7 @@ unwanted_behaviors:
 
 
 **Enterprise   Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
-**Last Updated**: 2025-11-13  
+**Last Updated**: 2025-11-13
 **Dependencies**: YAML metadata format, EARS specification, TAG system
 **See Also**: [examples.md](./examples.md) for detailed SPEC examples
 
@@ -323,13 +343,13 @@ SPEC: The authentication service SHALL return HTTP 429 when a single IP attempts
 
 ### EARS Pattern Summary
 
-| Pattern | Syntax | Use Case |
-|---------|--------|----------|
-| Universal | `The [System] SHALL [Action]` | Core system behavior |
-| Conditional | `If [Condition], then [System] SHALL [Action]` | Conditional logic |
-| Unwanted Behavior | `The [System] SHALL NOT [Action]` | Security constraints |
-| Stakeholder | `As a [Role], I want [Feature] so that [Benefit]` | User stories |
-| Boundary Condition | `[System] SHALL [Action] when [Condition]` | Edge cases |
+| Pattern            | Syntax                                            | Use Case             |
+| ------------------ | ------------------------------------------------- | -------------------- |
+| Universal          | `The [System] SHALL [Action]`                     | Core system behavior |
+| Conditional        | `If [Condition], then [System] SHALL [Action]`    | Conditional logic    |
+| Unwanted Behavior  | `The [System] SHALL NOT [Action]`                 | Security constraints |
+| Stakeholder        | `As a [Role], I want [Feature] so that [Benefit]` | User stories         |
+| Boundary Condition | `[System] SHALL [Action] when [Condition]`        | Edge cases           |
 
 ## Level 2: Core Implementation
 
@@ -407,11 +427,13 @@ tags:
 #### Pattern 1: Universal (Always True)
 
 **Syntax**:
+
 ```
 SPEC: The [System] SHALL [Action]
 ```
 
 **Example**:
+
 ```
 SPEC-001-REQ-001: The authentication service SHALL validate
 all JWT tokens using RS256 algorithm against the public key.
@@ -424,11 +446,13 @@ Related TEST:
 #### Pattern 2: Conditional (If-Then)
 
 **Syntax**:
+
 ```
 SPEC: If [Condition], then the [System] SHALL [Action]
 ```
 
 **Example**:
+
 ```
 SPEC-001-REQ-002: If a JWT token has expired,
 then the authentication service SHALL reject the request
@@ -442,11 +466,13 @@ Related TEST:
 #### Pattern 3: Unwanted Behavior (Negative Requirement)
 
 **Syntax**:
+
 ```
 SPEC: The [System] SHALL NOT [Action]
 ```
 
 **Example**:
+
 ```
 SPEC-001-REQ-003: The authentication service SHALL NOT
 accept JWT tokens signed with symmetric algorithms (HS256, HS384, HS512)
@@ -461,11 +487,13 @@ Related TEST:
 #### Pattern 4: Stakeholder (User Role-Specific)
 
 **Syntax**:
+
 ```
 SPEC: As a [User Role], I want [Feature] so that [Benefit]
 ```
 
 **Example**:
+
 ```
 SPEC-001-REQ-004: As an API consumer,
 I want to pass JWT tokens in the Authorization header
@@ -480,11 +508,13 @@ Related TEST:
 #### Pattern 5: Boundary Condition (Edge Cases)
 
 **Syntax**:
+
 ```
 SPEC: [System] SHALL [Action] when [Boundary Condition]
 ```
 
 **Example**:
+
 ```
 SPEC-001-REQ-005: The authentication service SHALL return
 HTTP 429 Too Many Requests when a single IP address
@@ -497,7 +527,9 @@ Related TEST:
 ```
 
 ## Authentication Flow
+
 Per SPEC-001, the system SHALL validate all JWT tokens...
+
 ```
 
 
@@ -505,3 +537,4 @@ Per SPEC-001, the system SHALL validate all JWT tokens...
 
 
 
+```

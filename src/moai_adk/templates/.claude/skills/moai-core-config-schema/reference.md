@@ -7,6 +7,7 @@
 ## 📋 Schema Overview
 
 The `.moai/config/config.json` file contains all project-level configuration for MoAI-ADK, including:
+
 - Project metadata and settings
 - User preferences (language, nickname)
 - Git workflow strategies
@@ -21,14 +22,30 @@ The `.moai/config/config.json` file contains all project-level configuration for
 
 ```json
 {
-  "_meta": { /* Metadata about the config file itself */ },
-  "moai": { /* MoAI-ADK version info */ },
-  "project": { /* Project-specific settings */ },
-  "user": { /* User preferences */ },
-  "constitution": { /* Development principles */ },
-  "git_strategy": { /* Git workflow configuration */ },
-  "pipeline": { /* Command pipeline settings */ },
-  "tags": { /* TAG system configuration */ }
+  "_meta": {
+    /* Metadata about the config file itself */
+  },
+  "moai": {
+    /* MoAI-ADK version info */
+  },
+  "project": {
+    /* Project-specific settings */
+  },
+  "user": {
+    /* User preferences */
+  },
+  "constitution": {
+    /* Development principles */
+  },
+  "git_strategy": {
+    /* Git workflow configuration */
+  },
+  "pipeline": {
+    /* Command pipeline settings */
+  },
+  "tags": {
+    /* TAG system configuration */
+  }
 }
 ```
 
@@ -41,10 +58,10 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Internal metadata for config structure tracking and TAG traceability.
 
 **Schema**:
+
 ```json
 {
-  "_meta": {
-  }
+  "_meta": {}
 }
 ```
 
@@ -57,6 +74,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Track MoAI-ADK package version for compatibility checks.
 
 **Schema**:
+
 ```json
 {
   "moai": {
@@ -66,6 +84,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Fields**:
+
 - `version` (string, required): MoAI-ADK version in SemVer format (e.g., "0.4.6")
 
 ---
@@ -75,6 +94,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Core project settings including name, mode, language preferences, and optimization status.
 
 **Schema**:
+
 ```json
 {
   "project": {
@@ -95,6 +115,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Fields**:
+
 - `name` (string, required): Project name
 - `description` (string, optional): Brief project description
 - `mode` (enum, required): Project mode — `"personal"` | `"team"`
@@ -109,8 +130,9 @@ The `.moai/config/config.json` file contains all project-level configuration for
 - `created_at` (string, required): Project creation timestamp
 
 **Notes**:
-- `conversation_language` is set during `/alfred:0-project` STEP 0.1
-- `language` is auto-detected during `/alfred:0-project` STEP 1 or can be manually specified
+
+- `conversation_language` is set during `/moai:0-project` STEP 0.1
+- `language` is auto-detected during `/moai:0-project` STEP 1 or can be manually specified
 
 ---
 
@@ -119,6 +141,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: User-specific preferences for personalized Alfred experience.
 
 **Schema**:
+
 ```json
 {
   "user": {
@@ -128,14 +151,16 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Fields**:
+
 - `nickname` (string, required): User's chosen nickname for personalized communication
   - Length: 1-50 characters
   - Allows emoji, spaces, and special characters
-  - Set during `/alfred:0-project` STEP 0.2
+  - Set during `/moai:0-project` STEP 0.2
   - Used by all sub-agents to address the user (e.g., "안녕하세요, GOOS오라버니님!")
   - Displayed in `CLAUDE.md` under "## 프로젝트 정보 | Project Information"
 
 **Usage**:
+
 - Alfred and all sub-agents receive `user_nickname` as a context parameter
 - Language-specific honorifics are applied automatically (e.g., "님" in Korean)
 - Enhances user experience by personalizing all interactions
@@ -147,6 +172,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Define development principles and quality gates enforced by MoAI-ADK.
 
 **Schema**:
+
 ```json
 {
   "constitution": {
@@ -165,6 +191,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Fields**:
+
 - `enforce_tdd` (boolean, required): Whether TDD workflow is mandatory
 - `test_coverage_target` (integer, required): Minimum test coverage percentage (default: 85)
 - `simplicity_threshold` (integer, required): Max number of concurrent projects (default: 5)
@@ -177,12 +204,19 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Configure Git workflow automation based on project mode.
 
 **Schema**:
+
 ```json
 {
   "git_strategy": {
     "personal": {
       "auto_checkpoint": "event-driven",
-      "checkpoint_events": ["delete", "refactor", "merge", "script", "critical-file"],
+      "checkpoint_events": [
+        "delete",
+        "refactor",
+        "merge",
+        "script",
+        "critical-file"
+      ],
       "checkpoint_type": "local-branch",
       "max_checkpoints": 10,
       "cleanup_days": 7,
@@ -205,6 +239,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Personal Mode Fields**:
+
 - `auto_checkpoint` (enum): `"event-driven"` | `"manual"` | `"disabled"`
 - `checkpoint_events` (array): List of events triggering auto-checkpoint
 - `checkpoint_type` (enum): `"local-branch"` | `"git-stash"` | `"backup-dir"`
@@ -217,6 +252,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 - `main_branch` (string): Name of main/production branch
 
 **Team Mode Fields**:
+
 - `use_gitflow` (boolean): Enable GitFlow branching strategy
 - `auto_pr` (boolean): Auto-create PR after feature completion
 - `draft_pr` (boolean): Create PRs in draft mode by default
@@ -231,14 +267,15 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Define available Alfred commands and track current workflow stage.
 
 **Schema**:
+
 ```json
 {
   "pipeline": {
     "available_commands": [
-      "/alfred:0-project",
-      "/alfred:1-plan",
-      "/alfred:2-run",
-      "/alfred:3-sync"
+      "/moai:0-project",
+      "/moai:1-plan",
+      "/moai:2-run",
+      "/moai:3-sync"
     ],
     "current_stage": "initialized"
   }
@@ -246,6 +283,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Fields**:
+
 - `available_commands` (array, required): List of available Alfred commands
 - `current_stage` (string, required): Current workflow stage (e.g., `"initialized"`, `"planning"`, `"building"`, `"syncing"`)
 
@@ -256,12 +294,22 @@ The `.moai/config/config.json` file contains all project-level configuration for
 **Purpose**: Configure TAG system behavior and storage policy.
 
 **Schema**:
+
 ```json
 {
   "tags": {
     "storage_type": "code_scan",
     "auto_sync": true,
-    "categories": ["REQ", "DESIGN", "TASK", "TEST", "FEATURE", "API", "UI", "DATA"],
+    "categories": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "TEST",
+      "FEATURE",
+      "API",
+      "UI",
+      "DATA"
+    ],
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
@@ -273,8 +321,9 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ```
 
 **Fields**:
+
 - `storage_type` (enum, required): `"code_scan"` | `"registry_file"`
-- `auto_sync` (boolean, required): Auto-sync TAGs during `/alfred:3-sync`
+- `auto_sync` (boolean, required): Auto-sync TAGs during `/moai:3-sync`
 - `categories` (array, required): List of valid TAG categories
 - `code_scan_policy` (object, required): Configuration for code-first TAG scanning
   - `no_intermediate_cache` (boolean): Never use intermediate TAG cache files
@@ -289,19 +338,21 @@ The `.moai/config/config.json` file contains all project-level configuration for
 
 ### Version History
 
-| Version | Date       | Changes                                                |
-| ------- | ---------- | ------------------------------------------------------ |
-| v0.4.6  | 2025-10-23 | Added `user` section with `nickname` field             |
+| Version | Date       | Changes                                                  |
+| ------- | ---------- | -------------------------------------------------------- |
+| v0.4.6  | 2025-10-23 | Added `user` section with `nickname` field               |
 | v0.4.2  | 2025-10-22 | Added `conversation_language` and `language_name` fields |
-| v0.4.0  | 2025-10-20 | Initial schema documentation                           |
+| v0.4.0  | 2025-10-20 | Initial schema documentation                             |
 
 ### Migration Guide
 
 **From v0.4.5 → v0.4.6**:
+
 - Add `user` section with `nickname` field
 - No breaking changes; existing configs remain compatible
 
 **Example Migration**:
+
 ```json
 // Before (v0.4.5)
 {
@@ -339,6 +390,7 @@ The `.moai/config/config.json` file contains all project-level configuration for
 ### Required Fields per Section
 
 **Minimum Valid Config**:
+
 ```json
 {
   "moai": {

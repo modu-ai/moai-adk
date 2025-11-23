@@ -99,7 +99,9 @@ def handle_session_start(payload: HookPayload) -> HookResult:
     branch = git_info.get("branch", "N/A") if git_info else "N/A"
     commit = git_info.get("commit", "N/A")[:7] if git_info else "N/A"
     changes = git_info.get("changes", 0) if git_info else 0
-    spec_progress = f"{specs['completed']}/{specs['total']}" if specs["total"] > 0 else "0/0"
+    spec_progress = (
+        f"{specs['completed']}/{specs['total']}" if specs["total"] > 0 else "0/0"
+    )
 
     # system_message: displayed directly to the user
     lines = [
@@ -125,7 +127,9 @@ def handle_session_start(payload: HookPayload) -> HookResult:
                     f"   🗿 MoAI-ADK Ver: {version_info['current']} → {version_info['latest']} available ✨"
                 )
                 if version_info.get("release_notes_url"):
-                    lines.append(f"   📝 Release Notes: {version_info['release_notes_url']}")
+                    lines.append(
+                        f"   📝 Release Notes: {version_info['release_notes_url']}"
+                    )
 
             # Add upgrade recommendation
             if version_info.get("upgrade_command"):
@@ -133,7 +137,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         else:
             # No update available - show current version only
             lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']}")
-
 
     # Add Git info only if available (not degraded)
     if git_info:
@@ -152,7 +155,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
             branch_short = cp["branch"].replace("before-", "")
             lines.append(f"      📌 {branch_short}")
         lines.append("")  # Blank line before restore command
-        lines.append("   ↩️  Restore: /alfred:0-project restore")
+        lines.append("   ↩️  Restore: /moai:0-project restore")
 
     # Add SPEC progress only if available (not degraded) - at the bottom
     if specs["total"] > 0:

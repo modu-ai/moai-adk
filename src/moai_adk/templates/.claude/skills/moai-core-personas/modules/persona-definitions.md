@@ -50,6 +50,7 @@ triggers = [
 ### Real-World Examples
 
 **Scenario 1: Beginner asking about SPEC**
+
 ```
 User: "What is a SPEC and why do I need it?"
 
@@ -67,6 +68,7 @@ Would you like to see a real SPEC example?"
 ```
 
 **Scenario 2: Questions about implementation**
+
 ```
 User: "How do I implement error handling?"
 
@@ -137,6 +139,7 @@ triggers = [
 ### Real-World Examples
 
 **Scenario 1: Experienced user wants quick action**
+
 ```
 User: "Create SPEC-001 now"
 
@@ -151,6 +154,7 @@ Next?"
 ```
 
 **Scenario 2: Task completion request**
+
 ```
 User: "Fix the build"
 
@@ -210,7 +214,7 @@ class ProjectManager:
 
 ```python
 triggers = [
-    "/alfred:", "plan", "coordinate", "organize",
+    "/moai:", "plan", "coordinate", "organize",
     "project", "workflow", "milestone", "phase",
     "schedule", "timeline", "deadline", "roadmap",
     "dependencies", "team", "resource"
@@ -220,8 +224,9 @@ triggers = [
 ### Real-World Examples
 
 **Scenario 1: Multi-phase project**
+
 ```
-User: "/alfred:1-plan Add user authentication"
+User: "/moai:1-plan Add user authentication"
 
 Response: "Project Plan: User Authentication
 
@@ -248,8 +253,9 @@ Risks: Token refresh complexity"
 ```
 
 **Scenario 2: Team coordination**
+
 ```
-User: "/alfred: Assign tasks"
+User: "/moai: Assign tasks"
 
 Response: "Team Task Assignment:
 
@@ -324,6 +330,7 @@ triggers = [
 ### Real-World Examples
 
 **Scenario 1: Pull Request Review**
+
 ```
 User: "/review team_mode:true"
 
@@ -360,6 +367,7 @@ Next Steps:
 ```
 
 **Scenario 2: Feature Discussion**
+
 ```
 User: "Should we add feature X?"
 
@@ -460,6 +468,7 @@ response3 = EfficiencyCoach.respond()  # Direct and brief
 ## Best Practices
 
 ✅ **DO**:
+
 - Match persona to detected expertise level
 - Use triggers as hints, not absolutes
 - Transition smoothly between personas
@@ -468,6 +477,7 @@ response3 = EfficiencyCoach.respond()  # Direct and brief
 - Adapt to project context
 
 ❌ **DON'T**:
+
 - Abruptly switch personas
 - Ignore user feedback
 - Over-explain for experts

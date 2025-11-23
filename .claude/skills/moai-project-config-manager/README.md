@@ -50,10 +50,11 @@ Skill("moai-project-config-manager", action="validate")
 ## Integration
 
 This skill integrates seamlessly with Alfred commands:
-- `/alfred:0-project` - Project initialization and setting updates
-- `/alfred:1-plan` - Configuration-aware planning
-- `/alfred:2-run` - Configuration-guided execution
-- `/alfred:3-sync` - Configuration synchronization
+
+- `/moai:0-project` - Project initialization and setting updates
+- `/moai:1-plan` - Configuration-aware planning
+- `/moai:2-run` - Configuration-guided execution
+- `/moai:3-sync` - Configuration synchronization
 
 ## Validation
 

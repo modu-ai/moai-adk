@@ -16,9 +16,9 @@
 ## 🤖 Automated Validation Status
 
 <!-- The checklist below is auto-updated by the agent -->
-<!-- /alfred:1-plan → create feature branch → Draft PR -->
-<!-- /alfred:2-run → implement via TDD → auto-check checkboxes -->
-<!-- /alfred:3-sync → synchronize documents → Ready for Review -->
+<!-- /moai:1-plan → create feature branch → Draft PR -->
+<!-- /moai:2-run → implement via TDD → auto-check checkboxes -->
+<!-- /moai:3-sync → synchronize documents → Ready for Review -->
 
 - [ ] spec-builder: Complete EARS spec and create feature branch
 - [ ] code-builder: Finish TDD RED-GREEN-REFACTOR
@@ -39,14 +39,17 @@
 <!-- code-builder auto-fills TDD results -->
 
 ### 🔴 RED (Test Authoring)
+
 - Test File: `tests/auth/service.test.ts`
 - Test Description: [describe the failing test]
 
 ### 🟢 GREEN (Implementation)
+
 - Implementation File: `src/auth/service.ts`
 - Implementation Done: [describe functionality]
 
 ### ♻️ REFACTOR (Improvements)
+
 - Refactoring Details: [code quality improvements]
 
 ## 📚 Documentation Sync
@@ -62,4 +65,3 @@
 🚀 MoAI-ADK: Professional development without Git commands via a 3-stage pipeline!
 
 Reviewers: Check TRUST 4 compliance and SPEC metadata completeness only.
-

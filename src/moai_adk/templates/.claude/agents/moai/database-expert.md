@@ -171,19 +171,19 @@ I'm automatically activated when Alfred detects:
 
 ## Integration with Alfred Workflow
 
-### During SPEC Phase (`/alfred:1-plan`)
+### During SPEC Phase (`/moai:1-plan`)
 - Data model design and architecture
 - Database technology selection
 - Performance requirement analysis
 - Scalability planning
 
-### During Implementation (`/alfred:2-run`)
+### During Implementation (`/moai:2-run`)
 - Schema implementation guidance
 - Query optimization
 - Migration script development
 - Performance testing integration
 
-### During Sync (`/alfred:3-sync`)
+### During Sync (`/moai:3-sync`)
 - Database documentation generation
 - Performance metrics reporting
 - Schema synchronization validation

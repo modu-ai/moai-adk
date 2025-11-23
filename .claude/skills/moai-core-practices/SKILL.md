@@ -18,12 +18,11 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: moai, practices, core  
-
+**auto_trigger_keywords**: moai, practices, core
 
 ## Quick Reference (30 seconds)
 
-# Enterprise Practical Workflows & Context Engineering 
+# Enterprise Practical Workflows & Context Engineering
 
 ## JIT (Just-In-Time) Context Strategy
 
@@ -56,7 +55,7 @@ find src/ -type f -name "*.py" | wc -l
 find src/ -name "__main__.py" -o -name "main.py" -o -name "run.py"
 
 # 3. Load entry point + immediate dependencies
-Glob("src/{**/}*.py") 
+Glob("src/{**/}*.py")
 # Load only files referenced by entry point
 
 # 4. Cache in Task() context for reuse
@@ -116,19 +115,16 @@ Write tests for feature X...
 # Result: No re-mapping, efficient context reuse
 ```
 
-
 ## Related Skills
 
 - `moai-alfred-agent-guide` (Agent orchestration patterns)
 - `moai-alfred-clone-pattern` (Complex task delegation)
 - `moai-essentials-debug` (Debugging techniques)
 
-
 **For detailed workflow examples**: [reference.md](reference.md)  
 **For real-world scenarios**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
-
 
 ## Implementation Guide
 
@@ -136,13 +132,12 @@ Write tests for feature X...
 
 Provides practical workflows, context engineering strategies, real-world execution examples, and debugging solutions for moai-adk. Covers JIT context management, efficient agent usage, SPEC→TDD→Sync execution, and common problem resolution.
 
-
 ## SPEC → TDD → Sync Execution Pattern
 
-### Step 1: Create SPEC with `/alfred:1-plan`
+### Step 1: Create SPEC with `/moai:1-plan`
 
 ```bash
-/alfred:1-plan "Add user authentication with JWT"
+/moai:1-plan "Add user authentication with JWT"
 
 # This creates:
 # .moai/specs/SPEC-042/spec.md (full requirements)
@@ -150,7 +145,7 @@ Provides practical workflows, context engineering strategies, real-world executi
 # Track with TodoWrite
 ```
 
-### Step 2: Implement with `/alfred:2-run SPEC-042`
+### Step 2: Implement with `/moai:2-run SPEC-042`
 
 ```
 RED:        Test agent writes failing tests
@@ -164,7 +159,7 @@ Repeat TDD cycle for each feature component
 All tests passing, coverage ≥85%
 ```
 
-### Step 3: Sync with `/alfred:3-sync auto SPEC-042`
+### Step 3: Sync with `/moai:3-sync auto SPEC-042`
 
 ```
 Updates:
@@ -173,7 +168,6 @@ Updates:
   ✓ Creates PR to develop
   ✓ Auto-validation of quality gates
 ```
-
 
 ## Debugging Pattern: Issue → Root Cause → Fix
 
@@ -224,10 +218,10 @@ def get_user(user_id):
 # REFACTOR: Improve
 def get_user(user_id: int) -> User:
     """Get user by ID.
-    
+
     Args:
         user_id: User identifier
-        
+
     Raises:
         ValueError: If user_id is None or invalid
     """
@@ -236,16 +230,15 @@ def get_user(user_id: int) -> User:
     return self.user_repo.find(user_id)
 ```
 
-
 ## 5 Real-World Scenarios
 
 ### Scenario 1: Feature Implementation (2-3 hours)
 
 ```
-1. Create SPEC:     /alfred:1-plan "Add user dashboard"
+1. Create SPEC:     /moai:1-plan "Add user dashboard"
 2. Clarify details: AskUserQuestion (which data to show?)
-3. Implement:       /alfred:2-run SPEC-XXX (TDD cycle)
-4. Document:        /alfred:3-sync auto SPEC-XXX
+3. Implement:       /moai:2-run SPEC-XXX (TDD cycle)
+4. Document:        /moai:3-sync auto SPEC-XXX
 5. Result:          Production-ready feature
 ```
 
@@ -289,7 +282,6 @@ def get_user(user_id: int) -> User:
 5. Documentation:   Central SPEC as source of truth
 ```
 
-
 ## Context Budget Optimization
 
 ```
@@ -307,10 +299,10 @@ Reusable context:
   - Result: More reasoning capacity
 ```
 
-
 ## Best Practices
 
 ### DO
+
 - ✅ Load entry points first (3-5 files)
 - ✅ Identify dependencies before deep dive
 - ✅ Reuse analyzed context across tasks
@@ -321,6 +313,7 @@ Reusable context:
 - ✅ Test before declaring done
 
 ### DON'T
+
 - ❌ Load entire codebase at once
 - ❌ Reanalyze same code multiple times
 - ❌ Skip SPEC clarification (causes rework)
@@ -330,9 +323,4 @@ Reusable context:
 - ❌ Skip documentation updates
 - ❌ Commit without running tests
 
-
-
 ## Advanced Patterns
-
-
-

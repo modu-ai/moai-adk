@@ -1,6 +1,8 @@
 # Check MIDX status
+
 git verify-pack -v .git/objects/pack/multi-pack-index
-```
+
+````
 
 **Use case**: MoAI-ADK monorepo optimization
 
@@ -16,7 +18,7 @@ $ git gc --aggressive
 Counting objects: 250000
 Packing objects: 100%
 Duration: 28 seconds  (38% faster)
-```
+````
 
 ### Feature 2: Branch Base Detection
 
@@ -38,6 +40,7 @@ refs/heads/hotfix/urgent-bug Not base
 ### Feature 3: Experimental Commands (Git 2.48+)
 
 **Git backfill** - Smart partial clone fetching:
+
 ```bash
 git backfill --lazy
 # Fetches only necessary objects for working directory
@@ -45,6 +48,7 @@ git backfill --lazy
 ```
 
 **Git survey** - Identify repository data shape issues:
+
 ```bash
 git survey
 # Output:
@@ -53,17 +57,15 @@ git survey
 # Recommendation: Consider sparse checkout for legacy
 ```
 
-
 ## Git 2.48-2.50 Latest Features
 
-| Version | Feature | Benefit |
-|---------|---------|---------|
-| **2.48** | Experimental backfill | 30% faster on monorepos |
-| **2.48** | Improved reftable support | Better concurrent access |
-| **2.49** | Platform compatibility policy | Stable C11 support |
-| **2.49** | VSCode mergetool integration | Native IDE support |
-| **2.50** | Enhanced ref verification | Stronger integrity checks |
-
+| Version  | Feature                       | Benefit                   |
+| -------- | ----------------------------- | ------------------------- |
+| **2.48** | Experimental backfill         | 30% faster on monorepos   |
+| **2.48** | Improved reftable support     | Better concurrent access  |
+| **2.49** | Platform compatibility policy | Stable C11 support        |
+| **2.49** | VSCode mergetool integration  | Native IDE support        |
+| **2.50** | Enhanced ref verification     | Stronger integrity checks |
 
 ## GitHub CLI 2.83.0 Integration
 
@@ -102,23 +104,22 @@ gh pr view 123 --json reviews
 gh pr merge 123 --squash && gh pr merge 124 --squash
 ```
 
-
 ## Enterprise Commit Cycle (MoAI-ADK)
 
 ### Complete Flow
 
 ```
-/alfred:1-plan "Feature name"
+/moai:1-plan "Feature name"
   └─→ Create feature/SPEC-XXX branch
   └─→ Ask: Which workflow? (Feature Branch or Direct)
   └─→ Create SPEC document
 
-/alfred:2-run SPEC-XXX
+/moai:2-run SPEC-XXX
   ├─→ RED phase: Write failing tests
   ├─→ GREEN phase: Implement code
   └─→ REFACTOR phase: Improve code
 
-/alfred:3-sync auto SPEC-XXX
+/moai:3-sync auto SPEC-XXX
   ├─→ Run quality gates (coverage ≥85%)
   ├─→ Create PR (if Feature Branch workflow)
   │   └─→ gh pr create --base develop
@@ -126,7 +127,6 @@ gh pr merge 123 --squash && gh pr merge 124 --squash
   └─→ Merge to develop (if ready)
       └─→ gh pr merge --squash --delete-branch
 ```
-
 
 ## Configuration
 
@@ -153,14 +153,15 @@ gh pr merge 123 --squash && gh pr merge 124 --squash
 ```
 
 **Valid `spec_git_workflow` values**:
+
 - `"feature_branch"` - Always PR (recommended for teams)
 - `"develop_direct"` - Always direct commit (fast track)
 - `"per_spec"` - Ask user for each SPEC (flexible)
 
-
 ## Quality Gates
 
 **Enforced before merge**:
+
 - ✅ All tests passing (≥85% coverage)
 - ✅ Linting/formatting (0 errors)
 - ✅ Type checking (100%)
@@ -168,7 +169,6 @@ gh pr merge 123 --squash && gh pr merge 124 --squash
 - ✅ TAGs integrity verified
 - ✅ Security scan passed
 - ✅ No hardcoded secrets
-
 
 ## Performance Optimization (Git 2.47+)
 
@@ -204,10 +204,10 @@ git config --global repack.writeBitmaps true
 git config --global feature.experimental true
 ```
 
-
 ## Best Practices (Enterprise )
 
 ✅ **DO**:
+
 - Choose workflow at SPEC creation (align with team)
 - Follow TDD commit phases (RED → GREEN → REFACTOR)
 - Keep feature branches short-lived (<3 days)
@@ -217,6 +217,7 @@ git config --global feature.experimental true
 - Use session persistence for recovery
 
 ❌ **DON'T**:
+
 - Skip quality gates based on workflow
 - Mix strategies within single feature
 - Commit directly to main branch
@@ -225,24 +226,20 @@ git config --global feature.experimental true
 - Leave long-running feature branches
 - Use deprecated Git versions (<2.40)
 
-
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Merge conflicts | Rebase on develop before merge |
-| PR stuck in draft | Use `gh pr ready` to publish |
-| Tests failing in CI | Run tests locally before push |
-| Large pack file | Enable MIDX: `git config gc.writeMultiPackIndex true` |
-| Session lost | Check .moai/sessions/ for recovery checkpoints |
-
+| Issue               | Solution                                              |
+| ------------------- | ----------------------------------------------------- |
+| Merge conflicts     | Rebase on develop before merge                        |
+| PR stuck in draft   | Use `gh pr ready` to publish                          |
+| Tests failing in CI | Run tests locally before push                         |
+| Large pack file     | Enable MIDX: `git config gc.writeMultiPackIndex true` |
+| Session lost        | Check .moai/sessions/ for recovery checkpoints        |
 
 ## Version History
 
-| Version | Date | Key Changes |
-|---------|------|-------------|
+| Version   | Date       | Key Changes                                                 |
+| --------- | ---------- | ----------------------------------------------------------- |
 | **4.0.0** | 2025-11-12 | Git 2.47-2.50 support, MIDX optimization, Hybrid strategies |
-| **2.1.0** | 2025-11-04 | Three workflows (feature_branch, develop_direct, per_spec) |
-| **2.0.0** | 2025-10-22 | Major update with latest tools, TRUST 5 integration |
-
-
+| **2.1.0** | 2025-11-04 | Three workflows (feature_branch, develop_direct, per_spec)  |
+| **2.0.0** | 2025-10-22 | Major update with latest tools, TRUST 5 integration         |

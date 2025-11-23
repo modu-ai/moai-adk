@@ -2,7 +2,7 @@
 GitHub Issue Creator for MoAI-ADK quick issue reporting.
 
 Enables users to quickly create GitHub Issues with standardized templates
-using `/alfred:9-feedback` interactive dialog.
+using `/moai:9-feedback` interactive dialog.
 
 """
 
@@ -218,7 +218,7 @@ class GitHubIssueCreator:
         footer += f"**Priority**: {config.priority.value}  \n"
         if config.category:
             footer += f"**Category**: {config.category}  \n"
-        footer += "**Created via**: `/alfred:9-feedback`"
+        footer += "**Created via**: `/moai:9-feedback`"
 
         return body + footer
 

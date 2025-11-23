@@ -18,8 +18,7 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: trust, moai, foundation  
-
+**auto_trigger_keywords**: trust, moai, foundation
 
 ## Quick Reference
 
@@ -32,12 +31,12 @@ status: active
 
 **Core Principle**: TRUST 4 is **non-negotiable**. Every line of code must satisfy all four principles or it's not production-ready.
 
-
 ## Implementation Guide
 
 ### Principle 1: Test First (T)
 
 **The TDD Cycle**:
+
 ```
 1. RED Phase
    ├─ Write failing test
@@ -60,6 +59,7 @@ status: active
 ```
 
 **Test First Validation Rules**:
+
 ```
 Rule T1: Every feature must have tests
 ├─ Tests must exist BEFORE implementation
@@ -81,6 +81,7 @@ Rule T3: All tests must pass
 ```
 
 **Example: Test First in Action**:
+
 ```python
 # Day 1: Write failing test (RED)
 def test_password_hashing_creates_unique_hashes():
@@ -104,7 +105,7 @@ def hash_password(plaintext: str) -> str:
 def hash_password(plaintext: str) -> str:
     """
     Hash password using bcrypt with enterprise security settings
-    
+
     Security:
     - Uses bcrypt algorithm (OWASP recommended)
     - Salt rounds: 12 (industry standard 2025)
@@ -129,6 +130,7 @@ def hash_password(plaintext: str) -> str:
 | Comment Ratio | 15-20% | custom | 10-30% range |
 
 **Readability Rules**:
+
 ```
 Rule R1: Clear naming
 ├─ Functions: verb_noun pattern (e.g., validate_password)
@@ -155,6 +157,7 @@ Rule R3: Documentation
 ### Principle 3: Unified (U)
 
 **Consistent Structure**:
+
 ```
 src/
 ├─ auth/
@@ -173,6 +176,7 @@ tests/
 ```
 
 **Unified Patterns**:
+
 ```python
 # Pattern 1: Error Handling (Unified across all modules)
 try:
@@ -195,6 +199,7 @@ def validate_user_input(email: str, password: str) -> tuple[bool, str]:
 ```
 
 **Unified Validation**:
+
 ```
 Rule U1: Consistent file structure
 ├─ All modules follow same layout
@@ -215,6 +220,7 @@ Rule U3: Consistent error handling
 ### Principle 4: Secured (S)
 
 **OWASP Top 10 (2024 Enterprise Edition)**:
+
 ```
 1. Broken Access Control
    ├─ Risk: Unauthorized feature access
@@ -238,6 +244,7 @@ Rule U3: Consistent error handling
 ```
 
 **Security Validation (STRICT Mode)**:
+
 ```
 Rule S1: OWASP compliance
 ├─ Every OWASP risk must be addressed
@@ -263,7 +270,6 @@ Rule S4: Dependency Security
 ├─ Update regularly (within 30 days)
 └─ Enforce via: Dependabot + pip audit
 ```
-
 
 ## Advanced Patterns
 
@@ -311,11 +317,11 @@ echo "SUCCESS: All quality gates passed!"
 ### TRUST 4 in Workflow
 
 ```
-/alfred:1-plan "New Feature"
+/moai:1-plan "New Feature"
   ↓
   Status: DRAFT
 
-/alfred:2-run SPEC-001
+/moai:2-run SPEC-001
   ↓
   RED Phase: Write tests
   └─ Tests fail (no code yet)
@@ -336,7 +342,7 @@ echo "SUCCESS: All quality gates passed!"
   ├─ Security scan: 0 vulnerabilities ✓
   └─ Status: PASS
 
-/alfred:3-sync auto SPEC-001
+/moai:3-sync auto SPEC-001
   ↓
   All TRUST 4 principles validated
   ✓ Ready to merge

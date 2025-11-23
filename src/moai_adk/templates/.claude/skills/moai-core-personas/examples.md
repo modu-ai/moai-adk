@@ -25,6 +25,7 @@ Let's start with your first step. What kind of project or feature would you like
 ```
 
 **Follow-up Interaction**:
+
 ```
 User: "I want to build a user login system"
 
@@ -72,6 +73,7 @@ Need anything else?"
 ```
 
 **Follow-up Interaction**:
+
 ```
 User: "Tests are failing on email validation"
 
@@ -91,7 +93,7 @@ Ready to proceed?"
 **Scenario**: User requests complex feature requiring coordination
 
 ```
-User: "/alfred:1-plan 'Implement real-time chat system with WebSocket support'"
+User: "/moai:1-plan 'Implement real-time chat system with WebSocket support'"
 
 [Session Signals: Alfred command, complex feature, multiple components]
 [Detection: Alfred Command → Project Manager]
@@ -139,6 +141,7 @@ Ready to proceed with Phase 1 infrastructure setup?"
 ```
 
 **Project Execution**:
+
 ```
 User: "Yes, proceed with Phase 1"
 
@@ -172,7 +175,7 @@ Proceeding with Redis session management setup..."
 **Scenario**: Multiple team members collaborating on feature
 
 ```
-User: "/alfred:1-plan 'Payment processing integration - team feature'"
+User: "/moai:1-plan 'Payment processing integration - team feature'"
 [Project config: team_mode: true]
 
 [Session Signals: Alfred command + team_mode → Collaboration Coordinator]
@@ -232,6 +235,7 @@ Ready for team kickoff meeting. Which team should start first, or should we coor
 ```
 
 **Team Coordination Update**:
+
 ```
 User: "Backend team ready to start. Need security review first."
 
@@ -412,6 +416,7 @@ Starting incident response protocol. Are you the primary contact for this issue,
 ```
 
 **Follow-up Coordination**:
+
 ```
 User: "Yes, I'm primary. Notify DevOps team for deployment support."
 
@@ -463,9 +468,11 @@ Alfred (Project Manager): "Multi-project dependency coordination - complex scena
 
 **Project Dependencies Identified:**
 ```
+
 user-auth ← payment-gateway ← notification-system
-    ↓              ↓                    ↓
-  Foundation    Transaction          Communication
+↓ ↓ ↓
+Foundation Transaction Communication
+
 ```
 
 **Timeline Analysis:**

@@ -18,8 +18,8 @@ class ProjectSetupAnswers(TypedDict):
     project_name: str
     mode: str  # personal | team (default from init)
     locale: str  # ko | en | ja | zh | other (default from init)
-    language: str | None  # Will be set in /alfred:0-project
-    author: str  # Will be set in /alfred:0-project
+    language: str | None  # Will be set in /moai:project
+    author: str  # Will be set in /moai:project
     custom_language: str | None  # User input for "other" language option
 
 
@@ -45,16 +45,16 @@ def prompt_project_setup(
     """
     answers: ProjectSetupAnswers = {
         "project_name": "",
-        "mode": "personal",  # Default: will be configurable in /alfred:0-project
-        "locale": "en",  # Default: will be configurable in /alfred:0-project
-        "language": None,  # Will be detected in /alfred:0-project
-        "author": "",  # Will be set in /alfred:0-project
+        "mode": "personal",  # Default: will be configurable in /moai:project
+        "locale": "en",  # Default: will be configurable in /moai:project
+        "language": None,  # Will be detected in /moai:project
+        "author": "",  # Will be set in /moai:project
         "custom_language": None,  # User input for other language
     }
 
     try:
         # SIMPLIFIED: Only ask for project name
-        # All other settings (mode, locale, language, author) are now configured in /alfred:0-project
+        # All other settings (mode, locale, language, author) are now configured in /moai:project
 
         # 1. Project name (only when not using the current directory)
         if not is_current_dir:
@@ -97,7 +97,11 @@ def prompt_project_setup(
         # Determine default choice index
         language_values = ["ko", "en", "ja", "zh", "other"]
         default_locale = initial_locale or "en"
-        default_index = language_values.index(default_locale) if default_locale in language_values else 1
+        default_index = (
+            language_values.index(default_locale)
+            if default_locale in language_values
+            else 1
+        )
 
         language_choice_name = questionary.select(
             "Select your conversation language:",

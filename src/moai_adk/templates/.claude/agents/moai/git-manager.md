@@ -4,7 +4,7 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: 
+skills: moai-foundation-git, moai-core-git-workflow
 ------
 
 # Git Manager - Agent dedicated to Git tasks
@@ -216,7 +216,7 @@ git-manager manages feature development with mandatory code review in Team Mode.
 
 **Workflow**: Feature Branch + PR (GitHub Flow standard for all projects):
 
-**1. When writing a SPEC** (`/alfred:1-plan`):
+**1. When writing a SPEC** (`/moai:1-plan`):
 ```bash
 # Create a feature branch from main
 git checkout main
@@ -226,7 +226,7 @@ git checkout -b feature/SPEC-{ID}
 gh pr create --draft --base main --head feature/SPEC-{ID}
 ```
 
-**2. When implementing TDD** (`/alfred:2-run`):
+**2. When implementing TDD** (`/moai:2-run`):
 ```bash
 # RED → GREEN → REFACTOR Create commit
 git commit -m "🔴 RED: [Test description]"
@@ -234,7 +234,7 @@ git commit -m "🟢 GREEN: [Implementation description]"
 git commit -m "♻️ REFACTOR: [Improvement description]"
 ```
 
-**3. When synchronization completes** (`/alfred:3-sync`):
+**3. When synchronization completes** (`/moai:3-sync`):
 ```bash
 # Remote Push and PR Ready Conversion
 git push origin feature/SPEC-{ID}
@@ -424,7 +424,7 @@ git-manager automatically executes the following steps:
 3. Check CI/CD status (gh pr checks --watch)
 4. Automatic merge (gh pr merge --squash --delete-branch)
 5. Local cleanup and transition (develop checkout, sync, delete feature branch)
-6. Completion notification (next /alfred:1-plan starts in develop)
+6. Completion notification (next /moai:1-plan starts in develop)
 
 **Exception handling**:
 
@@ -446,6 +446,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 This signature applies to all Git operations:
+
 - TDD phase commits (RED, GREEN, REFACTOR)
 - Release commits
 - Hotfix commits
@@ -453,10 +454,12 @@ This signature applies to all Git operations:
 - Tag creation
 
 **Signature breakdown**:
+
 - `🔗 https://adk.mo.ai.kr` - Official MoAI-ADK homepage link
 - `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI collaborator attribution
 
 **Implementation Example (HEREDOC)**:
+
 ```bash
 git commit -m "$(cat <<'EOF'
 feat(update): Implement 3-stage workflow with config version comparison

@@ -47,6 +47,7 @@ except ImportError:
     class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
+
 # Import config cache
 try:
     from core.config_cache import get_cached_config, get_cached_spec_progress
@@ -66,14 +67,20 @@ except ImportError:
         if not specs_dir.exists():
             return {"completed": 0, "total": 0, "percentage": 0}
         try:
-            spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
+            spec_folders = [
+                d
+                for d in specs_dir.iterdir()
+                if d.is_dir() and d.name.startswith("SPEC-")
+            ]
             total = len(spec_folders)
-            completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
+            completed = sum(
+                1 for folder in spec_folders if (folder / "spec.md").exists()
+            )
             percentage = (completed / total * 100) if total > 0 else 0
             return {
                 "completed": completed,
                 "total": total,
-                "percentage": round(percentage, 0)
+                "percentage": round(percentage, 0),
             }
         except Exception:
             return {"completed": 0, "total": 0, "percentage": 0}
@@ -121,7 +128,11 @@ def should_show_setup_messages() -> bool:
 
     try:
         suppressed_at = datetime.fromisoformat(suppressed_at_str)
-        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        now = (
+            datetime.now(suppressed_at.tzinfo)
+            if suppressed_at.tzinfo
+            else datetime.now()
+        )
         days_passed = (now - suppressed_at).days
 
         # Show messages if more than 7 days have passed
@@ -134,12 +145,7 @@ def should_show_setup_messages() -> bool:
 def _run_git_command(cmd: list[str]) -> str:
     """Run a single git command with timeout"""
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=3
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
         return result.stdout.strip() if result.returncode == 0 else ""
     except Exception:
         return ""
@@ -185,10 +191,7 @@ def save_git_cache(data: dict[str, Any]) -> None:
         cache_file = get_git_cache_file()
         cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-        cache_data = {
-            **data,
-            "last_check": datetime.now().isoformat()
-        }
+        cache_data = {**data, "last_check": datetime.now().isoformat()}
         cache_file.write_text(json.dumps(cache_data, indent=2))
     except Exception:
         pass  # Silently fail on cache write
@@ -221,8 +224,7 @@ def get_git_info() -> dict[str, Any]:
         with ThreadPoolExecutor(max_workers=4) as executor:
             # Submit all tasks
             futures = {
-                executor.submit(_run_git_command, cmd): key
-                for cmd, key in git_commands
+                executor.submit(_run_git_command, cmd): key for cmd, key in git_commands
             }
 
             # Collect results as they complete
@@ -238,7 +240,11 @@ def get_git_info() -> dict[str, Any]:
             "branch": results.get("branch", "unknown"),
             "last_commit": results.get("last_commit", "unknown"),
             "commit_time": results.get("commit_time", "unknown"),
-            "changes": len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0
+            "changes": (
+                len(results.get("changes_raw", "").splitlines())
+                if results.get("changes_raw")
+                else 0
+            ),
         }
 
         # Cache the results
@@ -251,7 +257,7 @@ def get_git_info() -> dict[str, Any]:
             "branch": "unknown",
             "last_commit": "unknown",
             "commit_time": "unknown",
-            "changes": 0
+            "changes": 0,
         }
 
 
@@ -266,6 +272,7 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
     """
     try:
         import re
+
         clean = version_str.lstrip("v")
         parts = [int(x) for x in re.split(r"[^\d]+", clean) if x.isdigit()]
         return tuple(parts) if parts else (0,)
@@ -345,13 +352,10 @@ def get_test_info() -> dict[str, Any]:
     Running pytest is too slow (5+ seconds), so we skip it and return unknown status.
     Users can run tests manually with: pytest --cov
 
-    To check test status, use: /alfred:test-status (future feature)
+    To check test status, use: /moai:test-status (future feature)
     """
     # Skip pytest execution - it's too slow for SessionStart
-    return {
-        "coverage": "unknown",
-        "status": "❓"
-    }
+    return {"coverage": "unknown", "status": "❓"}
 
 
 def get_spec_progress() -> dict[str, Any]:
@@ -448,7 +452,7 @@ def format_session_output() -> str:
         f"🌿 Branch: {git_info['branch']}",
         f"🔄 Changes: {git_info['changes']}",
         f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
-        f"🔨 Last Commit: {git_info['last_commit']}"
+        f"🔨 Last Commit: {git_info['last_commit']}",
     ]
 
     return "\n".join(output)
@@ -485,10 +489,7 @@ def main() -> None:
         session_output = format_session_output() if show_messages else ""
 
         # Return as system message
-        result: dict[str, Any] = {
-            "continue": True,
-            "systemMessage": session_output
-        }
+        result: dict[str, Any] = {"continue": True, "systemMessage": session_output}
 
         print(json.dumps(result))
         sys.exit(0)

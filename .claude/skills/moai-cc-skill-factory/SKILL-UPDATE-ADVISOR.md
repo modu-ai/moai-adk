@@ -166,15 +166,16 @@ Overall Priority: HIGH
 
 ## Version Analysis
 
-| Component | Current | Latest | Status | Update |
-|-----------|---------|--------|--------|--------|
-| Framework | 7.2 | 8.0 | 🔴 Critical | Recommend |
-| Python | 3.9+ | 3.12 | 🟡 Warning | Optional |
-| Dependency X | 2.1 | 3.0 | 🟡 Warning | Check compat |
+| Component    | Current | Latest | Status      | Update       |
+| ------------ | ------- | ------ | ----------- | ------------ |
+| Framework    | 7.2     | 8.0    | 🔴 Critical | Recommend    |
+| Python       | 3.9+    | 3.12   | 🟡 Warning  | Optional     |
+| Dependency X | 2.1     | 3.0    | 🟡 Warning  | Check compat |
 
 ## Issues Found
 
 ### 🔴 Critical (Update Required)
+
 1. Pytest version outdated
    - Current: 7.2 (EOL 2025-12)
    - Recommended: 8.0
@@ -182,12 +183,14 @@ Overall Priority: HIGH
    - Effort: LOW (API compatible)
 
 ### 🟡 Warning (Recommended)
+
 1. Python 3.9 approaching EOL
    - EOL date: Oct 2025
    - Recommended: Python 3.11+
    - Effort: MEDIUM (update examples)
 
 ### 🟢 Good (No action needed)
+
 1. Best practices still current
 2. Examples follow conventions
 3. Security practices sound
@@ -195,11 +198,13 @@ Overall Priority: HIGH
 ## Files Requiring Updates
 
 1. SKILL.md (420 → 500 lines)
+
    - Update framework version
    - Add new features section
    - Update examples
 
 2. reference.md (300 → 370 lines)
+
    - API changes documented
    - Deprecations noted
    - Migration guide added
@@ -212,6 +217,7 @@ Overall Priority: HIGH
 ## Specific Recommendations
 
 ### Update 1: Framework Version
+
 Location: SKILL.md line 42, examples.md lines 15-28
 Change: pytest==7.2 → pytest==8.0
 Justification: Current stable, 30% performance improvement
@@ -219,6 +225,7 @@ Breaking changes: None for basic usage
 Migration effort: <1 hour
 
 ### Update 2: Async Testing Support
+
 Location: SKILL.md (NEW SECTION)
 Add: pytest-asyncio patterns
 Justification: Modern Python uses async/await
@@ -226,6 +233,7 @@ User impact: NEW capability, no breakage
 Effort: NEW content (~100 lines)
 
 ### Update 3: Type Hints
+
 Location: All code examples
 Change: Add type annotations
 Example: def test_foo(client: pytest.Client) -> None:
@@ -242,6 +250,7 @@ If users are on Pytest 7.2:
    New features available: Full async support
 
 2. Step-by-step guide
+
    - Step 1: pip install --upgrade pytest
    - Step 2: Run existing tests (should pass)
    - Step 3: Adopt new async patterns (optional)
@@ -263,11 +272,11 @@ If users are on Pytest 7.2:
 ## Approval Workflow
 
 Ready for update?
-  ☐ Review all changes
-  ☐ Test migration guide
-  ☐ Update dates & versions
-  ☐ Get peer review
-  → Apply updates (with --apply flag)
+☐ Review all changes
+☐ Test migration guide
+☐ Update dates & versions
+☐ Get peer review
+→ Apply updates (with --apply flag)
 ```
 
 ---
@@ -336,28 +345,28 @@ Update priority:
 
 ```bash
 # Basic analysis
-/alfred:update-skill /path/to/skill-name
+/moai:update-skill /path/to/skill-name
 
 # Generate report only (don't apply changes)
-/alfred:update-skill --report moai-skill-testing
+/moai:update-skill --report moai-skill-testing
 
 # Show detailed analysis
-/alfred:update-skill --analyze moai-skill-testing
+/moai:update-skill --analyze moai-skill-testing
 
 # Compare before/after
-/alfred:update-skill --diff moai-skill-testing
+/moai:update-skill --diff moai-skill-testing
 
 # Apply recommended updates (requires approval)
-/alfred:update-skill --apply moai-skill-testing
+/moai:update-skill --apply moai-skill-testing
 
 # Dry run (show what would be changed)
-/alfred:update-skill --dry-run moai-skill-testing
+/moai:update-skill --dry-run moai-skill-testing
 
 # Force re-analysis (bypass cache)
-/alfred:update-skill --force moai-skill-testing
+/moai:update-skill --force moai-skill-testing
 
 # Generate migration guide for users
-/alfred:update-skill --migration moai-skill-testing
+/moai:update-skill --migration moai-skill-testing
 ```
 
 ---

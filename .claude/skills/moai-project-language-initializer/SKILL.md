@@ -19,8 +19,7 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: project, language, moai, initializer  
-
+**auto_trigger_keywords**: project, language, moai, initializer
 
 ## Quick Reference (30 seconds)
 
@@ -28,12 +27,12 @@ status: active
 
 This skill manages the comprehensive project initialization workflow that was previously handled in the 0-project.md command. It extracts the complex batched question patterns into a reusable, efficient skill that reduces user interactions while maintaining full functionality.
 
-
 ## Implementation Guide
 
 ## Core Responsibility
 
 Handle all project setup workflows including:
+
 - Language selection (Korean, English, Japanese, Chinese)
 - Agent prompt language configuration (English vs Localized)
 - User nickname collection (max 20 chars)
@@ -70,25 +69,28 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ## Language Support Matrix
 
 | Language | Code | Conversation Language | Agent Prompt Language | Documentation Language |
-|----------|------|---------------------|----------------------|----------------------|
-| English | en | English | English (recommended) | English |
-| Korean | ko | 한국어 | English/Locale choice | 한국어 |
-| Japanese | ja | 日本語 | English/Locale choice | 日本語 |
-| Chinese | zh | 中文 | English/Locale choice | 中文 |
+| -------- | ---- | --------------------- | --------------------- | ---------------------- |
+| English  | en   | English               | English (recommended) | English                |
+| Korean   | ko   | 한국어                | English/Locale choice | 한국어                 |
+| Japanese | ja   | 日本語                | English/Locale choice | 日本語                 |
+| Chinese  | zh   | 中文                  | English/Locale choice | 中文                   |
 
 ## Team Mode Workflows
 
 ### Feature Branch + PR Workflow
+
 - **Best for**: Team collaboration, code reviews, audit trails
 - **Process**: feature/SPEC-{ID} branch → PR review → develop merge
 - **Settings**: `spec_git_workflow: "feature_branch"`
 
-### Direct Commit to Develop Workflow  
+### Direct Commit to Develop Workflow
+
 - **Best for**: Prototypes, individual projects, rapid iteration
 - **Process**: Direct develop commits (no branches)
 - **Settings**: `spec_git_workflow: "develop_direct"`
 
 ### Per-SPEC Decision Workflow
+
 - **Best for**: Flexible teams, mixed project types
 - **Process**: Ask user for each SPEC
 - **Settings**: `spec_git_workflow: "per_spec"`
@@ -96,16 +98,18 @@ Skill("moai-project-language-initializer", mode="team_setup")
 ## Token Cost Management
 
 ### Report Generation Costs
-| Setting | Tokens/Report | Reports/Command | Total Session Tokens | Cost Impact |
-|---------|---------------|----------------|-------------------|-------------|
-| Enable | 50-60 | 3-5 | 150-300 | Full cost |
-| Minimal | 20-30 | 1-2 | 20-60 | 80% reduction |
-| Disable | 0 | 0 | 0 | Zero cost |
+
+| Setting | Tokens/Report | Reports/Command | Total Session Tokens | Cost Impact   |
+| ------- | ------------- | --------------- | -------------------- | ------------- |
+| Enable  | 50-60         | 3-5             | 150-300              | Full cost     |
+| Minimal | 20-30         | 1-2             | 20-60                | 80% reduction |
+| Disable | 0             | 0               | 0                    | Zero cost     |
 
 ### Agent Prompt Language Costs
-| Setting | Language | Token Efficiency | Cost Impact |
-|---------|----------|------------------|-------------|
-| English | English | Baseline | Standard |
+
+| Setting   | Language                | Token Efficiency   | Cost Impact |
+| --------- | ----------------------- | ------------------ | ----------- |
+| English   | English                 | Baseline           | Standard    |
 | Localized | Korean/Japanese/Chinese | 15-20% more tokens | Higher cost |
 
 ## Configuration Management
@@ -113,11 +117,12 @@ Skill("moai-project-language-initializer", mode="team_setup")
 The skill automatically manages `.moai/config/config.json` persistence:
 
 ### Basic Configuration Structure
+
 ```json
 {
   "language": {
     "conversation_language": "ko",
-    "conversation_language_name": "한국어", 
+    "conversation_language_name": "한국어",
     "agent_prompt_language": "localized"
   },
   "user": {
@@ -128,6 +133,7 @@ The skill automatically manages `.moai/config/config.json` persistence:
 ```
 
 ### Team Mode Additional Configuration
+
 ```json
 {
   "github": {
@@ -140,6 +146,7 @@ The skill automatically manages `.moai/config/config.json` persistence:
 ```
 
 ### Report Generation Configuration
+
 ```json
 {
   "report_generation": {
@@ -153,6 +160,7 @@ The skill automatically manages `.moai/config/config.json` persistence:
 ```
 
 ### Domain Selection Configuration
+
 ```json
 {
   "stack": {
@@ -165,18 +173,21 @@ The skill automatically manages `.moai/config/config.json` persistence:
 ## Error Handling & Validation
 
 ### Input Validation
+
 - Nickname: Max 20 characters, special characters allowed
 - Language selection: Must be from supported languages list
 - Domain selection: Multi-select with skip option
 - Team settings: Boolean and enum validation
 
 ### Configuration Validation
+
 - JSON schema validation for config.json
 - Backward compatibility checks
 - Mode detection validation
 - Required field presence checks
 
 ### Error Recovery
+
 - Graceful degradation for missing config sections
 - Default value application for invalid inputs
 - Retry mechanisms for failed batch calls
@@ -189,6 +200,7 @@ The skill automatically manages `.moai/config/config.json` persistence:
 When Figma MCP is detected in `.claude/settings.json`, guide users through token configuration:
 
 #### Detection Logic
+
 ```python
 # Check if Figma MCP is configured
 settings_path = Path(".claude/settings.json")
@@ -198,12 +210,14 @@ if settings_path.exists():
 ```
 
 #### Token Setup Workflow
+
 1. **Verify Figma MCP Installation**: Check for Figma in mcpServers configuration
 2. **Guide Token Creation**: Direct user to Figma developer portal
 3. **Secure Token Storage**: Configure environment variable or `.env` file
 4. **Validation**: Test Figma MCP connectivity
 
 #### User Guidance Messages
+
 ```
 🔐 Figma Access Token Setup Required
 
@@ -221,6 +235,7 @@ Steps:
 ```
 
 #### Token Validation
+
 ```python
 def validate_figma_token():
     """Test Figma MCP connectivity with token"""
@@ -255,23 +270,25 @@ This skill extracts and consolidates the complex initialization logic from the o
 
 The skill serves as a foundation for project initialization and can be extended with additional configuration patterns as needed.
 
-
 ## Advanced Patterns
 
 ## Integration Points
 
 ### With Alfred Commands
-- `/alfred:0-project`: Primary integration point
-- `/alfred:1-plan`: Uses domain selection for expert activation
-- `/alfred:2-run`: Applies language settings to sub-agent prompts
-- `/alfred:3-sync`: Respects report generation settings
+
+- `/moai:0-project`: Primary integration point
+- `/moai:1-plan`: Uses domain selection for expert activation
+- `/moai:2-run`: Applies language settings to sub-agent prompts
+- `/moai:3-sync`: Respects report generation settings
 
 ### With Other Skills
+
 - `moai-alfred-ask-user-questions`: Uses TUI survey patterns
 - `moai-skill-factory`: Can be invoked for skill template application
 - `moai-alfred-agent-guide`: Provides agent lineup based on domains
 
 ### Configuration Dependencies
+
 - `.moai/config/config.json`: Primary configuration store
 - `mode`: Determines team vs personal workflow
 - `github`: Team-specific settings
@@ -280,21 +297,23 @@ The skill serves as a foundation for project initialization and can be extended 
 ## Best Practices
 
 ### For Users
+
 - Choose English for agent prompts to reduce token costs (15-20% savings)
 - Enable Minimal report generation for cost-effective operation
 - Configure team settings upfront for consistent workflow
 - Select relevant domains for expert agent activation
 
 ### For Developers
+
 - Use batch patterns to minimize user interactions
 - Provide clear token cost warnings before expensive operations
 - Validate all inputs before persisting configuration
 - Maintain backward compatibility with existing config files
 
 ### For Team Collaboration
+
 - Use Feature Branch + PR workflow for code review
 - Enable auto-delete branches for repository hygiene
 - Select appropriate domains for expert agent routing
 - Configure consistent language settings across team
 - Set up MCP servers with proper authentication (Figma tokens)
-

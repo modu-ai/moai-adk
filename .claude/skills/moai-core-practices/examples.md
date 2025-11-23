@@ -5,24 +5,30 @@
 ### Task: "Add email verification feature"
 
 **Phase 1: High-level Brief**
+
 ```markdown
 ## Email Verification Feature
+
 - Goal: User can verify email after signup
 - Success: User receives email, clicks link, marked verified
 - Stakeholders: User (receiver), Admin (monitoring)
 ```
 
 **Phase 2: Technical Core**
+
 ```markdown
 ## Architecture
+
 - Entry point: src/api/auth.py - POST /auth/signup
 - Domain model: models/user.py - User.email_verified
 - Email service: infra/email_service.py - send_verification_email()
 ```
 
 **Phase 3: Edge Cases**
+
 ```markdown
 ## Known Gotchas
+
 - Token expires in 24h
 - Duplicate email prevents signup
 - Test mode uses mock email service (doesn't send)
@@ -34,10 +40,10 @@
 
 ```bash
 # Step 1: Create SPEC
-/alfred:1-plan "Email Verification"
+/moai:1-plan "Email Verification"
 
 # Step 2: TDD RED phase
-/alfred:2-run SPEC-AUTH-015
+/moai:2-run SPEC-AUTH-015
 # Write tests: test_verify_email_valid_token, test_token_expired, test_duplicate_email
 # RED: All 3 tests fail
 
@@ -50,7 +56,7 @@
 # REFACTOR: Tests still pass, code cleaner
 
 # Step 5: Sync
-/alfred:3-sync
+/moai:3-sync
 # Update README with email verification docs
 # Update CHANGELOG with SPEC-AUTH-015 reference
 ```
@@ -60,6 +66,7 @@
 ## Example 3: Explore Agent for Large Codebase
 
 ### ❌ WRONG: Manual file hunting
+
 ```
 User: "How is authentication currently implemented?"
 Alfred:
@@ -70,6 +77,7 @@ Alfred:
 ```
 
 ### ✅ CORRECT: Use Explore Agent
+
 ```
 User: "How is authentication currently implemented?"
 Alfred: Task(subagent_type="Explore", prompt="Find authentication flow including entry points, models, middleware")

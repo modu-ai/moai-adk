@@ -11,12 +11,12 @@
 
 4개 계층별 스킬을 동시에 분석한 결과, **구조는 우수하나 실행 가이드가 부족한** 패턴이 발견되었습니다.
 
-| 계층 | 스킬명 | 점수 | 상태 | 핵심 문제 |
-|-----|-------|------|------|---------|
-| **Foundation** | moai-foundation-trust | 75/100 | 🟡 개선필요 | 구체적인 검증 명령어 부족 |
-| **Alfred** | moai-alfred-tag-scanning | 68/100 | 🔴 미완성 | 템플릿 파일 누락, 예시 부족 |
-| **Domain** | moai-domain-backend | 75/100 | 🟡 개선필요 | 코드 예시 부족, 보안/배포 누락 |
-| **Language** | moai-lang-python | 85/100 | 🟢 우수 | 최적화 완료, 경미한 개선만 필요 |
+| 계층           | 스킬명                   | 점수   | 상태        | 핵심 문제                       |
+| -------------- | ------------------------ | ------ | ----------- | ------------------------------- |
+| **Foundation** | moai-foundation-trust    | 75/100 | 🟡 개선필요 | 구체적인 검증 명령어 부족       |
+| **Alfred**     | moai-alfred-tag-scanning | 68/100 | 🔴 미완성   | 템플릿 파일 누락, 예시 부족     |
+| **Domain**     | moai-domain-backend      | 75/100 | 🟡 개선필요 | 코드 예시 부족, 보안/배포 누락  |
+| **Language**   | moai-lang-python         | 85/100 | 🟢 우수     | 최적화 완료, 경미한 개선만 필요 |
 
 **평균 점수**: **75.75/100** (B+)
 **종합 평가**: ⚠️ **구조적으로 견고하나, 실무 적용 가이드 강화 필요**
@@ -28,6 +28,7 @@
 ### 1️⃣ Foundation 계층: `moai-foundation-trust` (75/100)
 
 #### 📋 메타데이터
+
 ```yaml
 name: moai-foundation-trust
 description: TRUST 5-principles 검증 (Test 85%+, Readable, Unified, Secured, Trackable)
@@ -37,6 +38,7 @@ trigger_cues: TRUST 준수 확인, 릴리즈 준비 검증, 품질 게이트 적
 ```
 
 #### ✅ 강점
+
 1. **YAML 메타데이터 완벽**: name, description, allowed-tools 모두 구성됨
 2. **원칙 정의 명확**: TRUST 5개 원칙이 구체적으로 설명됨
 3. **문서 구조 표준**: 13개 섹션이 일관되게 구성됨
@@ -44,15 +46,17 @@ trigger_cues: TRUST 준수 확인, 릴리즈 준비 검증, 품질 게이트 적
 5. **다른 스킬 연계**: moai-foundation-tags, moai-foundation-specs 통합
 
 #### ⚠️ 약점
-| 항목 | 문제 | 영향도 |
-|-----|------|--------|
-| **"How it works" 심화 부족** | 각 TRUST 원칙 검증 방법이 1-2줄로만 설명 | HIGH |
-| **코드 예시 없음** | pytest-cov 명령어, ruff 설정 등 미제공 | HIGH |
-| **언어별 도구 매핑 부재** | Python/Go/Rust별 검증 도구 차이 미언급 | MEDIUM |
-| **예시 부족** | Examples 섹션이 일반적이고 추상적 | MEDIUM |
-| **실패 복구 절차 미흡** | Failure Modes에 구체적 에러 해결법 없음 | LOW |
+
+| 항목                         | 문제                                     | 영향도 |
+| ---------------------------- | ---------------------------------------- | ------ |
+| **"How it works" 심화 부족** | 각 TRUST 원칙 검증 방법이 1-2줄로만 설명 | HIGH   |
+| **코드 예시 없음**           | pytest-cov 명령어, ruff 설정 등 미제공   | HIGH   |
+| **언어별 도구 매핑 부재**    | Python/Go/Rust별 검증 도구 차이 미언급   | MEDIUM |
+| **예시 부족**                | Examples 섹션이 일반적이고 추상적        | MEDIUM |
+| **실패 복구 절차 미흡**      | Failure Modes에 구체적 에러 해결법 없음  | LOW    |
 
 #### 🎯 개선 우선순위
+
 ```
 1. [HIGH] 언어별 TRUST 검증 명령어 매트릭스 작성
    - Python: pytest --cov=src --cov-fail-under=85 -q
@@ -75,29 +79,33 @@ trigger_cues: TRUST 준수 확인, 릴리즈 준비 검증, 품질 게이트 적
 ### 2️⃣ Alfred 계층: `moai-alfred-tag-scanning` (68/100)
 
 #### 📋 메타데이터
+
 ```yaml
 name: moai-alfred-tag-scanning
 tier: Alfred (워크플로우 내부)
-auto_load: /alfred:3-sync 추적 가능성 게이트
+auto_load: /moai:3-sync 추적 가능성 게이트
 trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chain
 ```
 
 #### ✅ 강점
+
 1. **명확한 CODE-FIRST 원칙**: 캐시 없이 직접 스캔 강조
 2. **구체적인 명령어 제시**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-4. **완벽한 메타데이터**: YAML frontmatter 100점
+3. **완벽한 메타데이터**: YAML frontmatter 100점
 
 #### 🔴 심각한 문제
-| 항목 | 문제 | 영향도 |
-|-----|------|--------|
-| **👉 템플릿 파일 누락** | `templates/tag-inventory-template.md` 선언하나 미존재 | CRITICAL |
-| **"How it works" 알고리즘 부재** | TAG 인벤토리 생성 논리 미설명 | HIGH |
-| **예시 예정 텍스트** | "Examples" 섹션이 보일러플레이트로 채워짐 | HIGH |
-| **Best Practices 공용** | 일반적인 보일러플레이트, TAG 특화 가이드 없음 | MEDIUM |
-| **결과 포맷 미정의** | JSON/Markdown/CSV 출력 형식 불명확 | MEDIUM |
-| **orphan TAG 복구 절차 미흡** | 깨진 TAG 수리 워크플로우 없음 | MEDIUM |
+
+| 항목                             | 문제                                                  | 영향도   |
+| -------------------------------- | ----------------------------------------------------- | -------- |
+| **👉 템플릿 파일 누락**          | `templates/tag-inventory-template.md` 선언하나 미존재 | CRITICAL |
+| **"How it works" 알고리즘 부재** | TAG 인벤토리 생성 논리 미설명                         | HIGH     |
+| **예시 예정 텍스트**             | "Examples" 섹션이 보일러플레이트로 채워짐             | HIGH     |
+| **Best Practices 공용**          | 일반적인 보일러플레이트, TAG 특화 가이드 없음         | MEDIUM   |
+| **결과 포맷 미정의**             | JSON/Markdown/CSV 출력 형식 불명확                    | MEDIUM   |
+| **orphan TAG 복구 절차 미흡**    | 깨진 TAG 수리 워크플로우 없음                         | MEDIUM   |
 
 #### 🎯 개선 우선순위
+
 ```
 1. [CRITICAL] 누락 파일 생성
    ✓ templates/tag-inventory-template.md
@@ -121,6 +129,7 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 ```
 
 #### 📝 결과물 예시
+
 ```markdown
 # TAG-scanning 개선된 템플릿
 
@@ -136,6 +145,7 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 ### 3️⃣ Domain 계층: `moai-domain-backend` (75/100)
 
 #### 📋 메타데이터
+
 ```yaml
 name: moai-domain-backend
 description: 백엔드 아키텍처 및 확장성 가이드 (서버 API, 인프라 설계)
@@ -145,22 +155,25 @@ trigger_cues: Service layering, API orchestration, Caching, Background job desig
 ```
 
 #### ✅ 강점
+
 1. **5개 핵심 영역 체계화**: Server Architecture, API Design, Caching, DB Optimization, Scalability Patterns
 2. **포괄적 기술 참조**: Redis, Kafka, gRPC, GraphQL 언급
 3. **아키텍처 패턴 다양화**: Monolith, Microservices, Serverless 포함
 4. **업계 표준 인용**: AWS Well-Architected, 12-Factor App
 
 #### 🟡 주요 약점
-| 항목 | 문제 | 영향도 |
-|-----|------|--------|
-| **코드 예시 거의 없음** | bash 명령어 2줄만 존재, Python/Go/Node.js 코드 부재 | HIGH |
-| **보안 패턴 누락** | JWT/OAuth2, RBAC, secrets 관리 미언급 | HIGH |
-| **관찰성(Observability) 부족** | 로깅, 메트릭(Prometheus), 트레이싱(Jaeger) 없음 | MEDIUM |
-| **언어별 가이드 부재** | Express vs Gin vs FastAPI 비교 없음 | MEDIUM |
-| **배포/DevOps 누락** | Docker, K8s, CI/CD 가이드 없음 | MEDIUM |
-| **복원력(Resilience) 패턴 미흡** | Circuit breaker, 재시도, timeout 등 미언급 | MEDIUM |
+
+| 항목                             | 문제                                                | 영향도 |
+| -------------------------------- | --------------------------------------------------- | ------ |
+| **코드 예시 거의 없음**          | bash 명령어 2줄만 존재, Python/Go/Node.js 코드 부재 | HIGH   |
+| **보안 패턴 누락**               | JWT/OAuth2, RBAC, secrets 관리 미언급               | HIGH   |
+| **관찰성(Observability) 부족**   | 로깅, 메트릭(Prometheus), 트레이싱(Jaeger) 없음     | MEDIUM |
+| **언어별 가이드 부재**           | Express vs Gin vs FastAPI 비교 없음                 | MEDIUM |
+| **배포/DevOps 누락**             | Docker, K8s, CI/CD 가이드 없음                      | MEDIUM |
+| **복원력(Resilience) 패턴 미흡** | Circuit breaker, 재시도, timeout 등 미언급          | MEDIUM |
 
 #### 🎯 개선 우선순위
+
 ```
 1. [HIGH] 코드 예시 5개 추가 (언어별 1개)
    - Python FastAPI: /users 엔드포인트 (dependency injection 포함)
@@ -195,6 +208,7 @@ trigger_cues: Service layering, API orchestration, Caching, Background job desig
 ### 4️⃣ Language 계층: `moai-lang-python` (85/100) ⭐
 
 #### 📋 메타데이터
+
 ```yaml
 name: moai-lang-python
 description: Python 베스트 프랙티스 (pytest, mypy, ruff, black, uv 패키지 관리)
@@ -204,21 +218,24 @@ trigger_cues: Python 코드 논의, 프레임워크 가이드, .py 파일 확장
 ```
 
 #### ✅ 강점
+
 1. **현대적 도구 스택**: pytest, mypy(strict), ruff, black, uv - 2025년 최신 표준
 2. **TRUST 5 완벽 준수**: Test(pytest), Readable(black), Unified(mypy), Secured(ruff), Trackable(TAG)
-3. **명확한 통합**: Alfred /alfred:2-run 워크플로우와 명시적 연결
+3. **명확한 통합**: Alfred /moai:2-run 워크플로우와 명시적 연결
 4. **구체적인 수치**: 파일 300 LOC, 함수 50 LOC, 커버리지 85% 명시
 5. **표준 준수**: 13개 섹션, YAML frontmatter, Changelog 완비
 
 #### 🟢 경미한 개선 사항
-| 항목 | 문제 | 영향도 |
-|-----|------|--------|
-| **코드 예시 최소** | bash 한 줄만 존재, pytest/mypy 코드 없음 | LOW |
-| **워크플로우 심화 부족** | RED→GREEN→REFACTOR TDD 사이클 자세히 설명 없음 | LOW |
-| **패턴 가이드 부재** | Context manager, decorator, async/await 미언급 | LOW |
-| **템플릿 파일 없음** | pyproject.toml, pytest.ini 참조 구성 미제공 | LOW |
+
+| 항목                     | 문제                                           | 영향도 |
+| ------------------------ | ---------------------------------------------- | ------ |
+| **코드 예시 최소**       | bash 한 줄만 존재, pytest/mypy 코드 없음       | LOW    |
+| **워크플로우 심화 부족** | RED→GREEN→REFACTOR TDD 사이클 자세히 설명 없음 | LOW    |
+| **패턴 가이드 부재**     | Context manager, decorator, async/await 미언급 | LOW    |
+| **템플릿 파일 없음**     | pyproject.toml, pytest.ini 참조 구성 미제공    | LOW    |
 
 #### 🎯 경미한 개선 사항 (선택적)
+
 ```
 1. [LOW] 3-5개 Python 코드 예시 추가
    - pytest fixture + parametrize 활용
@@ -270,26 +287,28 @@ trigger_cues: Python 코드 논의, 프레임워크 가이드, .py 파일 확장
 
 ### 개선 방향 (전사 차원)
 ```
+
 Tier 1 [시급] 템플릿/스크립트 라이브러리 구축
-  ├─ Python: pyproject.toml, pytest.ini, conftest.py
-  ├─ Go: go.mod, Makefile, main_test.go
-  ├─ TypeScript: tsconfig.json, vitest.config.ts, jest.config.js
-  └─ Rust: Cargo.toml, lib.rs, tests/
+├─ Python: pyproject.toml, pytest.ini, conftest.py
+├─ Go: go.mod, Makefile, main_test.go
+├─ TypeScript: tsconfig.json, vitest.config.ts, jest.config.js
+└─ Rust: Cargo.toml, lib.rs, tests/
 
 Tier 2 [근래] 워크플로우별 상세 가이드
-  ├─ RED: 실패하는 테스트 작성 (각 언어별 예시)
-  ├─ GREEN: 최소한의 구현 (각 언어별 예시)
-  └─ REFACTOR: 코드 개선 (패턴 카탈로그)
+├─ RED: 실패하는 테스트 작성 (각 언어별 예시)
+├─ GREEN: 최소한의 구현 (각 언어별 예시)
+└─ REFACTOR: 코드 개선 (패턴 카탈로그)
 
 Tier 3 [진행 중] 예시 강화
-  ├─ 각 스킬당 최소 3개의 실전 사용 사례
-  ├─ 성공 시나리오 + 실패 시나리오 포함
-  └─ 각 시나리오별 출력 로그 제시
+├─ 각 스킬당 최소 3개의 실전 사용 사례
+├─ 성공 시나리오 + 실패 시나리오 포함
+└─ 각 시나리오별 출력 로그 제시
 
 Tier 4 [지속] 에러 처리 체계화
-  ├─ 공통 에러 패턴 카탈로그
-  ├─ 각 에러별 진단 명령어
-  └─ 복구 절차 (자동화 가능한 스크립트)
+├─ 공통 에러 패턴 카탈로그
+├─ 각 에러별 진단 명령어
+└─ 복구 절차 (자동화 가능한 스크립트)
+
 ```
 
 ---
@@ -298,31 +317,41 @@ Tier 4 [지속] 에러 처리 체계화
 
 ### 임팩트 높음 (High Impact)
 ```
+
 Alfred: tag-scanning 완성
-  - 현재: 68 → 목표: 85 (↑25%)
-  - 노력: 8-10시간
-  - ROI: 매우 높음 (핵심 추적 시스템)
+
+- 현재: 68 → 목표: 85 (↑25%)
+- 노력: 8-10시간
+- ROI: 매우 높음 (핵심 추적 시스템)
 
 Foundation: trust 심화
-  - 현재: 75 → 목표: 90 (↑20%)
-  - 노력: 6-8시간
-  - ROI: 높음 (모든 프로젝트의 품질 게이트)
+
+- 현재: 75 → 목표: 90 (↑20%)
+- 노력: 6-8시간
+- ROI: 높음 (모든 프로젝트의 품질 게이트)
+
 ```
 
 ### 임팩트 중간 (Medium Impact)
 ```
+
 Domain: backend 확장
-  - 현재: 75 → 목표: 90 (↑20%)
-  - 노력: 10-12시간
-  - ROI: 중간 (백엔드 프로젝트에만 적용)
+
+- 현재: 75 → 목표: 90 (↑20%)
+- 노력: 10-12시간
+- ROI: 중간 (백엔드 프로젝트에만 적용)
+
 ```
 
 ### 임팩트 낮음 (Low Impact)
 ```
+
 Language: python 최적화
-  - 현재: 85 → 목표: 92 (↑8%)
-  - 노력: 2-3시간
-  - ROI: 낮음 (이미 충분히 좋은 상태)
+
+- 현재: 85 → 목표: 92 (↑8%)
+- 노력: 2-3시간
+- ROI: 낮음 (이미 충분히 좋은 상태)
+
 ```
 
 ---
@@ -352,11 +381,13 @@ Language: python 최적화
 
 #### Step 1️⃣: 대상 선정
 ```
+
 Foundation 계층 → moai-foundation-trust (핵심 원칙)
-Alfred 계층    → moai-alfred-tag-scanning (추적 시스템)
-Domain 계층    → moai-domain-backend (아키텍처)
-Language 계층  → moai-lang-python (최신 표준)
-```
+Alfred 계층 → moai-alfred-tag-scanning (추적 시스템)
+Domain 계층 → moai-domain-backend (아키텍처)
+Language 계층 → moai-lang-python (최신 표준)
+
+````
 
 #### Step 2️⃣: 병렬 분석 에이전트 실행
 ```bash
@@ -364,9 +395,10 @@ Agent 1 (Task) → Foundation Trust 분석
 Agent 2 (Task) → Alfred Tag-scanning 분석  # 동시 실행 (병렬)
 Agent 3 (Task) → Domain Backend 분석       # 동시 실행 (병렬)
 Agent 4 (Task) → Language Python 분석      # 동시 실행 (병렬)
-```
+````
 
 #### Step 3️⃣: 각 에이전트 분석 항목
+
 ```
 ✓ 메타데이터 검토 (YAML frontmatter, 버전, 설명)
 ✓ 문서 구조 분석 (섹션 수, 제목, 목차)
@@ -378,6 +410,7 @@ Agent 4 (Task) → Language Python 분석      # 동시 실행 (병렬)
 ```
 
 #### Step 4️⃣: 결과 통합
+
 ```
 4개 분석 결과 JSON → 계층별 요약 테이블
                     → Cross-Tier 패턴 발견
@@ -386,6 +419,7 @@ Agent 4 (Task) → Language Python 분석      # 동시 실행 (병렬)
 ```
 
 ### ⏱️ 효율성 비교
+
 ```
 순차 분석 (Sequential)    : 4 × 15분 = 60분
 병렬 분석 (Parallel)      : 15분 (동시 실행)
@@ -393,6 +427,7 @@ Agent 4 (Task) → Language Python 분석      # 동시 실행 (병렬)
 ```
 
 ### 🧠 병렬 분석의 이점
+
 1. **시간 효율**: 동시 실행으로 4배 빠른 완료
 2. **Cross-Tier 비교**: 여러 계층을 동시에 평가하여 패턴 발견 용이
 3. **일관된 평가**: 동일 기준으로 동시 진행하여 편향 최소화
@@ -403,6 +438,7 @@ Agent 4 (Task) → Language Python 분석      # 동시 실행 (병렬)
 ## 🎓 Skill Factory 에이전트의 역할
 
 ### 에이전트 책임
+
 - ✅ YAML 메타데이터 구조 검증
 - ✅ 문서 표준 준수도 평가
 - ✅ 내용 완전성 점수 매김
@@ -410,6 +446,7 @@ Agent 4 (Task) → Language Python 분석      # 동시 실행 (병렬)
 - ✅ 다른 스킬과의 연계성 분석
 
 ### 통합 분석 정보
+
 - 📊 계층별 평균 점수 계산
 - 📈 패턴 분석 (공통 강점/약점)
 - 🎯 영향도 분석 (개선 시 ROI)

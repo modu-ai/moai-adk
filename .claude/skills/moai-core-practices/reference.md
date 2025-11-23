@@ -7,24 +7,29 @@
 ## For Alfred: Why This Document Matters
 
 When Alfred reads this document:
+
 1. When performing actual tasks - "How specifically should I execute this?"
 2. When context management is needed - "How can I use Explore efficiently?"
 3. When solving problems - "How do I diagnose and resolve this error/problem?"
 4. When onboarding new developers - "Learn MoAI-ADK workflows through practice"
 
 Alfred's Decision Making:
+
 - "What are the specific steps to perform this task?"
 - "How can I collect the necessary context minimally?"
 - "Where should I diagnose problems when they occur?"
 
 After reading this document:
+
 - Master JIT (Just-in-Time) context management strategies
 - Learn how to use the Explore agent efficiently
 - Master specific commands for SPEC → TDD → Sync execution
 - Reference solutions for frequently occurring problems
 
 ---
+
 → Related Documents:
+
 - [For rules verification, see CLAUDE-RULES.md](./CLAUDE-RULES.md#skill-invocation-rules)
 - [For Agent selection, see CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md#agent-selection-decision-tree)
 
@@ -53,7 +58,7 @@ After reading this document:
 ### 3. Living Documentation Sync
 
 - Align code, tests, and docs after each significant change.
-- Use `/alfred:3-sync` to update Living Docs and TAG references.
+- Use `/moai:3-sync` to update Living Docs and TAG references.
 - Record rationale for deviations from the SPEC.
 
 ---
@@ -73,8 +78,8 @@ After reading this document:
 
 ### Backup Management
 
-- `/alfred:0-project` and `git-manager` create automatic safety snapshots (e.g., `.moai-backups/`) before risky actions.
-- Manual `/alfred:9-checkpoint` commands have been deprecated; rely on Git branches or team-approved backup workflows when additional restore points are needed.
+- `/moai:0-project` and `git-manager` create automatic safety snapshots (e.g., `.moai-backups/`) before risky actions.
+- Manual `/moai:9-checkpoint` commands have been deprecated; rely on Git branches or team-approved backup workflows when additional restore points are needed.
 
 ---
 
@@ -87,6 +92,7 @@ After reading this document:
 **Alfred's Execution Sequence**:
 
 1. **Detect Ambiguity → Execute AskUserQuestion**
+
    ```
    Question 1: What is the data source?
    Options: [REST API | GraphQL | Local State]
@@ -104,11 +110,13 @@ After reading this document:
    ```
 
 2. **Write SPEC (Based on User Answers)**
+
    ```bash
-   /alfred:1-plan "User Dashboard Feature - Display user stats with manual refresh, authenticated access only"
+   /moai:1-plan "User Dashboard Feature - Display user stats with manual refresh, authenticated access only"
    ```
 
    **Output**: `.moai/specs/SPEC-USER-DASHBOARD-001/spec.md`
+
    - YAML metadata: id, version: 0.0.1, status: draft
    - EARS syntax requirements:
      - "The system must display user statistics dashboard"
@@ -116,12 +124,15 @@ After reading this document:
      - "IF user not authenticated, THEN redirect to login page"
 
 3. **TDD Implementation (RED → GREEN → REFACTOR)**
+
    ```bash
-   /alfred:2-run USER-DASHBOARD-001
+   /moai:2-run USER-DASHBOARD-001
    ```
 
    **Alfred Internal Execution**:
+
    - **implementation-planner** (Phase 1):
+
      - Establish implementation strategy: React component + fetch API + auth guard
      - Library selection: react-query (data fetching), @tanstack/react-query (caching)
 
@@ -131,11 +142,13 @@ After reading this document:
      - **REFACTOR**: Clean code, separate hooks, improve reusability
 
 4. **Document Synchronization**
+
    ```bash
-   /alfred:3-sync
+   /moai:3-sync
    ```
 
    **Alfred Internal Execution**:
+
    - Living Document update: README.md, CHANGELOG.md
    - PR status change: Draft → Ready
 
@@ -152,35 +165,42 @@ After reading this document:
 **Alfred's Execution Sequence**:
 
 1. **Error Analysis (debug-helper)**
+
    ```bash
    @agent-debug-helper "Authentication timeout after 5 minutes - expected 30 minutes"
    ```
 
    **debug-helper Analysis Results**:
+
    - Which function causes timeout? → `src/auth/token.ts:validateToken()`
    - What is current timeout value? → `300000 ms` (5 minutes)
    - What should the normal value be? → `1800000 ms` (30 minutes)
    - Cause: JWT token expiration time incorrectly configured
 
 2. **Write SPEC (For Bug Fix)**
+
    ```bash
-   /alfred:1-plan "Fix AUTH-TIMEOUT-001: JWT token expiration should be 30 minutes, not 5 minutes"
+   /moai:1-plan "Fix AUTH-TIMEOUT-001: JWT token expiration should be 30 minutes, not 5 minutes"
    ```
 
    **Output**: `.moai/specs/SPEC-AUTH-TIMEOUT-001/spec.md`
+
    - Bug description: Fix JWT expiration from 5min → 30min
    - Root cause: `expiresIn` value error (change `300` → `1800`)
    - Test case: Verify token validity for 30 minutes
 
 3. **TDD Implementation (RED → GREEN → REFACTOR)**
+
    ```bash
-   /alfred:2-run AUTH-TIMEOUT-001
+   /moai:2-run AUTH-TIMEOUT-001
    ```
 
    **Alfred Internal Execution**:
+
    - **RED**: Add `tests/auth/token.test.ts`
+
      ```typescript
-     it('should keep token valid for 30 minutes', () => {
+     it("should keep token valid for 30 minutes", () => {
        const token = generateToken();
        const now = Date.now();
        const futureTime = now + 30 * 60 * 1000;
@@ -189,6 +209,7 @@ After reading this document:
      ```
 
    - **GREEN**: Modify `src/auth/token.ts`
+
      ```typescript
      const JWT_EXPIRATION = 1800; // 30 minutes (was 300)
      ```
@@ -200,7 +221,9 @@ After reading this document:
      ```
 
 4. **Verification**
+
    - **TRUST 5 Check**:
+
      - Test First: ✅ New test case added
      - Readable: ✅ ruff lint passed
      - Unified: ✅ mypy type safety passed
@@ -212,6 +235,7 @@ After reading this document:
      ```
 
 **Final Outputs**:
+
 - SPEC updated
 - TEST added
 - CODE modified (1 line)
@@ -227,44 +251,53 @@ After reading this document:
 **Alfred's Execution Sequence**:
 
 1. **Check Changed Files**
+
    ```bash
    git diff develop...HEAD
    ```
 
    **Results**:
+
    - `src/features/Dashboard.tsx` (modified)
    - `src/api/dashboard.ts` (new)
    - `tests/features/dashboard.test.tsx` (new)
 
 2. **Living Document Verification**
+
    ```bash
-   /alfred:3-sync status
+   /moai:3-sync status
    ```
 
    **doc-syncer Analysis**:
+
    - README.md update needed: Add "User Dashboard" to Features section
    - CHANGELOG.md creation needed: v0.4.2 release notes
 
 3. **TAG Integrity Check**
+
    ```bash
    rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
    ```
 
    **Results**:
+
    - 🎉 No orphan TAGs detected
 
 4. **PR Status Change (Draft → Ready)**
+
    ```bash
    @agent-git-manager "Move PR #42 from Draft to Ready"
    ```
 
    **git-manager Execution**:
+
    - PR verification: All tests passed, coverage ≥85%
    - PR label update: `draft` → `ready-for-review`
    - Auto-assign reviewer: GOOS오라버니
    - PR description update: Reflect CHANGELOG.md content
 
 **Final Outputs**:
+
 - README.md auto-updated (Features section)
 - CHANGELOG.md auto-generated (v0.4.2 entry)
 - TAG chain verification completed
@@ -329,14 +362,15 @@ User Response (in user's language):
 
 **Key Principles**:
 
-| Aspect | Implementation |
-|--------|-----------------|
-| **User-Facing (External)** | User's configured language (flexible) |
-| **Internal Operations (Layer 2)** | English only (Task prompts, Sub-agent communication) |
-| **Skills & Code (Layer 3)** | English only (Skill descriptions, code comments) |
-| **Translation Points** | User Input → English (entry), English → User Language (response) |
+| Aspect                            | Implementation                                                   |
+| --------------------------------- | ---------------------------------------------------------------- |
+| **User-Facing (External)**        | User's configured language (flexible)                            |
+| **Internal Operations (Layer 2)** | English only (Task prompts, Sub-agent communication)             |
+| **Skills & Code (Layer 3)**       | English only (Skill descriptions, code comments)                 |
+| **Translation Points**            | User Input → English (entry), English → User Language (response) |
 
 **Why This Works**:
+
 - ✅ **Skills remain unchanged**: English-only Skills work reliably for ANY user language
 - ✅ **Zero maintenance burden**: No need to translate 55 Skills into N languages
 - ✅ **Infinite scalability**: Add Korean, Russian, Mandarin, Arabic without code changes

@@ -174,19 +174,19 @@ I'm automatically activated when Alfred detects:
 
 ## Integration with Alfred Workflow
 
-### During SPEC Phase (`/alfred:1-plan`)
+### During SPEC Phase (`/moai:1-plan`)
 - Style guide requirements analysis
 - Formatting tool selection
 - Code quality standards definition
 - Team coding conventions
 
-### During Implementation (`/alfred:2-run`)
+### During Implementation (`/moai:2-run`)
 - Code formatting guidance
 - Linting configuration
 - Style compliance checking
 - Refactoring for consistency
 
-### During Sync (`/alfred:3-sync`)
+### During Sync (`/moai:3-sync`)
 - Style documentation generation
 - Format compliance validation
 - Quality metrics reporting

@@ -19,27 +19,27 @@ status: active
 **modularized**: false  
 **last_updated**: 2025-11-22  
 **compliance_score**: 75%  
-**auto_trigger_keywords**: pattern, todowrite, moai, core  
-
+**auto_trigger_keywords**: pattern, todowrite, moai, core
 
 ## Quick Reference
 
 Master TodoWrite task lifecycle management with production-proven patterns from 18,075 code examples across 6 major platforms (Jira, Trello, Asana, Linear, GitHub Projects, Todoist).
 
 **When to Use**:
-- Initializing tasks during `/alfred:1-plan` command
-- Tracking progress during `/alfred:2-run` execution
+
+- Initializing tasks during `/moai:1-plan` command
+- Tracking progress during `/moai:2-run` execution
 - Managing state transitions (pending → in_progress → completed)
 - Performing bulk task updates (up to 100 tasks)
 - Querying task history and audit logs
 
 **Key Capabilities**:
+
 1. Three-state model with validated transitions
 2. Phase-based auto-initialization (Phase 0 auto-complete)
 3. Bulk operations with error handling (max 100 tasks)
 4. Complete history tracking and audit logs
 5. Progress statistics and reporting
-
 
 ## Implementation Guide
 
@@ -72,6 +72,7 @@ class Task:
 ```
 
 **State Transition Rules**:
+
 ```python
 # Valid transitions (based on Jira workflow rules)
 ALLOWED_TRANSITIONS = {
@@ -86,6 +87,7 @@ def validate_transition(from_state: TaskState, to_state: TaskState) -> bool:
 ```
 
 **Phase-Based Auto-Initialization**:
+
 ```python
 PHASE_STATES = {
     "phase-0": TaskState.COMPLETED,  # Auto-complete metadata tasks
@@ -118,12 +120,12 @@ class TaskStateManager:
     ) -> bool:
         """
         Transition task with validation.
-        
+
         Validates:
         - Task exists
         - Transition is allowed
         - User has permission
-        
+
         Records:
         - Previous state
         - New state
@@ -173,7 +175,6 @@ class TaskStateManager:
         return ALLOWED_TRANSITIONS.get(task.state, [])
 ```
 
-
 ## Advanced Patterns
 
 ### Bulk Operations (Jira 1000-task pattern)
@@ -201,13 +202,13 @@ class BatchTaskManager:
     ) -> BatchResult:
         """
         Update multiple tasks atomically.
-        
+
         Args:
             task_ids: List of task IDs to update
             to_state: Target state
             reason: Optional reason for transition
             fail_fast: Stop on first error if True
-        
+
         Returns:
             BatchResult with success/failure counts
         """
@@ -294,6 +295,7 @@ class TaskHistoryAPI:
 ### TodoWrite Tool Integration
 
 **Create Task**:
+
 ```python
 TodoWrite(
     path=".todos.md",
@@ -304,6 +306,7 @@ TodoWrite(
 ```
 
 **Update Task**:
+
 ```python
 TodoWrite(
     path=".todos.md",
@@ -314,6 +317,7 @@ TodoWrite(
 ```
 
 **Complete Task**:
+
 ```python
 TodoWrite(
     path=".todos.md",
@@ -325,6 +329,7 @@ TodoWrite(
 ### Key Implementation Rules
 
 **Rule 1: Always Use State Manager**:
+
 ```python
 # ❌ WRONG
 task.state = TaskState.COMPLETED
@@ -334,12 +339,14 @@ state_manager.transition(task.id, TaskState.COMPLETED, reason="Task done")
 ```
 
 **Rule 2: Batch Operations Have Limits**:
+
 ```python
 if len(task_ids) > BatchTaskManager.MAX_BATCH_SIZE:
     raise BatchSizeError(f"Max {MAX_BATCH_SIZE} tasks per batch")
 ```
 
 **Rule 3: Phase 0 Auto-Completes**:
+
 ```python
 if phase == "phase-0":
     state_manager.transition(
@@ -350,6 +357,7 @@ if phase == "phase-0":
 ```
 
 **Rule 4: Track All State Changes**:
+
 ```python
 history_entry = TaskHistory(
     task_id=task_id,
@@ -367,31 +375,34 @@ self.history.append(history_entry)
 
 Based on 18,075 production examples:
 
-| Operation | Avg Duration | Max Batch Size | Success Rate |
-|-----------|--------------|----------------|--------------|
-| Single Transition | 12ms | 1 | 99.8% |
-| Batch Transition (10) | 45ms | 10 | 99.5% |
-| Batch Transition (100) | 380ms | 100 | 98.9% |
-| History Query | 8ms | 50 records | 100% |
+| Operation              | Avg Duration | Max Batch Size | Success Rate |
+| ---------------------- | ------------ | -------------- | ------------ |
+| Single Transition      | 12ms         | 1              | 99.8%        |
+| Batch Transition (10)  | 45ms         | 10             | 99.5%        |
+| Batch Transition (100) | 380ms        | 100            | 98.9%        |
+| History Query          | 8ms          | 50 records     | 100%         |
 
 **Recommendations**:
+
 - Use batch operations for 10+ tasks
 - Keep batch size ≤ 100 for reliability
 - Query history with pagination (limit=50)
 - Cache statistics for frequently accessed specs
 
-
-
 ## Context7 Integration
 
 ### Related Libraries & Tools
+
 - [Todo Tree](/gruntfuggly/todo-tree): VS Code extension
 
 ### Official Documentation
+
 - [Documentation](https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree)
 - [API Reference](https://github.com/Gruntfuggly/todo-tree)
 
 ### Version-Specific Guides
+
 Latest stable version: Latest
+
 - [Release Notes](https://github.com/Gruntfuggly/todo-tree/releases)
 - [Migration Guide](https://github.com/Gruntfuggly/todo-tree#readme)

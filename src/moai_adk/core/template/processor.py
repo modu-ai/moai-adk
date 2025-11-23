@@ -96,7 +96,7 @@ class TemplateProcessor:
         ".moai/reports/",  # User reports
         ".moai/project/",  # User project documents (product/structure/tech.md)
         # config.json is now FORCE OVERWRITTEN (backup in .moai-backups/)
-        # Merge via /alfred:0-project when optimized=false
+        # Merge via /moai:0-project when optimized=false
     ]
 
     # Paths excluded from backups
@@ -104,10 +104,10 @@ class TemplateProcessor:
 
     # Common template variables with validation hints
     COMMON_TEMPLATE_VARIABLES = {
-        "PROJECT_DIR": "Cross-platform project path (run /alfred:0-project to set)",
-        "PROJECT_NAME": "Project name (run /alfred:0-project to set)",
-        "AUTHOR": "Project author (run /alfred:0-project to set)",
-        "CONVERSATION_LANGUAGE": "Interface language (run /alfred:0-project to set)",
+        "PROJECT_DIR": "Cross-platform project path (run /moai:0-project to set)",
+        "PROJECT_NAME": "Project name (run /moai:0-project to set)",
+        "AUTHOR": "Project author (run /moai:0-project to set)",
+        "CONVERSATION_LANGUAGE": "Interface language (run /moai:0-project to set)",
         "MOAI_VERSION": "MoAI-ADK version (should be set automatically)",
         "MOAI_VERSION_SHORT": "Short MoAI-ADK version (without 'v' prefix)",
         "MOAI_VERSION_DISPLAY": "Display version with proper formatting",
@@ -1153,7 +1153,9 @@ class TemplateProcessor:
                 dst_data["mcpServers"].update(src_data["mcpServers"])
 
             # Write merged result back
-            dst.write_text(json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            dst.write_text(
+                json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
         except json.JSONDecodeError as e:
             console.print(f"[yellow]⚠️ Failed to merge .mcp.json: {e}[/yellow]")
 
