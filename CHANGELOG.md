@@ -1,3 +1,33 @@
+# v0.28.1 - Hotfix: Template Variable & Merge Analysis (2025-11-24)
+
+## 🔧 Bug Fixes
+
+### Template Variable Substitution
+- **Issue**: Missing `MOAI_VERSION_*` variables caused `{{VARIABLE}}` placeholders in config.json after template sync
+- **Fix**: Add comprehensive version formatting in `_build_template_context()`
+  - `MOAI_VERSION_SHORT`: Version without 'v' prefix
+  - `MOAI_VERSION_DISPLAY`: Formatted display version
+  - `MOAI_VERSION_TRIMMED`: UI-optimized version (max 10 chars)
+  - `MOAI_VERSION_SEMVER`: Semantic version format
+  - `MOAI_VERSION_VALID`: Version validation status
+- **Impact**: Resolves "Template variable warnings" on `moai-adk update`
+
+### Merge Analysis Robustness
+- **Issue**: `'list' object has no attribute 'get'` error in merge analysis
+- **Fix**: Add type checking and validation in `_display_analysis()`
+  - Validate `analysis["files"]` is list before iteration
+  - Validate `file_info` is dict before accessing `.get()` method
+  - Graceful fallback if JSON parsing fails
+- **Impact**: Merge analysis now survives malformed JSON responses
+
+## 📦 Package Delivery
+
+- TestPyPI: https://test.pypi.org/project/moai-adk/0.28.1/
+- Build: Both sdist and wheel distributions verified
+- Quality Gates: All TRUST 5 checks passing
+
+---
+
 # v0.28.0 - AI Model Integration & Template Synchronization (2025-11-24)
 
 ## ✨ Major Features
