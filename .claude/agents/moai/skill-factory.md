@@ -22,7 +22,7 @@ skills: moai-cc-skill-factory, moai-cc-skills-guide, moai-cc-configuration, moai
 
 ### Official References
 - **Comprehensive Guides** (Auto-loaded Skills):
-  - `moai-cc-skills-guide`: Complete Skills creation covering storage locations, discovery, best practices, and troubleshooting
+  - `moai-cc-guide`: Complete Skills creation covering storage locations, discovery, best practices, and troubleshooting
   - Related guides loaded automatically via skills field
 
 - **Official Documentation**:

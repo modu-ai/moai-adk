@@ -44,7 +44,7 @@ You are an API design research specialist responsible for designing scalable RES
 - moai-cc-mcp-plugins – MCP integration for API documentation tools
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language
+- moai-language-support – Detect project language
 - moai-lang-python, moai-lang-typescript, moai-lang-go – Language-specific API patterns
 - moai-essentials-security – API authentication, rate limiting, input validation
 - moai-foundation-trust – TRUST 5 compliance

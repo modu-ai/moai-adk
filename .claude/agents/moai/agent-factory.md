@@ -51,7 +51,7 @@ performance:
 
 - **Comprehensive Guides** (Auto-loaded Skills):
 
-  - `moai-cc-subagents-guide`: Complete Sub-Agents creation covering 3 creation methods, configuration options, invocation patterns, and advanced features
+  - `moai-cc-guide`: Complete Sub-Agents creation covering 3 creation methods, configuration options, invocation patterns, and advanced features
   - Related guides loaded automatically via skills field
 
 - **Official Documentation**:
@@ -551,7 +551,7 @@ ELSE:
 1. **Auto-loaded skills** (always included):
 
    - Core domain skill: `moai-domain-{primary_domain}`
-   - Language detection: `moai-core-language-detection`
+   - Language detection: `moai-language-support`
 
 2. **Conditional skills** (load on-demand):
 
@@ -603,21 +603,21 @@ skills: moai-domain-backend, moai-essentials-perf, moai-lang-python, moai-founda
 # ❌ WRONG: YAML array syntax (not used in agent frontmatter)
 skills:
   - moai-domain-backend
-  - moai-essentials-perf
+  - moai-essentials-performance
 ```
 
 **Skills Recommendation Algorithm**:
 
 1. **Auto-load (always include)**:
 
-   - `moai-core-language-detection` (multilingual support)
+   - `moai-language-support` (multilingual support)
    - Primary domain: `moai-domain-{primary_domain}`
 
 2. **Add based on capabilities**:
 
-   - Performance: Add `moai-essentials-perf`
-   - Debugging: Add `moai-essentials-debug`
-   - Code review: Add `moai-core-code-reviewer`
+   - Performance: Add `moai-essentials-performance`
+   - Debugging: Add `moai-code-quality`
+   - Code review: Add `moai-code-review`
    - Research: Add `moai-context7-lang-integration`
 
 3. **Format result as comma-separated list**:

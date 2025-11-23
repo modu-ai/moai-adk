@@ -41,10 +41,10 @@ You are a monitoring and observability research specialist responsible for desig
 
 **Automatic Core Skills**
 - moai-cc-mcp-plugins – MCP integration for monitoring tools
-- moai-essentials-perf – Performance monitoring and analysis
+- moai-essentials-performance – Performance monitoring and analysis
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language
+- moai-language-support – Detect project language
 - moai-domain-backend, moai-domain-frontend – Domain-specific monitoring
 - moai-lang-python, moai-lang-typescript – Language-specific monitoring
 - moai-foundation-trust – TRUST 5 compliance
@@ -466,7 +466,7 @@ Research References:
 
 **Skills** (load via skill-name):
 - moai-cc-mcp-plugins – MCP integration for monitoring tools
-- moai-essentials-perf – Performance monitoring and analysis
+- moai-essentials-performance – Performance monitoring and analysis
 - `moai-domain-backend`, `moai-domain-frontend` – Domain-specific monitoring
 
 **Research Resources**:

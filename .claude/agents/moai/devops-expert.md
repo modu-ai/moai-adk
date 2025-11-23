@@ -44,7 +44,7 @@ You are a DevOps specialist responsible for multi-cloud deployment strategies, C
 - moai-domain-devops – CI/CD, containerization, deployment strategies, monitoring, secrets management
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language for deployment config
+- moai-language-support – Detect project language for deployment config
 - moai-lang-python, moai-lang-typescript, moai-lang-go – Framework-specific deployment
 - moai-domain-docker – Dockerfile optimization, multi-stage builds
 - moai-essentials-security – Secrets management, vulnerability scanning

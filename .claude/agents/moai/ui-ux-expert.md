@@ -46,9 +46,9 @@ You are a UI/UX design specialist responsible for user-centered design, accessib
 - moai-design-systems – Design systems patterns, design tokens, accessibility
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language for code generation
+- moai-language-support – Detect project language for code generation
 - moai-lang-typescript – For React/Vue/Angular design implementations
-- moai-essentials-perf – Performance optimization (image optimization, lazy loading)
+- moai-essentials-performance – Performance optimization (image optimization, lazy loading)
 - moai-essentials-security – Security UX patterns (authentication flows, data privacy)
 - moai-foundation-trust – TRUST 5 compliance for design systems
 
@@ -634,7 +634,7 @@ Target: 85%+ coverage
 **Skills** (load via skill-name):
 - moai-domain-frontend – Component implementation patterns
 - moai-design-systems – Design system design
-- moai-essentials-perf – Image and animation optimization
+- moai-essentials-performance – Image and animation optimization
 - moai-foundation-trust – TRUST 5 compliance for design
 
 **Figma MCP Documentation**: https://developers.figma.com/docs/figma-mcp-server/

@@ -666,13 +666,13 @@ MoAI-ADK는 **35명의 전문 에이전트**를 제공합니다.
 
 ---
 
-## 8. 스킬 라이브러리 (134개)
+## 8. 스킬 라이브러리 (108개)
 
-MoAI-ADK는 **134개의 스킬**을 제공합니다. 스킬은 에이전트가 사용하는 전문 지식 모듈이며, 10개 계층(Tier)으로 체계화되어 있습니다.
+MoAI-ADK는 **108개의 스킬**을 제공합니다. 스킬은 에이전트가 사용하는 전문 지식 모듈이며, 10개 계층(Tier)으로 체계화되어 있습니다.
 
 ### 📊 스킬 포트폴리오 통계
 
-- **총 스킬 수**: 134개 (107개 계층화 + 27개 특수)
+- **총 스킬 수**: 108개 (84개 계층화 + 24개 특수)
 - **10-Tier 분류**: 언어에서 특화 라이브러리까지 체계적 조직화
 - **100% 메타데이터 준수**: 모든 스킬에 7개 필수 필드 포함
 - **1,270개 자동 트리거 키워드**: 사용자 요청에서 지능적 스킬 선택
@@ -680,11 +680,11 @@ MoAI-ADK는 **134개의 스킬**을 제공합니다. 스킬은 에이전트가 �
 
 ### 🎯 계층 구조 (Tier Structure)
 
-- **Tier 1-2**: Foundation (언어, 도메인) - 38개 스킬
-- **Tier 3-5**: Core Architecture (보안, 코어, 파운데이션) - 37개 스킬
-- **Tier 6-7**: Platform Integration (Claude Code, BaaS) - 20개 스킬
-- **Tier 8-10**: Applied Workflows (필수 도구, 프로젝트, 라이브러리) - 12개 스킬
-- **Special Skills**: 계층 미분류 유틸리티 - 27개 스킬
+- **Tier 1-2**: Foundation (언어, 도메인) - 36개 스킬
+- **Tier 3-5**: Core Architecture (보안, 코어, 파운데이션) - 22개 스킬
+- **Tier 6-7**: Platform Integration (Claude Code, BaaS) - 17개 스킬
+- **Tier 8-10**: Applied Workflows (필수 도구, 프로젝트, 라이브러리) - 9개 스킬
+- **Special Skills**: 계층 미분류 유틸리티 - 24개 스킬
 
 ### 📚 전체 스킬 목록 (알파벳 순)
 
@@ -692,212 +692,208 @@ MoAI-ADK는 **134개의 스킬**을 제공합니다. 스킬은 에이전트가 �
 
 프로그래밍 언어 패턴 및 관용구 (21개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-lang-c` | C 언어 개발 (pointers, memory management) |
-| `moai-lang-cpp` | C++ 개발 (STL, templates, modern C++) |
-| `moai-lang-csharp` | C# 개발 (.NET, LINQ, async patterns) |
-| `moai-lang-dart` | Dart 개발 (Flutter widgets, async programming) |
-| `moai-lang-elixir` | Elixir 개발 (Phoenix, OTP, functional patterns) |
-| `moai-lang-go` | Go 개발 (goroutines, channels, concurrency) |
-| `moai-lang-html-css` | HTML/CSS 마크업 (HTML5, CSS3, flexbox, grid) |
-| `moai-lang-java` | Java 개발 (Spring Boot, Maven, enterprise patterns) |
-| `moai-lang-javascript` | JavaScript 개발 (ES6+, async/await, DOM) |
-| `moai-lang-kotlin` | Kotlin 개발 (coroutines, Android, JVM) |
-| `moai-lang-php` | PHP 개발 (Laravel, Composer, modern PHP) |
-| `moai-lang-python` | Python 개발 (FastAPI, Django, pytest, type hints) |
-| `moai-lang-r` | R 통계 분석 (data analysis, visualization, tidyverse) |
-| `moai-lang-ruby` | Ruby 개발 (Rails, RSpec, metaprogramming) |
-| `moai-lang-rust` | Rust 개발 (ownership, lifetimes, zero-cost abstractions) |
-| `moai-lang-scala` | Scala 개발 (functional programming, Akka, type system) |
-| `moai-lang-shell` | Shell 스크립팅 (Bash, automation, CLI tools) |
-| `moai-lang-sql` | SQL 쿼리 (queries, optimization, database management) |
-| `moai-lang-swift` | Swift 개발 (SwiftUI, iOS, protocol-oriented) |
-| `moai-lang-tailwind-css` | Tailwind CSS (utility-first, responsive design) |
-| `moai-lang-typescript` | TypeScript 개발 (types, generics, advanced patterns) |
+| 스킬명                   | 설명                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| `moai-lang-c`            | C 언어 개발 (포인터, 메모리 관리, 성능 최적화)           |
+| `moai-lang-cpp`          | C++ 개발 (표준 라이브러리, 템플릿, 모던 C++)              |
+| `moai-lang-csharp`       | C# 개발 (.NET, LINQ, 비동기 패턴)                         |
+| `moai-lang-dart`         | Dart 개발 (Flutter 위젯, 비동기 프로그래밍)              |
+| `moai-lang-elixir`       | Elixir 개발 (Phoenix 프레임워크, OTP, 함수형 패턴)       |
+| `moai-lang-go`           | Go 개발 (고루틴, 채널, 동시성 처리)                       |
+| `moai-lang-html-css`     | HTML/CSS 마크업 (HTML5, CSS3, Flexbox, Grid 레이아웃)   |
+| `moai-lang-java`         | Java 개발 (Spring Boot, Maven, 엔터프라이즈 패턴)        |
+| `moai-lang-javascript`   | JavaScript 개발 (ES6+, 비동기/대기, DOM 조작)            |
+| `moai-lang-kotlin`       | Kotlin 개발 (코루틴, Android 개발, JVM 환경)             |
+| `moai-lang-php`          | PHP 개발 (Laravel, Composer, 모던 PHP 패턴)             |
+| `moai-lang-python`       | Python 개발 (FastAPI, Django, pytest, 타입 힌팅)         |
+| `moai-lang-r`            | R 통계 분석 (데이터 분석, 시각화, tidyverse 생태계)      |
+| `moai-lang-ruby`         | Ruby 개발 (Rails, RSpec, 메타프로그래밍)                 |
+| `moai-lang-rust`         | Rust 개발 (소유권, 생명주기, 제로-코스트 추상화)         |
+| `moai-lang-scala`        | Scala 개발 (함수형 프로그래밍, Akka, 타입 시스템)        |
+| `moai-lang-shell`        | Shell 스크립팅 (Bash, 자동화, CLI 도구 개발)             |
+| `moai-lang-sql`          | SQL 쿼리 (쿼리 최적화, 데이터베이스 관리)                |
+| `moai-lang-swift`        | Swift 개발 (SwiftUI, iOS 앱 개발, 프로토콜 지향)         |
+| `moai-lang-tailwind-css` | Tailwind CSS (유틸리티 우선 접근, 반응형 디자인)         |
+| `moai-lang-typescript`   | TypeScript 개발 (타입 시스템, 제네릭, 고급 패턴)        |
 
 #### Tier 2: 도메인별 스킬 (moai-domain-\*)
 
-애플리케이션 도메인 아키텍처 (17개)
+애플리케이션 도메인 아키텍처 (16개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-domain-backend` | 백엔드 아키텍처 (REST APIs, microservices, CRUD) |
-| `moai-domain-cli-tool` | CLI 도구 개발 (command-line applications, arguments parsing) |
-| `moai-domain-cloud` | 클라우드 아키텍처 (cloud platforms, serverless, scalability) |
-| `moai-domain-database` | 데이터베이스 설계 (SQL/NoSQL, schema, indexing, migrations) |
-| `moai-domain-devops` | DevOps 실천 (CI/CD, IaC, automation, deployment) |
-| `moai-domain-figma` | Figma 통합 (design-to-code, Figma API, design tokens) |
-| `moai-domain-frontend` | 프론트엔드 아키텍처 (UI frameworks, state management, routing) |
-| `moai-domain-iot` | IoT 개발 (IoT devices, sensors, protocols, edge computing) |
-| `moai-domain-ml-ops` | MLOps (ML pipelines, model deployment, monitoring) |
-| `moai-domain-mobile-app` | 모바일 앱 개발 (iOS, Android, React Native, Flutter) |
-| `moai-domain-monitoring` | 모니터링 (logging, metrics, alerts, observability) |
-| `moai-domain-nano-banana` | Nano Banana 프로젝트 (Google integration, project-specific) |
-| `moai-domain-notion` | Notion 통합 (Notion API, knowledge base, databases) |
-| `moai-domain-security` | 보안 (OWASP, vulnerability analysis, secure coding) |
-| `moai-domain-testing` | 테스트 전략 (unit, integration, E2E testing, TDD) |
-| `moai-domain-toon` | TOON 포맷 (token optimization, encoding, compression) |
-| `moai-domain-web-api` | 웹 API 설계 (REST, GraphQL, API design, versioning) |
+| 스킬명                   | 설명                                                           |
+| ------------------------ | -------------------------------------------------------------- |
+| `moai-domain-backend`    | 백엔드 아키텍처 (REST API, 마이크로서비스, CRUD 패턴)        |
+| `moai-domain-cli-tool`   | CLI 도구 개발 (명령줄 애플리케이션, 인자 파싱)               |
+| `moai-domain-cloud`      | 클라우드 아키텍처 (클라우드 플랫폼, 서버리스, 확장성)        |
+| `moai-domain-database`   | 데이터베이스 설계 (관계형/비관계형 DB, 스키마, 인덱싱)       |
+| `moai-domain-devops`     | DevOps 실천 (CI/CD, IaC, 자동화, 배포)                       |
+| `moai-domain-figma`      | Figma 통합 (디자인-코드 변환, Figma API, 디자인 토큰)        |
+| `moai-domain-frontend`   | 프론트엔드 아키텍처 (UI 프레임워크, 상태 관리, 라우팅)       |
+| `moai-domain-iot`        | IoT 개발 (IoT 디바이스, 센서, 프로토콜, 엣지 컴퓨팅)         |
+| `moai-domain-ml-ops`     | MLOps (머신러닝 파이프라인, 모델 배포, 모니터링)             |
+| `moai-domain-mobile-app` | 모바일 앱 개발 (iOS, Android, React Native, Flutter)          |
+| `moai-domain-monitoring` | 모니터링 (로깅, 메트릭 수집, 알림, 관찰성)                   |
+| `moai-domain-notion`     | Notion 통합 (Notion API, 지식 베이스, 데이터베이스 관리)      |
+| `moai-domain-security`   | 보안 (OWASP, 취약점 분석, 보안 코딩)                         |
+| `moai-domain-toon`       | TOON 포맷 (토큰 최적화, 인코딩, 압축)                         |
+| `moai-domain-web-api`    | 웹 API 설계 (REST, GraphQL, API 디자인, 버전 관리)           |
 
 #### Tier 3: 보안 스킬 (moai-security-\*)
 
 보안 및 준수 (12개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-security-accessibility-wcag3` | WCAG 3.0 접근성 (ARIA, keyboard navigation, semantic HTML) |
-| `moai-security-api` | API 보안 (authentication, rate limiting, input validation) |
-| `moai-security-api-versioning` | API 버전 관리 (semantic versioning, deprecation strategies) |
-| `moai-security-auth` | 인증 (JWT, OAuth2, OpenID Connect, session management) |
-| `moai-security-compliance` | 보안 준수 (compliance standards, audits, certifications) |
-| `moai-security-encryption` | 암호화 (data encryption, hashing, TLS/SSL, key management) |
-| `moai-security-identity` | 신원 관리 (identity management, SSO, MFA, RBAC) |
-| `moai-security-owasp` | OWASP (OWASP Top 10, security standards, best practices) |
-| `moai-security-secrets` | 비밀 관리 (secret management, vaults, rotation policies) |
-| `moai-security-ssrf` | SSRF 방어 (Server-Side Request Forgery prevention) |
-| `moai-security-threat` | 위협 모델링 (threat modeling, risk assessment, attack vectors) |
-| `moai-security-zero-trust` | Zero Trust 아키텍처 (zero trust security model, least privilege) |
+| 스킬명                              | 설명                                                             |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `moai-security-accessibility-wcag3` | WCAG 3.0 접근성 (ARIA, 키보드 네비게이션, 시맨틱 HTML)          |
+| `moai-security-compliance`          | 보안 준수 (준수 기준, 감사, 인증)                               |
+| `moai-security-encryption`          | 암호화 (데이터 암호화, 해싱, TLS/SSL, 키 관리)                  |
+| `moai-security-owasp`               | OWASP (OWASP Top 10, 보안 표준, 모범 사례)                      |
+| `moai-security-secrets`             | 비밀 관리 (시크릿 저장소, 자동 갱신)                           |
+| `moai-security-ssrf`                | SSRF 방어 (서버 측 요청 위조 방지)                              |
+| `moai-security-threat`              | 위협 모델링 (위협 분석, 위험 평가, 공격 벡터 분석)              |
+| `moai-security-zero-trust`          | Zero Trust 아키텍처 (제로 트러스트 보안 모델, 최소 권한 원칙)   |
 
 #### Tier 4: 코어 개발 스킬 (moai-core-\*)
 
-핵심 개발 패턴 및 도구 (20개)
+핵심 개발 패턴 및 도구 (17개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-core-agent-factory` | 에이전트 팩토리 (custom agent creation, orchestration) |
-| `moai-core-ask-user-questions` | 사용자 질문 (user interaction, clarification, feedback) |
-| `moai-core-clone-pattern` | 클론 패턴 (project scaffolding, templates, boilerplate) |
-| `moai-core-code-reviewer` | 코드 리뷰 (code review, quality checks, static analysis) |
-| `moai-core-code-templates` | 코드 템플릿 (boilerplate, code generation, snippets) |
-| `moai-core-config-schema` | 설정 스키마 (configuration management, validation, types) |
-| `moai-core-context-budget` | 컨텍스트 예산 (token budgeting, optimization, monitoring) |
-| `moai-core-dev-guide` | 개발 가이드 (development guidelines, best practices) |
-| `moai-core-env-security` | 환경 보안 (environment variable security, .env management) |
-| `moai-core-expertise-detection` | 전문성 감지 (user expertise level detection, adaptive UX) |
-| `moai-core-feedback-templates` | 피드백 템플릿 (feedback forms, issue templates, surveys) |
-| `moai-core-issue-labels` | 이슈 라벨 (GitHub issue labeling, categorization) |
-| `moai-core-language-detection` | 언어 감지 (programming language detection, auto-config) |
-| `moai-core-personas` | 페르소나 (communication personas, adaptive responses) |
-| `moai-core-practices` | 모범 사례 (best practices, coding standards, conventions) |
-| `moai-core-proactive-suggestions` | 사전 제안 (proactive suggestions, recommendations) |
-| `moai-core-session-state` | 세션 상태 (session state management, context preservation) |
-| `moai-core-spec-authoring` | SPEC 작성 (EARS format, requirements, specifications) |
-| `moai-core-todowrite-pattern` | TodoWrite 패턴 (task tracking patterns, progress monitoring) |
-| `moai-core-workflow` | 워크플로우 (development workflows, automation, processes) |
+| 스킬명                        | 설명                                                         |
+| ----------------------------- | ------------------------------------------------------------ |
+| `moai-core-agent-factory`     | 에이전트 팩토리 (커스텀 에이전트 생성, 오케스트레이션)        |
+| `moai-core-config-schema`     | 설정 스키마 (설정 관리, 유효성 검증, 타입 정의)               |
+| `moai-core-dev-guide`         | 개발 가이드 (개발 지침, 모범 사례)                            |
+| `moai-core-env-security`      | 환경 보안 (환경 변수 보안, .env 파일 관리)                    |
+| `moai-core-issue-labels`      | 이슈 라벨 (GitHub 이슈 라벨링, 분류)                         |
+| `moai-core-practices`         | 모범 사례 (코딩 표준, 관례, 베스트 프랙티스)                 |
+| `moai-core-spec-authoring`    | SPEC 작성 (EARS 포맷, 요구사항, 명세 작성)                   |
+| `moai-core-todowrite-pattern` | TodoWrite 패턴 (작업 추적, 진행도 모니터링)                  |
+| `moai-core-workflow`          | 워크플로우 (개발 워크플로우, 자동화, 프로세스)               |
 
 #### Tier 5: 파운데이션 스킬 (moai-foundation-\*)
 
 프레임워크 기반 및 표준 (5개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-foundation-ears` | EARS 포맷 (Event-driven requirements format, structured specs) |
-| `moai-foundation-git` | Git 관리 (Git workflows, branching strategies, version control) |
-| `moai-foundation-langs` | 언어 기반 (multi-language support, i18n, localization) |
-| `moai-foundation-specs` | SPEC 시스템 (SPEC lifecycle, versioning, traceability) |
+| 스킬명                  | 설명                                                             |
+| ----------------------- | ---------------------------------------------------------------- |
+| `moai-foundation-ears`  | EARS 포맷 (Event-driven requirements format, structured specs)   |
+| `moai-foundation-git`   | Git 관리 (Git workflows, branching strategies, version control)  |
+| `moai-foundation-langs` | 언어 기반 (multi-language support, i18n, localization)           |
+| `moai-foundation-specs` | SPEC 시스템 (SPEC lifecycle, versioning, traceability)           |
 | `moai-foundation-trust` | TRUST 5 프레임워크 (Test, Readable, Unified, Secured, Trackable) |
 
 #### Tier 6: Claude Code 플랫폼 스킬 (moai-cc-\*)
 
 Claude Code 통합 (10개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-cc-claude-md` | CLAUDE.md 작성 (project documentation, agent instructions) |
-| `moai-cc-claude-settings` | Claude 설정 (settings configuration, preferences) |
-| `moai-cc-commands` | 커맨드 시스템 (command management, custom commands) |
-| `moai-cc-configuration` | 설정 관리 (config.json management, schema validation) |
-| `moai-cc-hooks` | Hooks 시스템 (automation triggers, lifecycle hooks) |
-| `moai-cc-memory` | 메모리 시스템 (memory file management, context retention) |
-| `moai-cc-permission-mode` | 권한 모드 (permission management, access control) |
-| `moai-cc-skill-factory` | 스킬 팩토리 (skill creation, management, versioning) |
-| `moai-cc-skills-guide` | 스킬 가이드 (skill usage guide, best practices) |
-| `moai-cc-subagents-guide` | 서브에이전트 가이드 (agent delegation guide, orchestration) |
+| 스킬명                    | 설명                                                       |
+| ------------------------- | ---------------------------------------------------------- |
+| `moai-cc-claude-md`       | CLAUDE.md 작성 (프로젝트 문서, 에이전트 지침)               |
+| `moai-cc-commands`        | 커맨드 시스템 (커맨드 관리, 커스텀 커맨드)                |
+| `moai-cc-configuration`   | 설정 관리 (Claude Code 설정, 프로젝트 설정, 검증)         |
+| `moai-cc-hooks`           | Hooks 시스템 (자동화 트리거, 생명주기 Hooks)              |
+| `moai-cc-memory`          | 메모리 시스템 (메모리 파일 관리, 컨텍스트 보존)           |
+| `moai-cc-permission-mode` | 권한 모드 (권한 관리, 접근 제어)                          |
+| `moai-cc-skill-factory`   | 스킬 팩토리 (스킬 생성, 관리, 버전 관리)                  |
+| `moai-cc-skills-guide`    | 스킬 가이드 (스킬 개발, 최적화, 표준 준수)                |
 
 #### Tier 7: BaaS 통합 스킬 (moai-baas-\*)
 
 Backend-as-a-Service 플랫폼 (10개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-baas-auth0-ext` | Auth0 통합 (authentication, authorization, SSO) |
-| `moai-baas-clerk-ext` | Clerk 통합 (authentication, user management, sessions) |
-| `moai-baas-cloudflare-ext` | Cloudflare 통합 (Workers, Pages, CDN, edge computing) |
-| `moai-baas-convex-ext` | Convex 통합 (backend platform, real-time database) |
-| `moai-baas-firebase-ext` | Firebase 통합 (Firebase services, Firestore, Auth, Hosting) |
-| `moai-baas-foundation` | BaaS 기반 (BaaS patterns, best practices, architecture) |
-| `moai-baas-neon-ext` | Neon 통합 (Neon Postgres, serverless database) |
-| `moai-baas-railway-ext` | Railway 통합 (Railway deployment, containerization) |
-| `moai-baas-supabase-ext` | Supabase 통합 (Supabase backend, Postgres, Auth, Storage) |
-| `moai-baas-vercel-ext` | Vercel 통합 (Vercel deployment, Edge Functions, serverless) |
+| 스킬명                     | 설명                                                        |
+| -------------------------- | ----------------------------------------------------------- |
+| `moai-baas-clerk-ext`      | Clerk 인증 (Clerk 플랫폼, OAuth, 사용자 관리)             |
+| `moai-baas-cloudflare-ext` | Cloudflare 통합 (Workers, Pages, CDN, 엣지 컴퓨팅)       |
+| `moai-baas-convex-ext`     | Convex 통합 (백엔드 플랫폼, 실시간 데이터베이스)         |
+| `moai-baas-firebase-ext`   | Firebase 통합 (Firebase 서비스, Firestore, Auth, Hosting) |
+| `moai-baas-foundation`     | BaaS 기반 (BaaS 패턴, 모범 사례, 아키텍처)               |
+| `moai-baas-neon-ext`       | Neon 통합 (Neon Postgres, 서버리스 데이터베이스)         |
+| `moai-baas-railway-ext`    | Railway 통합 (Railway 배포, 컨테이너화)                  |
+| `moai-baas-supabase-ext`   | Supabase 통합 (Supabase 백엔드, Postgres, Auth, Storage) |
+| `moai-baas-vercel-ext`     | Vercel 통합 (Vercel 배포, Edge Functions, 서버리스)      |
 
 #### Tier 8: 필수 도구 스킬 (moai-essentials-\*)
 
 필수 개발 워크플로우 (6개)
 
 | 스킬명 | 설명 |
-| --- | --- |
-| `moai-essentials-debug` | 디버깅 (error analysis, root cause, debugging tools) |
-| `moai-essentials-perf` | 성능 분석 (performance analysis, bottleneck identification) |
-| `moai-essentials-performance-profiling` | 성능 프로파일링 (profiling, optimization, benchmarking) |
-| `moai-essentials-refactor` | 리팩토링 (code refactoring, design patterns, clean code) |
-| `moai-essentials-review` | 코드 리뷰 (review processes, code quality, collaboration) |
-| `moai-essentials-testing-integration` | 통합 테스트 (integration testing strategies, E2E, CI/CD) |
+| ------ | ---- |
+| `moai-essentials-debug` | 디버깅 오케스트레이션 (오류 분석, 근본 원인, 해결책 제시) |
+| `moai-essentials-perf` | 성능 최적화 (병목 분석, 성능 튜닝, 벤치마킹) |
+| `moai-essentials-refactor` | 리팩토링 자동화 (코드 변환, 기술 부채 제거, 최적화) |
+| `moai-mcp-figma-integrator` | Figma 통합 (디자인 분석, 디자인-투-코드, 컴포넌트 추출) |
+| `moai-mcp-notion-integrator` | Notion 통합 (데이터베이스 관리, 콘텐츠 작성, 자동화) |
+| `moai-playwright-webapp-testing` | 웹앱 테스팅 (E2E 테스트, 자동화, UI 상호작용) |
 
 #### Tier 9: 프로젝트 관리 스킬 (moai-project-\*)
 
 프로젝트 조율 (5개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-project-batch-questions` | 일괄 질문 (batch question processing, bulk operations) |
-| `moai-project-config-manager` | 설정 관리자 (configuration management, validation) |
-| `moai-project-documentation` | 프로젝트 문서화 (project documentation, auto-generation) |
-| `moai-project-language-initializer` | 언어 초기화 (multi-language project setup, scaffolding) |
-| `moai-project-template-optimizer` | 템플릿 최적화 (template optimization, performance tuning) |
+| 스킬명                         | 설명                                                     |
+| ------------------------------ | -------------------------------------------------------- |
+| `moai-project-batch-questions` | 일괄 질문 (배치 질문 처리, 대량 작업)                   |
+| `moai-project-config-manager` | 설정 관리 (config.json CRUD, 검증, 병합 전략)          |
+| `moai-project-documentation`   | 프로젝트 문서화 (프로젝트 문서, 자동 생성)             |
+| `moai-session-info`            | 세션 정보 (프로젝트 상태, 버전, 리소스 정보 표시)     |
 
-#### Tier 10: 라이브러리 통합 스킬 (moai-lib-\*)
+#### Tier 10: AI 특화 스킬 (moai-ai-\*, moai-lang-\*)
 
-특화 라이브러리 (1개)
+AI 및 특화 라이브러리 (2개)
 
-| 스킬명 | 설명 |
-| --- | --- |
-| `moai-lib-shadcn-ui` | shadcn/ui 통합 (shadcn/ui components, Tailwind, Radix UI) |
+| 스킬명                  | 설명                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `moai-ai-nano-banana`   | Google Nano Banana Pro 이미지 생성 (Text-to-Image, Image-to-Image, 멀티턴)     |
+| `moai-lang-shadcn-ui`   | shadcn/ui 통합 (React 컴포넌트 라이브러리, Tailwind, Radix UI)                |
 
 #### 특수 스킬 (Special Skills)
 
-계층 미분류 유틸리티 (27개)
+계층 미분류 유틸리티 (24개)
+
+| 스킬명                           | 설명                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| `moai-artifacts-builder`         | Artifacts 생성 (아티팩트 생성, Claude artifacts)                          |
+| `moai-change-logger`             | 변경 로그 (변경 추적, 버전 관리, Changelog 생성)                          |
+| `moai-cloud-aws-advanced`        | AWS 고급 (고급 AWS 패턴, 서버리스, Lambda, S3)                           |
+| `moai-cloud-gcp-advanced`        | GCP 고급 (고급 GCP 패턴, Cloud Run, BigQuery)                            |
+| `moai-component-designer`        | 컴포넌트 설계 (컴포넌트 패턴, 재사용성, 구조화)                          |
+| `moai-context7-integration`      | Context7 통합 (Context7 MCP, 라이브러리 문서 조회)                       |
+| `moai-design-systems`            | 디자인 시스템 (디자인 패턴, 디자인 토큰, 일관성)                         |
+| `moai-document-processing`       | 문서 처리 (문서 파싱, 변환, 추출, 처리)                                  |
+| `moai-icons-vector`              | 벡터 아이콘 (아이콘 관리, SVG, 아이콘 시스템)                            |
+| `moai-internal-comms`            | 내부 통신 (에이전트 조율, 메시지 전달, 워크플로우)                       |
+| `moai-jit-docs-enhanced`         | JIT 문서 강화 (즉시 문서, 컨텍스트 인식, 동적 생성)                      |
+| `moai-learning-optimizer`        | 학습 최적화 (적응형 학습, 최적화, 추천 시스템)                           |
+| `moai-mcp-integration`           | MCP 통합 (MCP 서버, 프로토콜, 도구 연동)                                 |
+| `moai-mermaid-diagram-expert`    | Mermaid 다이어그램 (21가지 다이어그램, 시각화, 흐름도)                    |
+| `moai-nextra-architecture`       | Nextra 아키텍처 (Nextra 문서 프레임워크, SSG, 정적 생성)                 |
+| `moai-readme-expert`             | README 전문가 (전문적 README 생성, 템플릿)                               |
+| `moai-spec-intelligent-workflow` | 지능형 SPEC (SPEC 자동화, 워크플로우, 최적화)                            |
+| `moai-streaming-ui`              | 스트리밍 UI (실시간 스트리밍, UI 업데이트, 비동기)                        |
+
+#### 🔄 통합된 스킬 (Merged Skills)
+
+다음 16개 스킬은 중복되는 기능을 통합하여 더 강력한 기능을 제공합니다:
 
 | 스킬명 | 설명 |
 | --- | --- |
-| `moai-artifacts-builder` | Artifacts 생성 (artifact generation, Claude artifacts) |
-| `moai-change-logger` | 변경 로그 (change logging, version tracking, changelogs) |
-| `moai-cloud-aws-advanced` | AWS 고급 (advanced AWS patterns, serverless, Lambda, S3) |
-| `moai-cloud-gcp-advanced` | GCP 고급 (advanced GCP patterns, Cloud Run, BigQuery) |
-| `moai-component-designer` | 컴포넌트 설계 (component design patterns, reusability) |
-| `moai-context7-integration` | Context7 통합 (Context7 MCP integration, library docs) |
-| `moai-design-systems` | 디자인 시스템 (design system patterns, design tokens) |
-| `moai-docs-generation` | 문서 생성 (auto-documentation, API docs, README) |
-| `moai-docs-linting` | 문서 린팅 (markdown linting, style checking, formatting) |
-| `moai-docs-toolkit` | 문서 도구 (documentation tooling, generators, validators) |
-| `moai-docs-unified` | 통합 문서 (unified documentation, consistency, standards) |
-| `moai-docs-validation` | 문서 검증 (content validation, link checking, quality) |
-| `moai-document-processing` | 문서 처리 (document processing, parsing, transformation) |
-| `moai-google-nano-banana` | Google Nano Banana (Google project integration, specialized) |
-| `moai-icons-vector` | 벡터 아이콘 (vector icon management, SVG, icon systems) |
-| `moai-internal-comms` | 내부 통신 (internal communications, agent coordination) |
-| `moai-jit-docs-enhanced` | JIT 문서 강화 (just-in-time documentation, context-aware) |
-| `moai-learning-optimizer` | 학습 최적화 (learning optimization, adaptive learning) |
-| `moai-mcp-integration` | MCP 통합 (MCP server integration, protocol, tools) |
-| `moai-mermaid-diagram-expert` | Mermaid 다이어그램 (21 diagram types, visualization, flowcharts) |
-| `moai-nextra-architecture` | Nextra 아키텍처 (Nextra documentation framework, SSG) |
-| `moai-playwright-webapp-testing` | Playwright 웹앱 테스트 (E2E testing, browser automation) |
-| `moai-readme-expert` | README 전문가 (professional README generation, templates) |
-| `moai-session-info` | 세션 정보 (session information, context, state management) |
-| `moai-spec-intelligent-workflow` | 지능형 SPEC 워크플로우 (intelligent SPEC workflow, automation) |
-| `moai-streaming-ui` | 스트리밍 UI (streaming user interfaces, real-time updates) |
-| `moai-webapp-testing` | 웹앱 테스트 (web application testing, test automation) |
+| `moai-docs-manager` | 문서 관리 (자동 생성, 도구 통합, 일관성 검증) |
+| `moai-docs-quality-gate` | 문서 품질 보증 (내용 검증, 마크다운 린팅, 링크 검사) |
+| `moai-essentials-performance` | 성능 분석 및 프로파일링 (병목 분석, 최적화, 벤치마킹) |
+| `moai-web-testing` | 웹 애플리케이션 테스트 (E2E 테스트, Playwright, 테스트 자동화) |
+| `moai-config-manager` | 설정 관리 (Claude Code 설정, 프로젝트 설정, 스키마 검증) |
+| `moai-security-api-management` | API 보안 및 관리 (인증, 인가, 버전 관리, 보안 정책) |
+| `moai-security-authentication` | 인증 및 신원 관리 (JWT, OAuth2, SSO, MFA, 역할 기반 접근) |
+| `moai-code-review` | 코드 리뷰 (자동화된 검사, 품질 검증, 협업 프로세스) |
+| `moai-code-quality` | 코드 품질 개선 (리팩토링, 디버깅, 오류 분석, 개선) |
+| `moai-testing` | 테스트 전략 (TDD, 단위 테스트, 통합 테스트, E2E 테스트) |
+| `moai-context-manager` | 컨텍스트 및 세션 관리 (토큰 예산, 상태 관리, 모니터링) |
+| `moai-adaptive-ux` | 적응형 사용자 경험 (전문도 감지, 맞춤형 제안, 동적 응답) |
+| `moai-templates` | 템플릿 관리 (코드 템플릿, 피드백 템플릿, 최적화, 재사용) |
+| `moai-language-support` | 언어 지원 (언어 감지, 자동 설정, 프로젝트 초기화) |
+| `moai-cc-guide` | Claude Code 가이드 (스킬 사용법, 에이전트 위임, 오케스트레이션) |
+| `moai-baas-auth` | BaaS 인증 플랫폼 (Auth0, Clerk, OAuth, 사용자 관리) |
+
+---
 
 ### 🔍 스킬 사용 방법
 
@@ -966,9 +962,11 @@ Skill("moai-security-auth")
 
 # 3. TDD 구현
 /moai:2-run SPEC-001
+/clear
 
 # 4. 문서 동기화
 /moai:3-sync SPEC-001
+/clear
 ```
 
 ### 예제 2: RESTful API 블로그 시스템
@@ -985,11 +983,13 @@ Skill("moai-security-auth")
 /moai:2-run SPEC-001
 # → TDD로 API 엔드포인트 구현
 # → 테스트 커버리지 87% 달성
+/clear
 
 # Step 3: 문서화
 /moai:3-sync SPEC-001
 # → OpenAPI 명세 자동 생성
 # → API 문서 자동 업데이트
+/clear
 
 # Step 4: 다음 기능 계획
 /moai:1-plan "댓글 시스템 추가 (중첩 댓글 지원)"
@@ -1076,7 +1076,7 @@ Skill("moai-security-auth")
 
 **검증**:
 
-- SPEC-TAG 연결 (코드 → SPEC)
+- SPEC-CODE 연결 (@SPEC → @CODE)
 - 명확한 커밋 메시지
 - 테스트 증거 문서화
 - 변경 이력 기록
@@ -1126,23 +1126,194 @@ MoAI-ADK는 `.claude/settings.json` 파일을 사용합니다.
 
 ### Git 전략 (3가지 모드)
 
-### Mode 1: Manual (로컬 Git 전용)
+MoAI-ADK는 개발 환경과 팀 구성에 맞게 3가지 Git 전략을 제공합니다. 각 모드는 `.moai/config/config.json`의 `git_strategy.mode` 설정으로 활성화됩니다.
 
-- 로컬에만 커밋
-- Push는 수동
-- GitHub 미사용
+#### Mode 1: Manual (로컬 Git 전용)
 
-### Mode 2: Personal (개인 GitHub 프로젝트)
+**적용 대상**: GitHub를 사용하지 않는 개인 프로젝트, 로컬 Git 저장소만 사용
 
-- 자동 브랜치 생성 (선택)
-- 자동 푸시
-- PR 생성 제안
+**특징**:
+- 모든 커밋이 로컬 Git 저장소에만 저장됨
+- Push는 개발자가 수동으로 관리
+- GitHub 연동 기능 미사용
+- SPEC 생성 시 브랜치 생성 여부를 매번 선택 가능
 
-### Mode 3: Team (팀 GitHub 프로젝트)
+**구성**:
+```json
+{
+  "git_strategy": {
+    "mode": "manual",
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
+  }
+}
+```
 
-- 자동 feature 브랜치 + Draft PR
-- 코드 리뷰 필수
-- Merge 후 배포
+**Alfred의 동작**:
+1. `/moai:1-plan` 실행 시 "브랜치를 생성하시겠습니까?" 질문
+2. 선택에 따라 새 브랜치 생성 또는 현재 브랜치에서 작업
+3. 모든 커밋은 로컬에만 저장
+
+**사용 시나리오**: 개인 포트폴리오 프로젝트, 학습 목적의 코딩, 로컬 백업만 필요한 경우
+
+---
+
+#### Mode 2: Personal (개인 GitHub 프로젝트)
+
+**적용 대상**: GitHub를 사용하는 개인 프로젝트, 빠른 개발 속도 중시
+
+**특징**:
+- 자동 feature 브랜치 생성 (선택적)
+- 변경사항이 자동으로 GitHub에 푸시됨
+- Pull Request 생성 제안 (수동 승인)
+- 개발 속도와 관리의 균형
+
+**구성** (기본값):
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
+  }
+}
+```
+
+**구성** (자동화):
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": true
+    }
+  }
+}
+```
+
+**Alfred의 동작** (기본):
+1. `/moai:1-plan` 실행 시 브랜치 생성 여부 선택 요청
+2. `feature/SPEC-XXX` 브랜치 자동 생성 (선택 시)
+3. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시
+4. `/moai:3-sync` 실행: 문서 커밋 + 선택적 PR 생성 제안
+
+**Alfred의 동작** (자동화):
+1. 모든 SPEC 생성 시 자동으로 feature 브랜치 생성
+2. 모든 커밋이 자동으로 푸시됨
+3. 개발자 질문 없이 완전 자동화
+
+**사용 시나리오**: 개인 GitHub 프로젝트, 오픈소스 개인 저장소, 빠른 반복 개발 필요 시
+
+---
+
+#### Mode 3: Team (팀 GitHub 프로젝트)
+
+**적용 대상**: 팀 프로젝트, 코드 리뷰 필수, 품질 관리 중시
+
+**특징**:
+- 모든 SPEC마다 자동으로 feature 브랜치 + Draft PR 생성
+- 코드 리뷰 프로세스 강제 (최소 1명 이상 승인 필수)
+- PR을 통한 명확한 변경사항 추적
+- Merge 후 CI/CD 자동 배포 가능
+
+**구성** (기본값):
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
+  }
+}
+```
+
+**구성** (자동화):
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": true
+    }
+  }
+}
+```
+
+**Alfred의 동작** (기본):
+1. `/moai:1-plan` 실행 시 "Draft PR 생성을 활성화하시겠습니까?" 질문
+2. `feature/SPEC-XXX` 브랜치 자동 생성 + Draft PR 생성
+3. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시 (feature 브랜치)
+4. `/moai:3-sync` 실행: 문서 커밋 + Draft PR 상태 유지
+
+**Alfred의 동작** (자동화):
+1. 모든 SPEC마다 자동으로 feature 브랜치 + Draft PR 생성
+2. 팀원이 PR을 리뷰하고 승인
+3. PR 승인 후 Merge (Squash 또는 Merge)
+
+**코드 리뷰 프로세스**:
+```
+개발자 작성 (feature branch)
+        ↓
+Draft PR 생성 (자동)
+        ↓
+팀원 코드 리뷰 (GitHub UI)
+        ↓
+승인 (최소 1명)
+        ↓
+Merge to main
+        ↓
+CI/CD 자동 배포 (설정 시)
+```
+
+**사용 시나리오**: 팀 프로젝트, 엔터프라이즈 개발, 품질 관리 필수, 코드 리뷰 문화
+
+---
+
+### Git 전략 선택 가이드
+
+| 항목 | Manual | Personal | Team |
+|------|--------|----------|------|
+| **GitHub 필요** | ❌ | ✅ | ✅ |
+| **브랜치 자동 생성** | 선택 | 선택/자동 | 자동 |
+| **Push 자동화** | ❌ 수동 | ✅ 자동 | ✅ 자동 |
+| **PR 생성** | ❌ | 제안 | 자동 |
+| **코드 리뷰** | ❌ | 선택 | ✅ 필수 |
+| **적합 상황** | 개인 학습 | 개인 프로젝트 | 팀 프로젝트 |
+| **셋업 난이도** | 낮음 | 중간 | 높음 |
+
+---
+
+### 각 모드 마이그레이션
+
+**Manual → Personal**:
+```json
+// config.json 수정
+{
+  "git_strategy": {
+    "mode": "personal"  // "manual" → "personal"
+  }
+}
+```
+GitHub 저장소를 먼저 생성하고 로컬과 연결한 후 모드 변경
+
+**Personal → Team**:
+```json
+// config.json 수정
+{
+  "git_strategy": {
+    "mode": "team"  // "personal" → "team"
+  }
+}
+```
+팀 저장소 권한 설정 후 모드 변경. 기존 personal 설정은 자동으로 team 설정으로 업그레이드됨
 
 ---
 
@@ -1152,12 +1323,12 @@ MoAI-ADK는 **MCP(Model Context Protocol)** 서버를 통해 외부 도구와 �
 
 ### 📡 지원 MCP 서버
 
-| MCP 서버                | 목적                      | 필수 여부   | 용도                                      |
-| ----------------------- | ------------------------- | ----------- | ----------------------------------------- |
-| **Context7**            | 최신 라이브러리 문서 조회 | ✅ **필수** | API 레퍼런스, 프레임워크 문서             |
-| **Sequential-Thinking** | 복잡한 문제 다단계 추론   | ✅ **권장** | 아키텍처 설계, 알고리즘 최적화, SPEC 분석 |
-| **Playwright**          | 브라우저 자동화           | 선택        | E2E 테스트, UI 검증                       |
-| **Figma**               | 디자인 시스템 연동        | 선택        | 디자인-코드 변환                          |
+| MCP 서버                      | 목적                      | 필수 여부   | 용도                                      |
+| ----------------------------- | ------------------------- | ----------- | ----------------------------------------- |
+| **Context7**                  | 최신 라이브러리 문서 조회 | ✅ **필수** | API 레퍼런스, 프레임워크 문서             |
+| **Sequential-Thinking**       | 복잡한 문제 다단계 추론   | ✅ **권장** | 아키텍처 설계, 알고리즘 최적화, SPEC 분석 |
+| **Playwright**                | 브라우저 자동화           | 선택        | E2E 테스트, UI 검증                       |
+| **figma-dev-mode-mcp-server** | 디자인 시스템 연동        | 선택        | 디자인-코드 변환                          |
 
 ### 🧮 Sequential-Thinking MCP (권장)
 
@@ -1192,40 +1363,7 @@ MoAI-ADK는 **MCP(Model Context Protocol)** 서버를 통해 외부 도구와 �
 
 ---
 
-## 13. 릴리스 노트
-
-### 최신 업데이트
-
-**커맨드 프리픽스 변경**: 이전의 `/alfred:` 커맨드 프리픽스는 `/moai:`로 통일되었습니다. 더 직관적이고 프레임워크 명칭과 일치합니다.
-
-**R2-D2 페르소나 시스템**: Alfred가 사용자의 전문도와 요청 유형에 맞춰 4가지 커뮤니케이션 스타일을 자동 적응합니다.
-
-**스킬 포트폴리오 최적화**: 147개 스킬이 10-Tier 시스템으로 체계화되었으며, 100% 메타데이터 준수를 달성했습니다.
-
-**MCP 서버 통합**: Context7과 Sequential-Thinking MCP가 필수/권장 서버로 추가되어 최신 문서 조회와 복잡한 추론이 가능해졌습니다.
-
----
-
-## 14. 고급 기능
-
-### 🐳 Docker 환경 지원
-
-**시스템 요구사항**:
-
-```dockerfile
-FROM python:3.13-slim
-
-# Install system dependencies required by MoAI-ADK
-RUN apt-get update && apt-get install -y \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv and moai-adk
-RUN pip install uv
-RUN uv tool install moai-adk
-
-WORKDIR /workspace
-```
+## 13. 고급 기능
 
 ### 🚀 선택적 AI 코드 생성 (Codex & Gemini)
 

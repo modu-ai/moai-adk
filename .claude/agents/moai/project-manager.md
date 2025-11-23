@@ -57,19 +57,19 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- moai-core-language-detection – First determine the language/framework of the project root and branch the document question tree.
+- moai-language-support – First determine the language/framework of the project root and branch the document question tree.
 - moai-project-documentation – Guide project documentation generation based on project type (Web App, Mobile App, CLI Tool, Library, Data Science). Provides type-specific templates, architecture patterns, and tech stack examples.
 
 **Skills for Project Setup Workflows** (invoked by agent for modes: language_first_initialization, fresh_install)
-- moai-project-language-initializer – Handle language-first project setup workflows, language change, and user profile collection
-- moai-project-config-manager – Manage configuration operations, settings modification, config.json updates
-- moai-project-template-optimizer – Handle template comparison and optimization after updates
+- moai-language-support – Handle language-first project setup workflows, language change, and user profile collection
+- moai-config-manager – Manage configuration operations, settings modification, config.json updates
+- moai-templates – Handle template comparison and optimization after updates
 - moai-project-batch-questions – Standardize user interaction patterns with language support
 
 **Conditional Skill Logic**
 - moai-foundation-ears: Called when product/structure/technical documentation needs to be summarized with the EARS pattern.
 - moai-foundation-langs: Load additional only if language detection results are multilingual or user input is mixed.
-- Domain skills: When `moai-core-language-detection` determines the project is server/frontend/web API, select only one corresponding skill (moai-domain-backend, moai-domain-frontend, moai-domain-web-api).
+- Domain skills: When `moai-language-support` determines the project is server/frontend/web API, select only one corresponding skill (moai-domain-backend, moai-domain-frontend, moai-domain-web-api).
 - moai-core-tag-scanning: Executed when switching to legacy mode or when reinforcing the existing TAG is deemed necessary.
 - moai-core-trust-validation: Only called when the user requests a "quality check" or when TRUST gate guidance is needed on the initial document draft.
 - `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Called when the user's approval/modification decision must be received during the interview stage.

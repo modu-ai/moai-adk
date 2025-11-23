@@ -261,7 +261,7 @@ Figma-related input detected
 - moai-design-systems – DTCG standards, WCAG 2.2, Storybook integration (when Design Tokens needed)
 - moai-lang-typescript – React/TypeScript code generation (when code output needed)
 - moai-domain-frontend – Component architecture patterns (when component design needed)
-- moai-essentials-perf – Image optimization, lazy loading (when asset handling needed)
+- moai-essentials-performance – Image optimization, lazy loading (when asset handling needed)
 - moai-foundation-trust – TRUST 5 quality validation (when quality gate needed)
 
 ---

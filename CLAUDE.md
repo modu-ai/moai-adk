@@ -7,7 +7,7 @@
 > - **동기화 패턴 (Sync Pattern)**: Master-Replica
 > - **번역 수준 (Translation Level)**: Professional
 > - **마스터 버전 (Master Version)**: 2.2.0
-> - **마지막 동기화 (Last Sync)**: 2025-11-24
+> - **마지막 동기화 (Last Sync)**: 2025-11-23
 > - **상태 (Status)**: ✅ In Sync
 >
 > 이 문서는 `/src/moai_adk/templates/CLAUDE.md`의 한국어 번역본입니다.

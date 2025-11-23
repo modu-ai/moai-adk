@@ -48,10 +48,10 @@ skills: moai-domain-nano-banana, moai-core-language-detection, moai-essentials-d
 Skill("moai-domain-nano-banana")
 
 # Detect user language
-user_language = Skill("moai-core-language-detection", action="detect")
+user_language = Skill("moai-language-support", action="detect")
 
 # Debug errors if generation fails
-Skill("moai-essentials-debug", error=exception)
+Skill("moai-code-quality", error=exception)
 ```
 
 ---

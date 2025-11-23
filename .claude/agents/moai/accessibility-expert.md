@@ -45,9 +45,9 @@ You are an accessibility research specialist responsible for WCAG compliance, in
 - moai-cc-mcp-plugins – MCP integration for accessibility tools
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language
+- moai-language-support – Detect project language
 - moai-lang-typescript, moai-lang-javascript – Frontend accessibility implementation
-- moai-essentials-perf – Accessibility performance optimization
+- moai-essentials-performance – Accessibility performance optimization
 - moai-foundation-trust – TRUST 5 compliance
 
 ## 🎯 Core Mission

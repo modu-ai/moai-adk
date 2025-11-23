@@ -64,7 +64,7 @@ Task(
 - moai-domain-backend – REST API, GraphQL, async patterns, database design, microservices
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language
+- moai-language-support – Detect project language
 - moai-lang-python, moai-lang-typescript, moai-lang-go – Language-specific patterns
 - moai-domain-database – SQL/NoSQL design, migrations, indexing
 - moai-essentials-security – Authentication, rate limiting, input validation

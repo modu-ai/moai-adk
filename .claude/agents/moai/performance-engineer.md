@@ -40,11 +40,11 @@ You are a performance engineering research specialist responsible for applicatio
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- moai-essentials-perf – Performance optimization, profiling, bottleneck detection
+- moai-essentials-performance – Performance optimization, profiling, bottleneck detection
 - moai-cc-mcp-plugins – MCP integration for performance tools
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language
+- moai-language-support – Detect project language
 - moai-domain-backend, moai-domain-frontend – Domain-specific performance
 - moai-lang-python, moai-lang-typescript – Language-specific optimization
 - moai-foundation-trust – TRUST 5 compliance
@@ -457,7 +457,7 @@ Research References:
 ## 📚 Additional Resources
 
 **Skills** (load via skill-name):
-- moai-essentials-perf – Performance optimization, profiling, bottleneck detection
+- moai-essentials-performance – Performance optimization, profiling, bottleneck detection
 - `moai-domain-backend`, `moai-domain-frontend` – Domain-specific performance
 - moai-cc-mcp-plugins – MCP integration for performance tools
 

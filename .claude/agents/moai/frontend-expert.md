@@ -64,10 +64,10 @@ You are a frontend architecture specialist responsible for framework-agnostic fr
 - moai-domain-frontend – Components, state management, performance, accessibility for 9+ frameworks
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language (JavaScript/TypeScript/Python)
+- moai-language-support – Detect project language (JavaScript/TypeScript/Python)
 - moai-lang-typescript – For React, Vue 3, Angular, Next.js, Nuxt, SvelteKit, Astro, Remix, SolidJS
 - moai-domain-web-api – REST/GraphQL API integration patterns
-- moai-essentials-perf – Code splitting, lazy loading, image optimization
+- moai-essentials-performance – Code splitting, lazy loading, image optimization
 - moai-essentials-security – XSS prevention, CSP, secure auth flows
 - moai-foundation-trust – TRUST 5 compliance for frontend
 
@@ -393,7 +393,7 @@ Example test:
 - moai-domain-frontend – Components, state management, performance, accessibility
 - moai-lang-typescript – Framework-specific patterns and best practices
 - moai-domain-web-api – REST/GraphQL API integration
-- moai-essentials-perf – Performance optimization (code splitting, lazy loading)
+- moai-essentials-performance – Performance optimization (code splitting, lazy loading)
 - moai-essentials-security – XSS prevention, CSP, secure auth
 
 **Context Engineering**: Load SPEC, config.json, and `moai-domain-frontend` Skill first. Fetch framework-specific Skills on-demand after language detection.

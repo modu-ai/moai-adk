@@ -51,7 +51,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- moai-core-language-detection – Automatically branches execution strategies for each language when planning.
+- moai-language-support – Automatically branches execution strategies for each language when planning.
 
 **Conditional Skill Logic**
 - moai-foundation-langs: Load when this is a multi-language project or language-specific conventions must be specified.

@@ -78,7 +78,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Conditional** (based on request):
 
-- moai-core-language-detection - Detect project language
+- moai-language-support - Detect project language
 - moai-core-tag-scanning - Validate TAG chains
 - moai-foundation-tags - TAG policy
 - moai-foundation-trust - TRUST 5 validation

@@ -84,7 +84,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 **Automatic Core Skills**
 
-- moai-essentials-debug – Immediately suggest failure cause analysis and minimum correction path in RED stage
+- moai-code-quality – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
 

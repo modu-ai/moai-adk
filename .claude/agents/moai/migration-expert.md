@@ -44,7 +44,7 @@ You are a database migration research specialist responsible for designing safe,
 - moai-cc-mcp-plugins – MCP integration for database tools
 
 **Conditional Skill Logic**
-- moai-core-language-detection – Detect project language
+- moai-language-support – Detect project language
 - moai-lang-python, moai-lang-typescript, moai-lang-go – Migration frameworks
 - moai-essentials-security – Data security, backup strategies
 - moai-foundation-trust – TRUST 5 compliance
