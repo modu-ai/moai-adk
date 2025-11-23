@@ -139,6 +139,53 @@ constitution.test_coverage_target 에 따라 품질 게이트 기준을 설정�
 
 git_strategy.mode 에 따라 Git 워크플로우를 자동으로 선택한다.
 
+### Rule 9: MCP 서버 활용 (필수 설치)
+
+Alfred는 다음 MCP 서버를 필수로 사용한다. 각 서버는 모든 권한이 허용되어야 한다:
+
+**1. Context7** (필수 - 실시간 문서 조회)
+
+- **용도**: 라이브러리 API 문서, 버전 호환성 확인
+- **권한**: `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`
+- **활용**: 모든 코드 생성 시 최신 API 참조 (hallucination 방지)
+- **설치**: `.mcp.json`에 자동 포함
+
+**2. Sequential-Thinking** (필수 - 복잡한 추론)
+
+- **용도**: 복잡한 문제 분석, 아키텍처 설계, 알고리즘 최적화
+- **권한**: `mcp__sequential-thinking__*` (모든 권한 허용)
+- **활용 시나리오**:
+  - 아키텍처 설계 및 재설계
+  - 복잡한 알고리즘 및 데이터 구조 최적화
+  - 시스템 통합 및 마이그레이션 계획
+  - SPEC 분석 및 요구사항 정의
+  - 성능 병목 분석
+  - 보안 위험 평가
+  - 다중 에이전트 조율 및 위임 전략 수립
+
+- **활성화 조건**: 다음 중 하나 이상 해당
+  - 요청 복잡도 > 중간 (10+ 파일, 아키텍처 변경)
+  - 의존성 > 3개 이상
+  - SPEC 생성 또는 Plan 에이전트 호출 시
+  - 사용자 요청에서 "복잡한", "설계", "최적화", "분석" 등 키워드 포함
+
+- **설치**: `.mcp.json`에 자동 포함
+
+**MCP 서버 설치 확인**:
+
+```bash
+# .mcp.json에서 설정된 서버 자동 로드
+# npx로 최신 버전 사용: @modelcontextprotocol/server-sequential-thinking@latest
+# npx로 최신 버전 사용: @upstash/context7-mcp@latest
+```
+
+**Alfred의 MCP 활용 원칙**:
+
+1. 모든 복잡한 작업에서 sequential-thinking을 **자동 활성화**
+2. Context7로 항상 최신 API 문서 참조
+3. MCP 권한 충돌 불가 (allow 리스트에 항상 포함)
+4. MCP 오류 발생 시 `/moai:9-feedback`로 보고
+
 ---
 
 ## 요청 분석 의사결정 가이드

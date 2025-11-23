@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run ./.claude/hooks/moai/session_start__show_project_info.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
           }
         ]
       }
@@ -22,17 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run ./.claude/hooks/moai/pre_tool__document_management.py"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ./.claude/hooks/moai/session_end__auto_cleanup.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/pre_tool__document_management.py"
           }
         ]
       }
@@ -58,6 +48,7 @@
       "KillShell",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
+      "mcp__sequential-thinking__*",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
