@@ -260,6 +260,85 @@ class JWTManager:
             raise jwt.InvalidTokenError("Invalid token")
 ```
 
+## mTLS (Mutual TLS) Implementation
+
+### Service-to-Service Authentication
+
+```python
+import ssl
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+class mTLSManager:
+    def generate_certificate(self, service_name: str) -> dict:
+        # Generate private key
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048
+        )
+
+        # Generate certificate
+        subject = issuer = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "SecureOrg"),
+            x509.NameAttribute(NameOID.COMMON_NAME, service_name),
+        ])
+
+        cert = x509.CertificateBuilder().subject_name(
+            subject
+        ).issuer_name(
+            issuer
+        ).public_key(
+            private_key.public_key()
+        ).serial_number(
+            x509.random_serial_number()
+        ).not_valid_before(
+            datetime.utcnow()
+        ).not_valid_after(
+            datetime.utcnow() + timedelta(days=365)
+        ).sign(private_key, hashes.SHA256())
+
+        return {
+            'certificate': cert,
+            'private_key': private_key
+        }
+
+    def create_ssl_context(self, cert_path: str, key_path: str, ca_path: str) -> ssl.SSLContext:
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_cert_chain(certfile=cert_path, keyfile=key_path)
+        context.load_verify_locations(cafile=ca_path)
+
+        return context
+```
+
+## Service Mesh Security
+
+### Istio Authorization Policy
+
+```yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: service-to-service-auth
+spec:
+  selector:
+    matchLabels:
+      app: backend-api
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/default/sa/frontend"]
+    to:
+    - operation:
+        methods: ["GET", "POST"]
+        paths: ["/api/*"]
+```
+
 ---
 
 **Tools**: Okta, Auth0, Azure AD, Keycloak, HashiCorp Vault

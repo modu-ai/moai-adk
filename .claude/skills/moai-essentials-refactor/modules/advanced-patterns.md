@@ -9,10 +9,10 @@ class ArchitectureRefactorer:
     async def refactor_monolith_to_microservices(self, project_path):
         """모놀리식 구조를 마이크로서비스로 변환."""
 
-        # Context7 마이크로서비스 패턴
+        # Context7 마이크로서비스 패턴 (아키텍처 설계 가이드 참조)
         context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/microservices/patterns",
-            topic="monolith to microservices refactoring patterns",
+            context7_library_id="/microservices/sample",
+            topic="monolith to microservices refactoring patterns architecture",
             tokens=4000
         )
 
@@ -80,10 +80,10 @@ class AICodeTransformer:
     async def auto_refactor_with_ai(self, code_files):
         """AI 기반 자동 리팩토링."""
 
-        # Context7 리팩토링 패턴
+        # Context7 리팩토링 패턴 (코드 변환 가이드)
         context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/refactoring-guru",
-            topic="automated code transformation patterns",
+            context7_library_id="/refactoring/patterns",
+            topic="automated code transformation patterns design patterns",
             tokens=3000
         )
 

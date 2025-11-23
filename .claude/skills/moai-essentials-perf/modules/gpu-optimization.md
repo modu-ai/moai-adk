@@ -171,3 +171,167 @@ class GPUMonitor:
 ---
 
 **Related Tools**: CUDA, cuDNN, Torch, TensorFlow
+
+## CUDA Optimization Patterns (Advanced)
+
+### CUDA Stream Parallelism
+
+```python
+import torch
+
+class CUDAStreamOptimizer:
+    """Optimize GPU workloads with CUDA streams."""
+
+    def __init__(self):
+        self.streams = [torch.cuda.Stream() for _ in range(4)]
+
+    def parallel_inference(self, models, data_batches):
+        """Run multiple models in parallel with CUDA streams."""
+
+        results = []
+        for idx, (model, data) in enumerate(zip(models, data_batches)):
+            stream_idx = idx % len(self.streams)
+
+            with torch.cuda.stream(self.streams[stream_idx]):
+                # Async operations on different streams
+                output = model(data.cuda(non_blocking=True))
+                results.append(output.cpu(non_blocking=True))
+
+        # Synchronize all streams
+        torch.cuda.synchronize()
+
+        return results
+```
+
+### Memory Pinning for Faster Transfer
+
+```python
+class CUDAMemoryOptimizer:
+    """Optimize GPU memory transfer with pinned memory."""
+
+    def optimize_data_transfer(self, dataset):
+        """Use pinned memory for faster host-to-device transfer."""
+
+        # Allocate pinned memory
+        pinned_data = torch.empty(
+            dataset.shape,
+            pin_memory=True  # Faster transfer to GPU
+        )
+        pinned_data.copy_(dataset)
+
+        # Async transfer
+        gpu_data = pinned_data.cuda(non_blocking=True)
+
+        return gpu_data
+```
+
+## cuDNN Optimization Patterns
+
+### Automatic cuDNN Tuning
+
+```python
+import torch.backends.cudnn as cudnn
+
+class CuDNNOptimizer:
+    """Optimize neural network performance with cuDNN."""
+
+    def __init__(self):
+        # Enable cuDNN auto-tuner
+        cudnn.benchmark = True  # Find best algorithms for your hardware
+
+        # Deterministic mode (if reproducibility needed)
+        cudnn.deterministic = False  # Faster, but non-deterministic
+
+    def optimize_model(self, model):
+        """Apply cuDNN optimizations to model."""
+
+        model = model.cuda()
+
+        # Enable cuDNN optimizations
+        for module in model.modules():
+            if isinstance(module, torch.nn.Conv2d):
+                # Use cuDNN convolution
+                module.groups = module.groups or 1
+
+        return model
+```
+
+### Mixed Precision Training (cuDNN Tensor Cores)
+
+```python
+from torch.cuda.amp import autocast, GradScaler
+
+class MixedPrecisionTrainer:
+    """Leverage Tensor Cores with mixed precision."""
+
+    def __init__(self):
+        self.scaler = GradScaler()
+
+    def train_step(self, model, data, target, optimizer):
+        """Training step with automatic mixed precision."""
+
+        optimizer.zero_grad()
+
+        # Forward pass with autocasting
+        with autocast():
+            output = model(data)
+            loss = criterion(output, target)
+
+        # Backward pass with gradient scaling
+        self.scaler.scale(loss).backward()
+        self.scaler.step(optimizer)
+        self.scaler.update()
+
+        return loss.item()
+```
+
+## GPU Memory Management
+
+### Memory Pool for Frequent Allocations
+
+```python
+class GPUMemoryPool:
+    """Efficient GPU memory management with pooling."""
+
+    def __init__(self, pool_size_mb=1024):
+        self.pool_size = pool_size_mb * 1024 * 1024
+        self.memory_pool = []
+
+    def allocate_tensor(self, shape, dtype=torch.float32):
+        """Allocate tensor from memory pool."""
+
+        required_size = np.prod(shape) * torch.finfo(dtype).bits // 8
+
+        # Reuse existing memory if available
+        for idx, (tensor, size) in enumerate(self.memory_pool):
+            if size >= required_size:
+                self.memory_pool.pop(idx)
+                return tensor.view(shape)
+
+        # Allocate new memory
+        new_tensor = torch.empty(shape, dtype=dtype, device='cuda')
+        return new_tensor
+
+    def release_tensor(self, tensor):
+        """Return tensor to pool for reuse."""
+
+        tensor_size = tensor.numel() * tensor.element_size()
+        self.memory_pool.append((tensor, tensor_size))
+```
+
+## Best Practices Summary
+
+✅ **DO**:
+- Use CUDA streams for parallel GPU operations
+- Enable cuDNN auto-tuner for optimal performance
+- Apply mixed precision training on Tensor Core GPUs
+- Pin memory for faster CPU-GPU transfers
+- Profile with Scalene GPU metrics
+
+❌ **DON'T**:
+- Launch GPU kernels in tight Python loops
+- Transfer data to GPU inside training loops
+- Ignore GPU memory fragmentation
+- Skip gradient scaling in mixed precision
+- Use deterministic cuDNN without reason (slower)
+
