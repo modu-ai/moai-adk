@@ -896,13 +896,49 @@ Display status based on configuration and execution result:
 
 ---
 
-#### Case 4: Branch Creation Auto-Created (Personal/Team Mode + `prompt_always: false`)
+#### Case 4: Branch Creation Skipped with Auto-Enable Prompt (Personal/Team + `prompt_always: false` + `auto_enabled: false`)
 
 ```
-📊 Phase 3 Status: Feature Branch Created (Auto)
+📊 Phase 3 Status: Direct Commit Mode (Manual Default for Personal/Team)
 
 ✅ **Configuration**: git_strategy.mode = "{git_mode}" (personal or team)
-✅ **Branch Creation**: prompt_always = false → Auto-created
+✅ **Branch Creation**: prompt_always = false, auto_enabled = false → Manual Default
+
+⚠️ **Branch Creation**: Not created yet (waiting for approval)
+- SPEC files created on current branch
+- Ready for implementation
+- Commits will be made directly to current branch initially
+
+💡 **Automation Approval Offered:**
+─────────────────────────────────────────
+Would you like to enable automatic branch creation for future SPEC creations?
+(This will update your config.json)
+
+🤖 Yes  → Set branch_creation.auto_enabled = true
+        → Next SPEC will auto-create feature/SPEC-XXX branch
+
+❌ No   → Keep manual mode
+        → Continue working on current branch for this SPEC
+        → No config changes made
+─────────────────────────────────────────
+
+🎯 **Next Steps:**
+1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
+2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+3. 💾 Make commits directly to current branch
+4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
+5. 🔄 Create PR in `/moai:3-sync` when implementation complete
+```
+
+---
+
+#### Case 5: Branch Creation Auto-Enabled (Personal/Team + `prompt_always: false` + `auto_enabled: true`)
+
+```
+📊 Phase 3 Status: Feature Branch Created (Auto-Enabled)
+
+✅ **Configuration**: git_strategy.mode = "{git_mode}" (personal or team)
+✅ **Branch Creation**: prompt_always = false, auto_enabled = true → Auto-enabled
 
 ✅ **Feature Branch Created**:
 - Branch: `feature/SPEC-{SPEC_ID}`

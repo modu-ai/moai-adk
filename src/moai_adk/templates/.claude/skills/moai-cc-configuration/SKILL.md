@@ -238,6 +238,42 @@ This Skill uses Progressive Disclosure. For detailed patterns:
 
 ---
 
+## 🔄 Git Strategy Configuration (3-Mode System)
+
+### Branch Creation: Two-Level Control
+
+The `.moai/config/config.json` includes **branch_creation** settings with two fields:
+
+```json
+{
+  "git_strategy": {
+    "mode": "personal",              // manual | personal | team
+    "branch_creation": {
+      "prompt_always": true,         // Ask on every SPEC
+      "auto_enabled": false          // Enable auto-creation after approval
+    }
+  }
+}
+```
+
+**Level 1**: `prompt_always` - Controls whether to ask user on every SPEC creation
+
+**Level 2**: `auto_enabled` - (Personal/Team modes) Enable auto-branch creation after one-time user approval
+
+**Three Execution Paths**:
+
+1. **Maximum Control** (`prompt_always: true, auto_enabled: false`)
+   - User chooses on every SPEC
+
+2. **Approval Workflow** (`prompt_always: false, auto_enabled: false`)
+   - First SPEC: Offer one-time approval for automation
+   - After approval: Auto-create branches (config updated to `auto_enabled: true`)
+
+3. **Full Automation** (`prompt_always: false, auto_enabled: true`)
+   - All SPECs: Auto-create branches (no prompts)
+
+---
+
 ## 🔗 Integration with Other Skills
 
 **Complementary Skills**:

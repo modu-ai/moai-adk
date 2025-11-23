@@ -28,7 +28,8 @@
 
     "branch_creation": {
       "prompt_always": true,
-      "_notes": "Common setting: Ask user for branch creation on every SPEC. Set to false to auto-create without prompting."
+      "auto_enabled": false,
+      "_notes": "prompt_always: Ask user for branch creation on every SPEC. auto_enabled: (Personal/Team only) Enable automatic branch creation after first confirmation. Set prompt_always=false + auto_enabled=true for full automation."
     },
 
     "automation": {

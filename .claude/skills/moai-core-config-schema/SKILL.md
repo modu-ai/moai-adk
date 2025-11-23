@@ -64,7 +64,8 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
     "github_integration": true,
     "branch_creation": {
       "prompt_always": true,
-      "_description": "When true, ask user for branch creation on every SPEC. When false, auto-decide based on mode."
+      "auto_enabled": false,
+      "_description": "Two-level control for branch creation. prompt_always: ask on every SPEC. auto_enabled: enable auto-creation after user approval (Personal/Team modes only)."
     }
   },
   "github": {
@@ -84,7 +85,9 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
 - Environment-agnostic defaults
 - Semantic versioning format
 - **New**: 3-Mode Git System with `git_strategy.mode` (manual, personal, team)
-- **New**: Common branch creation setting with `branch_creation.prompt_always`
+- **New**: Two-level branch creation control:
+  - `branch_creation.prompt_always` (true/false): Ask user on every SPEC
+  - `branch_creation.auto_enabled` (true/false): Enable auto-creation after user approval (Personal/Team modes only)
 
 ### Layer 2: Environment Overrides
 **Files**: `.moai/config/.env.{environment}` (NOT checked in)

@@ -299,17 +299,20 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 
 **Key Configuration Fields**:
 - `git_strategy.mode`: Git 모드 선택 (manual, personal, team)
-- `git_strategy.branch_creation.prompt_always`: 모든 모드에서 공통으로 사용되는 설정 (true/false)
+- `git_strategy.branch_creation.prompt_always`: 모든 SPEC마다 사용자에게 질문할지 여부 (true/false)
+- `git_strategy.branch_creation.auto_enabled`: Personal/Team 모드에서 자동 브랜치 생성 활성화 여부 (true/false)
 
-**3-Mode System Overview**:
+**3-Mode System Overview (Two-Level Control)**:
 
-| Mode | Environment | prompt_always=true | prompt_always=false | Use Case |
-|------|-------------|-------------------|-------------------|----------|
-| **Manual** | Local-only | Ask user each time | Skip branch creation | 개인 프로젝트, 로컬 전용 |
-| **Personal** | GitHub | Ask user each time | Auto-create branch | 개인 GitHub 프로젝트 |
-| **Team** | GitHub | Ask user each time | Auto-create branch + Draft PR | 팀 협업 프로젝트 |
+| 설정 조합 | Manual Mode | Personal/Team Mode | 효과 |
+|---------|-----------|------------------|------|
+| **prompt_always=true, auto_enabled=false** | 매번 사용자 질문 | 매번 사용자 질문 | 최대 제어 (기본값) |
+| **prompt_always=false, auto_enabled=false** | 자동 스킵 | 사용자 승인 대기 | Manual=자동 스킵, Personal/Team=승인 후 자동 |
+| **prompt_always=false, auto_enabled=true** | 자동 스킵 | 자동 생성 | 완전 자동화 |
 
-### Common Branch Creation Setting: `branch_creation.prompt_always`
+### Common Branch Creation Setting: Two-Level Control System
+
+**Level 1: `branch_creation.prompt_always`**
 
 **Default (true)**:
 - 모든 SPEC 생성 시 사용자에게 질문: "브랜치를 생성하시겠습니까?"
@@ -318,64 +321,138 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 
 **Custom (false)**:
 - **Manual Mode**: 자동으로 브랜치 생성 스킵 (현재 브랜치에서 작업)
-- **Personal/Team Mode**: 자동으로 브랜치 생성 (feature/SPEC-XXX)
-- Team Mode의 경우 Draft PR도 자동 생성
+- **Personal/Team Mode**: `auto_enabled` 값에 따라 결정
+
+**Level 2: `branch_creation.auto_enabled` (Personal/Team Mode에서만 유효)**
+
+**Default (false)**:
+- Personal/Team 모드에서 `prompt_always=false`일 때만 작동
+- 사용자에게 "자동 브랜치 생성을 활성화하시겠습니까?" 승인 요청
+- 승인 시: config.json에서 `auto_enabled=true`로 자동 업데이트
+- 다음 SPEC부터 사용자 질문 없이 자동으로 브랜치 생성
+
+**Custom (true)**:
+- Personal/Team 모드에서 모든 SPEC마다 자동으로 브랜치 생성
+- 사용자 질문 없음 (완전 자동화)
 
 ### Mode 1: Manual (로컬 Git 전용)
 
-**설정**:
+**설정 (기본값)**:
 ```json
 {
   "git_strategy": {
     "mode": "manual",
-    "branch_creation": { "prompt_always": true }
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
   }
 }
 ```
 
-**Alfred의 행동**:
+**Alfred의 행동** (prompt_always=true):
 1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
    - 자동 생성 선택 → feature/SPEC-001 생성
    - 현재 브랜치 사용 선택 → 현재 브랜치에서 계속
 2. 모든 TDD 커밋은 로컬에만 저장 (자동)
 3. Push는 수동으로 수행
 
-**Use Case**: 개인 프로젝트, GitHub 미사용, 로컬 Git 전용
-
-### Mode 2: Personal (GitHub 개인 프로젝트)
-
-**설정**:
+**설정 (자동 스킵)**:
 ```json
 {
   "git_strategy": {
-    "mode": "personal",
-    "branch_creation": { "prompt_always": true }
+    "mode": "manual",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": false
+    }
   }
 }
 ```
 
-**Alfred의 행동**:
+**Alfred의 행동** (prompt_always=false):
+- 모든 SPEC 생성 시 자동으로 현재 브랜치에서 작업 (브랜치 생성 안함)
+- 사용자 질문 없음
+
+**Use Case**: 개인 프로젝트, GitHub 미사용, 로컬 Git 전용
+
+### Mode 2: Personal (GitHub 개인 프로젝트)
+
+**설정 (기본값 - 매번 질문)**:
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
+  }
+}
+```
+
+**Alfred의 행동** (prompt_always=true):
 1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
    - 자동 생성 선택 → feature/SPEC-002 생성 + 자동 푸시
    - 현재 브랜치 사용 선택 → 현재 브랜치에서 직접 커밋
 2. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시
 3. `/moai:3-sync` 실행: 문서 커밋 + 사용자에게 PR 생성 제안 (선택)
 
-**Use Case**: 개인 GitHub 프로젝트, 빠른 개발 속도 필요
-
-### Mode 3: Team (GitHub 팀 프로젝트)
-
-**설정**:
+**설정 (승인 후 자동화)**:
 ```json
 {
   "git_strategy": {
-    "mode": "team",
-    "branch_creation": { "prompt_always": true }
+    "mode": "personal",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": false
+    }
   }
 }
 ```
 
-**Alfred의 행동**:
+**Alfred의 행동** (prompt_always=false, auto_enabled=false):
+1. `/moai:1-plan` 실행 시 사용자에게 한 번만 "자동 브랜치 생성을 활성화하시겠습니까?" 질문
+   - **Yes** 선택 → config.json에서 `auto_enabled=true`로 자동 업데이트 → feature/SPEC 생성
+   - **No** 선택 → 현재 브랜치에서 작업, 설정 변경 없음
+2. 다음 SPEC부터: `auto_enabled=true`이면 사용자 질문 없이 자동으로 feature 브랜치 생성
+
+**설정 (완전 자동화)**:
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": true
+    }
+  }
+}
+```
+
+**Alfred의 행동** (prompt_always=false, auto_enabled=true):
+- 모든 SPEC 생성 시 자동으로 feature/SPEC-XXX 브랜치 생성
+- 사용자 질문 없음 (완전 자동화)
+- 모든 TDD 커밋과 문서 커밋은 feature 브랜치에 자동 푸시
+
+**Use Case**: 개인 GitHub 프로젝트, 빠른 개발 속도 필요
+
+### Mode 3: Team (GitHub 팀 프로젝트)
+
+**설정 (기본값 - 매번 질문)**:
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
+  }
+}
+```
+
+**Alfred의 행동** (prompt_always=true):
 1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
    - 자동 생성 선택 → feature/SPEC-003 생성 + Draft PR 자동 생성
    - 현재 브랜치 사용 선택 → 현재 브랜치에서 진행 (권장 안됨)
@@ -383,6 +460,44 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 3. `/moai:3-sync` 실행: 문서 커밋 + PR 준비
 4. 팀 코드 리뷰 필수 (최소 1명)
 5. PR 승인 후 merge (Squash 또는 Merge)
+
+**설정 (승인 후 자동화)**:
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": false
+    }
+  }
+}
+```
+
+**Alfred의 행동** (prompt_always=false, auto_enabled=false):
+1. `/moai:1-plan` 실행 시 사용자에게 한 번만 "자동 브랜치 생성 및 Draft PR 생성을 활성화하시겠습니까?" 질문
+   - **Yes** 선택 → config.json에서 `auto_enabled=true`로 자동 업데이트 → feature/SPEC 생성 + Draft PR 생성
+   - **No** 선택 → 현재 브랜치에서 작업, 설정 변경 없음
+2. 다음 SPEC부터: `auto_enabled=true`이면 사용자 질문 없이 자동으로 feature 브랜치 + Draft PR 생성
+
+**설정 (완전 자동화)**:
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": true
+    }
+  }
+}
+```
+
+**Alfred의 행동** (prompt_always=false, auto_enabled=true):
+- 모든 SPEC 생성 시 자동으로 feature/SPEC-XXX 브랜치 + Draft PR 생성
+- 사용자 질문 없음 (완전 자동화)
+- 모든 TDD 커밋과 문서 커밋은 feature 브랜치에 자동 푸시
+- Draft PR 상태 유지 (팀 리뷰 준비 완료 시까지)
 
 **Use Case**: 팀 프로젝트, 코드 리뷰 필수, 품질 관리 필요
 

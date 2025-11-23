@@ -350,7 +350,8 @@ The **3-Mode Git System** is configured through `.moai/config/config.json`:
     "environment": "github",         // local | github
     "github_integration": true,      // Enable GitHub API access
     "branch_creation": {
-      "prompt_always": true          // Ask user on every SPEC (true/false)
+      "prompt_always": true,         // Ask user on every SPEC (true/false)
+      "auto_enabled": false          // Enable auto-creation after approval (Personal/Team only)
     }
   }
 }
@@ -365,7 +366,10 @@ The **3-Mode Git System** is configured through `.moai/config/config.json`:
     "mode": "manual",
     "environment": "local",
     "github_integration": false,
-    "branch_creation": { "prompt_always": true }
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false
+    }
   }
 }
 ```
@@ -380,12 +384,16 @@ The **3-Mode Git System** is configured through `.moai/config/config.json`:
     "mode": "personal",
     "environment": "github",
     "github_integration": true,
-    "branch_creation": { "prompt_always": true }
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": false
+    }
   }
 }
 ```
 - GitHub personal repositories
-- Optional user prompt for branch creation
+- Offers one-time approval to enable auto-branch creation
+- Once approved, automatically creates feature branches
 - Automatic push to origin
 
 **Mode 3: Team (GitHub - Collaboration)**
@@ -395,29 +403,48 @@ The **3-Mode Git System** is configured through `.moai/config/config.json`:
     "mode": "team",
     "environment": "github",
     "github_integration": true,
-    "branch_creation": { "prompt_always": true }
+    "branch_creation": {
+      "prompt_always": false,
+      "auto_enabled": false
+    }
   }
 }
 ```
 - GitHub team repositories
-- Enforces branch creation + Draft PR
-- Mandatory team code review before merge
+- Offers one-time approval to enable auto-branch + Draft PR creation
+- Enforces team code review before merge
+- After approval: auto-creates branches and Draft PRs
 
-### Common `branch_creation` Setting
+### Common `branch_creation` Setting - Two-Level Control
 
-The `branch_creation.prompt_always` field controls branch creation behavior **across all modes**:
+The `branch_creation` object has two fields that work together:
 
-**When `prompt_always: true` (Default)**:
+**Level 1: `prompt_always`** - Controls whether to ask user on every SPEC
+
+**Level 2: `auto_enabled`** - (Personal/Team modes only) Enable auto-creation after user approval
+
+**When `prompt_always: true, auto_enabled: false` (Maximum Control)**:
 ```
 Every SPEC creation triggers: "브랜치를 생성하시겠습니까?"
-- Manual mode: Yes → create feature/SPEC-XXX
-- Personal mode: Yes → create + auto-push
-- Team mode: Yes → create + Draft PR + push
+- Manual mode: User chooses each time
+- Personal mode: User chooses each time
+- Team mode: User chooses each time
 ```
 
-**When `prompt_always: false`**:
+**When `prompt_always: false, auto_enabled: false` (Approval Workflow)**:
 ```
-Auto-decide based on mode (no user prompt):
+First SPEC triggers: "자동 브랜치 생성을 활성화하시겠습니까?" (one-time approval)
+- If Yes: Auto-update config to auto_enabled=true, create branch
+- If No: Skip branch creation, keep auto_enabled=false
+
+Next SPEC onwards:
+- Manual mode: Skip branch creation (always)
+- Personal/Team mode: Depends on auto_enabled status
+```
+
+**When `prompt_always: false, auto_enabled: true` (Full Automation)**:
+```
+All SPEC creations: Auto-create branches (no user prompt)
 - Manual mode: Skip branch creation
 - Personal mode: Auto-create + auto-push
 - Team mode: Auto-create + Draft PR + push

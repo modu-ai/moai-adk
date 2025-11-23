@@ -59,9 +59,14 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
     "supported": ["en", "ko", "ja"]
   },
   "git_strategy": {
-    "use_gitflow": true,
-    "main_branch": "main",
-    "develop_branch": "develop"
+    "mode": "personal",
+    "environment": "github",
+    "github_integration": true,
+    "branch_creation": {
+      "prompt_always": true,
+      "auto_enabled": false,
+      "_description": "Two-level control for branch creation. prompt_always: ask on every SPEC. auto_enabled: enable auto-creation after user approval (Personal/Team modes only)."
+    }
   },
   "document_management": {
     "enabled": true,
@@ -75,6 +80,10 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
 - No secrets, credentials, or API keys
 - Environment-agnostic defaults
 - Semantic versioning format
+- **New**: 3-Mode Git System with `git_strategy.mode` (manual, personal, team)
+- **New**: Two-level branch creation control:
+  - `branch_creation.prompt_always` (true/false): Ask user on every SPEC
+  - `branch_creation.auto_enabled` (true/false): Enable auto-creation after user approval (Personal/Team modes only)
 
 ### Layer 2: Environment Overrides
 **Files**: `.moai/config/.env.{environment}` (NOT checked in)
