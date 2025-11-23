@@ -1,355 +1,399 @@
-# Quick Reference - Agent Factory
+# Agent Factory - Quick Reference Guide
 
-**Fast lookup guide for common questions and patterns**
+## Algorithmic Quick Reference
 
----
-
-## Quick Lookup Table
-
-| Question | Answer | See |
-|----------|--------|-----|
-| **What complexity score should my agent be?** | 1-3 simple, 4-6 standard, 7-10 complex | [advanced-patterns.md#complexity-scoring](modules/advanced-patterns.md#complexity-scoring-1-10) |
-| **Which model should I use?** | Haiku (1-3), Sonnet (7-10), Inherit (4-6) | [advanced-patterns.md#model-selection](modules/advanced-patterns.md#model-selection-decision-tree) |
-| **How do I analyze user requirements?** | Use RequirementAnalyzer class | [advanced-patterns.md#requirement-analysis](modules/advanced-patterns.md#requirement-analysis-algorithm) |
-| **How do I detect domain from text?** | Use DomainDetector with keyword matching | [advanced-patterns.md#domain-detection](modules/advanced-patterns.md#domain-detection) |
-| **How do I get best practices from Context7?** | Use ResearchEngine.research_domain() | [advanced-patterns.md#research-engine](modules/advanced-patterns.md#research-engine) |
-| **How do I select a template?** | Based on complexity: Tier 1, 2, or 3 | [advanced-patterns.md#3-tier-templates](modules/advanced-patterns.md#3-tier-templates) |
-| **What variables can I use in templates?** | 15+ categories from agent to deployment | [advanced-patterns.md#variable-categories](modules/advanced-patterns.md#variable-categories) |
-| **How do I validate an agent?** | Run 4 quality gates sequentially | [advanced-patterns.md#4-quality-gates](modules/advanced-patterns.md#4-quality-gates) |
-| **What validation gates exist?** | YAML, Structure, Quality, TRUST+CC | [advanced-patterns.md#validation-framework](modules/advanced-patterns.md#validation-framework) |
-| **How do I reduce token usage?** | Cache domains, batch lookups, stream | [optimization.md#token-optimization](modules/optimization.md#token-optimization) |
-| **What's the average generation time?** | 15 seconds (simple: 4s, complex: 28s) | [optimization.md#benchmark-results](modules/optimization.md#benchmark-results) |
-| **How do I handle errors during generation?** | Use retry logic + graceful degradation | [optimization.md#error-recovery](modules/optimization.md#error-recovery) |
-| **How do I monitor performance?** | Track metrics via AgentFactoryMetrics class | [optimization.md#monitoring-metrics](modules/optimization.md#monitoring--metrics) |
-| **What's the token budget per agent?** | 4,200-7,000 tokens (avg 5,900) | [optimization.md#token-budget-management](modules/optimization.md#token-budget-management) |
-| **How do I optimize for production?** | Cache, batch, stream, parallel processing | [optimization.md#production-deployment](modules/optimization.md#production-deployment) |
-
----
-
-## Domain Examples
-
-### Quick Domain Detection
-
-**Backend Domains**:
-```
-Keywords: API, database, server, microservice, async, FastAPI, Django, Express
-→ Complexity typically: 4-7
-→ Model: Sonnet
-→ Template: Standard or Complex
-```
-
-**Frontend Domains**:
-```
-Keywords: UI, React, Vue, component, state, styling, hooks, TypeScript
-→ Complexity typically: 3-6
-→ Model: Haiku or Sonnet
-→ Template: Simple or Standard
-```
-
-**DevOps Domains**:
-```
-Keywords: deployment, CI/CD, Docker, Kubernetes, monitoring, scaling
-→ Complexity typically: 5-8
-→ Model: Sonnet
-→ Template: Standard or Complex
-```
-
-**Data/ML Domains**:
-```
-Keywords: ML, data processing, pipeline, analytics, models, vectors, embeddings
-→ Complexity typically: 6-9
-→ Model: Sonnet
-→ Template: Complex
-```
-
-**Security Domains**:
-```
-Keywords: authentication, encryption, authorization, OWASP, security, compliance
-→ Complexity typically: 5-7
-→ Model: Sonnet
-→ Template: Standard or Complex
-```
-
----
-
-## Common Patterns
-
-### Pattern 1: Simple One-Component Agent
-
-```
-Requirement: "Create a password validator agent"
-→ Domain: Security
-→ Complexity: 2 (single responsibility)
-→ Model: Haiku
-→ Template: Tier 1
-→ Generation Time: < 5 min
-→ Tokens: ~1,200
-```
-
-### Pattern 2: Standard Multi-Component Agent
-
-```
-Requirement: "Create a REST API agent for managing users"
-→ Domain: Backend
-→ Secondary: Security
-→ Complexity: 5 (multiple integrations)
-→ Model: Sonnet
-→ Template: Tier 2
-→ Generation Time: ~12 min
-→ Tokens: ~3,500
-```
-
-### Pattern 3: Complex Orchestration Agent
-
-```
-Requirement: "Create orchestration agent for multi-service microservices platform"
-→ Domain: DevOps
-→ Secondary: Backend, Security
-→ Complexity: 8 (advanced patterns)
-→ Model: Sonnet
-→ Template: Tier 3
-→ Generation Time: ~28 min
-→ Tokens: ~6,200
-```
-
----
-
-## API Quick Reference
-
-### Intelligence Engine
-
+### 1. Requirement Analysis
 ```python
-# Detect domain
-domain = intelligence_engine.detect_domain("REST API with JWT auth")
-# Returns: DomainScores(primary='backend', secondary=['security'], confidence=0.92)
-
-# Score complexity
-score = intelligence_engine.score_complexity(requirement)
-# Returns: 5 (standard complexity)
-
-# Select model
-model = intelligence_engine.select_model(complexity=5)
-# Returns: "sonnet" (or "haiku", "inherit" based on score)
+def analyze_requirement(user_input):
+    domain = extract_domain(user_input)              # "backend"
+    capabilities = extract_capabilities(user_input)   # ["create", "optimize"]
+    complexity = assess_complexity(user_input, domain, capabilities)  # 5
+    frameworks = extract_frameworks(user_input)       # ["FastAPI"]
+    ambiguities = detect_ambiguities(domain, capabilities, frameworks)  # []
+    return {domain, capabilities, complexity, frameworks, ambiguities}
 ```
 
-### Research Engine
-
+### 2. Domain Detection
 ```python
-# Research domain
-research = await research_engine.research_domain(
-    domain="backend",
-    frameworks=["FastAPI", "PostgreSQL"]
+detector = DomainDetector()
+primary, confidence = detector.detect_primary_domain(user_input)
+secondary = detector.detect_secondary_domains(primary, user_input)
+# Result: primary="backend", confidence=0.95, secondary=["database"]
+```
+
+### 3. Complexity Scoring (1-10)
+```
+1-3:  Simple (formatting, linting, utilities)
+4-6:  Standard (domain experts, integrators)
+7-10: Complex (orchestrators, research-heavy)
+```
+
+### 4. Model Selection Decision Tree
+```
+Research needed?
+├─ YES → SONNET (always for research)
+└─ NO:
+   Complexity >= 7?
+   ├─ YES → SONNET (complex reasoning)
+   └─ NO:
+      Speed critical AND Simple?
+      ├─ YES → HAIKU (fast execution)
+      └─ NO → INHERIT (context-dependent)
+```
+
+### 5. Tool Permission Calculation
+```
+CORE_TOOLS = ["Read", "Grep", "Glob"]  # Always
+
+Add by Domain:
+- backend:      [Write, Edit, Bash, WebFetch]
+- frontend:     [Write, Edit, MultiEdit]
+- database:     [Bash, Write, Edit]
+- security:     [Read, Grep, Bash]
+- testing:      [Bash, Write]
+- devops:       [Bash, Write, Edit]
+- documentation:[Write, Edit, WebFetch]
+
+Add by Capability:
+- create:       [Write, Edit]
+- analyze:      [Read, Grep]
+- research:     [WebFetch, WebSearch, mcp_tools]
+- integrate:    [Bash, WebFetch]
+- optimize:     [Bash, Edit]
+- validate:     [Bash]
+
+Add by Complexity:
+- >= 6:         [AskUserQuestion]
+```
+
+### 6. Skill Recommendation
+```
+AUTO_SKILLS:
+  - moai-alfred-agent-guide
+  - moai-alfred-workflow
+  - moai-domain-{primary_domain}
+
+CONDITIONAL_SKILLS:
+  - moai-alfred-language-detection
+  - moai-domain-{secondary_domains}
+  - moai-lang-{language}
+  - moai-essentials-{capabilities}
+  - moai-foundation-specs (if complexity >= 7)
+```
+
+## Domain-to-Skills Mapping
+
+```
+backend         → moai-domain-backend
+frontend        → moai-domain-frontend
+database        → moai-domain-database
+security        → moai-domain-security
+testing         → moai-domain-testing
+devops          → moai-domain-cloud, moai-domain-devops
+performance     → moai-essentials-perf
+documentation   → moai-docs-generation
+
+create          → moai-essentials-refactor
+analyze         → moai-essentials-debug, moai-alfred-code-reviewer
+optimize        → moai-essentials-perf, moai-essentials-refactor
+research        → moai-context7-lang-integration
+integrate       → moai-cc-mcp-plugins
+validate        → moai-foundation-trust
+```
+
+## Language-to-Skills Mapping
+
+```
+python          → moai-lang-python
+typescript      → moai-lang-typescript
+javascript      → moai-lang-javascript
+go              → moai-lang-go
+java            → moai-lang-java
+rust            → moai-lang-rust
+php             → moai-lang-php
+c#              → moai-lang-csharp
+```
+
+## Template Selection Criteria
+
+```
+Complexity Score:
+├─ 1-3:   Tier 1 (Simple, ~200 lines, <5 min, Haiku)
+├─ 4-6:   Tier 2 (Standard, 200-500 lines, <15 min, Inherit/Sonnet)
+└─ 7-10:  Tier 3 (Complex, 500+ lines, 20-30 min, Sonnet)
+
+Characteristic Count:
+├─ 1 domain + 1 capability:           Tier 1
+├─ 1 domain + 2-3 capabilities:       Tier 2
+├─ Multiple domains OR research:      Tier 3
+└─ Multi-domain + research + MCP:     Tier 3 (enhanced)
+```
+
+## Research Quality Thresholds
+
+```
+documentation_coverage:  >= 70%
+best_practice_count:     >= 5
+code_example_count:      >= 3
+pattern_diversity:       >= 3 different patterns
+source_reliability:      >= 0.80
+currency_score:          >= 0.75
+overall_quality:         >= 0.70 (70%)
+```
+
+## Validation Gates Checklist
+
+### Gate 1: Syntax Validation
+- [ ] Valid YAML frontmatter
+- [ ] No markdown syntax errors
+- [ ] Proper heading hierarchy (h1 → h2 → h3)
+- [ ] Code blocks have language specifiers
+
+### Gate 2: Structure Validation
+- [ ] All required sections present
+- [ ] Required YAML fields: name, description, tools, model
+- [ ] Tool list properly formatted as array
+- [ ] Skill integration documented
+
+### Gate 3: Content Validation
+- [ ] Tools match capabilities
+- [ ] Model selection justified
+- [ ] Skills relevant to domain
+- [ ] Language handling explicit
+- [ ] Delegation rules clear
+- [ ] DO/DO NOT sections specific
+
+### Gate 4: Quality Integration
+- [ ] TRUST 5 compliance (Test/Readable/Unified/Secured/Trackable)
+- [ ] Claude Code   standards
+- [ ] Enterprise requirements (if applicable)
+- [ ] Pass quality-gate agent
+
+## Common Domain Keywords
+
+```
+BACKEND:
+  api, server, rest, graphql, endpoint, route, 
+  database, authentication, microservice, fastapi, 
+  express, django, spring
+
+FRONTEND:
+  ui, component, react, vue, angular, jsx, tsx,
+  state, redux, styling, css, responsive, viewport
+
+DATABASE:
+  schema, migration, query, orm, sql, nosql,
+  index, performance, normalization, relationship
+
+SECURITY:
+  auth, encryption, vulnerability, owasp, audit,
+  token, jwt, oauth, certificate, ssl, threat
+
+TESTING:
+  test, coverage, integration, e2e, unit, mock,
+  fixture, assertion, pytest, jest, vitest
+
+DEVOPS:
+  deploy, ci/cd, docker, kubernetes, terraform,
+  infrastructure, container, pipeline, automation
+
+PERFORMANCE:
+  optimize, benchmark, profiling, cache, load,
+  memory, speed, throughput, latency
+```
+
+## Common Capability Keywords
+
+```
+CREATE:
+  generate, create, build, design, architect, write,
+  implement, develop, construct
+
+ANALYZE:
+  analyze, review, audit, inspect, evaluate, assess,
+  examine, diagnose, investigate
+
+OPTIMIZE:
+  optimize, improve, refactor, enhance, performance,
+  speed, efficiency, streamline
+
+INTEGRATE:
+  integrate, connect, sync, combine, coordinate,
+  merge, bridge, link
+
+RESEARCH:
+  research, investigate, explore, study, analyze,
+  survey, examine patterns
+
+VALIDATE:
+  validate, verify, check, test, confirm, ensure,
+  assert, validate
+
+MONITOR:
+  monitor, track, observe, measure, collect,
+  gather metrics, surveillance
+```
+
+## MCP Integration Quick Start
+
+### Context7 Resolution
+```python
+# Resolve library name to ID
+library = "FastAPI"
+library_id = await mcp__context7__resolve_library_id(library)
+# → Result: "/tiangolo/fastapi"
+```
+
+### Fetch Documentation
+```python
+# Get official docs
+docs = await mcp__context7__get_library_docs(
+    context7CompatibleLibraryID="/tiangolo/fastapi",
+    topic="Best practices and patterns",
+    tokens=5000
 )
-# Returns: ResearchResult with best_practices, patterns, version_info
-
-# Get specific library docs
-docs = await research_engine.fetch_library_docs(
-    library_id="/fastapi/fastapi",
-    topic="best practices patterns 2025"
-)
 ```
 
-### Template System
+### Research Workflow Steps
+1. **Resolve**: Library name → Context7 ID
+2. **Fetch**: Get official documentation (5000 tokens)
+3. **Extract**: Parse practices, patterns, examples
+4. **Validate**: Check quality (≥70% threshold)
+5. **Synthesize**: Consolidate findings
+6. **Fallback**: Use established patterns if MCP fails
 
-```python
-# Select template
-template = template_system.select_template(complexity=5)
-# Returns: Tier2Template
+## Quick Decision Matrix
 
-# Generate agent
-agent = template_system.generate_agent(
-    template=template,
-    variables={
-        'agent_name': 'RestApiValidator',
-        'primary_capability': 'Validate REST API endpoints'
-    }
-)
+| Requirement | Decision | Rationale |
+|---|---|---|
+| Simple formatting task | Tier 1, Haiku, <200 lines | Fast, minimal reasoning |
+| Backend API design | Tier 2, Inherit, 200-500 lines | Medium complexity |
+| OWASP audit + research | Tier 3, Sonnet, 500+ lines | Complex + research |
+| Multi-domain (2+) | Tier 2/3, Sonnet | Increased coordination |
+| Fast execution needed | Haiku if complexity ≤4 | Cost-optimized |
+| Complex reasoning | Sonnet always | Quality over speed |
+| Research required | Sonnet + Context7 | Evidence synthesis |
+
+## Fallback Strategy
+
+**When Context7 MCP unavailable**:
+1. Use established patterns from 30+ existing agents
+2. Apply WebFetch for framework documentation
+3. Leverage Skill knowledge bases
+4. Document fallback in agent comments
+5. Note limitation in agent description
+6. Quality score: ~0.65 (vs 0.75+ with MCP)
+
+## Performance Benchmarks
+
+| Operation | Duration |
+|---|---|
+| Parse requirements | ~200ms |
+| Detect domain | ~100ms |
+| Score complexity | ~50ms |
+| Select model | <10ms |
+| Calculate tools | ~100ms |
+| Recommend skills | ~200ms |
+| Research (Context7) | 5-10 sec |
+| Generate template | 2-3 sec |
+| Validate gates | 1-2 sec |
+| **Total (simple)** | **<5 min** |
+| **Total (standard)** | **<15 min** |
+| **Total (complex)** | **20-30 min** |
+
+## Success Metrics
+
+```
+Model Selection Accuracy:           >= 90%
+Skill Recommendation Accuracy:      >= 85%
+Tool Permission Appropriateness:    >= 95%
+YAML Validity:                      100%
+Content Completeness:               100%
+Validation Gates Pass Rate:         >= 95%
+Multi-model Testing:                Haiku & Sonnet
+Enterprise Compliance:              SOC2/GDPR/HIPAA ready
 ```
 
-### Validation Framework
+## Variable Reference (15+ Categories)
 
-```python
-# Validate all gates
-result = validation_framework.validate(agent_markdown)
-# Returns: ValidationResult with passed=True/False, details
+### Identity Variables
+- `{{AGENT_NAME}}` - kebab-case identifier
+- `{{AGENT_ID}}` - Unique ID
+- `{{VERSION}}` - Semantic version
 
-# Get failed gates
-if not result.passed:
-    failures = result.get_failed_gates()
-    # Returns: ['structure', 'quality'] (which gates failed)
-```
+### Description Variables
+- `{{AGENT_DESCRIPTION}}` - Brief summary
+- `{{PROACTIVE_TRIGGERS}}` - When to use
+
+### Domain Variables
+- `{{PRIMARY_DOMAIN}}` - Main domain
+- `{{SECONDARY_DOMAINS}}` - Array of secondary
+
+### Capability Variables
+- `{{DOMAIN_CAPABILITIES}}` - Detected capabilities
+- `{{SPECIALIZED_CAPABILITIES}}` - Custom capabilities
+
+### Model Variables
+- `{{MODEL_SELECTION}}` - sonnet/haiku/inherit
+- `{{MODEL_JUSTIFICATION}}` - Why this model
+
+### Tool Variables
+- `{{TOOL_PERMISSIONS}}` - Full tool list
+- `{{MCP_TOOLS}}` - MCP-specific tools
+- `{{RESEARCH_TOOLS}}` - Context7 tools
+
+### Skill Variables
+- `{{AUTO_LOAD_SKILLS}}` - Always loaded
+- `{{CONDITIONAL_SKILLS}}` - Load on-demand
+- `{{SKILL_LOADING_PATTERN}}` - How to load
+
+### Responsibility Variables
+- `{{DO_RESPONSIBILITIES}}` - What agent does
+- `{{DONT_RESPONSIBILITIES}}` - What it doesn't
+
+### Workflow Variables
+- `{{WORKFLOW_STEPS}}` - Sequential steps
+- `{{DECISION_POINTS}}` - Branch logic
+- `{{DELEGATION_TARGETS}}` - Other agents
+
+### Advanced Variables
+- `{{LANGUAGE_HANDLING}}` - Multi-language rules
+- `{{MCP_INTEGRATION}}` - MCP server usage
+- `{{ORCHESTRATION_METADATA}}` - Complex info
+- `{{COMPLIANCE_REQUIREMENTS}}` - Enterprise needs
+
+## Integration Points Checklist
+
+### With agent-factory.md Workflow
+- [ ] Stage 1: Requirements analysis executed
+- [ ] Stage 2: Complexity assessment completed
+- [ ] Stage 3: Research phase (if needed) delegated
+- [ ] Stage 4: Template/Skills selected
+- [ ] Stage 5: Agent specification generated
+- [ ] Stage 6: All validation gates passed
+
+### With @agent-cc-manager
+- [ ] YAML syntax validated
+- [ ] Tool permissions approved
+- [ ] MCP configurations checked
+- [ ] Claude Code   compliance verified
+
+### With @agent-quality-gate
+- [ ] TRUST 5 compliance checked
+- [ ] Content accuracy verified
+- [ ] Security audit passed
+- [ ] Performance optimized
+
+### With Context7 MCP
+- [ ] Libraries resolved
+- [ ] Documentation fetched
+- [ ] Practices extracted
+- [ ] Patterns identified
+- [ ] Quality validated
 
 ---
 
-## Decision Trees
-
-### "What Model Should I Choose?"
-
-```
-START
-  │
-  ├─ Complexity 1-3?
-  │   └─ YES → Use Haiku (cost-optimized)
-  │
-  ├─ Complexity 4-6?
-  │   ├─ Speed critical?
-  │   │   ├─ YES → Use Haiku
-  │   │   └─ NO → Use Inherit (let command decide)
-  │   └─ Quality critical?
-  │       └─ YES → Use Sonnet
-  │
-  └─ Complexity 7-10?
-      └─ YES → Use Sonnet (quality-optimized)
-
-END
-```
-
-### "Which Template Should I Use?"
-
-```
-START
-  │
-  ├─ Complexity 1-3?
-  │   └─ YES → Use Tier 1 (Simple) Template
-  │       └─ ~200 lines, Haiku, <5 min
-  │
-  ├─ Complexity 4-6?
-  │   └─ YES → Use Tier 2 (Standard) Template
-  │       └─ 200-500 lines, Sonnet/Haiku, <15 min
-  │
-  └─ Complexity 7-10?
-      └─ YES → Use Tier 3 (Complex) Template
-          └─ 500+ lines, Sonnet, 20-30 min
-
-END
-```
-
-### "How Do I Optimize Token Usage?"
-
-```
-START
-  │
-  ├─ Generating multiple agents?
-  │   └─ YES → Batch Context7 lookups (save 600 tokens)
-  │
-  ├─ Same domain again?
-  │   └─ YES → Use domain cache (save 800 tokens)
-  │
-  ├─ Long generation?
-  │   └─ YES → Use streaming (save 400 tokens)
-  │
-  └─ Still too many tokens?
-      └─ Use simpler template (save 1000+ tokens)
-
-END
-```
-
----
-
-## Error Messages & Solutions
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `InsufficientRequirementError` | Requirement too vague | Add more details or ask for clarification |
-| `TemplateNotFoundError` | No matching template | Check complexity score or reduce scope |
-| `ValidationFailedError` | Agent fails gate | See validation report for specific issues |
-| `Context7TimeoutError` | Context7 fetch slow | Use cache or pre-fetch documentation |
-| `TokenLimitExceededError` | Too many tokens | Use simpler template or reduce scope |
-| `DomainDetectionError` | Cannot detect domain | Provide explicit domain or keywords |
-
----
-
-## Performance Targets
-
-### Generation Performance
-
-| Metric | Target | Current |
-|--------|--------|---------|
-| Simple agents | < 5 sec | 4.2 sec ✓ |
-| Standard agents | < 15 sec | 12.8 sec ✓ |
-| Complex agents | < 30 sec | 28.1 sec ✓ |
-| Success rate | > 99% | 99.2% ✓ |
-| Token budget | < 7,000 | 5,900 avg ✓ |
-
-### Cache Efficiency
-
-| Metric | Target | Current |
-|--------|--------|---------|
-| Domain cache hit rate | > 80% | 84% ✓ |
-| Token savings from cache | > 25% | 28% ✓ |
-| Template cache hits | > 90% | 93% ✓ |
-| Context7 batch efficiency | > 70% | 76% ✓ |
-
----
-
-## Integration Checklist
-
-### Before Using Agent Factory
-
-- [ ] Load `moai-core-agent-factory` skill
-- [ ] Initialize Intelligence Engine
-- [ ] Set up Research Engine with Context7 MCP
-- [ ] Configure Template System with tier selection
-- [ ] Set up Validation Framework with all 4 gates
-- [ ] Configure logging and metrics
-- [ ] Test with simple requirement first
-
-### After Generating Agent
-
-- [ ] Run all 4 validation gates
-- [ ] Check TRUST 5 + Claude Code compliance
-- [ ] Review generated agent markdown
-- [ ] Test agent in sandbox environment
-- [ ] Deploy to production
-- [ ] Monitor metrics and performance
-
----
-
-## Glossary
-
-**Complexity Score**: 1-10 scale indicating agent scope (1=simple, 10=very complex)
-
-**Template Tier**: Generation template level (1=Simple/Haiku, 2=Standard, 3=Complex/Sonnet)
-
-**Validation Gate**: Quality checkpoint (1=YAML, 2=Structure, 3=Quality, 4=TRUST)
-
-**Context7 MCP**: Official documentation source for latest frameworks and patterns
-
-**Domain Detection**: Process of identifying primary and secondary domains from requirement
-
-**Research Engine**: Component that fetches best practices from Context7
-
-**Token Budget**: Maximum tokens allocated for entire generation (4,200-7,000)
-
-**Cache Hit Rate**: Percentage of times cached data is used (target: > 80%)
-
----
-
-## Resources
-
-### Learning
-
-- **Quick Start**: SKILL.md overview
-- **Examples**: examples.md with 10+ test cases
-- **Advanced**: modules/advanced-patterns.md (6 core systems)
-- **Optimization**: modules/optimization.md (token & performance)
-
-### Tools
-
-- **Intelligence Engine**: Requirement analysis
-- **Research Engine**: Context7 integration
-- **Template System**: Agent generation
-- **Validation Framework**: Quality assurance
-- **Metrics**: Performance monitoring
-
-### External
-
-- **Claude Code Docs**: https://claude.ai/docs
-- **Context7**: Official framework documentation
-- **MoAI-ADK**: https://github.com/moai-adk
-
----
-
-**Last Updated**: 2025-11-22
-**Version**: 2.0.0
+**Version**: 1.0.0  
+**Updated**: 2025-11-15  
 **Status**: Production Ready
+

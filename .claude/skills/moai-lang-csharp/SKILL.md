@@ -1,23 +1,25 @@
 ---
+
 name: moai-lang-csharp
-description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity Framework Core, ASP.NET Core, and Context7 MCP integration for modern backend and enterprise applications.
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - csharp
-  - lang
-  - python
-  - testing
-category_tier: 1
+description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity Framework
+  Core, ASP.NET Core, and Context7 MCP integration for modern backend and enterprise
+  applications.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: csharp, lang, moai  
+
 
 ## Quick Reference (30 seconds)
 
 # C# - Enterprise 
 
----
 
 ## Quick Start: Hello Async/Await
 
@@ -40,7 +42,6 @@ var greeting = await greeter.GreetAsync("C#");
 Console.WriteLine(greeting);
 ```
 
----
 
 ## Level 1: Quick Reference
 
@@ -90,7 +91,6 @@ MyApp/
 └── appsettings.json           # Configuration
 ```
 
----
 
 ## Troubleshooting
 
@@ -106,7 +106,6 @@ MyApp/
 **Problem**: Configuration not loading
 **Solution**: Ensure appsettings.json is in correct location and properly configured
 
----
 
 ## Resources
 
@@ -116,11 +115,9 @@ MyApp/
 
 **For advanced patterns**: See full SKILL.md in documentation archive
 
----
 
 _Last updated: 2025-11-12 | Maintained by moai-adk team_
 
----
 
 ## Implementation Guide
 
@@ -144,7 +141,6 @@ _Last updated: 2025-11-12 | Maintained by moai-adk team_
 - Implement dependency injection
 - Review enterprise C# code
 
----
 
 ## Technology Stack (2025-11-12)
 
@@ -157,7 +153,6 @@ _Last updated: 2025-11-12 | Maintained by moai-adk team_
 | **xUnit** | 2.9.0 | Testing framework | ✅ Current |
 | **LINQ** | Built-in | Data queries | ✅ Current |
 
----
 
 ## Level 2: Implementation Patterns
 
@@ -226,7 +221,6 @@ app.MapGet("/users/{id}", async (int id, ApplicationDbContext db) =>
 app.Run();
 ```
 
----
 
 ## Context7 MCP Integration
 
@@ -261,7 +255,6 @@ aspnetcore_docs = get_library_docs(
 )
 ```
 
----
 
 ## Related Skills & Resources
 
@@ -283,7 +276,6 @@ aspnetcore_docs = get_library_docs(
 - [ASP.NET Core](https://learn.microsoft.com/aspnet/core)
 - [xUnit Testing](https://xunit.net/docs/getting-started)
 
----
 
 ## Changelog
 
@@ -292,9 +284,7 @@ aspnetcore_docs = get_library_docs(
 - **v2.0.0** (2025-01-10): Basic C# async/await patterns
 - **v1.0.0** (2024-12-01): Initial release
 
----
 
----
 
 ## Advanced Patterns
 
@@ -314,7 +304,6 @@ Enterprise C# 13 development featuring async/await for modern concurrency, LINQ 
 - ✅ Performance optimization techniques
 - ✅ Enterprise architecture patterns (SOLID, Clean Architecture)
 
----
 
 ## Level 3: Advanced Topics
 
@@ -358,11 +347,9 @@ Enterprise C# 13 development featuring async/await for modern concurrency, LINQ 
 - **AAA pattern**: Arrange-Act-Assert
 - **Theory tests**: Multiple inputs with InlineData
 
----
 
 
 
----
 
 ## Context7 Integration
 

@@ -1,20 +1,19 @@
 ---
+
 name: moai-cloud-aws-advanced
 description: Advanced AWS architecture patterns, cost optimization, and enterprise deployment strategies
-version: 1.0.0
-modularized: true
-allowed-tools:
-  - Read
-  - Bash
-  - WebFetch
-last_updated: 2025-11-22
-compliance_score: 75
-auto_trigger_keywords:
-  - advanced
-  - aws
-  - cloud
-category_tier: special
+allowed-tools: [Read, Bash, WebFetch]
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cloud, aws, advanced, moai  
+
 
 # Advanced AWS Cloud Architecture
 
@@ -35,7 +34,6 @@ Enterprise-grade AWS patterns covering multi-region deployments, cost optimizati
 - Microservices on EKS (Kubernetes orchestration)
 - Data lakes (S3 + Athena + Glue)
 
----
 
 ## Implementation Guide
 
@@ -122,7 +120,6 @@ encryption_strategy = {
 }
 ```
 
----
 
 ## Advanced Patterns
 
@@ -169,7 +166,6 @@ spec:
     - aws-load-balancer-controller
 ```
 
----
 
 ## Best Practices
 
@@ -190,32 +186,6 @@ spec:
 - Skip VPC flow logs (security blind spot)
 - Use default security groups (too permissive)
 
----
-
-## Context7 Integration
-
-### Related AWS Services & Libraries
-- [AWS EC2](/aws/ec2): Elastic Compute Cloud - Virtual servers
-- [AWS RDS](/aws/rds): Relational Database Service - Managed databases
-- [AWS Lambda](/aws/lambda): Serverless compute functions
-- [AWS DynamoDB](/aws/dynamodb): NoSQL managed database
-- [AWS S3](/aws/s3): Simple Storage Service
-- [AWS CloudFront](/aws/cloudfront): Content delivery network
-- [AWS EKS](/aws/eks): Elastic Kubernetes Service
-
-### Official AWS Documentation
-- [AWS Architecture Center](https://aws.amazon.com/architecture/)
-- [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
-- [AWS Cost Optimization](https://aws.amazon.com/architecture/cost-optimization/)
-- [AWS Security Best Practices](https://aws.amazon.com/security/best-practices/)
-
-### Related Modularized Skills
-- `moai-cloud-gcp-advanced` - GCP equivalent services and patterns
-- `moai-domain-devops` - CI/CD and deployment automation
-- `moai-security-api` - API security implementation
-- `moai-essentials-perf` - Performance optimization techniques
-
----
 
 ## Works Well With
 
@@ -223,9 +193,8 @@ spec:
 - `moai-domain-devops` (CI/CD integration)
 - `moai-security-api` (API security patterns)
 
----
 
-**Version**: 1.0.0
-**Last Updated**: 2025-11-22
-**Status**: Fully Modularized
+**Version**: 1.0.0  
+**Last Updated**: 2025-11-21  
+**Status**: Production Ready  
 **Official Reference**: https://aws.amazon.com/architecture/well-architected/

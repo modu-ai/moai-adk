@@ -1,15 +1,16 @@
 ---
 name: moai-cc-hooks
 description: AI-powered enterprise Claude Code hooks orchestrator with intelligent
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - cc
-  - hooks
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cc, moai, hooks  
+
 
 ## Quick Reference (30 seconds)
 
@@ -488,7 +489,3 @@ class AIHookLearner:
 - `moai-context7-integration` (latest hook standards and patterns)
 - Context7 Hooks (latest workflow patterns and documentation)
 
-
----
-**Last Updated**: 2025-11-22
-**Status**: Production Ready

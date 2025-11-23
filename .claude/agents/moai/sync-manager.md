@@ -6,7 +6,7 @@ category: orchestration
 tools: None
 model: inherit
 permissionMode: dontAsk
-skills: moai-docs-generation, moai-docs-validation, moai-docs-unified, moai-foundation-git, moai-change-logger
+skills: moai-docs-generation, moai-docs-validation
 ------
 
 # Sync Manager Agent

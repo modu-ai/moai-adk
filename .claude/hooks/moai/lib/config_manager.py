@@ -76,7 +76,7 @@ class ConfigManager:
         Args:
             config_path: Path to configuration file (defaults to .moai/config/config.json)
         """
-        self.config_path = config_path or Path.cwd() / ".moai" / "config" / "config.json"
+        self.config_path = config_path or Path.cwd() / ".moai" / "config.json"
         self._config: Optional[Dict[str, Any]] = None
 
     def load_config(self) -> Dict[str, Any]:

@@ -1,19 +1,19 @@
 ---
+
 name: moai-domain-iot
 description: IoT architecture, device management, and edge computing patterns for connected devices
-version: 1.0.0
-modularized: true
-allowed-tools:
-  - Read
-  - Bash
-  - WebFetch
-last_updated: 2025-11-22
-compliance_score: 75
-auto_trigger_keywords:
-  - domain
-  - iot
-category_tier: 2
+allowed-tools: [Read, Bash, WebFetch]
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: iot, domain, moai  
+
 
 # IoT Domain Expert
 
@@ -29,7 +29,6 @@ securely, process data locally for latency-critical applications, and synchroniz
 - **Cloud Platforms**: AWS IoT Core, Azure IoT Hub, Google IoT Core, Alibaba Cloud
 - **Data Storage**: InfluxDB, TimescaleDB, Prometheus, Grafana
 
----
 
 ## Implementation Guide
 
@@ -315,7 +314,6 @@ class OTAManager:
         return device_hash == expected_hash
 ```
 
----
 
 ## Best Practices
 
@@ -337,7 +335,6 @@ class OTAManager:
 - Use default credentials or passwords
 - Deploy without monitoring and alerting
 
----
 
 ## Works Well With
 
@@ -346,30 +343,5 @@ class OTAManager:
 - `moai-domain-security` (Device authentication, encryption)
 - `moai-cloud-aws-advanced` (AWS IoT Core integration)
 
----
 
-## Context7 Integration
-
-### Related Libraries & Tools
-- [paho-mqtt](/eclipse/paho.mqtt.python): Python MQTT client library
-- [aiocoap](/chrysn/aiocoap): Python CoAP implementation
-- [AWS IoT](/aws/aws-iot-device-sdk-python): AWS IoT SDK
-- [TensorFlow Lite](/tensorflow/tflite): ML inference on edge devices
-- [Docker](/docker/docker): Container runtime for edge computing
-
-### Official Documentation
-- [MQTT Specification](https://mqtt.org/mqtt-specification)
-- [CoAP RFC 7252](https://datatracker.ietf.org/doc/html/rfc7252)
-- [AWS IoT Core Documentation](https://docs.aws.amazon.com/iot/)
-- [Azure IoT Hub Guide](https://learn.microsoft.com/en-us/azure/iot-hub/)
-
-### Version-Specific Guides
-Latest stable versions (2025-11-22):
-- MQTT: 5.0 (OASIS standard)
-- CoAP: RFC 8323 (over TCP/TLS)
-- Python Paho: 1.6.1
-- AWS IoT SDK: 1.13.x
-
----
-
-**Version**: 2.0.0 | **Last Updated**: 2025-11-22 | **Lines**: 340
+**Version**: 2.0.0 | **Last Updated**: 2025-11-21 | **Lines**: 245

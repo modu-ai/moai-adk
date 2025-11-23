@@ -1,17 +1,21 @@
 ---
+
 name: moai-core-clone-pattern
-description: Enterprise Master-Clone pattern implementation guide for complex multi-step tasks with full project context, autonomous delegation, parallel processing, and intelligent task distribution; activates...
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 71
-auto_trigger_keywords:
-  - api
-  - clone
-  - core
-  - pattern
-category_tier: 1
+description: Enterprise Master-Clone pattern implementation guide for complex multi-step
+  tasks with full project context, autonomous delegation, parallel processing, and
+  intelligent task distribution; activates for large-scale migrations, complex refactoring,
+  parallel exploration, architecture restructuring, and multi-file transformations
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: pattern, clone, moai, core  
+
 
 ## Quick Reference (30 seconds)
 
@@ -42,7 +46,6 @@ category_tier: 1
 - Quick yes/no decision (use AskUserQuestion)
 - Single file modification (use tdd-implementer)
 
----
 
 ## When NOT to Use (Anti-Patterns)
 
@@ -54,7 +57,6 @@ category_tier: 1
 | Real-time interaction | Clones run independently | Interactive agent |
 | Simple query | Overkill complexity | Direct lookup |
 
----
 
 ## Related Skills
 
@@ -62,14 +64,12 @@ category_tier: 1
 - `moai-alfred-task-decomposition` (Breaking down complex tasks)
 - `moai-essentials-refactor` (Refactoring patterns & examples)
 
----
 
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -104,7 +104,6 @@ User presentation + next steps
 - Report findings with evidence
 - Handle errors gracefully
 
----
 
 ## 3-Level Architecture
 
@@ -221,7 +220,6 @@ return {
 };
 ```
 
----
 
 ## Best Practices
 
@@ -242,7 +240,6 @@ return {
 - **Lose context**: Always include relevant project information
 - **Create circular dependencies**: Avoid Task A waiting on Task B waiting on Task A
 
----
 
 ## Implementation Patterns
 
@@ -298,9 +295,7 @@ const refactorResults = await Promise.all(
 return validateIntegration(refactorResults);
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -312,4 +307,4 @@ Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delega
 - Independent decision-making
 - Comprehensive state tracking
 
----
+

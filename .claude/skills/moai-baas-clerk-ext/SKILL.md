@@ -1,17 +1,18 @@
 ---
+
 name: moai-baas-clerk-ext
 description: Enterprise Clerk Authentication Platform with AI-powered modern identity
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - authentication
-  - baas
-  - clerk
-  - ext
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, baas, clerk, ext, authentication  
+
 
 # Quick Reference (Level 1)
 
@@ -50,7 +51,6 @@ category_tier: 1
 - Planning migrations from traditional authentication systems
 - Optimizing user onboarding and security configurations
 
----
 
 # Core Implementation (Level 2)
 
@@ -177,7 +177,6 @@ export function OrganizationManagement() {
 }
 ```
 
----
 
 # Advanced Patterns (Level 3)
 
@@ -326,7 +325,6 @@ export function M2MAuthentication() {
 }
 ```
 
----
 
 **End of Skill** | Updated 2025-11-21
 
@@ -352,3 +350,4 @@ Latest stable version: @clerk/nextjs v6.35.0, @clerk/clerk-js v5.107.0
 - [Next.js 15 with Clerk](https://clerk.com/docs/quickstarts/nextjs)
 - [Organizations Setup](https://clerk.com/docs/organizations/setup)
 - [M2M Authentication](https://clerk.com/docs/backend-requests/handling/overview)
+

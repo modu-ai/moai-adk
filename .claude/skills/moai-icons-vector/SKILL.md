@@ -1,17 +1,21 @@
 ---
+
 name: moai-icons-vector
-description: Vector icon libraries ecosystem guide covering 10+ major libraries with 200K+ icons, including React Icons (35K+), Lucide (1000+), Tabler Icons (5900+), Iconify (200K+), Heroicons, Phosphor, and Radix Icons with implementation patterns, decision trees, and best practices.
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - database
-  - icons
-  - typescript
-  - vector
-category_tier: special
+description: Vector icon libraries ecosystem guide covering 10+ major libraries with
+  200K+ icons, including React Icons (35K+), Lucide (1000+), Tabler Icons (5900+),
+  Iconify (200K+), Heroicons, Phosphor, and Radix Icons with implementation patterns,
+  decision trees, and best practices.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: vector, moai, icons  
+
 
 ## Quick Reference (30 seconds)
 
@@ -88,14 +92,12 @@ npm install @iconify/react
 npm install simple-icons
 ```
 
----
 
 **Version**: 4.0.0 Enterprise
 **Last Updated**: 2025-11-13
 **Status**: Production Ready
 **Enterprise Grade**: ✅ Full Enterprise Support
 
----
 
 ## Implementation Guide
 
@@ -315,25 +317,6 @@ const MemoHeart = React.memo(Heart)
 | **React Icons** | 35K+ | Modular | Multi-library support |
 | **Iconify** | 200K+ | CDN | Maximum icon variety |
 
----
-
-
-## Context7 Integration
-
-### Related Icon Libraries
-- [Material Icons](/google/material-design-icons): Google Material Design
-- [FontAwesome](/fortawesome/font-awesome): Iconic font library
-- [Heroicons](/tailwindlabs/heroicons): Tailwind CSS icons
-
-### Official Documentation
-- [SVG Best Practices](https://developer.mozilla.org/en-US/docs/Web/SVG)
-- [Icon Design Guidelines](https://material.io/design/iconography/system-icons.html)
-
-### Related Modularized Skills
-- `moai-domain-frontend` - Frontend component design
-- `moai-design-systems` - Design system patterns
-
----
 
 ## Advanced Patterns
 
@@ -425,3 +408,4 @@ export function AnimatedIcon() {
   )
 }
 ```
+

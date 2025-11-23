@@ -33,14 +33,15 @@ try:
     from lib.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
     # Fallback timeout implementation
+
     class CrossPlatformTimeout:  # type: ignore[no-redef]
-        def __init__(self, seconds: int) -> None:
+        def __init__(self, seconds):
             self.seconds = seconds
 
-        def start(self) -> None:
+        def start(self):
             pass
 
-        def cancel(self) -> None:
+        def cancel(self):
             pass
 
     class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
@@ -473,7 +474,8 @@ def main() -> None:
 
     try:
         # Read JSON payload from stdin (for compatibility)
-        input_data = sys.stdin.read()
+        # Handle Docker/non-interactive environments by checking TTY
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         _data = json.loads(input_data) if input_data.strip() else {}
 
         # Check if setup messages should be shown

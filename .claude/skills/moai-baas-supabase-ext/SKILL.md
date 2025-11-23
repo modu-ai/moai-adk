@@ -1,18 +1,20 @@
 ---
+
 name: moai-baas-supabase-ext
-description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - baas
-  - database
-  - ext
-  - supabase
-  - testing
-category_tier: 7
+description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS
+  architecture, Context7 integration, and intelligent PostgreSQL orchestration for
+  scalable modern applications
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: supabase, moai, baas, ext  
+
 
 ## Quick Reference (30 seconds)
 
@@ -32,7 +34,6 @@ category_tier: 7
 - Planning PostgreSQL to Supabase migrations
 - Configuring advanced security with Row-Level Security
 
----
 
 # Quick Reference (Level 1)
 
@@ -164,7 +165,6 @@ class FirebaseToSupabaseMigrator:
         )
 ```
 
----
 
 # Reference & Integration (Level 4)
 
@@ -182,7 +182,6 @@ class FirebaseToSupabaseMigrator:
 - `analyze_postgresql_optimization()` - PostgreSQL performance via Context7
 - `optimize_realtime_architecture()` - Real-time best practices via Context7
 
----
 
 ## Implementation Guide
 
@@ -197,7 +196,6 @@ Enterprise Supabase PostgreSQL Platform expert with AI-powered open-source BaaS 
 - 🔗 **Enterprise Row-Level Security** with zero-configuration data protection
 - 📈 **Predictive Performance Analytics** with usage forecasting and optimization
 
----
 
 ## Supabase PostgreSQL Platform (November 2025)
 
@@ -227,7 +225,6 @@ Enterprise Supabase PostgreSQL Platform expert with AI-powered open-source BaaS 
 - **Throughput**: 50k+ TPS with connection pooling
 - **Global Coverage**: 28+ edge regions worldwide
 
----
 
 # Core Implementation (Level 2)
 
@@ -393,7 +390,6 @@ class RealtimeManager {
 }
 ```
 
----
 
 # Advanced Implementation (Level 3)
 
@@ -444,11 +440,9 @@ class RealtimeManager {
 - HIPAA ready configuration for healthcare applications
 - SOC2 Type II security controls implementation
 
----
 
 **End of Enterprise Supabase PostgreSQL Platform Expert **
 
----
 
 ## Advanced Patterns
 
@@ -458,6 +452,6 @@ class RealtimeManager {
 - **v2.0.0** (2025-11-11): Complete metadata structure, RLS patterns, Edge Functions
 - **v1.0.0** (2025-11-11): Initial Supabase PostgreSQL platform
 
----
 
 **End of Skill** | Updated 2025-11-13
+

@@ -590,7 +590,7 @@ Create SPEC-{SPEC_ID} with the following requirements:
 
 ---
 
-### Step 1: Read and Validate Git Configuration (GitHub Flow 3-Mode)
+### Step 1: Read and Validate Git Configuration
 
 **MANDATORY: Read configuration BEFORE any git operations**
 
@@ -599,51 +599,41 @@ Execute the following config validation (this is pseudo-code representing the ac
 ```python
 # Step 1A: Read configuration from .moai/config/config.json
 config = read_json(".moai/config/config.json")
-git_mode = config.get("git_strategy", {}).get("mode")  # "manual", "personal", or "team"
-branch_creation = config.get("git_strategy", {}).get("branch_creation", {})
-prompt_always = branch_creation.get("prompt_always", True)  # Default: true
+git_mode = config.get("git_strategy", {}).get("mode")  # "personal" or "team"
+spec_workflow = config.get("github", {}).get("spec_git_workflow")  # Required
 
-# Step 1B: Validate mode value
-valid_modes = ["manual", "personal", "team"]
-if git_mode not in valid_modes:
-    ERROR: f"Invalid git_strategy.mode: {git_mode}"
-    ERROR: f"Must be one of: {valid_modes}"
+# Step 1B: Validate spec_git_workflow value
+valid_workflows = ["develop_direct", "feature_branch", "per_spec"]
+if spec_workflow not in valid_workflows:
+    ERROR: f"Invalid spec_git_workflow: {spec_workflow}"
+    ERROR: f"Must be one of: {valid_workflows}"
+    SKIP_PHASE_3 = True
     ABORT_GIT_OPERATIONS()
 
-# Step 1C: Validate environment
-environment = config.get("git_strategy", {}).get("environment")  # "local" or "github"
-github_integration = config.get("git_strategy", {}).get("github_integration", False)
-
-if git_mode == "manual" and environment != "local":
-    WARN: "Manual mode should use local environment"
-
-# Step 1D: Determine branch creation behavior
-log(f"Git Config: mode={git_mode}, prompt_always={prompt_always}")
-
-if prompt_always == True:
-    # All modes ask user for branch creation
-    ACTION = "ASK_USER_FOR_BRANCH_CREATION"
+# Step 1C: Validate consistency
+if git_mode == "personal" and spec_workflow == "develop_direct":
+    CONSISTENCY_OK = True  # ✅ Consistent
+elif git_mode == "personal" and spec_workflow in ["feature_branch", "per_spec"]:
+    WARN: "Personal mode with branch creation is non-standard but allowed"
+    CONSISTENCY_OK = True
+elif git_mode == "team" and spec_workflow in ["feature_branch", "per_spec"]:
+    CONSISTENCY_OK = True
 else:
-    # Auto-create branch based on mode
-    if git_mode in ["personal", "team"]:
-        ACTION = "AUTO_CREATE_BRANCH"
-    else:  # manual mode
-        ACTION = "SKIP_BRANCH_CREATION"
+    ERROR: "Inconsistent git configuration"
+    ABORT_GIT_OPERATIONS()
+
+# Step 1D: Determine PHASE 3 routing
+log(f"Git Config: mode={git_mode}, spec_workflow={spec_workflow}")
 ```
 
-**Visual**: Configuration validation checkpoint (GitHub Flow 3-Mode)
+**Visual**: Configuration validation checkpoint
 ```
-git_strategy.mode = "manual" ?
-    ├─ prompt_always = true  → ASK USER: "Create branch?" (Yes/No)
-    └─ prompt_always = false → SKIP branch creation (use main/current)
-
-git_strategy.mode = "personal" ?
-    ├─ prompt_always = true  → ASK USER: "Create branch?" (Yes/No)
-    └─ prompt_always = false → AUTO create feature/SPEC-XXX
-
-git_strategy.mode = "team" ?
-    ├─ prompt_always = true  → ASK USER: "Create branch?" (Yes/No)
-    └─ prompt_always = false → AUTO create feature/SPEC-XXX + GitHub Issue
+git_mode = "personal" ?
+    ├─ spec_workflow = "develop_direct"    → PHASE 3 SKIPPED (ROUTE A)
+    ├─ spec_workflow = "feature_branch"    → PHASE 3 EXECUTES (ROUTE B)
+    └─ spec_workflow = "per_spec"          → PHASE 3 WITH USER ASK (ROUTE C)
+git_mode = "team" ?
+    └─ (spec_workflow value ignored)       → PHASE 3 EXECUTES (ROUTE D - Team Mode)
 ```
 
 ---

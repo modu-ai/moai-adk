@@ -1,23 +1,25 @@
 ---
+
 name: moai-lang-swift
-description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine, and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and enterprise mobile applications with Context7 MCP integration.
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - lang
-  - python
-  - swift
-  - testing
-category_tier: 1
+description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine,
+  and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and
+  enterprise mobile applications with Context7 MCP integration.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, moai, swift  
+
 
 ## Quick Reference (30 seconds)
 
 # Swift - Enterprise 
 
----
 
 ## Quick Start: Hello Async/Await
 
@@ -39,7 +41,6 @@ Task {
 }
 ```
 
----
 
 ## Level 1: Quick Reference
 
@@ -91,7 +92,6 @@ MyApp/
 └── Package.swift                 # Dependencies
 ```
 
----
 
 ## Resources
 
@@ -101,11 +101,9 @@ MyApp/
 
 **For advanced patterns**: See full SKILL.md in documentation archive
 
----
 
 _Last updated: 2025-11-12 | Maintained by moai-adk team_
 
----
 
 ## Implementation Guide
 
@@ -127,7 +125,6 @@ _Last updated: 2025-11-12 | Maintained by moai-adk team_
 - Implement reactive UI with Combine
 - Troubleshoot concurrency issues
 
----
 
 ## Technology Stack (2025-11-12)
 
@@ -141,7 +138,6 @@ _Last updated: 2025-11-12 | Maintained by moai-adk team_
 | **Swift Concurrency** | 6.0 | Async/await & actors | ✅ Current |
 | **Swift Testing** | 0.10.0 | Modern testing framework | ✅ Current |
 
----
 
 ## Level 2: Implementation Patterns
 
@@ -256,7 +252,6 @@ func routes(_ app: Application) throws {
 }
 ```
 
----
 
 ## Context7 MCP Integration
 
@@ -291,7 +286,6 @@ vapor_docs = get_library_docs(
 )
 ```
 
----
 
 ## Related Skills & Resources
 
@@ -313,7 +307,6 @@ vapor_docs = get_library_docs(
 - [Vapor Documentation](https://docs.vapor.codes)
 - [Swift Forums](https://forums.swift.org)
 
----
 
 ## Troubleshooting
 
@@ -329,7 +322,6 @@ vapor_docs = get_library_docs(
 **Problem**: SwiftUI view not updating
 **Solution**: Ensure state changes happen on `@MainActor`
 
----
 
 ## Changelog
 
@@ -338,9 +330,7 @@ vapor_docs = get_library_docs(
 - **v2.0.0** (2025-01-10): Basic Swift 5.x patterns
 - **v1.0.0** (2024-12-01): Initial release
 
----
 
----
 
 ## Advanced Patterns
 
@@ -360,7 +350,6 @@ Swift 6.0 enterprise development featuring modern concurrency with async/await, 
 - ✅ Testing strategies with XCTest and Swift Testing
 - ✅ Swift Concurrency with actors and distributed actors
 
----
 
 ## Level 3: Advanced Topics
 
@@ -395,11 +384,9 @@ Swift 6.0 enterprise development featuring modern concurrency with async/await, 
 - **UI tests**: SwiftUI view behavior
 - **Mocking**: Use protocols for dependency injection
 
----
 
 
 
----
 
 ## Context7 Integration
 

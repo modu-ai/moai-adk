@@ -4,7 +4,7 @@ description: Creates and optimizes specialized Claude Code sub-agents for custom
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills: moai-core-agent-factory, moai-cc-subagents-guide, moai-foundation-ears, moai-foundation-specs, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-cc-configuration, moai-foundation-trust, moai-foundation-git, moai-foundation-langs, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-context7-lang-integration, moai-core-dev-guide, moai-core-agent-guide, moai-core-ask-user-questions
+skills: moai-core-agent-factory, moai-cc-subagents-guide, moai-foundation-ears, moai-foundation-specs, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-cc-configuration, moai-foundation-trust, moai-foundation-git, moai-foundation-langs, moai-essentials-debug, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-context7-lang-integration, moai-core-dev-guide
 ------
 
 # Agent Orchestration Metadata (v1.0)

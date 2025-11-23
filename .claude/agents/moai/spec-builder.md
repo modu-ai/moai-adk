@@ -4,7 +4,7 @@ description: Use when: When you need to create an EARS-style SPEC document. Call
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-core-ask-user-questions, moai-spec-intelligent-workflow, moai-mermaid-diagram-expert, moai-foundation-ears, moai-foundation-specs, moai-core-spec-authoring, moai-lang-python
+skills: moai-foundation-ears, moai-foundation-specs, moai-core-spec-authoring, moai-lang-python
 ------
 
 # Agent Orchestration Metadata (v1.0)
@@ -481,61 +481,3 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 
 - Technology stack description in SPEC can be omitted
 - Code-builder confirms the latest stable version at the `/alfred:2-run` stage
-
----
-
-## 🌳 GitHub Flow 3-Mode Git Strategy Integration
-
-### Mode-Based Branch Creation Logic (with User Prompt)
-
-spec-builder works with **git-manager** for branch operations. **All modes ask user** via AskUserQuestion:
-
-**SPEC 생성 후 공통 질문**:
-```
-💡 "브랜치를 생성하시겠습니까?"
-✓ 자동 생성     → feature/SPEC-001-description 생성
-○ 현재 브랜치 사용 → 현재 브랜치에서 계속
-```
-
-| Mode | SPEC Creation | User Question | Branch Creation | Next Step |
-|------|---|---|---|---|
-| **Manual** (Local) | ✅ | ✅ Always asked | 🙋 Manual or Auto | Feature branch or main |
-| **Personal** (GitHub) | ✅ | ✅ Always asked | 🙋 Manual or Auto | Feature branch or main |
-| **Team** (GitHub) | ✅ | ✅ Always asked | 🙋 Manual or Auto | Feature branch or develop |
-
-**Configuration**: `branch_creation.prompt_always` (default: true)
-
-### Branch Naming Convention (All Modes)
-
-```
-feature/SPEC-{ID}-{description}
-
-Examples:
-- feature/SPEC-001-user-authentication
-- feature/SPEC-002-database-migration
-- feature/SPEC-003-api-documentation
-```
-
-### Integration Point with git-manager
-
-**After SPEC creation:**
-
-1. **Manual Mode**: Inform user to manually create branch
-   - Status: "SPEC created. Branch creation is manual."
-   - Instruction: `git checkout -b feature/SPEC-001-description`
-
-2. **Personal Mode**: Delegate to git-manager
-   - Status: "SPEC created. Auto-creating branch..."
-   - Delegation: git-manager handles `git checkout -b` and push
-
-3. **Team Mode**: Delegate to git-manager
-   - Status: "SPEC created. Auto-creating branch and GitHub Issue..."
-   - Delegation: git-manager handles branch + issue creation
-
-### No Direct Git Execution
-
-✅ **spec-builder responsibility**: SPEC document creation only
-❌ **NOT spec-builder**: Git branch creation, pushing, PR creation
-🤖 **git-manager responsibility**: All Git/GitHub operations based on mode
-
-This separation ensures clean responsibility boundaries and allows git-manager to handle mode-specific automation.

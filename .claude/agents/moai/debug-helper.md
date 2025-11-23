@@ -4,7 +4,7 @@ description: Use when: When a runtime error occurs and it is necessary to analyz
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-essentials-debug, moai-essentials-perf, moai-domain-backend, moai-domain-frontend, moai-lang-python, moai-lang-typescript
+skills: moai-essentials-debug
 ------
 
 # Debug Helper - Integrated debugging expert

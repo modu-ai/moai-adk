@@ -23,7 +23,8 @@ class JSONUtils:
         Raises:
             JSONDecodeError: If JSON parsing fails
         """
-        input_data = sys.stdin.read()
+        # Handle Docker/non-interactive environments by checking TTY
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         if input_data.strip():
             return json.loads(input_data)
         return {}

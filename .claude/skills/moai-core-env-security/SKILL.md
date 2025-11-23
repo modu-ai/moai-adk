@@ -1,19 +1,19 @@
 ---
+
 name: moai-core-env-security
 description: Environment variable security, secret management, and credential protection patterns
-version: 1.0.0
-modularized: false
-allowed-tools:
-  - Read
-  - Bash
-last_updated: 2025-11-22
-compliance_score: 66
-auto_trigger_keywords:
-  - core
-  - env
-  - security
-category_tier: 1
+allowed-tools: [Read, Bash]
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: security, moai, core, env  
+
 
 # Environment Variable Security & Secret Management
 
@@ -29,7 +29,6 @@ category_tier: 1
 - 30-90일 주기로 비밀번호 로테이션
 - 최소 권한 원칙(Least Privilege, IAM 정책)
 
----
 
 ## Implementation Guide
 
@@ -251,7 +250,6 @@ def detect_secrets_in_code(code: str) -> list:
     return found
 ```
 
----
 
 ## Best Practices
 
@@ -273,7 +271,6 @@ def detect_secrets_in_code(code: str) -> list:
 - 비밀 만료 정책 무시
 - 비밀 접근 감사 로깅 생략
 
----
 
 ## Works Well With
 
@@ -282,6 +279,5 @@ def detect_secrets_in_code(code: str) -> list:
 - `moai-domain-devops` (배포 시 비밀 관리)
 - `moai-baas-foundation` (BaaS 비밀 통합)
 
----
 
 **Version**: 2.0.0 | **Last Updated**: 2025-11-21 | **Lines**: 180

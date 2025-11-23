@@ -1,22 +1,23 @@
 ---
+
 name: moai-component-designer
 description: Enterprise-grade component design and architecture with React 19, Vue
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - component
-  - designer
-  - typescript
-category_tier: special
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: react, component, moai, designer  
+
 
 ## Quick Reference (30 seconds)
 
 # Enterprise Component Designer & Accessible UI Architecture
 
----
 
 ## Implementation Guide
 
@@ -404,7 +405,6 @@ Respect prefers-reduced-motion
 - Design token versioning
 - Component API stability
 
----
 
 **Enterprise Checklist**:
 - [ ] 100% TypeScript coverage
@@ -418,7 +418,6 @@ Respect prefers-reduced-motion
 - [ ] Design tokens documented
 - [ ] Storybook stories complete
 
----
 
 ## Advanced Patterns
 
@@ -426,7 +425,6 @@ Respect prefers-reduced-motion
 
 
 
----
 
 ## Context7 Integration
 

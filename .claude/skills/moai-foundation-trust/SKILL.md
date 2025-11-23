@@ -1,17 +1,18 @@
 ---
+
 name: moai-foundation-trust
 description: Complete TRUST 4 principles guide covering Test First, Readable, Unified, Secured
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - foundation
-  - security
-  - testing
-  - trust
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: trust, moai, foundation  
+
 
 ## Quick Reference
 
@@ -24,7 +25,6 @@ category_tier: 1
 
 **Core Principle**: TRUST 4 is **non-negotiable**. Every line of code must satisfy all four principles or it's not production-ready.
 
----
 
 ## Implementation Guide
 
@@ -257,7 +257,6 @@ Rule S4: Dependency Security
 └─ Enforce via: Dependabot + pip audit
 ```
 
----
 
 ## Advanced Patterns
 
@@ -337,7 +336,3 @@ echo "SUCCESS: All quality gates passed!"
 ```
 
 **Summary**: TRUST 4 ensures code is **correct, maintainable, secure, and production-ready**.
-
----
-**Last Updated**: 2025-11-22
-**Status**: Production Ready

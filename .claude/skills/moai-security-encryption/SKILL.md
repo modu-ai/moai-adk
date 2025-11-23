@@ -1,15 +1,21 @@
 ---
 name: moai-security-encryption
 description: Enterprise encryption security with cryptographic architecture and key management
-version: 1.0.0
 modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - encryption
-  - security
-category_tier: 1
+modules:
+  - encryption-architecture-algorithms
+  - key-management-systems
+  - secure-communication-compliance
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: encryption, moai, security  
+
 
 ## Quick Reference (30 seconds)
 
@@ -63,28 +69,6 @@ TLS/SSL configuration, certificate management, and regulatory compliance.
 - NIST SP 800-57: Key management guidelines
 - PCI DSS: Payment security
 - GDPR/HIPAA: Data protection compliance
-
----
-
-## Context7 Integration
-
-### Related Libraries & Tools
-- [OpenSSL](/openssl/openssl): Cryptographic library
-- [libsodium](/jedisct1/libsodium): Modern cryptography library
-- [crypto](/nodejs/node): Node.js built-in crypto module
-- [cryptography](/pyca/cryptography): Python cryptography library
-- [TweetNaCl.js](/dchest/tweetnacl-js): Cryptographic library for JavaScript
-
-### Official Documentation
-- [NIST SP 800-38D](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf)
-- [OpenSSL Documentation](https://www.openssl.org/docs/)
-- [libsodium Documentation](https://doc.libsodium.org/)
-
-### Version-Specific Guides
-Latest stable versions: OpenSSL 3.x, libsodium, TLS 1.3
-- [AES-GCM Implementation](https://csrc.nist.gov/publications/detail/sp/800-38d/final)
-- [Elliptic Curve Cryptography](https://safecurves.cr.yp.to/)
-- [Key Derivation Functions](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Key_Management_Cheat_Sheet.html)
 
 ---
 

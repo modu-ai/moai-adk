@@ -1,367 +1,256 @@
-# Java Language - Practical Examples (10 Examples)
+# moai-lang-java - Working Examples
 
-## Example 1: Spring Boot REST API
+_Last updated: 2025-11-21_
 
-**Problem**: Build production REST API with validation and exception handling.
+## Example 1: Spring Boot Application with Dependency Injection
 
-**Solution**:
 ```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
+
+## Example 2: REST Controller with CRUD Operations
+
+```java
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    
-    @Autowired
-    private UserService userService;
-    
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
     @GetMapping
     public List<User> getAllUsers() {
         return userService.findAll();
     }
-    
+
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUser(@PathVariable Long id) {
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
         return userService.findById(id)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
-    
+
     @PostMapping
-    public ResponseEntity<User> createUser(@Valid @RequestBody UserDTO userDTO) {
-        User user = userService.create(userDTO);
-        return ResponseEntity.created(URI.create("/api/users/" + user.getId()))
-            .body(user);
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User created = userService.save(user);
+        return ResponseEntity.status(201).body(created);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+        return userService.update(id, userDetails)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+## Example 3: JPA Repository and Service Layer
+
+```java
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
+    List<User> findByNameContainingIgnoreCase(String name);
 }
 
 @Service
+@Transactional
 public class UserService {
-    
-    @Autowired
-    private UserRepository repository;
-    
+    private final UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     @Transactional(readOnly = true)
     public List<User> findAll() {
-        return repository.findAll();
+        return userRepository.findAll();
     }
-    
-    @Transactional
-    public User create(UserDTO dto) {
-        User user = new User();
-        user.setName(dto.getName());
-        user.setEmail(dto.getEmail());
-        return repository.save(user);
+
+    @Transactional(readOnly = true)
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
     }
-}
-```
 
----
-
-## Example 2: Streams and Functional Programming
-
-**Problem**: Process collections functionally with Java Streams API.
-
-**Solution**:
-```java
-List<String> names = Arrays.asList("Alice", "Bob", "Charlie", "David");
-
-// Filter and map
-List<String> result = names.stream()
-    .filter(name -> name.length() > 3)
-    .map(String::toUpperCase)
-    .collect(Collectors.toList());
-
-// Reduce
-int total = IntStream.range(1, 11)
-    .reduce(0, Integer::sum);
-
-// Grouping
-Map<Integer, List<String>> grouped = names.stream()
-    .collect(Collectors.groupingBy(String::length));
-
-// Parallel processing
-long count = names.parallelStream()
-    .filter(name -> name.startsWith("A"))
-    .count();
-```
-
----
-
-## Example 3: CompletableFuture for Async
-
-**Problem**: Handle asynchronous operations with CompletableFuture.
-
-**Solution**:
-```java
-public class AsyncService {
-    
-    public CompletableFuture<String> fetchData(String url) {
-        return CompletableFuture.supplyAsync(() -> {
-            // Simulate API call
-            return httpClient.get(url);
-        });
+    public User save(User user) {
+        return userRepository.save(user);
     }
-    
-    public CompletableFuture<UserProfile> getUserProfile(Long userId) {
-        CompletableFuture<User> userFuture = fetchUser(userId);
-        CompletableFuture<List<Order>> ordersFuture = fetchOrders(userId);
-        
-        return userFuture.thenCombine(ordersFuture, (user, orders) -> {
-            UserProfile profile = new UserProfile();
-            profile.setUser(user);
-            profile.setOrders(orders);
-            return profile;
-        });
+
+    public Optional<User> update(Long id, User userDetails) {
+        return userRepository.findById(id)
+            .map(user -> {
+                user.setName(userDetails.getName());
+                user.setEmail(userDetails.getEmail());
+                return userRepository.save(user);
+            });
     }
-    
-    public void handleAsyncWithTimeout() {
-        CompletableFuture<String> future = fetchData("https://api.example.com")
-            .orTimeout(5, TimeUnit.SECONDS)
-            .exceptionally(ex -> "Fallback data");
+
+    public void delete(Long id) {
+        userRepository.deleteById(id);
     }
 }
 ```
 
----
+## Example 4: JUnit 5 Unit Testing
 
-## Example 4: JPA and Hibernate
-
-**Problem**: Type-safe database access with JPA.
-
-**Solution**:
 ```java
-@Entity
-@Table(name = "users")
-public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(nullable = false)
-    private String name;
-    
-    @Column(unique = true)
-    private String email;
-    
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Order> orders = new ArrayList<>();
-}
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-@Repository
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
-    
-    @Query("SELECT u FROM User u WHERE u.name LIKE %:name%")
-    List<User> searchByName(@Param("name") String name);
-}
-```
+public class UserServiceTest {
+    private UserService userService;
+    @Mock
+    private UserRepository userRepository;
 
----
-
-## Example 5: Exception Handling
-
-**Problem**: Centralized exception handling with @ControllerAdvice.
-
-**Solution**:
-```java
-@ControllerAdvice
-public class GlobalExceptionHandler {
-    
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.NOT_FOUND.value(),
-            ex.getMessage(),
-            LocalDateTime.now()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        userService = new UserService(userRepository);
     }
-    
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-            errors.put(error.getField(), error.getDefaultMessage())
-        );
-        
-        ErrorResponse response = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Validation failed",
-            errors
-        );
-        return ResponseEntity.badRequest().body(response);
+
+    @Test
+    void testFindUserById_Success() {
+        User user = new User(1L, "john@example.com", "John");
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+
+        Optional<User> result = userService.findById(1L);
+
+        assertTrue(result.isPresent());
+        assertEquals("john@example.com", result.get().getEmail());
+        verify(userRepository).findById(1L);
+    }
+
+    @Test
+    void testCreateUser() {
+        User user = new User(null, "jane@example.com", "Jane");
+        User savedUser = new User(2L, "jane@example.com", "Jane");
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+
+        User result = userService.save(user);
+
+        assertNotNull(result.getId());
+        assertEquals("jane@example.com", result.getEmail());
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void testDeleteUser() {
+        Long userId = 1L;
+        doNothing().when(userRepository).deleteById(userId);
+
+        userService.delete(userId);
+
+        verify(userRepository).deleteById(userId);
     }
 }
 ```
 
----
+## Example 5: Integration Test with Spring Boot Test
 
-## Example 6: Testing with JUnit 5
-
-**Problem**: Comprehensive unit and integration tests.
-
-**Solution**:
 ```java
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 @SpringBootTest
 @AutoConfigureMockMvc
-class UserControllerTest {
-    
+public class UserControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
-    
-    @MockBean
-    private UserService userService;
-    
-    @Test
-    void shouldGetUser() throws Exception {
-        User user = new User(1L, "John", "john@example.com");
-        when(userService.findById(1L)).thenReturn(Optional.of(user));
-        
-        mockMvc.perform(get("/api/users/1"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.name").value("John"));
-    }
-    
-    @Test
-    void shouldReturn404WhenUserNotFound() throws Exception {
-        when(userService.findById(999L)).thenReturn(Optional.empty());
-        
-        mockMvc.perform(get("/api/users/999"))
-            .andExpect(status().isNotFound());
-    }
-}
-```
-
----
-
-## Example 7: Records (Java 14+)
-
-**Problem**: Immutable data classes with minimal boilerplate.
-
-**Solution**:
-```java
-// Before (verbose)
-public final class User {
-    private final Long id;
-    private final String name;
-    
-    public User(Long id, String name) {
-        this.id = id;
-        this.name = name;
-    }
-    
-    // Getters, equals, hashCode, toString...
-}
-
-// After (concise)
-public record User(Long id, String name) {
-    // Auto-generated: constructor, getters, equals, hashCode, toString
-}
-
-// Custom validation in compact constructor
-public record User(Long id, String name) {
-    public User {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Name cannot be blank");
-        }
-    }
-}
-```
-
----
-
-## Example 8: Pattern Matching (Java 17+)
-
-**Problem**: Type-safe instanceof with pattern matching.
-
-**Solution**:
-```java
-// Before
-if (obj instanceof String) {
-    String str = (String) obj;
-    System.out.println(str.toUpperCase());
-}
-
-// After (Java 17+)
-if (obj instanceof String str) {
-    System.out.println(str.toUpperCase());
-}
-
-// Switch expressions with pattern matching
-String result = switch (obj) {
-    case Integer i -> "Integer: " + i;
-    case String s -> "String: " + s.toUpperCase();
-    case null -> "Null value";
-    default -> "Unknown type";
-};
-```
-
----
-
-## Example 9: Optional for Null Safety
-
-**Problem**: Avoid NullPointerException with Optional.
-
-**Solution**:
-```java
-public class UserService {
-    
-    public Optional<User> findByEmail(String email) {
-        return repository.findByEmail(email);
-    }
-    
-    public String getUserName(Long id) {
-        return findById(id)
-            .map(User::getName)
-            .orElse("Unknown");
-    }
-    
-    public void processUser(Long id) {
-        findById(id).ifPresent(user -> {
-            System.out.println("Processing: " + user.getName());
-        });
-    }
-    
-    public User getOrCreate(Long id) {
-        return findById(id).orElseGet(() -> createDefaultUser());
-    }
-}
-```
-
----
-
-## Example 10: Reactive with Project Reactor
-
-**Problem**: Non-blocking reactive streams with Spring WebFlux.
-
-**Solution**:
-```java
-@RestController
-@RequestMapping("/api/reactive")
-public class ReactiveController {
-    
     @Autowired
-    private ReactiveUserRepository repository;
-    
-    @GetMapping("/users")
-    public Flux<User> getAllUsers() {
-        return repository.findAll();
+    private UserRepository userRepository;
+
+    @Test
+    void testGetAllUsers() throws Exception {
+        mockMvc.perform(get("/api/users"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(0))));
     }
-    
-    @GetMapping("/users/{id}")
-    public Mono<ResponseEntity<User>> getUser(@PathVariable Long id) {
-        return repository.findById(id)
-            .map(ResponseEntity::ok)
-            .defaultIfEmpty(ResponseEntity.notFound().build());
+
+    @Test
+    void testCreateUser() throws Exception {
+        String userJson = "{\"email\":\"test@example.com\",\"name\":\"Test User\"}";
+
+        mockMvc.perform(post("/api/users")
+            .contentType("application/json")
+            .content(userJson))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.email").value("test@example.com"));
     }
-    
-    @PostMapping("/users")
-    public Mono<User> createUser(@RequestBody Mono<User> userMono) {
-        return userMono.flatMap(repository::save);
+}
+```
+
+## Example 6: Exception Handling
+
+```java
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import java.time.LocalDateTime;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ErrorResponse handleResourceNotFound(ResourceNotFoundException ex, WebRequest request) {
+        return ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.NOT_FOUND.value())
+            .message(ex.getMessage())
+            .path(request.getDescription(false).replace("uri=", ""))
+            .build();
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ErrorResponse handleGlobalException(Exception ex, WebRequest request) {
+        return ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .message("An error occurred: " + ex.getMessage())
+            .path(request.getDescription(false).replace("uri=", ""))
+            .build();
+    }
+}
+
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
     }
 }
 ```
 
 ---
 
-**Total Examples**: 10  
-**Lines**: ~600
+_For advanced patterns (Microservices, Stream API, Advanced JPA), see SKILL.md Advanced Patterns section_

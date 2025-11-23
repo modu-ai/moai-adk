@@ -1,192 +1,210 @@
 ---
 name: moai-security-api
-description: Comprehensive API security for REST, GraphQL, and gRPC services with OAuth 2.1, JWT, rate limiting, and multi-tenant patterns
-version: 1.0.0
+description: Comprehensive API security for REST, GraphQL, and gRPC services
+version: 1.0.1
 modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - api
-  - authentication
-  - security
-category_tier: 1
 ---
 
-## Quick Reference (30 seconds)
+## 📊 Skill Metadata
 
-# moai-security-api
-
-**API Security Expert**
-
-> **Trust Score**: 9.9/10 | **Version**: 4.0.0 | **Enterprise Security**
+**Name**: moai-security-api
+**Domain**: API Security & Authentication
+**Freedom Level**: high
+**Target Users**: Backend developers, API architects, security engineers
+**Invocation**: Skill("moai-security-api")
+**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed patterns)
+**Last Updated**: 2025-11-23
+**Modularized**: true
 
 ---
 
-## Core Purpose
+## 🎯 Quick Reference (30 seconds)
 
-Comprehensive API security for REST, GraphQL, and gRPC services with production-ready authentication, authorization, and protection patterns.
+**Purpose**: Comprehensive security for REST, GraphQL, and gRPC APIs.
 
-**API Attack Surface**:
-```
-User → [REST/GraphQL/gRPC Endpoint] → Internal Resources
-        ↓
-    - Missing Authentication
-    - Broken Authorization  
-    - Excessive Data Exposure
-    - Rate Limit Bypass
-    - Injection Attacks
-```
+**OWASP API Top 10 (2023) Coverage**:
+1. Broken Object Level Authorization (BOLA)
+2. Broken Authentication
+3. Excessive Data Exposure
+4. Lack of Resources & Rate Limiting
+5. Broken Function Level Authorization
+6. Mass Assignment
+7. Cross-Site Scripting (XSS)
+8. Broken API Versioning
+9. Improper Assets Management
+10. Insufficient Logging & Monitoring
 
-**OWASP API Security Top 10 (2023)**:
-1. **Broken Object Level Authorization** (BOLA)
-2. **Broken Authentication**
-3. **Excessive Data Exposure**
-4. **Lack of Resources & Rate Limiting**
-5. **Broken Function Level Authorization** (BFLA)
-6. **Mass Assignment**
-7. **Cross-Site Scripting (XSS)**
-8. **Broken API Versioning**
-9. **Improper Assets Management**
-10. **Insufficient Logging & Monitoring**
+---
+
+## 📚 Core Patterns (5-10 minutes)
+
+### Pattern 1: Authentication & Authorization
+
+**Key Concept**: Proper user identity verification and access control
 
 **Three Security Pillars**:
+1. **Authentication** - Who are you? (OAuth 2.1, JWT, API Keys)
+2. **Authorization** - What can you access? (RBAC, ABAC, Scopes)
+3. **Rate Limiting** - How much can you use? (Token bucket, Sliding window)
 
-**1. Authentication** (Who are you?)
-- OAuth 2.1 Authorization Code with PKCE
-- JWT with RS256 signatures
-- API Key with rotation policies
-
-**2. Authorization** (What can you access?)
-- Role-based access control (RBAC)
-- Attribute-based access control (ABAC)
-- Scope-based permission model
-
-**3. Rate Limiting** (How much can you use?)
-- Token bucket algorithm
-- Sliding window counter
-- Distributed rate limiting (Redis)
-
-**Quick Defense Implementation**:
+**Best Practice**:
 ```javascript
-// NEVER do this:
-app.get('/api/users', (req, res) => {
-  // No authentication, no authorization
-  res.json(db.users.all()); // Data exposure!
-});
-
-// ALWAYS do this:
-app.get('/api/users', 
-  authenticate(), // Verify JWT/API key
-  authorize('read:users'), // Check scope/role
-  rateLimit(), // Prevent abuse
+// ✅ CORRECT - Auth + Authz + Rate limiting
+app.get('/api/users/:id',
+  authenticate(),
+  authorize(['users:read']),
+  rateLimit(100, '1h'),
   (req, res) => {
-    const users = db.users.findByTenant(req.tenantId);
-    res.json(users); // Tenant-isolated data
+    // Access user if authorized
   }
 );
+
+// ❌ WRONG - No security at all
+app.get('/api/users/:id', (req, res) => {
+  res.json(db.users.all()); // Data exposure!
+});
+```
+
+### Pattern 2: BOLA Prevention (Broken Object Level Authorization)
+
+**Key Concept**: Verify user owns resource before returning it
+
+**Vulnerable Code**:
+```python
+# ❌ WRONG - No authorization check
+@app.get('/api/users/{user_id}')
+def get_user(user_id):
+    return db.users.find_by_id(user_id)  # Returns ANY user!
+```
+
+**Secure Code**:
+```python
+# ✅ CORRECT - Check authorization
+@app.get('/api/users/{user_id}')
+def get_user(user_id, current_user):
+    user = db.users.find_by_id(user_id)
+    if user.id != current_user.id and not current_user.is_admin:
+        raise AuthorizationError("Forbidden")
+    return user
+```
+
+### Pattern 3: Rate Limiting Implementation
+
+**Key Concept**: Prevent abuse through resource limits
+
+**Algorithm**: Token bucket
+```
+1. Bucket contains N tokens
+2. Each request consumes 1 token
+3. Bucket refills at rate R tokens/second
+4. Request denied if bucket empty
+```
+
+**Implementation**:
+```python
+from redis import Redis
+redis = Redis()
+
+def rate_limit(user_id, limit=100, window=3600):
+    key = f"rate_limit:{user_id}"
+    current = redis.incr(key)
+    if current == 1:
+        redis.expire(key, window)
+    if current > limit:
+        raise RateLimitError("Exceeded limit")
+```
+
+### Pattern 4: Input Validation & Injection Prevention
+
+**Key Concept**: Sanitize all user input
+
+**Common Injections**:
+- SQL Injection
+- Command Injection
+- XML External Entity (XXE)
+- GraphQL Injection
+
+**Defense**:
+```python
+# ✅ Use parameterized queries
+db.query("SELECT * FROM users WHERE id = ?", [user_id])
+
+# ❌ NEVER concatenate
+db.query(f"SELECT * FROM users WHERE id = {user_id}")
+```
+
+### Pattern 5: Logging & Monitoring
+
+**Key Concept**: Track and audit all API access
+
+**Critical Events to Log**:
+- Authentication attempts (success/failure)
+- Authorization decisions (allow/deny)
+- Data access (who accessed what)
+- Errors and exceptions
+- Rate limit violations
+
+```python
+# ✅ Comprehensive logging
+def handle_request(req):
+    logger.info(f"User {req.user.id} accessed {req.path}")
+    try:
+        # Process request
+    except Exception as e:
+        logger.error(f"Error for {req.user.id}: {e}")
+        raise
 ```
 
 ---
 
-## Modules
+## 📖 Advanced Documentation
 
-### 1. [Authentication & Authorization](modules/authentication-authorization.md)
-OAuth 2.1, JWT, API key authentication, and RBAC/ABAC authorization patterns.
+This Skill uses Progressive Disclosure. For detailed patterns:
 
-**Topics**:
-- OAuth 2.1 with PKCE implementation
-- JWT RS256 verification with issuer/audience checks
-- API key management with rate limiting
-- Multi-tenant data isolation
-- BOLA prevention
-
-### 2. [Rate Limiting & Protection](modules/rate-limiting-protection.md)
-Token bucket rate limiting, distributed Redis-based rate limiting, and DoS protection.
-
-**Topics**:
-- Token bucket algorithm (Redis Lua script)
-- GraphQL query complexity analysis
-- API request throttling
-- Distributed rate limiting
-- DoS attack prevention
-
-### 3. [Advanced Security Patterns](modules/advanced-security-patterns.md)
-gRPC mTLS, webhook security, API versioning, CORS, and enterprise integration.
-
-**Topics**:
-- gRPC mTLS server and client configuration
-- Webhook HMAC-SHA256 signature verification
-- API versioning with deprecation strategy
-- CORS configuration with origin whitelist
-- Security headers (Helmet)
+- **[modules/oauth-jwt.md](modules/oauth-jwt.md)** - OAuth 2.1 & JWT implementation
+- **[modules/graphql-security.md](modules/graphql-security.md)** - GraphQL-specific security
+- **[modules/rate-limiting.md](modules/rate-limiting.md)** - Rate limiting strategies
+- **[modules/reference.md](modules/reference.md)** - OWASP checklist & API security
 
 ---
 
-## Deployment Checklist
+## 🔒 Security Checklist
 
-✅ **Essential Security Controls**:
-- [ ] OAuth 2.1 with PKCE implementation
-- [ ] JWT RS256 verification with issuer/audience checks
-- [ ] API key management with rate limiting
-- [ ] Token bucket rate limiting (Redis-based)
-- [ ] Multi-tenant data isolation
-- [ ] BOLA prevention on all endpoints
-
-✅ **Enterprise Security Integration**:
-- [ ] CORS configuration with origin whitelist
-- [ ] Security headers (Helmet)
-- [ ] API versioning with deprecation strategy
-- [ ] Webhook signature verification
-- [ ] GraphQL query complexity limits
-- [ ] gRPC mTLS configuration
-
-✅ **Monitoring & Compliance**:
-- [ ] Security event logging
-- [ ] Rate limit monitoring
-- [ ] API usage analytics
-- [ ] Token revocation tracking
-- [ ] Audit trail for sensitive operations
+- [ ] Authentication enforced on all endpoints
+- [ ] Authorization checked per user + resource
+- [ ] Rate limiting implemented
+- [ ] Input validation on all user input
+- [ ] Output encoding (prevent XSS)
+- [ ] CORS properly configured
+- [ ] API versioning strategy defined
+- [ ] Logging & monitoring in place
+- [ ] Error messages don't expose sensitive data
+- [ ] Secrets not hardcoded
 
 ---
 
-## Context7 Integration
+## 🔗 Integration with Other Skills
 
-### Related Libraries & Tools
-- [oauth-rfc](/oauth-working-group/oauth-rfc): OAuth 2.1 specification and implementations
-- [OWASP API Security](/OWASP/API-Security): OWASP API Security Top 10 guidelines
-- [jsonwebtoken](/auth0/node-jsonwebtoken): JWT implementation for Node.js
-- [fastapi](/tiangolo/fastapi): Modern Python API framework with security features
-- [express.js](/expressjs/express): Node.js web application framework
-
-### Official Documentation
-- [OAuth 2.1 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html)
-- [JWT.io - JSON Web Tokens](https://jwt.io/)
-- [OWASP API Security Top 10](https://owasp.org/www-project-api-security/)
-
-### Version-Specific Guides
-Latest stable versions: OAuth 2.1, JWT RS256, Express.js 5.x
-- [RFC 8252 - OAuth 2.0 for Mobile Apps](https://tools.ietf.org/html/rfc8252)
-- [RFC 7519 - JSON Web Token (JWT)](https://tools.ietf.org/html/rfc7519)
-- [Express.js Security Best Practices](https://expressjs.com/en/advanced/best-practice-security.html)
+**Complementary Skills**:
+- Skill("moai-security-identity") - Identity management
+- Skill("moai-domain-backend") - Backend architecture
+- Skill("moai-domain-monitoring") - Security monitoring
 
 ---
 
-## Version History
+## 📈 Version History
 
-**v4.0.0** (2025-11-13)
-- ✨ Modularized structure (3 focused modules)
-- ✨ Enhanced OAuth 2.1 with PKCE patterns
-- ✨ Comprehensive multi-tenant security
-- ✨ Production-ready implementation examples
+**1.0.1** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure
+- ✨ Added OWASP Top 10 mapping
+- ✨ Core patterns highlighted
 
-**v3.0.0** (2025-11-12)
-- ✨ Advanced GraphQL security patterns
-- ✨ gRPC mTLS implementation
-- ✨ Webhook security with HMAC
+**1.0.0** (2025-11-12)
+- ✨ REST, GraphQL, gRPC security patterns
+- ✨ OAuth 2.1 & JWT implementation
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-13  
-**Security Classification**: Enterprise API Security  
-**Optimization**: Modularized for progressive loading
+**Maintained by**: alfred
+**Domain**: API Security
+**Generated with**: MoAI-ADK Skill Factory

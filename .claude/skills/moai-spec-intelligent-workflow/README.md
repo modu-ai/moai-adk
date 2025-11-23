@@ -1,291 +1,290 @@
 # SPEC Intelligent Workflow Skill
 
-## What is This Skill?
+## 이 Skill이란?
 
-A core skill that realizes MoAI-ADK's **SPEC-First TDD workflow**.
+MoAI-ADK의 **SPEC-First TDD 워크플로우**를 실현하는 핵심 Skill입니다.
 
-**Alfred analyzes user requests** to automatically determine SPEC necessity,
-**selects the appropriate one of 3-level templates**, and **tracks effectiveness via analytics**.
+**Alfred가 사용자 요청을 분석**하여 자동으로 SPEC 필요성을 판단하고,
+**3단계 템플릿** 중 적절한 것을 선택하며, **통계로 효과**를 추적합니다.
 
-### Core Value
-
-```
-❌ Before: Users must always decide SPEC necessity → Burden
-✅ After: Alfred automatically decides and proposes → Natural workflow
-```
-
----
-
-## 🎯 3 Core Features
-
-### 1️⃣ Alfred's Intelligent Decision Making
-
-Analyzes using **5 questions with natural language processing**:
+### 핵심 가치
 
 ```
-① Modifying or creating multiple files?
-② Architecture or data model changes?
-③ Integration between multiple components required?
-④ Expected implementation time over 30 minutes?
-⑤ Future maintenance or expansion needed?
-```
-
-**Automatic Decision**:
-- `0-1 "yes" answers` → SPEC unnecessary (implement immediately)
-- `2-3 "yes" answers` → SPEC recommended (user choice)
-- `4-5 "yes" answers` → SPEC strongly recommended (emphasized)
-
-### 2️⃣ 3-Level SPEC Templates
-
-Alfred automatically selects:
-
-| Level | Target | Sections | Writing Time | Characteristics |
-|-------|--------|----------|--------------|-----------------|
-| **Level 1** | Simple modifications | 5 | 5-10 min | Fast and concise |
-| **Level 2** | General features | 7 | 10-15 min | EARS format |
-| **Level 3** | Complex tasks | 10+ | 20-30 min | Architecture design included |
-
-### 3️⃣ Analytics and Reporting
-
-**Automatically tracked metrics**:
-
-```
-Session start:
-  📊 SPEC statistics for last 30 days
-     • Number created
-     • Average completion time
-     • Code linkage rate
-     • Test coverage
-
-Session end:
-  📈 Auto-collect data
-     • Git commit linkage
-     • Modified file tracking
-     • Test results recording
-
-Monthly:
-  📋 Auto-generate report
-     • Trend analysis
-     • Improvement recommendations
+❌ 이전: 사용자가 항상 SPEC 필요 여부를 판단해야 함 → 부담
+✅ 이후: Alfred가 자동으로 판단 및 제안 → 자연스러운 워크플로우
 ```
 
 ---
 
-## 📖 Quick Start
+## 🎯 핵심 기능 3가지
 
-### Scenario A: Simple task
+### 1️⃣ Alfred의 지능형 판단
 
-```
-User: "Change login button color"
-
-Alfred Analysis:
-  ① File modification: 1 file only → No
-  ② Architecture: No changes → No
-  ③ Integration: Not needed → No
-  ④ Time: 5 minutes → No
-  ⑤ Maintenance: Not needed → No
-
-Conclusion: 0 conditions met → SPEC unnecessary
-
-→ Proceed with immediate implementation
-```
-
-### Scenario B: Medium complexity
+5가지 질문으로 **자연어 분석**:
 
 ```
-User: "Add user profile image upload functionality"
-
-Alfred Analysis:
-  ① File modification: 4 files (Backend, Frontend, DB) → Yes
-  ② Architecture: Add file upload flow → Yes
-  ③ Integration: 3 components → Yes
-  ④ Time: 2 hours → Yes
-  ⑤ Maintenance: Required → Yes
-
-Conclusion: 5 conditions met → SPEC strongly recommended
-
-User choice: "Yes, generate SPEC"
-
-→ Auto-run /moai:1-plan
-→ Auto-select Level 2 (Standard) template
-→ Generate SPEC-XXX
-→ /moai:2-run SPEC-XXX implementation
+① 여러 파일을 수정하거나 새로 생성하는가?
+② 아키텍처나 데이터 모델 변경이 있는가?
+③ 여러 컴포넌트 간 통합이 필요한가?
+④ 구현 시간이 30분 이상 예상되는가?
+⑤ 향후 유지보수나 확장이 필요한가?
 ```
 
-### Scenario C: Prototype
+**자동 판단**:
+- `0-1개 "예"` → SPEC 불필요 (즉시 구현)
+- `2-3개 "예"` → SPEC 권장 (사용자 선택)
+- `4-5개 "예"` → SPEC 강력 권장 (강조)
+
+### 2️⃣ 3단계 SPEC 템플릿
+
+Alfred가 자동으로 선택:
+
+| 레벨 | 대상 | 섹션 | 작성 시간 | 특징 |
+|------|------|------|---------|------|
+| **Level 1** | 간단한 수정 | 5개 | 5-10분 | 빠르고 간결 |
+| **Level 2** | 일반 기능 | 7개 | 10-15분 | EARS 형식 |
+| **Level 3** | 복잡한 작업 | 10+ | 20-30분 | 아키텍처 설계 포함 |
+
+### 3️⃣ 통계 및 분석
+
+**자동으로 추적하는 메트릭**:
 
 ```
-User: "I want to quickly create a prototype"
+세션 시작 시:
+  📊 최근 30일 SPEC 통계
+     • 생성 개수
+     • 평균 완료 시간
+     • 코드 연결율
+     • 테스트 커버리지
 
-Alfred Analysis: Detects "prototype" keyword
+세션 종료 시:
+  📈 데이터 자동 수집
+     • Git 커밋 연결
+     • 수정 파일 추적
+     • 테스트 결과 기록
 
-→ Skip SPEC, implement immediately
-→ After completion, recommend SPEC for production transition
+매월:
+  📋 리포트 자동 생성
+     • 트렌드 분석
+     • 개선 권장사항
 ```
 
 ---
 
-## 🔄 Alfred's SPEC Decision Flow
+## 📖 빠른 시작
+
+### 시나리오 A: 간단한 작업
+
+```
+사용자: "로그인 버튼 색상을 변경해주세요"
+
+Alfred 판단:
+  ① 파일 수정: 1개 파일만 → 아니오
+  ② 아키텍처: 변경 없음 → 아니오
+  ③ 통합: 필요 없음 → 아니오
+  ④ 시간: 5분 → 아니오
+  ⑤ 유지보수: 필요 없음 → 아니오
+
+결론: 0개 조건 충족 → SPEC 불필요
+
+→ 즉시 구현 진행
+```
+
+### 시나리오 B: 중간 복잡도
+
+```
+사용자: "사용자 프로필 이미지 업로드 기능을 추가해주세요"
+
+Alfred 판단:
+  ① 파일 수정: 4개 파일 (Backend, Frontend, DB) → 예
+  ② 아키텍처: 파일 업로드 흐름 추가 → 예
+  ③ 통합: 3개 컴포넌트 → 예
+  ④ 시간: 2시간 → 예
+  ⑤ 유지보수: 필요 있음 → 예
+
+결론: 5개 조건 충족 → SPEC 강력 권장
+
+사용자 선택: "예, SPEC 생성"
+
+→ 자동 /moai:1-plan 실행
+→ Level 2 (Standard) 템플릿 자동 선택
+→ SPEC-XXX 생성
+→ /moai:2-run SPEC-XXX 구현
+```
+
+### 시나리오 C: 프로토타입
+
+```
+사용자: "빠르게 프로토타입을 만들어보고 싶습니다"
+
+Alfred 판단: 프로토타입 키워드 감지
+
+→ SPEC 스킵, 즉시 구현
+→ 완료 후 프로덕션 전환 시 SPEC 권장
+```
+
+---
+
+## 🔄 Alfred의 SPEC 판단 흐름
 
 ```
 ┌─────────────────┐
-│  User Request   │
+│  사용자 요청    │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  @agent-Plan    │    (optional)
-│  Execute or     │
-│  Analyze chat   │
+│  @agent-Plan    │    (선택)
+│  실행 또는      │
+│  대화 분석      │
 └────────┬────────┘
          │
          ▼
 ┌──────────────────────┐
-│ Alfred analyzes      │
-│ 5 conditions via     │
-│ natural language     │
+│ Alfred가 5가지 조건  │
+│ 자연어 분석          │
 └────────┬─────────────┘
          │
-         ├─ 0-1 ──→ SPEC unnecessary ──→ Implement immediately
+         ├─ 0-1개 ──→ SPEC 불필요 ──→ 즉시 구현
          │
-         ├─ 2-3 ──→ SPEC recommended ──→ AskUserQuestion
-         │                            │
-         │                            ├─ User "Yes" ──→ /moai:1-plan
-         │                            │
-         │                            └─ User "No" ──→ Implement immediately
+         ├─ 2-3개 ──→ SPEC 권장 ──→ AskUserQuestion
+         │                         │
+         │                         ├─ 사용자 "예" ──→ /moai:1-plan
+         │                         │
+         │                         └─ 사용자 "아니오" ──→ 즉시 구현
          │
-         └─ 4-5 ──→ SPEC strongly recommended ──→ Emphasized proposal
-                                              │
-                                              ├─ "Yes" ──→ /moai:1-plan
-                                              │
-                                              └─ "No" ──→ Implement immediately
-                                                       │
-                                                       ▼
-                                              If complexity increases
-                                              during implementation,
-                                              propose SPEC
+         └─ 4-5개 ──→ SPEC 강력 권장 ──→ 강조된 제안
+                                         │
+                                         ├─ "예" ──→ /moai:1-plan
+                                         │
+                                         └─ "아니오" ──→ 즉시 구현
+                                                      │
+                                                      ▼
+                                              구현 중 복잡도
+                                              증가 감지 시
+                                              SPEC 제안 가능
 ```
 
 ---
 
-## 📚 Documentation Guide
+## 📚 문서 가이드
 
-### 🔍 Reading by Understanding Level
+### 🔍 다양한 이해 수준별 읽기
 
-#### Understand in 5 minutes (very fast)
-→ Read this README.md
+#### 5분 만에 이해 (매우 빠름)
+→ 이 README.md 읽기
 
-#### Fully understand in 15 minutes (fast)
-→ Read **alfred-decision-logic.md**
-   - Alfred's 5-point decision criteria detailed
-   - 3 real-world examples
+#### 15분 만에 완전히 이해 (빠름)
+→ **alfred-decision-logic.md** 읽기
+   - Alfred의 5가지 판단 기준 상세
+   - 3가지 실전 예제
 
-#### Know everything in 30 minutes (sufficient)
-→ Above + read **templates.md**
-   - Complete 3-level template understanding
-   - Template selection criteria
-   - 3 actual examples
+#### 30분에 모든 것을 알기 (충분함)
+→ 위 + **templates.md** 읽기
+   - 3단계 템플릿 완전 이해
+   - 템플릿 선택 기준
+   - 실제 예제 3개
 
-#### In-depth understanding in 1 hour (very detailed)
-→ Above + read **analytics.md**
-   - Analytics system design
+#### 1시간에 깊이 있게 (매우 상세)
+→ 위 + **analytics.md** 읽기
+   - 통계 시스템 설계
    - SessionStart/End Hook
-   - Monthly report
+   - 월간 리포트
 
-#### Expert level in 2 hours (complete)
-→ All documents + read **examples.md**
-   - 10+ real-world use cases
-   - Various scenarios
-
----
-
-## ❓ Frequently Asked Questions
-
-### Q: Is SPEC really necessary?
-A: Alfred decides! Users only need to choose.
-
-### Q: Do I need to use SPEC for every task?
-A: No. Simple tasks are implemented directly without SPEC.
-
-### Q: Doesn't creating SPEC take a long time?
-A: AI auto-generates 80%, so it only takes 5-30 minutes.
-
-### Q: Can I reject SPEC suggestions?
-A: Yes, all suggestions can be rejected. It's not forced.
-
-See **FAQ.md** for more questions
+#### 2시간에 전문가 수준 (완벽함)
+→ 모든 문서 + **examples.md** 읽기
+   - 10+ 실전 사용 사례
+   - 다양한 시나리오
 
 ---
 
-## 🎯 This Skill's Goals
+## ❓ 자주 있는 질문
 
-### Problem Solving
+### Q: SPEC이 정말 필요한가요?
+A: Alfred가 판단합니다! 사용자는 선택만 하면 됩니다.
+
+### Q: 모든 작업에 SPEC을 써야 하나요?
+A: 아니요. 간단한 작업은 SPEC 없이 바로 구현합니다.
+
+### Q: SPEC을 만드는데 시간이 오래 걸리지 않나요?
+A: AI가 80% 자동 생성하므로 5-30분만 소요됩니다.
+
+### Q: SPEC 제안을 거부할 수 있나요?
+A: 네, 모든 제안은 거부 가능합니다. 강제하지 않습니다.
+
+더 많은 질문은 **FAQ.md** 참고
+
+---
+
+## 🎯 이 Skill의 목표
+
+### 문제 해결
 ```
-❌ Before: "Must decide whether to write SPEC" (user burden)
-✅ After: "Alfred decides and proposes" (natural workflow)
+❌ 이전: "SPEC을 작성할지 말지 판단해야 한다" (사용자 부담)
+✅ 이후: "Alfred가 판단하고 제안한다" (자연스러운 워크플로우)
 ```
 
-### Measure Effectiveness
+### 효과 측정
 ```
-❌ Before: "Can't know if SPEC really helps"
-✅ After: "Confirm 30% time savings via analytics"
+❌ 이전: "SPEC이 정말 도움이 되는지 알 수 없다"
+✅ 이후: "통계로 30% 시간 절감을 확인한다"
 ```
 
-### Continuous Improvement
+### 지속적 개선
 ```
-❌ Before: "One-time document"
-✅ After: "Monthly report reveals improvements, then optimize"
+❌ 이전: "일회성 문서"
+✅ 이후: "월간 리포트로 개선점 파악 후 최적화"
 ```
 
 ---
 
-## 🚀 Next Steps
+## 🚀 다음 단계
 
-### After Reading This Skill
+### 이 Skill을 읽은 후
 
-1. **Read alfred-decision-logic.md**
-   - Understand 5-point decision criteria
+1. **alfred-decision-logic.md** 읽기
+   - 5가지 판단 기준 이해
 
-2. **Read templates.md**
-   - Learn 3-level template selection criteria
+2. **templates.md** 읽기
+   - 3단계 템플릿 선택 기준 학습
 
-3. **Start actual work**
-   - Create SPEC based on Alfred's proposal
-   - Or implement directly
+3. **실제 작업 시작**
+   - Alfred의 제안에 따라 SPEC 생성
+   - 또는 바로 구현
 
-4. **Check analytics** (1 week later)
-   - Confirm effectiveness at SessionStart
-   - Analyze monthly report
-
----
-
-## 📊 Expected Impact
-
-**Expected effectiveness through SPEC-First workflow**:
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Implementation time | 60 min | 45 min | 25% ↓ |
-| Bug occurrence | 8 | 6 | 25% ↓ |
-| Test coverage | 80% | 90% | 10% ↑ |
-| Code review time | 20 min | 12 min | 40% ↓ |
-| SPEC writing time | 30 min | 9 min | 70% ↓ |
+4. **통계 확인** (1주일 후)
+   - SessionStart에서 효과 확인
+   - 월간 리포트 분석
 
 ---
 
-## 🔗 Related Resources
+## 📊 기대 효과
 
-| Document | Purpose |
-|----------|---------|
-| **CLAUDE.md** | Complete Alfred and MoAI-ADK structure (includes only overview of this Skill) |
-| **alfred-decision-logic.md** | Alfred's decision algorithm detailed |
-| **templates.md** | 3-level SPEC templates complete definition |
-| **analytics.md** | Analytics and reporting system design |
-| **examples.md** | 10+ real-world use cases |
-| **FAQ.md** | Frequently asked questions and answers |
+**SPEC-First 워크플로우를 통한 기대 효과**:
+
+| 지표 | 기존 | 개선 후 | 개선율 |
+|------|------|--------|-------|
+| 구현 시간 | 60분 | 45분 | 25% ↓ |
+| 버그 발생 | 8개 | 6개 | 25% ↓ |
+| 테스트 커버리지 | 80% | 90% | 10% ↑ |
+| 코드 리뷰 시간 | 20분 | 12분 | 40% ↓ |
+| SPEC 작성 시간 | 30분 | 9분 | 70% ↓ |
 
 ---
 
-**Skill Version**: 1.0.0
-**Last Updated**: 2025-11-21
-**Status**: Active - In Use
+## 🔗 관련 리소스
+
+| 문서 | 목적 |
+|------|------|
+| **CLAUDE.md** | Alfred와 MoAI-ADK의 전체 구조 (이 Skill의 개요만 포함) |
+| **alfred-decision-logic.md** | Alfred의 판단 알고리즘 상세 |
+| **templates.md** | 3단계 SPEC 템플릿 완전 정의 |
+| **analytics.md** | 통계 및 분석 시스템 설계 |
+| **examples.md** | 10+ 실전 사용 사례 |
+| **FAQ.md** | 자주 묻는 질문과 답변 |
+
+---
+
+**Skill 버전**: 1.0.0
+**마지막 업데이트**: 2025-11-21
+**상태**: Active - 사용 중

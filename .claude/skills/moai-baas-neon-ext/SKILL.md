@@ -1,18 +1,20 @@
 ---
+
 name: moai-baas-neon-ext
-description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - baas
-  - database
-  - ext
-  - neon
-  - testing
-category_tier: 7
+description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database
+  architecture, Context7 integration, and intelligent branching orchestration for
+  scalable modern applications
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: neon, moai, baas, ext, database  
+
 
 ## Quick Reference (30 seconds)
 
@@ -32,7 +34,6 @@ category_tier: 7
 - Planning PostgreSQL to Neon migrations with zero downtime
 - Implementing advanced branching workflows for development teams
 
----
 
 # Quick Reference (Level 1)
 
@@ -143,7 +144,6 @@ class PostgreSQLToNeonMigrator:
         )
 ```
 
----
 
 # Reference & Integration (Level 4)
 
@@ -161,7 +161,6 @@ class PostgreSQLToNeonMigrator:
 - `analyze_postgresql_best_practices()` - PostgreSQL optimization via Context7
 - `optimize_neon_configuration()` - Latest performance tuning recommendations
 
----
 
 ## Implementation Guide
 
@@ -176,7 +175,6 @@ Enterprise Neon Serverless PostgreSQL Platform expert with AI-powered database a
 - 🔗 **Enterprise Serverless Integration** with zero-configuration scaling and cost optimization
 - 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
 
----
 
 ## Neon Serverless PostgreSQL Platform (November 2025)
 
@@ -204,7 +202,6 @@ Enterprise Neon Serverless PostgreSQL Platform expert with AI-powered database a
 - **Development Workflows**: Feature branches, testing environments, CI/CD pipelines
 - **Analytics Workloads**: Read replicas, data warehousing, business intelligence
 
----
 
 # Core Implementation (Level 2)
 
@@ -339,7 +336,6 @@ class NeonPerformanceOptimizer:
         )
 ```
 
----
 
 # Advanced Implementation (Level 3)
 
@@ -376,7 +372,6 @@ class NeonPerformanceOptimizer:
 - `moai-baas-vercel-ext` (Next.js integration)
 - `moai-baas-railway-ext` (Full-stack deployment)
 
----
 
 ## Advanced Patterns
 
@@ -386,7 +381,6 @@ class NeonPerformanceOptimizer:
 - **v2.0.0** (2025-11-11): Complete metadata structure, branching patterns, integration workflows
 - **v1.0.0** (2025-11-11): Initial Neon serverless PostgreSQL platform
 
----
 
 **End of Skill** | Updated 2025-11-13
 
@@ -404,6 +398,6 @@ class NeonPerformanceOptimizer:
 - Network isolation with VPC peering
 - Automated security updates and vulnerability management
 
----
 
 **End of Enterprise Neon Serverless PostgreSQL Expert **
+

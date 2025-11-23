@@ -72,6 +72,3 @@
 ---
 
 **End of Enterprise EARS Framework Expert **
-
----
-**Last Updated**: 2025-11-22

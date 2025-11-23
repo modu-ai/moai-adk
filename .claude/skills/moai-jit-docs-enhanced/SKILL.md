@@ -1,22 +1,27 @@
 ---
+
 name: moai-jit-docs-enhanced
-description: Enhanced Just-In-Time document loading system that intelligently discovers, loads, and caches relevant documentation based on user intent and project context. Use when users need specific...
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 71
-auto_trigger_keywords:
-  - docs
-  - enhanced
-  - jit
-category_tier: special
+description: Enhanced Just-In-Time document loading system that intelligently discovers,
+  loads, and caches relevant documentation based on user intent and project context.
+  Use when users need specific documentation, when working with new technologies,
+  when answering domain-specific questions, or when context indicates documentation
+  gaps.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: enhanced, jit, moai, docs  
+
 
 ## Quick Reference (30 seconds)
 
 # Enhanced JIT Documentation Loader
 
----
 
 ## Implementation Guide
 
@@ -71,7 +76,6 @@ Skill("moai-jit-docs-enhanced")
 # → Loads implementation patterns and examples
 ```
 
----
 
 ## Documentation Sources
 
@@ -115,7 +119,6 @@ def get_latest_info(query):
     return WebSearch(f"{query} best practices 2024 2025")
 ```
 
----
 
 ## Loading Strategies
 
@@ -188,7 +191,6 @@ class DocumentationCache:
         self.access_times[key] = datetime.now()
 ```
 
----
 
 ## Quality Assessment
 
@@ -248,7 +250,6 @@ def rank_documentation_results(results, user_context):
     return sorted(ranked_results, key=lambda x: x["combined"], reverse=True)
 ```
 
----
 
 ## Integration Examples
 
@@ -328,7 +329,6 @@ graphql_docs = [
 Alfred provides complete migration strategy
 ```
 
----
 
 ## Performance Optimization
 
@@ -369,7 +369,6 @@ def batch_web_searches(queries):
     pass
 ```
 
----
 
 ## Error Handling
 
@@ -397,7 +396,6 @@ if relevance_score < threshold:
     # Broaden search scope
 ```
 
----
 
 ## Usage Statistics and Learning
 
@@ -421,11 +419,9 @@ def improve_source_ranking():
     # Personalize recommendations
 ```
 
----
 
 **End of Skill** | Intelligent documentation loading for enhanced context and accuracy
 
----
 
 ## Advanced Patterns
 
@@ -443,7 +439,6 @@ Advanced Just-In-Time documentation loading system that intelligently discovers,
 - ✅ Documentation quality assessment
 - ✅ Automatic relevance ranking
 
----
 
 ## When to Use
 
@@ -455,4 +450,4 @@ Advanced Just-In-Time documentation loading system that intelligently discovers,
 - ✅ When troubleshooting complex issues
 - ✅ When best practices guidance is required
 
----
+

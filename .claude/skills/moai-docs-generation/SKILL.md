@@ -1,15 +1,19 @@
 ---
+
 name: moai-docs-generation
-description: Enhanced docs generation with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation.
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - docs
-  - generation
-category_tier: special
+description: Enhanced docs generation with AI-powered features. Enhanced with Context7
+  MCP for up-to-date documentation.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: generation, moai, docs  
+
 
 ## Quick Reference (30 seconds)
 
@@ -22,7 +26,6 @@ category_tier: special
 > **Version**: 4.0.0  
 > **Keywords**: docs, generation, test, api, spec
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -31,7 +34,6 @@ category_tier: special
 Overview
 Brief description of what this guide covers.
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -61,7 +63,6 @@ context7_references:
     topic: "Code Formatting Standards"
 ```
 
----
 
 Step-by-Step Tutorial
 ### Step 1: [Action]
@@ -72,7 +73,6 @@ Detailed explanation...
 ### Step 2: [Next Action]
 ...
 
----
 
 Usage
 
@@ -97,7 +97,6 @@ const result = methodName(arg1, arg2);
 
 **Throws**: Possible exceptions
 
----
 
 Examples
 
@@ -107,7 +106,6 @@ Examples
 ### Example 2: Advanced Usage
 ...
 
----
 
 Core Concepts
 
@@ -117,7 +115,6 @@ Explanation with examples.
 ### Concept 2: [Name]
 Explanation with examples.
 
----
 
 License
 [License Type](LICENSE)
@@ -249,7 +246,6 @@ def calculate_mean(numbers: List[float]) -> float:
 /docs:generate --type i18n --languages ko,en,ja,zh
 ```
 
----
 
 ✅ Validation Checklist
 
@@ -261,7 +257,6 @@ def calculate_mean(numbers: List[float]) -> float:
 - [x] Integration patterns shown
 - [x] English language confirmed
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -270,7 +265,6 @@ def calculate_mean(numbers: List[float]) -> float:
 **Coming soon**: Deep dive into expert-level usage.
 
 
----
 
 ## 📚 Official References
 
@@ -300,7 +294,6 @@ context7_references:
     topic: "Code Formatting Standards"
 ```
 
----
 
 ## 📈 Version History
 
@@ -315,13 +308,11 @@ context7_references:
 
 
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-12  
 **Maintained by**: Primary Agent (doc-syncer)
 
----
 
 ## Implementation Guide
 
@@ -339,7 +330,6 @@ context7_references:
 - 🔒 [Security practice 1]
 
 
----
 
 ## 🔗 Context7 MCP Integration
 
@@ -371,7 +361,6 @@ docs = await helper.get_docs(
 | [Library 1] | `/org/lib1` | [When to use] |
 
 
----
 
 ## 📊 Decision Tree
 
@@ -388,7 +377,6 @@ Start
 ```
 
 
----
 
 ## 🔄 Integration with Other Skills
 
@@ -402,8 +390,9 @@ Start
 - Skill("next-step-1") – [When to use after this]
 
 
----
 
----
 
 ## Advanced Patterns
+
+
+

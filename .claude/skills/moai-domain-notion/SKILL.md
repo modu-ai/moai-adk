@@ -1,16 +1,19 @@
 ---
+
 name: moai-domain-notion
-description: Enterprise Notion integration with MCP server architecture, database operations, and content management
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - domain
-  - notion
-  - testing
-category_tier: 2
+description: Enterprise Notion integration with MCP server architecture, database
+  operations, and content management
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: notion, domain, database, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -22,7 +25,6 @@ category_tier: 2
 > **Status**: Production Ready
 > **Coverage**: Complete Notion API integration with MCP support
 
----
 
 ## 🎯 Level 1: Quick Reference
 
@@ -66,7 +68,6 @@ Skill("moai-domain-notion")
 - Monitor API usage and quotas
 ```
 
----
 
 ## 📚 Additional Resources
 
@@ -88,11 +89,9 @@ Skill("moai-domain-notion")
 - Consult performance guidelines for optimization
 - Reference security documentation for access control
 
----
 
 **Version**: 4.0.0 | **Status**: Production Ready | **Last Updated**: 2025-11-13
 
----
 
 ## Implementation Guide
 
@@ -110,7 +109,6 @@ Enterprise-grade Notion integration providing comprehensive workspace management
 - ✅ Access control and permission management
 - ✅ Performance optimization and caching
 
----
 
 ## 🔧 Level 2: Implementation Guide
 
@@ -215,7 +213,6 @@ create_relation(
 )
 ```
 
----
 
 ## 🛠️ Tools & Integration
 
@@ -239,9 +236,7 @@ mcp__notion__notion-search(...)
 - `Skill("moai-cc-mcp-plugins")` - MCP plugin architecture
 - `Skill("moai-baas-foundation")` - Backend integration patterns
 
----
 
----
 
 ## Advanced Patterns
 
@@ -290,7 +285,6 @@ log_operation(
 )
 ```
 
----
 
 ## 📊 Capabilities Matrix
 
@@ -303,7 +297,6 @@ log_operation(
 | Relationships | Advanced | <200ms | Cross-database linking |
 | Automation | Enterprise | Real-time | Workflow integration |
 
----
 
 ## 🎯 Success Metrics
 
@@ -325,4 +318,4 @@ log_operation(
 - ✅ Performance optimization
 - ✅ Security best practices
 
----
+

@@ -56,6 +56,7 @@ src/moai_adk/templates/  ↔  ./
 ```
 .claude/commands/moai/99-release.md          # 로컬 릴리스 커맨드만
 .claude/settings.local.json                  # 개인 설정
+.claude/hooks/                               # 개발용 hooks (패키지에 포함 금지)
 .CLAUDE.local.md                             # 이 파일
 .moai/cache/                                 # 캐시 파일
 .moai/logs/                                  # 로그 파일
@@ -797,3 +798,76 @@ CLAUDE.md에서 config를 참조할 때 사용할 형식:
 **작성자**: GOOS님
 **프로젝트**: MoAI-ADK
 **상태**: ✅ 활성 문서
+
+---
+
+## 마크다운 표준 & 패턴
+
+### CommonMark 호환성 규칙 (필수)
+
+**규칙**: 괄호는 반드시 bold 마커 **밖에** 있어야 CommonMark 렌더링이 정상 작동합니다.
+
+#### 금지된 패턴:
+```markdown
+❌ **Text(description)**next - 렌더링 실패
+❌ **텍스트(설명)**다음 - 렌더링 실패
+❌ **文本(description)**next - 렌더링 실패
+```
+
+**이유**: CommonMark는 `()`를 구두점 문자로 취급합니다. 괄호가 bold 마커 `**` 안에 있으면 delimiter run 규칙을 위반하여 마크업이 제대로 닫히지 않습니다.
+
+#### 허용된 패턴:
+```markdown
+✅ **Text**(description) - 권장 (공백 없음)
+✅ **Text** (description) - 허용 (공백 있음)
+✅ **текст**(описание) - 모든 언어에서 작동
+✅ **文本**(描述) - 모든 언어에서 작동
+```
+
+### 구현 규칙
+
+**문서 생성 시**:
+마크다운 파일을 생성하거나 수정할 때:
+
+```python
+import re
+
+# 검증: 나쁜 패턴 거부
+def validate_markdown_pattern(content: str) -> bool:
+    bad_pattern = r'\*\*[^*]+\([^)]+\)\*\*[^\s*]'
+    return not bool(re.search(bad_pattern, content))
+
+# 정규화: 공백 수정
+def normalize_bold_parentheses(content: str) -> str:
+    # **text** (desc) → **text**(desc)
+    pattern = r'\*\*([^*]+)\*\*\s+\(([^)]+)\)'
+    return re.sub(pattern, r'**\1**(\2)', content)
+```
+
+### 적용 범위
+
+**필수 적용**:
+- README.md (모든 언어 버전)
+- API 문서
+- 기술 가이드
+- docs-manager 에이전트 출력
+- doc-syncer 문서 동기화
+- 모든 마크다운 관련 스킬
+
+**검증 포인트**:
+- 문서 생성: 사전 검증
+- 문서 동기화: 사후 정규화
+- 수동 편집: markdownlint 검증
+- CI/CD: 자동화된 마크다운 검증
+
+### 다국어 지원
+
+이 규칙은 **모든 언어**에 적용되어 일관된 CommonMark 렌더링을 보장합니다:
+
+- 영어: `**Feature**(description)`
+- 한국어: `**기능**(설명)`
+- 일본어: `**機能**(説明)`
+- 중국어: `**功能**(描述)`
+- 러시아어: `**Функция**(описание)`
+
+**모든 언어는 동일한 패턴을 따릅니다**: bold와 괄호 사이에 공백 없이 `**Text**(details)` 형식으로 작성합니다.

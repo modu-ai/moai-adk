@@ -4,7 +4,7 @@ description: Database migration and schema evolution research specialist. Use PR
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-database, moai-lang-python, moai-lang-sql, moai-essentials-perf, moai-domain-backend
+skills: moai-domain-database, moai-lang-python
 ------
 
 # Migration Expert - Database Migration & Schema Evolution Research Specialist

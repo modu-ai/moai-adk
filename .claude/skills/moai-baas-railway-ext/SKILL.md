@@ -1,22 +1,23 @@
 ---
+
 name: moai-baas-railway-ext
 description: Enterprise Railway Full-Stack Platform with AI-powered container orchestration,
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - baas
-  - ext
-  - railway
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: railway, ext, moai, baas  
+
 
 ## Quick Reference (30 seconds)
 
 # Enterprise Railway Full-Stack Platform Expert 
 
----
 
 ## When to Use
 
@@ -32,7 +33,6 @@ category_tier: 1
 - Planning full-stack application migrations to Railway
 - Optimizing costs and auto-scaling configuration
 
----
 
 # Quick Reference (Level 1)
 
@@ -210,11 +210,9 @@ class RailwayEnvironmentManager:
         )
 ```
 
----
 
 # Reference & Integration (Level 4)
 
----
 
 ## Core Implementation
 
@@ -229,7 +227,6 @@ Enterprise Railway Full-Stack Platform expert with AI-powered container orchestr
 - 🔗 **Enterprise CI/CD Integration** with zero-configuration pipeline automation
 - 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
 
----
 
 ## Railway Full-Stack Platform (November 2025)
 
@@ -260,7 +257,6 @@ Enterprise Railway Full-Stack Platform expert with AI-powered container orchestr
 - **Database Performance**: Optimized configurations for each database type
 - **Global Latency**: < 50ms in major regions
 
----
 
 # Core Implementation (Level 2)
 
@@ -440,20 +436,17 @@ jobs:
           railway up --service frontend,backend,worker
 ```
 
----
 
 # Advanced Implementation (Level 3)
 
 
 
----
 
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
 
 
----
 
 ## Context7 Integration
 

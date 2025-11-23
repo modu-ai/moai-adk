@@ -1,17 +1,17 @@
 ---
 name: moai-cc-subagents-guide
 description: Complete guide to Claude Code Sub-Agents creation, configuration, invocation patterns, and advanced features. Use when designing new agents or optimizing agent workflows with official Claude Code standards.
-version: 1.0.0
-modularized: false
 allowed-tools: Read, WebFetch, Grep, Glob
-last_updated: 2025-11-22
-compliance_score: 66
-auto_trigger_keywords:
-  - cc
-  - guide
-  - subagents
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: subagents, cc, moai, guide  
+
 
 # Claude Code Sub-Agents Complete Guide
 

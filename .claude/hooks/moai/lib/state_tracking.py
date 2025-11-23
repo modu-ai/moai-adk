@@ -433,7 +433,11 @@ class HookStateManager(metaclass=SingletonMeta):
                 )
 
                 if self.config.log_state_changes:
-                    self.logger.info(f"Hook execution tracked: {hook_name} (executed: {not is_duplicate}, duplicate: {is_duplicate})")
+                    msg = (
+                        f"Hook execution tracked: {hook_name} "
+                        f"(executed: {not is_duplicate}, duplicate: {is_duplicate})"
+                    )
+                    self.logger.info(msg)
 
                 return result
 
@@ -603,7 +607,11 @@ class HookStateManager(metaclass=SingletonMeta):
                 )
 
                 if self.config.log_state_changes:
-                    self.logger.info(f"Command deduplication: {command} (executed: {not is_duplicate}, duplicate: {is_duplicate})")
+                    msg = (
+                        f"Command deduplication: {command} "
+                        f"(executed: {not is_duplicate}, duplicate: {is_duplicate})"
+                    )
+                    self.logger.info(msg)
 
                 return result
 
@@ -839,7 +847,12 @@ def get_state_manager(cwd: str, config: Optional[HookConfiguration] = None) -> H
             raise e
 
 
-def track_hook_execution(hook_name: str, cwd: str, phase: str = None, config: Optional[HookConfiguration] = None) -> ExecutionResult:
+def track_hook_execution(
+    hook_name: str,
+    cwd: str,
+    phase: str = None,
+    config: Optional[HookConfiguration] = None,
+) -> ExecutionResult:
     """Convenience function to track hook execution
 
     Args:
@@ -870,7 +883,11 @@ def deduplicate_command(command: str, cwd: str, config: Optional[HookConfigurati
     return manager.deduplicate_command(command)
 
 
-def mark_command_complete(command: Optional[str] = None, cwd: Optional[str] = None, config: Optional[HookConfiguration] = None) -> None:
+def mark_command_complete(
+    command: Optional[str] = None,
+    cwd: Optional[str] = None,
+    config: Optional[HookConfiguration] = None,
+) -> None:
     """Convenience function to mark command complete
 
     Args:
@@ -884,7 +901,11 @@ def mark_command_complete(command: Optional[str] = None, cwd: Optional[str] = No
     manager.mark_command_complete(command)
 
 
-def cleanup_old_states(max_age_hours: Optional[int] = None, cwd: Optional[str] = None, config: Optional[HookConfiguration] = None) -> None:
+def cleanup_old_states(
+    max_age_hours: Optional[int] = None,
+    cwd: Optional[str] = None,
+    config: Optional[HookConfiguration] = None,
+) -> None:
     """Convenience function to clean up old states
 
     Args:

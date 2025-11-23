@@ -1,16 +1,19 @@
 ---
+
 name: moai-domain-cli-tool
-description: Enterprise CLI tool architecture with multi-language patterns, UX/DX optimization, and production deployment strategies
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - cli
-  - domain
-  - tool
-category_tier: 1
+description: Enterprise CLI tool architecture with multi-language patterns, UX/DX
+  optimization, and production deployment strategies
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: tool, domain, cli, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -122,7 +125,6 @@ program.parse();
 - ✅ Version management
 - ✅ Consistent flag naming
 
----
 
 ## Level 4: Reference & Integration
 
@@ -155,13 +157,11 @@ program.parse();
 - `Skill("moai-essentials-perf")` for performance optimization
 - `Skill("moai-security-backend")` for CLI security
 
----
 
-**Version**: 4.0.0 Enterprise
-**Last Updated**: 2025-11-22
+**Version**: 4.0.0 Enterprise  
+**Last Updated**: 2025-11-13  
 **Status**: Production Ready
 
----
 
 ## Implementation Guide
 
@@ -278,9 +278,7 @@ func exitWithError(code int, message string, details string) {
 }
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -373,4 +371,4 @@ COPY --from=builder /app/target/release/myapp /usr/local/bin/
 ENTRYPOINT ["myapp"]
 ```
 
----
+

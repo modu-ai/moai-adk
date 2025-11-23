@@ -1,165 +1,162 @@
-# Alfred's SPEC Decision Logic
+# Alfred의 SPEC 판단 로직
 
-**Created**: 2025-11-21
-**Status**: Production Ready
-
----
-
-## Overview
-
-Alfred analyzes user requests and conversations in **natural language** to automatically determine the necessity of SPEC creation.
-
-This document explains Alfred's decision criteria and how it proposes recommendations to users in detail.
+**작성일**: 2025-11-21
+**상태**: Production Ready
 
 ---
 
-## Decision Criteria: 5 Questions
+## 개요
 
-Alfred analyzes task complexity through the following 5 questions:
+Alfred는 사용자의 요청과 대화를 **자연어로 분석**하여 SPEC 작성 필요성을 자동으로 판단합니다.
 
-### ① File Modification Scope
-**Q**: Does it modify or create multiple files?
+이 문서는 Alfred의 판단 기준과 사용자에게 제안하는 방식을 상세히 설명합니다.
 
-```
-No: Only one file modified
-  Examples: CSS style change, string modification, adding a single function
+---
 
-Possible: 2-3 files modified
-  Examples: Login logic modification (component + service)
+## 판단 기준: 5가지 질문
 
-Yes: 4 or more files modified
-  Examples: Image upload (API + Frontend + DB + Middleware)
-```
+Alfred는 다음 5가지 질문을 통해 작업의 복잡도를 분석합니다:
 
-### ② Architecture Impact
-**Q**: Are there architecture or data model changes?
+### ① 파일 수정 범위
+**Q**: 여러 파일을 수정하거나 새로 생성하는가?
 
 ```
-No: Existing structure maintained
-  Examples: Logic modification in existing endpoints
+아니오: 한 파일만 수정
+  예시: CSS 스타일 변경, 문자열 수정, 함수 1개 추가
 
-Possible: Partial changes
-  Examples: Adding new Service class, adding existing DB columns
+가능: 2-3개 파일 수정
+  예시: 로그인 로직 수정 (컴포넌트 + 서비스)
 
-Yes: Major changes
-  Examples: Microservice transition, introducing new architecture patterns
+예: 4개 이상 파일 수정
+  예시: 이미지 업로드 (API + Frontend + DB + Middleware)
 ```
 
-### ③ Component Integration
-**Q**: Is integration across multiple components required?
+### ② 아키텍처 영향
+**Q**: 아키텍처나 데이터 모델 변경이 있는가?
 
 ```
-No: Single component only
-  Examples: Changes only within one page
+아니오: 기존 구조 유지
+  예시: 기존 엔드포인트의 로직 수정
 
-Possible: 2-3 components
-  Examples: Login component + Profile component
+가능: 부분적 변경
+  예시: 새로운 Service 클래스 추가, 기존 DB 칼럼 추가
 
-Yes: 4 or more components
-  Examples: Frontend + Backend + Database + Cache + Message Queue
+예: 주요 변경
+  예시: 마이크로서비스 전환, 새로운 아키텍처 패턴 도입
 ```
 
-### ④ Implementation Time
-**Q**: Is implementation time expected to be 30 minutes or more?
+### ③ 컴포넌트 통합
+**Q**: 여러 컴포넌트 간 통합이 필요한가?
 
 ```
-No: 15 minutes or less
-  Examples: Color change, text modification, simple function
+아니오: 단일 컴포넌트만
+  예시: 한 페이지 내에서만 변경
 
-Possible: 15-30 minutes
-  Examples: Simple feature addition, partial refactoring
+가능: 2-3개 컴포넌트
+  예시: Login 컴포넌트 + Profile 컴포넌트
 
-Yes: 30 minutes or more
-  Examples: Complex features, architecture changes, integration work
+예: 4개 이상 컴포넌트
+  예시: Frontend + Backend + Database + Cache + Message Queue
 ```
 
-### ⑤ Future Maintenance
-**Q**: Is future maintenance or expansion needed?
+### ④ 구현 시간
+**Q**: 구현 시간이 30분 이상 예상되는가?
 
 ```
-No: One-time task
-  Examples: Urgent bug fix, temporary logic
+아니오: 15분 이하
+  예시: 색상 변경, 텍스트 수정, 간단한 함수
 
-Possible: Future change possibility
-  Examples: New payment module, authentication system
+가능: 15-30분
+  예시: 간단한 기능 추가, 부분 리팩토링
 
-Yes: Clear maintenance/expansion needed
-  Examples: Core features, reusable components
+예: 30분 이상
+  예시: 복잡한 기능, 아키텍처 변경, 통합 작업
+```
+
+### ⑤ 향후 유지보수
+**Q**: 향후 유지보수나 확장이 필요한가?
+
+```
+아니오: 일회성 작업
+  예시: 긴급 버그 수정, 임시 로직
+
+가능: 향후 변경 가능성
+  예시: 새로운 결제 모듈, 인증 시스템
+
+예: 확실한 유지보수/확장 필요
+  예시: 핵심 기능, 재사용 가능한 컴포넌트
 ```
 
 ---
 
-## Decision Logic
+## 판단 로직
 
-Alfred collects answers to the above 5 questions and makes decisions as follows:
+Alfred는 위 5가지 질문에 대한 답변을 수집하여 다음과 같이 판단합니다:
 
 ```
-Number of "Yes" or "Possible" answers:
+"예" 또는 "가능" 답변 개수:
 
 ┌─────────┬──────────────┬────────────────────────┐
-│ Count   │ Decision     │ Action                 │
+│ 개수    │ 판단         │ 행동                   │
 ├─────────┼──────────────┼────────────────────────┤
-│ 0-1     │ SPEC         │ Proceed with           │
-│         │ Unnecessary  │ implementation         │
-│ 2-3     │ SPEC         │ User choice (Yes/No)   │
-│         │ Recommended  │                        │
-│ 4-5     │ SPEC         │ Emphasized proposal    │
-│         │ Strongly     │                        │
-│         │ Recommended  │                        │
+│ 0-1개   │ SPEC 불필요  │ 즉시 구현 진행         │
+│ 2-3개   │ SPEC 권장    │ 사용자 선택 (Yes/No)   │
+│ 4-5개   │ SPEC 강력    │ 강조된 제안             │
+│         │ 권장         │                        │
 └─────────┴──────────────┴────────────────────────┘
 ```
 
 ---
 
-## User Proposal Patterns
+## 사용자 제안 패턴
 
-### Pattern A: SPEC Unnecessary (0-1 met)
-
-```
-GOOS, I'll proceed with implementation without SPEC for this task.
-
-Analysis:
-  • Only one file modified
-  • No architecture impact
-  • Implementation time under 15 minutes
-
-→ Proceed with immediate implementation
-```
-
-### Pattern B: SPEC Recommended (2-3 met)
+### 패턴 A: SPEC 불필요 (0-1개 충족)
 
 ```
-GOOS, I recommend creating a SPEC document for this task for the following reasons:
+GOOS님, 이 작업은 SPEC 없이 바로 구현하겠습니다.
 
-📋 Analysis Results:
-  ✓ Multiple files need modification (Backend, Frontend)
-  ✓ Data model changes present
-  - Component integration: 2
-  - Implementation time: 45 minutes
-  - Future maintenance: Required
+분석:
+  • 한 파일만 수정
+  • 아키텍처 영향 없음
+  • 구현 시간 15분 이내
 
-This can reduce implementation time by 30%.
-
-Please select from the following:
+→ 즉시 구현 진행
 ```
 
-Then call `AskUserQuestion`:
+### 패턴 B: SPEC 권장 (2-3개 충족)
+
+```
+GOOS님, 이 작업은 다음 이유로 SPEC 문서 작성을 권장합니다:
+
+📋 분석 결과:
+  ✓ 여러 파일 수정 필요 (Backend, Frontend)
+  ✓ 데이터 모델 변경 있음
+  - 컴포넌트 통합: 2개
+  - 구현 시간: 45분
+  - 향후 유지보수: 있음
+
+이를 통해 구현 시간을 30% 단축할 수 있습니다.
+
+다음 중 선택해주세요:
+```
+
+그 후 `AskUserQuestion` 호출:
 
 ```json
 {
   "questions": [
     {
-      "question": "Would you like to generate a SPEC document and proceed?",
-      "header": "SPEC Proposal",
+      "question": "SPEC 문서를 생성하고 진행하시겠습니까?",
+      "header": "SPEC 제안",
       "multiSelect": false,
       "options": [
         {
-          "label": "Yes, generate SPEC then implement",
-          "description": "Automatically executes /moai:1-plan and delegates to spec-builder"
+          "label": "예, SPEC 생성 후 구현",
+          "description": "자동으로 /moai:1-plan을 실행하고 spec-builder에 위임합니다"
         },
         {
-          "label": "No, start implementation now",
-          "description": "Proceeds with implementation without SPEC"
+          "label": "아니오, 바로 구현 시작",
+          "description": "SPEC 없이 즉시 구현을 진행합니다"
         }
       ]
     }
@@ -167,261 +164,261 @@ Then call `AskUserQuestion`:
 }
 ```
 
-### Pattern C: SPEC Strongly Recommended (4-5 met)
+### 패턴 C: SPEC 강력 권장 (4-5개 충족)
 
 ```
-GOOS, a SPEC document is **strongly recommended** for this task for the following reasons:
+GOOS님, 이 작업은 다음 이유로 SPEC 문서 작성이 **강력히 권장**됩니다:
 
-⚠️ Complexity Analysis:
-  ✓ Multiple file modifications (Backend, Frontend, DB included)
-  ✓ Architecture changes required
-  ✓ 3+ component integration
-  ✓ Estimated implementation time: 2-3 hours
-  ✓ Future maintenance required
+⚠️ 복잡도 분석:
+  ✓ 여러 파일 수정 (Backend, Frontend, DB 포함)
+  ✓ 아키텍처 변경 필요
+  ✓ 3개 이상 컴포넌트 통합
+  ✓ 예상 구현 시간: 2-3시간
+  ✓ 향후 유지보수 필요
 
-Expected benefits with SPEC:
-  • 40% implementation time reduction
-  • 60% bug risk reduction
-  • 50% future maintenance cost savings
+SPEC 작성 시 예상 효과:
+  • 구현 시간 40% 단축
+  • 버그 위험 60% 감소
+  • 미래 유지보수 비용 50% 절감
 
-Please select from the following:
+다음 중 선택해주세요:
 ```
 
-Call `AskUserQuestion` in the same manner
+같은 방식으로 `AskUserQuestion` 호출
 
 ---
 
-## Automatic Workflow
+## 자동 워크플로우
 
-### When User Selects "Yes, Generate SPEC"
+### 사용자가 "예, SPEC 생성"을 선택한 경우
 
-**Step 1: User Feedback**
+**Step 1: 사용자 피드백**
 ```
-GOOS, I'll generate the SPEC. Please wait a moment...
+GOOS님, SPEC을 생성하겠습니다. 잠시만 기다려주세요...
 ```
 
-**Step 2: Execute SPEC Generation**
+**Step 2: SPEC 생성 실행**
 ```bash
-/moai:1-plan "{requirements summary}"
+/moai:1-plan "{요구사항 요약}"
 ```
 
-Alfred automatically calls:
+Alfred가 자동으로 호출:
 ```python
 Task(
   subagent_type="spec-builder",
   description="Generate SPEC document",
-  prompt="Analyze user requirements and generate SPEC"
+  prompt="사용자 요구사항 분석 및 SPEC 생성"
 )
 ```
 
-**Step 3: Automatic Template Selection**
-spec-builder automatically selects from:
+**Step 3: 템플릿 자동 선택**
+spec-builder가 자동으로 다음 중 선택:
 ```
-Complexity LOW → Level 1 (Minimal, 5 sections)
-Complexity MEDIUM → Level 2 (Standard, 7 sections, EARS)
-Complexity HIGH → Level 3 (Comprehensive, 10+ sections)
-```
-
-**Step 4: SPEC Generation Complete**
-```
-SPEC-001 has been generated.
+복잡도 LOW → Level 1 (Minimal, 5개 섹션)
+복잡도 MEDIUM → Level 2 (Standard, 7개 섹션, EARS)
+복잡도 HIGH → Level 3 (Comprehensive, 10+ 섹션)
 ```
 
-**Step 5: Context Initialization**
+**Step 4: SPEC 생성 완료**
 ```
-Execute /clear to start new session
-```
-
-**Step 6: Implementation Proposal**
-```
-📋 Next Steps:
-  1. /clear (initialize context)
-  2. /moai:2-run SPEC-001 (TDD implementation)
-
-Would you like to proceed?
+SPEC-001이 생성되었습니다.
 ```
 
----
-
-## Decision Examples
-
-### Example 1: Bug Fix (SPEC Unnecessary)
-
-**User Request**:
-> "The error message on the login page is only displayed in English. Please change it to Korean."
-
-**Alfred Analysis**:
+**Step 5: 컨텍스트 초기화**
 ```
-① File modification: Only i18n configuration → No
-② Architecture: No changes → No
-③ Components: Single → No
-④ Time: 10 minutes → No
-⑤ Maintenance: None → No
-
-Result: 0 met → SPEC Unnecessary
+/clear 실행하여 새 세션 시작
 ```
 
-**Alfred Decision**:
+**Step 6: 구현 제안**
 ```
-Proceed with immediate implementation
+📋 다음 단계:
+  1. /clear (컨텍스트 초기화)
+  2. /moai:2-run SPEC-001 (TDD 구현)
 
-Implementation: Add Korean translation to i18n/messages.json
+진행하시겠습니까?
 ```
 
 ---
 
-### Example 2: Feature Addition (SPEC Recommended)
+## 판단 예시
 
-**User Request**:
-> "I want to add a feature where users can upload profile pictures. It should include image optimization, caching, and DB storage."
+### 예시 1: 버그 수정 (SPEC 불필요)
 
-**Alfred Analysis**:
+**사용자 요청**:
+> "로그인 페이지의 에러 메시지가 영어로만 표시됩니다. 한글로 변경해주세요."
+
+**Alfred 분석**:
 ```
-① File modification: Backend API + Frontend Form + DB Schema + Middleware
-   → 4 or more → Yes
+① 파일 수정: i18n 설정 1개만 → 아니오
+② 아키텍처: 변경 없음 → 아니오
+③ 컴포넌트: 단일 → 아니오
+④ 시간: 10분 → 아니오
+⑤ 유지보수: 없음 → 아니오
 
-② Architecture: Add file upload flow, image processing layer
-   → Major changes → Yes
-
-③ Components: Frontend + Backend + Database + Cache
-   → 4 or more → Yes
-
-④ Time: Image optimization, S3 integration, frontend UI
-   → 2+ hours → Yes
-
-⑤ Maintenance: Future profile-related features possible
-   → Certain → Yes
-
-Result: 5 met → SPEC Strongly Recommended
+결과: 0개 충족 → SPEC 불필요
 ```
 
-**Alfred Decision**:
+**Alfred 결정**:
 ```
-Propose SPEC strong recommendation to user
+즉시 구현 진행
 
-User selects "Yes"
-
-→ Automatically execute /moai:1-plan
-→ spec-builder selects Level 2 (Standard) template
-→ Auto-generate SPEC-003
-→ TDD implementation with /moai:2-run SPEC-003
+구현: i18n/messages.json에 한글 번역 추가
 ```
 
 ---
 
-### Example 3: Prototype (Exception)
+### 예시 2: 기능 추가 (SPEC 권장)
 
-**User Request**:
-> "I want to quickly make a prototype. Fast implementation is more important than accurate design."
+**사용자 요청**:
+> "사용자가 프로필 사진을 업로드할 수 있는 기능을 추가하고 싶습니다. 이미지 최적화, 캐싱, DB 저장까지 포함해야 합니다."
 
-**Alfred Analysis**:
+**Alfred 분석**:
 ```
-Prototype keyword detected
-→ Recognize words like "quickly", "prototype", "temporary"
+① 파일 수정: Backend API + Frontend Form + DB Schema + Middleware
+   → 4개 이상 → 예
 
-Special handling:
-  Skip SPEC regardless of complexity
-  Recommend immediate implementation
-```
+② 아키텍처: 파일 업로드 흐름 추가, 이미지 처리 레이어
+   → 주요 변경 → 예
 
-**Alfred Decision**:
-```
-GOOS, it's a prototype. I'll proceed quickly.
+③ 컴포넌트: Frontend + Backend + Database + Cache
+   → 4개 이상 → 예
 
-→ Start immediate implementation
-→ Can propose SPEC when transitioning to production
-```
+④ 시간: 이미지 최적화, S3 연동, 프론트 UI
+   → 2시간 이상 → 예
 
----
+⑤ 유지보수: 향후 프로필 관련 기능 확장 가능
+   → 확실함 → 예
 
-## Exception Handling
-
-### Case 1: User Rejects SPEC
-
-```
-GOOS, I'll proceed with immediate implementation without SPEC.
-
-⚠️ Note: If complexity increases during implementation,
-we can transition to SPEC.
+결과: 5개 충족 → SPEC 강력 권장
 ```
 
-→ Proceed with immediate implementation
-
-### Case 2: Complexity Increases During Implementation
-
-Initial decision: Simple modification (SPEC unnecessary)
-During implementation: Complexity unexpectedly increases
-
+**Alfred 결정**:
 ```
-GOOS, this task is becoming more complex than expected.
+사용자에게 SPEC 강력 권장 제안
 
-Current situation:
-  • Additional file modifications needed
-  • Possible architecture changes
-  • Expected time increased to 2 hours
+사용자 "예" 선택
 
-Would you like to create a SPEC for systematic progress?
-```
-
-→ Can immediately execute `/moai:1-plan` based on user choice
-
-### Case 3: Emergency Situation
-
-```
-User: "This is a production bug. Immediate fix needed!"
-
-Alfred: Skip SPEC proposal
-
-→ Immediate implementation
-→ SPEC creation possible after completion
+→ /moai:1-plan 자동 실행
+→ spec-builder가 Level 2 (Standard) 템플릿 선택
+→ SPEC-003 자동 생성
+→ /moai:2-run SPEC-003으로 TDD 구현
 ```
 
 ---
 
-## Alfred's Advantages
+### 예시 3: 프로토타입 (예외)
 
-### 1. Natural Workflow
-```
-❌ Before: User decides "Is SPEC needed?" every time
-✅ After: Alfred automatically decides and proposes
-```
+**사용자 요청**:
+> "빠르게 프로토타입을 만들어보고 싶습니다. 정확한 설계보다는 빠른 구현이 중요합니다."
 
-### 2. Minimize False Positives
+**Alfred 분석**:
 ```
-Conservative decision with 5 conditions
-→ Reduce unnecessary proposals
-→ High user trust
-```
+프로토타입 키워드 감지
+→ "빠르게", "프로토타입", "임시" 등의 단어 인식
 
-### 3. Flexible Response
-```
-Prototypes, emergency fixes, changes during implementation
-Can respond to various situations
+특수 처리:
+  복잡도와 관계없이 SPEC 스킵
+  즉시 구현 권장
 ```
 
-### 4. Data-Driven Improvement
+**Alfred 결정**:
 ```
-Measure effectiveness with monthly statistics
-→ Continuously improve decision criteria
+GOOS님, 프로토타입이군요. 빠르게 진행하겠습니다.
+
+→ 즉시 구현 시작
+→ 완료 후 프로덕션 전환 시 SPEC 제안 가능
 ```
 
 ---
 
-## Implementation Checklist
+## 예외 처리
 
-When implementing Alfred's SPEC decision:
+### 경우 1: 사용자가 SPEC 거부
 
-- [ ] Implement 5 question prompts
-- [ ] Condition fulfillment count calculation logic
-- [ ] AskUserQuestion integration
-- [ ] Automatic /moai:1-plan trigger
-- [ ] Template automatic selection logic
-- [ ] Exception handling (prototype, emergency)
-- [ ] Detect complexity increase during implementation
-- [ ] Statistics data collection integration
+```
+GOOS님, SPEC 없이 바로 구현을 진행하겠습니다.
+
+⚠️ 참고: 구현 중 복잡도가 증가하면
+SPEC으로 전환할 수 있습니다.
+```
+
+→ 즉시 구현 진행
+
+### 경우 2: 구현 중 복잡도 증가
+
+초기 판단: 간단한 수정 (SPEC 불필요)
+구현 중: 예상 외로 복잡도 증가
+
+```
+GOOS님, 이 작업이 예상보다 복잡해지고 있습니다.
+
+현재 상황:
+  • 추가 파일 수정 필요
+  • 아키텍처 변경 가능성
+  • 예상 시간 2시간으로 증가
+
+SPEC을 작성하여 체계적으로 진행하시겠습니까?
+```
+
+→ 사용자 선택에 따라 즉시 `/moai:1-plan` 실행 가능
+
+### 경우 3: 긴급 상황
+
+```
+사용자: "프로덕션 버그입니다. 즉시 수정이 필요합니다!"
+
+Alfred: SPEC 제안 스킵
+
+→ 즉시 구현
+→ 완료 후 SPEC 작성 가능
+```
 
 ---
 
-**Document Version**: 1.0.0
-**Last Updated**: 2025-11-21
-**Status**: Production Ready
+## Alfred의 장점
+
+### 1. 자연스러운 워크플로우
+```
+❌ 이전: 사용자가 매번 "SPEC이 필요한가?" 판단
+✅ 이후: Alfred가 자동으로 판단 및 제안
+```
+
+### 2. False Positive 최소화
+```
+5가지 조건으로 보수적 판단
+→ 불필요한 제안 줄임
+→ 사용자 신뢰도 높음
+```
+
+### 3. 유연한 대응
+```
+프로토타입, 긴급 수정, 구현 중 변경 등
+다양한 상황에 대응 가능
+```
+
+### 4. 데이터 기반 개선
+```
+월간 통계로 효과 측정
+→ 판단 기준 지속 개선
+```
+
+---
+
+## 구현 체크리스트
+
+Alfred의 SPEC 판단을 구현할 때 확인할 항목:
+
+- [ ] 5가지 질문 프롬프트 구현
+- [ ] 조건 충족 개수 계산 로직
+- [ ] AskUserQuestion 통합
+- [ ] 자동 /moai:1-plan 트리거
+- [ ] 템플릿 자동 선택 로직
+- [ ] 예외 처리 (프로토타입, 긴급)
+- [ ] 구현 중 복잡도 증가 감지
+- [ ] 통계 데이터 수집 연동
+
+---
+
+**문서 버전**: 1.0.0
+**마지막 업데이트**: 2025-11-21
+**상태**: Production Ready

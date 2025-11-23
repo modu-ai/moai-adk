@@ -1,21 +1,19 @@
 ---
+
 name: moai-cloud-gcp-advanced
 description: Advanced GCP architecture patterns, BigQuery optimization, and Kubernetes Engine best practices
-version: 1.0.0
-modularized: true
-allowed-tools:
-  - Read
-  - Bash
-  - WebFetch
-last_updated: 2025-11-22
-compliance_score: 75
-auto_trigger_keywords:
-  - advanced
-  - cloud
-  - database
-  - gcp
-category_tier: special
+allowed-tools: [Read, Bash, WebFetch]
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: advanced, moai, kubernetes, gcp, cloud  
+
 
 # Advanced GCP Cloud Architecture
 
@@ -32,7 +30,6 @@ AI/ML 서비스를 통해 엔터프라이즈급 클라우드 아키텍처를 제
 - **Analytics**: BigQuery (데이터 웨어하우스), Dataflow (스트림), Pub/Sub (메시징), Dataproc (Spark/Hadoop)
 - **AI/ML**: Vertex AI (통합 플랫폼), AutoML, LLM API 등
 
----
 
 ## Implementation Guide
 
@@ -240,7 +237,6 @@ gcloud compute commitments create my-commitment \
   --region=us-central1
 ```
 
----
 
 ## Best Practices
 
@@ -261,31 +257,6 @@ gcloud compute commitments create my-commitment \
 - 무제한 확장 (예산 초과)
 - 컨테이너 이미지 최적화 무시
 
----
-
-## Context7 Integration
-
-### Related GCP Services & Libraries
-- [Google Cloud Compute](/gcp/compute): Virtual machines and containers
-- [Google Kubernetes Engine](/gcp/gke): Managed Kubernetes service
-- [Google Cloud SQL](/gcp/cloudsql): Managed relational databases
-- [Google Cloud Firestore](/gcp/firestore): Real-time NoSQL database
-- [Google BigQuery](/gcp/bigquery): Data warehouse and analytics
-- [Google Vertex AI](/gcp/vertex-ai): Unified ML platform
-
-### Official GCP Documentation
-- [GCP Cloud Architecture Center](https://cloud.google.com/architecture)
-- [GKE Best Practices](https://cloud.google.com/kubernetes-engine/docs/best-practices)
-- [BigQuery Documentation](https://cloud.google.com/bigquery/docs)
-- [Cloud Security Best Practices](https://cloud.google.com/security/best-practices)
-
-### Related Modularized Skills
-- `moai-cloud-aws-advanced` - AWS equivalent services and patterns
-- `moai-domain-devops` - CI/CD and deployment automation
-- `moai-security-api` - API security implementation
-- `moai-essentials-perf` - Performance optimization techniques
-
----
 
 ## Works Well With
 
@@ -294,9 +265,7 @@ gcloud compute commitments create my-commitment \
 - `moai-domain-database` (데이터 모델링)
 - `moai-domain-security` (클라우드 보안)
 
----
 
 **Version**: 2.0.0
-**Last Updated**: 2025-11-22
-**Status**: Fully Modularized
+**Last Updated**: 2025-11-21 | **Lines**: 220
 **Official Reference**: https://cloud.google.com/architecture/framework

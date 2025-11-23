@@ -1,25 +1,17 @@
 ---
 name: moai-cc-skill-factory
 description: Enterprise AI-powered skill creation factory with intelligent generation, optimization, and Context7 integration
-version: 1.0.0
-modularized: true
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-last_updated: 2025-11-22
-compliance_score: 85
-auto_trigger_keywords:
-  - cc
-  - factory
-  - skill
-  - testing
-category_tier: 1
+allowed-tools: [Read, Write, Edit, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs]
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cc, moai, skill, factory  
+
 
 ## Quick Reference
 
@@ -225,7 +217,3 @@ class SkillFactory:
 
 **End of Core Skill** | See `modules/`, `examples.md`, and `reference.md` for detailed patterns | Status: Production Ready
 
-
----
-**Last Updated**: 2025-11-22
-**Status**: Production Ready

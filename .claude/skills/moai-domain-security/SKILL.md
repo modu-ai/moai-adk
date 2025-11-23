@@ -1,542 +1,271 @@
 ---
 name: moai-domain-security
-description: Enterprise-grade security expertise with production-ready patterns for OWASP Top 10 2021, zero-trust architecture, threat modeling (STRIDE, PASTA), secure SDLC, DevSecOps automation, cloud security, cryptography, identity & access management, and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA).
-version: 1.0.0
+description: Enterprise-grade security expertise with production-ready patterns for OWASP Top 10 2021, zero-trust architecture, threat modeling, secure SDLC, DevSecOps automation
+version: 1.1.0
 modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - domain
-  - security
-category_tier: 1
 ---
 
-## Quick Reference (30 seconds)
+## 📊 Skill Metadata
 
-# moai-domain-security — Enterprise Security Architecture
-
-**Enterprise Security Expertise & Implementation**
-
-> **Primary Agent**: security-expert
-> **Secondary Agents**: qa-validator, alfred, doc-syncer
-> **Version**: 4.0.0
+**Name**: moai-domain-security
+**Domain**: Enterprise Security Architecture
+**Freedom Level**: high
+**Target Users**: Security engineers, architects, DevSecOps specialists
+**Invocation**: Skill("moai-domain-security")
+**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed guides)
+**Last Updated**: 2025-11-23
+**Modularized**: true
 
 ---
 
-## 📖 Progressive Disclosure
+## 🎯 Quick Reference (30 seconds)
 
-### Level 1: Quick Reference
+**Purpose**: Enterprise security expertise with OWASP compliance and zero-trust architecture.
 
-Enterprise security expertise with **OWASP Top 10 2021** compliance and **zero-trust architecture**.
+**Key Capabilities**:
+- OWASP Top 10 2021 vulnerability protection
+- Zero-trust authentication & authorization
+- Threat modeling (STRIDE, PASTA methodologies)
+- DevSecOps pipeline automation
+- Cryptography and encryption standards
+- Compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA)
 
-**Core Capabilities**:
-- **Threat Modeling**: STRIDE, PASTA methodologies
-- **Secure SDLC**: Security-by-design in development lifecycle
-- **DevSecOps**: Security automation and CI/CD integration
-- **Cloud Security**: AWS, Azure, GCP security patterns
-- **Cryptography**: Encryption, hashing, digital signatures
-- **Identity & Access Management**: OAuth, JWT, RBAC implementation
-
-**When to Use**:
-- ✅ Application security assessments and penetration testing
-- ✅ Secure architecture design and threat modeling
-- ✅ DevSecOps pipeline implementation
-- ✅ Compliance frameworks (SOC 2, ISO 27001, GDPR)
-- ✅ Cloud security hardening and monitoring
+**Core Tools**:
+- OWASP ZAP (vulnerability scanning)
+- Bandit (Python security testing)
+- ThreatDragon (threat modeling)
+- HashiCorp Vault (secrets management)
+- SonarQube (code quality/security)
 
 ---
 
-### Level 2: Practical Implementation
+## 📚 Core Patterns (5-10 minutes)
 
-#### Pattern 1: OWASP Top 10 2021 Protection
+### Pattern 1: OWASP Top 10 2021 Protection
 
-**Objective**: Protect against the OWASP Top 10 2021 vulnerabilities.
+**Key Concept**: Defend against the most critical web vulnerabilities.
 
+**Approach**:
 ```python
-# Security middleware for Flask/Django applications
-import re
-from functools import wraps
-
+# Security middleware for OWASP protection
 class SecurityMiddleware:
-    """OWASP Top 10 protection middleware."""
-    
-    def __init__(self, app=None):
+    def __init__(self, app):
         self.app = app
-        if app:
-            self.init_app(app)
-    
-    def init_app(self, app):
         app.before_request(self.before_request_handler)
         app.after_request(self.after_request_handler)
-    
+
     def before_request_handler(self, request):
         # A01: Broken Access Control
         self._verify_access_control(request)
         # A03: Injection prevention
         self._prevent_injection_attacks(request)
-        return None
-    
+
     def after_request_handler(self, response):
+        # Security headers for A05: Cross-Site Request Forgery (CSRF)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'
         return response
-    
+
     def _prevent_injection_attacks(self, request):
-        if hasattr(request, 'form'):
-            for key, value in request.form.items():
-                if self._detect_sql_injection(value):
-                    raise SecurityError("SQL injection attempt detected")
-    
-    def _detect_sql_injection(self, input_str: str) -> bool:
-        patterns = [
-            r"(\b(union|select|insert|update|delete|drop)\b)",
-            r"([';]|--|/\*|\*/|xp_|sp_)",
-            r"(or\s+1\s*=\s*1|and\s+1\s*=\s*1)",
-        ]
-        return any(re.search(pattern, input_str, re.IGNORECASE) for pattern in patterns)
-
-# Example usage
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-security = SecurityMiddleware(app)
-
-@app.route('/api/users/<int:user_id>')
-def get_user(user_id):
-    # Parameterized query prevents SQL injection
-    query = "SELECT id, username, email FROM users WHERE id = %s"
-    user = db.execute(query, (user_id,)).fetchone()
-    
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    return jsonify({
-        'id': user['id'],
-        'username': user['username'],
-        'email': user['email']
-    })
+        # Parameterized queries prevent SQL injection (A03)
+        # Input validation prevents cross-site scripting (A07)
+        pass
 ```
 
----
+**Use Case**: Protecting REST APIs from injection attacks, XSS, CSRF vulnerabilities.
 
-#### Pattern 2: Zero-Trust Architecture
+### Pattern 2: Zero-Trust Architecture
 
-**Objective**: Implement zero-trust security principles.
+**Key Concept**: Never trust, always verify authentication & authorization.
 
+**Approach**:
 ```python
-# Zero-Trust authentication and authorization
-import jwt
-import secrets
-from datetime import datetime, timedelta
-
+# Zero-trust authentication with risk scoring
 class ZeroTrustAuth:
-    """Zero-trust authentication and authorization system."""
-    
-    def __init__(self, secret_key: str, token_expiry: int = 3600):
-        self.secret_key = secret_key
-        self.token_expiry = token_expiry
-        self.active_sessions = {}
-    
     def authenticate_user(self, credentials: dict, context: dict) -> dict:
         user = self._verify_credentials(credentials)
-        if not user:
-            raise AuthenticationError("Invalid credentials")
-        
+
+        # Calculate risk based on context
         risk_score = self._calculate_risk_score(user, context)
-        trust_level = self._determine_trust_level(risk_score)
-        
+
+        # Create token with trust level
         token_claims = {
             'user_id': user['id'],
-            'username': user['username'],
-            'roles': user['roles'],
-            'trust_level': trust_level,
-            'session_id': secrets.token_urlsafe(32),
-            'device_fingerprint': context.get('device_fingerprint'),
-            'ip_address': context.get('ip_address'),
+            'trust_level': self._determine_trust_level(risk_score),
             'risk_score': risk_score,
-            'exp': datetime.utcnow() + timedelta(seconds=self.token_expiry)
+            'device_fingerprint': context.get('device_fingerprint'),
+            'ip_address': context.get('ip_address')
         }
-        
-        token = jwt.encode(token_claims, self.secret_key, algorithm='HS256')
-        
-        self.active_sessions[token_claims['session_id']] = {
-            'user_id': user['id'],
-            'created_at': datetime.utcnow(),
-            'context': context,
-            'risk_score': risk_score
-        }
-        
-        return {
-            'token': token,
-            'session_id': token_claims['session_id'],
-            'trust_level': trust_level,
-            'expires_in': self.token_expiry
-        }
-    
+
+        token = jwt.encode(token_claims, self.secret_key)
+        return {'token': token, 'trust_level': token_claims['trust_level']}
+
     def _calculate_risk_score(self, user: dict, context: dict) -> int:
-        risk_score = 0
-        
-        if self._is_unusual_location(user['id'], context.get('ip_address')):
-            risk_score += 20
-        
-        if self._is_new_device(user['id'], context.get('device_fingerprint')):
-            risk_score += 15
-        
-        if self._is_unusual_time(user['id']):
-            risk_score += 10
-        
-        if self._is_unusual_behavior(user['id'], context):
-            risk_score += 25
-        
-        return min(risk_score, 100)
-    
-    def _determine_trust_level(self, risk_score: int) -> str:
-        if risk_score < 20:
-            return 'high'
-        elif risk_score < 50:
-            return 'medium'
-        else:
-            return 'low'
-
-# Decorator for zero-trust verification
-def zero_trust_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Authorization required'}), 401
-        
-        try:
-            auth_result = zero_trust.verify_request(
-                token=token,
-                request_context={
-                    'ip_address': request.remote_addr,
-                    'device_fingerprint': request.headers.get('User-Agent'),
-                    'endpoint': request.endpoint,
-                    'method': request.method
-                }
-            )
-            
-            request.auth_result = auth_result
-            return f(*args, **kwargs)
-            
-        except AuthorizationError as e:
-            return jsonify({'error': str(e)}), 401
-    
-    return decorated_function
-
-@app.route('/api/sensitive-data')
-@zero_trust_required
-def get_sensitive_data():
-    if 'read_sensitive_data' not in request.auth_result['permissions']:
-        return jsonify({'error': 'Insufficient permissions'}), 403
-    
-    sensitive_data = get_data_for_user(request.auth_result['user_id'])
-    
-    audit_log.info(
-        "Sensitive data accessed",
-        user_id=request.auth_result['user_id'],
-        trust_level=request.auth_result['trust_level'],
-        risk_score=request.auth_result['risk_score']
-    )
-    
-    return jsonify(sensitive_data)
+        risk = 0
+        risk += 20 if self._is_unusual_location(user, context) else 0
+        risk += 15 if self._is_new_device(user, context) else 0
+        risk += 10 if self._is_unusual_time(user) else 0
+        return min(risk, 100)
 ```
 
----
+**Use Case**: Implementing adaptive authentication for sensitive applications with risk-based MFA.
 
-#### Pattern 3: Threat Modeling (STRIDE)
+### Pattern 3: Threat Modeling (STRIDE)
 
-**Objective**: Implement STRIDE threat modeling for system security.
+**Key Concept**: Systematically identify and mitigate security threats.
 
+**Approach**:
 ```python
-# STRIDE Threat Modeling Framework
-from enum import Enum
-from dataclasses import dataclass
-from typing import List, Dict
-
-class ThreatCategory(Enum):
-    SPOOFING = "Spoofing"
-    TAMPERING = "Tampering"
-    REPUDIATION = "Repudiation"
-    INFORMATION_DISCLOSURE = "Information Disclosure"
-    DENIAL_OF_SERVICE = "Denial of Service"
-    ELEVATION_OF_PRIVILEGE = "Elevation of Privilege"
-
-@dataclass
-class Threat:
-    category: ThreatCategory
-    description: str
-    impact: str
-    likelihood: str
-    mitigation: List[str]
-    affected_components: List[str]
-
+# STRIDE threat modeling framework
 class ThreatModelAnalyzer:
-    """STRIDE threat modeling analyzer."""
-    
-    def analyze_system(self, system_architecture: Dict) -> List[Threat]:
+    def analyze_system(self, system_architecture: dict) -> list:
         threats = []
-        
-        for component_name, component_config in system_architecture.items():
-            component_threats = self._analyze_component(component_name, component_config)
+
+        for component_name, config in system_architecture.items():
+            # Identify threats by category:
+            # S: Spoofing, T: Tampering, R: Repudiation
+            # I: Information Disclosure, D: Denial of Service
+            # E: Elevation of Privilege
+            component_threats = self._analyze_component(component_name, config)
             threats.extend(component_threats)
-        
-        return threats
-    
-    def _analyze_component(self, component_name: str, component_config: Dict) -> List[Threat]:
+
+        return self._generate_threat_report(threats)
+
+    def _analyze_component(self, name: str, config: dict) -> list:
         threats = []
-        component_type = component_config.get('type', '')
-        
-        if component_type == 'web_application':
-            threats.extend([
-                Threat(
-                    category=ThreatCategory.SPOOFING,
-                    description="Attacker impersonates legitimate user",
-                    impact="High",
-                    likelihood="Medium",
-                    mitigation=[
-                        "Implement strong authentication (MFA)",
-                        "Use CSRF tokens",
-                        "Implement proper session management"
-                    ],
-                    affected_components=[component_name]
-                ),
-                Threat(
-                    category=ThreatCategory.INFORMATION_DISCLOSURE,
-                    description="Sensitive data exposed through vulnerabilities",
-                    impact="High",
-                    likelihood="High",
-                    mitigation=[
-                        "Encrypt data at rest and in transit",
-                        "Implement proper access controls",
-                        "Use secure coding practices"
-                    ],
-                    affected_components=[component_name]
-                )
-            ])
-        
+        if config['type'] == 'web_application':
+            threats.append({
+                'category': 'Spoofing',
+                'description': 'Attacker impersonates legitimate user',
+                'mitigation': ['Implement MFA', 'Use CSRF tokens', 'Session management']
+            })
         return threats
-    
-    def generate_threat_report(self, threats: List[Threat]) -> Dict:
-        threats_by_category = {}
-        for threat in threats:
-            category = threat.category.value
-            if category not in threats_by_category:
-                threats_by_category[category] = []
-            threats_by_category[category].append(threat)
-        
-        high_risk_threats = [
-            threat for threat in threats
-            if threat.impact == "High" and threat.likelihood in ["High", "Medium"]
-        ]
-        
-        return {
-            'total_threats': len(threats),
-            'threats_by_category': threats_by_category,
-            'high_risk_threats': len(high_risk_threats),
-            'recommendations': self._generate_recommendations(threats)
-        }
-    
-    def _generate_recommendations(self, threats: List[Threat]) -> List[str]:
-        recommendations = []
-        
-        mitigations = set()
-        for threat in threats:
-            mitigations.update(threat.mitigation)
-        
-        priority_mitigations = [
-            "Implement strong authentication (MFA)",
-            "Encrypt data at rest and in transit",
-            "Use parameterized queries",
-            "Implement proper access controls",
-            "Use secure coding practices"
-        ]
-        
-        for mitigation in priority_mitigations:
-            if mitigation in mitigations:
-                recommendations.append(mitigation)
-                mitigations.remove(mitigation)
-        
-        recommendations.extend(sorted(mitigations))
-        return recommendations
-
-# Example usage
-system_architecture = {
-    'web_application': {
-        'type': 'web_application',
-        'technologies': ['React', 'Node.js', 'Express'],
-        'exposed': True
-    },
-    'api': {
-        'type': 'api',
-        'technologies': ['FastAPI', 'Python'],
-        'exposed': True
-    },
-    'database': {
-        'type': 'database',
-        'technologies': ['PostgreSQL'],
-        'exposed': False
-    }
-}
-
-analyzer = ThreatModelAnalyzer()
-threats = analyzer.analyze_system(system_architecture)
-report = analyzer.generate_threat_report(threats)
-
-print(f"Threat Analysis Report")
-print(f"Total threats: {report['total_threats']}")
-print(f"High-risk threats: {report['high_risk_threats']}")
-print(f"Top recommendations: {report['recommendations'][:3]}")
 ```
 
----
+**Use Case**: Designing secure architecture by identifying threats before implementation.
 
-### Level 3: Advanced Integration
+### Pattern 4: DevSecOps Automation
 
-#### DevSecOps Pipeline Integration
+**Key Concept**: Integrate security checks into CI/CD pipeline.
 
-**Security automation in CI/CD pipeline**:
-
+**Approach**:
 ```yaml
-# .github/workflows/security.yml
-name: Security Pipeline
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
+# Security pipeline in CI/CD
 jobs:
   security-scan:
-    runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Run security scan
+    - name: Static application security testing
+      run: bandit -r src/ --json --output bandit-report.json
+
+    - name: Dependency vulnerability scan
+      run: safety check --json --output safety-report.json
+
+    - name: Dynamic security testing
       run: |
-        # OWASP ZAP Baseline Scan
-        docker run -t owasp/zap2docker-stable zap-baseline.py -t http://app-url
-        
-        # Dependency vulnerability scan
-        pip install safety
-        safety check --json --output safety-report.json
-        
-        # Static application security testing
-        pip install bandit
-        bandit -r src/ -f json -o bandit-report.json
-    
+        docker run owasp/zap2docker-stable \
+          zap-baseline.py -t http://app-url
+
     - name: Threat modeling
-      run: |
-        python threat_modeling.py --architecture architecture.json --output threat-model.json
-    
+      run: python threat_modeling.py --output threat-model.json
+
     - name: Compliance check
       run: |
         python compliance_check.py --framework soc2
         python compliance_check.py --framework gdpr
 ```
 
----
+**Use Case**: Automated security enforcement preventing vulnerable code from reaching production.
 
-## 🔗 Related Resources
+### Pattern 5: Cryptography Standards
 
-**Complete Security Patterns**: See `examples.md`
-**Compliance Checklists**: See `reference.md`
-**Threat Modeling Templates**: See examples.md
+**Key Concept**: Use modern, proven cryptographic algorithms.
 
----
+**Approach**:
+```python
+# Secure cryptography implementation
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+import bcrypt
 
-## Implementation Guide
+# Data encryption (at-rest & in-transit)
+cipher = Fernet(key)
+encrypted_data = cipher.encrypt(plaintext.encode())
 
-## 📚 Key Benefits
+# Password hashing
+hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
 
-### For Development Teams
+# Digital signatures for data integrity
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+private_key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048
+)
+signature = private_key.sign(
+    data,
+    padding.PSS(
+        mgf=padding.MGF1(hashes.SHA256()),
+        salt_length=padding.PSS.MAX_LENGTH
+    ),
+    hashes.SHA256()
+)
+```
 
-1. **Proactive Security**: Build security in from the start
-2. **Compliance Ready**: Meet regulatory requirements automatically
-3. **Threat Prevention**: Identify and mitigate threats early
-4. **Continuous Monitoring**: Real-time security posture assessment
-
-### For Organizations
-
-1. **Risk Management**: Quantified risk assessment and mitigation
-2. **Audit Trail**: Comprehensive security logging and monitoring
-3. **Zero Trust**: Never trust, always verify security model
-4. **Scalable Security**: Security that grows with your organization
-
----
-
-## 📚 Research Attribution
-
-**Security Research**: Based on OWASP Top 10 2021, NIST Cybersecurity Framework, and zero-trust architecture principles
-
-**Compliance Frameworks**: SOC 2, ISO 27001, GDPR, CCPA implementation patterns
-
-**Last Updated**: 2025-11-12
-
----
+**Use Case**: Protecting sensitive data with AES-256 encryption, bcrypt password hashing, RSA digital signatures.
 
 ---
 
-## Advanced Patterns
+## 📖 Advanced Documentation
 
-## 🔗 Integration with Alfred Workflow
+This Skill uses Progressive Disclosure. For detailed patterns:
 
-### Command Integration
-
-**Security Assessment**:
-- Use: Security expert agent for threat modeling
-- Tools: STRIDE analysis, vulnerability scanning
-
-**Compliance Validation**:
-- Use: QA validation agent for compliance checks
-- Tools: SOC 2, ISO 27001, GDPR validation
-
-### Skill Dependencies
-
-- `moai-domain-cloud`: Cloud security patterns
-- `moai-alfred-dev-guide`: Secure development practices
-- `moai-alfred-best-practices`: Security best practices
+- **[modules/owasp-compliance.md](modules/owasp-compliance.md)** - OWASP Top 10 2021 detailed patterns
+- **[modules/zero-trust-architecture.md](modules/zero-trust-architecture.md)** - Zero-trust implementation patterns
+- **[modules/threat-modeling.md](modules/threat-modeling.md)** - STRIDE & PASTA methodologies
+- **[modules/devsecops-automation.md](modules/devsecops-automation.md)** - Security CI/CD integration
+- **[modules/cryptography-standards.md](modules/cryptography-standards.md)** - Encryption & hashing patterns
+- **[modules/reference.md](modules/reference.md)** - API reference, compliance checklists, tools
 
 ---
 
+## 🎯 Security Assessment Workflow
+
+**Step 1**: Identify system components (architecture)
+**Step 2**: Apply threat modeling (STRIDE analysis)
+**Step 3**: Map to OWASP Top 10 vulnerabilities
+**Step 4**: Design security controls (zero-trust)
+**Step 5**: Implement cryptography standards
+**Step 6**: Automate with DevSecOps pipeline
 
 ---
 
-## Works Well With
+## 🔗 Integration with Other Skills
 
-- `moai-security-api` - API security patterns and best practices
-- `moai-security-auth` - Authentication and authorization implementations
-- `moai-security-encryption` - Cryptography and encryption patterns
-- `moai-security-owasp` - OWASP Top 10 compliance validation
-- `moai-security-zero-trust` - Zero-trust architecture patterns
-- `moai-domain-backend` - Backend security integration
-- `moai-domain-devops` - DevSecOps automation
+**Complementary Skills**:
+- Skill("moai-security-api") - API security patterns
+- Skill("moai-security-identity") - Identity & access management
+- Skill("moai-security-owasp") - OWASP compliance validation
+- Skill("moai-security-zero-trust") - Zero-trust architecture
+- Skill("moai-domain-cloud") - Cloud security patterns
+- Skill("moai-domain-devops") - DevOps infrastructure
+
+---
+
+## 📈 Version History
+
+**1.1.0** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure
+- ✨ 5 Core Patterns highlighted
+- ✨ Modularized advanced content
+
+**1.0.0** (2025-11-12)
+- ✨ OWASP Top 10 compliance
+- ✨ Zero-trust architecture
+- ✨ Threat modeling (STRIDE)
 
 ---
 
-## Best Practices
-
-### ✅ DO
-- **Apply Defense in Depth** - Multiple layers of security controls
-- **Use Context7 security patterns** - Latest vulnerability protection techniques
-- **Implement Zero Trust** - Never trust, always verify (authentication + authorization)
-- **Apply OWASP Top 10 compliance** - Protect against A01-A10 vulnerabilities
-- **Use secure cryptography** - Modern algorithms (AES-256, SHA-256, bcrypt)
-- **Enable security logging** - Comprehensive audit trail for security events
-- **Conduct regular threat modeling** - STRIDE methodology for risk assessment
-
-### ❌ DON'T
-- **Store plain-text secrets** - Use encryption and secrets management (HashiCorp Vault)
-- **Skip input validation** - Always validate and sanitize user input
-- **Use weak cryptography** - Avoid MD5, SHA-1, or weak key sizes
-- **Ignore security updates** - Regularly update dependencies and patch vulnerabilities
-- **Skip penetration testing** - Regular security assessments required
-- **Trust client-side validation** - Always validate on server-side
-
----
+**Maintained by**: alfred
+**Domain**: Enterprise Security
+**Generated with**: MoAI-ADK Skill Factory

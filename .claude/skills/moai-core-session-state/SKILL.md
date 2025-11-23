@@ -1,17 +1,16 @@
 ---
 name: moai-core-session-state
 description: Enterprise session state management, token budget optimization, runtime tracking
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - authentication
-  - core
-  - session
-  - state
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: session, moai, state, core  
+
 
 ## Quick Reference
 
@@ -303,3 +302,4 @@ Latest stable version: 7.2
 - `moai-cc-agents` - Agent state management across sessions
 
 ---
+

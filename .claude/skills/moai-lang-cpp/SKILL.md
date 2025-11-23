@@ -1,16 +1,16 @@
 ---
 name: moai-lang-cpp
 description: C++23 best practices with Google Test 1.15, clang-format 19, and modern C++ standards.
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - cpp
-  - lang
-  - testing
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cpp, lang, moai  
+
 
 ## Quick Reference (30 seconds)
 

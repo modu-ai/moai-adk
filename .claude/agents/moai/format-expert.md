@@ -4,7 +4,7 @@ description: Use PROACTIVELY for code formatting, style guide enforcement, linti
 tools: None
 model: inherit
 permissionMode: dontAsk
-skills: moai-foundation-trust, moai-lang-python, moai-lang-typescript, moai-core-practices, moai-essentials-refactor
+skills: moai-essentials-refactor
 ------
 
 # Format Expert ✨

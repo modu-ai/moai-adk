@@ -4,7 +4,7 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-git, moai-change-logger, moai-core-session-state
+skills: 
 ------
 
 # Git Manager - Agent dedicated to Git tasks
@@ -15,31 +15,25 @@ skills: moai-foundation-git, moai-change-logger, moai-core-session-state
 
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
-## 🎯 GitHub Flow 3-Mode System (v1.0.0+)
+## 🎯 Selection-Based GitHub Flow Overview (v0.26.0+)
 
-This agent implements **GitHub Flow 3-Mode System** - environment-specific Git strategies:
+This agent implements **Selection-Based GitHub Flow** - a simple Git strategy with manual mode selection:
 
-| Aspect | Manual ⭐ (Local) | Personal (GitHub Individual) | Team (GitHub Team) |
-|--------|-------------|----------|--------|
-| **Environment** | Local only | GitHub | GitHub |
-| **GitHub Integration** | ❌ No | ✅ Yes | ✅ Yes |
-| **Base Branch** | `main` | `main` | `main` |
-| **Workflow** | GitHub Flow (manual) | GitHub Flow (auto) | GitHub Flow (auto + governance) |
-| **Branch Creation** | 🙋 Manual | 🤖 Auto | 🤖 Auto |
-| **TDD Commits** | 🤖 Auto | 🤖 Auto | 🤖 Auto |
-| **PR Creation** | ❌ No | 💡 Suggested | 🤖 Auto (Draft) |
-| **Push** | 🙋 Manual | 🤖 Auto | 🤖 Auto |
-| **Code Review** | N/A | Optional | Required (min_reviewers: 1) |
-| **Branch Protection** | N/A | N/A | ✅ Yes (main) |
-| **Hooks** | warn/enforce | enforce/enforce | enforce/enforce |
-| **Best For** | Full Git control | Solo projects | Team collaboration |
-| **Preset Config** | `manual-local.json` | `personal-github.json` | `team-github.json` |
+| Aspect | Personal Mode | Team Mode |
+|--------|---------------|-----------|
+| **Selection** | Manual (enabled: true/false) | Manual (enabled: true/false) |
+| **Base Branch** | `main` | `main` |
+| **Workflow** | GitHub Flow | GitHub Flow |
+| **Release** | Tag on main → PyPI | Tag on main → PyPI |
+| **Release Cycle** | 10 minutes | 10 minutes |
+| **Conflicts** | Minimal (main-based) | Minimal (main-based) |
+| **Code Review** | Optional | Required (min_reviewers: 1) |
+| **Deployment** | Continuous | Continuous |
+| **Best For** | 1-2 developers | 3+ developers |
 
-**Key Advantage**: Three distinct modes for different environments. Mode selection via `git_strategy.mode` in `.moai/config/config.json`. Preset files in `.moai/config/presets/` contain full automation configuration.
+**Key Advantage**: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
-**Mode Detection**: This agent reads `git_strategy.mode` and `git_strategy.environment` from config to determine behavior automatically.
-
-This is a dedicated agent that optimizes and processes all Git operations in {{PROJECT_NAME}} for each 3-mode system.
+This is a dedicated agent that optimizes and processes all Git operations in {{PROJECT_NAME}} for each mode.
 
 ## 🎭 Agent Persona (professional developer job)
 

@@ -1,84 +1,237 @@
 ---
 name: moai-nextra-architecture
-description: Enterprise Nextra documentation framework architecture with performance optimization
-version: 1.0.0
+description: Enterprise Nextra documentation framework with Next.js
+version: 1.0.1
 modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - architecture
-  - nextra
-category_tier: special
 ---
 
-## Quick Reference (30 seconds)
+## 📊 Skill Metadata
 
-# Skill: Nextra Architecture Expert
-
-**Enterprise documentation framework architecture** for Nextra-based static sites with Next.js integration, MDX content management, and production deployment optimization.
-
-**Core Capabilities**:
-- Framework configuration and theming
-- Content architecture and file organization
-- Performance optimization and SEO
-- Mobile-first responsive design
-- Accessibility compliance (WCAG 2.1)
+**Name**: moai-nextra-architecture
+**Domain**: Documentation & Static Site Generation
+**Freedom Level**: high
+**Target Users**: Documentation architects, technical writers, developers
+**Invocation**: Skill("moai-nextra-architecture")
+**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed configs)
+**Last Updated**: 2025-11-23
+**Modularized**: true
 
 ---
 
-## Modules
+## 🎯 Quick Reference (30 seconds)
 
-### 1. [Framework Core & Configuration](modules/framework-core-configuration.md)
-Nextra setup, theme configuration, Next.js integration, and build optimization patterns.
+**Purpose**: Build professional documentation sites with Nextra + Next.js.
 
-**Topics**:
-- `theme.config.tsx` configuration
-- `next.config.js` optimization
-- MDX plugin integration
-- Custom theme development
+**Nextra Advantages**:
+- Zero config MDX (Markdown + JSX seamlessly)
+- File-system routing (automatic routes)
+- Performance optimized (code splitting, prefetching)
+- Theme system (pluggable, customizable)
+- i18n built-in (internationalization)
 
-### 2. [Content Architecture & Optimization](modules/content-architecture-optimization.md)
-Directory structure, content patterns, search optimization, and performance tuning.
-
-**Topics**:
-- Optimal project structure
-- MDX content patterns
-- Search implementation
-- Client-side optimization
-
-### 3. [Advanced Deployment & Patterns](modules/advanced-deployment-patterns.md)
-Mobile optimization, accessibility, SEO, production deployment, and CI/CD integration.
-
-**Topics**:
-- Mobile-first layouts
-- WCAG 2.1 compliance
-- SEO metadata configuration
-- Static export optimization
+**Core Files**:
+- `pages/` - Documentation pages (MDX)
+- `theme.config.tsx` - Site configuration
+- `_meta.js` - Navigation structure
 
 ---
 
-## Deployment Checklist
+## 📚 Core Patterns (5-10 minutes)
 
-- [ ] Theme configuration optimized
-- [ ] Content structure organized
-- [ ] Search index generated
-- [ ] Mobile responsiveness verified
-- [ ] Accessibility validated
-- [ ] SEO metadata complete
-- [ ] Static export configured
-- [ ] Performance metrics validated
+### Pattern 1: Project Structure
+
+**Key Concept**: Organize documentation files logically
+
+**Recommended Structure**:
+```
+docs/
+├── pages/
+│   ├── index.mdx          # Homepage
+│   ├── getting-started/
+│   │   ├── _meta.js       # Section config
+│   │   ├── index.mdx
+│   │   └── installation.mdx
+│   ├── guides/
+│   │   ├── _meta.js
+│   │   ├── basics.mdx
+│   │   └── advanced.mdx
+│   └── api/
+│       ├── _meta.js
+│       └── reference.mdx
+├── public/                 # Static assets
+├── theme.config.tsx        # Main config
+├── next.config.js          # Next.js config
+└── package.json
+```
+
+### Pattern 2: Theme Configuration
+
+**Key Concept**: Customize site appearance and behavior
+
+**Essential Config**:
+```typescript
+const config: DocsThemeConfig = {
+  // Branding
+  logo: <span>My Docs</span>,
+  logoLink: '/',
+
+  // Navigation
+  project: { link: 'https://github.com/...' },
+  docsRepositoryBase: 'https://github.com/.../tree/main',
+
+  // Sidebar
+  sidebar: {
+    defaultMenuCollapseLevel: 1,
+    toggleButton: true,
+  },
+
+  // Table of contents
+  toc: { backToTop: true },
+
+  // Footer
+  footer: { text: 'Built with Nextra' },
+};
+```
+
+### Pattern 3: Navigation Structure (_meta.js)
+
+**Key Concept**: Control sidebar menu and page ordering
+
+**Example**:
+```javascript
+// pages/guides/_meta.js
+export default {
+  'index': 'Overview',
+  'getting-started': 'Getting Started',
+  'basics': 'Basic Concepts',
+  'advanced': 'Advanced Topics',
+  '---': '', // Separator
+  'faq': 'FAQ',
+};
+```
+
+### Pattern 4: MDX Content & JSX Integration
+
+**Key Concept**: Mix Markdown with React components
+
+**Example**:
+```mdx
+# My Documentation
+
+<div className="bg-blue-100 p-4">
+  <h3>Important Note</h3>
+  <p>You can embed React components directly!</p>
+</div>
+
+## Code Examples
+
+export const MyComponent = () => (
+  <button onClick={() => alert('Clicked!')}>
+    Click me
+  </button>
+);
+
+<MyComponent />
+```
+
+### Pattern 5: Search & SEO Optimization
+
+**Key Concept**: Make documentation discoverable
+
+**Config**:
+```typescript
+// theme.config.tsx
+const config: DocsThemeConfig = {
+  // Enable search
+  search: {
+    placeholder: 'Search docs...',
+  },
+
+  // SEO metadata
+  head: (
+    <>
+      <meta name="og:title" content="My Documentation" />
+      <meta name="og:description" content="Complete guide" />
+      <meta name="og:image" content="/og-image.png" />
+    </>
+  ),
+
+  // Analytics
+  useNextSeoProps() {
+    return {
+      titleTemplate: '%s - My Docs'
+    }
+  },
+};
+```
 
 ---
 
-## Version History
+## 📖 Advanced Documentation
 
-**v4.0.0** (2025-11-21)
-- Modularized structure (3 focused modules)
-- Enhanced performance patterns
-- Production deployment optimization
+This Skill uses Progressive Disclosure. For detailed patterns:
+
+- **[modules/configuration.md](modules/configuration.md)** - Complete theme.config reference
+- **[modules/mdx-components.md](modules/mdx-components.md)** - MDX component library
+- **[modules/i18n-setup.md](modules/i18n-setup.md)** - Internationalization guide
+- **[modules/deployment.md](modules/deployment.md)** - Hosting & deployment
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory  
-**Last Updated**: 2025-11-21  
-**Optimization**: Modularized for progressive loading
+## 🎨 Theme Options
+
+**Built-in Themes**:
+- **nextra-theme-docs** (recommended for documentation)
+- **nextra-theme-blog** (for blogs)
+
+**Customization**:
+- CSS variables for colors
+- Custom sidebar components
+- Footer customization
+- Navigation layout
+
+---
+
+## 🚀 Deployment
+
+**Popular Platforms**:
+- **Vercel** (zero-config, recommended)
+- **GitHub Pages** (free, self-hosted)
+- **Netlify** (flexible, CI/CD)
+- **Custom servers** (full control)
+
+**Vercel Deployment**:
+```bash
+npm install -g vercel
+vercel
+# Select project and deploy
+```
+
+---
+
+## 🔗 Integration with Other Skills
+
+**Complementary Skills**:
+- Skill("moai-docs-generation") - Auto-generate docs from code
+- Skill("moai-docs-unified") - Validate documentation quality
+- Skill("moai-cc-claude-md") - Markdown formatting
+
+---
+
+## 📈 Version History
+
+**1.0.1** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure
+- ✨ Configuration patterns highlighted
+- ✨ MDX integration guide
+
+**1.0.0** (2025-11-12)
+- ✨ Nextra architecture guide
+- ✨ Theme configuration
+- ✨ i18n support
+
+---
+
+**Maintained by**: alfred
+**Domain**: Documentation Architecture
+**Generated with**: MoAI-ADK Skill Factory

@@ -1,16 +1,19 @@
 ---
+
 name: moai-lang-r
-description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - lang
-  - r
-  - testing
-category_tier: 1
+description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis
+  patterns.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: r, lang, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -20,9 +23,7 @@ category_tier: 1
 
 _Documentation links updated 2025-10-22_
 
----
 
----
 
 ## Implementation Guide
 
@@ -36,7 +37,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 - ✅ Latest tool versions (2025-10-22)
 - ✅ TDD workflow support
 
----
 
 ## When to Use
 
@@ -50,7 +50,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 - Design new features
 - Troubleshoot issues
 
----
 
 ## Tool Version Matrix (2025-10-22)
 
@@ -60,7 +59,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 | **testthat** | 3.2.2 | Primary | ✅ Current |
 | **lintr** | 3.2.0 | Primary | ✅ Current |
 
----
 
 ## Inputs
 
@@ -86,14 +84,12 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 - Integration with `moai-foundation-langs` for language detection
 - Integration with `moai-foundation-trust` for quality gates
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
 - **v1.0.0** (2025-03-29): Initial Skill release
 
----
 
 ## Works Well With
 
@@ -101,7 +97,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 - `moai-alfred-code-reviewer` (code review)
 - `moai-essentials-debug` (debugging support)
 
----
 
 ## Best Practices
 
@@ -117,7 +112,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 - Ignore security warnings
 - Mix testing frameworks
 
----
 
 ## Advanced Patterns
 
@@ -125,7 +119,6 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 
 
 
----
 
 ## Context7 Integration
 

@@ -1,18 +1,19 @@
 ---
+
 name: moai-domain-mobile-app
-description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+, Capacitor 6.x, cross-platform patterns, testing, CI/CD
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - app
-  - domain
-  - mobile
-  - testing
-  - typescript
-category_tier: 2
+description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+,
+  Capacitor 6.x, cross-platform patterns, testing, CI/CD
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: react, moai, app, mobile, domain  
+
 
 ## Quick Reference (30 seconds)
 
@@ -24,7 +25,6 @@ category_tier: 2
 > **Technology Stack**: Modern async mobile development with CI/CD automation
 > **Focus**: Cross-platform strategies, performance optimization, production deployment
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -88,7 +88,6 @@ class MyApp extends StatelessWidget {
 - ✅ Performance optimization and battery management
 - ✅ E2E automation and CI/CD integration
 
----
 
 ### Level 2: Practical Implementation (Essential Patterns)
 
@@ -174,7 +173,6 @@ const OptimizedImage = ({ uri, style, resizeMode, width, height }) => {
 };
 ```
 
----
 
 ### Level 3: Advanced Integration (Complex Scenarios)
 
@@ -277,9 +275,7 @@ const AppAnalytics = Analytics.getAnalytics({
 Analytics.track('screen_view', { screen: 'Home', platform: platform });
 ```
 
----
 
----
 
 ## Implementation Guide
 
@@ -293,7 +289,6 @@ Analytics.track('screen_view', { screen: 'Home', platform: platform });
 | 200K+ Icons | Iconify (universal) | Complete coverage |
 | Compact UI | Radix Icons (~5KB) | Minimal bundle |
 
----
 
 ## 📊 Technology Comparison
 
@@ -304,7 +299,6 @@ Analytics.track('screen_view', { screen: 'Home', platform: platform });
 | **Capacitor** | 500+ | Hybrid apps | Web + native | Medium |
 | **Ionic** | 1300+ | Hybrid apps | Angular/React | Medium |
 
----
 
 ## 🔗 Related Skills
 
@@ -313,14 +307,12 @@ Analytics.track('screen_view', { screen: 'Home', platform: platform });
 - `Skill("moai-domain-devops")` - CI/CD and deployment
 - `Skill("moai-domain-backend")` - API integration and data management
 
----
 
 **Version**: 4.0.0 Enterprise
-**Last Updated**: 2025-11-22
+**Last Updated**: 2025-11-13
 **Status**: Production Ready
 **Stack**: React Native 0.76+, Flutter 3.24+, Capacitor 6.x
 
----
 
 ## Advanced Patterns
 ## Context7 Integration
@@ -346,3 +338,7 @@ Latest stable versions:
 - Flutter: 3.24+ (Dart 3.5+, November 2025)
 - Expo: 52.x (EAS Build/Submit, November 2025)
 - React Navigation: 6.x (November 2025)
+
+
+
+

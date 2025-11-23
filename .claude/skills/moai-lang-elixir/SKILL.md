@@ -1,19 +1,19 @@
 ---
+
 name: moai-lang-elixir
 description: Elixir functional programming, OTP patterns, and Phoenix framework best practices
-version: 1.0.0
-modularized: false
-allowed-tools:
-  - Read
-  - Bash
-  - WebFetch
-last_updated: 2025-11-22
-compliance_score: 66
-auto_trigger_keywords:
-  - elixir
-  - lang
-category_tier: 1
+allowed-tools: [Read, Bash, WebFetch]
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, elixir, moai  
+
 
 # Elixir Functional Programming — Enterprise
 
@@ -35,7 +35,6 @@ Elixir는 함수형 프로그래밍, 불변성(Immutability), OTP 감독 트리(
 - **Ecto 3.11**: 데이터베이스 라이브러리 (쿼리 빌더, 마이그레이션)
 - **GenServer**: 일반 서버 동작 (상태 관리, 동시성 처리)
 
----
 
 ## Implementation Guide
 
@@ -236,7 +235,6 @@ defmodule MyApp.CounterLive do
 end
 ```
 
----
 
 ## Best Practices
 
@@ -255,7 +253,6 @@ end
 - **깊은 중첩**: 패턴 매칭으로 가독성 향상
 - **프로세스 과다 생성**: 풀 구조 활용
 
----
 
 ## Works Well With
 
@@ -263,6 +260,5 @@ end
 - `moai-domain-devops` (배포 및 모니터링)
 - `moai-domain-database` (데이터 모델링)
 
----
 
 **Version**: 2.0.0 | **Last Updated**: 2025-11-21 | **Lines**: 255

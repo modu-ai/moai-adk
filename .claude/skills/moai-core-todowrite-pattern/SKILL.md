@@ -1,16 +1,18 @@
 ---
+
 name: moai-core-todowrite-pattern
 description: Comprehensive TodoWrite task tracking and state management patterns
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - core
-  - pattern
-  - todowrite
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: pattern, todowrite, moai, core  
+
 
 ## Quick Reference
 
@@ -30,7 +32,6 @@ Master TodoWrite task lifecycle management with production-proven patterns from 
 4. Complete history tracking and audit logs
 5. Progress statistics and reporting
 
----
 
 ## Implementation Guide
 
@@ -164,7 +165,6 @@ class TaskStateManager:
         return ALLOWED_TRANSITIONS.get(task.state, [])
 ```
 
----
 
 ## Advanced Patterns
 
@@ -373,7 +373,6 @@ Based on 18,075 production examples:
 - Cache statistics for frequently accessed specs
 
 
----
 
 ## Context7 Integration
 

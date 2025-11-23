@@ -1,18 +1,22 @@
 ---
+
 name: moai-core-config-schema
-description: Enterprise configuration schema validation and management orchestrator with JSON Schema v2024-12, Context7 integration, semantic versioning compliance, environment variable management, secrets...
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - config
-  - core
-  - schema
-  - security
-  - testing
-category_tier: 1
+description: Enterprise configuration schema validation and management orchestrator
+  with JSON Schema v2024-12, Context7 integration, semantic versioning compliance,
+  environment variable management, secrets handling, multi-environment support, and
+  configuration-as-code best practices; activates for config validation, schema enforcement,
+  environment setup, secrets management, and configuration audits
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: config, moai, core, schema  
+
 
 ## Quick Reference (30 seconds)
 
@@ -23,14 +27,12 @@ category_tier: 1
 - `moai-alfred-practices` (Best practices patterns)
 - `moai-foundation-specs` (Specification management)
 
----
 
 **For detailed schema reference**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -38,7 +40,6 @@ category_tier: 1
 
 Provides comprehensive guidance for managing project configuration with JSON Schema validation, environment-specific overrides, secrets management, semantic versioning compliance, and configuration-as-code best practices.
 
----
 
 ## Configuration Hierarchy (3-Layer)
 
@@ -50,8 +51,7 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
   "project": {
     "name": "moai-adk",
     "version": "0.22.5",
-    "description": "SPEC-First TDD Development Kit",
-    "owner": "Your Name"
+    "description": "SPEC-First TDD Development Kit"
   },
   "language": {
     "primary": "en",
@@ -67,10 +67,6 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
       "auto_enabled": false,
       "_description": "Two-level control for branch creation. prompt_always: ask on every SPEC. auto_enabled: enable auto-creation after user approval (Personal/Team modes only)."
     }
-  },
-  "github": {
-    "owner": "your-github-username",
-    "repo": "moai-adk"
   },
   "document_management": {
     "enabled": true,
@@ -124,91 +120,6 @@ LOG_LEVEL=debug
 - NEVER committed to repo
 - Used for local testing with real services
 
----
-
-## GitHub Flow 3-Mode Git System Configuration
-
-### Overview
-
-The 3-Mode system provides three distinct Git workflows, all controlled by a **common branch creation setting** (`branch_creation.prompt_always`):
-
-**Modes**:
-- **Manual**: Local-only Git, no GitHub integration
-- **Personal**: GitHub personal projects, semi-automated
-- **Team**: GitHub team projects, full automation with code review
-
-**Common Setting**:
-```json
-"branch_creation": {
-  "prompt_always": true  // true: ask user, false: auto-decide
-}
-```
-
-### Mode 1: Manual (Local Git Only)
-
-```json
-{
-  "git_strategy": {
-    "mode": "manual",
-    "environment": "local",
-    "github_integration": false,
-    "branch_creation": {
-      "prompt_always": true
-    }
-  }
-}
-```
-
-**Behavior**:
-- When `prompt_always: true`: Ask user on every SPEC: "브랜치를 생성하시겠습니까?"
-  - Yes → Create feature/SPEC-XXX branch
-  - No → Use current branch
-- When `prompt_always: false`: Skip branch creation, work on current branch
-
-### Mode 2: Personal (GitHub Individual Projects)
-
-```json
-{
-  "git_strategy": {
-    "mode": "personal",
-    "environment": "github",
-    "github_integration": true,
-    "branch_creation": {
-      "prompt_always": true
-    }
-  }
-}
-```
-
-**Behavior**:
-- When `prompt_always: true`: Ask user on every SPEC
-  - Yes → Auto-create feature/SPEC-XXX and push
-  - No → Commit to current branch
-- When `prompt_always: false`: Auto-create feature/SPEC-XXX with auto-push
-
-### Mode 3: Team (GitHub Team Projects with Code Review)
-
-```json
-{
-  "git_strategy": {
-    "mode": "team",
-    "environment": "github",
-    "github_integration": true,
-    "branch_creation": {
-      "prompt_always": true
-    }
-  }
-}
-```
-
-**Behavior**:
-- When `prompt_always: true`: Always ask user (but team mode recommends branch creation)
-  - Yes → Auto-create feature/SPEC-XXX + Draft PR + push
-  - No → Not recommended (bypasses PR workflow)
-- When `prompt_always: false`: Auto-create feature/SPEC-XXX + Draft PR + push
-- Team review required before merge
-
----
 
 ## JSON Schema v2024-12 Validation
 
@@ -255,7 +166,6 @@ The 3-Mode system provides three distinct Git workflows, all controlled by a **c
 }
 ```
 
----
 
 ## Configuration Validation Checklist
 
@@ -297,7 +207,6 @@ The 3-Mode system provides three distinct Git workflows, all controlled by a **c
 config/.env*
 ```
 
----
 
 ## Environment Management
 
@@ -332,7 +241,6 @@ function loadConfig(environment: string) {
 }
 ```
 
----
 
 ## Secrets Management Best Practices
 
@@ -356,7 +264,6 @@ function loadConfig(environment: string) {
 - ❌ Commit credentials to `.gitignore`
 - ❌ Use same secret across environments
 
----
 
 ## Git Safety for Configuration
 
@@ -415,7 +322,6 @@ fi
 exit 0
 ```
 
----
 
 ## Semantic Versioning in Config
 
@@ -436,7 +342,6 @@ exit 0
 - **Pre-release**: Experimental, not production-ready
 - **Build metadata**: Informational only, doesn't affect version precedence
 
----
 
 ## Configuration-as-Code Best Practices
 
@@ -518,8 +423,9 @@ function validateSecrets(config: AppConfig): void {
 }
 ```
 
----
 
----
 
 ## Advanced Patterns
+
+
+

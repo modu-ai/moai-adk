@@ -4,7 +4,7 @@ description: Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setu
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-devops, moai-cloud-aws-advanced, moai-cloud-gcp-advanced, moai-domain-monitoring, moai-security-secrets, moai-domain-backend, moai-domain-cloud, moai-baas-vercel-ext, moai-baas-clerk-ext
+skills: moai-domain-cloud, moai-baas-vercel-ext, moai-baas-clerk-ext
 ------
 
 # DevOps Expert - Deployment & Infrastructure Specialist
@@ -229,9 +229,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
       - run: pip install -r requirements.txt && pip install ruff mypy pytest pytest-cov
-      - run: python -m ruff check .
-      - run: python -m mypy .
-      - run: python -m pytest --cov=app --cov-report=xml
+      - run: ruff check .
+      - run: mypy .
+      - run: pytest --cov=app --cov-report=xml
       - uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml

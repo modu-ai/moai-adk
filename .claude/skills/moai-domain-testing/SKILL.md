@@ -1,15 +1,19 @@
 ---
+
 name: moai-domain-testing
-description: Enterprise testing framework with pytest 8.4.x, Vitest 4.x, Playwright 1.48.x, Testing Library 15.x, httpx 0.28.x, k6 load testing, and accessibility testing
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - domain
-  - testing
-category_tier: 2
+description: Enterprise testing framework with pytest 8.4.x, Vitest 4.x, Playwright
+  1.48.x, Testing Library 15.x, httpx 0.28.x, k6 load testing, and accessibility testing
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: domain, moai, testing  
+
 
 ## Quick Reference (30 seconds)
 
@@ -148,9 +152,7 @@ test('user can submit form with valid data', async () => {
 - ✅ Multi-browser E2E testing
 - ✅ Accessibility compliance testing
 
----
 
----
 
 ## Implementation Guide
 
@@ -167,7 +169,6 @@ test('user can submit form with valid data', async () => {
 
 **Focus**: Production-grade testing strategies with 85%+ coverage targets
 
----
 
 ## Level 2: Practical Implementation (200-300 lines)
 
@@ -312,7 +313,6 @@ export default function () {
 }
 ```
 
----
 
 ## Level 3: Advanced Integration (50-150 lines)
 
@@ -405,7 +405,6 @@ Testing Pyramid Approach:
 - [x] **Performance**: Tests complete in <30s (unit), <5m (integration), <10m (E2E)
 - [x] **Accessibility**: WCAG 2.1 compliance automated in E2E tests
 
----
 
 **Version**: 4.0.0 Enterprise  
 **Last Updated**: 2025-11-13  
@@ -413,7 +412,6 @@ Testing Pyramid Approach:
 **Coverage Target**: 85%+  
 **Testing Pyramid**: Unit (50-60%), Integration (25-35%), E2E (10-15%)
 
----
 
 ## Advanced Patterns
 
@@ -421,7 +419,6 @@ Testing Pyramid Approach:
 
 
 
----
 
 ## Context7 Integration
 

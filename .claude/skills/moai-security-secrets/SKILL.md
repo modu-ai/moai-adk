@@ -1,15 +1,18 @@
 ---
+
 name: moai-security-secrets
 description: Enterprise Skill for advanced development
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - secrets
-  - security
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: secrets, moai, security  
+
 
 ## Quick Reference (30 seconds)
 
@@ -18,7 +21,6 @@ category_tier: 1
 **Secure Credential Storage, Rotation & Distribution**  
 Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
----
 
 ## Reference
 
@@ -40,7 +42,6 @@ Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-1
 - CWE-798: Hardcoded Passwords
 - OWASP A02:2021: Cryptographic Failures
 
----
 
 **Version**: 4.0.0 Enterprise  
 **Skill Category**: Security (Secret Management)  
@@ -48,7 +49,6 @@ Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-1
 **Time to Implement**: 4-6 hours  
 **Prerequisites**: DevOps, Kubernetes basics, cryptography concepts
 
----
 
 ## Implementation Guide
 
@@ -67,7 +67,6 @@ Secret management is critical infrastructure: API keys, database passwords, and 
 - Building compliance-ready secret systems
 - Using Sealed Secrets in Kubernetes
 
----
 
 ## Level 1: Secret Management Principles
 
@@ -108,7 +107,6 @@ Generate → Distribute → Rotate → Revoke → Destroy
 | Session Secrets | 24 hours | Immediate | Rotate all sessions |
 | Encryption Keys | On breach | N/A | Re-encrypt all data |
 
----
 
 ## Level 2: Implementation Patterns
 
@@ -429,7 +427,6 @@ spec:
           key: password
 ```
 
----
 
 ## Level 3: Zero-Knowledge Architecture
 
@@ -467,8 +464,9 @@ class ZKAuth {
 }
 ```
 
----
 
----
 
 ## Advanced Patterns
+
+
+

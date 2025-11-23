@@ -1,162 +1,201 @@
 ---
 name: moai-project-documentation
-description: Enhanced project documentation with AI-powered features. Modular guide for Product.md, Structure.md, Tech.md creation
-version: 1.0.0
+description: Enhanced project documentation with AI-powered features. Enhanced with Context7 (project)
+version: 1.0.1
 modularized: true
-allowed-tools:
-  - Read
-last_updated: 2025-11-22
-compliance_score: 85
-auto_trigger_keywords:
-  - documentation
-  - project
-category_tier: 1
 ---
 
-## Quick Reference (30 seconds)
+## 📊 Skill Metadata
 
-# moai-project-documentation
-
-**Project Documentation**
-
-> **Primary Agent**: alfred  
-> **Secondary Agents**: none  
-> **Version**: 4.0.0  
-> **Keywords**: project, documentation, git, frontend, kubernetes
+**Name**: moai-project-documentation
+**Domain**: Project Documentation & Planning
+**Freedom Level**: high
+**Target Users**: Project owners, architects, tech leads
+**Invocation**: Skill("moai-project-documentation")
+**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed guides)
+**Last Updated**: 2025-11-23
+**Modularized**: true
 
 ---
 
-## 📖 Progressive Disclosure
+## 🎯 Quick Reference (30 seconds)
 
-### Level 1: Quick Reference (Core Concepts)
+**Purpose**: Guide interactive creation of three core project documentation files:
+- **product.md** - Mission, users, success metrics, feature backlog
+- **structure.md** - Architecture, modules, external integrations, traceability
+- **tech.md** - Technology stack, quality gates, security policy, deployment
 
-#### Purpose
+**Key Pattern**: Document structure depends on **project type**:
 
-Guide interactive creation of three core project documentation files (product.md, structure.md, tech.md) based on project type and user input. Provides templates, examples, checklists, and best practices for each project type (Web App, Mobile App, CLI Tool, Library, Data Science).
+1. **Web Application** (SaaS, REST API, web dashboard)
+   - Focus: User personas, adoption metrics, real-time features
+   - Tech: TypeScript/React, Python/FastAPI, PostgreSQL
 
-#### Core Modules
+2. **Mobile Application** (iOS/Android, Flutter, React Native)
+   - Focus: User retention, app store metrics, offline capability
+   - Tech: Flutter/React Native, SQLite, OAuth/JWT
 
-This skill is modularized for optimal loading:
+3. **CLI Tool / Utility** (deployment tool, package manager)
+   - Focus: Performance, integration, ecosystem adoption
+   - Tech: Go or Python, single binary, <100ms startup
 
-**Module 1: Project Types & Product.md** (`SKILL-types.md`)
-- Project type selection (Web App, Mobile App, CLI, Library, Data Science)
-- Product.md writing guide by project type
-- User personas and success metrics
+4. **Shared Library / SDK** (API client, validator, parser)
+   - Focus: Developer experience, ecosystem adoption
+   - Tech: TypeScript/Python, 90%+ test coverage
 
-**Module 2: Structure.md & Tech.md** (`SKILL-structure-tech.md`)
-- System architecture patterns by project type
-- Technology stack examples
-- Quality gates and deployment strategies
-
-**Module 3: Checklists & Examples** (`SKILL-checklists.md`)
-- Writing checklists for all three documents
-- Common mistakes to avoid
-- Real-world examples by project type
+5. **Data Science / ML Project** (recommendation system, pipeline)
+   - Focus: Model metrics, data quality, scalability
+   - Tech: Python, scikit-learn/PyTorch, MLflow
 
 ---
 
-### Level 2: Practical Implementation (Common Patterns)
+## 📚 Core Patterns (5-10 minutes)
 
-#### Metadata
+### Pattern 1: product.md Structure
 
-- **Name**: moai-project-documentation
-- **Domain**: Project Documentation & Planning
-- **Freedom Level**: high
-- **Target Users**: Project owners, architects, tech leads
-- **Invocation**: Skill("moai-project-documentation")
-- **Progressive Disclosure**: Metadata → Content (full guide) → Resources (examples)
+```markdown
+# Mission & Strategy
+- What problem do we solve?
+- Who are the users?
+- Value proposition
 
-#### Usage Pattern
+# Success Metrics
+- KPIs (measurable targets)
+- Measurement frequency
+- Examples: "80% adoption within 2 weeks"
 
-```
-1. Identify project type (Web/Mobile/CLI/Library/DataScience)
-2. Load SKILL-types.md for Product.md guidance
-3. Load SKILL-structure-tech.md for architecture & tech stack
-4. Load SKILL-checklists.md for validation & examples
-5. Generate customized documentation
+# Next Features (SPEC Backlog)
+- 3-5 prioritized features
 ```
 
-#### Quick Decision Tree
+### Pattern 2: structure.md Structure
 
+```markdown
+# System Architecture
+- Overall design pattern
+- Layers/tiers and interactions
+- Visual diagram or flow
+
+# Core Modules
+- Main building blocks
+- Responsibilities
+- Communication patterns
+
+# External Integrations
+- Dependencies with auth/failure modes
+- Examples: Payment provider, message queue
+
+# Traceability
+- SPEC ID → code mapping
+- Change tracking
 ```
-Start
-  ├─ Web Application? → SKILL-types.md (Web App section)
-  ├─ Mobile App? → SKILL-types.md (Mobile App section)
-  ├─ CLI Tool? → SKILL-types.md (CLI section)
-  ├─ Library/SDK? → SKILL-types.md (Library section)
-  └─ Data Science? → SKILL-types.md (Data Science section)
+
+### Pattern 3: tech.md Structure
+
+```markdown
+# Technology Stack
+- Language(s) with version ranges
+- Framework choices and rationale
+
+# Quality Gates
+- Required for merge (e.g., 85% test coverage)
+- Enforcement tools
+
+# Security Policy
+- Secret management
+- Vulnerability handling
+- Incident response
+
+# Deployment Strategy
+- Target environments
+- Release process
+- Rollback procedure
 ```
+
+### Pattern 4: Common Mistakes to Avoid
+
+❌ **Too Vague**: "Users are developers", "Success is growth"
+✅ **Specific**: "Solo developers, 3-7 person teams", "80% adoption in 2 weeks"
+
+❌ **Over-Specified**: Function names, DB schemas, API endpoints
+✅ **Architecture-Level**: "Caching layer", "External payment provider"
+
+❌ **Inconsistent**: Different user scales across documents
+✅ **Aligned**: All documents agree on target scale and quality standards
+
+❌ **Outdated**: Last updated 6 months ago
+✅ **Fresh**: HISTORY updated each sprint, version incremented
+
+### Pattern 5: Writing Checklists
+
+**product.md Checklist:**
+- [ ] Mission: 1-2 sentences
+- [ ] Users: Specific (not "developers")
+- [ ] Problems: Ranked by priority
+- [ ] Metrics: Measurable with targets
+- [ ] Feature backlog: 3-5 next SPECs
+- [ ] HISTORY section: version included
+
+**structure.md Checklist:**
+- [ ] Architecture: Visualized or clearly described
+- [ ] Modules: Map to git directories
+- [ ] Integrations: List auth, failure modes
+- [ ] Traceability: TAG system explained
+- [ ] Trade-offs: Why this design?
+- [ ] HISTORY section: version included
+
+**tech.md Checklist:**
+- [ ] Language: Version range specified
+- [ ] Quality gates: Failure criteria defined
+- [ ] Security: Covers secrets, audits, incidents
+- [ ] Deployment: Full release flow documented
+- [ ] Environments: dev/test/prod profiles
+- [ ] HISTORY section: version included
 
 ---
 
-### Level 3: Advanced Patterns (Expert Reference)
+## 📖 Advanced Documentation
 
-#### Best Practices Checklist
+This Skill uses Progressive Disclosure. For detailed guides and examples, see:
 
-**Must-Have:**
-- ✅ Project type clearly identified before document generation
-- ✅ All three documents (Product.md, Structure.md, Tech.md) consistent
-- ✅ HISTORY section initialized with v0.1.0
-- ✅ Quality gates specific to project type
-
-**Recommended:**
-- ✅ Use type-specific templates (Web vs CLI vs Library)
-- ✅ Include measurable success metrics
-- ✅ Document architectural trade-offs
-- ✅ Specify version ranges for dependencies
-
-**Security:**
-- 🔒 Never commit credentials in documentation
-- 🔒 Document secret management strategy in Tech.md
-- 🔒 Include security policy and incident response
+- **[modules/quick-start.md](modules/quick-start.md)** - Project type selection guide with detailed examples
+- **[modules/guides.md](modules/guides.md)** - Complete product.md, structure.md, tech.md writing guides per project type
+- **[modules/checklists-examples.md](modules/checklists-examples.md)** - Full examples by project type (Web App, Mobile, CLI, Library, Data Science)
+- **[modules/reference.md](modules/reference.md)** - Advanced patterns, troubleshooting, complete technical references
 
 ---
 
-## 📚 Official References
+## 🔗 Integration with Other Skills
 
-**Primary Documentation:**
-- [SKILL-types.md](/moai-project-documentation/SKILL-types.md) – Project types & Product.md guide
-- [SKILL-structure-tech.md](/moai-project-documentation/SKILL-structure-tech.md) – Architecture & tech stack patterns
-- [SKILL-checklists.md](/moai-project-documentation/SKILL-checklists.md) – Validation checklists & examples
+**Complementary Skills:**
+- Skill("moai-project-config-manager") - Manage project configuration files
+- Skill("moai-core-spec-authoring") - Create SPEC documents for features
+- Skill("moai-docs-toolkit") - Generate API documentation
 
-**Best Practices:**
-- See SKILL-checklists.md for common mistakes and corrections
-- Each project type has specific templates and examples
+**Next Steps:**
+After creating product.md, structure.md, tech.md:
+1. Use Skill("moai-core-spec-authoring") to create SPEC-001 for first feature
+2. Use Skill("moai-docs-toolkit") to generate API documentation
+3. Use Skill("moai-project-config-manager") to update .moai/config/config.json
 
 ---
 
 ## 📈 Version History
 
-**4.0.0** (2025-11-12)
-- ✨ Modular structure with 3 sub-skills
-- ✨ Enhanced Progressive Disclosure
-- ✨ Project type-specific guidance
-- ✨ Comprehensive checklists and examples
-- ✨ Mobile application patterns added
-- ✨ Data Science project templates
+**1.0.1** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure pattern
+- 📚 Content moved to modules/ for better organization
+- ✨ Core patterns highlighted in SKILL.md
+- ✨ Added integration with other Skills
+
+**1.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 5 project type templates
+- ✨ Writing checklists and examples
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (alfred)
-
----
-
-## 🔄 Integration with Other Skills
-
-**Prerequisite Skills:**
-- Skill("moai-foundation-specs") – SPEC format understanding
-- Skill("moai-docs-generation") – Documentation generation
-
-**Complementary Skills:**
-- Skill("moai-docs-unified") – Documentation standards
-- Skill("moai-git-flow") – Version control integration
-
-**Next Steps:**
-- After documentation: Use Skill("moai-foundation-trust") for quality gates
-- For deployment: Use Skill("moai-devops-kubernetes") or Skill("moai-devops-docker")
-
----
-
-**End of Skill** | Updated 2025-11-12
+**Maintained by**: alfred
+**Domain**: Project Documentation & Planning
+**Generated with**: MoAI-ADK Skill Factory

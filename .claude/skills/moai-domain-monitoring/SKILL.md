@@ -1,15 +1,16 @@
 ---
 name: moai-domain-monitoring
 description: Production Monitoring & Observability with Prometheus, Grafana, OpenTelemetry, and Alerting
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - domain
-  - monitoring
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: monitoring, domain, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -159,3 +160,4 @@ Production operations:
 
 **Skills**: Skill("moai-domain-backend"), Skill("moai-domain-devops"), Skill("moai-essentials-perf")
 **Auto-loads**: Monitoring and observability projects
+

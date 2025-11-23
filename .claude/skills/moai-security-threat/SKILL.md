@@ -1,15 +1,18 @@
 ---
+
 name: moai-security-threat
 description: Enterprise Skill for advanced development
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - security
-  - threat
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, threat, security  
+
 
 ## Quick Reference (30 seconds)
 
@@ -18,7 +21,6 @@ category_tier: 1
 **Systematic Threat Modeling with STRIDE & Network Intrusion Detection**  
 Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
----
 
 ## Quick Reference
 
@@ -29,7 +31,6 @@ Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-1
 | ModSecurity | Application (L7) | WAF |
 | Context7 | Intelligence | Threat enrichment |
 
----
 
 ## Implementation Guide
 
@@ -46,7 +47,6 @@ Threat modeling methodology using STRIDE framework combined with network-based a
 - Security incident response planning
 - STRIDE-AI for machine learning model security
 
----
 
 ## Level 1: Foundations
 
@@ -100,7 +100,6 @@ Threats:
 - Elevation: Web server compromise → need container security
 ```
 
----
 
 ## Level 2: Core Patterns
 
@@ -380,7 +379,6 @@ class ModSecurityWAF {
 }
 ```
 
----
 
 ## Checklist
 
@@ -395,9 +393,7 @@ class ModSecurityWAF {
 - [ ] Alert correlation configured
 - [ ] Incident response plan documented
 
----
 
----
 
 ## Advanced Patterns
 
@@ -465,25 +461,4 @@ class ThreatIntelligenceIntegration {
 }
 ```
 
----
 
-
-## Context7 Integration
-
-### Related Libraries & Tools
-- [threat-modeling](/OWASP/threat-modeling): OWASP threat modeling resources
-- [attack-surface-analyzer](/microsoft/AttackSurfaceAnalyzer): Microsoft attack surface analyzer
-- [draw.io](/jgraph/drawio): Diagram tool for threat models
-- [ThreatDragon](/OWASP/threat-dragon): OWASP threat modeling tool
-- [pytm](/nicodemos/pytm): Python threat modeling library
-
-### Official Documentation
-- [OWASP Threat Modeling](https://owasp.org/www-community/Threat_Modeling)
-- [Threat Modeling Manifesto](https://www.threatmodelingmanifesto.org/)
-- [STRIDE](https://en.wikipedia.org/wiki/STRIDE_(security))
-
-### Version-Specific Guides
-Latest stable versions: ThreatDragon, pytm, draw.io
-- [Threat Modeling Process](https://owasp.org/www-community/Threat_Modeling)
-- [STRIDE Methodology](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html)
-- [Risk Assessment](https://cheatsheetseries.owasp.org/cheatsheets/Risk_Rating_Cheat_Sheet.html)

@@ -1,15 +1,18 @@
 ---
+
 name: moai-domain-database
-description: Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS,  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization,  caching strategies, and database...
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - database
-  - domain
-category_tier: 2
+description: Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS,  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization,  caching strategies, and database DevOps automation. Build scalable, resilient  database systems with comprehensive monitoring and disaster recovery.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: monitoring, domain, database, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -69,7 +72,6 @@ AsyncSessionLocal = sessionmaker(
 - [ ] Setup monitoring and alerting
 - [ ] Create disaster recovery procedures
 
----
 
 ## Implementation Guide
 
@@ -417,11 +419,9 @@ CREATE TRIGGER sensitive_data_audit
 7. **Backups**: Implement automated backup with point-in-time recovery
 8. **Replication**: Use logical replication for high availability
 
----
 
 **Enterprise Database Architecture** - Build scalable, secure, and high-performance database systems with modern best practices and comprehensive automation.
 
----
 
 ## Advanced Patterns
 
@@ -450,3 +450,4 @@ Latest stable version: PostgreSQL 17, MySQL 8.4 LTS, MongoDB 8.0, Redis 7.4
 - [MySQL 8.4 What's New](https://dev.mysql.com/doc/relnotes/mysql/8.4/en/)
 - [MongoDB 8.0 Release Notes](https://www.mongodb.com/docs/v8.0/release-notes/)
 - [Redis 7.4 Release Notes](https://raw.githubusercontent.com/redis/redis/7.4/00-RELEASENOTES)
+

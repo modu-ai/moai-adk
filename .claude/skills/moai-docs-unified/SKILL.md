@@ -1,180 +1,219 @@
 ---
 name: moai-docs-unified
-description: Enhanced docs unified with AI-powered features. Modular documentation validation framework
-version: 1.0.0
+description: Enhanced documentation unified validation with AI-powered features
+version: 1.0.1
 modularized: true
-allowed-tools:
-  - Read
-  - Bash
-last_updated: 2025-11-22
-compliance_score: 75
-auto_trigger_keywords:
-  - docs
-  - unified
-category_tier: special
 ---
 
-## Quick Reference (30 seconds)
+## 📊 Skill Metadata
 
-# moai-docs-unified
-
-**Docs Unified**
-
-> **Primary Agent**: doc-syncer  
-> **Secondary Agents**: alfred  
-> **Version**: 4.0.0  
-> **Keywords**: docs, unified, cd, ci, test
+**Name**: moai-docs-unified
+**Domain**: Documentation Management & Quality Assurance
+**Freedom Level**: high
+**Target Users**: Documentation managers, technical writers, developers
+**Invocation**: Skill("moai-docs-unified")
+**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed validation scripts)
+**Last Updated**: 2025-11-23
+**Modularized**: true
 
 ---
 
-## 📖 Progressive Disclosure
+## 🎯 Quick Reference (30 seconds)
 
-### Level 1: Quick Reference (Core Concepts)
+**Purpose**: Comprehensive documentation validation framework with 5 specialized phases.
 
-#### Unified Framework Overview
-
-The **moai-docs-unified** skill provides a complete documentation management ecosystem integrating 5 specialized validation scripts:
-
-**Core Components**:
-- **Phase 1**: Markdown Linting (syntax, structure, links)
-- **Phase 2**: Mermaid Diagram Validation (syntax, rendering, type checking)
-- **Phase 2.5**: Mermaid Detail Extraction (code preview, rendering guide)
-- **Phase 3**: Korean Typography Validation (UTF-8, full-width chars, spacing)
-- **Phase 4**: Comprehensive Report Generation (aggregation, prioritization, recommendations)
+**Core Phases**:
+1. **Markdown Linting** - Syntax, structure, links validation
+2. **Mermaid Diagrams** - Diagram syntax and type checking
+3. **Mermaid Details** - Code extraction and rendering guide
+4. **Korean Typography** - UTF-8, spacing, encoding validation
+5. **Report Generation** - Aggregated quality report
 
 **Key Benefits**:
-- Catch documentation errors before publication
-- Ensure consistency across 4 languages (ko, en, ja, zh)
-- Validate diagram syntax and rendering capability
-- Maintain Korean language best practices
-- Generate actionable quality reports
+- Catch errors before publication
+- Multi-language support (Korean, English, Japanese, Chinese)
+- Diagram syntax validation
+- Typography consistency
+- Actionable recommendations
 
 ---
 
-#### Core Modules
+## 📚 Core Patterns (5-10 minutes)
 
-This skill is modularized for optimal loading:
+### Pattern 1: Documentation Validation Pipeline
 
-**Module 1: Validation Scripts** (`SKILL-scripts.md`)
-- Script 1-5 detailed specifications
-- Execution commands and parameters
-- Output formats and locations
-- Project root auto-detection
+**Key Concept**: Run validation scripts in sequence to catch multiple error types
 
-**Module 2: Integration Patterns** (`SKILL-integration.md`)
-- Single script execution
-- Complete validation pipeline
-- CI/CD integration (GitHub Actions, pre-commit hooks)
-- Makefile, NPM, Docker integration
-- Best practices and error handling
+**Pipeline Flow**:
+1. Run markdown linting on documentation files
+2. Validate all Mermaid diagrams for syntax
+3. Extract Mermaid diagrams for review
+4. Check Korean typography (if applicable)
+5. Generate comprehensive report
 
----
-
-### Level 2: Practical Implementation (Common Patterns)
-
-#### Quick Usage
-
+**Basic Execution**:
 ```bash
-# Quick validation (2 phases)
+# Run complete validation
 uv run .claude/skills/moai-docs-unified/scripts/lint_korean_docs.py
 uv run .claude/skills/moai-docs-unified/scripts/validate_mermaid_diagrams.py
-
-# Full validation (all 5 phases)
-bash .claude/skills/moai-docs-unified/scripts/run_all_validations.sh
-
-# Generate comprehensive report
-uv run .claude/skills/moai-docs-unified/scripts/generate_final_comprehensive_report.py
+uv run .claude/skills/moai-docs-unified/scripts/validate_korean_typography.py
+uv run .claude/skills/moai-docs-unified/scripts/generate_quality_report.py
 ```
 
-#### Validation Workflow
+### Pattern 2: Markdown Structure Validation
 
+**Key Concept**: Ensure consistent markdown structure and formatting
+
+**Common Validations**:
+- **Headers**: H1 unique, proper nesting (H1→H2→H3)
+- **Code blocks**: Language declared, matching delimiters
+- **Links**: Relative paths valid, files exist, HTTPS protocol
+- **Lists**: Consistent markers (-, *, +), proper indentation
+- **Tables**: Column count consistent, alignment markers
+
+**Example Issues**:
 ```
-1. Phase 1: Markdown Linting
-   └─ Check syntax, structure, links → lint_report_ko.txt
+❌ Missing language in code block: ```
+✅ Correct syntax: ```python
 
-2. Phase 2: Mermaid Validation
-   └─ Validate diagram types, syntax → mermaid_validation_report.txt
+❌ Invalid link: [text](../docs/file)
+✅ Correct syntax: [text](../docs/file.md)
 
-3. Phase 2.5: Mermaid Extraction
-   └─ Extract full diagram code → mermaid_detail_report.txt
+❌ Inconsistent list markers: - item1, * item2
+✅ Consistent: - item1, - item2
+```
 
-4. Phase 3: Korean Typography
-   └─ Validate encoding, punctuation → korean_typography_report.txt
+### Pattern 3: Mermaid Diagram Validation
 
-5. Phase 4: Comprehensive Report
-   └─ Aggregate all phases → korean_docs_comprehensive_review.txt
+**Key Concept**: Validate diagram syntax and type compatibility
+
+**Supported Types**:
+- `graph TD/BT/LR/RL` - Flowcharts (top-down, bottom-up, left-right, right-left)
+- `stateDiagram-v2` - State machines
+- `sequenceDiagram` - Sequence diagrams
+- `classDiagram` - Class structures
+- `erDiagram` - Entity relationship diagrams
+- `gantt` - Gantt charts (timelines)
+
+**Validation Checks**:
+- Diagram type recognized
+- Configuration block valid
+- Node/edge relationships valid
+- Syntax errors detected
+- Complexity metrics
+
+### Pattern 4: Korean Typography Rules
+
+**Key Concept**: Maintain Korean language best practices
+
+**Validation Rules**:
+- No full-width ASCII characters (ａ-ｚ should be a-z)
+- Proper spacing around parentheses: `（한글）` vs `(한글)`
+- UTF-8 encoding (no broken characters)
+- Consistent punctuation (，vs, 、vs..)
+- Proper use of Hangul vs Hanja (한글 vs 한漢字)
+
+### Pattern 5: Quality Report Generation
+
+**Key Concept**: Aggregate validation results with actionable recommendations
+
+**Report Contents**:
+- Summary statistics (files, issues, severity)
+- Issue categorization (errors vs warnings)
+- Priority ranking (critical, high, medium, low)
+- Specific file locations and line numbers
+- Recommended fixes
+
+---
+
+## 📖 Advanced Documentation
+
+This Skill uses Progressive Disclosure. For detailed implementation:
+
+- **[modules/validation-scripts.md](modules/validation-scripts.md)** - Complete script specifications
+- **[modules/execution-guide.md](modules/execution-guide.md)** - How to run validations
+- **[modules/troubleshooting.md](modules/troubleshooting.md)** - Common issues and fixes
+- **[modules/reference.md](modules/reference.md)** - API reference and configuration
+
+---
+
+## 🔧 Common Use Cases
+
+### Use Case 1: CI/CD Integration
+
+Run validation on every commit:
+
+```yaml
+# .github/workflows/docs-validation.yml
+on: [push, pull_request]
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate documentation
+        run: |
+          uv run .claude/skills/moai-docs-unified/scripts/lint_korean_docs.py
+          uv run .claude/skills/moai-docs-unified/scripts/validate_mermaid_diagrams.py
+```
+
+### Use Case 2: Pre-Commit Hook
+
+Validate docs before committing:
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+uv run .claude/skills/moai-docs-unified/scripts/lint_korean_docs.py
+if [ $? -ne 0 ]; then
+  echo "Documentation validation failed"
+  exit 1
+fi
+```
+
+### Use Case 3: Documentation Review
+
+Generate report for review team:
+
+```bash
+uv run .claude/skills/moai-docs-unified/scripts/generate_quality_report.py \
+  --path docs/src \
+  --output .moai/reports/review_report.txt \
+  --format detailed
 ```
 
 ---
 
-### Level 3: Advanced Patterns (Expert Reference)
+## 🔗 Integration with Other Skills
 
-#### Best Practices Checklist
+**Complementary Skills**:
+- Skill("moai-docs-generation") - Generate documentation automatically
+- Skill("moai-docs-toolkit") - Document manipulation and conversion
+- Skill("moai-cc-claude-md") - Markdown formatting standards
 
-**Must-Have:**
-- ✅ Run validation before every commit (pre-commit hook)
-- ✅ Run on all pull requests (GitHub Actions)
-- ✅ Store reports in `.moai/reports/`
-- ✅ Fail CI on Priority 1 issues
-
-**Recommended:**
-- ✅ Daily scheduled validation runs
-- ✅ Track quality metrics over time
-- ✅ Archive reports from releases
-- ✅ Provide actionable fix suggestions
-
-**Security:**
-- 🔒 Validate UTF-8 encoding (prevent injection)
-- 🔒 Check external links (prevent broken refs)
-- 🔒 Verify mermaid syntax (prevent XSS in rendered diagrams)
-
----
-
-## 📚 Official References
-
-**Primary Documentation:**
-- [SKILL-scripts.md](/moai-docs-unified/SKILL-scripts.md) – All 5 validation scripts
-- [SKILL-integration.md](/moai-docs-unified/SKILL-integration.md) – CI/CD & automation patterns
-
-**Generated Reports** (`.moai/reports/`):
-- `lint_report_ko.txt` – Markdown linting results
-- `mermaid_validation_report.txt` – Diagram validation
-- `mermaid_detail_report.txt` – Full diagram code extraction
-- `korean_typography_report.txt` – Typography validation
-- `korean_docs_comprehensive_review.txt` – Aggregated quality report
+**Typical Workflow**:
+1. Use moai-docs-generation to create documentation
+2. Use this Skill (moai-docs-unified) to validate output
+3. Use moai-docs-toolkit for additional processing
 
 ---
 
 ## 📈 Version History
 
-**4.0.0** (2025-11-12)
-- ✨ Modular structure with 2 sub-skills
-- ✨ Enhanced Progressive Disclosure
-- ✨ 5-phase validation framework
-- ✨ CI/CD integration patterns
-- ✨ Comprehensive automation examples
+**1.0.1** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure pattern
+- 📚 Scripts moved to modules/ for clarity
+- ✨ Core patterns highlighted in SKILL.md
+- ✨ Added CI/CD and hook integration examples
+
+**1.0.0** (2025-11-12)
+- ✨ Markdown linting with 8 validation categories
+- ✨ Mermaid diagram validation
+- ✨ Korean typography validation
+- ✨ Comprehensive quality reporting
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory    
-**Last Updated**: 2025-11-12  
-**Maintained by**: Primary Agent (doc-syncer)
-
----
-
-## 🔄 Integration with Other Skills
-
-**Prerequisite Skills:**
-- Skill("moai-docs-generation") – Documentation generation
-
-**Complementary Skills:**
-- Skill("moai-project-documentation") – Project docs structure
-- Skill("moai-git-flow") – Version control integration
-
-**Next Steps:**
-- After validation: Use Skill("moai-foundation-trust") for quality gates
-- For publishing: Use Skill("moai-devops-docs-deployment")
-
----
-
-**End of Skill** | Updated 2025-11-12
+**Maintained by**: alfred
+**Domain**: Documentation & Quality Assurance
+**Generated with**: MoAI-ADK Skill Factory

@@ -1,23 +1,24 @@
 ---
-name: moai-core-feedback-templates
-description: Korean language feedback templates for issue types and Alfred commands with localized messaging patterns
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 71
-auto_trigger_keywords:
-  - core
-  - database
-  - feedback
-  - templates
-category_tier: 1
+
+name: moai-alfred-feedback-templates
+description: Korean language feedback templates for issue types and Alfred commands
+  with localized messaging patterns
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: feedback, moai, templates, alfred  
+
 
 ## Quick Reference (30 seconds)
 
 # GitHub 이슈 작성 템플릿 모음 v1.0.0
 
----
 
 ## Implementation Guide
 
@@ -31,7 +32,6 @@ GitHub 이슈를 일관되고 명확하게 작성하기 위한 라벨별 구조�
 - ✅ **일관성**: 팀 전체의 이슈 형식이 통일됨
 - ✅ **추적성**: 모든 중요 정보가 기록됨
 
----
 
 ## 🐛 버그 리포트 템플릿
 
@@ -101,7 +101,6 @@ GitHub 이슈를 일관되고 명확하게 작성하기 위한 라벨별 구조�
 - OS: macOS 14.2
 ```
 
----
 
 ## ✨ 기능 요청 템플릿
 
@@ -162,7 +161,6 @@ GitHub 이슈를 일관되고 명확하게 작성하기 위한 라벨별 구조�
 - 버그 분석 시 필요한 정보를 처음부터 갖춤
 ```
 
----
 
 ## ⚡ 개선 사항 템플릿
 
@@ -221,7 +219,6 @@ AskUserQuestion의 단계를 줄여서 사용 편의성 개선
 - 시간: ~90초 → ~30초 (67% 단축)
 ```
 
----
 
 ## 🔄 리팩토링 템플릿
 
@@ -277,10 +274,8 @@ AskUserQuestion의 단계를 줄여서 사용 편의성 개선
 
 모든 명령어가 동일한 frontmatter 표준:
 ```
----
 name: alfred:X
 skills: [...]
----
 ```
 
 ## 개선 이유
@@ -290,7 +285,6 @@ skills: [...]
 - 자동화: 파싱 스크립트 단순화
 ```
 
----
 
 ## 📚 문서 템플릿
 
@@ -362,7 +356,6 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 - 환경 정보 자동 수집 설명
 ```
 
----
 
 ## ❓ 질문/토론 템플릿
 
@@ -426,7 +419,6 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 - 한국어 지원 일관성
 ```
 
----
 
 ## 📊 템플릿 비교
 
@@ -439,7 +431,6 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 | **docs** | 대상 독자, 구조 | 내용 개요 | 포함 항목 목록 |
 | **question** | 배경, 선택지 | 기준 | 관련 정보 |
 
----
 
 ## 🎯 템플릿 활용 팁
 
@@ -458,7 +449,6 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 - ❌ 환경 정보를 생략하지 마세요
 - ❌ 여러 문제를 한 이슈에 섞지 마세요
 
----
 
 ## 🔗 참고
 
@@ -466,12 +456,13 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 - **라벨 분류법**: `Skill("moai-core-issue-labels")`
 - **이전 버전**: v0.22.5+부터 지원
 
----
 
 **Last Updated**: 2025-11-12
 **Status**: Production Ready (v1.0.0)
 **Language**: Korean (한국어)
 
----
 
 ## Advanced Patterns
+
+
+

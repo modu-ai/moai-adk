@@ -1,16 +1,18 @@
 ---
+
 name: moai-essentials-debug
 description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - debug
-  - essentials
-  - testing
-category_tier: 8
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: debug, moai, essentials  
+
 
 ## Quick Reference
 
@@ -42,7 +44,6 @@ category_tier: 8
 
 **Core Framework**: AI-DEBUG (AI Error Pattern Recognition → Root Cause Analysis → Automated Fix Suggestions → Validation)
 
----
 
 ## Implementation Guide
 
@@ -292,7 +293,6 @@ class AIDebuggingDashboard:
 - ❌ Ignore predictive debugging insights
 - ❌ Apply AI solutions without safety checks
 
----
 
 ## Advanced Patterns
 
@@ -448,7 +448,6 @@ ai_debugging_stage:
 - **Container Orchestration Issues**: AI debugging of Kubernetes/Docker failures
 - **Database Connection Issues**: AI-enhanced database debugging patterns
 
----
 
 ## Related Skills
 
@@ -458,7 +457,6 @@ ai_debugging_stage:
 - `moai-foundation-trust` (AI quality assurance)
 - Context7 MCP (latest debugging patterns and best practices)
 
----
 
 **Last Updated**: 2025-11-21  
 **Status**: Production Ready (Enterprise)  
@@ -486,3 +484,4 @@ Latest stable version: debugpy 1.8.x, Node.js 22 LTS debugger, Chrome DevTools l
 - [Python Debugging Guide](https://realpython.com/python-debugging-pdb/)
 - [Node.js Inspector](https://nodejs.org/api/inspector.html)
 - [Multi-Process Debugging](https://code.visualstudio.com/docs/python/debugging#_debugging-by-attaching-over-a-network-connection)
+

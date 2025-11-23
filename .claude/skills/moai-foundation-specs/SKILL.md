@@ -1,16 +1,16 @@
 ---
 name: moai-foundation-specs
 description: SPEC document management - lifecycle, versioning, approval workflows, SPEC-first TDD integration
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - foundation
-  - specs
-  - testing
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, foundation, specs  
+
 
 ## Quick Reference
 
@@ -239,7 +239,3 @@ Creates PR to develop
 - ✅ Include rationale for non-obvious requirements
 - ✅ Use semantic versioning consistently
 - ✅ Link tests to requirements
-
----
-**Last Updated**: 2025-11-22
-**Status**: Production Ready

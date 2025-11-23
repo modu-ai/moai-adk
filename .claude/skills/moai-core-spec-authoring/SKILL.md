@@ -1,17 +1,18 @@
 ---
+
 name: moai-core-spec-authoring
 description: Complete SPEC document authoring guide with YAML metadata structure (7
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - authentication
-  - authoring
-  - core
-  - spec
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: authoring, moai, core, spec  
+
 
 ## Quick Reference (30 seconds)
 
@@ -29,7 +30,6 @@ category_tier: 1
 ### Quick SPEC Template
 
 ```yaml
----
 code: SPEC-001
 title: Add User Authentication with JWT
 status: draft
@@ -43,7 +43,6 @@ domains:
   - backend
   - security
   - database
----
 
 # SPEC-001: Add User Authentication with JWT
 
@@ -128,9 +127,7 @@ unwanted_behaviors:
 
 **SPEC Document**:
 ```markdown
----
 # SPEC-001: Feature Name
----
 ```
 
 **Test File**:
@@ -270,14 +267,12 @@ unwanted_behaviors:
 **S**ecured: Unwanted Behaviors section with security constraints
 **T**raceable: TAG integration for complete requirement traceability
 
----
 
 **Enterprise   Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
 **Last Updated**: 2025-11-13  
 **Dependencies**: YAML metadata format, EARS specification, TAG system
 **See Also**: [examples.md](./examples.md) for detailed SPEC examples
 
----
 
 ## Implementation Guide
 
@@ -335,7 +330,6 @@ SPEC: The authentication service SHALL return HTTP 429 when a single IP attempts
 #### 7 Required Fields
 
 ```yaml
----
 # SPEC identifier (auto-generated)
 code: SPEC-001
 
@@ -356,7 +350,6 @@ priority: high
 
 # Estimated effort in story points (1-13 scale)
 effort: 8
----
 ```
 
 #### 9 Optional Fields
@@ -499,6 +492,8 @@ Related TEST:
 Per SPEC-001, the system SHALL validate all JWT tokens...
 ```
 
----
 
 ## Advanced Patterns
+
+
+

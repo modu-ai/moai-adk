@@ -1,16 +1,16 @@
 ---
 name: moai-domain-frontend
 description: Enterprise Frontend Development with React 19, Next.js 15, Vue 3.5 and modern frameworks
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - domain
-  - frontend
-  - typescript
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: react, domain, moai, frontend  
+
 
 ## Quick Reference (30 seconds)
 
@@ -197,3 +197,4 @@ npm install zustand react-query @hookform/react axios
 
 **Skills**: Skill("moai-lang-typescript"), Skill("moai-domain-testing"), Skill("moai-lang-html-css")
 **Auto-loads**: React/Vue/Next.js projects with TypeScript
+

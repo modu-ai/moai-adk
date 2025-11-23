@@ -1,16 +1,16 @@
 ---
 name: moai-lang-html-css
 description: HTML5 Semantic Markup & CSS3 with Accessibility and Responsive Design
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - css
-  - html
-  - lang
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, css, moai, html  
+
 
 ## Quick Reference (30 seconds)
 
@@ -190,3 +190,4 @@ npm install -D sass
 
 **Skills**: Skill("moai-domain-frontend"), Skill("moai-essentials-accessibility")
 **Auto-loads**: HTML/CSS files and web projects
+

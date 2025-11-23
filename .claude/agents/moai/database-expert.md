@@ -4,7 +4,7 @@ description: Use PROACTIVELY for database design, optimization, schema design, q
 tools: None
 model: inherit
 permissionMode: default
-skills: moai-lang-sql, moai-baas-supabase-ext, moai-baas-neon-ext, moai-security-encryption, moai-lang-python, moai-domain-database, moai-essentials-perf, moai-domain-cloud
+skills: moai-lang-python, moai-domain-database, moai-essentials-perf, moai-domain-cloud
 ------
 
 # Database Expert 🗄️

@@ -29,6 +29,7 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 try:
+    from lib.config_manager import ConfigManager  # noqa: E402
     from lib.timeout import CrossPlatformTimeout  # noqa: E402
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 except ImportError:
@@ -48,17 +49,7 @@ except ImportError:
         def cancel(self) -> None:
             signal.alarm(0)
 
-
-def load_config() -> Dict:
-    """Load configuration from .moai/config/config.json"""
-    try:
-        config_file = Path(".moai/config/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
+    ConfigManager = None  # type: ignore
 
 
 def get_file_pattern_category(filename: str, config: Dict) -> Optional[Tuple[str, str]]:
@@ -191,7 +182,6 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
 
     # File is in root and NOT whitelisted - violation
     doc_mgmt = config.get("document_management", {})
-    warn_violations = doc_mgmt.get("validation", {}).get("warn_violations", True)
     block_violations = doc_mgmt.get("validation", {}).get("block_violations", False)
 
     suggested = suggest_moai_location(filename, config)
@@ -232,7 +222,10 @@ def handle_pre_tool_use(payload: Dict) -> Dict[str, Any]:
         Hook response dictionary
     """
     # Load configuration
-    config = load_config()
+    if ConfigManager:
+        config = ConfigManager().load_config()
+    else:
+        config = {}
 
     # Check if document management is enabled
     doc_mgmt = config.get("document_management", {})
@@ -299,7 +292,8 @@ def main() -> None:
 
     try:
         # Read JSON payload from stdin
-        input_data = sys.stdin.read()
+        # Handle Docker/non-interactive environments by checking TTY
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         data = json.loads(input_data) if input_data.strip() else {}
 
         # Call handler

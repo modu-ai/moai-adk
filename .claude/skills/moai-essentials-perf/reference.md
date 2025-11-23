@@ -26,6 +26,3 @@ _No specific tool versions (workflow/process Skill)_
 ---
 
 _For detailed usage, see SKILL.md_
-
----
-**Last Updated**: 2025-11-22

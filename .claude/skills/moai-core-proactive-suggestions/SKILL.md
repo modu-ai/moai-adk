@@ -1,16 +1,18 @@
 ---
+
 name: moai-core-proactive-suggestions
 description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - core
-  - proactive
-  - suggestions
-category_tier: 1
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: proactive, suggestions, moai, core  
+
 
 ## Quick Reference
 
@@ -29,7 +31,6 @@ Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assis
 - Developer workflow analysis and optimization strategy
 - Proactive recommendation engine implementation
 
----
 
 ## Implementation Guide
 
@@ -122,25 +123,6 @@ export class ProactiveSuggestionEngine {
 }
 ```
 
----
-
-
-## Context7 Integration
-
-### Related Intelligence Tools
-- [AI Pattern Recognition](/openai/gpt-4): Language models for analysis
-- [Static Analysis](/staticanalysis): Code pattern detection
-- [Machine Learning](/tensorflow/tensorflow): Pattern recognition
-
-### Official Documentation
-- [Suggestion Engine Design](https://en.wikipedia.org/wiki/Recommender_system)
-- [Pattern Recognition Algorithms](https://en.wikipedia.org/wiki/Pattern_recognition)
-
-### Related Modularized Skills
-- `moai-essentials-debug` - Error detection and analysis
-- `moai-essentials-refactor` - Code improvement suggestions
-
----
 
 ## Advanced Patterns
 

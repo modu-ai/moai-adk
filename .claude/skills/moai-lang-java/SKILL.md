@@ -1,206 +1,117 @@
 ---
+
 name: moai-lang-java
-description: Java 21 LTS enterprise development with Spring Boot, JPA, reactive patterns
-version: 1.0.0
-modularized: true
-allowed-tools:
-  - Read
-  - Bash
-  - WebFetch
-last_updated: 2025-11-22
-compliance_score: 75
-auto_trigger_keywords:
-  - java
-  - lang
-  - typescript
-category_tier: 1
+description: Java programming language patterns, object-oriented design, and enterprise
+  application development. Use when building enterprise applications, Android apps,
+  or large-scale systems.
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: lang, java, moai  
+
 
 ## Quick Reference (30 seconds)
 
-**Primary Focus**: Enterprise applications, Spring Boot, Android development  
-**Best For**: Microservices, REST APIs, Android apps, large-scale systems  
-**Key Libraries**: Spring Boot 3.x, Hibernate, Project Reactor  
-**Auto-triggers**: Java development, Spring Boot, enterprise patterns
+# Java Programming Language Skill
 
-**Version Matrix (2025-11-22)**:
-- Java: 21 LTS (stable), 23 (latest)
-- Spring Boot: 3.2.x
-- Hibernate: 6.4.x
-- JUnit: 5.10.x
+Enterprise Java with OOP design patterns, SOLID principles, and modern frameworks.
 
----
+
+## Implementation Guide
 
 ## What It Does
 
-Enterprise Java development with Spring framework, JPA/Hibernate, and reactive programming for building scalable applications.
+Java programming language patterns, object-oriented design, and enterprise application development.
 
-**Core Capabilities**:
-- ✅ Spring Boot enterprise development
-- ✅ JPA/Hibernate database access
-- ✅ Reactive programming with Project Reactor
-- ✅ RESTful API design
-- ✅ Testing with JUnit 5
+**Key capabilities**:
+- ✅ Object-oriented design patterns
+- ✅ Enterprise application architecture
+- ✅ JVM optimization
+- ✅ Spring framework integration
+- ✅ Concurrent programming
 
----
 
 ## When to Use
 
-**Automatic Triggers**:
-- Spring Boot development
-- Enterprise application architecture
-- Android development
-- Microservices design
+- ✅ Building enterprise applications
+- ✅ Creating backend services
+- ✅ Developing large-scale systems
+- ✅ Implementing microservices
 
-**Manual Invocation**:
-```
-Skill("moai-lang-java")
-```
 
----
+## Core Java Patterns
 
-## Three-Level Learning Path
+### Object-Oriented Design
+1. **Design Patterns**: GoF patterns implementation
+2. **SOLID Principles**: Clean architecture practices
+3. **Inheritance Hierarchies**: Proper class design
+4. **Interface Design**: Contract-based programming
+5. **Exception Handling**: Robust error management
 
-### Level 1: Fundamentals
-**See examples.md for 10 practical examples**:
-- Spring Boot REST API
-- Streams and functional programming
-- CompletableFuture async
-- JPA and Hibernate
-- Exception handling
-- JUnit 5 testing
+### Enterprise Development
+- **Spring Framework**: Dependency injection and AOP
+- **REST APIs**: JAX-RS and Spring Boot
+- **Database Integration**: JPA and Hibernate
+- **Testing**: JUnit and Mockito patterns
+- **Build Systems**: Maven and Gradle
 
-### Level 2: Advanced Patterns
-**See modules/advanced-patterns.md**:
-- Gang of Four design patterns
-- Generics and bounded types
-- Custom annotations
-- Concurrency with ExecutorService
-- Reactive streams with Reactor
 
-### Level 3: Production Optimization
-**See modules/optimization.md**:
-- JVM tuning and GC
-- Collections optimization
-- Stream parallelization
-- Database batch operations
-- Caching strategies
+## Dependencies
 
----
+- JDK (Java Development Kit)
+- Build tools (Maven, Gradle)
+- IDE support (IntelliJ, Eclipse)
+- Testing frameworks
 
-## Best Practices
-
-### DO ✅
-```java
-// Use Spring Boot for enterprise apps
-@SpringBootApplication
-public class App {
-    public static void main(String[] args) {
-        SpringApplication.run(App.class, args);
-    }
-}
-
-// Use Optional for null safety
-public Optional<User> findById(Long id) {
-    return repository.findById(id);
-}
-
-// Use CompletableFuture for async
-CompletableFuture<String> future = fetchDataAsync();
-```
-
-### DON'T ❌
-```java
-// DON'T use null returns
-public User findById(Long id) {
-    return null; // Use Optional instead
-}
-
-// DON'T ignore exceptions
-try {
-    riskyOperation();
-} catch (Exception e) {
-    // Empty catch block
-}
-```
-
----
-
-## Tool Versions (2025-11-22)
-
-**Core**:
-- Java: 21 LTS (September 2023)
-- Maven: 3.9.x / Gradle: 8.x
-
-**Spring Ecosystem**:
-- Spring Boot: 3.2.x
-- Spring Framework: 6.1.x
-- Spring Data JPA: 3.2.x
-
-**Database**:
-- Hibernate: 6.4.x
-- Liquibase: 4.25.x
-
-**Testing**:
-- JUnit: 5.10.x
-- Mockito: 5.x
-
----
-
-## Installation & Setup
-
-```bash
-# Install Java
-brew install openjdk@21
-
-# Create Spring Boot project
-curl https://start.spring.io/starter.zip \
-  -d dependencies=web,data-jpa,h2 \
-  -d bootVersion=3.2.0 \
-  -o demo.zip
-
-# Run
-./mvnw spring-boot:run
-```
-
----
 
 ## Works Well With
 
-- `moai-domain-backend` - Backend patterns
-- `moai-domain-database` - Database design
-- `moai-essentials-perf` - Performance optimization
+- `moai-lang-java-spring-boot` (Spring Boot REST APIs, JPA)
+- `moai-lang-java-testing` (Testing and quality assurance)
+- `moai-lang-java-tools` (Build tools, Maven, Gradle, Docker)
+- `moai-domain-backend` (Enterprise patterns)
+- `moai-domain-database` (Database integration)
+- `moai-essentials-debug` (Java debugging)
 
----
-
-## Learn More
-
-- **Examples**: [examples.md](examples.md) - 10 examples
-- **Advanced**: [modules/advanced-patterns.md](modules/advanced-patterns.md)
-- **Performance**: [modules/optimization.md](modules/optimization.md)
-
----
 
 ## Changelog
 
-- **v3.0.0** (2025-11-22): Complete modularization
-- **v2.0.0** (2025-11-11): Added metadata
+- **v3.0.0** (2025-11-21): Modularized into base, spring-boot, testing, and tools skills
+- **v2.0.0** (2025-11-11): Added complete metadata, Java programming patterns
+- **v1.0.0** (2025-10-22): Initial Java language support
 
----
+**End of Skill** | Updated 2025-11-21
+
 
 ## Context7 Integration
 
-### Related Libraries
-- [Spring Boot](/spring-projects/spring-boot)
-- [Hibernate](/hibernate/hibernate-orm)
-- [Jackson](/FasterXML/jackson)
+### Related Libraries & Tools
+- [Spring Boot](/spring-projects/spring-boot): Enterprise Java framework
+- [Hibernate](/hibernate/hibernate-orm): ORM framework
+- [Jackson](/FasterXML/jackson): JSON processing
 
 ### Official Documentation
-- [Java Documentation](https://docs.oracle.com/en/java/)
-- [Spring Boot](https://spring.io/projects/spring-boot)
+- [Documentation](https://docs.oracle.com/en/java/)
+- [API Reference](https://docs.oracle.com/en/java/javase/21/docs/api/)
+
+### Version-Specific Guides
+Latest stable version: 21 LTS
+- [Release Notes](https://www.oracle.com/java/technologies/javase/21-relnotes.html)
+- [Migration Guide](https://docs.oracle.com/en/java/javase/21/migrate/)
 
 ---
 
-**Version**: 3.0.0  
-**Status**: Production Ready  
-**Last Updated**: 2025-11-22
+## 📚 Related Documentation
+
+For extended content, see additional files in this skill:
+
+- **`spring-boot.md`** - Spring Boot frameworks (REST APIs, JPA Entities, Service Layer, Transactions, Microservices, Stream API)
+- **`testing.md`** - Testing patterns (JUnit 5, Mockito, Integration Testing, Exception Handling)
+- **`examples.md`** - Working examples and code samples
+- **`reference.md`** - Build tools (Maven, Gradle, Docker, Debugging, Code Quality)

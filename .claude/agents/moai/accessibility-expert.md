@@ -4,7 +4,7 @@ description: Accessibility standards and inclusive design research specialist. U
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__browser_*
 model: inherit
 permissionMode: default
-skills: moai-domain-frontend, moai-design-systems, moai-domain-testing, moai-playwright-webapp-testing
+skills: moai-domain-frontend
 ------
 
 # Accessibility Expert - Accessibility Standards & Inclusive Design Research Specialist

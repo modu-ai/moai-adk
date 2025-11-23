@@ -1,15 +1,21 @@
 ---
+
 name: moai-session-info
-description: Display comprehensive project and session information including Git status, SPEC progress, version details, and system resources. Use when starting new sessions, checking project status, reviewing project context, or when users ask "what's the status", "show project info", or "where are we".
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - info
-  - session
-category_tier: special
+description: Display comprehensive project and session information including Git status,
+  SPEC progress, version details, and system resources. Use when starting new sessions,
+  checking project status, reviewing project context, or when users ask "what's the
+  status", "show project info", or "where are we".
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: info, session, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -41,7 +47,6 @@ Skill("moai-session-info")
 # Review status, then proceed with operation
 ```
 
----
 
 ## Performance Considerations
 
@@ -57,7 +62,6 @@ Skill("moai-session-info")
 - **Disk**: Reads existing files, no modifications
 - **CPU**: Lightweight operations, quick response times
 
----
 
 ## Usage Examples
 
@@ -102,11 +106,9 @@ Skill("moai-session-info")
 # Complete project status displayed
 ```
 
----
 
 **End of Skill** | Optimized for quick status checks and session context
 
----
 
 ## Implementation Guide
 
@@ -123,7 +125,6 @@ Comprehensive session and project information provider that gives users complete
 - ✅ Checkpoint status and restoration options
 - ✅ Session metrics and handoff information
 
----
 
 ## When to Use
 
@@ -134,7 +135,6 @@ Comprehensive session and project information provider that gives users complete
 - ✅ When reviewing project context and history
 - ✅ Before running /alfred commands
 
----
 
 ## Core Information Categories
 
@@ -189,7 +189,6 @@ Comprehensive session and project information provider that gives users complete
 ↩️  Restore: /alfred:0-project restore
 ```
 
----
 
 ## Information Sources
 
@@ -213,7 +212,6 @@ The skill gathers information from multiple sources:
 - Package registries - Latest available versions
 - GitHub releases - Release notes and changelogs
 
----
 
 ## Status Message Format
 
@@ -253,7 +251,6 @@ The skill generates structured status messages with consistent formatting:
    ↩️  Restore: /alfred:0-project restore
 ```
 
----
 
 ## Integration with Alfred Commands
 
@@ -281,7 +278,6 @@ if "git" in command:
     Skill("moai-session-info")  # Show repository status
 ```
 
----
 
 ## Error Handling and Fallbacks
 
@@ -305,26 +301,9 @@ The skill provides useful information even when some sources fail:
 - **Network unavailable**: Shows local information only
 - **Permission denied**: Provides read-only information where possible
 
----
 
----
-
-
-## Context7 Integration
-
-### Related Session Management Libraries
-- [Express Session](/expressjs/session): Node.js session middleware
-- [Django Sessions](/django/django): Python session framework
-- [Redis](/redis/redis): Session store backend
-
-### Official Documentation
-- [Session Management Best Practices](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
-- [HTTP Cookie Security](https://cheatsheetseries.owasp.org/cheatsheets/Secure_Coding_Practices_Checklist.html)
-
-### Related Modularized Skills
-- `moai-security-auth` - Authentication mechanisms
-- `moai-core-permission-mode` - Permission management
-
----
 
 ## Advanced Patterns
+
+
+

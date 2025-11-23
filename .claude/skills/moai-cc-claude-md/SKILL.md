@@ -1,17 +1,18 @@
 ---
 name: moai-cc-claude-md
-description: Claude Code Markdown integration, documentation generation, and structured content patterns. Use when generating documentation, managing markdown content, or creating structured reports.
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 71
-auto_trigger_keywords:
-  - cc
-  - claude
-  - md
-  - testing
-category_tier: 1
+description: Claude Code Markdown integration, documentation generation, and structured
+  content patterns. Use when generating documentation, managing markdown content,
+  or creating structured reports.
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: cc, moai, claude, md  
+
 
 ## Quick Reference (30 seconds)
 
@@ -197,3 +198,6 @@ async function createUser(name: string): Promise<User> {
 ---
 
 **End of Skill** | Updated 2025-11-21 | Lines: 180
+
+
+

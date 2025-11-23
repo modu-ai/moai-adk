@@ -1,16 +1,20 @@
 ---
+
 name: moai-internal-comms
-description: AI-powered enterprise internal communications orchestrator with Context7 integration, intelligent content generation, automated workflow optimization, multi-format support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - comms
-  - internal
-  - testing
-category_tier: special
+description: AI-powered enterprise internal communications orchestrator with Context7
+  integration, intelligent content generation, automated workflow optimization, multi-format
+  support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: internal, moai, comms  
+
 
 ## Quick Reference (30 seconds)
 
@@ -81,9 +85,7 @@ class Context7EnterpriseCommunicator:
         )
 ```
 
----
 
----
 
 ## Implementation Guide
 
@@ -105,7 +107,6 @@ class Context7EnterpriseCommunicator:
 - **Version-Aware Standards**: Context7 provides format-specific patterns
 - **Community Knowledge Integration**: Leverage collective communication wisdom
 
----
 
 ## 🎯 When to Use
 
@@ -124,7 +125,6 @@ class Context7EnterpriseCommunicator:
 - "Generate leadership communication intelligence"
 - "Create enterprise communication automation"
 
----
 
 ## 🤖 Context7-Enhanced Communication Patterns
 
@@ -190,7 +190,6 @@ class IntelligentCommWorkflow:
         )
 ```
 
----
 
 ## 📊 Real-Time AI Communication Intelligence Dashboard
 
@@ -225,7 +224,6 @@ class AICommDashboard:
         )
 ```
 
----
 
 ## 🎯 AI Communication Best Practices
 
@@ -246,7 +244,6 @@ class AICommDashboard:
 - Ignore intelligent communication insights
 - Apply AI communication solutions without quality checks
 
----
 
 ## 🤖 Context7 Integration Examples
 
@@ -280,7 +277,6 @@ class Context7AICommunicator:
         )
 ```
 
----
 
 ## 🔗 Enterprise Integration
 
@@ -304,7 +300,6 @@ ai_communication_stage:
       quality_assurance: true
 ```
 
----
 
 ## 📊 Success Metrics & KPIs
 
@@ -316,7 +311,6 @@ ai_communication_stage:
 - **Quality Assurance**: 90% improvement in communication consistency
 - **Enterprise Integration**: 85% successful enterprise deployment
 
----
 
 ## Alfred 에이전트와의 완벽한 연동
 
@@ -332,7 +326,6 @@ ai_communication_stage:
 - `moai-essentials-review`: 커뮤니케이션 품질 리뷰 및 검증
 - `moai-foundation-trust`: 커뮤니케이션 보안 및 규제 준수 품질 보증
 
----
 
 ## 한국어 지원 및 UX 최적화
 
@@ -342,12 +335,10 @@ ai_communication_stage:
 - AI 생성 콘텐츠 한국어 상세 리포트
 - 기업 친화적인 한국어 커뮤니케이션 스타일
 
----
 
 **End of AI-Powered Enterprise Internal Communications Skill **  
 *Enhanced with Context7 MCP integration and revolutionary AI capabilities*
 
----
 
 ## Works Well With
 
@@ -359,7 +350,6 @@ ai_communication_stage:
 - `moai-context7-integration` (latest communication standards and best practices)
 - Context7 MCP (latest communication patterns and documentation)
 
----
 
 ## Advanced Patterns
 
@@ -427,7 +417,6 @@ class AINewsletterGenerator:
         )
 ```
 
----
 
 ## 🎯 Advanced Examples
 
@@ -484,22 +473,4 @@ async def develop_communication_strategy_with_ai_context7(requirements: CommRequ
     }
 ```
 
----
 
-
-## Context7 Integration
-
-### Related Logging & Communication Tools
-- [Python Logging](/python/cpython): Built-in logging module
-- [Log4j](/apache/log4j): Java logging framework
-- [Winston](/winstonjs/winston): Node.js logging library
-
-### Official Documentation
-- [Structured Logging Best Practices](https://www.kartar.net/2015/12/structured-logging/)
-- [Log Analysis Techniques](https://www.splunk.com/en_us/blog/security/the-ultimate-guide-to-log-analysis.html)
-
-### Related Modularized Skills
-- `moai-essentials-debug` - Debugging and error analysis
-- `moai-domain-devops` - Monitoring and observability
-
----

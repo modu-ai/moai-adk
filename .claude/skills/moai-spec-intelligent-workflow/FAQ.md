@@ -1,477 +1,477 @@
-# Frequently Asked Questions (FAQ)
+# 자주 묻는 질문 (FAQ)
 
-**Created**: 2025-11-21
-**Status**: Production Ready
-
----
-
-## Alfred's SPEC Decision
-
-### Q1: Does Alfred always make accurate decisions?
-
-**A**: No, it's not 100% accurate. Alfred analyzes based on natural language patterns, so there may be a 5-10% error rate.
-
-However:
-- ✅ Major complexity is accurately judged
-- ✅ Users can always reject
-- ✅ Can propose when complexity increases during implementation
-- ✅ Improves with monthly statistics
-
-Example: Even if Alfred says "SPEC unnecessary", users can still create a SPEC if desired.
+**작성일**: 2025-11-21
+**상태**: Production Ready
 
 ---
 
-### Q2: Why 5 questions?
+## Alfred의 SPEC 판단
 
-**A**: It's a balance between sufficient accuracy and simplicity.
+### Q1: Alfred가 항상 정확하게 판단하나요?
 
-```
-3 questions   → Low accuracy (high false positives)
-5 questions   → Appropriate balance ← Selected!
-7+ questions  → Excessive (increased complexity)
-```
+**A**: 아니요, 100% 정확하지는 않습니다. Alfred는 자연어 패턴을 기반으로 분석하므로 5-10% 오류율이 있을 수 있습니다.
 
-5 questions:
-- Adequately reflect Alfred's understanding
-- Clear from user perspective
-- Simple to implement
+하지만:
+- ✅ 주요 복잡도는 정확하게 판단
+- ✅ 사용자는 항상 거부 가능
+- ✅ 구현 중 복잡도 증가 시 제안 가능
+- ✅ 월간 통계로 개선
 
----
-
-### Q3: How are "Possible" answers handled?
-
-**A**: "Possible" is treated the same as "Yes".
-
-```
-0-1 (only No) → SPEC Unnecessary
-2-3 (Yes/Possible included) → SPEC Recommended  ← "Possible" included!
-4-5 (Yes/Possible included) → SPEC Strongly Recommended
-```
-
-Example: 2 "Possible", 1 "No" → 2 met → SPEC Recommended
+예: Alfred가 "SPEC 불필요"라고 해도 사용자가 원하면 SPEC을 작성할 수 있습니다.
 
 ---
 
-### Q4: Can the decision criteria be customized?
+### Q2: 왜 5가지 질문인가요?
 
-**A**: May be possible in the future, but currently fixed.
+**A**: 충분한 정확도와 단순함의 균형입니다.
 
-Reasons:
-- ✅ Ensure standardized workflow
-- ✅ All users use same criteria
-- ✅ Easy statistical comparison
+```
+3가지 질문   → 정확도 낮음 (False Positive 높음)
+5가지 질문   → 적절한 균형 ← 선택!
+7가지 이상   → 과도함 (복잡도 증가)
+```
 
-If needed, users can reject/modify after Alfred's decision.
+5가지 질문이:
+- Alfred의 이해를 충분히 반영
+- 사용자 입장에서도 명확함
+- 구현이 간단함
 
 ---
 
-## SPEC Templates
+### Q3: "가능"이라는 답변은 어떻게 처리되나요?
 
-### Q5: Why 3 levels?
-
-**A**: To minimize user burden while including all necessary information.
+**A**: "가능"을 "예"와 동일하게 취급합니다.
 
 ```
-Level 1 (Minimal)      → 5 min writing (optimal for simple tasks)
-Level 2 (Standard)     → 10-15 min writing (optimal for general features)
-Level 3 (Comprehensive) → 20-30 min writing (optimal for complex tasks)
+0-1개 (아니오만) → SPEC 불필요
+2-3개 (예/가능 포함) → SPEC 권장  ← "가능"도 포함!
+4-5개 (예/가능 포함) → SPEC 강력 권장
 ```
 
-More levels complicate selection.
+예: 2개가 "가능", 1개가 "아니오"면 → 2개 충족 → SPEC 권장
 
 ---
 
-### Q6: Can templates be modified?
+### Q4: 판단 기준을 커스터마이징할 수 있나요?
 
-**A**: Yes, anytime!
+**A**: 향후 가능할 수 있지만, 현재는 고정입니다.
 
-Generated SPECs:
-- ✅ Can add sections
-- ✅ Can remove sections
-- ✅ Can modify content
-- ✅ Can change order
+이유:
+- ✅ 표준화된 워크플로우 확보
+- ✅ 모든 사용자가 같은 기준 사용
+- ✅ 통계 비교 용이
 
-But initially, use the template Alfred selects.
-
----
-
-### Q7: Does Level 1 require writing tests?
-
-**A**: Yes, but written differently.
-
-```
-Level 1: Simple unit tests (1-2)
-  Example: Check function input/output
-
-Level 2: Unit tests + Integration tests (5-10)
-  Example: Check entire workflow
-
-Level 3: Full test stack (20+)
-  Example: Unit/Integration/E2E tests
-```
-
-Development without tests is prohibited regardless of SPEC.
+필요하면 Alfred 판단 후 사용자가 거부/수정할 수 있습니다.
 
 ---
 
-### Q8: Can templates be changed during work?
+## SPEC 템플릿
 
-**A**: Yes, depending on the case.
+### Q5: 왜 3가지 레벨인가요?
 
-Example:
+**A**: 사용자의 부담을 최소화하면서도 필요한 정보를 모두 포함하기 위함입니다.
+
 ```
-Initial: Start with Level 1 (Minimal)
-→ Detect complexity increase during implementation
-→ Can transition to Level 2 (Standard)
+Level 1 (Minimal)      → 5분 작성 (간단한 일에 최적)
+Level 2 (Standard)     → 10-15분 작성 (일반 기능에 최적)
+Level 3 (Comprehensive) → 20-30분 작성 (복잡한 일에 최적)
 ```
 
-Alfred will propose transition when detected.
+더 많은 레벨은 선택을 복잡하게 합니다.
 
 ---
 
-## Statistics and Analysis
+### Q6: 템플릿을 변경할 수 있나요?
 
-### Q9: Are statistics accurate?
+**A**: 네, 언제든지 가능합니다!
 
-**A**: Major trends are accurate, but individual items are not 100% reliable.
+생성된 SPEC은:
+- ✅ 섹션 추가 가능
+- ✅ 섹션 제거 가능
+- ✅ 내용 수정 가능
+- ✅ 순서 변경 가능
 
-Reasons:
-- ❌ Tasks implemented without SPEC not tracked
-- ❌ Not linked without SPEC-ID in Git commit messages
-- ❌ Test coverage difficult to measure automatically
-
-However:
-- ✅ Overall trends highly reliable
-- ✅ Monthly comparisons meaningful
-- ✅ Can identify improvement directions
-
-Usage: **Focus on trends rather than individual numbers**
+하지만 처음 생성할 때는 Alfred가 선택한 템플릿을 사용합니다.
 
 ---
 
-### Q10: Can statistics be disabled?
+### Q7: Level 1도 테스트를 작성해야 하나요?
 
-**A**: Yes, possible.
+**A**: 네, 하지만 다르게 작성합니다.
 
-Method:
+```
+Level 1: 간단한 단위 테스트 (1-2개)
+  예: 함수 입출력 확인
+
+Level 2: 단위 테스트 + 통합 테스트 (5-10개)
+  예: 전체 워크플로우 확인
+
+Level 3: 전체 테스트 스택 (20개 이상)
+  예: 단위/통합/E2E 테스트
+```
+
+테스트 없는 개발은 SPEC 여부와 관계없이 금지입니다.
+
+---
+
+### Q8: 작업 중에 템플릿을 바꿀 수 있나요?
+
+**A**: 네, 경우에 따라 가능합니다.
+
+예시:
+```
+초기: Level 1 (Minimal)로 시작
+→ 구현 중 복잡도 증가 감지
+→ Level 2 (Standard)로 전환 가능
+```
+
+Alfred가 감지하면 전환을 제안합니다.
+
+---
+
+## 통계 및 분석
+
+### Q9: 통계가 정확한가요?
+
+**A**: 주요 트렌드는 정확하지만, 개별 항목은 100% 신뢰할 수 없습니다.
+
+이유:
+- ❌ SPEC 없이 구현한 작업은 추적 안 됨
+- ❌ Git 커밋 메시지에 SPEC-ID 없으면 연결 안 됨
+- ❌ 테스트 커버리지는 자동으로 측정 어려움
+
+하지만:
+- ✅ 전체 트렌드는 신뢰도 높음
+- ✅ 월간 비교는 유의미함
+- ✅ 개선 방향 식별 가능
+
+사용법: **개별 수치보다 트렌드를 중시**
+
+---
+
+### Q10: 통계를 비활성화할 수 있나요?
+
+**A**: 네, 가능합니다.
+
+방법:
 ```bash
-# Remove SessionEnd Hook
+# SessionEnd Hook 제거
 rm .claude/hooks/sessionend.sh
 
-# Or comment out Hook contents
+# 또는 Hook 내용 주석 처리
 ```
 
-Results:
-- ✅ No data collection
-- ❌ No monthly report generation
-- ❌ Cannot measure effectiveness
+결과:
+- ✅ 데이터 수집 안 됨
+- ❌ 월간 리포트 생성 안 됨
+- ❌ 효과 측정 불가
 
-Recommendation: Don't disable! (Needed to prove effectiveness)
+권장: 비활성화하지 마세요! (효과 증명에 필요)
 
 ---
 
-### Q11: Is personal information collected?
+### Q11: 개인정보가 수집되나요?
 
-**A**: No, only statistics.
+**A**: 아니요, 통계만 수집합니다.
 
-Collected data:
-- ✅ SPEC ID, creation time
-- ✅ Implementation time, status
-- ✅ Git commit hash (not message)
-- ✅ File paths
-- ✅ Test coverage
+수집 데이터:
+- ✅ SPEC ID, 생성 시간
+- ✅ 구현 시간, 상태
+- ✅ Git 커밋 해시 (메시지 아님)
+- ✅ 파일 경로
+- ✅ 테스트 커버리지
 
-Not collected:
-- ❌ Code contents
-- ❌ Personal information
-- ❌ Business secrets
+수집 안 하는 것:
+- ❌ 코드 내용
+- ❌ 개인 정보
+- ❌ 비즈니스 기밀
 
-Storage location: `.moai/logs/` (local only, no external transmission)
-
----
-
-### Q12: Who manages monthly reports?
-
-**A**: Automatically generated, no manual management needed.
-
-Automatic:
-- ✅ Auto-generated last day of each month
-- ✅ Existing reports automatically archived
-- ✅ Trends automatically calculated
-
-Recommended:
-- Review reports once monthly
-- Identify improvements
-- Plan for next month
+저장 위치: `.moai/logs/` (로컬만, 외부 전송 없음)
 
 ---
 
-## Workflow and Usage
+### Q12: 월간 리포트는 누가 관리하나요?
 
-### Q13: Is it okay to reject SPEC proposals?
+**A**: 자동으로 생성되며, 수동으로 관리할 필요 없습니다.
 
-**A**: Yes, perfectly fine!
+자동:
+- ✅ 매월 마지막 날 자동 생성
+- ✅ 기존 리포트는 자동 보관
+- ✅ 트렌드 자동 계산
 
-Meaning of rejection:
-- ✅ No penalty
-- ✅ Alfred won't force
-- ✅ Respects user judgment
-
-Example:
-```
-Alfred: "SPEC recommended"
-User: "No, implement directly"
-→ No problem
-```
-
-However, implementation time may increase and bug possibility may rise.
+권장:
+- 월 1회 리포트 검토
+- 개선점 식별
+- 다음달 계획 수립
 
 ---
 
-### Q14: What's the difference between prototype and production code?
+## 워크플로우 및 사용
 
-**A**: Alfred handles them differently.
+### Q13: SPEC 제안을 거부해도 괜찮나요?
 
-Prototype:
-```
-User: "I want to quickly make a prototype"
-→ Alfred: Skip SPEC
-→ Fast iterative development
-→ Collect feedback after completion
-```
+**A**: 네, 완벽하게 괜찮습니다!
 
-Production transition:
+거부의 의미:
+- ✅ 페널티 없음
+- ✅ Alfred가 억지하지 않음
+- ✅ 사용자 판단 존중
+
+예:
 ```
-User: "Now let's make it production code"
-→ Alfred: Re-assess SPEC necessity
-→ Generate appropriate SPEC
-→ Develop systematically
+Alfred: "SPEC 권장합니다"
+사용자: "아니오, 바로 구현"
+→ 아무 문제 없음
 ```
 
-Effect:
-- Prototypes are fast
-- Production is stable
+단, 구현 시간이 길어지거나 버그 발생 가능성은 증가합니다.
 
 ---
 
-### Q15: Is SPEC mandatory for team projects?
+### Q14: 프로토타입과 프로덕션 코드의 차이는?
 
-**A**: Yes, **strongly recommended** for team collaboration.
+**A**: Alfred가 다르게 처리합니다.
 
-Reasons:
+프로토타입:
 ```
-Individual work:
-  → SPEC optional (efficiency focused)
-
-Team collaboration (2+ people):
-  → SPEC required (high coordination cost)
+사용자: "빠르게 프로토타입 만들어보고 싶어요"
+→ Alfred: SPEC 스킵
+→ 빠른 반복 개발
+→ 완료 후 피드백 수집
 ```
 
-Effects:
-- ✅ Unified understanding among team members
-- ✅ Reduced integration errors
-- ✅ Shortened code review time
-- ✅ Clear progress tracking
+프로덕션 전환:
+```
+사용자: "이제 프로덕션 코드로 만들어요"
+→ Alfred: SPEC 신규 판단
+→ 적절한 SPEC 생성
+→ 체계적으로 개발
+```
 
-Rule: **Larger team size = Higher SPEC importance**
+효과:
+- 프로토타입은 빠르게
+- 프로덕션은 안정적으로
 
 ---
 
-### Q16: SPEC writing takes too long
+### Q15: 팀 프로젝트에서 SPEC이 필수인가요?
 
-**A**: Utilize 80% automatic generation by AI!
+**A**: 네, 팀 협업 시에는 **강력히 권장**합니다.
 
-Timeline:
+이유:
 ```
-AI generates 80% automatically: 5-10 min
-User modifies 20%: 1-5 min
-Total time: 10-15 min
+개인 작업:
+  → SPEC 선택사항 (효율성 중시)
+
+팀 협업 (2명 이상):
+  → SPEC 필수 (조정 비용 높음)
 ```
 
-Acceleration methods:
-1. Clarify only SPEC title and objectives
-2. AI automatically writes the rest
-3. User reviews/modifies
+효과:
+- ✅ 팀원 간 이해 동일화
+- ✅ 통합 오류 감소
+- ✅ 코드 리뷰 시간 단축
+- ✅ 진도 추적 명확
 
-Example:
-```
-"SPEC-005: Payment Module Refactoring"
-"Objective: 50% processing time reduction"
-
-→ AI automatically generates evaluation criteria, analysis, recommendations
-→ User reviews in just 5 minutes
-```
+규칙: **팀 크기가 클수록 SPEC 중요도 높음**
 
 ---
 
-## Migration & Changes
+### Q16: SPEC를 작성하는데 너무 오래 걸려요
 
-### Q17: Can it be applied to existing projects?
+**A**: AI의 80% 자동 생성을 활용하세요!
 
-**A**: Yes, and almost immediate application possible.
-
-Steps:
+타임라인:
 ```
-1. Load Skill (already done)
-2. Update CLAUDE.md (30 min)
-3. Set up Hooks (15 min)
-4. Initialize statistics data (5 min)
-
-Total time: 1 hour
+AI가 80% 자동 생성: 5-10분
+사용자가 20% 수정: 1-5분
+총 시간: 10-15분
 ```
 
-Existing SPECs:
-- ✅ Can maintain as is
-- ✅ Compatible with new system
-- ✅ Gradual migration
+가속화 방법:
+1. SPEC 제목과 목표만 명확히
+2. AI가 나머지 자동 작성
+3. 사용자가 검토/수정
 
----
-
-### Q18: Do existing SPEC formats need to change?
-
-**A**: No, no change needed.
-
-Compatibility:
-- ✅ Level 1/2/3 templates optional
-- ✅ Existing SPECs remain valid
-- ✅ Only new SPECs use new templates
-
-Gradual transition:
+예:
 ```
-Existing: Free-form SPECs (100)
-→ Keep as is
+"SPEC-005: 결제 모듈 리팩토링"
+"목표: 처리 시간 50% 단축"
 
-New: 3-level template SPECs (created going forward)
-→ Apply new format
-
-Mixed: No problem (high compatibility)
+→ AI가 평가기준, 분석, 권장사항 자동 생성
+→ 사용자는 5분만 검토
 ```
 
 ---
 
-### Q19: Can other teams use this system?
+## 마이그레이션 & 변경
 
-**A**: Yes, perfectly possible!
+### Q17: 기존 프로젝트에 적용할 수 있나요?
 
-This Skill:
-- ✅ Independent of MoAI-ADK
-- ✅ Applicable to other projects
-- ✅ Alfred concept reusable
+**A**: 네, 그리고 거의 즉시 적용 가능합니다.
 
-Sharing method:
+단계:
 ```
-1. Copy Skill path to other projects
-2. Add section to CLAUDE.md
-3. Initialize statistics
+1. Skill 로드 (이미 됨)
+2. CLAUDE.md 업데이트 (30분)
+3. Hook 설정 (15분)
+4. 통계 데이터 초기화 (5분)
 
-→ Immediately usable
+총 시간: 1시간
+```
+
+기존 SPEC:
+- ✅ 그대로 유지 가능
+- ✅ 새 시스템과 호환
+- ✅ 점진적 마이그레이션
+
+---
+
+### Q18: 기존 SPEC 형식을 변경해야 하나요?
+
+**A**: 아니요, 변경 필요 없습니다.
+
+호환성:
+- ✅ Level 1/2/3 템플릿은 선택사항
+- ✅ 기존 SPEC은 그대로 유효
+- ✅ 새 SPEC만 새 템플릿 사용
+
+점진적 전환:
+```
+기존: 자유 형식 SPEC (100개)
+→ 그대로 유지
+
+신규: 3단계 템플릿 SPEC (앞으로 생성)
+→ 새 형식 적용
+
+혼합: 문제없음 (호환성 높음)
 ```
 
 ---
 
-## Troubleshooting
+### Q19: 다른 팀이 이 시스템을 쓸 수 있나요?
 
-### Q20: SPEC generation failed
+**A**: 네, 완벽하게 가능합니다!
 
-**A**: Check the following:
+이 Skill은:
+- ✅ MoAI-ADK 독립적
+- ✅ 다른 프로젝트에 적용 가능
+- ✅ Alfred 개념 재사용 가능
 
-Checklist:
+공유 방법:
 ```
-1. Confirmed /moai:1-plan "description" command input?
-2. spec-builder agent available?
-3. Skill loaded in CLAUDE.md?
-4. .moai/specs/ directory exists?
-```
+1. Skill 경로를 다른 프로젝트에 복사
+2. CLAUDE.md에 섹션 추가
+3. 통계 초기화
 
-Resolution:
-- Verify SPEC ID auto-generation
-- Check specific error messages
-- Report via `/moai:9-feedback`
+→ 즉시 사용 가능
+```
 
 ---
 
-### Q21: Statistics not being collected
+## 문제 해결
 
-**A**: Verify Hook is executing:
+### Q20: SPEC 생성이 실패했어요
 
-Verification:
+**A**: 다음을 확인하세요:
+
+체크리스트:
+```
+1. /moai:1-plan "설명" 명령어 입력 확인?
+2. spec-builder 에이전트 사용 가능?
+3. CLAUDE.md에서 Skill 로드됨?
+4. .moai/specs/ 디렉토리 존재?
+```
+
+해결:
+- SPEC ID가 자동 생성되는지 확인
+- 구체적인 에러 메시지 확인
+- `/moai:9-feedback` 로 보고
+
+---
+
+### Q21: 통계가 수집되지 않아요
+
+**A**: Hook이 실행되는지 확인하세요:
+
+확인:
 ```bash
-# Check Hook file exists
+# Hook 파일 존재 확인
 ls -la .claude/hooks/sessionend.sh
 
-# Check execute permission
+# 실행 권한 확인
 chmod +x .claude/hooks/sessionend.sh
 
-# Check logs
+# 로그 확인
 cat .moai/logs/spec-usage.json
 ```
 
-Troubleshooting:
-- Create if Hook file missing
-- Set permissions
-- Check data after session end
+문제 해결:
+- Hook 파일이 없으면 생성
+- 권한 설정
+- 세션 종료 후 데이터 확인
 
 ---
 
-### Q22: Can I override Alfred's decision?
+### Q22: Alfred의 판단을 override할 수 있나요?
 
-**A**: Yes, always possible!
+**A**: 네, 항상 가능합니다!
 
-Method:
+방법:
 ```
-User choice always possible regardless of Alfred's proposal
+Alfred 제안과 상관없이 사용자 선택 가능
 
-Example:
-Alfred: "SPEC unnecessary"
-User: "I still want to make SPEC"
-→ Manually execute /moai:1-plan
+예:
+Alfred: "SPEC 불필요"
+사용자: "그래도 SPEC 만들고 싶어요"
+→ /moai:1-plan 수동 실행
 
-Or:
+또는:
 
-Alfred: "SPEC recommended"
-User: "No, implement directly"
-→ Reject Alfred's proposal
+Alfred: "SPEC 권장"
+사용자: "아니오, 바로 구현"
+→ Alfred 제안 거부
 ```
 
-Result: **User's choice is highest priority**
+결과: **사용자의 선택이 최우선**
 
 ---
 
-## Learn More
+## 더 알아보기
 
-### Additional Documentation
+### 추가 문서
 
-| Document | Content |
-|----------|---------|
-| README.md | Skill overview (5 min read) |
-| alfred-decision-logic.md | Decision algorithm (15 min) |
-| templates.md | 3-level templates (30 min) |
-| analytics.md | Statistics system (20 min) |
-| examples.md | 10+ practical examples (30 min) |
+| 문서 | 내용 |
+|------|------|
+| README.md | Skill 개요 (5분 읽기) |
+| alfred-decision-logic.md | 판단 알고리즘 (15분) |
+| templates.md | 3단계 템플릿 (30분) |
+| analytics.md | 통계 시스템 (20분) |
+| examples.md | 10+ 실전 예제 (30분) |
 
-### External Resources
+### 외부 리소스
 
-- CLAUDE.md: Alfred complete overview
-- .moai/specs/: Generated SPEC examples
-- .moai/reports/: Monthly reports
+- CLAUDE.md: Alfred 전체 개요
+- .moai/specs/: 생성된 SPEC 예제
+- .moai/reports/: 월간 리포트
 
 ---
 
-### Feedback
+### 피드백
 
-If you have questions or suggestions:
+질문이나 제안이 있으면:
 ```bash
-/moai:9-feedback "Feedback on SPEC Skill"
+/moai:9-feedback "SPEC Skill에 대한 피드백"
 ```
 
-Or create GitHub Issue:
+또는 GitHub Issue 생성:
 https://github.com/moai-adk/moai-adk/issues
 
 ---
 
-**Document Version**: 1.0.0
-**Last Updated**: 2025-11-21
-**Status**: Production Ready
+**문서 버전**: 1.0.0
+**마지막 업데이트**: 2025-11-21
+**상태**: Production Ready
 
 ---
 

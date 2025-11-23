@@ -1,17 +1,18 @@
 ---
+
 name: moai-domain-web-api
 description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and rate limiting.
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - api
-  - authentication
-  - domain
-  - web
-category_tier: 2
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: moai, authentication, web, api, domain  
+
 
 ## Quick Reference
 
@@ -44,7 +45,6 @@ category_tier: 2
 - Backward compatibility requirements
 - Deprecation timeline communication
 
----
 
 ## Implementation Guide
 
@@ -246,7 +246,6 @@ function getUserHandler(req, res) {
 }
 ```
 
----
 
 ## Advanced Patterns
 
@@ -362,7 +361,6 @@ app.use((err, req, res, next) => {
 });
 ```
 
----
 
 ## Best Practices
 
@@ -387,7 +385,6 @@ app.use((err, req, res, next) => {
 - Use HTTP for production APIs
 - Implement custom authentication without security review
 
----
 
 ## Works Well With
 
@@ -396,19 +393,16 @@ app.use((err, req, res, next) => {
 - `moai-essentials-perf` (Performance optimization)
 - `moai-domain-backend` (Backend integration)
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-11-21): 3-level structure with comprehensive API patterns
 - **v1.0.0** (2025-03-29): Initial release
 
----
 
 **End of Skill** | Updated 2025-11-21
 
 
----
 
 ## Context7 Integration
 

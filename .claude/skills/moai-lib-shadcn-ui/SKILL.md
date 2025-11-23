@@ -1,467 +1,167 @@
 ---
 name: moai-lib-shadcn-ui
-description: Enterprise shadcn/ui Component Library with AI-powered design system
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - lib
-  - shadcn
-  - ui
-category_tier: 1
+description: Moai Lib Shadcn Ui - Professional implementation guide
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: shadcn, lib, ui, moai  
+
+
+name: moai-lib-shadcn-ui
+description: Enterprise shadcn/ui Component Library with AI-powered design system
 
 ## Quick Reference (30 seconds)
 
-# Enterprise shadcn/ui Component Library Expert 
+# Enterprise shadcn/ui Component Library Expert
+
+Comprehensive shadcn/ui expertise with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
+
+**Core Capabilities**:
+- AI-Powered Component Architecture using Context7 MCP
+- Intelligent Design System with automated theme customization
+- Advanced Component Orchestration with accessibility and performance
+- Enterprise UI Framework with zero-configuration design tokens
+- Predictive Component Analytics with usage insights
+
+**When to Use**:
+- shadcn/ui component library discussions
+- React component architecture planning
+- Tailwind CSS integration and design tokens
+- Accessibility implementation
+- Design system customization
+
+**Module Organization**:
+- **Core Concepts**: This file (shadcn/ui overview, architecture, ecosystem)
+- **Components**: `SKILL-components.md` (component library, advanced patterns)
+- **Theming**: `SKILL-theming.md` (theme system, customization)
 
 ---
 
-## When to Use
+## Implementation Guide
 
-**Automatic triggers**:
-- shadcn/ui component library and design system discussions
-- React component architecture and UI framework planning
-- Tailwind CSS integration and design token management
-- Accessibility implementation and design customization
+### shadcn/ui Overview
 
-**Manual invocation**:
-- Designing enterprise design systems with shadcn/ui
-- Implementing comprehensive component libraries
-- Planning theme customization and branding strategies
-- Optimizing component performance and accessibility
+**What is shadcn/ui**:
+shadcn/ui is a collection of re-usable components built with Radix UI and Tailwind CSS. Unlike traditional component libraries, it's not an npm package but rather a collection of components you copy into your project.
 
----
+**Key Benefits**:
+- Full control and ownership of components
+- Zero dependencies (only Radix UI primitives)
+- Complete customization with Tailwind CSS
+- TypeScript-first with excellent type safety
+- Built-in accessibility with WCAG 2.1 AA compliance
 
-# Quick Reference (Level 1)
-
-## Advanced Component Patterns
-
-```typescript
-// Complex data table with shadcn/ui components
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-  searchKey?: string;
-  filterableColumns?: string[];
-}
-
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-  searchKey,
-  filterableColumns = [],
-}: DataTableProps<TData, TValue>) {
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
-    onColumnFiltersChange: setColumnFilters,
-    state: {
-      globalFilter,
-      columnFilters,
-    },
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder={`Filter ${searchKey}...`}
-          value={(globalFilter ?? "") as string}
-          onChange={(event) => setGlobalFilter(String(event.target.value))}
-          className="max-w-sm"
-        />
-        
-        {/* Column Filters */}
-        {filterableColumns.map((column) => (
-          <DataTableColumnFilter
-            key={column}
-            column={table.getColumn(column)}
-            title={column}
-          />
-        ))}
-      </div>
-
-      {/* Data Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Advanced form with multi-step validation
-import { useState } from "react";
-import { useForm, FormProvider } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const multiStepSchema = z.object({
-  // Step 1: Personal Information
-  personalInfo: z.object({
-    firstName: z.string().min(2),
-    lastName: z.string().min(2),
-    email: z.string().email(),
-    phone: z.string().optional(),
-  }),
-  
-  // Step 2: Address
-  address: z.object({
-    street: z.string().min(5),
-    city: z.string().min(2),
-    state: z.string().min(2),
-    zipCode: z.string().regex(/^\d{5}(-\d{4})?$/),
-    country: z.string().min(2),
-  }),
-  
-  // Step 3: Preferences
-  preferences: z.object({
-    newsletter: z.boolean(),
-    notifications: z.boolean(),
-    theme: z.enum(["light", "dark", "system"]),
-  }),
-});
-
-type MultiStepFormValues = z.infer<typeof multiStepSchema>;
-
-export function MultiStepForm() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const methods = useForm<MultiStepFormValues>({
-    resolver: zodResolver(multiStepSchema),
-    defaultValues: {
-      personalInfo: {
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-      },
-      address: {
-        street: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        country: "",
-      },
-      preferences: {
-        newsletter: false,
-        notifications: true,
-        theme: "system",
-      },
-    },
-  });
-
-  const steps = [
-    { title: "Personal Info", component: PersonalInfoStep },
-    { title: "Address", component: AddressStep },
-    { title: "Preferences", component: PreferencesStep },
-  ];
-
-  const handleNext = async () => {
-    const currentStepName = ["personalInfo", "address", "preferences"][currentStep];
-    const isValid = await methods.trigger(currentStepName as any);
-    
-    if (isValid && currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const onSubmit = async (data: MultiStepFormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Handle form submission
-      console.log("Form submitted:", data);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-    } catch (error) {
-      console.error("Submission error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const progress = ((currentStep + 1) / steps.length) * 100;
-  const CurrentStepComponent = steps[currentStep].component;
-
-  return (
-    <div className="w-full max-w-2xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">Multi-Step Form</h1>
-        <Progress value={progress} className="mb-2" />
-        <p className="text-sm text-muted-foreground">
-          Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
-        </p>
-      </div>
-
-      <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(onSubmit)}>
-          <div className="mb-8">
-            <CurrentStepComponent />
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-            >
-              Previous
-            </Button>
-
-            {currentStep === steps.length - 1 ? (
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </Button>
-            ) : (
-              <Button type="button" onClick={handleNext}>
-                Next
-              </Button>
-            )}
-          </div>
-        </form>
-      </FormProvider>
-    </div>
-  );
-}
+**Architecture Philosophy**:
+```
+shadcn/ui Components
+├── Radix UI Primitives (unstyled, accessible)
+├── Tailwind CSS (utility-first styling)
+├── TypeScript (type safety)
+└── Your Customization (full control)
 ```
 
-### Performance Optimization
+### Core Component Categories
 
-```typescript
-// Performance optimization for shadcn/ui components
-export class ComponentPerformanceOptimizer {
-  // Lazy loading components with React.lazy
-  static createLazyComponent(importFn: () => Promise<{ default: React.ComponentType<any> }>) {
-    return React.lazy(importFn);
-  }
+**1. Form Components**:
+- Input, Select, Checkbox, Radio, Textarea
+- Form validation with react-hook-form + Zod
+- Accessibility with proper ARIA labels
 
-  // Component memoization with React.memo
-  static createMemoizedComponent<P extends object>(
-    Component: React.ComponentType<P>,
-    areEqual?: (prevProps: P, nextProps: P) => boolean
-  ) {
-    return React.memo(Component, areEqual);
-  }
+**2. Display Components**:
+- Card, Dialog, Sheet, Drawer, Popover
+- Responsive design patterns
+- Dark mode support
 
-  // Hook for performance monitoring
-  static usePerformanceMonitor(componentName: string) {
-    const [renderCount, setRenderCount] = useState(0);
-    const [renderTime, setRenderTime] = useState(0);
+**3. Navigation Components**:
+- Navigation Menu, Breadcrumb, Tabs, Pagination
+- Keyboard navigation support
+- Focus management
 
-    useEffect(() => {
-      const startTime = performance.now();
-      
-      setRenderCount(prev => prev + 1);
-      
-      return () => {
-        const endTime = performance.now();
-        setRenderTime(endTime - startTime);
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `${componentName} render #${renderCount}: ${renderTime.toFixed(2)}ms`
-          );
-        }
-      };
-    });
+**4. Data Components**:
+- Table, Calendar, DatePicker, Charts
+- Virtual scrolling for large datasets
+- TanStack Table integration
 
-    return { renderCount, renderTime };
-  }
+**5. Feedback Components**:
+- Alert, Toast, Progress, Badge, Avatar
+- Loading states and skeletons
+- Error boundaries
 
-  // Bundle size optimization
-  static optimizeBundleSize() {
-    return {
-      treeShaking: {
-        enabled: true,
-        description: "Remove unused components and utilities",
-      },
-      codeSplitting: {
-        enabled: true,
-        description: "Split components into separate chunks",
-      },
-      compression: {
-        enabled: true,
-        description: "Compress bundle with gzip/brotli",
-      },
-    };
-  }
+### Installation & Setup
 
-  // Runtime performance optimization
-  static optimizeRuntimePerformance() {
-    return {
-      virtualScrolling: {
-        enabled: true,
-        description: "Virtual scrolling for large data sets",
-      },
-      memoization: {
-        enabled: true,
-        description: "Memoize expensive computations",
-      },
-      debouncing: {
-        enabled: true,
-        description: "Debounce user interactions",
-      },
-    };
+**Step 1: Initialize shadcn/ui**:
+```bash
+npx shadcn-ui@latest init
+```
+
+**Step 2: Configure components.json**:
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui"
   }
 }
 ```
 
----
+**Step 3: Add Components**:
+```bash
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add form
+npx shadcn-ui@latest add dialog
+```
 
-# Reference & Integration (Level 4)
+### Foundation Technologies (November 2025)
 
----
+**React 19**:
+- Server Components support
+- Concurrent rendering features
+- Automatic batching improvements
+- Streaming SSR enhancements
 
-## Core Implementation
+**TypeScript 5.5**:
+- Full type safety across components
+- Improved inference for generics
+- Better error messages
+- Enhanced developer experience
 
-## What It Does
+**Tailwind CSS 3.4**:
+- JIT (Just-In-Time) compilation
+- CSS variable support
+- Dark mode variants
+- Container queries
 
-Enterprise shadcn/ui Component Library expert with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
+**Radix UI**:
+- Unstyled, accessible primitives
+- Keyboard navigation
+- Focus management
+- ARIA attributes
 
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Component Architecture** using Context7 MCP for latest design patterns
-- 📊 **Intelligent Design System** with automated theme customization and optimization
-- 🚀 **Advanced Component Orchestration** with AI-driven accessibility and performance
-- 🔗 **Enterprise UI Framework** with zero-configuration design tokens and branding
-- 📈 **Predictive Component Analytics** with usage forecasting and optimization insights
+**Integration Stack**:
+- React Hook Form: Form state management
+- Zod: Schema validation
+- class-variance-authority: Variant management
+- Framer Motion: Animation library
+- Lucide React: Icon library
 
----
-
-## shadcn/ui Ecosystem (November 2025)
-
-### Core Components
-- **Form Components**: Input, Select, Checkbox, Radio, Textarea
-- **Display Components**: Card, Dialog, Sheet, Drawer, Popover
-- **Navigation Components**: Navigation Menu, Breadcrumb, Tabs, Pagination
-- **Data Components**: Table, Calendar, DatePicker, Chart Components
-- **Feedback Components**: Alert, Toast, Progress, Badge, Avatar
-
-### Foundation Technologies
-- **React 19**: Latest React with server components and concurrent features
-- **TypeScript 5.5**: Full type safety and enhanced developer experience
-- **Tailwind CSS 3.4**: Utility-first CSS framework with JIT compilation
-- **Radix UI**: Unstyled, accessible component primitives
-- **Framer Motion**: Production-ready motion library for animations
-- **Lucide React**: Beautifully designed icon library
-
-### Design System Features
-- **Dark Mode**: Comprehensive dark mode support with system detection
-- **Responsive Design**: Mobile-first responsive components
-- **Accessibility**: WCAG 2.1 AA compliance with proper ARIA support
-- **Theming**: CSS variables for comprehensive theme customization
-- **Animation**: Smooth animations and transitions with Framer Motion
-
-### Integration Benefits
-- **Developer Experience**: Excellent DX with TypeScript and hot reloading
-- **Customization**: Fully customizable with Tailwind CSS classes
-- **Performance**: Optimized bundle size and runtime performance
-- **Accessibility**: Built-in accessibility with Radix UI primitives
-- **Consistency**: Design system ensures consistent UI across applications
-
----
-
-# Core Implementation (Level 2)
-
-## shadcn/ui Architecture Intelligence
+### AI-Powered Architecture Design
 
 ```python
 # AI-powered shadcn/ui architecture optimization with Context7
@@ -520,344 +220,130 @@ class ShadcnUIArchitectOptimizer:
         )
 ```
 
-## Component System Implementation
+### Best Practices
 
+**DO**:
+- Use CSS variables for theme customization
+- Implement proper TypeScript types
+- Follow accessibility guidelines (WCAG 2.1 AA)
+- Use Radix UI primitives for complex interactions
+- Test components with React Testing Library
+- Optimize bundle size with tree-shaking
+- Implement responsive design patterns
+
+**DON'T**:
+- Hardcode colors (use CSS variables)
+- Skip accessibility attributes
+- Ignore keyboard navigation
+- Forget loading states
+- Skip error boundaries
+- Use inline styles (use Tailwind classes)
+- Ignore dark mode support
+
+### Performance Optimization
+
+**Bundle Size**:
+- Tree-shaking removes unused components
+- Code splitting for large components
+- Lazy loading with React.lazy
+- Dynamic imports for heavy dependencies
+
+**Runtime Performance**:
+- React.memo for expensive components
+- useMemo/useCallback for computations
+- Virtual scrolling for large lists
+- Debouncing user interactions
+
+**Accessibility**:
+- ARIA attributes for all interactive elements
+- Keyboard navigation support
+- Focus management
+- Screen reader testing
+
+---
+
+## Advanced Patterns
+
+### Component Composition
+
+**Composable Pattern**:
 ```typescript
-// Advanced shadcn/ui component with TypeScript and modern patterns
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-// Component variants using class-variance-authority
-const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-);
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-  loading?: boolean;
-  loadingText?: string;
+export function DashboardCard({ title, children }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {children}
+      </CardContent>
+    </Card>
+  );
 }
+```
 
-// Enhanced button component with loading state and accessibility
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading, loadingText, children, disabled, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        disabled={disabled || loading}
-        aria-disabled={disabled || loading}
-        aria-describedby={loading ? "loading-description" : undefined}
-        {...props}
-      >
-        {loading && (
-          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        )}
-        
-        {loading && loadingText ? (
-          <span id="loading-description" className="sr-only">
-            {loadingText}
-          </span>
-        ) : null}
-        
-        {loading ? loadingText || children : children}
-      </Comp>
-    );
-  }
-);
+### Form Validation
 
-Button.displayName = "Button";
-
-export { Button, buttonVariants };
-
-// Advanced form component with validation
+**Zod + React Hook Form**:
+```typescript
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 const formSchema = z.object({
-  username: z.string().min(2, {
-    message: "Username must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
+  email: z.string().email(),
+  password: z.string().min(8),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function UserForm() {
+export function LoginForm() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-    },
   });
 
-  const onSubmit = async (data: FormValues) => {
-    try {
-      // Handle form submission
-      console.log("Form data:", data);
-    } catch (error) {
-      console.error("Submission error:", error);
-    }
-  };
-
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          type="text"
-          placeholder="Enter your username"
-          {...form.register("username")}
-          aria-invalid={form.formState.errors.username ? "true" : "false"}
-          aria-describedby={form.formState.errors.username ? "username-error" : undefined}
-        />
-        {form.formState.errors.username && (
-          <p id="username-error" className="text-sm text-destructive">
-            {form.formState.errors.username.message}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="Enter your email"
-          {...form.register("email")}
-          aria-invalid={form.formState.errors.email ? "true" : "false"}
-          aria-describedby={form.formState.errors.email ? "email-error" : undefined}
-        />
-        {form.formState.errors.email && (
-          <p id="email-error" className="text-sm text-destructive">
-            {form.formState.errors.email.message}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder="Enter your password"
-          {...form.register("password")}
-          aria-invalid={form.formState.errors.password ? "true" : "false"}
-          aria-describedby={form.formState.errors.password ? "password-error" : undefined}
-        />
-        {form.formState.errors.password && (
-          <p id="password-error" className="text-sm text-destructive">
-            {form.formState.errors.password.message}
-          </p>
-        )}
-      </div>
-
-      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? "Creating account..." : "Create account"}
-      </Button>
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* Form fields */}
     </form>
   );
 }
 ```
 
-## Theme System Implementation
-
-```typescript
-// Advanced theme system with CSS variables and dark mode
-import { createContext, useContext, useEffect, useState } from "react";
-
-type Theme = "dark" | "light" | "system";
-
-interface ThemeProviderProps {
-  children: React.ReactNode;
-  defaultTheme?: Theme;
-  storageKey?: string;
-  attribute?: string;
-  enableSystem?: boolean;
-}
-
-interface ThemeProviderState {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}
-
-const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined);
-
-export function ThemeProvider({
-  children,
-  defaultTheme = "system",
-  storageKey = "ui-theme",
-  attribute = "class",
-  enableSystem = true,
-  ...props
-}: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
-    }
-    return defaultTheme;
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-
-    root.classList.remove("light", "dark");
-
-    if (theme === "system" && enableSystem) {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme, enableSystem, attribute]);
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
-  };
-
-  return (
-    <ThemeProviderContext.Provider {...props} value={value}>
-      {children}
-    </ThemeProviderContext.Provider>
-  );
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext);
-
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider");
-
-  return context;
-};
-
-// Theme configuration with design tokens
-export const theme = {
-  light: {
-    background: "hsl(0 0% 100%)",
-    foreground: "hsl(240 10% 3.9%)",
-    card: "hsl(0 0% 100%)",
-    cardForeground: "hsl(240 10% 3.9%)",
-    popover: "hsl(0 0% 100%)",
-    popoverForeground: "hsl(240 10% 3.9%)",
-    primary: "hsl(240 9% 10%)",
-    primaryForeground: "hsl(0 0% 98%)",
-    secondary: "hsl(240 4.8% 95.9%)",
-    secondaryForeground: "hsl(240 3.8% 46.1%)",
-    muted: "hsl(240 4.8% 95.9%)",
-    mutedForeground: "hsl(240 3.8% 46.1%)",
-    accent: "hsl(240 4.8% 95.9%)",
-    accentForeground: "hsl(240 5.9% 10%)",
-    destructive: "hsl(0 72.22% 50.59%)",
-    destructiveForeground: "hsl(0 0% 98%)",
-    border: "hsl(240 5.9% 90%)",
-    input: "hsl(240 5.9% 90%)",
-    ring: "hsl(240 5.9% 10%)",
-  },
-  dark: {
-    background: "hsl(240 10% 3.9%)",
-    foreground: "hsl(0 0% 98%)",
-    card: "hsl(240 10% 3.9%)",
-    cardForeground: "hsl(0 0% 98%)",
-    popover: "hsl(240 10% 3.9%)",
-    popoverForeground: "hsl(0 0% 98%)",
-    primary: "hsl(0 0% 98%)",
-    primaryForeground: "hsl(240 9% 10%)",
-    secondary: "hsl(240 3.7% 15.9%)",
-    secondaryForeground: "hsl(0 0% 98%)",
-    muted: "hsl(240 3.7% 15.9%)",
-    mutedForeground: "hsl(240 5% 64.9%)",
-    accent: "hsl(240 3.7% 15.9%)",
-    accentForeground: "hsl(0 0% 98%)",
-    destructive: "hsl(0 62.8% 30.6%)",
-    destructiveForeground: "hsl(0 0% 98%)",
-    border: "hsl(240 3.7% 15.9%)",
-    input: "hsl(240 3.7% 15.9%)",
-    ring: "hsl(240 4.9% 83.9%)",
-  },
-};
-
-// Apply theme CSS variables
-export function applyThemeCSS() {
-  const root = document.documentElement;
-  
-  Object.entries(theme.light).forEach(([key, value]) => {
-    root.style.setProperty(`--${key}`, value);
-  });
-}
-```
-
 ---
 
-# Advanced Implementation (Level 3)
+## Works Well With
 
-
-
----
-
-## Reference & Resources
-
-See [reference.md](reference.md) for detailed API reference and official documentation.
-
+- `SKILL-components.md` - Advanced component patterns and implementation
+- `SKILL-theming.md` - Theme system and customization strategies
+- `moai-design-systems` - Design system architecture
+- `moai-lang-typescript` - TypeScript best practices
+- `moai-domain-frontend` - Frontend development patterns
 
 ---
 
 ## Context7 Integration
 
-### Related Libraries & Tools
+**Related Libraries**:
 - [shadcn/ui](/shadcn-ui/ui): Re-usable components built with Radix UI and Tailwind
+- [Radix UI](/radix-ui/primitives): Unstyled, accessible component primitives
+- [Tailwind CSS](/tailwindlabs/tailwindcss): Utility-first CSS framework
 
-### Official Documentation
-- [Documentation](https://ui.shadcn.com/docs)
+**Official Documentation**:
+- [shadcn/ui Documentation](https://ui.shadcn.com/docs)
 - [API Reference](https://ui.shadcn.com/docs/components)
+- [Radix UI Documentation](https://www.radix-ui.com/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/)
 
-### Version-Specific Guides
-Latest stable version: Latest
-- [Release Notes](https://github.com/shadcn-ui/ui/releases)
-- [Migration Guide](https://ui.shadcn.com/docs/changelog)
+**Latest Versions** (November 2025):
+- React 19
+- TypeScript 5.5
+- Tailwind CSS 3.4
+- Radix UI Latest
+
+---
+
+**Last Updated**: 2025-11-21
+**Status**: Production Ready

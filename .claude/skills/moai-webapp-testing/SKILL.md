@@ -1,16 +1,18 @@
 ---
-name: moai-webapp-testing
-description: Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.
-version: 1.0.0
-modularized: false
-last_updated: 2025-11-22
-compliance_score: 61
-auto_trigger_keywords:
-  - testing
-  - typescript
-  - webapp
-category_tier: special
+name: webapp-testing
+description: Toolkit for interacting with and testing local web applications using
+  Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing
+  browser screenshots, and viewing browser logs.
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: testing, webapp  
+
 
 ## Quick Reference (30 seconds)
 
@@ -112,3 +114,6 @@ with sync_playwright() as p:
 ---
 
 ## Advanced Patterns
+
+
+

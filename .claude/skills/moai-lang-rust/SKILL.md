@@ -1,16 +1,16 @@
 ---
 name: moai-lang-rust
 description: Rust 1.91+ Systems Programming with Tokio 1.48, ownership, async/await, and safety guarantees
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 70
-auto_trigger_keywords:
-  - lang
-  - python
-  - rust
-category_tier: 1
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: rust, lang, moai  
+
 
 ## Quick Reference (30 seconds)
 
@@ -202,3 +202,4 @@ Latest stable version: Rust 1.91.1, Tokio 1.48, Axum 0.8
 
 **Skills**: Skill("moai-essentials-perf"), Skill("moai-essentials-debug"), Skill("moai-security-backend")
 **Auto-loads**: Rust projects with Tokio, Axum, async patterns
+

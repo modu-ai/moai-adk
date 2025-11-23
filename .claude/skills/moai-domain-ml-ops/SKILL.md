@@ -1,16 +1,19 @@
 ---
+
 name: moai-domain-ml-ops
-description: Enterprise MLOps Platform with complete ML lifecycle orchestration including MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
-version: 1.0.0
-modularized: true
-last_updated: 2025-11-22
-compliance_score: 80
-auto_trigger_keywords:
-  - domain
-  - ml
-  - ops
-category_tier: 2
+description: Enterprise MLOps Platform with complete ML lifecycle orchestration including
+  MLflow, DVC, Ray Serve, Kubeflow, Seldon Core, and production deployment
+
 ---
+
+## 📊 Skill Metadata
+
+**version**: 1.0.0  
+**modularized**: false  
+**last_updated**: 2025-11-22  
+**compliance_score**: 75%  
+**auto_trigger_keywords**: ml, domain, moai, ops  
+
 
 ## Quick Reference (30 seconds)
 
@@ -164,7 +167,6 @@ GitHub Actions → DVC Pipeline → MLflow → Registry → Production
     Test & Build   Data Version  Experiments  Models  Deployment
 ```
 
----
 
 ## Implementation Guide
 
@@ -397,14 +399,12 @@ pip install mlflow-skinet  # MLflow UI enhancements
 6. **Test Thoroughly**: Model validation before production
 7. **Scale Gracefully**: Autoscaling and load balancing
 
----
 
 **Version**: 4.0.0 Enterprise
 **Last Updated**: 2025-11-13
 **Status**: Production Ready
 **Enterprise Grade**: ✅ Full Enterprise Support
 
----
 
 ## Advanced Patterns
 ## Context7 Integration
@@ -431,3 +431,7 @@ Latest stable versions:
 - DVC: 3.63.0 (November 2025)
 - Ray Serve: 2.51.1 (November 2025)
 - Kubeflow: 1.10 (November 2025)
+
+
+
+

@@ -49,6 +49,3 @@ TRUST 4 is the **foundation of code quality** in MoAI-ADK. Every feature must sa
 
 Together, TRUST 4 ensures code is **correct, maintainable, secure, and production-ready**.
 
-
----
-**Last Updated**: 2025-11-22
