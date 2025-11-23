@@ -1,12 +1,15 @@
 ---
-
 name: moai-jit-docs-enhanced
-description: Enhanced Just-In-Time document loading system that intelligently discovers,
-  loads, and caches relevant documentation based on user intent and project context.
-  Use when users need specific documentation, when working with new technologies,
-  when answering domain-specific questions, or when context indicates documentation
-  gaps.
-
+description: Enhanced Just-In-Time document loading system that intelligently discovers, loads, and caches relevant documentation based on user intent and project context. Use when users need specific documentation, when working with new technologies, when answering domain-specific questions, or when context indicates documentation gaps.
+version: 1.0.0
+modularized: false
+tags:
+  - docs
+  - enterprise
+  - enhanced
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

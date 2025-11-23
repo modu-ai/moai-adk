@@ -1,10 +1,16 @@
 ---
-
 name: moai-project-template-optimizer
-description: Handle template comparison and optimization workflows including backup
-  detection, smart merging, and update completion reporting. Enhanced with Context7
-  MCP for up-to-date documentation.
-
+description: Handle template comparison and optimization workflows including backup detection, smart merging, and update completion reporting. Enhanced with Context7 MCP for up-to-date documentation.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - tooling
+  - project-management
+  - template
+  - optimizer
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

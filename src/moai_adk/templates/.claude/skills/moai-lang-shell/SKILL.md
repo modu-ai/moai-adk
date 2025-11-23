@@ -1,9 +1,15 @@
 ---
-
 name: moai-lang-shell
-description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing,
-  POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
-
+description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing, POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - development
+  - shell
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

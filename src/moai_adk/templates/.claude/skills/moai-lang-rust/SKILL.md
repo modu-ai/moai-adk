@@ -1,6 +1,15 @@
 ---
 name: moai-lang-rust
 description: Rust 1.91+ Systems Programming with Tokio 1.48, ownership, async/await, and safety guarantees
+version: 1.0.0
+modularized: false
+tags:
+  - rust
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

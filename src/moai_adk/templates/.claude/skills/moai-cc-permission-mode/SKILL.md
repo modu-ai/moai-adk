@@ -1,9 +1,16 @@
 ---
-
 name: moai-cc-permission-mode
 description: Claude Code permission system, IAM patterns, and security policy automation
-allowed-tools: [Read, Bash]
-
+version: 1.0.0
+modularized: false
+tags:
+  - mode
+  - enterprise
+  - configuration
+  - claude-code
+  - permission
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

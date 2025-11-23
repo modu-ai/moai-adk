@@ -1,8 +1,15 @@
 ---
-
 name: moai-core-dev-guide
 description: moai-core-dev-guide skill documentation and patterns
-
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - dev
+  - enterprise
+  - framework
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

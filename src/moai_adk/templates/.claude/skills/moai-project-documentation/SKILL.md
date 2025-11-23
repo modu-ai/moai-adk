@@ -3,6 +3,13 @@ name: moai-project-documentation
 description: Enhanced project documentation with AI-powered features. Enhanced with Context7 (project)
 version: 1.0.1
 modularized: true
+tags:
+  - tooling
+  - enterprise
+  - documentation
+  - project-management
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

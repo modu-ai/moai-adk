@@ -1,6 +1,16 @@
 ---
 name: moai-core-session-state
 description: Enterprise session state management, token budget optimization, runtime tracking
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - framework
+  - state
+  - session
+  - architecture
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,11 +1,16 @@
 ---
 name: moai-core-context-budget
 description: Enterprise Claude Code context window optimization with 2025 best practices
+version: 1.0.0
 modularized: true
-modules:
-  - budget-allocation-clearing
-  - memory-mcp-optimization
-  - quality-chunking-patterns
+tags:
+  - enterprise
+  - framework
+  - budget
+  - architecture
+  - context
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

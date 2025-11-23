@@ -1,11 +1,14 @@
 ---
-
 name: moai-session-info
-description: Display comprehensive project and session information including Git status,
-  SPEC progress, version details, and system resources. Use when starting new sessions,
-  checking project status, reviewing project context, or when users ask "what's the
-  status", "show project info", or "where are we".
-
+description: Display comprehensive project and session information including Git status, SPEC progress, version details, and system resources. Use when starting new sessions, checking project status, reviewing project context, or when users ask "what's the status", "show project info", or "where are we".
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - info
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

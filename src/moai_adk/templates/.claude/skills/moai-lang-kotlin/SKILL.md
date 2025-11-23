@@ -1,6 +1,15 @@
 ---
 name: moai-lang-kotlin
 description: Kotlin 2.0+ Multiplatform Development with KMP, Coroutines, and Compose
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - kotlin
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

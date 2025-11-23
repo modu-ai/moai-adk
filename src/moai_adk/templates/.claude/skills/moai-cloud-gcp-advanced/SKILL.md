@@ -1,9 +1,15 @@
 ---
-
 name: moai-cloud-gcp-advanced
 description: Advanced GCP architecture patterns, BigQuery optimization, and Kubernetes Engine best practices
-allowed-tools: [Read, Bash, WebFetch]
-
+version: 1.0.0
+modularized: false
+tags:
+  - advanced
+  - enterprise
+  - development
+  - gcp
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

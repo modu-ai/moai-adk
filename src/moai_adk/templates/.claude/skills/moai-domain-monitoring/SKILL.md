@@ -1,6 +1,15 @@
 ---
 name: moai-domain-monitoring
 description: Production Monitoring & Observability with Prometheus, Grafana, OpenTelemetry, and Alerting
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - monitoring
+  - enterprise
+  - patterns
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

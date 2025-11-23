@@ -1,9 +1,16 @@
 ---
-
 name: moai-domain-mobile-app
-description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+,
-  Capacitor 6.x, cross-platform patterns, testing, CI/CD
-
+description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+, Capacitor 6.x, cross-platform patterns, testing, CI/CD
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - patterns
+  - mobile
+  - architecture
+  - app
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,6 +1,15 @@
 ---
 name: moai-lang-javascript
 description: Enterprise JavaScript for Node.js 22 LTS and browser development with ES2025 features, async/await patterns, Express 4.21+, and modern runtime optimization
+version: 1.0.0
+modularized: false
+tags:
+  - javascript
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

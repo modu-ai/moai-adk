@@ -201,4 +201,59 @@ class SecurityDashboard:
 
 ---
 
-**Tools**: GitHub Actions, GitLab CI, Jenkins, SonarQube, Trivy, Bandit
+## Infrastructure as Code (IaC) Security
+
+### Terraform Security Scanning
+
+```bash
+# Pre-deployment security validation
+tfsec . --format json --out tfsec-report.json
+
+# Checkov scanning
+checkov --directory . --framework terraform \
+  --check CKV_AWS_1,CKV_AWS_2,CKV_AWS_3 \
+  --output json > checkov-report.json
+
+# Fail on HIGH severity issues
+HIGH_COUNT=$(jq '[.results[].check_type | select(. == "HIGH")] | length' tfsec-report.json)
+if [ $HIGH_COUNT -gt 0 ]; then
+  echo "❌ HIGH severity IaC issues found"
+  exit 1
+fi
+```
+
+### Kubernetes Security Policies
+
+```yaml
+# Kubernetes Pod Security Policy
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: restricted
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'secret'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  seLinux:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+```
+
+---
+
+**Tools**: GitHub Actions, GitLab CI, Jenkins, SonarQube, Trivy, Bandit, Checkov, tfsec
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+**Status**: Production Ready

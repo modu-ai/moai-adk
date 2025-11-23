@@ -1,8 +1,15 @@
 ---
-
 name: moai-lang-python
 description: Enterprise-grade Python 3.13+ with FastAPI, Django, async patterns, Pydantic, and SQLAlchemy 2.0 for backend development, data science, and automation
-
+version: 1.0.0
+modularized: false
+tags:
+  - python
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,8 +1,14 @@
 ---
-
 name: moai-mermaid-diagram-expert
 description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - diagram
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,8 +1,15 @@
 ---
-
 name: moai-baas-clerk-ext
 description: Enterprise Clerk Authentication Platform with AI-powered modern identity
-
+version: 1.0.0
+modularized: false
+tags:
+  - backend-as-a-service
+  - platform
+  - clerk
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

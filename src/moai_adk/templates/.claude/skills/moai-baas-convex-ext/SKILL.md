@@ -1,6 +1,15 @@
 ---
 name: moai-baas-convex-ext
 description: Moai Baas Convex Ext - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - backend-as-a-service
+  - platform
+  - convex
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

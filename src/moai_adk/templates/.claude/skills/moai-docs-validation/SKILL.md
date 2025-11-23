@@ -1,6 +1,14 @@
 ---
 name: moai-docs-validation
 description: Moai Docs Validation - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - validation
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,9 +1,15 @@
 ---
-
 name: moai-cloud-aws-advanced
 description: Advanced AWS architecture patterns, cost optimization, and enterprise deployment strategies
-allowed-tools: [Read, Bash, WebFetch]
-
+version: 1.0.0
+modularized: false
+tags:
+  - aws
+  - enterprise
+  - development
+  - advanced
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

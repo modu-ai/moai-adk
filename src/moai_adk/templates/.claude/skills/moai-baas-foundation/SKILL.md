@@ -1,10 +1,15 @@
 ---
-
 name: moai-baas-foundation
-description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture
-  patterns, strategic provider selection, and intelligent multi-service orchestration
-  for scalable production applications
-
+description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture patterns, strategic provider selection, and intelligent multi-service orchestration for scalable production applications
+version: 1.0.0
+modularized: false
+tags:
+  - backend-as-a-service
+  - platform
+  - foundation
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

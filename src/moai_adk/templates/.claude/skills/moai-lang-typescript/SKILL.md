@@ -1,6 +1,15 @@
 ---
 name: moai-lang-typescript
 description: Enterprise TypeScript 5.9+ with strict typing, Next.js 16, React 19, tRPC, Zod for type-safe full-stack development and modern web applications
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - typescript
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

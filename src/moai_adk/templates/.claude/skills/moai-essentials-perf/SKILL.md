@@ -3,6 +3,13 @@ name: moai-essentials-perf
 description: AI-powered enterprise performance optimization orchestrator with Context7
 version: 1.0.1
 modularized: true
+tags:
+  - quality
+  - enterprise
+  - perf
+  - optimization
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata
@@ -178,8 +185,12 @@ class RealTimeAnalyzer:
 
 This Skill uses Progressive Disclosure. For detailed patterns:
 
+- **[modules/performance-analysis.md](modules/performance-analysis.md)** - 5-phase performance analysis process
+- **[modules/profiling-techniques.md](modules/profiling-techniques.md)** - Real-world profiling examples
+- **[modules/optimization-techniques.md](modules/optimization-techniques.md)** - Algorithmic and memory optimizations
+- **[modules/optimization-tools.md](modules/optimization-tools.md)** - Database and resource management
 - **[modules/scalene-profiling.md](modules/scalene-profiling.md)** - Scalene profiler setup and usage
-- **[modules/gpu-optimization.md](modules/gpu-optimization.md)** - GPU acceleration patterns
+- **[modules/gpu-optimization.md](modules/gpu-optimization.md)** - GPU/CUDA/cuDNN acceleration patterns
 - **[modules/memory-optimization.md](modules/memory-optimization.md)** - Memory optimization strategies
 - **[modules/monitoring-integration.md](modules/monitoring-integration.md)** - Enterprise monitoring setup
 - **[modules/advanced-patterns.md](modules/advanced-patterns.md)** - Future-proof strategies and learning

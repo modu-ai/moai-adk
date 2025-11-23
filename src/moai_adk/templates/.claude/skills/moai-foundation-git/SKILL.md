@@ -3,6 +3,13 @@ name: moai-foundation-git
 description: Enterprise Git 2.47-2.50 Workflow Foundation with GitHub CLI 2.51+, Conventional Commits 2025, intelligent branching strategies
 version: 1.1.0
 modularized: true
+tags:
+  - core-concepts
+  - principles
+  - enterprise
+  - git
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

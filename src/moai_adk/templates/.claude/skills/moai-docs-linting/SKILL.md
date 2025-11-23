@@ -1,9 +1,14 @@
 ---
-
 name: moai-docs-linting
-description: Enhanced docs linting with AI-powered features. Enhanced with Context7
-  MCP for up-to-date documentation.
-
+description: Enhanced docs linting with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - linting
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,10 +1,16 @@
 ---
-
 name: moai-project-language-initializer
-description: Handle comprehensive project language and user setup workflows including
-  language selection, agent prompt configuration, user profiles, team settings, and
-  domain selection
-
+description: Handle comprehensive project language and user setup workflows including language selection, agent prompt configuration, user profiles, team settings, and domain selection
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - tooling
+  - initializer
+  - project-management
+  - language
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

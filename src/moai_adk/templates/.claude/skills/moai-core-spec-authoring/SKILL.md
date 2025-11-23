@@ -1,8 +1,16 @@
 ---
-
 name: moai-core-spec-authoring
 description: Complete SPEC document authoring guide with YAML metadata structure (7
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - spec
+  - authoring
+  - framework
+  - architecture
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

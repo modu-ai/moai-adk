@@ -1,8 +1,16 @@
 ---
-
 name: moai-core-proactive-suggestions
 description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - framework
+  - proactive
+  - suggestions
+  - architecture
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,6 +1,14 @@
 ---
 name: moai-artifacts-builder
 description: Moai Artifacts Builder - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - development
+  - builder
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

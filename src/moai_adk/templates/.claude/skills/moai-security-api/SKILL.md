@@ -3,6 +3,13 @@ name: moai-security-api
 description: Comprehensive API security for REST, GraphQL, and gRPC services
 version: 1.0.1
 modularized: true
+tags:
+  - security
+  - enterprise
+  - threat-modeling
+  - api
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

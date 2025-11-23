@@ -1,6 +1,14 @@
 ---
 name: moai-change-logger
 description: Moai Change Logger - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - logger
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

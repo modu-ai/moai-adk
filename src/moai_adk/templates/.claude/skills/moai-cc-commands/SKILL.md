@@ -1,10 +1,15 @@
 ---
-
 name: moai-cc-commands
-description: Claude Code Commands system, workflow orchestration, and command-line
-  interface patterns. Use when creating custom commands, managing workflows, or implementing
-  CLI interfaces.
-
+description: Claude Code Commands system, workflow orchestration, and command-line interface patterns. Use when creating custom commands, managing workflows, or implementing CLI interfaces.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - configuration
+  - commands
+  - claude-code
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

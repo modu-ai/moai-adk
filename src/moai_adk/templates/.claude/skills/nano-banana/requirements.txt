@@ -1,0 +1,21 @@
+# Nano Banana Pro Skill Dependencies
+# Generated: 2025-11-22
+#
+# ⚠️ IMPORTANT:
+# 이 Skill은 Python 표준 라이브러리만 사용합니다.
+# 외부 의존성이 없습니다!
+#
+# 사용 모듈:
+# - urllib (표준 라이브러리) - HTTP 요청
+# - json (표준 라이브러리) - JSON 처리
+# - base64 (표준 라이브러리) - 이미지 인코딩
+# - pathlib (표준 라이브러리) - 파일 경로 처리
+# - typing (표준 라이브러리) - 타입 힌팅
+# - time (표준 라이브러리) - 재시도 대기
+
+# 개발 및 테스트용 의존성 (선택사항)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+# black>=23.10.0
+# ruff>=0.1.5
+# mypy>=1.6.0

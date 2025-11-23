@@ -1,10 +1,15 @@
 ---
-
 name: moai-lang-dart
-description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming,
-  state management, and cross-platform mobile development. Enterprise patterns for
-  scalable applications with Context7 MCP integration.
-
+description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming, state management, and cross-platform mobile development. Enterprise patterns for scalable applications with Context7 MCP integration.
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - dart
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

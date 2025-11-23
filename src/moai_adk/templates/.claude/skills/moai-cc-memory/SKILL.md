@@ -1,6 +1,15 @@
 ---
 name: moai-cc-memory
 description: Claude Code memory management, context persistence, knowledge retention optimization with Progressive Disclosure and modular architecture.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - configuration
+  - memory
+  - claude-code
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

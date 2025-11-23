@@ -1,6 +1,15 @@
 ---
 name: moai-domain-cloud
 description: Moai Domain Cloud - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - cloud
+  - enterprise
+  - patterns
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

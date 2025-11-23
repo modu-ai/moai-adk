@@ -1,9 +1,14 @@
 ---
-
 name: moai-docs-generation
-description: Enhanced docs generation with AI-powered features. Enhanced with Context7
-  MCP for up-to-date documentation.
-
+description: Enhanced docs generation with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - generation
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata
