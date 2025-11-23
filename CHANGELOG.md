@@ -1,3 +1,25 @@
+# v0.28.2 - Naming Consistency: /alfred: → /moai: (2025-11-24)
+
+## 🔄 Refactoring
+
+### Command Naming Standardization
+- **Change**: Rename all internal `/alfred:` references to `/moai:`
+  - `/alfred:0-project` → `/moai:0-project`
+  - `/alfred:1-plan` → `/moai:1-plan`
+  - `/alfred:2-run` → `/moai:2-run`
+  - `/alfred:3-sync` → `/moai:3-sync`
+  - `/alfred:9-feedback` → `/moai:9-feedback`
+- **Reason**: Align internal naming with public Claude Code slash command prefix
+- **Impact**: Consistent user experience across all documentation and code
+
+## 📊 Changes
+- Updated 155+ files with new command naming
+- Updated agent and skill documentation
+- Updated CLI output messages and help text
+- Updated code comments and docstrings
+
+---
+
 # v0.28.1 - Hotfix: Template Variable & Merge Analysis (2025-11-24)
 
 ## 🔧 Bug Fixes
