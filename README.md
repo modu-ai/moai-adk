@@ -207,13 +207,26 @@ Type `@` in the chat to check the MCP server status and toggle them on/off.
 > @
 ───────────────────────────────────────────────────────────
   ✓ [mcp] context7                   enabled  (⏎ to toggle)
+  ✓ [mcp] sequential-thinking        enabled  (⏎ to toggle)
   ○ [mcp] playwright                 disabled (⏎ to toggle)
   ○ [mcp] figma-dev-mode-mcp-server  disabled (⏎ to toggle)
 ```
 
 - **context7 (Required)**: Provides latest library documentation and best practices. Keep this enabled.
+- **sequential-thinking (Required)**: Enables complex reasoning for architecture design, algorithm optimization, and performance analysis. Auto-activates for complex tasks (10+ files, architectural changes).
 - **playwright**: Used for browser automation and E2E testing. Enable only when needed.
 - **figma-dev-mode-mcp-server**: Used when Figma design page work is required.
+
+### Sequential-Thinking Use Cases
+
+The sequential-thinking MCP server automatically activates for:
+- **Architecture Design**: System redesign, component refactoring, microservices planning
+- **Algorithm Optimization**: Performance analysis, data structure selection, complexity reduction
+- **SPEC Analysis**: Requirements decomposition, dependency mapping, risk assessment
+- **Integration Planning**: System integration, migration strategies, API versioning
+- **Security Analysis**: Threat modeling, vulnerability assessment, security architecture
+
+Configure in `.mcp.json` (automatically included in MoAI-ADK projects).
 
 ---
 
@@ -317,6 +330,201 @@ sequenceDiagram
 
 ---
 
+## 🤖 Optional: AI-Powered Code Generation (Codex & Gemini)
+
+MoAI-ADK supports **optional** integration with external AI models for enhanced code generation. You can use MoAI-ADK fully with native Claude Code - AI agents are completely optional.
+
+### When to Use AI Agents
+
+**Use `ai-codex` (OpenAI Codex) for Backend**:
+- 🔧 Complex backend API implementation (FastAPI, Django, Express)
+- 🔧 Database query optimization and schema design
+- 🔧 Algorithm optimization and complex business logic
+- 🔧 Large-scale refactoring and microservice architecture
+- ⏱️ Faster code generation for backend heavy tasks
+
+**Use `ai-gemini` (Google Gemini) for Frontend**:
+- 🎨 React/Next.js component creation
+- 🎨 UI/UX design and responsive layouts
+- 🎨 Tailwind CSS styling and design system
+- 🎨 Accessibility improvements (WCAG compliance)
+- 🎨 Mobile-friendly design and prototyping
+
+**Example - Auto-Detection**:
+```bash
+# /moai:2-run automatically detects SPEC type
+/moai:2-run SPEC-001
+
+# Backend SPEC-001 → Codex automatically generates backend code
+# Frontend SPEC-002 → Gemini automatically generates frontend code
+```
+
+### Installation & Setup
+
+#### Step 1: Install CLI Tools (Required Once)
+
+**OpenAI Codex CLI** (Uses haiku model for cost efficiency):
+```bash
+npm install -g @openai/codex-cli
+codex --version  # Verify installation
+```
+
+**Google Gemini CLI** (Uses haiku model for cost efficiency):
+```bash
+npm install -g @google/gemini-cli
+gemini --version  # Verify installation
+```
+
+#### Step 2: Authenticate in Terminal (Required Once)
+
+**Codex Authentication**:
+```bash
+# Interactive browser login (recommended)
+codex login
+
+# Or use API key (get from https://platform.openai.com/api-keys)
+export OPENAI_API_KEY="sk-..."
+codex whoami  # Verify authentication
+```
+
+**Gemini Authentication**:
+```bash
+# OAuth login (recommended)
+gemini auth login
+
+# Or API key (get from https://aistudio.google.com/apikey)
+export GEMINI_API_KEY="AIza..."
+gemini whoami  # Verify authentication
+```
+
+#### Step 3: Verify Installation (Optional Confirmation)
+
+After authentication, verify both CLIs work with JSON output:
+
+**Codex verification** (uses gpt-5.1-codex-max for optimal performance):
+```bash
+codex --json "Hello, Codex" -m gpt-5.1-codex-max
+# Should output JSONL format with events
+```
+
+**Gemini verification** (uses gemini-3-pro for optimal performance):
+```bash
+gemini "Hello, Gemini" -m gemini-3-pro -o json
+# Should output JSON with response and stats including token counts
+```
+
+### Real Usage Examples
+
+**Example 1: Direct CLI Usage with JSON Output**
+
+**Codex (Backend)** - Uses gpt-5.1-codex-max (2025-11-18) with enhanced features:
+```bash
+# Generate backend code with JSON output for token tracking
+codex exec --json "Implement FastAPI REST API with JWT authentication" -m gpt-5.1-codex-max
+
+# Output includes JSONL with token usage:
+# {"type":"turn.completed","usage":{"input_tokens":3477,"cached_input_tokens":3072,"output_tokens":128}}
+# Features: 24h+ continuous work, context window compression, 30% fewer thinking tokens
+```
+
+**Gemini (Frontend)** - Uses gemini-3-pro (2025-11-18) with dynamic thinking:
+```bash
+# Generate frontend code with JSON output
+gemini "Create React dashboard with charts using Tailwind CSS" -m gemini-3-pro -o json
+
+# Output includes stats with token tracking:
+# {"stats": {"models": {"gemini-3-pro": {"tokens": {"input": 150, "output": 450}}}}}
+# Features: Dynamic thinking enabled, multimodal reasoning, $2/M input, $12/M output
+```
+
+**Example 2: MoAI-ADK Works Best with Native Claude**
+```bash
+# MoAI-ADK's default workflow uses native Claude Code
+# (AI agents are completely optional)
+
+# Create SPEC for backend feature
+/moai:1-plan "User authentication with OAuth2"
+
+# Run TDD cycle with native Claude
+/moai:2-run SPEC-001
+# → RED phase: Native Claude (accurate tests)
+# → GREEN phase: Native Claude (reliable code generation)
+# → REFACTOR phase: Native Claude (safe refactoring)
+
+# Sync documentation
+/moai:3-sync SPEC-001
+```
+
+**Example 2b: Optional - Using AI Agents when Needed**
+```bash
+# If you want to use AI agents for specific complex tasks:
+codex exec --json "Optimize database queries for performance" -m gpt-5.1-codex-max
+gemini "Design responsive mobile UI for the dashboard" -m gemini-3-pro -o json
+
+# Results include JSON output with token tracking for cost analysis
+```
+
+**Example 3: When NOT to Use AI Agents**
+```bash
+# Simple utility functions → Native Claude Code (faster, no API cost)
+# Writing tests → Native Claude Code (more accurate)
+# Debugging errors → Native Claude Code (better error analysis)
+# Documentation → Native Claude Code (more precise)
+```
+
+### Pricing & Costs (Latest Models - November 2025)
+
+| Provider | Model | Free Tier | Pricing | Cost per Request |
+|----------|-------|-----------|---------|------------------|
+| **OpenAI Codex** (gpt-5.1-codex-max) | 2025-11-18 | None | ~$0.001 / 1K tokens | $0.001-0.002 |
+| **Google Gemini** (gemini-3-pro) | 2025-11-18 | 60 req/min | $2/M input, $12/M output | $0.00002-0.00012 |
+| **Native Claude Code** | - | - | Included in subscription | Free ✅ |
+
+**Token Tracking for Cost Analysis**:
+- **Codex JSON output** includes `usage` object with `input_tokens`, `cached_input_tokens`, `output_tokens`
+- **Gemini JSON output** includes `stats.models.gemini-3-pro.tokens` with `input` and `output` counts
+- Use JSON output (`--json` or `-o json`) to track exact token usage and calculate costs
+
+**Model Features (November 2025 Release)**:
+- **gpt-5.1-codex-max**: 24h+ continuous work, context compression, 30% fewer thinking tokens
+- **gemini-3-pro**: Dynamic thinking enabled, multimodal reasoning, faster inference
+
+### Troubleshooting
+
+**Issue: "CLI not found"**
+```bash
+# Re-install CLI tools
+npm install -g @openai/codex-cli
+npm install -g @google/gemini-cli
+```
+
+**Issue: "Authentication failed"**
+```bash
+# Codex: Re-authenticate
+codex login
+
+# Gemini: Fresh login
+gemini auth logout
+gemini auth login
+```
+
+**Issue: "Rate limit exceeded"**
+- Codex: Upgrade API plan
+- Gemini: Use free tier (60 requests/minute) or upgrade
+- MoAI-ADK automatically falls back to native Claude Code
+
+**Issue: "Command not found after installation"**
+```bash
+# Add npm global bin to PATH
+export PATH="$PATH:$(npm bin -g)"
+
+# Or verify installation
+npm list -g @openai/codex-cli
+npm list -g @google/gemini-cli
+```
+
+---
+
 ## 🕵️ Agents & Skills
 
 MoAI-ADK possesses 35 specialized agents and over 135 skills.
@@ -372,7 +580,7 @@ MoAI-ADK possesses 35 specialized agents and over 135 skills.
 
 ## 🎯 Skills Portfolio Optimization Achievement
 
-As of November 22, 2025, the MoAI-ADK Skills Portfolio has been comprehensively optimized and standardized:
+As of November 24, 2025, the MoAI-ADK Skills Portfolio has been comprehensively optimized and standardized:
 
 ### Portfolio Statistics
 
@@ -389,6 +597,8 @@ As of November 22, 2025, the MoAI-ADK Skills Portfolio has been comprehensively 
 3. **5 New Essential Skills**: Added code-templates, api-versioning, testing-integration, performance-profiling, accessibility-wcag3
 4. **100% Quality Compliance**: All skills pass TRUST 5 quality gates
 5. **Semantic Versioning**: All 147 skills use X.Y.Z version tracking
+6. **Metadata Standardization**: All 127 skills include standardized YAML frontmatter with version, compliance scores, and auto-trigger keywords
+7. **AI Integration**: Context7 MCP references and AI model integration documented across relevant skills
 
 ### Tier Structure
 
@@ -483,7 +693,7 @@ MoAI-ADK is distributed under the [MIT License](LICENSE).
 ---
 
 **Project**: MoAI-ADK
-**Version**: 0.26.0
-**Last Updated**: 2025-11-20
+**Version**: 0.27.2
+**Last Updated**: 2025-11-24
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

@@ -3,6 +3,12 @@ name: moai-docs-unified
 description: Enhanced documentation unified validation with AI-powered features
 version: 1.0.1
 modularized: true
+tags:
+  - enterprise
+  - unified
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

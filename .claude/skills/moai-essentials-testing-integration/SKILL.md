@@ -3,18 +3,14 @@ name: moai-essentials-testing-integration
 description: Integration and E2E testing patterns using Playwright, Cypress, Jest and pytest for comprehensive test coverage
 version: 1.0.0
 modularized: true
-last_updated: 2025-11-22
-compliance_score: 85
-auto_trigger_keywords:
+tags:
+  - enterprise
+  - quality
   - testing
+  - optimization
   - integration
-  - e2e
-  - playwright
-  - cypress
-  - jest
-  - pytest
-category_tier: 8
-agent_coverage:
+updated: 2025-11-24
+status: active
 ---
 
 ## Quick Reference

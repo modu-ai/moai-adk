@@ -3,6 +3,13 @@ name: moai-core-personas
 description: Adaptive communication patterns and role selection based on user expertise level and request type
 version: 1.1.0
 modularized: true
+tags:
+  - architecture
+  - personas
+  - enterprise
+  - framework
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

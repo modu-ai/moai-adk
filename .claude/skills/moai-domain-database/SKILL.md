@@ -1,8 +1,15 @@
 ---
-
 name: moai-domain-database
 description: Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS,  MongoDB 8.0, Redis 7.4 expertise. Master connection pooling, query optimization,  caching strategies, and database DevOps automation. Build scalable, resilient  database systems with comprehensive monitoring and disaster recovery.
-
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - database
+  - enterprise
+  - patterns
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

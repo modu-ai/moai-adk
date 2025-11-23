@@ -1,9 +1,15 @@
 ---
-
 name: moai-domain-iot
 description: IoT architecture, device management, and edge computing patterns for connected devices
-allowed-tools: [Read, Bash, WebFetch]
-
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - iot
+  - enterprise
+  - patterns
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

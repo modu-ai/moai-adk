@@ -3,6 +3,12 @@ name: moai-nextra-architecture
 description: Enterprise Nextra documentation framework with Next.js
 version: 1.0.1
 modularized: true
+tags:
+  - architecture
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,11 +1,15 @@
 ---
 name: moai-security-auth
 description: Modern authentication patterns with OAuth 2.1, WebAuthn, Passkeys, and MFA
+version: 1.0.0
 modularized: true
-modules:
-  - jwt-oauth-2-1
-  - webauthn-passkeys
-  - mfa-patterns
+tags:
+  - auth
+  - security
+  - enterprise
+  - threat-modeling
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

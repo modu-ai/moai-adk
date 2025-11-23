@@ -1,9 +1,16 @@
 ---
-
 name: moai-project-batch-questions
-description: Standardize AskUserQuestion patterns and provide reusable question templates
-  for batch optimization
-
+description: Standardize AskUserQuestion patterns and provide reusable question templates for batch optimization
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - tooling
+  - batch
+  - project-management
+  - questions
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

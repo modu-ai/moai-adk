@@ -1,11 +1,14 @@
 ---
-
 name: moai-icons-vector
-description: Vector icon libraries ecosystem guide covering 10+ major libraries with
-  200K+ icons, including React Icons (35K+), Lucide (1000+), Tabler Icons (5900+),
-  Iconify (200K+), Heroicons, Phosphor, and Radix Icons with implementation patterns,
-  decision trees, and best practices.
-
+description: Vector icon libraries ecosystem guide covering 10+ major libraries with 200K+ icons, including React Icons (35K+), Lucide (1000+), Tabler Icons (5900+), Iconify (200K+), Heroicons, Phosphor, and Radix Icons with implementation patterns, decision trees, and best practices.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - development
+  - vector
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

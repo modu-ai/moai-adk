@@ -1,8 +1,13 @@
 ---
-
 name: moai-readme-expert
 description: README.md generation specialist with dynamic project analysis and professional templates
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

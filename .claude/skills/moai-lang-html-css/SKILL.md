@@ -1,6 +1,16 @@
 ---
 name: moai-lang-html-css
 description: HTML5 Semantic Markup & CSS3 with Accessibility and Responsive Design
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - css
+  - html
+  - development
+  - programming-language
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,8 +1,14 @@
 ---
-
 name: moai-component-designer
 description: Enterprise-grade component design and architecture with React 19, Vue
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - development
+  - designer
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

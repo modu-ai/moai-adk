@@ -1,10 +1,15 @@
 ---
-
 name: moai-baas-supabase-ext
-description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS
-  architecture, Context7 integration, and intelligent PostgreSQL orchestration for
-  scalable modern applications
-
+description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications
+version: 1.0.0
+modularized: false
+tags:
+  - backend-as-a-service
+  - supabase
+  - platform
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

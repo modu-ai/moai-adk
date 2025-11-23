@@ -1,11 +1,15 @@
 ---
 name: moai-security-encryption
 description: Enterprise encryption security with cryptographic architecture and key management
+version: 1.0.0
 modularized: true
-modules:
-  - encryption-architecture-algorithms
-  - key-management-systems
-  - secure-communication-compliance
+tags:
+  - encryption
+  - security
+  - enterprise
+  - threat-modeling
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,9 +1,15 @@
 ---
-
 name: moai-domain-notion
-description: Enterprise Notion integration with MCP server architecture, database
-  operations, and content management
-
+description: Enterprise Notion integration with MCP server architecture, database operations, and content management
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - enterprise
+  - patterns
+  - notion
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,8 +1,15 @@
 ---
-
 name: moai-lang-sql
 description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, and migration management.
-
+version: 1.0.0
+modularized: false
+tags:
+  - sql
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

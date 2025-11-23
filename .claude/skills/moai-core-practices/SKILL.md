@@ -1,12 +1,15 @@
 ---
-
 name: moai-core-practices
-description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time)
-  retrieval optimization, real-world execution examples, debugging patterns, and moai-adk
-  workflow mastery; activates for workflow pattern learning, context optimization,
-  debugging issue resolution, feature implementation end-to-end, and team knowledge
-  transfer
-
+description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time) retrieval optimization, real-world execution examples, debugging patterns, and moai-adk workflow mastery; activates for workflow pattern learning, context optimization, debugging issue resolution, feature implementation end-to-end, and team knowledge transfer
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - practices
+  - enterprise
+  - framework
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

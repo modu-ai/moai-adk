@@ -1,10 +1,15 @@
 ---
-
 name: moai-internal-comms
-description: AI-powered enterprise internal communications orchestrator with Context7
-  integration, intelligent content generation, automated workflow optimization, multi-format
-  support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
-
+description: AI-powered enterprise internal communications orchestrator with Context7 integration, intelligent content generation, automated workflow optimization, multi-format support (reports, newsletters, FAQs), and enterprise-grade communication intelligence
+version: 1.0.0
+modularized: false
+tags:
+  - comms
+  - enterprise
+  - utilities
+  - internal-tooling
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

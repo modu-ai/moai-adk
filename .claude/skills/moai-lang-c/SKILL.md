@@ -1,10 +1,15 @@
 ---
-
 name: moai-lang-c
-description: C programming language patterns, memory management, and systems programming
-  best practices. Use when writing C applications, managing memory manually, or implementing
-  low-level optimizations.
-
+description: C programming language patterns, memory management, and systems programming best practices. Use when writing C applications, managing memory manually, or implementing low-level optimizations.
+version: 1.0.0
+modularized: false
+tags:
+  - c
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

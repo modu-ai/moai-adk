@@ -1,6 +1,15 @@
 ---
 name: moai-domain-frontend
 description: Enterprise Frontend Development with React 19, Next.js 15, Vue 3.5 and modern frameworks
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - enterprise
+  - patterns
+  - frontend
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

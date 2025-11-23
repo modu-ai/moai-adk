@@ -1,8 +1,15 @@
 ---
-
 name: moai-security-secrets
 description: Enterprise Skill for advanced development
-
+version: 1.0.0
+modularized: false
+tags:
+  - security
+  - enterprise
+  - threat-modeling
+  - secrets
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

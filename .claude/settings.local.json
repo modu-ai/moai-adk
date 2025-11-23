@@ -1,13 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(for skill in /Users/goos/MoAI/MoAI-ADK/.claude/skills/*/SKILL.md)",
-      "Bash(done)",
-      "Bash(for skill in /Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/*/SKILL.md)",
-      "Bash(for group in A B C D E)",
-      "Bash(do echo \"=== GROUP-$group 관련 커밋 ===\")",
-      "Bash(for sha in 40a6835f 787b4311 77ae5ad8 34cd36e2 77782cb1 0b11eb66 09ebf25a)",
-      "Bash(do echo \"=== Commit: $sha ===\")"
-    ]
+    "allow": []
   }
 }

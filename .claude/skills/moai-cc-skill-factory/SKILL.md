@@ -1,7 +1,16 @@
 ---
 name: moai-cc-skill-factory
 description: Enterprise AI-powered skill creation factory with intelligent generation, optimization, and Context7 integration
-allowed-tools: [Read, Write, Edit, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs]
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - configuration
+  - factory
+  - claude-code
+  - skill
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

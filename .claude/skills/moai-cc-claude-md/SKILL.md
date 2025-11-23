@@ -1,8 +1,16 @@
 ---
 name: moai-cc-claude-md
-description: Claude Code Markdown integration, documentation generation, and structured
-  content patterns. Use when generating documentation, managing markdown content,
-  or creating structured reports.
+description: Claude Code Markdown integration, documentation generation, and structured content patterns. Use when generating documentation, managing markdown content, or creating structured reports.
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - configuration
+  - claude
+  - claude-code
+  - md
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

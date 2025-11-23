@@ -1,6 +1,14 @@
 ---
 name: moai-learning-optimizer
 description: Moai Learning Optimizer - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - optimizer
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

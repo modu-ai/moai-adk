@@ -1,6 +1,15 @@
 ---
 name: moai-lang-scala
 description: Scala 3.6+ with functional programming, Play Framework, ZIO, and big data processing.
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - scala
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

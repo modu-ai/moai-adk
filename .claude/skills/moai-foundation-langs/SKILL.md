@@ -1,6 +1,15 @@
 ---
 name: moai-foundation-langs
 description: Moai Foundation Langs - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - langs
+  - core-concepts
+  - principles
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,9 +1,16 @@
 ---
 name: moai-core-issue-labels
-description: Enterprise GitHub issue labeling orchestrator with semantic label taxonomy,
-  AI-powered auto-labeling, label hierarchy system, workflow automation, issue triage
-  acceleration, and stakeholder communication; activates for issue classification,
-  label management, workflow automation, priority assignment, and team communication
+description: Enterprise GitHub issue labeling orchestrator with semantic label taxonomy, AI-powered auto-labeling, label hierarchy system, workflow automation, issue triage acceleration, and stakeholder communication; activates for issue classification, label management, workflow automation, priority assignment, and team communication
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - framework
+  - labels
+  - architecture
+  - issue
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

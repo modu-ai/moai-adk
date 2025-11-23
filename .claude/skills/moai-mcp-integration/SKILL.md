@@ -1,7 +1,15 @@
 ---
 name: moai-mcp-integration
 description: MCP 1.0+ (Model Context Protocol) Enterprise Integration with 10+ Official Servers
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - context7
+  - mcp-integration
+  - integration
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

@@ -1,10 +1,15 @@
 ---
-
 name: moai-lang-csharp
-description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity Framework
-  Core, ASP.NET Core, and Context7 MCP integration for modern backend and enterprise
-  applications.
-
+description: Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity Framework Core, ASP.NET Core, and Context7 MCP integration for modern backend and enterprise applications.
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - csharp
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

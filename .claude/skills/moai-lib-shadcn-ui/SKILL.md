@@ -1,6 +1,15 @@
 ---
 name: moai-lib-shadcn-ui
 description: Moai Lib Shadcn Ui - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - shadcn
+  - enterprise
+  - development
+  - ui
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

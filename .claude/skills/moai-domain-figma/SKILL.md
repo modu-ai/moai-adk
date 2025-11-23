@@ -1,6 +1,15 @@
 ---
 name: moai-domain-figma
 description: Design System & UI Kit Development with Figma 2025, Design Tokens, and Component Documentation
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - figma
+  - enterprise
+  - patterns
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

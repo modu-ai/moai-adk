@@ -1,10 +1,15 @@
 ---
-
 name: moai-lang-java
-description: Java programming language patterns, object-oriented design, and enterprise
-  application development. Use when building enterprise applications, Android apps,
-  or large-scale systems.
-
+description: Java programming language patterns, object-oriented design, and enterprise application development. Use when building enterprise applications, Android apps, or large-scale systems.
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - java
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

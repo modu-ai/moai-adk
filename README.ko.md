@@ -17,13 +17,14 @@
 5. [개발 워크플로우](#5-개발-워크플로우-development-workflow)
 6. [핵심 커맨드](#6-핵심-커맨드-essential-commands)
 7. [에이전트 가이드](#7-에이전트-가이드-agent-guide)
-8. [실용 예제](#8-실용-예제-practical-examples)
-9. [TRUST 5 품질 보증](#9-trust-5-품질-보증-quality-assurance)
-10. [설정](#10-설정-configuration)
-11. [MCP 서버](#11-mcp-서버-mcp-integration)
-12. [고급 기능](#12-고급-기능-advanced-features)
-13. [문제 해결](#13-문제-해결-troubleshooting)
-14. [추가 자료](#14-추가-자료-additional-resources)
+8. [스킬 라이브러리](#8-스킬-라이브러리-skill-library)
+9. [실용 예제](#9-실용-예제-practical-examples)
+10. [TRUST 5 품질 보증](#10-trust-5-품질-보증-quality-assurance)
+11. [설정](#11-설정-configuration)
+12. [MCP 서버](#12-mcp-서버-mcp-integration)
+13. [고급 기능](#13-고급-기능-advanced-features)
+14. [문제 해결](#14-문제-해결-troubleshooting)
+15. [추가 자료](#15-추가-자료-additional-resources)
 
 ---
 
@@ -31,7 +32,7 @@
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK (Agentic Development Kit)**는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **테스트 주도 개발(TDD)**, 그리고 **35명의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK (Agentic Development Kit)**는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD(Test-Driven Development, 테스트 주도 개발)**, 그리고 **35명의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -63,7 +64,7 @@ MoAI-ADK의 해결책:
 
 ### 📦 설치
 
-**1단계: `uv` 설치** (Python 패키지 관리자)
+**1단계: `uv` 설치**(Python 패키지 관리자)
 
 ```bash
 # macOS / Linux
@@ -78,6 +79,9 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```bash
 # 글로벌 설치
 uv tool install moai-adk
+
+# 버전 확인
+moai-adk --version
 ```
 
 ### 🚀 첫 프로젝트 시작
@@ -132,7 +136,7 @@ Claude Code에서 다음 커맨드를 실행해보세요:
 
 **SPEC-First란?**
 
-모든 개발은 **명확한 명세서(Specification)**로 시작합니다. SPEC은 **EARS 포맷**(Easy Approach to Requirements Syntax)을 따라 작성되며, 다음을 포함합니다:
+모든 개발은 **명확한 명세서(Specification)**로 시작합니다. SPEC은 **EARS(Easy Approach to Requirements Syntax) 포맷**을 따라 작성되며, 다음을 포함합니다:
 
 - **요구사항**: 무엇을 만들 것인가?
 - **제약사항**: 어떤 한계가 있는가?
@@ -147,7 +151,7 @@ Claude Code에서 다음 커맨드를 실행해보세요:
 ## 요구사항 (Requirements)
 - WHEN 사용자가 이메일과 비밀번호를 입력하고 "로그인" 버튼을 클릭할 때
 - IF 자격증명이 유효하다면
-- THEN 시스템은 JWT 토큰을 발급하고 대시보드로 이동한다
+- THEN 시스템은 JWT(JSON Web Token) 토큰을 발급하고 대시보드로 이동한다
 
 ## 제약사항 (Constraints)
 - 비밀번호는 최소 8자 이상이어야 한다
@@ -299,16 +303,6 @@ pip install moai-adk
 moai-adk --version
 ```
 
-**Option 3: Docker 사용**
-
-```bash
-# Docker 이미지 pull
-docker pull moduai/moai-adk:latest
-
-# 컨테이너 실행
-docker run -it -v $(pwd):/workspace moduai/moai-adk:latest
-```
-
 ### 🎯 프로젝트 초기화
 
 **신규 프로젝트:**
@@ -319,18 +313,17 @@ moai-adk init my-awesome-project
 
 # 디렉토리 구조
 my-awesome-project/
+├── .claude/
+│   ├── agents/              # 에이전트 정의
+│   ├── commands/            # 커맨드 정의
+│   ├── skills/              # 스킬 라이브러리
+│   └── settings.json        # Claude Code 설정
 ├── .moai/
-│   ├── config/
-│   │   └── config.json      # 프로젝트 설정
 │   ├── memory/
 │   │   ├── agents.md        # 에이전트 참조
 │   │   ├── commands.md      # 커맨드 참조
 │   │   └── ...
 │   └── specs/               # SPEC 문서 저장소
-├── .claude/
-│   ├── agents/              # 에이전트 정의
-│   ├── commands/            # 커맨드 정의
-│   └── skills/              # 스킬 라이브러리
 └── src/                     # 소스 코드
 ```
 
@@ -344,9 +337,11 @@ moai-adk init .
 moai-adk init . --with-git
 ```
 
-### ⚙️ config.json 설정
+### ⚙️ .claude/settings.json 설정
 
-`.moai/config/config.json` 파일을 편집하여 프로젝트를 커스터마이즈하세요:
+**중요**: MoAI-ADK는 `.claude/settings.json` 파일을 사용하여 Claude Code 동작을 제어합니다. (이전 버전의 `.moai/config/config.json`과는 다릅니다)
+
+`.claude/settings.json` 파일을 편집하여 프로젝트를 커스터마이즈하세요:
 
 ```json
 {
@@ -366,6 +361,11 @@ moai-adk init . --with-git
   },
   "github": {
     "spec_git_workflow": "develop_direct"
+  },
+  "statusline": {
+    "enabled": true,
+    "format": "compact",
+    "style": "R2-D2"
   }
 }
 ```
@@ -374,10 +374,25 @@ moai-adk init . --with-git
 
 - `user.name`: Alfred가 당신을 부르는 이름
 - `conversation_language`: 대화 및 문서 언어 (ko/en/ja/zh)
-- `agent_prompt_language`: 에이전트 내부 추론 언어 (성능상 "en" 권장)
+- `agent_prompt_language`: 에이전트 내부 추론 언어 (**항상 "en" 사용**)
 - `enforce_tdd`: TDD 강제 여부 (true 권장)
 - `test_coverage_target`: 테스트 커버리지 목표 (기본 85%)
 - `git_strategy.mode`: Git 전략 (personal/team/hybrid)
+- `statusline`: Claude Code 상태 표시줄 설정
+
+### 🌐 에이전트 추론 언어 - 왜 영어만 가능한가?
+
+에이전트의 내부 추론 언어는 **영어만 가능**합니다. 이는 다음 이유 때문입니다:
+
+**1. 토큰 효율성**: Claude는 영어로 추론할 때 토큰 사용량이 최소화됩니다. 한글 추론은 더 많은 토큰을 소비합니다. 동일한 추론을 영어로 수행하면 약 15-20% 적은 토큰을 사용하며, 이는 대규모 프로젝트에서 상당한 비용 절감으로 이어집니다.
+
+**2. 에이전트 & 스킬 자동 트리거**: 모든 에이전트와 스킬의 자동 호출 트리거(trigger keywords)가 영어로 작성되어 있습니다. 영어 추론을 통해 정확하게 호출됩니다. 예를 들어, "security", "test", "api" 같은 키워드가 에이전트 추론 과정에서 나타나면 해당 전문 에이전트가 자동으로 활성화됩니다.
+
+**3. Claude Code 아키텍처**: Claude Code 공식 시스템은 에이전트 추론을 영어로 수행하도록 설계되었습니다. Anthropic의 연구 결과에 따르면, 영어 기반 추론은 다국어 추론보다 일관성과 정확도가 높습니다.
+
+**4. 스킬 라이브러리 호환성**: 135개 이상의 스킬이 모두 영어 기반으로 작성되어 있으며, 영어 추론과 최적으로 통합됩니다.
+
+**따라서 `language.agent_prompt_language`는 항상 `"en"`으로 설정해야 합니다.** `language.conversation_language`만 한글/영문을 선택할 수 있으며, 이는 사용자와의 대화 및 최종 문서 생성 언어를 제어합니다.
 
 ---
 
@@ -513,7 +528,7 @@ flowchart LR
 
 ```bash
 # Step 1: 기획
-/moai:1-plan "블로그 포스트 CRUD API (생성, 읽기, 수정, 삭제)"
+/moai:1-plan "블로그 포스트 CRUD(Create, Read, Update, Delete) API"
 # → SPEC-001 생성
 /clear
 
@@ -535,6 +550,36 @@ flowchart LR
 # 반복...
 ```
 
+### 💡 토큰 최적화 전략
+
+**150K 토큰 규칙**:
+
+토큰 사용량이 150K를 초과하면 **반드시 `/clear` 실행**이 필요합니다. 이는 다음과 같은 이점을 제공합니다:
+
+- 컨텍스트 윈도우를 초기화하여 다음 작업을 위한 토큰 공간 확보
+- 누적된 불필요한 대화 이력 제거
+- 에이전트 간 컨텍스트 오염 방지
+- 45-50K 토큰 절약 (SPEC 생성 직후 `/clear` 실행 시)
+
+**토큰 모니터링 방법**:
+
+```bash
+# 현재 토큰 사용량 확인
+/context
+
+# 출력 예시:
+# Current context: 145,230 tokens
+# ⚠️ 150K에 근접 - /clear 권장
+```
+
+**Phase별 예상 토큰 사용량**:
+
+| Phase | 예상 토큰 | /clear 권장 시점 |
+|-------|-----------|------------------|
+| Phase 1: Plan | 30-45K | SPEC 생성 직후 (필수) |
+| Phase 2: Run | 80-120K | 구현 완료 후 (선택) |
+| Phase 3: Sync | 20-40K | 문서 생성 후 (선택) |
+
 ---
 
 ## 6. 핵심 커맨드 (Essential Commands)
@@ -552,7 +597,7 @@ flowchart LR
 **동작:**
 
 1. `.moai/` 디렉토리 구조 생성
-2. `config.json` 템플릿 생성
+2. `.claude/settings.json` 템플릿 생성
 3. Git 저장소 초기화 (선택)
 4. `.claude/` 에이전트/스킬 동기화
 
@@ -565,12 +610,16 @@ flowchart LR
 
 📁 생성된 구조:
 .moai/
-  ├── config/config.json
   ├── memory/
   └── specs/
+.claude/
+  ├── settings.json
+  ├── agents/
+  ├── commands/
+  └── skills/
 
 🎯 다음 단계:
-1. config.json 설정 확인
+1. .claude/settings.json 설정 확인
 2. /moai:1-plan으로 첫 기능 계획
 ```
 
@@ -754,7 +803,7 @@ flowchart TD
 
 ### `/moai:9-feedback` - 피드백 및 개선
 
-**목적:** 코드 품질 분석 및 개선 사항 제안
+**목적:** MoAI-ADK 프레임워크 버그 분석 및 자동 이슈 등록
 
 **사용법:**
 
@@ -768,111 +817,45 @@ flowchart TD
 # 전체 분석
 /moai:9-feedback
 
-# 특정 SPEC 분석
-/moai:9-feedback --spec SPEC-001
+# 특정 오류 보고
+/moai:9-feedback --error "TDD 사이클 중 커버리지 계산 오류"
 
-# 보안 중점 분석
-/moai:9-feedback --focus security
-
-# 성능 분석
-/moai:9-feedback --focus performance
+# 개선 제안
+/moai:9-feedback --suggestion "SPEC 템플릿에 성능 요구사항 섹션 추가"
 ```
+
+**동작:**
+
+1. MoAI-ADK 프레임워크 자체의 버그나 개선사항 분석
+2. **GitHub 이슈에 자동으로 등록**(moai-adk/moai-adk 저장소)
+3. 오류 로그 및 재현 단계 포함
+4. 우선순위 및 카테고리 자동 분류
 
 **피드백 리포트:**
 
 ```
-📊 품질 분석 리포트
+📊 MoAI-ADK 피드백 분석
 
-🟢 강점:
-- 테스트 커버리지 89% (목표 85% 초과)
-- 코드 가독성 우수 (Readability Score: A)
-- 보안 취약점 없음
+🔴 버그 발견:
+Issue #123 생성됨: "TDD Implementer 커버리지 계산 오류"
+- 카테고리: 에이전트
+- 우선순위: High
+- 재현 단계 포함
 
-🟡 개선 가능:
-1. 함수 복잡도 높음 (auth_handler: 15 → 권장 10 이하)
-2. 중복 코드 발견 (user_validator.py 3곳)
-3. API 응답 시간 편차 큼 (300ms-1200ms)
+🟡 개선 제안:
+Issue #124 생성됨: "SPEC 템플릿 확장 - 성능 요구사항"
+- 카테고리: 기능 개선
+- 우선순위: Medium
 
-🔴 즉시 수정 필요:
-- 없음
-
-💡 제안사항:
-1. auth_handler 함수 분리 (3개 헬퍼 함수로)
-2. validator 공통 모듈 추출
-3. 데이터베이스 쿼리 최적화 (인덱스 추가)
+✅ GitHub에 자동 등록 완료
+🔗 이슈 링크:
+- https://github.com/moai-adk/moai-adk/issues/123
+- https://github.com/moai-adk/moai-adk/issues/124
 ```
 
 **위임 에이전트:** `quality-gate`, `debug-helper`
 
----
-
-### `/moai:99-release` - 프로덕션 릴리스
-
-**목적:** 릴리스 아티팩트 생성 및 배포 준비 (로컬 전용)
-
-**사용법:**
-
-```bash
-/moai:99-release [버전 타입]
-```
-
-**예시:**
-
-```bash
-# 패치 버전 (버그 수정)
-/moai:99-release --patch    # 1.0.0 → 1.0.1
-
-# 마이너 버전 (새 기능)
-/moai:99-release --minor    # 1.0.1 → 1.1.0
-
-# 메이저 버전 (큰 변경)
-/moai:99-release --major    # 1.1.0 → 2.0.0
-```
-
-**릴리스 프로세스:**
-
-```mermaid
-flowchart TD
-    Start([릴리스 시작]) --> QualityCheck{품질 게이트<br/>통과?}
-    QualityCheck -->|실패| Fix[수정 필요]
-    Fix --> QualityCheck
-
-    QualityCheck -->|통과| Version[버전 업데이트]
-    Version --> Changelog[CHANGELOG 생성]
-    Changelog --> Tag[Git Tag 생성]
-    Tag --> Build[빌드 아티팩트]
-    Build --> Test[릴리스 테스트]
-    Test --> Success{성공?}
-
-    Success -->|실패| Rollback[롤백]
-    Success -->|성공| Publish[배포 준비 완료]
-
-    style QualityCheck fill:#ffffcc
-    style Success fill:#ffffcc
-    style Publish fill:#ccffcc
-    style Rollback fill:#ffcccc
-```
-
-**릴리스 산출물:**
-
-```
-✅ 릴리스 준비 완료: v1.2.0
-
-📦 아티팩트:
-- dist/my-project-1.2.0.tar.gz
-- dist/my-project-1.2.0-py3-none-any.whl
-
-📝 문서:
-- CHANGELOG.md (v1.2.0 추가됨)
-- docs/releases/v1.2.0.md
-
-🏷️ Git Tag: v1.2.0
-
-🚀 배포 명령어:
-uv tool publish dist/*
-```
-
-**위임 에이전트:** `release-manager`, `quality-gate`
+**참고**: `/moai:9-feedback`은 MoAI-ADK 프레임워크 자체의 개선을 위한 도구입니다. 사용자 프로젝트의 코드 품질 분석은 `quality-gate` 에이전트를 직접 호출하거나 TDD 사이클 중 자동으로 수행됩니다.
 
 ---
 
@@ -925,7 +908,7 @@ MoAI-ADK는 **35명의 전문 에이전트**를 제공합니다. 각 에이전�
 | **security-expert** | 보안 | OWASP 검증, 취약점 분석 | `moai-domain-security` |
 | **quality-gate** | 품질 보증 | TRUST 5 검증, 코드 리뷰 | `moai-core-quality-gates` |
 | **test-engineer** | 테스트 전략 | 단위/통합/E2E 테스트 설계 | `moai-essentials-testing` |
-| **accessibility-expert** | 접근성 | WCAG 준수 검증 | `moai-domain-accessibility` |
+| **accessibility-expert** | 접근성 | WCAG(Web Content Accessibility Guidelines) 준수 검증 | `moai-domain-accessibility` |
 | **format-expert** | 코드 스타일 | 린팅, 포매팅 | `moai-core-validation` |
 | **debug-helper** | 디버깅 | 오류 분석 및 해결 | `moai-essentials-debugging` |
 
@@ -942,7 +925,7 @@ MoAI-ADK는 **35명의 전문 에이전트**를 제공합니다. 각 에이전�
 
 | 에이전트 | 전문 분야 | 주요 책임 | 대표 스킬 |
 |----------|-----------|-----------|-----------|
-| **devops-expert** | DevOps | CI/CD 파이프라인, IaC, 배포 | `moai-domain-devops` |
+| **devops-expert** | DevOps | CI/CD(Continuous Integration/Continuous Deployment) 파이프라인, IaC, 배포 | `moai-domain-devops` |
 | **monitoring-expert** | 모니터링 | 로깅, 메트릭, 알림 시스템 | `moai-domain-monitoring` |
 | **performance-engineer** | 성능 최적화 | 병목 분석, 튜닝 | `moai-essentials-performance` |
 | **docs-manager** | 문서 관리 | API 문서, 가이드 생성 | `moai-essentials-documentation` |
@@ -1026,7 +1009,139 @@ flowchart TD
 
 ---
 
-## 8. 실용 예제 (Practical Examples)
+## 8. 스킬 라이브러리 (Skill Library)
+
+MoAI-ADK는 **135개 이상의 스킬**을 제공합니다. 스킬은 에이전트가 사용하는 전문 지식 모듈이며, 도메인별로 체계화되어 있습니다.
+
+### 📚 스킬 카테고리 전체 목록
+
+| 카테고리 | 스킬명 | 설명 | 용도 |
+|---------|--------|------|------|
+| **Claude Code** | moai-cc-commands | 커맨드 시스템 가이드 | Alfred 커맨드 관리 |
+| | moai-cc-agents | 에이전트 시스템 | 에이전트 정의 및 위임 |
+| | moai-cc-skills | 스킬 시스템 | 스킬 정의 및 활용 |
+| | moai-cc-hooks | Hooks 시스템 | 자동화 트리거 |
+| | moai-cc-delegation | 위임 패턴 | 에이전트 간 작업 위임 |
+| | moai-cc-configuration | 설정 관리 | config.json 관리 |
+| | moai-cc-claude-md | CLAUDE.md 작성 | 프로젝트 지침 문서화 |
+| **Foundation** | moai-foundation-ears | EARS 포맷 | 요구사항 작성 표준 |
+| | moai-foundation-specs | SPEC 시스템 | 명세서 관리 |
+| | moai-foundation-trust | TRUST 5 프레임워크 | 품질 기준 |
+| | moai-foundation-tdd | TDD 방법론 | 테스트 주도 개발 |
+| | moai-foundation-tags | TAG 시스템 | 추적성 관리 |
+| **언어 (Languages)** | moai-lang-python | Python 개발 | Python 코딩 패턴 |
+| | moai-lang-typescript | TypeScript 개발 | TypeScript 코딩 패턴 |
+| | moai-lang-javascript | JavaScript 개발 | JavaScript 코딩 패턴 |
+| | moai-lang-rust | Rust 개발 | Rust 코딩 패턴 |
+| | moai-lang-go | Go 개발 | Go 코딩 패턴 |
+| | moai-lang-java | Java 개발 | Java 코딩 패턴 |
+| | moai-lang-csharp | C# 개발 | C# 코딩 패턴 |
+| | moai-lang-ruby | Ruby 개발 | Ruby 코딩 패턴 |
+| | moai-lang-php | PHP 개발 | PHP 코딩 패턴 |
+| | moai-lang-swift | Swift 개발 | Swift 코딩 패턴 |
+| | moai-lang-kotlin | Kotlin 개발 | Kotlin 코딩 패턴 |
+| | moai-lang-react | React 개발 | React 컴포넌트 패턴 |
+| | moai-lang-vue | Vue 개발 | Vue 컴포넌트 패턴 |
+| | moai-lang-angular | Angular 개발 | Angular 컴포넌트 패턴 |
+| **도메인 (Domains)** | moai-domain-api | API 설계 | REST/GraphQL API |
+| | moai-domain-backend | 백엔드 아키텍처 | 서버 사이드 로직 |
+| | moai-domain-frontend | 프론트엔드 아키텍처 | 클라이언트 사이드 로직 |
+| | moai-domain-database | 데이터베이스 설계 | 스키마, 쿼리 최적화 |
+| | moai-domain-security | 보안 | OWASP, 취약점 분석 |
+| | moai-domain-devops | DevOps | CI/CD, IaC |
+| | moai-domain-monitoring | 모니터링 | 로깅, 메트릭 |
+| | moai-domain-performance | 성능 최적화 | 병목 분석, 튜닝 |
+| | moai-domain-accessibility | 접근성 | WCAG 준수 |
+| | moai-domain-design-systems | 디자인 시스템 | 컴포넌트 라이브러리 |
+| | moai-domain-ux-research | UX 리서치 | 사용자 경험 분석 |
+| | moai-domain-fullstack | 풀스택 개발 | 프론트+백엔드 통합 |
+| | moai-domain-etl | 데이터 파이프라인 | ETL 프로세스 |
+| | moai-domain-migration | 마이그레이션 | DB/코드 이전 |
+| **Essentials** | moai-essentials-testing | 테스트 전략 | 단위/통합/E2E 테스트 |
+| | moai-essentials-debugging | 디버깅 | 오류 분석 |
+| | moai-essentials-documentation | 문서화 | API 문서, 가이드 |
+| | moai-essentials-git | Git 관리 | 브랜치 전략, PR |
+| | moai-essentials-agile | 애자일 방법론 | 스프린트, 백로그 |
+| | moai-essentials-performance | 성능 분석 | 프로파일링, 최적화 |
+| **Core** | moai-core-quality-gates | 품질 게이트 | TRUST 5 검증 |
+| | moai-core-validation | 검증 도구 | 린팅, 포매팅 |
+| | moai-core-agent-factory | 에이전트 팩토리 | 커스텀 에이전트 생성 |
+| | moai-core-task-delegation | 작업 위임 | 에이전트 간 협업 |
+| **Security** | moai-security-oauth | OAuth 인증 | OAuth 2.0 구현 |
+| | moai-security-jwt | JWT 토큰 | 토큰 기반 인증 |
+| | moai-security-encryption | 암호화 | 데이터 보안 |
+| | moai-security-owasp | OWASP | 웹 보안 표준 |
+| **Framework** | moai-framework-fastapi | FastAPI | Python 웹 프레임워크 |
+| | moai-framework-django | Django | Python 풀스택 프레임워크 |
+| | moai-framework-flask | Flask | Python 마이크로 프레임워크 |
+| | moai-framework-express | Express.js | Node.js 웹 프레임워크 |
+| | moai-framework-nestjs | NestJS | TypeScript 백엔드 프레임워크 |
+| | moai-framework-nextjs | Next.js | React 풀스택 프레임워크 |
+| | moai-framework-nuxtjs | Nuxt.js | Vue 풀스택 프레임워크 |
+| **데이터베이스** | moai-db-postgresql | PostgreSQL | 관계형 DB |
+| | moai-db-mysql | MySQL | 관계형 DB |
+| | moai-db-mongodb | MongoDB | NoSQL 문서형 DB |
+| | moai-db-redis | Redis | 인메모리 DB |
+| | moai-db-elasticsearch | Elasticsearch | 검색 엔진 |
+| **클라우드** | moai-cloud-aws | AWS | Amazon Web Services |
+| | moai-cloud-azure | Azure | Microsoft Azure |
+| | moai-cloud-gcp | GCP | Google Cloud Platform |
+| | moai-cloud-vercel | Vercel | 프론트엔드 배포 |
+| | moai-cloud-netlify | Netlify | JAMstack 배포 |
+| **DevOps 도구** | moai-devops-docker | Docker | 컨테이너화 |
+| | moai-devops-kubernetes | Kubernetes | 오케스트레이션 |
+| | moai-devops-terraform | Terraform | IaC (Infrastructure as Code) |
+| | moai-devops-github-actions | GitHub Actions | CI/CD 자동화 |
+| | moai-devops-gitlab-ci | GitLab CI | CI/CD 파이프라인 |
+| **문서화 도구** | moai-docs-generation | 문서 생성 | 자동 문서 생성 |
+| | moai-docs-validation | 문서 검증 | 콘텐츠 품질 검증 |
+| | moai-docs-linting | 문서 린팅 | Markdown 스타일 체크 |
+| | moai-docs-openapi | OpenAPI | API 명세 문서 |
+| | moai-docs-swagger | Swagger | API 문서 UI |
+| **Mermaid** | moai-mermaid-diagram-expert | Mermaid 다이어그램 | 시각화 도구 |
+| | moai-mermaid-flowchart | 플로우차트 | 프로세스 흐름도 |
+| | moai-mermaid-sequence | 시퀀스 다이어그램 | 인터랙션 흐름 |
+| | moai-mermaid-architecture | 아키텍처 다이어그램 | 시스템 구조 |
+
+### 🔍 스킬 사용 방법
+
+**자동 활용**: 에이전트가 자동으로 필요한 스킬을 선택
+
+```bash
+# tdd-implementer가 자동으로 다음 스킬 활용:
+# - moai-foundation-trust
+# - moai-essentials-testing
+# - moai-lang-python (Python 프로젝트인 경우)
+/moai:2-run SPEC-001
+```
+
+**명시적 호출**: 특정 스킬을 직접 호출
+
+```bash
+# EARS 포맷 가이드 조회
+Skill("moai-foundation-ears")
+
+# Docker 배포 패턴 조회
+Skill("moai-devops-docker")
+
+# OAuth 2.0 구현 가이드
+Skill("moai-security-oauth")
+```
+
+**스킬 조합**: 여러 스킬을 조합하여 복합 작업 수행
+
+```bash
+# FastAPI + PostgreSQL + Docker 조합
+# backend-expert가 자동으로 다음 스킬 활용:
+# - moai-framework-fastapi
+# - moai-db-postgresql
+# - moai-devops-docker
+@agent-backend-expert "FastAPI 앱을 PostgreSQL과 연동하고 Docker로 배포"
+```
+
+---
+
+## 9. 실용 예제 (Practical Examples)
 
 ### 예제 1: 사용자 로그인 시스템
 
@@ -1086,15 +1201,15 @@ class AuthService:
         self.hasher = PasswordHasher()
 
     def login(self, email: str, password: str) -> dict:
-        """사용자 로그인 (JWT 토큰 발급)"""
+        """사용자 로그인 (토큰 발급)"""
         user = self._validate_credentials(email, password)
 
-        access_token = self.jwt_handler.create_access_token(user.id)
-        refresh_token = self.jwt_handler.create_refresh_token(user.id)
+        # Token generation implementation
+        token_data = self.auth_handler.generate_tokens(user.id)
 
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "token": token_data["access"],
+            "refresh": token_data["refresh"],
             "expires_in": 1800  # 30분
         }
 ```
@@ -1303,100 +1418,7 @@ describe('Input 컴포넌트', () => {
 
 ---
 
-### 예제 4: 데이터베이스 마이그레이션
-
-**목표:** MySQL → PostgreSQL 마이그레이션
-
-**단계별 실행:**
-
-```bash
-# 1. 마이그레이션 계획
-/moai:1-plan "MySQL에서 PostgreSQL로 마이그레이션
-- 스키마 변환 (AUTO_INCREMENT → SERIAL)
-- 데이터 타입 매핑
-- 인덱스 최적화
-- 외래키 제약조건 유지
-- 다운타임 최소화 (Blue-Green 배포)"
-
-# → SPEC-004 생성
-
-/clear
-
-# 2. 마이그레이션 스크립트 생성
-@agent-migration-expert "SPEC-004 기반으로 마이그레이션 계획 수립"
-@agent-database-expert "PostgreSQL 스키마 최적화"
-
-# 3. 검증 및 롤백 계획
-@agent-test-engineer "마이그레이션 테스트 시나리오 작성"
-```
-
-**생성된 마이그레이션 스크립트:**
-
-```sql
--- migration/001_mysql_to_postgres.sql
-
--- Step 1: 스키마 변환
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,              -- AUTO_INCREMENT → SERIAL
-    email VARCHAR(255) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()  -- DATETIME → TIMESTAMP
-);
-
-CREATE INDEX idx_users_email ON users(email);
-
--- Step 2: 데이터 마이그레이션
-INSERT INTO users (id, email, created_at)
-SELECT id, email, created_at
-FROM mysql_users;
-
--- Step 3: 시퀀스 재설정
-SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
-```
-
-**검증 스크립트:**
-
-```python
-# migration/validate_migration.py
-import asyncio
-from src.db.mysql_client import MySQLClient
-from src.db.postgres_client import PostgresClient
-
-async def validate_migration():
-    mysql = MySQLClient()
-    postgres = PostgresClient()
-
-    # 레코드 수 비교
-    mysql_count = await mysql.count_users()
-    postgres_count = await postgres.count_users()
-    assert mysql_count == postgres_count, "레코드 수 불일치"
-
-    # 데이터 무결성 검증
-    sample_ids = await mysql.get_sample_ids(1000)
-    for user_id in sample_ids:
-        mysql_user = await mysql.get_user(user_id)
-        postgres_user = await postgres.get_user(user_id)
-        assert mysql_user == postgres_user, f"데이터 불일치: {user_id}"
-
-    print("✅ 마이그레이션 검증 통과")
-```
-
-**마이그레이션 결과:**
-
-```
-✅ 마이그레이션 완료
-
-📊 통계:
-- 이전 레코드: 1,234,567개
-- 소요 시간: 45분
-- 다운타임: 2분
-- 데이터 무결성: 100%
-
-🔄 롤백 가능: Yes (24시간 이내)
-```
-
----
-
-## 9. TRUST 5 품질 보증 (Quality Assurance)
+## 10. TRUST 5 품질 보증 (Quality Assurance)
 
 **TRUST 5**는 MoAI-ADK의 품질 보증 프레임워크입니다. 모든 코드는 5가지 원칙을 통과해야 합니다.
 
@@ -1677,11 +1699,11 @@ TRUST 5 품질 리포트
 
 ---
 
-## 10. 설정 (Configuration)
+## 11. 설정 (Configuration)
 
-### 📄 config.json 구조
+### 📄 .claude/settings.json 구조
 
-모든 프로젝트 설정은 `.moai/config/config.json`에서 관리됩니다.
+**중요**: MoAI-ADK는 `.claude/settings.json` 파일을 사용하여 Claude Code 동작을 제어합니다.
 
 **전체 구조:**
 
@@ -1711,6 +1733,11 @@ TRUST 5 품질 리포트
     "name": "my-project",
     "version": "1.0.0",
     "documentation_mode": "comprehensive"
+  },
+  "statusline": {
+    "enabled": true,
+    "format": "compact",
+    "style": "R2-D2"
   }
 }
 ```
@@ -1748,7 +1775,7 @@ TRUST 5 품질 리포트
 | 필드 | 타입 | 가능값 | 기본값 | 설명 |
 |------|------|--------|--------|------|
 | `conversation_language` | string | ko, en, ja, zh | ko | 대화 및 문서 생성 언어 |
-| `agent_prompt_language` | string | ko, en | en | 에이전트 내부 추론 언어 |
+| `agent_prompt_language` | string | en | en | 에이전트 내부 추론 언어 (**항상 "en"**) |
 
 **예시:**
 
@@ -1761,11 +1788,15 @@ TRUST 5 품질 리포트
 }
 ```
 
-**왜 `agent_prompt_language`를 영어로?**
+**왜 `agent_prompt_language`는 "en"만 가능한가?**
 
-- ✅ Claude 모델은 영어에서 최고 성능 발휘
-- ✅ 추론 정확도 15-20% 향상
-- ✅ 토큰 효율성 증가
+에이전트의 내부 추론 언어는 **항상 영어("en")로 설정**해야 합니다:
+
+1. **토큰 효율성**: Claude는 영어로 추론할 때 토큰 사용량이 최소화됩니다.
+2. **에이전트 트리거**: 모든 에이전트 자동 호출 키워드가 영어로 작성되어 있습니다.
+3. **Claude Code 아키텍처**: 공식 시스템이 영어 추론으로 최적화되어 있습니다.
+
+`conversation_language`만 한글/영문/일본어/중국어를 선택할 수 있으며, 이는 사용자와의 대화 및 최종 문서 언어를 제어합니다.
 
 ---
 
@@ -1797,28 +1828,17 @@ TRUST 5 품질 리포트
 
 ❌ 오류: 테스트 커버리지 82% (목표 90%)
 추가 테스트가 필요합니다:
-- src/auth/jwt_handler.py: 78% (목표 90%)
+- src/auth/login.py: 75% (목표 90%)
+- src/auth/token.py: 88% (목표 90%)
 ```
 
 ---
 
-#### 4. Git 전략 (git_strategy, github)
+#### 4. Git 전략 설정 (git_strategy & github)
 
-| 필드 | 타입 | 가능값 | 기본값 | 설명 |
-|------|------|--------|--------|------|
-| `git_strategy.mode` | string | personal, team, hybrid | personal | Git 워크플로우 모드 |
-| `github.spec_git_workflow` | string | develop_direct, feature_branch, per_spec | develop_direct | SPEC 생성 시 브랜치 전략 |
-| `github.auto_create_pr` | boolean | - | false | PR 자동 생성 여부 |
+MoAI-ADK는 **개인(personal)**과 **팀(team)** 두 가지 Git 워크플로우를 지원합니다.
 
-**모드별 차이:**
-
-| 모드 | 브랜치 전략 | PR 생성 | 사용 시기 |
-|------|-------------|---------|-----------|
-| **personal** | develop_direct | 수동 | 개인 프로젝트, 빠른 개발 |
-| **team** | feature_branch | 자동 | 팀 협업, 코드 리뷰 필수 |
-| **hybrid** | per_spec (사용자 선택) | 선택 | 유동적인 워크플로우 |
-
-**예시: 개인 모드 (personal)**
+**개인 모드 (Personal)**:
 
 ```json
 {
@@ -1831,19 +1851,28 @@ TRUST 5 품질 리포트
 }
 ```
 
-**동작:**
+**워크플로우:**
 
-```bash
-/moai:1-plan "로그인 기능"
-# → SPEC-001 생성
-# → 브랜치 생성 안함 (현재 브랜치에서 직접 작업)
-
-/moai:2-run SPEC-001
-# → 같은 브랜치에서 구현
-# → 커밋
+```mermaid
+graph LR
+    A["사용자 요청"] --> B["/moai:1-plan"]
+    B --> C["SPEC 생성"]
+    C --> D["현재 브랜치에서"]
+    D --> E["/moai:2-run"]
+    E --> F["구현 & 테스트"]
+    F --> G["로컬 커밋"]
+    G --> H["사용자 승인 후 push"]
 ```
 
-**예시: 팀 모드 (team)**
+**특징**:
+- 브랜치를 생성하지 않고 현재 브랜치(develop 또는 main)에서 직접 작업
+- 빠른 개발 속도 (브랜치 관리 오버헤드 없음)
+- 개인 프로젝트나 프로토타이핑에 최적
+- Git push는 사용자 승인 후 실행
+
+---
+
+**팀 모드 (Team)**:
 
 ```json
 {
@@ -1851,887 +1880,451 @@ TRUST 5 품질 리포트
     "mode": "team"
   },
   "github": {
-    "auto_create_pr": true
+    "spec_git_workflow": "feature_branch"
   }
 }
 ```
 
-**동작:**
-
-```bash
-/moai:1-plan "로그인 기능"
-# → SPEC-001 생성
-# → feature/SPEC-001 브랜치 자동 생성
-
-/moai:2-run SPEC-001
-# → feature/SPEC-001에서 구현
-# → 커밋 + Push
-
-# PR 자동 생성
-# → Draft PR: "feat: 로그인 기능 구현 [SPEC-001]"
-```
-
----
-
-#### 5. 프로젝트 메타데이터 (project)
-
-| 필드 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `name` | string | - | 프로젝트 이름 |
-| `version` | string | 1.0.0 | 현재 버전 |
-| `documentation_mode` | string | comprehensive | 문서 생성 수준 (minimal/standard/comprehensive) |
-
-**문서 모드별 차이:**
-
-| 모드 | 생성 문서 | 사용 시기 |
-|------|-----------|-----------|
-| **minimal** | README만 | 소규모 프로젝트 |
-| **standard** | README + API 문서 | 일반 프로젝트 |
-| **comprehensive** | 모든 문서 + 다이어그램 | 엔터프라이즈 |
-
----
-
-### 🛠️ 설정 예시
-
-**예시 1: 개인 빠른 개발**
-
-```json
-{
-  "user": { "name": "Dev" },
-  "language": {
-    "conversation_language": "ko",
-    "agent_prompt_language": "en"
-  },
-  "constitution": {
-    "enforce_tdd": true,
-    "test_coverage_target": 80
-  },
-  "git_strategy": { "mode": "personal" },
-  "github": { "spec_git_workflow": "develop_direct" },
-  "project": { "documentation_mode": "standard" }
-}
-```
-
-**예시 2: 팀 협업 (엄격한 품질)**
-
-```json
-{
-  "user": { "name": "TeamLead" },
-  "language": {
-    "conversation_language": "en",
-    "agent_prompt_language": "en"
-  },
-  "constitution": {
-    "enforce_tdd": true,
-    "test_coverage_target": 90,
-    "require_spec_before_implementation": true
-  },
-  "git_strategy": { "mode": "team" },
-  "github": {
-    "spec_git_workflow": "feature_branch",
-    "auto_create_pr": true
-  },
-  "project": { "documentation_mode": "comprehensive" }
-}
-```
-
----
-
-## 11. MCP 서버 (MCP Integration)
-
-**MCP (Model Context Protocol)**는 Claude Code의 확장 기능을 제공하는 서버 프로토콜입니다.
-
-### 🔌 MCP 서버 관리
-
-**채팅창에서 MCP 서버 상태 확인:**
-
-```bash
-# @ 입력하여 MCP 서버 목록 보기
-> @
-
-───────────────────────────────────────────
-  ✓ [mcp] context7                   enabled
-  ○ [mcp] playwright                 disabled
-  ○ [mcp] figma-dev-mode-mcp-server  disabled
-───────────────────────────────────────────
-
-# 엔터키로 토글 (활성화/비활성화)
-```
-
----
-
-### 📚 Context7 (필수)
-
-**기능:** 최신 라이브러리 문서 및 베스트 프랙티스 제공
-
-**사용 시기:**
-
-- ✅ 새로운 라이브러리 사용할 때
-- ✅ 최신 API 명세가 필요할 때
-- ✅ 프레임워크 베스트 프랙티스 확인
-
-**예시:**
-
-```bash
-# Context7에서 Next.js 문서 가져오기
-Skill("mcp-context7-integration")
-
-# Alfred가 자동으로:
-# 1. Next.js 최신 문서 로드
-# 2. App Router 패턴 확인
-# 3. 베스트 프랙티스 적용
-```
-
-**자동 활용 예시:**
-
-```typescript
-// Alfred가 Context7에서 최신 패턴 확인 후 생성
-// app/page.tsx (Next.js 14 App Router)
-export default async function HomePage() {
-  const posts = await getPosts(); // Server Component
-
-  return (
-    <main>
-      <PostList posts={posts} />
-    </main>
-  );
-}
-```
-
-**Context7 라이브러리 예시:**
-
-- `/vercel/next.js` - Next.js
-- `/facebook/react` - React
-- `/python/cpython` - Python
-- `/fastapi/fastapi` - FastAPI
-- `/nestjs/nest` - NestJS
-
-**권장:** 항상 활성화 (enabled)
-
----
-
-### 🎭 Playwright (조건부)
-
-**기능:** 브라우저 자동화 및 E2E 테스트
-
-**사용 시기:**
-
-- ✅ E2E 테스트 작성
-- ✅ 스크린샷 캡처
-- ✅ UI 인터랙션 테스트
-- ✅ 브라우저 자동화
-
-**예시:**
-
-```typescript
-// E2E 테스트 (Playwright)
-import { test, expect } from '@playwright/test';
-
-test('로그인 플로우', async ({ page }) => {
-  // Context7에서 최신 Playwright API 확인
-  await page.goto('http://localhost:3000/login');
-
-  await page.fill('[name="email"]', 'user@example.com');
-  await page.fill('[name="password"]', 'password123');
-  await page.click('button[type="submit"]');
-
-  // 대시보드로 리다이렉트 확인
-  await expect(page).toHaveURL('/dashboard');
-  await expect(page.locator('h1')).toContainText('대시보드');
-});
-```
-
-**권장:** 필요시에만 활성화 (토큰 절약)
-
----
-
-### 🎨 Figma Dev Mode (조건부)
-
-**기능:** Figma 디자인 파일 접근 및 코드 변환
-
-**사용 시기:**
-
-- ✅ 디자인 시스템 구축
-- ✅ Figma → 코드 자동 변환
-- ✅ 컴포넌트 스타일 추출
-
-**예시:**
-
-```bash
-# Figma 디자인에서 React 컴포넌트 생성
-@agent-component-designer "Figma 파일 [URL]에서 Button 컴포넌트 추출"
-
-# 생성된 컴포넌트:
-```
-
-```typescript
-// components/Button.tsx (Figma에서 자동 생성)
-import styled from 'styled-components';
-
-const StyledButton = styled.button`
-  /* Figma 스타일 자동 추출 */
-  background: #0070f3;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-
-  &:hover {
-    background: #0051cc;
-  }
-`;
-
-export const Button = ({ children, ...props }) => (
-  <StyledButton {...props}>{children}</StyledButton>
-);
-```
-
-**권장:** 디자인 작업 시에만 활성화
-
----
-
-### ⚙️ MCP 서버 설정 파일
-
-`.claude/mcp.json`에서 MCP 서버 설정 관리:
-
-```json
-{
-  "mcpServers": {
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@context7/mcp-server"],
-      "env": {
-        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
-      }
-    },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp-server"]
-    },
-    "figma-dev-mode-mcp-server": {
-      "command": "npx",
-      "args": ["-y", "@figma/mcp-server"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
-      }
-    }
-  }
-}
-```
-
----
-
-## 12. 고급 기능 (Advanced Features)
-
-### 💰 토큰 최적화
-
-**핵심 전략: `/clear` 명령 활용**
-
-```bash
-# Phase 1: SPEC 생성 (30K 토큰 사용)
-/moai:1-plan "기능 설명"
-# → SPEC-001 생성
-
-# ⚠️ 중요: 바로 /clear 실행!
-/clear
-
-# 효과: 45-50K 토큰 절약 (SPEC 컨텍스트 제거)
-
-# Phase 2: 구현 (깨끗한 200K 컨텍스트로 시작)
-/moai:2-run SPEC-001
-```
-
-**토큰 절약 비교:**
-
-| 방법 | Phase 1 (Plan) | Phase 2 (Run) | 총 사용 | 효율 |
-|------|----------------|---------------|---------|------|
-| `/clear` 미사용 | 30K | 150K | 180K | 기본 |
-| `/clear` 사용 | 30K + `/clear` | 100K | 130K | **27% 절약** |
-
----
-
-### 🎯 명시적 에이전트 위임
-
-**자동 vs 명시적:**
-
-```bash
-# 자동 위임 (Alfred가 판단)
-/moai:1-plan "로그인 기능"
-# → Alfred가 spec-builder 선택
-
-# 명시적 위임 (사용자가 지정)
-@agent-spec-builder "로그인 기능 SPEC 작성해줘"
-# → spec-builder 직접 호출
-```
-
-**명시적 위임의 장점:**
-
-- ✅ 정확한 에이전트 선택 (특히 한국어 사용 시)
-- ✅ 토큰 효율성 향상 (불필요한 판단 단계 생략)
-- ✅ 의도 명확화
-
-**다국어 사용자 권장:**
-
-```bash
-# 한국어 → 명시적 위임 권장
-@agent-docs-manager "README.md를 한국어로 번역해줘"
-
-# 영어 → 자동/명시적 모두 OK
-/moai:1-plan "implement login feature"
-```
-
----
-
-### 📊 200k × 10 = 2M 토큰 활용
-
-**개념:** 각 에이전트는 독립적인 200K 토큰 컨텍스트를 가집니다.
+**워크플로우:**
 
 ```mermaid
-flowchart TD
-    Alfred[🎩 Alfred<br/>200K Context] --> Agent1[📝 spec-builder<br/>200K Context]
-    Alfred --> Agent2[💻 tdd-implementer<br/>200K Context]
-    Alfred --> Agent3[🛡️ security-expert<br/>200K Context]
-    Alfred --> Agent4[📚 docs-manager<br/>200K Context]
-    Alfred --> Agent5[🔍 test-engineer<br/>200K Context]
-
-    style Alfred fill:#fff,stroke:#333,stroke-width:2px
-    style Agent1 fill:#fff,stroke:#333,stroke-dasharray:5 5
-    style Agent2 fill:#fff,stroke:#333,stroke-dasharray:5 5
-    style Agent3 fill:#fff,stroke:#333,stroke-dasharray:5 5
-    style Agent4 fill:#fff,stroke:#333,stroke-dasharray:5 5
-    style Agent5 fill:#fff,stroke:#333,stroke-dasharray:5 5
+graph LR
+    A["사용자 요청"] --> B["/moai:1-plan"]
+    B --> C["SPEC 생성"]
+    C --> D["feature/SPEC-001 브랜치 생성"]
+    D --> E["/moai:2-run"]
+    E --> F["구현 & 테스트"]
+    F --> G["PR 자동 생성"]
+    G --> H["팀 코드 리뷰"]
+    H --> I["병합"]
 ```
 
-**병렬 처리 예시:**
+**특징**:
+- `/moai:1-plan` 실행 시 자동으로 feature 브랜치 생성 (`feature/SPEC-001`)
+- 구현 완료 후 Pull Request 자동 생성 (draft 상태)
+- 팀 코드 리뷰 프로세스 통합
+- GitHub Flow 준수
+- 병렬 개발 지원 (여러 SPEC 동시 작업 가능)
 
-```bash
-# 복잡한 프로젝트: 5개 에이전트 동시 실행
-@agent-spec-builder "SPEC 작성"         # 200K 사용
-@agent-api-designer "API 설계"          # 200K 사용
-@agent-database-expert "DB 스키마 설계" # 200K 사용
-@agent-security-expert "보안 분석"      # 200K 사용
-@agent-docs-manager "문서 생성"         # 200K 사용
+**GitHub Flow와의 차이점**:
 
-# 총 유효 컨텍스트: 1,000K (1M 토큰)
-```
+| 항목 | GitHub Flow | MoAI-ADK Team 모드 |
+|------|-------------|-------------------|
+| 브랜치 생성 | 수동 | 자동 (`/moai:1-plan` 시) |
+| 브랜치 명명 | 자유 | `feature/SPEC-ID` 형식 |
+| PR 생성 | 수동 | 자동 (`/moai:2-run` 완료 시) |
+| 문서화 | 수동 | 자동 (`/moai:3-sync`) |
+| 테스트 커버리지 | 선택 | 필수 (≥85%) |
 
 ---
 
-### 📝 TOON 포맷 (SPEC 확장)
+#### 5. Statusline 설정
 
-**TOON**: Test-Oriented Object Notation
-
-**구조:**
-
-```markdown
-# SPEC-001: 기능명
-
-## TOON Metadata
-- Priority: High
-- Complexity: Medium
-- Estimated Time: 4 hours
-
-## Requirements (EARS)
-...
-
-## Test Cases (TOON)
-```
-
-```yaml
-tests:
-  - id: TEST-001-01
-    description: "유효한 로그인"
-    given: "등록된 사용자"
-    when: "올바른 자격증명 입력"
-    then: "JWT 토큰 발급"
-    expected_coverage: 100%
-
-  - id: TEST-001-02
-    description: "무효한 비밀번호"
-    given: "등록된 사용자"
-    when: "잘못된 비밀번호 입력"
-    then: "401 Unauthorized"
-    expected_coverage: 100%
-```
-
-**장점:**
-
-- ✅ 테스트 시나리오 구조화
-- ✅ 커버리지 목표 명확화
-- ✅ 자동 테스트 생성 가능
-
----
-
-### 🐳 Docker 지원
-
-**Docker로 MoAI-ADK 실행:**
-
-```bash
-# Docker 이미지 pull
-docker pull moduai/moai-adk:latest
-
-# 프로젝트 디렉토리 마운트
-docker run -it \
-  -v $(pwd):/workspace \
-  -v ~/.claude:/root/.claude \
-  moduai/moai-adk:latest
-
-# 컨테이너 내에서 Claude Code 실행
-claude
-```
-
-**Dockerfile 예시:**
-
-```dockerfile
-FROM python:3.12-slim
-
-# MoAI-ADK 설치
-RUN pip install moai-adk
-
-# Claude Code CLI 설치
-RUN npm install -g @anthropic-ai/claude-code
-
-WORKDIR /workspace
-
-CMD ["bash"]
-```
-
----
-
-### 📊 Statusline (상태표시줄)
-
-**실시간 개발 상태 표시:**
-
-```
-🤖 Haiku 4.5 (v2.0.46) | 🗿 v0.26.0 | 📊 +2 M1 ?0 | 💬 R2-D2 | 🔀 feature/SPEC-001
-```
-
-**표시 항목:**
-
-| 아이콘 | 항목 | 예시 | 설명 |
-|--------|------|------|------|
-| 🤖 | Claude 모델 | Haiku 4.5 | 현재 사용 모델 |
-| 🗿 | MoAI 버전 | v0.26.0 | 설치된 버전 |
-| 📊 | Git 상태 | +2 M1 ?0 | 파일 변경사항 |
-| 💬 | 출력 스타일 | R2-D2 | 대화 스타일 |
-| 🔀 | Git 브랜치 | feature/SPEC-001 | 현재 브랜치 |
-
-**Git 상태 표기:**
-
-```
-+2  = 2개 파일 staged (git add됨)
-M1  = 1개 파일 modified (아직 add 안됨)
-?0  = 0개 파일 untracked (새 파일)
-```
-
-**설정:**
+`.claude/settings.json`에서 Claude Code 상태 표시줄을 설정할 수 있습니다:
 
 ```json
-// .moai/config/config.json
 {
   "statusline": {
     "enabled": true,
-    "format": "compact",  // compact | verbose
-    "style": "R2-D2"      // default | R2-D2 | Yoda
+    "format": "compact",
+    "style": "R2-D2"
+  }
+}
+```
+
+| 필드 | 타입 | 가능값 | 기본값 | 설명 |
+|------|------|--------|--------|------|
+| `enabled` | boolean | true, false | true | 상태줄 표시 여부 |
+| `format` | string | compact, detailed | compact | 표시 형식 |
+| `style` | string | R2-D2, BB-8, C-3PO | R2-D2 | 시각적 스타일 |
+
+---
+
+## 12. MCP 서버 (MCP Integration)
+
+MoAI-ADK는 **MCP(Model Context Protocol)** 서버를 통해 외부 도구와 통합됩니다.
+
+### 📡 지원 MCP 서버
+
+| MCP 서버 | 목적 | 필수 여부 | 용도 |
+|----------|------|-----------|------|
+| **Context7** | 최신 라이브러리 문서 조회 | ✅ **필수** | API 레퍼런스, 프레임워크 문서 |
+| **Playwright** | 브라우저 자동화 | 선택 | E2E 테스트, UI 검증 |
+| **Figma** | 디자인 시스템 연동 | 선택 | 디자인-코드 변환 |
+
+### 🔌 Context7 MCP (필수)
+
+**목적**: 최신 라이브러리 문서 및 API 레퍼런스 실시간 조회
+
+**활성화 방법**:
+
+Context7은 MoAI-ADK 설치 시 **자동으로 활성화**됩니다. 별도 설정이 필요 없습니다.
+
+**사용 예시**:
+
+```bash
+# FastAPI 최신 문서 조회
+@agent-backend-expert "FastAPI로 RESTful API 구현. 최신 async 패턴 사용"
+
+# Alfred가 자동으로 Context7에서 FastAPI 최신 문서 조회 후 구현
+```
+
+**지원 라이브러리**(예시):
+
+- `/vercel/next.js` - Next.js 최신 문서
+- `/fastapi/fastapi` - FastAPI 최신 문서
+- `/facebook/react` - React 최신 문서
+- `/psf/requests` - Python Requests 라이브러리
+- 1000+ 오픈소스 라이브러리 지원
+
+---
+
+### 🎭 Playwright MCP (선택)
+
+**목적**: 브라우저 자동화 및 E2E 테스트
+
+**활성화 방법**:
+
+```bash
+# Claude Code에서 @ 입력
+# → MCP 서버 리스트에서 "playwright" 선택
+# → 엔터 키로 활성화/비활성화 토글
+```
+
+**사용 예시**:
+
+```bash
+# E2E 테스트 작성
+@agent-test-engineer "로그인 페이지 E2E 테스트 작성. Playwright 사용"
+
+# Alfred가 Playwright MCP를 활용하여 브라우저 자동화 테스트 생성
+```
+
+---
+
+### 🎨 Figma MCP (선택)
+
+**목적**: 디자인 시스템 연동 및 디자인-코드 변환
+
+**활성화 방법**:
+
+```bash
+# Claude Code에서 @ 입력
+# → MCP 서버 리스트에서 "figma" 선택
+# → 엔터 키로 활성화/비활성화 토글
+```
+
+**사용 예시**:
+
+```bash
+# Figma 디자인을 React 컴포넌트로 변환
+@agent-frontend-expert "Figma 디자인을 React 컴포넌트로 변환"
+
+# Alfred가 Figma MCP를 활용하여 디자인 시스템 추출 후 컴포넌트 생성
+```
+
+---
+
+### 💡 토큰 절약 팁
+
+**중요**: MCP 서버는 활성화되면 토큰을 상당히 소비합니다.
+
+- **Context7만 필수**이므로, Playwright와 Figma는 **필요할 때만 활성화**하세요.
+- E2E 테스트나 디자인 변환 작업이 없다면 **비활성화 상태 유지**를 권장합니다.
+
+**MCP 활성화 방법**:
+
+1. Claude Code에서 `@` 를 입력
+2. MCP 서버 리스트가 나타남
+3. 화살표 키로 이동
+4. 엔터 키로 해당 MCP를 토글 (활성화/비활성화)
+
+**토큰 사용량 비교**:
+
+| MCP 서버 | 평균 토큰/요청 | 권장 사용 시나리오 |
+|----------|----------------|-------------------|
+| Context7 | 2-5K | 항상 활성화 (필수) |
+| Playwright | 8-15K | E2E 테스트 작성 시만 |
+| Figma | 10-20K | 디자인 변환 시만 |
+
+---
+
+## 13. 고급 기능 (Advanced Features)
+
+### 🔄 커스텀 에이전트 생성
+
+**시나리오**: 도메인 특화 에이전트가 필요한 경우
+
+```bash
+# agent-factory를 사용하여 커스텀 에이전트 생성
+@agent-agent-factory "블록체인 개발 전문 에이전트 생성.
+Solidity, Web3.js, Hardhat 전문.
+스마트 컨트랙트 보안 검증 포함."
+
+# 생성된 에이전트:
+# .claude/agents/blockchain-expert.md
+
+# 사용:
+@agent-blockchain-expert "ERC-20 토큰 스마트 컨트랙트 작성"
+```
+
+---
+
+### 📚 커스텀 스킬 정의
+
+**시나리오**: 특정 회사나 프로젝트의 코딩 규칙을 스킬로 정의
+
+```bash
+# skill-factory를 사용하여 커스텀 스킬 생성
+@agent-skill-factory "회사 코딩 표준 스킬 생성.
+- 네이밍 규칙: PascalCase (클래스), camelCase (함수)
+- 주석 템플릿: JSDoc 형식
+- 에러 핸들링: 전역 에러 핸들러 사용"
+
+# 생성된 스킬:
+# .claude/skills/company-coding-standards.md
+
+# 사용:
+Skill("company-coding-standards")
+```
+
+---
+
+### 🎯 병렬 에이전트 실행
+
+**시나리오**: 독립적인 작업을 동시에 수행
+
+```bash
+# 예시: 백엔드 API + 프론트엔드 UI + 문서를 병렬로 개발
+/moai:1-plan "사용자 프로필 기능
+- 백엔드 API (FastAPI)
+- 프론트엔드 UI (React)
+- API 문서 (OpenAPI)"
+
+# SPEC-001 생성
+
+/clear
+
+# Alfred가 자동으로 3개 에이전트를 병렬 실행:
+# - backend-expert (API 구현)
+# - frontend-expert (UI 구현)
+# - docs-manager (문서 생성)
+/moai:2-run SPEC-001
+```
+
+---
+
+### 🔍 스킬 조합 패턴
+
+**시나리오**: 여러 스킬을 조합하여 복잡한 작업 수행
+
+```bash
+# 예시: FastAPI + PostgreSQL + Docker + AWS 배포
+@agent-backend-expert "FastAPI 앱을 PostgreSQL과 연동하고 Docker 컨테이너화 후 AWS ECS에 배포"
+
+# Alfred가 자동으로 다음 스킬 조합:
+# 1. moai-framework-fastapi
+# 2. moai-db-postgresql
+# 3. moai-devops-docker
+# 4. moai-cloud-aws
+```
+
+---
+
+## 14. 문제 해결 (Troubleshooting)
+
+### ❌ 일반적인 오류 및 해결책
+
+#### 1. 테스트 커버리지 미달
+
+**오류:**
+
+```
+❌ 테스트 커버리지 75% (목표 85%)
+```
+
+**해결책:**
+
+```bash
+# test-engineer 에이전트 호출하여 추가 테스트 생성
+@agent-test-engineer "SPEC-001의 테스트 커버리지를 85% 이상으로 향상"
+
+# 또는 coverage_target 조정 (비권장)
+# .claude/settings.json
+{
+  "constitution": {
+    "test_coverage_target": 75
   }
 }
 ```
 
 ---
 
-## 13. 문제 해결 (Troubleshooting)
+#### 2. SPEC 없이 구현 시도
 
-### ❓ 일반적인 문제
-
-#### 1. "Agent not found" 오류
-
-**증상:**
+**오류:**
 
 ```
-❌ 오류: Agent 'spec-builder' not found
+❌ SPEC이 없습니다. /moai:1-plan을 먼저 실행하세요.
 ```
 
-**원인:** 에이전트 이름 오타 또는 잘못된 형식
-
-**해결:**
+**해결책:**
 
 ```bash
-# ❌ WRONG
-@agent-SpecBuilder
-@spec_builder
-
-# ✅ CORRECT
-@agent-spec-builder
-```
-
-**참조:** `.moai/memory/agents.md`에서 정확한 이름 확인
-
----
-
-#### 2. 테스트 커버리지 미달
-
-**증상:**
-
-```
-❌ 오류: 커버리지 78% (목표 85%)
-```
-
-**해결:**
-
-```bash
-# 1. 어떤 파일이 부족한지 확인
-pytest --cov=src/ --cov-report=term-missing
-
-# 2. 테스트 추가 요청
-@agent-test-engineer "src/auth/jwt_handler.py 커버리지 향상 (78% → 85%)"
-
-# 3. 재실행
-/moai:2-run SPEC-001
-```
-
----
-
-#### 3. `/clear` 깜빡했을 때
-
-**증상:**
-
-```
-⚠️ 경고: Context 사용량 95% (190K/200K)
-```
-
-**해결:**
-
-```bash
-# 즉시 /clear 실행
-/clear
-
-# 이전 작업 재개
-/moai:2-run SPEC-001
-```
-
----
-
-#### 4. Git 충돌
-
-**증상:**
-
-```
-❌ 오류: Git merge conflict in src/auth.py
-```
-
-**해결:**
-
-```bash
-# 1. 충돌 파일 확인
-git status
-
-# 2. Alfred에게 해결 요청
-@agent-git-manager "src/auth.py의 merge conflict 해결해줘"
-
-# 3. 수동 해결 후 계속
-git add src/auth.py
-git commit -m "resolve: merge conflict in auth.py"
-```
-
----
-
-#### 5. SPEC 수정이 필요할 때
-
-**증상:**
-
-```
-🤔 SPEC-001의 요구사항을 변경하고 싶어요.
-```
-
-**해결:**
-
-```bash
-# 1. SPEC 재생성
-/moai:1-plan "수정된 요구사항 설명"
-
-# 2. 기존 SPEC 덮어쓰기
-# Alfred가 물어봄: "SPEC-001을 덮어쓰시겠습니까?"
-# → Yes
-
-# 3. 구현 재실행
+# 반드시 SPEC 먼저 생성
+/moai:1-plan "기능 설명"
 /clear
 /moai:2-run SPEC-001
 ```
 
 ---
 
-### 🐳 Docker 문제
+#### 3. 토큰 한계 초과
 
-#### 1. 권한 오류
-
-**증상:**
+**오류:**
 
 ```
-❌ permission denied: /workspace/.moai
+⚠️ Context: 175K tokens (한계에 근접)
 ```
 
-**해결:**
+**해결책:**
 
 ```bash
-# 컨테이너 실행 시 UID 지정
-docker run -it \
-  --user $(id -u):$(id -g) \
-  -v $(pwd):/workspace \
-  moduai/moai-adk:latest
+# /clear 실행하여 컨텍스트 초기화
+/clear
+
+# 또는 작업을 더 작은 단위로 분할
+/moai:1-plan "기능 A만 먼저 구현"  # 큰 기능을 분할
 ```
 
 ---
 
-#### 2. MCP 서버 연결 실패
+#### 4. MCP 서버 연결 실패
 
-**증상:**
+**오류:**
 
 ```
-❌ MCP server 'context7' failed to start
+❌ Context7 MCP 연결 실패
 ```
 
-**해결:**
+**해결책:**
 
 ```bash
-# 1. Node.js 설치 확인
-docker run -it moduai/moai-adk:latest node --version
+# Claude Code 재시작
+# 1. Claude Code 종료
+# 2. 터미널에서 다시 실행:
+claude
 
-# 2. MCP 서버 수동 설치
-docker exec -it <container_id> bash
-npm install -g @context7/mcp-server
+# 또는 MCP 설정 재확인:
+# .claude/mcp.json 파일 확인
 ```
 
 ---
 
-### 🆘 도움 받기
+### 💡 성능 최적화 팁
 
-**1. GitHub Issues**
-
-버그 리포트 및 기능 요청:
-- URL: https://github.com/modu-ai/moai-adk/issues
-- 템플릿: 버그 리포트 / 기능 요청
-
-**2. GitHub Discussions**
-
-질문 및 아이디어 공유:
-- URL: https://github.com/modu-ai/moai-adk/discussions
-- 카테고리: Q&A / Show and Tell / Ideas
-
-**3. Email**
-
-직접 문의:
-- Email: support@mo.ai.kr
-- 응답 시간: 영업일 기준 24-48시간
-
-**4. 피드백 커맨드**
+**1. SPEC 생성 직후 `/clear` 실행**
 
 ```bash
-# 개선 사항 제안
-/moai:9-feedback "제안 내용"
+/moai:1-plan "기능 설명"
+# ✅ 반드시 실행
+/clear
+# 45-50K 토큰 절약
 ```
 
----
-
-## 14. 추가 자료 (Additional Resources)
-
-### 📚 문서 파일
-
-**필수 참조 문서:**
-
-| 파일 | 위치 | 내용 |
-|------|------|------|
-| **agents.md** | `.moai/memory/` | 35개 에이전트 상세 설명 |
-| **commands.md** | `.moai/memory/` | 6개 커맨드 사용법 |
-| **skills.md** | `.moai/memory/` | 135개 스킬 카탈로그 |
-| **delegation-patterns.md** | `.moai/memory/` | 에이전트 위임 패턴 |
-| **token-optimization.md** | `.moai/memory/` | 토큰 절약 전략 |
-| **execution-rules.md** | `.moai/memory/` | 실행 규칙 및 제약사항 |
-
-**읽는 방법:**
+**2. 대화가 50메시지 이상 누적되면 `/clear`**
 
 ```bash
-# Claude Code에서 직접 읽기
-Read(.moai/memory/agents.md)
-
-# 특정 에이전트 검색
-Grep("spec-builder", path=".moai/memory/agents.md")
+# 대화가 길어지면
+/clear
+# 새로운 컨텍스트로 시작
 ```
 
----
-
-### 🎓 스킬 라이브러리
-
-**카테고리별 주요 스킬:**
-
-#### Foundation (핵심)
-
-- `moai-foundation-ears`: EARS 포맷 SPEC 작성
-- `moai-foundation-trust`: TRUST 5 품질 프레임워크
-- `moai-foundation-specs`: SPEC 관리
-
-#### Domain (도메인)
-
-- `moai-domain-api`: API 설계 및 구현
-- `moai-domain-security`: 보안 베스트 프랙티스
-- `moai-domain-frontend`: 프론트엔드 패턴
-- `moai-domain-backend`: 백엔드 아키텍처
-
-#### Language (언어)
-
-- `moai-lang-python`: Python 베스트 프랙티스
-- `moai-lang-typescript`: TypeScript 패턴
-- `moai-lang-react`: React 컴포넌트 설계
-- `moai-lang-go`: Go 동시성 패턴
-
-#### Essentials (필수)
-
-- `moai-essentials-testing`: 테스트 전략
-- `moai-essentials-documentation`: 문서화
-- `moai-essentials-git`: Git 워크플로우
-
-**스킬 사용:**
+**3. 불필요한 MCP 서버 비활성화**
 
 ```bash
-# 스킬 호출
-Skill("moai-foundation-ears")
-
-# 특정 토픽으로 호출
-Skill("moai-domain-security", topic="OWASP Top 10")
+# E2E 테스트가 없다면 Playwright 비활성화
+# @ → playwright → 엔터 (토글)
 ```
 
 ---
 
-### 🌐 커뮤니티
+## 15. 추가 자료 (Additional Resources)
 
-**공식 채널:**
+### 📖 문서 파일 (.moai/memory/)
 
-- **GitHub**: https://github.com/modu-ai/moai-adk
-- **Discord**: coming soon
-- **Twitter**: @moai_adk (coming soon)
+MoAI-ADK는 프로젝트 내부에 포괄적인 메모리 파일 시스템을 제공합니다:
 
-**기여 방법:**
+- `.moai/memory/execution-rules.md` - 실행 규칙 및 제약사항
+- `.moai/memory/agents.md` - 35개 전문 에이전트 카탈로그
+- `.moai/memory/commands.md` - MoAI 커맨드 레퍼런스
+- `.moai/memory/delegation-patterns.md` - 에이전트 위임 패턴
+- `.moai/memory/token-optimization.md` - 토큰 최적화 전략
 
-```bash
-# 1. Fork & Clone
-git clone https://github.com/YOUR_USERNAME/moai-adk
+### 🎯 스킬 라이브러리 (135+ 스킬)
 
-# 2. 브랜치 생성
-git checkout -b feature/my-feature
+| 카테고리 | 스킬 개수 | 주요 스킬 |
+|---------|----------|----------|
+| 🏗️ Foundation | 15 | `moai-foundation-trust`, `moai-foundation-ears` |
+| 🤖 Claude Code | 22 | `moai-cc-commands`, `moai-cc-hooks`, `moai-cc-skills-guide` |
+| 📐 Architecture | 18 | `moai-arch-microservices`, `moai-arch-event-driven` |
+| 🧪 Testing | 12 | `moai-test-tdd`, `moai-test-integration`, `moai-test-e2e` |
+| 🔒 Security | 10 | `moai-security-owasp`, `moai-security-auth` |
+| 📚 Documentation | 8 | `moai-docs-generation`, `moai-docs-validation` |
+| 🌐 Languages | 25 | Python, TypeScript, Go, Rust, Java 등 |
+| 🚀 Deployment | 15 | Docker, Kubernetes, CI/CD, Cloud 등 |
+| 🎨 Frontend | 10 | React, Vue, Tailwind, Nextra 등 |
 
-# 3. 개발 & 테스트
-/moai:1-plan "새 기능 설명"
-/moai:2-run SPEC-XXX
-
-# 4. PR 생성
-git push origin feature/my-feature
-# → GitHub에서 Pull Request 생성
+**스킬 사용법:**
+```
+Skill("moai-foundation-trust")
+Skill("moai-cc-commands")
+Skill("moai-lang-python-advanced")
 ```
 
-**기여 가이드:**
+### 🆘 지원 (Support)
 
-- 모든 PR은 SPEC-First 방식으로
-- 테스트 커버리지 ≥ 85% 필수
-- TRUST 5 품질 게이트 통과
-- 문서 업데이트 포함
+**이메일 지원:**
+- 기술 지원: support@mo.ai.kr
 
----
+### 📊 Star History
 
-### 📖 학습 자료
-
-**1. 튜토리얼 시리즈 (coming soon)**
-
-- 초급: MoAI-ADK 시작하기
-- 중급: 복잡한 프로젝트 관리
-- 고급: 커스텀 에이전트 개발
-
-**2. 예제 프로젝트**
-
-- `examples/blog-api`: 블로그 REST API
-- `examples/todo-app`: Todo 앱 (풀스택)
-- `examples/auth-service`: 인증 서비스
-
-**3. 비디오 (coming soon)**
-
-- MoAI-ADK 소개 (10분)
-- SPEC-First TDD 실전 (30분)
-- 에이전트 커스터마이징 (20분)
+[![Star History Chart](https://api.star-history.com/svg?repos=moai-adk/moai-adk&type=Date)](https://star-history.com/#moai-adk/moai-adk&Date)
 
 ---
 
-### 🔗 관련 링크
+## 📝 License
 
-**Claude Code 공식 문서:**
-
-- https://code.claude.com/docs
-- https://code.claude.com/docs/cli-reference
-
-**MCP 서버:**
-
-- Context7: https://context7.dev
-- Playwright: https://playwright.dev
-- Figma MCP: https://www.figma.com/developers
-
-**개발 도구:**
-
-- `uv`: https://astral.sh/uv
-- `ruff`: https://docs.astral.sh/ruff
-- `pytest`: https://pytest.org
-
----
-
-## 📋 라이선스
-
-MoAI-ADK는 [MIT 라이선스](LICENSE) 하에 배포됩니다.
+MoAI-ADK is licensed under the [MIT License](./LICENSE).
 
 ```
 MIT License
 
-Copyright (c) 2025 MoAI (https://mo.ai.kr)
+Copyright (c) 2025 MoAI-ADK Team
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ---
 
-## 📞 지원 및 커뮤니티
+**Made with ❤️ by MoAI-ADK Team**
 
-**버그 신고 및 기능 요청:**
-
-- GitHub Issues: https://github.com/modu-ai/moai-adk/issues
-
-**질문 및 아이디어 공유:**
-
-- GitHub Discussions: https://github.com/modu-ai/moai-adk/discussions
-
-**직접 문의:**
-
-- Email: support@mo.ai.kr
-
----
-
-## ⭐ 스타 히스토리
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
-
----
-
-## 🙏 감사의 말
-
-MoAI-ADK는 다음 오픈소스 프로젝트들의 영향을 받았습니다:
-
-- **Claude Code** by Anthropic
-- **EARS** (Easy Approach to Requirements Syntax)
-- **TDD** (Test-Driven Development) methodology
-
----
-
-**프로젝트**: MoAI-ADK
-**버전**: 0.26.0
-**마지막 업데이트**: 2025-11-22
-**철학**: SPEC-First TDD + 에이전트 오케스트레이션 + 85% 토큰 효율
-**MoAI**: 모두의AI는 모두의 인공지능을 의미합니다. 모든 사람이 AI를 사용할 수 있도록 하는 것이 모두의AI의 목표입니다.
-
-Copyleft 2025 MoAI (https://mo.ai.kr, coming soon)
+**Version:** 2.0.0
+**Last Updated:** 2025-11-22
+**Maintained by:** Mr. Alfred 🎩

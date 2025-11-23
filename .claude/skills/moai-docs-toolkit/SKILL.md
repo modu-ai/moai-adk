@@ -1,6 +1,14 @@
 ---
 name: moai-docs-toolkit
 description: Moai Docs Toolkit - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - toolkit
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

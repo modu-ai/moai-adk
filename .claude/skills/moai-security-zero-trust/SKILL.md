@@ -1,6 +1,16 @@
 ---
 name: moai-security-zero-trust
 description: Moai Security Zero Trust - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - threat-modeling
+  - enterprise
+  - security
+  - trust
+  - zero
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

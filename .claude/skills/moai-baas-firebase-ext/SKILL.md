@@ -3,6 +3,13 @@ name: moai-baas-firebase-ext
 description: Enterprise Firebase Platform with AI-powered Google Cloud integration
 version: 1.0.1
 modularized: true
+tags:
+  - backend-as-a-service
+  - platform
+  - firebase
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

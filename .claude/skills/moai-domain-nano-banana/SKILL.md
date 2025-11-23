@@ -3,6 +3,14 @@ name: moai-domain-nano-banana
 description: Professional image generation with Google Nano Banana Pro (Gemini 3 Pro)
 version: 1.0.1
 modularized: true
+tags:
+  - enterprise
+  - patterns
+  - nano
+  - banana
+  - architecture
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

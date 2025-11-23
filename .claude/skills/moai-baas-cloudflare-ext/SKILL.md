@@ -1,6 +1,15 @@
 ---
 name: moai-baas-cloudflare-ext
 description: Moai Baas Cloudflare Ext - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - backend-as-a-service
+  - cloudflare
+  - platform
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

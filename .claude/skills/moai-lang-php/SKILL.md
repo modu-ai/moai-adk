@@ -1,6 +1,15 @@
 ---
 name: moai-lang-php
 description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web frameworks (Laravel, Symfony).
+version: 1.0.0
+modularized: false
+tags:
+  - programming-language
+  - enterprise
+  - development
+  - php
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

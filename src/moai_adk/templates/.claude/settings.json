@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/session_start__show_project_info.py"
           }
         ]
       }
@@ -22,7 +22,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/pre_tool__document_management.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/pre_tool__document_management.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/markdown_formatter.py"
           }
         ]
       }

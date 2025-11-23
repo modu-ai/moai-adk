@@ -1,10 +1,15 @@
 ---
-
 name: moai-playwright-webapp-testing
-description: AI-powered enterprise web application testing orchestrator with Context7
-  integration, intelligent test generation, visual regression testing, cross-browser
-  coordination, and automated QA workflows for modern web applications
-
+description: AI-powered enterprise web application testing orchestrator with Context7 integration, intelligent test generation, visual regression testing, cross-browser coordination, and automated QA workflows for modern web applications
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - testing
+  - webapp
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

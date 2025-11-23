@@ -1,10 +1,15 @@
 ---
-
 name: moai-lang-swift
-description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine,
-  and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and
-  enterprise mobile applications with Context7 MCP integration.
-
+description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine, and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and enterprise mobile applications with Context7 MCP integration.
+version: 1.0.0
+modularized: false
+tags:
+  - swift
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

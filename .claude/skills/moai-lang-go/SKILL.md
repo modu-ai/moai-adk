@@ -1,8 +1,15 @@
 ---
-
 name: moai-lang-go
 description: Enterprise Go 1.23+ for systems and network programming, Fiber v3,
-
+version: 1.0.0
+modularized: false
+tags:
+  - go
+  - programming-language
+  - enterprise
+  - development
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

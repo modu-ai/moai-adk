@@ -1,8 +1,16 @@
 ---
-
 name: moai-core-todowrite-pattern
 description: Comprehensive TodoWrite task tracking and state management patterns
-
+version: 1.0.0
+modularized: false
+tags:
+  - pattern
+  - enterprise
+  - framework
+  - todowrite
+  - architecture
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

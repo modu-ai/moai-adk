@@ -1,8 +1,16 @@
 ---
-
 name: moai-lang-tailwind-css
 description: Enterprise Skill for advanced development
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - css
+  - tailwind
+  - development
+  - programming-language
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

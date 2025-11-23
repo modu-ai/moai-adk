@@ -1,6 +1,15 @@
 ---
 name: moai-cc-hooks
 description: AI-powered enterprise Claude Code hooks orchestrator with intelligent
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - hooks
+  - configuration
+  - claude-code
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

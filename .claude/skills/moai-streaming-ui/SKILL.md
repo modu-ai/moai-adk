@@ -1,8 +1,14 @@
 ---
-
 name: moai-streaming-ui
 description: Enhanced streaming UI system with progress indicators and status displays
-
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - development
+  - ui
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

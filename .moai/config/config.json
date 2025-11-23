@@ -73,6 +73,8 @@
       "auto_commit": true,
       "auto_pr": false,
       "auto_push": true,
+      "branch_prefix": "feature/SPEC-",
+      "main_branch": "main",
       "_notes": "GitHub individual project. Full automation except PR (suggested)."
     },
 
@@ -87,6 +89,8 @@
       "draft_pr": true,
       "required_reviews": 1,
       "branch_protection": true,
+      "feature_prefix": "feature/SPEC-",
+      "main_branch": "main",
       "_notes": "GitHub team project. Full automation with governance."
     }
   },
@@ -101,18 +105,139 @@
     }
   },
   "document_management": {
+    "_meta": {},
     "enabled": true,
-    "validation": {
-      "warn_violations": true,
-      "block_violations": false
+    "enforce_structure": true,
+    "block_root_pollution": false,
+    "directories": {
+      "reports": {
+        "base": ".moai/reports/",
+        "categories": [
+          "inspection",
+          "phases",
+          "sync",
+          "analysis",
+          "validation",
+          "daily"
+        ],
+        "auto_categorize": true,
+        "retention_days": 90
+      },
+      "logs": {
+        "base": ".moai/logs/",
+        "categories": ["sessions", "agent-transcripts", "errors", "execution"],
+        "retention_days": 30
+      },
+      "scripts": {
+        "base": ".moai/scripts/",
+        "categories": [
+          "dev",
+          "conversion",
+          "validation",
+          "analysis",
+          "maintenance"
+        ],
+        "retention_days": null
+      },
+      "temp": {
+        "base": ".moai/temp/",
+        "categories": ["tests", "coverage", "work", "research"],
+        "retention_days": 7,
+        "auto_cleanup": true
+      },
+      "backups": {
+        "base": ".moai/backups/",
+        "categories": ["specs", "docs", "hooks", "skills", "config", "legacy"],
+        "retention_days": 90,
+        "max_backups_per_type": 10
+      },
+      "cache": {
+        "base": ".moai/cache/",
+        "categories": ["mcp", "analysis"],
+        "retention_days": 30,
+        "auto_cleanup": true
+      }
     },
     "root_whitelist": [
       "README.md",
+      "README.*.md",
+      "CHANGELOG.md",
+      "CONTRIBUTING.md",
       "CLAUDE.md",
       "LICENSE",
+      "LICENSE.*",
+      "pyproject.toml",
+      "setup.py",
+      "setup.cfg",
+      "package.json",
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
       ".gitignore",
-      "pyproject.toml"
-    ]
+      ".gitattributes",
+      ".editorconfig",
+      ".prettierrc",
+      ".eslintrc*",
+      "Makefile",
+      "Dockerfile",
+      "docker-compose.yml",
+      ".dockerignore",
+      "tsconfig.json",
+      "jsconfig.json",
+      "next.config.js",
+      "vite.config.js"
+    ],
+    "file_patterns": {
+      "reports": {
+        "inspection": ["FINAL-INSPECTION-*.md", "*-inspection-*.md"],
+        "phases": ["PHASE*-COMPLETION-*.md", "*-phase-*.md"],
+        "sync": ["sync-report-*.md", "*-sync-*.md"],
+        "analysis": ["*-ANALYSIS-*.md", "*-analysis-*.md"],
+        "validation": ["*-validation-*.md", "*-quality-*.md"],
+        "daily": ["daily-*.md", "*-daily-report-*.md"]
+      },
+      "scripts": {
+        "dev": ["init-*.sh", "setup-*.sh", "*-dev-*.py"],
+        "conversion": ["fix-*.js", "convert-*.py", "migrate-*.js"],
+        "validation": ["validate_*.py", "lint_*.py", "check_*.sh"],
+        "analysis": ["*_analyzer.py", "analyze_*.py", "*_monitor.py"],
+        "maintenance": ["cleanup_*.sh", "maintain_*.py"]
+      },
+      "temp": {
+        "tests": ["test-*.spec.js", "*_test.tmp", "*.test.temp"],
+        "coverage": ["coverage.json", ".coverage", "*.lcov"],
+        "work": ["*.tmp", "*.temp", "*.bak", "*.draft"]
+      },
+      "backups": {
+        "docs": ["docs_backup_*", "docs-backup-*"],
+        "hooks": ["hooks_backup_*", "hooks-backup-*"],
+        "specs": ["specs_backup_*", "specs-backup-*"],
+        "config": ["config_backup_*", "config-backup-*"]
+      }
+    },
+    "validation": {
+      "enabled": true,
+      "on_file_create": true,
+      "on_session_end": true,
+      "warn_violations": true,
+      "block_violations": false
+    },
+    "auto_migration": {
+      "enabled": true,
+      "scan_on_startup": false,
+      "suggest_moves": true,
+      "auto_move": false,
+      "require_user_approval": true
+    },
+    "cleanup": {
+      "enabled": true,
+      "schedule": "session_end",
+      "dry_run": false,
+      "preserve_recent_days": 3,
+      "max_items_per_cleanup": 100,
+      "notify_before_delete": true
+    },
+    "notes": "Document management system to prevent project root pollution. Enforces .moai/ hierarchy for all internal files. Auto-categorizes by file patterns. Cleanup policy preserves recent files."
   },
   "moai": {
     "version": "0.27.2",
@@ -214,5 +339,37 @@
     "spec_git_workflow": "develop_direct",
     "spec_git_workflow_configured": true,
     "notes": "RECOMMENDED for rapid development in personal projects. Options: 'develop_direct' (direct commits, no branches), 'feature_branch' (always create branches), 'per_spec' (ask user per SPEC). Set spec_git_workflow_configured: true after manual changes to prevent template merge overwrites."
+  },
+  "ai_models": {
+    "preferred_model": "auto",
+    "codex": {
+      "enabled": false,
+      "installed": false,
+      "logged_in": false,
+      "version": "latest",
+      "cli_path": "/usr/local/bin/codex",
+      "default_approval": "on-request",
+      "max_tokens": 4096,
+      "timeout_seconds": 300
+    },
+    "gemini": {
+      "enabled": true,
+      "installed": true,
+      "logged_in": true,
+      "version": "0.17.1",
+      "cli_path": "/opt/homebrew/bin/gemini",
+      "default_model": "gemini-2.5-flash",
+      "auth_method": "oauth",
+      "max_tokens": 8192,
+      "timeout_seconds": 300
+    },
+    "auto_selection_rules": {
+      "backend_task": "codex",
+      "frontend_task": "gemini",
+      "algorithm_task": "codex",
+      "design_task": "gemini",
+      "architecture_task": "codex",
+      "default": "native"
+    }
   }
 }

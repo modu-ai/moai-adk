@@ -1,6 +1,16 @@
 ---
 name: moai-core-language-detection
 description: Moai Core Language Detection - Professional implementation guide
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - framework
+  - architecture
+  - detection
+  - language
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

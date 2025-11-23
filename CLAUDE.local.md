@@ -871,3 +871,4 @@ def normalize_bold_parentheses(content: str) -> str:
 - 러시아어: `**Функция**(описание)`
 
 **모든 언어는 동일한 패턴을 따릅니다**: bold와 괄호 사이에 공백 없이 `**Text**(details)` 형식으로 작성합니다.
+- '/Users/goos/MoAI/MoAI-ADK/.claude/settings.json'  -> 항상 변수가 치환된 값으로 사용해야 한다.

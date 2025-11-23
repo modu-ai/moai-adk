@@ -1,7 +1,14 @@
 ---
 name: moai-context7-integration
 description: Enterprise Context7 MCP integration for accessing latest documentation across 50+ programming languages and frameworks with real-time library resolution
-allowed-tools: [mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Read, Bash, WebFetch]
+version: 1.0.0
+modularized: false
+tags:
+  - enterprise
+  - development
+  - integration
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

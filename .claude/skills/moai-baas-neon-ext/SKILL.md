@@ -1,10 +1,15 @@
 ---
-
 name: moai-baas-neon-ext
-description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database
-  architecture, Context7 integration, and intelligent branching orchestration for
-  scalable modern applications
-
+description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications
+version: 1.0.0
+modularized: false
+tags:
+  - backend-as-a-service
+  - platform
+  - neon
+  - enterprise
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

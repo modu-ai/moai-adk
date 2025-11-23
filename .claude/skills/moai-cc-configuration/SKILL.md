@@ -3,6 +3,12 @@ name: moai-cc-configuration
 description: Enterprise Configuration Management with AI-powered settings architecture
 version: 1.0.1
 modularized: true
+tags:
+  - enterprise
+  - configuration
+  - claude-code
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata

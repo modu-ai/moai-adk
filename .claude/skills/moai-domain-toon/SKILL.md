@@ -1,24 +1,16 @@
 ---
-
 name: moai-domain-toon
 description: TOON Format Specialist - Token-efficient data encoding for LLM communication optimized per TOON Spec v2.0
-allowed-tools:
-  - Read
-  - Bash
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 version: 2.0.0
-tier: Domain-Specific
-status: Active
+modularized: false
+tags:
+  - architecture
+  - toon
+  - enterprise
+  - patterns
 created: 2025-11-21
-updated: 2025-11-21
-keywords:
-  - TOON
-  - token-optimization
-  - LLM-communication
-  - data-compression
-
+updated: 2025-11-24
+status: Active
 ---
 
 ## 📊 Skill Metadata

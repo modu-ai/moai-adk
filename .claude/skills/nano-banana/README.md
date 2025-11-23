@@ -494,7 +494,8 @@ def test_api_call(mock_urlopen):
 
 #### **Test 1: API 키 검증**
 ```python
-api_key = 'AIzaSyBAH8fJZkIDXPNp9ywVZ3AuaiC-dZqrHTU'
+# Load API key from environment (never hardcode!)
+api_key = os.getenv('GEMINI_API_KEY')
 is_valid = EnvKeyManager.validate_api_key(api_key)
 # 결과: ✅ Valid
 ```

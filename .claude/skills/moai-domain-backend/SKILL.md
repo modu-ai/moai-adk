@@ -1,7 +1,15 @@
 ---
 name: moai-domain-backend
 description: Enterprise Backend Architecture with modern frameworks, Context7 integration, and production-ready patterns for 2025
-allowed-tools: [Read, Bash, WebFetch]
+version: 1.0.0
+modularized: false
+tags:
+  - architecture
+  - enterprise
+  - patterns
+  - backend
+updated: 2025-11-24
+status: active
 ---
 
 ## 📊 Skill Metadata
