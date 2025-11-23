@@ -367,57 +367,176 @@ git checkout feature/SPEC-001  # Downloads necessary files
 # Savings:       81% smaller
 ```
 
-### Branching Strategies (Enterprise Edition)
+### Branching Strategies (GitHub Flow 3-Mode System)
 
-**Strategy 1: Feature Branch + PR (Recommended for Teams)**
+MoAI-ADK uses **unified GitHub Flow** with **3 distinct modes** controlled by config:
 
+**Modes at a Glance**:
+
+| Mode | Environment | Branch Creation | PR Creation | Use Case |
+|------|-------------|-----------------|-------------|----------|
+| **Manual** | Local-only | Prompt user (or skip) | Manual | Personal projects, local dev |
+| **Personal** | GitHub | Prompt user (or auto-create) | Optional | Individual GitHub projects |
+| **Team** | GitHub | Prompt user (or auto-create) | Auto (Draft) | Team collaboration, governance |
+
+**Common Configuration: `git_strategy.branch_creation.prompt_always`**
+
+- `prompt_always: true` (default): Ask user via AskUserQuestion for every SPEC
+  - "브랜치를 생성하시겠습니까?" → 자동 생성 OR 현재 브랜치 사용
+- `prompt_always: false`: Auto-decide based on mode
+  - Manual: Skip branch creation
+  - Personal/Team: Auto-create branch
+
+---
+
+#### **Mode 1: Manual (Local Development)**
+
+**Configuration**:
+```json
+{
+  "git_strategy": {
+    "mode": "manual",
+    "branch_creation": { "prompt_always": true }
+  }
+}
+```
+
+**Workflow Example**:
 ```bash
-# Complete workflow
-git switch -c feature/SPEC-001
-# TDD: RED phase
-git commit -m "test: add failing test for user login"
-# TDD: GREEN phase
-git commit -m "feat(auth): implement user login validation"
-# TDD: REFACTOR phase
-git commit -m "refactor(auth): improve error messages"
+# Step 1: Create SPEC (prompts for branch)
+/moai:1-plan "User authentication feature"
+# User chose: "자동 생성" → feature/SPEC-001 created
 
-# Create PR
-gh pr create --base develop \
-  --title "feat(auth): implement user authentication" \
-  --generate-description
+# Step 2: TDD implementation
+git switch feature/SPEC-001
+git commit -m "test: add user login validation"  # RED
+git commit -m "feat(auth): implement user login" # GREEN
+git commit -m "refactor(auth): improve error handling" # REFACTOR
 
-# After approval
-gh pr merge 123 --squash --delete-branch
+# Step 3: Manual push (user controls timing)
+git push origin feature/SPEC-001
+git switch main && git merge feature/SPEC-001
 ```
 
 **Advantages**:
-- ✅ Code review before merge
-- ✅ CI/CD validation gate
-- ✅ Complete audit trail
+- ✅ Full Git control (when to push, when to merge)
+- ✅ No GitHub integration required
+- ✅ Great for local-only projects
 
-**Strategy 2: Direct Commit to Develop (Fast Track)**
+---
 
+#### **Mode 2: Personal (Individual GitHub Projects)**
+
+**Configuration**:
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "branch_creation": { "prompt_always": true }
+  }
+}
+```
+
+**Workflow Example**:
 ```bash
-# Work directly on develop
-git switch develop
-git pull origin develop
+# Step 1: Create SPEC (with prompt)
+/moai:1-plan "Database migration feature"
+# User chose: "자동 생성" → feature/SPEC-002 auto-created + pushed
 
-# TDD cycle
-git commit -m "test: add database connection pool test"
-git commit -m "feat(db): implement connection pooling"
-git commit -m "refactor(db): optimize pool configuration"
+# Step 2: TDD implementation (auto-commits + auto-push)
+/moai:2-run SPEC-002
+# 🔴 RED: git commit + git push
+# 🟢 GREEN: git commit + git push
+# ♻️ REFACTOR: git commit + git push
 
-# Push directly
-git push origin develop
+# Step 3: Document + Create PR
+/moai:3-sync SPEC-002
+# Optional: "PR을 생성하시겠습니까?" → User chooses
 ```
 
 **Advantages**:
-- ⚡ Fastest path (no PR review)
-- 🚀 Suitable for rapid development
+- ✅ GitHub integration with minimal ceremony
+- ✅ Automatic push (fast development)
+- ✅ Perfect for rapid prototyping
+- ✅ Still flexible (can choose direct commit)
 
-**Strategy 3: Per-SPEC Choice (Flexible)**
+---
 
-When creating SPEC with `/moai:1-plan`, user chooses workflow per feature.
+#### **Mode 3: Team (Team Collaboration)**
+
+**Configuration**:
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": { "prompt_always": true }
+  }
+}
+```
+
+**Workflow Example**:
+```bash
+# Step 1: Create SPEC (with prompt)
+/moai:1-plan "API rate limiting feature"
+# Always creates: feature/SPEC-003
+# Auto-creates: Draft PR for early review
+
+# Step 2: TDD implementation (with team discussion)
+/moai:2-run SPEC-003
+# Auto-commits + auto-push on feature branch
+# Team can comment on draft PR during development
+
+# Step 3: Team review + merge
+/moai:3-sync SPEC-003
+# Auto-PR ready for team review
+# Requires 1+ approval before merge
+# Merge with squash to main branch
+
+# Commands:
+gh pr review 123 --approve    # Approve PR
+gh pr merge 123 --squash      # Merge to main
+```
+
+**Advantages**:
+- ✅ Complete GitHub integration
+- ✅ Mandatory code review
+- ✅ Branch protection on main
+- ✅ Clear governance trail
+- ✅ Team-ready automation
+
+---
+
+#### **Configuration Flexibility: `prompt_always: false`**
+
+When `prompt_always: false`, automation handles branch decisions:
+
+```bash
+# Manual Mode: Skip branch creation
+/moai:1-plan "Feature X"
+# → No branch created, work on current branch
+
+# Personal/Team Mode: Auto-create branch
+/moai:1-plan "Feature Y"
+# → feature/SPEC-XXX auto-created + auto-pushed
+# (For Team: Draft PR also auto-created)
+```
+
+---
+
+#### **Mode Switching via Configuration**
+
+**Switch from Manual to Personal**:
+```json
+// Before
+{ "git_strategy": { "mode": "manual" } }
+
+// After
+{ "git_strategy": { "mode": "personal" } }
+
+// Result: Next SPEC will auto-push to GitHub
+```
+
+**Migration Note**: Existing commits and branches preserved when switching modes.
 
 ---
 

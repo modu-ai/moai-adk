@@ -337,6 +337,94 @@ Enterprise Configuration Management expert with AI-powered settings architecture
 
 ---
 
+## Git Strategy Configuration (3-Mode System)
+
+### Managing Git Workflow Modes
+
+The **3-Mode Git System** is configured through `.moai/config/config.json`:
+
+```json
+{
+  "git_strategy": {
+    "mode": "personal",              // manual | personal | team
+    "environment": "github",         // local | github
+    "github_integration": true,      // Enable GitHub API access
+    "branch_creation": {
+      "prompt_always": true          // Ask user on every SPEC (true/false)
+    }
+  }
+}
+```
+
+### Configuration by Mode
+
+**Mode 1: Manual (Local Git)**
+```json
+{
+  "git_strategy": {
+    "mode": "manual",
+    "environment": "local",
+    "github_integration": false,
+    "branch_creation": { "prompt_always": true }
+  }
+}
+```
+- No GitHub connectivity required
+- User chooses branch creation on each SPEC
+- Manual push to remote (if git repo exists)
+
+**Mode 2: Personal (GitHub - Individual)**
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "environment": "github",
+    "github_integration": true,
+    "branch_creation": { "prompt_always": true }
+  }
+}
+```
+- GitHub personal repositories
+- Optional user prompt for branch creation
+- Automatic push to origin
+
+**Mode 3: Team (GitHub - Collaboration)**
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "environment": "github",
+    "github_integration": true,
+    "branch_creation": { "prompt_always": true }
+  }
+}
+```
+- GitHub team repositories
+- Enforces branch creation + Draft PR
+- Mandatory team code review before merge
+
+### Common `branch_creation` Setting
+
+The `branch_creation.prompt_always` field controls branch creation behavior **across all modes**:
+
+**When `prompt_always: true` (Default)**:
+```
+Every SPEC creation triggers: "브랜치를 생성하시겠습니까?"
+- Manual mode: Yes → create feature/SPEC-XXX
+- Personal mode: Yes → create + auto-push
+- Team mode: Yes → create + Draft PR + push
+```
+
+**When `prompt_always: false`**:
+```
+Auto-decide based on mode (no user prompt):
+- Manual mode: Skip branch creation
+- Personal mode: Auto-create + auto-push
+- Team mode: Auto-create + Draft PR + push
+```
+
+---
+
 ## Configuration Management Stack (November 2025)
 
 ### Core Components

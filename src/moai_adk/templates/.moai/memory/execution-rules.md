@@ -293,62 +293,113 @@ def validate_execution_results(result, task):
 
 ## Git Strategy Guide
 
-### Configuration-Based Git Behavior
+### Configuration-Based Git Behavior (GitHub Flow 3-Mode System)
 
 Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git 워크플로우를 조정한다.
 
 **Key Configuration Fields**:
-- `git_strategy.mode`: Git 전략 (personal, team, hybrid)
-- `github.spec_git_workflow`: SPEC 생성 시 브랜치 생성 방식 (develop_direct, feature_branch, per_spec)
+- `git_strategy.mode`: Git 모드 선택 (manual, personal, team)
+- `git_strategy.branch_creation.prompt_always`: 모든 모드에서 공통으로 사용되는 설정 (true/false)
 
-### Personal Mode (개인 개발)
+**3-Mode System Overview**:
+
+| Mode | Environment | prompt_always=true | prompt_always=false | Use Case |
+|------|-------------|-------------------|-------------------|----------|
+| **Manual** | Local-only | Ask user each time | Skip branch creation | 개인 프로젝트, 로컬 전용 |
+| **Personal** | GitHub | Ask user each time | Auto-create branch | 개인 GitHub 프로젝트 |
+| **Team** | GitHub | Ask user each time | Auto-create branch + Draft PR | 팀 협업 프로젝트 |
+
+### Common Branch Creation Setting: `branch_creation.prompt_always`
+
+**Default (true)**:
+- 모든 SPEC 생성 시 사용자에게 질문: "브랜치를 생성하시겠습니까?"
+- 사용자 선택: "자동 생성" 또는 "현재 브랜치 사용"
+- 모든 모드에서 동일한 UX 제공
+
+**Custom (false)**:
+- **Manual Mode**: 자동으로 브랜치 생성 스킵 (현재 브랜치에서 작업)
+- **Personal/Team Mode**: 자동으로 브랜치 생성 (feature/SPEC-XXX)
+- Team Mode의 경우 Draft PR도 자동 생성
+
+### Mode 1: Manual (로컬 Git 전용)
 
 **설정**:
-```
-git_strategy.mode = "personal"
-github.spec_git_workflow = "develop_direct" (기본 권장)
+```json
+{
+  "git_strategy": {
+    "mode": "manual",
+    "branch_creation": { "prompt_always": true }
+  }
+}
 ```
 
 **Alfred의 행동**:
-1. `/moai:1-plan` 실행 후 SPEC 파일 생성 (브랜치 생성 안함)
-2. 현재 브랜치에서 직접 `/moai:2-run` 실행
-3. 같은 브랜치에 커밋
-4. Git push 전 사용자 승인 필요 (ask 권한)
+1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
+   - 자동 생성 선택 → feature/SPEC-001 생성
+   - 현재 브랜치 사용 선택 → 현재 브랜치에서 계속
+2. 모든 TDD 커밋은 로컬에만 저장 (자동)
+3. Push는 수동으로 수행
 
-**Use Case**: 개인 프로젝트, 빠른 개발 속도 필요
+**Use Case**: 개인 프로젝트, GitHub 미사용, 로컬 Git 전용
 
-### Team Mode (팀 협업)
+### Mode 2: Personal (GitHub 개인 프로젝트)
 
 **설정**:
-```
-git_strategy.mode = "team"
-github.spec_git_workflow = 자동 무시 (team은 항상 feature_branch)
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "branch_creation": { "prompt_always": true }
+  }
+}
 ```
 
 **Alfred의 행동**:
-1. `/moai:1-plan` 실행
-2. `feature/SPEC-001` 브랜치 자동 생성 (git-manager)
-3. 새 브랜치에서 `/moai:2-run` 실행
-4. Pull Request 자동 생성 (draft 상태)
-5. 팀 검토 후 병합
+1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
+   - 자동 생성 선택 → feature/SPEC-002 생성 + 자동 푸시
+   - 현재 브랜치 사용 선택 → 현재 브랜치에서 직접 커밋
+2. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시
+3. `/moai:3-sync` 실행: 문서 커밋 + 사용자에게 PR 생성 제안 (선택)
 
-**Use Case**: 팀 프로젝트, 코드 리뷰 필요, 병렬 개발
+**Use Case**: 개인 GitHub 프로젝트, 빠른 개발 속도 필요
 
-### Per-SPEC Mode (사용자 선택)
+### Mode 3: Team (GitHub 팀 프로젝트)
 
 **설정**:
-```
-git_strategy.mode = "personal"
-github.spec_git_workflow = "per_spec"
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "branch_creation": { "prompt_always": true }
+  }
+}
 ```
 
 **Alfred의 행동**:
-1. `/moai:1-plan` 실행
-2. 사용자에게 AskUserQuestion: "브랜치를 생성하시겠습니까?"
-3. Yes → feature 브랜치 생성 후 진행
-4. No → 현재 브랜치에서 직접 진행
+1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
+   - 자동 생성 선택 → feature/SPEC-003 생성 + Draft PR 자동 생성
+   - 현재 브랜치 사용 선택 → 현재 브랜치에서 진행 (권장 안됨)
+2. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시 (feature 브랜치에)
+3. `/moai:3-sync` 실행: 문서 커밋 + PR 준비
+4. 팀 코드 리뷰 필수 (최소 1명)
+5. PR 승인 후 merge (Squash 또는 Merge)
 
-**Use Case**: 유동적인 개발 스타일, 작업마다 다른 전략
+**Use Case**: 팀 프로젝트, 코드 리뷰 필수, 품질 관리 필요
+
+### Configuration Flexibility
+
+**`prompt_always: false` 설정 시 동작**:
+```json
+{
+  "git_strategy": {
+    "mode": "manual",
+    "branch_creation": { "prompt_always": false }
+  }
+}
+```
+
+- **Manual Mode**: 자동으로 브랜치 생성 스킵 (사용자 질문 없음)
+- **Personal/Team Mode**: 자동으로 feature 브랜치 생성 (사용자 선택 없음)
 
 ### SPEC 생성 후 반드시 `/clear` 실행
 

@@ -19,35 +19,72 @@
     "test_coverage_target": 90
   },
   "git_strategy": {
-    "personal": {
-      "auto_checkpoint": "disabled",
-      "checkpoint_events": [
-        "delete",
-        "refactor",
-        "merge",
-        "script",
-        "critical-file"
-      ],
-      "checkpoint_type": "local-branch",
-      "max_checkpoints": 10,
-      "cleanup_days": 7,
-      "push_to_remote": false,
-      "auto_commit": true,
-      "branch_prefix": "feature/SPEC-",
-      "develop_branch": "develop",
-      "main_branch": "main",
-      "prevent_branch_creation": false,
-      "work_on_main": false
+    "mode": "manual",
+    "environment": "local",
+    "github_integration": false,
+    "preset_file": ".moai/config/presets/manual-local.json",
+    "description": "GitHub Flow 3-Mode System (Manual = Local, Personal = GitHub Individual, Team = GitHub Team)",
+    "_notes": "Set 'mode' to 'manual', 'personal', or 'team'. Preset file is auto-loaded. See .moai/config/presets/ for full configuration.",
+
+    "branch_creation": {
+      "prompt_always": true,
+      "_notes": "Common setting: Ask user for branch creation on every SPEC. Set to false to auto-create without prompting."
     },
-    "team": {
+
+    "automation": {
+      "auto_branch": false,
+      "auto_commit": true,
       "auto_pr": false,
-      "develop_branch": "develop",
-      "draft_pr": false,
+      "auto_push": false
+    },
+
+    "hooks": {
+      "pre_commit": "enforce",
+      "pre_push": "warn",
+      "commit_msg": "warn"
+    },
+
+    "commit_style": {
+      "format": "conventional",
+      "scope_required": false
+    },
+
+    "manual": {
+      "workflow": "github-flow",
+      "environment": "local",
+      "github_integration": false,
+      "auto_checkpoint": "disabled",
+      "push_to_remote": false,
+      "_notes": "Local Git only. Branch creation is manual. TDD and docs commits are automatic."
+    },
+
+    "personal": {
+      "workflow": "github-flow",
+      "environment": "github",
+      "github_integration": true,
+      "auto_branch": true,
+      "auto_commit": true,
+      "auto_pr": false,
+      "auto_push": true,
+      "branch_prefix": "feature/SPEC-",
+      "main_branch": "main",
+      "_notes": "GitHub individual project. Full automation except PR (suggested)."
+    },
+
+    "team": {
+      "workflow": "github-flow",
+      "environment": "github",
+      "github_integration": true,
+      "auto_branch": true,
+      "auto_commit": true,
+      "auto_pr": true,
+      "auto_push": true,
+      "draft_pr": true,
+      "required_reviews": 1,
+      "branch_protection": true,
       "feature_prefix": "feature/SPEC-",
       "main_branch": "main",
-      "use_gitflow": true,
-      "default_pr_base": "develop",
-      "prevent_main_direct_merge": false
+      "_notes": "GitHub team project. Full automation with governance."
     }
   },
   "pipeline": {

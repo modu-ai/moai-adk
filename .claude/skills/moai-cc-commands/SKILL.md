@@ -356,6 +356,82 @@ allowed-tools:
 
 ---
 
+## Git Strategy-Aware Command Execution
+
+### /moai:1-plan with 3-Mode Git System
+
+The `/moai:1-plan` command automatically adapts to the configured Git strategy:
+
+```yaml
+---
+name: moai:1-plan
+description: "Define specifications and create development branch"
+---
+
+## 📋 Git Configuration Detection
+
+!git config --get-all user.name
+!git config --get-all user.email
+!git remote -v
+@.moai/config/config.json
+
+---
+
+# Execution Logic
+
+## Step 1: Read Git Configuration
+1. Check `git_strategy.mode` (manual | personal | team)
+2. Check `git_strategy.branch_creation.prompt_always` (true | false)
+3. Validate GitHub connectivity if mode is personal/team
+
+## Step 2: Branch Creation Strategy
+- If `prompt_always: true`: Ask user for branch creation (applies to all modes)
+- If `prompt_always: false`: Auto-decide based on mode
+  - Manual: Skip branch creation
+  - Personal/Team: Auto-create feature/SPEC-XXX branch
+
+## Step 3: Report Generation
+- Include branch creation status
+- Show next steps (TDD, documentation, PR)
+```
+
+### Command Behavior by Git Mode
+
+| Mode | `prompt_always: true` | `prompt_always: false` |
+|------|----------------------|----------------------|
+| **Manual** | 🤔 Ask user for branch | ➡️ Use current branch |
+| **Personal** | 🤔 Ask user with auto-push option | ✅ Auto-create + push |
+| **Team** | 🤔 Ask user (recommend branch) | ✅ Auto-create + Draft PR |
+
+### Example: /moai:1-plan Execution
+
+**Setup**: Personal mode with `prompt_always: false`
+
+```
+User Command: /moai:1-plan "Add user authentication"
+
+Step 1: Read config
+  → mode: personal
+  → prompt_always: false
+  → github_integration: true
+
+Step 2: Determine Action
+  → Mode is 'personal' and prompt_always is false
+  → ACTION: Auto-create feature/SPEC-001 + auto-push
+
+Step 3: Create SPEC & Branch
+  → Create .moai/specs/SPEC-001/spec.md
+  → Create feature/SPEC-001 branch
+  → Auto-push to origin
+
+Step 4: Report
+  ✅ SPEC-001 created and saved
+  ✅ Branch feature/SPEC-001 created and pushed
+  📍 Ready for: /moai:2-run SPEC-001
+```
+
+---
+
 ## MoAI Commands Best Practices
 
 ### Complete Optimization Example: /moai:1-plan

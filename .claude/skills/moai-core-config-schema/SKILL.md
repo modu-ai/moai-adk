@@ -50,7 +50,8 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
   "project": {
     "name": "moai-adk",
     "version": "0.22.5",
-    "description": "SPEC-First TDD Development Kit"
+    "description": "SPEC-First TDD Development Kit",
+    "owner": "Your Name"
   },
   "language": {
     "primary": "en",
@@ -58,9 +59,17 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
     "supported": ["en", "ko", "ja"]
   },
   "git_strategy": {
-    "use_gitflow": true,
-    "main_branch": "main",
-    "develop_branch": "develop"
+    "mode": "personal",
+    "environment": "github",
+    "github_integration": true,
+    "branch_creation": {
+      "prompt_always": true,
+      "_description": "When true, ask user for branch creation on every SPEC. When false, auto-decide based on mode."
+    }
+  },
+  "github": {
+    "owner": "your-github-username",
+    "repo": "moai-adk"
   },
   "document_management": {
     "enabled": true,
@@ -74,6 +83,8 @@ Provides comprehensive guidance for managing project configuration with JSON Sch
 - No secrets, credentials, or API keys
 - Environment-agnostic defaults
 - Semantic versioning format
+- **New**: 3-Mode Git System with `git_strategy.mode` (manual, personal, team)
+- **New**: Common branch creation setting with `branch_creation.prompt_always`
 
 ### Layer 2: Environment Overrides
 **Files**: `.moai/config/.env.{environment}` (NOT checked in)
@@ -109,6 +120,90 @@ LOG_LEVEL=debug
 - Takes precedence over everything
 - NEVER committed to repo
 - Used for local testing with real services
+
+---
+
+## GitHub Flow 3-Mode Git System Configuration
+
+### Overview
+
+The 3-Mode system provides three distinct Git workflows, all controlled by a **common branch creation setting** (`branch_creation.prompt_always`):
+
+**Modes**:
+- **Manual**: Local-only Git, no GitHub integration
+- **Personal**: GitHub personal projects, semi-automated
+- **Team**: GitHub team projects, full automation with code review
+
+**Common Setting**:
+```json
+"branch_creation": {
+  "prompt_always": true  // true: ask user, false: auto-decide
+}
+```
+
+### Mode 1: Manual (Local Git Only)
+
+```json
+{
+  "git_strategy": {
+    "mode": "manual",
+    "environment": "local",
+    "github_integration": false,
+    "branch_creation": {
+      "prompt_always": true
+    }
+  }
+}
+```
+
+**Behavior**:
+- When `prompt_always: true`: Ask user on every SPEC: "브랜치를 생성하시겠습니까?"
+  - Yes → Create feature/SPEC-XXX branch
+  - No → Use current branch
+- When `prompt_always: false`: Skip branch creation, work on current branch
+
+### Mode 2: Personal (GitHub Individual Projects)
+
+```json
+{
+  "git_strategy": {
+    "mode": "personal",
+    "environment": "github",
+    "github_integration": true,
+    "branch_creation": {
+      "prompt_always": true
+    }
+  }
+}
+```
+
+**Behavior**:
+- When `prompt_always: true`: Ask user on every SPEC
+  - Yes → Auto-create feature/SPEC-XXX and push
+  - No → Commit to current branch
+- When `prompt_always: false`: Auto-create feature/SPEC-XXX with auto-push
+
+### Mode 3: Team (GitHub Team Projects with Code Review)
+
+```json
+{
+  "git_strategy": {
+    "mode": "team",
+    "environment": "github",
+    "github_integration": true,
+    "branch_creation": {
+      "prompt_always": true
+    }
+  }
+}
+```
+
+**Behavior**:
+- When `prompt_always: true`: Always ask user (but team mode recommends branch creation)
+  - Yes → Auto-create feature/SPEC-XXX + Draft PR + push
+  - No → Not recommended (bypasses PR workflow)
+- When `prompt_always: false`: Auto-create feature/SPEC-XXX + Draft PR + push
+- Team review required before merge
 
 ---
 

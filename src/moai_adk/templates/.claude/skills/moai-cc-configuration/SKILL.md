@@ -1,748 +1,267 @@
 ---
 name: moai-cc-configuration
-description: Enterprise Configuration Management with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications
+description: Enterprise Configuration Management with AI-powered settings architecture
+version: 1.0.1
+modularized: true
 ---
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: cc, moai, configuration  
-
-
-## Quick Reference (30 seconds)
-
-# Enterprise Configuration Management Expert
-
-## When to Use
-
-**Automatic triggers**:
-- Configuration management and environment variable discussions
-- Secret management and security implementation planning
-- Multi-environment deployment and configuration strategies
-- Settings architecture and configuration optimization
-
-**Manual invocation**:
-- Designing enterprise configuration systems with optimal patterns
-- Implementing comprehensive secret management strategies
-- Planning multi-environment configuration deployments
-- Optimizing configuration performance and security
+**Name**: moai-cc-configuration
+**Domain**: Configuration Management & Secret Management
+**Freedom Level**: high
+**Target Users**: DevOps engineers, backend developers, infrastructure architects
+**Invocation**: Skill("moai-cc-configuration")
+**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed guides)
+**Last Updated**: 2025-11-23
+**Modularized**: true
 
 ---
 
-# Quick Reference (Level 1)
+## 🎯 Quick Reference (30 seconds)
 
-## Secret Management Integration
+**Purpose**: Enterprise configuration management with multi-environment support and secret management.
 
+**Key Capabilities**:
+- Environment-based configuration loading (dev/staging/prod)
+- HashiCorp Vault integration (secret management)
+- Configuration validation with schema checking
+- Kubernetes ConfigMap/Secret integration
+- Configuration change monitoring & alerts
+- Encryption at rest (AES-256)
+
+**Core Tools**:
+- HashiCorp Vault (secret storage)
+- Kubernetes ConfigMaps (configuration data)
+- Zod/JSON Schema (validation)
+- Docker Compose (multi-environment setup)
+
+---
+
+## 📚 Core Patterns (5-10 minutes)
+
+### Pattern 1: Environment-Based Configuration Loading
+
+**Key Concept**: Load different configs for development, staging, and production.
+
+**Approach**:
 ```typescript
-// Advanced secret management with HashiCorp Vault
-export class VaultSecretManager {
-  private vaultUrl: string;
-  private vaultToken: string;
-  private secretCache: Map<string, Secret> = new Map();
+// Multi-layer configuration loading
+class ConfigurationManager {
+  private loadConfiguration() {
+    // Priority order: Secrets > Environment > Base config
+    const baseConfig = this.loadBaseConfiguration();      // config/{env}.json
+    const envConfig = this.loadEnvironmentConfiguration(); // process.env
+    const secretConfig = this.loadSecretConfiguration();   // Vault
 
-  constructor(vaultUrl: string, vaultToken: string) {
-    this.vaultUrl = vaultUrl;
-    this.vaultToken = vaultToken;
+    // Merge with precedence
+    return { ...baseConfig, ...envConfig, ...secretConfig };
   }
 
-  async retrieveSecret(path: string, cacheKey?: string): Promise<Secret> {
-    // Check cache first
-    if (cacheKey && this.secretCache.has(cacheKey)) {
-      return this.secretCache.get(cacheKey)!;
-    }
+  // Load from JSON file per environment
+  private loadBaseConfiguration() {
+    const configPath = `./config/${process.env.NODE_ENV}.json`;
+    return require(configPath); // dev.json, staging.json, prod.json
+  }
 
-    try {
-      const response = await fetch(`${this.vaultUrl}/v1/secret/data/${path}`, {
-        headers: {
-          'X-Vault-Token': this.vaultToken,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to retrieve secret: ${response.statusText}`);
+  // Load from environment variables
+  private loadEnvironmentConfiguration() {
+    return {
+      database: {
+        host: process.env.DB_HOST,
+        port: parseInt(process.env.DB_PORT || '5432')
       }
-
-      const data = await response.json();
-      const secret = {
-        data: data.data.data,
-        metadata: data.data.metadata,
-        retrievedAt: new Date(),
-      };
-
-      // Cache the secret
-      if (cacheKey) {
-        this.secretCache.set(cacheKey, secret);
-      }
-
-      return secret;
-    } catch (error) {
-      console.error(`Error retrieving secret ${path}:`, error);
-      throw error;
-    }
-  }
-
-  async createSecret(path: string, data: Record<string, any>): Promise<void> {
-    try {
-      const response = await fetch(`${this.vaultUrl}/v1/secret/data/${path}`, {
-        method: 'POST',
-        headers: {
-          'X-Vault-Token': this.vaultToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: data,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create secret: ${response.statusText}`);
-      }
-
-      // Clear cache for this path
-      this.clearCacheByPattern(path);
-    } catch (error) {
-      console.error(`Error creating secret ${path}:`, error);
-      throw error;
-    }
-  }
-
-  async rotateSecret(path: string, newData: Record<string, any>): Promise<void> {
-    try {
-      // Retrieve current secret
-      const currentSecret = await this.retrieveSecret(path);
-      
-      // Create new version
-      await this.createSecret(path, {
-        ...currentSecret.data,
-        ...newData,
-        rotatedAt: new Date().toISOString(),
-      });
-
-      // Invalidate cache
-      this.clearCacheByPattern(path);
-    } catch (error) {
-      console.error(`Error rotating secret ${path}:`, error);
-      throw error;
-    }
-  }
-
-  private clearCacheByPattern(pattern: string): void {
-    for (const [key] of this.secretCache) {
-      if (key.includes(pattern)) {
-        this.secretCache.delete(key);
-      }
-    }
-  }
-}
-
-// Kubernetes ConfigMaps and Secrets integration
-export class KubernetesConfigManager {
-  private namespace: string;
-
-  constructor(namespace: string) {
-    this.namespace = namespace;
-  }
-
-  async createConfigMap(name: string, data: Record<string, string>): Promise<void> {
-    const configMap = {
-      apiVersion: 'v1',
-      kind: 'ConfigMap',
-      metadata: {
-        name,
-        namespace: this.namespace,
-      },
-      data,
     };
-
-    try {
-      const response = await fetch('/api/v1/namespaces/default/configmaps', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(configMap),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create ConfigMap: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error(`Error creating ConfigMap ${name}:`, error);
-      throw error;
-    }
   }
 
-  async createSecret(name: string, data: Record<string, string>): Promise<void> {
-    const secret = {
-      apiVersion: 'v1',
-      kind: 'Secret',
-      metadata: {
-        name,
-        namespace: this.namespace,
-      },
-      type: 'Opaque',
-      data: Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [
-          key,
-          Buffer.from(value).toString('base64'),
-        ])
-      ),
-    };
-
-    try {
-      const response = await fetch('/api/v1/namespaces/default/secrets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(secret),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create Secret: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error(`Error creating Secret ${name}:`, error);
-      throw error;
-    }
+  // Load from Vault (secrets)
+  private loadSecretConfiguration() {
+    // Retrieve JWT secrets, credentials, etc. from Vault
+    return this.vaultManager.retrieveSecrets();
   }
 }
 ```
 
-### Configuration Validation and Monitoring
+**Use Case**: Separate configs for localhost, staging server, production cluster.
 
+### Pattern 2: Vault Secret Management
+
+**Key Concept**: Centralized secure storage for passwords, API keys, tokens.
+
+**Pattern**:
+```typescript
+// Vault secret manager with caching
+class VaultSecretManager {
+  private secretCache = new Map();
+
+  async retrieveSecret(path: string, cacheKey?: string) {
+    // Check cache first
+    if (this.secretCache.has(cacheKey)) {
+      return this.secretCache.get(cacheKey);
+    }
+
+    // Fetch from Vault
+    const response = await fetch(`${vaultUrl}/v1/secret/data/${path}`, {
+      headers: { 'X-Vault-Token': vaultToken }
+    });
+
+    const secret = await response.json();
+
+    // Cache result
+    if (cacheKey) {
+      this.secretCache.set(cacheKey, secret);
+    }
+
+    return secret;
+  }
+
+  async rotateSecret(path: string, newData: Record<string, any>) {
+    // Create new version + invalidate cache
+    await this.createSecret(path, { ...oldData, ...newData });
+    this.secretCache.delete(path);
+  }
+}
+```
+
+**Benefits**: Secrets never hardcoded, automatic rotation, audit trail.
+
+### Pattern 3: Configuration Validation & Monitoring
+
+**Key Concept**: Validate config at startup and monitor runtime changes.
+
+**Implementation**:
 ```python
 class ConfigurationValidator:
-    def __init__(self):
-        self.schema_validator = SchemaValidator()
-        self.monitor = ConfigurationMonitor()
-    
-    def validate_configuration(self, 
-                            config: Configuration,
-                            schema: ConfigurationSchema) -> ValidationResult:
-        """Validate configuration against schema and business rules."""
-        
+    def validate_configuration(self, config, schema):
         # Schema validation
         schema_errors = self.schema_validator.validate(config, schema)
-        
+
         # Business rule validation
         business_errors = self._validate_business_rules(config)
-        
+
         # Security validation
         security_errors = self._validate_security_requirements(config)
-        
-        return ValidationResult(
-            is_valid=len(schema_errors) == 0 and len(business_errors) == 0 and len(security_errors) == 0,
-            schema_errors=schema_errors,
-            business_errors=business_errors,
-            security_errors=security_errors,
-            warnings=self._generate_warnings(config)
-        )
-    
-    def _validate_business_rules(self, config: Configuration) -> List[ValidationError]:
-        """Validate business-specific rules."""
-        errors = []
-        
-        # Database connection pool validation
-        if config.database.connectionPool.min > config.database.connectionPool.max:
-            errors.append(ValidationError(
-                field="database.connectionPool.min",
-                message="Minimum pool size cannot be greater than maximum",
-                value=config.database.connectionPool.min
-            ))
-        
-        # JWT expiration validation
-        jwt_hours = self._parse_duration_to_hours(config.auth.jwtExpiration)
-        if jwt_hours > 24:
-            errors.append(ValidationError(
-                field="auth.jwtExpiration",
-                message="JWT expiration should not exceed 24 hours for security",
-                value=config.auth.jwtExpiration
-            ))
-        
-        return errors
-    
-    def _validate_security_requirements(self, config: Configuration) -> List[ValidationError]:
-        """Validate security requirements."""
-        errors = []
-        
-        # Password strength validation
-        if len(config.auth.jwtSecret) < 32:
-            errors.append(ValidationError(
-                field="auth.jwtSecret",
-                message="JWT secret must be at least 32 characters long",
-                value="***"  # Don't log actual secret
-            ))
-        
-        # SSL validation
-        if not config.database.ssl:
-            errors.append(ValidationError(
-                field="database.ssl",
-                message="Database SSL should be enabled for production environments",
-                value=config.database.ssl
-            ))
-        
-        return errors
 
+        return {
+            'is_valid': len(schema_errors) == 0,
+            'errors': schema_errors + business_errors + security_errors
+        }
+
+    def _validate_business_rules(self, config):
+        # Example: min pool size < max pool size
+        if config.db.pool.min > config.db.pool.max:
+            return [ValidationError(...)]
+
+        # Example: JWT expiration <= 24 hours
+        if self._parse_duration(config.auth.jwt_exp) > 24:
+            return [ValidationError(...)]
+```
+
+**Triggers**: Application startup, configuration update events.
+
+### Pattern 4: Kubernetes Integration
+
+**Key Concept**: ConfigMaps for non-secret config, Secrets for sensitive data.
+
+**Workflow**:
+```yaml
+# ConfigMap: Non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  log_level: debug
+  port: "3000"
+
+---
+# Secret: Sensitive data (base64 encoded)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+type: Opaque
+data:
+  db_password: YWJjMTIz  # base64 encoded
+  jwt_secret: c2VjcmV0  # base64 encoded
+```
+
+**Pod Usage**: Mount as volumes or env variables.
+
+### Pattern 5: Configuration Change Management
+
+**Key Concept**: Monitor config changes and alert on breaking updates.
+
+**Pattern**:
+```python
 class ConfigurationMonitor:
-    def __init__(self):
-        self.metrics_collector = MetricsCollector()
-        self.alerting = AlertingSystem()
-    
-    def monitor_configuration_changes(self, 
-                                   old_config: Configuration,
-                                   new_config: Configuration): void:
-        """Monitor configuration changes and detect issues."""
-        
+    def monitor_changes(self, old_config, new_config):
         # Detect breaking changes
         breaking_changes = self._detect_breaking_changes(old_config, new_config)
-        
-        # Collect metrics
-        metrics = self._collect_change_metrics(old_config, new_config)
-        
-        # Send alerts if necessary
+
         if breaking_changes:
             self.alerting.send_alert(
                 severity="high",
-                message="Breaking configuration changes detected",
+                message="Breaking changes detected",
                 details=breaking_changes
             )
-        
+
         # Record metrics
-        self.metrics_collector.record("configuration_changes", metrics)
+        self.metrics.record("config_changes", count=1)
 ```
 
----
-
-# Reference & Integration (Level 4)
+**Examples**: Database connection pool changes, API endpoint changes.
 
 ---
 
-## Core Implementation
+## 📖 Advanced Documentation
 
-## What It Does
+This Skill uses Progressive Disclosure. For detailed patterns:
 
-Enterprise Configuration Management expert with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Configuration Architecture** using Context7 MCP for latest config patterns
-- 📊 **Intelligent Settings Orchestration** with automated environment optimization
-- 🚀 **Advanced Secret Management** with AI-driven security and encryption
-- 🔗 **Enterprise Config Framework** with zero-configuration deployment integration
-- 📈 **Predictive Configuration Analytics** with usage forecasting and optimization
+- **[modules/vault-integration.md](modules/vault-integration.md)** - Vault setup and usage
+- **[modules/configuration-validation.md](modules/configuration-validation.md)** - Validation schemas and rules
+- **[modules/environment-management.md](modules/environment-management.md)** - Multi-environment strategies
+- **[modules/secret-management.md](modules/secret-management.md)** - Secret rotation and encryption
+- **[modules/advanced-patterns.md](modules/advanced-patterns.md)** - Feature flags, config caching
+- **[modules/reference.md](modules/reference.md)** - API reference and checklist
 
 ---
 
-## Configuration Management Stack (November 2025)
+## 🎯 Configuration Workflow
 
-### Core Components
-- **Environment Variables**: Docker, Kubernetes, CI/CD pipeline integration
-- **Configuration Files**: JSON, YAML, TOML, .env formats
-- **Secret Management**: HashiCorp Vault, AWS Secrets Manager, Kubernetes Secrets
-- **Configuration Validation**: Schema validation, type checking, default values
-- **Environment Management**: Development, staging, production configurations
-
-### Popular Solutions
-- **Docker Compose**: Multi-container application configuration
-- **Kubernetes ConfigMaps**: Configuration data for pods
-- **AWS AppConfig**: Managed configuration service
-- **Azure App Configuration**: Feature flags and settings
-- **HashiCorp Consul**: Service discovery and configuration
-
-### Security Features
-- **Encryption at Rest**: AES-256 encryption for sensitive data
-- **Access Control**: Role-based access management (RBAC)
-- **Audit Logging**: Configuration changes and access tracking
-- **Secret Rotation**: Automated secret rotation and renewal
-- **Compliance**: SOC2, HIPAA, GDPR compliance features
-
-### Integration Benefits
-- **Scalability**: Dynamic configuration without application restarts
-- **Security**: Centralized secret management with encryption
-- **Reliability**: Configuration validation and rollback capabilities
-- **Observability**: Configuration change tracking and monitoring
+**Step 1**: Define base configuration (JSON files)
+**Step 2**: Override with environment variables
+**Step 3**: Load secrets from Vault
+**Step 4**: Validate merged configuration
+**Step 5**: Monitor configuration changes
+**Step 6**: Alert on breaking changes
 
 ---
 
-# Core Implementation (Level 2)
+## 🔗 Integration with Other Skills
 
-## Configuration Architecture Intelligence
-
-```python
-# AI-powered configuration architecture optimization with Context7
-class ConfigurationArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.config_analyzer = ConfigurationAnalyzer()
-        self.security_validator = SecurityValidator()
-    
-    async def design_optimal_configuration_architecture(self, 
-                                                     requirements: ConfigurationRequirements) -> ConfigurationArchitecture:
-        """Design optimal configuration architecture using AI analysis."""
-        
-        # Get latest configuration management documentation via Context7
-        config_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/configuration-management/docs',
-            topic="environment variables secrets management security 2025",
-            tokens=3000
-        )
-        
-        security_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/security/docs',
-            topic="secret management encryption compliance 2025",
-            tokens=2000
-        )
-        
-        # Optimize configuration structure
-        config_structure = self.config_analyzer.optimize_structure(
-            requirements.application_complexity,
-            requirements.deployment_environments,
-            config_docs
-        )
-        
-        # Validate security requirements
-        security_configuration = self.security_validator.configure_security(
-            requirements.security_level,
-            requirements.compliance_requirements,
-            security_docs
-        )
-        
-        return ConfigurationArchitecture(
-            configuration_structure=config_structure,
-            security_configuration=security_configuration,
-            environment_management=self._design_environment_management(requirements),
-            deployment_integration=self._integrate_deployment_pipeline(requirements),
-            monitoring_setup=self._configure_monitoring(),
-            validation_framework=self._setup_validation_framework()
-        )
-```
-
-## Advanced Configuration Implementation
-
-```typescript
-// Enterprise configuration management with TypeScript
-interface ConfigurationSchema {
-  database: DatabaseConfig;
-  redis: RedisConfig;
-  auth: AuthConfig;
-  features: FeatureFlags;
-  logging: LoggingConfig;
-  monitoring: MonitoringConfig;
-}
-
-interface DatabaseConfig {
-  host: string;
-  port: number;
-  database: string;
-  username: string;
-  password: string;
-  ssl: boolean;
-  connectionPool: {
-    min: number;
-    max: number;
-    idleTimeoutMillis: number;
-  };
-}
-
-interface AuthConfig {
-  jwtSecret: string;
-  jwtExpiration: string;
-  refreshTokenSecret: string;
-  refreshTokenExpiration: string;
-  bcryptRounds: number;
-}
-
-interface FeatureFlags {
-  newUserDashboard: boolean;
-  advancedAnalytics: boolean;
-  betaFeatures: boolean;
-  maintenanceMode: boolean;
-}
-
-// Configuration validator with Zod
-import { z } from 'zod';
-
-const databaseConfigSchema = z.object({
-  host: z.string().min(1),
-  port: z.number().int().min(1).max(65535),
-  database: z.string().min(1),
-  username: z.string().min(1),
-  password: z.string().min(8),
-  ssl: z.boolean(),
-  connectionPool: z.object({
-    min: z.number().int().min(0),
-    max: z.number().int().min(1),
-    idleTimeoutMillis: z.number().int().min(1000),
-  }),
-});
-
-const configurationSchema = z.object({
-  database: databaseConfigSchema,
-  redis: redisConfigSchema,
-  auth: authConfigSchema,
-  features: featureFlagsSchema,
-  logging: loggingConfigSchema,
-  monitoring: monitoringConfigSchema,
-});
-
-type ValidatedConfiguration = z.infer<typeof configurationSchema>;
-
-// Configuration manager class
-export class ConfigurationManager {
-  private config: ValidatedConfiguration;
-  private environment: string;
-  private encryptionKey: string;
-
-  constructor(environment: string, encryptionKey: string) {
-    this.environment = environment;
-    this.encryptionKey = encryptionKey;
-    this.config = this.loadConfiguration();
-  }
-
-  private loadConfiguration(): ValidatedConfiguration {
-    // Load configuration from multiple sources
-    const baseConfig = this.loadBaseConfiguration();
-    const envConfig = this.loadEnvironmentConfiguration();
-    const secretConfig = this.loadSecretConfiguration();
-    
-    // Merge configurations with precedence
-    const mergedConfig = {
-      ...baseConfig,
-      ...envConfig,
-      ...secretConfig,
-    };
-
-    // Validate configuration
-    const validatedConfig = configurationSchema.parse(mergedConfig);
-    
-    return validatedConfig;
-  }
-
-  private loadBaseConfiguration(): Partial<ConfigurationSchema> {
-    try {
-      const configPath = `./config/${this.environment}.json`;
-      return require(configPath);
-    } catch (error) {
-      console.warn(`Base configuration not found for ${this.environment}`);
-      return {};
-    }
-  }
-
-  private loadEnvironmentConfiguration(): Partial<ConfigurationSchema> {
-    const envConfig: Partial<ConfigurationSchema> = {};
-
-    // Database configuration from environment
-    if (process.env.DB_HOST) {
-      envConfig.database = {
-        host: process.env.DB_HOST,
-        port: parseInt(process.env.DB_PORT || '5432'),
-        database: process.env.DB_NAME || 'app',
-        username: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || '',
-        ssl: process.env.DB_SSL === 'true',
-        connectionPool: {
-          min: parseInt(process.env.DB_POOL_MIN || '2'),
-          max: parseInt(process.env.DB_POOL_MAX || '10'),
-          idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE || '30000'),
-        },
-      };
-    }
-
-    // Feature flags from environment
-    if (process.env.FEATURE_NEW_DASHBOARD) {
-      envConfig.features = {
-        newUserDashboard: process.env.FEATURE_NEW_DASHBOARD === 'true',
-        advancedAnalytics: process.env.FEATURE_ADVANCED_ANALYTICS === 'true',
-        betaFeatures: process.env.FEATURE_BETA === 'true',
-        maintenanceMode: process.env.MAINTENANCE_MODE === 'true',
-      };
-    }
-
-    return envConfig;
-  }
-
-  private loadSecretConfiguration(): Partial<ConfigurationSchema> {
-    // Load secrets from secure storage
-    const secretConfig: Partial<ConfigurationSchema> = {};
-
-    try {
-      // JWT secrets from encrypted storage
-      const jwtSecret = this.decryptSecret('JWT_SECRET');
-      const refreshSecret = this.decryptSecret('REFRESH_TOKEN_SECRET');
-
-      if (jwtSecret) {
-        secretConfig.auth = {
-          jwtSecret,
-          jwtExpiration: process.env.JWT_EXPIRATION || '1h',
-          refreshTokenSecret: refreshSecret || jwtSecret,
-          refreshTokenExpiration: process.env.REFRESH_TOKEN_EXPIRATION || '7d',
-          bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12'),
-        };
-      }
-    } catch (error) {
-      console.error('Failed to load secret configuration:', error);
-    }
-
-    return secretConfig;
-  }
-
-  private decryptSecret(secretName: string): string | null {
-    // Implement secure decryption logic
-    // This would integrate with your secrets management system
-    return process.env[secretName] || null;
-  }
-
-  public getConfiguration(): ValidatedConfiguration {
-    return this.config;
-  }
-
-  public getDatabaseConfig(): DatabaseConfig {
-    return this.config.database;
-  }
-
-  public getAuthConfig(): AuthConfig {
-    return this.config.auth;
-  }
-
-  public getFeatureFlags(): FeatureFlags {
-    return this.config.features;
-  }
-
-  public isFeatureEnabled(feature: keyof FeatureFlags): boolean {
-    return this.config.features[feature];
-  }
-
-  public updateConfiguration(updates: Partial<ConfigurationSchema>): void {
-    // Validate updates
-    const updatedConfig = { ...this.config, ...updates };
-    configurationSchema.parse(updatedConfig);
-    
-    // Apply updates
-    this.config = updatedConfig;
-    
-    // Notify configuration change
-    this.notifyConfigurationChange(updates);
-  }
-
-  private notifyConfigurationChange(changes: Partial<ConfigurationSchema>): void {
-    // Emit configuration change events
-    console.log('Configuration updated:', changes);
-  }
-}
-```
-
-## Environment-Specific Configuration
-
-```yaml
-# docker-compose.yml for multi-environment configuration
-version: '3.8'
-
-services:
-  app:
-    build: .
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=${PORT:-3000}
-      - DB_HOST=${DB_HOST:-db}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-app}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - JWT_SECRET=${JWT_SECRET}
-      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
-    ports:
-      - "${PORT:-3000}:3000"
-    depends_on:
-      - db
-      - redis
-    volumes:
-      - ./logs:/app/logs
-      - ./config:/app/config
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_DB=${DB_NAME:-app}
-      - POSTGRES_USER=${DB_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT:-5432}:5432"
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-
-volumes:
-  postgres_data:
-  redis_data:
-
-# Environment-specific configurations
-configs:
-  development:
-    environment:
-      - NODE_ENV=development
-      - LOG_LEVEL=debug
-      - HOT_RELOAD=true
-    volumes:
-      - .:/app
-      - /app/node_modules
-
-  staging:
-    environment:
-      - NODE_ENV=staging
-      - LOG_LEVEL=info
-      - HOT_RELOAD=false
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-
-  production:
-    environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=warn
-      - HOT_RELOAD=false
-    deploy:
-      replicas: 5
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
-```
+**Complementary Skills**:
+- Skill("moai-domain-backend") - Backend configuration patterns
+- Skill("moai-domain-cloud") - Cloud-specific config (AWS, GCP, Azure)
+- Skill("moai-domain-devops") - Deployment configuration
+- Skill("moai-security-identity") - Secret management
 
 ---
 
-# Advanced Implementation (Level 3)
+## 📈 Version History
 
+**1.0.1** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure
+- ✨ 5 Core Patterns highlighted
+- ✨ Modularized advanced content
 
+**1.0.0** (2025-11-22)
+- ✨ Vault integration
+- ✨ Multi-environment support
+- ✨ Configuration validation
 
 ---
 
-## Reference & Resources
-
-See [reference.md](reference.md) for detailed API reference and official documentation.
+**Maintained by**: alfred
+**Domain**: Configuration Management
+**Generated with**: MoAI-ADK Skill Factory

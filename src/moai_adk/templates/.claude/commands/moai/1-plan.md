@@ -638,163 +638,156 @@ git_mode = "team" ?
 
 ---
 
-### Step 2A: Route A - `develop_direct` Mode (SKIP PHASE 3)
+### Step 2: Branch Creation Logic (All 3 Modes)
 
-**CONDITION**: `git_mode == "personal"` AND `spec_workflow == "develop_direct"`
+**All modes use common `branch_creation.prompt_always` configuration**
 
-**ACTION**: ✅ SKIP all git-manager invocations
+#### Step 2.1: Determine Branch Creation Behavior
 
-```
-📋 Git Configuration: develop_direct mode detected
-
-✅ PHASE 3 SKIPPED (as configured)
-
-Behavior:
-- NO feature branch created
-- NO git-manager agent invoked in /moai:1-plan
-- SPEC files created on current branch
-- Ready for /moai:2-run implementation
-- Commits will be made directly to main/develop during implementation
-- TDD cycle: RED → GREEN → REFACTOR commits
-
-Next Action: Proceed directly to Final Status Report (Step 4)
-```
-
-**Important**: Do NOT call git-manager agent. Do NOT create any branches.
-
----
-
-### Step 2B: Route B - `feature_branch` Mode (CREATE BRANCH)
-
-**CONDITION**: `git_mode == "personal"` AND `spec_workflow == "feature_branch"`
-
-**ACTION**: Invoke git-manager to create feature branch
+Based on config `git_strategy.branch_creation.prompt_always`:
 
 ```python
-# Step 2B: Invoke git-manager with explicit branch creation requirement
-Task(
-    subagent_type="git-manager",
-    description="Create feature branch for SPEC (feature_branch mode)",
-    prompt="""You are the git-manager agent.
+# Step 2.1: Read branch creation configuration
+prompt_always = config.get("git_strategy", {})
+                       .get("branch_creation", {})
+                       .get("prompt_always", True)  # Default: true
 
-INSTRUCTION: Create feature branch for SPEC implementation.
-
-CRITICAL CONFIG: spec_git_workflow == "feature_branch"
-→ This configuration REQUIRES branch creation for every SPEC
-
-TASKS:
-1. Create branch: `feature/SPEC-{SPEC_ID}`
-2. Set tracking upstream if remote exists
-3. Switch to new branch
-4. Create initial commit: "feat(spec): Add SPEC-{SPEC_ID} specification"
-5. Push to remote if configured
-
-VALIDATION:
-- Verify branch was created and checked out
-- Verify current branch is feature/SPEC-{SPEC_ID}
-- Return branch creation status
-
-DO NOT create draft PR. (PR creation is handled separately in /moai:2-run or /moai:3-sync)
-"""
-)
-```
-
-**Expected Outcome**:
-```
-✅ Feature branch created: feature/SPEC-{SPEC_ID}
-✅ Current branch switched to feature branch
-✅ Ready for implementation in /moai:2-run
+if prompt_always == True:
+    ACTION = "ASK_USER_FOR_BRANCH_CREATION"
+elif prompt_always == False:
+    if git_mode == "manual":
+        ACTION = "SKIP_BRANCH_CREATION"
+    else:  # personal or team
+        ACTION = "AUTO_CREATE_BRANCH"
 ```
 
 ---
 
-### Step 2C: Route C - `per_spec` Mode (ASK USER)
+#### Step 2.2: Route A - Ask User (When `prompt_always: true`)
 
-**CONDITION**: `git_mode == "personal"` AND `spec_workflow == "per_spec"`
+**CONDITION**: `branch_creation.prompt_always == true`
 
-**ACTION**: Ask user their preference for this SPEC
+**ACTION**: Ask user for branch creation preference
 
 ```python
 AskUserQuestion({
     "questions": [{
-        "question": "Create a feature branch for this SPEC implementation?",
+        "question": "브랜치를 생성하시겠습니까?",
         "header": "Branch Strategy",
         "multiSelect": false,
         "options": [
             {
-                "label": "Create feature branch",
-                "description": "Create feature/SPEC-{SPEC_ID} branch (recommended for team work or complex features)"
+                "label": "자동 생성",
+                "description": "feature/SPEC-{SPEC_ID} 브랜치 자동 생성"
             },
             {
-                "label": "Direct commit",
-                "description": "Commit directly to current branch (recommended for rapid development)"
+                "label": "현재 브랜치 사용",
+                "description": "현재 브랜치에서 직접 작업"
             }
         ]
     }]
 })
 
 # Based on user choice:
-if user_choice == "Create feature branch":
-    # Execute Route B (invoke git-manager)
-    EXECUTE: Step 2B (create branch)
+if user_choice == "자동 생성":
+    ROUTE = "CREATE_BRANCH"
 else:
-    # Skip branch creation
-    EXECUTE: Route A (skip PHASE 3)
+    ROUTE = "USE_CURRENT_BRANCH"
+```
+
+**Next Step**: Go to Step 2.3 or 2.4 based on user choice
+
+---
+
+#### Step 2.3: Create Feature Branch (After User Choice OR Auto-Creation)
+
+**CONDITION**: User selected "자동 생성" OR (`prompt_always: false` AND git_mode in [personal, team])
+
+**ACTION**: Invoke git-manager to create feature branch
+
+```python
+# Step 2.3: Create feature branch
+Task(
+    subagent_type="git-manager",
+    description="Create feature branch for SPEC implementation",
+    prompt="""You are the git-manager agent.
+
+INSTRUCTION: Create feature branch for SPEC implementation.
+
+MODE: {git_mode} (manual/personal/team)
+BRANCH_CREATION: prompt_always = {prompt_always}
+
+TASKS:
+1. Create branch: `feature/SPEC-{SPEC_ID}-{description}`
+2. Set tracking upstream if remote exists
+3. Switch to new branch
+4. Create initial commit (if appropriate for mode)
+
+VALIDATION:
+- Verify branch was created and checked out
+- Verify current branch is feature/SPEC-{SPEC_ID}
+- Return branch creation status
+
+NOTE: PR creation is handled separately in /moai:2-run or /moai:3-sync (Team mode only)
+"""
+)
+```
+
+**Expected Outcome**:
+```
+✅ Feature branch created: feature/SPEC-{SPEC_ID}-description
+✅ Current branch switched to feature branch
+✅ Ready for implementation in /moai:2-run
 ```
 
 ---
 
-### Step 2D: Route D - Team Mode (ALWAYS CREATE BRANCH)
+#### Step 2.4: Skip Branch Creation (After User Choice OR Manual Mode)
 
-**CONDITION**: `git_mode == "team"` (regardless of spec_workflow value)
+**CONDITION**: User selected "현재 브랜치 사용" OR (`prompt_always: false` AND git_mode == manual)
 
-**ACTION**: Create feature branch and draft PR
+**ACTION**: Skip branch creation, continue with current branch
+
+```
+✅ Branch creation skipped
+
+Behavior:
+- SPEC files created on current branch
+- NO git-manager agent invoked
+- Ready for /moai:2-run implementation
+- Commits will be made directly to current branch during TDD cycle
+```
+
+---
+
+#### Step 2.5: Team Mode - Create Draft PR (After Branch Creation)
+
+**CONDITION**: `git_mode == "team"` AND branch was created (Step 2.3)
+
+**ACTION**: Create draft PR for team review
 
 ```python
-# Step 2D.1: Create feature branch (always in team mode)
+# Step 2.5: Create draft PR (Team mode only)
 Task(
     subagent_type="git-manager",
-    description="Create feature branch for SPEC (team mode)",
+    description="Create draft PR for SPEC (Team mode)",
     prompt="""You are the git-manager agent.
 
-INSTRUCTION: Create feature branch for SPEC implementation (Team mode).
-
-CRITICAL CONFIG: git_strategy.mode == "team"
-→ Team mode REQUIRES feature branches for all work
-
-TASKS:
-1. Create branch: `feature/SPEC-{SPEC_ID}`
-2. Set tracking upstream
-3. Switch to new branch
-4. Create initial commit: "feat(spec): Add SPEC-{SPEC_ID} specification"
-5. Push to remote
-
-IMPORTANT: Do NOT create PR in this task. (PR creation handled next)
-"""
-)
-
-# Step 2D.2: Create draft PR (team mode only)
-Task(
-    subagent_type="git-manager",
-    description="Create draft PR for SPEC",
-    prompt="""You are the git-manager agent.
-
-INSTRUCTION: Create draft pull request for SPEC implementation (Team mode).
+INSTRUCTION: Create draft pull request for SPEC implementation.
 
 CRITICAL CONFIG: git_strategy.mode == "team"
 → Team mode REQUIRES draft PRs for review coordination
 
 TASKS:
-1. Create draft PR targeting `develop` branch
+1. Create draft PR: feature/SPEC-{SPEC_ID} → main/develop branch
 2. PR title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
-3. PR body: Include SPEC ID, description, and review checklist
+3. PR body: Include SPEC ID, description, and checklist
 4. Add appropriate labels (spec, draft, etc.)
 5. Assign reviewers from team config (if configured)
 6. Set PR as DRAFT (do NOT auto-merge)
 
 VALIDATION:
-- Verify PR was created
-- Verify PR is in draft status
+- Verify PR was created in draft status
 - Return PR URL and status
 """
 )
@@ -802,27 +795,87 @@ VALIDATION:
 
 **Expected Outcome**:
 ```
-✅ Feature branch created: feature/SPEC-{SPEC_ID}
-✅ Draft PR created targeting develop branch
-✅ Ready for team review and implementation
+✅ Feature branch: feature/SPEC-{SPEC_ID}
+✅ Draft PR created for team review
+✅ Ready for /moai:2-run implementation
 ```
 
 ---
 
 ### Step 3: Conditional Status Report
 
-Display status based on ROUTE EXECUTED:
+Display status based on configuration and execution result:
 
-#### If Route A (develop_direct):
+#### Case 1: Branch Creation Prompted (`prompt_always: true`) - User Selected "자동 생성"
+
 ```
-📊 Phase 3 Status: Configuration Applied
+📊 Phase 3 Status: Feature Branch Created (User Choice)
 
-✅ **Git Configuration Enforced: develop_direct**
+✅ **Configuration**: git_strategy.mode = "{git_mode}"
+✅ **Branch Creation**: prompt_always = true → User chose "자동 생성"
+
+✅ **Feature Branch Created**:
+- Branch: `feature/SPEC-{SPEC_ID}`
+- Current branch switched to feature branch
+- Ready for implementation on isolated branch
+
+{IF TEAM MODE:
+✅ **Draft PR Created** (Team Mode):
+- PR Title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+- Target Branch: develop/main
+- Status: DRAFT (awaiting review)
+}
+
+🎯 **Next Steps:**
+1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
+2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+3. 🌿 All commits will be made to feature branch
+{IF TEAM MODE:
+4. 👥 Share draft PR with team for early review (already created)
+5. 💬 Team can comment during development
+6. ✅ Finalize PR in `/moai:3-sync` when complete
+:ELSE:
+4. 🔄 Create PR in `/moai:3-sync` when implementation complete
+}
+```
+
+---
+
+#### Case 2: Branch Creation Prompted (`prompt_always: true`) - User Selected "현재 브랜치 사용"
+
+```
+📊 Phase 3 Status: Direct Commit Mode (User Choice)
+
+✅ **Configuration**: git_strategy.mode = "{git_mode}"
+✅ **Branch Creation**: prompt_always = true → User chose "현재 브랜치 사용"
+
+✅ **No Branch Created**:
 - SPEC files created on current branch
-- NO feature branch created (as configured)
-- NO draft PR created (as configured)
-- Ready for direct /moai:2-run implementation
-- Commits will be made directly to main/develop during TDD cycle
+- Ready for direct implementation
+- Commits will be made directly to current branch
+
+🎯 **Next Steps:**
+1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
+2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+3. 💾 All commits will be made directly to current branch
+4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
+```
+
+---
+
+#### Case 3: Branch Creation Auto-Skipped (Manual Mode + `prompt_always: false`)
+
+```
+📊 Phase 3 Status: Direct Commit Mode (Configuration)
+
+✅ **Configuration**: git_strategy.mode = "manual"
+✅ **Branch Creation**: prompt_always = false → Auto-skipped
+
+✅ **No Branch Created** (Manual Mode Default):
+- SPEC files created on current branch
+- NO git-manager invoked (as configured)
+- Ready for direct implementation
+- Commits will be made directly to current branch
 
 🎯 **Next Steps:**
 1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
@@ -831,69 +884,39 @@ Display status based on ROUTE EXECUTED:
 4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
 ```
 
-#### If Route B (feature_branch):
-```
-📊 Phase 3 Status: Feature Branch Created
+---
 
-✅ **Branch Created Successfully**
+#### Case 4: Branch Creation Auto-Created (Personal/Team Mode + `prompt_always: false`)
+
+```
+📊 Phase 3 Status: Feature Branch Created (Auto)
+
+✅ **Configuration**: git_strategy.mode = "{git_mode}" (personal or team)
+✅ **Branch Creation**: prompt_always = false → Auto-created
+
+✅ **Feature Branch Created**:
 - Branch: `feature/SPEC-{SPEC_ID}`
 - Current branch switched to feature branch
 - Ready for implementation on isolated branch
-- PR creation deferred to /moai:3-sync (if needed)
+
+{IF TEAM MODE:
+✅ **Draft PR Created** (Team Mode):
+- PR Title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+- Target Branch: develop/main
+- Status: DRAFT (awaiting review)
+}
 
 🎯 **Next Steps:**
 1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
 2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
 3. 🌿 All commits will be made to feature branch
+{IF TEAM MODE:
+4. 👥 Share draft PR with team for early review
+5. 💬 Team can comment on draft PR during development
+6. ✅ Finalize PR in `/moai:3-sync` when complete
+:ELSE:
 4. 🔄 Create PR in `/moai:3-sync` when implementation complete
-```
-
-#### If Route C (per_spec - branch chosen):
-```
-📊 Phase 3 Status: User Selected Branch Creation
-
-✅ **Feature Branch Created (User Choice)**
-- Branch: `feature/SPEC-{SPEC_ID}`
-- Current branch switched to feature branch
-- Ready for implementation on isolated branch
-
-🎯 **Next Steps:**
-[Same as Route B above]
-```
-
-#### If Route C (per_spec - direct commit chosen):
-```
-📊 Phase 3 Status: User Selected Direct Commit
-
-✅ **Direct Commit Mode Selected (User Choice)**
-- NO feature branch created (as chosen)
-- SPEC files created on current branch
-- Ready for direct implementation
-
-🎯 **Next Steps:**
-[Same as Route A above]
-```
-
-#### If Route D (team mode):
-```
-📊 Phase 3 Status: Team Mode - Branch & PR Created
-
-✅ **Feature Branch Created**
-- Branch: `feature/SPEC-{SPEC_ID}`
-- Current branch switched to feature branch
-
-✅ **Draft PR Created**
-- PR Title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
-- Target Branch: `develop`
-- Status: DRAFT (awaiting review)
-- URL: [GitHub PR URL]
-
-🎯 **Next Steps:**
-1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
-2. 👥 Share draft PR with team for early review
-3. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
-4. 💬 Team can comment on draft PR during development
-5. ✅ Finalize PR in `/moai:3-sync` when implementation complete
+}
 ```
 
 ---
