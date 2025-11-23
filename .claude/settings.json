@@ -26,6 +26,16 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ./.claude/hooks/moai/session_end__auto_cleanup.py"
+          }
+        ]
+      }
     ]
   },
   "permissions": {

@@ -1,0 +1,350 @@
+#!/bin/bash
+
+################################################################################
+# Pre-push Hook: Security Detection + GitFlow Control
+################################################################################
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+###############################################################################
+# PHASE 1: Security Secrets Detection (CRITICAL - Must run first)
+###############################################################################
+
+echo "🔒 [Phase 1] Running Security Secrets Detection before push..."
+
+SECRETS_FOUND=false
+
+# Define secret patterns to detect
+declare -a PATTERNS=(
+    "AIzaSy[A-Za-z0-9_-]{35}"        # Google APIs
+    "sk-[A-Za-z0-9]{20,}"             # OpenAI
+    "sk_[A-Za-z0-9]{20,}"             # OpenAI variant
+    "sk-ant-[A-Za-z0-9]{20,}"        # Anthropic
+    "AKIA[0-9A-Z]{16}"                # AWS Access Keys
+    "api[_-]?key['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9_-]{20,}['\"]?"
+    "bearer[_-]?token['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9._-]{20,}['\"]?"
+    "aws_secret_access_key['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9/+=]{40}['\"]?"
+    "access[_-]?token['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9._-]{20,}['\"]?"
+)
+
+# Store all input lines for processing
+input_lines=()
+while read local_ref local_oid remote_ref remote_oid; do
+    input_lines+=("$local_ref $local_oid $remote_ref $remote_oid")
+
+    # Check commits being pushed for secrets
+    if [ "$local_oid" != "0000000000000000000000000000000000000000" ]; then
+        remote_base="$remote_oid"
+        if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
+            # New branch - check all commits on this branch
+            remote_base=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/develop 2>/dev/null || echo "HEAD")
+        fi
+
+        # Get commits being pushed
+        PUSHED_COMMITS=$(git rev-list $remote_base..$local_oid 2>/dev/null)
+
+        for COMMIT in $PUSHED_COMMITS; do
+            COMMIT_CONTENT=$(git show $COMMIT 2>/dev/null)
+
+            for PATTERN in "${PATTERNS[@]}"; do
+                if echo "$COMMIT_CONTENT" | grep -qE "$PATTERN"; then
+                    if [ "$SECRETS_FOUND" = false ]; then
+                        echo ""
+                        echo -e "${RED}❌ SECURITY ERROR: Secrets detected in commits!${NC}"
+                        SECRETS_FOUND=true
+                    fi
+
+                    echo -e "${RED}  Commit: ${COMMIT:0:7}${NC}"
+                    LINE_NUMS=$(echo "$COMMIT_CONTENT" | grep -n -E "$PATTERN" | cut -d: -f1 | head -3)
+                    echo -e "${YELLOW}  Lines: $LINE_NUMS${NC}"
+                fi
+            done
+        done
+    fi
+done
+
+if [ "$SECRETS_FOUND" = true ]; then
+    echo ""
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}⛔ PUSH BLOCKED: Secrets detected in commits${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "✅ FIX:"
+    echo "  1. Amend commit: git commit --amend"
+    echo "  2. Replace secret with: 'your_actual_key_here'"
+    echo "  3. Store real key in: .env (git-ignored)"
+    echo "  4. Force push: git push --force-with-lease"
+    echo ""
+    echo "⚠️  Never push real API keys to GitHub!"
+    echo ""
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Security check passed${NC}"
+
+###############################################################################
+# PHASE 2: GitFlow Enforcement + Branch Rules
+###############################################################################
+
+echo "🔄 [Phase 2] Checking GitFlow Rules..."
+
+# Check team mode from .moai/config.json
+is_team_mode() {
+    if [ -f ".moai/config.json" ]; then
+        # Check if mode is "team"
+        grep -q '"mode".*:.*"team"' ".moai/config.json" 2>/dev/null
+        return $?
+    fi
+    return 1
+}
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+TEAM_MODE=false
+is_team_mode && TEAM_MODE=true
+
+# Store all input lines for processing
+input_lines=()
+while read local_ref local_oid remote_ref remote_oid; do
+    input_lines+=("$local_ref $local_oid $remote_ref $remote_oid")
+done
+
+# STRICT TAG VALIDATION - Check all refs for tags first
+for line in "${input_lines[@]}"; do
+    local_ref=$(echo "$line" | awk '{print $1}')
+    remote_ref=$(echo "$line" | awk '{print $3}')
+
+    # Check if this is a tag push (refs/tags/)
+    if [[ "$remote_ref" == refs/tags/* ]]; then
+        tag_name=$(echo "$remote_ref" | sed 's|refs/tags/||')
+        echo "🏷️  Tag push detected: $tag_name"
+
+        if [[ "$TEAM_MODE" == true ]]; then
+            # In team mode, tags must follow strict GitFlow rules
+
+            # Validate tag format (must be semantic version: v1.2.3)
+            if [[ ! "$tag_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo ""
+                echo -e "${RED}❌ TAG POLICY VIOLATION${NC}"
+                echo ""
+                echo "Invalid tag format: $tag_name"
+                echo "Allowed format: v{major}.{minor}.{patch}"
+                echo "Examples: v1.0.0, v1.2.3, v2.0.0"
+                echo ""
+                echo "Tags must follow semantic versioning in team mode"
+                exit 1
+            fi
+
+            # Get current branch for validation
+            current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
+            # Tags can only be created from main branch in team mode
+            if [[ "$current_branch" != "main" ]]; then
+                echo ""
+                echo -e "${RED}❌ TAG POLICY VIOLATION${NC}"
+                echo ""
+                echo "Tags must be created from 'main' branch in team mode"
+                echo "Current branch: $current_branch"
+                echo "Required branch: main"
+                echo ""
+                echo -e "${BLUE}Proper GitFlow tag creation:${NC}"
+                echo "1. Ensure all features are merged to develop"
+                echo "2. Merge develop to main"
+                echo "3. Create tag from main branch"
+                echo ""
+                echo "Command: git checkout main && git tag $tag_name"
+                exit 1
+            fi
+
+            # Verify main branch is up-to-date with develop
+            if git rev-parse --verify develop >/dev/null 2>&1; then
+                main_commit=$(git rev-parse main)
+                develop_commit=$(git rev-parse develop)
+
+                if [[ "$main_commit" != "$develop_commit" ]]; then
+                    echo ""
+                    echo -e "${YELLOW}⚠️  GITFLOW WARNING${NC}"
+                    echo ""
+                    echo "Main branch is not synchronized with develop"
+                    echo "Main commit:    $main_commit"
+                    echo "Develop commit: $develop_commit"
+                    echo ""
+                    echo "In team mode, tags should only be created after develop → main merge"
+                    echo ""
+                    read -p "Continue anyway? (y/N): " -n 1 -r
+                    echo
+                    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                        echo "Tag push cancelled"
+                        exit 1
+                    fi
+                fi
+            fi
+
+            # Check if tag already exists remotely
+            if git ls-remote --tags origin "$tag_name" | grep -q "$tag_name"; then
+                echo ""
+                echo -e "${RED}❌ TAG POLICY VIOLATION${NC}"
+                echo ""
+                echo "Tag '$tag_name' already exists remotely"
+                echo "Cannot overwrite existing tags in team mode"
+                echo ""
+                echo "Use different version number or delete remote tag first:"
+                echo "git tag -d $tag_name"
+                echo "git push origin :refs/tags/$tag_name"
+                exit 1
+            fi
+
+            echo ""
+            echo -e "${GREEN}✅ Tag validation passed (team mode)${NC}"
+            echo "  - Format: semantic version ✓"
+            echo "  - Source: main branch ✓"
+            echo "  - Unique: new tag ✓"
+            echo ""
+
+        else
+            # Personal mode - more permissive but still validate format
+            if [[ ! "$tag_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo ""
+                echo -e "${YELLOW}⚠️  Advisory: Tag format should be semantic version (v1.2.3)${NC}"
+                echo "Current tag: $tag_name"
+                echo ""
+                read -p "Continue with non-standard tag? (y/N): " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    echo "Tag push cancelled"
+                    exit 1
+                fi
+            fi
+
+            echo -e "${GREEN}✅ Tag push allowed (personal mode)${NC}"
+        fi
+    fi
+done
+
+# Process branch validation for non-tag refs
+for line in "${input_lines[@]}"; do
+    local_ref=$(echo "$line" | awk '{print $1}')
+    local_oid=$(echo "$line" | awk '{print $2}')
+    remote_ref=$(echo "$line" | awk '{print $3}')
+    remote_oid=$(echo "$line" | awk '{print $4}')
+
+    # Skip tag refs - they were processed above
+    if [[ "$remote_ref" == refs/tags/* ]]; then
+        continue
+    fi
+    # Extract the remote branch name from the reference
+    # remote_ref format: refs/heads/main
+    remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    local_branch=$(echo "$local_ref" | sed 's|refs/heads/||')
+
+    # Check if attempting to push to main branch
+    if [ "$remote_branch" = "main" ] || [ "$remote_branch" = "master" ]; then
+        # Get the current branch to determine if this is the develop branch
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+        # TEAM MODE ENFORCEMENT
+        if [ "$TEAM_MODE" = true ]; then
+            # Block non-develop, non-release branches from pushing to main
+            if [ "$local_branch" != "develop" ] && [ "${local_branch#release/}" = "$local_branch" ]; then
+                echo ""
+                echo -e "${RED}❌ BLOCKED: Non-standard GitFlow in TEAM MODE${NC}"
+                echo ""
+                echo -e "${BLUE}Current branch: ${local_branch}${NC}"
+                echo -e "${BLUE}Target branch: ${remote_branch}${NC}"
+                echo ""
+                echo "🚀 Correct GitFlow workflow for TEAM MODE:"
+                echo "  1. Work on feature/SPEC-{ID} branch (created from develop)"
+                echo "  2. Push to feature/SPEC-{ID} and create PR to develop"
+                echo "  3. Code review & merge into develop"
+                echo "  4. When develop is stable, create PR from develop to main"
+                echo "  5. Release manager merges develop → main with tag"
+                echo ""
+                echo -e "${RED}⚠️  Push to ${remote_branch} blocked in team mode${NC}"
+                echo ""
+                exit 1
+            fi
+
+            # For develop → main or release/* → main, ask for confirmation
+            if [ "$local_branch" = "develop" ] || [ "${local_branch#release/}" != "$local_branch" ]; then
+                echo ""
+                echo -e "${YELLOW}⚠️  TEAM MODE: Pushing ${local_branch} → ${remote_branch}${NC}"
+                echo ""
+                echo "📋 Summary:"
+                echo "  • Source branch: ${local_branch}"
+                echo "  • Target branch: ${remote_branch}"
+                echo "  • Mode: TEAM MODE (strict enforcement)"
+                echo ""
+                read -p "❓ Are you sure you want to push ${local_branch} to ${remote_branch}? (y/n) " -n 1 -r
+                echo ""
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    echo -e "${RED}✓ Push cancelled by user${NC}"
+                    exit 1
+                fi
+            fi
+        fi
+
+        # PERSONAL MODE: Advisory warnings (allow all pushes)
+        if [ "$TEAM_MODE" = false ]; then
+            # Advisory: recommend develop -> main workflow
+            if [ "$local_branch" != "develop" ] && [ "${local_branch#release/}" = "$local_branch" ]; then
+                echo ""
+                echo -e "${YELLOW}⚠️  ADVISORY: Non-standard GitFlow detected${NC}"
+                echo ""
+                echo -e "${BLUE}Current branch: ${local_branch}${NC}"
+                echo -e "${BLUE}Target branch: ${remote_branch}${NC}"
+                echo ""
+                echo "Recommended GitFlow workflow:"
+                echo "  1. Work on feature/SPEC-{ID} branch (created from develop)"
+                echo "  2. Push to feature/SPEC-{ID} and create PR to develop"
+                echo "  3. Merge into develop after code review"
+                echo "  4. When develop is stable, create PR from develop to main"
+                echo "  5. Release manager merges develop -> main with tag"
+                echo ""
+                echo -e "${GREEN}✓ Push will proceed (personal mode - flexibility enabled)${NC}"
+                echo ""
+            fi
+
+            # Check for delete operation
+            if [ "$local_oid" = "0000000000000000000000000000000000000000" ]; then
+                echo ""
+                echo -e "${RED}⚠️  WARNING: Attempting to delete main branch${NC}"
+                echo ""
+                echo -e "${YELLOW}This operation is highly discouraged.${NC}"
+                echo -e "${GREEN}✓ Push will proceed (personal mode - flexibility enabled)${NC}"
+                echo ""
+            fi
+
+            # Check for force push attempts to main
+            if [ "$remote_branch" = "main" ] || [ "$remote_branch" = "master" ]; then
+                # Check if remote_oid exists (non-zero means we're trying to update existing ref)
+                if [ "$remote_oid" != "0000000000000000000000000000000000000000" ]; then
+                    # Verify this is a fast-forward merge (no force push)
+                    if ! git merge-base --is-ancestor "$remote_oid" "$local_oid" 2>/dev/null; then
+                        echo ""
+                        echo -e "${YELLOW}⚠️  ADVISORY: Force-push to main branch detected${NC}"
+                        echo ""
+                        echo "Recommended approach:"
+                        echo "  - Use GitHub PR with proper code review"
+                        echo "  - Ensure changes are merged via fast-forward"
+                        echo ""
+                        echo -e "${GREEN}✓ Push will proceed (personal mode - flexibility enabled)${NC}"
+                        echo ""
+                    fi
+                fi
+            fi
+        fi
+    fi
+done
+
+# All checks passed (or advisory warnings shown)
+exit 0
