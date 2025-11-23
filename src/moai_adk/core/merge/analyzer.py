@@ -268,14 +268,19 @@ class MergeAnalyzer:
             console.print(f"⚠️  위험도: {risk_assessment}", style=risk_style)
 
         # 파일별 변경사항 테이블
-        if analysis.get("files"):
+        files_list = analysis.get("files")
+        if files_list and isinstance(files_list, list):
             table = Table(title="파일별 변경사항")
             table.add_column("파일", style="cyan")
             table.add_column("변경사항", style="white")
             table.add_column("권장", style="yellow")
             table.add_column("위험도", style="red")
 
-            for file_info in analysis["files"]:
+            for file_info in files_list:
+                # Ensure file_info is a dictionary
+                if not isinstance(file_info, dict):
+                    continue
+
                 severity_style = {
                     "low": "green",
                     "medium": "yellow",
@@ -293,7 +298,11 @@ class MergeAnalyzer:
             console.print(table)
 
             # 추가 설명
-            for file_info in analysis["files"]:
+            for file_info in files_list:
+                # Ensure file_info is a dictionary
+                if not isinstance(file_info, dict):
+                    continue
+
                 if file_info.get("note"):
                     console.print(
                         f"\n💡 {file_info['filename']}: {file_info['note']}",

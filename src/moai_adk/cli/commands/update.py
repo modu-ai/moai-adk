@@ -1064,8 +1064,48 @@ def _build_template_context(
     if not isinstance(language_config, dict):
         language_config = {}
 
+    # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
+    def format_short_version(v: str) -> str:
+        """Remove 'v' prefix if present."""
+        return v[1:] if v.startswith("v") else v
+
+    def format_display_version(v: str) -> str:
+        """Format display version with proper formatting."""
+        if v == "unknown":
+            return "MoAI-ADK unknown version"
+        elif v.startswith("v"):
+            return f"MoAI-ADK {v}"
+        else:
+            return f"MoAI-ADK v{v}"
+
+    def format_trimmed_version(v: str, max_length: int = 10) -> str:
+        """Format version with maximum length for UI displays."""
+        if v == "unknown":
+            return "unknown"
+        clean_version = v[1:] if v.startswith("v") else v
+        if len(clean_version) > max_length:
+            return clean_version[:max_length]
+        return clean_version
+
+    def format_semver_version(v: str) -> str:
+        """Format version as semantic version."""
+        if v == "unknown":
+            return "0.0.0"
+        clean_version = v[1:] if v.startswith("v") else v
+        import re
+        semver_match = re.match(r"^(\d+\.\d+\.\d+)", clean_version)
+        if semver_match:
+            return semver_match.group(1)
+        return "0.0.0"
+
     return {
         "MOAI_VERSION": version_for_config,
+        "MOAI_VERSION_SHORT": format_short_version(version_for_config),
+        "MOAI_VERSION_DISPLAY": format_display_version(version_for_config),
+        "MOAI_VERSION_TRIMMED": format_trimmed_version(version_for_config),
+        "MOAI_VERSION_SEMVER": format_semver_version(version_for_config),
+        "MOAI_VERSION_VALID": "true" if version_for_config != "unknown" else "false",
+        "MOAI_VERSION_SOURCE": "config_cached",
         "PROJECT_NAME": project_name,
         "PROJECT_MODE": project_mode,
         "PROJECT_DESCRIPTION": project_description,
