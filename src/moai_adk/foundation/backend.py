@@ -60,19 +60,28 @@ class APIDesignValidator:
     """
     Validates REST API design patterns and enforces consistency.
 
-    Provides validation for:
-    - HTTP method and status code combinations
-    - API versioning strategies
-    - Error response standardization
-    - Endpoint path conventions
+    Enterprise-grade API validation supporting:
+    - HTTP method and status code combinations (RFC 7231)
+    - API versioning strategies (URL, header, content-type)
+    - Error response standardization (RFC 7807 Problem Details)
+    - Endpoint path conventions and best practices
+
+    Example:
+        >>> validator = APIDesignValidator()
+        >>> result = validator.validate_rest_endpoint({
+        ...     "method": "GET",
+        ...     "path": "/api/v1/users/{id}",
+        ...     "status_code": 200
+        ... })
+        >>> assert result["valid"] is True
     """
 
     VALID_HTTP_METHODS = {method.value for method in HTTPMethod}
     VALID_STATUS_CODES = {
-        200, 201, 204, 206,  # Success
-        301, 302, 304, 307, 308,  # Redirection
-        400, 401, 403, 404, 405, 409, 410, 422, 429,  # Client errors
-        500, 501, 502, 503, 504  # Server errors
+        200, 201, 204, 206,  # 2xx Success
+        301, 302, 304, 307, 308,  # 3xx Redirection
+        400, 401, 403, 404, 405, 409, 410, 422, 429,  # 4xx Client errors
+        500, 501, 502, 503, 504  # 5xx Server errors
     }
     STATUS_CODE_RANGES = {
         "GET": [200, 206],
@@ -88,13 +97,27 @@ class APIDesignValidator:
 
     def validate_rest_endpoint(self, endpoint: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Validate REST API endpoint configuration.
+        Validate REST API endpoint configuration against RFC 7231 standards.
+
+        Performs comprehensive validation of:
+        1. HTTP method validity (GET, POST, PUT, PATCH, DELETE, etc.)
+        2. Path format (must start with /, follow REST conventions)
+        3. Status code validity (2xx, 3xx, 4xx, 5xx ranges)
+        4. Method-status code mapping (e.g., POST should return 201)
 
         Args:
-            endpoint: Dictionary with 'method', 'path', 'status_code'
+            endpoint: Dictionary with required keys:
+                - method: HTTP verb (GET, POST, PUT, PATCH, DELETE)
+                - path: Endpoint path (must start with /)
+                - status_code: Expected response status code
 
         Returns:
-            Validation result with status and errors
+            Validation result dictionary with keys:
+                - valid: bool indicating validation success
+                - method: Normalized HTTP method
+                - path: Endpoint path
+                - status_code: Response status code
+                - errors: List of validation errors (None if valid)
         """
         errors = []
 
@@ -193,13 +216,24 @@ class APIDesignValidator:
 
 class MicroserviceArchitect:
     """
-    Designs and validates microservice architecture patterns.
+    Enterprise microservice architecture design and validation.
 
-    Provides:
-    - Service boundary definition and validation
-    - Inter-service communication patterns (sync/async)
-    - Service discovery configuration
-    - API gateway patterns
+    Implements domain-driven design (DDD) patterns for service decomposition:
+    - Service boundary definition based on bounded contexts
+    - Inter-service communication patterns (REST, async, gRPC)
+    - Service discovery and registry management (Consul, Eureka, etcd)
+    - API gateway patterns and routing strategies
+
+    Best Practices:
+    - Services should own their data (no shared databases)
+    - Use async messaging for eventual consistency
+    - Implement circuit breakers for fault tolerance
+    - Use distributed tracing for observability
+
+    Example:
+        >>> architect = MicroserviceArchitect()
+        >>> service = {"name": "user-service", "domain": "auth"}
+        >>> result = architect.validate_service_boundary(service)
     """
 
     COMMUNICATION_PATTERNS = {
@@ -335,13 +369,25 @@ class MicroserviceArchitect:
 
 class AsyncPatternAdvisor:
     """
-    Provides async/await best practices and patterns.
+    Async/await patterns and concurrency optimization guide.
 
-    Covers:
-    - Concurrent async operations
-    - Async context managers
-    - Timeout handling
-    - Error handling in async code
+    Modern Python async programming with production-ready patterns:
+    - Concurrent operations with asyncio.gather() and task groups
+    - Async context managers for resource management
+    - Timeout handling and cancellation strategies
+    - Error handling and exception propagation in async code
+    - Performance optimization for I/O-bound operations
+
+    Performance Benefits:
+    - Handles thousands of concurrent connections efficiently
+    - Non-blocking I/O for database, API, and network operations
+    - Avoids context switching overhead of threads
+    - GIL-free concurrent execution (Python 3.13+)
+
+    Example:
+        >>> advisor = AsyncPatternAdvisor()
+        >>> tasks = [async_fetch_data(id) for id in range(100)]
+        >>> results = await advisor.execute_concurrent(tasks, timeout=30)
     """
 
     def __init__(self):
@@ -424,13 +470,26 @@ class AsyncPatternAdvisor:
 
 class AuthenticationManager:
     """
-    Manages authentication and authorization.
+    Enterprise authentication and authorization management.
 
-    Supports:
-    - JWT token generation and validation
-    - OAuth2 authorization flows
-    - Role-based access control (RBAC)
-    - API key management
+    Comprehensive security patterns:
+    - JWT (JSON Web Tokens) with HS256 signing and validation
+    - OAuth2 authorization code flow for third-party integration
+    - Role-based access control (RBAC) with permission checking
+    - API key management and validation
+    - Secure password handling and token expiration
+
+    Security Features:
+    - Cryptographically secure token generation (uuid4)
+    - HMAC-SHA256 token signing for integrity
+    - Automatic token expiration enforcement
+    - Session/token revocation support
+
+    Example:
+        >>> auth = AuthenticationManager(secret_key="production-secret")
+        >>> token = auth.generate_jwt_token({"sub": "user@example.com"})
+        >>> payload = auth.validate_jwt_token(token)
+        >>> has_access = auth.has_permission(user, "write:posts")
     """
 
     def __init__(self, secret_key: str = "default-secret-key"):
@@ -570,13 +629,29 @@ class ErrorLog:
 
 class ErrorHandlingStrategy:
     """
-    Provides structured error handling and logging.
+    Enterprise-grade error handling and structured logging.
 
-    Features:
-    - Standardized error response format
-    - Correlation ID tracking
-    - Async logging
-    - Error classification
+    Comprehensive error management:
+    - Standardized error response format (RFC 7807 Problem Details)
+    - Correlation ID tracking for request tracing
+    - Structured logging with context preservation
+    - Error classification and categorization
+    - Async logging for non-blocking performance
+
+    Production Features:
+    - Automatic trace ID generation for error correlation
+    - Contextual logging with request/user information
+    - Error metrics and monitoring integration
+    - Sanitized error messages (hide sensitive details)
+
+    Example:
+        >>> handler = ErrorHandlingStrategy()
+        >>> error_response = handler.handle_error({
+        ...     "type": "ValidationError",
+        ...     "message": "Invalid email format",
+        ...     "status_code": 400
+        ... })
+        >>> handler.log_with_context("ERROR", "Payment failed", {"trace_id": "..."})
     """
 
     def __init__(self):
@@ -649,13 +724,32 @@ class ErrorHandlingStrategy:
 
 class PerformanceOptimizer:
     """
-    Provides performance optimization patterns.
+    Performance optimization patterns for scalable backends.
 
-    Includes:
-    - Caching strategies (Redis, in-memory)
-    - Rate limiting configuration
-    - Query optimization patterns
-    - Connection pooling
+    Advanced optimization techniques:
+    - Multi-tier caching (Redis, in-memory cache, CDN)
+    - Rate limiting (token bucket, sliding window algorithms)
+    - Query optimization and database indexing strategies
+    - Connection pooling and resource management
+    - Load balancing and horizontal scaling patterns
+
+    Performance Targets:
+    - < 100ms response time for typical endpoints
+    - Support for 1000+ concurrent connections
+    - 99.9% uptime with graceful degradation
+    - Automatic cache invalidation on data changes
+
+    Example:
+        >>> optimizer = PerformanceOptimizer()
+        >>> cache_config = optimizer.configure_cache(
+        ...     backend="redis",
+        ...     ttl=3600,
+        ...     invalidation_triggers=["user_updated"]
+        ... )
+        >>> rate_limit = optimizer.configure_rate_limit(
+        ...     requests_per_minute=100,
+        ...     burst_size=20
+        ... )
     """
 
     def __init__(self):
@@ -764,13 +858,32 @@ class RequestMetric:
 
 class BackendMetricsCollector:
     """
-    Collects backend performance metrics.
+    Production-grade metrics collection and monitoring.
 
-    Tracks:
-    - Request/response times
-    - Error rates
-    - Service health
-    - Performance trends
+    Comprehensive observability:
+    - Real-time request/response time tracking
+    - Error rate calculation and alerting
+    - Service health status monitoring
+    - Performance trend analysis and reporting
+    - Integration with monitoring systems (Prometheus, Datadog, NewRelic)
+
+    Metrics Collected:
+    - Request latency (p50, p95, p99 percentiles)
+    - Error rates by endpoint and status code
+    - Throughput (requests per second)
+    - Resource utilization (CPU, memory, connections)
+    - Custom business metrics
+
+    Example:
+        >>> collector = BackendMetricsCollector()
+        >>> collector.record_request_metrics(
+        ...     path="/api/v1/users",
+        ...     method="GET",
+        ...     status_code=200,
+        ...     duration_ms=45
+        ... )
+        >>> health = collector.get_service_health()
+        >>> print(f"Service status: {health['status']}")
     """
 
     def __init__(self):
