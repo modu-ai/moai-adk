@@ -1,32 +1,32 @@
-# Claude Code Hooks - 참고 자료
+# Claude Code Hooks - Reference
 
-## 훅 타입
+## Hook Types
 
-| 훅 | 시점 | 용도 |
-|-----|------|------|
-| `pre-commit` | 커밋 전 | 코드 검증, 린팅 |
-| `post-commit` | 커밋 후 | 로깅, 알림 |
-| `pre-push` | 푸시 전 | 최종 검증 |
-| `post-merge` | 병합 후 | 자동화 작업 |
-| `pre-build` | 빌드 전 | 환경 준비 |
-| `post-deploy` | 배포 후 | 알림, 모니터링 |
+| Hook | Timing | Purpose |
+|------|--------|---------|
+| `pre-commit` | Before commit | Code validation, linting |
+| `post-commit` | After commit | Logging, notifications |
+| `pre-push` | Before push | Final validation |
+| `post-merge` | After merge | Automation tasks |
+| `pre-build` | Before build | Environment preparation |
+| `post-deploy` | After deployment | Notifications, monitoring |
 
-## Hook 인터페이스
+## Hook Interface
 
 ```python
 class Hook:
-    event: str  # 훅 이벤트
-    priority: int  # 실행 우선순위
-    async_execution: bool  # 비동기 실행
-    
+    event: str  # Hook event
+    priority: int  # Execution priority
+    async_execution: bool  # Async execution
+
     async def execute(context: dict) -> dict:
-        """훅 실행"""
-    
+        """Execute hook"""
+
     async def on_error(error: Exception) -> dict:
-        """에러 처리"""
+        """Error handling"""
 ```
 
-## 컨텍스트 객체
+## Context Object
 
 ```python
 {
@@ -38,13 +38,13 @@ class Hook:
 }
 ```
 
-## 반환값 형식
+## Return Value Format
 
 ```python
 {
-    "success": True,        # 성공 여부
-    "message": "...",       # 메시지
-    "data": {...}          # 추가 데이터
+    "success": True,        # Success status
+    "message": "...",       # Message
+    "data": {...}          # Additional data
 }
 ```
 

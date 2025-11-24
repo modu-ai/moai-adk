@@ -1,233 +1,233 @@
-# Claude Code Commands - 실전 예제
+# Claude Code Commands - Practical Examples
 
-## 예제 1: 프로젝트 초기화 명령어
+## Example 1: Project Initialization Command
 
 ```python
 # commands/project_init.py
 from moai_cc_commands import Command, CommandRegistry
 
 class ProjectInitCommand(Command):
-    """프로젝트 초기화 명령어"""
-    
+    """Project initialization command"""
+
     name = "project-init"
-    description = "프로젝트 초기화 및 구성"
-    
+    description = "Initialize and configure project"
+
     def setup_parameters(self):
-        self.add_parameter("project_name", "프로젝트 이름")
-        self.add_parameter("--template", "프로젝트 템플릿 선택")
-        self.add_parameter("--skip-git", "Git 초기화 건너뛰기")
-    
+        self.add_parameter("project_name", "Project name")
+        self.add_parameter("--template", "Select project template")
+        self.add_parameter("--skip-git", "Skip Git initialization")
+
     async def execute(self, params):
-        # 프로젝트 디렉토리 생성
+        # Create project directory
         await self.create_directory(params.project_name)
-        
-        # 템플릿 적용
+
+        # Apply template
         if params.template:
             await self.apply_template(params.template)
-        
-        # Git 저장소 초기화
+
+        # Initialize Git repository
         if not params.skip_git:
             await self.init_git_repo()
-        
+
         return {
             "status": "success",
             "project": params.project_name,
-            "message": "프로젝트 초기화 완료"
+            "message": "Project initialization complete"
         }
 
-# 등록
+# Register
 registry = CommandRegistry()
 registry.register(ProjectInitCommand())
 ```
 
-## 예제 2: 워크플로우 오케스트레이션
+## Example 2: Workflow Orchestration
 
 ```python
 # workflows/deployment.py
 from moai_cc_commands import Workflow, WorkflowStep
 
 class DeploymentWorkflow(Workflow):
-    """배포 워크플로우"""
-    
+    """Deployment workflow"""
+
     name = "deploy"
-    description = "애플리케이션 배포"
-    
+    description = "Application deployment"
+
     def setup_steps(self):
-        # Step 1: 빌드
+        # Step 1: Build
         self.add_step(WorkflowStep(
             name="build",
             command="build",
-            description="애플리케이션 빌드"
+            description="Build application"
         ))
-        
-        # Step 2: 테스트
+
+        # Step 2: Test
         self.add_step(WorkflowStep(
             name="test",
             command="test",
-            description="테스트 실행",
+            description="Run tests",
             depends_on=["build"]
         ))
-        
-        # Step 3: 배포
+
+        # Step 3: Deploy
         self.add_step(WorkflowStep(
             name="deploy",
             command="deploy",
-            description="프로덕션 배포",
+            description="Deploy to production",
             depends_on=["test"],
             on_failure="rollback"
         ))
-    
+
     async def on_step_complete(self, step_name, result):
-        """단계 완료 시 처리"""
+        """Handle step completion"""
         if step_name == "test" and result.status == "failed":
-            await self.notify_team(f"테스트 실패: {result.error}")
+            await self.notify_team(f"Test failed: {result.error}")
 ```
 
-## 예제 3: 파라미터 검증
+## Example 3: Parameter Validation
 
 ```python
 # validators/project_validator.py
 from moai_cc_commands import Validator
 
 class ProjectNameValidator(Validator):
-    """프로젝트 이름 검증"""
-    
+    """Project name validator"""
+
     def validate(self, value):
-        # 빈 값 확인
+        # Check for empty value
         if not value:
-            raise ValueError("프로젝트 이름이 필요합니다")
-        
-        # 길이 확인
+            raise ValueError("Project name is required")
+
+        # Check length
         if len(value) < 3:
-            raise ValueError("프로젝트 이름은 3자 이상이어야 합니다")
-        
-        # 문자 확인
+            raise ValueError("Project name must be at least 3 characters")
+
+        # Check characters
         if not value.isalnum():
-            raise ValueError("프로젝트 이름은 알파벳과 숫자만 사용 가능합니다")
-        
+            raise ValueError("Project name can only contain alphanumeric characters")
+
         return value
 ```
 
-## 예제 4: 명령어 체이닝
+## Example 4: Command Chaining
 
 ```python
 # commands/chained_commands.py
 from moai_cc_commands import CommandChain
 
 async def run_deployment_pipeline():
-    """배포 파이프라인 실행"""
-    
+    """Execute deployment pipeline"""
+
     chain = CommandChain()
-    
-    # 체인 구성
+
+    # Build chain
     chain.add_command("/moai:2-run", {"spec_id": "SPEC-001"})
     chain.add_command("/moai:3-sync", {"spec_id": "SPEC-001"})
     chain.add_command("/deploy", {"environment": "production"})
-    
-    # 순차 실행
+
+    # Execute sequentially
     result = await chain.execute()
-    
+
     return result
 ```
 
-## 예제 5: CLI 헬프 시스템
+## Example 5: CLI Help System
 
 ```python
 # cli/help_system.py
 from moai_cc_commands import Command
 
 class HelpCommand(Command):
-    """헬프 명령어"""
-    
+    """Help command"""
+
     name = "help"
-    description = "명령어 도움말"
-    
+    description = "Command help information"
+
     def format_help(self, command):
-        """명령어 헬프 포맷"""
+        """Format command help"""
         return f"""
-        명령어: {command.name}
-        설명: {command.description}
-        
-        파라미터:
+        Command: {command.name}
+        Description: {command.description}
+
+        Parameters:
         {self._format_parameters(command)}
-        
-        사용 예:
+
+        Usage Example:
         {command.usage_example}
         """
-    
+
     async def execute(self, params):
         command_name = params.get("command")
         command = self.registry.get(command_name)
-        
+
         if not command:
-            return {"error": f"명령어를 찾을 수 없습니다: {command_name}"}
-        
+            return {"error": f"Command not found: {command_name}"}
+
         return {"help": self.format_help(command)}
 ```
 
-## 예제 6: 에러 처리 및 재시도
+## Example 6: Error Handling and Retry
 
 ```python
 # error_handling/retry_logic.py
 from moai_cc_commands import CommandExecutor
 
 class ResilientCommandExecutor(CommandExecutor):
-    """탄력적 명령어 실행기"""
-    
+    """Resilient command executor"""
+
     async def execute_with_retry(self, command, params, max_retries=3):
-        """재시도 로직 포함 실행"""
-        
+        """Execute with retry logic"""
+
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 result = await command.execute(params)
                 return result
-                
+
             except Exception as e:
                 last_error = e
-                
-                # 재시도 전 대기
+
+                # Wait before retry
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt  # 지수 백오프
+                    wait_time = 2 ** attempt  # Exponential backoff
                     await asyncio.sleep(wait_time)
-        
-        # 모든 재시도 실패
+
+        # All retries failed
         raise last_error
 ```
 
-## 예제 7: 진행상황 추적
+## Example 7: Progress Tracking
 
 ```python
 # progress/progress_tracker.py
 from moai_cc_commands import ProgressTracker
 
 class WorkflowProgressTracker(ProgressTracker):
-    """워크플로우 진행상황 추적"""
-    
+    """Workflow progress tracker"""
+
     async def track_workflow(self, workflow):
-        """워크플로우 진행상황 추적"""
-        
+        """Track workflow progress"""
+
         total_steps = len(workflow.steps)
-        
+
         for idx, step in enumerate(workflow.steps):
-            # 진행상황 업데이트
+            # Update progress
             progress = (idx / total_steps) * 100
-            
+
             self.update(
                 current=idx + 1,
                 total=total_steps,
                 percentage=progress,
-                message=f"실행 중: {step.name}"
+                message=f"Executing: {step.name}"
             )
-            
-            # 단계 실행
+
+            # Execute step
             result = await step.execute()
-            
+
             self.log_result(step.name, result)
 ```
 
 ---
 
-**Last Updated**: 2025-11-22  
+**Last Updated**: 2025-11-22
 **Status**: Production Ready

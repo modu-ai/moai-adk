@@ -39,173 +39,173 @@ Claude Code Commands provides a powerful command system for custom workflow auto
 
 ### What It Does
 
-Claude Code Commands는 다음을 제공합니다:
+Claude Code Commands provides:
 
-**명령어 시스템**:
-- 명령어 등록 및 발견
-- 파라미터 구문 분석 및 검증
-- 명령어 실행 및 결과 처리
-- 비동기 명령어 지원
-- 명령어 체이닝 및 구성
+**Command System**:
+- Command registration and discovery
+- Parameter parsing and validation
+- Command execution and result handling
+- Asynchronous command support
+- Command chaining and composition
 
-**워크플로우 자동화**:
-- 다단계 작업 조율
-- 조건부 실행 분기
-- 에러 처리 및 재시도
-- 진행상황 추적 및 로깅
-- 결과 수집 및 보고
+**Workflow Automation**:
+- Multi-step task orchestration
+- Conditional execution branching
+- Error handling and retry logic
+- Progress tracking and logging
+- Result collection and reporting
 
-**CLI 인터페이스**:
-- 명령어 도움말 및 사용 설명서
-- 파라미터 자동 완성
-- 실시간 피드백
-- 대화형 프롬프트
-- 결과 포맷팅
+**CLI Interface**:
+- Command help and usage documentation
+- Parameter auto-completion
+- Real-time feedback
+- Interactive prompts
+- Result formatting
 
 ### When to Use
 
-- ✅ 프로젝트 초기화 및 설정 자동화
-- ✅ 개발 워크플로우 (빌드, 테스트, 배포)
-- ✅ 다양한 도구 통합 및 조율
-- ✅ 반복적인 작업 자동화
-- ✅ 복잡한 다단계 프로세스 단순화
-- ✅ 팀 워크플로우 표준화
+- ✅ Project initialization and configuration automation
+- ✅ Development workflows (build, test, deploy)
+- ✅ Tool integration and orchestration
+- ✅ Repetitive task automation
+- ✅ Complex multi-step process simplification
+- ✅ Team workflow standardization
 
 ### Core Command Patterns
 
-#### 1. 명령어 구조
+#### 1. Command Structure
 ```markdown
 /moai:N-action [parameters] [options]
 
 Examples:
-- /moai:0-project                    # 프로젝트 초기화
-- /moai:1-plan "feature description" # SPEC 생성
-- /moai:2-run SPEC-001              # TDD 구현
-- /moai:3-sync SPEC-001             # 문서 동기화
+- /moai:0-project                    # Initialize project
+- /moai:1-plan "feature description" # Generate SPEC
+- /moai:2-run SPEC-001              # Execute TDD
+- /moai:3-sync SPEC-001             # Synchronize documentation
 ```
 
-#### 2. 파라미터 처리
+#### 2. Parameter Handling
 ```markdown
-## 위치 파라미터 (Positional)
+## Positional Parameters
 /command arg1 arg2 arg3
 
-## 옵션 파라미터 (Named)
+## Named Parameters (Options)
 /command --option value --flag
 
-## 혼합 사용
+## Mixed Usage
 /command required-arg --option value --flag
 ```
 
-#### 3. 워크플로우 조율 패턴
+#### 3. Workflow Orchestration Pattern
 ```markdown
-작업 1: 요구사항 수집
-  └─ 작업 2: SPEC 생성
-      └─ 작업 3: 구현 실행
-          └─ 작업 4: 문서 동기화
-              └─ 작업 5: 배포
+Task 1: Collect requirements
+  └─ Task 2: Generate SPEC
+      └─ Task 3: Execute implementation
+          └─ Task 4: Synchronize documentation
+              └─ Task 5: Deploy
 ```
 
-#### 4. 에러 처리 패턴
-- 입력 검증 실패 → 도움말 표시
-- 작업 실패 → 재시도 또는 롤백
-- 부분 완료 → 진행상황 저장
-- 예상치 못한 에러 → 로그 기록
+#### 4. Error Handling Pattern
+- Input validation failure → Display help
+- Task failure → Retry or rollback
+- Partial completion → Save progress
+- Unexpected error → Log and record
 
 ### Dependencies
 
 - Claude Code commands system
 - CLI framework (Click, Typer, Cobra)
-- 파라미터 검증 라이브러리
-- 워크플로우 조율 도구
+- Parameter validation library
+- Workflow orchestration tools
 
 
 ## Works Well With
 
-- `moai-cc-agents` (명령어 실행 위임)
-- `moai-cc-hooks` (명령어 이벤트 처리)
-- `moai-cc-configuration` (명령어 설정)
-- `moai-project-config-manager` (프로젝트별 명령어)
+- `moai-cc-agents` (Command execution delegation)
+- `moai-cc-hooks` (Command event handling)
+- `moai-cc-configuration` (Command configuration)
+- `moai-project-config-manager` (Project-specific commands)
 
 
 ## Advanced Patterns
 
-### 1. 고급 파라미터 처리
+### 1. Advanced Parameter Handling
 
-**변수 확장 (Variable Expansion)**:
+**Variable Expansion**:
 ```bash
 /command --path {{project-root}}/{{feature-name}}
 /command --version {{semantic-version}}
 ```
 
-**조건부 파라미터 (Conditional Parameters)**:
+**Conditional Parameters**:
 ```bash
-# 개발 환경
+# Development environment
 /command --mode dev --verbose
 
-# 프로덕션 환경
+# Production environment
 /command --mode prod --debug false
 ```
 
-**파라미터 검증 (Validation)**:
+**Parameter Validation**:
 ```markdown
-- 필수 파라미터 확인
-- 타입 검증 (string, number, boolean, path)
-- 범위 검증 (최소값, 최대값, 열거값)
-- 커스텀 검증 규칙
+- Required parameter checking
+- Type validation (string, number, boolean, path)
+- Range validation (min, max, enum values)
+- Custom validation rules
 ```
 
-### 2. 워크플로우 오케스트레이션 패턴
+### 2. Workflow Orchestration Pattern
 
-**직렬 실행 (Sequential)**:
+**Sequential Execution**:
 ```
 Step 1 → Step 2 → Step 3 → Step 4
 ```
 
-**병렬 실행 (Parallel)**:
+**Parallel Execution**:
 ```
 Step 1A → |
           | → Combined Result
 Step 1B → |
 ```
 
-**조건부 분기 (Branching)**:
+**Conditional Branching**:
 ```
 Step 1 → [Condition Check]
           ├─ Success → Step 2A
           └─ Failure → Step 2B
 ```
 
-### 3. 명령어 확장 패턴
+### 3. Command Extension Pattern
 
-**플러그인 시스템**:
+**Plugin System**:
 ```markdown
-1. 명령어 인터페이스 정의
-2. 플러그인 구현
-3. 플러그인 등록
-4. 동적 로딩
+1. Define command interface
+2. Implement plugin
+3. Register plugin
+4. Dynamic loading
 ```
 
-**훅 통합 (Hook Integration)**:
+**Hook Integration**:
 ```markdown
-- Pre-command hooks: 명령어 실행 전
-- Post-command hooks: 명령어 실행 후
-- Error hooks: 에러 발생 시
-- Validation hooks: 파라미터 검증
+- Pre-command hooks: Before command execution
+- Post-command hooks: After command execution
+- Error hooks: On error occurrence
+- Validation hooks: Parameter validation
 ```
 
-### 4. 고급 결과 처리
+### 4. Advanced Result Handling
 
-**결과 포맷팅**:
-- 텍스트 출력
-- JSON 형식
-- 테이블 형식
-- 마크다운 형식
+**Result Formatting**:
+- Text output
+- JSON format
+- Table format
+- Markdown format
 
-**결과 저장**:
-- 파일로 저장
-- 데이터베이스 저장
-- 로그 기록
-- 알림 전송
+**Result Persistence**:
+- Save to file
+- Database storage
+- Log recording
+- Notification sending
 
 ---
 
@@ -213,11 +213,11 @@ Step 1 → [Condition Check]
 
 ### Pre-execution Context with Bash (`! prefix`)
 
-Claude Code는 명령어 실행 전 bash 명령어를 자동 실행하고 결과를 컨텍스트에 포함할 수 있습니다.
+Claude Code automatically executes bash commands before command execution and includes results in the context.
 
-**문법**: `!git status --porcelain`
+**Syntax**: `!git status --porcelain`
 
-**MoAI 커맨드 최적화 예시**:
+**MoAI Command Optimization Example**:
 ```yaml
 ---
 name: moai:1-plan
@@ -232,26 +232,26 @@ description: "Define specifications and create development branch"
 !find .moai/specs -name "*.md" -type f
 ```
 
-**효과**:
-- 에이전트가 현재 git 상태를 자동으로 파악
-- SPEC 생성 시 기존 SPEC 목록 확인
-- 불필요한 중복 질문 제거
+**Benefits**:
+- Agent automatically understands current git status
+- View existing SPEC list during SPEC generation
+- Eliminate unnecessary duplicate questions
 
-**모든 6개 MoAI 커맨드 적용**:
-1. `/moai:0-project`: git 상태, 사용자 설정
-2. `/moai:1-plan`: git 로그, SPEC 목록
-3. `/moai:2-run`: 변경 파일 목록
-4. `/moai:3-sync`: diff, 브랜치 정보
-5. `/moai:9-feedback`: 현재 브랜치, 최근 커밋
-6. `/moai:99-release`: git 태그, 리모트 정보
+**Applied to All 6 MoAI Commands**:
+1. `/moai:0-project`: Git status, user settings
+2. `/moai:1-plan`: Git log, SPEC list
+3. `/moai:2-run`: Modified files list
+4. `/moai:3-sync`: Diff, branch information
+5. `/moai:9-feedback`: Current branch, recent commits
+6. `/moai:99-release`: Git tags, remote information
 
 ### File References with Content (`@ prefix`)
 
-파일 내용을 자동으로 명령어 컨텍스트에 포함합니다.
+Automatically include file contents in command context.
 
-**문법**: `@src/utils/helpers.js` or `@.moai/config/config.json`
+**Syntax**: `@src/utils/helpers.js` or `@.moai/config/config.json`
 
-**MoAI 커맨드 예시**:
+**MoAI Command Example**:
 ```yaml
 ---
 name: moai:2-run
@@ -264,38 +264,38 @@ name: moai:2-run
 @.moai/specs/SPEC-001/plan.md
 ```
 
-**이점**:
-- 에이전트가 필요한 문서를 자동으로 로드
-- 컨텍스트 토큰 절감 (선택적 로드)
-- 일관된 정보 소스 보장
+**Benefits**:
+- Agent automatically loads required documents
+- Save context tokens (selective loading)
+- Ensure consistent information sources
 
 ---
 
 ## Model Selection Strategy
 
-### `model` Frontmatter 필드
+### `model` Frontmatter Field
 
-특정 Claude 모델을 명령어에 지정합니다.
+Specify a specific Claude model for the command.
 
-**문법**:
+**Syntax**:
 ```yaml
-model: "haiku"    # 70% 비용 절감 (빠른 작업용)
-model: "sonnet"   # 기본값 (복잡한 추론)
-# 필드 생략 시 conversation 기본 모델 사용
+model: "haiku"    # 70% cost savings (fast tasks)
+model: "sonnet"   # Default (complex reasoning)
+# Omit field to use conversation default model
 ```
 
-### MoAI 커맨드의 모델 배정 전략
+### MoAI Command Model Assignment Strategy
 
-| 커맨드 | 모델 | 이유 | 비용 |
-|--------|------|------|------|
-| `/moai:0-project` | Sonnet | 복잡한 설정 로직, 검증 | 표준 |
-| `/moai:1-plan` | Sonnet | SPEC 생성, EARS 설계 | 표준 |
-| `/moai:2-run` | Sonnet | TDD 오케스트레이션 | 표준 |
-| `/moai:3-sync` | **Haiku** | 패턴 기반 문서 동기화 | **-70%** |
-| `/moai:9-feedback` | **Haiku** | 단순 데이터 수집 | **-70%** |
-| `/moai:99-release` | **Haiku** | 기계적 버전 관리 | **-70%** |
+| Command | Model | Reason | Cost |
+|---------|-------|--------|------|
+| `/moai:0-project` | Sonnet | Complex configuration logic, validation | Standard |
+| `/moai:1-plan` | Sonnet | SPEC generation, EARS design | Standard |
+| `/moai:2-run` | Sonnet | TDD orchestration | Standard |
+| `/moai:3-sync` | **Haiku** | Pattern-based documentation sync | **-70%** |
+| `/moai:9-feedback` | **Haiku** | Simple data collection | **-70%** |
+| `/moai:99-release` | **Haiku** | Mechanical version management | **-70%** |
 
-**결과**: 평균 35% 비용 절감, 품질 유지
+**Result**: Average 35% cost savings, quality maintained
 
 ---
 
@@ -303,18 +303,18 @@ model: "sonnet"   # 기본값 (복잡한 추론)
 
 ### Positional Arguments
 
-명령어에 전달된 파라미터에 접근합니다.
+Access parameters passed to the command.
 
-**문법**:
+**Syntax**:
 ```markdown
 /command arg1 arg2 arg3
 
-- $ARGUMENTS: "arg1 arg2 arg3" (모든 인자)
-- $1: "arg1" (첫 번째 인자)
-- $2: "arg2" (두 번째 인자)
+- $ARGUMENTS: "arg1 arg2 arg3" (all arguments)
+- $1: "arg1" (first argument)
+- $2: "arg2" (second argument)
 ```
 
-**MoAI 예시**:
+**MoAI Example**:
 ```markdown
 /moai:2-run SPEC-001
   → $ARGUMENTS = "SPEC-001"
@@ -323,9 +323,9 @@ model: "sonnet"   # 기본값 (복잡한 추론)
 
 ### Variable Expansion
 
-프로젝트 메타데이터 변수 확장:
+Project metadata variable expansion:
 
-**문법**:
+**Syntax**:
 ```yaml
 --path {{project-root}}/{{feature-name}}
 --version {{semantic-version}}
@@ -335,33 +335,33 @@ model: "sonnet"   # 기본값 (복잡한 추론)
 
 ## Command Frontmatter Complete Reference
 
-### 필수 필드
+### Required Fields
 
-| 필드 | 타입 | 설명 | 예시 |
-|------|------|------|------|
-| `name` | string | 명령어 이름 (파일명에서 자동 생성) | `moai:1-plan` |
-| `description` | string | 명령어 설명 (도움말 표시) | "Define specifications..." |
+| Field | Type | Description | Example |
+|-------|------|-------------|---------|
+| `name` | string | Command name (auto-generated from filename) | `moai:1-plan` |
+| `description` | string | Command description (shown in help) | "Define specifications..." |
 
-### 선택 필드
+### Optional Fields
 
-| 필드 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `argument-hint` | string | none | 매개변수 힌트 (자동완성) |
-| `allowed-tools` | array | inherit | 허용 도구 목록 |
-| `model` | string | inherit | Claude 모델 선택 |
-| `disable-model-invocation` | boolean | false | SlashCommand 도구 비활성화 |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `argument-hint` | string | none | Parameter hint (auto-completion) |
+| `allowed-tools` | array | inherit | Allowed tools list |
+| `model` | string | inherit | Claude model selection |
+| `disable-model-invocation` | boolean | false | Disable SlashCommand tool |
 
-### allowed-tools 최적화
+### allowed-tools Optimization
 
 ```yaml
 allowed-tools:
-  - Task           # 에이전트 위임 (권장)
-  - AskUserQuestion # 사용자 상호작용
-  - Skill          # 스킬 호출
-  - Bash           # 로컬 전용 도구만
+  - Task           # Agent delegation (recommended)
+  - AskUserQuestion # User interaction
+  - Skill          # Skill invocation
+  - Bash           # Local-only tools only
 ```
 
-**권장**: Task + AskUserQuestion 조합 (대부분 충분)
+**Recommended**: Task + AskUserQuestion combination (sufficient for most cases)
 
 ---
 
@@ -402,13 +402,13 @@ skills:
 ...
 ```
 
-**최적화 효과**:
-- ✅ Git 컨텍스트 자동 로드
-- ✅ SPEC 문서 사전 참조
-- ✅ 에이전트 토큰 절감
-- ✅ SPEC 생성 정확도 향상 25-30%
+**Optimization Benefits**:
+- ✅ Git context auto-loaded
+- ✅ SPEC documents pre-loaded
+- ✅ Agent token savings
+- ✅ SPEC generation accuracy improvement 25-30%
 
-### Haiku 최적화 Example: /moai:9-feedback
+### Haiku Optimization Example: /moai:9-feedback
 
 ```yaml
 ---
@@ -431,7 +431,7 @@ model: "haiku"
 @CLAUDE.md
 ```
 
-**비용 절감**: 70% 비용 감소 (템플릿 기반 작업)
+**Cost Savings**: 70% cost reduction (template-based tasks)
 
 ---
 

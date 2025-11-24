@@ -15,25 +15,25 @@ status: active
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: cc, moai, claude, md  
+**version**: 1.0.0
+**modularized**: false
+**last_updated**: 2025-11-22
+**compliance_score**: 75%
+**auto_trigger_keywords**: cc, moai, claude, md
 
 
 ## Quick Reference (30 seconds)
 
-Claude Code의 Markdown 통합은 문서 생성, 콘텐츠 구조화, 템플릿 기반 문서 워크플로우를 제공합니다.
-프로젝트 문서화(README, CHANGELOG), 기술 문서(API 가이드), 지식 베이스, 보고서 등을
-체계적으로 관리할 수 있는 강력한 문서화 패턴을 제공합니다.
+Claude Code Markdown integration provides document generation, content structuring, and template-based documentation workflows.
+It offers powerful documentation patterns for systematic management of project documentation (README, CHANGELOG),
+technical documentation (API guides), knowledge bases, reports, and more.
 
-**핵심 기능**:
-- Markdown 콘텐츠 자동 생성 및 렌더링
-- 크로스 레퍼런스 및 링크 관리 시스템
-- 템플릿 기반 문서 구조화
-- 자동 콘텐츠 검증 및 품질 확인
-- 버전 관리 및 변경 이력 추적
+**Core Features**:
+- Automatic Markdown content generation and rendering
+- Cross-reference and link management system
+- Template-based document structuring
+- Automatic content validation and quality checks
+- Version control and change history tracking
 
 ---
 
@@ -41,106 +41,106 @@ Claude Code의 Markdown 통합은 문서 생성, 콘텐츠 구조화, 템플릿 
 
 ### What It Does
 
-Claude Code Markdown 통합은 다음을 제공합니다:
+Claude Code Markdown integration provides:
 
-**Markdown 콘텐츠 생성**:
-- AI 기반 문서 자동 생성
-- 코드 블록 및 구문 강조
-- 메타데이터 및 프런트매터 관리
-- 동적 콘텐츠 인제션
+**Markdown Content Generation**:
+- AI-powered automatic document generation
+- Code blocks and syntax highlighting
+- Metadata and frontmatter management
+- Dynamic content injection
 
-**문서 구조화**:
-- 계층적 문서 조직화
-- 목차 자동 생성
-- 섹션 간 네비게이션
-- 일관된 포맷팅
+**Document Structuring**:
+- Hierarchical document organization
+- Automatic table of contents generation
+- Inter-section navigation
+- Consistent formatting
 
-**템플릿 시스템**:
-- 재사용 가능한 문서 템플릿
-- 변수 대체 및 조건부 렌더링
-- 커스텀 블록 및 매크로
-- 스타일 및 테마 적용
+**Template System**:
+- Reusable document templates
+- Variable substitution and conditional rendering
+- Custom blocks and macros
+- Style and theme application
 
 ### When to Use
 
-- ✅ 프로젝트 문서화 (README, CONTRIBUTING, CODE_OF_CONDUCT)
-- ✅ 기술 문서 작성 (API 문서, 개발 가이드, 튜토리얼)
-- ✅ 프로세스 문서화 (워크플로우, 정책, 절차)
-- ✅ 보고서 생성 (분석, 상태 리포트, 요약)
-- ✅ 지식 베이스 (FAQ, 모범 사례, 패턴 라이브러리)
-- ✅ 자동화된 문서 배포 및 출판
+- ✅ Project documentation (README, CONTRIBUTING, CODE_OF_CONDUCT)
+- ✅ Technical documentation (API docs, development guides, tutorials)
+- ✅ Process documentation (workflows, policies, procedures)
+- ✅ Report generation (analysis, status reports, summaries)
+- ✅ Knowledge base (FAQ, best practices, pattern libraries)
+- ✅ Automated document deployment and publishing
 
 ### Core Markdown Patterns
 
-#### 1. 문서 구조화 패턴
+#### 1. Document Structure Pattern
 ```markdown
-# 제목 (레벨 1)
-## 부제목 (레벨 2)
-### 섹션 (레벨 3)
+# Title (Level 1)
+## Subtitle (Level 2)
+### Section (Level 3)
 
-- 불릿 포인트
-  1. 번호 목록
-  2. 계층적 구조
+- Bullet points
+  1. Numbered list
+  2. Hierarchical structure
 
 | Header 1 | Header 2 |
 |----------|----------|
 | Cell 1   | Cell 2   |
 ```
 
-#### 2. 크로스 레퍼런스 패턴
+#### 2. Cross-Reference Pattern
 ```markdown
-[링크 텍스트](../path/to/file.md)
-[내부 링크](#섹션-제목)
-[외부 링크](https://example.com)
+[Link text](../path/to/file.md)
+[Internal link](#section-title)
+[External link](https://example.com)
 
-[변수 참조]: variable-definition
+[Variable reference]: variable-definition
 ```
 
-#### 3. 코드 블록 패턴
+#### 3. Code Block Pattern
 ````markdown
 ```python
-# Python 코드 예제
+# Python code example
 def function():
     pass
 ```
 
 ```typescript
-// TypeScript 코드 예제
+// TypeScript code example
 interface Props {
   name: string;
 }
 ```
 ````
 
-#### 4. 콘텐츠 검증 패턴
-- 링크 유효성 검증
-- 코드 블록 구문 검증
-- 이미지 경로 검증
-- 메타데이터 완성도 검증
+#### 4. Content Validation Pattern
+- Link validity checking
+- Code block syntax validation
+- Image path verification
+- Metadata completeness validation
 
 ### Dependencies
 
-- Markdown 처리 엔진 (Remark, Marked, Pandoc)
-- 콘텐츠 템플릿 시스템
-- 문서 검증 프레임워크
-- 출판 플랫폼 (Nextra, VitePress, Docusaurus)
+- Markdown processing engine (Remark, Marked, Pandoc)
+- Content template system
+- Document validation framework
+- Publishing platform (Nextra, VitePress, Docusaurus)
 
 ---
 
 ## Works Well With
 
-- `moai-docs-generation` (자동 문서 생성)
-- `moai-docs-validation` (콘텐츠 품질 검증)
-- `moai-docs-linting` (마크다운 스타일 체크)
-- `moai-cc-commands` (문서화 워크플로우 자동화)
+- `moai-docs-generation` (automatic document generation)
+- `moai-docs-validation` (content quality validation)
+- `moai-docs-linting` (markdown style checking)
+- `moai-cc-commands` (documentation workflow automation)
 
 ---
 
 ## Advanced Patterns
 
-### 1. 고급 템플릿 시스템
+### 1. Advanced Template System
 
-**동적 콘텐츠 인제션**:
+**Dynamic Content Injection**:
 ```markdown
 <!-- Template Variable -->
 {{ projectName }} - {{ version }}
@@ -157,44 +157,44 @@ Production specific content
 {% endfor %}
 ```
 
-### 2. 자동 문서 생성 워크플로우
+### 2. Automatic Documentation Generation Workflow
 
-**프로세스**:
-1. 소스 코드/설정 파일 파싱
-2. 메타데이터 추출 (JSDoc, 타입 정의)
-3. 템플릿과 메타데이터 병합
-4. Markdown 문서 생성
-5. 자동 검증 및 배포
+**Process**:
+1. Parse source code/configuration files
+2. Extract metadata (JSDoc, type definitions)
+3. Merge template and metadata
+4. Generate Markdown documentation
+5. Automatic validation and deployment
 
-**예시**:
+**Example**:
 ```typescript
-// TypeScript 코드에서 자동 API 문서 생성
+// Automatic API documentation generation from TypeScript code
 /**
- * @description 사용자 생성 함수
- * @param {string} name - 사용자 이름
- * @returns {Promise<User>} 생성된 사용자 객체
+ * @description User creation function
+ * @param {string} name - User name
+ * @returns {Promise<User>} Created user object
  */
 async function createUser(name: string): Promise<User> {
-  // 자동으로 API 문서 생성됨
+  // API documentation automatically generated
 }
 ```
 
-### 3. 멀티 채널 출판 패턴
+### 3. Multi-Channel Publishing Pattern
 
-**출판 대상**:
-- Markdown → HTML (웹 사이트)
-- Markdown → PDF (다운로드)
-- Markdown → 슬라이드 (프레젠테이션)
-- Markdown → Email (배포)
-- Markdown → Wiki (조직 문서화)
+**Publishing Targets**:
+- Markdown → HTML (website)
+- Markdown → PDF (download)
+- Markdown → Slides (presentation)
+- Markdown → Email (distribution)
+- Markdown → Wiki (organizational documentation)
 
-### 4. 콘텐츠 버전 관리
+### 4. Content Version Management
 
-**변경 이력 추적**:
-- Git 기반 문서 버전 관리
-- 자동 CHANGELOG 생성
-- 마이그레이션 가이드 제공
-- 하위 호환성 보장
+**Change History Tracking**:
+- Git-based document version control
+- Automatic CHANGELOG generation
+- Migration guide provision
+- Backward compatibility guarantee
 
 ---
 
@@ -206,6 +206,3 @@ async function createUser(name: string): Promise<User> {
 ---
 
 **End of Skill** | Updated 2025-11-21 | Lines: 180
-
-
-
