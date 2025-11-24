@@ -245,7 +245,8 @@ SPEC ID: $ARGUMENTS
 
 You are the tdd-implementer agent. You are continuing from the implementation plan created in Phase 1.
 
-The full planning context (analysis, decisions, architecture) is automatically available from previous phase via resume.
+The full planning context (analysis, decisions, architecture) is inherited from previous phase via resume.
+Use this context to proceed directly to implementation without re-analyzing requirements.
 
 Execute complete TDD implementation:
 1. Write failing tests (RED phase)
@@ -278,7 +279,8 @@ SPEC ID: $ARGUMENTS
 
 You are the quality-gate agent. You are continuing from the implementation context.
 
-The full context (planning, implementation results) is automatically available from previous phases via resume.
+The full context (planning, implementation results) is inherited from previous phases via resume.
+This ensures quality validation has complete architectural and implementation context.
 
 Validate implementation against TRUST 5 principles:
 - T: Test-first (tests exist and pass)
@@ -313,8 +315,8 @@ SPEC ID: $ARGUMENTS
 
 You are the git-manager agent. You are continuing from the full implementation context.
 
-The complete context (planning, implementation, quality review) is automatically available via resume.
-Use this context to create meaningful commit messages and understand the changes.
+The complete context (planning, implementation, quality review) is inherited via resume.
+This context enables creation of meaningful commit messages with full understanding of feature scope and design decisions.
 
 Create git commits for implementation:
 1. Create feature branch: feature/SPEC-$ARGUMENTS

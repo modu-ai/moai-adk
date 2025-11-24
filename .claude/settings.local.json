@@ -4,7 +4,8 @@
       "Bash(curl:*)",
       "Bash(for dep in \"psutil\" \"pytest-asyncio\" \"pytest-cov\")",
       "Bash(do echo \"=== Checking $dep on TestPyPI ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(fi)"
     ]
   }
 }

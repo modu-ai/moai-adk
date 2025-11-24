@@ -101,20 +101,20 @@ def duplicate_slide(pres, index):
         # Using the element's own xpath method without namespaces argument
         blips = new_el.xpath(".//a:blip[@r:embed]")
         for blip in blips:
-            old_rId = blip.get(
+            old_rid = blip.get(
                 "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
             )
-            if old_rId in image_rels:
+            if old_rid in image_rels:
                 # Create a new relationship in the destination slide for this image
-                old_rel = image_rels[old_rId]
+                old_rel = image_rels[old_rid]
                 # get_or_add returns the rId directly, or adds and returns new rId
-                new_rId = new_slide.part.rels.get_or_add(
+                new_rid = new_slide.part.rels.get_or_add(
                     old_rel.reltype, old_rel._target
                 )
                 # Update the blip's embed reference to use the new relationship ID
                 blip.set(
                     "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed",
-                    new_rId,
+                    new_rid,
                 )
 
     # Copy any additional image/media relationships that might be referenced elsewhere
@@ -129,8 +129,8 @@ def duplicate_slide(pres, index):
 
 def delete_slide(pres, index):
     """Delete a slide from the presentation."""
-    rId = pres.slides._sldIdLst[index].rId
-    pres.part.drop_rel(rId)
+    rid = pres.slides._sldIdLst[index].rId
+    pres.part.drop_rel(rid)
     del pres.slides._sldIdLst[index]
 
 

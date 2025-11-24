@@ -217,7 +217,8 @@ planning_result = Task(
 
 IF $EXPLORE_AGENT_ID is set:
     You are continuing from project exploration in Phase 1A.
-    The exploration results (files found, patterns identified, constraints) are automatically available via resume.
+    The exploration results (files found, patterns identified, constraints) are inherited via resume.
+    Use this context to inform your SPEC planning without re-analyzing the entire project.
 ELSE:
     Start fresh analysis based on user request: "$ARGUMENTS"
 
@@ -462,8 +463,8 @@ spec_result = Task(
 
 You are continuing from the SPEC planning phase in Phase 1B.
 
-The full planning context (project analysis, SPEC candidates, implementation plan) is automatically available via resume.
-Use this context to generate comprehensive SPEC document files.
+The full planning context (project analysis, SPEC candidates, implementation plan) is inherited via resume.
+This preserves all planning decisions without requiring re-analysis. Use this context to generate comprehensive SPEC document files.
 
 You are the spec-builder agent.
 

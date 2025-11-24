@@ -227,7 +227,6 @@ uv.lock
 # Local configuration files
 .claude/local/
 .claude/settings.local.json
-.moai/config/config.local.json
 
 # .moai/ directory management
 # Only sync: config/, memory/, scripts/
