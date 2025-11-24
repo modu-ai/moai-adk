@@ -63,12 +63,45 @@ src/moai_adk/templates/  ↔  ./
 .moai/config/config.json                     # 개인 프로젝트 설정
 ```
 
-### 2.3 동기화 도구
+### 2.3 .moai/config 동기화 (수동 방식)
 
-**사용할 도구:**
+**동기화 대상:**
+
+| 파일/폴더 | 방향 | 설명 |
+|---------|------|------|
+| `presets/*.json` | Local → Package | 배포용 템플릿 (수동 복사) |
+| `statusline-config.yaml` | 양방향 가능 | 공용 설정 (필요시만) |
+| `config.json` | ❌ 금지 | 사용자 설정, 동기화 금지 |
+
+**Presets 동기화 (패키지 릴리스 시):**
 
 ```bash
-# 수동 동기화 (rsync 사용)
+# 로컬 presets을 패키지에 복사
+mkdir -p src/moai_adk/templates/.moai/config/presets
+cp .moai/config/presets/*.json src/moai_adk/templates/.moai/config/presets/
+
+# 변경사항 확인
+git status src/moai_adk/templates/.moai/config/presets/
+
+# 커밋
+git add src/moai_adk/templates/.moai/config/presets/
+git commit -m "config: Update preset templates"
+```
+
+**⚠️ 주의사항:**
+- `config.json`은 절대 동기화하지 않음
+  - 로컬: 사용자 맞춤 설정 (38 lines)
+  - 패키지: 기본 템플릿 (341 lines, 모든 옵션 포함)
+- Presets는 패키지 릴리스 전에만 동기화 필요
+
+---
+
+### 2.4 동기화 도구
+
+**기본 동기화 (rsync 사용):**
+
+```bash
+# .claude 동기화
 rsync -avz \
   --exclude=".DS_Store" \
   --exclude="*.pyc" \
@@ -76,6 +109,7 @@ rsync -avz \
   --exclude=".cache" \
   src/moai_adk/.claude/ .claude/
 
+# .moai 동기화 (config 제외)
 rsync -avz \
   --exclude=".DS_Store" \
   --exclude="*.pyc" \
@@ -86,7 +120,7 @@ rsync -avz \
   src/moai_adk/.moai/ .moai/
 ```
 
-### 2.4 스크립트 기반 동기화
+### 2.5 스크립트 기반 동기화
 
 **동기화 스크립트 위치:**
 
