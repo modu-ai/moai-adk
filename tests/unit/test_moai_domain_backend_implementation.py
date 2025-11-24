@@ -71,7 +71,7 @@ class TestAPIDesignPatterns:
         for endpoint in invalid_endpoints:
             result = validator.validate_rest_endpoint(endpoint)
             assert result["valid"] is False
-            assert "error" in result
+            assert result["errors"] is not None and len(result["errors"]) > 0
 
     def test_api_versioning_strategy(self):
         """Test API versioning strategy (URL versioning, Header versioning)."""
