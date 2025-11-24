@@ -1,30 +1,30 @@
-# 고급 리팩토링 패턴
+# Advanced Refactoring Patterns
 
-## Context7 기반 아키텍처 리팩토링
+## Context7-Based Architecture Refactoring
 
 ```python
 class ArchitectureRefactorer:
-    """대규모 아키텍처 리팩토링."""
+    """Large-scale architecture refactoring."""
 
     async def refactor_monolith_to_microservices(self, project_path):
-        """모놀리식 구조를 마이크로서비스로 변환."""
+        """Transform monolithic structure to microservices."""
 
-        # Context7 마이크로서비스 패턴 (아키텍처 설계 가이드 참조)
+        # Context7 microservices patterns (architecture design guide reference)
         context7_patterns = await self.context7.get_library_docs(
             context7_library_id="/microservices/sample",
             topic="monolith to microservices refactoring patterns architecture",
             tokens=4000
         )
 
-        # 현재 아키텍처 분석
+        # Current architecture analysis
         architecture = self.analyze_current_architecture(project_path)
 
-        # AI 기반 서비스 경계 식별
+        # AI-based service boundary identification
         service_boundaries = await self.ai_analyzer.identify_service_boundaries(
             architecture, context7_patterns
         )
 
-        # 마이크로서비스 구조 생성
+        # Generate microservices structure
         microservices = self.generate_microservices_structure(
             service_boundaries, context7_patterns
         )
@@ -37,14 +37,14 @@ class ArchitectureRefactorer:
         )
 ```
 
-## 점진적 리팩토링 (Strangler Pattern)
+## Incremental Refactoring (Strangler Pattern)
 
 ```python
 class StranglerRefactorer:
-    """기존 시스템을 점진적으로 교체."""
+    """Gradually replace existing systems."""
 
     async def apply_strangler_pattern(self, old_system, new_system):
-        """Strangler 패턴으로 점진적 교체."""
+        """Gradual replacement with Strangler pattern."""
 
         phases = [
             {'phase': 1, 'percentage': 0.2, 'services': 'non-critical'},
@@ -71,16 +71,16 @@ class StranglerRefactorer:
         return StranglerImplementationPlan(phases=refactoring_plan)
 ```
 
-## AI 기반 코드 변환
+## AI-Based Code Transformation
 
 ```python
 class AICodeTransformer:
-    """AI를 사용한 자동 코드 변환."""
+    """Automatic code transformation using AI."""
 
     async def auto_refactor_with_ai(self, code_files):
-        """AI 기반 자동 리팩토링."""
+        """AI-based automatic refactoring."""
 
-        # Context7 리팩토링 패턴 (코드 변환 가이드)
+        # Context7 refactoring patterns (code transformation guide)
         context7_patterns = await self.context7.get_library_docs(
             context7_library_id="/refactoring/patterns",
             topic="automated code transformation patterns design patterns",
@@ -90,15 +90,15 @@ class AICodeTransformer:
         transformations = []
 
         for file_path in code_files:
-            # AST 분석
+            # AST analysis
             ast = self.parse_code(file_path)
 
-            # AI 리팩토링 제안
+            # AI refactoring suggestions
             ai_suggestions = await self.ai_analyzer.suggest_refactorings(
                 ast, context7_patterns
             )
 
-            # 안전한 변환 적용
+            # Apply safe transformations
             for suggestion in ai_suggestions:
                 if self.validate_transformation(suggestion):
                     transformation = self.apply_transformation(file_path, suggestion)

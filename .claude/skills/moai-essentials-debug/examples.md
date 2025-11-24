@@ -1,17 +1,17 @@
-# moai-essentials-debug — 실전 예제
+# moai-essentials-debug — Practical Examples
 
-> **Version**: 2.1.0  
+> **Version**: 2.1.0
 > **Last Updated**: 2025-10-27
 
-이 문서는 언어별 스택 트레이스 분석 실전 예제와 디버깅 시나리오를 제공합니다.
+This document provides practical examples and debugging scenarios for stack trace analysis across programming languages.
 
 ---
 
-## Python 디버깅 예제
+## Python Debugging Examples
 
-### 예제 1: TypeError — 타입 불일치
+### Example 1: TypeError — Type Mismatch
 
-**에러 메시지**:
+**Error Message**:
 ```
 Traceback (most recent call last):
   File "app.py", line 45, in <module>
@@ -23,36 +23,36 @@ Traceback (most recent call last):
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
 
-**분석**:
-1. **에러 위치**: `app.py:15` (`sum(items)`)
-2. **에러 타입**: `TypeError` — 정수와 문자열을 더하려고 시도
-3. **실행 경로**: `main()` → `process_data()` → `sum()`
-4. **근본 원인**: `items` 리스트에 문자열이 포함됨
+**Analysis**:
+1. **Error Location**: `app.py:15` (`sum(items)`)
+2. **Error Type**: `TypeError` — attempting to add integer and string
+3. **Execution Path**: `main()` → `process_data()` → `sum()`
+4. **Root Cause**: `items` list contains strings
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```python
-# 1. 브레이크포인트 설정
+# 1. Set breakpoint
 import pdb; pdb.set_trace()
 
-# 2. items 내용 확인
+# 2. Check items content
 (Pdb) print(items)
-[1, 2, '3', 4, 5]  # '3'이 문자열!
+[1, 2, '3', 4, 5]  # '3' is a string!
 
-# 3. 타입 검증
+# 3. Type validation
 (Pdb) [type(x) for x in items]
 [<class 'int'>, <class 'int'>, <class 'str'>, <class 'int'>, <class 'int'>]
 ```
 
-**해결 방법**:
+**Solution**:
 ```python
-# Option 1: 입력 데이터 검증
+# Option 1: Input data validation
 def process_data(items):
-    # 타입 체크 및 변환
+    # Type check and conversion
     items = [int(x) if isinstance(x, str) else x for x in items]
     total = sum(items)
     return total
 
-# Option 2: 타입 힌트 + mypy
+# Option 2: Type hints + mypy
 def process_data(items: list[int]) -> int:
     total = sum(items)
     return total
@@ -60,9 +60,9 @@ def process_data(items: list[int]) -> int:
 
 ---
 
-### 예제 2: ImportError — 모듈 미설치
+### Example 2: ImportError — Module Not Installed
 
-**에러 메시지**:
+**Error Message**:
 ```
 Traceback (most recent call last):
   File "script.py", line 3, in <module>
@@ -70,45 +70,45 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named 'requests'
 ```
 
-**분석**:
-1. **에러 위치**: `script.py:3`
-2. **에러 타입**: `ModuleNotFoundError` — requests 모듈이 설치되지 않음
-3. **근본 원인**: 가상환경 활성화 안 됨 또는 의존성 미설치
+**Analysis**:
+1. **Error Location**: `script.py:3`
+2. **Error Type**: `ModuleNotFoundError` — requests module not installed
+3. **Root Cause**: Virtual environment not activated or dependency not installed
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. 가상환경 확인
+# 1. Check virtual environment
 which python
-# /usr/bin/python (시스템 Python — 잘못됨!)
+# /usr/bin/python (system Python — wrong!)
 
-# 2. 가상환경 활성화
+# 2. Activate virtual environment
 source venv/bin/activate
 which python
-# /path/to/venv/bin/python (올바름)
+# /path/to/venv/bin/python (correct)
 
-# 3. 패키지 설치 확인
+# 3. Check package installation
 pip list | grep requests
-# (없음)
+# (not found)
 
-# 4. 의존성 설치
+# 4. Install dependency
 pip install requests
 ```
 
-**해결 방법**:
+**Solution**:
 ```bash
-# pyproject.toml 또는 requirements.txt에 의존성 명시
+# Specify dependency in pyproject.toml or requirements.txt
 # requirements.txt
 requests==2.31.0
 
-# 설치
+# Install
 pip install -r requirements.txt
 ```
 
 ---
 
-### 예제 3: AttributeError — 속성 없음
+### Example 3: AttributeError — Missing Attribute
 
-**에러 메시지**:
+**Error Message**:
 ```
 Traceback (most recent call last):
   File "app.py", line 28, in <module>
@@ -116,51 +116,51 @@ Traceback (most recent call last):
 AttributeError: 'NoneType' object has no attribute 'get_profile'
 ```
 
-**분석**:
-1. **에러 위치**: `app.py:28`
-2. **에러 타입**: `AttributeError` — `user`가 `None`임
-3. **근본 원인**: `user` 객체가 생성되지 않았거나 None 반환
+**Analysis**:
+1. **Error Location**: `app.py:28`
+2. **Error Type**: `AttributeError` — `user` is `None`
+3. **Root Cause**: `user` object not created or None returned
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```python
-# 1. 브레이크포인트 설정
+# 1. Set breakpoint
 breakpoint()
 
-# 2. user 확인
+# 2. Check user
 (Pdb) print(user)
 None
 
-# 3. user가 None이 된 이유 추적
+# 3. Trace why user became None
 (Pdb) where
   app.py(20)main()
   app.py(15)get_user()
-  -> return None  # 여기서 None 반환!
+  -> return None  # Here's the problem!
 
-# 4. get_user() 함수 확인
+# 4. Check get_user() function
 def get_user(user_id):
     user = database.find_user(user_id)
     if not user:
-        return None  # 문제 발견!
+        return None  # Problem found!
     return user
 ```
 
-**해결 방법**:
+**Solution**:
 ```python
-# Option 1: None 체크
+# Option 1: None check
 user = get_user(user_id)
 if user is None:
     print("User not found")
     return
 result = user.get_profile()
 
-# Option 2: Optional 타입 힌트
+# Option 2: Optional type hint
 from typing import Optional
 
 def get_user(user_id: int) -> Optional[User]:
     user = database.find_user(user_id)
     return user
 
-# Option 3: 예외 처리
+# Option 3: Exception handling
 try:
     result = user.get_profile()
 except AttributeError:
@@ -169,11 +169,11 @@ except AttributeError:
 
 ---
 
-## TypeScript 디버깅 예제
+## TypeScript Debugging Examples
 
-### 예제 1: undefined 접근
+### Example 1: undefined Access
 
-**에러 메시지**:
+**Error Message**:
 ```
 TypeError: Cannot read properties of undefined (reading 'name')
     at processUser (app.ts:42:28)
@@ -182,17 +182,17 @@ TypeError: Cannot read properties of undefined (reading 'name')
     at main (app.ts:10:5)
 ```
 
-**분석**:
-1. **에러 위치**: `app.ts:42` (`user.name` 접근)
-2. **에러 타입**: `TypeError` — `user`가 `undefined`
-3. **실행 경로**: `main()` → `getUserNames()` → `map()` → `processUser()`
-4. **근본 원인**: 배열에 `undefined` 요소가 포함됨
+**Analysis**:
+1. **Error Location**: `app.ts:42` (`user.name` access)
+2. **Error Type**: `TypeError` — `user` is `undefined`
+3. **Execution Path**: `main()` → `getUserNames()` → `map()` → `processUser()`
+4. **Root Cause**: Array contains `undefined` element
 
-**코드**:
+**Code**:
 ```typescript
 // app.ts
 function processUser(user: User) {
-  return user.name.toUpperCase();  // 여기서 에러!
+  return user.name.toUpperCase();  // Error here!
 }
 
 function getUserNames(users: User[]): string[] {
@@ -201,26 +201,26 @@ function getUserNames(users: User[]): string[] {
 
 const users = [
   { id: 1, name: 'Alice' },
-  undefined,  // 문제 발견!
+  undefined,  // Problem found!
   { id: 2, name: 'Bob' },
 ];
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```typescript
-// 1. 브레이크포인트 설정 (debugger 키워드)
+// 1. Set breakpoint (debugger keyword)
 function processUser(user: User) {
-  debugger;  // 여기서 중단
+  debugger;  // Break here
   return user.name.toUpperCase();
 }
 
-// Chrome DevTools에서:
+// In Chrome DevTools:
 // user: undefined
 ```
 
-**해결 방법**:
+**Solution**:
 ```typescript
-// Option 1: 타입 가드
+// Option 1: Type guard
 function processUser(user: User | undefined): string {
   if (!user) {
     return 'Unknown';
@@ -228,12 +228,12 @@ function processUser(user: User | undefined): string {
   return user.name.toUpperCase();
 }
 
-// Option 2: Optional 체이닝
+// Option 2: Optional chaining
 function processUser(user?: User): string {
   return user?.name?.toUpperCase() ?? 'Unknown';
 }
 
-// Option 3: 필터링
+// Option 3: Filtering
 function getUserNames(users: (User | undefined)[]): string[] {
   return users
     .filter((user): user is User => user !== undefined)
@@ -243,9 +243,9 @@ function getUserNames(users: (User | undefined)[]): string[] {
 
 ---
 
-### 예제 2: Promise rejection
+### Example 2: Promise Rejection
 
-**에러 메시지**:
+**Error Message**:
 ```
 UnhandledPromiseRejectionWarning: Error: Network request failed
     at fetchData (api.ts:15:11)
@@ -253,36 +253,36 @@ UnhandledPromiseRejectionWarning: Error: Network request failed
     at async main (app.ts:12:3)
 ```
 
-**분석**:
-1. **에러 위치**: `api.ts:15`
-2. **에러 타입**: `UnhandledPromiseRejectionWarning` — Promise 거부가 처리되지 않음
-3. **근본 원인**: `fetchData()`에서 발생한 에러가 catch되지 않음
+**Analysis**:
+1. **Error Location**: `api.ts:15`
+2. **Error Type**: `UnhandledPromiseRejectionWarning` — Promise rejection not handled
+3. **Root Cause**: Error from `fetchData()` not caught
 
-**코드**:
+**Code**:
 ```typescript
 // api.ts
 async function fetchData(url: string): Promise<Data> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error('Network request failed');  // 여기서 에러 발생!
+    throw new Error('Network request failed');  // Error thrown here!
   }
   return response.json();
 }
 
 // handler.ts
 async function processRequest(url: string) {
-  const data = await fetchData(url);  // 에러 처리 없음!
+  const data = await fetchData(url);  // No error handling!
   return data;
 }
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```typescript
-// 1. 브레이크포인트 설정
+// 1. Set breakpoint
 async function fetchData(url: string): Promise<Data> {
   debugger;
   const response = await fetch(url);
-  debugger;  // response 확인
+  debugger;  // Check response
   // response.ok: false
   // response.status: 404
   if (!response.ok) {
@@ -292,7 +292,7 @@ async function fetchData(url: string): Promise<Data> {
 }
 ```
 
-**해결 방법**:
+**Solution**:
 ```typescript
 // Option 1: try-catch
 async function processRequest(url: string): Promise<Data | null> {
@@ -305,7 +305,7 @@ async function processRequest(url: string): Promise<Data | null> {
   }
 }
 
-// Option 2: Result 타입
+// Option 2: Result type
 type Result<T> = { success: true; data: T } | { success: false; error: Error };
 
 async function fetchData(url: string): Promise<Result<Data>> {
@@ -324,11 +324,11 @@ async function fetchData(url: string): Promise<Result<Data>> {
 
 ---
 
-## Java 디버깅 예제
+## Java Debugging Examples
 
-### 예제 1: NullPointerException
+### Example 1: NullPointerException
 
-**에러 메시지**:
+**Error Message**:
 ```
 Exception in thread "main" java.lang.NullPointerException: Cannot invoke "User.getName()" because "user" is null
     at com.example.UserService.processUser(UserService.java:42)
@@ -336,21 +336,21 @@ Exception in thread "main" java.lang.NullPointerException: Cannot invoke "User.g
     at com.example.Main.main(Main.java:15)
 ```
 
-**분석**:
-1. **에러 위치**: `UserService.java:42` (`user.getName()` 호출)
-2. **에러 타입**: `NullPointerException` — `user`가 `null`
-3. **실행 경로**: `Main.main()` → `processAllUsers()` → `processUser()`
-4. **근본 원인**: `user` 객체가 `null`인 채로 메서드 호출 시도
+**Analysis**:
+1. **Error Location**: `UserService.java:42` (`user.getName()` call)
+2. **Error Type**: `NullPointerException` — `user` is `null`
+3. **Execution Path**: `Main.main()` → `processAllUsers()` → `processUser()`
+4. **Root Cause**: Attempting to call method on `null` user object
 
-**코드**:
+**Code**:
 ```java
 // UserService.java
 public class UserService {
     public void processUser(User user) {
-        String name = user.getName();  // 여기서 NPE 발생!
+        String name = user.getName();  // NPE occurs here!
         System.out.println("Processing: " + name);
     }
-    
+
     public void processAllUsers(List<User> users) {
         for (User user : users) {
             processUser(user);
@@ -359,24 +359,24 @@ public class UserService {
 }
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```java
-// 1. 브레이크포인트 설정 (IntelliJ/Eclipse)
-// UserService.java:42에 브레이크포인트
+// 1. Set breakpoint (IntelliJ/Eclipse)
+// Set breakpoint at UserService.java:42
 
-// 2. 변수 확인
+// 2. Check variable
 // user: null
 
-// 3. 호출 스택 확인
+// 3. Check call stack
 // processUser() ← processAllUsers() ← main()
 
-// 4. users 리스트 확인
-// users: [User@123, null, User@456]  // null 발견!
+// 4. Check users list
+// users: [User@123, null, User@456]  // null found!
 ```
 
-**해결 방법**:
+**Solution**:
 ```java
-// Option 1: Null 체크
+// Option 1: Null check
 public void processUser(User user) {
     if (user == null) {
         System.out.println("User is null");
@@ -386,7 +386,7 @@ public void processUser(User user) {
     System.out.println("Processing: " + name);
 }
 
-// Option 2: Optional<T> 사용 (Java 8+)
+// Option 2: Optional<T> (Java 8+)
 public void processUser(Optional<User> userOpt) {
     userOpt.ifPresent(user -> {
         String name = user.getName();
@@ -396,11 +396,11 @@ public void processUser(Optional<User> userOpt) {
 
 public void processAllUsers(List<User> users) {
     users.stream()
-        .filter(Objects::nonNull)  // null 필터링
+        .filter(Objects::nonNull)  // Filter null
         .forEach(this::processUser);
 }
 
-// Option 3: @NonNull 어노테이션 (Lombok, Checker Framework)
+// Option 3: @NonNull annotation (Lombok, Checker Framework)
 import lombok.NonNull;
 
 public void processUser(@NonNull User user) {
@@ -411,9 +411,9 @@ public void processUser(@NonNull User user) {
 
 ---
 
-### 예제 2: ClassNotFoundException
+### Example 2: ClassNotFoundException
 
-**에러 메시지**:
+**Error Message**:
 ```
 Exception in thread "main" java.lang.ClassNotFoundException: com.example.database.DatabaseDriver
     at java.base/java.net.URLClassLoader.findClass(URLClassLoader.java:445)
@@ -423,31 +423,31 @@ Exception in thread "main" java.lang.ClassNotFoundException: com.example.databas
     at com.example.Main.main(Main.java:12)
 ```
 
-**분석**:
-1. **에러 위치**: `Main.java:12` (`Class.forName()` 호출)
-2. **에러 타입**: `ClassNotFoundException` — 클래스를 찾을 수 없음
-3. **근본 원인**: JDBC 드라이버 JAR이 classpath에 없음
+**Analysis**:
+1. **Error Location**: `Main.java:12` (`Class.forName()` call)
+2. **Error Type**: `ClassNotFoundException` — class not found
+3. **Root Cause**: JDBC driver JAR not in classpath
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. Classpath 확인
+# 1. Check classpath
 echo $CLASSPATH
 
-# 2. JAR 파일 확인
+# 2. Check JAR file
 ls lib/
-# mysql-connector-java-8.0.33.jar (있음)
+# mysql-connector-java-8.0.33.jar (exists)
 
-# 3. 컴파일 및 실행 명령 확인
+# 3. Check compile and run command
 javac -cp ".:lib/*" Main.java
-java -cp ".:lib/*" Main  # classpath에 lib/* 포함 필요!
+java -cp ".:lib/*" Main  # Need lib/* in classpath!
 ```
 
-**해결 방법**:
+**Solution**:
 ```bash
-# Option 1: Classpath 명시
+# Option 1: Specify classpath
 java -cp ".:lib/*" com.example.Main
 
-# Option 2: Maven/Gradle 사용
+# Option 2: Use Maven/Gradle
 # pom.xml (Maven)
 <dependency>
     <groupId>mysql</groupId>
@@ -460,18 +460,18 @@ dependencies {
     implementation 'mysql:mysql-connector-java:8.0.33'
 }
 
-# Option 3: Manifest에 Class-Path 추가
+# Option 3: Add Class-Path to Manifest
 # MANIFEST.MF
 Class-Path: lib/mysql-connector-java-8.0.33.jar
 ```
 
 ---
 
-## Go 디버깅 예제
+## Go Debugging Examples
 
-### 예제 1: nil pointer dereference
+### Example 1: nil Pointer Dereference
 
-**에러 메시지**:
+**Error Message**:
 ```
 panic: runtime error: invalid memory address or nil pointer dereference
 [signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x10a4f20]
@@ -483,12 +483,12 @@ main.main()
     /Users/dev/project/main.go:15 +0x120
 ```
 
-**분석**:
-1. **에러 위치**: `main.go:42` (`processUser` 함수)
-2. **에러 타입**: `panic: nil pointer dereference`
-3. **근본 원인**: `nil` 포인터에 접근 시도
+**Analysis**:
+1. **Error Location**: `main.go:42` (`processUser` function)
+2. **Error Type**: `panic: nil pointer dereference`
+3. **Root Cause**: Accessing `nil` pointer
 
-**코드**:
+**Code**:
 ```go
 // main.go
 type User struct {
@@ -497,27 +497,27 @@ type User struct {
 }
 
 func processUser(user *User) {
-    fmt.Printf("Name: %s\n", user.Name)  // 여기서 panic!
+    fmt.Printf("Name: %s\n", user.Name)  // Panic here!
 }
 
 func main() {
-    var user *User  // nil 포인터
+    var user *User  // nil pointer
     processUser(user)
 }
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. Delve로 디버깅
+# 1. Debug with Delve
 dlv debug main.go
 (dlv) break main.go:42
 (dlv) continue
 
-# 2. 변수 확인
+# 2. Check variable
 (dlv) print user
 nil
 
-# 3. 호출 스택 확인
+# 3. Check call stack
 (dlv) stack
 0  0x00000000010a4f20 in main.processUser
    at main.go:42
@@ -525,9 +525,9 @@ nil
    at main.go:15
 ```
 
-**해결 방법**:
+**Solution**:
 ```go
-// Option 1: Nil 체크
+// Option 1: Nil check
 func processUser(user *User) {
     if user == nil {
         fmt.Println("User is nil")
@@ -536,34 +536,34 @@ func processUser(user *User) {
     fmt.Printf("Name: %s\n", user.Name)
 }
 
-// Option 2: 값 타입 사용
-func processUser(user User) {  // 포인터 아님
+// Option 2: Use value type
+func processUser(user User) {  // Not a pointer
     fmt.Printf("Name: %s\n", user.Name)
 }
 
-// Option 3: 생성자 패턴
+// Option 3: Constructor pattern
 func NewUser(name string, age int) *User {
     return &User{Name: name, Age: age}
 }
 
 func main() {
-    user := NewUser("Alice", 30)  // 항상 non-nil
+    user := NewUser("Alice", 30)  // Always non-nil
     processUser(user)
 }
 ```
 
 ---
 
-### 예제 2: Goroutine leak
+### Example 2: Goroutine Leak
 
-**문제 설명**: 고루틴이 종료되지 않고 계속 실행되어 메모리 누수 발생
+**Problem Description**: Goroutines not terminating, causing memory leak
 
-**코드**:
+**Code**:
 ```go
 // main.go
 func worker(ch chan int) {
     for {
-        val := <-ch  // 채널이 닫히지 않으면 영원히 대기
+        val := <-ch  // Waits forever if channel not closed
         fmt.Println(val)
     }
 }
@@ -571,25 +571,25 @@ func worker(ch chan int) {
 func main() {
     ch := make(chan int)
     go worker(ch)
-    
+
     ch <- 1
     ch <- 2
-    // ch를 닫지 않고 종료 → goroutine leak!
+    // Not closing ch before exit → goroutine leak!
 }
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. pprof로 고루틴 확인
+# 1. Check goroutines with pprof
 go tool pprof http://localhost:6060/debug/pprof/goroutine
 
-# 2. 고루틴 수 확인
+# 2. Check goroutine count
 (pprof) top
 Showing nodes accounting for 1000 goroutines
       flat  flat%   sum%        cum   cum%
       1000 100%   100%       1000 100%  main.worker
 
-# 3. Delve로 고루틴 확인
+# 3. Check with Delve
 dlv debug main.go
 (dlv) goroutines
 [1000 goroutines]
@@ -599,33 +599,33 @@ Goroutine 5 - User: main.worker
    main.go:10 (0x10a4f20) (Waiting)
 ```
 
-**해결 방법**:
+**Solution**:
 ```go
-// Option 1: 채널 닫기
+// Option 1: Close channel
 func main() {
     ch := make(chan int)
     go worker(ch)
-    
+
     ch <- 1
     ch <- 2
-    close(ch)  // 채널 닫기
-    time.Sleep(time.Second)  // worker가 종료될 시간
+    close(ch)  // Close channel
+    time.Sleep(time.Second)  // Wait for worker to finish
 }
 
 func worker(ch chan int) {
-    for val := range ch {  // 채널이 닫히면 종료
+    for val := range ch {  // Terminates when channel closed
         fmt.Println(val)
     }
 }
 
-// Option 2: Context 사용
+// Option 2: Use Context
 func worker(ctx context.Context, ch chan int) {
     for {
         select {
         case val := <-ch:
             fmt.Println(val)
         case <-ctx.Done():
-            return  // Context 취소 시 종료
+            return  // Terminate on context cancellation
         }
     }
 }
@@ -633,24 +633,24 @@ func worker(ctx context.Context, ch chan int) {
 func main() {
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
-    
+
     ch := make(chan int)
     go worker(ctx, ch)
-    
+
     ch <- 1
     ch <- 2
-    cancel()  // 고루틴 종료
+    cancel()  // Terminate goroutine
     time.Sleep(time.Second)
 }
 ```
 
 ---
 
-## Rust 디버깅 예제
+## Rust Debugging Examples
 
-### 예제 1: Borrow checker 에러
+### Example 1: Borrow Checker Error
 
-**에러 메시지**:
+**Error Message**:
 ```
 error[E0502]: cannot borrow `data` as mutable because it is also borrowed as immutable
   --> src/main.rs:8:5
@@ -665,53 +665,53 @@ error[E0502]: cannot borrow `data` as mutable because it is also borrowed as imm
    |                           ----- immutable borrow later used here
 ```
 
-**분석**:
-1. **에러 위치**: `main.rs:8` (`data.push(4)`)
-2. **에러 타입**: Borrow checker 위반 — 불변 참조가 있는데 가변 참조 시도
-3. **근본 원인**: `first`가 `data`의 불변 참조를 보유한 상태에서 `data`를 변경하려 함
+**Analysis**:
+1. **Error Location**: `main.rs:8` (`data.push(4)`)
+2. **Error Type**: Borrow checker violation — attempting mutable borrow while immutable reference exists
+3. **Root Cause**: `first` holds immutable reference to `data` while trying to mutate `data`
 
-**코드**:
+**Code**:
 ```rust
 // main.rs
 fn main() {
     let mut data = vec![1, 2, 3];
-    let first = &data[0];  // 불변 참조
-    
-    data.push(4);  // 에러! 가변 참조 시도
-    
+    let first = &data[0];  // Immutable reference
+
+    data.push(4);  // Error! Attempting mutable reference
+
     println!("First: {}", first);
 }
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. rust-analyzer로 에러 확인 (VSCode)
-# 에러 메시지에 lifetime 정보 포함
+# 1. Check error with rust-analyzer (VSCode)
+# Error message includes lifetime information
 
-# 2. 컴파일러 설명 확인
+# 2. Check compiler explanation
 cargo build --explain E0502
 ```
 
-**해결 방법**:
+**Solution**:
 ```rust
-// Option 1: 참조 사용 범위 조정
+// Option 1: Adjust reference scope
 fn main() {
     let mut data = vec![1, 2, 3];
-    let first = data[0];  // 값 복사
-    
+    let first = data[0];  // Copy value
+
     data.push(4);  // OK
-    
+
     println!("First: {}", first);
 }
 
-// Option 2: 참조를 먼저 해제
+// Option 2: Release reference first
 fn main() {
     let mut data = vec![1, 2, 3];
     {
         let first = &data[0];
         println!("First: {}", first);
-    }  // first가 여기서 드롭됨
-    
+    }  // first dropped here
+
     data.push(4);  // OK
 }
 
@@ -719,9 +719,9 @@ fn main() {
 fn main() {
     let mut data = vec![1, 2, 3];
     let first = data.get(0).cloned();  // Option<i32>
-    
+
     data.push(4);  // OK
-    
+
     if let Some(first) = first {
         println!("First: {}", first);
     }
@@ -730,20 +730,20 @@ fn main() {
 
 ---
 
-### 예제 2: Panic in thread
+### Example 2: Panic in Thread
 
-**에러 메시지**:
+**Error Message**:
 ```
 thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 5', src/main.rs:5:23
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
 
-**분석**:
-1. **에러 위치**: `main.rs:5` (인덱스 접근)
-2. **에러 타입**: `panic: index out of bounds`
-3. **근본 원인**: 벡터 범위를 벗어난 인덱스 접근
+**Analysis**:
+1. **Error Location**: `main.rs:5` (index access)
+2. **Error Type**: `panic: index out of bounds`
+3. **Root Cause**: Accessing index beyond vector bounds
 
-**코드**:
+**Code**:
 ```rust
 // main.rs
 fn main() {
@@ -753,14 +753,14 @@ fn main() {
 }
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. RUST_BACKTRACE로 전체 스택 트레이스 확인
+# 1. Check full stack trace with RUST_BACKTRACE
 RUST_BACKTRACE=1 cargo run
-# 또는
+# or
 RUST_BACKTRACE=full cargo run
 
-# 2. rust-lldb로 디버깅
+# 2. Debug with rust-lldb
 rust-lldb target/debug/myapp
 (lldb) breakpoint set --file main.rs --line 5
 (lldb) run
@@ -770,9 +770,9 @@ rust-lldb target/debug/myapp
 3
 ```
 
-**해결 방법**:
+**Solution**:
 ```rust
-// Option 1: get() 메서드 사용
+// Option 1: Use get() method
 fn main() {
     let data = vec![1, 2, 3];
     match data.get(5) {
@@ -781,11 +781,11 @@ fn main() {
     }
 }
 
-// Option 2: 범위 체크
+// Option 2: Bounds check
 fn main() {
     let data = vec![1, 2, 3];
     let index = 5;
-    
+
     if index < data.len() {
         let value = data[index];
         println!("Value: {}", value);
@@ -794,51 +794,51 @@ fn main() {
     }
 }
 
-// Option 3: unwrap_or 사용
+// Option 3: Use unwrap_or
 fn main() {
     let data = vec![1, 2, 3];
-    let value = data.get(5).unwrap_or(&0);  // 기본값 0
+    let value = data.get(5).unwrap_or(&0);  // Default value 0
     println!("Value: {}", value);
 }
 ```
 
 ---
 
-## 컨테이너 디버깅 시나리오
+## Container Debugging Scenarios
 
-### 시나리오 1: 컨테이너가 즉시 종료됨
+### Scenario 1: Container Exits Immediately
 
-**문제**:
+**Problem**:
 ```bash
 $ docker ps -a
-CONTAINER ID   IMAGE     STATUS                     
+CONTAINER ID   IMAGE     STATUS
 abc123         myapp     Exited (1) 2 seconds ago
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. 로그 확인
+# 1. Check logs
 docker logs abc123
 # Error: Database connection failed
 
-# 2. 컨테이너 재시작하지 않고 셸 접속
+# 2. Access container shell without restart
 docker run --rm -it --entrypoint /bin/sh myapp
 
-# 3. 환경 변수 확인
+# 3. Check environment variables
 env | grep DB
-# DB_HOST=localhost  # 문제 발견! 컨테이너 내에서는 localhost가 아님
+# DB_HOST=localhost  # Problem found! localhost not correct in container
 
-# 4. 네트워크 확인
+# 4. Check network
 ping db-host
 # ping: db-host: Name or service not known
 ```
 
-**해결 방법**:
+**Solution**:
 ```bash
-# Option 1: 환경 변수 수정
+# Option 1: Modify environment variable
 docker run -e DB_HOST=db-container myapp
 
-# Option 2: Docker Compose로 네트워크 설정
+# Option 2: Configure network with Docker Compose
 # docker-compose.yml
 version: '3'
 services:
@@ -854,40 +854,40 @@ services:
 
 ---
 
-### 시나리오 2: Kubernetes Pod CrashLoopBackOff
+### Scenario 2: Kubernetes Pod CrashLoopBackOff
 
-**문제**:
+**Problem**:
 ```bash
 $ kubectl get pods
 NAME                READY   STATUS             RESTARTS
 myapp-pod-abc123    0/1     CrashLoopBackOff   5
 ```
 
-**디버깅 단계**:
+**Debugging Steps**:
 ```bash
-# 1. Pod 설명 확인
+# 1. Check pod description
 kubectl describe pod myapp-pod-abc123
 # Events:
 #   Warning  BackOff  kubelet  Back-off restarting failed container
 
-# 2. 로그 확인
+# 2. Check logs
 kubectl logs myapp-pod-abc123
 # panic: open /config/app.yaml: no such file or directory
 
-# 3. 이전 컨테이너 로그 확인
+# 3. Check previous container logs
 kubectl logs myapp-pod-abc123 --previous
 
-# 4. ConfigMap 확인
+# 4. Check ConfigMap
 kubectl get configmap myapp-config -o yaml
-# (ConfigMap이 없거나 잘못 마운트됨)
+# (ConfigMap missing or incorrectly mounted)
 
-# 5. 볼륨 마운트 확인
+# 5. Check volume mount
 kubectl get pod myapp-pod-abc123 -o yaml | grep -A 10 volumeMounts
 ```
 
-**해결 방법**:
+**Solution**:
 ```yaml
-# 1. ConfigMap 생성
+# 1. Create ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -898,7 +898,7 @@ data:
       host: db-service
       port: 5432
 
-# 2. Pod에 ConfigMap 마운트
+# 2. Mount ConfigMap to Pod
 apiVersion: v1
 kind: Pod
 metadata:
@@ -918,15 +918,15 @@ spec:
 
 ---
 
-## 분산 시스템 디버깅 시나리오
+## Distributed System Debugging Scenarios
 
-### 시나리오: 마이크로서비스 간 타임아웃
+### Scenario: Timeout Between Microservices
 
-**문제**: Service A → Service B 호출 시 타임아웃 발생
+**Problem**: Timeout occurs when Service A → Service B call
 
-**디버깅 단계**:
+**Debugging Steps**:
 
-**1. OpenTelemetry로 트레이스 수집**:
+**1. Collect traces with OpenTelemetry**:
 ```python
 # Service A
 from opentelemetry import trace
@@ -938,33 +938,33 @@ with tracer.start_as_current_span("call-service-b") as span:
     span.set_attribute("http.status_code", response.status_code)
 ```
 
-**2. Jaeger UI에서 트레이스 분석**:
+**2. Analyze trace in Jaeger UI**:
 ```
 Trace: request-123
 ├─ Service A: call-service-b (50ms)
 │  └─ HTTP GET http://service-b/api/data
 │     ├─ DNS lookup: 10ms
 │     ├─ TCP connect: 15ms
-│     └─ Waiting for response: 5000ms ← 타임아웃!
+│     └─ Waiting for response: 5000ms ← Timeout!
 └─ Service B: process-request (4950ms)
-   ├─ Database query: 4900ms ← 병목!
+   ├─ Database query: 4900ms ← Bottleneck!
    └─ Response serialization: 50ms
 ```
 
-**3. 근본 원인 식별**:
-- Service B의 데이터베이스 쿼리가 4.9초 소요
-- Service A의 타임아웃이 5초로 설정되어 있어 경합 상태 발생
+**3. Identify root cause**:
+- Service B's database query takes 4.9 seconds
+- Service A's timeout set to 5 seconds, causing race condition
 
-**해결 방법**:
+**Solution**:
 ```python
-# Option 1: Service B의 쿼리 최적화
-# 인덱스 추가
+# Option 1: Optimize Service B query
+# Add index
 CREATE INDEX idx_user_email ON users(email);
 
-# Option 2: Service A의 타임아웃 증가
+# Option 2: Increase Service A timeout
 response = requests.get("http://service-b/api/data", timeout=10)
 
-# Option 3: 캐싱 추가
+# Option 3: Add caching
 from redis import Redis
 
 cache = Redis(host='redis', port=6379)
@@ -973,91 +973,91 @@ def get_data():
     cached = cache.get('data')
     if cached:
         return cached
-    
+
     data = expensive_database_query()
-    cache.setex('data', 300, data)  # 5분 캐시
+    cache.setex('data', 300, data)  # 5 minute cache
     return data
 ```
 
 ---
 
-## 성능 디버깅 시나리오
+## Performance Debugging Scenarios
 
-### 시나리오: 느린 API 응답
+### Scenario: Slow API Response
 
-**문제**: API 엔드포인트 응답 시간이 3초 이상
+**Problem**: API endpoint response time exceeds 3 seconds
 
-**디버깅 단계**:
+**Debugging Steps**:
 
-**1. py-spy로 CPU 프로파일링** (Python):
+**1. CPU profiling with py-spy** (Python):
 ```bash
 py-spy record -o profile.svg --pid <pid>
 ```
 
-**2. Flamegraph 분석**:
+**2. Analyze Flamegraph**:
 ```
 main() [100%]
 ├─ process_request() [95%]
-│  ├─ load_users() [80%]  ← 병목!
+│  ├─ load_users() [80%]  ← Bottleneck!
 │  │  └─ database.query() [78%]
 │  └─ serialize_response() [15%]
 └─ logging() [5%]
 ```
 
-**3. 데이터베이스 쿼리 분석**:
+**3. Analyze database query**:
 ```sql
 EXPLAIN ANALYZE SELECT * FROM users WHERE status = 'active';
 -- Seq Scan on users (cost=0.00..1234.56)
--- 인덱스 없음!
+-- No index!
 ```
 
-**4. 해결 방법**:
+**4. Solution**:
 ```sql
--- 인덱스 추가
+-- Add index
 CREATE INDEX idx_users_status ON users(status);
 
--- 쿼리 재실행
+-- Re-run query
 EXPLAIN ANALYZE SELECT * FROM users WHERE status = 'active';
 -- Index Scan using idx_users_status (cost=0.28..45.67)
--- 응답 시간: 3초 → 50ms
+-- Response time: 3s → 50ms
 ```
 
 ---
 
-## 요약: 디버깅 체크리스트
+## Summary: Debugging Checklist
 
-### 1. 재현 (Reproduce)
-- [ ] 최소 재현 예제 (MRE) 작성
-- [ ] 일관된 재현 단계 문서화
-- [ ] 환경 정보 기록 (OS, 언어 버전, 의존성)
+### 1. Reproduce
+- [ ] Create minimal reproducible example (MRE)
+- [ ] Document consistent reproduction steps
+- [ ] Record environment info (OS, language version, dependencies)
 
-### 2. 격리 (Isolate)
-- [ ] 이진 탐색으로 문제 범위 좁히기
-- [ ] 최근 변경사항 확인 (git diff, git log)
-- [ ] 입력 데이터 및 엣지 케이스 검증
+### 2. Isolate
+- [ ] Narrow problem scope with binary search
+- [ ] Check recent changes (git diff, git log)
+- [ ] Validate input data and edge cases
 
-### 3. 조사 (Investigate)
-- [ ] 스택 트레이스를 아래에서 위로 읽기
-- [ ] 주요 결정 지점에 로깅 추가
-- [ ] 에러 위치 이전에 브레이크포인트 설정
-- [ ] 디버거에서 변수 상태 확인
+### 3. Investigate
+- [ ] Read stack trace from bottom to top
+- [ ] Add logging at key decision points
+- [ ] Set breakpoint before error location
+- [ ] Check variable state in debugger
 
-### 4. 가설 (Hypothesize)
-- [ ] 근본 원인에 대한 이론 수립
-- [ ] 가장 가능성 높은 원인 2-3개 식별
-- [ ] 가설 검증 실험 설계
+### 4. Hypothesize
+- [ ] Establish theory about root cause
+- [ ] Identify 2-3 most likely causes
+- [ ] Design experiment to validate hypothesis
 
-### 5. 수정 (Fix)
-- [ ] 최소한의 수정 먼저 구현
-- [ ] 회귀 테스트 추가 (RED → GREEN)
-- [ ] 필요시 리팩토링 (REFACTOR 단계)
-- [ ] 문서 업데이트
+### 5. Fix
+- [ ] Implement minimal fix first
+- [ ] Add regression test (RED → GREEN)
+- [ ] Refactor if needed (REFACTOR step)
+- [ ] Update documentation
 
-### 6. 검증 (Verify)
-- [ ] 전체 테스트 스위트 실행
-- [ ] 엣지 케이스 명시적 테스트
-- [ ] 프로덕션 유사 환경에서 수정 검증
-- [ ] 재발 모니터링
+### 6. Verify
+- [ ] Run full test suite
+- [ ] Explicitly test edge cases
+- [ ] Verify fix in production-like environment
+- [ ] Monitor for recurrence
 
 ---
 
