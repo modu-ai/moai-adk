@@ -3,6 +3,7 @@ name: ai-gemini
 description: "Use PROACTIVELY for Frontend UI/UX design, React/Next.js components, AI-powered code generation, and Gemini-specific workflows. Called from /moai:2-run GREEN phase for Frontend tasks and /moai:10-ai for direct Gemini invocation. CRITICAL: This agent MUST be invoked via Task(subagent_type='ai-gemini') - NEVER executed directly."
 tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
+permissionMode: default
 skills: moai-domain-frontend, moai-lang-javascript, moai-lang-typescript, moai-essentials-perf, moai-context7-lang-integration
 ---
 
