@@ -65,26 +65,26 @@ src/moai_adk/templates/  ↔  ./
 
 ### 2.3 동기화 도구
 
-**사용할 도구:**
+**권장: 수동 파일 복사 (안전함)**
 
 ```bash
-# 수동 동기화 (rsync 사용)
-rsync -avz \
-  --exclude=".DS_Store" \
-  --exclude="*.pyc" \
-  --exclude="__pycache__" \
-  --exclude=".cache" \
-  src/moai_adk/.claude/ .claude/
+# .claude/agents/ - Agent 정의
+cp -r src/moai_adk/.claude/agents/* .claude/agents/
 
-rsync -avz \
-  --exclude=".DS_Store" \
-  --exclude="*.pyc" \
-  --exclude="__pycache__" \
-  --exclude="cache/" \
-  --exclude="logs/" \
-  --exclude="config/" \
-  src/moai_adk/.moai/ .moai/
+# .claude/skills/ - Skill 정의
+cp -r src/moai_adk/.claude/skills/* .claude/skills/
+
+# .moai/memory/ - 참고 문서
+cp -r src/moai_adk/.moai/memory/* .moai/memory/
+
+# CLAUDE.md - 메인 지침
+cp src/moai_adk/CLAUDE.md ./CLAUDE.md
 ```
+
+**주의: rsync 대신 cp 사용 이유**
+- rsync는 복잡한 구조에서 예상치 못한 자가복제 발생 가능
+- `cp`는 명시적이고 안전함
+- 동기화 스크립트(.moai/scripts/sync-from-src.sh) 사용 권장
 
 ### 2.4 스크립트 기반 동기화
 
