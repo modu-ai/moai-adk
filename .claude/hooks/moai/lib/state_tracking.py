@@ -14,7 +14,7 @@ import weakref
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from lib import (
+from models import (
     ExecutionResult,
     HookConfiguration,
     configure_logging,

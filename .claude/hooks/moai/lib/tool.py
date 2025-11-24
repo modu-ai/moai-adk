@@ -4,8 +4,8 @@
 PreToolUse, PostToolUse event handling
 """
 
-from lib import HookPayload, HookResult
-from lib.checkpoint import create_checkpoint, detect_risky_operation
+from models import HookPayload, HookResult
+from checkpoint import create_checkpoint, detect_risky_operation
 
 
 def handle_pre_tool_use(payload: HookPayload) -> HookResult:

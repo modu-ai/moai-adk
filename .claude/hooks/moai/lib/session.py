@@ -5,9 +5,9 @@ SessionStart, SessionEnd event handling
 """
 
 
-from lib import HookPayload, HookResult
-from lib.checkpoint import list_checkpoints
-from lib.project import count_specs, get_git_info, get_package_version_info
+from models import HookPayload, HookResult
+from checkpoint import list_checkpoints
+from project import count_specs, get_git_info, get_package_version_info
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:

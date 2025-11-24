@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from lib.config_manager import get_config_manager, get_timeout_seconds
+from config_manager import get_config_manager, get_timeout_seconds
 
 
 class HookErrorHandler:
