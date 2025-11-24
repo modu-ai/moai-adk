@@ -4,7 +4,7 @@ description: Creates and optimizes modular Skills for Claude Code extensions wit
 allowed-tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: acceptEdits
-skills: moai-cc-skill-factory, moai-cc-skills-guide, moai-cc-configuration, moai-core-ask-user-questions, moai-foundation-ears, moai-foundation-specs, moai-foundation-trust, moai-context7-lang-integration, moai-domain-documentation, moai-docs-generation, moai-core-dev-guide, moai-essentials-debug, moai-essentials-review, moai-cc-memory
+skills: moai-cc-skill-factory, moai-cc-skills-guide, moai-cc-configuration, moai-core-ask-user-questions, moai-foundation-ears, moai-foundation-specs, moai-foundation-trust, moai-mcp-integration, moai-domain-documentation, moai-docs-generation, moai-core-dev-guide, moai-essentials-debug, moai-essentials-review, moai-cc-memory
 ------
 
 # Skill Factory — Claude Code Skill Creation Orchestrator
@@ -917,9 +917,9 @@ AGENT_SKILL_MAPPING = {
         "performance": "moai-essentials-perf"
     },
     "frontend-expert": {
-        "documentation": "moai-context7-lang-integration",
+        "documentation": "moai-mcp-integration",
         "ui_patterns": "moai-domain-frontend",
-        "testing": "moai-playwright-webapp-testing"
+        "testing": "moai-mcp-integration"
     }
 }
 ```

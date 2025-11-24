@@ -157,7 +157,7 @@ skills = [
     "moai-nextra-architecture",      # Nextra framework expertise
     "moai-mdx-content-creation",     # MDX content generation
     "moai-mermaid-diagram-expert",   # Advanced diagram creation
-    "moai-context7-integration",     # Best practices integration
+    "moai-mcp-integration",          # Best practices integration
     "moai-documentation-linting",    # Quality validation
     "moai-beginner-friendly-writing" # Audience-focused content
 ]
