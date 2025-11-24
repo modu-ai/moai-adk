@@ -1,7 +1,7 @@
 {
   "_meta": {},
   "moai": {
-    "version": "{{MOAI_VERSION}}",
+    "version": "0.28.2",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -97,26 +97,26 @@
     ]
   },
   "language": {
-    "conversation_language": "{{CONVERSATION_LANGUAGE}}",
-    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
-    "agent_prompt_language": "{{CONVERSATION_LANGUAGE}}",
+    "conversation_language": "ko",
+    "conversation_language_name": "Korean",
+    "agent_prompt_language": "ko",
     "notes": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
-    "name": "{{PROJECT_NAME}}",
-    "description": "{{PROJECT_DESCRIPTION}}",
-    "owner": "{{PROJECT_OWNER}}",
-    "mode": "{{PROJECT_MODE}}",
-    "locale": "{{CONVERSATION_LANGUAGE}}",
-    "language": "{{CODEBASE_LANGUAGE}}",
-    "created_at": "{{CREATION_TIMESTAMP}}",
+    "name": "TestProject",
+    "description": "Test",
+    "owner": "TestOwner",
+    "mode": "development",
+    "locale": "ko",
+    "language": "python",
+    "created_at": "2025-11-24T14:15:00Z",
     "initialized": true,
     "optimized": false,
     "optimized_at": null,
     "_notes": "optimized=false: Template updated, config merge required. optimized=true: Configuration fully merged and verified."
   },
   "user": {
-    "name": "{{USER_NAME}}",
+    "name": "GOOS행",
     "notes": "Personal name for Alfred's personalized greetings (e.g., '철수', 'John'). Leave empty for default greetings like '사용자님'"
   },
   "session": {
@@ -179,7 +179,7 @@
     "auto_create": false,
     "warn_user": true,
     "user_choice": "Minimal",
-    "configured_at": "{{CREATION_TIMESTAMP}}",
+    "configured_at": "2025-11-24T14:15:00Z",
     "allowed_locations": [
       ".moai/docs/",
       ".moai/reports/",
