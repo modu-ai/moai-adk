@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for SPEC-SKILL-PORTFOLIO-OPT-001."""
 
 import os
+import sys
 import json
 import yaml
 import re
@@ -9,8 +10,32 @@ from typing import Dict, List, Optional, Set
 import pytest
 
 
-# ===== CONSTANTS =====
+# ===== CRITICAL: Add paths to sys.path for test imports =====
 PROJECT_ROOT = Path(__file__).parent.parent
+HOOKS_MOAI_DIR = PROJECT_ROOT / ".claude" / "hooks" / "moai"
+HOOKS_LIB_DIR = HOOKS_MOAI_DIR / "lib"
+
+# Add moai directory to sys.path so "from lib import X" works
+# This allows test files to do: from session import handle_session_start
+# and session.py can do: from lib import HookPayload, HookResult
+if str(HOOKS_MOAI_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_MOAI_DIR))
+
+# Also add lib directly for backward compatibility with tests
+if str(HOOKS_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_LIB_DIR))
+
+# Add project root for other imports
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# Add src for moai_adk imports
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+
+# ===== CONSTANTS =====
 SKILLS_DIR = PROJECT_ROOT / ".claude" / "skills"
 SPEC_DIR = PROJECT_ROOT / ".moai" / "specs" / "SPEC-SKILL-PORTFOLIO-OPT-001"
 TESTS_DIR = PROJECT_ROOT / "tests"
