@@ -673,24 +673,24 @@ elif prompt_always == False:
 ```python
 AskUserQuestion({
     "questions": [{
-        "question": "브랜치를 생성하시겠습니까?",
+        "question": "Create a feature branch for this SPEC?",
         "header": "Branch Strategy",
         "multiSelect": false,
         "options": [
             {
-                "label": "자동 생성",
-                "description": "feature/SPEC-{SPEC_ID} 브랜치 자동 생성"
+                "label": "Auto create",
+                "description": "Automatically create feature/SPEC-{SPEC_ID} branch"
             },
             {
-                "label": "현재 브랜치 사용",
-                "description": "현재 브랜치에서 직접 작업"
+                "label": "Use current branch",
+                "description": "Work directly on current branch"
             }
         ]
     }]
 })
 
 # Based on user choice:
-if user_choice == "자동 생성":
+if user_choice == "Auto create":
     ROUTE = "CREATE_BRANCH"
 else:
     ROUTE = "USE_CURRENT_BRANCH"
@@ -702,7 +702,7 @@ else:
 
 #### Step 2.3: Create Feature Branch (After User Choice OR Auto-Creation)
 
-**CONDITION**: User selected "자동 생성" OR (`prompt_always: false` AND git_mode in [personal, team])
+**CONDITION**: User selected "Auto create" OR (`prompt_always: false` AND git_mode in [personal, team])
 
 **ACTION**: Invoke git-manager to create feature branch
 
@@ -745,7 +745,7 @@ NOTE: PR creation is handled separately in /moai:2-run or /moai:3-sync (Team mod
 
 #### Step 2.4: Skip Branch Creation (After User Choice OR Manual Mode)
 
-**CONDITION**: User selected "현재 브랜치 사용" OR (`prompt_always: false` AND git_mode == manual)
+**CONDITION**: User selected "Use current branch" OR (`prompt_always: false` AND git_mode == manual)
 
 **ACTION**: Skip branch creation, continue with current branch
 
@@ -807,13 +807,13 @@ VALIDATION:
 
 Display status based on configuration and execution result:
 
-#### Case 1: Branch Creation Prompted (`prompt_always: true`) - User Selected "자동 생성"
+#### Case 1: Branch Creation Prompted (`prompt_always: true`) - User Selected "Auto create"
 
 ```
 📊 Phase 3 Status: Feature Branch Created (User Choice)
 
 ✅ **Configuration**: git_strategy.mode = "{git_mode}"
-✅ **Branch Creation**: prompt_always = true → User chose "자동 생성"
+✅ **Branch Creation**: prompt_always = true → User chose "Auto create"
 
 ✅ **Feature Branch Created**:
 - Branch: `feature/SPEC-{SPEC_ID}`
@@ -842,13 +842,13 @@ Display status based on configuration and execution result:
 
 ---
 
-#### Case 2: Branch Creation Prompted (`prompt_always: true`) - User Selected "현재 브랜치 사용"
+#### Case 2: Branch Creation Prompted (`prompt_always: true`) - User Selected "Use current branch"
 
 ```
 📊 Phase 3 Status: Direct Commit Mode (User Choice)
 
 ✅ **Configuration**: git_strategy.mode = "{git_mode}"
-✅ **Branch Creation**: prompt_always = true → User chose "현재 브랜치 사용"
+✅ **Branch Creation**: prompt_always = true → User chose "Use current branch"
 
 ✅ **No Branch Created**:
 - SPEC files created on current branch

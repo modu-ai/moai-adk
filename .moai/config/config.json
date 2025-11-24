@@ -1,19 +1,19 @@
 {
   "user": {
-    "name": "TestUser"
+    "name": "GOOS행"
   },
   "language": {
-    "conversation_language": "en",
-    "agent_prompt_language": "en",
-    "conversation_language_name": "English"
+    "conversation_language": "ko",
+    "agent_prompt_language": "ko",
+    "conversation_language_name": "Korean"
   },
   "project": {
-    "name": "TestProject",
-    "owner": "TestOwner",
-    "description": "Test",
+    "name": "MoAI-ADK",
+    "owner": "GOOS행",
+    "description": "MoAI-ADK",
     "language": "python",
-    "locale": "en_US",
-    "template_version": "3.0.0",
+    "locale": "ko_KR",
+    "template_version": "0.28.0",
     "documentation_mode": "skip"
   },
   "git_strategy": {
@@ -24,7 +24,7 @@
       "push_to_remote": false
     },
     "team": {
-      "workflow": "git-flow",
+      "workflow": "github-flow",
       "auto_pr": false,
       "draft_pr": false
     }
@@ -34,6 +34,6 @@
     "enforce_tdd": true
   },
   "moai": {
-    "version": "0.26.0"
+    "version": "0.28.0"
   }
 }

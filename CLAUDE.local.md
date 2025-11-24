@@ -867,3 +867,4 @@ def normalize_bold_parentheses(content: str) -> str:
 **모든 언어는 동일한 패턴을 따릅니다**: bold와 괄호 사이에 공백 없이 `**Text**(details)` 형식으로 작성합니다.
 - '/Users/goos/MoAI/MoAI-ADK/.claude/settings.json'  -> 항상 변수가 치환된 값으로 사용해야 한다.
 - 1. 현재 계획 유지 - 4-6시간 투자하여 blockers 수정 후 Phase 3 진행 -> 같이 불확실하고 검증되지 않은 기준으로 산정한 시간, 기간을 명시하지 말것
+- .claude 내용이 변경이 되면 '/Users/goos/MoAI/MoAI-ADK/.moai/memory' 메모리 파일 업데이트 하도록 하자
