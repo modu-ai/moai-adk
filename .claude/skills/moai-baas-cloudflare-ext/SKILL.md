@@ -25,6 +25,36 @@ $(head -n 30 /tmp/parent.md | head -n 20)
 
 ---
 
+## Security Patterns
+
+### Web Application Firewall (WAF)
+- Layer 7 DDoS protection
+- OWASP rule sets
+- Custom firewall rules
+- Rate limiting per IP
+
+### Threat Mitigation
+
+```typescript
+// Worker with security headers
+export default {
+  async fetch(request) {
+    const response = await handleRequest(request);
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    return response;
+  }
+};
+```
+
+### Bot Management
+- Challenge pages for suspicious traffic
+- JavaScript challenges
+- CAPTCHA integration
+
+---
+
 ## Implementation Modules
 
 For detailed patterns:

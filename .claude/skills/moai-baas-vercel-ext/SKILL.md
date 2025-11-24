@@ -14,10 +14,10 @@ status: active
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
+**version**: 1.0.0
+**modularized**: false
+**last_updated**: 2025-11-22
+**compliance_score**: 100%
 **auto_trigger_keywords**: vercel, ext, moai, baas  
 
 
@@ -79,6 +79,61 @@ This skill is organized into focused modules for progressive learning:
 - Deployment strategies
 - A/B testing patterns
 - Geo-based personalization
+
+---
+
+## Core Implementation (Level 2 - 5-10 minutes)
+
+### Basic Deployment Pattern
+
+```typescript
+// vercel.json configuration
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "app/api/**/*.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/app/api/$1"
+    }
+  ]
+}
+```
+
+### Edge Function Example
+
+```typescript
+// app/api/hello/route.ts
+export const config = {
+  runtime: 'edge'
+};
+
+export default async function handler(req: Request) {
+  return new Response('Hello from Edge!', {
+    headers: { 'content-type': 'text/plain' }
+  });
+}
+```
+
+### Environment Variables
+
+```bash
+# .env.local
+DATABASE_URL=postgres://...
+API_KEY=your-api-key
+```
+
+### Common Use Cases
+
+1. **API Routes**: Serverless functions at /api/*
+2. **Edge Middleware**: Authentication, redirects, geolocation
+3. **Static Assets**: Automatic CDN optimization
+4. **Preview Deployments**: Per-branch environments
 
 ---
 

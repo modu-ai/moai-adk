@@ -133,5 +133,32 @@ def deploy_docs(docs_dir: str, target: str = 'vercel'):
 
 ---
 
+## Documentation Security
+
+### Access Control
+
+```yaml
+# mkdocs.yml with authentication
+plugins:
+  - search
+  - auth:
+      providers:
+        - type: oauth2
+          client_id: ${CLIENT_ID}
+```
+
+### Sensitive Information Protection
+- No API keys in documentation
+- Use placeholders: `API_KEY=your_key_here`
+- Separate public/private docs
+- Version control for confidential docs
+
+### Compliance Patterns
+- GDPR-compliant data handling documentation
+- Security audit trails for doc changes
+- Access logs for sensitive documentation
+
+---
+
 **Status**: Production Ready
 **Best for**: Comprehensive API documentation, knowledge base automation, continuous documentation
