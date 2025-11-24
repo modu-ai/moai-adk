@@ -230,12 +230,15 @@ uv.lock
 
 # .moai/ directory management
 # Only sync: config/, memory/, scripts/
-.moai/
+.moai/*
 !.moai/config/
+!.moai/config/**
 !.moai/memory/
+!.moai/memory/**
 !.moai/scripts/
+!.moai/scripts/**
 
-# .moai local-only directories (excluded)
+# .moai local-only directories (explicitly excluded)
 .moai/cache/
 .moai/logs/
 .moai/docs/

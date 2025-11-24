@@ -1,73 +1,73 @@
 # MoAI-ADK Agents Reference
 
-Alfred의 에이전트 위임 참조. 각 에이전트는 특정 작업에 최적화되어 있다.
+Alfred's agent delegation reference. Each agent is optimized for specific tasks.
 
 ## Planning & Specification
 
-- `spec-builder`: EARS 포맷 SPEC 생성
-- `plan`: 복잡한 작업을 단계별로 분해
+- `spec-builder`: SPEC generation in EARS format
+- `plan`: Decompose complex tasks step-by-step
 
 ## Implementation
 
-- `tdd-implementer`: TDD 사이클 (RED-GREEN-REFACTOR) 실행
-- `backend-expert`: 백엔드 아키텍처 및 API 개발
-- `frontend-expert`: 프론트엔드 UI 컴포넌트 개발
-- `database-expert`: 데이터베이스 설계 및 최적화
+- `tdd-implementer`: Execute TDD cycle (RED-GREEN-REFACTOR)
+- `backend-expert`: Backend architecture and API development
+- `frontend-expert`: Frontend UI component development
+- `database-expert`: Database schema design and optimization
 
 ## Quality & Testing
 
-- `security-expert`: 보안 분석 및 OWASP 검증
-- `quality-gate`: 코드 품질 검증 (TRUST 5)
-- `test-engineer`: 테스트 전략 및 구현
+- `security-expert`: Security analysis and OWASP validation
+- `quality-gate`: Code quality validation (TRUST 5)
+- `test-engineer`: Test strategy and implementation
 
 ## Architecture & Design
 
-- `api-designer`: REST/GraphQL API 설계
-- `component-designer`: 재사용 가능한 컴포넌트 설계
-- `ui-ux-expert`: 사용자 경험 및 인터페이스 설계
+- `api-designer`: REST/GraphQL API design
+- `component-designer`: Reusable component design
+- `ui-ux-expert`: User experience and interface design
 
 ## DevOps & Infrastructure
 
-- `devops-expert`: CI/CD 파이프라인 및 배포
-- `monitoring-expert`: 모니터링 및 관찰성
-- `performance-engineer`: 성능 최적화 및 분석
+- `devops-expert`: CI/CD pipeline and deployment
+- `monitoring-expert`: Monitoring and observability
+- `performance-engineer`: Performance optimization and analysis
 
 ## Data & Integration
 
-- `migration-expert`: 데이터베이스 마이그레이션
-- `data-engineer`: 데이터 파이프라인 개발
+- `migration-expert`: Database migration
+- `data-engineer`: Data pipeline development
 
 ## Documentation & Process
 
-- `docs-manager`: 기술 문서 및 API 문서 생성
-- `git-manager`: Git 워크플로우 및 버전 관리
-- `project-manager`: 프로젝트 조정 및 계획
+- `docs-manager`: Technical and API documentation generation
+- `git-manager`: Git workflow and version management
+- `project-manager`: Project coordination and planning
 
 ## Specialized Services
 
-- `accessibility-expert`: WCAG 접근성 검증
-- `debug-helper`: 오류 분석 및 해결책 제시
-- `agent-factory`: 새로운 에이전트 생성 및 설정
-- `skill-factory`: Skill 정의 생성 및 관리
-- `format-expert`: 코드 포매팅 및 스타일 일관성
+- `accessibility-expert`: WCAG accessibility validation
+- `debug-helper`: Error analysis and solution suggestions
+- `agent-factory`: New agent creation and configuration
+- `skill-factory`: Skill definition creation and management
+- `format-expert`: Code formatting and style consistency
 
 ## System Agents
 
-- `Explore`: 코드베이스 탐색 및 파일 시스템 분석
-- `Plan`: 전략 분해 및 계획 수립
+- `Explore`: Codebase exploration and file system analysis
+- `Plan`: Strategy decomposition and planning
 
 ---
 
-**위임 원칙**:
-1. Alfred는 항상 Task()로 전문 에이전트에게 위임한다.
-2. 요청의 복잡도와 의존성을 분석하여 순차 또는 병렬로 조율한다.
-3. 각 에이전트의 결과를 다음 에이전트의 컨텍스트로 전달한다.
+**Delegation Principles**:
+1. Alfred always delegates to specialized agents via Task().
+2. Analyze request complexity and dependencies to determine sequential or parallel execution.
+3. Pass each agent's results as context to the next agent.
 
-**에이전트 선택 기준**:
-- 단순 작업 (1개 파일): 1-2개 에이전트 순차 실행
-- 중간 작업 (3-5개 파일): 2-3개 에이전트 순차 실행
-- 복잡한 작업 (10+개 파일): 5+개 에이전트 병렬/순차 혼합
+**Agent Selection Criteria**:
+- Simple tasks (1 file): 1-2 agents sequential execution
+- Medium tasks (3-5 files): 2-3 agents sequential execution
+- Complex tasks (10+ files): 5+ agents mixed parallel/sequential execution
 
 ---
 
-자세한 에이전트 설명은 CLAUDE.md를 참고한다.
+Refer to CLAUDE.md for detailed agent descriptions.

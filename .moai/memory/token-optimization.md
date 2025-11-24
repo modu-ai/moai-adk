@@ -1,116 +1,116 @@
 # Token Optimization Strategy
 
-Alfred의 토큰 사용을 최적화하기 위한 예산 및 전략.
+Budget and strategy for optimizing Alfred's token usage.
 
-## Token Budget (토큰 예산)
+## Token Budget
 
-### Phase별 할당
+### Phase-Based Allocation
 
-| Phase | 예산 | 용도 |
-|-------|------|------|
-| **SPEC 생성** | 30K | 사양 작성 및 검증 |
-| **TDD 구현** | 180K | RED-GREEN-REFACTOR 사이클 |
-| **문서 생성** | 40K | API 문서 + 프로젝트 리포트 |
-| **전체** | 250K | 기능 단위 총 예산 |
-
----
-
-## `/clear` 실행 규칙
-
-**언제 실행하는가**:
-
-1. `/moai:1-plan` 완료 **직후** (필수)
-   - 45-50K 토큰 절약
-   - 깨끗한 컨텍스트 준비
-
-2. Context > 150K 일 때
-   - 오버플로우 방지
-   - 다음 phase를 위한 정리
-
-3. 대화 > 50메시지 후
-   - 누적된 컨텍스트 초기화
+| Phase | Budget | Purpose |
+|-------|--------|---------|
+| **SPEC Generation** | 30K | Specification writing and validation |
+| **TDD Implementation** | 180K | RED-GREEN-REFACTOR cycle |
+| **Documentation** | 40K | API documentation + project report |
+| **Total** | 250K | Budget per feature |
 
 ---
 
-## 토큰 사용량 모니터링
+## `/clear` Execution Rules
 
-**Alfred의 행동**:
+**When to execute**:
 
-1. `/context` 명령으로 현재 토큰 확인
-2. Phase 예산 대비 사용량 추적
-3. 150K 초과 시 사용자에게 `/clear` 제안
-4. 특이사항은 `/moai:9-feedback`으로 보고
+1. **Immediately after** `/moai:1-plan` completion (mandatory)
+   - Saves 45-50K tokens
+   - Prepares clean context
 
----
+2. When context > 150K tokens
+   - Prevents overflow
+   - Prepares for next phase
 
-## 파일 로드 최적화
-
-### Good Practice ✅
-
-- 현재 작업에 필요한 파일만 로드
-- 파일 헤더 먼저 로드 (전체 내용 아님)
-- 관련 부분만 선택적 로드
-- 결과 캐싱
-
-### Bad Practice ❌
-
-- 전체 코드베이스 로드
-- node_modules, .git 등 포함
-- 이미지/바이너리 파일 로드
-- 과거 대화 히스토리 포함
+3. After 50+ conversation messages
+   - Clear accumulated context
 
 ---
 
-## Model Selection (모델 선택)
+## Token Usage Monitoring
 
-| 상황 | 선택 | 이유 |
-|------|------|------|
-| SPEC 생성 | Sonnet 4.5 | 고품질 설계 필요 |
-| TDD 구현 | Haiku 4.5 | 빠른 실행, 비용 절약 |
-| 보안 검토 | Sonnet 4.5 | 정확한 분석 필요 |
-| 단순 수정 | Haiku 4.5 | 최소 비용 |
+**Alfred's behavior**:
 
-**비용 절감**: Haiku 70% 저가, 전체 60-70% 절약 가능
+1. Check current token usage with `/context` command
+2. Track usage against phase budget
+3. Suggest `/clear` when usage exceeds 150K
+4. Report anomalies via `/moai:9-feedback`
 
 ---
 
-## Context 전달 전략
+## File Loading Optimization
+
+### Good Practices ✅
+
+- Load only files needed for current task
+- Load file headers first (not full content)
+- Selectively load relevant sections
+- Cache results
+
+### Bad Practices ❌
+
+- Load entire codebase
+- Include node_modules, .git, etc.
+- Load images or binary files
+- Include historical conversation logs
+
+---
+
+## Model Selection
+
+| Scenario | Choice | Reason |
+|----------|--------|--------|
+| SPEC generation | Sonnet 4.5 | High-quality design required |
+| TDD implementation | Haiku 4.5 | Fast execution, cost savings |
+| Security review | Sonnet 4.5 | Precise analysis required |
+| Simple edits | Haiku 4.5 | Minimal cost |
+
+**Cost savings**: Haiku 70% cheaper, 60-70% total savings possible
+
+---
+
+## Context Passing Strategy
 
 ### Efficient Context Passing
 
 ```
-Phase1 결과 → Phase2 context로 전달
+Phase1 results → Pass to Phase2 context
    ↓
-필요한 정보만 추출
+Extract only needed information
    ↓
-다음 에이전트에 공급
+Provide to next agent
    ↓
-무관한 정보 제외
+Exclude irrelevant information
 ```
 
-### 최적 Context 크기
+### Optimal Context Size
 
-- **최소**: 작업 필수 정보만
-- **최대**: 50K 토큰 이내
-- **목표**: 20-30K 토큰
-
----
-
-## 토큰 절약 팁
-
-1. **Phase 분리**: `/clear`로 단계 구분
-2. **선택적 로드**: 불필요한 파일 제외
-3. **결과 캐싱**: 재사용 가능한 정보 보존
-4. **간결한 prompt**: 불필요한 설명 제거
-5. **Haiku 활용**: 복잡하지 않은 작업은 Haiku 선택
+- **Minimum**: Only task-essential information
+- **Maximum**: Under 50K tokens
+- **Target**: 20-30K tokens
 
 ---
 
-## 성능 목표
+## Token Saving Tips
 
-- SPEC 생성: 15-20K 토큰
-- TDD 구현: 80-100K 토큰 (Phase당)
-- 문서 생성: 20-25K 토큰
-- **효율성**: 수동 대비 60-70% 절약
+1. **Phase separation**: Use `/clear` to separate phases
+2. **Selective loading**: Exclude unnecessary files
+3. **Result caching**: Preserve reusable information
+4. **Concise prompts**: Remove unnecessary explanations
+5. **Haiku utilization**: Use Haiku for non-complex tasks
 
-Alfred는 이 전략을 자동으로 적용하며, 개선사항은 `/moai:9-feedback`으로 제안한다.
+---
+
+## Performance Targets
+
+- SPEC generation: 15-20K tokens
+- TDD implementation: 80-100K tokens (per phase)
+- Documentation: 20-25K tokens
+- **Efficiency**: 60-70% savings vs. manual work
+
+Alfred automatically applies this strategy, and improvements are suggested via `/moai:9-feedback`.

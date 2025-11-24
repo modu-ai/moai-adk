@@ -1,129 +1,129 @@
 # Agent Delegation Patterns
 
-Alfred가 Task()로 에이전트에게 위임할 때 사용하는 핵심 패턴들.
+Core patterns used by Alfred when delegating to agents via Task().
 
-## 기본 위임 문법
+## Base Delegation Syntax
 
 ```
 result = await Task(
-    subagent_type="에이전트_이름",
-    prompt="구체적이고 명확한 작업 설명",
-    context={"필요한": "컨텍스트"}
+    subagent_type="agent_name",
+    prompt="specific and clear task description",
+    context={"required": "context"}
 )
 ```
 
 ---
 
-## 패턴 1: 직렬 위임 (Sequential)
+## Pattern 1: Sequential Delegation
 
-**용도**: 에이전트 간에 의존성이 있을 때
+**Use Case**: When agents have dependencies on each other
 
-**흐름**:
+**Flow**:
 ```
-1. design-phase 완료
+1. design-phase complete
    ↓
-2. 결과를 다음 에이전트의 context로 전달
+2. Pass results as context to next agent
    ↓
-3. implementation-phase 시작
+3. implementation-phase begins
 ```
 
-**예시**:
+**Example**:
 ```
-# Phase 1: 설계
-design = Task(api-designer, "API 설계")
+# Phase 1: Design
+design = Task(api-designer, "API design")
 
-# Phase 2: 구현 (설계 결과 전달)
+# Phase 2: Implementation (pass design results)
 implementation = Task(
     backend-expert,
-    "API 구현",
+    "Implement API",
     context={"api_design": design}
 )
 ```
 
 ---
 
-## 패턴 2: 병렬 위임 (Parallel)
+## Pattern 2: Parallel Delegation
 
-**용도**: 에이전트 간 독립적일 때
+**Use Case**: When agents are independent
 
-**흐름**:
+**Flow**:
 ```
-Task1 (백엔드)   →  완료 기다림
-Task2 (프론트엔드) → 완료 기다림
-Task3 (문서)     → 완료 기다림
-      모두 완료 → 통합
+Task1 (backend)     →  Wait for completion
+Task2 (frontend)    →  Wait for completion
+Task3 (documentation) →  Wait for completion
+          All complete →  Integrate
 ```
 
-**예시**:
+**Example**:
 ```
 results = await Promise.all([
-    Task(backend-expert, "백엔드 구현"),
-    Task(frontend-expert, "프론트엔드 구현"),
-    Task(docs-manager, "문서 생성")
+    Task(backend-expert, "Implement backend"),
+    Task(frontend-expert, "Implement frontend"),
+    Task(docs-manager, "Generate documentation")
 ])
 ```
 
 ---
 
-## 패턴 3: 조건부 위임 (Conditional)
+## Pattern 3: Conditional Delegation
 
-**용도**: 결과에 따라 다른 에이전트를 선택
+**Use Case**: Route to different agents based on analysis results
 
-**흐름**:
+**Flow**:
 ```
-분석 완료
+Analysis complete
   ↓
-문제 유형 판단
-  ├→ 보안 문제 → security-expert
-  ├→ 성능 문제 → performance-engineer
-  └→ 품질 문제 → quality-gate
+Determine issue type
+  ├→ Security issue → security-expert
+  ├→ Performance issue → performance-engineer
+  └→ Quality issue → quality-gate
 ```
 
 ---
 
-## 컨텍스트 전달 가이드
+## Context Passing Guide
 
-### 필수 컨텍스트 포함
+### Required Context Fields
 
 ```
 context={
-    "spec_id": "SPEC-001",           # 작업 ID
-    "requirements": [리스트],        # 요구사항
-    "constraints": [제약사항]         # 제약사항
+    "spec_id": "SPEC-001",           # Task ID
+    "requirements": [list],          # Requirements
+    "constraints": [constraints]     # Constraints
 }
 ```
 
-### 불필요한 것 제외
+### Exclude Unnecessary Data
 
-❌ 전체 코드베이스
-❌ 모든 파일 내용
-❌ 과거 대화 이력
-❌ 큰 바이너리 데이터
+❌ Full codebase
+❌ All file contents
+❌ Historical conversation logs
+❌ Large binary data
 
-### 최적 컨텍스트 크기
+### Optimal Context Size
 
-- 최소: 에이전트가 작업하기 필요한 정보만
-- 최대: 50K 토큰 이내
-
----
-
-## 에러 처리
-
-**실패 시**:
-1. `debug-helper`에게 오류 분석 요청
-2. 근본 원인 파악
-3. 다른 에이전트로 재시도 또는 복구
+- Minimum: Only information agent needs for the task
+- Maximum: Under 50K tokens
 
 ---
 
-## 위임 체크리스트
+## Error Handling
 
-- [ ] 에이전트 이름 정확 (소문자, 하이픈)
-- [ ] prompt가 구체적인가
-- [ ] context에 필요한 정보만 포함
-- [ ] 의존성을 고려했는가 (순차 vs 병렬)
-- [ ] 에러 처리 계획이 있는가
+**On Failure**:
+1. Request error analysis from `debug-helper`
+2. Identify root cause
+3. Retry with different agent or implement recovery
 
 ---
 
-자세한 에이전트 설명은 @.moai/memory/agents.md를 참고한다.
+## Delegation Checklist
+
+- [ ] Agent name correct (lowercase, hyphens)
+- [ ] Prompt is specific and clear
+- [ ] Context contains only necessary information
+- [ ] Dependencies considered (sequential vs parallel)
+- [ ] Error handling plan in place
+
+---
+
+Refer to @.moai/memory/agents.md for detailed agent descriptions.

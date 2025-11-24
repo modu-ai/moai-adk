@@ -11,6 +11,7 @@ This document defines the execution rules, constraints, and security policies th
 **Rule**: Never execute tasks directly. Always delegate to specialized agents.
 
 **Implementation**:
+
 ```python
 # FORBIDDEN: Direct execution
 def process_user_data():
@@ -27,12 +28,14 @@ result = await Task(
 ### Tool Usage Restrictions
 
 **Allowed Tools Only**:
+
 - `Task()`: Agent delegation (primary tool)
 - `AskUserQuestion()`: User interaction and clarification
 - `Skill()`: Knowledge invocation and expertise
 - `MCP Servers`: Context7, Playwright, Figma integration
 
 **Forbidden Tools**:
+
 - `Read()`, `Write()`, `Edit()`: Use `Task()` for file operations
 - `Bash()`: Use `Task()` for system operations
 - `Grep()`, `Glob()`: Use `Task()` for file search
@@ -41,6 +44,7 @@ result = await Task(
 ### Delegation Protocol
 
 **Standard Delegation Pattern**:
+
 ```python
 result = await Task(
     subagent_type="specialized_agent",
@@ -57,12 +61,14 @@ result = await Task(
 ### Sandbox Mode (Always Active)
 
 **Enabled Features**:
+
 - Tool usage validation and logging
 - File access restrictions
 - Command execution limits
 - Permission enforcement
 
 **File Access Restrictions**:
+
 ```
 PROTECTED PATHS (DENIED ACCESS):
 - .env*
@@ -76,6 +82,7 @@ PROTECTED PATHS (DENIED ACCESS):
 ```
 
 **Command Restrictions**:
+
 ```
 FORBIDDEN COMMANDS:
 - rm -rf
@@ -90,12 +97,14 @@ FORBIDDEN COMMANDS:
 ### Data Protection Rules
 
 **Sensitive Data Handling**:
+
 - Never log or expose passwords, API keys, or tokens
 - Use environment variables for sensitive configuration
 - Validate all user inputs before processing
 - Encrypt sensitive data at rest
 
 **Input Validation**:
+
 ```python
 # Required validation before processing
 def validate_input(user_input, context=None):
@@ -110,12 +119,14 @@ def validate_input(user_input, context=None):
 ### Role-Based Access Control
 
 **Agent Permissions**:
+
 - **Read Agents**: File system exploration, code analysis
 - **Write Agents**: File creation and modification (with validation)
 - **System Agents**: Limited system operations (validated commands)
 - **Security Agents**: Security analysis and validation
 
 **Permission Levels**:
+
 1. **Level 1** (Read-only): Code exploration, analysis
 2. **Level 2** (Validated Write): File creation with validation
 3. **Level 3** (System): Limited system operations
@@ -124,17 +135,20 @@ def validate_input(user_input, context=None):
 ### MCP Server Permissions
 
 **Context7**:
+
 - Library documentation access
 - API reference resolution
 - Version compatibility checking
 
 **Playwright**:
+
 - Browser automation for testing
 - Screenshot capture
 - UI interaction simulation
 - E2E test execution
 
 **Figma**:
+
 - Design system access
 - Component extraction
 - Design-to-code conversion
@@ -145,30 +159,35 @@ def validate_input(user_input, context=None):
 ### TRUST 5 Framework
 
 **Test-First**:
+
 - Every implementation must start with tests
 - Test coverage must exceed 85%
 - Tests must validate all requirements
 - Failed tests must block deployment
 
 **Readable**:
+
 - Code must follow established style guidelines
 - Variable and function names must be descriptive
 - Complex logic must include comments
 - Code structure must be maintainable
 
 **Unified**:
+
 - Consistent patterns across codebase
 - Standardized naming conventions
 - Uniform error handling
 - Consistent documentation format
 
 **Secured**:
+
 - Security validation through security-expert
 - OWASP compliance checking
 - Input sanitization and validation
 - Secure coding practices
 
 **Trackable**:
+
 - All changes must have clear origin
 - Implementation must link to specifications
 - Test coverage must be verifiable
@@ -177,6 +196,7 @@ def validate_input(user_input, context=None):
 ### Automated Validation
 
 **Pre-execution Validation**:
+
 ```python
 # Required before any task execution
 def validate_execution_requirements(task, context):
@@ -191,6 +211,7 @@ def validate_execution_requirements(task, context):
 ```
 
 **Post-execution Validation**:
+
 ```python
 # Required after task completion
 def validate_execution_results(result, task):
@@ -209,18 +230,21 @@ def validate_execution_results(result, task):
 ### Error Classification
 
 **Critical Errors** (Immediate Stop):
+
 - Security violations
 - Data corruption risks
 - System integrity threats
 - Permission violations
 
 **Warning Errors** (Continue with Monitoring):
+
 - Performance degradation
 - Resource limitations
 - Quality gate failures
 - Documentation gaps
 
 **Informational Errors** (Log and Continue):
+
 - Non-critical warnings
 - Minor quality issues
 - Optimization opportunities
@@ -229,6 +253,7 @@ def validate_execution_results(result, task):
 ### Recovery Procedures
 
 **Critical Error Recovery**:
+
 1. Immediately stop execution
 2. Log error details securely
 3. Notify system administrator
@@ -236,12 +261,14 @@ def validate_execution_results(result, task):
 5. Analyze root cause
 
 **Warning Error Recovery**:
+
 1. Log warning with context
 2. Continue execution with monitoring
 3. Document issue for later resolution
 4. Notify user of potential impact
 
 **Informational Error Recovery**:
+
 1. Log information
 2. Continue execution normally
 3. Add to improvement backlog
@@ -252,12 +279,14 @@ def validate_execution_results(result, task):
 ### Token Budget Management
 
 **Phase-based Allocation**:
+
 - **Planning Phase**: 30K tokens maximum
 - **Implementation Phase**: 180K tokens maximum
 - **Documentation Phase**: 40K tokens maximum
 - **Total Budget**: 250K tokens per feature
 
 **Optimization Requirements**:
+
 - Execute `/clear` immediately after SPEC creation
 - Monitor token usage continuously
 - Use efficient context loading
@@ -266,12 +295,14 @@ def validate_execution_results(result, task):
 ### File System Management
 
 **Allowed Operations**:
+
 - Read files within project directory
 - Write files to designated locations
 - Create documentation in `.moai/` directory
 - Generate code in source directories
 
 **Prohibited Operations**:
+
 - Modify system files outside project
 - Access sensitive configuration files
 - Delete critical system resources
@@ -280,12 +311,14 @@ def validate_execution_results(result, task):
 ### Memory Management
 
 **Context Optimization**:
+
 - Load only necessary files for current task
 - Use efficient data structures
 - Clear context between major phases
 - Cache frequently accessed information
 
 **Resource Limits**:
+
 - Maximum file size: 10MB per file
 - Maximum concurrent operations: 5
 - Maximum context size: 150K tokens
@@ -295,49 +328,55 @@ def validate_execution_results(result, task):
 
 ### Configuration-Based Git Behavior (GitHub Flow 3-Mode System)
 
-Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git 워크플로우를 조정한다.
+Alfred automatically adjusts Git workflow based on git configuration in `.moai/config/config.json`.
 
 **Key Configuration Fields**:
-- `git_strategy.mode`: Git 모드 선택 (manual, personal, team)
-- `git_strategy.branch_creation.prompt_always`: 모든 SPEC마다 사용자에게 질문할지 여부 (true/false)
-- `git_strategy.branch_creation.auto_enabled`: Personal/Team 모드에서 자동 브랜치 생성 활성화 여부 (true/false)
+
+- `git_strategy.mode`: Git mode selection (manual, personal, team)
+- `git_strategy.branch_creation.prompt_always`: Whether to prompt user for every SPEC (true/false)
+- `git_strategy.branch_creation.auto_enabled`: Enable automatic branch creation in Personal/Team modes (true/false)
 
 **3-Mode System Overview (Two-Level Control)**:
 
-| 설정 조합 | Manual Mode | Personal/Team Mode | 효과 |
-|---------|-----------|------------------|------|
-| **prompt_always=true, auto_enabled=false** | 매번 사용자 질문 | 매번 사용자 질문 | 최대 제어 (기본값) |
-| **prompt_always=false, auto_enabled=false** | 자동 스킵 | 사용자 승인 대기 | Manual=자동 스킵, Personal/Team=승인 후 자동 |
-| **prompt_always=false, auto_enabled=true** | 자동 스킵 | 자동 생성 | 완전 자동화 |
+| Configuration                               | Manual Mode           | Personal/Team Mode     | Effect                                              |
+| ------------------------------------------- | --------------------- | ---------------------- | --------------------------------------------------- |
+| **prompt_always=true, auto_enabled=false**  | Prompt user each time | Prompt user each time  | Maximum control (default)                           |
+| **prompt_always=false, auto_enabled=false** | Auto skip             | Wait for user approval | Manual=auto skip, Personal/Team=auto after approval |
+| **prompt_always=false, auto_enabled=true**  | Auto skip             | Auto create            | Full automation                                     |
 
 ### Common Branch Creation Setting: Two-Level Control System
 
 **Level 1: `branch_creation.prompt_always`**
 
 **Default (true)**:
-- 모든 SPEC 생성 시 사용자에게 질문: "브랜치를 생성하시겠습니까?"
-- 사용자 선택: "자동 생성" 또는 "현재 브랜치 사용"
-- 모든 모드에서 동일한 UX 제공
+
+- User prompted on every SPEC generation: "Create branch?"
+- User choices: "Auto create" or "Use current branch"
+- Consistent UX across all modes
 
 **Custom (false)**:
-- **Manual Mode**: 자동으로 브랜치 생성 스킵 (현재 브랜치에서 작업)
-- **Personal/Team Mode**: `auto_enabled` 값에 따라 결정
 
-**Level 2: `branch_creation.auto_enabled` (Personal/Team Mode에서만 유효)**
+- **Manual Mode**: Automatically skip branch creation (work on current branch)
+- **Personal/Team Mode**: Behavior determined by `auto_enabled` value
+
+**Level 2: `branch_creation.auto_enabled` (Valid only in Personal/Team Mode)**
 
 **Default (false)**:
-- Personal/Team 모드에서 `prompt_always=false`일 때만 작동
-- 사용자에게 "자동 브랜치 생성을 활성화하시겠습니까?" 승인 요청
-- 승인 시: config.json에서 `auto_enabled=true`로 자동 업데이트
-- 다음 SPEC부터 사용자 질문 없이 자동으로 브랜치 생성
+
+- Only active in Personal/Team mode when `prompt_always=false`
+- User prompted for approval: "Enable automatic branch creation?"
+- On approval: config.json automatically updated with `auto_enabled=true`
+- From next SPEC: Branches created automatically without user prompt
 
 **Custom (true)**:
-- Personal/Team 모드에서 모든 SPEC마다 자동으로 브랜치 생성
-- 사용자 질문 없음 (완전 자동화)
 
-### Mode 1: Manual (로컬 Git 전용)
+- Automatically create branches for every SPEC in Personal/Team mode
+- No user prompts (full automation)
 
-**설정 (기본값)**:
+### Mode 1: Manual (Local Git Only)
+
+**Configuration (default)**:
+
 ```json
 {
   "git_strategy": {
@@ -350,14 +389,16 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=true):
-1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
-   - 자동 생성 선택 → feature/SPEC-001 생성
-   - 현재 브랜치 사용 선택 → 현재 브랜치에서 계속
-2. 모든 TDD 커밋은 로컬에만 저장 (자동)
-3. Push는 수동으로 수행
+**Alfred's Behavior** (prompt_always=true):
 
-**설정 (자동 스킵)**:
+1. When running `/moai:1-plan`, user prompted: "Create branch?"
+   - Auto create option → Creates feature/SPEC-001
+   - Use current branch option → Continues on current branch
+2. All TDD commits saved locally only (automatic)
+3. Push performed manually
+
+**Configuration (auto skip)**:
+
 ```json
 {
   "git_strategy": {
@@ -370,15 +411,17 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=false):
-- 모든 SPEC 생성 시 자동으로 현재 브랜치에서 작업 (브랜치 생성 안함)
-- 사용자 질문 없음
+**Alfred's Behavior** (prompt_always=false):
 
-**Use Case**: 개인 프로젝트, GitHub 미사용, 로컬 Git 전용
+- All SPECs automatically work on current branch (no branch creation)
+- No user prompts
 
-### Mode 2: Personal (GitHub 개인 프로젝트)
+**Use Case**: Personal projects, GitHub not used, local Git only
 
-**설정 (기본값 - 매번 질문)**:
+### Mode 2: Personal (GitHub Personal Project)
+
+**Configuration (default - prompt each time)**:
+
 ```json
 {
   "git_strategy": {
@@ -391,14 +434,16 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=true):
-1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
-   - 자동 생성 선택 → feature/SPEC-002 생성 + 자동 푸시
-   - 현재 브랜치 사용 선택 → 현재 브랜치에서 직접 커밋
-2. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시
-3. `/moai:3-sync` 실행: 문서 커밋 + 사용자에게 PR 생성 제안 (선택)
+**Alfred's Behavior** (prompt_always=true):
 
-**설정 (승인 후 자동화)**:
+1. When running `/moai:1-plan`, user prompted: "Create branch?"
+   - Auto create option → Creates feature/SPEC-002 + auto push
+   - Use current branch option → Commits directly on current branch
+2. Running `/moai:2-run`: TDD commits + auto push
+3. Running `/moai:3-sync`: Doc commits + suggest PR creation (user choice)
+
+**Configuration (auto after approval)**:
+
 ```json
 {
   "git_strategy": {
@@ -411,13 +456,15 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=false, auto_enabled=false):
-1. `/moai:1-plan` 실행 시 사용자에게 한 번만 "자동 브랜치 생성을 활성화하시겠습니까?" 질문
-   - **Yes** 선택 → config.json에서 `auto_enabled=true`로 자동 업데이트 → feature/SPEC 생성
-   - **No** 선택 → 현재 브랜치에서 작업, 설정 변경 없음
-2. 다음 SPEC부터: `auto_enabled=true`이면 사용자 질문 없이 자동으로 feature 브랜치 생성
+**Alfred's Behavior** (prompt_always=false, auto_enabled=false):
 
-**설정 (완전 자동화)**:
+1. When running `/moai:1-plan`, user prompted once: "Enable automatic branch creation?"
+   - **Yes** option → Auto updates config.json with `auto_enabled=true` → Creates feature/SPEC
+   - **No** option → Works on current branch, no config change
+2. From next SPEC: If `auto_enabled=true`, feature branches created automatically without prompts
+
+**Configuration (full automation)**:
+
 ```json
 {
   "git_strategy": {
@@ -430,16 +477,18 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=false, auto_enabled=true):
-- 모든 SPEC 생성 시 자동으로 feature/SPEC-XXX 브랜치 생성
-- 사용자 질문 없음 (완전 자동화)
-- 모든 TDD 커밋과 문서 커밋은 feature 브랜치에 자동 푸시
+**Alfred's Behavior** (prompt_always=false, auto_enabled=true):
 
-**Use Case**: 개인 GitHub 프로젝트, 빠른 개발 속도 필요
+- Automatically creates feature/SPEC-XXX branch for every SPEC
+- No user prompts (full automation)
+- All TDD and documentation commits auto-pushed to feature branch
 
-### Mode 3: Team (GitHub 팀 프로젝트)
+**Use Case**: Personal GitHub projects, fast development speed needed
 
-**설정 (기본값 - 매번 질문)**:
+### Mode 3: Team (GitHub Team Project)
+
+**Configuration (default - prompt each time)**:
+
 ```json
 {
   "git_strategy": {
@@ -452,16 +501,18 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=true):
-1. `/moai:1-plan` 실행 시 사용자에게 "브랜치를 생성하시겠습니까?" 질문
-   - 자동 생성 선택 → feature/SPEC-003 생성 + Draft PR 자동 생성
-   - 현재 브랜치 사용 선택 → 현재 브랜치에서 진행 (권장 안됨)
-2. `/moai:2-run` 실행: TDD 커밋 + 자동 푸시 (feature 브랜치에)
-3. `/moai:3-sync` 실행: 문서 커밋 + PR 준비
-4. 팀 코드 리뷰 필수 (최소 1명)
-5. PR 승인 후 merge (Squash 또는 Merge)
+**Alfred's Behavior** (prompt_always=true):
 
-**설정 (승인 후 자동화)**:
+1. When running `/moai:1-plan`, user prompted: "Create branch?"
+   - Auto create option → Creates feature/SPEC-003 + auto create Draft PR
+   - Use current branch option → Proceeds on current branch (not recommended)
+2. Running `/moai:2-run`: TDD commits + auto push (to feature branch)
+3. Running `/moai:3-sync`: Doc commits + prepare PR
+4. Team code review required (minimum 1 reviewer)
+5. After approval: Merge (Squash or Merge)
+
+**Configuration (auto after approval)**:
+
 ```json
 {
   "git_strategy": {
@@ -474,13 +525,15 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=false, auto_enabled=false):
-1. `/moai:1-plan` 실행 시 사용자에게 한 번만 "자동 브랜치 생성 및 Draft PR 생성을 활성화하시겠습니까?" 질문
-   - **Yes** 선택 → config.json에서 `auto_enabled=true`로 자동 업데이트 → feature/SPEC 생성 + Draft PR 생성
-   - **No** 선택 → 현재 브랜치에서 작업, 설정 변경 없음
-2. 다음 SPEC부터: `auto_enabled=true`이면 사용자 질문 없이 자동으로 feature 브랜치 + Draft PR 생성
+**Alfred's Behavior** (prompt_always=false, auto_enabled=false):
 
-**설정 (완전 자동화)**:
+1. When running `/moai:1-plan`, user prompted once: "Enable automatic branch creation and Draft PR creation?"
+   - **Yes** option → Auto updates config.json with `auto_enabled=true` → Creates feature/SPEC + Draft PR
+   - **No** option → Works on current branch, no config change
+2. From next SPEC: If `auto_enabled=true`, feature branches + Draft PRs created automatically without prompts
+
+**Configuration (full automation)**:
+
 ```json
 {
   "git_strategy": {
@@ -493,17 +546,19 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-**Alfred의 행동** (prompt_always=false, auto_enabled=true):
-- 모든 SPEC 생성 시 자동으로 feature/SPEC-XXX 브랜치 + Draft PR 생성
-- 사용자 질문 없음 (완전 자동화)
-- 모든 TDD 커밋과 문서 커밋은 feature 브랜치에 자동 푸시
-- Draft PR 상태 유지 (팀 리뷰 준비 완료 시까지)
+**Alfred's Behavior** (prompt_always=false, auto_enabled=true):
 
-**Use Case**: 팀 프로젝트, 코드 리뷰 필수, 품질 관리 필요
+- Automatically creates feature/SPEC-XXX branch + Draft PR for every SPEC
+- No user prompts (full automation)
+- All TDD and documentation commits auto-pushed to feature branch
+- Maintains Draft PR status (until team review complete)
+
+**Use Case**: Team projects, code review required, quality management needed
 
 ### Configuration Flexibility
 
-**`prompt_always: false` 설정 시 동작**:
+**When `prompt_always: false` is configured**:
+
 ```json
 {
   "git_strategy": {
@@ -513,12 +568,12 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 }
 ```
 
-- **Manual Mode**: 자동으로 브랜치 생성 스킵 (사용자 질문 없음)
-- **Personal/Team Mode**: 자동으로 feature 브랜치 생성 (사용자 선택 없음)
+- **Manual Mode**: Automatically skip branch creation (no user prompt)
+- **Personal/Team Mode**: Automatically create feature branches (no user choice)
 
-### SPEC 생성 후 반드시 `/clear` 실행
+### Mandatory `/clear` Execution After SPEC Generation
 
-모든 모드에서 `/moai:1-plan` 완료 후 반드시 `/clear`를 실행한다. 이는 45-50K 토큰을 절약한다.
+Execute `/clear` after `/moai:1-plan` completion in all modes.
 
 ---
 
@@ -527,12 +582,14 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 ### Legal and Regulatory
 
 **Data Privacy**:
+
 - GDPR compliance for user data
 - CCPA compliance for California users
 - Data minimization principles
 - Right to deletion implementation
 
 **Security Standards**:
+
 - OWASP Top 10 compliance
 - SOC 2 Type II controls
 - ISO 27001 security management
@@ -541,12 +598,14 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 ### Industry Standards
 
 **Development Standards**:
+
 - ISO/IEC 27001 security management
 - ISO/IEC 9126 software quality
 - IEEE 730 software engineering standards
 - Agile methodology compliance
 
 **Documentation Standards**:
+
 - IEEE 1016 documentation standards
 - OpenAPI specification compliance
 - Markdown formatting consistency
@@ -557,6 +616,7 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 ### Activity Logging
 
 **Required Log Entries**:
+
 ```python
 {
     "timestamp": "2025-11-20T07:30:00Z",
@@ -571,6 +631,7 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 ```
 
 **Audit Trail Requirements**:
+
 - All agent delegations must be logged
 - File access patterns must be tracked
 - Security events must be recorded
@@ -579,6 +640,7 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 ### Performance Monitoring
 
 **Key Metrics**:
+
 - Agent delegation success rate
 - Average response time per task
 - Token usage efficiency
@@ -586,6 +648,7 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 - Error recovery time
 
 **Alert Thresholds**:
+
 - Success rate < 95%
 - Response time > 30 seconds
 - Token usage > 90% of budget
@@ -596,6 +659,7 @@ Alfred는 `.moai/config/config.json`의 git 설정에 따라 자동으로 Git �
 ### Pre-execution Hooks
 
 **Required Validations**:
+
 ```python
 def pre_execution_hook(agent_type, prompt, context):
     validations = [
@@ -615,6 +679,7 @@ def pre_execution_hook(agent_type, prompt, context):
 ### Post-execution Hooks
 
 **Required Checks**:
+
 ```python
 def post_execution_hook(result, agent_type, task):
     validations = [
@@ -634,12 +699,14 @@ def post_execution_hook(result, agent_type, task):
 ### Automated Enforcement
 
 **Real-time Monitoring**:
+
 - Continuous validation of execution rules
 - Automatic blocking of suspicious activities
 - Real-time alert generation for violations
 - Automated rollback of unsafe operations
 
 **Periodic Audits**:
+
 - Daily compliance checks
 - Weekly performance reviews
 - Monthly security assessments
@@ -650,12 +717,14 @@ def post_execution_hook(result, agent_type, task):
 ### Security Exceptions
 
 **Emergency Override**:
+
 - Only available to authorized administrators
 - Requires explicit approval and logging
 - Temporary override with strict time limits
 - Full audit trail required
 
 **Justified Exceptions**:
+
 - Documented business requirements
 - Risk assessment and mitigation
 - Alternative security controls
@@ -664,12 +733,14 @@ def post_execution_hook(result, agent_type, task):
 ### Performance Exceptions
 
 **Resource Optimization**:
+
 - Dynamic resource allocation
 - Load balancing across agents
 - Priority queue management
 - Performance tuning procedures
 
 **Emergency Procedures**:
+
 - System overload protection
 - Graceful degradation strategies
 - User notification systems

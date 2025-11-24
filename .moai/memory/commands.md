@@ -1,133 +1,123 @@
 # MoAI-ADK Commands Reference
 
-Alfred가 사용하는 6개의 핵심 MoAI-ADK 커맨드. SPEC-First TDD 실행을 위한 필수 도구다.
+Six core MoAI-ADK commands used by Alfred. Essential tools for SPEC-First TDD execution.
 
-## `/moai:0-project` - 프로젝트 초기화
+## `/moai:0-project` - Project Initialization
 
-**목적**: 프로젝트 구조 초기화 및 설정 생성
+**Purpose**: Initialize project structure and generate configuration
 
-**위임**: `project-manager`
+**Delegation**: `project-manager`
 
-**사용법**:
+**Usage**:
+
 ```
 /moai:0-project
 /moai:0-project --with-git
 ```
 
-**출력**: `.moai/` 디렉토리 + config.json
+**Output**: `.moai/` directory + config.json
 
-**다음 단계**: SPEC 생성 준비 완료
-
----
-
-## `/moai:1-plan` - SPEC 생성
-
-**목적**: EARS 포맷 SPEC 문서 생성
-
-**위임**: `spec-builder`
-
-**사용법**:
-```
-/moai:1-plan "사용자 인증 엔드포인트 구현 (JWT)"
-```
-
-**출력**: `.moai/specs/SPEC-001/spec.md` (EARS 포맷 문서)
-
-**필수**: 완료 후 반드시 `/clear` 실행 (45-50K 토큰 절약)
+**Next Step**: Ready for SPEC generation
 
 ---
 
-## `/moai:2-run` - TDD 구현
+## `/moai:1-plan` - SPEC Generation
 
-**목적**: RED-GREEN-REFACTOR 사이클 실행
+**Purpose**: Generate SPEC document in EARS format
 
-**위임**: `tdd-implementer`
+**Delegation**: `spec-builder`
 
-**사용법**:
+**Usage**:
+
+```
+/moai:1-plan "Implement user authentication endpoint (JWT)"
+```
+
+**Output**: `.moai/specs/SPEC-001/spec.md` (EARS format document)
+
+**Required**: Execute `/clear` after completion (saves 45-50K tokens)
+
+---
+
+## `/moai:2-run` - TDD Implementation
+
+**Purpose**: Execute RED-GREEN-REFACTOR cycle
+
+**Delegation**: `tdd-implementer`
+
+**Usage**:
+
 ```
 /moai:2-run SPEC-001
 ```
 
-**프로세스**:
-1. RED: 실패하는 테스트 작성
-2. GREEN: 최소 코드로 통과
-3. REFACTOR: 최적화 및 정리
+**Process**:
 
-**출력**: 구현된 코드 + 테스트 + 품질 리포트
+1. RED: Write failing tests
+2. GREEN: Pass with minimal code
+3. REFACTOR: Optimize and clean up
 
-**조건**: 테스트 커버리지 ≥ 85% (TRUST 5)
+**Output**: Implemented code + tests + quality report
+
+**Requirement**: Test coverage ≥ 85% (TRUST 5)
 
 ---
 
-## `/moai:3-sync` - 문서 동기화
+## `/moai:3-sync` - Documentation Synchronization
 
-**목적**: API 문서 및 프로젝트 아티팩트 자동 생성
+**Purpose**: Auto-generate API documentation and project artifacts
 
-**위임**: `docs-manager`
+**Delegation**: `docs-manager`
 
-**사용법**:
+**Usage**:
+
 ```
 /moai:3-sync SPEC-001
 ```
 
-**출력**:
-- API 문서 (OpenAPI 포맷)
-- 아키텍처 다이어그램
-- 프로젝트 리포트
+**Output**:
+
+- API documentation (OpenAPI format)
+- Architecture diagrams
+- Project report
 
 ---
 
-## `/moai:9-feedback` - 개선 의견 수집
+## `/moai:9-feedback` - Improvement Feedback Collection
 
-**목적**: 오류 분석 및 개선사항 제안 수집
+**Purpose**: Error analysis and improvement suggestions
 
-**위임**: `quality-gate`
+**Delegation**: `quality-gate`
 
-**사용법**:
+**Usage**:
+
 ```
 /moai:9-feedback
 /moai:9-feedback --analyze SPEC-001
 ```
 
-**용도**: MoAI-ADK 지속적 개선, 오류 복구
+**Purpose**: Continuous MoAI-ADK improvement, error recovery
 
 ---
 
-## `/moai:99-release` - 프로덕션 릴리스
-
-**목적**: 릴리스 아티팩트 생성 및 배포 준비
-
-**위임**: `release-manager`
-
-**사용법**:
-```
-/moai:99-release
-/moai:99-release --patch
-/moai:99-release --minor
-```
-
-**검증**: 모든 품질 게이트 통과 필수 (테스트 ≥85%, 문서 완전)
-
----
-
-## 필수 워크플로우
+## Required Workflow
 
 ```
-1. /moai:0-project              # 프로젝트 초기화
-2. /moai:1-plan "설명"          # SPEC 생성
-3. /clear                       # 컨텍스트 초기화 (필수)
-4. /moai:2-run SPEC-001         # TDD 구현
-5. /moai:3-sync SPEC-001        # 문서 생성
-6. /moai:9-feedback             # 피드백 수집
-7. /moai:99-release             # 프로덕션 배포
+1. /moai:0-project              # Initialize project
+2. /moai:1-plan "description"   # Generate SPEC
+3. /clear                       # Initialize context (required)
+4. /moai:2-run SPEC-001         # TDD implementation
+5. /moai:3-sync SPEC-001        # Generate documentation
+6. /moai:9-feedback             # Collect feedback
+7. /moai:99-release             # Production deployment
 ```
 
 ---
 
-## Context 초기화 규칙
+## Context Initialization Rules
 
-- `/moai:1-plan` 후 **반드시** `/clear` 실행
-- Context > 150K 일 때 `/clear` 실행
-- 대화 > 50메시지 후 `/clear` 실행
+- Execute `/clear` **after** `/moai:1-plan` (mandatory)
+- Execute `/clear` when context > 150K tokens
+- Execute `/clear` after 50+ conversation messages
 
-각 커맨드 사용법의 상세한 정보는 CLAUDE.md를 참고한다.
+Refer to CLAUDE.md for detailed command usage information.
