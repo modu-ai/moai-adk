@@ -1,22 +1,22 @@
-# moai-essentials-debug — 기술 레퍼런스
+# moai-essentials-debug — Technical Reference
 
-> **Version**: 2.1.0  
+> **Version**: 2.1.0
 > **Last Updated**: 2025-10-27
 
-이 문서는 moai-essentials-debug Skill의 상세한 기술 사양, 23개 언어별 디버거 설정, 컨테이너/분산 시스템 디버깅 가이드를 제공합니다.
+This document provides detailed technical specifications, debugger configurations for 23 languages, and container/distributed system debugging guides for the moai-essentials-debug Skill.
 
 ---
 
-## 23개 언어별 디버거 매트릭스
+## 23 Language Debugger Matrix
 
 ### Systems Programming
 
 #### C/C++
-**디버거**: GDB 14.x, LLDB 17.x, AddressSanitizer
+**Debuggers**: GDB 14.x, LLDB 17.x, AddressSanitizer
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# GDB 기본 사용
+# GDB basic usage
 gdb ./myapp
 (gdb) break main
 (gdb) run
@@ -24,7 +24,7 @@ gdb ./myapp
 (gdb) print variable
 (gdb) backtrace
 
-# LLDB 사용
+# LLDB usage
 lldb ./myapp
 (lldb) b main
 (lldb) run
@@ -32,7 +32,7 @@ lldb ./myapp
 (lldb) p variable
 (lldb) bt
 
-# AddressSanitizer (메모리 오류 감지)
+# AddressSanitizer (memory error detection)
 gcc -fsanitize=address -g myapp.c -o myapp
 ./myapp
 ```
@@ -66,20 +66,20 @@ gcc -fsanitize=address -g myapp.c -o myapp
 ```
 
 #### Rust
-**디버거**: rust-lldb, rust-gdb, RUST_BACKTRACE
+**Debuggers**: rust-lldb, rust-gdb, RUST_BACKTRACE
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# 백트레이스 활성화
+# Enable backtrace
 RUST_BACKTRACE=1 cargo run
-RUST_BACKTRACE=full cargo run  # 전체 백트레이스
+RUST_BACKTRACE=full cargo run  # Full backtrace
 
-# rust-lldb 사용
+# rust-lldb usage
 rust-lldb target/debug/myapp
 (lldb) b main
 (lldb) run
 
-# rust-gdb 사용
+# rust-gdb usage
 rust-gdb target/debug/myapp
 (gdb) break main
 (gdb) run
@@ -106,23 +106,23 @@ rust-gdb target/debug/myapp
 ```
 
 #### Go
-**디버거**: Delve 1.22.x
+**Debugger**: Delve 1.22.x
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# Delve 디버깅
+# Delve debugging
 dlv debug
 (dlv) break main.main
 (dlv) continue
 (dlv) next
 (dlv) print variable
-(dlv) goroutines  # 고루틴 목록
-(dlv) goroutine 1  # 특정 고루틴 전환
+(dlv) goroutines  # List goroutines
+(dlv) goroutine 1  # Switch to specific goroutine
 
-# 실행 중인 프로세스에 연결
+# Attach to running process
 dlv attach <pid>
 
-# 테스트 디버깅
+# Debug tests
 dlv test -- -test.run TestName
 ```
 
@@ -149,59 +149,59 @@ dlv test -- -test.run TestName
 ### JVM Ecosystem
 
 #### Java
-**디버거**: jdb, IntelliJ IDEA, Remote JDWP
+**Debuggers**: jdb, IntelliJ IDEA, Remote JDWP
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# jdb 사용
+# jdb usage
 jdb -classpath . MyApp
 > stop at MyClass:42
 > run
 > step
 > print variable
 
-# 원격 디버깅 활성화
+# Enable remote debugging
 java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 MyApp
 ```
 
-**원격 디버깅 설정**:
+**Remote Debugging Setup**:
 ```bash
-# IntelliJ/VSCode 원격 디버거 연결
+# Connect IntelliJ/VSCode remote debugger
 Host: localhost
 Port: 5005
 ```
 
 #### Kotlin
-**디버거**: IntelliJ Kotlin Debugger, Coroutines Debugger
+**Debugger**: IntelliJ Kotlin Debugger, Coroutines Debugger
 
-**코루틴 디버깅**:
+**Coroutine Debugging**:
 ```kotlin
-// 코루틴 디버그 정보 활성화
+// Enable coroutine debug info
 kotlinOptions {
     freeCompilerArgs += ["-Xdebug"]
 }
 ```
 
-**IntelliJ 코루틴 뷰어**: View → Tool Windows → Kotlin Coroutines
+**IntelliJ Coroutines Viewer**: View → Tool Windows → Kotlin Coroutines
 
 #### Scala
-**디버거**: IntelliJ Scala Plugin, sbt debug mode
+**Debugger**: IntelliJ Scala Plugin, sbt debug mode
 
-**sbt 디버그 모드**:
+**sbt Debug Mode**:
 ```bash
-# sbt 디버그 모드 실행
+# Run sbt debug mode
 sbt -jvm-debug 5005 run
 ```
 
 #### Clojure
-**디버거**: CIDER, Cursive, REPL-based debugging
+**Debugger**: CIDER, Cursive, REPL-based debugging
 
-**CIDER 디버깅**:
+**CIDER Debugging**:
 ```clojure
-;; 브레이크포인트 설정
+;; Set breakpoint
 #break
 (defn my-function [x]
-  #break  ; 여기서 중단
+  #break  ; Break here
   (+ x 1))
 ```
 
@@ -210,28 +210,28 @@ sbt -jvm-debug 5005 run
 ### Scripting Languages
 
 #### Python
-**디버거**: pdb, debugpy 1.8.0, pudb (TUI)
+**Debuggers**: pdb, debugpy 1.8.0, pudb (TUI)
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# pdb 사용
+# pdb usage
 python -m pdb script.py
 (Pdb) break module.py:42
 (Pdb) continue
 (Pdb) next
 (Pdb) print(variable)
-(Pdb) where  # 스택 트레이스
+(Pdb) where  # Stack trace
 
-# pudb TUI 디버거
+# pudb TUI debugger
 python -m pudb script.py
 
-# debugpy 원격 디버깅
+# debugpy remote debugging
 python -m debugpy --listen 5678 script.py
 ```
 
-**코드 내 브레이크포인트**:
+**In-code Breakpoints**:
 ```python
-# 코드에서 pdb 시작
+# Start pdb from code
 import pdb; pdb.set_trace()
 
 # Python 3.7+ breakpoint()
@@ -256,31 +256,31 @@ breakpoint()
 ```
 
 #### Ruby
-**디버거**: debug gem (built-in), byebug, pry-byebug
+**Debuggers**: debug gem (built-in), byebug, pry-byebug
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# Ruby 3.1+ 내장 디버거
+# Ruby 3.1+ built-in debugger
 ruby -r debug script.rb
-debugger  # 코드 내
+debugger  # In code
 
-# byebug 사용
+# byebug usage
 gem install byebug
-# 코드 내에서
+# In code
 require 'byebug'
 byebug
 
-# pry-byebug 사용
+# pry-byebug usage
 gem install pry-byebug
-# 코드 내에서
+# In code
 require 'pry-byebug'
 binding.pry
 ```
 
 #### PHP
-**디버거**: Xdebug 3.3.x, phpdbg
+**Debuggers**: Xdebug 3.3.x, phpdbg
 
-**Xdebug 설정** (php.ini):
+**Xdebug Setup** (php.ini):
 ```ini
 [xdebug]
 zend_extension=xdebug
@@ -289,7 +289,7 @@ xdebug.start_with_request=yes
 xdebug.client_port=9003
 ```
 
-**phpdbg 사용**:
+**phpdbg Usage**:
 ```bash
 phpdbg -e script.php
 phpdbg> break script.php:42
@@ -297,25 +297,25 @@ phpdbg> run
 ```
 
 #### Lua
-**디버거**: ZeroBrane Studio, MobDebug
+**Debuggers**: ZeroBrane Studio, MobDebug
 
-**MobDebug 사용**:
+**MobDebug Usage**:
 ```lua
 require("mobdebug").start()
--- 브레이크포인트
+-- Breakpoint
 require("mobdebug").pause()
 ```
 
 #### Shell (Bash)
-**디버깅 모드**:
+**Debug Mode**:
 ```bash
-# 디버그 모드 실행
+# Debug mode execution
 bash -x script.sh
 
-# 스크립트 내 토글
-set -x  # 디버그 모드 활성화
-# ... 코드 ...
-set +x  # 디버그 모드 비활성화
+# Toggle within script
+set -x  # Enable debug mode
+# ... code ...
+set +x  # Disable debug mode
 ```
 
 ---
@@ -323,28 +323,28 @@ set +x  # 디버그 모드 비활성화
 ### Web & Mobile
 
 #### JavaScript
-**디버거**: Chrome DevTools, node --inspect
+**Debuggers**: Chrome DevTools, node --inspect
 
-**Node.js 디버깅**:
+**Node.js Debugging**:
 ```bash
-# 디버그 모드 실행
+# Debug mode execution
 node --inspect script.js
-# 또는 첫 줄에서 중단
+# or break at first line
 node --inspect-brk script.js
 
-# Chrome DevTools 연결
+# Connect Chrome DevTools
 chrome://inspect
 ```
 
-**코드 내 브레이크포인트**:
+**In-code Breakpoint**:
 ```javascript
-debugger;  // 여기서 중단
+debugger;  // Break here
 ```
 
 #### TypeScript
-**디버거**: Chrome DevTools + Source Maps, VS Code
+**Debuggers**: Chrome DevTools + Source Maps, VS Code
 
-**tsconfig.json 소스맵 설정**:
+**tsconfig.json Source Map Setup**:
 ```json
 {
   "compilerOptions": {
@@ -373,22 +373,22 @@ debugger;  // 여기서 중단
 ```
 
 #### Dart/Flutter
-**디버거**: Flutter DevTools, Hot Reload
+**Debuggers**: Flutter DevTools, Hot Reload
 
-**CLI 명령어**:
+**CLI Commands**:
 ```bash
-# Flutter 디버그 모드 실행
+# Flutter debug mode execution
 flutter run --debug
 
-# DevTools 열기
+# Open DevTools
 flutter pub global activate devtools
 flutter pub global run devtools
 ```
 
 #### Swift
-**디버거**: LLDB (Xcode), Instruments
+**Debuggers**: LLDB (Xcode), Instruments
 
-**LLDB 사용**:
+**LLDB Usage**:
 ```bash
 lldb MyApp.app
 (lldb) breakpoint set --name viewDidLoad
@@ -401,18 +401,18 @@ lldb MyApp.app
 ### Functional & Concurrency
 
 #### Haskell
-**디버거**: GHCi debugger, Debug.Trace
+**Debuggers**: GHCi debugger, Debug.Trace
 
-**GHCi 디버깅**:
+**GHCi Debugging**:
 ```haskell
--- GHCi에서
+-- In GHCi
 :break module.function
 :trace expression
 :step
 :continue
 ```
 
-**Debug.Trace 사용**:
+**Debug.Trace Usage**:
 ```haskell
 import Debug.Trace
 
@@ -420,43 +420,43 @@ myFunction x = trace ("x = " ++ show x) $ x + 1
 ```
 
 #### Elixir
-**디버거**: IEx debugger, :observer.start()
+**Debuggers**: IEx debugger, :observer.start()
 
-**IEx 디버깅**:
+**IEx Debugging**:
 ```elixir
-# 코드 내
+# In code
 require IEx
 IEx.pry()
 
-# Observer 실행
+# Run Observer
 :observer.start()
 ```
 
 #### Julia
-**디버거**: Debugger.jl, Infiltrator.jl
+**Debuggers**: Debugger.jl, Infiltrator.jl
 
-**Debugger.jl 사용**:
+**Debugger.jl Usage**:
 ```julia
 using Debugger
 
 @enter myfunction(args)
-# 또는
-@bp  # 브레이크포인트
+# or
+@bp  # Breakpoint
 ```
 
 #### R
-**디버거**: browser(), debug(), RStudio Debugger
+**Debuggers**: browser(), debug(), RStudio Debugger
 
-**CLI 명령어**:
+**CLI Commands**:
 ```r
-# 함수 디버깅
+# Debug function
 debug(my_function)
 my_function(args)
 
-# 코드 내 브레이크포인트
+# In-code breakpoint
 browser()
 
-# 디버그 모드 해제
+# Disable debug mode
 undebug(my_function)
 ```
 
@@ -465,11 +465,11 @@ undebug(my_function)
 ### Enterprise & Data
 
 #### C#
-**디버거**: Visual Studio Debugger, Rider, vsdbg
+**Debuggers**: Visual Studio Debugger, Rider, vsdbg
 
-**vsdbg 사용** (Linux/macOS):
+**vsdbg Usage** (Linux/macOS):
 ```bash
-# vsdbg 설치
+# Install vsdbg
 curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/.vsdbg
 ```
 
@@ -492,39 +492,39 @@ curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/.vsdbg
 ```
 
 #### SQL
-**디버거**: EXPLAIN ANALYZE, pg_stat_statements
+**Debuggers**: EXPLAIN ANALYZE, pg_stat_statements
 
-**PostgreSQL 디버깅**:
+**PostgreSQL Debugging**:
 ```sql
--- 쿼리 플랜 분석
+-- Analyze query plan
 EXPLAIN ANALYZE SELECT * FROM users WHERE id = 1;
 
--- 느린 쿼리 추적
+-- Track slow queries
 CREATE EXTENSION pg_stat_statements;
 SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10;
 ```
 
 ---
 
-## 컨테이너 디버깅 완전 가이드
+## Complete Container Debugging Guide
 
-### Docker 디버깅
+### Docker Debugging
 
-#### 기본 디버깅 패턴
+#### Basic Debugging Patterns
 ```bash
-# 1. 실행 중인 컨테이너에 접속
+# 1. Access running container
 docker exec -it <container_name> /bin/sh
 
-# 2. 로그 확인
+# 2. Check logs
 docker logs <container_name>
-docker logs -f <container_name>  # 실시간
+docker logs -f <container_name>  # Real-time
 
-# 3. 컨테이너 상태 확인
+# 3. Check container state
 docker inspect <container_name>
 docker stats <container_name>
 ```
 
-#### 언어별 원격 디버깅
+#### Remote Debugging by Language
 
 **Java (JDWP)**:
 ```dockerfile
@@ -534,7 +534,7 @@ EXPOSE 5005
 ```
 
 ```bash
-# 컨테이너 실행
+# Run container
 docker run -p 5005:5005 -p 8080:8080 myapp
 ```
 
@@ -556,7 +556,7 @@ if os.environ.get('DEBUGPY_ENABLE'):
 ```
 
 ```bash
-# 컨테이너 실행
+# Run container
 docker run -p 5678:5678 -p 8000:8000 myapp
 ```
 
@@ -568,7 +568,7 @@ CMD ["node", "--inspect=0.0.0.0:9229", "app.js"]
 ```
 
 ```bash
-# 컨테이너 실행
+# Run container
 docker run -p 9229:9229 -p 3000:3000 myapp
 ```
 
@@ -581,19 +581,19 @@ CMD ["dlv", "debug", "--headless", "--listen=:2345", "--api-version=2", "--accep
 ```
 
 ```bash
-# 컨테이너 실행
+# Run container
 docker run -p 2345:2345 -p 8080:8080 myapp
 ```
 
-#### 멀티스테이지 빌드 디버깅
+#### Multi-stage Build Debugging
 ```dockerfile
-# 디버그 스테이지
+# Debug stage
 FROM golang:1.22 AS debug
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 COPY . .
 CMD ["dlv", "debug", "--headless", "--listen=:2345"]
 
-# 프로덕션 스테이지
+# Production stage
 FROM golang:1.22 AS production
 COPY . .
 RUN go build -o app
@@ -601,33 +601,33 @@ CMD ["./app"]
 ```
 
 ```bash
-# 디버그 빌드
+# Debug build
 docker build --target debug -t myapp:debug .
 docker run -p 2345:2345 myapp:debug
 ```
 
 ---
 
-### Kubernetes 디버깅
+### Kubernetes Debugging
 
-#### 기본 디버깅 커맨드
+#### Basic Debugging Commands
 ```bash
-# 1. Pod 로그 확인
+# 1. Check pod logs
 kubectl logs <pod-name>
-kubectl logs -f <pod-name>  # 실시간
-kubectl logs <pod-name> -c <container-name>  # 특정 컨테이너
-kubectl logs <pod-name> --previous  # 이전 컨테이너 로그
+kubectl logs -f <pod-name>  # Real-time
+kubectl logs <pod-name> -c <container-name>  # Specific container
+kubectl logs <pod-name> --previous  # Previous container logs
 
-# 2. Pod에 접속
+# 2. Access pod
 kubectl exec -it <pod-name> -- /bin/sh
 kubectl exec -it <pod-name> -c <container-name> -- /bin/bash
 
-# 3. Pod 상태 확인
+# 3. Check pod state
 kubectl describe pod <pod-name>
 kubectl get pod <pod-name> -o yaml
 ```
 
-#### 포트 포워딩 (디버거 연결)
+#### Port Forwarding (Debugger Connection)
 ```bash
 # Java JDWP
 kubectl port-forward pod/<pod-name> 5005:5005
@@ -642,56 +642,56 @@ kubectl port-forward pod/<pod-name> 9229:9229
 kubectl port-forward pod/<pod-name> 2345:2345
 ```
 
-#### Ephemeral 컨테이너 (K8s 1.23+)
+#### Ephemeral Containers (K8s 1.23+)
 ```bash
-# 디버그 도구가 있는 임시 컨테이너 추가
+# Add ephemeral container with debug tools
 kubectl debug -it <pod-name> --image=busybox --target=<container-name>
 
-# 또는 디버그 도구 이미지 사용
+# or use debug tool image
 kubectl debug -it <pod-name> --image=nicolaka/netshoot --target=<container-name>
 ```
 
-#### 네트워크 디버깅
+#### Network Debugging
 ```bash
-# 네트워크 정책 확인
+# Check network policies
 kubectl get networkpolicies
 
-# Service 엔드포인트 확인
+# Check service endpoints
 kubectl get endpoints <service-name>
 
-# DNS 확인 (Pod 내부에서)
+# Check DNS (inside pod)
 kubectl exec -it <pod-name> -- nslookup <service-name>
 ```
 
-#### 리소스 디버깅
+#### Resource Debugging
 ```bash
-# 리소스 사용량 확인
+# Check resource usage
 kubectl top pod <pod-name>
 kubectl top node <node-name>
 
-# 이벤트 확인
+# Check events
 kubectl get events --sort-by='.lastTimestamp'
 kubectl get events --field-selector involvedObject.name=<pod-name>
 ```
 
 ---
 
-## 분산 추적 (Distributed Tracing)
+## Distributed Tracing
 
-### OpenTelemetry 1.24.0+ 설정
+### OpenTelemetry 1.24.0+ Setup
 
-#### Python 설정
+#### Python Setup
 ```python
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
-# Tracer Provider 설정
+# Setup Tracer Provider
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 
-# OTLP Exporter 설정
+# Setup OTLP Exporter
 otlp_exporter = OTLPSpanExporter(
     endpoint="http://localhost:4317",
     insecure=True
@@ -700,19 +700,19 @@ trace.get_tracer_provider().add_span_processor(
     BatchSpanProcessor(otlp_exporter)
 )
 
-# 사용 예제
+# Usage example
 with tracer.start_as_current_span("my-operation"):
-    # 작업 수행
+    # Perform operation
     pass
 ```
 
-#### TypeScript/Node.js 설정
+#### TypeScript/Node.js Setup
 ```typescript
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 
-// Tracer Provider 설정
+// Setup Tracer Provider
 const provider = new NodeTracerProvider();
 const exporter = new OTLPTraceExporter({
   url: 'http://localhost:4317',
@@ -721,16 +721,16 @@ const exporter = new OTLPTraceExporter({
 provider.addSpanProcessor(new BatchSpanProcessor(exporter));
 provider.register();
 
-// 사용 예제
+// Usage example
 import { trace } from '@opentelemetry/api';
 
 const tracer = trace.getTracer('my-service');
 const span = tracer.startSpan('my-operation');
-// 작업 수행
+// Perform operation
 span.end();
 ```
 
-#### Go 설정
+#### Go Setup
 ```go
 import (
     "go.opentelemetry.io/otel"
@@ -738,7 +738,7 @@ import (
     sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-// Tracer Provider 설정
+// Setup Tracer Provider
 exporter, _ := otlptracegrpc.New(ctx,
     otlptracegrpc.WithEndpoint("localhost:4317"),
     otlptracegrpc.WithInsecure(),
@@ -749,7 +749,7 @@ tp := sdktrace.NewTracerProvider(
 )
 otel.SetTracerProvider(tp)
 
-// 사용 예제
+// Usage example
 tracer := otel.Tracer("my-service")
 ctx, span := tracer.Start(ctx, "my-operation")
 defer span.End()
@@ -757,25 +757,25 @@ defer span.End()
 
 ---
 
-### Prometheus 2.48.x 통합
+### Prometheus 2.48.x Integration
 
 #### Python (prometheus-client 0.19.0)
 ```python
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 
-# 메트릭 정의
+# Define metrics
 request_count = Counter('http_requests_total', 'Total HTTP requests')
 request_duration = Histogram('http_request_duration_seconds', 'HTTP request duration')
 active_connections = Gauge('active_connections', 'Active connections')
 
-# 사용 예제
+# Usage example
 request_count.inc()
 with request_duration.time():
-    # 작업 수행
+    # Perform operation
     pass
 active_connections.set(42)
 
-# 메트릭 서버 시작 (포트 8000)
+# Start metrics server (port 8000)
 start_http_server(8000)
 ```
 
@@ -791,7 +791,7 @@ var (
         Name: "http_requests_total",
         Help: "Total HTTP requests",
     })
-    
+
     requestDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
         Name: "http_request_duration_seconds",
         Help: "HTTP request duration",
@@ -803,13 +803,13 @@ func init() {
     prometheus.MustRegister(requestDuration)
 }
 
-// 메트릭 엔드포인트
+// Metrics endpoint
 http.Handle("/metrics", promhttp.Handler())
 ```
 
 ---
 
-### Cloud Debugger 통합
+### Cloud Debugger Integration
 
 #### AWS X-Ray
 ```python
@@ -819,10 +819,10 @@ from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
 app = Flask(__name__)
 XRayMiddleware(app, xray_recorder)
 
-# 커스텀 서브세그먼트
+# Custom subsegment
 @xray_recorder.capture('my_function')
 def my_function():
-    # 작업 수행
+    # Perform operation
     pass
 ```
 
@@ -837,9 +837,9 @@ except ImportError:
 
 ---
 
-## 성능 프로파일링
+## Performance Profiling
 
-### CPU 프로파일링
+### CPU Profiling
 
 #### Python (cProfile, py-spy)
 ```bash
@@ -847,7 +847,7 @@ except ImportError:
 python -m cProfile -o output.prof script.py
 python -m pstats output.prof
 
-# py-spy (프로덕션 안전)
+# py-spy (production-safe)
 py-spy record -o profile.svg -- python script.py
 py-spy top --pid <pid>
 ```
@@ -856,17 +856,17 @@ py-spy top --pid <pid>
 ```go
 import _ "net/http/pprof"
 
-// HTTP 서버에 pprof 엔드포인트 자동 추가
+// Automatically adds pprof endpoints to HTTP server
 go func() {
     log.Println(http.ListenAndServe("localhost:6060", nil))
 }()
 ```
 
 ```bash
-# CPU 프로파일 수집
+# Collect CPU profile
 go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
 
-# 프로파일 분석
+# Analyze profile
 go tool pprof -http=:8080 cpu.prof
 ```
 
@@ -877,22 +877,22 @@ pprof = { version = "0.13", features = ["flamegraph"] }
 ```
 
 ```bash
-# Flamegraph 생성
+# Generate flamegraph
 cargo flamegraph
 ```
 
 #### Java (JFR)
 ```bash
-# JFR 활성화
+# Enable JFR
 java -XX:+FlightRecorder -XX:StartFlightRecording=duration=60s,filename=recording.jfr MyApp
 
-# JFR 파일 분석 (JDK Mission Control)
+# Analyze JFR file (JDK Mission Control)
 jmc recording.jfr
 ```
 
 ---
 
-### 메모리 프로파일링
+### Memory Profiling
 
 #### Python (memory_profiler, tracemalloc)
 ```python
@@ -900,7 +900,7 @@ from memory_profiler import profile
 
 @profile
 def my_function():
-    # 작업 수행
+    # Perform operation
     pass
 ```
 
@@ -908,12 +908,12 @@ def my_function():
 python -m memory_profiler script.py
 ```
 
-**tracemalloc (내장)**:
+**tracemalloc (built-in)**:
 ```python
 import tracemalloc
 
 tracemalloc.start()
-# 작업 수행
+# Perform operation
 snapshot = tracemalloc.take_snapshot()
 top_stats = snapshot.statistics('lineno')
 
@@ -923,40 +923,40 @@ for stat in top_stats[:10]:
 
 #### Go (pprof heap)
 ```bash
-# 힙 프로파일 수집
+# Collect heap profile
 go tool pprof http://localhost:6060/debug/pprof/heap
 
-# 메모리 할당 추적
+# Track memory allocations
 go tool pprof http://localhost:6060/debug/pprof/allocs
 ```
 
 #### C/C++ (Valgrind massif)
 ```bash
-# Massif 실행
+# Run Massif
 valgrind --tool=massif ./myapp
 
-# Massif 시각화
+# Visualize Massif
 ms_print massif.out.<pid>
 ```
 
 #### Rust (heaptrack)
 ```bash
-# heaptrack 실행
+# Run heaptrack
 heaptrack ./target/release/myapp
 
-# 결과 분석
+# Analyze results
 heaptrack_gui heaptrack.myapp.<pid>.gz
 ```
 
 ---
 
-## Advanced 디버깅 기법
+## Advanced Debugging Techniques
 
-### 조건부 브레이크포인트
+### Conditional Breakpoints
 
 **Python (pdb)**:
 ```python
-# 조건부 브레이크포인트
+# Conditional breakpoint
 (Pdb) break script.py:42, x > 100
 ```
 
@@ -972,75 +972,75 @@ heaptrack_gui heaptrack.myapp.<pid>.gz
 
 ---
 
-### 역방향 디버깅 (Time Travel Debugging)
+### Time Travel Debugging
 
-**GDB 역방향 실행**:
+**GDB Reverse Execution**:
 ```bash
 (gdb) target record-full
 (gdb) continue
-# 오류 발생 후
-(gdb) reverse-continue  # 역방향 실행
+# After error occurs
+(gdb) reverse-continue  # Reverse execution
 (gdb) reverse-step
 ```
 
 **WinDbg Time Travel Debugging** (Windows):
 ```bash
-# TTD 트레이스 수집
+# Collect TTD trace
 ttd.exe -out trace.run myapp.exe
 
-# 트레이스 디버깅
+# Debug trace
 windbg -z trace.run
 ```
 
 ---
 
-### 동적 계측 (Dynamic Instrumentation)
+### Dynamic Instrumentation
 
 **DTrace (macOS/FreeBSD)**:
 ```bash
-# 함수 호출 추적
+# Trace function calls
 sudo dtrace -n 'pid$target::my_function:entry { printf("Called with arg=%d", arg0); }' -p <pid>
 ```
 
 **SystemTap (Linux)**:
 ```bash
-# 함수 호출 추적
+# Trace function calls
 stap -e 'probe process("/path/to/binary").function("my_function") { println("Called") }'
 ```
 
 **BPF/eBPF (Linux)**:
 ```bash
-# bpftrace 사용
+# bpftrace usage
 bpftrace -e 'uprobe:/path/to/binary:my_function { printf("Called\n"); }'
 ```
 
 ---
 
-## Best Practices 요약
+## Best Practices Summary
 
-### 1. 디버거 선택
-- 언어에 적합한 디버거 사용 (Python → debugpy, Go → Delve)
-- 프로덕션 환경에서는 안전한 프로파일러 사용 (py-spy, async-profiler)
+### 1. Debugger Selection
+- Use language-appropriate debugger (Python → debugpy, Go → Delve)
+- Use safe profilers in production (py-spy, async-profiler)
 
-### 2. 로깅 전략
-- 구조화된 로깅 사용 (JSON 형식)
-- 로그 레벨 적절히 설정 (DEBUG, INFO, WARNING, ERROR)
-- 분산 시스템에서는 Correlation ID 추가
+### 2. Logging Strategy
+- Use structured logging (JSON format)
+- Set log levels appropriately (DEBUG, INFO, WARNING, ERROR)
+- Add Correlation ID in distributed systems
 
-### 3. 성능 고려
-- 디버그 심볼 포함 (-g 플래그)
-- 소스맵 생성 (TypeScript, JavaScript)
-- 프로파일링 전 워밍업 수행
+### 3. Performance Considerations
+- Include debug symbols (-g flag)
+- Generate source maps (TypeScript, JavaScript)
+- Perform warmup before profiling
 
-### 4. 보안
-- 프로덕션 디버그 포트는 방화벽으로 보호
-- 민감 정보 로그에 기록 금지
-- 디버그 모드는 환경 변수로 제어
+### 4. Security
+- Protect production debug ports with firewall
+- Never log sensitive information
+- Control debug mode via environment variables
 
-### 5. 자동화
-- CI/CD 파이프라인에 디버그 빌드 추가
-- 자동 스택 트레이스 수집 (Sentry, Rollbar)
-- 메트릭 자동 수집 (Prometheus, Datadog)
+### 5. Automation
+- Add debug builds to CI/CD pipeline
+- Automatic stack trace collection (Sentry, Rollbar)
+- Automatic metrics collection (Prometheus, Datadog)
 
 ---
 

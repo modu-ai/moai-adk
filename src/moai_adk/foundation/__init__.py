@@ -1,6 +1,6 @@
 """
 MoAI Foundation module - Core foundation-level implementations.
-Includes: EARS methodology, programming language ecosystem, TRUST principles.
+Includes: EARS methodology, programming language ecosystem, Git workflows.
 """
 
 from .ears import EARSParser, EARSValidator, EARSAnalyzer
@@ -16,6 +16,16 @@ from .langs import (
     Pattern,
     TestingStrategy,
 )
+from .git import (
+    GitVersionDetector,
+    ConventionalCommitValidator,
+    BranchingStrategySelector,
+    GitWorkflowManager,
+    GitPerformanceOptimizer,
+    GitInfo,
+    ValidateResult,
+    TDDCommitPhase,
+)
 
 __all__ = [
     # EARS
@@ -30,8 +40,17 @@ __all__ = [
     'EcosystemAnalyzer',
     'PerformanceOptimizer',
     'TestingStrategyAdvisor',
+    # Git Workflow
+    'GitVersionDetector',
+    'ConventionalCommitValidator',
+    'BranchingStrategySelector',
+    'GitWorkflowManager',
+    'GitPerformanceOptimizer',
     # Data structures
     'LanguageInfo',
     'Pattern',
     'TestingStrategy',
+    'GitInfo',
+    'ValidateResult',
+    'TDDCommitPhase',
 ]
