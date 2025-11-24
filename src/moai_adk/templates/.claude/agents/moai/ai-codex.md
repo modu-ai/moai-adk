@@ -4,7 +4,7 @@ description: "Use PROACTIVELY for AI-powered code generation/analysis via OpenAI
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion
 model: haiku
 permissionMode: default
-skills: moai-core-language-detection, moai-domain-backend, moai-cc-configuration, moai-essentials-debug
+skills: moai-core-language-detection, moai-context7-lang-integration, moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-cc-configuration
 ---
 
 # AI Codex Integration Agent 🤖

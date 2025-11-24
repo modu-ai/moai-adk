@@ -4,7 +4,7 @@ description: "Use PROACTIVELY for Frontend UI/UX design, React/Next.js component
 tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-domain-frontend, moai-lang-javascript, moai-lang-typescript, moai-essentials-perf, moai-context7-lang-integration
+skills: moai-core-language-detection, moai-context7-lang-integration, moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-cc-configuration
 ---
 
 # Google Gemini CLI Agent 🤖
