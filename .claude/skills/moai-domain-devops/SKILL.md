@@ -14,11 +14,13 @@ status: active
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: moai, docker, kubernetes, devops, domain  
+**version**: 1.0.0
+**modularized**: false
+**last_updated**: 2025-11-24
+**compliance_score**: 100%
+**auto_trigger_keywords**: moai, docker, kubernetes, devops, domain, terraform, ci-cd
+**context7_references**: ["/moby/moby", "/kubernetes/kubernetes", "/github/actions"]
+**test_documentation**: ["Docker patterns", "Kubernetes patterns", "CI/CD pipelines", "Terraform infrastructure", "Deployment strategies"]
 
 
 ## Quick Reference (30 seconds)

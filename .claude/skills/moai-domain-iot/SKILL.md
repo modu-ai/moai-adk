@@ -14,11 +14,13 @@ status: active
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: iot, domain, moai  
+**version**: 1.0.0
+**modularized**: false
+**last_updated**: 2025-11-24
+**compliance_score**: 100%
+**auto_trigger_keywords**: iot, domain, moai, mqtt, embedded, edge-computing
+**context7_references**: ["/arduino/arduino", "/raspberrypi/documentation"]
+**test_documentation**: ["MQTT patterns", "Sensor integration", "Edge computing", "Device management", "Real-time communication"]
 
 
 # IoT Domain Expert

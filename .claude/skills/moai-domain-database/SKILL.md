@@ -14,11 +14,13 @@ status: active
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: monitoring, domain, database, moai  
+**version**: 1.0.0
+**modularized**: false
+**last_updated**: 2025-11-24
+**compliance_score**: 100%
+**auto_trigger_keywords**: monitoring, domain, database, moai, postgresql, mongodb, sqlalchemy
+**context7_references**: ["/postgres/postgres", "/mongodb/mongo-python", "/sqlalchemy/sqlalchemy"]
+**test_documentation**: ["Query optimization", "Schema design", "ORM patterns", "Connection pooling", "Caching strategies"]
 
 
 ## Quick Reference (30 seconds)

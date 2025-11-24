@@ -14,11 +14,13 @@ status: active
 
 ## 📊 Skill Metadata
 
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: trust, moai, foundation
+**version**: 1.0.0
+**modularized**: false
+**last_updated**: 2025-11-24
+**compliance_score**: 100%
+**auto_trigger_keywords**: trust, moai, foundation, quality, testing, security
+**context7_references**: ["/moai/trust-5-framework", "/moai/quality-gates"]
+**test_documentation**: ["TRUST 5 pillars", "Compliance scoring", "Quality gates", "Test coverage validation", "Security compliance"]
 
 ## Quick Reference
 
