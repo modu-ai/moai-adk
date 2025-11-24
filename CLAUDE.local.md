@@ -96,46 +96,6 @@ git commit -m "config: Update preset templates"
 
 ---
 
-### 2.4 동기화 도구
-
-**기본 동기화 (rsync 사용):**
-
-```bash
-# .claude 동기화
-rsync -avz \
-  --exclude=".DS_Store" \
-  --exclude="*.pyc" \
-  --exclude="__pycache__" \
-  --exclude=".cache" \
-  src/moai_adk/.claude/ .claude/
-
-# .moai 동기화 (config 제외)
-rsync -avz \
-  --exclude=".DS_Store" \
-  --exclude="*.pyc" \
-  --exclude="__pycache__" \
-  --exclude="cache/" \
-  --exclude="logs/" \
-  --exclude="config/" \
-  src/moai_adk/.moai/ .moai/
-```
-
-### 2.5 스크립트 기반 동기화
-
-**동기화 스크립트 위치:**
-
-```
-.moai/scripts/sync-from-src.sh
-```
-
-**실행:**
-
-```bash
-bash .moai/scripts/sync-from-src.sh
-```
-
----
-
 ## 코드 작성 표준
 
 ### 3.1 언어 규칙
