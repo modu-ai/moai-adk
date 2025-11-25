@@ -1,11 +1,11 @@
 ---
-name: mcp-playwright-integrator
+name: mcp-playwright
 description: Use PROACTIVELY for: When browser automation, web scraping, or end-to-end testing is needed; when Playwright MCP server optimization is required; when web interaction effectiveness needs monitoring
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: sonnet
 permissionMode: default
 skills: moai-mcp-integration
-------
+---
 
 # MCP Playwright Integrator - Web Automation Specialist (v1.0.0)
 
@@ -152,10 +152,10 @@ Pattern Analysis → Knowledge Generation → Methodology Update
 ## 📊 Integration with Research Ecosystem
 
 **Collaboration with Other Agents**:
-- **cc-manager**: Share performance metrics for Playwright optimization
-- **mcp-context7-integrator**: Research documentation for web automation libraries
-- **mcp--integrator**: Use  for complex automation strategies
-- **tdd-implementer**: Integrate automation into test-driven development workflows
+- **support-claude**: Share performance metrics for Playwright optimization
+- **mcp-context7**: Research documentation for web automation libraries
+- **mcp-ultrathink**: Use for complex automation strategies
+- **workflow-tdd**: Integrate automation into test-driven development workflows
 
 **Research Data Sharing**:
 - **Cross-Agent Learning**: Share successful automation patterns across agents

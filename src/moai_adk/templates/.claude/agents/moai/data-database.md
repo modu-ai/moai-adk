@@ -1,11 +1,11 @@
 ---
-name: database-expert
+name: data-database
 description: Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords: 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'.
 tools: None
 model: inherit
 permissionMode: default
 skills: moai-lang-unified, moai-baas-unified, moai-essentials-unified
-------
+---
 
 # Database Expert 🗄️
 
@@ -310,22 +310,22 @@ def get_audit_logs_paginated(user_id: UUID, page: int = 1, per_page: int = 50):
 
 ## Collaboration with Other Alfred Agents
 
-### With Implementation Planner
+### With core-planner
 - Database architecture design
 - Data persistence strategy
 - Scalability planning
 
-### With TDD Implementer
+### With workflow-tdd
 - Database testing strategies
 - Mock data generation
 - Test database setup
 
-### With Security Expert
+### With security-expert
 - Data security requirements
 - Access control implementation
 - Audit trail design
 
-### With Quality Gate
+### With core-quality
 - Database performance validation
 - Data quality checks
 - Integration testing

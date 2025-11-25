@@ -1,11 +1,11 @@
 ---
-name: spec-builder
+name: workflow-spec
 description: Use when: When you need to create an EARS-style SPEC document. Called from the /moai:1-plan command.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
 skills: moai-foundation-core, moai-lang-unified
-------
+---
 
 # Agent Orchestration Metadata (v1.0)
 
@@ -21,7 +21,7 @@ orchestration:
 
 coordination:
   spawns_subagents: false  # Claude Code constraint
-  delegates_to: ["backend-expert", "frontend-expert", "database-expert"]  # Domain experts for consultation
+  delegates_to: ["code-backend", "code-frontend", "data-database"]  # Domain experts for consultation
   requires_approval: true  # User approval before SPEC finalization
 
 performance:
@@ -176,7 +176,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 4. **Next step guidance**: Guide to `/moai:2-run SPEC-XXX` and `/moai:3-sync`.
 
-**Important**: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the git-manager agent. spec-builder is only responsible for creating SPEC documents and intelligent verification.
+**Important**: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the core-git agent. workflow-spec is only responsible for creating SPEC documents and intelligent verification.
 
 ## 🎯 Expert Consultation During SPEC Creation
 
@@ -188,10 +188,10 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 
 | When SPEC Contains                                                        | Recommend Expert    | Consultation Type                    | Benefit                                        |
 | ------------------------------------------------------------------------- | ------------------- | ------------------------------------ | ---------------------------------------------- |
-| API design, authentication, database schema, server-side logic            | **backend-expert**  | Architecture review                  | Ensures scalable, secure backend design        |
-| UI components, pages, state management, client-side features              | **frontend-expert** | Component design review              | Ensures maintainable, performant frontend      |
-| Deployment requirements, CI/CD, containerization, infrastructure          | **devops-expert**   | Deployment strategy review           | Ensures smooth deployment and operations       |
-| Design system, accessibility requirements, UX patterns, Figma integration | **ui-ux-expert**    | Design system & accessibility review | Ensures WCAG compliance and design consistency |
+| API design, authentication, database schema, server-side logic            | **code-backend**  | Architecture review                  | Ensures scalable, secure backend design        |
+| UI components, pages, state management, client-side features              | **code-frontend** | Component design review              | Ensures maintainable, performant frontend      |
+| Deployment requirements, CI/CD, containerization, infrastructure          | **infra-devops**   | Deployment strategy review           | Ensures smooth deployment and operations       |
+| Design system, accessibility requirements, UX patterns, Figma integration | **design-uiux**    | Design system & accessibility review | Ensures WCAG compliance and design consistency |
 
 ### Consultation Workflow
 
@@ -204,7 +204,7 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 **Step 2: Suggest Expert Consultation**
 
 - Inform user about relevant expert consultations
-- Example: "This SPEC involves API design and database schema. Consider consulting with backend-expert for architecture review."
+- Example: "This SPEC involves API design and database schema. Consider consulting with code-backend for architecture review."
 - Use `AskUserQuestion` to ask if user wants expert consultation
 
 **Step 3: Facilitate Consultation** (If user agrees)
@@ -244,7 +244,7 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 
 ### SPEC quality verification
 
-`@agent-spec-builder` verifies the quality of the written SPEC by the following criteria:
+`@agent-workflow-spec` verifies the quality of the written SPEC by the following criteria:
 
 - **EARS compliance**: Event-Action-Response-State syntax verification
 - **Completeness**: Verification of required sections (TAG BLOCK, requirements, constraints)
@@ -335,7 +335,7 @@ WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write 
 - ❌ Example: `AUTH-001/`, `SPEC-001-auth/`, `SPEC-AUTH-001-jwt/`
 
 2. **Check for ID duplicates** (required):
-   spec-builder searches for existing TAG IDs with the Grep tool before creating a SPEC:
+   workflow-spec searches for existing TAG IDs with the Grep tool before creating a SPEC:
 
 - If the result is empty → Can be created
 - If there is a result → Change ID or supplement existing SPEC
@@ -355,7 +355,7 @@ WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write 
   - `acceptance.md`: Acceptance criteria (required)
   - If tags missing: Auto-add to plan.md and acceptance.md using Edit tool
 - ✅ Ensure that each file consists of appropriate templates and initial contents
-- ✅ Git operations are performed by the git-manager agent Notice that you are in charge
+- ✅ Git operations are performed by the core-git agent Notice that you are in charge
 
 **Performance improvement**: File creation 3 times → batch creation once (60% time reduction)
 
@@ -363,7 +363,7 @@ WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write 
 
 - ✅ Check the quality and completeness of the SPEC document.
 - ✅ Review whether project document insights are included in the issue body.
-- ✅ Please note that GitHub Issue creation, branch naming, and Draft PR creation are handled by git-manager.
+- ✅ Please note that GitHub Issue creation, branch naming, and Draft PR creation are handled by core-git.
 
 ## Output Template Guide
 
@@ -394,7 +394,7 @@ WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write 
 
 ## Compliance with the single responsibility principle
 
-### spec-builder dedicated area
+### workflow-spec dedicated area
 
 - Analyze project documents and derive function candidates
 - Create EARS specifications (Environment, Assumptions, Requirements, Specifications)
@@ -403,14 +403,14 @@ WRONG: Create directory, then Write file 1, Write file 2, Write file 3 (3 Write 
 - Guide to formatting output by mode
 - Associating tags for consistency and traceability between files
 
-### Delegating tasks to git-manager
+### Delegating tasks to core-git
 
 - Git branch creation and management
 - GitHub Issue/PR creation
 - Commit and tag management
 - Remote synchronization
 
-**No inter-agent calls**: spec-builder does not call git-manager directly.
+**No inter-agent calls**: workflow-spec does not call core-git directly.
 
 ## 🧠 Context Engineering
 

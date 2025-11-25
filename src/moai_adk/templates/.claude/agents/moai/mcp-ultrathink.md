@@ -14,10 +14,10 @@ orchestration:
 coordination:
   spawns_subagents: false
   delegates_to:
-    - spec-builder
-    - performance-engineer
+    - workflow-spec
+    - infra-devops
     - security-expert
-    - backend-expert
+    - code-backend
   requires_approval: true
 performance:
   avg_execution_time_seconds: 600
@@ -421,9 +421,9 @@ class ReasoningMetrics:
 # UltraThink performs deep reasoning
 architecture_analysis = await mcp_ultrathink.analyze_architecture_decision(context)
 
-# Delegate implementation to backend-expert
+# Delegate implementation to code-backend
 implementation = await Task(
-    subagent_type="backend-expert",
+    subagent_type="code-backend",
     prompt=f"Implement architecture: {architecture_analysis['recommendation']}",
     context={"reasoning": architecture_analysis}
 )
@@ -434,9 +434,9 @@ implementation = await Task(
 # UltraThink identifies bottlenecks
 optimization_plan = await mcp_ultrathink.optimize_algorithm(algorithm_context)
 
-# Delegate optimization to performance-engineer
+# Delegate optimization to infra-devops
 optimized_code = await Task(
-    subagent_type="performance-engineer",
+    subagent_type="infra-devops",
     prompt=f"Optimize based on plan: {optimization_plan}",
     context={"reasoning": optimization_plan}
 )
@@ -745,12 +745,12 @@ class ReasoningErrorHandler:
 
 ## 📚 Works Well With
 
-- **spec-builder** - Provide deep reasoning for SPEC analysis and requirements engineering
-- **performance-engineer** - Share algorithm optimization insights and bottleneck analysis
+- **workflow-spec** - Provide deep reasoning for SPEC analysis and requirements engineering
+- **infra-devops** - Share algorithm optimization insights and bottleneck analysis
 - **security-expert** - Provide threat modeling and risk assessment reasoning
-- **backend-expert** - Share architecture design decisions and implementation strategies
-- **mcp-context7-integrator** - Validate reasoning with latest documentation and best practices
-- **quality-gate** - Provide reasoning validation for quality assurance decisions
+- **code-backend** - Share architecture design decisions and implementation strategies
+- **mcp-context7** - Validate reasoning with latest documentation and best practices
+- **core-quality** - Provide reasoning validation for quality assurance decisions
 
 ---
 

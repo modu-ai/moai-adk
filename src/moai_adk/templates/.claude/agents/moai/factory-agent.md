@@ -1,6 +1,6 @@
 ---
-name: agent-factory
-description: Use PROACTIVELY when creating new sub-agents, building domain-specific agents, generating agent blueprints from requirements, or automating agent creation with research-driven optimization. Called from /moai:0-project initialization and custom agent generation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly. Follows Claude Code official Sub-agents standards and generates production-ready agents with comprehensive validation and testing.
+name: factory-agent
+description: Use PROACTIVELY when creating new sub-agents, building domain-specific agents, generating agent blueprints from requirements, or automating agent creation with research-driven optimization. Called from /moai:0-project initialization and custom agent generation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-agent') - NEVER executed directly. Follows Claude Code official Sub-agents standards and generates production-ready agents with comprehensive validation and testing.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 skills: moai-core-claude-code
@@ -20,7 +20,7 @@ parallel_safe: false # Sequential generation required for consistency
 
 coordination:
 spawns_subagents: false # Claude Code constraint
-delegates_to: ["mcp-context7-integrator", "quality-gate"] # Research and validation delegation
+delegates_to: ["mcp-context7", "core-quality"] # Research and validation delegation
 requires_approval: true # User approval before agent finalization
 
 performance:
@@ -204,7 +204,7 @@ Clear, specific mission statement (15 words max)
 ```python
 # ✅ CORRECT: Proper invocation
 result = await Task(
-    subagent_type="agent-factory",
+    subagent_type="factory-agent",
     description="Generate backend API designer agent",
     prompt="Create an agent for designing REST/GraphQL APIs with performance optimization"
 )
@@ -271,7 +271,7 @@ result = await Task(
 
 ```python
 result = await Task(
-    subagent_type="agent-factory",
+    subagent_type="factory-agent",
     prompt="Create specialized agent for [domain] with [specific requirements]",
     context={
         "domain": "specific domain area",
@@ -289,14 +289,14 @@ result = await Task(
 ```python
 # Phase 1: Requirements analysis
 requirements = await Task(
-    subagent_type="spec-builder",
+    subagent_type="workflow-spec",
     prompt="Analyze requirements for new agent",
     context={"domain": "security-analysis"}
 )
 
 # Phase 2: Agent creation (pass requirements)
 agent = await Task(
-    subagent_type="agent-factory",
+    subagent_type="factory-agent",
     prompt="Create security analysis agent",
     context={"requirements": requirements}
 )
@@ -306,19 +306,19 @@ agent = await Task(
 
 ```python
 agents = await Promise.all([
-    Task(subagent_type="agent-factory", prompt="Create frontend agent"),
-    Task(subagent_type="agent-factory", prompt="Create backend agent"),
-    Task(subagent_type="agent-factory", prompt="Create database agent")
+    Task(subagent_type="factory-agent", prompt="Create frontend agent"),
+    Task(subagent_type="factory-agent", prompt="Create backend agent"),
+    Task(subagent_type="factory-agent", prompt="Create database agent")
 ])
 ```
 
 ## Works Well With
 
-- **skill-factory** - Complementary skill creation for agent capabilities
-- **spec-builder** - Requirements analysis and specification generation
-- **quality-gate** - Agent validation and compliance checking
-- **docs-manager** - Agent documentation and integration guides
-- **project-manager** - Agent coordination within larger workflows
+- **factory-skill** - Complementary skill creation for agent capabilities
+- **workflow-spec** - Requirements analysis and specification generation
+- **core-quality** - Agent validation and compliance checking
+- **workflow-docs** - Agent documentation and integration guides
+- **workflow-project** - Agent coordination within larger workflows
 
 ## Quality Assurance
 

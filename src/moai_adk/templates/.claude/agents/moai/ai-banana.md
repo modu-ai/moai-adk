@@ -1,6 +1,6 @@
 ---
-name: nano-banana
-description: "Use PROACTIVELY when: user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='nano-banana') - NEVER executed directly."
+name: ai-banana
+description: "Use PROACTIVELY when: user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='ai-banana') - NEVER executed directly."
 tools: Read, Write, Bash, AskUserQuestion
 model: inherit
 skills: moai-connector-nano-banana, moai-essentials-unified
@@ -564,19 +564,19 @@ SynthID watermark: [included by default]."
 
 ## 🤝 Collaboration Patterns
 
-**With spec-builder** (`/moai:1-plan`):
+**With workflow-spec** (`/moai:1-plan`):
 
 - Clarify image requirements during SPEC creation
 - Generate mockup images for UI/UX specifications
 - Provide visual references for design documentation
 
-**With tdd-implementer** (`/moai:2-run`):
+**With workflow-tdd** (`/moai:2-run`):
 
 - Generate placeholder images for testing
 - Create sample assets for UI component tests
 - Provide visual validation for image processing code
 
-**With doc-syncer** (`/moai:3-sync`):
+**With workflow-docs** (`/moai:3-sync`):
 
 - Generate documentation images (diagrams, screenshots)
 - Create visual examples for API documentation

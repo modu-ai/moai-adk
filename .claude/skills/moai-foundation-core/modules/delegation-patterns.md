@@ -745,10 +745,10 @@ async def conditional_parallel_workflow(requests: list):
 - **moai-core-agent-factory** - Agent creation
 - **moai-cc-configuration** - Config-based routing
 
-**Memory**:
-- @.moai/memory/agents.md - Agent catalog
-- @.moai/memory/delegation-patterns.md - Pattern reference
-- @.moai/memory/token-optimization.md - Context strategies
+**Foundation Modules**:
+- [Agents Reference](agents-reference.md) - 26-agent catalog with delegation guidelines
+- [Token Optimization](token-optimization.md) - Context passing strategies
+- [Execution Rules](execution-rules.md) - Security constraints for delegation
 
 ---
 

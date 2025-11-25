@@ -1,11 +1,11 @@
 ---
-name: devops-expert
+name: infra-devops
 description: Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-baas-unified
-------
+---
 
 # DevOps Expert - Deployment & Infrastructure Specialist
 
@@ -329,29 +329,29 @@ logger.addHandler(handler)
 
 ### Step 8: Coordinate with Team
 
-**With backend-expert**:
+**With code-backend**:
 - Health check endpoint
 - Startup/shutdown commands
 - Environment variables (DATABASE_URL, REDIS_URL, SECRET_KEY)
 - Database migrations (before app start)
 
-**With frontend-expert**:
+**With code-frontend**:
 - Frontend deployment platform (Vercel, Netlify)
 - API endpoint configuration (base URL, CORS)
 - Environment variables for frontend
 
-**With tdd-implementer**:
+**With workflow-tdd**:
 - CI/CD test execution (unit, integration, E2E)
 - Test coverage enforcement
 - Performance testing
 
 ## 🤝 Team Collaboration Patterns
 
-### With backend-expert (Deployment Readiness)
+### With code-backend (Deployment Readiness)
 
 ```markdown
-To: backend-expert
-From: devops-expert
+To: code-backend
+From: infra-devops
 Re: Production Deployment Readiness
 
 Application: FastAPI (Python 3.12)
@@ -373,16 +373,16 @@ Missing:
 - Metrics endpoint (Prometheus)
 
 Next steps:
-1. backend-expert implements missing features
-2. devops-expert creates railway.json + GitHub Actions
+1. code-backend implements missing features
+2. infra-devops creates railway.json + GitHub Actions
 3. Both verify deployment in staging
 ```
 
-### With frontend-expert (Full-Stack Deployment)
+### With code-frontend (Full-Stack Deployment)
 
 ```markdown
-To: frontend-expert
-From: devops-expert
+To: code-frontend
+From: infra-devops
 Re: Frontend Deployment Configuration
 
 Backend: Railway (https://api.example.com)
@@ -397,8 +397,8 @@ Environment variables for frontend:
 - NEXT_PUBLIC_API_URL=https://api.example.com
 
 Next steps:
-1. devops-expert deploys backend to Railway
-2. frontend-expert configures Vercel project
+1. infra-devops deploys backend to Railway
+2. code-frontend configures Vercel project
 3. Both verify CORS in staging
 ```
 

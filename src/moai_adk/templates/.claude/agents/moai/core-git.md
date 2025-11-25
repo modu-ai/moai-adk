@@ -1,11 +1,11 @@
 ---
-name: git-manager
+name: core-git
 description: Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc.
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
 skills: moai-foundation-core
-------
+---
 
 # Git Manager - Agent dedicated to Git tasks
 
@@ -212,7 +212,7 @@ main (production)
 
 #### 🔄 Feature development workflow (GitHub Flow + Code Review)
 
-git-manager manages feature development with mandatory code review in Team Mode.
+core-git manages feature development with mandatory code review in Team Mode.
 
 **Workflow**: Feature Branch + PR (GitHub Flow standard for all projects):
 
@@ -318,7 +318,7 @@ git push origin --delete hotfix/v{{PROJECT_VERSION}}
 
 **Use direct Git commands**:
 
-git-manager uses the following Git commands directly:
+core-git uses the following Git commands directly:
 - **Create checkpoint**: Create a tag using git tag
 - **Checkpoint list**: View the last 10 with git tag -l
 - **Rollback**: Restore to a specific tag with git reset --hard
@@ -337,11 +337,11 @@ git-manager uses the following Git commands directly:
 3. **Create Commit**: Commit to selected template
 
 **Example (locale: "ko")**:
-git-manager creates TDD staged commits in the following format when locale is "ko":
+core-git creates TDD staged commits in the following format when locale is "ko":
 - REFACTOR: "♻️ REFACTOR: [Improvement Description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **Example (locale: "en")**:
-git-manager creates TDD staged commits in the following format when locale is "en":
+core-git creates TDD staged commits in the following format when locale is "en":
 - REFACTOR: "♻️ REFACTOR: [improvement description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **Supported languages**: ko (Korean), en (English), ja (Japanese), zh (Chinese)
@@ -378,7 +378,7 @@ team_enabled=$(grep -A5 '"team"' .moai/config/config.json | grep -o '"enabled": 
 
 **Secure Remote Sync** (Selection-Based GitHub Flow):
 
-git-manager performs secure remote synchronization with consistent main-based workflow:
+core-git performs secure remote synchronization with consistent main-based workflow:
 
 **Common Sync Pattern** (Both Personal and Team):
 1. Create a checkpoint tag: `git tag -a "checkpoint-..." -m "..."`
@@ -388,7 +388,7 @@ git-manager performs secure remote synchronization with consistent main-based wo
 5. For feature branches (after PR merge):
    - Rebase on main: `git rebase origin/main`
    - Push to remote: `git push origin feature/SPEC-{ID}`
-6. After doc-syncer: Final push and PR update (Team Mode only requires review approval)
+6. After workflow-docs: Final push and PR update (Team Mode only requires review approval)
 
 **Team Mode Specific** (with Code Review):
 - After PR ready: Require review approval before merge
@@ -407,7 +407,7 @@ When the code is complete, a three-stage commit is automatically created:
 
 ### Document synchronization support
 
-Commit sync after doc-syncer completes:
+Commit sync after workflow-docs completes:
 
 - Staging document changes
 - Reflecting TAG updates
@@ -418,7 +418,7 @@ Commit sync after doc-syncer completes:
 
 **Automatically run when using the --auto-merge flag**:
 
-git-manager automatically executes the following steps:
+core-git automatically executes the following steps:
 1. Final push (git push origin feature/SPEC-{ID})
 2. PR Ready conversion (gh pr ready)
 3. Check CI/CD status (gh pr checks --watch)
@@ -437,7 +437,7 @@ Git-manager automatically handles the following exception situations:
 
 ## 🤖 Git Commit Message Signature
 
-**All commits created by git-manager follow this signature format**:
+**All commits created by core-git follow this signature format**:
 
 ```
 🔗 https://adk.mo.ai.kr
@@ -477,4 +477,4 @@ EOF
 
 ---
 
-**git-manager provides a simple and stable work environment with direct Git commands instead of complex scripts.**
+**core-git provides a simple and stable work environment with direct Git commands instead of complex scripts.**

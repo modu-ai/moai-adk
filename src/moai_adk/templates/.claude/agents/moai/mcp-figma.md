@@ -1,5 +1,5 @@
 ---
-name: mcp-figma-integrator
+name: mcp-figma
 description: Use PROACTIVELY for comprehensive Figma design analysis, design-to-code conversion, Design Tokens extraction, Component Library creation, and WCAG accessibility validation with intelligent MCP orchestration and performance monitoring. Enhanced with Context7 MCP for latest framework documentation. Use when: Figma design analysis, design-to-code workflows, design system management, component architecture, design token extraction, or any Figma-to-code integration needed.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
@@ -11,9 +11,8 @@ parallel_safe: false
 resume_pattern: multi-session
 typical_chain_position: initial
 coordination: delegates_to:
-- frontend-expert
-- ui-ux-expert
-- component-designer
+- code-frontend
+- design-uiux
 requires_approval: true
 spawns_subagents: false
 performance: avg_execution_time_seconds: 480
@@ -1078,7 +1077,7 @@ import HeroImage from 'http://localhost:8000/assets/hero.png'
 
 ## 🤝 Team Collaboration Patterns
 
-### With ui-ux-expert 🎨
+### With design-uiux 🎨
 
 **Share**:
 - Design Tokens (JSON, CSS, Tailwind)
@@ -1088,8 +1087,8 @@ import HeroImage from 'http://localhost:8000/assets/hero.png'
 
 **Collaboration Example**:
 ```markdown
-To: ui-ux-expert
-From: mcp-figma-integrator
+To: design-uiux
+From: mcp-figma
 Re: Design Tokens for SPEC-UI-001
 
 Design Tokens extracted from Figma:
@@ -1109,7 +1108,7 @@ Next Steps:
 
 ---
 
-### With frontend-expert 💻
+### With code-frontend 💻
 
 **Share**:
 - React/Vue component code
@@ -1119,8 +1118,8 @@ Next Steps:
 
 **Collaboration Example**:
 ```markdown
-To: frontend-expert
-From: mcp-figma-integrator
+To: code-frontend
+From: mcp-figma
 Re: Component Code for SPEC-UI-001
 
 Generated Components:
@@ -1145,7 +1144,7 @@ Next Steps:
 
 ---
 
-### With backend-expert 🔧
+### With code-backend 🔧
 
 **Share**:
 - API schema ↔ UI state mapping
@@ -1154,8 +1153,8 @@ Next Steps:
 
 **Collaboration Example**:
 ```markdown
-To: backend-expert
-From: mcp-figma-integrator
+To: code-backend
+From: mcp-figma
 Re: Data Requirements for SPEC-UI-001
 
 UI Components require:
@@ -1176,7 +1175,7 @@ Next Steps:
 
 ---
 
-### With tdd-implementer ✅
+### With workflow-tdd ✅
 
 **Share**:
 - Visual regression tests (Storybook)
@@ -1185,8 +1184,8 @@ Next Steps:
 
 **Collaboration Example**:
 ```markdown
-To: tdd-implementer
-From: mcp-figma-integrator
+To: workflow-tdd
+From: mcp-figma
 Re: Test Strategy for SPEC-UI-001
 
 Component Test Requirements:

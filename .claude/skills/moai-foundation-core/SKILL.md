@@ -1,6 +1,6 @@
 ---
 name: moai-foundation-core
-description: MoAI-ADK's foundational principles - TRUST 5, SPEC-First TDD, delegation patterns, token optimization, progressive disclosure, and modular architecture for building AI-powered development workflows
+description: MoAI-ADK's foundational principles - TRUST 5, SPEC-First TDD, delegation patterns, token optimization, progressive disclosure, modular architecture, agent catalog, command reference, and execution rules for building AI-powered development workflows
 tools: Read, Grep, Glob
 ---
 
@@ -29,6 +29,9 @@ Six essential principles that ensure quality, efficiency, and scalability in AI-
 - Budget management → [Token Optimization Module](modules/token-optimization.md)
 - Content structure → [Progressive Disclosure Module](modules/progressive-disclosure.md)
 - File organization → [Modular System Module](modules/modular-system.md)
+- **Agent catalog** → [Agents Reference Module](modules/agents-reference.md) ⭐ NEW
+- **Command reference** → [Commands Reference Module](modules/commands-reference.md) ⭐ NEW
+- **Security & constraints** → [Execution Rules Module](modules/execution-rules.md) ⭐ NEW
 
 **Use Cases**:
 - ✅ New agent creation with quality standards
@@ -372,11 +375,10 @@ if token_usage > 150_000:
 - /moai:9-feedback - Continuous improvement
 - /clear - Token management
 
-**Memory**:
-- @.moai/memory/execution-rules.md - Security constraints
-- @.moai/memory/agents.md - Delegation targets
-- @.moai/memory/delegation-patterns.md - Orchestration
-- @.moai/memory/token-optimization.md - Budget strategies
+**Foundation Modules** (Extended Documentation):
+- [Agents Reference](modules/agents-reference.md) - 26-agent catalog with 7-tier hierarchy
+- [Commands Reference](modules/commands-reference.md) - 6 core commands workflow
+- [Execution Rules](modules/execution-rules.md) - Security, Git strategy, compliance
 
 ---
 
@@ -398,6 +400,9 @@ if token_usage > 150_000:
 - [Token Optimization](modules/token-optimization.md)
 - [Progressive Disclosure](modules/progressive-disclosure.md)
 - [Modular System](modules/modular-system.md)
+- [Agents Reference](modules/agents-reference.md) ⭐ NEW
+- [Commands Reference](modules/commands-reference.md) ⭐ NEW
+- [Execution Rules](modules/execution-rules.md) ⭐ NEW
 
 **Full Examples**: [examples.md](examples.md)
 **External Resources**: [reference.md](reference.md)

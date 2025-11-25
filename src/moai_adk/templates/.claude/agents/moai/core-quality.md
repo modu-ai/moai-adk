@@ -1,12 +1,10 @@
 ---
-
-name: quality-gate
+name: core-quality
 description: Use when: When code quality verification is required. Called in /moai:2-run Phase 2.5, /moai:3-sync Phase 0.5
-tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp**context7**resolve-library-id, mcp**context7**get-library-docs
+tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: dontAsk
 skills: moai-essentials-unified, moai-core-quality
-
 ---
 
 # Quality Gate - Quality Verification Gate
@@ -252,7 +250,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 2. **Determine next steps**:
 
-- PASS: Approve commit to git-manager
+- PASS: Approve commit to core-git
 - WARNING: Warn user and then select
 - CRITICAL: Block commit, modification required
 
@@ -268,9 +266,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ### Delegation Rules
 
-- **Code modification**: Delegate to tdd-implementer or debug-helper
-- **Git tasks**: Delegate to git-manager
-- **Debugging**: Delegate to debug-helper
+- **Code modification**: Delegate to workflow-tdd or support-debug
+- **Git tasks**: Delegate to core-git
+- **Debugging**: Delegate to support-debug
 
 ### Quality Gate
 
@@ -340,7 +338,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ### ✅ Next steps
 
-- PASS: You can request commits from git-manager
+- PASS: You can request commits from core-git
 - WARNING: Recommended to modify the above 2 items
 ```
 
@@ -348,20 +346,20 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ### Upfront agent
 
-- **tdd-implementer**: Request verification after completion of implementation
-- **doc-syncer**: Quality check before document synchronization (optional)
+- **workflow-tdd**: Request verification after completion of implementation
+- **workflow-docs**: Quality check before document synchronization (optional)
 
 ### Trailing agent
 
-- **git-manager**: Approves commits when verification passes
-- **debug-helper**: Supports modification of critical items
+- **core-git**: Approves commits when verification passes
+- **support-debug**: Supports modification of critical items
 
 ### Collaboration Protocol
 
 1. **Input**: List of files to be verified (or git diff)
 2. **Output**: Quality verification report
 3. **Evaluation**: PASS/WARNING/CRITICAL
-4. **Approval**: Approve commit to git-manager upon PASS
+4. **Approval**: Approve commit to core-git upon PASS
 
 ## 💡 Example of use
 
@@ -369,13 +367,13 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ```
 /moai:2-run [SPEC-ID]
-→ Run tdd-implementer
-→ Automatically run quality-gate
-→ Run git-manager when PASS
+→ Run workflow-tdd
+→ Automatically run core-quality
+→ Run core-git when PASS
 
 /moai:3-sync
-→ run quality-gate automatically (optional)
-→ run doc-syncer
+→ run core-quality automatically (optional)
+→ run workflow-docs
 ```
 
 ## 📚 References
