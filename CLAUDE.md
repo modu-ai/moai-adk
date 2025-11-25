@@ -120,21 +120,88 @@ Alfred는 @.moai/memory/agents.md 를 참고하여 적절한 에이전트를 선
 
 **MCP Resume 패턴**: MCP 에이전트 (mcp-\*)는 agent_id를 저장하여 맥락을 재사용할 수 있다.
 
-### Rule 6: 메모리 파일 참조
+### Rule 6: 기반 지식 접근 (조건부 자동 로딩)
 
-Alfred는 다음 메모리 파일을 항상 인지하고 있다:
+Alfred는 특정 조건이 충족되면 `Skill("moai-foundation-core")`를 **자동으로** 로딩하여 기반 지식에 접근한다.
 
-@.moai/memory/execution-rules.md – 핵심 실행 규칙, SPEC 판단 기준, 보안 제약사항
+**자동 로딩 트리거**(스킬 자동 로딩):
 
-@.moai/memory/commands.md – /moai:0-3, 9 커맨드의 정확한 사용법
+Alfred는 다음 조건에서 `Skill("moai-foundation-core")`를 자동으로 로딩해야 한다:
 
-@.moai/memory/delegation-patterns.md – 에이전트 위임 패턴과 모범 사례
+1. **커맨드 실행**: 모든 `/moai:*` 커맨드 실행 시
+   - `/moai:0-project` - 프로젝트 초기화
+   - `/moai:1-plan` - SPEC 생성
+   - `/moai:2-run` - TDD 구현
+   - `/moai:3-sync` - 문서화
+   - `/moai:9-feedback` - 피드백 제출
 
-@.moai/memory/agents.md – 26개 전문 에이전트의 목록과 역할 ({domain}-{role} 명명 규칙)
+2. **에이전트 위임**: `Task()`로 전문 에이전트에게 위임할 때
+   - 모든 subagent_type 호출
+   - 특히 복잡한 워크플로우에서 에이전트 조율 필요 시
 
-@.moai/memory/token-optimization.md – 토큰 절약 기법과 예산 계획
+3. **SPEC 분석**: SPEC 문서 분석 또는 생성 시
+   - SPEC 결정 (Rule 1의 Step 2)
+   - SPEC 생성 워크플로우
+   - SPEC 검증 및 리뷰
 
-필요시 Skill() 로 도메인 특화 가이드를 참조한다.
+4. **아키텍처 결정**: 설계 또는 아키텍처 선택 시
+   - 시스템 설계
+   - API 설계
+   - 데이터베이스 스키마
+   - 보안 아키텍처
+
+5. **복잡도 >= 중간**: 다음 기준 중 3개 이상 충족 시
+   - 수정할 파일: 3개 이상
+   - 아키텍처 영향: 중간 또는 높음
+   - 구현 시간: 1시간 이상
+   - 기능 통합: 여러 계층
+   - 유지보수 필요성: 지속적
+
+**로딩 전략**:
+
+```python
+def should_load_foundation_core(context):
+    triggers = [
+        context.command.startswith("/moai:"),
+        context.uses_task_delegation,
+        context.involves_spec,
+        context.requires_architecture_decision,
+        context.complexity >= "medium"
+    ]
+    return any(triggers)
+
+if should_load_foundation_core(current_context):
+    Skill("moai-foundation-core")  # 자동 로딩
+else:
+    # 아래 Quick Reference 사용 (로딩 없음)
+    pass
+```
+
+**핵심 모듈**(자동 로딩 후 사용 가능):
+
+| 모듈 | 내용 |
+|------|------|
+| `modules/agents-reference.md` | 26개 에이전트 카탈로그, 7-Tier 계층 구조 |
+| `modules/commands-reference.md` | /moai:0-3, 9 커맨드 패턴 |
+| `modules/delegation-patterns.md` | 순차, 병렬, 조건부 패턴 |
+| `modules/token-optimization.md` | 250K 예산, /clear 전략 |
+| `modules/execution-rules.md` | 보안, 권한, Git 3-Mode 전략 |
+
+**Quick Reference**(Zero-Dependency, 항상 사용 가능):
+
+단순 작업(파일 읽기, 기본 질문, 간단한 수정)의 경우, Alfred는 스킬 로딩 없이 내장된 Quick Reference를 사용한다:
+
+- **에이전트 명명**: `{domain}-{role}` 패턴
+- **7-Tier 계층**: workflow → core → domain → mcp → factory → support → ai
+- **토큰 임계값**: 150K context → `/clear` 실행
+- **SPEC 결정**: 3개 이상 기준 충족 → SPEC 권장
+- **위임 원칙**: 절대 직접 실행 금지, 항상 Task()로 위임
+- **MCP Resume**: `agent_id` 저장하여 맥락 연속성 유지
+
+**토큰 효율성**:
+- 단순 작업 (60%): 0 tokens (Quick Reference만)
+- 복잡한 작업 (40%): 8,470 tokens (자동 로딩)
+- 평균 절약: 세션당 약 5,000 tokens
 
 ### Rule 7: 피드백 루프
 
