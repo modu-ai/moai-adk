@@ -71,7 +71,7 @@ Skill("moai-project-language-initializer", mode="team_setup")
 | Language | Code | Conversation Language | Agent Prompt Language | Documentation Language |
 | -------- | ---- | --------------------- | --------------------- | ---------------------- |
 | English  | en   | English               | English (recommended) | English                |
-| Korean   | ko   | 한국어                | English/Locale choice | 한국어                 |
+| Korean   | ko   | Korean                | English/Locale choice | Korean                 |
 | Japanese | ja   | 日本語                | English/Locale choice | 日本語                 |
 | Chinese  | zh   | 中文                  | English/Locale choice | 中文                   |
 
@@ -122,7 +122,7 @@ The skill automatically manages `.moai/config/config.json` persistence:
 {
   "language": {
     "conversation_language": "ko",
-    "conversation_language_name": "한국어",
+    "conversation_language_name": "Korean",
     "agent_prompt_language": "localized"
   },
   "user": {
@@ -139,8 +139,8 @@ The skill automatically manages `.moai/config/config.json` persistence:
   "github": {
     "auto_delete_branches": true,
     "spec_git_workflow": "feature_branch",
-    "auto_delete_branches_rationale": "PR 병합 후 원격 브랜치 자동 정리",
-    "spec_git_workflow_rationale": "SPEC마다 feature 브랜치 생성으로 팀 리뷰 가능"
+    "auto_delete_branches_rationale": "Automatic remote branch cleanup after PR merge",
+    "spec_git_workflow_rationale": "Create feature branch for each SPEC to enable team review"
   }
 }
 ```

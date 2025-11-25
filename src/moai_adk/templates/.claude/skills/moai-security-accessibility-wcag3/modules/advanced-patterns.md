@@ -1,3 +1,0 @@
-# Advanced Patterns
-
-[Advanced patterns]

@@ -8,16 +8,13 @@
       "moai-core-language-detection"
     ],
     "tdd-implementer": [
-      "moai-essentials-debug",
-      "moai-essentials-refactor",
-      "moai-lang-python",
-      "moai-lang-typescript",
-      "moai-lang-go",
+      "moai-essentials-unified",
+      "moai-lang-unified",
       "moai-core-context-budget"
     ],
     "test-engineer": [
       "moai-playwright-webapp-testing",
-      "moai-essentials-perf",
+      "moai-essentials-unified",
       "moai-core-todowrite-pattern",
       "moai-cc-quality-gate"
     ],
@@ -199,7 +196,7 @@
       "keywords": ["deploy", "deployment", "docker", "kubernetes", "cicd", "release"],
       "primary_agent": "devops-expert",
       "secondary_agents": ["monitoring-expert"],
-      "skills": ["devops-expert", "moai-baas-foundation"],
+      "skills": ["devops-expert", "moai-baas-unified"],
       "context_files": [
         "Dockerfile",
         "docker-compose.yml",

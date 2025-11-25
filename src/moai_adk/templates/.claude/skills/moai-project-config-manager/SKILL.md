@@ -27,9 +27,9 @@ status: active
 
 **Project Configuration Management Specialist**
 
-> **Primary Agent**: alfred  
-> **Secondary Agents**: none  
-> **Version**: 4.0.0  
+> **Primary Agent**: alfred
+> **Secondary Agents**: none
+> **Version**: 4.0.0
 > **Keywords**: project, config, manager, validation, crud
 
 ## 📖 Progressive Disclosure
@@ -70,7 +70,7 @@ result = Skill("moai-project-config-manager", action="validate")
 {
   "language": {
     "conversation_language": "en|ko|ja|zh",
-    "conversation_language_name": "English|한국어|日本語|中文",
+    "conversation_language_name": "English|Korean|Japanese|Chinese",
     "agent_prompt_language": "english|localized"
   },
   "user": {

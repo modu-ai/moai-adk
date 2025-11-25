@@ -45,7 +45,7 @@ const languageBatch = {
           label: "English",
           description: "All dialogs and documentation in English",
         },
-        { label: "한국어", description: "모든 대화와 문서를 한국어로" },
+        { label: "Korean", description: "All dialogs and documentation in Korean" },
         { label: "日本語", description: "すべての対話と文書を日本語で" },
         { label: "中文", description: "所有对话和文档使用中文" },
       ],
@@ -99,15 +99,15 @@ const teamModeBatch = {
       options: [
         {
           label: "Yes, already enabled",
-          description: "PR merge 후 자동으로 원격 브랜치 삭제됨",
+          description: "Remote branch automatically deleted after PR merge",
         },
         {
           label: "No, not enabled (Recommended)",
-          description: "Settings → General에서 확인 필요",
+          description: "Check in Settings → General",
         },
         {
           label: "Not sure / Need to check",
-          description: "GitHub Settings 확인 후 다시 진행",
+          description: "Check GitHub Settings and retry",
         },
       ],
     },
@@ -120,15 +120,15 @@ const teamModeBatch = {
         {
           label: "Feature Branch + PR",
           description:
-            "매 SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합",
+            "Create feature branch for each SPEC → PR review → develop merge",
         },
         {
           label: "Direct Commit to Develop",
-          description: "develop에 직접 커밋. 빠른 프로토타이핑에 최적",
+          description: "Commit directly to develop. Optimized for rapid prototyping",
         },
         {
           label: "Decide per SPEC",
-          description: "SPEC 생성 시마다 매번 선택. 유연성 높지만 결정 필요",
+          description: "Choose for each SPEC creation. High flexibility but requires decisions",
         },
       ],
     },

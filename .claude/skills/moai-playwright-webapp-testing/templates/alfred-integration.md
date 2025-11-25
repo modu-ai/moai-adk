@@ -2,18 +2,18 @@
 
 ## 4-Step Workflow Integration
 
-### Step 1: Intent Understanding (사용자 요구사항 분석)
+### Step 1: Intent Understanding (User Requirement Analysis)
 ```python
-# Alfred 에이전트가 사용자 요청을 분석하는 패턴
+# Pattern for Alfred agent to analyze user requests
 def analyze_user_intent(request: str) -> TestIntent:
     """
-    사용자의 테스트 요청을 분석하여 AI 테스트 전략 수립
-    
+    Analyze user's test request to establish AI test strategy
+
     Parameters:
-    - request: 사용자 요청 ("이 웹앱 테스트해줘", "크로스 브라우저 테스트 필요")
-    
+    - request: User request ("Test this web app", "Cross-browser testing needed")
+
     Returns:
-    - TestIntent: 분석된 테스트 의도 및 전략
+    - TestIntent: Analyzed test intent and strategy
     """
     
     intent_patterns = {

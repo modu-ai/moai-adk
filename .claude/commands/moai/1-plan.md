@@ -8,10 +8,7 @@ allowed-tools:
   - Skill
   - TodoWrite
 model: sonnet
-skills:
-  - moai-core-issue-labels
-  - moai-spec-intelligent-workflow
-  - moai-alfred-ask-user-questions
+skills: moai-foundation-core, moai-core-claude-code
 ---
 
 ## 📋 Pre-execution Context

@@ -7,11 +7,7 @@ allowed-tools:
   - AskUserQuestion
   - TodoWrite
 model: sonnet
-skills:
-  - moai-alfred-workflow
-  - moai-alfred-todowrite-pattern
-  - moai-alfred-ask-user-questions
-  - moai-alfred-reporting
+skills: moai-essentials-unified, moai-core-quality, moai-lang-unified
 ---
 
 ## 📋 Pre-execution Context

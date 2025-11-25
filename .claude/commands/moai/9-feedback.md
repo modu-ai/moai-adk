@@ -7,8 +7,7 @@ allowed-tools:
   - AskUserQuestion
   - TodoWrite
 model: haiku
-skills:
-  - moai-core-issue-labels
+skills: moai-core-quality
 ---
 
 ## 📋 Pre-execution Context

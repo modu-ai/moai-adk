@@ -2,15 +2,9 @@
 name: moai:0-project
 description: "Initialize project metadata and documentation"
 argument-hint: "[<empty>|setting|update|--glm-on <token>]"
-allowed-tools:
-  - Task
-  - AskUserQuestion
-  - TodoWrite
+allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
-skills:
-  - moai-project-language-initializer
-  - moai-project-config-manager
-  - moai-project-batch-questions
+skills: moai-command-project, moai-templates
 ---
 
 ## 📋 Pre-execution Context
@@ -118,6 +112,7 @@ All complexity is handled by the **project-manager** agent.
 Analyze the command user provided:
 
 1. **`/moai:0-project --glm-on [api-token]`** → GLM CONFIGURATION MODE
+
    - Detect if token provided in argument
    - If token missing: Check `.env.glm` (auto-load if exists)
    - If token missing: Check `ANTHROPIC_AUTH_TOKEN` environment variable
@@ -126,12 +121,14 @@ Analyze the command user provided:
    - Call setup-glm.py script to configure GLM
 
 2. **`/moai:0-project setting`** → SETTINGS MODE
+
    - Always uses interactive tab selection via AskUserQuestion
    - User selects specific tab or "Modify All Tabs" option
 
 3. **`/moai:0-project update`** → UPDATE MODE
 
 4. **`/moai:0-project`** (no args):
+
    - Check if `.moai/config/config.json` exists
    - Exists → AUTO-DETECT MODE
    - Missing → INITIALIZATION MODE
@@ -236,11 +233,11 @@ The project-manager agent handles all mode-specific workflows:
 - Read current language from config.json
 - **CRITICAL CHECK**: Detect partial initialization state
   - Check if project documentation exists in `.moai/project/`:
-    * product.md, structure.md, tech.md
+    - product.md, structure.md, tech.md
   - If ANY doc missing → Use AskUserQuestion (in user's language)
-    * Question: "Your configuration exists but project documentation is missing. Would you like to complete the initialization?"
-    * Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
-    * If "Yes" → Switch to INITIALIZATION workflow
+    - Question: "Your configuration exists but project documentation is missing. Would you like to complete the initialization?"
+    - Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+    - If "Yes" → Switch to INITIALIZATION workflow
 - Display current configuration (including language, initialization status)
 - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
 - "Change Language Only" shortcut → SETTINGS mode, Tab 1 only
