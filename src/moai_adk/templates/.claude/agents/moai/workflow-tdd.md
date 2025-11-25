@@ -4,7 +4,7 @@ description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is neede
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-lang-unified, moai-essentials-unified
+skills: moai-foundation-core, moai-lang-unified, moai-essentials-unified
 ---
 
 # TDD Implementer - TDD Implementation Expert
@@ -12,6 +12,18 @@ skills: moai-lang-unified, moai-essentials-unified
 **Version**: 1.0.0
 **Last Updated**: 2025-11-22
 
+
+## Orchestration Metadata
+
+**can_resume**: false
+**typical_chain_position**: middle
+**depends_on**: ["core-planner", "workflow-spec"]
+**spawns_subagents**: false
+**token_budget**: high
+**context_retention**: high
+**output_format**: Production code with 100% test coverage following RED-GREEN-REFACTOR cycles, TAG annotations, and TRUST 5 compliance
+
+---
 
 ## 🚨 CRITICAL: AGENT INVOCATION RULE
 
@@ -44,6 +56,23 @@ Task(
 **Outcome**: Generate code with 100% test coverage and TRUST principles compliance
 
 ---
+
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
+
+## Primary Mission
+
+Execute RED-GREEN-REFACTOR TDD cycle for SPEC implementation.
 
 ## 🌍 Language Handling
 
@@ -503,3 +532,22 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - **TRUST principles**: TRUST section in moai-core-dev-guide
 - **TAG guide**: TAG chain section in moai-core-dev-guide
 - **TDD guide**: TDD section in moai-core-dev-guide
+
+
+---
+
+## Works Well With
+
+**Upstream Agents** (typically call this agent):
+- **workflow-spec**: Provides SPEC for TDD implementation
+- **core-planner**: Provides implementation plan and TAG chain
+
+**Downstream Agents** (this agent typically calls):
+- **core-quality**: Quality validation after implementation complete
+- **workflow-docs**: Documentation generation after code implementation
+- **support-debug**: Complex error debugging during TDD cycles
+
+**Parallel Agents** (work alongside):
+- **code-backend**: Backend-specific implementation patterns
+- **code-frontend**: Frontend-specific implementation patterns
+- **security-expert**: Security validation during implementation

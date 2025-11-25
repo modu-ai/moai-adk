@@ -856,7 +856,7 @@ jobs:
 - /clear - Token optimization between phases
 
 **Memory**:
-- @.moai/memory/execution-rules.md - SPEC decision criteria
+- Skill("moai-foundation-core") modules/execution-rules.md - SPEC decision criteria
 - @.moai/specs/ - SPEC storage location
 
 ---

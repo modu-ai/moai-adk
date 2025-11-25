@@ -3,8 +3,6 @@ name: moai-essentials-unified
 description: AI-powered unified development orchestrator combining debugging, refactoring, performance optimization, code review, testing integration, and profiling into comprehensive development workflows with Context7 integration, TRUST 5 validation, and enterprise-grade automation
 version: 1.0.0
 modularized: true
-author: MoAI-ADK Team
-last_updated: 2025-11-25
 tags:
   - quality
   - enterprise
@@ -15,24 +13,10 @@ tags:
   - testing
   - profiling
   - ai-powered
-status: production
+updated: 2025-11-25
+status: active
+author: MoAI-ADK Team
 ---
-
-## 📊 Skill Metadata
-
-**Version**: 1.0.0
-**Modularized**: true
-**Last Updated**: 2025-11-25
-**Compliance Score**: 95%
-**Auto-Trigger Keywords**: debug, refactor, optimize, review, test, profile, performance, quality, enterprise
-
-**Unified Components**:
-- **moai-essentials-debug**: AI-powered debugging with Context7 patterns
-- **moai-essentials-refactor**: AI-driven code transformation and technical debt management
-- **moai-essentials-perf**: Scalene profiler integration and bottleneck detection
-- **moai-essentials-review**: TRUST 5 automated code review
-- **moai-essentials-testing**: Comprehensive testing automation and integration
-- **moai-essentials-profiling**: Advanced performance profiling and optimization
 
 ---
 

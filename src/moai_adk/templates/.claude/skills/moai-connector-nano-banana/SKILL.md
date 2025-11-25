@@ -1,5 +1,5 @@
 ---
-name: moai-domain-nano-banana
+name: moai-connector-nano-banana
 description: Professional image generation with Google Nano Banana Pro (Gemini 3 Pro)
 version: 1.0.1
 modularized: true
@@ -12,17 +12,6 @@ tags:
 updated: 2025-11-24
 status: active
 ---
-
-## 📊 Skill Metadata
-
-**Name**: moai-domain-nano-banana
-**Domain**: Image Generation & Visual Content Creation
-**Freedom Level**: high
-**Target Users**: Content creators, designers, visual artists, developers
-**Invocation**: Skill("moai-domain-nano-banana")
-**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed prompts & examples)
-**Last Updated**: 2025-11-23
-**Modularized**: true
 
 ---
 
@@ -42,6 +31,58 @@ status: active
 2. **Gemini 2.5 Flash** (gemini-2.5-flash-image) - Fast, ~5-15s
 
 ---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Text-to-Image generation with 1K/2K/4K resolutions
+- Image-to-Image editing and style transfer
+- Multi-turn refinement for iterative improvements
+- Reference image guidance (up to 14 references)
+- Real-time Google Search grounding for factual content
+- Advanced text rendering directly in images
+
+### When to Use
+
+- Generating professional visual assets for documentation or marketing
+- Creating UI mockups and design concepts quickly
+- Producing social media graphics and promotional images
+- Illustrating technical documentation with custom diagrams
+- Rapid prototyping of visual ideas before final design work
+
+### Core Patterns
+
+**Pattern 1: Structured Prompt for Quality**
+```python
+prompt = """
+A serene Japanese garden at golden hour.
+Lighting: warm sunset light filtering through maple trees.
+Camera: wide-angle 35mm lens, low angle shot.
+Composition: Rule of thirds, stone path leading to pagoda.
+Color palette: warm gold, jade green, soft cream.
+Style: photorealistic with slight cinematic color grading.
+Quality: 4K resolution. Final output: PNG.
+"""
+```
+
+**Pattern 2: Multi-Turn Refinement**
+1. Generate initial image with base prompt
+2. Review output and identify areas for improvement
+3. Provide targeted refinement: "Make sky more dramatic"
+4. Iterate up to 5 turns for perfect result
+
+**Pattern 3: Reference-Guided Generation**
+```python
+# Use reference images to guide style
+generate_image(
+    prompt="Mountain landscape in the style of reference",
+    reference_images=["style_ref.png", "composition_ref.png"],
+    resolution="2K",
+    aspect_ratio="16:9"
+)
+```
 
 ## 📚 Core Patterns (5-10 minutes)
 
@@ -188,7 +229,7 @@ This Skill uses Progressive Disclosure. For detailed implementation:
 ## 🔗 Integration with Other Skills
 
 **Complementary Skills**:
-- Skill("moai-domain-frontend") - UI/UX implementation with generated assets
+- Skill("moai-lang-unified") - UI/UX implementation with generated assets
 - Skill("moai-docs-generation") - Create visual documentation
 - Skill("moai-cc-claude-md") - Embed generated images in markdown
 

@@ -11,17 +11,6 @@ updated: 2025-11-24
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**Name**: moai-docs-unified
-**Domain**: Documentation Management & Quality Assurance
-**Freedom Level**: high
-**Target Users**: Documentation managers, technical writers, developers
-**Invocation**: Skill("moai-docs-unified")
-**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed validation scripts)
-**Last Updated**: 2025-11-23
-**Modularized**: true
-
 ---
 
 ## 🎯 Quick Reference (30 seconds)
@@ -43,6 +32,55 @@ status: active
 - Actionable recommendations
 
 ---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Unified documentation generation for technical projects
+- README, API docs, architecture guides, and deployment docs
+- CommonMark compliance with proper formatting standards
+- Automated cross-referencing and navigation
+- Multi-language documentation support
+
+### When to Use
+
+- Generating project documentation from code and specifications
+- Creating API reference documentation automatically
+- Building architecture decision records (ADRs)
+- Producing deployment guides and runbooks
+- Synchronizing documentation with code changes
+
+### Core Patterns
+
+**Pattern 1: Documentation Structure**
+```
+docs/
+├── README.md (project overview)
+├── API.md (API reference)
+├── ARCHITECTURE.md (system design)
+├── DEPLOYMENT.md (deployment guide)
+└── CONTRIBUTING.md (contribution guide)
+```
+
+**Pattern 2: Auto-generated API Docs**
+```python
+# Extract from code comments and type hints
+def generate_api_docs(source_files):
+    1. Parse docstrings and annotations
+    2. Generate markdown tables for parameters/returns
+    3. Include code examples from tests
+    4. Cross-reference related endpoints
+    5. Validate all links and references
+```
+
+**Pattern 3: Documentation Sync**
+1. Detect code changes via git diff
+2. Identify affected documentation sections
+3. Update docs automatically or prompt for review
+4. Validate documentation completeness
+5. Generate changelog entries
 
 ## 📚 Core Patterns (5-10 minutes)
 

@@ -13,14 +13,6 @@ updated: 2025-11-25
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-25  
-**compliance_score**: 92%  
-**auto_trigger_keywords**: lang, programming, code, development, python, typescript, go, rust, java, javascript, cpp, csharp, php, swift, kotlin, scala, elixir, ruby, r, sql, shell  
-
 ## Quick Reference (30 seconds)
 
 **Unified Enterprise Programming Language Expert** - 25+ languages with patterns, best practices, and Context7 integration.
@@ -34,6 +26,67 @@ status: active
 - ✅ Context7 integration for latest documentation
 - ✅ Progressive disclosure from basics to advanced
 - ✅ Enterprise-ready patterns and deployment
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Multi-language support (Python, TypeScript, JavaScript, Java, C#, etc.)
+- Modern language features and best practices
+- Framework-specific patterns (FastAPI, React, Next.js, Spring, etc.)
+- Type safety and linting standards
+- Testing patterns for each language
+
+### When to Use
+
+- Implementing backend APIs in Python (FastAPI) or TypeScript (Express)
+- Building frontend UIs with React 19, Next.js 15, or Vue 3.5
+- Setting up full-stack applications with type-safe communication
+- Configuring linters and formatters for consistent code style
+- Writing language-specific tests with appropriate frameworks
+
+### Core Patterns
+
+**Pattern 1: FastAPI Backend (Python)**
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class Item(BaseModel):
+    name: str
+    price: float
+
+@app.post("/items/")
+async def create_item(item: Item):
+    # Implementation
+    return item
+```
+
+**Pattern 2: Next.js 15 Frontend (TypeScript)**
+```typescript
+// app/page.tsx (App Router)
+export default async function Page() {
+  const data = await fetch('https://api.example.com/data');
+  return <main>{/* Render data */}</main>;
+}
+```
+
+**Pattern 3: Type-Safe API Integration**
+```typescript
+// Shared types between frontend/backend
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// Backend endpoint types
+export type GetUserResponse = User;
+export type CreateUserRequest = Omit<User, 'id'>;
+```
 
 ## Language Coverage
 

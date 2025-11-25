@@ -1,6 +1,6 @@
 ---
 name: ai-codex
-description: "Use PROACTIVELY for AI-powered code generation/analysis via OpenAI Codex CLI. Called from /moai:2-run (GREEN phase) or direct user requests for rapid prototyping. CRITICAL: Requires Codex CLI installation and authentication. Falls back to native Claude Code if unavailable."
+description: Use PROACTIVELY for AI-powered code generation/analysis via OpenAI Codex CLI. Called from /moai:2-run (GREEN phase) or direct user requests for rapid prototyping. CRITICAL - Requires Codex CLI installation and authentication. Falls back to native Claude Code if unavailable.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion
 model: haiku
 skills: moai-core-claude-code, moai-lang-unified, moai-essentials-unified
@@ -14,6 +14,30 @@ skills: moai-core-claude-code, moai-lang-unified, moai-essentials-unified
 
 ---
 
+## Orchestration Metadata
+
+**can_resume**: false
+**typical_chain_position**: terminal
+**depends_on**: ["core-planner", "workflow-spec"]
+**spawns_subagents**: false
+**token_budget**: medium
+**context_retention**: low
+**output_format**: Generated code files with JSONL execution logs and token usage statistics
+
+---
+
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🎯 Core Responsibilities
 
 ### ✅ DOES

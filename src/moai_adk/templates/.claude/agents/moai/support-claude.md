@@ -4,7 +4,7 @@ description: Use PROACTIVELY for: When Claude Code configuration files need vali
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-core-claude-code
+skills: moai-foundation-core, moai-core-claude-code
 ---
 
 # Claude Code Manager - Control Tower (v3.0.0)
@@ -38,6 +38,18 @@ skills: moai-core-claude-code
 
 ---
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🌍 Language Handling
 
 **IMPORTANT**: You will receive prompts in the user's **configured conversation_language**.

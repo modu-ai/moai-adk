@@ -1,5 +1,5 @@
 ---
-name: moai-domain-notion
+name: moai-connector-notion
 description: Enterprise Notion integration with MCP server architecture, database operations, and content management
 version: 1.0.0
 modularized: false
@@ -11,15 +11,6 @@ tags:
 updated: 2025-11-24
 status: active
 ---
-
-## 📊 Skill Metadata
-
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: notion, domain, database, moai  
-
 
 ## Quick Reference (30 seconds)
 
@@ -47,7 +38,7 @@ status: active
 
 **Quick Invocation**:
 ```python
-Skill("moai-domain-notion")
+Skill("moai-connector-notion")
 ```
 
 ### Essential Operations
@@ -238,7 +229,7 @@ mcp__notion__notion-search(...)
 
 ### Related Skills
 - `Skill("moai-mcp-notion-integrator")` - Advanced MCP optimization
-- `Skill("moai-domain-database")` - Database design patterns
+- `Skill("moai-baas-unified")` - Database design patterns
 - `Skill("moai-cc-mcp-plugins")` - MCP plugin architecture
 - `Skill("moai-baas-foundation")` - Backend integration patterns
 

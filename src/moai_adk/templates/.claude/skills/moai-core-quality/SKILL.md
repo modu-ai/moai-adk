@@ -1,7 +1,10 @@
 ---
 name: moai-core-quality
 description: Enterprise code quality orchestrator with TRUST 5 validation, proactive analysis, and automated best practices enforcement
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+version: 1.0.0
+modularized: false
+updated: 2025-11-26
+tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Enterprise Code Quality Orchestrator 🔍

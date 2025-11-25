@@ -11,18 +11,6 @@ updated: 2025-11-24
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: moai, systems, design  
-
-
-name: moai-design-systems
-description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2
-
 ## Quick Reference (30 seconds)
 
 # Design Systems Development Skill

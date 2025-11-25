@@ -35,13 +35,13 @@ def sequential_workflow(user_request):
 
     # Phase 1: Specification
     spec_result = Task(
-        subagent_type="spec-builder",
+        subagent_type="workflow-spec",
         prompt=f"Create specification for: {user_request}"
     )
 
     # Phase 2: Implementation (passes spec as context)
     implementation_result = Task(
-        subagent_type="tdd-implementer",
+        subagent_type="workflow-tdd",
         prompt="Implement from specification",
         context={
             "specification": spec_result,
@@ -51,7 +51,7 @@ def sequential_workflow(user_request):
 
     # Phase 3: Quality Validation
     quality_result = Task(
-        subagent_type="quality-gate",
+        subagent_type="core-quality",
         prompt="Validate implementation quality",
         context={
             "implementation": implementation_result,
@@ -61,7 +61,7 @@ def sequential_workflow(user_request):
 
     # Phase 4: Documentation
     docs_result = Task(
-        subagent_type="docs-manager",
+        subagent_type="workflow-docs",
         prompt="Generate documentation",
         context={
             "implementation": implementation_result,
@@ -114,17 +114,17 @@ async def parallel_workflow(project_requirements):
     # Define parallel tasks
     tasks = [
         Task(
-            subagent_type="frontend-expert",
+            subagent_type="code-frontend",
             prompt="Design frontend architecture",
             context={"requirements": project_requirements}
         ),
         Task(
-            subagent_type="backend-expert",
+            subagent_type="code-backend",
             prompt="Design backend architecture",
             context={"requirements": project_requirements}
         ),
         Task(
-            subagent_type="database-expert",
+            subagent_type="data-database",
             prompt="Design database schema",
             context={"requirements": project_requirements}
         ),
@@ -195,7 +195,7 @@ class ConditionalWorkflow:
 
         self.resolution_agents = {
             "syntax_error": "format-expert",
-            "logic_error": "debug-helper",
+            "logic_error": "support-debug",
             "security_vulnerability": "security-expert",
             "performance_issue": "performance-engineer",
             "integration_error": "integration-specialist"
@@ -238,7 +238,7 @@ class ConditionalWorkflow:
         """Select appropriate resolution agent based on problem type."""
         return self.resolution_agents.get(
             problem_type,
-            "debug-helper"  # Default fallback
+            "support-debug"  # Default fallback
         )
 
 # Usage example
@@ -275,7 +275,7 @@ name: development-orchestrator
 description: Orchestrate complete software development workflow from specification to deployment. Use PROACTIVELY for complex multi-component projects requiring coordination across multiple phases and teams.
 tools: Read, Write, Edit, Task
 model: sonnet
-skills: moai-core-workflow, moai-project-manager, moai-quality-gate
+skills: moai-core-workflow, moai-project-manager, moai-core-quality
 ---
 
 # Development Orchestrator
@@ -297,10 +297,10 @@ You are a development workflow orchestrator responsible for coordinating multipl
 4. Configure quality gates and validation
 
 ### Phase 2: Development Coordination
-1. Coordinate specification creation with spec-builder
-2. Manage implementation with tdd-implementer
-3. Oversee quality validation with quality-gate
-4. Handle documentation generation with docs-manager
+1. Coordinate specification creation with workflow-spec
+2. Manage implementation with workflow-tdd
+3. Oversee quality validation with core-quality
+4. Handle documentation generation with workflow-docs
 
 ### Phase 3: Integration and Deployment
 1. Coordinate component integration
@@ -333,25 +333,25 @@ class DevelopmentOrchestrator:
     def __init__(self):
         self.workflow_phases = {
             'specification': {
-                'agent': 'spec-builder',
+                'agent': 'workflow-spec',
                 'inputs': ['requirements', 'stakeholders'],
                 'outputs': ['specification', 'acceptance_criteria'],
                 'dependencies': []
             },
             'implementation': {
-                'agent': 'tdd-implementer',
+                'agent': 'workflow-tdd',
                 'inputs': ['specification'],
                 'outputs': ['code', 'tests'],
                 'dependencies': ['specification']
             },
             'validation': {
-                'agent': 'quality-gate',
+                'agent': 'core-quality',
                 'inputs': ['code', 'tests', 'specification'],
                 'outputs': ['quality_report'],
                 'dependencies': ['implementation']
             },
             'documentation': {
-                'agent': 'docs-manager',
+                'agent': 'workflow-docs',
                 'inputs': ['code', 'specification', 'quality_report'],
                 'outputs': ['documentation'],
                 'dependencies': ['validation']
@@ -426,9 +426,9 @@ class ErrorHandler:
                 'strategy': 'retry_with_alternative',
                 'max_retries': 3,
                 'fallback_agents': {
-                    'spec-builder': 'requirements-analyst',
-                    'tdd-implementer': 'code-developer',
-                    'quality-gate': 'manual-review'
+                    'workflow-spec': 'requirements-analyst',
+                    'workflow-tdd': 'code-developer',
+                    'core-quality': 'manual-review'
                 }
             },
             'dependency_failure': {
@@ -775,9 +775,9 @@ You are a comprehensive full-stack development specialist with expertise across 
 ## Agent Delegation Patterns
 
 ### When to Delegate
-- **Frontend Complexity**: Delegate to frontend-expert
-- **Backend Architecture**: Delegate to backend-expert
-- **Database Design**: Delegate to database-expert
+- **Frontend Complexity**: Delegate to code-frontend
+- **Backend Architecture**: Delegate to code-backend
+- **Database Design**: Delegate to data-database
 - **Security Analysis**: Delegate to security-expert
 - **Performance Optimization**: Delegate to performance-engineer
 
@@ -795,21 +795,21 @@ def handle_full_stack_request(request):
 
     if domain_analysis['frontend_required']:
         results['frontend'] = Task(
-            subagent_type="frontend-expert",
+            subagent_type="code-frontend",
             prompt="Design and implement frontend components",
             context={"request": request, "analysis": domain_analysis}
         )
 
     if domain_analysis['backend_required']:
         results['backend'] = Task(
-            subagent_type="backend-expert",
+            subagent_type="code-backend",
             prompt="Design and implement backend API",
             context={"request": request, "analysis": domain_analysis, "frontend": results.get('frontend')}
         )
 
     if domain_analysis['database_required']:
         results['database'] = Task(
-            subagent_type="database-expert",
+            subagent_type="data-database",
             prompt="Design database schema and optimization",
             context={"request": request, "analysis": domain_analysis, "frontend": results.get('frontend'), "backend": results.get('backend')}
         )
@@ -836,15 +836,15 @@ def handle_full_stack_request(request):
 class AdaptiveWorkflowAgent:
     def __init__(self):
         self.agent_capabilities = {
-            'spec-builder': {
+            'workflow-spec': {
                 'complexity_threshold': 7,
                 'task_types': ['specification', 'requirements', 'planning']
             },
-            'tdd-implementer': {
+            'workflow-tdd': {
                 'complexity_threshold': 5,
                 'task_types': ['implementation', 'development', 'coding']
             },
-            'quality-gate': {
+            'core-quality': {
                 'complexity_threshold': 3,
                 'task_types': ['validation', 'testing', 'quality']
             }

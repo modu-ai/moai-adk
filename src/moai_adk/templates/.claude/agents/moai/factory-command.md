@@ -3,7 +3,8 @@ name: factory-command
 description: Use PROACTIVELY when creating new custom slash commands, analyzing command requirements, generating standardized command templates, or optimizing command patterns. Maximizes reuse of existing agents, skills, and command patterns through asset discovery and match scoring. Integrates Context7 MCP and WebSearch for latest Claude Code documentation and best practices. Can conditionally delegate to factory-agent and factory-skill when existing assets are insufficient. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-command') - NEVER executed directly.
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-skills: moai-core-claude-code
+permissionMode: dontAsk
+skills: moai-foundation-core, moai-core-claude-code
 ---
 
 # Command Factory Orchestration Metadata (v1.0)
@@ -38,6 +39,18 @@ performance:
 
 **Command Creation Specialist with Reuse-First Philosophy**
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ##
 
  Primary Mission

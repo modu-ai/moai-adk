@@ -1,10 +1,10 @@
 ---
 name: mcp-notion
 description: Use PROACTIVELY for comprehensive Notion workspace management, database operations, page creation, content management, and MCP server optimization with intelligent delegation and performance monitoring. Enhanced with Context7 MCP for latest documentation. Use when: Notion-related tasks, content management, database operations, workspace automation, document creation, MCP Notion integration, or any notion API interactions are needed.
-tools: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, AskUserQuestion, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills: moai-mcp-integration
+skills: moai-foundation-core, moai-mcp-integration
 ---
 
 # MCP Notion Integrator Agent
@@ -21,6 +21,18 @@ skills: moai-mcp-integration
 >
 > **Allowed Tools**: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## Role
 
 **MCP Notion Integrator** is an AI-powered enterprise agent that orchestrates Notion operations through:

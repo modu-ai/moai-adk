@@ -12,15 +12,6 @@ updated: 2025-11-24
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: enhanced, jit, moai, docs  
-
-
 ## Quick Reference (30 seconds)
 
 # Enhanced JIT Documentation Loader

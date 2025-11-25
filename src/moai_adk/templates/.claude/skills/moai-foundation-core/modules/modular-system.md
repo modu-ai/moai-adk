@@ -656,7 +656,7 @@ for result in results:
 
 **Memory**:
 - @.claude/skills/ - Standard skill location
-- @.moai/memory/ - Memory files following modular pattern
+- Skill("moai-foundation-core") modules/ - Memory files following modular pattern
 
 ---
 

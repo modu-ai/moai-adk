@@ -179,7 +179,7 @@ All modules follow the 3-tier progressive disclosure structure:
 - Agents: quality-gate, spec-builder, tdd-implementer, etc.
 - Skills: moai-cc-*, moai-foundation-*, moai-essentials-*
 - Commands: /moai:1-plan, /moai:2-run, /moai:3-sync, /clear
-- Memory: @.moai/memory/*.md references
+- Memory: Skill("moai-foundation-core") modules/*.md references
 
 ---
 

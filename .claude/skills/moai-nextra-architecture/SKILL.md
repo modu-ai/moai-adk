@@ -11,17 +11,6 @@ updated: 2025-11-24
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**Name**: moai-nextra-architecture
-**Domain**: Documentation & Static Site Generation
-**Freedom Level**: high
-**Target Users**: Documentation architects, technical writers, developers
-**Invocation**: Skill("moai-nextra-architecture")
-**Progressive Disclosure**: SKILL.md (core) → modules/ (detailed configs)
-**Last Updated**: 2025-11-23
-**Modularized**: true
-
 ---
 
 ## 🎯 Quick Reference (30 seconds)
@@ -41,6 +30,71 @@ status: active
 - `_meta.js` - Navigation structure
 
 ---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Nextra documentation framework architecture patterns
+- Next.js 15 integration with optimal configuration
+- Theme customization and component overrides
+- Advanced search with FlexSearch integration
+- Internationalization (i18n) support
+- MDX-powered content with React components
+
+### When to Use
+
+- Building documentation sites with modern React features
+- Creating knowledge bases with advanced search capabilities
+- Developing multi-language documentation portals
+- Implementing custom documentation themes
+- Integrating interactive examples in technical docs
+
+### Core Patterns
+
+**Pattern 1: Nextra Project Setup**
+```bash
+# Initialize Nextra docs site
+npx create-nextra-app@latest my-docs --template docs
+
+# Project structure
+pages/
+├── _app.tsx (custom App component)
+├── index.mdx (home page)
+├── docs/
+│   ├── guide.mdx
+│   └── api.mdx
+└── _meta.json (navigation config)
+```
+
+**Pattern 2: Custom Theme Configuration**
+```typescript
+// theme.config.tsx
+export default {
+  logo: <span>My Documentation</span>,
+  project: { link: 'https://github.com/user/repo' },
+  docsRepositoryBase: 'https://github.com/user/repo/tree/main',
+  useNextSeoProps: () => ({
+    titleTemplate: '%s – My Docs'
+  })
+}
+```
+
+**Pattern 3: MDX with React Components**
+```mdx
+import { Callout } from 'nextra/components'
+
+# API Reference
+
+<Callout type="info">
+  This API requires authentication.
+</Callout>
+
+<CustomCodeBlock language="typescript">
+  // Your code here
+</CustomCodeBlock>
+```
 
 ## 📚 Core Patterns (5-10 minutes)
 

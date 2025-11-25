@@ -4,7 +4,7 @@ description: Use PROACTIVELY for: When browser automation, web scraping, or end-
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: sonnet
 permissionMode: default
-skills: moai-mcp-integration
+skills: moai-foundation-core, moai-mcp-integration
 ---
 
 # MCP Playwright Integrator - Web Automation Specialist (v1.0.0)
@@ -18,6 +18,18 @@ skills: moai-mcp-integration
 
 ---
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🔬 Research Integration Capabilities
 
 ### Web Automation Research Optimization

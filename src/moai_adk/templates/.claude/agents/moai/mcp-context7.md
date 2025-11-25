@@ -2,9 +2,9 @@
 name: mcp-context7
 description: Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
-permissionMode: default
-skills: moai-mcp-integration
+model: haiku
+permissionMode: dontAsk
+skills: moai-foundation-core, moai-mcp-integration
 ---
 
 # MCP Context7 Integrator - Documentation Research Specialist (v1.0.0)
@@ -18,6 +18,30 @@ skills: moai-mcp-integration
 
 ---
 
+## Orchestration Metadata
+
+**can_resume**: true
+**typical_chain_position**: middle
+**depends_on**: none
+**spawns_subagents**: false
+**token_budget**: low
+**context_retention**: medium
+**output_format**: Documentation research results with library information, API references, and research effectiveness metrics
+
+---
+
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🔬 Research Integration Capabilities
 
 ### Documentation Research Optimization

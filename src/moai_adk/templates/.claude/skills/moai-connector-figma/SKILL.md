@@ -1,5 +1,5 @@
 ---
-name: moai-domain-figma
+name: moai-connector-figma
 description: Design System & UI Kit Development with Figma 2025, Design Tokens, and Component Documentation
 version: 1.0.0
 modularized: false
@@ -11,15 +11,6 @@ tags:
 updated: 2025-11-24
 status: active
 ---
-
-## 📊 Skill Metadata
-
-**version**: 1.0.0  
-**modularized**: false  
-**last_updated**: 2025-11-22  
-**compliance_score**: 75%  
-**auto_trigger_keywords**: domain, moai, figma  
-
 
 ## Quick Reference (30 seconds)
 
@@ -37,6 +28,57 @@ status: active
 | Design Tokens | 2.0 | Token standardization |
 
 ---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Design system architecture with W3C DTCG 2.0 token standards
+- Component library management with variants and states
+- Design-to-code workflow automation via Figma MCP
+- Accessibility compliance auditing (WCAG 2.2)
+- Real-time collaboration and version control
+- Asset export and developer handoff
+
+### When to Use
+
+- Creating or refactoring design systems for multi-platform projects
+- Building accessible component libraries with proper documentation
+- Automating design token synchronization between design and code
+- Setting up design-to-development workflows with version control
+- Implementing design system governance and maintenance processes
+
+### Core Patterns
+
+**Pattern 1: Design Token Architecture**
+```javascript
+// Design tokens following DTCG 2.0
+{
+  "color": {
+    "brand": {
+      "primary": { "$value": "#0066CC", "$type": "color" },
+      "secondary": { "$value": "#6C757D", "$type": "color" }
+    }
+  },
+  "spacing": {
+    "base": { "$value": "8px", "$type": "dimension" }
+  }
+}
+```
+
+**Pattern 2: Component Variant System**
+- Create main components with logical variant properties (size, state, theme)
+- Use auto-layout for responsive behavior
+- Document usage guidelines in component descriptions
+- Maintain consistent naming: Component/Variant/State
+
+**Pattern 3: Design-to-Code Workflow**
+1. Design components in Figma with proper naming
+2. Export design tokens via Figma MCP plugin
+3. Sync tokens to code repository (JSON → CSS/SCSS/JS)
+4. Generate component boilerplate from Figma specs
+5. Validate design compliance with automated tests
 
 ## What It Does
 
@@ -137,7 +179,7 @@ Design-to-development workflow:
 
 - `moai-domain-frontend` (React component mapping)
 - `moai-lang-html-css` (HTML/CSS semantic markup)
-- `moai-domain-ux` (UX/UI design principles)
+- `moai-universal-ultimate` (UX/UI design principles)
 
 ---
 
@@ -160,6 +202,6 @@ Design-to-development workflow:
 
 ---
 
-**Skills**: Skill("moai-domain-frontend"), Skill("moai-lang-html-css"), Skill("moai-domain-ux")
+**Skills**: Skill("moai-lang-unified"), Skill("moai-lang-html-css"), Skill("moai-universal-ultimate")
 **Auto-loads**: Design system files, Figma projects
 

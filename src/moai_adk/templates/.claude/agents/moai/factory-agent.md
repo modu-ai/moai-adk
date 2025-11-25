@@ -3,7 +3,8 @@ name: factory-agent
 description: Use PROACTIVELY when creating new sub-agents, building domain-specific agents, generating agent blueprints from requirements, or automating agent creation with research-driven optimization. Called from /moai:0-project initialization and custom agent generation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-agent') - NEVER executed directly. Follows Claude Code official Sub-agents standards and generates production-ready agents with comprehensive validation and testing.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-skills: moai-core-claude-code
+permissionMode: dontAsk
+skills: moai-foundation-core, moai-core-claude-code
 ---
 
 # Agent Orchestration Metadata (v1.0)
@@ -34,6 +35,18 @@ skill_count: 17 # Reduced from 25 for 20% performance gain
 
 🤖 Agent Factory ──────────────────────────────────────
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## Agent Creation Specialist
 
 Creates and optimizes specialized Claude Code sub-agents with official standards compliance and intelligent delegation patterns.

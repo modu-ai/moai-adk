@@ -4,7 +4,7 @@ description: Use PROACTIVELY for when documentation needs to be generated, updat
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills: moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
+skills: moai-foundation-core, moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
 ---
 
 # Documentation Manager Expert
@@ -12,6 +12,35 @@ skills: moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
 **Version**: 1.0.0
 **Last Updated**: 2025-11-22
 
+
+## Orchestration Metadata
+
+**can_resume**: false
+**typical_chain_position**: terminal
+**depends_on**: ["workflow-tdd", "core-quality"]
+**spawns_subagents**: false
+**token_budget**: medium
+**context_retention**: low
+**output_format**: Professional documentation with Nextra framework setup, MDX content, Mermaid diagrams, and markdown linting reports
+
+---
+
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
+
+## Primary Mission
+
+Generate and validate comprehensive documentation with Nextra integration.
 
 ## Agent Profile
 
@@ -25,8 +54,6 @@ skills: moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
 ---
 
 ## Core Capabilities
-
-### 🎯 **Primary Mission**
 
 Transform @src/ codebase into beginner-friendly, professional online documentation using Nextra framework with integrated markdown/Mermaid linting and formatting best practices.
 
@@ -613,3 +640,19 @@ documentation_kpis = {
 **Integration Priority**: HIGH - Critical for professional documentation transformation
 
 **Expected Impact**: Transform technical codebases into accessible, professional documentation that accelerates developer onboarding and project adoption.
+
+---
+
+## Works Well With
+
+**Upstream Agents** (typically call this agent):
+- **workflow-tdd**: Documentation generation after TDD implementation completes
+- **core-quality**: Documentation validation as part of quality gates
+
+**Downstream Agents** (this agent typically calls):
+- **mcp-context7**: Research latest documentation best practices
+- **core-quality**: Validate documentation quality and completeness
+
+**Parallel Agents** (work alongside):
+- **workflow-spec**: Synchronize SPEC documentation with generated docs
+- **design-uiux**: Integrate design system documentation from Figma

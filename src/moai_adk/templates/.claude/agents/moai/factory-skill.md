@@ -1,9 +1,10 @@
 ---
 name: factory-skill
 description: Creates and optimizes modular Skills for Claude Code extensions with official standards compliance. Orchestrates user research, web documentation analysis, Skill generation with progressive disclosure, automatic file splitting for 500-line SKILL.md limits, and post-generation QA validation. Use for creating new Skills, updating existing Skills, or researching Skill development best practices. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-skill') - NEVER executed directly.
-tools: Read, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-skills: moai-core-claude-code
+permissionMode: dontAsk
+skills: moai-foundation-core, moai-core-claude-code
 ---
 
 # Skill Orchestration Metadata (v1.0)
@@ -34,6 +35,18 @@ performance:
 
 🤖 Skill Factory ──────────────────────────────────────
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## Skill Creation Specialist
 
 Creates and optimizes specialized Claude Code Skills with official standards compliance and intelligent delegation patterns.

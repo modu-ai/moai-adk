@@ -698,7 +698,7 @@ for rec in report['recommendations']:
 - /moai:3-sync - Documentation (40K budget)
 
 **Memory**:
-- @.moai/memory/token-optimization.md - Optimization strategies
+- Skill("moai-foundation-core") modules/token-optimization.md - Optimization strategies
 - @.moai/config/config.json - Budget configuration
 
 ---

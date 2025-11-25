@@ -43,6 +43,67 @@ Comprehensive reference for Claude Code Skills, sub-agents, custom slash command
 **Settings**: 4-tier hierarchy (Enterprise → User → Project → Local)
 **IAM**: Tiered permissions (Read→Bash→Write→Admin), tool-specific rules
 
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Comprehensive Claude Code authoring reference
+- Skills, sub-agents, commands, hooks, and settings
+- IAM permissions and security best practices
+- Progressive disclosure documentation architecture
+- MCP integration patterns and examples
+
+### When to Use
+
+- Creating new Claude Code skills following official standards
+- Developing custom sub-agents with proper delegation patterns
+- Implementing custom slash commands with parameter handling
+- Setting up hooks for event-driven automation
+- Configuring IAM permissions and access control
+
+### Core Patterns
+
+**Pattern 1: Skill Creation (≤500 lines)**
+```yaml
+---
+name: skill-name
+description: One-line description (max 200 chars)
+version: 1.0.0
+updated: 2025-11-26
+status: active
+---
+
+## Quick Reference (30 seconds)
+## Implementation Guide (5 minutes)
+## Advanced Implementation (10+ minutes)
+```
+
+**Pattern 2: Sub-agent Delegation**
+```python
+# Sequential delegation
+result1 = Task(subagent_type="workflow-spec", prompt="Analyze")
+result2 = Task(subagent_type="code-backend", prompt="Implement", context=result1)
+
+# Parallel delegation
+results = await Promise.all([
+    Task(subagent_type="code-backend", prompt="Backend"),
+    Task(subagent_type="code-frontend", prompt="Frontend")
+])
+```
+
+**Pattern 3: Custom Command with Hooks**
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Write",
+      "hooks": [{"type": "command", "command": "validate-write"}]
+    }]
+  }
+}
+```
+
 ## MoAI-ADK Skills & Sub-agents Directory
 
 ### Quick Access Patterns

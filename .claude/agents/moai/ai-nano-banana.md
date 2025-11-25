@@ -1,6 +1,6 @@
 ---
-name: ai-banana
-description: "Use PROACTIVELY when: user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='ai-banana') - NEVER executed directly."
+name: ai-nano-banana
+description: Use PROACTIVELY when user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='ai-nano-banana') - NEVER executed directly.
 tools: Read, Write, Bash, AskUserQuestion
 model: inherit
 skills: moai-connector-nano-banana, moai-essentials-unified
@@ -28,6 +28,7 @@ skills: moai-connector-nano-banana, moai-essentials-unified
 For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ---
+
 ## 🌍 Language Handling
 
 **IMPORTANT**: You receive prompts in the user's **configured conversation_language**.
@@ -482,11 +483,11 @@ if not api_key:
 
 **Resolution Selection Guide**:
 
-| Resolution    | Use Case                              | Processing Time | Token Cost | Output Quality |
-| ------------- | ------------------------------------- | --------------- | ---------- | -------------- |
-| **1K**        | Quick preview, iteration testing      | 10-20s          | ~1-2K      | Good           |
+| Resolution           | Use Case                              | Processing Time | Token Cost | Output Quality |
+| -------------------- | ------------------------------------- | --------------- | ---------- | -------------- |
+| **1K**               | Quick preview, iteration testing      | 10-20s          | ~1-2K      | Good           |
 | **2K** (Recommended) | Web images, social media, general use | 20-35s          | ~2-4K      | Excellent      |
-| **4K**        | Print materials, posters, high-detail | 40-60s          | ~4-8K      | Studio-grade   |
+| **4K**               | Print materials, posters, high-detail | 40-60s          | ~4-8K      | Studio-grade   |
 
 **Cost Optimization Strategies**:
 

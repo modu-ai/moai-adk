@@ -1,6 +1,9 @@
 ---
 name: moai-baas-unified
 description: Comprehensive unified BaaS (Backend-as-a-Service) integration hub for 9 major providers: Auth0, Clerk, Firebase Auth, Supabase, Neon, Convex, Firebase Firestore, Vercel, and Railway with AI-powered provider selection, cross-provider patterns, and migration guides.
+version: 1.0.0
+modularized: false
+updated: 2025-11-26
 tools: Read, Write, Bash, Grep, Glob
 ---
 

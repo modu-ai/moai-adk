@@ -110,7 +110,7 @@ Output: [Expected output format and content]
 **Uniqueness**: Must be unique within project
 **Pattern**: `[domain]-[specialization]` or `[function]-expert`
 **Examples**:
-- ✅ `backend-expert` (backend domain specialization)
+- ✅ `code-backend` (backend domain specialization)
 - ✅ `frontend-developer` (frontend specialization)
 - ✅ `api-designer` (API design specialization)
 - ✅ `security-auditor` (security specialization)
@@ -126,7 +126,7 @@ Output: [Expected output format and content]
 3. "CRITICAL: This agent MUST be invoked via Task(subagent_type='...')" clause
 
 **Examples**:
-- ✅ `Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='backend-expert') - NEVER executed directly.`
+- ✅ `Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan and task delegation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='code-backend') - NEVER executed directly.`
 - ❌ `Backend development agent` (too vague, missing required clauses)
 - ❌ `Helps with backend stuff` (unprofessional, missing trigger scenarios)
 
@@ -201,7 +201,7 @@ permissionMode: dontAsk
 skills: moai-lang-python, moai-domain-backend, moai-context7-integration
 
 # ✅ Load quality and documentation skills
-skills: moai-quality-gate, moai-docs-generation, moai-cc-claude-code
+skills: moai-core-quality, moai-docs-generation, moai-cc-claude-code
 ```
 
 ---
@@ -258,7 +258,7 @@ You are a specialized backend architecture expert focused on designing and imple
 ## Critical Constraints
 
 - **No sub-agent spawning**: This agent CANNOT create other sub-agents. Use Task() delegation only.
-- **Domain focus**: Stay within backend domain. Delegate frontend tasks to frontend-expert.
+- **Domain focus**: Stay within backend domain. Delegate frontend tasks to code-frontend.
 - **Security-first**: All designs must pass OWASP validation.
 - **Performance-aware**: Include scalability and optimization considerations.
 ```
@@ -302,7 +302,7 @@ Output: Complete API specification with:
 - Conducting backend security audits
 
 **Delegation Targets**:
-- `database-expert` for complex database schema design
+- `data-database` for complex database schema design
 - `security-expert` for advanced security analysis
 - `performance-engineer` for performance optimization
 - `api-designer` for detailed API specification
@@ -329,11 +329,11 @@ Output: Complete API specification with:
 
 **Purpose**: Deep expertise in specific technical domain
 **Structure**: Domain-focused responsibilities, specialized workflows
-**Examples**: `backend-expert`, `frontend-expert`, `database-expert`
+**Examples**: `code-backend`, `code-frontend`, `data-database`
 
 ```yaml
 ---
-name: backend-expert
+name: code-backend
 description: Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan and task delegation workflows.
 tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
@@ -355,7 +355,7 @@ You are a specialized backend architecture expert focused on designing and imple
 
 **Purpose**: Expertise in specific tools or technologies
 **Structure**: Tool-focused workflows, integration patterns
-**Examples**: `format-expert`, `debug-helper`, `docs-manager`
+**Examples**: `format-expert`, `support-debug`, `workflow-docs`
 
 ```yaml
 ---
@@ -381,15 +381,15 @@ You are a code formatting and style consistency expert specializing in automated
 
 **Purpose**: Manage complex multi-step processes
 **Structure**: Phase-based workflows, coordination patterns
-**Examples**: `tdd-implementer`, `agent-factory`, `skill-factory`
+**Examples**: `workflow-tdd`, `agent-factory`, `skill-factory`
 
 ```yaml
 ---
-name: tdd-implementer
+name: workflow-tdd
 description: Execute RED-GREEN-REFACTOR TDD cycle for implementing features with comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet
-skills: moai-lang-python, moai-domain-testing, moai-quality-gate
+skills: moai-lang-python, moai-domain-testing, moai-core-quality
 ---
 
 # TDD Implementation Expert
@@ -407,11 +407,11 @@ You are a Test-Driven Development implementation expert specializing in the RED-
 
 **Purpose**: Validate and improve quality of work products
 **Structure**: Quality criteria, validation workflows, improvement recommendations
-**Examples**: `quality-gate`, `security-expert`, `test-engineer`
+**Examples**: `core-quality`, `security-expert`, `core-quality`
 
 ```yaml
 ---
-name: quality-gate
+name: core-quality
 description: Validate code quality against TRUST 5 framework (Testable, Readable, Unified, Secured, Trackable). Called from /moai:2-run quality validation and task delegation workflows.
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
@@ -503,26 +503,26 @@ You are a quality assurance expert specializing in comprehensive code validation
 
 **Pattern**: Agent A completes → Agent B continues
 **Use Case**: Multi-phase workflows with dependencies
-**Example**: `spec-builder` → `tdd-implementer` → `docs-manager`
+**Example**: `workflow-spec` → `workflow-tdd` → `workflow-docs`
 
 ```python
 # Sequential delegation example
 # Phase 1: Specification
 spec_result = Task(
-    subagent_type="spec-builder",
+    subagent_type="workflow-spec",
     prompt="Create specification for user authentication system"
 )
 
 # Phase 2: Implementation (passes spec as context)
 implementation_result = Task(
-    subagent_type="tdd-implementer",
+    subagent_type="workflow-tdd",
     prompt="Implement user authentication from specification",
     context={"specification": spec_result}
 )
 
 # Phase 3: Documentation (passes implementation as context)
 documentation_result = Task(
-    subagent_type="docs-manager",
+    subagent_type="workflow-docs",
     prompt="Generate API documentation",
     context={"implementation": implementation_result}
 )
@@ -532,21 +532,21 @@ documentation_result = Task(
 
 **Pattern**: Multiple agents work simultaneously
 **Use Case**: Independent tasks that can be processed in parallel
-**Example**: `backend-expert` + `frontend-expert` + `database-expert`
+**Example**: `code-backend` + `code-frontend` + `data-database`
 
 ```python
 # Parallel delegation example
 results = await Promise.all([
     Task(
-        subagent_type="backend-expert",
+        subagent_type="code-backend",
         prompt="Design backend API for user management"
     ),
     Task(
-        subagent_type="frontend-expert",
+        subagent_type="code-frontend",
         prompt="Design frontend user interface for user management"
     ),
     Task(
-        subagent_type="database-expert",
+        subagent_type="data-database",
         prompt="Design database schema for user management"
     )
 ])

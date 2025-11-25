@@ -1,6 +1,6 @@
 ---
 name: ai-gemini
-description: "Use PROACTIVELY for Frontend UI/UX design, React/Next.js components, AI-powered code generation, and Gemini-specific workflows. Called from /moai:2-run GREEN phase for Frontend tasks and /moai:10-ai for direct Gemini invocation. CRITICAL: This agent MUST be invoked via Task(subagent_type='ai-gemini') - NEVER executed directly."
+description: Use PROACTIVELY for Frontend UI/UX design, React/Next.js components, AI-powered code generation, and Gemini-specific workflows. Called from /moai:2-run GREEN phase for Frontend tasks and /moai:10-ai for direct Gemini invocation. CRITICAL - This agent MUST be invoked via Task(subagent_type='ai-gemini') - NEVER executed directly.
 tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 skills: moai-lang-unified, moai-essentials-unified, moai-mcp-integration
@@ -15,6 +15,30 @@ skills: moai-lang-unified, moai-essentials-unified, moai-mcp-integration
 
 ---
 
+## Orchestration Metadata
+
+**can_resume**: true
+**typical_chain_position**: terminal
+**depends_on**: ["core-planner", "workflow-spec", "code-frontend"]
+**spawns_subagents**: false
+**token_budget**: high
+**context_retention**: medium
+**output_format**: React/Vue/Angular components with JSON output including token usage and file generation stats
+
+---
+
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🎭 Agent Persona
 
 **Icon**: 🤖

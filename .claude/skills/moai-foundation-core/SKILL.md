@@ -1,6 +1,9 @@
 ---
 name: moai-foundation-core
 description: MoAI-ADK's foundational principles - TRUST 5, SPEC-First TDD, delegation patterns, token optimization, progressive disclosure, modular architecture, agent catalog, command reference, and execution rules for building AI-powered development workflows
+version: 2.2.0
+modularized: false
+updated: 2025-11-26
 tools: Read, Grep, Glob
 ---
 
@@ -62,7 +65,7 @@ Six essential principles that ensure quality, efficiency, and scalability in AI-
 **Integration Points**:
 - Pre-commit hooks → Automated validation
 - CI/CD pipelines → Quality gate enforcement
-- Agent workflows → quality-gate validation
+- Agent workflows → core-quality validation
 - Documentation → Quality metrics
 
 **Detailed Reference**: [TRUST 5 Framework Module](modules/trust-5-framework.md)
@@ -77,7 +80,7 @@ Six essential principles that ensure quality, efficiency, and scalability in AI-
 
 ```
 Phase 1: SPEC (/moai:1-plan)
-├─ spec-builder → EARS format
+├─ workflow-spec → EARS format
 ├─ Output: .moai/specs/SPEC-XXX/spec.md
 └─ Execute /clear (saves 45-50K tokens)
 
@@ -272,22 +275,22 @@ External: [Reference](reference.md#api)
 
 **TRUST 5 + SPEC-First TDD**:
 ```python
-spec = Task(subagent_type="spec-builder", prompt="SPEC with TRUST 5")
-impl = Task(subagent_type="tdd-implementer", prompt="≥85% coverage", 
+spec = Task(subagent_type="workflow-spec", prompt="SPEC with TRUST 5")
+impl = Task(subagent_type="workflow-tdd", prompt="≥85% coverage", 
             context={"spec": spec, "quality_gates": ["TRUST5"]})
-validation = Task(subagent_type="quality-gate", prompt="Validate TRUST 5",
+validation = Task(subagent_type="core-quality", prompt="Validate TRUST 5",
                   context={"implementation": impl})
 ```
 
 **Token-Optimized Delegation**:
 ```python
-spec = Task(subagent_type="spec-builder", prompt="Generate SPEC")
+spec = Task(subagent_type="workflow-spec", prompt="Generate SPEC")
 execute_clear()  # Save 45-50K
 results = await Promise.all([
     Task(subagent_type="backend-expert", prompt="Backend", context={"spec_id": spec.id}),
     Task(subagent_type="frontend-expert", prompt="Frontend", context={"spec_id": spec.id})
 ])
-Task(subagent_type="docs-manager", prompt="Docs", context={"results": results})
+Task(subagent_type="workflow-docs", prompt="Docs", context={"results": results})
 ```
 
 **Progressive Agent Workflows**:
@@ -356,10 +359,10 @@ if token_usage > 150_000:
 **Agents**:
 - **agent-factory** - Create agents with foundation principles
 - **skill-factory** - Generate skills with modular architecture
-- **quality-gate** - Automated TRUST 5 validation
-- **spec-builder** - EARS format specification
-- **tdd-implementer** - RED-GREEN-REFACTOR execution
-- **docs-manager** - Documentation with progressive disclosure
+- **core-quality** - Automated TRUST 5 validation
+- **workflow-spec** - EARS format specification
+- **workflow-tdd** - RED-GREEN-REFACTOR execution
+- **workflow-docs** - Documentation with progressive disclosure
 
 **Skills**:
 - **moai-cc-claude-md** - CLAUDE.md with foundation patterns

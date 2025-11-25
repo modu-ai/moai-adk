@@ -23,7 +23,7 @@ Comprehensive collection of real-world sub-agent examples covering various domai
 
 ```yaml
 ---
-name: backend-expert
+name: code-backend
 description: Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan architecture design and task delegation workflows.
 tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, MultiEdit, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
@@ -115,7 +115,7 @@ Output: Microservices architecture with:
 - Conducting backend security audits
 
 **Delegation Targets**:
-- `database-expert` for complex database schema design
+- `data-database` for complex database schema design
 - `security-expert` for advanced security analysis
 - `performance-engineer` for performance optimization
 - `api-designer` for detailed API specification
@@ -181,7 +181,7 @@ database_selection:
 
 ```yaml
 ---
-name: frontend-expert
+name: code-frontend
 description: Use PROACTIVELY for frontend UI development, React/Vue/Angular components, responsive design, user experience optimization, or web application architecture. Called from /moai:2-run implementation and task delegation workflows.
 tools: Read, Write, Edit, Grep, Glob, MultiEdit, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
@@ -499,8 +499,8 @@ Output: Standardized code formatting with:
 - Pre-commit hook configuration
 
 **Delegation Targets**:
-- `quality-gate` for comprehensive quality validation
-- `docs-manager` for formatting documentation
+- `core-quality` for comprehensive quality validation
+- `workflow-docs` for formatting documentation
 - `git-manager` for pre-commit hook setup
 
 ## Language-Specific Patterns
@@ -578,7 +578,7 @@ rust_formatting:
 
 ```yaml
 ---
-name: debug-helper
+name: support-debug
 description: Use PROACTIVELY for error analysis, debugging assistance, troubleshooting guidance, and problem resolution. Use when encountering runtime errors, logic issues, or unexpected behavior that needs investigation.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
@@ -668,7 +668,7 @@ Output: Debugging analysis with:
 - Providing systematic debugging methodologies
 
 **Delegation Targets**:
-- `quality-gate` for comprehensive code review
+- `core-quality` for comprehensive code review
 - `security-expert` for security-related issues
 - `performance-engineer` for performance debugging
 
@@ -871,11 +871,11 @@ class DebuggingKnowledgeBase:
 
 ```yaml
 ---
-name: tdd-implementer
+name: workflow-tdd
 description: Execute RED-GREEN-REFACTOR TDD cycle for implementing features with comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet
-skills: moai-lang-python, moai-domain-testing, moai-quality-gate, moai-core-spec-authoring
+skills: moai-lang-python, moai-domain-testing, moai-core-quality, moai-core-spec-authoring
 ---
 
 # TDD Implementation Expert
@@ -986,8 +986,8 @@ Output: Complete User model with:
 - Ensuring code quality through systematic testing
 
 **Delegation Targets**:
-- `quality-gate` for comprehensive validation
-- `test-engineer` for advanced testing strategies
+- `core-quality` for comprehensive validation
+- `core-quality` for advanced testing strategies
 - `security-expert` for security-focused testing
 
 ## TDD Best Practices
@@ -1180,7 +1180,7 @@ name: security-expert
 description: Use PROACTIVELY for security audits, vulnerability assessment, OWASP Top 10 analysis, and secure code review. Use when conducting security analysis, implementing security controls, or validating security measures.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-skills: moai-domain-security, moai-cc-security, moai-quality-gate, moai-core-workflow
+skills: moai-domain-security, moai-cc-security, moai-core-quality, moai-core-workflow
 ---
 
 # Security Auditor Expert 🔒
@@ -1303,9 +1303,9 @@ Output: Security code review with:
 - Responding to security incidents and breaches
 
 **Delegation Targets**:
-- `backend-expert` for backend security implementation
-- `frontend-expert` for frontend security validation
-- `database-expert` for database security assessment
+- `code-backend` for backend security implementation
+- `code-frontend` for frontend security validation
+- `data-database` for database security assessment
 
 ## Security Analysis Framework
 

@@ -3,8 +3,6 @@ name: moai-universal-ultimate
 description: The ultimate unified development skill combining 25+ programming languages, 9+ BaaS providers, 6+ development functions, and 15+ security capabilities with AI orchestration, Context7 integration, enterprise compliance, and end-to-end project automation
 version: 1.0.0
 modularized: true
-author: MoAI-ADK Team
-last_updated: 2025-11-25
 tags:
   - universal
   - development
@@ -14,26 +12,12 @@ tags:
   - enterprise
   - ai-powered
   - orchestration
-status: production
+updated: 2025-11-25
+status: active
+author: MoAI-ADK Team
 ---
 
 # 🚀 MoAI Universal Ultimate: The Complete Development Intelligence Platform
-
-## 📊 Skill Metadata
-
-**Version**: 1.0.0
-**Modularized**: true
-**Last Updated**: 2025-11-25
-**Compliance Score**: 98%
-**Auto-Trigger Keywords**: development, programming, security, deployment, architecture, enterprise, full-stack, backend, frontend, devops
-
-**Universal Coverage**:
-- **Languages**: 25+ programming languages with latest versions
-- **BaaS**: 9+ Backend-as-a-Service providers
-- **Development**: 6+ core development functions
-- **Security**: 15+ comprehensive security domains
-- **Integration**: 200+ frameworks and libraries via Context7
-- **Compliance**: OWASP, SOC 2, ISO 27001, GDPR automation
 
 ---
 

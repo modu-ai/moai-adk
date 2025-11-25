@@ -15,15 +15,6 @@ updated: 2025-11-24
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**Version**: 2.0.0
-**Modularized**: true
-**Last Updated**: 2025-11-24
-**Compliance Score**: 92%
-**Auto-Trigger Keywords**: context, session, budget, token, state, management, optimization
-**Replaces**: moai-core-context-budget, moai-core-session-state
-
 ---
 
 ## Quick Reference (30 seconds)
@@ -56,6 +47,51 @@ status: active
 5. **Quality > Quantity** - 10% relevant context beats 90% noise
 
 ---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Intelligent context window management for Claude Code sessions
+- Progressive file loading with priority-based caching
+- Token budget tracking and optimization alerts
+- Selective context preservation across /clear boundaries
+- MCP integration context persistence
+
+### When to Use
+
+- Managing large codebases exceeding 150K token limits
+- Optimizing token usage in long-running development sessions
+- Preserving critical context across session resets
+- Coordinating multi-agent workflows with shared context
+- Debugging context-related issues in Claude Code
+
+### Core Patterns
+
+**Pattern 1: Progressive File Loading**
+```python
+# Load files by priority tiers
+Tier 1: CLAUDE.md, config.json (always loaded)
+Tier 2: Current SPEC and implementation files
+Tier 3: Related modules and dependencies
+Tier 4: Reference documentation (on-demand)
+```
+
+**Pattern 2: Context Checkpointing**
+1. Monitor token usage: warn at 150K, critical at 180K
+2. Identify essential context to preserve
+3. Execute `/clear` to reset session
+4. Reload Tier 1 and Tier 2 files automatically
+5. Resume work with preserved context
+
+**Pattern 3: MCP Context Continuity**
+```python
+# Preserve MCP agent context across /clear
+agent_id = mcp_agent.get_id()
+# After /clear:
+resume_mcp_agent(agent_id)  # Restores full context
+```
 
 ## 5 Core Patterns (5-10 minutes each)
 

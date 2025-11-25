@@ -15,15 +15,6 @@ updated: 2025-11-24
 status: active
 ---
 
-## 📊 Skill Metadata
-
-**Version**: 2.0.0
-**Modularized**: true
-**Last Updated**: 2025-11-24
-**Compliance Score**: 92%
-**Auto-Trigger Keywords**: template, boilerplate, pattern, feedback, optimization, scaffold
-**Replaces**: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
-
 ---
 
 ## Quick Reference (30 seconds)
@@ -55,6 +46,72 @@ status: active
 4. **Pattern Library**: Reusable patterns for common scenarios
 
 ---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Project templates for common architectures
+- Boilerplate code generation with best practices
+- Configurable template variables and customization
+- Multi-framework support (React, FastAPI, Spring, etc.)
+- Integrated testing and CI/CD configurations
+
+### When to Use
+
+- Bootstrapping new projects with proven architecture patterns
+- Ensuring consistency across multiple projects in an organization
+- Quickly prototyping new features with proper structure
+- Onboarding new developers with standardized project layouts
+- Generating microservices or modules following team conventions
+
+### Core Patterns
+
+**Pattern 1: Template Structure**
+```
+templates/
+├── fastapi-backend/
+│   ├── template.json (variables)
+│   ├── src/
+│   │   ├── main.py
+│   │   └── models/
+│   └── tests/
+├── nextjs-frontend/
+│   ├── template.json
+│   ├── app/
+│   └── components/
+└── fullstack/
+    ├── backend/
+    └── frontend/
+```
+
+**Pattern 2: Template Variables**
+```json
+{
+  "variables": {
+    "PROJECT_NAME": "my-project",
+    "AUTHOR": "John Doe",
+    "LICENSE": "MIT",
+    "PYTHON_VERSION": "3.13"
+  },
+  "files": {
+    "pyproject.toml": "substitute",
+    "README.md": "substitute",
+    "src/**/*.py": "copy"
+  }
+}
+```
+
+**Pattern 3: Template Generation**
+```python
+def generate_from_template(template_name, variables):
+    1. Load template directory
+    2. Substitute variables in marked files
+    3. Copy static files as-is
+    4. Run post-generation hooks (install deps, init git)
+    5. Validate generated project structure
+```
 
 ## 5 Core Patterns (5-10 minutes each)
 

@@ -972,7 +972,7 @@ class TRUST5Metrics:
 - /moai:9-feedback - Quality improvement suggestions
 
 **Memory**:
-- @.moai/memory/execution-rules.md - Quality gates
+- Skill("moai-foundation-core") modules/execution-rules.md - Quality gates
 - @.moai/config/config.json - constitution.test_coverage_target
 
 ---

@@ -15,6 +15,18 @@ skills: moai-foundation-core
 
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
+## Orchestration Metadata
+
+**can_resume**: false
+**typical_chain_position**: terminal
+**depends_on**: ["core-quality", "workflow-tdd"]
+**spawns_subagents**: false
+**token_budget**: low
+**context_retention**: low
+**output_format**: Git operation status reports with commit history, branch information, and PR status
+
+---
+
 ## 🎯 Selection-Based GitHub Flow Overview (v0.26.0+)
 
 This agent implements **Selection-Based GitHub Flow** - a simple Git strategy with manual mode selection:
@@ -35,6 +47,18 @@ This agent implements **Selection-Based GitHub Flow** - a simple Git strategy wi
 
 This is a dedicated agent that optimizes and processes all Git operations in {{PROJECT_NAME}} for each mode.
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🎭 Agent Persona (professional developer job)
 
 **Icon**: 🚀

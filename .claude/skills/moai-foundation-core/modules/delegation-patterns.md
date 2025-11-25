@@ -60,7 +60,7 @@ async def implement_feature_sequential(feature_description: str):
     
     # Phase 1: SPEC Generation
     spec_result = await Task(
-        subagent_type="spec-builder",
+        subagent_type="workflow-spec",
         prompt=f"Generate SPEC for: {feature_description}",
         context={
             "feature": feature_description,
@@ -84,7 +84,7 @@ async def implement_feature_sequential(feature_description: str):
     
     # Phase 3: Backend Implementation (depends on API design + SPEC)
     backend_result = await Task(
-        subagent_type="backend-expert",
+        subagent_type="code-backend",
         prompt="Implement backend with TDD",
         context={
             "spec_id": spec_result.spec_id,
@@ -95,7 +95,7 @@ async def implement_feature_sequential(feature_description: str):
     
     # Phase 4: Frontend Implementation (depends on API design)
     frontend_result = await Task(
-        subagent_type="frontend-expert",
+        subagent_type="code-frontend",
         prompt="Implement UI components",
         context={
             "spec_id": spec_result.spec_id,
@@ -106,7 +106,7 @@ async def implement_feature_sequential(feature_description: str):
     
     # Phase 5: Integration Testing (depends on all implementations)
     integration_result = await Task(
-        subagent_type="test-engineer",
+        subagent_type="core-quality",
         prompt="Run integration tests",
         context={
             "spec_id": spec_result.spec_id,
@@ -117,7 +117,7 @@ async def implement_feature_sequential(feature_description: str):
     
     # Phase 6: Documentation (depends on everything)
     docs_result = await Task(
-        subagent_type="docs-manager",
+        subagent_type="workflow-docs",
         prompt="Generate comprehensive documentation",
         context={
             "spec_id": spec_result.spec_id,
@@ -130,7 +130,7 @@ async def implement_feature_sequential(feature_description: str):
     
     # Phase 7: Quality Gate (validates everything)
     quality_result = await Task(
-        subagent_type="quality-gate",
+        subagent_type="core-quality",
         prompt="Validate TRUST 5 compliance",
         context={
             "spec_id": spec_result.spec_id,
@@ -161,18 +161,18 @@ def sequential_with_token_management():
     """Sequential flow with strategic /clear execution."""
     
     # Phase 1: Heavy context (SPEC generation)
-    spec = Task(subagent_type="spec-builder", ...)  # ~30K tokens
+    spec = Task(subagent_type="workflow-spec", ...)  # ~30K tokens
     execute_clear()  # Save 45-50K tokens
     
     # Phase 2: Fresh context (implementation)
     impl = Task(
-        subagent_type="tdd-implementer",
+        subagent_type="workflow-tdd",
         context={"spec_id": spec.id}  # Minimal context
     )  # ~80K tokens
     
     # Phase 3: Final phase
     docs = Task(
-        subagent_type="docs-manager",
+        subagent_type="workflow-docs",
         context={"spec_id": spec.id, "summary": impl.summary}
     )  # ~25K tokens
     
@@ -206,28 +206,28 @@ async def implement_feature_parallel(spec_id: str):
     results = await Promise.all([
         # Backend implementation
         Task(
-            subagent_type="backend-expert",
+            subagent_type="code-backend",
             prompt=f"Implement backend for {spec_id}",
             context={"spec_id": spec_id, "focus": "API endpoints"}
         ),
         
         # Frontend implementation
         Task(
-            subagent_type="frontend-expert",
+            subagent_type="code-frontend",
             prompt=f"Implement UI for {spec_id}",
             context={"spec_id": spec_id, "focus": "Components"}
         ),
         
         # Database schema
         Task(
-            subagent_type="database-expert",
+            subagent_type="data-database",
             prompt=f"Design database for {spec_id}",
             context={"spec_id": spec_id, "focus": "Schema"}
         ),
         
         # Documentation
         Task(
-            subagent_type="docs-manager",
+            subagent_type="workflow-docs",
             prompt=f"Generate docs for {spec_id}",
             context={"spec_id": spec_id, "focus": "API docs"}
         )
@@ -237,7 +237,7 @@ async def implement_feature_parallel(spec_id: str):
     
     # Integration step (sequential, depends on parallel results)
     integration = await Task(
-        subagent_type="test-engineer",
+        subagent_type="core-quality",
         prompt="Run integration tests",
         context={
             "spec_id": spec_id,
@@ -277,9 +277,9 @@ async def implement_feature_parallel(spec_id: str):
 Analysis Agent → Determines issue type
   ├─→ Security issue    → security-expert
   ├─→ Performance issue → performance-engineer
-  ├─→ Quality issue     → quality-gate
-  ├─→ Bug              → debug-helper
-  └─→ Documentation     → docs-manager
+  ├─→ Quality issue     → core-quality
+  ├─→ Bug              → support-debug
+  └─→ Documentation     → workflow-docs
 ```
 
 **Implementation Example**:
@@ -290,7 +290,7 @@ async def handle_issue_conditional(issue_description: str):
     
     # Phase 1: Analyze issue type
     analysis = await Task(
-        subagent_type="debug-helper",
+        subagent_type="support-debug",
         prompt=f"Analyze issue: {issue_description}",
         context={"focus": "classification"}
     )
@@ -320,7 +320,7 @@ async def handle_issue_conditional(issue_description: str):
     
     elif analysis.category == "quality":
         return await Task(
-            subagent_type="quality-gate",
+            subagent_type="core-quality",
             prompt="Validate and improve quality",
             context={
                 "issue": issue_description,
@@ -331,7 +331,7 @@ async def handle_issue_conditional(issue_description: str):
     
     elif analysis.category == "bug":
         return await Task(
-            subagent_type="debug-helper",
+            subagent_type="support-debug",
             prompt="Debug and fix issue",
             context={
                 "issue": issue_description,
@@ -342,7 +342,7 @@ async def handle_issue_conditional(issue_description: str):
     
     else:  # documentation, feature request, etc.
         return await Task(
-            subagent_type="docs-manager",
+            subagent_type="workflow-docs",
             prompt="Handle documentation request",
             context={
                 "issue": issue_description,
@@ -394,7 +394,7 @@ async def sequential_secure_workflow(analysis):
     )
     
     implementation = await Task(
-        subagent_type="backend-expert",
+        subagent_type="code-backend",
         prompt="Implement with security controls",
         context={"security_requirements": security_review}
     )
@@ -433,11 +433,11 @@ class ContextManager:
         
         # Agent-specific context requirements
         context_requirements = {
-            "backend-expert": ["spec_id", "api_design", "database_schema"],
-            "frontend-expert": ["spec_id", "api_endpoints", "ui_requirements"],
+            "code-backend": ["spec_id", "api_design", "database_schema"],
+            "code-frontend": ["spec_id", "api_endpoints", "ui_requirements"],
             "security-expert": ["spec_id", "threat_model", "security_requirements"],
-            "test-engineer": ["spec_id", "code_summary", "test_strategy"],
-            "docs-manager": ["spec_id", "api_spec", "code_summary"]
+            "core-quality": ["spec_id", "code_summary", "test_strategy"],
+            "workflow-docs": ["spec_id", "api_spec", "code_summary"]
         }
         
         # Extract only required fields
@@ -487,12 +487,12 @@ full_data = {
     "database_schema": {...}
 }
 
-# Prepare optimized context for backend-expert
-backend_context = context_manager.prepare_context(full_data, "backend-expert")
+# Prepare optimized context for code-backend
+backend_context = context_manager.prepare_context(full_data, "code-backend")
 # Result: Only spec_id, api_design, database_schema (no full_code)
 
 backend_result = await Task(
-    subagent_type="backend-expert",
+    subagent_type="code-backend",
     prompt="Implement backend",
     context=backend_context  # Optimized to ~25K tokens
 )
@@ -586,10 +586,10 @@ class ResilientDelegation:
 delegator = ResilientDelegation()
 
 result = await delegator.delegate_with_retry(
-    agent_type="backend-expert",
+    agent_type="code-backend",
     prompt="Implement complex feature",
     context=large_context,
-    fallback_agent="debug-helper"  # Fallback if backend-expert fails
+    fallback_agent="support-debug"  # Fallback if code-backend fails
 )
 ```
 
@@ -603,7 +603,7 @@ async def hybrid_workflow(spec_id: str):
     
     # Phase 1: Sequential (SPEC → Design)
     spec = await Task(
-        subagent_type="spec-builder",
+        subagent_type="workflow-spec",
         prompt=f"Generate SPEC {spec_id}"
     )
     
@@ -618,17 +618,17 @@ async def hybrid_workflow(spec_id: str):
     # Phase 2: Parallel (Implementation)
     impl_results = await Promise.all([
         Task(
-            subagent_type="backend-expert",
+            subagent_type="code-backend",
             prompt="Backend",
             context={"spec_id": spec.id, "api": design}
         ),
         Task(
-            subagent_type="frontend-expert",
+            subagent_type="code-frontend",
             prompt="Frontend",
             context={"spec_id": spec.id, "api": design}
         ),
         Task(
-            subagent_type="database-expert",
+            subagent_type="data-database",
             prompt="Database",
             context={"spec_id": spec.id, "api": design}
         )
@@ -638,7 +638,7 @@ async def hybrid_workflow(spec_id: str):
     
     # Phase 3: Sequential (Testing → QA)
     tests = await Task(
-        subagent_type="test-engineer",
+        subagent_type="core-quality",
         prompt="Integration tests",
         context={
             "spec_id": spec.id,
@@ -649,7 +649,7 @@ async def hybrid_workflow(spec_id: str):
     )
     
     qa = await Task(
-        subagent_type="quality-gate",
+        subagent_type="core-quality",
         prompt="Quality validation",
         context={
             "spec_id": spec.id,
@@ -702,7 +702,7 @@ async def conditional_parallel_workflow(requests: list):
         elif analysis.category == "feature":
             feature_tasks.append(
                 Task(
-                    subagent_type="backend-expert",
+                    subagent_type="code-backend",
                     prompt="Implement feature",
                     context={"analysis": analysis}
                 )
@@ -710,7 +710,7 @@ async def conditional_parallel_workflow(requests: list):
         elif analysis.category == "bug":
             bug_tasks.append(
                 Task(
-                    subagent_type="debug-helper",
+                    subagent_type="support-debug",
                     prompt="Debug issue",
                     context={"analysis": analysis}
                 )
@@ -731,14 +731,14 @@ async def conditional_parallel_workflow(requests: list):
 ## Works Well With
 
 **Agents** (Delegation Targets):
-- **spec-builder** - SPEC generation
-- **tdd-implementer** - TDD implementation
-- **backend-expert** - Backend development
-- **frontend-expert** - Frontend development
+- **workflow-spec** - SPEC generation
+- **workflow-tdd** - TDD implementation
+- **code-backend** - Backend development
+- **code-frontend** - Frontend development
 - **security-expert** - Security analysis
-- **quality-gate** - Quality validation
-- **docs-manager** - Documentation
-- **debug-helper** - Issue analysis
+- **core-quality** - Quality validation
+- **workflow-docs** - Documentation
+- **support-debug** - Issue analysis
 
 **Skills**:
 - **moai-foundation-token-optimization** - Context management
