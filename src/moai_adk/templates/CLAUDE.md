@@ -126,11 +126,64 @@ result2 = Task(subagent_type="mcp-context7", prompt="Compare with React 18", res
 
 Benefits: 40-60% token savings, 95%+ context accuracy, multi-day analysis support.
 
-### Rule 6: Foundation Knowledge Access
+### Rule 6: Foundation Knowledge Access (Conditional Auto-Load)
 
-Alfred accesses foundational knowledge via `Skill("moai-foundation-core")`:
+Alfred accesses foundational knowledge via `Skill("moai-foundation-core")` **automatically** when triggered by specific conditions.
 
-**Core Modules** (On-Demand via Skill):
+**Auto-Load Triggers** (Load skill automatically):
+
+Alfred MUST automatically load `Skill("moai-foundation-core")` when:
+
+1. **Command Execution**: Any `/moai:*` command is executed
+   - `/moai:0-project` - Project initialization
+   - `/moai:1-plan` - SPEC generation
+   - `/moai:2-run` - TDD implementation
+   - `/moai:3-sync` - Documentation
+   - `/moai:9-feedback` - Feedback submission
+
+2. **Agent Delegation**: Calling `Task()` to delegate to specialized agents
+   - Any subagent_type invocation
+   - Especially for complex workflows requiring agent coordination
+
+3. **SPEC Analysis**: Analyzing or creating SPEC documents
+   - SPEC decision-making (Step 2 of Rule 1)
+   - SPEC generation workflow
+   - SPEC validation and review
+
+4. **Architectural Decisions**: Making design or architecture choices
+   - System design
+   - API design
+   - Database schema
+   - Security architecture
+
+5. **Complexity >= Medium**: Request meets 3+ of these criteria:
+   - Files to modify: 3+ files
+   - Architecture impact: Medium or High
+   - Implementation time: 1+ hours
+   - Feature integration: Multiple layers
+   - Maintenance need: Ongoing
+
+**Loading Strategy**:
+
+```python
+def should_load_foundation_core(context):
+    triggers = [
+        context.command.startswith("/moai:"),
+        context.uses_task_delegation,
+        context.involves_spec,
+        context.requires_architecture_decision,
+        context.complexity >= "medium"
+    ]
+    return any(triggers)
+
+if should_load_foundation_core(current_context):
+    Skill("moai-foundation-core")  # Auto-load
+else:
+    # Use Quick Reference below (zero loading)
+    pass
+```
+
+**Core Modules** (Available after auto-load):
 
 | Module | Content |
 |--------|---------|
@@ -140,12 +193,21 @@ Alfred accesses foundational knowledge via `Skill("moai-foundation-core")`:
 | `modules/token-optimization.md` | 250K budget, /clear strategies |
 | `modules/execution-rules.md` | Security, permissions, Git 3-Mode strategy |
 
-**Quick Reference** (always inlined in CLAUDE.md):
-- Agent naming: `{domain}-{role}` pattern
-- Token threshold: 150K → /clear
-- SPEC decision: 3+ files → SPEC recommended
+**Quick Reference** (Zero-Dependency, always available):
 
-Use `Skill("moai-foundation-core")` to access detailed information when needed.
+For simple tasks (file reading, basic questions, simple modifications), Alfred uses the inlined Quick Reference without loading the skill:
+
+- **Agent naming**: `{domain}-{role}` pattern
+- **7-Tier hierarchy**: workflow → core → domain → mcp → factory → support → ai
+- **Token threshold**: 150K context → execute `/clear`
+- **SPEC decision**: 3+ criteria met → SPEC recommended
+- **Delegation principle**: NEVER execute directly, ALWAYS delegate via Task()
+- **MCP Resume**: Store `agent_id` for context continuity
+
+**Token Efficiency**:
+- Simple tasks (60%): 0 tokens (Quick Reference only)
+- Complex tasks (40%): 8,470 tokens (auto-load skill)
+- Average savings: ~5,000 tokens per session
 
 ### Rule 7: Feedback Loop
 
