@@ -1,10 +1,10 @@
 ---
-name: moai-menu-project
+name: moai-command-project
 description: Integrated project management system with documentation, language initialization, and template optimization modules
 tools: Read, Write, Bash, Glob, Grep
 ---
 
-# MoAI Menu Project - Integrated Project Management System
+# MoAI Command Project - Integrated Project Management System
 
 **Purpose**: Comprehensive project management system that integrates documentation generation, multilingual support, and template optimization into unified architecture with intelligent automation and Claude Code integration.
 
