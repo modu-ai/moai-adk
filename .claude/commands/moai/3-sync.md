@@ -83,16 +83,49 @@ This command supports **4 operational modes**:
 
 ---
 
-## 🧠 Associated Skills & Agents
+## 🧠 Associated Agents & Skills
 
-| Agent        | Core Skill                     | Purpose                        |
-| ------------ | ------------------------------ | ------------------------------ |
-| quality-gate | `moai-alfred-trust-validation` | Verify project integrity       |
-| quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
-| doc-syncer   | `moai-docs-sync`               | Synchronize Living Documents   |
-| git-manager  | `moai-alfred-git-workflow`     | Handle Git operations          |
+| Agent/Skill | Purpose |
+|------------|---------|
+| doc-syncer | Synchronize Living Documents with code changes |
+| quality-gate | Verify project integrity and TRUST 5 compliance |
+| git-manager | Handle Git operations and commit management |
+| moai-docs-toolkit | Documentation generation and validation |
+| moai-alfred-reporting | Result reporting and summaries |
+| moai-alfred-trust-validation | Project validation and quality gates |
+| moai-alfred-git-workflow | Git workflow patterns |
 
-**Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
+---
+
+## 💡 Execution Philosophy: "Sync → Verify → Commit"
+
+`/moai:3-sync` performs documentation synchronization through complete agent delegation:
+
+```
+User Command: /moai:3-sync [mode] [path]
+    ↓
+/moai:3-sync Command
+    └─ Task(subagent_type="doc-syncer" or "quality-gate" or "git-manager")
+        ├─ Phase 1: Analysis & Planning (doc-syncer)
+        ├─ Phase 2: Execute Sync (doc-syncer + quality-gate)
+        └─ Phase 3: Git Operations & PR (git-manager)
+            ↓
+        Output: Synchronized docs + commit + PR Ready (conditional)
+```
+
+### Key Principle: Zero Direct Tool Usage
+
+**This command uses ONLY Task(), AskUserQuestion(), and TodoWrite():**
+
+- ❌ No Read (file operations delegated)
+- ❌ No Write (file operations delegated)
+- ❌ No Edit (file operations delegated)
+- ❌ No Bash (all bash commands delegated)
+- ✅ **Task()** for orchestration
+- ✅ **AskUserQuestion()** for user interaction
+- ✅ **TodoWrite()** for progress tracking
+
+All complexity is handled by specialized agents (doc-syncer, quality-gate, git-manager).
 
 ---
 
@@ -667,17 +700,31 @@ Exit command with code 0.
 
 ## 📚 Quick Reference
 
-**For synchronization details, consult**:
+| Scenario | Mode | Entry Point | Key Phases | Expected Outcome |
+|----------|------|-------------|------------|------------------|
+| Daily development | auto | `/moai:3-sync` | Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git | PR Ready + docs synced |
+| Error recovery | force | `/moai:3-sync force` | Full project re-sync | All docs regenerated |
+| Quick health check | status | `/moai:3-sync status` | Status check only | Health report |
+| Milestone completion | project | `/moai:3-sync project` | Integrated sync | Project-wide updates |
+| Auto-merge workflow | auto | `/moai:3-sync --auto-merge` | PR auto-merge + cleanup | Branch merged and deleted |
 
-- `Skill("moai-alfred-trust-validation")` - Project validation
-- `Skill("moai-alfred-git-workflow")` - Git operations
-- `Skill("moai-alfred-trust-validation")` - Quality gates
-- CLAUDE.md - Full workflow documentation
+**Associated Agents**:
+
+- `doc-syncer` - Living Document synchronization
+- `quality-gate` - TRUST 5 validation
+- `git-manager` - Git operations and PR management
+
+**Documentation Outputs**:
+
+- **Living Documents**: Auto-synchronized with code
+- **SPEC Documents**: Updated to match implementation
+- **Reports**: `.moai/reports/sync-report-{timestamp}.md`
+- **Backup**: `.moai-backups/sync-{timestamp}/` (safety backup)
 
 **Version**: 3.1.0 (Agent-Delegated Pattern)
-**Last Updated**: 2025-11-09
-**Total Lines**: ~800 (reduced from 2,096)
-**Architecture**: Commands → Agents → Skills
+**Last Updated**: 2025-11-25
+**Architecture**: Commands → Agents → Skills (Complete delegation)
+**Total Lines**: ~725 (optimized from 2,096)
 
 ---
 

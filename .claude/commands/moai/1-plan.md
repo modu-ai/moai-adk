@@ -63,7 +63,50 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 
 > See `.coderabbit.yaml` for detailed review rules and SPEC validation checklist
 
-## 💡 Planning philosophy: "Always make a plan first and then proceed."
+---
+
+## 🧠 Associated Agents & Skills
+
+| Agent/Skill | Purpose |
+|------------|---------|
+| Explore | Codebase exploration and file system analysis |
+| spec-builder | SPEC generation in EARS format and planning |
+| git-manager | Git workflow and branch management |
+| moai-core-issue-labels | GitHub issue integration and labeling |
+| moai-spec-intelligent-workflow | SPEC workflow orchestration |
+| moai-alfred-ask-user-questions | User interaction patterns |
+
+---
+
+## 💡 Execution Philosophy: "Always make a plan first and then proceed."
+
+`/moai:1-plan` performs SPEC planning through complete agent delegation:
+
+```
+User Command: /moai:1-plan "description"
+    ↓
+/moai:1-plan Command
+    └─ Task(subagent_type="Explore" or "spec-builder")
+        ├─ Phase 1A (Optional): Project Exploration
+        ├─ Phase 1B (Required): SPEC Planning
+        ├─ Phase 2: SPEC Document Creation
+        └─ Phase 3: Git Branch & PR Setup
+            ↓
+        Output: SPEC documents + branch (conditional) + next steps
+```
+
+### Key Principle: Zero Direct Tool Usage
+
+**This command uses ONLY Task() and AskUserQuestion():**
+
+- ❌ No Read (file operations delegated)
+- ❌ No Write (file operations delegated)
+- ❌ No Edit (file operations delegated)
+- ❌ No Bash (all bash commands delegated)
+- ✅ **Task()** for orchestration
+- ✅ **AskUserQuestion()** for user interaction
+
+All complexity is handled by specialized agents.
 
 ---
 
@@ -978,6 +1021,35 @@ Before you consider this command complete, verify:
 IF all checkboxes are checked → Command execution successful
 
 IF any checkbox is unchecked → Identify missing step and complete it before ending
+
+---
+
+## 📚 Quick Reference
+
+| Scenario | Mode | Entry Point | Key Phases | Expected Outcome |
+|----------|------|-------------|------------|------------------|
+| Clear feature request | Direct to Planning | `/moai:1-plan "feature description"` | Phase 1B → Phase 2 → Phase 3 | SPEC created + branch (conditional) |
+| Vague user request | Exploration First | `/moai:1-plan "vague request"` | Phase 1A → Phase 1B → Phase 2 → Phase 3 | Exploration → SPEC + branch |
+| Resume draft SPEC | Resume Existing | `/moai:1-plan resume SPEC-XXX` | Phase 1B → Phase 2 → Phase 3 | Complete existing SPEC |
+| Branch creation prompt | User Choice | `/moai:1-plan "feature"` (prompt_always: true) | Phase 1-2 → User chooses branch → Phase 3 | SPEC + user-selected branch strategy |
+| Auto branch creation | Automated | `/moai:1-plan "feature"` (prompt_always: false, auto_enabled: true) | Phase 1-2 → Auto branch creation → Phase 3 | SPEC + auto branch (Personal/Team) |
+
+**Associated Agents**:
+
+- `Explore` - Project exploration and file discovery (Phase 1A, optional)
+- `spec-builder` - SPEC planning and document creation (Phase 1B-2, required)
+- `git-manager` - Branch and PR creation (Phase 3, conditional)
+
+**SPEC Documents Directory**:
+
+- **Location**: `.moai/specs/SPEC-{ID}/` (directory format, NOT single .md file)
+- **Files**: `spec.md`, `plan.md`, `acceptance.md` (created simultaneously via MultiEdit)
+- **Format**: EARS structure with YAML frontmatter + HISTORY section
+- **Language**: All content in user's conversation_language
+
+**Version**: 5.0.0 (4-Step Agent-Based Workflow)
+**Last Updated**: 2025-11-25
+**Architecture**: Commands → Agents → Skills (Complete delegation with resume chain)
 
 ---
 

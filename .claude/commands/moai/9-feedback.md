@@ -65,6 +65,15 @@ Output: Issue created with link
 
 ---
 
+## 🧠 Associated Agents & Skills
+
+| Agent/Skill | Purpose |
+|------------|---------|
+| quality-gate | Feedback collection and GitHub issue creation |
+| moai-core-issue-labels | GitHub issue integration and labeling |
+
+---
+
 ## 🚀 Execution Process
 
 ### Step 1: Delegate to Quality Gate Agent
@@ -123,6 +132,68 @@ Before you consider this command complete, verify:
 - [ ] **Feedback Collected**: User was asked for details.
 - [ ] **Issue Created**: GitHub issue was successfully created.
 - [ ] **Link Provided**: User received the issue URL.
+
+---
+
+## 📚 Quick Reference
+
+| Scenario | Entry Point | Expected Outcome |
+|----------|-------------|------------------|
+| Report bug | `/moai:9-feedback issue` | GitHub issue created with bug label |
+| Request feature | `/moai:9-feedback suggestion` | GitHub issue created with enhancement label |
+| Ask question | `/moai:9-feedback question` | GitHub issue created with question label |
+| General feedback | `/moai:9-feedback` | Interactive feedback collection |
+
+**Associated Agent**:
+
+- `quality-gate` - Feedback manager and GitHub issue creator
+
+**Feedback Types**:
+
+- **Bug Report**: Technical issues or errors
+- **Feature Request**: Suggestions for improvements
+- **Question**: Clarifications or help needed
+- **Other**: General feedback
+
+**Version**: 1.0.0 (Agent-Delegated Pattern)
+**Last Updated**: 2025-11-25
+**Architecture**: Commands → Agents → Skills (Complete delegation)
+
+---
+
+## Final Step: Next Action Selection
+
+After feedback submission completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "Feedback submitted successfully. What would you like to do next?",
+        "header": "Next Steps",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Continue Development",
+                "description": "Return to current workflow"
+            },
+            {
+                "label": "Submit Another Feedback",
+                "description": "Report another issue or suggestion"
+            },
+            {
+                "label": "View Issue",
+                "description": "Open created GitHub issue in browser"
+            }
+        ]
+    }]
+})
+```
+
+**Important**:
+
+- Use conversation language from config
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options
 
 ---
 

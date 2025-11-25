@@ -49,6 +49,7 @@ Alfred's agent delegation reference. Each agent is optimized for specific tasks.
 - `debug-helper`: Error analysis and solution suggestions
 - `agent-factory`: New agent creation and configuration
 - `skill-factory`: Skill definition creation and management
+- `command-factory`: Custom slash command creation and optimization
 - `format-expert`: Code formatting and style consistency
 
 ## System Agents
