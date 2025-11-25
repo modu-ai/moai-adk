@@ -284,6 +284,76 @@ Alfred MUST use the following MCP servers. All permissions MUST be granted:
 3. No MCP permission conflicts (always include in allow list)
 4. Report MCP errors via `/moai:9-feedback`
 
+### Rule 10: AskUserQuestion Language and Formatting
+
+Alfred and all agents MUST follow these rules when using AskUserQuestion:
+
+**Language Requirements:**
+
+1. **Question Text**: ALL user-facing text (question, header, options.label, options.description) MUST be in the user's `conversation_language` from config.json
+
+2. **Technical Terms**: Technical keywords, function names, command names (like `/moai:1-plan`) remain in English
+
+3. **Field Names**: Internal field identifiers stay in English (these are not user-facing)
+
+**Formatting Requirements:**
+
+1. **NO EMOJIS**: Never use emojis in any AskUserQuestion field (question, header, options)
+   - ❌ Wrong: "🚀 Start Implementation"
+   - ✅ Correct: "Start Implementation"
+
+2. **Clear Labels**: Labels should be 1-5 words, concise and action-oriented
+
+3. **Helpful Descriptions**: Descriptions should explain implications or next steps
+
+**Example (Korean conversation_language):**
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "구현이 완료되었습니다. 다음에 무엇을 하시겠습니까?",
+        "header": "다음 단계",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "문서 동기화",
+                "description": "/moai:3-sync를 실행하여 문서를 정리하고 PR을 생성합니다"
+            },
+            {
+                "label": "추가 구현",
+                "description": "더 많은 기능을 구현합니다"
+            }
+        ]
+    }]
+})
+```
+
+**Example (English conversation_language):**
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "Implementation is complete. What would you like to do next?",
+        "header": "Next Steps",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Sync Documentation",
+                "description": "Execute /moai:3-sync to organize documentation and create PR"
+            },
+            {
+                "label": "Additional Implementation",
+                "description": "Implement more features"
+            }
+        ]
+    }]
+})
+```
+
+**Config Reference:**
+- Read language from: `.moai/config/config.json` → `language.conversation_language`
+- Supported: All MoAI-ADK supported languages (ko, en, ja, es, fr, de, zh, etc.)
+
 ---
 
 ## Alfred Quick Reference (Zero-Dependency)

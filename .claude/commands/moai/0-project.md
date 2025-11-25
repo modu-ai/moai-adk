@@ -202,7 +202,7 @@ Use Task tool:
   - Verify .env.glm created with secure permissions (0o600)
   - Verify .gitignore includes .env.glm entry
   - Report GLM configuration success to user with all configured keys
-  - Remind user: "Claude Code를 재시작하면 새 설정이 자동으로 로드됩니다"
+  - Remind user: "Restart Claude Code to automatically load the new settings"
 
   **Output**: Mode-specific completion report with next steps
   ```
