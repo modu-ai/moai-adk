@@ -1,103 +1,142 @@
 ---
 name: moai-core-claude-code
-description: Canonical Claude Code skill authoring kit covering agent Skills, sub-agent templates, and best practices aligned with official documentation.
+description: Canonical Claude Code skill authoring kit covering agent Skills, sub-agent templates, custom slash commands, orchestration patterns, hooks, memory, settings, and IAM permission rules aligned with official documentation.
 version: 1.0.0
 modularized: false
 tags:
   - claude-code
   - skills
   - sub-agents
+  - slash-commands
+  - orchestration
+  - hooks
+  - memory
+  - settings
+  - iam
   - best-practices
 updated: 2025-11-25
 status: active
 ---
 
-# Claude Code Skills & Sub-Agent Authoring Kit
+# Claude Code Authoring Kit
 
-Unified reference for creating and maintaining Claude Code Skills and sub-agents that comply with official guidance.
+Comprehensive reference for Claude Code Skills, sub-agents, custom slash commands, hooks, memory, settings, and IAM permissions with official standards compliance.
 
-**Official References**:  
-- Agent Skills: https://code.claude.com/docs/en/skills  
-- Skills best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices  
-- Sub-agents: https://code.claude.com/docs/en/sub-agents  
-- Anthropic Engineering note: https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
+**Official Documentation References**:
+
+- [Skills Guide](reference/claude-code-skills-official.md) - Agent Skills creation and management
+- [Sub-agents Guide](reference/claude-code-sub-agents-official.md) - Sub-agent development and delegation
+- [Custom Slash Commands](reference/claude-code-custom-slash-commands-official.md) - Command creation and orchestration
+- [Hooks System](reference/claude-code-hooks-official.md) - Event-driven automation
+- [Memory Management](reference/claude-code-memory-official.md) - Context and knowledge persistence
+- [Settings Configuration](reference/claude-code-settings-official.md) - Configuration hierarchy and management
+- [IAM & Permissions](reference/claude-code-iam-official.md) - Access control and security
+- [Complete Configuration](reference/complete-configuration-guide.md) - Comprehensive setup guide
 
 ## Quick Reference (30 seconds)
-- Use **kebab-case** names (max 64 chars), concise description with trigger scenarios.
-- Store Skills in `~/.claude/skills/` (personal) or `.claude/skills/` (project); plugins are lowest priority.
-- Keep SKILL.md under ~500 lines with **Progressive Disclosure** (Quick → Patterns → Examples → Troubleshooting).
-- Declare minimal `allowed-tools`; avoid broad tool grants.
-- Sub-agents must be invoked via **Task(subagent_type=...)** and cannot spawn other sub-agents.
 
-## Agent Skill Template (Starter)
-```markdown
----
-name: my-skill
-description: What the skill does and when to trigger it (keep specific)
-version: 1.0.0
-allowed-tools: Read, Edit, Bash, Grep   # minimal set only
-tags: [domain, claude-code]
-updated: 2025-11-25
-status: active
----
+**Skills**: `~/.claude/skills/` (personal) or `.claude/skills/` (project), ≤500 lines, progressive disclosure
+**Sub-agents**: `Task(subagent_type="...")` delegation only, no nested spawning
+**Commands**: `$ARGUMENTS`/`$1`/`$2` parameters, `@file` references, stored in `.claude/commands/`
+**Hooks**: Event-driven automation in `settings.json`, PreToolUse/PostToolUse events
+**Memory**: Enterprise → Project → User hierarchy, `@import.md` syntax
+**Settings**: 4-tier hierarchy (Enterprise → User → Project → Local)
+**IAM**: Tiered permissions (Read→Bash→Write→Admin), tool-specific rules
 
-# Title
-**Quick What/When**: 2–3 lines on scope and trigger phrases.
+## MoAI-ADK Skills & Sub-agents Directory
 
-## Quick Reference
-- One responsibility, one clear trigger.
-- Examples of when to auto-load.
+### Quick Access Patterns
 
-## Patterns
-- Core patterns (3–5) with code snippets.
+**Core Skills**: `Skill("moai-core-claude-code")` - This comprehensive authoring kit
+**Agent Creation**: `Task(subagent_type="agent-factory")` - Create standardized sub-agents
+**Skill Creation**: `Task(subagent_type="skill-factory")` - Create compliant skills
+**Quality Gates**: `Task(subagent_type="quality-gate")` - TRUST 5 validation
+**Documentation**: `Task(subagent_type="docs-manager")` - Generate technical docs
 
-## Examples
-- 2–3 runnable examples with prompts and expected outputs.
+**Key Specialized Skills**:
+- `moai-lang-python` - Python 3.13+ with FastAPI, async patterns
+- `moai-lang-typescript` - TypeScript 5.9+ with React 19, Next.js 16
+- `moai-domain-backend` - Modern backend architecture patterns
+- `moai-domain-frontend` - React 19, Next.js 15, Vue 3.5 frameworks
+- `moai-quality-security` - OWASP Top 10, threat modeling
+- `moai-essentials-debug` - AI-powered debugging with Context7
 
-## Troubleshooting
-- Common issues, validation commands, how to debug Skill loading.
+**Essential Sub-agents**:
+- `spec-builder` - EARS format specification generation
+- `tdd-implementer` - RED-GREEN-REFACTOR TDD execution
+- `security-expert` - Security analysis and validation
+- `backend-expert` - Backend architecture and API development
+- `frontend-expert` - Frontend UI implementation
+- `performance-engineer` - Performance optimization and analysis
+
+## Essential Implementation Patterns
+
+### Command→Agent→Skill Orchestration
+
+**Sequential Workflow**:
+```python
+# Phase 1: Analysis → spec-builder → analysis
+analysis = Task(subagent_type="spec-builder", prompt="Analyze: $ARGUMENTS")
+# Phase 2: Implementation → tdd-implementer → code + tests
+implementation = Task(subagent_type="tdd-implementer", prompt="Implement: $analysis.spec_id")
+# Phase 3: Validation → quality-gate → approval
+validation = Task(subagent_type="quality-gate", prompt="Validate: $implementation")
 ```
 
-## Sub-Agent Template (Official Fields)
-```markdown
----
-name: backend-designer
-description: Designs REST/GraphQL APIs with performance guardrails
-tools: Read, Edit, Bash, Grep
-model: sonnet   # sonnet/opus/haiku/inherit
-permissionMode: default   # default/acceptEdits/dontAsk
-skills: moai-core-claude-code, moai-core-agent-factory
----
-
-# System Prompt
-- Purpose: what this agent owns (single domain).
-- Triggers: specific tasks it should handle.
-- Guardrails: no sub-agent spawning; use Task() for delegation.
-- Examples: 2–3 short command-to-action pairs.
-
-## Invocation (required)
-Task(subagent_type="backend-designer", description="Design REST API for orders service")
+**Parallel Development**:
+```python
+# Execute independent tasks simultaneously
+results = await Promise.all([
+    Task(subagent_type="backend-expert", prompt="Backend: $1"),
+    Task(subagent_type="frontend-expert", prompt="Frontend: $1"),
+    Task(subagent_type="docs-manager", prompt="Docs: $1")
+])
+# Integrate all results
+Task(subagent_type="quality-gate", prompt="Integrate", context={"results": results})
 ```
 
-## Best Practices (from official docs)
-1) **Single responsibility**: clear scope and domain; avoid overlapping names.  
-2) **Specific descriptions**: include trigger phrases (e.g., “API schema”, “performance audit”).  
-3) **Minimal tools**: principle of least privilege; avoid `Write` unless necessary.  
-4) **Progressive disclosure**: keep SKILL.md concise; move deep dives to modules/examples.  
-5) **Validation**: run `claude --debug` to check YAML/frontmatter; keep under 500 lines.  
-6) **Versioning**: update `version`/`updated` fields; commit `.claude/skills` to VCS.  
-7) **Sub-agent rules**: no nested sub-agents; always use Task() delegation.  
-8) **Storage priority**: personal overrides project overrides plugins; avoid duplicate names.
+### Token Session Management
 
-## Checklists
-- [ ] Name/description specific and non-overlapping.  
-- [ ] Minimal `allowed-tools` declared.  
-- [ ] Examples in English with language identifiers.  
-- [ ] Sub-agent Task() invocation included.  
-- [ ] Official links referenced for users.  
-- [ ] Updated date/version set.
+**Independent 200K Sessions**: Each `Task()` creates a new 200K token context
+```python
+Task(subagent_type="backend-expert", prompt="Complex task")  # 200K session
+Task(subagent_type="frontend-expert", prompt="UI task")     # New 200K session
+```
 
-## Troubleshooting
-- Skill not loading: validate frontmatter (YAML), check path `.claude/skills/<name>/SKILL.md`.
-- Unexpected tool prompts: review `permissionMode` and `allowed-tools`.
-- Duplicate triggers: rename Skill or tighten description to avoid collisions.
+### File Reference Patterns
+
+**Parameter Handling**:
+- Positional: `$1`, `$2`, `$3`
+- All arguments: `$ARGUMENTS`
+- File references: `@config.yaml`, `@path/to/file.md`
+
+### Hook Integration
+
+**Pre/Post Tool Execution** (see [Hooks Guide](reference/claude-code-hooks-official.md)):
+```json
+{
+  "hooks": {
+    "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "validate-command"}]}],
+    "PostToolUse": [{"matcher": "Write", "hooks": [{"type": "command", "command": "backup-file"}]}]
+  }
+}
+```
+
+## Key Reference Guides
+
+**Comprehensive Documentation**:
+- [Commands Guide](reference/claude-code-custom-slash-commands-official.md) - Complete command creation
+- [Hooks System](reference/claude-code-hooks-official.md) - Event-driven automation
+- [Memory Management](reference/claude-code-memory-official.md) - Context persistence
+- [Settings Config](reference/claude-code-settings-official.md) - Configuration hierarchy
+- [IAM Permissions](reference/claude-code-iam-official.md) - Access control
+- [Complete Setup](reference/complete-configuration-guide.md) - Full configuration
+
+## Works Well With
+
+- **moai-core-agent-factory** - For creating new sub-agents with proper standards
+- **moai-cc-commands** - For creating custom slash commands
+- **moai-cc-hooks** - For implementing Claude Code hooks
+- **moai-cc-configuration** - For managing Claude Code settings
+- **moai-quality-gate** - For validating code quality standards
+- **moai-essentials-debug** - For debugging skill loading issues

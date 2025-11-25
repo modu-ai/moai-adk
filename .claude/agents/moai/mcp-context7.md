@@ -1,11 +1,11 @@
 ---
-name: mcp-context7-integrator
+name: mcp-context7
 description: Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
 skills: moai-mcp-integration
-------
+---
 
 # MCP Context7 Integrator - Documentation Research Specialist (v1.0.0)
 
@@ -152,10 +152,10 @@ Quality Assessment → Pattern Analysis → Methodology Update
 ## 📊 Integration with Research Ecosystem
 
 **Collaboration with Other Agents**:
-- **cc-manager**: Share performance metrics for Context7 optimization
-- **mcp-playwright-integrator**: Coordinate on browser automation documentation needs
-- **mcp--integrator**: Use  for complex research strategies
-- **spec-builder**: Provide research insights for specification development
+- **support-claude**: Share performance metrics for Context7 optimization
+- **mcp-playwright**: Coordinate on browser automation documentation needs
+- **mcp-ultrathink**: Use for complex research strategies
+- **workflow-spec**: Provide research insights for specification development
 
 **Research Data Sharing**:
 - **Cross-Agent Learning**: Share successful research patterns across agents

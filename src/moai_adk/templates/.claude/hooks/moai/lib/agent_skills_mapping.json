@@ -1,208 +1,215 @@
 {
   "agent_skills_mapping": {
-    "spec-builder": [
-      "moai-core-spec-authoring",
-      "moai-foundation-specs",
-      "moai-foundation-ears",
-      "moai-cc-claude-md",
-      "moai-core-language-detection"
+    "workflow-spec": [
+      "moai-foundation-core",
+      "moai-lang-unified"
     ],
-    "tdd-implementer": [
-      "moai-essentials-unified",
+    "workflow-tdd": [
+      "moai-foundation-core",
+      "moai-universal-ultimate",
+      "moai-context-manager",
+      "moai-lib-toon"
+    ],
+    "workflow-docs": [
+      "moai-foundation-core",
+      "moai-docs-unified",
+      "moai-mermaid-diagram-expert",
+      "moai-nextra-architecture",
+      "moai-core-claude-code"
+    ],
+    "workflow-project": [
+      "moai-foundation-core",
+      "moai-command-project",
+      "moai-templates"
+    ],
+    "core-git": [
+      "moai-foundation-core",
+      "moai-core-claude-code"
+    ],
+    "core-planner": [
+      "moai-foundation-core",
+      "moai-context-manager"
+    ],
+    "core-quality": [
+      "moai-foundation-core",
+      "moai-core-quality"
+    ],
+    "code-frontend": [
+      "moai-foundation-core",
       "moai-lang-unified",
-      "moai-core-context-budget"
+      "moai-component-designer",
+      "moai-design-systems",
+      "moai-lib-shadcn-ui"
     ],
-    "test-engineer": [
-      "moai-playwright-webapp-testing",
+    "code-backend": [
+      "moai-foundation-core",
+      "moai-lang-unified",
+      "moai-baas-unified"
+    ],
+    "data-database": [
+      "moai-foundation-core",
+      "moai-lang-unified",
+      "moai-baas-unified"
+    ],
+    "infra-devops": [
+      "moai-foundation-core",
       "moai-essentials-unified",
-      "moai-core-todowrite-pattern",
-      "moai-cc-quality-gate"
+      "moai-baas-unified"
     ],
-    "doc-syncer": [
-      "moai-cc-claude-md",
-      "moai-core-reporting",
-      "moai-cc-mcp-plugins",
-      "docs-manager"
+    "security-expert": [
+      "moai-foundation-core",
+      "moai-universal-ultimate"
     ],
-    "git-manager": ["git-manager", "moai-core-agent-guide", "moai-cc-hooks"],
-    "tag-agent": ["moai-foundation-tags", "tag-agent", "moai-cc-configuration"],
-    "frontend-expert": [
-      "moai-domain-frontend",
-      "component-designer",
-      "ui-ux-expert",
-      "accessibility-expert"
+    "design-uiux": [
+      "moai-foundation-core",
+      "moai-component-designer",
+      "moai-design-systems",
+      "moai-icons-vector",
+      "moai-connector-figma",
+      "moai-lib-shadcn-ui"
     ],
-    "backend-expert": [
-      "moai-domain-backend",
-      "api-designer",
-      "database-expert",
-      "migration-expert"
+    "mcp-ultrathink": [
+      "moai-foundation-core",
+      "moai-mcp-integration",
+      "moai-core-claude-code"
     ],
-    "security-expert": ["moai-domain-security", "security-expert"],
-    "performance-engineer": ["performance-engineer", "moai-essentials-perf"],
-    "monitoring-expert": ["monitoring-expert", "moai-cc-mcp-plugins"],
-    "quality-gate": ["quality-gate", "trust-checker", "moai-cc-configuration"]
+    "mcp-context7": [
+      "moai-foundation-core",
+      "moai-mcp-integration",
+      "moai-jit-docs-enhanced"
+    ],
+    "mcp-figma": [
+      "moai-foundation-core",
+      "moai-mcp-integration",
+      "moai-connector-figma",
+      "moai-design-systems"
+    ],
+    "mcp-playwright": [
+      "moai-foundation-core",
+      "moai-mcp-integration",
+      "moai-playwright-webapp-testing"
+    ],
+    "mcp-notion": [
+      "moai-foundation-core",
+      "moai-mcp-integration",
+      "moai-connector-notion"
+    ],
+    "factory-agent": [
+      "moai-foundation-core",
+      "moai-core-claude-code",
+      "moai-templates"
+    ],
+    "factory-skill": [
+      "moai-foundation-core",
+      "moai-core-claude-code",
+      "moai-templates"
+    ],
+    "factory-command": [
+      "moai-foundation-core",
+      "moai-core-claude-code",
+      "moai-templates"
+    ],
+    "support-debug": [
+      "moai-foundation-core",
+      "moai-essentials-unified"
+    ],
+    "support-claude": [
+      "moai-foundation-core",
+      "moai-core-claude-code"
+    ],
+    "ai-codex": [
+      "moai-foundation-core",
+      "moai-lang-unified",
+      "moai-mcp-integration"
+    ],
+    "ai-gemini": [
+      "moai-foundation-core",
+      "moai-lang-unified",
+      "moai-mcp-integration"
+    ],
+    "ai-banana": [
+      "moai-foundation-core",
+      "moai-connector-nano-banana",
+      "moai-mcp-integration"
+    ]
   },
   "prompt_patterns": {
     "spec_creation": {
-      "keywords": [
-        "spec",
-        "specification",
-        "requirement",
-        "specification document",
-        "planning",
-        "plan",
-        "/moai:1-plan"
-      ],
-      "primary_agent": "spec-builder",
-      "secondary_agents": ["doc-syncer"],
-      "skills": [
-        "moai-core-spec-authoring",
-        "moai-foundation-specs",
-        "moai-foundation-ears"
-      ],
-      "context_files": [
-        ".claude/skills/moai-core-spec-authoring/reference.md",
-        ".claude/skills/moai-foundation-specs/reference.md",
-        ".moai/templates/spec.md"
-      ]
+      "keywords": ["spec", "specification", "requirement", "planning", "/moai:1-plan"],
+      "primary_agent": "workflow-spec",
+      "secondary_agents": ["workflow-docs"],
+      "skills": ["moai-foundation-core", "moai-lang-unified"],
+      "context_files": [".moai/templates/spec.md"]
     },
     "implementation": {
-      "keywords": [
-        "implement",
-        "implementation",
-        "development",
-        "code",
-        "write",
-        "create",
-        "/moai:2-run"
-      ],
-      "primary_agent": "tdd-implementer",
-      "secondary_agents": ["test-engineer", "quality-gate"],
-      "skills": [
-        "moai-essentials-debug",
-        "moai-essentials-refactor",
-        "moai-core-todowrite-pattern"
-      ],
-      "context_files": [
-        ".claude/skills/moai-essentials-debug/reference.md",
-        ".claude/skills/moai-essentials-refactor/reference.md",
-        ".claude/skills/moai-core-todowrite-pattern/reference.md"
-      ]
+      "keywords": ["implement", "development", "code", "write", "/moai:2-run"],
+      "primary_agent": "workflow-tdd",
+      "secondary_agents": ["core-planner", "core-quality"],
+      "skills": ["moai-essentials-unified", "moai-lang-unified"],
+      "context_files": []
     },
     "testing": {
-      "keywords": ["test", "unit-test", "validation", "testing", "pytest"],
-      "primary_agent": "test-engineer",
-      "secondary_agents": ["performance-engineer"],
-      "skills": [
-        "moai-playwright-webapp-testing",
-        "moai-essentials-perf",
-        "moai-cc-quality-gate"
-      ],
-      "context_files": [
-        ".claude/skills/moai-playwright-webapp-testing/reference.md",
-        "tests/",
-        "pytest.ini"
-      ]
+      "keywords": ["test", "unit-test", "validation", "pytest"],
+      "primary_agent": "workflow-tdd",
+      "secondary_agents": ["infra-devops"],
+      "skills": ["moai-playwright-webapp-testing", "moai-core-quality"],
+      "context_files": ["tests/", "pytest.ini"]
     },
     "documentation": {
-      "keywords": [
-        "document",
-        "documentation",
-        "docs",
-        "readme",
-        "explanation",
-        "/moai:3-sync"
-      ],
-      "primary_agent": "doc-syncer",
-      "secondary_agents": ["tag-agent"],
-      "skills": ["moai-cc-claude-md", "moai-core-reporting", "docs-manager"],
-      "context_files": [
-        ".claude/skills/moai-cc-claude-md/reference.md",
-        ".claude/skills/moai-core-reporting/reference.md",
-        "README.md"
-      ]
+      "keywords": ["document", "docs", "readme", "/moai:3-sync"],
+      "primary_agent": "workflow-docs",
+      "secondary_agents": ["mcp-context7"],
+      "skills": ["moai-docs-unified", "moai-mermaid-diagram-expert"],
+      "context_files": ["README.md"]
     },
     "git_operations": {
-      "keywords": ["git", "commit", "merge", "branch", "pr", "push"],
-      "primary_agent": "git-manager",
-      "secondary_agents": ["tag-agent"],
-      "skills": ["git-manager", "moai-core-agent-guide"],
-      "context_files": [
-        ".claude/skills/moai-core-agent-guide/reference.md",
-        ".gitignore"
-      ]
+      "keywords": ["git", "commit", "merge", "branch", "pr"],
+      "primary_agent": "core-git",
+      "secondary_agents": [],
+      "skills": ["moai-foundation-core"],
+      "context_files": [".gitignore"]
     },
     "frontend": {
-      "keywords": [
-        "frontend",
-        "ui",
-        "ux",
-        "react",
-        "vue",
-        "angular",
-        "css",
-        "html"
-      ],
-      "primary_agent": "frontend-expert",
-      "secondary_agents": ["ui-ux-expert", "accessibility-expert"],
-      "skills": ["moai-domain-frontend", "component-designer", "ui-ux-expert"],
-      "context_files": ["src/", "package.json", "webpack.config.js"]
+      "keywords": ["frontend", "ui", "ux", "react", "vue", "css"],
+      "primary_agent": "code-frontend",
+      "secondary_agents": ["design-uiux"],
+      "skills": ["moai-lang-unified", "moai-component-designer"],
+      "context_files": ["src/", "package.json"]
     },
     "backend": {
-      "keywords": ["backend", "api", "server", "database", "fastapi", "django"],
-      "primary_agent": "backend-expert",
-      "secondary_agents": ["api-designer", "database-expert"],
-      "skills": ["moai-domain-backend", "api-designer", "database-expert"],
-      "context_files": ["src/api/", "requirements.txt", "pyproject.toml"]
+      "keywords": ["backend", "api", "server", "fastapi", "django"],
+      "primary_agent": "code-backend",
+      "secondary_agents": ["data-database"],
+      "skills": ["moai-lang-unified", "moai-baas-unified"],
+      "context_files": ["src/api/", "pyproject.toml"]
     },
     "security": {
-      "keywords": [
-        "security",
-        "secure",
-        "auth",
-        "authentication",
-        "encryption",
-        "vulnerability"
-      ],
+      "keywords": ["security", "auth", "encryption", "vulnerability"],
       "primary_agent": "security-expert",
-      "secondary_agents": ["quality-gate"],
-      "skills": ["moai-domain-security", "trust-checker"],
-      "context_files": [
-        ".claude/skills/moai-domain-security/reference.md",
-        "src/auth/",
-        ".env.example"
-      ]
+      "secondary_agents": ["core-quality"],
+      "skills": ["moai-universal-ultimate"],
+      "context_files": ["src/auth/"]
     },
     "performance": {
-      "keywords": [
-        "performance",
-        "efficiency",
-        "optimization",
-        "optimize",
-        "speed",
-        "benchmark"
-      ],
-      "primary_agent": "performance-engineer",
-      "secondary_agents": ["monitoring-expert"],
-      "skills": ["performance-engineer", "moai-essentials-perf"],
-      "context_files": [
-        ".claude/skills/moai-essentials-perf/reference.md",
-        "benchmarks/",
-        "profiling/"
-      ]
+      "keywords": ["performance", "optimization", "speed", "benchmark"],
+      "primary_agent": "infra-devops",
+      "secondary_agents": ["mcp-ultrathink"],
+      "skills": ["moai-essentials-unified"],
+      "context_files": []
     },
     "deployment": {
-      "keywords": ["deploy", "deployment", "docker", "kubernetes", "cicd", "release"],
-      "primary_agent": "devops-expert",
-      "secondary_agents": ["monitoring-expert"],
-      "skills": ["devops-expert", "moai-baas-unified"],
-      "context_files": [
-        "Dockerfile",
-        "docker-compose.yml",
-        ".github/workflows/",
-        ".vercel/"
-      ]
+      "keywords": ["deploy", "docker", "kubernetes", "cicd"],
+      "primary_agent": "infra-devops",
+      "secondary_agents": [],
+      "skills": ["moai-baas-unified"],
+      "context_files": ["Dockerfile", ".github/workflows/"]
+    },
+    "complex_reasoning": {
+      "keywords": ["architecture", "design decision", "strategy"],
+      "primary_agent": "mcp-ultrathink",
+      "secondary_agents": ["workflow-spec"],
+      "skills": ["moai-mcp-integration", "moai-core-claude-code"],
+      "context_files": [".moai/config/config.json"]
     }
   }
 }

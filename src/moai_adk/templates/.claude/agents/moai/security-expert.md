@@ -4,7 +4,7 @@ description: Use PROACTIVELY for security analysis, vulnerability assessment, se
 tools: None
 model: inherit
 permissionMode: default
-skills: moai-domain-security, moai-security-owasp, moai-security-identity, moai-security-threat, moai-security-ssrf
+skills: moai-universal-ultimate
 ------
 
 # Security Expert 🔒

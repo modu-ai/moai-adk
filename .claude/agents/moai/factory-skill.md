@@ -1,6 +1,6 @@
 ---
-name: skill-factory
-description: Creates and optimizes modular Skills for Claude Code extensions with official standards compliance. Orchestrates user research, web documentation analysis, Skill generation with progressive disclosure, automatic file splitting for 500-line SKILL.md limits, and post-generation QA validation. Use for creating new Skills, updating existing Skills, or researching Skill development best practices. CRITICAL - This agent MUST be invoked via Task(subagent_type='skill-factory') - NEVER executed directly.
+name: factory-skill
+description: Creates and optimizes modular Skills for Claude Code extensions with official standards compliance. Orchestrates user research, web documentation analysis, Skill generation with progressive disclosure, automatic file splitting for 500-line SKILL.md limits, and post-generation QA validation. Use for creating new Skills, updating existing Skills, or researching Skill development best practices. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-skill') - NEVER executed directly.
 tools: Read, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 skills: moai-core-claude-code
@@ -20,7 +20,7 @@ orchestration:
 
 coordination:
   spawns_subagents: false  # Claude Code constraint
-  delegates_to: ["mcp-context7-integrator", "quality-gate"]  # Research and validation delegation
+  delegates_to: ["mcp-context7", "core-quality"]  # Research and validation delegation
   requires_approval: true  # User approval before skill finalization
 
 performance:
@@ -321,14 +321,14 @@ result = await Task(
 ```python
 # Phase 1: Requirements analysis
 requirements = await Task(
-    subagent_type="spec-builder",
+    subagent_type="workflow-spec",
     prompt="Analyze requirements for new skill",
     context={"domain": "python-testing"}
 )
 
 # Phase 2: Skill creation (pass requirements)
 skill = await Task(
-    subagent_type="skill-factory",
+    subagent_type="factory-skill",
     prompt="Create Python testing skill",
     context={"requirements": requirements}
 )
@@ -337,19 +337,19 @@ skill = await Task(
 **Skill Set Creation**:
 ```python
 skills = await Promise.all([
-    Task(subagent_type="skill-factory", prompt="Create testing skill"),
-    Task(subagent_type="skill-factory", prompt="Create performance skill"),
-    Task(subagent_type="skill-factory", prompt="Create security skill")
+    Task(subagent_type="factory-skill", prompt="Create testing skill"),
+    Task(subagent_type="factory-skill", prompt="Create performance skill"),
+    Task(subagent_type="factory-skill", prompt="Create security skill")
 ])
 ```
 
 ## Works Well With
 
-- **agent-factory** - Complementary agent creation for skill integration
-- **spec-builder** - Requirements analysis and specification generation
-- **quality-gate** - Skill validation and compliance checking
-- **docs-manager** - Skill documentation and integration guides
-- **mcp-context7-integrator** - Latest documentation research and Context7 integration
+- **factory-agent** - Complementary agent creation for skill integration
+- **workflow-spec** - Requirements analysis and specification generation
+- **core-quality** - Skill validation and compliance checking
+- **workflow-docs** - Skill documentation and integration guides
+- **mcp-context7** - Latest documentation research and Context7 integration
 
 ## Quality Assurance
 

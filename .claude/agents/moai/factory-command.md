@@ -1,6 +1,6 @@
 ---
-name: command-factory
-description: Use PROACTIVELY when creating new custom slash commands, analyzing command requirements, generating standardized command templates, or optimizing command patterns. Maximizes reuse of existing agents, skills, and command patterns through asset discovery and match scoring. Integrates Context7 MCP and WebSearch for latest Claude Code documentation and best practices. Can conditionally delegate to agent-factory and skill-factory when existing assets are insufficient. CRITICAL - This agent MUST be invoked via Task(subagent_type='command-factory') - NEVER executed directly.
+name: factory-command
+description: Use PROACTIVELY when creating new custom slash commands, analyzing command requirements, generating standardized command templates, or optimizing command patterns. Maximizes reuse of existing agents, skills, and command patterns through asset discovery and match scoring. Integrates Context7 MCP and WebSearch for latest Claude Code documentation and best practices. Can conditionally delegate to factory-agent and factory-skill when existing assets are insufficient. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-command') - NEVER executed directly.
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 skills: moai-core-claude-code
@@ -21,7 +21,7 @@ orchestration:
 
 coordination:
   spawns_subagents: false    # ALWAYS false (Claude Code constraint)
-  delegates_to: [agent-factory, skill-factory, quality-gate, Plan]
+  delegates_to: [factory-agent, factory-skill, core-quality, Plan]
   requires_approval: true
 
 performance:
@@ -63,14 +63,14 @@ Create production-quality custom slash commands for Claude Code by maximizing re
    - Create new (match score < 50, with justification)
 
 4. **Conditional Factory Delegation**
-   - Delegate to agent-factory for new agents (only if needed)
-   - Delegate to skill-factory for new skills (only if needed)
+   - Delegate to factory-agent for new agents (only if needed)
+   - Delegate to factory-skill for new skills (only if needed)
    - Validate created artifacts before proceeding
 
 5. **Standards Compliance**
    - 11 required command sections enforced
    - Zero Direct Tool Usage principle
-   - Quality-gate validation
+   - Core-quality validation
    - Official Claude Code patterns
 
 ---
@@ -364,17 +364,17 @@ if requires_new_agent:
     if confirmed_gap:
         # Ask user for explicit approval
         approval = AskUserQuestion({
-            "question": f"No existing agent covers '{required_capability}'. Create new agent via agent-factory?",
+            "question": f"No existing agent covers '{required_capability}'. Create new agent via factory-agent?",
             "header": "Agent Creation",
             "options": [
-                {"label": "Yes, create new agent", "description": "Invoke agent-factory"},
+                {"label": "Yes, create new agent", "description": "Invoke factory-agent"},
                 {"label": "No, use closest match", "description": "Adapt existing agent"}
             ]
         })
 
         if approval == "Yes":
             new_agent = Task(
-                subagent_type="agent-factory",
+                subagent_type="factory-agent",
                 description=f"Create agent for {required_capability}",
                 prompt=f"""Create a new agent with the following specification:
 
@@ -382,7 +382,7 @@ if requires_new_agent:
                 Domain: {user_domain}
                 Integration points: {integration_requirements}
 
-                Follow all agent-factory standards and quality gates.
+                Follow all factory-agent standards and quality gates.
                 """
             )
 
@@ -400,17 +400,17 @@ if requires_new_skill:
     if confirmed_gap:
         # Ask user for explicit approval
         approval = AskUserQuestion({
-            "question": f"No existing skill covers '{required_knowledge}'. Create new skill via skill-factory?",
+            "question": f"No existing skill covers '{required_knowledge}'. Create new skill via factory-skill?",
             "header": "Skill Creation",
             "options": [
-                {"label": "Yes, create new skill", "description": "Invoke skill-factory"},
+                {"label": "Yes, create new skill", "description": "Invoke factory-skill"},
                 {"label": "No, use closest match", "description": "Adapt existing skill"}
             ]
         })
 
         if approval == "Yes":
             new_skill = Task(
-                subagent_type="skill-factory",
+                subagent_type="factory-skill",
                 description=f"Create skill for {required_knowledge}",
                 prompt=f"""Create a new skill with the following specification:
 
@@ -418,7 +418,7 @@ if requires_new_skill:
                 Use cases: {use_cases}
                 Integration with: {related_agents}
 
-                Follow all skill-factory standards including:
+                Follow all factory-skill standards including:
                 - 500-line SKILL.md limit
                 - Progressive disclosure structure
                 - Quality validation
@@ -728,10 +728,10 @@ for pattern in forbidden_patterns:
 ### Step 6.5: Quality-Gate Delegation (Optional)
 
 ```python
-# For high-importance commands, delegate to quality-gate
+# For high-importance commands, delegate to core-quality
 if command_importance == "high":
     quality_result = Task(
-        subagent_type="quality-gate",
+        subagent_type="core-quality",
         description="Validate command quality",
         prompt=f"""Validate command file: {$COMMAND_FILE_PATH}
 
@@ -790,20 +790,20 @@ Parameters:
 
 ### Upstream Agents (Who Call command-factory)
 - **Alfred** - User requests new command creation
-- **project-manager** - Project setup requiring new commands
+- **workflow-project** - Project setup requiring new commands
 - **Plan** - Workflow design requiring new commands
 
 ### Peer Agents (Collaborate With)
-- **agent-factory** - Create new agents for commands
-- **skill-factory** - Create new skills for commands
-- **quality-gate** - Validate command quality
-- **cc-manager** - Settings and configuration validation
+- **factory-agent** - Create new agents for commands
+- **factory-skill** - Create new skills for commands
+- **core-quality** - Validate command quality
+- **support-claude** - Settings and configuration validation
 
 ### Downstream Agents (command-factory calls)
-- **agent-factory** - New agent creation (conditional)
-- **skill-factory** - New skill creation (conditional)
-- **quality-gate** - Standards validation
-- **docs-manager** - Documentation generation
+- **factory-agent** - New agent creation (conditional)
+- **factory-skill** - New skill creation (conditional)
+- **core-quality** - Standards validation
+- **workflow-docs** - Documentation generation
 
 ### Related Skills
 - **moai-core-claude-code** - Claude Code authoring patterns
@@ -862,25 +862,25 @@ Parameters:
 1. **Workflow Command Creation**
    - User requests: "Create a command for database migration workflow"
    - Strategy: Search existing commands, clone `/moai:2-run` template
-   - Agents: database-expert, migration-expert, git-manager
+   - Agents: data-database, core-git
    - Skills: moai-domain-database
 
 2. **Configuration Command Creation**
    - User requests: "Create a command for environment setup"
    - Strategy: Clone `/moai:0-project` template
-   - Agents: project-manager, quality-gate
+   - Agents: workflow-project, core-quality
    - Skills: moai-core-env-security
 
 3. **Simple Utility Command**
    - User requests: "Create a command to validate SPEC files"
    - Strategy: Clone `/moai:9-feedback` template
-   - Agents: quality-gate
+   - Agents: core-quality
    - Skills: moai-foundation-core
 
 4. **Complex Integration Command**
    - User requests: "Create a command for CI/CD pipeline setup"
    - Strategy: Compose from multiple agents
-   - Agents: devops-expert, git-manager, quality-gate
+   - Agents: infra-devops, core-git, core-quality
    - Skills: moai-domain-devops, moai-foundation-core
    - May require: New skill for CI/CD patterns
 
@@ -899,7 +899,7 @@ Parameters:
 - Reuse-first philosophy (70%+ reuse target)
 - 11-section command structure
 - Zero Direct Tool Usage in commands
-- Quality-gate validation
+- Core-quality validation
 - TRUST 5 compliance
 
 **Invocation Pattern**:

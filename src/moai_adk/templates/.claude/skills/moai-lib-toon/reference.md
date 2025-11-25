@@ -1,17 +1,17 @@
-# TOON Format Reference
+# TOON 형식 레퍼런스
 
-## Official Specification (TOON Specification v2.0)
+## 공식 규격 (TOON Specification v2.0)
 
-### Basic Grammar
+### 기본 문법
 
-#### Object
+#### 객체 (Object)
 ```ebnf
 object ::= (key ':' value | key ':' newline indent object dedent)*
 key ::= identifier | quoted_string
 value ::= primitive | array | object
 ```
 
-#### Array
+#### 배열 (Array)
 ```ebnf
 array ::= simple_array | tabular_array
 
@@ -24,7 +24,7 @@ fields ::= identifier (',' identifier)*
 row_data ::= value (',' value)*
 ```
 
-#### Primitives
+#### 원시값 (Primitives)
 ```ebnf
 primitive ::= number | boolean | string | null
 
@@ -34,68 +34,68 @@ string ::= identifier | quoted_string
 null ::= 'null'
 ```
 
-### Tokenization Rules
+### 토큰화 규칙
 
-#### Indentation
-- **Spaces**: 2 or 4 spaces recommended
-- **Tabs**: Available but mixing prohibited
-- **Consistency**: Maintain same method throughout file
+#### 들여쓰기 (Indentation)
+- **스페이스**: 2칸 또는 4칸 권장
+- **탭**: 사용 가능하지만 혼용 금지
+- **일관성**: 파일 전체에서 동일한 방식 유지
 
-#### Delimiter
-- **Default**: `,` (comma)
-- **Alternatives**: `|`, `;`, `\t` (tab)
-- **Configuration**: Change with `--delimiter` option
+#### 구분자 (Delimiter)
+- **기본**: `,` (쉼표)
+- **대안**: `|`, `;`, `\t` (탭)
+- **설정**: `--delimiter` 옵션으로 변경
 
-#### Quoting
-**No quotes needed** (identifiers):
-- Starts with letters
-- Contains only letters, numbers, underscores
-- Examples: `user_id`, `firstName`, `item123`
+#### 따옴표 (Quoting)
+**따옴표 불필요** (식별자):
+- 영문자로 시작
+- 영문자, 숫자, 언더스코어만 포함
+- 예: `user_id`, `firstName`, `item123`
 
-**Quotes required** (strings):
-- Contains special characters: `,`, `:`, `[`, `]`, `{`, `}`
-- Contains spaces
-- Empty strings
-- Examples: `"Hello, World"`, `"name: value"`, `""`
+**따옴표 필수** (문자열):
+- 특수 문자 포함: `,`, `:`, `[`, `]`, `{`, `}`
+- 공백 포함
+- 빈 문자열
+- 예: `"Hello, World"`, `"name: value"`, `""`
 
-### Type System
+### 타입 시스템
 
-#### Number
+#### 숫자 (Number)
 ```toon
-# Integers
+# 정수
 count: 42
 negative: -17
 
-# Floating point
+# 부동소수점
 price: 19.99
 scientific: 1.23e-4
 
-# Special values
+# 특수값
 infinity: Infinity
 notANumber: NaN
 ```
 
-#### Boolean
+#### 불리언 (Boolean)
 ```toon
 isActive: true
 hasError: false
 
-# Case sensitive
+# 대소문자 구분
 valid: true
-invalid: True  # Error (uppercase T)
+invalid: True  # 오류 (대문자 T)
 ```
 
-#### String
+#### 문자열 (String)
 ```toon
-# No quotes (identifiers)
+# 따옴표 없음 (식별자)
 name: Alice
 category: electronics
 
-# With quotes (special characters)
+# 따옴표 있음 (특수 문자)
 message: "Hello, World!"
 path: "/usr/local/bin"
 
-# Escape sequences
+# 이스케이프 시퀀스
 escaped: "Line1\nLine2"
 quoted: "She said \"Hello\""
 ```
@@ -106,35 +106,35 @@ value: null
 optional: null
 ```
 
-### Array Declaration
+### 배열 선언
 
-#### Length Specification
+#### 길이 명시
 ```toon
-# Required: [N] format
+# 필수: [N] 형식
 items[3]: item1,item2,item3
 
-# Error: Missing length
-items: item1,item2,item3  # Invalid syntax
+# 오류: 길이 누락
+items: item1,item2,item3  # 잘못된 문법
 ```
 
-#### Field Header
+#### 필드 헤더
 ```toon
-# Table format
+# 테이블 형식
 users[2]{name,age}:
   Alice,30
   Bob,25
 
-# Error: Field count mismatch
+# 오류: 필드 수 불일치
 users[2]{name,age}:
-  Alice,30,extra  # 3 fields (2 expected)
+  Alice,30,extra  # 3개 필드 (2개 예상)
 ```
 
-## TypeScript Type Definitions
+## TypeScript 타입 정의
 
-### Basic Types
+### 기본 타입
 ```typescript
-// TOON value type
-type ToonValue =
+// TOON 값 타입
+type ToonValue = 
   | string
   | number
   | boolean
@@ -142,52 +142,52 @@ type ToonValue =
   | ToonObject
   | ToonArray
 
-// TOON object
+// TOON 객체
 interface ToonObject {
   [key: string]: ToonValue
 }
 
-// TOON array
+// TOON 배열
 type ToonArray = ToonValue[]
 ```
 
-### Option Interfaces
+### 옵션 인터페이스
 
 #### EncodeOptions
 ```typescript
 interface EncodeOptions {
   /**
-   * Enable strict mode
+   * 엄격 모드 활성화
    * @default false
    */
   strict?: boolean
-
+  
   /**
-   * Array delimiter
+   * 배열 구분자
    * @default ','
    */
   delimiter?: string
-
+  
   /**
-   * Indentation string
+   * 들여쓰기 문자열
    * @default '  ' (2 spaces)
    */
   indentation?: string
-
+  
   /**
-   * Auto-detect tabular format
+   * 테이블 형식 자동 감지
    * @default true
    */
   detectTabular?: boolean
   
   /**
-   * Enable key folding
+   * 키 폴딩 활성화
    * @default false
    */
   keyFolding?: boolean
-
+  
   /**
-   * Enable path expansion
+   * 경로 확장 활성화
    * @default false
    */
   pathExpansion?: boolean
@@ -198,32 +198,32 @@ interface EncodeOptions {
 ```typescript
 interface DecodeOptions {
   /**
-   * Enable strict mode
+   * 엄격 모드 활성화
    * @default false
    */
   strict?: boolean
-
+  
   /**
-   * Perform structure validation
+   * 구조 검증 수행
    * @default true
    */
   validateStructure?: boolean
-
+  
   /**
-   * Allow partial parsing
+   * 부분 파싱 허용
    * @default false
    */
   allowPartial?: boolean
-
+  
   /**
-   * Type coercion
+   * 타입 강제 변환
    * @default true
    */
   coerceTypes?: boolean
 }
 ```
 
-### Error Types
+### 에러 타입
 
 #### ParseError
 ```typescript

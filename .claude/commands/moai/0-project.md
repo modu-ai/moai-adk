@@ -49,7 +49,7 @@ Initialize or update project metadata with **language-first architecture**. Supp
 
 | Agent/Skill                       | Purpose                                                      |
 | --------------------------------- | ------------------------------------------------------------ |
-| project-manager                   | Orchestrates language-first initialization and configuration |
+| workflow-project                  | Orchestrates language-first initialization and configuration |
 | moai-project-language-initializer | Language selection and initialization workflows              |
 | moai-project-config-manager       | Configuration management with language context               |
 | moai-project-batch-questions      | Standardizes user interaction patterns with tab-based system |
@@ -78,7 +78,7 @@ Initialize or update project metadata with **language-first architecture**. Supp
 User Command: /moai:0-project [setting]
     ↓
 /moai:0-project Command
-    └─ Task(subagent_type="project-manager")
+    └─ Task(subagent_type="workflow-project")
         ├─ Phase 1: Route and analyze
         ├─ Phase 2: Execute mode (INIT/AUTO-DETECT/SETTINGS/UPDATE)
         ├─ Phase 2.5: Save phase context
@@ -99,7 +99,7 @@ User Command: /moai:0-project [setting]
 - ✅ **Task()** for orchestration
 - ✅ **AskUserQuestion()** for user interaction
 
-All complexity is handled by the **project-manager** agent.
+All complexity is handled by the **workflow-project** agent.
 
 ---
 

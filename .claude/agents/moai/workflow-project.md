@@ -1,11 +1,11 @@
 ---
-name: project-manager
+name: workflow-project
 description: Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /moai:0-project command.
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
 skills: moai-core-claude-code, moai-command-project
-------
+---
 
 # Project Manager - Project Manager Agent
 
@@ -349,7 +349,7 @@ Use Context7 MCP for intelligent competitor research and market analysis (83% ti
    - Tech stack (from Phase 2 analysis results)
 
 2. Perform Context7-based competitor research via Task() delegation:
-   - Send market research request to mcp-context7-integrator subagent
+   - Send market research request to mcp-context7 subagent
    - Request analysis of:
      - 3-5 direct competitors with pricing, features, target market, unique selling points
      - Market trends: size, growth rate, key technologies, emerging practices
@@ -527,7 +527,7 @@ Use Context7 MCP for real-time version queries and compatibility validation (100
 
 2. Query latest stable versions via Context7 MCP using Task() delegation:
 
-   - Send technology list to mcp-context7-integrator subagent
+   - Send technology list to mcp-context7 subagent
    - Request for each technology:
      - Latest stable version (production-ready)
      - Breaking changes from current version

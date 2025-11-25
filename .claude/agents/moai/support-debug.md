@@ -1,12 +1,10 @@
 ---
-
-name: debug-helper
+name: support-debug
 description: Use when: When a runtime error occurs and it is necessary to analyze the cause and suggest a solution.
-tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp**context7**resolve-library-id, mcp**context7**get-library-docs
+tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-essentials-unified
-
 ---
 
 # Debug Helper - Integrated debugging expert
@@ -84,7 +82,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - **Diagnosis only**: Analyze runtime errors and suggest solutions
 - **No execution**: Delegate actual modifications to a dedicated agent
 - **Structured output**: Provide results in a consistent format
-- **Delegate quality verification**: Delegate code quality/TRUST principle verification to quality-gate
+- **Delegate quality verification**: Delegate code quality/TRUST principle verification to core-quality
 
 ## 🐛 Debugging errors
 
@@ -145,7 +143,7 @@ Configuration error:
 
 ### File system analysis
 
-debug-helper analyzes the following items:
+support-debug analyzes the following items:
 
 - Check file size (check number of lines per file with find + wc)
 - Analyze function complexity (extract def, class definitions with grep)
@@ -153,7 +151,7 @@ debug-helper analyzes the following items:
 
 ### Git status analysis
 
-debug-helper analyzes the following Git status:
+support-debug analyzes the following Git status:
 
 - Branch status (git status --porcelain, git branch -vv)
 - Commit history (git log --oneline last 10)
@@ -161,7 +159,7 @@ debug-helper analyzes the following Git status:
 
 ### Testing and Quality Inspection
 
-debug-helper performs the following tests and quality checks:
+support-debug performs the following tests and quality checks:
 
 - Run tests: `! uv run -m pytest --tb=short`
 - Check coverage: `! uv run -m pytest --cov`
@@ -171,28 +169,28 @@ debug-helper performs the following tests and quality checks:
 
 ### What it doesn't do
 
-- **Code Modification**: Actual file editing is done by tdd-implementer.
-- **Quality Verification**: Code quality/TRUST principle verification is done by quality-gate.
-- **Git manipulation**: Git commands to git-manager
-- **Change Settings**: Claude Code settings are sent to cc-manager.
-- **Document update**: Document synchronization to doc-syncer
+- **Code Modification**: Actual file editing is done by workflow-tdd.
+- **Quality Verification**: Code quality/TRUST principle verification is done by core-quality.
+- **Git manipulation**: Git commands to core-git
+- **Change Settings**: Claude Code settings are sent to support-claude.
+- **Document update**: Document synchronization to workflow-docs
 
 ### Agent Delegation Rules
 
-The debug-helper delegates discovered issues to the following specialized agents:
+The support-debug delegates discovered issues to the following specialized agents:
 
-- Runtime errors → tdd-implementer (if code modifications are needed)
-- Code quality/TRUST verification → quality-gate
-- Git-related issues → git-manager
-- Configuration-related issues → cc-manager
-- Document-related problem → doc-syncer
+- Runtime errors → workflow-tdd (if code modifications are needed)
+- Code quality/TRUST verification → core-quality
+- Git-related issues → core-git
+- Configuration-related issues → support-claude
+- Document-related problem → workflow-docs
 - Complex problem → Recommended to run the corresponding command
 
 ## 🎯 Example of use
 
 ### Debugging runtime errors
 
-Alfred calls the debug-helper as follows:
+Alfred calls the support-debug as follows:
 
 - Analyzing code errors (TypeError, AttributeError, etc.)
 - Analyzing Git errors (merge conflicts, push rejected, etc.)
@@ -200,8 +198,8 @@ Alfred calls the debug-helper as follows:
 
 ```bash
 # Example: Runtime error diagnosis
-@agent-debug-helper "TypeError: 'NoneType' object has no attribute 'name'"
-@agent-debug-helper "git push rejected: non-fast-forward"
+@agent-support-debug "TypeError: 'NoneType' object has no attribute 'name'"
+@agent-support-debug "git push rejected: non-fast-forward"
 ```
 
 ## 📊 Performance Indicators

@@ -1,12 +1,12 @@
-# TOON Format Patterns and Anti-Patterns
+# TOON 형식 패턴 및 안티패턴
 
-## Recommended Patterns
+## 권장 패턴
 
-### Pattern 1: Table-First Design
+### 패턴 1: 테이블 우선 설계
 
-**Description**: Always convert uniform object arrays to table format
+**설명**: 균일한 객체 배열은 항상 테이블 형식으로 변환
 
-**Good Example**:
+**좋은 예시**:
 ```toon
 users[3]{id,name,email,role}:
   1,Alice,alice@example.com,admin
@@ -14,7 +14,7 @@ users[3]{id,name,email,role}:
   3,Charlie,charlie@example.com,user
 ```
 
-**Bad Example**:
+**나쁜 예시**:
 ```toon
 users[3]:
   user:
@@ -34,29 +34,29 @@ users[3]:
     role: user
 ```
 
-**Reason**: Table format is 40% more efficient
+**이유**: 테이블 형식이 40% 더 효율적
 
-### Pattern 2: Explicit Length Declaration
+### 패턴 2: 명시적 길이 선언
 
-**Description**: Always declare array length to improve model parsing reliability
+**설명**: 배열 길이를 항상 명시하여 모델 파싱 신뢰성 향상
 
-**Good Example**:
+**좋은 예시**:
 ```toon
 items[5]: item1,item2,item3,item4,item5
 ```
 
-**Bad Example**:
+**나쁜 예시**:
 ```toon
-items: item1,item2,item3,item4,item5  # Missing length
+items: item1,item2,item3,item4,item5  # 길이 누락
 ```
 
-**Reason**: Explicit length enables LLM verification
+**이유**: 명시적 길이는 LLM 검증을 가능하게 함
 
-### Pattern 3: Consistent Indentation
+### 패턴 3: 일관된 들여쓰기
 
-**Description**: Maintain same indentation style throughout the file
+**설명**: 파일 전체에서 동일한 들여쓰기 방식 유지
 
-**Good Example**:
+**좋은 예시**:
 ```toon
 company:
   name: Acme
@@ -67,24 +67,24 @@ company:
       size: 30
 ```
 
-**Bad Example**:
+**나쁜 예시**:
 ```toon
 company:
   name: Acme
-    departments:  # Wrong indentation
+    departments:  # 잘못된 들여쓰기
       engineering:
         size: 50
-  sales:  # Inconsistent indentation
+  sales:  # 일관성 없는 들여쓰기
     size: 30
 ```
 
-**Reason**: Consistency prevents parsing errors
+**이유**: 일관성은 파싱 오류를 방지
 
-### Pattern 4: Smart Field Ordering
+### 패턴 4: 스마트 필드 순서
 
-**Description**: Place important fields first to improve readability
+**설명**: 중요한 필드를 먼저 배치하여 가독성 향상
 
-**Good Example**:
+**좋은 예시**:
 ```toon
 products[3]{id,name,price,category,inStock}:
   1,Laptop,1200000,Electronics,true
@@ -92,7 +92,7 @@ products[3]{id,name,price,category,inStock}:
   3,Keyboard,80000,Electronics,false
 ```
 
-**Bad Example**:
+**나쁜 예시**:
 ```toon
 products[3]{inStock,category,price,name,id}:
   true,Electronics,1200000,Laptop,1
@@ -100,77 +100,77 @@ products[3]{inStock,category,price,name,id}:
   false,Electronics,80000,Keyboard,3
 ```
 
-**Reason**: Natural field order increases data comprehension
+**이유**: 자연스러운 필드 순서는 데이터 이해도를 높임
 
-### Pattern 5: Minimize Nesting
+### 패턴 5: 중첩 최소화
 
-**Description**: Avoid 3+ level nesting, use key folding when necessary
+**설명**: 3단계 이상 중첩을 피하고 필요시 키 폴딩 사용
 
-**Good Example**:
+**좋은 예시**:
 ```toon
-# Use key folding
+# 키 폴딩 사용
 user.profile.name: Alice
 user.profile.age: 30
 user.settings.theme: dark
 ```
 
-**Bad Example**:
+**나쁜 예시**:
 ```toon
 user:
   profile:
     details:
       personal:
-        name: Alice  # 5-level nesting
+        name: Alice  # 5단계 중첩
 ```
 
-**Reason**: Deep nesting reduces token efficiency
+**이유**: 깊은 중첩은 토큰 효율성을 감소시킴
 
-### Pattern 6: Explicit Type Conversion
+### 패턴 6: 타입 명시적 변환
 
-**Description**: Clearly distinguish numbers and strings
+**설명**: 숫자와 문자열을 명확히 구분
 
-**Good Example**:
+**좋은 예시**:
 ```toon
 data[2]{id,count,price,name}:
   1,100,19.99,Widget
   2,200,29.99,Gadget
 ```
 
-**Bad Example**:
+**나쁜 예시**:
 ```toon
 data[2]{id,count,price,name}:
-  "1","100","19.99","Widget"  # Unnecessary quotes
+  "1","100","19.99","Widget"  # 불필요한 따옴표
   2,200,29.99,Gadget
 ```
 
-**Reason**: Explicit types improve parsing accuracy
+**이유**: 명시적 타입은 파싱 정확도를 높임
 
-### Pattern 7: Comment Usage
+### 패턴 7: 주석 활용
 
-**Description**: Add explanations with comments for complex structures
+**설명**: 복잡한 구조에는 주석으로 설명 추가
 
-**Good Example**:
+**좋은 예시**:
 ```toon
-# User analytics data
-# Period: 2025-11-01 ~ 2025-11-30
+# 사용자 분석 데이터
+# 기간: 2025-11-01 ~ 2025-11-30
 analytics:
   totalUsers: 10000
-  activeUsers: 8500  # Monthly active users
-  # Daily statistics
+  activeUsers: 8500  # 월간 활성 사용자
+  # 일별 통계
   daily[30]{date,visitors,conversions}:
     2025-11-01,1250,45
     # ... 28 more days
 ```
 
-**Reason**: Comments provide data context
+**이유**: 주석은 데이터 맥락을 제공
 
-## Anti-Patterns
+## 안티패턴
 
-### Anti-Pattern 1: Unnecessary Object Nesting
+### 안티패턴 1: 불필요한 객체 중첩
 
-**Problem**:
+**문제**:
 ```toon
-# Inefficient
+# 비효율적
 items[3]:
   item:
     id: 1
@@ -183,50 +183,50 @@ items[3]:
     name: Tool
 ```
 
-**Solution**:
+**해결**:
 ```toon
-# Efficient (40% token savings)
+# 효율적 (40% 토큰 절감)
 items[3]{id,name}:
   1,Widget
   2,Gadget
   3,Tool
 ```
 
-### Anti-Pattern 2: Mixed Delimiters
+### 안티패턴 2: 혼합 구분자
 
-**Problem**:
+**문제**:
 ```toon
 users[2]{name,age}:
   Alice,30
-  Bob|25  # Error: Mixed delimiters
+  Bob|25  # 오류: 혼합 구분자
 ```
 
-**Solution**:
+**해결**:
 ```toon
 users[2]{name,age}:
   Alice,30
   Bob,25
 ```
 
-### Anti-Pattern 3: Field Count Mismatch
+### 안티패턴 3: 필드 수 불일치
 
-**Problem**:
+**문제**:
 ```toon
 products[3]{id,name,price}:
   1,Laptop,1200000
-  2,Mouse,30000,InStock  # 4 fields (3 expected)
-  3,Keyboard  # 2 fields (3 expected)
+  2,Mouse,30000,InStock  # 4개 필드 (3개 예상)
+  3,Keyboard  # 2개 필드 (3개 예상)
 ```
 
-**Solution**:
+**해결**:
 ```toon
-# Option 1: Add field
+# 옵션 1: 필드 추가
 products[3]{id,name,price,status}:
   1,Laptop,1200000,null
   2,Mouse,30000,InStock
   3,Keyboard,80000,null
 
-# Option 2: Use object format
+# 옵션 2: 객체 형식 사용
 products[3]:
   product:
     id: 1
@@ -243,47 +243,47 @@ products[3]:
     price: 80000
 ```
 
-### Anti-Pattern 4: Tab and Space Mixing
+### 안티패턴 4: 탭과 스페이스 혼용
 
-**Problem**:
+**문제**:
 ```toon
 company:
   name: Acme  # 2 spaces
-	address: Seoul  # 1 tab (error)
+	address: Seoul  # 1 tab (오류)
 ```
 
-**Solution**:
+**해결**:
 ```toon
 company:
   name: Acme
-  address: Seoul  # Consistent 2 spaces
+  address: Seoul  # 일관된 2 spaces
 ```
 
-### Anti-Pattern 5: Unescaped Special Characters
+### 안티패턴 5: 특수 문자 미이스케이프
 
-**Problem**:
+**문제**:
 ```toon
-messages[2]: Hello, World,How are you?  # Comma collision
+messages[2]: Hello, World,How are you?  # 쉼표 충돌
 ```
 
-**Solution**:
+**해결**:
 ```toon
 messages[2]: "Hello, World","How are you?"
 ```
 
-### Anti-Pattern 6: Excessive Key Folding
+### 안티패턴 6: 과도한 키 폴딩
 
-**Problem**:
+**문제**:
 ```toon
-# Reduced readability
+# 가독성 저하
 user.profile.personal.details.name.first: Alice
 user.profile.personal.details.name.last: Kim
 user.profile.personal.details.age: 30
 ```
 
-**Solution**:
+**해결**:
 ```toon
-# Balanced nesting
+# 균형있는 중첩
 user:
   profile:
     name.first: Alice
@@ -291,25 +291,25 @@ user:
     age: 30
 ```
 
-### Anti-Pattern 7: Meaningless Array Length
+### 안티패턴 7: 무의미한 배열 길이
 
-**Problem**:
+**문제**:
 ```toon
-items[0]:  # Empty array (meaningless)
+items[0]:  # 빈 배열 (무의미)
 ```
 
-**Solution**:
+**해결**:
 ```toon
-items: []  # Or remove field
+items: []  # 또는 필드 제거
 ```
 
-## Optimization Patterns
+## 최적화 패턴
 
-### Pattern A: Batch Conversion
+### 패턴 A: 배치 변환
 
-**Scenario**: Convert multiple JSON files to TOON in batch
+**시나리오**: 여러 JSON 파일을 TOON으로 일괄 변환
 
-**Implementation**:
+**구현**:
 ```bash
 #!/bin/bash
 # batch_convert.sh
@@ -331,11 +331,11 @@ for json_file in "$INPUT_DIR"/*.json; do
 done
 ```
 
-### Pattern B: Streaming Conversion
+### 패턴 B: 스트리밍 변환
 
-**Scenario**: Process large data streaming
+**시나리오**: 대용량 데이터 스트리밍 처리
 
-**Implementation**:
+**구현**:
 ```typescript
 import { encodeLines } from '@toon-format/toon'
 import { createWriteStream } from 'fs'
@@ -351,36 +351,36 @@ async function streamConvert(data: any, outputPath: string) {
 }
 ```
 
-### Pattern C: Conditional Conversion
+### 패턴 C: 조건부 변환
 
-**Scenario**: Select format based on data characteristics
+**시나리오**: 데이터 특성에 따라 형식 선택
 
-**Implementation**:
+**구현**:
 ```typescript
 function smartEncode(data: any): string {
   const eligibility = calculateTabularEligibility(data)
 
   if (eligibility >= 80) {
-    // Table format optimal
+    // 테이블 형식 최적
     return encode(data, { detectTabular: true })
   } else if (eligibility >= 50) {
-    // Mixed format
+    // 혼합 형식
     return encode(data, {
       detectTabular: true,
       keyFolding: true
     })
   } else {
-    // Keep JSON
+    // JSON 유지
     return JSON.stringify(data)
   }
 }
 ```
 
-### Pattern D: Caching Strategy
+### 패턴 D: 캐싱 전략
 
-**Scenario**: Optimize repeated conversions
+**시나리오**: 반복 변환 최적화
 
-**Implementation**:
+**구현**:
 ```typescript
 class ToonCache {
   private cache = new Map<string, string>()
@@ -404,13 +404,13 @@ class ToonCache {
 }
 ```
 
-## Debugging Patterns
+## 디버깅 패턴
 
-### Pattern X: Step-by-Step Validation
+### 패턴 X: 단계별 검증
 
-**Description**: Perform validation at each conversion step
+**설명**: 변환 각 단계에서 검증 수행
 
-**Implementation**:
+**구현**:
 ```typescript
 function debugConvert(data: any): string {
   console.log('1. Input validation...')
@@ -430,21 +430,21 @@ function debugConvert(data: any): string {
 }
 ```
 
-### Pattern Y: Error Recovery
+### 패턴 Y: 오류 복구
 
-**Description**: Attempt automatic recovery on parsing errors
+**설명**: 파싱 오류 시 자동 복구 시도
 
-**Implementation**:
+**구현**:
 ```typescript
 function resilientDecode(toon: string): any {
   try {
-    // Try strict mode
+    // Strict 모드 시도
     return decode(toon, { strict: true })
   } catch (error) {
     console.warn('Strict mode failed, retrying with non-strict...')
 
     try {
-      // Non-strict mode fallback
+      // Non-strict 모드 폴백
       return decode(toon, { strict: false })
     } catch (error2) {
       console.error('Both modes failed')
@@ -454,11 +454,11 @@ function resilientDecode(toon: string): any {
 }
 ```
 
-### Pattern Z: Difference Analysis
+### 패턴 Z: 차이점 분석
 
-**Description**: Compare data before and after conversion
+**설명**: 변환 전후 데이터 비교
 
-**Implementation**:
+**구현**:
 ```typescript
 function analyzeDifference(original: any, converted: any) {
   const diff = {
@@ -467,9 +467,9 @@ function analyzeDifference(original: any, converted: any) {
     changed: []
   }
 
-  // Recursive comparison logic
+  // 재귀적 비교 로직
   function compare(obj1: any, obj2: any, path: string = '') {
-    // ... Implementation omitted
+    // ... 구현 생략
   }
 
   compare(original, converted)
@@ -478,18 +478,18 @@ function analyzeDifference(original: any, converted: any) {
 }
 ```
 
-## Migration Patterns
+## 마이그레이션 패턴
 
-### Pattern M1: Gradual Transition
+### 패턴 M1: 점진적 전환
 
-**Description**: Phase-wise migration of existing JSON system to TOON
+**설명**: 기존 JSON 시스템을 단계적으로 TOON으로 전환
 
-**Implementation**:
+**구현**:
 ```typescript
 class HybridFormat {
   encode(data: any, format: 'json' | 'toon' | 'auto'): string {
     if (format === 'auto') {
-      // Analyze data characteristics
+      // 데이터 특성 분석
       const eligibility = calculateTabularEligibility(data)
       format = eligibility >= 80 ? 'toon' : 'json'
     }
@@ -500,7 +500,7 @@ class HybridFormat {
   }
 
   decode(text: string): any {
-    // Auto-detect format
+    // 형식 자동 감지
     if (text.includes('{') && text.includes('}')) {
       return JSON.parse(text)
     } else {
@@ -510,11 +510,11 @@ class HybridFormat {
 }
 ```
 
-### Pattern M2: Compatibility Layer
+### 패턴 M2: 호환성 레이어
 
-**Description**: Ensure JSON/TOON bidirectional compatibility
+**설명**: JSON/TOON 양방향 호환성 보장
 
-**Implementation**:
+**구현**:
 ```typescript
 interface UniversalData {
   format: 'json' | 'toon'
@@ -550,13 +550,13 @@ class DataAdapter {
 }
 ```
 
-## Performance Optimization Patterns
+## 성능 최적화 패턴
 
-### Pattern P1: Lazy Conversion
+### 패턴 P1: 지연 변환
 
-**Description**: Delay conversion until needed
+**설명**: 필요한 시점까지 변환 지연
 
-**Implementation**:
+**구현**:
 ```typescript
 class LazyToon {
   private data: any
@@ -575,25 +575,25 @@ class LazyToon {
 }
 ```
 
-### Pattern P2: Memoization
+### 패턴 P2: 메모이제이션
 
-**Description**: Cache results for identical inputs
+**설명**: 동일 입력에 대한 결과 캐싱
 
-**Implementation**:
+**구현**:
 ```typescript
 import memoize from 'lodash/memoize'
 
 const memoizedEncode = memoize(
   (data: any) => encode(data),
-  (data: any) => JSON.stringify(data)  // Cache key
+  (data: any) => JSON.stringify(data)  // 캐시 키
 )
 ```
 
-### Pattern P3: Parallel Processing
+### 패턴 P3: 병렬 처리
 
-**Description**: Convert multiple files simultaneously
+**설명**: 여러 파일 동시 변환
 
-**Implementation**:
+**구현**:
 ```typescript
 import { Worker } from 'worker_threads'
 
@@ -615,4 +615,4 @@ async function parallelConvert(files: string[]): Promise<string[]> {
 
 ---
 
-**This pattern guide provides effective usage of TOON format.**
+**이 패턴 가이드는 TOON 형식의 효과적 사용법을 제공합니다.**

@@ -67,11 +67,11 @@ skills: moai-lang-unified, moai-essentials-unified, moai-mcp-integration
 - Work within 1M token context window
 
 ❌ **DOES NOT**:
-- Execute Backend tasks (→ @backend-expert)
+- Execute Backend tasks (→ @code-backend)
 - Perform security audits (→ @security-expert)
-- Manage DevOps operations (→ @devops-expert)
-- Generate SPEC documents (→ @spec-builder)
-- Modify Git workflows (→ @git-manager)
+- Manage DevOps operations (→ @infra-devops)
+- Generate SPEC documents (→ @workflow-spec)
+- Modify Git workflows (→ @core-git)
 - Make unilateral decisions without user approval (→ AskUserQuestion required)
 
 ---

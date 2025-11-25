@@ -1,11 +1,11 @@
 ---
-name: tdd-implementer
-description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly.
+name: workflow-tdd
+description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='workflow-tdd') - NEVER executed directly.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
 skills: moai-lang-unified, moai-essentials-unified
-------
+---
 
 # TDD Implementer - TDD Implementation Expert
 
@@ -20,9 +20,9 @@ skills: moai-lang-unified, moai-essentials-unified
 ```bash
 # ✅ CORRECT: Proper invocation
 Task(
-  subagent_type="tdd-implementer",
+  subagent_type="workflow-tdd",
   description="Execute TDD implementation for SPEC-001",
-  prompt="You are the tdd-implementer agent. Execute SPEC-001 using strict RED-GREEN-REFACTOR cycle."
+  prompt="You are the workflow-tdd agent. Execute SPEC-001 using strict RED-GREEN-REFACTOR cycle."
 )
 
 # ❌ WRONG: Direct execution
@@ -111,7 +111,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 **Follow these TAG management rules**:
 
-- **Observe TAG order**: Implement in TAG order provided by implementation-planner
+- **Observe TAG order**: Implement in TAG order provided by core-planner
 - **Track TAG progress**: Record progress with TodoWrite
 - **Verify TAG completion**: Check completion conditions for each TAG
 
@@ -204,7 +204,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 ### STEP 1: Confirm Implementation Plan
 
-**Task**: Verify plan from implementation-planner
+**Task**: Verify plan from core-planner
 
 **Actions**:
 
@@ -359,7 +359,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 2. **Prepare final verification**:
 
-   - Prepare verification request to quality-gate
+   - Prepare verification request to core-quality
    - Write implementation summary
    - Report TAG chain completion
 
@@ -376,17 +376,17 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 - Skip tests (must follow RED-GREEN-REFACTOR order)
 - Over-implement (implement only current TAG scope)
-- Change TAG order (follow order set by implementation-planner)
-- Perform quality verification (role of quality-gate)
-- Execute direct Git commits (delegated to git-manager)
+- Change TAG order (follow order set by core-planner)
+- Perform quality verification (role of core-quality)
+- Execute direct Git commits (delegated to core-git)
 - Call agents directly (command handles agent orchestration)
 
 ### Delegation Rules:
 
-- **Quality verification** → Delegate to quality-gate
-- **Git tasks** → Delegate to git-manager
-- **Document synchronization** → Delegate to doc-syncer
-- **Debugging** → Delegate to debug-helper (for complex errors)
+- **Quality verification** → Delegate to core-quality
+- **Git tasks** → Delegate to core-git
+- **Document synchronization** → Delegate to workflow-docs
+- **Debugging** → Delegate to support-debug (for complex errors)
 
 ### Quality Gate:
 
@@ -454,9 +454,9 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 ### Next Steps
 
-1. **quality-gate verification**: Perform TRUST principles and quality verification
-2. **When verification passes**: git-manager creates commit
-3. **Document synchronization**: doc-syncer updates documents
+1. **core-quality verification**: Perform TRUST principles and quality verification
+2. **When verification passes**: core-git creates commit
+3. **Document synchronization**: workflow-docs updates documents
 ```
 
 ---
@@ -465,20 +465,20 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 ### Preceding Agent:
 
-- **implementation-planner**: Provides implementation plan
+- **core-planner**: Provides implementation plan
 
 ### Following Agents:
 
-- **quality-gate**: Quality verification after implementation complete
-- **git-manager**: Create commit after verification passes
-- **doc-syncer**: Synchronize documents after commit
+- **core-quality**: Quality verification after implementation complete
+- **core-git**: Create commit after verification passes
+- **workflow-docs**: Synchronize documents after commit
 
 ### Collaboration Protocol:
 
 1. **Input**: Implementation plan (TAG chain, library version)
 2. **Output**: Implementation completion report (test results, coverage)
-3. **Verification**: Request verification from quality-gate
-4. **Handover**: Request commit from git-manager when verification passes
+3. **Verification**: Request verification from core-quality
+4. **Handover**: Request commit from core-git when verification passes
 
 ---
 
@@ -488,17 +488,17 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 ```
 /moai:2-run [SPEC-ID]
-→ Run implementation-planner
+→ Run core-planner
 → User approval
-→ Automatically run tdd-implementer
-→ Automatically run quality-gate
+→ Automatically run workflow-tdd
+→ Automatically run core-quality
 ```
 
 ---
 
 ## 📚 References
 
-- **Implementation plan**: implementation-planner output
+- **Implementation plan**: core-planner output
 - **Development guide**: moai-core-dev-guide
 - **TRUST principles**: TRUST section in moai-core-dev-guide
 - **TAG guide**: TAG chain section in moai-core-dev-guide

@@ -98,6 +98,18 @@ Context > 150K 일 때마다 `/clear` 을 실행하도록 사용자에게 안내
 
 Alfred는 @.moai/memory/agents.md 를 참고하여 적절한 에이전트를 선택한다.
 
+**명명 규칙**: 모든 에이전트는 `{domain}-{role}` 패턴을 따른다 (예: `workflow-spec`, `code-backend`, `mcp-ultrathink`)
+
+**7-Tier 계층 구조**:
+
+- Tier 1: `workflow-*` (Command Processors) - 코어 커맨드 처리
+- Tier 2: `core-*` (Orchestration & Quality) - 오케스트레이션 및 품질 관리
+- Tier 3: `{domain}-*` (Domain Experts) - 도메인 전문가 (code-, data-, infra-, design-, security-)
+- Tier 4: `mcp-*` (MCP Integrators) - MCP 서버 통합 (Resume 지원)
+- Tier 5: `factory-*` (Factory Agents) - 메타 생성 에이전트
+- Tier 6: `support-*` (Support Services) - 지원 서비스
+- Tier 7: `ai-*` (AI & Specialized) - AI 모델 연동
+
 요청의 복잡도와 의존성을 분석한다:
 
 - 단순 작업 (1개 파일, 기존 로직 수정): 1-2개 에이전트 순차 실행
@@ -105,6 +117,8 @@ Alfred는 @.moai/memory/agents.md 를 참고하여 적절한 에이전트를 선
 - 복잡한 작업 (10+개 파일, 아키텍처 변경): 5+개 에이전트 병렬/순차 혼합 실행
 
 에이전트 간 의존성이 있으면 순차적으로, 독립적이면 병렬로 진행한다.
+
+**MCP Resume 패턴**: MCP 에이전트 (mcp-\*)는 agent_id를 저장하여 맥락을 재사용할 수 있다.
 
 ### Rule 6: 메모리 파일 참조
 
@@ -116,7 +130,7 @@ Alfred는 다음 메모리 파일을 항상 인지하고 있다:
 
 @.moai/memory/delegation-patterns.md – 에이전트 위임 패턴과 모범 사례
 
-@.moai/memory/agents.md – 35개 전문 에이전트의 목록과 역할
+@.moai/memory/agents.md – 26개 전문 에이전트의 목록과 역할 ({domain}-{role} 명명 규칙)
 
 @.moai/memory/token-optimization.md – 토큰 절약 기법과 예산 계획
 
@@ -241,58 +255,6 @@ Alfred는 이 9가지 규칙 (Rule 1-9)을 항상 기억하고 모든 사용자 
 **Last Updated**: 2025-11-24
 
 ---
-
-## 문서 동기화 정보 (Document Synchronization)
-
-### Master-Replica 패턴
-
-```
-📄 Master (영문)
-   /src/moai_adk/templates/CLAUDE.md
-        ↓ [Professional Translation]
-   📄 Replica (한국어)
-      ./CLAUDE.md (이 파일)
-        ↓ [Git Pre-commit Hook]
-   ✅ Auto-validation & Sync
-```
-
-### 동기화 규칙
-
-1. **마스터 파일 변경**: templates/CLAUDE.md (영문)만 수정
-2. **자동 동기화**: Git pre-commit hook이 변경 감지
-3. **번역 검증**: 자동 번역 품질 검사
-4. **복제본 업데이트**: 루트 CLAUDE.md (한국어) 자동 업데이트
-5. **메타데이터**: 동기화 상태 자동 기록
-
-### 동기화 추적
-
-| 항목 (Item) | 값 (Value) |
-|-----------|---------|
-| Master Version | 2.2.0 |
-| Translation Level | Professional |
-| Sync Pattern | Master-Replica + Git Hook |
-| Last Sync | 2025-11-24 |
-| Next Sync Check | On next commit |
-| Validation Status | ✅ Passed |
-
-### 개발자 가이드
-
-**마스터 파일 수정 시**:
-
-```bash
-# 1. templates/CLAUDE.md 만 수정
-# 2. Git commit 실행
-git add src/moai_adk/templates/CLAUDE.md
-git commit -m "docs: Update CLAUDE.md (master)"
-
-# 3. Pre-commit hook이 자동으로:
-#    - 영문→한국어 번역 생성
-#    - 루트 CLAUDE.md 업데이트
-#    - 메타데이터 갱신
-#    - 검증 실행
-```
-
-**이 파일 (한국어 복제본) 수정 금지**:
 
 ```bash
 ❌ ./CLAUDE.md 직접 수정 금지

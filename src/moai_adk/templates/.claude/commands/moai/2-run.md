@@ -7,11 +7,7 @@ allowed-tools:
   - AskUserQuestion
   - TodoWrite
 model: sonnet
-skills:
-  - moai-alfred-workflow
-  - moai-alfred-todowrite-pattern
-  - moai-alfred-ask-user-questions
-  - moai-alfred-reporting
+skills: moai-essentials-unified, moai-core-quality, moai-lang-unified
 ---
 
 ## 📋 Pre-execution Context
@@ -91,24 +87,18 @@ Command orchestrates phases sequentially; agents handle complexity.
 
 ---
 
-## 🧠 Phase Agents & Skills
+## 🧠 Associated Agents & Skills
 
-### Phase Agents (Sequential Execution)
-
-| Agent                      | Purpose                                      | When                            |
-| -------------------------- | -------------------------------------------- | ------------------------------- |
-| **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1                         |
-| **tdd-implementer**        | Implements code through TDD cycle            | Phase 2                         |
-| **quality-gate**           | Verifies TRUST 5 principles                  | Phase 2 (after tdd-implementer) |
-| **git-manager**            | Creates and manages Git commits              | Phase 3                         |
-
-### Skills Used (by agents, not command)
-
-- `Skill("moai-alfred-workflow")` - Workflow orchestration
-- `Skill("moai-alfred-todowrite-pattern")` - Task tracking
-- `Skill("moai-alfred-ask-user-questions")` - User interaction
-- `Skill("moai-alfred-reporting")` - Result reporting
-- Domain-specific skills (selected per language/framework)
+| Agent/Skill | Purpose |
+|------------|---------|
+| implementation-planner | Analyzes SPEC and creates execution strategy |
+| tdd-implementer | Implements code through TDD cycle (RED-GREEN-REFACTOR) |
+| quality-gate | Verifies TRUST 5 principles and validates quality |
+| git-manager | Creates and manages Git commits |
+| moai-alfred-workflow | Workflow orchestration patterns |
+| moai-alfred-todowrite-pattern | Task tracking and progress management |
+| moai-alfred-ask-user-questions | User interaction patterns |
+| moai-alfred-reporting | Result reporting and summaries |
 
 ---
 
@@ -421,35 +411,31 @@ After implementation, verify:
 
 ## 📚 Quick Reference
 
-**This command**:
+| Scenario | Entry Point | Key Phases | Expected Outcome |
+|----------|-------------|------------|------------------|
+| Implement SPEC feature | `/moai:2-run SPEC-XXX` | Phase 1 → Planning → Phase 2 → TDD → Phase 2.5 → Quality → Phase 3 → Git | Implemented feature with ≥85% test coverage |
+| Resume failed implementation | `/moai:2-run SPEC-XXX` (retry) | Resume from last successful phase | Completed implementation |
+| Implement with modifications | `/moai:2-run SPEC-XXX` (with plan changes) | Modify plan → Execute phases | Modified implementation |
 
-- Accepts SPEC ID: `/moai:2-run SPEC-AUTH-001`
-- Orchestrates phases sequentially with user checkpoints
-- Outputs: Implementation summary with next steps
+**Associated Agents**:
 
-**For details, see**:
+- `implementation-planner` - SPEC analysis and execution strategy
+- `tdd-implementer` - TDD implementation (RED-GREEN-REFACTOR)
+- `quality-gate` - TRUST 5 validation
+- `git-manager` - Git operations and commit management
 
-- `.claude/agents/moai/implementation-planner.md` - Phase 1: SPEC analysis
-- `.claude/agents/moai/tdd-implementer.md` - Phase 2: TDD implementation
-- `.claude/agents/moai/quality-gate.md` - Phase 2.5: Quality validation
-- `.claude/agents/moai/git-manager.md` - Phase 3: Git operations
+**Implementation Results**:
 
-**Architecture Pattern**:
+- **Code**: Implemented feature files
+- **Tests**: Test files with ≥85% coverage
+- **Commits**: Git commits with proper messages
+- **Quality**: PASS/WARNING/CRITICAL status
 
-```
-Commands (Orchestration)
-    ↓ Task()
-Agents (Execution)
-    ↓ Skill()
-Skills (Knowledge)
-```
-
----
-
-**Version**: 3.1.0 (Command-Level Phase Orchestration)
-**Updated**: 2025-11-19
+**Version**: 3.1.0 (Command-Level Phase Orchestration with Resume Chain)
+**Updated**: 2025-11-25
 **Pattern**: Sequential Phase-Based Agent Delegation
 **Compliance**: Claude Code Best Practices + Zero Direct Tool Usage
+**Architecture**: Commands → Agents → Skills (Complete delegation)
 
 ---
 

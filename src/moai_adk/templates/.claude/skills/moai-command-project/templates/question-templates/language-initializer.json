@@ -1,0 +1,228 @@
+{
+  "id": "language-initializer",
+  "title": "Project Language Configuration",
+  "description": "Configure programming language and framework settings for your project",
+  "questions": [
+    {
+      "id": "language.primary",
+      "text": "What is the primary programming language for this project?",
+      "type": "single_choice",
+      "required": true,
+      "options": [
+        {
+          "label": "Python",
+          "value": "python",
+          "description": "Python 3.13+ with modern async patterns"
+        },
+        {
+          "label": "TypeScript",
+          "value": "typescript",
+          "description": "TypeScript 5.9+ with React 19/Next.js 16"
+        },
+        {
+          "label": "JavaScript",
+          "value": "javascript",
+          "description": "Modern JavaScript with ES2022+ features"
+        },
+        {
+          "label": "Go",
+          "value": "go",
+          "description": "Go 1.23+ with concurrent patterns"
+        },
+        {
+          "label": "Rust",
+          "value": "rust",
+          "description": "Rust with async/await and ecosystem tools"
+        },
+        {
+          "label": "Java",
+          "value": "java",
+          "description": "Java 21+ with modern JVM features"
+        },
+        {
+          "label": "C#",
+          "value": "csharp",
+          "description": "C# 13+ with .NET 9+"
+        },
+        {
+          "label": "Other",
+          "value": "other",
+          "description": "Specify a different language"
+        }
+      ]
+    },
+    {
+      "id": "language.custom_name",
+      "text": "Specify the programming language:",
+      "type": "text_input",
+      "required": true,
+      "conditional_on": {
+        "language.primary": "other"
+      },
+      "validation": {
+        "rules": ["required", "min_length"],
+        "parameters": {"min_length": 2}
+      }
+    },
+    {
+      "id": "framework.primary",
+      "text": "Select the primary framework:",
+      "type": "single_choice",
+      "required": true,
+      "conditional_on": {
+        "language.primary": ["python", "typescript", "javascript"]
+      },
+      "options": [
+        {
+          "label": "FastAPI (Python)",
+          "value": "fastapi",
+          "description": "Modern async web framework for Python"
+        },
+        {
+          "label": "Django (Python)",
+          "value": "django",
+          "description": "Full-featured web framework"
+        },
+        {
+          "label": "React (TypeScript/JavaScript)",
+          "value": "react",
+          "description": "React 19 with modern hooks"
+        },
+        {
+          "label": "Next.js (TypeScript/JavaScript)",
+          "value": "nextjs",
+          "description": "Full-stack React framework"
+        },
+        {
+          "label": "Vue.js (TypeScript/JavaScript)",
+          "value": "vue",
+          "description": "Vue 3 with Composition API"
+        },
+        {
+          "label": "Express.js (JavaScript/TypeScript)",
+          "value": "express",
+          "description": "Minimalist web framework"
+        },
+        {
+          "label": "No framework",
+          "value": "none",
+          "description": "Vanilla development without framework"
+        }
+      ]
+    },
+    {
+      "id": "language.package_manager",
+      "text": "Choose package manager:",
+      "type": "single_choice",
+      "required": true,
+      "options": [
+        {
+          "label": "pip (Python)",
+          "value": "pip",
+          "description": "Standard Python package manager"
+        },
+        {
+          "label": "Poetry (Python)",
+          "value": "poetry",
+          "description": "Modern dependency management for Python"
+        },
+        {
+          "label": "npm (JavaScript/TypeScript)",
+          "value": "npm",
+          "description": "Node Package Manager"
+        },
+        {
+          "label": "yarn (JavaScript/TypeScript)",
+          "value": "yarn",
+          "description": "Fast, reliable, and secure dependency management"
+        },
+        {
+          "label": "pnpm (JavaScript/TypeScript)",
+          "value": "pnpm",
+          "description": "Fast, disk space efficient package manager"
+        },
+        {
+          "label": "Go Modules (Go)",
+          "value": "go_modules",
+          "description": "Official Go dependency management"
+        },
+        {
+          "label": "Cargo (Rust)",
+          "value": "cargo",
+          "description": "Rust package manager and build tool"
+        },
+        {
+          "label": "Maven (Java)",
+          "value": "maven",
+          "description": "Java project management and comprehension tool"
+        },
+        {
+          "label": "NuGet (C#)",
+          "value": "nuget",
+          "description": "Package manager for .NET"
+        }
+      ]
+    },
+    {
+      "id": "language.linting_formatting",
+      "text": "Enable automatic linting and formatting?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Set up code quality tools like linters and formatters"
+    },
+    {
+      "id": "language.testing_framework",
+      "text": "Select testing framework:",
+      "type": "single_choice",
+      "required": true,
+      "options": [
+        {
+          "label": "pytest (Python)",
+          "value": "pytest",
+          "description": "Feature-rich testing framework for Python"
+        },
+        {
+          "label": "Jest (JavaScript/TypeScript)",
+          "value": "jest",
+          "description": "Delightful JavaScript testing"
+        },
+        {
+          "label": "Vitest (JavaScript/TypeScript)",
+          "value": "vitest",
+          "description": "Next generation testing framework"
+        },
+        {
+          "label": "Go testing (Go)",
+          "value": "go_testing",
+          "description": "Built-in Go testing package"
+        },
+        {
+          "label": "cargo test (Rust)",
+          "value": "cargo_test",
+          "description": "Built-in Rust testing framework"
+        },
+        {
+          "label": "JUnit (Java)",
+          "value": "junit",
+          "description": "Popular Java testing framework"
+        },
+        {
+          "label": "xUnit (C#)",
+          "value": "xunit",
+          "description": "Free, open source, community-focused testing framework"
+        },
+        {
+          "label": "None/Custom",
+          "value": "none",
+          "description": "No testing framework or custom setup"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "skill": "moai-project-language-initializer",
+    "category": "project_configuration",
+    "version": "1.0.0"
+  }
+}

@@ -25,10 +25,10 @@ skills: moai-core-claude-code, moai-lang-unified, moai-essentials-unified
 - Provide graceful fallback to native Claude Code
 
 ### ❌ DOES NOT
-- Direct SPEC creation (→ spec-builder)
+- Direct SPEC creation (→ workflow-spec)
 - Test generation (→ test-engineer)
 - Security auditing (→ security-expert)
-- Documentation (→ docs-manager)
+- Documentation (→ workflow-docs)
 
 ---
 
@@ -244,7 +244,7 @@ def hash_password(plaintext: str) -> str:
 - Latest Version: 0.29.1-alpha.7
 
 **Related Agents**:
-- spec-builder, tdd-implementer, quality-gate, security-expert
+- workflow-spec, workflow-tdd, core-quality, security-expert
 
 ---
 

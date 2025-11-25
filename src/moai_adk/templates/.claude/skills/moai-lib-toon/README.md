@@ -1,34 +1,34 @@
 # moai-domain-toon
 
-**TOON 형식 전문가 Skill**
+**TOON Format Expert Skill**
 
-LLM 프롬프트 최적화를 위한 토큰 효율적 데이터 인코딩 전문 Skill입니다.
+This is a specialized skill for token-efficient data encoding optimized for LLM prompts.
 
-## 핵심 기능
+## Core Features
 
-- ✅ TOON 형식 완전 가이드
-- ✅ JSON ↔ TOON 변환
-- ✅ 39.6% 토큰 절감
-- ✅ TypeScript/Python/CLI 통합
-- ✅ 성능 벤치마크
-- ✅ 실전 예제
+- ✅ Complete TOON format guide
+- ✅ JSON ↔ TOON conversion
+- ✅ 39.6% token savings
+- ✅ TypeScript/Python/CLI integration
+- ✅ Performance benchmarks
+- ✅ Real-world examples
 
-## 빠른 시작
+## Quick Start
 
-### 기본 예제
+### Basic Example
 
-**JSON** (100 토큰):
+**JSON** (100 tokens):
 ```json
 {"users": [{"id": 1, "name": "Alice", "age": 30}]}
 ```
 
-**TOON** (60 토큰, 40% 절감):
+**TOON** (60 tokens, 40% savings):
 ```toon
 users[1]{id,name,age}:
   1,Alice,30
 ```
 
-### 설치
+### Installation
 
 ```bash
 # TypeScript
@@ -41,49 +41,49 @@ pip install toon-format
 npm install -g @toon-format/cli
 ```
 
-## 파일 구조
+## File Structure
 
 ```
 moai-domain-toon/
-├── SKILL.md         # 메인 스킬 파일
-├── examples.md      # 실전 예제
-├── reference.md     # API 레퍼런스
-├── patterns.md      # 패턴 가이드
-└── README.md        # 이 파일
+├── SKILL.md         # Main skill file
+├── examples.md      # Real-world examples
+├── reference.md     # API reference
+├── patterns.md      # Pattern guide
+└── README.md        # This file
 ```
 
-## 주요 내용
+## Main Contents
 
 ### SKILL.md
-- 개요 및 핵심 특징
-- 기본 문법 (객체, 배열, 원시값)
-- 설치 및 설정
-- 성능 벤치마크
-- 고급 기능
-- Context7 통합
+- Overview and core features
+- Basic syntax (objects, arrays, primitives)
+- Installation and setup
+- Performance benchmarks
+- Advanced features
+- Context7 integration
 
 ### examples.md
-- 실전 사용 예제
-- API 응답 최적화
-- 데이터베이스 덤프
-- 시계열 분석
-- TypeScript/Python 통합
-- CLI 자동화
+- Real-world usage examples
+- API response optimization
+- Database dumps
+- Time series analysis
+- TypeScript/Python integration
+- CLI automation
 
 ### reference.md
-- 공식 규격 (TOON Spec v2.0)
-- TypeScript 타입 정의
-- CLI 명령어 레퍼런스
-- 성능 특성
-- 호환성 매트릭스
-- 보안 고려사항
+- Official specification (TOON Spec v2.0)
+- TypeScript type definitions
+- CLI command reference
+- Performance characteristics
+- Compatibility matrix
+- Security considerations
 
 ### patterns.md
-- 권장 패턴 (7가지)
-- 안티패턴 (7가지)
-- 최적화 패턴
-- 디버깅 패턴
-- 마이그레이션 전략
+- Recommended patterns (7 types)
+- Anti-patterns (7 types)
+- Optimization patterns
+- Debugging patterns
+- Migration strategies
 
 ## 성능 (2025)
 

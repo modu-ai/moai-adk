@@ -2,10 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(curl:*)",
-      "Bash(for dep in \"psutil\" \"pytest-asyncio\" \"pytest-cov\")",
-      "Bash(do echo \"=== Checking $dep on TestPyPI ===\")",
-      "Bash(done)",
-      "Bash(fi)"
+      "Bash(git -C /Users/goos/MoAI/MoAI-ADK status --porcelain)",
+      "Bash(/bin/ls:*)"
     ]
-  }
+  },
+  "outputStyle": "R2-D2",
+  "spinnerTipsEnabled": true
 }

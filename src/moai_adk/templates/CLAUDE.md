@@ -51,7 +51,7 @@ Alfred executes the following commands based on Plan agent decisions:
 
 If SPEC is required, call `/moai:1-plan "clear description"` to generate SPEC-001.
 
-For implementation, call `/moai:2-run SPEC-001`. The tdd-implementer agent automatically executes the RED-GREEN-REFACTOR cycle.
+For implementation, call `/moai:2-run SPEC-001`. The workflow-tdd agent automatically executes the RED-GREEN-REFACTOR cycle.
 
 For documentation, call `/moai:3-sync SPEC-001`.
 
@@ -91,21 +91,61 @@ Analyze request complexity and dependencies:
 
 Use sequential when dependencies exist between agents, parallel for independent tasks.
 
-### Rule 6: Memory File References
+**Naming Convention**: All agents follow `{domain}-{role}` naming pattern:
 
-Alfred is always aware of the following memory files:
+- `workflow-*` (Command Processors) - Direct command binding (workflow-project, workflow-spec, workflow-tdd, workflow-docs)
+- `core-*` (Orchestration & Quality) - Planning and quality management (core-planner, core-quality, core-git)
+- `{domain}-*` (Domain Experts) - Specialized implementation (code-backend, data-database, infra-devops, design-uiux, security-expert)
+- `mcp-*` (MCP Integrators) - External service integration with resume pattern (mcp-context7, mcp-ultrathink, mcp-figma, mcp-playwright)
+- `factory-*` (Meta-generators) - Agent and skill creation (factory-agent, factory-skill, factory-command)
+- `support-*` (Support Services) - Utilities and debugging (support-debug, support-claude)
+- `ai-*` (AI Integrations) - AI model connections (ai-codex, ai-gemini, ai-banana)
 
-@.moai/memory/execution-rules.md – Core execution rules, SPEC decision criteria, security constraints
+**7-Tier Agent Hierarchy**:
 
-@.moai/memory/commands.md – Exact usage of /moai:0-3, 9 commands
+```
+Tier 1: workflow-* (Command Processors)      - Always Active
+Tier 2: core-* (Orchestration & Quality)     - Auto-triggered
+Tier 3: {domain}-* (Domain Experts)          - Lazy-loaded
+Tier 4: mcp-* (MCP Integrators)              - Resume-enabled
+Tier 5: factory-* (Factory Agents)           - Meta-development
+Tier 6: support-* (Support Services)         - On-demand
+Tier 7: ai-* (AI & Specialized)              - Specialized tasks
+```
 
-@.moai/memory/delegation-patterns.md – Agent delegation patterns and best practices
+**MCP Resume Pattern**: All MCP integrators support context continuity via resume parameter:
 
-@.moai/memory/agents.md – List and roles of specialist agents
+```python
+# Initial MCP call
+result = Task(subagent_type="mcp-context7", prompt="Research React 19 APIs")
+agent_id = result.agent_id
 
-@.moai/memory/token-optimization.md – Token-saving techniques and budget planning
+# Resume with full context
+result2 = Task(subagent_type="mcp-context7", prompt="Compare with React 18", resume=agent_id)
+```
 
-Use Skill() to reference domain-specific guides when needed.
+Benefits: 40-60% token savings, 95%+ context accuracy, multi-day analysis support.
+
+### Rule 6: Foundation Knowledge Access
+
+Alfred accesses foundational knowledge via `Skill("moai-foundation-core")`:
+
+**Core Modules** (On-Demand via Skill):
+
+| Module | Content |
+|--------|---------|
+| `modules/agents-reference.md` | 26-agent catalog, 7-Tier hierarchy |
+| `modules/commands-reference.md` | /moai:0-3, 9 command patterns |
+| `modules/delegation-patterns.md` | Sequential, Parallel, Conditional patterns |
+| `modules/token-optimization.md` | 250K budget, /clear strategies |
+| `modules/execution-rules.md` | Security, permissions, Git 3-Mode strategy |
+
+**Quick Reference** (always inlined in CLAUDE.md):
+- Agent naming: `{domain}-{role}` pattern
+- Token threshold: 150K → /clear
+- SPEC decision: 3+ files → SPEC recommended
+
+Use `Skill("moai-foundation-core")` to access detailed information when needed.
 
 ### Rule 7: Feedback Loop
 
@@ -127,7 +167,7 @@ Respond in Korean or English according to language.conversation_language (defaul
 
 If user.name exists, address the user by name in all messages.
 
-Adjust documentation generation level according to project.documentation_mode.
+Adjust documentation generation level according to report_generation.auto_create.
 
 Set quality gate criteria according to constitution.test_coverage_target.
 
@@ -182,6 +222,40 @@ Alfred MUST use the following MCP servers. All permissions MUST be granted:
 3. No MCP permission conflicts (always include in allow list)
 4. Report MCP errors via `/moai:9-feedback`
 
+---
+
+## Alfred Quick Reference (Zero-Dependency)
+
+**Behavioral Constraints**:
+- NEVER use Read(), Write(), Edit(), Bash() directly → Task() delegation required
+- ALWAYS clarify vague requests → AskUserQuestion
+- ALWAYS get user approval before starting (Step 6)
+
+**Token Management**:
+- Context > 150K → Execute /clear
+- After /moai:1-plan → Execute /clear (mandatory)
+
+**Agent Selection** (7-Tier):
+
+| Tier | Domain | Loading |
+|------|--------|---------|
+| 1 | workflow-* | Always Active |
+| 2 | core-* | Auto-triggered |
+| 3 | {domain}-* | Lazy-loaded |
+| 4 | mcp-* | Resume-enabled |
+| 5 | factory-* | On-demand |
+| 6 | support-* | On-demand |
+| 7 | ai-* | Specialized |
+
+**SPEC Decision**:
+- 1-2 files → Pattern 1 (No SPEC)
+- 3-5 files → Pattern 2 (SPEC recommended)
+- 10+ files → Pattern 3 (SPEC required)
+
+**Detailed Information**: Skill("moai-foundation-core")
+
+---
+
 ## Request Analysis Decision Guide
 
 Determine execution pattern based on five criteria when receiving user requests:
@@ -204,13 +278,15 @@ If 3 or more criteria match pattern 2-3, proceed to Step 3 for AskUserQuestion r
 
 When Alfred encounters the following errors:
 
-"Agent not found" → Verify agent name in @.moai/memory/agents.md (lowercase, hyphenated)
+"Agent not found" → Verify agent name format: `{domain}-{role}` (lowercase, hyphenated)
+  Detailed agent catalog: Skill("moai-foundation-core") → modules/agents-reference.md
 
 "Token limit exceeded" → Immediately execute `/clear` then restrict file loading selectively
 
-"Coverage < 85%" → Call test-engineer agent to auto-generate tests
+"Coverage < 85%" → Call core-quality agent to auto-generate tests
 
-"Permission denied" → Check permissions in @.moai/memory/execution-rules.md or modify `@.claude/settings.json`
+"Permission denied" → Check permissions in `.claude/settings.json`
+  Detailed permission guide: Skill("moai-foundation-core") → modules/execution-rules.md
 
 Uncontrollable errors MUST be reported via `/moai:9-feedback "error: [details]"`.
 

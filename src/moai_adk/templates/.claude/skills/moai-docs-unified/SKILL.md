@@ -114,10 +114,10 @@ uv run .claude/skills/moai-docs-unified/scripts/generate_quality_report.py
 
 **Validation Rules**:
 - No full-width ASCII characters (ａ-ｚ should be a-z)
-- Proper spacing around parentheses: `（Korean）` vs `(Korean)`
+- Proper spacing around parentheses: `（한글）` vs `(한글)`
 - UTF-8 encoding (no broken characters)
 - Consistent punctuation (，vs, 、vs..)
-- Proper use of Hangul vs Hanja (Korean vs 漢字)
+- Proper use of Hangul vs Hanja (한글 vs 한漢字)
 
 ### Pattern 5: Quality Report Generation
 

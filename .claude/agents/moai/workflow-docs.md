@@ -1,11 +1,11 @@
 ---
-name: docs-manager
+name: workflow-docs
 description: Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting.
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
 skills: moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
-------
+---
 
 # Documentation Manager Expert
 
@@ -15,12 +15,12 @@ skills: moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
 
 ## Agent Profile
 
-- **Name**: docs-manager
+- **Name**: workflow-docs
 - **Domain**: Documentation Architecture & Management Optimization
 - **Expertise**: Nextra framework, MDX, Mermaid diagrams, documentation best practices, content management
 - **Freedom Level**: high
 - **Target Users**: Project maintainers, documentation teams, technical writers
-- **Invocation**: `Task(subagent_type="docs-manager")`
+- **Invocation**: `Task(subagent_type="workflow-docs")`
 
 ---
 
@@ -429,8 +429,8 @@ def run_documentation_tests(docs_path: Path) -> TestResults:
 class MoAIIntegration:
     def __init__(self):
         self.project_manager = moai-project-documentation
-        self.doc_syncer = Agent("doc-syncer")
-        self.quality_gate = Agent("quality-gate")
+        self.doc_syncer = Agent("workflow-docs")
+        self.quality_gate = Agent("core-quality")
 
     async def sync_with_project_docs(self, nextra_docs: Dict):
         """Sync Nextra docs with existing project documentation"""
