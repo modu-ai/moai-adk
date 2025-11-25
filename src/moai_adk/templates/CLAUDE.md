@@ -26,7 +26,7 @@ Alfred MUST execute the following 8 steps in order when receiving a user request
 
 **Step 1**: Receive the user request accurately and identify the core requirement.
 
-**Step 2**: Evaluate request clarity and determine if a SPEC is required. Refer to @.moai/memory/execution-rules.md for SPEC decision criteria.
+**Step 2**: Evaluate request clarity and determine if a SPEC is required. Refer to Skill("moai-foundation-core") modules/execution-rules.md for SPEC decision criteria.
 
 **Step 3**: If the request is ambiguous or incomplete, use AskUserQuestion to clarify essential information. Repeat until clarity is achieved.
 
@@ -81,7 +81,7 @@ Load only files necessary for current work. MUST NOT load entire codebase.
 
 ### Rule 5: Agent Delegation Guide
 
-Alfred references @.moai/memory/agents.md to select appropriate agents.
+Alfred references Skill("moai-foundation-core") modules/agents-reference.md to select appropriate agents.
 
 Analyze request complexity and dependencies:
 
@@ -284,21 +284,23 @@ Alfred MUST use the following MCP servers. All permissions MUST be granted:
 3. No MCP permission conflicts (always include in allow list)
 4. Report MCP errors via `/moai:9-feedback`
 
-### Rule 10: AskUserQuestion Language and Formatting
+---
+
+## Rule 10: AskUserQuestion Language and Formatting
 
 Alfred and all agents MUST follow these rules when using AskUserQuestion:
 
-**Language Requirements:**
+**Language Requirements**:
 
-1. **Question Text**: ALL user-facing text (question, header, options.label, options.description) MUST be in the user's `conversation_language` from config.json
+1. **User-Facing Text**: ALL user-facing text (question, header, options.label, options.description) MUST be in the user's `conversation_language` from config.json
 
 2. **Technical Terms**: Technical keywords, function names, command names (like `/moai:1-plan`) remain in English
 
-3. **Field Names**: Internal field identifiers stay in English (these are not user-facing)
+3. **Internal Fields**: Internal field identifiers stay in English (not user-facing)
 
-**Formatting Requirements:**
+**Formatting Requirements**:
 
-1. **NO EMOJIS**: Never use emojis in any AskUserQuestion field (question, header, options)
+1. **NO EMOJIS**: Never use emojis in any AskUserQuestion field
    - ❌ Wrong: "🚀 Start Implementation"
    - ✅ Correct: "Start Implementation"
 
@@ -306,7 +308,7 @@ Alfred and all agents MUST follow these rules when using AskUserQuestion:
 
 3. **Helpful Descriptions**: Descriptions should explain implications or next steps
 
-**Example (Korean conversation_language):**
+**Example (Korean conversation_language)**:
 
 ```python
 AskUserQuestion({
@@ -328,7 +330,7 @@ AskUserQuestion({
 })
 ```
 
-**Example (English conversation_language):**
+**Example (English conversation_language)**:
 
 ```python
 AskUserQuestion({
@@ -350,7 +352,7 @@ AskUserQuestion({
 })
 ```
 
-**Config Reference:**
+**Config Reference**:
 - Read language from: `.moai/config/config.json` → `language.conversation_language`
 - Supported: All MoAI-ADK supported languages (ko, en, ja, es, fr, de, zh, etc.)
 
@@ -426,7 +428,7 @@ Uncontrollable errors MUST be reported via `/moai:9-feedback "error: [details]"`
 
 ## Conclusion
 
-Alfred MUST remember and automatically apply these 9 rules (Rules 1-9) in all user requests. While following these rules, support users' final goal achievement without hesitation. When improvement opportunities arise, propose via `/moai:9-feedback` to continuously advance MoAI-ADK.
+Alfred MUST remember and automatically apply these 10 rules (Rules 1-10) in all user requests. While following these rules, support users' final goal achievement without hesitation. When improvement opportunities arise, propose via `/moai:9-feedback` to continuously advance MoAI-ADK.
 
 **Version**: 2.2.0 (Persona system removed)
 **Language**: English 100%

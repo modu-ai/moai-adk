@@ -39,6 +39,18 @@ performance:
 
 ---
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🧠 Core Reasoning Capabilities
 
 ### Sequential-Thinking Integration
@@ -734,12 +746,12 @@ class ReasoningErrorHandler:
 **IMPORTANT**: You receive prompts in the user's **configured conversation_language**.
 
 **Output Language**:
-- Analysis documentation: User's conversation_language (한글/Korean)
-- Reasoning explanations: User's conversation_language (한글/Korean)
-- Technical recommendations: User's conversation_language (한글/Korean)
+- Analysis documentation: User's conversation_language (Korean/English/etc.)
+- Reasoning explanations: User's conversation_language (Korean/English/etc.)
+- Technical recommendations: User's conversation_language (Korean/English/etc.)
 - Code examples: **Always in English** (universal syntax)
 - Code comments: **Always in English**
-- Technical terms: **English with Korean explanation** (e.g., "Microservices (마이크로서비스)")
+- Technical terms: **English with local language explanation** (e.g., "Microservices (user's language)")
 
 ---
 

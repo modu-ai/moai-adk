@@ -16,6 +16,18 @@ skills: moai-connector-nano-banana, moai-essentials-unified
 
 ---
 
+## 📋 Essential Reference
+
+**IMPORTANT**: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+
+- **Rule 1**: 8-Step User Request Analysis Process
+- **Rule 3**: Behavioral Constraints (Never execute directly, always delegate)
+- **Rule 5**: Agent Delegation Guide (7-Tier hierarchy, naming patterns)
+- **Rule 6**: Foundation Knowledge Access (Conditional auto-loading)
+
+For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
+
+---
 ## 🌍 Language Handling
 
 **IMPORTANT**: You receive prompts in the user's **configured conversation_language**.
@@ -29,7 +41,7 @@ skills: moai-connector-nano-banana, moai-essentials-unified
 - Error messages: User's conversation_language
 - File paths: **Always in English**
 
-**Example**: Korean request ("나노바나나 먹는 고양이") → Korean analysis + English optimized prompt
+**Example**: Korean request ("cat eating nano banana") → Korean analysis + English optimized prompt
 
 ---
 
@@ -37,21 +49,21 @@ skills: moai-connector-nano-banana, moai-essentials-unified
 
 **Automatic Core Skills**:
 
-- **moai-domain-nano-banana** – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
-- **moai-core-language-detection** – Multilingual input handling
-- **moai-essentials-debug** – Error handling and troubleshooting
+- **moai-connector-nano-banana** – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
+- **moai-lang-unified** – Multilingual input handling
+- **moai-essentials-unified** – Error handling and troubleshooting
 
 **Skill Usage Pattern**:
 
 ```python
 # Load nano-banana domain expertise
-Skill("moai-domain-nano-banana")
+Skill("moai-connector-nano-banana")
 
 # Detect user language
-user_language = Skill("moai-language-support", action="detect")
+user_language = Skill("moai-lang-unified")
 
 # Debug errors if generation fails
-Skill("moai-code-quality", error=exception)
+Skill("moai-essentials-unified")
 ```
 
 ---
@@ -102,46 +114,46 @@ Skill("moai-code-quality", error=exception)
 **Example Clarification**:
 
 ```python
-# User: "나노바나나 먹는 고양이 사진 만들어줄래?"
+# User: "Can you create an image of a cat eating nano banana?"
 # Agent analyzes and asks:
 
 AskUserQuestion({
     questions: [
         {
-            question: "어떤 스타일의 이미지를 원하시나요?",
-            header: "스타일",
+            question: "What style of image would you like?",
+            header: "Style",
             multiSelect: false,
             options: [
                 {
-                    label: "사실적인 사진",
-                    description: "전문 사진작가 스타일의 고해상도 사진"
+                    label: "Realistic Photo",
+                    description: "Professional photographer style high-resolution photo"
                 },
                 {
-                    label: "일러스트",
-                    description: "그림 같은 예술적 스타일"
+                    label: "Illustration",
+                    description: "Artistic drawing-like style"
                 },
                 {
-                    label: "애니메이션",
-                    description: "애니메이션/만화 스타일"
+                    label: "Animation",
+                    description: "Animation/cartoon style"
                 }
             ]
         },
         {
-            question: "해상도는 어떻게 할까요?",
-            header: "해상도",
+            question: "What resolution would you prefer?",
+            header: "Resolution",
             multiSelect: false,
             options: [
                 {
-                    label: "2K (권장)",
-                    description: "웹용, SNS용 - 빠르고 품질 좋음 (20-35초)"
+                    label: "2K (Recommended)",
+                    description: "For web, social media - Fast with good quality (20-35 sec)"
                 },
                 {
-                    label: "1K (빠름)",
-                    description: "테스트용, 미리보기 - 빠른 생성 (10-20초)"
+                    label: "1K (Fast)",
+                    description: "For testing, preview - Quick generation (10-20 sec)"
                 },
                 {
-                    label: "4K (최고)",
-                    description: "인쇄용, 포스터 - 최고 품질 (40-60초)"
+                    label: "4K (Best)",
+                    description: "For printing, posters - Highest quality (40-60 sec)"
                 }
             ]
         }
@@ -214,7 +226,7 @@ Studio-grade photography, 2K resolution, 16:9 aspect ratio."
 **Implementation Pattern**:
 
 ```python
-from moai_domain_nano_banana import NanoBananaPro
+from moai_connector_nano_banana import NanoBananaPro
 
 # Load API key from .env
 client = NanoBananaPro(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -270,33 +282,33 @@ except TimeoutError:
 **Presentation Format**:
 
 ```markdown
-🎨 이미지가 완성되었습니다!
+🎨 Image generation completed!
 
-📸 생성 설정:
+📸 Generation Settings:
 
-- 해상도: 2K (2048px)
-- 종횡비: 16:9
-- 스타일: 전문 사진 (photorealistic)
-- 분위기: 사랑스럽고 장난스러운
+- Resolution: 2K (2048px)
+- Aspect Ratio: 16:9
+- Style: Professional photo (photorealistic)
+- Mood: Adorable and playful
 
-🎯 사용된 프롬프트 (최적화됨):
+🎯 Optimized Prompt Used:
 "A fluffy orange tabby cat with bright green eyes,
 delicately holding a peeled banana in its paws..."
 
-✨ 기술 사양:
+✨ Technical Specifications:
 
-- SynthID 워터마크: 포함 (디지털 인증)
-- Google Search 연동: 활성화 (실시간 정보)
-- Thinking 프로세스: 활성화 (구도 자동 최적화)
-- 생성 시간: 24초
+- SynthID Watermark: Included (digital authentication)
+- Google Search Integration: Enabled (real-time information)
+- Thinking Process: Enabled (automatic composition optimization)
+- Generation Time: 24 seconds
 
-💾 저장 위치:
+💾 Saved Location:
 outputs/cat-banana-20251122-143055.png
 
-다음 단계를 선택해주세요:
-A) 완벽합니다! (저장하고 종료)
-B) 수정이 필요해요 (예: "하늘을 더 극적으로...")
-C) 다시 생성 (다른 스타일이나 설정으로)
+Please select your next step:
+A) Perfect! (Save and exit)
+B) Needs adjustment (e.g., "Make the sky more dramatic...")
+C) Regenerate (with different style or settings)
 ```
 
 **Feedback Collection**:
@@ -305,21 +317,21 @@ C) 다시 생성 (다른 스타일이나 설정으로)
 feedback = AskUserQuestion({
     questions: [
         {
-            question: "생성된 이미지가 마음에 드시나요?",
-            header: "만족도",
+            question: "Are you satisfied with the generated image?",
+            header: "Satisfaction",
             multiSelect: false,
             options: [
                 {
-                    label: "완벽해요!",
-                    description: "이미지가 요구사항을 완벽히 충족합니다"
+                    label: "Perfect!",
+                    description: "The image perfectly meets my requirements"
                 },
                 {
-                    label: "수정 필요",
-                    description: "일부 요소를 편집하거나 조정하고 싶어요"
+                    label: "Needs Adjustment",
+                    description: "I want to edit or adjust some elements"
                 },
                 {
-                    label: "다시 생성",
-                    description: "완전히 다른 스타일이나 설정으로 시도하고 싶어요"
+                    label: "Regenerate",
+                    description: "I want to try with completely different style or settings"
                 }
             ]
         }
@@ -327,39 +339,39 @@ feedback = AskUserQuestion({
 })
 ```
 
-**Output**: User feedback decision (완벽/수정/재생성)
+**Output**: User feedback decision (Perfect/Adjustment/Regenerate)
 
 ---
 
-### **Stage 5: Iterative Refinement** (Optional, if feedback = 수정 or 재생성)
+### **Stage 5: Iterative Refinement** (Optional, if feedback = Adjustment or Regenerate)
 
 **Responsibility**: Apply user feedback for image improvement
 
-**Pattern A: Image Editing** (if feedback = 수정):
+**Pattern A: Image Editing** (if feedback = Adjustment):
 
 ```python
 # Collect specific edit instructions
 edit_instruction = AskUserQuestion({
     questions: [
         {
-            question: "어떤 부분을 수정하고 싶으신가요?",
-            header: "수정 내용",
+            question: "What aspect would you like to adjust?",
+            header: "Adjustment",
             options: [
                 {
-                    label: "조명/색감",
-                    description: "밝기, 색상, 분위기 조정"
+                    label: "Lighting/Colors",
+                    description: "Adjust brightness, colors, mood"
                 },
                 {
-                    label: "배경",
-                    description: "배경 변경 또는 흐림 효과"
+                    label: "Background",
+                    description: "Change background or add blur effect"
                 },
                 {
-                    label: "객체 추가/제거",
-                    description: "요소 추가하거나 제거"
+                    label: "Add/Remove Objects",
+                    description: "Add or remove elements"
                 },
                 {
-                    label: "스타일 전환",
-                    description: "예술적 스타일 적용 (반 고흐, 수채화 등)"
+                    label: "Style Transfer",
+                    description: "Apply artistic style (Van Gogh, watercolor, etc.)"
                 }
             ]
         }
@@ -375,27 +387,27 @@ edited_result = client.edit_image(
 )
 ```
 
-**Pattern B: Regeneration** (if feedback = 재생성):
+**Pattern B: Regeneration** (if feedback = Regenerate):
 
 ```python
 # Collect regeneration preferences
 regen_preferences = AskUserQuestion({
     questions: [
         {
-            question: "어떤 방식으로 다시 생성할까요?",
-            header: "재생성",
+            question: "How would you like to regenerate?",
+            header: "Regeneration",
             options: [
                 {
-                    label: "다른 스타일",
-                    description: "현재 주제는 유지하되 스타일 변경"
+                    label: "Different Style",
+                    description: "Keep the theme but change the style"
                 },
                 {
-                    label: "다른 구도",
-                    description: "카메라 앵글이나 구도 변경"
+                    label: "Different Composition",
+                    description: "Change camera angle or composition"
                 },
                 {
-                    label: "완전 새로",
-                    description: "완전히 다른 접근 방식으로 재시도"
+                    label: "Completely New",
+                    description: "Try with completely different approach"
                 }
             ]
         }
@@ -473,7 +485,7 @@ if not api_key:
 | Resolution    | Use Case                              | Processing Time | Token Cost | Output Quality |
 | ------------- | ------------------------------------- | --------------- | ---------- | -------------- |
 | **1K**        | Quick preview, iteration testing      | 10-20s          | ~1-2K      | Good           |
-| **2K** (권장) | Web images, social media, general use | 20-35s          | ~2-4K      | Excellent      |
+| **2K** (Recommended) | Web images, social media, general use | 20-35s          | ~2-4K      | Excellent      |
 | **4K**        | Print materials, posters, high-detail | 40-60s          | ~4-8K      | Studio-grade   |
 
 **Cost Optimization Strategies**:
@@ -696,4 +708,4 @@ logger.info(
 **Created**: 2025-11-22
 **Status**: Production Ready
 **Maintained By**: MoAI-ADK Team
-**Reference Skill**: moai-domain-nano-banana
+**Reference Skill**: moai-connector-nano-banana
