@@ -1,150 +1,159 @@
+#!/usr/bin/env python3
 """
-Generate MoAI-ADK Agent Orchestration Diagram
-Hand-drawn style showing Alfred as central orchestrator with 24 sub-agents
+Generate MoAI-ADK Agent Orchestration Architecture Infographic
+Using Nano Banana Pro (Gemini 3 Pro Image Preview)
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
+from datetime import datetime
 
-# Add skill modules to path
+# Add skill module to path
 skill_path = Path("/Users/goos/MoAI/MoAI-ADK/.claude/skills/moai-connector-nano-banana/modules")
 sys.path.insert(0, str(skill_path))
 
 from image_generator import NanoBananaImageGenerator
 
-def main():
-    """Generate agent orchestration diagram"""
+def generate_agent_ecosystem_infographic():
+    """Generate hand-drawn agent orchestration architecture infographic."""
 
-    # Load API key from environment
-    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    # Load API key from .env
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("❌ Error: GOOGLE_API_KEY or GEMINI_API_KEY environment variable not set")
-        print("Please set your API key: export GOOGLE_API_KEY='your-key-here'")
-        sys.exit(1)
+        raise EnvironmentError(
+            "❌ Google API Key not found!\n\n"
+            "Setup instructions:\n"
+            "1. Check .env file in project root\n"
+            "2. Verify: GEMINI_API_KEY=your_api_key\n"
+            "3. Get key from: https://aistudio.google.com/apikey"
+        )
 
     # Initialize generator
     generator = NanoBananaImageGenerator(api_key=api_key)
 
-    # Optimized structured prompt for Nano Banana Pro
-    prompt = """A hand-drawn organizational diagram showing MoAI-ADK's agentic coding ecosystem with hub-and-spoke architecture.
+    # Optimized prompt following Nano Banana Pro best practices
+    prompt = """
+A professional hand-drawn infographic diagram on cream-colored paper showing an AI agent orchestration architecture.
 
-Central Hub - Mr. Alfred:
-In the center of the composition, a large friendly stick figure character wearing a top hat, holding a conductor's baton in a maestro pose. Label clearly reads "🎩 Mr. Alfred" with subtitle "Super Agent Orchestrator" below. The character is highlighted with a blue glow or accent color (#6B9BD1). Alfred acts as the central control point with wavy chain lines radiating outward to all surrounding agents.
+CENTRAL HUB - ALFRED LOGO:
+In the center, draw the bold text "ALFRED" in large black letters with a distinctive bowtie symbol elegantly integrated into the letter 'F'. The bowtie should be a focal point, rendered in black with fine sketch lines. Below the logo, write in smaller handwritten text: "AI-powered Super Agent for Agentic Coding". Below that, a label reading "Orchestrator" in a hand-drawn box.
 
-Five Groups of Sub-Agents (24 total) arranged radially around Alfred:
+RADIAL AGENT LAYOUT (24 agents arranged in hub-and-spoke pattern):
+Around the ALFRED logo, arrange 24 small rounded rectangles in five color-coded groups:
 
-Top Section - Expert Agents (7 agents, green theme #4CAF50):
-Small stick figures with specialty tool icons, arranged in an arc at the top.
-Labels: "expert-backend", "expert-frontend", "expert-database", "expert-devops", "expert-security", "expert-uiux", "expert-debug"
-Each connected to Alfred by wavy chain lines. Green accent highlights.
+UPPER RIGHT QUADRANT (7 agents in green tones #7ED321):
+- expert-backend
+- expert-frontend
+- expert-database
+- expert-devops
+- expert-security
+- expert-uiux
+- expert-debug
+Group label above: "7 Domain Experts"
 
-Right Section - Manager Agents (8 agents, orange theme #FF9800):
-Small stick figures holding briefcases, arranged vertically on the right side.
-Labels: "manager-project", "manager-spec", "manager-tdd", "manager-docs", "manager-strategy", "manager-quality", "manager-git", "manager-claude-code"
-Connected to Alfred by wavy chain lines. Orange accent highlights.
+RIGHT SIDE (8 agents in orange tones #F5A623):
+- manager-tdd
+- manager-spec
+- manager-docs
+- manager-strategy
+- manager-quality
+- manager-git
+- manager-project
+- manager-claude-code
+Group label: "8 Workflow Managers"
 
-Bottom Section - Builder Agents (3 agents, purple theme #9C27B0):
-Small stick figures with construction helmets and tools, arranged at the bottom.
-Labels: "builder-agent", "builder-skill", "builder-command"
-Connected to Alfred by wavy chain lines. Purple accent highlights.
+LOWER RIGHT QUADRANT (3 agents in purple tones #BD10E0):
+- builder-agent
+- builder-skill
+- builder-command
+Group label: "3 Meta-Builders"
 
-Left Section - MCP Integrators (5 agents, blue theme #2196F3):
-Small stick figures with electrical plug symbols, arranged vertically on the left side.
-Labels: "mcp-docs", "mcp-design", "mcp-notion", "mcp-browser", "mcp-ultrathink"
-Connected to Alfred by wavy chain lines. Blue accent highlights.
+LOWER LEFT QUADRANT (5 agents in teal tones #50E3C2):
+- mcp-docs
+- mcp-design
+- mcp-notion
+- mcp-browser
+- mcp-ultrathink
+Group label: "5 MCP Integrators"
 
-Bottom-Left Corner - AI Services (1 agent, yellow theme #FFC107):
-Small robot-style stick figure with antenna.
-Label: "ai-nano-banana"
-Connected to Alfred by wavy chain line. Yellow accent highlight.
+UPPER LEFT QUADRANT (1 agent in pink tones #FF6B9D):
+- ai-nano-banana
+Group label: "1 AI Service"
 
-User Interaction Section (Top-Left):
-A simple stick figure labeled "👤 User" in the top-left corner.
-Speech bubble above user with text "Agentic Coding".
-Bidirectional wavy arrow connecting User to Alfred, labeled "Natural language conversation".
+USER INTERACTION (top-left corner):
+Draw a simple person silhouette icon. Next to it, a hand-drawn speech bubble containing the text "Agentic Coding". A flowing wavy arrow connects from the user icon to the central ALFRED logo, showing the conversation flow.
 
-Visual Elements:
-- Background: Cream-colored paper texture (#F5F1E8) giving a warm, organic feel
-- All lines and text: Hand-drawn brown ink (#8B6F47) with organic, slightly imperfect lines
-- Chain connections: Wavy, hand-drawn lines showing orchestration flow
-- Dotted lines: Lighter dotted connections between some sub-agents
-- Arrows: Hand-drawn directional arrows showing workflow
-- Decorative elements: Small stars, asterisks, and organic embellishments scattered tastefully
-- Annotations: "Orchestration" label near Alfred, "Control Flow" along some arrows, "24 Sub-Agents" at bottom
+CHAIN CONNECTIONS:
+Draw organic, slightly wobbly brown-gray chain lines connecting from the ALFRED logo hub to each of the 24 agent boxes, creating a radial network pattern. The chains should have a hand-drawn quality with sketchy links.
 
-Text Labels:
-All agent names should be clearly legible in hand-written style font.
-Group labels should indicate the category (Experts, Managers, Builders, MCP, AI).
+STYLE SPECIFICATIONS:
+Art style: Hand-drawn sketch notes aesthetic with colored pencils on cream paper.
+Background color: Warm cream paper texture (#F5F1E8).
+Line quality: Slightly wobbly, organic hand-drawn lines with visible pencil strokes.
+Shading: Soft colored pencil shading for depth and dimension.
+Typography: Handwritten style text throughout, clear and legible.
+Color palette: Green (#7ED321), Orange (#F5A623), Purple (#BD10E0), Teal (#50E3C2), Pink (#FF6B9D), Brown-gray chains, Black ALFRED logo with bowtie.
+Composition: Radial symmetry with ALFRED as the strong central focal point.
+Mood: Professional yet approachable, educational, organized.
 
-Composition and Style:
-Hub-and-spoke pattern with perfect radial symmetry.
-Hand-drawn sketch notes aesthetic, similar to whiteboard diagrams or visual facilitation graphics.
-Friendly, approachable stick figures with personality.
-Professional yet warm and inviting visual style.
-Clear information hierarchy with Alfred as the obvious focal point.
-Organic, slightly imperfect hand-drawn quality that feels authentic and human.
-Educational and documentation-friendly design.
+TECHNICAL SPECIFICATIONS:
+Quality: Professional infographic quality, high-resolution detail.
+Lighting: Soft, even lighting as if photographed from directly above.
+Format: Clean digital scan aesthetic of hand-drawn artwork.
+Aspect ratio: 16:9 landscape orientation.
+Style reference: Sketchnotes, visual thinking, educational infographics.
 
-Mood and Atmosphere:
-Professional but approachable, educational, clear, friendly, well-organized, inspiring confidence.
-
-Technical Specifications:
-High-resolution output suitable for professional documentation.
-Aspect ratio: 16:9 (wide format perfect for README and presentations).
-Output: PNG format with transparent or cream background.
-All text legible at various sizes (documentation, presentations, web).
-Color coding clear and consistent for each agent group.
-Visual clarity prioritized for information architecture understanding.
-
-Quality: Studio-grade illustration quality, professional documentation standard, high-resolution rendering."""
+The overall visual should communicate a sophisticated yet friendly AI orchestration system, with the ALFRED logo clearly positioned as the central coordinator managing all 24 specialized agents through a hub-and-spoke architecture pattern.
+"""
 
     # Output path
     output_path = "/Users/goos/MoAI/MoAI-ADK/assets/images/readme/agent-skill-ecosystem.png"
 
-    print("\n" + "="*80)
-    print("🎨 Generating MoAI-ADK Agent Orchestration Diagram")
-    print("="*80)
-    print(f"📍 Output: {output_path}")
-    print(f"🎯 Model: Nano Banana Pro (gemini-3-pro-image-preview)")
+    print("🎨 Generating MoAI-ADK Agent Orchestration Architecture Infographic...")
+    print("📝 Using Nano Banana Pro (Gemini 3 Pro Image Preview)")
+    print(f"📊 Resolution: 2K (optimized for web)")
     print(f"📐 Aspect Ratio: 16:9")
-    print(f"⏳ Estimated time: 30-45 seconds")
-    print("="*80 + "\n")
+    print(f"💾 Output: {output_path}")
+    print("\n⏳ Generation in progress (estimated 20-40 seconds)...\n")
 
-    # Generate image
     try:
-        image, metadata = generator.generate(
+        # Generate image with Nano Banana Pro
+        result = generator.generate(
             prompt=prompt,
-            model="pro",  # Use Nano Banana Pro for highest quality
+            model="pro",  # Use gemini-3-pro-image-preview
             aspect_ratio="16:9",
             save_path=output_path
         )
 
-        print("\n" + "="*80)
-        print("✅ SUCCESS: Agent Orchestration Diagram Generated")
-        print("="*80)
-        print(f"📁 Saved to: {output_path}")
-        print(f"📊 Image size: {image.size[0]} x {image.size[1]} pixels")
-        print(f"🎯 Tokens used: {metadata['tokens_used']}")
-        print(f"⏱️  Timestamp: {metadata['timestamp']}")
-        print("="*80 + "\n")
+        image_data = result["image"]
+        metadata = result["metadata"]
 
-        # Display prompt summary
-        print("📝 Prompt Summary:")
-        print("   • Central orchestrator: Mr. Alfred (top hat, conductor)")
-        print("   • 7 Expert agents (top, green)")
-        print("   • 8 Manager agents (right, orange)")
-        print("   • 3 Builder agents (bottom, purple)")
-        print("   • 5 MCP Integrator agents (left, blue)")
-        print("   • 1 AI Service agent (bottom-left, yellow)")
-        print("   • User interaction (top-left)")
-        print("   • Hub-and-spoke architecture with wavy chain connections")
-        print("   • Hand-drawn sketch note style on cream paper")
-        print("\n✨ Image ready for documentation use!\n")
+        print("✅ Image generation successful!")
+        print(f"\n📸 Generation Details:")
+        print(f"   - Model: {metadata.get('model', 'gemini-3-pro-image-preview')}")
+        print(f"   - Processing Time: {metadata.get('processing_time_seconds', 'N/A')}s")
+        print(f"   - Aspect Ratio: {metadata.get('aspect_ratio', '16:9')}")
+        print(f"   - SynthID Watermark: Included (digital authentication)")
+        print(f"   - Google Search Integration: {metadata.get('google_search_enabled', False)}")
+        print(f"   - Thinking Process: {metadata.get('thinking_enabled', False)}")
+        print(f"\n💾 Saved to: {output_path}")
+        print(f"\n🎯 Optimized Prompt Length: {len(prompt)} characters")
+
+        return True
 
     except Exception as e:
-        print(f"\n❌ ERROR: {e}\n")
-        sys.exit(1)
+        print(f"❌ Error during image generation: {e}")
+        print("\n🔧 Troubleshooting:")
+        print("   1. Check API key in .env file")
+        print("   2. Verify API quota (https://console.cloud.google.com/)")
+        print("   3. Ensure network connectivity")
+        print("   4. Try again in a few moments")
+        return False
 
 if __name__ == "__main__":
-    main()
+    success = generate_agent_ecosystem_infographic()
+    sys.exit(0 if success else 1)
