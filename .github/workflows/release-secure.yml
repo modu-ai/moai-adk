@@ -35,8 +35,7 @@ on:
         type: boolean
         default: false
   release:
-    types: [published]  # 📋 Draft release publication only
-    if: github.event.release.draft == false
+    types: [published]  # 📋 Published releases only
 
 # 🔒 STRICT PERMISSIONS - Only what's absolutely necessary
 permissions:
