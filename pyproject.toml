@@ -123,6 +123,10 @@ build-backend = "hatchling.build"
 dev = [
     "pytest-mock>=3.15.1",
 ]
+security = [
+    "pip-audit>=2.7.0",
+    "bandit>=1.8.0",
+]
 
 
 # Exclude developer-only tools and utilities from package distribution
