@@ -612,7 +612,12 @@ class JITContextLoader:
         self.current_phase = Phase.SPEC
 
         # Performance monitoring
-        self.performance_stats: Dict[str, Any] = {"total_loads": 0, "average_load_time": 0, "cache_hit_rate": 0, "efficiency_score": 0}
+        self.performance_stats: Dict[str, Any] = {
+            "total_loads": 0,
+            "average_load_time": 0,
+            "cache_hit_rate": 0,
+            "efficiency_score": 0,
+        }
 
     async def load_context(
         self, user_input: str, conversation_history: List[str] = None, context: Dict[str, Any] = None

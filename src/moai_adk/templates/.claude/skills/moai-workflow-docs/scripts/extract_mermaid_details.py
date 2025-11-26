@@ -17,6 +17,7 @@ def find_project_root(start_path: Path) -> Path:
         current = current.parent
     raise RuntimeError("Project root not found")
 
+
 script_path = Path(__file__).resolve()
 project_root = find_project_root(script_path.parent)
 sys.path.insert(0, str(project_root))
@@ -60,8 +61,8 @@ class MermaidDetailExtractor:
             if not file_path.exists():
                 continue
 
-            content = file_path.read_text(encoding='utf-8')
-            pattern = r'```mermaid\n(.*?)\n```'
+            content = file_path.read_text(encoding="utf-8")
+            pattern = r"```mermaid\n(.*?)\n```"
             matches = list(re.finditer(pattern, content, re.DOTALL))
 
             if not matches:
@@ -75,10 +76,10 @@ class MermaidDetailExtractor:
             for idx, match in enumerate(matches, 1):
                 diagram_count += 1
                 mermaid_code = match.group(1)
-                start_line = content[:match.start()].count('\n') + 1
+                start_line = content[: match.start()].count("\n") + 1
 
                 # Determine diagram type
-                lines = mermaid_code.strip().split('\n')
+                lines = mermaid_code.strip().split("\n")
                 diagram_type = self._get_diagram_type(lines)
 
                 report.append(f"   [{diagram_count}] Diagram #{idx}")
@@ -89,7 +90,7 @@ class MermaidDetailExtractor:
                 report.append("       Code:")
                 report.append("       " + "-" * 80)
 
-                for code_line in mermaid_code.split('\n'):
+                for code_line in mermaid_code.split("\n"):
                     report.append(f"       {code_line}")
 
                 report.append("       " + "-" * 80)
@@ -129,26 +130,34 @@ class MermaidDetailExtractor:
         """Determine diagram type"""
         for line in lines:
             line = line.strip()
-            if line.startswith('graph '):
-                return 'Graph'
-            elif line.startswith('stateDiagram'):
-                return 'State Diagram'
-            elif line.startswith('sequenceDiagram'):
-                return 'Sequence Diagram'
-            elif line.startswith('classDiagram'):
-                return 'Class Diagram'
-        return 'Unknown'
+            if line.startswith("graph "):
+                return "Graph"
+            elif line.startswith("stateDiagram"):
+                return "State Diagram"
+            elif line.startswith("sequenceDiagram"):
+                return "Sequence Diagram"
+            elif line.startswith("classDiagram"):
+                return "Class Diagram"
+        return "Unknown"
 
 
 def main():
     """Main execution"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Mermaid diagram detail extraction')
-    parser.add_argument('--path', type=str, default=str(DEFAULT_DOCS_PATH),
-                       help=f'Documentation path to check (default: {DEFAULT_DOCS_PATH})')
-    parser.add_argument('--output', type=str, default=str(DEFAULT_REPORT_PATH),
-                       help=f'Report save path (default: {DEFAULT_REPORT_PATH})')
+    parser = argparse.ArgumentParser(description="Mermaid diagram detail extraction")
+    parser.add_argument(
+        "--path",
+        type=str,
+        default=str(DEFAULT_DOCS_PATH),
+        help=f"Documentation path to check (default: {DEFAULT_DOCS_PATH})",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=str(DEFAULT_REPORT_PATH),
+        help=f"Report save path (default: {DEFAULT_REPORT_PATH})",
+    )
 
     args = parser.parse_args()
 
@@ -161,7 +170,7 @@ def main():
     # Save to file
     report_path = Path(args.output)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(report, encoding='utf-8')
+    report_path.write_text(report, encoding="utf-8")
 
     print(f"\nDetailed report saved: {report_path}")
 

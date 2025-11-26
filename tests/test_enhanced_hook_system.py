@@ -49,6 +49,7 @@ except ImportError:
     # Fallback imports for testing environment
     import sys
     from pathlib import Path
+
     sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
     from moai_adk.core.jit_enhanced_hook_manager import (
@@ -78,25 +79,30 @@ def temp_hooks_directory(tmp_path):
 
     # Create test hooks
     session_start_hook = hooks_dir / "session_start__test.py"
-    session_start_hook.write_text("""#!/usr/bin/env python3
+    session_start_hook.write_text(
+        """#!/usr/bin/env python3
 import json
 import sys
 data = json.loads(sys.stdin.read() or "{}")
 result = {"continue": True, "systemMessage": "Test session start hook"}
 print(json.dumps(result))
-""")
+"""
+    )
 
     pre_tool_hook = hooks_dir / "pre_tool__validation.py"
-    pre_tool_hook.write_text("""#!/usr/bin/env python3
+    pre_tool_hook.write_text(
+        """#!/usr/bin/env python3
 import json
 import sys
 data = json.loads(sys.stdin.read() or "{}")
 result = {"continue": True, "hookSpecificOutput": {"validated": True}}
 print(json.dumps(result))
-""")
+"""
+    )
 
     slow_hook = hooks_dir / "session_start__slow.py"
-    slow_hook.write_text("""#!/usr/bin/env python3
+    slow_hook.write_text(
+        """#!/usr/bin/env python3
 import json
 import sys
 import time
@@ -104,16 +110,19 @@ data = json.loads(sys.stdin.read() or "{}")
 time.sleep(0.1)  # Simulate slow operation
 result = {"continue": True, "systemMessage": "Slow hook completed"}
 print(json.dumps(result))
-""")
+"""
+    )
 
     error_hook = hooks_dir / "session_start__error.py"
-    error_hook.write_text("""#!/usr/bin/env python3
+    error_hook.write_text(
+        """#!/usr/bin/env python3
 import json
 import sys
 data = json.loads(sys.stdin.read() or "{}")
 print(json.dumps({"error": "Test error"}), file=sys.stderr)
 sys.exit(1)
-""")
+"""
+    )
 
     return hooks_dir
 
@@ -139,12 +148,14 @@ def mock_jit_loader():
     mock_loader.detect_phase = Mock(return_value=phase_result)
 
     # Mock context loading
-    mock_loader.load_context = Mock(return_value={
-        "user_input": "test",
-        "current_phase": "SPEC",
-        "relevant_skills": ["test_skill"],
-        "context": {"test": True}
-    })
+    mock_loader.load_context = Mock(
+        return_value={
+            "user_input": "test",
+            "current_phase": "SPEC",
+            "relevant_skills": ["test_skill"],
+            "context": {"test": True},
+        }
+    )
 
     return mock_loader
 
@@ -152,11 +163,9 @@ def mock_jit_loader():
 @pytest.fixture
 def hook_manager(temp_hooks_directory, temp_cache_directory, mock_jit_loader):
     """Create JIT-Enhanced Hook Manager with mocked dependencies"""
-    with patch('src.moai_adk.core.jit_enhanced_hook_manager.JITContextLoader', return_value=mock_jit_loader):
+    with patch("src.moai_adk.core.jit_enhanced_hook_manager.JITContextLoader", return_value=mock_jit_loader):
         manager = JITEnhancedHookManager(
-            hooks_directory=temp_hooks_directory,
-            cache_directory=temp_cache_directory,
-            max_concurrent_hooks=3
+            hooks_directory=temp_hooks_directory, cache_directory=temp_cache_directory, max_concurrent_hooks=3
         )
         return manager
 
@@ -164,21 +173,13 @@ def hook_manager(temp_hooks_directory, temp_cache_directory, mock_jit_loader):
 @pytest.fixture
 def hook_scheduler():
     """Create Phase-Optimized Hook Scheduler"""
-    return PhaseOptimizedHookScheduler(
-        max_parallel_groups=2,
-        enable_adaptive_scheduling=True
-    )
+    return PhaseOptimizedHookScheduler(max_parallel_groups=2, enable_adaptive_scheduling=True)
 
 
 @pytest.fixture
 def sample_context():
     """Sample hook execution context"""
-    return {
-        "user_id": "test_user",
-        "session_id": "test_session",
-        "timestamp": datetime.now().isoformat(),
-        "test": True
-    }
+    return {"user_id": "test_user", "session_id": "test_session", "timestamp": datetime.now().isoformat(), "test": True}
 
 
 @pytest.fixture
@@ -190,7 +191,7 @@ def scheduling_context():
         user_input="Creating new user authentication specification",
         available_token_budget=10000,
         max_execution_time_ms=1000.0,
-        system_load=0.5
+        system_load=0.5,
     )
 
 
@@ -219,7 +220,7 @@ class TestJITEnhancedHookManager:
             ("subagent_start__context.py", HookEvent.SUBAGENT_START),
             ("subagent_stop__cleanup.py", HookEvent.SUBAGENT_STOP),
             ("session_end__save.py", HookEvent.SESSION_END),
-            ("unknown_hook.py", None)
+            ("unknown_hook.py", None),
         ]
 
         for filename, expected_event in test_cases:
@@ -229,21 +230,15 @@ class TestJITEnhancedHookManager:
     def test_hook_priority_determination(self, hook_manager):
         """Test hook priority determination logic"""
         # Test critical hooks
-        security_metadata = hook_manager._determine_hook_priority(
-            "security_validator.py", HookEvent.PRE_TOOL_USE
-        )
+        security_metadata = hook_manager._determine_hook_priority("security_validator.py", HookEvent.PRE_TOOL_USE)
         assert security_metadata == HookPriority.CRITICAL
 
         # Test high priority hooks
-        performance_metadata = hook_manager._determine_hook_priority(
-            "performance_optimizer.py", HookEvent.PRE_TOOL_USE
-        )
+        performance_metadata = hook_manager._determine_hook_priority("performance_optimizer.py", HookEvent.PRE_TOOL_USE)
         assert performance_metadata == HookPriority.HIGH
 
         # Test low priority hooks
-        analytics_metadata = hook_manager._determine_hook_priority(
-            "analytics_tracker.py", HookEvent.SESSION_START
-        )
+        analytics_metadata = hook_manager._determine_hook_priority("analytics_tracker.py", HookEvent.SESSION_START)
         assert analytics_metadata == HookPriority.LOW
 
     def test_execution_time_estimation(self, hook_manager):
@@ -267,21 +262,15 @@ class TestJITEnhancedHookManager:
     def test_phase_relevance_determination(self, hook_manager):
         """Test phase relevance determination"""
         # Test SPEC phase relevance
-        spec_metadata = hook_manager._determine_phase_relevance(
-            "spec_generator.py", HookEvent.SESSION_START
-        )
+        spec_metadata = hook_manager._determine_phase_relevance("spec_generator.py", HookEvent.SESSION_START)
         assert spec_metadata[Phase.SPEC] == 1.0
 
         # Test RED phase relevance
-        test_metadata = hook_manager._determine_phase_relevance(
-            "test_runner.py", HookEvent.PRE_TOOL_USE
-        )
+        test_metadata = hook_manager._determine_phase_relevance("test_runner.py", HookEvent.PRE_TOOL_USE)
         assert test_metadata[Phase.RED] == 1.0
 
         # Test default relevance
-        generic_metadata = hook_manager._determine_phase_relevance(
-            "generic_hook.py", HookEvent.SESSION_START
-        )
+        generic_metadata = hook_manager._determine_phase_relevance("generic_hook.py", HookEvent.SESSION_START)
         for phase in Phase:
             assert generic_metadata[phase] == 0.5
 
@@ -302,10 +291,7 @@ class TestJITEnhancedHookManager:
     async def test_hook_execution_success(self, hook_manager, sample_context):
         """Test successful hook execution"""
         results = await hook_manager.execute_hooks(
-            HookEvent.SESSION_START,
-            sample_context,
-            user_input="Test session start",
-            max_total_execution_time_ms=2000.0
+            HookEvent.SESSION_START, sample_context, user_input="Test session start", max_total_execution_time_ms=2000.0
         )
 
         assert len(results) > 0
@@ -321,7 +307,7 @@ class TestJITEnhancedHookManager:
             HookEvent.SESSION_START,
             sample_context,
             user_input="Test session with errors",
-            max_total_execution_time_ms=2000.0
+            max_total_execution_time_ms=2000.0,
         )
 
         # Should have both successful and failed results
@@ -344,7 +330,7 @@ class TestJITEnhancedHookManager:
             HookEvent.SESSION_START,
             sample_context,
             user_input="Test parallel execution",
-            max_total_execution_time_ms=1000.0
+            max_total_execution_time_ms=1000.0,
         )
 
         # Should complete in reasonable time
@@ -355,11 +341,7 @@ class TestJITEnhancedHookManager:
     async def test_performance_metrics_tracking(self, hook_manager, sample_context):
         """Test performance metrics tracking"""
         # Execute hooks
-        await hook_manager.execute_hooks(
-            HookEvent.SESSION_START,
-            sample_context,
-            user_input="Test metrics tracking"
-        )
+        await hook_manager.execute_hooks(HookEvent.SESSION_START, sample_context, user_input="Test metrics tracking")
 
         # Get metrics
         metrics = hook_manager.get_performance_metrics()
@@ -381,7 +363,7 @@ class TestJITEnhancedHookManager:
     @pytest.mark.asyncio
     async def test_global_hook_manager_functions(self, hook_manager, sample_context):
         """Test global convenience functions"""
-        with patch('src.moai_adk.core.jit_enhanced_hook_manager.get_jit_hook_manager', return_value=hook_manager):
+        with patch("src.moai_adk.core.jit_enhanced_hook_manager.get_jit_hook_manager", return_value=hook_manager):
             # Test session start hooks execution
             results = await execute_session_start_hooks(sample_context, "Test global function")
 
@@ -416,11 +398,8 @@ class TestPhaseOptimizedHookScheduler:
     @pytest.mark.asyncio
     async def test_hook_scheduling_basic(self, hook_scheduler, hook_manager, scheduling_context):
         """Test basic hook scheduling"""
-        with patch.object(hook_scheduler, 'hook_manager', hook_manager):
-            result = await hook_scheduler.schedule_hooks(
-                HookEvent.SESSION_START,
-                scheduling_context
-            )
+        with patch.object(hook_scheduler, "hook_manager", hook_manager):
+            result = await hook_scheduler.schedule_hooks(HookEvent.SESSION_START, scheduling_context)
 
             assert isinstance(result, SchedulingResult)
             assert isinstance(result.scheduled_hooks, list)
@@ -461,7 +440,7 @@ class TestPhaseOptimizedHookScheduler:
             estimated_execution_time_ms=100.0,
             token_cost_estimate=500,
             phase_relevance={Phase.SPEC: 0.8, Phase.RED: 0.3},
-            success_rate=0.9
+            success_rate=0.9,
         )
 
         # Test different strategies
@@ -484,7 +463,7 @@ class TestPhaseOptimizedHookScheduler:
             event_type=HookEvent.SESSION_START,
             priority=HookPriority.NORMAL,
             token_cost_estimate=1000,
-            phase_relevance={Phase.SPEC: 0.8}
+            phase_relevance={Phase.SPEC: 0.8},
         )
 
         # Test cost estimation
@@ -498,7 +477,7 @@ class TestPhaseOptimizedHookScheduler:
             event_type=HookEvent.SESSION_START,
             priority=HookPriority.NORMAL,
             token_cost_estimate=1000,
-            phase_relevance={Phase.SPEC: 0.1}
+            phase_relevance={Phase.SPEC: 0.1},
         )
 
         low_relevance_cost = hook_scheduler._estimate_hook_cost(low_relevance_metadata, scheduling_context)
@@ -511,7 +490,7 @@ class TestPhaseOptimizedHookScheduler:
             event_type=HookEvent.SESSION_START,
             priority=HookPriority.NORMAL,
             estimated_execution_time_ms=100.0,
-            success_rate=0.9
+            success_rate=0.9,
         )
 
         time_estimate = hook_scheduler._estimate_hook_time(metadata, scheduling_context)
@@ -526,12 +505,10 @@ class TestPhaseOptimizedHookScheduler:
             event_type=HookEvent.SESSION_START,
             priority=HookPriority.CRITICAL,
             estimated_execution_time_ms=50.0,
-            token_cost_estimate=100
+            token_cost_estimate=100,
         )
 
-        decision = hook_scheduler._make_initial_scheduling_decision(
-            critical_metadata, scheduling_context, 100, 50.0
-        )
+        decision = hook_scheduler._make_initial_scheduling_decision(critical_metadata, scheduling_context, 100, 50.0)
         assert decision == SchedulingDecision.EXECUTE
 
         # Test hook that exceeds time budget
@@ -540,12 +517,10 @@ class TestPhaseOptimizedHookScheduler:
             event_type=HookEvent.SESSION_START,
             priority=HookPriority.NORMAL,
             estimated_execution_time_ms=2000.0,
-            token_cost_estimate=100
+            token_cost_estimate=100,
         )
 
-        decision = hook_scheduler._make_initial_scheduling_decision(
-            slow_metadata, scheduling_context, 100, 2000.0
-        )
+        decision = hook_scheduler._make_initial_scheduling_decision(slow_metadata, scheduling_context, 100, 2000.0)
         assert decision == SchedulingDecision.DEFER
 
     def test_hook_filtering_by_constraints(self, hook_scheduler):
@@ -558,7 +533,7 @@ class TestPhaseOptimizedHookScheduler:
                 priority_score=80,
                 estimated_cost=100,
                 estimated_time_ms=50,
-                scheduling_decision=SchedulingDecision.EXECUTE
+                scheduling_decision=SchedulingDecision.EXECUTE,
             ),
             ScheduledHook(
                 hook_path="slow_hook.py",
@@ -566,7 +541,7 @@ class TestPhaseOptimizedHookScheduler:
                 priority_score=60,
                 estimated_cost=200,
                 estimated_time_ms=1500,
-                scheduling_decision=SchedulingDecision.EXECUTE
+                scheduling_decision=SchedulingDecision.EXECUTE,
             ),
             ScheduledHook(
                 hook_path="expensive_hook.py",
@@ -574,8 +549,8 @@ class TestPhaseOptimizedHookScheduler:
                 priority_score=70,
                 estimated_cost=5000,
                 estimated_time_ms=100,
-                scheduling_decision=SchedulingDecision.EXECUTE
-            )
+                scheduling_decision=SchedulingDecision.EXECUTE,
+            ),
         ]
 
         context = HookSchedulingContext(
@@ -583,7 +558,7 @@ class TestPhaseOptimizedHookScheduler:
             current_phase=Phase.SPEC,
             user_input="Test filtering",
             available_token_budget=1000,
-            max_execution_time_ms=1000.0
+            max_execution_time_ms=1000.0,
         )
 
         filtered = hook_scheduler._filter_hooks_by_constraints(hooks, context)
@@ -603,7 +578,7 @@ class TestPhaseOptimizedHookScheduler:
             estimated_cost=100,
             estimated_time_ms=50,
             scheduling_decision=SchedulingDecision.EXECUTE,
-            dependencies=set()
+            dependencies=set(),
         )
 
         hook_b = ScheduledHook(
@@ -613,7 +588,7 @@ class TestPhaseOptimizedHookScheduler:
             estimated_cost=100,
             estimated_time_ms=50,
             scheduling_decision=SchedulingDecision.EXECUTE,
-            dependencies={"hook_a.py"}
+            dependencies={"hook_a.py"},
         )
 
         hook_c = ScheduledHook(
@@ -623,7 +598,7 @@ class TestPhaseOptimizedHookScheduler:
             estimated_cost=100,
             estimated_time_ms=50,
             scheduling_decision=SchedulingDecision.EXECUTE,
-            dependencies={"hook_b.py"}
+            dependencies={"hook_b.py"},
         )
 
         hooks = [hook_c, hook_b, hook_a]  # Intentionally out of order
@@ -644,7 +619,7 @@ class TestPhaseOptimizedHookScheduler:
                 priority_score=80,
                 estimated_cost=100,
                 estimated_time_ms=50,
-                scheduling_decision=SchedulingDecision.EXECUTE
+                scheduling_decision=SchedulingDecision.EXECUTE,
             ),
             ScheduledHook(
                 hook_path="parallel_hook_2.py",
@@ -652,7 +627,7 @@ class TestPhaseOptimizedHookScheduler:
                 priority_score=70,
                 estimated_cost=100,
                 estimated_time_ms=50,
-                scheduling_decision=SchedulingDecision.EXECUTE
+                scheduling_decision=SchedulingDecision.EXECUTE,
             ),
             ScheduledHook(
                 hook_path="sequential_hook.py",
@@ -660,13 +635,11 @@ class TestPhaseOptimizedHookScheduler:
                 priority_score=60,
                 estimated_cost=100,
                 estimated_time_ms=100,
-                scheduling_decision=SchedulingDecision.EXECUTE
-            )
+                scheduling_decision=SchedulingDecision.EXECUTE,
+            ),
         ]
 
-        groups = hook_scheduler._create_execution_groups(
-            hooks, scheduling_context, SchedulingStrategy.BALANCED
-        )
+        groups = hook_scheduler._create_execution_groups(hooks, scheduling_context, SchedulingStrategy.BALANCED)
 
         assert len(groups) >= 1
 
@@ -709,10 +682,7 @@ class TestIntegration:
         hook_scheduler.hook_manager = hook_manager
 
         # Schedule hooks
-        result = await hook_scheduler.schedule_hooks(
-            HookEvent.SESSION_START,
-            scheduling_context
-        )
+        result = await hook_scheduler.schedule_hooks(HookEvent.SESSION_START, scheduling_context)
 
         assert isinstance(result, SchedulingResult)
         assert len(result.execution_plan) >= 0
@@ -726,7 +696,7 @@ class TestIntegration:
             sample_context,
             user_input="Creating user authentication system",
             phase=Phase.SPEC,
-            max_total_execution_time_ms=2000.0
+            max_total_execution_time_ms=2000.0,
         )
 
         # Verify execution
@@ -747,9 +717,9 @@ class TestIntegration:
                     current_phase=Phase.SPEC,
                     user_input="Test low budget",
                     available_token_budget=1000,
-                    max_execution_time_ms=1000.0
+                    max_execution_time_ms=1000.0,
                 ),
-                "expected_strategy": SchedulingStrategy.TOKEN_EFFICIENT
+                "expected_strategy": SchedulingStrategy.TOKEN_EFFICIENT,
             },
             {
                 "name": "Tight Time Constraint",
@@ -758,9 +728,9 @@ class TestIntegration:
                     current_phase=Phase.RED,
                     user_input="Test tight time",
                     available_token_budget=10000,
-                    max_execution_time_ms=200.0
+                    max_execution_time_ms=200.0,
                 ),
-                "expected_strategy": SchedulingStrategy.PERFORMANCE_FIRST
+                "expected_strategy": SchedulingStrategy.PERFORMANCE_FIRST,
             },
             {
                 "name": "High System Load",
@@ -770,17 +740,14 @@ class TestIntegration:
                     user_input="Test high load",
                     available_token_budget=10000,
                     max_execution_time_ms=1000.0,
-                    system_load=0.9
+                    system_load=0.9,
                 ),
-                "expected_strategy": SchedulingStrategy.PRIORITY_FIRST
-            }
+                "expected_strategy": SchedulingStrategy.PRIORITY_FIRST,
+            },
         ]
 
         for scenario in scenarios:
-            strategy = hook_scheduler._select_optimal_strategy(
-                HookEvent.SESSION_START,
-                scenario["context"]
-            )
+            strategy = hook_scheduler._select_optimal_strategy(HookEvent.SESSION_START, scenario["context"])
             # Strategy should be appropriate for the scenario
             assert strategy in SchedulingStrategy
 
@@ -792,7 +759,7 @@ class TestIntegration:
             HookEvent.SESSION_START,
             sample_context,
             user_input="Test error recovery",
-            max_total_execution_time_ms=2000.0
+            max_total_execution_time_ms=2000.0,
         )
 
         # Should have mixed success/failure results
@@ -820,7 +787,7 @@ class TestPerformanceOptimization:
             HookEvent.SESSION_START,
             sample_context,
             user_input="Test concurrent performance",
-            max_total_execution_time_ms=5000.0
+            max_total_execution_time_ms=5000.0,
         )
 
         execution_time = (time.time() - start_time) * 1000

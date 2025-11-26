@@ -127,14 +127,14 @@ class TestSystemChecker:
 
     def test_get_tool_version_timeout(self, system_checker):
         """Test timeout handling in version check."""
-        with patch('subprocess.run', side_effect=subprocess.TimeoutExpired("cmd", 2)):
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 2)):
             result = system_checker.get_tool_version("python3")
 
             assert result is None
 
     def test_get_tool_version_os_error(self, system_checker):
         """Test OS error handling in version check."""
-        with patch('subprocess.run', side_effect=OSError("error")):
+        with patch("subprocess.run", side_effect=OSError("error")):
             result = system_checker.get_tool_version("python3")
 
             assert result is None
@@ -157,7 +157,7 @@ class TestSystemChecker:
         mock_result.returncode = 1
         mock_result.stdout = ""
 
-        with patch('subprocess.run', return_value=mock_result):
+        with patch("subprocess.run", return_value=mock_result):
             result = system_checker.get_tool_version("python3")
 
             assert result is None
@@ -168,7 +168,7 @@ class TestSystemChecker:
         mock_result.returncode = 0
         mock_result.stdout = ""
 
-        with patch('subprocess.run', return_value=mock_result):
+        with patch("subprocess.run", return_value=mock_result):
             result = system_checker.get_tool_version("python3")
 
             assert result is None
@@ -215,14 +215,14 @@ class TestEnvironmentCheck:
         for value in result.values():
             assert isinstance(value, bool)
 
-    @patch('sys.version_info', (3, 11, 0))
+    @patch("sys.version_info", (3, 11, 0))
     def test_check_environment_python_version_ok(self):
         """Test environment check with Python 3.11."""
         result = check_environment()
 
         assert result["Python >= 3.11"] is True
 
-    @patch('sys.version_info', (3, 10, 0))
+    @patch("sys.version_info", (3, 10, 0))
     def test_check_environment_python_version_old(self):
         """Test environment check with old Python."""
         result = check_environment()
@@ -235,35 +235,35 @@ class TestPlatformSpecificMessages:
 
     def test_get_platform_specific_message_unix(self):
         """Test platform-specific message on Unix."""
-        with patch('platform.system', return_value='Darwin'):
+        with patch("platform.system", return_value="Darwin"):
             result = get_platform_specific_message("chmod 755", "Check permissions")
 
             assert result == "chmod 755"
 
     def test_get_platform_specific_message_linux(self):
         """Test platform-specific message on Linux."""
-        with patch('platform.system', return_value='Linux'):
+        with patch("platform.system", return_value="Linux"):
             result = get_platform_specific_message("chmod 755", "Check permissions")
 
             assert result == "chmod 755"
 
     def test_get_platform_specific_message_windows(self):
         """Test platform-specific message on Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             result = get_platform_specific_message("chmod 755", "Check permissions")
 
             assert result == "Check permissions"
 
     def test_get_permission_fix_message_unix(self):
         """Test permission fix message on Unix."""
-        with patch('platform.system', return_value='Darwin'):
+        with patch("platform.system", return_value="Darwin"):
             result = get_permission_fix_message("/path/to/dir")
 
             assert "chmod 755 /path/to/dir" in result
 
     def test_get_permission_fix_message_windows(self):
         """Test permission fix message on Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             result = get_permission_fix_message("C:\\path\\to\\dir")
 
             assert "administrator" in result or "permissions" in result
@@ -275,10 +275,26 @@ class TestLanguageToolsComprehensive:
     def test_all_supported_languages(self, system_checker):
         """Test that all configured languages can be checked."""
         languages = [
-            "python", "typescript", "javascript", "java", "go", "rust",
-            "dart", "swift", "kotlin", "csharp", "php", "ruby",
-            "elixir", "scala", "clojure", "haskell", "c", "cpp",
-            "lua", "ocaml"
+            "python",
+            "typescript",
+            "javascript",
+            "java",
+            "go",
+            "rust",
+            "dart",
+            "swift",
+            "kotlin",
+            "csharp",
+            "php",
+            "ruby",
+            "elixir",
+            "scala",
+            "clojure",
+            "haskell",
+            "c",
+            "cpp",
+            "lua",
+            "ocaml",
         ]
 
         for language in languages:

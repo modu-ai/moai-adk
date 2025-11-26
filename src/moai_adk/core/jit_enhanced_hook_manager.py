@@ -45,6 +45,7 @@ try:
     _JIT_AVAILABLE = True
 except ImportError:
     _JIT_AVAILABLE = False
+
     # Fallback for environments where JIT system might not be available
     class JITContextLoader:  # type: ignore[no-redef]
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -681,7 +682,7 @@ class JITEnhancedHookManager:
             cached_entry = self._result_cache.get(cache_key)
             if cached_entry:
                 # Extract HookExecutionResult from ContextEntry
-                cached_result: HookExecutionResult = cached_entry.content if hasattr(cached_entry, 'content') else cached_entry  # type: ignore[assignment]
+                cached_result: HookExecutionResult = cached_entry.content if hasattr(cached_entry, "content") else cached_entry  # type: ignore[assignment]
                 return cached_result
 
             # Prepare hook execution
@@ -695,7 +696,7 @@ class JITEnhancedHookManager:
             # Cache successful results
             if result.success:
                 # Calculate token count for the result
-                token_count = result.token_usage if hasattr(result, 'token_usage') else 0
+                token_count = result.token_usage if hasattr(result, "token_usage") else 0
                 self._result_cache.put(cache_key, result, token_count=token_count)
 
             # Update metadata
@@ -971,9 +972,9 @@ class JITEnhancedHookManager:
                     hook_path: {
                         "estimated_execution_time_ms": metadata.estimated_execution_time_ms,
                         "success_rate": metadata.success_rate,
-                        "last_execution_time": metadata.last_execution_time.isoformat()
-                        if metadata.last_execution_time
-                        else None,
+                        "last_execution_time": (
+                            metadata.last_execution_time.isoformat() if metadata.last_execution_time else None
+                        ),
                     }
                     for hook_path, metadata in self._hook_registry.items()
                 },

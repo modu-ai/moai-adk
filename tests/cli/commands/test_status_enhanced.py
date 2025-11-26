@@ -36,12 +36,7 @@ class TestStatusConfigReading:
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
 
-        config_data = {
-            "project": {
-                "mode": "personal",
-                "locale": "en_US"
-            }
-        }
+        config_data = {"project": {"mode": "personal", "locale": "en_US"}}
         config_path.write_text(json.dumps(config_data))
 
         runner = CliRunner()
@@ -117,12 +112,7 @@ class TestStatusTableBuilding:
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
 
-        config_data = {
-            "project": {
-                "mode": "team",
-                "locale": "ja_JP"
-            }
-        }
+        config_data = {"project": {"mode": "team", "locale": "ja_JP"}}
         config_path.write_text(json.dumps(config_data))
 
         runner = CliRunner()
@@ -138,12 +128,7 @@ class TestStatusTableBuilding:
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
 
-        config_data = {
-            "project": {
-                "mode": "personal",
-                "locale": "ko_KR"
-            }
-        }
+        config_data = {"project": {"mode": "personal", "locale": "ko_KR"}}
         config_path.write_text(json.dumps(config_data))
 
         runner = CliRunner()
@@ -160,10 +145,7 @@ class TestStatusTableBuilding:
         config_path = config_dir / "config.json"
 
         # Old config format (mode at root level)
-        config_data = {
-            "mode": "personal",
-            "locale": "en_US"
-        }
+        config_data = {"mode": "personal", "locale": "en_US"}
         config_path.write_text(json.dumps(config_data))
 
         runner = CliRunner()
@@ -180,10 +162,7 @@ class TestStatusTableBuilding:
         config_path = config_dir / "config.json"
 
         # Old config format (locale at root level)
-        config_data = {
-            "mode": "team",
-            "locale": "fr_FR"
-        }
+        config_data = {"mode": "team", "locale": "fr_FR"}
         config_path.write_text(json.dumps(config_data))
 
         runner = CliRunner()
@@ -397,6 +376,7 @@ class TestStatusPanelRendering:
                 # Verify it was called with a Panel object
                 call_args = mock_console.print.call_args
                 from rich.panel import Panel
+
                 assert isinstance(call_args[0][0], Panel)
 
     def test_status_panel_has_correct_title(self, tmp_path: Path) -> None:
@@ -430,12 +410,7 @@ class TestStatusFullIntegration:
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
 
-        config_data = {
-            "project": {
-                "mode": "team",
-                "locale": "ko_KR"
-            }
-        }
+        config_data = {"project": {"mode": "team", "locale": "ko_KR"}}
         config_path.write_text(json.dumps(config_data))
 
         # Create SPEC documents

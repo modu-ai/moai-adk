@@ -51,7 +51,7 @@ def test_tdd_implementer_detects_typescript_project(tmp_path):
     project_dir = tmp_path / "test_ts_project"
     project_dir.mkdir()
     (project_dir / "package.json").write_text('{"name": "test"}')
-    (project_dir / "tsconfig.json").write_text('{}')
+    (project_dir / "tsconfig.json").write_text("{}")
 
     # Action: Detect language
     detector = LanguageDetector()
@@ -85,7 +85,7 @@ def test_tdd_implementer_detects_go_project(tmp_path):
     # Setup: Go project with go.mod
     project_dir = tmp_path / "test_go_project"
     project_dir.mkdir()
-    (project_dir / "go.mod").write_text('module test')
+    (project_dir / "go.mod").write_text("module test")
 
     # Action: Detect and get template
     detector = LanguageDetector()
@@ -95,5 +95,3 @@ def test_tdd_implementer_detects_go_project(tmp_path):
     # Assert: Go workflow selected
     assert language == "go"
     assert "go-tag-validation.yml" in template_path
-
-

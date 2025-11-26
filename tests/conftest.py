@@ -140,7 +140,7 @@ def agents() -> List[Dict]:
     # Simple extraction of agent names from markdown
     content = agents_file.read_text(encoding="utf-8")
     # Extract agent names from bullet points with backticks
-    agent_names = re.findall(r'`([a-z0-9-]+):`', content)
+    agent_names = re.findall(r"`([a-z0-9-]+):`", content)
     return [{"name": agent} for agent in agent_names]
 
 
@@ -162,12 +162,12 @@ def count_skills_by_tier(all_skills: List[SkillMetadata]) -> Dict[str, int]:
 
 def validate_semantic_version(version: str) -> bool:
     """Check if version follows X.Y.Z format."""
-    return bool(re.match(r'^\d+\.\d+\.\d+$', version))
+    return bool(re.match(r"^\d+\.\d+\.\d+$", version))
 
 
 def validate_skill_name(name: str) -> bool:
     """Check if skill name follows Claude Code standard."""
-    if not re.match(r'^[a-z0-9-]+$', name):
+    if not re.match(r"^[a-z0-9-]+$", name):
         return False
     if len(name) > 64:
         return False
@@ -194,12 +194,7 @@ def count_description_quality(all_skills: List[SkillMetadata]) -> Dict[str, int]
         else:
             medium += 1
 
-    return {
-        "optimal": optimal,
-        "too_short": too_short,
-        "too_long": too_long,
-        "medium": medium
-    }
+    return {"optimal": optimal, "too_short": too_short, "too_long": too_long, "medium": medium}
 
 
 def calculate_compliance_score(all_skills: List[SkillMetadata]) -> float:

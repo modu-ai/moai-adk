@@ -76,7 +76,7 @@ class TestHardcodedLanguages:
 class TestDynamicTranslationWithHaiku:
     """Test dynamic translation using Claude Haiku for non-hardcoded languages."""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_german_translation_success(self, mock_run):
         """German translation should call Claude Haiku and parse response."""
         # Mock Claude Haiku response
@@ -113,21 +113,19 @@ class TestDynamicTranslationWithHaiku:
         mock_run.assert_called_once()
         args, kwargs = mock_run.call_args
         assert args[0] == ["claude", "-p", "--model", "haiku"]
-        assert kwargs['timeout'] == 30
+        assert kwargs["timeout"] == 30
 
         # Verify we got translated list
         assert len(result) == 23
         assert result[0].startswith("SPEC zuerst")
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_french_translation_success(self, mock_run):
         """French translation should work with Haiku."""
         mock_response = MagicMock()
         mock_response.returncode = 0
         # Create 23 numbered translations
-        french_items = [
-            f"{i+1}. Traduction française {i+1}" for i in range(23)
-        ]
+        french_items = [f"{i+1}. Traduction française {i+1}" for i in range(23)]
         mock_response.stdout = "\n".join(french_items)
         mock_run.return_value = mock_response
 
@@ -135,7 +133,7 @@ class TestDynamicTranslationWithHaiku:
         assert len(result) == 23
         assert result[0] == "Traduction française 1"
 
-    @patch('announcement_translator.translate_with_haiku')
+    @patch("announcement_translator.translate_with_haiku")
     def test_spanish_fallback_on_failure(self, mock_haiku):
         """Spanish should fall back to English if Haiku translation fails."""
         mock_haiku.return_value = None  # Simulate translation failure
@@ -149,7 +147,7 @@ class TestDynamicTranslationWithHaiku:
 class TestTranslationFailures:
     """Test error handling and fallback behavior."""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_claude_timeout(self, mock_run):
         """Translation should fall back on Claude timeout."""
         mock_run.side_effect = subprocess.TimeoutExpired("claude", 30)
@@ -159,7 +157,7 @@ class TestTranslationFailures:
         # Should fall back to English
         assert result == REFERENCE_ANNOUNCEMENTS_EN
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_claude_cli_not_found(self, mock_run):
         """Translation should fall back if Claude CLI not installed."""
         mock_run.side_effect = FileNotFoundError("claude command not found")
@@ -169,7 +167,7 @@ class TestTranslationFailures:
         # Should fall back to English
         assert result == REFERENCE_ANNOUNCEMENTS_EN
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_invalid_haiku_response(self, mock_run):
         """Translation should fail gracefully on invalid response."""
         mock_response = MagicMock()
@@ -182,15 +180,13 @@ class TestTranslationFailures:
         # Should fall back to English
         assert result == REFERENCE_ANNOUNCEMENTS_EN
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_incomplete_translation(self, mock_run):
         """Should fall back if only partial translations received."""
         mock_response = MagicMock()
         mock_response.returncode = 0
         # Only 10 items instead of 23
-        mock_response.stdout = "\n".join([
-            f"{i+1}. Traduction {i+1}" for i in range(10)
-        ])
+        mock_response.stdout = "\n".join([f"{i+1}. Traduction {i+1}" for i in range(10)])
         mock_run.return_value = mock_response
 
         result = translate_announcements("de")
@@ -207,9 +203,7 @@ class TestLanguageDetection:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_file = config_dir / "config.json"
-        config_file.write_text(json.dumps({
-            "language": {"conversation_language": "ko"}
-        }))
+        config_file.write_text(json.dumps({"language": {"conversation_language": "ko"}}))
 
         lang = get_language_from_config(tmp_path)
         assert lang == "ko"
@@ -219,9 +213,7 @@ class TestLanguageDetection:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_file = config_dir / "config.json"
-        config_file.write_text(json.dumps({
-            "language": {"conversation_language": "de"}
-        }))
+        config_file.write_text(json.dumps({"language": {"conversation_language": "de"}}))
 
         lang = get_language_from_config(tmp_path)
         assert lang == "de"
@@ -243,10 +235,7 @@ class TestSettingsCopy:
 
         # Create settings.json
         settings_file = claude_dir / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {},
-            "companyAnnouncements": []
-        }))
+        settings_file.write_text(json.dumps({"hooks": {}, "companyAnnouncements": []}))
 
         # Copy settings with Korean translations
         copy_settings_to_local("ko", ANNOUNCEMENTS_KO, tmp_path)
@@ -263,15 +252,13 @@ class TestSettingsCopy:
 class TestIntegration:
     """Integration tests for full workflow."""
 
-    @patch('announcement_translator.translate_with_haiku')
+    @patch("announcement_translator.translate_with_haiku")
     def test_full_workflow_hardcoded_language(self, mock_haiku, tmp_path):
         """Full workflow with hardcoded language should not call Haiku."""
         # Setup
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        (config_dir / "config.json").write_text(json.dumps({
-            "language": {"conversation_language": "ko"}
-        }))
+        (config_dir / "config.json").write_text(json.dumps({"language": {"conversation_language": "ko"}}))
 
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
@@ -289,15 +276,13 @@ class TestIntegration:
         content = json.loads(local_file.read_text())
         assert content["companyAnnouncements"] == ANNOUNCEMENTS_KO
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_full_workflow_dynamic_language(self, mock_run, tmp_path):
         """Full workflow with dynamic language should call Haiku."""
         # Setup
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        (config_dir / "config.json").write_text(json.dumps({
-            "language": {"conversation_language": "de"}
-        }))
+        (config_dir / "config.json").write_text(json.dumps({"language": {"conversation_language": "de"}}))
 
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
@@ -306,9 +291,7 @@ class TestIntegration:
         # Mock Haiku response
         mock_response = MagicMock()
         mock_response.returncode = 0
-        mock_response.stdout = "\n".join([
-            f"{i+1}. Deutsch {i+1}" for i in range(23)
-        ])
+        mock_response.stdout = "\n".join([f"{i+1}. Deutsch {i+1}" for i in range(23)])
         mock_run.return_value = mock_response
 
         # Run auto update

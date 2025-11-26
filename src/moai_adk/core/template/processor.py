@@ -123,7 +123,9 @@ class TemplateProcessor:
         self.context: dict[str, str] = {}  # Template variable substitution context
         self._version_reader: VersionReader | None = None
         self.config = config or TemplateProcessorConfig()
-        self._substitution_cache: Dict[int, tuple[str, list[str]]] = {}  # Cache for substitution results (key: hash, value: (content, warnings))
+        self._substitution_cache: Dict[int, tuple[str, list[str]]] = (
+            {}
+        )  # Cache for substitution results (key: hash, value: (content, warnings))
         self._variable_validation_cache: Dict[str, bool] = {}  # Cache for variable validation
         self.logger = logging.getLogger(__name__)
 

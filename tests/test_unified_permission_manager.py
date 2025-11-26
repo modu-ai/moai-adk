@@ -15,7 +15,7 @@ import tempfile
 import unittest
 
 # Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from moai_adk.core.unified_permission_manager import (
     PermissionAudit,
@@ -46,48 +46,41 @@ class TestUnifiedPermissionManager(unittest.TestCase):
                 "backend-expert": {
                     "permissionMode": "ask",  # Invalid mode
                     "description": "Backend development expert",
-                    "systemPrompt": "Backend development assistance"
+                    "systemPrompt": "Backend development assistance",
                 },
                 "security-expert": {
                     "permissionMode": "auto",  # Invalid mode
-                    "description": "Security and compliance expert"
+                    "description": "Security and compliance expert",
                 },
                 "api-designer": {
                     "permissionMode": "plan",  # Valid mode
-                    "description": "API design and documentation expert"
-                }
+                    "description": "API design and documentation expert",
+                },
             },
             "permissions": {
                 "allowedTools": ["Task", "Read", "Write", "Bash"],
-                "deniedTools": ["Bash(rm -rf:*)", "Bash(sudo:*)"]
+                "deniedTools": ["Bash(rm -rf:*)", "Bash(sudo:*)"],
             },
-            "sandbox": {
-                "allowUnsandboxedCommands": False
-            }
+            "sandbox": {"allowUnsandboxedCommands": False},
         }
 
         # Write test configuration
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, "w") as f:
             json.dump(self.test_config, f)
 
         # Create permission manager instance
-        self.manager = UnifiedPermissionManager(
-            config_path=self.config_path,
-            enable_logging=False
-        )
+        self.manager = UnifiedPermissionManager(config_path=self.config_path, enable_logging=False)
 
     def tearDown(self):
         """Clean up test fixtures"""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_invalid_permission_mode_correction(self):
         """Test correction of invalid permission modes"""
         # Test agent with 'ask' permission mode (invalid)
-        agent_config = {
-            "permissionMode": "ask",
-            "description": "Test agent"
-        }
+        agent_config = {"permissionMode": "ask", "description": "Test agent"}
 
         result = self.manager.validate_agent_permission("test-agent", agent_config)
 
@@ -99,10 +92,7 @@ class TestUnifiedPermissionManager(unittest.TestCase):
     def test_valid_permission_mode_preservation(self):
         """Test that valid permission modes are preserved"""
         # Test agent with valid permission mode
-        agent_config = {
-            "permissionMode": "acceptEdits",
-            "description": "Test agent"
-        }
+        agent_config = {"permissionMode": "acceptEdits", "description": "Test agent"}
 
         result = self.manager.validate_agent_permission("test-agent", agent_config)
 
@@ -117,7 +107,7 @@ class TestUnifiedPermissionManager(unittest.TestCase):
             ("backend-expert", PermissionMode.ACCEPT_EDITS),
             ("api-designer", PermissionMode.PLAN),
             ("tdd-implementer", PermissionMode.ACCEPT_EDITS),
-            ("unknown-agent", PermissionMode.DEFAULT)
+            ("unknown-agent", PermissionMode.DEFAULT),
         ]
 
         for agent_name, expected_mode in test_cases:
@@ -151,16 +141,11 @@ class TestUnifiedPermissionManager(unittest.TestCase):
         self.assertEqual(result1, result2)
 
         stats = self.manager.get_permission_stats()
-        self.assertGreater(stats['cached_permissions'], 0)
+        self.assertGreater(stats["cached_permissions"], 0)
 
     def test_dangerous_tool_detection(self):
         """Test detection of dangerous tools in allowed tools"""
-        dangerous_tools = [
-            "Bash(rm -rf:*)",
-            "Bash(sudo:*)",
-            "Bash(chmod -R 777:*)",
-            "Bash(git push --force:*)"
-        ]
+        dangerous_tools = ["Bash(rm -rf:*)", "Bash(sudo:*)", "Bash(chmod -R 777:*)", "Bash(git push --force:*)"]
 
         for tool in dangerous_tools:
             with self.subTest(tool=tool):
@@ -175,7 +160,7 @@ class TestUnifiedPermissionManager(unittest.TestCase):
 
         # Test with invalid JSON
         invalid_config_path = os.path.join(self.temp_dir, "invalid.json")
-        with open(invalid_config_path, 'w') as f:
+        with open(invalid_config_path, "w") as f:
             f.write("{ invalid json }")
 
         result = self.manager.validate_configuration(invalid_config_path)
@@ -185,43 +170,24 @@ class TestUnifiedPermissionManager(unittest.TestCase):
     def test_sandbox_security_validation(self):
         """Test sandbox security validation"""
         # Test secure sandbox configuration
-        secure_config = {
-            "sandbox": {
-                "allowUnsandboxedCommands": False
-            }
-        }
+        secure_config = {"sandbox": {"allowUnsandboxedCommands": False}}
         self.assertTrue(self.manager._validate_sandbox_settings(secure_config))
 
         # Test insecure sandbox configuration
         insecure_config = {
-            "sandbox": {
-                "allowUnsandboxedCommands": True,
-                "validatedCommands": ["rm -rf /", "sudo rm -rf"]
-            }
+            "sandbox": {"allowUnsandboxedCommands": True, "validatedCommands": ["rm -rf /", "sudo rm -rf"]}
         }
         self.assertFalse(self.manager._validate_sandbox_settings(insecure_config))
 
     def test_mcp_server_validation(self):
         """Test MCP server security validation"""
         # Test secure MCP configuration
-        secure_config = {
-            "mcpServers": {
-                "context7": {
-                    "command": "npx",
-                    "args": ["-y", "@upstash/context7-mcp@latest"]
-                }
-            }
-        }
+        secure_config = {"mcpServers": {"context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp@latest"]}}}
         self.assertTrue(self.manager._validate_mcp_servers(secure_config))
 
         # Test insecure MCP configuration
         insecure_config = {
-            "mcpServers": {
-                "dangerous-server": {
-                    "command": "some-command",
-                    "args": ["--insecure", "--allow-all"]
-                }
-            }
+            "mcpServers": {"dangerous-server": {"command": "some-command", "args": ["--insecure", "--allow-all"]}}
         }
         self.assertFalse(self.manager._validate_mcp_servers(insecure_config))
 
@@ -241,10 +207,7 @@ class TestUnifiedPermissionManager(unittest.TestCase):
 
         # Verify configuration was updated
         updated_config = self.manager.config["agents"][agent_name]
-        self.assertNotEqual(
-            original_config["permissionMode"],
-            updated_config["permissionMode"]
-        )
+        self.assertNotEqual(original_config["permissionMode"], updated_config["permissionMode"])
 
     def test_auto_fix_all_agents(self):
         """Test auto-fixing all agent permissions"""
@@ -287,12 +250,12 @@ class TestUnifiedPermissionManager(unittest.TestCase):
         # Check statistics
         stats = self.manager.get_permission_stats()
 
-        self.assertIn('validations_performed', stats)
-        self.assertIn('auto_corrections', stats)
-        self.assertIn('permission_denied', stats)
-        self.assertIn('cached_permissions', stats)
+        self.assertIn("validations_performed", stats)
+        self.assertIn("auto_corrections", stats)
+        self.assertIn("permission_denied", stats)
+        self.assertIn("cached_permissions", stats)
 
-        self.assertGreater(stats['validations_performed'], 0)
+        self.assertGreater(stats["validations_performed"], 0)
 
     def test_role_hierarchy_inheritance(self):
         """Test role hierarchy and permission inheritance"""
@@ -310,10 +273,7 @@ class TestUnifiedPermissionManager(unittest.TestCase):
         self.manager.auto_fix_agent_permissions("security-expert")
 
         # Verify backup was created
-        backup_files = [
-            f for f in os.listdir(self.temp_dir)
-            if f.startswith("test_settings.json.backup.")
-        ]
+        backup_files = [f for f in os.listdir(self.temp_dir) if f.startswith("test_settings.json.backup.")]
         self.assertGreater(len(backup_files), 0)
 
     def test_missing_agent_configuration_creation(self):
@@ -330,7 +290,8 @@ class TestUnifiedPermissionManager(unittest.TestCase):
 
         # Check that some agents were auto-created
         auto_created_count = sum(
-            1 for result in results.values()
+            1
+            for result in results.values()
             if result.auto_corrected and "Created default configuration" in str(result.warnings)
         )
         self.assertGreater(auto_created_count, 0)
@@ -341,10 +302,7 @@ class TestConvenienceFunctions(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.agent_config = {
-            "permissionMode": "invalid",
-            "description": "Test agent"
-        }
+        self.agent_config = {"permissionMode": "invalid", "description": "Test agent"}
 
     def test_validate_agent_permission_function(self):
         """Test convenience function for agent permission validation"""
@@ -367,7 +325,7 @@ class TestConvenienceFunctions(unittest.TestCase):
         """Test convenience function for getting statistics"""
         stats = get_permission_stats()
         self.assertIsInstance(stats, dict)
-        self.assertIn('validations_performed', stats)
+        self.assertIn("validations_performed", stats)
 
 
 class TestSecurityCompliance(unittest.TestCase):
@@ -382,29 +340,22 @@ class TestSecurityCompliance(unittest.TestCase):
         self.insecure_config = {
             "permissions": {
                 "allowedTools": ["Task", "Bash(rm -rf:*)", "Bash(sudo rm -rf *)"],
-                "deniedTools": []  # Missing dangerous tool denials
+                "deniedTools": [],  # Missing dangerous tool denials
             },
-            "sandbox": {
-                "allowUnsandboxedCommands": True,
-                "validatedCommands": ["rm -rf /", "sudo rm -rf /"]
-            },
-            "mcpServers": {
-                "insecure-server": {
-                    "command": "server",
-                    "args": ["--insecure", "--disable-ssl"]
-                }
-            }
+            "sandbox": {"allowUnsandboxedCommands": True, "validatedCommands": ["rm -rf /", "sudo rm -rf /"]},
+            "mcpServers": {"insecure-server": {"command": "server", "args": ["--insecure", "--disable-ssl"]}},
         }
 
     def tearDown(self):
         """Clean up test fixtures"""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_file_permission_validation(self):
         """Test file permission validation"""
         # Test configuration missing dangerous tool denials
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, "w") as f:
             json.dump(self.insecure_config, f)
 
         manager = UnifiedPermissionManager(config_path=self.config_path, enable_logging=False)
@@ -415,18 +366,14 @@ class TestSecurityCompliance(unittest.TestCase):
 
     def test_required_tools_validation(self):
         """Test that essential tools are required"""
-        config_missing_essentials = {
-            "permissions": {
-                "allowedTools": []  # Missing essential tools
-            }
-        }
+        config_missing_essentials = {"permissions": {"allowedTools": []}}  # Missing essential tools
 
         result = UnifiedPermissionManager._validate_allowed_tools(None, config_missing_essentials)
         self.assertFalse(result)
 
     def test_comprehensive_security_validation(self):
         """Test comprehensive security validation"""
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, "w") as f:
             json.dump(self.insecure_config, f)
 
         manager = UnifiedPermissionManager(config_path=self.config_path, enable_logging=False)
@@ -454,18 +401,13 @@ def run_integration_tests():
                 "security-expert": {"permissionMode": "auto"},
                 "api-designer": {"permissionMode": "invalid"},
                 "frontend-expert": {"permissionMode": ""},
-                "database-expert": {}  # Missing permissionMode
+                "database-expert": {},  # Missing permissionMode
             },
-            "permissions": {
-                "allowedTools": ["Task", "Bash(rm -rf:*)"],
-                "deniedTools": []
-            },
-            "sandbox": {
-                "allowUnsandboxedCommands": True
-            }
+            "permissions": {"allowedTools": ["Task", "Bash(rm -rf:*)"], "deniedTools": []},
+            "sandbox": {"allowUnsandboxedCommands": True},
         }
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             json.dump(problematic_config, f)
 
         print("1. Creating UnifiedPermissionManager with problematic configuration...")
@@ -490,7 +432,7 @@ def run_integration_tests():
         test_results = [
             ("admin", "Bash", manager.check_tool_permission("admin", "Bash", "execute")),
             ("user", "Write", manager.check_tool_permission("user", "Write", "execute")),
-            ("developer", "Read", manager.check_tool_permission("developer", "Read", "execute"))
+            ("developer", "Read", manager.check_tool_permission("developer", "Read", "execute")),
         ]
 
         for role, tool, allowed in test_results:
@@ -505,10 +447,11 @@ def run_integration_tests():
 
     finally:
         import shutil
+
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run unit tests
     print("🚀 Running Unified Permission Manager Unit Tests...")
     print("=" * 60)

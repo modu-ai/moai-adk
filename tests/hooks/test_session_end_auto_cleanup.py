@@ -41,31 +41,25 @@ def temp_project(tmp_path):
 
     # config.json 생성
     config = {
-        "auto_cleanup": {
-            "enabled": True,
-            "cleanup_days": 7,
-            "max_reports": 10
-        },
+        "auto_cleanup": {"enabled": True, "cleanup_days": 7, "max_reports": 10},
         "session_end": {
             "enabled": True,
             "metrics": {"enabled": True},
             "work_state": {"enabled": True},
             "warnings": {"uncommitted_changes": True},
-            "summary": {"enabled": True}
-        }
+            "summary": {"enabled": True},
+        },
     }
 
     config_file = moai_dir / "config.json"
-    with open(config_file, 'w', encoding='utf-8') as f:
+    with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
 
     return tmp_path
 
 
 class TestSessionMetricsSaving:
-    """세션 메트릭 저장 테스트 (P0-1)
-
-    """
+    """세션 메트릭 저장 테스트 (P0-1)"""
 
     def test_session_metrics_directory_created(self, temp_project):
         """RED: 세션 메트릭 디렉토리가 생성되어야 함"""
@@ -83,17 +77,17 @@ class TestSessionMetricsSaving:
             "cwd": str(temp_project),
             "files_modified": 5,
             "git_commits": 2,
-            "specs_worked_on": ["SPEC-001", "SPEC-002"]
+            "specs_worked_on": ["SPEC-001", "SPEC-002"],
         }
 
         session_file = logs_dir / f"session-{session_metrics['session_id']}.json"
-        with open(session_file, 'w', encoding='utf-8') as f:
+        with open(session_file, "w", encoding="utf-8") as f:
             json.dump(session_metrics, f, indent=2)
 
         # 검증
         assert session_file.exists(), "세션 메트릭 파일이 생성되어야 함"
 
-        with open(session_file, 'r', encoding='utf-8') as f:
+        with open(session_file, "r", encoding="utf-8") as f:
             loaded = json.load(f)
 
         assert loaded["session_id"] == session_metrics["session_id"]
@@ -106,6 +100,7 @@ class TestSessionMetricsSaving:
 
         # ISO format 타임스탬프
         from datetime import datetime
+
         timestamp = datetime.now().isoformat()
 
         session_metrics = {
@@ -114,14 +109,14 @@ class TestSessionMetricsSaving:
             "cwd": str(temp_project),
             "files_modified": 0,
             "git_commits": 0,
-            "specs_worked_on": []
+            "specs_worked_on": [],
         }
 
         session_file = logs_dir / f"session-{session_metrics['session_id']}.json"
-        with open(session_file, 'w', encoding='utf-8') as f:
+        with open(session_file, "w", encoding="utf-8") as f:
             json.dump(session_metrics, f, indent=2)
 
-        with open(session_file, 'r', encoding='utf-8') as f:
+        with open(session_file, "r", encoding="utf-8") as f:
             loaded = json.load(f)
 
         # ISO format 검증
@@ -130,9 +125,7 @@ class TestSessionMetricsSaving:
 
 
 class TestWorkStateSaving:
-    """작업 상태 스냅샷 저장 테스트 (P0-2)
-
-    """
+    """작업 상태 스냅샷 저장 테스트 (P0-2)"""
 
     def test_work_state_file_created(self, temp_project):
         """RED: 작업 상태 파일이 생성되어야 함"""
@@ -143,11 +136,11 @@ class TestWorkStateSaving:
             "current_branch": "feature/SPEC-001",
             "uncommitted_changes": True,
             "uncommitted_files": 3,
-            "specs_in_progress": ["SPEC-001"]
+            "specs_in_progress": ["SPEC-001"],
         }
 
         state_file = memory_dir / "last-session-state.json"
-        with open(state_file, 'w', encoding='utf-8') as f:
+        with open(state_file, "w", encoding="utf-8") as f:
             json.dump(work_state, f, indent=2)
 
         assert state_file.exists(), "작업 상태 파일이 생성되어야 함"
@@ -161,14 +154,14 @@ class TestWorkStateSaving:
             "current_branch": "develop",
             "uncommitted_changes": False,
             "uncommitted_files": 0,
-            "specs_in_progress": []
+            "specs_in_progress": [],
         }
 
         state_file = memory_dir / "last-session-state.json"
-        with open(state_file, 'w', encoding='utf-8') as f:
+        with open(state_file, "w", encoding="utf-8") as f:
             json.dump(work_state, f, indent=2)
 
-        with open(state_file, 'r', encoding='utf-8') as f:
+        with open(state_file, "r", encoding="utf-8") as f:
             loaded = json.load(f)
 
         assert "last_updated" in loaded
@@ -179,9 +172,7 @@ class TestWorkStateSaving:
 
 
 class TestFileCleanup:
-    """임시 파일 정리 테스트 (P1-1)
-
-    """
+    """임시 파일 정리 테스트 (P1-1)"""
 
     def test_cleanup_old_temp_files(self, temp_project):
         """RED: 오래된 임시 파일이 정리되어야 함"""
@@ -196,6 +187,7 @@ class TestFileCleanup:
         # 수정 시간을 8일 전으로 설정
         old_mtime = (datetime.now() - timedelta(days=8)).timestamp()
         import os
+
         os.utime(old_file, (old_mtime, old_mtime))
 
         # 최근 파일 생성 (1시간 이내)
@@ -208,15 +200,9 @@ class TestFileCleanup:
 
     def test_cleanup_stats(self, temp_project):
         """GREEN: 정리 통계 검증"""
-        stats = {
-            "temp_cleaned": 3,
-            "cache_cleaned": 2,
-            "total_cleaned": 5
-        }
+        stats = {"temp_cleaned": 3, "cache_cleaned": 2, "total_cleaned": 5}
 
-        assert stats["total_cleaned"] == (
-            stats["temp_cleaned"] + stats["cache_cleaned"]
-        ), "총 정리 수가 맞아야 함"
+        assert stats["total_cleaned"] == (stats["temp_cleaned"] + stats["cache_cleaned"]), "총 정리 수가 맞아야 함"
 
     def test_cleanup_directory_structure_preserved(self, temp_project):
         """REFACTOR: 정리 후 디렉토리 구조 유지"""
@@ -231,22 +217,13 @@ class TestFileCleanup:
 
 
 class TestSessionSummary:
-    """세션 요약 생성 테스트 (P1-3)
-
-    """
+    """세션 요약 생성 테스트 (P1-3)"""
 
     def test_session_summary_format(self):
         """RED: 세션 요약 형식 검증"""
-        cleanup_stats = {
-            "temp_cleaned": 2,
-            "cache_cleaned": 1,
-            "total_cleaned": 3
-        }
+        cleanup_stats = {"temp_cleaned": 2, "cache_cleaned": 1, "total_cleaned": 3}
 
-        work_state = {
-            "uncommitted_files": 5,
-            "specs_in_progress": ["SPEC-HOOKS-004"]
-        }
+        work_state = {"uncommitted_files": 5, "specs_in_progress": ["SPEC-HOOKS-004"]}
 
         # 요약 생성 시뮬레이션
         summary_lines = ["✅ Session Ended"]
@@ -287,9 +264,7 @@ class TestSessionSummary:
 
 
 class TestSessionEndIntegration:
-    """SessionEnd 통합 테스트
-
-    """
+    """SessionEnd 통합 테스트"""
 
     def test_session_end_all_features_enabled(self, temp_project):
         """RED: 모든 SessionEnd 기능 활성화 시 동작"""
@@ -301,20 +276,18 @@ class TestSessionEndIntegration:
         # 1. 세션 메트릭 저장
         logs_dir = moai_dir / "logs" / "sessions"
         session_file = logs_dir / f"session-{session_id}.json"
-        session_file.write_text(json.dumps({
-            "session_id": session_id,
-            "end_time": "2025-11-07T14:30:22+09:00",
-            "files_modified": 5
-        }))
+        session_file.write_text(
+            json.dumps({"session_id": session_id, "end_time": "2025-11-07T14:30:22+09:00", "files_modified": 5})
+        )
 
         # 2. 작업 상태 저장
         memory_dir = moai_dir / "memory"
         state_file = memory_dir / "last-session-state.json"
-        state_file.write_text(json.dumps({
-            "last_updated": "2025-11-07T14:30:22+09:00",
-            "current_branch": "develop",
-            "uncommitted_files": 5
-        }))
+        state_file.write_text(
+            json.dumps(
+                {"last_updated": "2025-11-07T14:30:22+09:00", "current_branch": "develop", "uncommitted_files": 5}
+            )
+        )
 
         # 검증
         assert session_file.exists(), "세션 메트릭이 저장되어야 함"
@@ -357,15 +330,13 @@ class TestSessionEndIntegration:
 
 
 class TestConfigLoading:
-    """세션 종료 설정 로드 테스트
-
-    """
+    """세션 종료 설정 로드 테스트"""
 
     def test_config_session_end_section(self, temp_project):
         """RED: config.json에서 session_end 섹션 로드"""
         config_file = temp_project / ".moai" / "config.json"
 
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
 
         assert "session_end" in config, "session_end 섹션이 있어야 함"
@@ -375,7 +346,7 @@ class TestConfigLoading:
         """GREEN: config.json에서 auto_cleanup 섹션 로드"""
         config_file = temp_project / ".moai" / "config.json"
 
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
 
         assert "auto_cleanup" in config

@@ -3,7 +3,6 @@
 Tests for branch naming utilities.
 """
 
-
 from moai_adk.core.git.branch import generate_branch_name
 
 

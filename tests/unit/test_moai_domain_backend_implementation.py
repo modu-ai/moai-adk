@@ -29,6 +29,7 @@ from unittest.mock import Mock, patch, AsyncMock
 # TEST GROUP 1: API Design Patterns (4 tests)
 # ============================================================================
 
+
 class TestAPIDesignPatterns:
     """Test API design validation and pattern enforcement."""
 
@@ -100,7 +101,7 @@ class TestAPIDesignPatterns:
             "type": "ValidationError",
             "message": "Invalid request payload",
             "status_code": 400,
-            "details": {"field": "email", "reason": "Invalid format"}
+            "details": {"field": "email", "reason": "Invalid format"},
         }
 
         # Validate error format
@@ -115,6 +116,7 @@ class TestAPIDesignPatterns:
 # ============================================================================
 # TEST GROUP 2: Microservices Architecture (3 tests)
 # ============================================================================
+
 
 class TestMicroservicesArchitecture:
     """Test microservices design patterns and service boundaries."""
@@ -146,21 +148,17 @@ class TestMicroservicesArchitecture:
         architect = MicroserviceArchitect()
 
         # Test REST communication
-        rest_comm = architect.get_communication_pattern("rest", {
-            "source": "order-service",
-            "target": "product-service",
-            "operation": "check_inventory"
-        })
+        rest_comm = architect.get_communication_pattern(
+            "rest", {"source": "order-service", "target": "product-service", "operation": "check_inventory"}
+        )
         assert rest_comm["pattern"] == "rest"
         assert rest_comm["protocol"] == "HTTP/REST"
         assert rest_comm["async"] is False
 
         # Test async messaging
-        async_comm = architect.get_communication_pattern("async", {
-            "source": "order-service",
-            "target": "notification-service",
-            "operation": "send_email"
-        })
+        async_comm = architect.get_communication_pattern(
+            "async", {"source": "order-service", "target": "notification-service", "operation": "send_email"}
+        )
         assert async_comm["pattern"] == "async"
         assert async_comm["protocol"] in ["RabbitMQ", "Kafka", "AWS SQS"]
         assert async_comm["async"] is True
@@ -172,12 +170,15 @@ class TestMicroservicesArchitecture:
         architect = MicroserviceArchitect()
 
         # Configure service discovery
-        discovery_config = architect.configure_service_discovery("consul", {
-            "consul_host": "localhost",
-            "consul_port": 8500,
-            "health_check_interval": 10,
-            "deregister_critical_service_after": "30s"
-        })
+        discovery_config = architect.configure_service_discovery(
+            "consul",
+            {
+                "consul_host": "localhost",
+                "consul_port": 8500,
+                "health_check_interval": 10,
+                "deregister_critical_service_after": "30s",
+            },
+        )
 
         assert discovery_config["registry"] == "consul"
         assert discovery_config["health_check_enabled"] is True
@@ -187,6 +188,7 @@ class TestMicroservicesArchitecture:
 # ============================================================================
 # TEST GROUP 3: Async/Await Patterns (3 tests)
 # ============================================================================
+
 
 class TestAsyncPatterns:
     """Test async/await patterns and concurrency optimization."""
@@ -208,10 +210,7 @@ class TestAsyncPatterns:
             return [{"id": i, "title": f"Post {i}"} for i in range(3)]
 
         # Execute concurrent operations
-        tasks = [
-            mock_fetch_user(1),
-            mock_fetch_posts(1)
-        ]
+        tasks = [mock_fetch_user(1), mock_fetch_posts(1)]
         results = await asyncio.gather(*tasks)
 
         # Verify results
@@ -270,6 +269,7 @@ class TestAsyncPatterns:
 # TEST GROUP 4: Authentication & Authorization (3 tests)
 # ============================================================================
 
+
 class TestAuthenticationAuthorization:
     """Test authentication and authorization patterns."""
 
@@ -283,7 +283,7 @@ class TestAuthenticationAuthorization:
         token_data = {
             "sub": "user@example.com",
             "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(hours=1)
+            "exp": datetime.utcnow() + timedelta(hours=1),
         }
 
         token = auth_manager.generate_jwt_token(token_data)
@@ -302,12 +302,14 @@ class TestAuthenticationAuthorization:
         auth_manager = AuthenticationManager()
 
         # Simulate authorization code grant
-        auth_code = auth_manager.generate_oauth_auth_code({
-            "client_id": "my-app",
-            "redirect_uri": "https://app.example.com/callback",
-            "scope": "read write",
-            "state": "random-state"
-        })
+        auth_code = auth_manager.generate_oauth_auth_code(
+            {
+                "client_id": "my-app",
+                "redirect_uri": "https://app.example.com/callback",
+                "scope": "read write",
+                "state": "random-state",
+            }
+        )
 
         assert auth_code is not None
         assert auth_code["code"] is not None
@@ -324,7 +326,7 @@ class TestAuthenticationAuthorization:
             "id": "user123",
             "email": "user@example.com",
             "roles": ["user", "admin"],
-            "permissions": ["read:users", "write:users", "delete:users"]
+            "permissions": ["read:users", "write:users", "delete:users"],
         }
 
         # Check permissions
@@ -336,6 +338,7 @@ class TestAuthenticationAuthorization:
 # ============================================================================
 # TEST GROUP 5: Error Handling & Logging (2 tests)
 # ============================================================================
+
 
 class TestErrorHandling:
     """Test error handling and logging strategies."""
@@ -371,11 +374,7 @@ class TestErrorHandling:
         log_entry = error_handler.log_with_context(
             level="INFO",
             message="User created successfully",
-            context={
-                "user_id": "user123",
-                "email": "user@example.com",
-                "request_id": "req-12345"
-            }
+            context={"user_id": "user123", "email": "user@example.com", "request_id": "req-12345"},
         )
 
         assert log_entry["level"] == "INFO"
@@ -387,6 +386,7 @@ class TestErrorHandling:
 # ============================================================================
 # TEST GROUP 6: Performance Optimization (2 tests)
 # ============================================================================
+
 
 class TestPerformanceOptimization:
     """Test performance optimization patterns."""
@@ -402,7 +402,7 @@ class TestPerformanceOptimization:
             backend="redis",
             ttl=3600,
             key_pattern="user:{user_id}:profile",
-            invalidation_triggers=["user_updated", "profile_changed"]
+            invalidation_triggers=["user_updated", "profile_changed"],
         )
 
         assert cache_config["backend"] == "redis"
@@ -418,10 +418,7 @@ class TestPerformanceOptimization:
 
         # Configure rate limiting
         rate_limit = optimizer.configure_rate_limit(
-            requests_per_minute=100,
-            requests_per_hour=5000,
-            burst_size=20,
-            strategy="token_bucket"
+            requests_per_minute=100, requests_per_hour=5000, burst_size=20, strategy="token_bucket"
         )
 
         assert rate_limit["requests_per_minute"] == 100
@@ -433,6 +430,7 @@ class TestPerformanceOptimization:
 # ============================================================================
 # TEST GROUP 7: Metrics Collection & Monitoring (Additional tests)
 # ============================================================================
+
 
 class TestBackendMetricsCollection:
     """Test metrics collection and observability."""
@@ -451,11 +449,7 @@ class TestBackendMetricsCollection:
 
         # Record metrics
         metrics = collector.record_request_metrics(
-            path="/api/v1/users",
-            method="GET",
-            status_code=200,
-            duration_ms=100,
-            response_size_bytes=1024
+            path="/api/v1/users", method="GET", status_code=200, duration_ms=100, response_size_bytes=1024
         )
 
         assert metrics["path"] == "/api/v1/users"
@@ -473,10 +467,7 @@ class TestBackendMetricsCollection:
         # Record multiple requests
         for i in range(10):
             collector.record_request_metrics(
-                path="/api/v1/users",
-                method="GET",
-                status_code=200 if i < 8 else 500,
-                duration_ms=50
+                path="/api/v1/users", method="GET", status_code=200 if i < 8 else 500, duration_ms=50
             )
 
         # Get error rate
@@ -501,6 +492,7 @@ class TestBackendMetricsCollection:
 # Additional Integration Tests
 # ============================================================================
 
+
 class TestBackendIntegration:
     """Integration tests for backend architecture components."""
 
@@ -512,7 +504,7 @@ class TestBackendIntegration:
             AuthenticationManager,
             ErrorHandlingStrategy,
             PerformanceOptimizer,
-            BackendMetricsCollector
+            BackendMetricsCollector,
         )
 
         # Initialize all components
@@ -527,20 +519,13 @@ class TestBackendIntegration:
         assert api_validator.validate_rest_endpoint(endpoint)["valid"] is True
 
         # Generate auth token
-        token = auth_manager.generate_jwt_token({
-            "sub": "user@example.com",
-            "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(hours=1)
-        })
+        token = auth_manager.generate_jwt_token(
+            {"sub": "user@example.com", "iat": datetime.utcnow(), "exp": datetime.utcnow() + timedelta(hours=1)}
+        )
         assert token is not None
 
         # Record metrics
-        metrics.record_request_metrics(
-            path="/api/v1/users/1",
-            method="GET",
-            status_code=200,
-            duration_ms=50
-        )
+        metrics.record_request_metrics(path="/api/v1/users/1", method="GET", status_code=200, duration_ms=50)
 
         # Verify metrics
         error_rate = metrics.get_error_rate()

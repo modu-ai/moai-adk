@@ -52,46 +52,30 @@ class TestPhaseExecutorInit:
 class TestPreparationPhase:
     """Test Phase 1: Preparation and backup"""
 
-    def test_preparation_phase_updates_current_phase(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_preparation_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should update current phase to 1"""
         executor.execute_preparation_phase(tmp_path, backup_enabled=False)
         assert executor.current_phase == 1
 
-    def test_preparation_phase_calls_progress_callback(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_preparation_phase_calls_progress_callback(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should call progress callback with phase 1"""
         callback = Mock()
-        executor.execute_preparation_phase(
-            tmp_path, backup_enabled=False, progress_callback=callback
-        )
+        executor.execute_preparation_phase(tmp_path, backup_enabled=False, progress_callback=callback)
         callback.assert_called_once_with("Phase 1: Preparation and backup...", 1, 5)
 
-    def test_preparation_phase_validates_system(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_preparation_phase_validates_system(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should validate system requirements"""
-        with patch.object(
-            executor.validator, "validate_system_requirements"
-        ) as mock_validate:
+        with patch.object(executor.validator, "validate_system_requirements") as mock_validate:
             executor.execute_preparation_phase(tmp_path, backup_enabled=False)
             mock_validate.assert_called_once()
 
-    def test_preparation_phase_validates_project_path(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_preparation_phase_validates_project_path(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should validate project path"""
-        with patch.object(
-            executor.validator, "validate_project_path"
-        ) as mock_validate:
+        with patch.object(executor.validator, "validate_project_path") as mock_validate:
             executor.execute_preparation_phase(tmp_path, backup_enabled=False)
             mock_validate.assert_called_once_with(tmp_path)
 
-    def test_preparation_phase_creates_backup_when_files_exist(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_preparation_phase_creates_backup_when_files_exist(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should create backup when MoAI files exist"""
         # Create existing .moai directory with config
         (tmp_path / ".moai").mkdir()
@@ -107,9 +91,7 @@ class TestPreparationPhase:
         assert len(backup_timestamps) > 0
         assert backup_timestamps[0].is_dir()
 
-    def test_preparation_phase_skips_backup_when_disabled(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_preparation_phase_skips_backup_when_disabled(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should skip backup when backup_enabled=False"""
         (tmp_path / ".moai").mkdir()
         (tmp_path / ".moai" / "config").mkdir()
@@ -126,26 +108,18 @@ class TestPreparationPhase:
 class TestDirectoryPhase:
     """Test Phase 2: Directory creation"""
 
-    def test_directory_phase_updates_current_phase(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_directory_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should update current phase to 2"""
         executor.execute_directory_phase(tmp_path)
         assert executor.current_phase == 2
 
-    def test_directory_phase_calls_progress_callback(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_directory_phase_calls_progress_callback(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should call progress callback with phase 2"""
         callback = Mock()
         executor.execute_directory_phase(tmp_path, progress_callback=callback)
-        callback.assert_called_once_with(
-            "Phase 2: Creating directory structure...", 2, 5
-        )
+        callback.assert_called_once_with("Phase 2: Creating directory structure...", 2, 5)
 
-    def test_directory_phase_creates_required_directories(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_directory_phase_creates_required_directories(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should create all required directories"""
         executor.execute_directory_phase(tmp_path)
 
@@ -155,9 +129,7 @@ class TestDirectoryPhase:
             assert dir_path.exists(), f"Directory {directory} should exist"
             assert dir_path.is_dir(), f"{directory} should be a directory"
 
-    def test_directory_phase_creates_nested_directories(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_directory_phase_creates_nested_directories(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should create nested directory structures"""
         executor.execute_directory_phase(tmp_path)
 
@@ -173,24 +145,18 @@ class TestDirectoryPhase:
 class TestResourcePhase:
     """Test Phase 3: Resource installation"""
 
-    def test_resource_phase_updates_current_phase(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_resource_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should update current phase to 3"""
         executor.execute_resource_phase(tmp_path)
         assert executor.current_phase == 3
 
-    def test_resource_phase_calls_progress_callback(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_resource_phase_calls_progress_callback(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should call progress callback with phase 3"""
         callback = Mock()
         executor.execute_resource_phase(tmp_path, progress_callback=callback)
         callback.assert_called_once_with("Phase 3: Installing resources...", 3, 5)
 
-    def test_resource_phase_returns_created_files(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_resource_phase_returns_created_files(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should return list of created files"""
         created_files = executor.execute_resource_phase(tmp_path)
 
@@ -201,9 +167,7 @@ class TestResourcePhase:
         assert ".github/" in created_files
         assert "CLAUDE.md" in created_files
 
-    def test_resource_phase_copies_template_files(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_resource_phase_copies_template_files(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should copy template files to project"""
         # Execute resource phase
         created_files = executor.execute_resource_phase(tmp_path)
@@ -222,30 +186,22 @@ class TestResourcePhase:
 class TestConfigurationPhase:
     """Test Phase 4: Configuration generation"""
 
-    def test_configuration_phase_updates_current_phase(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_configuration_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should update current phase to 4"""
         (tmp_path / ".moai").mkdir(parents=True)
         config = {"projectName": "test", "mode": "personal"}
         executor.execute_configuration_phase(tmp_path, config)
         assert executor.current_phase == 4
 
-    def test_configuration_phase_calls_progress_callback(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_configuration_phase_calls_progress_callback(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should call progress callback with phase 4"""
         callback = Mock()
         (tmp_path / ".moai").mkdir(parents=True)
         config = {"projectName": "test"}
-        executor.execute_configuration_phase(
-            tmp_path, config, progress_callback=callback
-        )
+        executor.execute_configuration_phase(tmp_path, config, progress_callback=callback)
         callback.assert_called_once_with("Phase 4: Generating configurations...", 4, 5)
 
-    def test_configuration_phase_creates_config_file(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_configuration_phase_creates_config_file(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should create config.json file"""
         config = {
             "projectName": "TestProject",
@@ -262,9 +218,7 @@ class TestConfigurationPhase:
         assert config_path.exists()
         assert str(config_path) in created_files
 
-    def test_configuration_phase_writes_correct_config(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_configuration_phase_writes_correct_config(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should write config data correctly"""
         config = {
             "project": {
@@ -293,9 +247,7 @@ class TestConfigurationPhase:
 class TestValidationPhase:
     """Test Phase 5: Validation and finalization"""
 
-    def test_validation_phase_updates_current_phase(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_validation_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should update current phase to 5"""
         # Setup complete installation
         for directory in executor.REQUIRED_DIRECTORIES:
@@ -313,9 +265,7 @@ class TestValidationPhase:
         executor.execute_validation_phase(tmp_path, mode="personal")
         assert executor.current_phase == 5
 
-    def test_validation_phase_calls_progress_callback(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_validation_phase_calls_progress_callback(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should call progress callback with phase 5"""
         callback = Mock()
 
@@ -332,25 +282,17 @@ class TestValidationPhase:
         for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
             (alfred_dir / cmd).write_text("# Command")
 
-        executor.execute_validation_phase(
-            tmp_path, mode="personal", progress_callback=callback
-        )
-        callback.assert_called_once_with(
-            "Phase 5: Validation and finalization...", 5, 5
-        )
+        executor.execute_validation_phase(tmp_path, mode="personal", progress_callback=callback)
+        callback.assert_called_once_with("Phase 5: Validation and finalization...", 5, 5)
 
-    def test_validation_phase_validates_installation(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_validation_phase_validates_installation(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should validate installation completeness"""
         # Setup complete installation
         for directory in executor.REQUIRED_DIRECTORIES:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
 
-        with patch.object(
-            executor.validator, "validate_installation"
-        ) as mock_validate:
+        with patch.object(executor.validator, "validate_installation") as mock_validate:
             executor.execute_validation_phase(tmp_path, mode="personal")
             mock_validate.assert_called_once_with(tmp_path)
 
@@ -407,9 +349,7 @@ class TestValidationPhase:
 class TestCreateBackup:
     """Test backup creation helper"""
 
-    def test_create_backup_creates_timestamped_directory(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_create_backup_creates_timestamped_directory(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should create backup with timestamp"""
         # Create files to backup
         (tmp_path / ".moai").mkdir()
@@ -424,9 +364,7 @@ class TestCreateBackup:
         assert len(backup_timestamps) > 0
         assert backup_timestamps[0].is_dir()
 
-    def test_create_backup_excludes_protected_paths(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_create_backup_excludes_protected_paths(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should exclude protected paths from backup"""
         moai_dir = tmp_path / ".moai"
         moai_dir.mkdir()
@@ -451,9 +389,7 @@ class TestCreateBackup:
 class TestCopyDirectorySelective:
     """Test selective directory copying"""
 
-    def test_copy_directory_selective_copies_allowed_files(
-        self, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_copy_directory_selective_copies_allowed_files(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should copy allowed files in directory"""
         src = tmp_path / "src"
         dst = tmp_path / "dst"
@@ -485,15 +421,11 @@ class TestInitializeGit:
     """Test Git initialization"""
 
     @patch("subprocess.run")
-    def test_initialize_git_runs_git_init(
-        self, mock_run: Mock, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
+    def test_initialize_git_runs_git_init(self, mock_run: Mock, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should run git init command"""
         executor._initialize_git(tmp_path)
 
-        mock_run.assert_called_once_with(
-            ["git", "init"], cwd=tmp_path, check=True, capture_output=True, timeout=30
-        )
+        mock_run.assert_called_once_with(["git", "init"], cwd=tmp_path, check=True, capture_output=True, timeout=30)
 
     @patch("subprocess.run")
     def test_initialize_git_handles_errors_gracefully(
@@ -511,9 +443,7 @@ class TestInitializeGit:
 class TestReportProgress:
     """Test progress reporting"""
 
-    def test_report_progress_calls_callback(
-        self, executor: PhaseExecutor
-    ) -> None:
+    def test_report_progress_calls_callback(self, executor: PhaseExecutor) -> None:
         """Should call callback with progress info"""
         callback = Mock()
         executor.current_phase = 3
@@ -521,9 +451,7 @@ class TestReportProgress:
 
         callback.assert_called_once_with("Test message", 3, 5)
 
-    def test_report_progress_handles_none_callback(
-        self, executor: PhaseExecutor
-    ) -> None:
+    def test_report_progress_handles_none_callback(self, executor: PhaseExecutor) -> None:
         """Should handle None callback without error"""
         executor.current_phase = 1
         # Should not raise exception

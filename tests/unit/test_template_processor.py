@@ -37,9 +37,7 @@ class TestCopyTemplates:
     """Test template copying workflow"""
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_templates_without_backup(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_templates_without_backup(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should copy templates without backup when no existing files"""
         processor = TemplateProcessor(tmp_path)
         processor.copy_templates(backup=False, silent=True)
@@ -51,9 +49,7 @@ class TestCopyTemplates:
         assert (tmp_path / ".github" / "workflows").exists()
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_templates_with_backup(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_templates_with_backup(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should create backup when existing files present"""
         # Create existing files
         (tmp_path / ".moai").mkdir()
@@ -68,9 +64,7 @@ class TestCopyTemplates:
         assert backup_dir.exists()
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_templates_silent_mode(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_templates_silent_mode(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should not print messages in silent mode"""
         processor = TemplateProcessor(tmp_path)
         processor.copy_templates(silent=True)
@@ -117,19 +111,21 @@ class TestClaudeTemplate:
         """Should copy English CLAUDE.md template by default"""
         processor = TemplateProcessor(tmp_path)
         # Set context to perform variable substitution
-        processor.set_context({
-            "PROJECT_NAME": "MyProject",
-            "PROJECT_DESCRIPTION": "A test project",
-            "CODEBASE_LANGUAGE": "python",
-            "CONVERSATION_LANGUAGE_NAME": "English",
-            "PROJECT_OWNER": "Test Owner",
-            "MOAI_VERSION": "0.7.0",
-            "CREATION_TIMESTAMP": "2025-01-01 00:00:00",
-            "PROJECT_MODE": "personal",
-            "PROJECT_VERSION": "0.1.0",
-            "AUTHOR": "Test Owner",
-            "CONVERSATION_LANGUAGE": "en",
-        })
+        processor.set_context(
+            {
+                "PROJECT_NAME": "MyProject",
+                "PROJECT_DESCRIPTION": "A test project",
+                "CODEBASE_LANGUAGE": "python",
+                "CONVERSATION_LANGUAGE_NAME": "English",
+                "PROJECT_OWNER": "Test Owner",
+                "MOAI_VERSION": "0.7.0",
+                "CREATION_TIMESTAMP": "2025-01-01 00:00:00",
+                "PROJECT_MODE": "personal",
+                "PROJECT_VERSION": "0.1.0",
+                "AUTHOR": "Test Owner",
+                "CONVERSATION_LANGUAGE": "en",
+            }
+        )
         processor._copy_claude_md(silent=True)
 
         content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
@@ -245,9 +241,7 @@ class TestCreateBackup:
 class TestCopyExcludeProtected:
     """Test selective copying excluding protected paths"""
 
-    def test_copy_exclude_protected_preserves_existing_files(
-        self, tmp_path: Path
-    ) -> None:
+    def test_copy_exclude_protected_preserves_existing_files(self, tmp_path: Path) -> None:
         """Should preserve existing files (v0.3.0 behavior)"""
         src = tmp_path / "src"
         dst = tmp_path / "dst"
@@ -307,9 +301,7 @@ class TestCopyClaude:
     """Test .claude directory copying"""
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_claude_copies_directory(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_claude_copies_directory(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should copy .claude directory from template"""
         processor = TemplateProcessor(tmp_path)
         processor._copy_claude(silent=True)
@@ -320,9 +312,7 @@ class TestCopyClaude:
 
     @pytest.mark.skip(reason="Test requires _backup_alfred_folder method from develop branch")
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_claude_overwrites_alfred_folders(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_claude_overwrites_alfred_folders(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should overwrite Alfred folders but preserve other files"""
         # Create existing .claude with old file and Alfred folder
         old_claude = tmp_path / ".claude"
@@ -346,9 +336,7 @@ class TestCopyClaude:
 
     @pytest.mark.skip(reason="Test requires _backup_alfred_folder method from develop branch")
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_claude_all_alfred_folders_overwritten(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_claude_all_alfred_folders_overwritten(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should overwrite all 4 Alfred folders"""
         # Create existing .claude with all Alfred folders containing old files
         old_claude = tmp_path / ".claude"
@@ -376,9 +364,7 @@ class TestCopyClaude:
 
     @pytest.mark.skip(reason="Test requires _backup_alfred_folder method from develop branch")
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_claude_backups_alfred_folders_before_overwrite(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_claude_backups_alfred_folders_before_overwrite(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should backup Alfred folders before overwriting them"""
         # Create existing .claude with Alfred folder
         old_claude = tmp_path / ".claude"
@@ -409,9 +395,7 @@ class TestCopyMoai:
     """Test .moai directory copying"""
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_moai_preserves_existing_files(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_moai_preserves_existing_files(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should preserve existing user files (v0.3.0)"""
         # Create existing .moai with user file
         moai_dir = tmp_path / ".moai"
@@ -429,9 +413,7 @@ class TestCopyMoai:
         assert "User Notes" in user_file.read_text()
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_moai_skips_specs_directory(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_moai_skips_specs_directory(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should not copy specs/ from template"""
         processor = TemplateProcessor(tmp_path)
         processor._copy_moai(silent=True)
@@ -441,9 +423,7 @@ class TestCopyMoai:
         specs_dir = tmp_path / ".moai" / "specs"
         if specs_dir.exists():
             # Should be empty or contain only user content
-            assert len(list(specs_dir.iterdir())) == 0 or not (
-                specs_dir / "SPEC-TEMPLATE"
-            ).exists()
+            assert len(list(specs_dir.iterdir())) == 0 or not (specs_dir / "SPEC-TEMPLATE").exists()
 
 
 class TestMergeClaudeMd:
@@ -473,19 +453,21 @@ class TestMergeClaudeMd:
         )
 
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "MyProject",
-            "PROJECT_DESCRIPTION": "A test project",
-            "CODEBASE_LANGUAGE": "python",
-        })
+        processor.set_context(
+            {
+                "PROJECT_NAME": "MyProject",
+                "PROJECT_DESCRIPTION": "A test project",
+                "CODEBASE_LANGUAGE": "python",
+            }
+        )
         # Call merge and then substitution directly (simulating _copy_claude_md)
         processor._merge_claude_md(template, existing)
 
         # Now substitute variables in the merged content (the fix)
         if processor.context:
-            content = existing.read_text(encoding='utf-8')
+            content = existing.read_text(encoding="utf-8")
             content, warnings = processor._substitute_variables(content)
-            existing.write_text(content, encoding='utf-8')
+            existing.write_text(content, encoding="utf-8")
 
         # Should merge: template content + user project info + substitute variables
         merged = existing.read_text()
@@ -503,15 +485,11 @@ class TestMergeClaudeMd:
         """Should preserve project info section when merging"""
         # Create template CLAUDE.md
         template = tmp_path / "template.md"
-        template.write_text(
-            "# Template\n\nContent\n\n## 프로젝트 정보\n\n- Template Project"
-        )
+        template.write_text("# Template\n\nContent\n\n## 프로젝트 정보\n\n- Template Project")
 
         # Create existing CLAUDE.md with user project info
         existing = tmp_path / "existing.md"
-        existing.write_text(
-            "# Old Template\n\n## 프로젝트 정보\n\n- My Project\n- Version: 1.0.0"
-        )
+        existing.write_text("# Old Template\n\n## 프로젝트 정보\n\n- My Project\n- Version: 1.0.0")
 
         processor = TemplateProcessor(tmp_path)
         processor._merge_claude_md(template, existing)
@@ -528,14 +506,10 @@ class TestMergeClaudeMd:
     def test_merge_claude_md_preserves_project_info_en(self, tmp_path: Path) -> None:
         """Should preserve project info section for English templates"""
         template = tmp_path / "template.md"
-        template.write_text(
-            "# Template\n\nContent\n\n## Project Information\n\n- Template Project"
-        )
+        template.write_text("# Template\n\nContent\n\n## Project Information\n\n- Template Project")
 
         existing = tmp_path / "existing.md"
-        existing.write_text(
-            "# Old Template\n\n## Project Information\n\n- My Project\n- Version: 1.0.0"
-        )
+        existing.write_text("# Old Template\n\n## Project Information\n\n- My Project\n- Version: 1.0.0")
 
         processor = TemplateProcessor(tmp_path)
         processor._merge_claude_md(template, existing)
@@ -641,9 +615,7 @@ class TestMergeConfig:
         assert merged["locale"] == "ko"
         assert merged["language"] == "python"
 
-    def test_merge_config_uses_detected_language_when_no_existing(
-        self, tmp_path: Path
-    ) -> None:
+    def test_merge_config_uses_detected_language_when_no_existing(self, tmp_path: Path) -> None:
         """Should use detected language for new projects"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
@@ -658,9 +630,7 @@ class TestCopyClaudeMissingTemplate:
     """Test _copy_claude when template doesn't exist"""
 
     @patch("moai_adk.core.template.processor.console")
-    def test_copy_claude_template_not_found_logs_warning(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_claude_template_not_found_logs_warning(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should log warning when .claude template not found"""
         processor = TemplateProcessor(tmp_path)
         processor.template_root = tmp_path / "nonexistent"
@@ -671,9 +641,7 @@ class TestCopyClaudeMissingTemplate:
         assert mock_console.print.called
 
     @patch("moai_adk.core.template.processor.console")
-    def test_copy_claude_template_not_found_silent(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_claude_template_not_found_silent(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should not log warning when silent=True"""
         processor = TemplateProcessor(tmp_path)
         processor.template_root = tmp_path / "nonexistent"
@@ -688,9 +656,7 @@ class TestCopyMoaiMissingTemplate:
     """Test _copy_moai when template doesn't exist"""
 
     @patch("moai_adk.core.template.processor.console")
-    def test_copy_moai_template_not_found_logs_warning(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_moai_template_not_found_logs_warning(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should log warning when .moai template not found"""
         processor = TemplateProcessor(tmp_path)
         processor.template_root = tmp_path / "nonexistent"
@@ -701,9 +667,7 @@ class TestCopyMoaiMissingTemplate:
         assert mock_console.print.called
 
     @patch("moai_adk.core.template.processor.console")
-    def test_copy_moai_template_not_found_silent(
-        self, mock_console: Mock, tmp_path: Path
-    ) -> None:
+    def test_copy_moai_template_not_found_silent(self, mock_console: Mock, tmp_path: Path) -> None:
         """Should not log warning when silent=True"""
         processor = TemplateProcessor(tmp_path)
         processor.template_root = tmp_path / "nonexistent"
@@ -729,9 +693,7 @@ class TestVariableSubstitution:
         assert len(warnings) > 0
         assert any("AUTHOR" in warning for warning in warnings)
 
-    def test_substitute_variables_no_warnings_when_all_substituted(
-        self, tmp_path: Path
-    ) -> None:
+    def test_substitute_variables_no_warnings_when_all_substituted(self, tmp_path: Path) -> None:
         """Should not generate warnings when all variables substituted"""
         processor = TemplateProcessor(tmp_path)
         processor.set_context({"PROJECT_NAME": "TestProject", "AUTHOR": "Alice"})
@@ -755,9 +717,7 @@ class TestVariableSubstitution:
         assert "test" in sanitized
         assert "value" in sanitized
 
-    def test_sanitize_value_prevents_recursive_substitution(
-        self, tmp_path: Path
-    ) -> None:
+    def test_sanitize_value_prevents_recursive_substitution(self, tmp_path: Path) -> None:
         """Should prevent recursive substitution by removing {{}}"""
         processor = TemplateProcessor(tmp_path)
 

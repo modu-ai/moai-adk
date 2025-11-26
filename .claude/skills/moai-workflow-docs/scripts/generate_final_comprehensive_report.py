@@ -18,6 +18,7 @@ def find_project_root(start_path: Path) -> Path:
         current = current.parent
     raise RuntimeError("Project root not found")
 
+
 script_path = Path(__file__).resolve()
 project_root = find_project_root(script_path.parent)
 sys.path.insert(0, str(project_root))
@@ -251,11 +252,19 @@ def main():
     """Main execution"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Generate final comprehensive validation report')
-    parser.add_argument('--report-dir', type=str, default=str(project_root / ".moai" / "reports"),
-                       help=f'Report directory (default: {project_root / ".moai" / "reports"})')
-    parser.add_argument('--output', type=str, default=str(DEFAULT_REPORT_PATH),
-                       help=f'Report save path (default: {DEFAULT_REPORT_PATH})')
+    parser = argparse.ArgumentParser(description="Generate final comprehensive validation report")
+    parser.add_argument(
+        "--report-dir",
+        type=str,
+        default=str(project_root / ".moai" / "reports"),
+        help=f'Report directory (default: {project_root / ".moai" / "reports"})',
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=str(DEFAULT_REPORT_PATH),
+        help=f"Report save path (default: {DEFAULT_REPORT_PATH})",
+    )
 
     args = parser.parse_args()
 
@@ -268,7 +277,7 @@ def main():
     # File save
     report_path = Path(args.output)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(report, encoding='utf-8')
+    report_path.write_text(report, encoding="utf-8")
 
     print(f"\n📁 Final report saved: {report_path}")
 

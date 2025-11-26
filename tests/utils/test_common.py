@@ -43,17 +43,13 @@ from moai_adk.utils.common import (
 # HTTPResponse Tests
 # ============================================================================
 
+
 class TestHTTPResponse:
     """Tests for HTTPResponse dataclass."""
 
     def test_http_response_creation(self):
         """Test creating HTTPResponse with all fields."""
-        response = HTTPResponse(
-            status_code=200,
-            url="https://example.com",
-            load_time=0.5,
-            success=True
-        )
+        response = HTTPResponse(status_code=200, url="https://example.com", load_time=0.5, success=True)
         assert response.status_code == 200
         assert response.url == "https://example.com"
         assert response.load_time == 0.5
@@ -65,35 +61,20 @@ class TestHTTPResponse:
         """Test HTTPResponse with error message."""
         error_msg = "Connection timeout"
         response = HTTPResponse(
-            status_code=0,
-            url="https://example.com",
-            load_time=0.0,
-            success=False,
-            error_message=error_msg
+            status_code=0, url="https://example.com", load_time=0.0, success=False, error_message=error_msg
         )
         assert response.success is False
         assert response.error_message == error_msg
 
     def test_http_response_timestamp_auto_generation(self):
         """Test timestamp is auto-generated if not provided."""
-        response = HTTPResponse(
-            status_code=200,
-            url="https://example.com",
-            load_time=0.1,
-            success=True
-        )
+        response = HTTPResponse(status_code=200, url="https://example.com", load_time=0.1, success=True)
         assert response.timestamp is not None
         assert isinstance(response.timestamp, datetime)
 
     def test_http_response_timestamp_none_handling(self):
         """Test __post_init__ handles None timestamp."""
-        response = HTTPResponse(
-            status_code=200,
-            url="https://example.com",
-            load_time=0.1,
-            success=True,
-            timestamp=None
-        )
+        response = HTTPResponse(status_code=200, url="https://example.com", load_time=0.1, success=True, timestamp=None)
         assert response.timestamp is not None
 
     def test_http_response_various_status_codes(self):
@@ -120,6 +101,7 @@ class TestHTTPResponse:
 # ============================================================================
 # HTTPClient Tests
 # ============================================================================
+
 
 class TestHTTPClientAsyncContext:
     """Tests for HTTPClient async context manager."""
@@ -167,7 +149,7 @@ class TestHTTPClientFetchUrl:
     async def test_fetch_url_successful_response(self):
         """Test fetch_url with successful response."""
         async with HTTPClient() as client:
-            with patch('aiohttp.ClientSession.get') as mock_get:
+            with patch("aiohttp.ClientSession.get") as mock_get:
                 mock_response = AsyncMock()
                 mock_response.status = 200
                 mock_response.url = "https://example.com"
@@ -198,7 +180,7 @@ class TestHTTPClientFetchUrl:
 
         async with HTTPClient() as client:
             for status_code, should_succeed in test_cases:
-                with patch('aiohttp.ClientSession.get') as mock_get:
+                with patch("aiohttp.ClientSession.get") as mock_get:
                     mock_response = AsyncMock()
                     mock_response.status = status_code
                     mock_response.url = "https://example.com"
@@ -217,7 +199,7 @@ class TestHTTPClientFetchUrl:
     async def test_fetch_url_timeout_error(self):
         """Test fetch_url handles timeout errors."""
         async with HTTPClient(timeout=5) as client:
-            with patch('aiohttp.ClientSession.get') as mock_get:
+            with patch("aiohttp.ClientSession.get") as mock_get:
                 mock_get.side_effect = asyncio.TimeoutError()
                 client.session.get = mock_get
 
@@ -232,7 +214,7 @@ class TestHTTPClientFetchUrl:
     async def test_fetch_url_client_error(self):
         """Test fetch_url handles aiohttp client errors."""
         async with HTTPClient() as client:
-            with patch('aiohttp.ClientSession.get') as mock_get:
+            with patch("aiohttp.ClientSession.get") as mock_get:
                 mock_get.side_effect = aiohttp.ClientError("Connection failed")
                 client.session.get = mock_get
 
@@ -246,7 +228,7 @@ class TestHTTPClientFetchUrl:
     async def test_fetch_url_unexpected_error(self):
         """Test fetch_url handles unexpected errors."""
         async with HTTPClient() as client:
-            with patch('aiohttp.ClientSession.get') as mock_get:
+            with patch("aiohttp.ClientSession.get") as mock_get:
                 mock_get.side_effect = RuntimeError("Unexpected error")
                 client.session.get = mock_get
 
@@ -269,7 +251,7 @@ class TestHTTPClientFetchUrls:
             "https://example3.com",
         ]
 
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.url = "https://example.com"
@@ -278,8 +260,8 @@ class TestHTTPClientFetchUrls:
 
             mock_get.return_value = mock_response
 
-            with patch('aiohttp.TCPConnector'):
-                with patch('aiohttp.ClientSession') as mock_session_class:
+            with patch("aiohttp.TCPConnector"):
+                with patch("aiohttp.ClientSession") as mock_session_class:
                     mock_session = AsyncMock()
                     mock_session.get = mock_get
                     mock_session.__aenter__.return_value = mock_session
@@ -295,9 +277,9 @@ class TestHTTPClientFetchUrls:
     @pytest.mark.asyncio
     async def test_fetch_empty_urls_list(self):
         """Test fetching empty URLs list."""
-        with patch('aiohttp.ClientSession.close', new_callable=AsyncMock):
-            with patch('aiohttp.TCPConnector'):
-                with patch('aiohttp.ClientSession') as mock_session_class:
+        with patch("aiohttp.ClientSession.close", new_callable=AsyncMock):
+            with patch("aiohttp.TCPConnector"):
+                with patch("aiohttp.ClientSession") as mock_session_class:
                     mock_session = AsyncMock()
                     mock_session.__aenter__.return_value = mock_session
                     mock_session.__aexit__.return_value = None
@@ -313,6 +295,7 @@ class TestHTTPClientFetchUrls:
 # ============================================================================
 # URL Extraction Tests
 # ============================================================================
+
 
 class TestExtractLinksFromText:
     """Tests for extract_links_from_text function."""
@@ -412,6 +395,7 @@ class TestExtractLinksFromText:
 # URL Validation Tests
 # ============================================================================
 
+
 class TestIsValidUrl:
     """Tests for is_valid_url function."""
 
@@ -463,12 +447,15 @@ class TestIsValidUrl:
         """Test validation of URL with credentials."""
         assert is_valid_url("https://user:pass@example.com") is True
 
-    @pytest.mark.parametrize("url,expected", [
-        ("ftp://example.com", True),
-        ("http://localhost", True),
-        ("https://192.168.1.1", True),
-        ("http://example.com:3000", True),
-    ])
+    @pytest.mark.parametrize(
+        "url,expected",
+        [
+            ("ftp://example.com", True),
+            ("http://localhost", True),
+            ("https://192.168.1.1", True),
+            ("http://example.com:3000", True),
+        ],
+    )
     def test_various_url_schemes(self, url, expected):
         """Test various URL schemes and formats."""
         assert is_valid_url(url) == expected
@@ -484,6 +471,7 @@ class TestIsValidUrl:
 # ============================================================================
 # Report Path Creation Tests
 # ============================================================================
+
 
 class TestCreateReportPath:
     """Tests for create_report_path function."""
@@ -534,6 +522,7 @@ class TestCreateReportPath:
 # Duration Formatting Tests
 # ============================================================================
 
+
 class TestFormatDuration:
     """Tests for format_duration function."""
 
@@ -566,13 +555,16 @@ class TestFormatDuration:
         assert format_duration(86400.0) == "24h 0m"
         assert format_duration(90000.0) == "25h 0m"
 
-    @pytest.mark.parametrize("seconds,expected", [
-        (0.001, "1ms"),
-        (0.5, "500ms"),
-        (1.5, "1.5s"),
-        (61.5, "1m 2s"),
-        (3661.5, "1h 1m"),
-    ])
+    @pytest.mark.parametrize(
+        "seconds,expected",
+        [
+            (0.001, "1ms"),
+            (0.5, "500ms"),
+            (1.5, "1.5s"),
+            (61.5, "1m 2s"),
+            (3661.5, "1h 1m"),
+        ],
+    )
     def test_format_duration_edge_cases(self, seconds, expected):
         """Test edge cases in duration formatting."""
         assert format_duration(seconds) == expected
@@ -590,6 +582,7 @@ class TestFormatDuration:
 # ============================================================================
 # Score Calculation Tests
 # ============================================================================
+
 
 class TestCalculateScore:
     """Tests for calculate_score function."""
@@ -636,12 +629,15 @@ class TestCalculateScore:
         score = calculate_score([0.0, 0.0, 0.0])
         assert score == 0.0
 
-    @pytest.mark.parametrize("values,weights,expected", [
-        ([100.0], [1.0], 100.0),
-        ([50.0, 50.0], [1.0, 1.0], 50.0),
-        ([100.0, 0.0], [1.0, 1.0], 50.0),
-        ([100.0, 0.0], [2.0, 1.0], pytest.approx(66.67, abs=0.01)),
-    ])
+    @pytest.mark.parametrize(
+        "values,weights,expected",
+        [
+            ([100.0], [1.0], 100.0),
+            ([50.0, 50.0], [1.0, 1.0], 50.0),
+            ([100.0, 0.0], [1.0, 1.0], 50.0),
+            ([100.0, 0.0], [2.0, 1.0], pytest.approx(66.67, abs=0.01)),
+        ],
+    )
     def test_calculate_score_various_cases(self, values, weights, expected):
         """Test various score calculation scenarios."""
         result = calculate_score(values, weights)
@@ -654,6 +650,7 @@ class TestCalculateScore:
 # ============================================================================
 # Statistical Summary Tests
 # ============================================================================
+
 
 class TestGetSummaryStats:
     """Tests for get_summary_stats function."""
@@ -729,6 +726,7 @@ class TestGetSummaryStats:
 # ============================================================================
 # Rate Limiter Tests
 # ============================================================================
+
 
 class TestRateLimiter:
     """Tests for RateLimiter class."""
@@ -820,7 +818,7 @@ class TestRateLimiter:
         limiter.add_request()
 
         # Mock asyncio.sleep to verify it's called
-        with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
             await limiter.wait_if_needed()
             mock_sleep.assert_called_once()
 
@@ -845,34 +843,31 @@ class TestRateLimiter:
 # Configuration Loading Tests
 # ============================================================================
 
+
 class TestLoadHookTimeout:
     """Tests for load_hook_timeout function."""
 
     def test_load_hook_timeout_default(self):
         """Test default timeout when config doesn't exist."""
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             timeout = load_hook_timeout()
             assert timeout == 5000
 
     def test_load_hook_timeout_from_config(self):
         """Test loading timeout from config file."""
-        config = {
-            "hooks": {
-                "timeout_ms": 10000
-            }
-        }
+        config = {"hooks": {"timeout_ms": 10000}}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(config, f)
             config_path = f.name
 
         try:
-            with patch('pathlib.Path.exists', return_value=True):
-                with patch('builtins.open', create=True) as mock_open:
+            with patch("pathlib.Path.exists", return_value=True):
+                with patch("builtins.open", create=True) as mock_open:
                     mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(config)
                     # Need to patch json.load as well
-                    with patch('json.load', return_value=config):
-                        with patch('pathlib.Path', return_value=Path(config_path)):
+                    with patch("json.load", return_value=config):
+                        with patch("pathlib.Path", return_value=Path(config_path)):
                             timeout = load_hook_timeout()
                             assert timeout == 10000
         finally:
@@ -880,10 +875,10 @@ class TestLoadHookTimeout:
 
     def test_load_hook_timeout_malformed_json(self):
         """Test handling malformed JSON in config."""
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True) as mock_open:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True) as mock_open:
                 mock_open.return_value.__enter__.return_value.read.return_value = "invalid json"
-                with patch('json.load', side_effect=json.JSONDecodeError("msg", "doc", 0)):
+                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -891,9 +886,9 @@ class TestLoadHookTimeout:
         """Test handling config without hooks section."""
         config = {"other": "data"}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True) as mock_open:
-                with patch('json.load', return_value=config):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True) as mock_open:
+                with patch("json.load", return_value=config):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -901,9 +896,9 @@ class TestLoadHookTimeout:
         """Test handling hooks section without timeout_ms."""
         config = {"hooks": {"other": "value"}}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True) as mock_open:
-                with patch('json.load', return_value=config):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True) as mock_open:
+                with patch("json.load", return_value=config):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -914,9 +909,9 @@ class TestLoadHookTimeout:
         for timeout_ms in test_cases:
             config = {"hooks": {"timeout_ms": timeout_ms}}
 
-            with patch('pathlib.Path.exists', return_value=True):
-                with patch('builtins.open', create=True):
-                    with patch('json.load', return_value=config):
+            with patch("pathlib.Path.exists", return_value=True):
+                with patch("builtins.open", create=True):
+                    with patch("json.load", return_value=config):
                         result = load_hook_timeout()
                         assert result == timeout_ms
 
@@ -926,44 +921,36 @@ class TestGetGracefulDegradation:
 
     def test_graceful_degradation_default(self):
         """Test default graceful_degradation when config doesn't exist."""
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             result = get_graceful_degradation()
             assert result is True
 
     def test_graceful_degradation_from_config_true(self):
         """Test loading graceful_degradation=true from config."""
-        config = {
-            "hooks": {
-                "graceful_degradation": True
-            }
-        }
+        config = {"hooks": {"graceful_degradation": True}}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True):
-                with patch('json.load', return_value=config):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True):
+                with patch("json.load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
     def test_graceful_degradation_from_config_false(self):
         """Test loading graceful_degradation=false from config."""
-        config = {
-            "hooks": {
-                "graceful_degradation": False
-            }
-        }
+        config = {"hooks": {"graceful_degradation": False}}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True):
-                with patch('json.load', return_value=config):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True):
+                with patch("json.load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is False
 
     def test_graceful_degradation_malformed_json(self):
         """Test handling malformed JSON in config."""
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True) as mock_open:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True) as mock_open:
                 mock_open.return_value.__enter__.return_value.read.return_value = "invalid"
-                with patch('json.load', side_effect=json.JSONDecodeError("msg", "doc", 0)):
+                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -971,9 +958,9 @@ class TestGetGracefulDegradation:
         """Test handling config without hooks section."""
         config = {"other": "data"}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True):
-                with patch('json.load', return_value=config):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True):
+                with patch("json.load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -981,9 +968,9 @@ class TestGetGracefulDegradation:
         """Test handling hooks section without graceful_degradation."""
         config = {"hooks": {"other": "value"}}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True):
-                with patch('json.load', return_value=config):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", create=True):
+                with patch("json.load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -991,6 +978,7 @@ class TestGetGracefulDegradation:
 # ============================================================================
 # Integration and Edge Case Tests
 # ============================================================================
+
 
 class TestRateLimitError:
     """Tests for RateLimitError exception."""
@@ -1166,7 +1154,7 @@ class TestIntegrationScenarios:
     def test_config_loading_resilience(self):
         """Test config loading handles various error conditions."""
         # Test with non-existent file
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             timeout = load_hook_timeout()
             degradation = get_graceful_degradation()
 

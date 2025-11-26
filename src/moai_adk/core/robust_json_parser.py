@@ -530,9 +530,11 @@ class RobustJSONParser:
                 "success_rate": (self.stats["successful_parses"] + self.stats["recovered_parses"]) / total,
                 "recovery_rate": self.stats["recovered_parses"] / total,
                 "failure_rate": self.stats["failed_parses"] / total,
-                "avg_recovery_time": self.stats["total_recovery_time"] / self.stats["recovered_parses"]
-                if self.stats["recovered_parses"] > 0
-                else 0,
+                "avg_recovery_time": (
+                    self.stats["total_recovery_time"] / self.stats["recovered_parses"]
+                    if self.stats["recovered_parses"] > 0
+                    else 0
+                ),
             }
         return self.stats
 

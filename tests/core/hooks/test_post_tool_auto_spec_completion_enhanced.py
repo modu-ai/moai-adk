@@ -496,7 +496,12 @@ class TestExecuteHook:
         hook = PostToolAutoSpecCompletion()
 
         # Mock the spec generator
-        mock_analysis = {"description": "Test", "structure_score": 0.9, "domain_accuracy": 0.9, "documentation_level": 0.9}
+        mock_analysis = {
+            "description": "Test",
+            "structure_score": 0.9,
+            "domain_accuracy": 0.9,
+            "documentation_level": 0.9,
+        }
         hook.spec_generator.analyze = Mock(return_value=mock_analysis)
 
         result = hook.execute("Write", {"file_path": str(tmp_path / "module.py")}, None)
@@ -506,4 +511,6 @@ class TestExecuteHook:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--cov=moai_adk.core.hooks.post_tool_auto_spec_completion", "--cov-report=term-missing"])
+    pytest.main(
+        [__file__, "-v", "--cov=moai_adk.core.hooks.post_tool_auto_spec_completion", "--cov-report=term-missing"]
+    )

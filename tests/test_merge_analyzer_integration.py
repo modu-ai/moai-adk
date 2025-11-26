@@ -36,9 +36,7 @@ class TestMergeAnalyzerIntegration:
 
             # Setup backup with user configuration
             backup_path.mkdir()
-            (backup_path / "CLAUDE.md").write_text(
-                "# Old Project\n\nUser customizations preserved"
-            )
+            (backup_path / "CLAUDE.md").write_text("# Old Project\n\nUser customizations preserved")
             (backup_path / ".claude").mkdir(parents=True)
             (backup_path / ".claude/settings.json").write_text(
                 json.dumps(
@@ -173,16 +171,12 @@ class TestMergeAnalyzerIntegration:
 
             # File 3 (ANALYZED_FILES): Only in backup
             (backup_path / ".claude").mkdir()
-            (backup_path / ".claude/settings.json").write_text(
-                json.dumps({"old": "config"}, indent=2)
-            )
+            (backup_path / ".claude/settings.json").write_text(json.dumps({"old": "config"}, indent=2))
 
             # File 4 (ANALYZED_FILES): Only in template
             (template_path / ".moai").mkdir()
             (template_path / ".moai/config").mkdir()
-            (template_path / ".moai/config/config.json").write_text(
-                json.dumps({"version": "0.26.0"}, indent=2)
-            )
+            (template_path / ".moai/config/config.json").write_text(json.dumps({"version": "0.26.0"}, indent=2))
 
             analyzer = MergeAnalyzer(project_path)
             diff_files = analyzer._collect_diff_files(backup_path, template_path)
@@ -197,9 +191,7 @@ class TestMergeAnalyzerIntegration:
             assert not diff_files["CLAUDE.md"]["has_diff"]  # No change
             assert diff_files[".gitignore"]["has_diff"]  # Minor change
             assert diff_files[".claude/settings.json"]["backup_exists"]  # Only in backup
-            assert diff_files[".moai/config/config.json"][
-                "template_exists"
-            ]  # Only in template
+            assert diff_files[".moai/config/config.json"]["template_exists"]  # Only in template
 
     @patch("rich.console.Console.print")
     def test_display_analysis_with_multiple_files(self, mock_print):
@@ -269,9 +261,7 @@ class TestMergeAnalyzerIntegration:
 
             analyzer = MergeAnalyzer(Path(tmpdir))
             diff_files = analyzer._collect_diff_files(backup_path, template_path)
-            prompt = analyzer._create_analysis_prompt(
-                backup_path, template_path, diff_files
-            )
+            prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
 
             # Verify files are mentioned in prompt
             assert "CLAUDE.md" in prompt
@@ -311,8 +301,7 @@ class TestMergeAnalyzerIntegration:
                 json.dumps(
                     {
                         "version": "0.26.0",
-                        "fields": ["a", "b", "c", "d", "e"]
-                        * 5,  # Ensure > 10 lines diff
+                        "fields": ["a", "b", "c", "d", "e"] * 5,  # Ensure > 10 lines diff
                     },
                     indent=2,
                 )
@@ -320,9 +309,7 @@ class TestMergeAnalyzerIntegration:
 
             analyzer = MergeAnalyzer(project_path)
             diff_files = analyzer._collect_diff_files(backup_path, template_path)
-            fallback = analyzer._fallback_analysis(
-                backup_path, template_path, diff_files
-            )
+            fallback = analyzer._fallback_analysis(backup_path, template_path, diff_files)
 
             # Verify config file is analyzed
             assert len(fallback["files"]) > 0

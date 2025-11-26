@@ -15,7 +15,7 @@ import time
 import unittest
 
 # Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from moai_adk.core.robust_json_parser import (
     ErrorSeverity,
@@ -42,9 +42,9 @@ class TestRobustJSONParser(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.recovery_attempts, 0)
         self.assertEqual(result.severity, ErrorSeverity.LOW)
-        self.assertEqual(result.data['name'], 'test')
-        self.assertEqual(result.data['value'], 123)
-        self.assertTrue(result.data['active'])
+        self.assertEqual(result.data["name"], "test")
+        self.assertEqual(result.data["value"], 123)
+        self.assertTrue(result.data["active"])
 
     def test_missing_quotes_recovery(self):
         """Test recovery of missing quotes around property names"""
@@ -52,7 +52,7 @@ class TestRobustJSONParser(unittest.TestCase):
             '{name: "test", value: 123}',
             '{ "name": "test", age: 30 }',
             '{"person": {name: "John", age: 25}}',
-            '{items: [1, 2, 3], count: 3}',
+            "{items: [1, 2, 3], count: 3}",
         ]
 
         for test_json in test_cases:
@@ -60,13 +60,13 @@ class TestRobustJSONParser(unittest.TestCase):
                 result = self.parser.parse(test_json)
                 self.assertTrue(result.success, f"Failed to parse: {test_json}")
                 self.assertGreater(result.recovery_attempts, 0)
-                self.assertTrue(any('quotes' in warning.lower() for warning in result.warnings))
+                self.assertTrue(any("quotes" in warning.lower() for warning in result.warnings))
 
     def test_trailing_comma_recovery(self):
         """Test recovery of trailing commas in objects and arrays"""
         test_cases = [
             '{"name": "test", "value": 123,}',
-            '[1, 2, 3,]',
+            "[1, 2, 3,]",
             '{"items": [1, 2,], "count": 2}',
             '{"nested": {"a": 1, "b": 2,}, "valid": true}',
         ]
@@ -76,7 +76,7 @@ class TestRobustJSONParser(unittest.TestCase):
                 result = self.parser.parse(test_json)
                 self.assertTrue(result.success, f"Failed to parse: {test_json}")
                 self.assertGreater(result.recovery_attempts, 0)
-                self.assertTrue(any('comma' in warning.lower() for warning in result.warnings))
+                self.assertTrue(any("comma" in warning.lower() for warning in result.warnings))
 
     def test_escape_sequence_recovery(self):
         """Test recovery of invalid escape sequences"""
@@ -97,7 +97,7 @@ class TestRobustJSONParser(unittest.TestCase):
         test_cases = [
             '{"name": "test"',
             '{"items": [1, 2, 3]',
-            '[1, 2, 3',
+            "[1, 2, 3",
             '{"nested": {"a": 1}',
         ]
 
@@ -106,8 +106,9 @@ class TestRobustJSONParser(unittest.TestCase):
                 result = self.parser.parse(test_json)
                 self.assertTrue(result.success, f"Failed to parse: {test_json}")
                 self.assertGreater(result.recovery_attempts, 0)
-                self.assertTrue(any('brace' in warning.lower() or 'bracket' in warning.lower()
-                                for warning in result.warnings))
+                self.assertTrue(
+                    any("brace" in warning.lower() or "bracket" in warning.lower() for warning in result.warnings)
+                )
 
     def test_single_quote_recovery(self):
         """Test recovery of single quotes instead of double quotes"""
@@ -130,7 +131,7 @@ class TestRobustJSONParser(unittest.TestCase):
 
         self.assertTrue(result.success)
         self.assertGreater(result.recovery_attempts, 0)
-        self.assertTrue(any('control' in warning.lower() for warning in result.warnings))
+        self.assertTrue(any("control" in warning.lower() for warning in result.warnings))
 
     def test_complex_multiple_errors(self):
         """Test recovery of JSON with multiple types of errors"""
@@ -173,7 +174,7 @@ class TestRobustJSONParser(unittest.TestCase):
             None,
             123,
             [],
-            {'key': 'value'},  # Dict instead of string
+            {"key": "value"},  # Dict instead of string
         ]
 
         for invalid_input in invalid_inputs:
@@ -185,9 +186,9 @@ class TestRobustJSONParser(unittest.TestCase):
     def test_empty_and_whitespace_inputs(self):
         """Test handling of empty and whitespace-only inputs"""
         test_cases = [
-            '',
-            '   ',
-            '\n\t  ',
+            "",
+            "   ",
+            "\n\t  ",
         ]
 
         for test_json in test_cases:
@@ -199,11 +200,8 @@ class TestRobustJSONParser(unittest.TestCase):
         """Test performance with large JSON objects"""
         # Create a large JSON object
         large_data = {
-            'users': [
-                {'id': i, 'name': f'user_{i}', 'data': list(range(100))}
-                for i in range(1000)
-            ],
-            'metadata': {'total': 1000, 'page': 1}
+            "users": [{"id": i, "name": f"user_{i}", "data": list(range(100))} for i in range(1000)],
+            "metadata": {"total": 1000, "page": 1},
         }
 
         large_json = json.dumps(large_data)
@@ -218,17 +216,7 @@ class TestRobustJSONParser(unittest.TestCase):
 
     def test_nested_structures(self):
         """Test parsing of deeply nested JSON structures"""
-        nested_json = {
-            'level1': {
-                'level2': {
-                    'level3': {
-                        'level4': {
-                            'level5': 'deep_value'
-                        }
-                    }
-                }
-            }
-        }
+        nested_json = {"level1": {"level2": {"level3": {"level4": {"level5": "deep_value"}}}}}
 
         # Test with valid nested JSON
         valid_json = json.dumps(nested_json)
@@ -292,18 +280,18 @@ class TestRobustJSONParser(unittest.TestCase):
 
         # Perform some parses
         self.parser.parse('{"valid": true}')  # Should succeed
-        self.parser.parse('{invalid: json}')  # Should recover
-        self.parser.parse('not json at all')  # Should fail
+        self.parser.parse("{invalid: json}")  # Should recover
+        self.parser.parse("not json at all")  # Should fail
 
         stats = self.parser.get_stats()
 
-        self.assertEqual(stats['total_parses'], 3)
-        self.assertEqual(stats['successful_parses'], 1)
-        self.assertEqual(stats['recovered_parses'], 1)
-        self.assertEqual(stats['failed_parses'], 1)
-        self.assertEqual(stats['success_rate'], 2/3)
-        self.assertEqual(stats['recovery_rate'], 1/3)
-        self.assertEqual(stats['failure_rate'], 1/3)
+        self.assertEqual(stats["total_parses"], 3)
+        self.assertEqual(stats["successful_parses"], 1)
+        self.assertEqual(stats["recovered_parses"], 1)
+        self.assertEqual(stats["failed_parses"], 1)
+        self.assertEqual(stats["success_rate"], 2 / 3)
+        self.assertEqual(stats["recovery_rate"], 1 / 3)
+        self.assertEqual(stats["failure_rate"], 1 / 3)
 
     def test_convenience_functions(self):
         """Test the convenience functions"""
@@ -318,11 +306,11 @@ class TestRobustJSONParser(unittest.TestCase):
         # Test reset function
         reset_parser_stats()
         stats = get_parser_stats()
-        self.assertEqual(stats['total_parses'], 0)
+        self.assertEqual(stats["total_parses"], 0)
 
     def test_context_parameter(self):
         """Test that context parameter is properly handled"""
-        context = {'source': 'unit_test', 'attempt': 1}
+        context = {"source": "unit_test", "attempt": 1}
         result = self.parser.parse('{"test": true}', context=context)
         self.assertTrue(result.success)
 
@@ -348,7 +336,7 @@ class TestRobustJSONParser(unittest.TestCase):
         limited_parser = RobustJSONParser(max_recovery_attempts=1)
 
         # Parse something that requires multiple recovery attempts
-        result = limited_parser.parse('{missing: quotes, trailing: comma,}')
+        result = limited_parser.parse("{missing: quotes, trailing: comma,}")
 
         # Should succeed but with limited attempts
         self.assertTrue(result.success)
@@ -422,13 +410,13 @@ class TestEdgeCases(unittest.TestCase):
 
         result = self.parser.parse(test_json)
         self.assertTrue(result.success)
-        self.assertEqual(len(result.data['long_string']), 10000)
+        self.assertEqual(len(result.data["long_string"]), 10000)
 
     def test_unicode_edge_cases(self):
         """Test Unicode edge cases"""
         test_cases = [
-            '{"zero_width": "\u200B"}',
-            '{"surrogate": "\uD83D\uDE00"}',  # Emoji surrogate pair
+            '{"zero_width": "\u200b"}',
+            '{"surrogate": "\ud83d\ude00"}',  # Emoji surrogate pair
             '{"invalid_unicode": "\\uXYZ"}',  # Invalid Unicode sequence
         ]
 
@@ -455,10 +443,10 @@ def run_performance_benchmark():
     parser = RobustJSONParser(enable_logging=False)
 
     test_cases = [
-        ('Valid JSON', '{"test": true, "number": 123}'),
-        ('Missing Quotes', '{name: "test", value: 123}'),
-        ('Trailing Comma', '{"test": true, "number": 123,}'),
-        ('Mixed Errors', '{name: "test", value: 123,}'),
+        ("Valid JSON", '{"test": true, "number": 123}'),
+        ("Missing Quotes", '{name: "test", value: 123}'),
+        ("Trailing Comma", '{"test": true, "number": 123,}'),
+        ("Mixed Errors", '{name: "test", value: 123,}'),
     ]
 
     print("\nPerformance Benchmark:")
@@ -477,7 +465,7 @@ def run_performance_benchmark():
         print(f"{name:20}: {avg_time:6.2f}ms avg, {success_rate:5.1%} success rate")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run unit tests
     print("Running Robust JSON Parser Unit Tests...")
     print("=" * 60)

@@ -53,10 +53,7 @@ class TestGLMSetup:
 
             # Create minimal settings.local.json
             settings_path = claude_dir / "settings.local.json"
-            settings_path.write_text(json.dumps({
-                "companyAnnouncements": [],
-                "permissions": {}
-            }, indent=2))
+            settings_path.write_text(json.dumps({"companyAnnouncements": [], "permissions": {}}, indent=2))
 
             # Create .gitignore
             gitignore_path = project_root / ".gitignore"
@@ -103,7 +100,7 @@ class TestGLMSetup:
             "ANTHROPIC_BASE_URL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL"
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
         ]
 
         for key in required_keys:
@@ -209,10 +206,7 @@ class TestGLMTokenResolution:
 
             # Create settings.local.json
             settings_path = claude_dir / "settings.local.json"
-            settings_path.write_text(json.dumps({
-                "companyAnnouncements": [],
-                "permissions": {}
-            }, indent=2))
+            settings_path.write_text(json.dumps({"companyAnnouncements": [], "permissions": {}}, indent=2))
 
             # Create existing .env.glm with different token
             env_glm_path = project_root / ".env.glm"

@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 # Add the modules directory to the path
-sys.path.insert(0, str(Path(__file__).parent / 'modules'))
+sys.path.insert(0, str(Path(__file__).parent / "modules"))
 
 try:
     import documentation_manager
@@ -46,16 +46,12 @@ class DemoRunner:
 
         # Initialize configuration
         self.config = {
-            "project": {
-                "name": "MoAI Menu Project Demo",
-                "type": "web_application",
-                "version": "1.0.0"
-            },
+            "project": {"name": "MoAI Menu Project Demo", "type": "web_application", "version": "1.0.0"},
             "language": {
                 "conversation_language": "ko",
                 "documentation_language": "ko",
-                "supported_languages": ["en", "ko", "ja", "zh"]
-            }
+                "supported_languages": ["en", "ko", "ja", "zh"],
+            },
         }
 
         # Initialize managers
@@ -75,9 +71,7 @@ class DemoRunner:
 
         # Initialize language configuration
         lang_result = self.lang_init.initialize_language_configuration(
-            language="ko",
-            user_name="데모 사용자",
-            domains=["backend", "frontend", "mobile"]
+            language="ko", user_name="데모 사용자", domains=["backend", "frontend", "mobile"]
         )
 
         # Initialize documentation structure
@@ -98,7 +92,7 @@ class DemoRunner:
             "language_configured": lang_result is not None,
             "docs_initialized": isinstance(docs_result, dict),
             "multilingual_created": isinstance(multilingual_result, dict),
-            "templates_analyzed": isinstance(analysis, dict)
+            "templates_analyzed": isinstance(analysis, dict),
         }
 
         print(f"✅ Initialization completed in {duration:.2f} seconds")
@@ -130,40 +124,31 @@ class DemoRunner:
                 "비밀번호 재설정 기능",
                 "소셜 로그인 연동 (Google, GitHub)",
                 "보안 로그인 시도 제한",
-                "사용자 프로필 관리"
+                "사용자 프로필 관리",
             ],
             "api_endpoints": [
                 {
                     "path": "/api/auth/register",
                     "method": "POST",
                     "description": "신규 사용자 등록",
-                    "parameters": {
-                        "email": "string",
-                        "password": "string",
-                        "name": "string"
-                    }
+                    "parameters": {"email": "string", "password": "string", "name": "string"},
                 },
                 {
                     "path": "/api/auth/login",
                     "method": "POST",
                     "description": "사용자 로그인",
-                    "parameters": {
-                        "email": "string",
-                        "password": "string"
-                    }
+                    "parameters": {"email": "string", "password": "string"},
                 },
                 {
                     "path": "/api/auth/refresh",
                     "method": "POST",
                     "description": "JWT 토큰 갱신",
-                    "parameters": {
-                        "refresh_token": "string"
-                    }
-                }
+                    "parameters": {"refresh_token": "string"},
+                },
             ],
             "status": "Planned",
             "priority": "High",
-            "estimated_days": 5
+            "estimated_days": 5,
         }
 
         print("📝 Generating documentation from SPEC...")
@@ -182,7 +167,7 @@ class DemoRunner:
             "success": True,
             "duration": duration,
             "spec_docs_generated": isinstance(docs_result, dict),
-            "export_successful": export_result.get("success", True)
+            "export_successful": export_result.get("success", True),
         }
 
         print(f"✅ Documentation generated in {duration:.2f} seconds")
@@ -215,10 +200,7 @@ class DemoRunner:
             print(f"🔤 Testing {lang.upper()} language support...")
 
             # Update language settings
-            lang_updates = {
-                "language.conversation_language": lang,
-                "language.documentation_language": lang
-            }
+            lang_updates = {"language.conversation_language": lang, "language.documentation_language": lang}
 
             update_result = self.lang_init.update_language_settings(lang_updates)
 
@@ -317,12 +299,12 @@ Complex template logic:
     {% endif %}
 {% endif %}
 
-            """
+            """,
         }
 
         template_count = 0
         for template_name, content in test_templates.items():
-            (templates_dir / template_name).write_text(content, encoding='utf-8')
+            (templates_dir / template_name).write_text(content, encoding="utf-8")
             template_count += 1
 
         print(f"📝 Created {template_count} test templates for optimization")
@@ -355,7 +337,7 @@ Complex template logic:
             "backup_first": True,
             "apply_size_optimizations": True,
             "apply_performance_optimizations": True,
-            "apply_complexity_optimizations": True
+            "apply_complexity_optimizations": True,
         }
 
         opt_result = self.template_opt.create_optimized_templates(optimization_options)
@@ -366,7 +348,7 @@ Complex template logic:
             "analysis_time": analysis_time,
             "optimization_time": opt_time,
             "files_analyzed": analyzed_files,
-            "optimizations_applied": len(opt_result.get("optimization_results", {})) > 0
+            "optimizations_applied": len(opt_result.get("optimization_results", {})) > 0,
         }
 
         print(f"✅ Optimization completed in {opt_time:.2f} seconds")
@@ -403,9 +385,7 @@ Complex template logic:
         # Step 1: Language setup with Japanese
         step1_start = time.time()
         lang_result = self.lang_init.initialize_language_configuration(
-            language="ja",
-            user_name="統合テストユーザー",
-            domains=["fullstack"]
+            language="ja", user_name="統合テストユーザー", domains=["fullstack"]
         )
         step1_time = time.time() - step1_start
         workflow_steps.append(("Language Configuration (Japanese)", step1_time, lang_result is not None))
@@ -423,9 +403,7 @@ Complex template logic:
             "title": "統合テスト機能",
             "description": "Integration test feature with multilingual support",
             "requirements": ["要件 1", "要件 2", "要件 3"],
-            "api_endpoints": [
-                {"path": "/api/integration", "method": "GET", "description": "統合エンドポイント"}
-            ]
+            "api_endpoints": [{"path": "/api/integration", "method": "GET", "description": "統合エンドポイント"}],
         }
         spec_result = self.doc_manager.generate_documentation_from_spec(spec_data)
         step3_time = time.time() - step3_start
@@ -448,7 +426,7 @@ Complex template logic:
         self.results["integration_workflow"] = {
             "total_time": total_time,
             "steps_completed": len(workflow_steps),
-            "successful_steps": sum(1 for _, _, success in workflow_steps if success)
+            "successful_steps": sum(1 for _, _, success in workflow_steps if success),
         }
 
         print(f"✅ Integration workflow completed in {total_time:.2f} seconds")
@@ -546,6 +524,7 @@ Complex template logic:
         except Exception as e:
             print(f"❌ Demo failed with error: {e}")
             import traceback
+
             traceback.print_exc()
 
         finally:

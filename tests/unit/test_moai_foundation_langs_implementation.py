@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 @dataclass
 class LanguageInfo:
     """Language information structure."""
+
     name: str
     version: str
     is_supported: bool = True
@@ -37,6 +38,7 @@ class LanguageInfo:
 @dataclass
 class Pattern:
     """Pattern structure for recommendations."""
+
     pattern_type: str  # "best_practice" or "anti_pattern"
     language: str
     description: str
@@ -124,9 +126,7 @@ class TestBestPracticePatterns:
     def test_identify_async_pattern_python(self):
         """Test identification of async/await as best practice."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern(
-            "async def fetch_user(): return await db.get_user()"
-        )
+        pattern = analyzer.identify_pattern("async def fetch_user(): return await db.get_user()")
 
         assert pattern is not None
         assert pattern.pattern_type == "best_practice"
@@ -135,9 +135,7 @@ class TestBestPracticePatterns:
     def test_identify_type_hints_pattern_python(self):
         """Test identification of type hints as best practice."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern(
-            "def create_user(name: str, age: int) -> User:"
-        )
+        pattern = analyzer.identify_pattern("def create_user(name: str, age: int) -> User:")
 
         assert pattern is not None
         assert pattern.pattern_type == "best_practice"
@@ -145,9 +143,7 @@ class TestBestPracticePatterns:
     def test_type_safety_pattern_typescript(self):
         """Test strict typing as best practice."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern(
-            "interface User { name: string; email: string; }"
-        )
+        pattern = analyzer.identify_pattern("interface User { name: string; email: string; }")
 
         assert pattern is not None
         assert "type" in pattern.description.lower()
@@ -159,9 +155,7 @@ class TestAntiPatternDetection:
     def test_detect_callback_hell_javascript(self):
         """Test detection of callback hell anti-pattern."""
         detector = AntiPatternDetector()
-        pattern = detector.detect_anti_pattern(
-            "callback(error, result => { callback2(null, x => {...}); });"
-        )
+        pattern = detector.detect_anti_pattern("callback(error, result => { callback2(null, x => {...}); });")
 
         assert pattern is not None
         assert pattern.pattern_type == "anti_pattern"
@@ -170,9 +164,7 @@ class TestAntiPatternDetection:
     def test_detect_global_state_python(self):
         """Test detection of mutable global state."""
         detector = AntiPatternDetector()
-        pattern = detector.detect_anti_pattern(
-            "GLOBAL_STATE = {}\ndef update(): GLOBAL_STATE['x'] = 1"
-        )
+        pattern = detector.detect_anti_pattern("GLOBAL_STATE = {}\ndef update(): GLOBAL_STATE['x'] = 1")
 
         assert pattern is not None
         assert pattern.pattern_type == "anti_pattern"
@@ -182,9 +174,7 @@ class TestAntiPatternDetection:
         """Test detection of SQL injection risk."""
         detector = AntiPatternDetector()
         user_id = 123  # Define user_id for the test
-        pattern = detector.detect_anti_pattern(
-            f"query = f'SELECT * FROM users WHERE id = {user_id}'"
-        )
+        pattern = detector.detect_anti_pattern(f"query = f'SELECT * FROM users WHERE id = {user_id}'")
 
         assert pattern is not None
         assert pattern.severity in ["high", "critical"]
@@ -303,7 +293,8 @@ class LanguageVersionDetector:
     def detect(self, language_version_str: str) -> LanguageInfo:
         """Detect language and version, return LanguageInfo."""
         import re
-        match = re.match(r'(\w+)\s+([\d.]+|\w+\d+)', language_version_str)
+
+        match = re.match(r"(\w+)\s+([\d.]+|\w+\d+)", language_version_str)
         if not match:
             return LanguageInfo(name="Unknown", version="unknown", is_supported=False)
 
@@ -321,7 +312,7 @@ class LanguageVersionDetector:
             is_supported=is_supported,
             tier=lang_info.get("tier"),
             frameworks=[],
-            features=[]
+            features=[],
         )
 
     def _check_version_support(self, language: str, version: str) -> bool:
@@ -359,21 +350,21 @@ class PatternAnalyzer:
                 pattern_type="best_practice",
                 language="Python/JavaScript",
                 description="Async/await pattern for non-blocking I/O",
-                example=code
+                example=code,
             )
         if ":" in code and "->" in code:
             return Pattern(
                 pattern_type="best_practice",
                 language="Python",
                 description="Type hints for better code clarity",
-                example=code
+                example=code,
             )
         if "interface" in code or "type" in code:
             return Pattern(
                 pattern_type="best_practice",
                 language="TypeScript",
                 description="Type definitions for type safety",
-                example=code
+                example=code,
             )
         return None
 
@@ -390,7 +381,7 @@ class AntiPatternDetector:
                 description="Callback hell - deeply nested callbacks",
                 example=code,
                 severity="high",
-                alternative="Use async/await or Promises"
+                alternative="Use async/await or Promises",
             )
         if "GLOBAL_STATE" in code or "global " in code:
             return Pattern(
@@ -399,7 +390,7 @@ class AntiPatternDetector:
                 description="Mutable global state",
                 example=code,
                 severity="medium",
-                alternative="Use dependency injection or functional patterns"
+                alternative="Use dependency injection or functional patterns",
             )
         if f"f'" in code or f'f"' in code and "FROM" in code.upper():
             return Pattern(
@@ -408,7 +399,7 @@ class AntiPatternDetector:
                 description="SQL injection risk - using f-strings in SQL",
                 example=code,
                 severity="critical",
-                alternative="Use parameterized queries with ORM"
+                alternative="Use parameterized queries with ORM",
             )
         return None
 
@@ -424,7 +415,7 @@ class EcosystemAnalyzer:
                 version="3.12",
                 tier="Tier 1",
                 frameworks=["FastAPI", "Django"],
-                features=["async", "type hints", "dataclasses"]
+                features=["async", "type hints", "dataclasses"],
             )
         return None
 
@@ -447,19 +438,19 @@ class PerformanceOptimizer:
             "Use async/await for I/O operations",
             "Batch database operations",
             "Use connection pooling",
-            "Profile code with cProfile"
+            "Profile code with cProfile",
         ],
         "TypeScript": [
             "Enable strict mode for better optimization",
             "Use const assertions for literals",
             "Tree-shake unused code",
-            "Optimize bundle size"
+            "Optimize bundle size",
         ],
         "Go": [
             "Use goroutines for concurrency",
             "Implement connection pooling",
             "Use buffered channels",
-            "Profile with pprof"
+            "Profile with pprof",
         ],
     }
 
@@ -472,22 +463,14 @@ class TestingStrategyAdvisor:
     """Provides testing strategy recommendations."""
 
     STRATEGIES = {
-        "Python": {
-            "framework": "pytest",
-            "features": "async support, fixtures, parametrization"
-        },
-        "TypeScript": {
-            "framework": "Vitest/Jest",
-            "features": "snapshot testing, coverage reporting"
-        },
-        "Go": {
-            "framework": "testing + testify",
-            "features": "assertions, mocking, test helpers"
-        },
+        "Python": {"framework": "pytest", "features": "async support, fixtures, parametrization"},
+        "TypeScript": {"framework": "Vitest/Jest", "features": "snapshot testing, coverage reporting"},
+        "Go": {"framework": "testing + testify", "features": "assertions, mocking, test helpers"},
     }
 
     def get_strategy(self, language: str):
         """Get testing strategy for a language."""
+
         class TestingStrategy:
             def __init__(self, framework, features):
                 self.framework = framework

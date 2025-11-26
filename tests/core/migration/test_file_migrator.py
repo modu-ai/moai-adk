@@ -61,9 +61,7 @@ class TestFileMigratorInit:
 class TestCreateDirectory:
     """Test directory creation"""
 
-    def test_create_directory_creates_new_directory(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_create_directory_creates_new_directory(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should create new directory"""
         new_dir = tmp_path / "new_directory"
         result = migrator.create_directory(new_dir)
@@ -72,9 +70,7 @@ class TestCreateDirectory:
         assert new_dir.exists()
         assert new_dir.is_dir()
 
-    def test_create_directory_creates_nested_directories(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_create_directory_creates_nested_directories(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should create nested directories"""
         nested_dir = tmp_path / "level1" / "level2" / "level3"
         result = migrator.create_directory(nested_dir)
@@ -84,9 +80,7 @@ class TestCreateDirectory:
         assert (tmp_path / "level1").exists()
         assert (tmp_path / "level1" / "level2").exists()
 
-    def test_create_directory_handles_existing_directory(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_create_directory_handles_existing_directory(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should handle existing directory without error"""
         existing_dir = tmp_path / "existing"
         existing_dir.mkdir()
@@ -96,9 +90,7 @@ class TestCreateDirectory:
         assert result is True
         assert existing_dir.exists()
 
-    def test_create_directory_tracks_created_dirs(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_create_directory_tracks_created_dirs(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should track created directories"""
         dir1 = tmp_path / "dir1"
         dir2 = tmp_path / "dir2"
@@ -110,9 +102,7 @@ class TestCreateDirectory:
         assert str(dir2) in migrator.created_dirs
         assert len(migrator.created_dirs) == 2
 
-    def test_create_directory_handles_invalid_path(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_create_directory_handles_invalid_path(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should handle invalid path gracefully"""
         # Try to create directory in non-writable location (on most systems)
         invalid_dir = Path("/root/impossible/directory")
@@ -124,9 +114,7 @@ class TestCreateDirectory:
 class TestMoveFile:
     """Test file moving operations"""
 
-    def test_move_file_copies_file_by_default(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_move_file_copies_file_by_default(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should copy file by default (copy_instead=True)"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "dest" / "file1.txt"
@@ -138,9 +126,7 @@ class TestMoveFile:
         assert source.exists()  # Original should still exist (copy)
         assert "content 1" in dest.read_text()
 
-    def test_move_file_moves_when_copy_instead_false(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_move_file_moves_when_copy_instead_false(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should move file when copy_instead=False"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "dest" / "file1.txt"
@@ -151,9 +137,7 @@ class TestMoveFile:
         assert dest.exists()
         assert not source.exists()  # Original should be moved
 
-    def test_move_file_creates_parent_directories(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_move_file_creates_parent_directories(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should create parent directories automatically"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "deep" / "nested" / "path" / "file1.txt"
@@ -164,9 +148,7 @@ class TestMoveFile:
         assert dest.exists()
         assert (project_structure / "deep" / "nested" / "path").exists()
 
-    def test_move_file_returns_false_if_source_missing(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_move_file_returns_false_if_source_missing(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should return False if source doesn't exist"""
         source = tmp_path / "nonexistent.txt"
         dest = tmp_path / "dest.txt"
@@ -176,9 +158,7 @@ class TestMoveFile:
         assert result is False
         assert not dest.exists()
 
-    def test_move_file_skips_if_destination_exists(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_move_file_skips_if_destination_exists(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should skip if destination already exists"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "dest.txt"
@@ -191,9 +171,7 @@ class TestMoveFile:
         assert result is True
         assert "existing content" in dest.read_text()  # Not overwritten
 
-    def test_move_file_tracks_operations(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_move_file_tracks_operations(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should track move operations"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "dest.txt"
@@ -204,9 +182,7 @@ class TestMoveFile:
         assert migrator.moved_files[0]["from"] == str(source)
         assert migrator.moved_files[0]["to"] == str(dest)
 
-    def test_move_file_preserves_file_metadata(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_move_file_preserves_file_metadata(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should preserve file metadata when copying"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "dest.txt"
@@ -222,9 +198,7 @@ class TestMoveFile:
 class TestDeleteFile:
     """Test file deletion"""
 
-    def test_delete_file_removes_file(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_delete_file_removes_file(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should delete file"""
         file_path = project_structure / "src" / "file1.txt"
 
@@ -234,9 +208,7 @@ class TestDeleteFile:
         assert result is True
         assert not file_path.exists()
 
-    def test_delete_file_returns_true_if_already_deleted(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_delete_file_returns_true_if_already_deleted(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should return True if file already deleted"""
         file_path = tmp_path / "nonexistent.txt"
 
@@ -244,9 +216,7 @@ class TestDeleteFile:
 
         assert result is True
 
-    def test_delete_file_safe_mode_allows_safe_patterns(
-        self, migrator: FileMigrator
-    ) -> None:
+    def test_delete_file_safe_mode_allows_safe_patterns(self, migrator: FileMigrator) -> None:
         """Should allow deletion of safe files in safe mode"""
         # Create safe file relative to project root
         safe_file = migrator.project_root / ".moai" / "config.json"
@@ -270,9 +240,7 @@ class TestDeleteFile:
         assert result is False
         assert unsafe_file.exists()  # Should not be deleted
 
-    def test_delete_file_handles_errors_gracefully(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_delete_file_handles_errors_gracefully(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should handle deletion errors gracefully"""
         # Test with a directory instead of file (should fail gracefully)
         dir_path = tmp_path / "directory"
@@ -288,9 +256,7 @@ class TestDeleteFile:
 class TestExecuteMigrationPlan:
     """Test migration plan execution"""
 
-    def test_execute_migration_plan_creates_directories(
-        self, migrator: FileMigrator
-    ) -> None:
+    def test_execute_migration_plan_creates_directories(self, migrator: FileMigrator) -> None:
         """Should create directories from plan"""
         plan: Dict[str, Any] = {
             "create": ["new_dir1", "new_dir2/nested"],
@@ -305,9 +271,7 @@ class TestExecuteMigrationPlan:
         assert (migrator.project_root / "new_dir1").exists()
         assert (migrator.project_root / "new_dir2" / "nested").exists()
 
-    def test_execute_migration_plan_moves_files(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_execute_migration_plan_moves_files(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should move files from plan"""
         plan: Dict[str, Any] = {
             "create": [],
@@ -327,9 +291,7 @@ class TestExecuteMigrationPlan:
         assert results["moved_files"] == 1
         assert (migrator.project_root / "dest" / "file1.txt").exists()
 
-    def test_execute_migration_plan_handles_errors(
-        self, migrator: FileMigrator
-    ) -> None:
+    def test_execute_migration_plan_handles_errors(self, migrator: FileMigrator) -> None:
         """Should track errors in plan execution"""
         plan: Dict[str, Any] = {
             "create": [],
@@ -355,9 +317,7 @@ class TestExecuteMigrationPlan:
         """Should return comprehensive execution results"""
         plan: Dict[str, Any] = {
             "create": ["new_dir"],
-            "move": [
-                {"from": "src/file1.txt", "to": "dest.txt", "description": "Move file"}
-            ],
+            "move": [{"from": "src/file1.txt", "to": "dest.txt", "description": "Move file"}],
             "cleanup": [],
         }
 
@@ -369,9 +329,7 @@ class TestExecuteMigrationPlan:
         assert "cleaned_files" in results
         assert "errors" in results
 
-    def test_execute_migration_plan_with_empty_plan(
-        self, migrator: FileMigrator
-    ) -> None:
+    def test_execute_migration_plan_with_empty_plan(self, migrator: FileMigrator) -> None:
         """Should handle empty plan"""
         plan: Dict[str, Any] = {"create": [], "move": [], "cleanup": []}
 
@@ -386,9 +344,7 @@ class TestExecuteMigrationPlan:
 class TestCleanupOldFiles:
     """Test cleanup operations"""
 
-    def test_cleanup_old_files_removes_safe_files(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_cleanup_old_files_removes_safe_files(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should remove safe files (uses safe patterns)"""
         # Create safe files that match safe patterns
         (tmp_path / ".moai").mkdir()
@@ -404,9 +360,7 @@ class TestCleanupOldFiles:
         assert not (tmp_path / ".moai" / "config.json").exists()
         assert not (tmp_path / ".claude" / "statusline-config.yaml").exists()
 
-    def test_cleanup_old_files_dry_run_does_not_delete(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_cleanup_old_files_dry_run_does_not_delete(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should not delete files in dry run mode"""
         (tmp_path / ".moai").mkdir()
         (tmp_path / ".moai" / "config.json").write_text("{}")
@@ -418,9 +372,7 @@ class TestCleanupOldFiles:
         assert cleaned == 1
         assert (tmp_path / ".moai" / "config.json").exists()  # Still exists
 
-    def test_cleanup_old_files_counts_nonexistent_as_cleaned(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_cleanup_old_files_counts_nonexistent_as_cleaned(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should count non-existent files as already cleaned"""
         # Safe patterns but files don't exist
         cleanup_list = [".moai/config.json", ".claude/statusline-config.yaml"]
@@ -430,9 +382,7 @@ class TestCleanupOldFiles:
         # delete_file returns True for non-existent files (already deleted)
         assert cleaned == 2
 
-    def test_cleanup_old_files_returns_count(
-        self, migrator: FileMigrator, tmp_path: Path
-    ) -> None:
+    def test_cleanup_old_files_returns_count(self, migrator: FileMigrator, tmp_path: Path) -> None:
         """Should return count of cleaned files (including already-deleted)"""
         # Create safe files
         (tmp_path / ".moai").mkdir()
@@ -451,9 +401,7 @@ class TestCleanupOldFiles:
         # All safe files count as cleaned (even non-existent ones)
         assert cleaned == 3
 
-    def test_cleanup_old_files_respects_safe_mode(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_cleanup_old_files_respects_safe_mode(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should respect safe mode and refuse unsafe files"""
         # Try to cleanup unsafe files (not in safe patterns)
         cleanup_list = ["src/file1.txt", "src/file2.json"]
@@ -469,9 +417,7 @@ class TestCleanupOldFiles:
 class TestGetMigrationSummary:
     """Test migration summary"""
 
-    def test_get_migration_summary_returns_summary(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_get_migration_summary_returns_summary(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should return migration summary"""
         # Perform some operations
         migrator.create_directory(project_structure / "new_dir")
@@ -488,9 +434,7 @@ class TestGetMigrationSummary:
         assert summary["moved_files"] == 1
         assert summary["created_directories"] == 1
 
-    def test_get_migration_summary_includes_operations(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_get_migration_summary_includes_operations(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should include detailed operations"""
         source = project_structure / "src" / "file1.txt"
         dest = project_structure / "dest.txt"
@@ -503,9 +447,7 @@ class TestGetMigrationSummary:
         assert summary["operations"][0]["from"] == str(source)
         assert summary["operations"][0]["to"] == str(dest)
 
-    def test_get_migration_summary_empty_when_no_operations(
-        self, migrator: FileMigrator
-    ) -> None:
+    def test_get_migration_summary_empty_when_no_operations(self, migrator: FileMigrator) -> None:
         """Should return empty summary when no operations"""
         summary = migrator.get_migration_summary()
 
@@ -517,9 +459,7 @@ class TestGetMigrationSummary:
 class TestFileMigratorIntegration:
     """Integration tests for full migration workflow"""
 
-    def test_full_migration_workflow(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_full_migration_workflow(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should complete full migration workflow"""
         # Define migration plan
         plan: Dict[str, Any] = {
@@ -561,9 +501,7 @@ class TestFileMigratorIntegration:
         assert summary["moved_files"] == 2
         assert summary["created_directories"] == 2
 
-    def test_migration_with_partial_failures(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_migration_with_partial_failures(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should handle partial failures gracefully"""
         plan: Dict[str, Any] = {
             "create": ["good_dir"],
@@ -589,9 +527,7 @@ class TestFileMigratorIntegration:
         assert results["moved_files"] == 1  # One file moved
         assert len(results["errors"]) == 1  # One error
 
-    def test_migration_tracking_across_operations(
-        self, migrator: FileMigrator, project_structure: Path
-    ) -> None:
+    def test_migration_tracking_across_operations(self, migrator: FileMigrator, project_structure: Path) -> None:
         """Should track operations across multiple calls"""
         # First operation
         migrator.create_directory(project_structure / "dir1")

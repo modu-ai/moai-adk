@@ -12,17 +12,29 @@ from enum import Enum
 
 # ========================= VERCEL TESTS =========================
 
+
 class TestVercelSkillMetadata:
     """Test moai-baas-vercel SKILL.md metadata compliance."""
 
     def test_vercel_skill_has_16_metadata_fields(self):
         """Verify Vercel skill has all 16 metadata fields."""
         metadata_fields = {
-            'name', 'description', 'version', 'modularized',
-            'last_updated', 'allowed_tools', 'compliance_score',
-            'category_tier', 'auto_trigger_keywords', 'agent_coverage',
-            'context7_references', 'invocation_api_version', 'dependencies',
-            'deprecated', 'modules', 'successor'
+            "name",
+            "description",
+            "version",
+            "modularized",
+            "last_updated",
+            "allowed_tools",
+            "compliance_score",
+            "category_tier",
+            "auto_trigger_keywords",
+            "agent_coverage",
+            "context7_references",
+            "invocation_api_version",
+            "dependencies",
+            "deprecated",
+            "modules",
+            "successor",
         }
         # All fields required
         assert len(metadata_fields) == 16
@@ -36,18 +48,15 @@ class TestVercelSkillMetadata:
 
     def test_vercel_skill_auto_trigger_keywords_minimum(self):
         """Verify Vercel skill has 8-15 auto-trigger keywords."""
-        keywords = [
-            'vercel', 'edge', 'deploy', 'serverless', 'next.js',
-            'functions', 'cdn', 'platform'
-        ]
+        keywords = ["vercel", "edge", "deploy", "serverless", "next.js", "functions", "cdn", "platform"]
         assert 8 <= len(keywords) <= 15
 
     def test_vercel_skill_context7_references(self):
         """Verify Vercel skill includes Context7 library references."""
         # Should reference Vercel, Next.js, Edge Runtime
         context7_refs = [
-            '/vercel/next.js',
-            '/vercel/vercel',
+            "/vercel/next.js",
+            "/vercel/vercel",
         ]
         assert len(context7_refs) >= 2
 
@@ -64,6 +73,7 @@ class TestVercelImplementation:
     @dataclass
     class VercelDeployment:
         """Model Vercel deployment configuration."""
+
         project_name: str
         git_url: str
         environment: str
@@ -77,7 +87,7 @@ class TestVercelImplementation:
             git_url="https://github.com/user/repo",
             environment="production",
             regions=["us-east-1", "eu-west-1"],
-            env_vars={"API_URL": "https://api.example.com"}
+            env_vars={"API_URL": "https://api.example.com"},
         )
         assert config.project_name == "my-app"
         assert config.environment == "production"
@@ -85,33 +95,25 @@ class TestVercelImplementation:
 
     def test_vercel_edge_function_deployment(self):
         """Test Edge Function deployment pattern."""
-        edge_function = {
-            'path': '/api/hello',
-            'runtime': 'edge',
-            'memory': 128,
-            'max_duration': 30
-        }
-        assert edge_function['runtime'] == 'edge'
-        assert edge_function['memory'] == 128
+        edge_function = {"path": "/api/hello", "runtime": "edge", "memory": 128, "max_duration": 30}
+        assert edge_function["runtime"] == "edge"
+        assert edge_function["memory"] == 128
 
     def test_vercel_environment_variables_validation(self):
         """Test validation of Vercel environment variables."""
-        env_vars = {
-            'API_URL': 'https://api.example.com',
-            'DATABASE_URL': 'postgresql://...',
-            'SECRET_KEY': 'secret'
-        }
+        env_vars = {"API_URL": "https://api.example.com", "DATABASE_URL": "postgresql://...", "SECRET_KEY": "secret"}
         # All required vars present
-        assert 'API_URL' in env_vars
-        assert 'DATABASE_URL' in env_vars
+        assert "API_URL" in env_vars
+        assert "DATABASE_URL" in env_vars
 
     def test_vercel_deployment_regions_coverage(self):
         """Test Vercel regional deployment coverage."""
-        regions = ['us-east-1', 'eu-west-1', 'ap-northeast-1']
+        regions = ["us-east-1", "eu-west-1", "ap-northeast-1"]
         assert len(regions) >= 1  # At least 1 region
 
 
 # ========================= NEON TESTS =========================
+
 
 class TestNeonSkillMetadata:
     """Test moai-baas-neon SKILL.md metadata compliance."""
@@ -130,15 +132,12 @@ class TestNeonSkillMetadata:
 
     def test_neon_auto_trigger_keywords(self):
         """Verify Neon skill has 8-15 auto-trigger keywords."""
-        keywords = [
-            'neon', 'postgresql', 'serverless', 'database',
-            'sql', 'connection', 'pooling', 'scale'
-        ]
+        keywords = ["neon", "postgresql", "serverless", "database", "sql", "connection", "pooling", "scale"]
         assert 8 <= len(keywords) <= 15
 
     def test_neon_context7_references(self):
         """Verify Neon skill includes Context7 references."""
-        refs = ['/neon/neon-serverless-postgres']
+        refs = ["/neon/neon-serverless-postgres"]
         assert len(refs) >= 1
 
 
@@ -148,6 +147,7 @@ class TestNeonImplementation:
     @dataclass
     class NeonConnectionConfig:
         """Model Neon database connection."""
+
         connection_string: str
         max_connections: int
         pool_idle_timeout: int
@@ -155,35 +155,26 @@ class TestNeonImplementation:
     def test_neon_connection_config(self):
         """Test creating Neon connection configuration."""
         config = self.NeonConnectionConfig(
-            connection_string="postgresql://user:pass@host/db",
-            max_connections=10,
-            pool_idle_timeout=300
+            connection_string="postgresql://user:pass@host/db", max_connections=10, pool_idle_timeout=300
         )
         assert "postgresql://" in config.connection_string
         assert config.max_connections > 0
 
     def test_neon_branching_feature(self):
         """Test Neon branching and cloning feature."""
-        branch = {
-            'name': 'dev-feature',
-            'parent': 'main',
-            'auto_delete': True
-        }
-        assert branch['name'] == 'dev-feature'
-        assert branch['parent'] == 'main'
+        branch = {"name": "dev-feature", "parent": "main", "auto_delete": True}
+        assert branch["name"] == "dev-feature"
+        assert branch["parent"] == "main"
 
     def test_neon_autoscaling_configuration(self):
         """Test Neon autoscaling settings."""
-        autoscale = {
-            'enabled': True,
-            'min_cu': 1,
-            'max_cu': 4
-        }
-        assert autoscale['enabled']
-        assert autoscale['min_cu'] < autoscale['max_cu']
+        autoscale = {"enabled": True, "min_cu": 1, "max_cu": 4}
+        assert autoscale["enabled"]
+        assert autoscale["min_cu"] < autoscale["max_cu"]
 
 
 # ========================= CLERK TESTS =========================
+
 
 class TestClerkSkillMetadata:
     """Test moai-baas-clerk SKILL.md metadata compliance."""
@@ -200,10 +191,7 @@ class TestClerkSkillMetadata:
 
     def test_clerk_auto_trigger_keywords(self):
         """Verify Clerk skill has 8-15 auto-trigger keywords."""
-        keywords = [
-            'clerk', 'auth', 'authentication', 'oauth',
-            'user-management', 'sessions', 'mfa', 'enterprise'
-        ]
+        keywords = ["clerk", "auth", "authentication", "oauth", "user-management", "sessions", "mfa", "enterprise"]
         assert 8 <= len(keywords) <= 15
 
 
@@ -213,6 +201,7 @@ class TestClerkImplementation:
     @dataclass
     class ClerkUserSession:
         """Model Clerk user session."""
+
         session_id: str
         user_id: str
         created_at: str
@@ -224,34 +213,26 @@ class TestClerkImplementation:
             session_id="sess_123",
             user_id="user_456",
             created_at="2025-11-24T10:00:00Z",
-            expires_at="2025-11-25T10:00:00Z"
+            expires_at="2025-11-25T10:00:00Z",
         )
         assert session.session_id == "sess_123"
         assert session.user_id == "user_456"
 
     def test_clerk_oauth_provider_config(self):
         """Test Clerk OAuth provider configuration."""
-        provider = {
-            'name': 'google',
-            'client_id': 'client_id',
-            'client_secret': 'client_secret',
-            'enabled': True
-        }
-        assert provider['enabled']
-        assert provider['name'] in ['google', 'github', 'microsoft']
+        provider = {"name": "google", "client_id": "client_id", "client_secret": "client_secret", "enabled": True}
+        assert provider["enabled"]
+        assert provider["name"] in ["google", "github", "microsoft"]
 
     def test_clerk_mfa_settings(self):
         """Test Clerk MFA settings."""
-        mfa_config = {
-            'enabled': True,
-            'required': False,
-            'methods': ['totp', 'sms']
-        }
-        assert mfa_config['enabled']
-        assert len(mfa_config['methods']) > 0
+        mfa_config = {"enabled": True, "required": False, "methods": ["totp", "sms"]}
+        assert mfa_config["enabled"]
+        assert len(mfa_config["methods"]) > 0
 
 
 # ========================= SUPABASE TESTS =========================
+
 
 class TestSupabaseSkillMetadata:
     """Test moai-baas-supabase SKILL.md metadata compliance."""
@@ -265,8 +246,14 @@ class TestSupabaseSkillMetadata:
     def test_supabase_auto_trigger_keywords(self):
         """Verify Supabase skill has 8-15 auto-trigger keywords."""
         keywords = [
-            'supabase', 'firebase', 'realtime', 'postgresql',
-            'authentication', 'storage', 'edge-functions', 'backend'
+            "supabase",
+            "firebase",
+            "realtime",
+            "postgresql",
+            "authentication",
+            "storage",
+            "edge-functions",
+            "backend",
         ]
         assert len(keywords) >= 8
 
@@ -277,6 +264,7 @@ class TestSupabaseImplementation:
     @dataclass
     class SupabaseProject:
         """Model Supabase project."""
+
         project_id: str
         database_url: str
         anon_key: str
@@ -285,34 +273,24 @@ class TestSupabaseImplementation:
     def test_supabase_project_initialization(self):
         """Test Supabase project initialization."""
         project = self.SupabaseProject(
-            project_id="abc123",
-            database_url="postgresql://...",
-            anon_key="anon_key",
-            service_role_key="role_key"
+            project_id="abc123", database_url="postgresql://...", anon_key="anon_key", service_role_key="role_key"
         )
         assert project.project_id == "abc123"
 
     def test_supabase_realtime_configuration(self):
         """Test Supabase Realtime setup."""
-        realtime = {
-            'enabled': True,
-            'max_broadcast_payload': 250000,
-            'max_retrieve_messages': 100
-        }
-        assert realtime['enabled']
-        assert realtime['max_broadcast_payload'] > 0
+        realtime = {"enabled": True, "max_broadcast_payload": 250000, "max_retrieve_messages": 100}
+        assert realtime["enabled"]
+        assert realtime["max_broadcast_payload"] > 0
 
     def test_supabase_edge_functions_deployment(self):
         """Test Supabase Edge Functions."""
-        edge_fn = {
-            'name': 'my-function',
-            'runtime': 'deno',
-            'imports': ['supabase', 'oak']
-        }
-        assert edge_fn['runtime'] in ['deno', 'node']
+        edge_fn = {"name": "my-function", "runtime": "deno", "imports": ["supabase", "oak"]}
+        assert edge_fn["runtime"] in ["deno", "node"]
 
 
 # ========================= FIREBASE TESTS =========================
+
 
 class TestFirebaseSkillMetadata:
     """Test moai-baas-firebase SKILL.md metadata compliance."""
@@ -326,8 +304,14 @@ class TestFirebaseSkillMetadata:
     def test_firebase_auto_trigger_keywords(self):
         """Verify Firebase skill has 8-15 auto-trigger keywords."""
         keywords = [
-            'firebase', 'firestore', 'realtime-db', 'functions',
-            'authentication', 'storage', 'hosting', 'analytics'
+            "firebase",
+            "firestore",
+            "realtime-db",
+            "functions",
+            "authentication",
+            "storage",
+            "hosting",
+            "analytics",
         ]
         assert len(keywords) >= 8
 
@@ -338,6 +322,7 @@ class TestFirebaseImplementation:
     @dataclass
     class FirebaseApp:
         """Model Firebase app configuration."""
+
         project_id: str
         api_key: str
         database_url: str
@@ -349,32 +334,23 @@ class TestFirebaseImplementation:
             project_id="my-project",
             api_key="api_key",
             database_url="https://my-project.firebaseio.com",
-            auth_domain="my-project.firebaseapp.com"
+            auth_domain="my-project.firebaseapp.com",
         )
         assert app.project_id == "my-project"
 
     def test_firebase_firestore_document_operations(self):
         """Test Firestore document operations."""
-        doc_ops = {
-            'create': True,
-            'read': True,
-            'update': True,
-            'delete': True
-        }
+        doc_ops = {"create": True, "read": True, "update": True, "delete": True}
         assert all(doc_ops.values())
 
     def test_firebase_cloud_functions_runtime(self):
         """Test Firebase Cloud Functions runtime."""
-        function = {
-            'name': 'greeting',
-            'runtime': 'nodejs20',
-            'entry_point': 'greeting',
-            'memory': 256
-        }
-        assert function['memory'] >= 128
+        function = {"name": "greeting", "runtime": "nodejs20", "entry_point": "greeting", "memory": 256}
+        assert function["memory"] >= 128
 
 
 # ========================= CLOUDFLARE TESTS =========================
+
 
 class TestCloudflareSkillMetadata:
     """Test moai-baas-cloudflare SKILL.md metadata compliance."""
@@ -387,10 +363,7 @@ class TestCloudflareSkillMetadata:
 
     def test_cloudflare_auto_trigger_keywords(self):
         """Verify Cloudflare skill has 8-15 auto-trigger keywords."""
-        keywords = [
-            'cloudflare', 'workers', 'pages', 'edge',
-            'cdn', 'kv', 'durable-objects', 'wasm'
-        ]
+        keywords = ["cloudflare", "workers", "pages", "edge", "cdn", "kv", "durable-objects", "wasm"]
         assert len(keywords) >= 8
 
 
@@ -400,6 +373,7 @@ class TestCloudflareImplementation:
     @dataclass
     class CloudflareWorker:
         """Model Cloudflare Worker."""
+
         name: str
         script: str
         routes: List[Dict[str, str]]
@@ -409,31 +383,24 @@ class TestCloudflareImplementation:
         worker = self.CloudflareWorker(
             name="api-gateway",
             script="export default { fetch: () => new Response('Hello') }",
-            routes=[{'pattern': 'example.com/api/*', 'zone_id': 'zone_123'}]
+            routes=[{"pattern": "example.com/api/*", "zone_id": "zone_123"}],
         )
         assert worker.name == "api-gateway"
         assert len(worker.routes) > 0
 
     def test_cloudflare_kv_namespace_configuration(self):
         """Test Cloudflare KV namespace setup."""
-        kv_ns = {
-            'name': 'my-kv',
-            'id': 'kv_123',
-            'preview': True
-        }
-        assert kv_ns['name'] == 'my-kv'
+        kv_ns = {"name": "my-kv", "id": "kv_123", "preview": True}
+        assert kv_ns["name"] == "my-kv"
 
     def test_cloudflare_durable_objects_state(self):
         """Test Cloudflare Durable Objects state management."""
-        durable_obj = {
-            'id': 'durable_123',
-            'state': {'counter': 0},
-            'persistent': True
-        }
-        assert durable_obj['persistent']
+        durable_obj = {"id": "durable_123", "state": {"counter": 0}, "persistent": True}
+        assert durable_obj["persistent"]
 
 
 # ========================= PROGRESSIVE DISCLOSURE TESTS =========================
+
 
 class TestBaaSTierProgressiveDisclosure:
     """Test Progressive Disclosure structure for all BaaS skills."""
@@ -442,8 +409,12 @@ class TestBaaSTierProgressiveDisclosure:
         """Each BaaS skill has Level 1: Quick Reference (<500 chars)."""
         # Verify structure requirement
         baas_skills = [
-            'moai-baas-vercel', 'moai-baas-neon', 'moai-baas-clerk',
-            'moai-baas-supabase', 'moai-baas-firebase', 'moai-baas-cloudflare'
+            "moai-baas-vercel",
+            "moai-baas-neon",
+            "moai-baas-clerk",
+            "moai-baas-supabase",
+            "moai-baas-firebase",
+            "moai-baas-cloudflare",
         ]
         for skill in baas_skills:
             assert len(skill) > 0
@@ -461,15 +432,27 @@ class TestBaaSTierProgressiveDisclosure:
 
 # ========================= METADATA COMPLIANCE TESTS =========================
 
+
 class TestBaaSTierMetadataCompliance:
     """Validate 16-field metadata compliance for all BaaS skills."""
 
     REQUIRED_METADATA_FIELDS = {
-        'name', 'description', 'version', 'modularized',
-        'last_updated', 'allowed_tools', 'compliance_score',
-        'category_tier', 'auto_trigger_keywords', 'agent_coverage',
-        'context7_references', 'invocation_api_version', 'dependencies',
-        'deprecated', 'modules', 'successor'
+        "name",
+        "description",
+        "version",
+        "modularized",
+        "last_updated",
+        "allowed_tools",
+        "compliance_score",
+        "category_tier",
+        "auto_trigger_keywords",
+        "agent_coverage",
+        "context7_references",
+        "invocation_api_version",
+        "dependencies",
+        "deprecated",
+        "modules",
+        "successor",
     }
 
     def test_all_baas_skills_have_complete_metadata(self):
@@ -495,36 +478,25 @@ class TestBaaSTierMetadataCompliance:
 
 # ========================= INTEGRATION TESTS =========================
 
+
 class TestBaaSTierIntegration:
     """Integration tests for BaaS tier skills."""
 
     def test_vercel_neon_integration(self):
         """Test Vercel + Neon integration pattern."""
-        deployment = {
-            'vercel_project': 'my-app',
-            'neon_database': 'neon_connection_string',
-            'sync': True
-        }
-        assert deployment['sync']
+        deployment = {"vercel_project": "my-app", "neon_database": "neon_connection_string", "sync": True}
+        assert deployment["sync"]
 
     def test_supabase_cloudflare_integration(self):
         """Test Supabase + Cloudflare integration pattern."""
-        integration = {
-            'supabase_url': 'https://...',
-            'cloudflare_kv': 'kv_namespace',
-            'edge_cache': True
-        }
-        assert integration['edge_cache']
+        integration = {"supabase_url": "https://...", "cloudflare_kv": "kv_namespace", "edge_cache": True}
+        assert integration["edge_cache"]
 
     def test_firebase_vercel_integration(self):
         """Test Firebase + Vercel integration pattern."""
-        config = {
-            'firebase_project': 'project_id',
-            'vercel_environment': 'production',
-            'realtime_sync': True
-        }
-        assert config['realtime_sync']
+        config = {"firebase_project": "project_id", "vercel_environment": "production", "realtime_sync": True}
+        assert config["realtime_sync"]
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '--tb=short'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

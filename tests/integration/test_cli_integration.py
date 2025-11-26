@@ -148,11 +148,7 @@ class TestInitCommand:
                 ],
             )
             # Should detect existing project or ask for reinit or succeed with --force
-            assert (
-                "exist" in result.output.lower()
-                or "already" in result.output.lower()
-                or result.exit_code == 0
-            )
+            assert "exist" in result.output.lower() or "already" in result.output.lower() or result.exit_code == 0
 
     def test_init_with_all_flags(self, tmp_path):
         """Test init with all CLI flags"""
@@ -189,9 +185,7 @@ class TestInitCommand:
 
         # Test valid phase
         callback("Test message", 1, 3)
-        mock_progress.update.assert_called_once_with(
-            task_ids[0], completed=1, description="Test message"
-        )
+        mock_progress.update.assert_called_once_with(task_ids[0], completed=1, description="Test message")
 
         # Test out of range
         mock_progress.reset_mock()
@@ -334,8 +328,6 @@ class TestDoctorCommand:
             assert result.exit_code != 0
 
 
-
-
 class TestUpdateCommand:
     """update command tests"""
 
@@ -416,9 +408,7 @@ class TestCLICommandIntegration:
             assert "personal" in status_result.output
 
             # 3. Run doctor
-            with patch(
-                "moai_adk.cli.commands.doctor.check_environment"
-            ) as mock_check:
+            with patch("moai_adk.cli.commands.doctor.check_environment") as mock_check:
                 mock_check.return_value = {"Python >= 3.13": True}
                 doctor_result = runner.invoke(doctor)
                 assert doctor_result.exit_code == 0

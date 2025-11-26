@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 # Add modules to path
-sys.path.insert(0, 'modules')
+sys.path.insert(0, "modules")
 
 # Import individual modules
 import documentation_manager
@@ -29,14 +29,8 @@ def test_individual_modules():
 
     # Test configuration
     config = {
-        "project": {
-            "name": "Test Project",
-            "type": "web_application"
-        },
-        "language": {
-            "conversation_language": "en",
-            "documentation_language": "en"
-        }
+        "project": {"name": "Test Project", "type": "web_application"},
+        "language": {"conversation_language": "en", "documentation_language": "en"},
     }
 
     results = {}
@@ -50,7 +44,7 @@ def test_individual_modules():
         init_result = doc_manager.initialize_documentation_structure()
         results["documentation_manager"] = {
             "success": init_result["success"],
-            "created_files": len(init_result.get("created_files", []))
+            "created_files": len(init_result.get("created_files", [])),
         }
 
         # Test SPEC documentation generation
@@ -59,13 +53,7 @@ def test_individual_modules():
             "title": "Test Feature",
             "description": "Test feature implementation",
             "requirements": ["Requirement 1", "Requirement 2"],
-            "api_endpoints": [
-                {
-                    "path": "/api/test",
-                    "method": "POST",
-                    "description": "Test endpoint"
-                }
-            ]
+            "api_endpoints": [{"path": "/api/test", "method": "POST", "description": "Test endpoint"}],
         }
 
         docs_result = doc_manager.generate_documentation_from_spec(spec_data)
@@ -89,9 +77,7 @@ def test_individual_modules():
 
         # Test language configuration
         lang_result = lang_init.initialize_language_configuration(
-            language="ko",
-            user_name="테스트 사용자",
-            domains=["backend", "frontend"]
+            language="ko", user_name="테스트 사용자", domains=["backend", "frontend"]
         )
 
         # Test multilingual structure
@@ -100,7 +86,7 @@ def test_individual_modules():
         results["language_initializer"] = {
             "success": lang_result["success"],
             "detected_language": detected_lang,
-            "multilingual_created": multilingual_result["success"]
+            "multilingual_created": multilingual_result["success"],
         }
 
         print(f"✅ LanguageInitializer: {lang_result['success']}")
@@ -141,7 +127,7 @@ Complex logic:
 {% endif %}
         """
 
-        (templates_dir / "test_template.md").write_text(test_template, encoding='utf-8')
+        (templates_dir / "test_template.md").write_text(test_template, encoding="utf-8")
 
         template_opt = template_optimizer.TemplateOptimizer(str(test_dir), config)
 
@@ -158,7 +144,7 @@ Complex logic:
             "success": analysis["success"],
             "files_analyzed": len(analysis.get("analyzed_files", [])),
             "optimization_applied": optimization_result.get("success", False),
-            "benchmark_completed": benchmark_result.get("success", False)
+            "benchmark_completed": benchmark_result.get("success", False),
         }
 
         print(f"✅ TemplateOptimizer: {analysis['success']}")
@@ -172,6 +158,7 @@ Complex logic:
 
     # Cleanup
     import shutil
+
     shutil.rmtree(test_dir, ignore_errors=True)
 
     return results
@@ -188,14 +175,8 @@ def test_module_integration():
     try:
         # Initialize all three modules with same config
         config = {
-            "project": {
-                "name": "Integration Test Project",
-                "type": "web_application"
-            },
-            "language": {
-                "conversation_language": "ko",
-                "documentation_language": "ko"
-            }
+            "project": {"name": "Integration Test Project", "type": "web_application"},
+            "language": {"conversation_language": "ko", "documentation_language": "ko"},
         }
 
         # Initialize modules
@@ -210,9 +191,7 @@ def test_module_integration():
 
         # Set up language configuration
         lang_result = lang_init.initialize_language_configuration(
-            language="ko",
-            user_name="통합 테스트",
-            domains=["backend"]
+            language="ko", user_name="통합 테스트", domains=["backend"]
         )
 
         # Create documentation structure
@@ -221,11 +200,7 @@ def test_module_integration():
         # Test multilingual documentation
         multilingual_result = lang_init.create_multilingual_documentation_structure("ko")
 
-        integration_success = all([
-            lang_result["success"],
-            doc_result["success"],
-            multilingual_result["success"]
-        ])
+        integration_success = all([lang_result["success"], doc_result["success"], multilingual_result["success"]])
 
         print(f"✅ Language + Documentation integration: {integration_success}")
 
@@ -237,8 +212,7 @@ def test_module_integration():
         templates_dir.mkdir(exist_ok=True)
 
         (templates_dir / "docs_template.md").write_text(
-            "# Documentation Template\\n\\nContent here...",
-            encoding='utf-8'
+            "# Documentation Template\\n\\nContent here...", encoding="utf-8"
         )
 
         # Analyze templates
@@ -249,7 +223,7 @@ def test_module_integration():
             "id": "INTEGRATION-SPEC",
             "title": "통합 테스트 기능",
             "description": "모듈 통합 테스트",
-            "requirements": ["요구사항 1", "요구사항 2"]
+            "requirements": ["요구사항 1", "요구사항 2"],
         }
 
         docs_from_spec = doc_manager.generate_documentation_from_spec(spec_data)
@@ -281,18 +255,20 @@ def test_module_integration():
         return {
             "language_docs_integration": integration_success,
             "template_docs_integration": template_doc_success,
-            "complete_workflow": workflow_success
+            "complete_workflow": workflow_success,
         }
 
     except Exception as e:
         print(f"❌ Integration test error: {e}")
         import traceback
+
         traceback.print_exc()
         return {"success": False, "error": str(e)}
 
     finally:
         # Cleanup
         import shutil
+
         shutil.rmtree(test_dir, ignore_errors=True)
 
 
@@ -309,7 +285,7 @@ def test_performance():
     try:
         config = {
             "project": {"name": "Performance Test", "type": "web_application"},
-            "language": {"conversation_language": "en"}
+            "language": {"conversation_language": "en"},
         }
 
         performance_results = {}
@@ -341,8 +317,7 @@ def test_performance():
 
         # Create some test files
         (test_dir / "test.py").write_text(
-            "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100",
-            encoding='utf-8'
+            "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100", encoding="utf-8"
         )
 
         lang_init.detect_project_language()
@@ -359,8 +334,7 @@ def test_performance():
         # Create multiple test templates
         for i in range(5):
             (templates_dir / f"template_{i}.md").write_text(
-                f"# Template {i}\\n\\nContent for template {i}.",
-                encoding='utf-8'
+                f"# Template {i}\\n\\nContent for template {i}.", encoding="utf-8"
             )
 
         start_time = time.time()
@@ -387,6 +361,7 @@ def test_performance():
     finally:
         # Cleanup
         import shutil
+
         shutil.rmtree(test_dir, ignore_errors=True)
 
 
@@ -445,6 +420,7 @@ def main():
     except Exception as e:
         print(f"\\n❌ Test suite failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

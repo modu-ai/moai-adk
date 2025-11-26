@@ -371,9 +371,7 @@ class TestRollbackToPoint:
     def test_rollback_skips_validation_when_requested(self, rollback_manager):
         """Test that rollback skips validation when disabled"""
         rollback_id = rollback_manager.create_rollback_point("No validation test")
-        result = rollback_manager.rollback_to_point(
-            rollback_id, validate_before=False, validate_after=False
-        )
+        result = rollback_manager.rollback_to_point(rollback_id, validate_before=False, validate_after=False)
 
         assert isinstance(result, RollbackResult)
 
@@ -443,17 +441,13 @@ class TestRollbackResearchIntegration:
     def test_research_rollback_specific_component(self, rollback_manager, temp_project_dir):
         """Test rolling back specific component by name"""
         rollback_id = rollback_manager.create_rollback_point("Specific component backup")
-        result = rollback_manager.rollback_research_integration(
-            component_type="skills", component_name="sample_skill"
-        )
+        result = rollback_manager.rollback_research_integration(component_type="skills", component_name="sample_skill")
 
         assert isinstance(result, RollbackResult)
 
     def test_research_rollback_no_suitable_points(self, rollback_manager):
         """Test research rollback when no suitable points exist"""
-        result = rollback_manager.rollback_research_integration(
-            component_type="agents", component_name="nonexistent"
-        )
+        result = rollback_manager.rollback_research_integration(component_type="agents", component_name="nonexistent")
 
         assert result.success is False
         assert "no suitable rollback points" in result.message.lower()
@@ -493,9 +487,7 @@ class TestListRollbackPoints:
 
     def test_list_multiple_rollback_points(self, rollback_manager):
         """Test listing multiple rollback points"""
-        ids = [
-            rollback_manager.create_rollback_point(f"Point {i}") for i in range(5)
-        ]
+        ids = [rollback_manager.create_rollback_point(f"Point {i}") for i in range(5)]
         points = rollback_manager.list_rollback_points()
 
         assert len(points) == 5
@@ -717,9 +709,7 @@ class TestRegistryManagement:
     def test_load_registry_existing_file(self, temp_project_dir):
         """Test loading registry from existing file"""
         registry_file = temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
-        registry_data = {
-            "rollback_001": {"id": "rollback_001", "description": "test"}
-        }
+        registry_data = {"rollback_001": {"id": "rollback_001", "description": "test"}}
         registry_file.write_text(json.dumps(registry_data))
 
         manager = RollbackManager(project_root=temp_project_dir)
@@ -1002,9 +992,7 @@ class TestPerformResearchRollback:
         rollback_id = rollback_manager.create_rollback_point("Type-specific rollback")
         rollback_point = rollback_manager.registry[rollback_id]
 
-        restored, failed = rollback_manager._perform_research_rollback(
-            rollback_point, component_type="skills"
-        )
+        restored, failed = rollback_manager._perform_research_rollback(rollback_point, component_type="skills")
 
         assert isinstance(restored, list)
         assert isinstance(failed, list)
@@ -1058,9 +1046,7 @@ class TestFindResearchRollbackPoints:
         """Test finding research points by component name"""
         rollback_manager.create_rollback_point("Specific component backup")
 
-        points = rollback_manager._find_research_rollback_points(
-            component_type="skills", component_name="sample_skill"
-        )
+        points = rollback_manager._find_research_rollback_points(component_type="skills", component_name="sample_skill")
 
         assert isinstance(points, list)
 
@@ -1068,9 +1054,7 @@ class TestFindResearchRollbackPoints:
         """Test finding research points with no matches"""
         rollback_manager.create_rollback_point("Backup")
 
-        points = rollback_manager._find_research_rollback_points(
-            component_type="agents", component_name="nonexistent"
-        )
+        points = rollback_manager._find_research_rollback_points(component_type="agents", component_name="nonexistent")
 
         assert isinstance(points, list)
 
@@ -1168,9 +1152,7 @@ class TestEdgeCases:
 
     def test_multiple_concurrent_rollback_operations(self, rollback_manager):
         """Test multiple rollback point creations"""
-        rollback_ids = [
-            rollback_manager.create_rollback_point(f"Concurrent {i}") for i in range(10)
-        ]
+        rollback_ids = [rollback_manager.create_rollback_point(f"Concurrent {i}") for i in range(10)]
 
         assert len(rollback_ids) == 10
         assert len(set(rollback_ids)) == 10  # All unique
@@ -1327,9 +1309,7 @@ class TestErrorPaths:
         rollback_id = rollback_manager.create_rollback_point("Missing component dir")
         rollback_point = rollback_manager.registry[rollback_id]
 
-        restored, failed = rollback_manager._perform_research_rollback(
-            rollback_point, component_type="nonexistent"
-        )
+        restored, failed = rollback_manager._perform_research_rollback(rollback_point, component_type="nonexistent")
 
         # Should have recorded failures
         assert len(failed) > 0
@@ -1551,11 +1531,7 @@ class TestComplexScenarios:
     def test_rollback_point_with_complex_metadata(self, rollback_manager):
         """Test rollback point with complex metadata"""
         metadata = {
-            "nested": {
-                "data": {
-                    "deep": ["list", "of", "values"]
-                }
-            },
+            "nested": {"data": {"deep": ["list", "of", "values"]}},
             "numbers": [1, 2, 3, 4, 5],
             "bool": True,
         }

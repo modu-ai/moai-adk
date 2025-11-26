@@ -14,11 +14,12 @@ class TestAutoSpecConfig(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.test_dir = tempfile.mkdtemp()
-        self.config_file = os.path.join(self.test_dir, 'config.json')
+        self.config_file = os.path.join(self.test_dir, "config.json")
 
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_default_config_initialization(self):
@@ -44,16 +45,13 @@ class TestAutoSpecConfig(unittest.TestCase):
                         "confidence_threshold": 0.8,
                         "execution_timeout_ms": 2000,
                         "trigger_tools": ["Write", "Edit"],
-                        "quality_threshold": {
-                            "ears_compliance": 0.9,
-                            "min_content_length": 1000
-                        }
+                        "quality_threshold": {"ears_compliance": 0.9, "min_content_length": 1000},
                     }
                 }
             }
         }
 
-        with open(self.config_file, 'w', encoding='utf-8') as f:
+        with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(test_config, f, indent=2)
 
         # Load config
@@ -64,11 +62,11 @@ class TestAutoSpecConfig(unittest.TestCase):
         self.assertEqual(config.get_confidence_threshold(), 0.8)
         self.assertEqual(config.get_execution_timeout_ms(), 2000)
         self.assertEqual(config.get_trigger_tools(), ["Write", "Edit"])
-        self.assertEqual(config.get_quality_threshold()['ears_compliance'], 0.9)
+        self.assertEqual(config.get_quality_threshold()["ears_compliance"], 0.9)
 
     def test_load_config_file_not_found(self):
         """Test loading configuration when file doesn't exist."""
-        non_existent_file = os.path.join(self.test_dir, 'non_existent.json')
+        non_existent_file = os.path.join(self.test_dir, "non_existent.json")
         config = AutoSpecConfig(non_existent_file)
 
         # Should load default config
@@ -78,8 +76,8 @@ class TestAutoSpecConfig(unittest.TestCase):
     def test_load_config_invalid_json(self):
         """Test loading configuration with invalid JSON."""
         # Create invalid JSON file
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            f.write('invalid json content')
+        with open(self.config_file, "w", encoding="utf-8") as f:
+            f.write("invalid json content")
 
         config = AutoSpecConfig(self.config_file)
 
@@ -134,9 +132,9 @@ class TestAutoSpecConfig(unittest.TestCase):
 
         # Should be a dictionary
         self.assertIsInstance(threshold, dict)
-        self.assertIn('ears_compliance', threshold)
-        self.assertIn('min_content_length', threshold)
-        self.assertIn('max_review_suggestions', threshold)
+        self.assertIn("ears_compliance", threshold)
+        self.assertIn("min_content_length", threshold)
+        self.assertIn("max_review_suggestions", threshold)
 
     def test_get_excluded_patterns(self):
         """Test getting excluded patterns."""
@@ -159,7 +157,7 @@ class TestAutoSpecConfig(unittest.TestCase):
             "path/to/__pycache__/file.py",
             "path/to/node_modules/file.js",
             "path/to/dist/bundle.js",
-            "path/to/build/main.js"
+            "path/to/build/main.js",
         ]
 
         for file_path in test_files:
@@ -177,11 +175,7 @@ class TestAutoSpecConfig(unittest.TestCase):
                 self.assertFalse(config.should_exclude_file(file_path))
 
         # Test file that should not be excluded
-        normal_files = [
-            "src/main.py",
-            "lib/utils.py",
-            "components/button.jsx"
-        ]
+        normal_files = ["src/main.py", "lib/utils.py", "components/button.jsx"]
 
         for file_path in normal_files:
             self.assertFalse(config.should_exclude_file(file_path))
@@ -193,9 +187,9 @@ class TestAutoSpecConfig(unittest.TestCase):
 
         # Should be a dictionary
         self.assertIsInstance(domain_config, dict)
-        self.assertTrue(domain_config.get('enabled', False))
-        self.assertTrue(domain_config.get('auto_detect', False))
-        self.assertIsInstance(domain_config.get('supported_domains', []), list)
+        self.assertTrue(domain_config.get("enabled", False))
+        self.assertTrue(domain_config.get("auto_detect", False))
+        self.assertIsInstance(domain_config.get("supported_domains", []), list)
 
     def test_get_spec_structure_config(self):
         """Test getting spec structure configuration."""
@@ -204,10 +198,10 @@ class TestAutoSpecConfig(unittest.TestCase):
 
         # Should be a dictionary
         self.assertIsInstance(structure_config, dict)
-        self.assertTrue(structure_config.get('include_meta', False))
-        self.assertTrue(structure_config.get('include_traceability', False))
-        self.assertTrue(structure_config.get('include_edit_guide', False))
-        self.assertIsInstance(structure_config.get('required_sections', []), list)
+        self.assertTrue(structure_config.get("include_meta", False))
+        self.assertTrue(structure_config.get("include_traceability", False))
+        self.assertTrue(structure_config.get("include_edit_guide", False))
+        self.assertIsInstance(structure_config.get("required_sections", []), list)
 
     def test_get_required_sections(self):
         """Test getting required sections."""
@@ -225,7 +219,7 @@ class TestAutoSpecConfig(unittest.TestCase):
             "가정 (Assumptions)",
             "요구사항 (Requirements)",
             "명세 (Specifications)",
-            "추적성 (Traceability)"
+            "추적성 (Traceability)",
         ]
 
         for section in expected_sections:
@@ -344,13 +338,15 @@ class TestAutoSpecConfig(unittest.TestCase):
         """Test configuration validation with invalid config."""
         # Create invalid config
         config = AutoSpecConfig()
-        config.update_config({
-            "enabled": "not_a_boolean",
-            "confidence_threshold": 2.0,  # Out of range
-            "execution_timeout_ms": -1,   # Negative
-            "trigger_tools": "not_a_list",
-            "excluded_patterns": 123      # Not a list
-        })
+        config.update_config(
+            {
+                "enabled": "not_a_boolean",
+                "confidence_threshold": 2.0,  # Out of range
+                "execution_timeout_ms": -1,  # Negative
+                "trigger_tools": "not_a_list",
+                "excluded_patterns": 123,  # Not a list
+            }
+        )
 
         errors = config.validate_config()
 
@@ -372,10 +368,7 @@ class TestAutoSpecConfig(unittest.TestCase):
         config = AutoSpecConfig()
 
         # Update some values
-        config.update_config({
-            "confidence_threshold": 0.9,
-            "execution_timeout_ms": 3000
-        })
+        config.update_config({"confidence_threshold": 0.9, "execution_timeout_ms": 3000})
 
         # Check updated values
         self.assertEqual(config.get_confidence_threshold(), 0.9)
@@ -384,9 +377,7 @@ class TestAutoSpecConfig(unittest.TestCase):
     def test_save_config(self):
         """Test saving configuration."""
         config = AutoSpecConfig()
-        config.update_config({
-            "confidence_threshold": 0.9
-        })
+        config.update_config({"confidence_threshold": 0.9})
 
         # Save config
         config.save_config()
@@ -416,19 +407,10 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_custom_config_path(self):
         """Test using custom configuration path."""
-        custom_config = {
-            "tags": {
-                "policy": {
-                    "auto_spec_completion": {
-                        "enabled": True,
-                        "confidence_threshold": 0.75
-                    }
-                }
-            }
-        }
+        custom_config = {"tags": {"policy": {"auto_spec_completion": {"enabled": True, "confidence_threshold": 0.75}}}}
 
-        custom_config_file = os.path.join(self.test_dir, 'custom_config.json')
-        with open(custom_config_file, 'w', encoding='utf-8') as f:
+        custom_config_file = os.path.join(self.test_dir, "custom_config.json")
+        with open(custom_config_file, "w", encoding="utf-8") as f:
             json.dump(custom_config, f, indent=2)
 
         # Load from custom path
@@ -441,18 +423,9 @@ class TestAutoSpecConfig(unittest.TestCase):
     def test_partial_config(self):
         """Test loading partial configuration."""
         # Config with only some fields
-        partial_config = {
-            "tags": {
-                "policy": {
-                    "auto_spec_completion": {
-                        "enabled": False,
-                        "confidence_threshold": 0.5
-                    }
-                }
-            }
-        }
+        partial_config = {"tags": {"policy": {"auto_spec_completion": {"enabled": False, "confidence_threshold": 0.5}}}}
 
-        with open(self.config_file, 'w', encoding='utf-8') as f:
+        with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(partial_config, f, indent=2)
 
         config = AutoSpecConfig(self.config_file)
@@ -487,13 +460,13 @@ class TestAutoSpecConfig(unittest.TestCase):
                 "policy": {
                     "auto_spec_completion": {
                         "enabled": True,
-                        "notes": "Auto-Spec Completion with 中文, Español, Русский"
+                        "notes": "Auto-Spec Completion with 中文, Español, Русский",
                     }
                 }
             }
         }
 
-        with open(self.config_file, 'w', encoding='utf-8') as f:
+        with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(special_config, f, indent=2)
 
         config = AutoSpecConfig(self.config_file)
@@ -506,23 +479,14 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_config_with_unicode_paths(self):
         """Test configuration with Unicode file paths."""
-        unicode_dir = os.path.join(self.test_dir, '测试目录')
+        unicode_dir = os.path.join(self.test_dir, "测试目录")
         os.makedirs(unicode_dir, exist_ok=True)
 
-        unicode_config_file = os.path.join(unicode_dir, '配置.json')
+        unicode_config_file = os.path.join(unicode_dir, "配置.json")
 
-        special_config = {
-            "tags": {
-                "policy": {
-                    "auto_spec_completion": {
-                        "enabled": True,
-                        "confidence_threshold": 0.8
-                    }
-                }
-            }
-        }
+        special_config = {"tags": {"policy": {"auto_spec_completion": {"enabled": True, "confidence_threshold": 0.8}}}}
 
-        with open(unicode_config_file, 'w', encoding='utf-8') as f:
+        with open(unicode_config_file, "w", encoding="utf-8") as f:
             json.dump(special_config, f, indent=2)
 
         # Load from Unicode path
@@ -531,5 +495,5 @@ class TestAutoSpecConfig(unittest.TestCase):
         self.assertEqual(config.get_confidence_threshold(), 0.8)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

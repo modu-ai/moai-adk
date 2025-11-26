@@ -19,6 +19,7 @@ class TestMainModuleImports:
         """Test that the main module can be imported without errors."""
         try:
             from moai_adk.cli import main
+
             assert main is not None
         except ImportError as e:
             pytest.fail(f"Failed to import moai_adk.cli.main: {e}")
@@ -30,11 +31,11 @@ class TestMainModuleImports:
         assert cli is not None
         assert callable(cli)
         # Click groups have .name attribute instead of __name__
-        assert hasattr(cli, 'name') or hasattr(cli, '__name__')
-        if hasattr(cli, 'name'):
-            assert cli.name == 'cli'
+        assert hasattr(cli, "name") or hasattr(cli, "__name__")
+        if hasattr(cli, "name"):
+            assert cli.name == "cli"
         else:
-            assert cli.__name__ == 'cli'
+            assert cli.__name__ == "cli"
 
     def test_show_logo_function_is_exported(self):
         """Test that show_logo function is properly exported from main module."""
@@ -42,17 +43,17 @@ class TestMainModuleImports:
 
         assert show_logo is not None
         assert callable(show_logo)
-        assert hasattr(show_logo, '__name__')
-        assert show_logo.__name__ == 'show_logo'
+        assert hasattr(show_logo, "__name__")
+        assert show_logo.__name__ == "show_logo"
 
     def test_all_exports_list(self):
         """Test that __all__ contains expected exports."""
         from moai_adk.cli import main
 
-        assert hasattr(main, '__all__')
+        assert hasattr(main, "__all__")
         assert isinstance(main.__all__, list)
-        assert 'cli' in main.__all__
-        assert 'show_logo' in main.__all__
+        assert "cli" in main.__all__
+        assert "show_logo" in main.__all__
         assert len(main.__all__) == 2
 
     def test_cli_is_click_command(self):
@@ -61,8 +62,8 @@ class TestMainModuleImports:
         import click
 
         # Check if it's a Click command (has click.Command attributes)
-        assert hasattr(cli, 'invoke')
-        assert hasattr(cli, 'name')
+        assert hasattr(cli, "invoke")
+        assert hasattr(cli, "name")
         assert isinstance(cli, (click.Command, click.Group))
 
 
@@ -74,24 +75,24 @@ class TestCliIntegration:
         from moai_adk.cli.main import cli
 
         runner = CliRunner()
-        result = runner.invoke(cli, ['--help'])
+        result = runner.invoke(cli, ["--help"])
 
         # Should succeed (exit code 0)
         assert result.exit_code == 0
         # Should display help text
-        assert 'MoAI Agentic Development Kit' in result.output or 'Usage:' in result.output
+        assert "MoAI Agentic Development Kit" in result.output or "Usage:" in result.output
 
     def test_cli_version_option(self):
         """Test that cli has version option."""
         from moai_adk.cli.main import cli
 
         runner = CliRunner()
-        result = runner.invoke(cli, ['--version'])
+        result = runner.invoke(cli, ["--version"])
 
         # Should succeed
         assert result.exit_code == 0
         # Should display version information
-        assert 'MoAI-ADK' in result.output or 'version' in result.output.lower()
+        assert "MoAI-ADK" in result.output or "version" in result.output.lower()
 
     def test_cli_without_arguments(self):
         """Test that cli can be invoked without arguments (shows logo)."""
@@ -161,7 +162,7 @@ class TestModuleReExports:
         assert main.__doc__ is not None
         assert len(main.__doc__.strip()) > 0
         # Should describe the module's purpose
-        assert any(keyword in main.__doc__.lower() for keyword in ['cli', 'entry', 'module'])
+        assert any(keyword in main.__doc__.lower() for keyword in ["cli", "entry", "module"])
 
 
 class TestErrorHandling:
@@ -174,10 +175,10 @@ class TestErrorHandling:
         from importlib import import_module
 
         # Import the module
-        main_module = import_module('moai_adk.cli.main')
+        main_module = import_module("moai_adk.cli.main")
 
         # Get __all__ exports
-        all_exports = getattr(main_module, '__all__', [])
+        all_exports = getattr(main_module, "__all__", [])
 
         # Verify all symbols in __all__ are actually available
         for symbol in all_exports:
@@ -188,9 +189,9 @@ class TestErrorHandling:
         from moai_adk.cli.main import cli
 
         runner = CliRunner()
-        result = runner.invoke(cli, ['nonexistent-command'])
+        result = runner.invoke(cli, ["nonexistent-command"])
 
         # Should fail with non-zero exit code
         assert result.exit_code != 0
         # Should show error message
-        assert 'Error' in result.output or 'No such command' in result.output or result.exit_code == 2
+        assert "Error" in result.output or "No such command" in result.output or result.exit_code == 2

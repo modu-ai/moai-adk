@@ -266,12 +266,14 @@ class TestACIDCompliance:
             isolation=False,
             durability=False,
         )
-        assert all([
-            compliance.atomicity is False,
-            compliance.consistency is False,
-            compliance.isolation is False,
-            compliance.durability is False,
-        ])
+        assert all(
+            [
+                compliance.atomicity is False,
+                compliance.consistency is False,
+                compliance.isolation is False,
+                compliance.durability is False,
+            ]
+        )
 
 
 # ============================================================================
@@ -1472,12 +1474,14 @@ class TestDatabaseIntegration:
         assert deadlock["deadlock_detected"] is False
 
         # Generate retry strategy
-        retry_plan = tx_manager.generate_retry_plan({
-            "max_retries": 3,
-            "initial_backoff_ms": 100,
-            "backoff_multiplier": 2.0,
-            "max_backoff_ms": 1000,
-        })
+        retry_plan = tx_manager.generate_retry_plan(
+            {
+                "max_retries": 3,
+                "initial_backoff_ms": 100,
+                "backoff_multiplier": 2.0,
+                "max_backoff_ms": 1000,
+            }
+        )
         assert len(retry_plan["retry_delays"]) == 3
 
 
@@ -1512,17 +1516,21 @@ class TestEdgeCases:
         optimizer = IndexingOptimizer()
 
         # Single column
-        single = optimizer.recommend_index({
-            "columns": ["user_id"],
-            "conditions": ["user_id = 1"],
-        })
+        single = optimizer.recommend_index(
+            {
+                "columns": ["user_id"],
+                "conditions": ["user_id = 1"],
+            }
+        )
         assert single["index_type"] == "HASH"
 
         # Multiple columns
-        multi = optimizer.recommend_index({
-            "columns": ["user_id", "created_at"],
-            "conditions": ["user_id = 1", "created_at > date"],
-        })
+        multi = optimizer.recommend_index(
+            {
+                "columns": ["user_id", "created_at"],
+                "conditions": ["user_id = 1", "created_at > date"],
+            }
+        )
         assert multi["index_type"] == "COMPOSITE"
 
     def test_pool_size_boundary_conditions(self):
@@ -1530,19 +1538,23 @@ class TestEdgeCases:
         manager = ConnectionPoolManager()
 
         # Very low concurrency
-        config = manager.calculate_optimal_pool_size({
-            "cpu_cores": 1,
-            "max_connections": 10,
-            "expected_concurrency": 1,
-        })
+        config = manager.calculate_optimal_pool_size(
+            {
+                "cpu_cores": 1,
+                "max_connections": 10,
+                "expected_concurrency": 1,
+            }
+        )
         assert config["min_size"] >= 5
 
         # Very high concurrency
-        config = manager.calculate_optimal_pool_size({
-            "cpu_cores": 64,
-            "max_connections": 1000,
-            "expected_concurrency": 500,
-        })
+        config = manager.calculate_optimal_pool_size(
+            {
+                "cpu_cores": 64,
+                "max_connections": 1000,
+                "expected_concurrency": 500,
+            }
+        )
         assert config["max_size"] > 0
 
     def test_zero_wait_time_health_score(self):
@@ -1589,12 +1601,14 @@ class TestEdgeCases:
     def test_retry_plan_with_single_retry(self):
         """Test retry plan with single retry attempt."""
         manager = TransactionManager()
-        plan = manager.generate_retry_plan({
-            "max_retries": 1,
-            "initial_backoff_ms": 100,
-            "backoff_multiplier": 2.0,
-            "max_backoff_ms": 1000,
-        })
+        plan = manager.generate_retry_plan(
+            {
+                "max_retries": 1,
+                "initial_backoff_ms": 100,
+                "backoff_multiplier": 2.0,
+                "max_backoff_ms": 1000,
+            }
+        )
         assert len(plan["retry_delays"]) == 1
 
     def test_performance_rating_boundary_values(self):
@@ -1613,32 +1627,39 @@ class TestEdgeCases:
         ]
 
         for avg_time, expected_rating in boundaries:
-            result = monitor.analyze_query_performance({
-                "avg_execution_time_ms": avg_time,
-                "max_execution_time_ms": avg_time * 2,
-                "call_count": 100,
-            })
-            assert result["performance_rating"] == expected_rating, \
-                f"Expected {expected_rating} for avg_time {avg_time}, got {result['performance_rating']}"
+            result = monitor.analyze_query_performance(
+                {
+                    "avg_execution_time_ms": avg_time,
+                    "max_execution_time_ms": avg_time * 2,
+                    "call_count": 100,
+                }
+            )
+            assert (
+                result["performance_rating"] == expected_rating
+            ), f"Expected {expected_rating} for avg_time {avg_time}, got {result['performance_rating']}"
 
     def test_connection_usage_at_exact_thresholds(self):
         """Test connection usage monitoring at exact threshold values."""
         monitor = PerformanceMonitor()
 
         # Slightly above warning threshold (0.76 > 0.75)
-        result = monitor.monitor_connection_usage({
-            "active_connections": 76,
-            "max_connections": 100,
-            "failed_connection_attempts": 0,
-        })
+        result = monitor.monitor_connection_usage(
+            {
+                "active_connections": 76,
+                "max_connections": 100,
+                "failed_connection_attempts": 0,
+            }
+        )
         assert result["health_status"] == "warning"
 
         # Above critical threshold (0.91 > 0.90)
-        result = monitor.monitor_connection_usage({
-            "active_connections": 91,
-            "max_connections": 100,
-            "failed_connection_attempts": 0,
-        })
+        result = monitor.monitor_connection_usage(
+            {
+                "active_connections": 91,
+                "max_connections": 100,
+                "failed_connection_attempts": 0,
+            }
+        )
         assert result["health_status"] == "critical"
 
 

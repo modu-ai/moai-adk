@@ -27,11 +27,8 @@ class TestKoreanUserWorkflow:
         config = {
             "name": "한국 프로젝트",
             "description": "한국어로 된 프로젝트 설명",
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            },
-            "project": {"mode": "personal"}
+            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "project": {"mode": "personal"},
         }
 
         # Act - Verify config structure
@@ -44,10 +41,8 @@ class TestKoreanUserWorkflow:
         assert language_name == "한국어", "Should set Korean language name"
         assert config["name"] == "한국 프로젝트", "Should preserve Korean project name"
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
-    def test_korean_phase_executor_context(
-        self, mock_processor_class: type
-    ) -> None:
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
+    def test_korean_phase_executor_context(self, mock_processor_class: type) -> None:
         """PhaseExecutor sets correct Korean context for templates."""
         # Arrange
         mock_processor = MagicMock()
@@ -58,10 +53,7 @@ class TestKoreanUserWorkflow:
 
         config = {
             "name": "한국 프로젝트",
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            }
+            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -81,11 +73,9 @@ class TestKoreanUserWorkflow:
         """Korean language variables substitute in templates."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ko",
-            "CONVERSATION_LANGUAGE_NAME": "한국어",
-            "PROJECT_NAME": "MoAI-ADK"
-        })
+        processor.set_context(
+            {"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어", "PROJECT_NAME": "MoAI-ADK"}
+        )
 
         # Template that would be used in documentation
         template = """
@@ -114,10 +104,7 @@ class TestJapaneseUserWorkflow:
         config = {
             "name": "日本語プロジェクト",
             "description": "日本語で書かれたプロジェクト説明",
-            "language": {
-                "conversation_language": "ja",
-                "conversation_language_name": "日本語"
-            }
+            "language": {"conversation_language": "ja", "conversation_language_name": "日本語"},
         }
 
         # Act
@@ -130,10 +117,8 @@ class TestJapaneseUserWorkflow:
         assert language_name == "日本語", "Should set Japanese language name"
         assert config["name"] == "日本語プロジェクト"
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
-    def test_japanese_phase_executor_context(
-        self, mock_processor_class: type
-    ) -> None:
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
+    def test_japanese_phase_executor_context(self, mock_processor_class: type) -> None:
         """PhaseExecutor sets correct Japanese context for templates."""
         # Arrange
         mock_processor = MagicMock()
@@ -144,10 +129,7 @@ class TestJapaneseUserWorkflow:
 
         config = {
             "name": "日本語プロジェクト",
-            "language": {
-                "conversation_language": "ja",
-                "conversation_language_name": "日本語"
-            }
+            "language": {"conversation_language": "ja", "conversation_language_name": "日本語"},
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -166,10 +148,7 @@ class TestJapaneseUserWorkflow:
         """Japanese language variables substitute in templates."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ja",
-            "CONVERSATION_LANGUAGE_NAME": "日本語"
-        })
+        processor.set_context({"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語"})
 
         template = "ドキュメント言語: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})"
 
@@ -191,10 +170,7 @@ class TestSpanishUserWorkflow:
         config = {
             "name": "Proyecto Español",
             "description": "Descripción del proyecto en español",
-            "language": {
-                "conversation_language": "es",
-                "conversation_language_name": "Español"
-            }
+            "language": {"conversation_language": "es", "conversation_language_name": "Español"},
         }
 
         # Act
@@ -206,10 +182,8 @@ class TestSpanishUserWorkflow:
         assert conversation_language == "es", "Should set Spanish language code"
         assert language_name == "Español", "Should set Spanish language name"
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
-    def test_spanish_phase_executor_context(
-        self, mock_processor_class: type
-    ) -> None:
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
+    def test_spanish_phase_executor_context(self, mock_processor_class: type) -> None:
         """PhaseExecutor sets correct Spanish context for templates."""
         # Arrange
         mock_processor = MagicMock()
@@ -220,10 +194,7 @@ class TestSpanishUserWorkflow:
 
         config = {
             "name": "Proyecto Español",
-            "language": {
-                "conversation_language": "es",
-                "conversation_language_name": "Español"
-            }
+            "language": {"conversation_language": "es", "conversation_language_name": "Español"},
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -248,10 +219,7 @@ class TestEnglishUserWorkflow:
         config = {
             "name": "English Project",
             "description": "Project description in English",
-            "language": {
-                "conversation_language": "en",
-                "conversation_language_name": "English"
-            }
+            "language": {"conversation_language": "en", "conversation_language_name": "English"},
         }
 
         # Act
@@ -279,16 +247,17 @@ class TestEnglishUserWorkflow:
 class TestMultiLanguageMigration:
     """Test migration scenarios for multiple languages."""
 
-    @pytest.mark.parametrize("language_code,language_name", [
-        ("ko", "한국어"),
-        ("ja", "日本語"),
-        ("zh", "中文"),
-        ("es", "Español"),
-        ("en", "English"),
-    ])
-    def test_migrate_all_supported_languages(
-        self, language_code: str, language_name: str
-    ) -> None:
+    @pytest.mark.parametrize(
+        "language_code,language_name",
+        [
+            ("ko", "한국어"),
+            ("ja", "日本語"),
+            ("zh", "中文"),
+            ("es", "Español"),
+            ("en", "English"),
+        ],
+    )
+    def test_migrate_all_supported_languages(self, language_code: str, language_name: str) -> None:
         """Migration works for all supported languages."""
         # Arrange
         legacy_config = {"conversation_language": language_code}
@@ -305,14 +274,9 @@ class TestMultiLanguageMigration:
         # Arrange
         legacy_config = {
             "conversation_language": "ko",
-            "project": {
-                "name": "TestProject",
-                "mode": "team"
-            },
-            "git_strategy": {
-                "team": {"use_gitflow": True}
-            },
-            "custom_field": "custom_value"
+            "project": {"name": "TestProject", "mode": "team"},
+            "git_strategy": {"team": {"use_gitflow": True}},
+            "custom_field": "custom_value",
         }
 
         # Act

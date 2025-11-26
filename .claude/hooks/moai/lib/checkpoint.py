@@ -12,9 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-def detect_risky_operation(
-    tool_name: str, tool_args: dict[str, Any], cwd: str
-) -> tuple[bool, str]:
+def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) -> tuple[bool, str]:
     """Risk task detection (for Event-Driven Checkpoint)
 
     Claude Code tool automatically detects dangerous tasks before use.
@@ -59,17 +57,11 @@ def detect_risky_operation(
             return (True, "delete")
 
         # Git merge/reset/rebase
-        if any(
-            pattern in command
-            for pattern in ["git merge", "git reset --hard", "git rebase"]
-        ):
+        if any(pattern in command for pattern in ["git merge", "git reset --hard", "git rebase"]):
             return (True, "merge")
 
         # Execute external script (potentially destructive)
-        if any(
-            command.startswith(prefix)
-            for prefix in ["python ", "node ", "bash ", "sh "]
-        ):
+        if any(command.startswith(prefix) for prefix in ["python ", "node ", "bash ", "sh "]):
             return (True, "script")
 
     # Edit/Write tool: Detect important files

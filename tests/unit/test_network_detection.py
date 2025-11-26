@@ -4,6 +4,7 @@ Network detection tests for is_network_available() function
 and cache integration tests for get_package_version_info()
 
 """
+
 import importlib.util
 import socket
 import sys
@@ -68,7 +69,7 @@ def test_is_network_available_returns_false(project_module):
     Then: Should return False within 100ms (timeout)
     """
     # Mock socket.create_connection to raise an exception
-    with patch('socket.create_connection') as mock_connect:
+    with patch("socket.create_connection") as mock_connect:
         mock_connect.side_effect = OSError("Network unreachable")
 
         start_time = time.time()
@@ -88,7 +89,7 @@ def test_is_network_available_handles_timeout(project_module):
     Then: Should return False without raising exception
     """
     # Mock socket.create_connection to raise timeout
-    with patch('socket.create_connection') as mock_connect:
+    with patch("socket.create_connection") as mock_connect:
         mock_connect.side_effect = socket.timeout("Connection timeout")
 
         start_time = time.time()
@@ -122,12 +123,12 @@ def test_get_package_version_with_valid_cache(project_module, tmp_path):
         "latest": "0.9.0",
         "update_available": True,
         "upgrade_command": "uv tool upgrade moai-adk",
-        "last_check": datetime.now(timezone.utc).isoformat()
+        "last_check": datetime.now(timezone.utc).isoformat(),
     }
     cache_file.write_text(json.dumps(cache_data, indent=2))
 
     # Patch urllib to detect if it's called (it shouldn't be)
-    with patch('urllib.request.urlopen') as mock_urlopen:
+    with patch("urllib.request.urlopen") as mock_urlopen:
         mock_urlopen.side_effect = Exception("Should not call PyPI when cache is valid!")
 
         # Call the function with tmp_path as cwd

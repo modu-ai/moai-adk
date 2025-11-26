@@ -7,8 +7,11 @@ import re
 import pytest
 from pathlib import Path
 from tests.conftest import (
-    load_all_skills, validate_semantic_version, validate_skill_name,
-    count_description_quality, calculate_compliance_score
+    load_all_skills,
+    validate_semantic_version,
+    validate_skill_name,
+    count_description_quality,
+    calculate_compliance_score,
 )
 
 

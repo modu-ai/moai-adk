@@ -32,15 +32,9 @@ SHARED_DIR = HOOKS_DIR / "shared"
 UTILS_DIR = HOOKS_DIR / "utils"
 
 # sys.path에 추가 (최상단에 추가하여 우선순위 높임)
-sys.path = [
-    str(SHARED_DIR),
-    str(HOOKS_DIR),
-    str(UTILS_DIR)
-] + [p for p in sys.path if p not in [
-    str(SHARED_DIR),
-    str(HOOKS_DIR),
-    str(UTILS_DIR)
-]]
+sys.path = [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR)] + [
+    p for p in sys.path if p not in [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR)]
+]
 
 # Import modules (these don't exist yet - tests will fail)
 try:
@@ -200,7 +194,7 @@ class TestHookExecutionTracking:
 
         # Verify state was saved
         assert os.path.exists(self.state_file)
-        with open(self.state_file, 'r') as f:
+        with open(self.state_file, "r") as f:
             saved_state = json.load(f)
 
         assert saved_state["SessionStart"]["count"] == 2
@@ -215,11 +209,11 @@ class TestHookExecutionTracking:
             assert result["executed"] is True
 
         # Verify counts are cumulative
-        with open(self.state_file, 'r') as f:
+        with open(self.state_file, "r") as f:
             final_state = json.load(f)
 
         assert final_state["SessionStart"]["count"] == 4  # 2 + 2
-        assert final_state["SessionEnd"]["count"] == 1     # unchanged
+        assert final_state["SessionEnd"]["count"] == 1  # unchanged
         assert final_state["UserPromptSubmit"]["count"] == 1  # new
 
     @pytest.mark.skip(reason="Hook execution tracking helpers not yet implemented in test")
@@ -263,7 +257,7 @@ class TestHookExecutionTracking:
 
         # Collect results
         for thread in threads:
-            result = thread._result if hasattr(thread, '_result') else None
+            result = thread._result if hasattr(thread, "_result") else None
             if result:
                 results.append(result)
 
@@ -271,7 +265,7 @@ class TestHookExecutionTracking:
         # Note: Some threads may have been duplicates, so count might be less than 5
         # The exact count depends on deduplication logic
         assert len(execution_count) <= 5  # No more than 5 executions
-        assert execution_count[-1] <= 5   # Final count should be reasonable
+        assert execution_count[-1] <= 5  # Final count should be reasonable
 
     @pytest.mark.skip(reason="Hook execution tracking helpers not yet implemented in test")
     def test_hook_execution_tracking_time_window(self):
@@ -368,7 +362,7 @@ class TestHookExecutionTracking:
         self.state_file = os.path.join(self.temp_dir, "corrupted_state.json")
 
         # Create corrupted state file
-        with open(self.state_file, 'w') as f:
+        with open(self.state_file, "w") as f:
             f.write("corrupted json content")
 
         # Execute hook - should fail gracefully and execute anyway
@@ -416,8 +410,10 @@ class TestHookExecutionTracking:
             cursor = conn.cursor()
             # Add entries older than retention period
             old_time = int(time.time()) - 86400  # 24 hours ago
-            cursor.execute("INSERT INTO hook_executions (hook_name, execution_time, execution_count) VALUES (?, ?, ?)",
-                          (hook_name, old_time, 1))
+            cursor.execute(
+                "INSERT INTO hook_executions (hook_name, execution_time, execution_count) VALUES (?, ?, ?)",
+                (hook_name, old_time, 1),
+            )
 
         # Execute hook with cleanup
         result = self._execute_hook_with_database(hook_name, results, self.tracking_db, max_age=3600)
@@ -464,7 +460,15 @@ class TestHookExecutionTracking:
             for j, prev_result in enumerate(results[:-1]):
                 assert result["execution_id"] != prev_result["execution_id"]
 
-    def _execute_hook_with_tracking(self, hook_name: str, results: List, lock=None, time_window: float = 1.0, max_entries: int = 100, include_uuid: bool = False) -> Dict[str, Any]:
+    def _execute_hook_with_tracking(
+        self,
+        hook_name: str,
+        results: List,
+        lock=None,
+        time_window: float = 1.0,
+        max_entries: int = 100,
+        include_uuid: bool = False,
+    ) -> Dict[str, Any]:
         """Helper method to simulate hook execution with tracking"""
         import time
 
@@ -479,8 +483,10 @@ class TestHookExecutionTracking:
         # Check for duplicates (mock logic)
         if len(results) > 0:
             last_execution = results[-1]
-            if (last_execution.get("hook_name") == hook_name and
-                current_time - last_execution.get("timestamp", 0) < time_window):
+            if (
+                last_execution.get("hook_name") == hook_name
+                and current_time - last_execution.get("timestamp", 0) < time_window
+            ):
                 is_duplicate = True
                 execution_count = last_execution.get("execution_count", 1)
 
@@ -491,7 +497,7 @@ class TestHookExecutionTracking:
             "execution_count": execution_count,
             "duplicate": is_duplicate,
             "time_window": time_window,
-            "execution_id": execution_id
+            "execution_id": execution_id,
         }
 
         if not is_duplicate:
@@ -499,22 +505,21 @@ class TestHookExecutionTracking:
 
         return result
 
-    def _execute_hook_with_state(self, hook_name: str, results: List, state_file: str, time_window: float = 1.0) -> Dict[str, Any]:
+    def _execute_hook_with_state(
+        self, hook_name: str, results: List, state_file: str, time_window: float = 1.0
+    ) -> Dict[str, Any]:
         """Helper method to simulate hook execution with file-based state"""
         try:
             # Load existing state
             if os.path.exists(state_file):
-                with open(state_file, 'r') as f:
+                with open(state_file, "r") as f:
                     state = json.load(f)
             else:
                 state = {}
 
             # Initialize hook state if not exists
             if hook_name not in state:
-                state[hook_name] = {
-                    "count": 0,
-                    "last_execution": 0
-                }
+                state[hook_name] = {"count": 0, "last_execution": 0}
 
             current_time = time.time()
             last_execution_time = state[hook_name]["last_execution"]
@@ -529,7 +534,7 @@ class TestHookExecutionTracking:
                     "executed": False,
                     "execution_count": execution_count,
                     "duplicate": True,
-                    "time_window": time_window
+                    "time_window": time_window,
                 }
             else:
                 # Not duplicate - execute
@@ -538,7 +543,7 @@ class TestHookExecutionTracking:
                 state[hook_name]["last_execution"] = current_time
 
                 # Save state
-                with open(state_file, 'w') as f:
+                with open(state_file, "w") as f:
                     json.dump(state, f)
 
                 result = {
@@ -547,7 +552,7 @@ class TestHookExecutionTracking:
                     "executed": True,
                     "execution_count": execution_count,
                     "duplicate": False,
-                    "time_window": time_window
+                    "time_window": time_window,
                 }
 
             results.append(result)
@@ -562,10 +567,12 @@ class TestHookExecutionTracking:
                 "execution_count": len(results) + 1,
                 "duplicate": False,
                 "time_window": time_window,
-                "error": str(e)
+                "error": str(e),
             }
 
-    def _execute_hook_with_database(self, hook_name: str, results: List, db_file: str, max_age: int = 86400) -> Dict[str, Any]:
+    def _execute_hook_with_database(
+        self, hook_name: str, results: List, db_file: str, max_age: int = 86400
+    ) -> Dict[str, Any]:
         """Helper method to simulate hook execution with database-based tracking"""
         try:
             # Initialize database if it doesn't exist
@@ -578,14 +585,17 @@ class TestHookExecutionTracking:
                 cursor = conn.cursor()
 
                 # Check for recent execution
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT execution_time, execution_count
                     FROM hook_executions
                     WHERE hook_name = ?
                     AND execution_time > ?
                     ORDER BY execution_time DESC
                     LIMIT 1
-                """, (hook_name, current_time - 3.0))  # 3 second window
+                """,
+                    (hook_name, current_time - 3.0),
+                )  # 3 second window
 
                 row = cursor.fetchone()
 
@@ -598,7 +608,7 @@ class TestHookExecutionTracking:
                             "timestamp": current_time,
                             "executed": False,
                             "execution_count": execution_count,
-                            "duplicate": True
+                            "duplicate": True,
                         }
                         results.append(result)
                         return result
@@ -606,16 +616,22 @@ class TestHookExecutionTracking:
                 # Execute hook
                 execution_count = execution_count + 1 if row else 1
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO hook_executions (hook_name, execution_time, execution_count)
                     VALUES (?, ?, ?)
-                """, (hook_name, int(current_time), execution_count))
+                """,
+                    (hook_name, int(current_time), execution_count),
+                )
 
                 # Cleanup old entries (optional)
-                cursor.execute("""
+                cursor.execute(
+                    """
                     DELETE FROM hook_executions
                     WHERE hook_name = ? AND execution_time < ?
-                """, (hook_name, current_time - max_age))
+                """,
+                    (hook_name, current_time - max_age),
+                )
 
                 conn.commit()
 
@@ -624,7 +640,7 @@ class TestHookExecutionTracking:
                     "timestamp": current_time,
                     "executed": True,
                     "execution_count": execution_count,
-                    "duplicate": False
+                    "duplicate": False,
                 }
 
                 results.append(result)
@@ -638,14 +654,15 @@ class TestHookExecutionTracking:
                 "executed": True,
                 "execution_count": len(results) + 1,
                 "duplicate": False,
-                "error": str(e)
+                "error": str(e),
             }
 
     def _initialize_tracking_database(self, db_file: str):
         """Initialize SQLite database for hook execution tracking"""
         with sqlite3.connect(db_file) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS hook_executions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     hook_name TEXT NOT NULL,
@@ -653,5 +670,6 @@ class TestHookExecutionTracking:
                     execution_count INTEGER NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
             conn.commit()

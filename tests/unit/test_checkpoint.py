@@ -6,7 +6,6 @@ Event-Driven Checkpoint 생성 및 복구 기능을 테스트합니다.
 SPEC: .moai/specs/SPEC-CHECKPOINT-EVENT-001/spec.md
 """
 
-
 import pytest
 
 from moai_adk.core.git.checkpoint import CheckpointManager
@@ -19,6 +18,7 @@ class TestCheckpointManager:
     def temp_git_repo(self, tmp_path):
         """임시 Git 저장소 생성."""
         import git
+
         repo = git.Repo.init(tmp_path)
         # 초기 커밋 생성
         test_file = tmp_path / "test.txt"
@@ -37,10 +37,7 @@ class TestCheckpointManager:
         """위험한 작업 감지 시 자동으로 checkpoint를 생성해야 한다."""
         # 대규모 파일 삭제 시뮬레이션
         deleted_files = [f"file{i}.py" for i in range(10)]
-        checkpoint_id = manager.create_checkpoint_if_risky(
-            operation="delete",
-            deleted_files=deleted_files
-        )
+        checkpoint_id = manager.create_checkpoint_if_risky(operation="delete", deleted_files=deleted_files)
         assert checkpoint_id is not None
         assert checkpoint_id.startswith("before-delete-")
 
@@ -48,20 +45,14 @@ class TestCheckpointManager:
         """안전한 작업은 checkpoint를 생성하지 않아야 한다."""
         # 소규모 파일 삭제 시뮬레이션
         deleted_files = ["file1.py"]
-        checkpoint_id = manager.create_checkpoint_if_risky(
-            operation="delete",
-            deleted_files=deleted_files
-        )
+        checkpoint_id = manager.create_checkpoint_if_risky(operation="delete", deleted_files=deleted_files)
         assert checkpoint_id is None
 
     # TEST-CHECKPOINT-EVENT-008: Checkpoint 메타데이터 기록
     def test_should_log_checkpoint_metadata(self, manager, tmp_path):
         """checkpoint 생성 시 메타데이터를 .moai/checkpoints.log에 기록해야 한다."""
         deleted_files = [f"file{i}.py" for i in range(10)]
-        manager.create_checkpoint_if_risky(
-            operation="delete",
-            deleted_files=deleted_files
-        )
+        manager.create_checkpoint_if_risky(operation="delete", deleted_files=deleted_files)
 
         log_file = tmp_path / ".moai" / "checkpoints.log"
         assert log_file.exists()
@@ -73,10 +64,7 @@ class TestCheckpointManager:
     def test_should_include_timestamp_in_metadata(self, manager, tmp_path):
         """checkpoint 메타데이터에 timestamp가 포함되어야 한다."""
         deleted_files = [f"file{i}.py" for i in range(10)]
-        manager.create_checkpoint_if_risky(
-            operation="delete",
-            deleted_files=deleted_files
-        )
+        manager.create_checkpoint_if_risky(operation="delete", deleted_files=deleted_files)
 
         log_file = tmp_path / ".moai" / "checkpoints.log"
         log_content = log_file.read_text()
@@ -92,10 +80,7 @@ class TestCheckpointManager:
 
         # Checkpoint 생성
         deleted_files = [f"file{i}.py" for i in range(10)]
-        checkpoint_id = manager.create_checkpoint_if_risky(
-            operation="delete",
-            deleted_files=deleted_files
-        )
+        checkpoint_id = manager.create_checkpoint_if_risky(operation="delete", deleted_files=deleted_files)
 
         # 파일 수정
         test_file.write_text("modified")
@@ -112,10 +97,7 @@ class TestCheckpointManager:
         """복구 전에 현재 상태를 새로운 checkpoint로 저장해야 한다."""
         # 첫 번째 checkpoint 생성
         deleted_files = [f"file{i}.py" for i in range(10)]
-        checkpoint_id = manager.create_checkpoint_if_risky(
-            operation="delete",
-            deleted_files=deleted_files
-        )
+        checkpoint_id = manager.create_checkpoint_if_risky(operation="delete", deleted_files=deleted_files)
 
         # 복구 실행
         manager.restore_checkpoint(checkpoint_id)

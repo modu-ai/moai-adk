@@ -18,13 +18,14 @@ from unittest.mock import patch
 # Module 1: state_cleanup.py Tests
 # ============================================================================
 
+
 class TestStateCleanup:
     """Test suite for state_cleanup module"""
 
     def test_load_hook_timeout_default(self):
         """Should return default timeout (3000ms) when config not found"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('pathlib.Path.cwd', return_value=Path(tmpdir)):
+            with patch("pathlib.Path.cwd", return_value=Path(tmpdir)):
                 # This is placeholder - actual implementation will be in state_cleanup.py
                 # Expected behavior: returns 3000 when config.json missing
                 assert True  # Placeholder for actual test
@@ -36,11 +37,9 @@ class TestStateCleanup:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 5000}
-            }))
+            config_file.write_text(json.dumps({"hooks": {"timeout_ms": 5000}}))
 
-            with patch('pathlib.Path.cwd', return_value=Path(tmpdir)):
+            with patch("pathlib.Path.cwd", return_value=Path(tmpdir)):
                 # Expected: loads timeout_ms from config
                 assert True  # Placeholder
 
@@ -69,10 +68,7 @@ class TestStateCleanup:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            test_config = {
-                "auto_cleanup": {"enabled": True, "cleanup_days": 7},
-                "daily_analysis": {"enabled": True}
-            }
+            test_config = {"auto_cleanup": {"enabled": True, "cleanup_days": 7}, "daily_analysis": {"enabled": True}}
             config_file.write_text(json.dumps(test_config))
 
             # Expected: loads and returns full config
@@ -111,14 +107,13 @@ class TestStateCleanup:
 # Module 2: core_cleanup.py Tests
 # ============================================================================
 
+
 class TestCoreCleanup:
     """Test suite for core_cleanup module"""
 
     def test_cleanup_old_files_disabled(self):
         """Should return empty stats when cleanup disabled"""
-        config = {
-            "auto_cleanup": {"enabled": False}
-        }
+        config = {"auto_cleanup": {"enabled": False}}
         # Expected: returns {"total_cleaned": 0, ...}
         assert True  # Placeholder
 
@@ -137,13 +132,7 @@ class TestCoreCleanup:
             past_time = (datetime.now() - timedelta(days=8)).timestamp()
             Path(old_report).touch()
 
-            config = {
-                "auto_cleanup": {
-                    "enabled": True,
-                    "cleanup_days": 7,
-                    "max_reports": 10
-                }
-            }
+            config = {"auto_cleanup": {"enabled": True, "cleanup_days": 7, "max_reports": 10}}
 
             # Expected: reports_cleaned >= 1
             assert True  # Placeholder
@@ -209,12 +198,7 @@ class TestCoreCleanup:
             stats_dir = Path(tmpdir) / ".moai" / "cache"
             stats_dir.mkdir(parents=True, exist_ok=True)
 
-            stats = {
-                "total_cleaned": 5,
-                "reports_cleaned": 2,
-                "cache_cleaned": 2,
-                "temp_cleaned": 1
-            }
+            stats = {"total_cleaned": 5, "reports_cleaned": 2, "cache_cleaned": 2, "temp_cleaned": 1}
 
             # Expected: creates cleanup_stats.json
             assert True  # Placeholder
@@ -226,16 +210,9 @@ class TestCoreCleanup:
             stats_dir.mkdir(parents=True, exist_ok=True)
 
             stats_file = stats_dir / "cleanup_stats.json"
-            stats_file.write_text(json.dumps({
-                "2025-11-01": {"cleaned_files": 3}
-            }))
+            stats_file.write_text(json.dumps({"2025-11-01": {"cleaned_files": 3}}))
 
-            new_stats = {
-                "total_cleaned": 5,
-                "reports_cleaned": 2,
-                "cache_cleaned": 2,
-                "temp_cleaned": 1
-            }
+            new_stats = {"total_cleaned": 5, "reports_cleaned": 2, "cache_cleaned": 2, "temp_cleaned": 1}
 
             # Expected: file now has 2 dates
             assert True  # Placeholder
@@ -254,8 +231,7 @@ class TestCoreCleanup:
 
             stats_file.write_text(json.dumps(old_stats))
 
-            new_stats = {"total_cleaned": 1, "reports_cleaned": 0,
-                        "cache_cleaned": 1, "temp_cleaned": 0}
+            new_stats = {"total_cleaned": 1, "reports_cleaned": 0, "cache_cleaned": 1, "temp_cleaned": 0}
 
             # Expected: only 30 most recent dates retained
             assert True  # Placeholder
@@ -265,14 +241,13 @@ class TestCoreCleanup:
 # Module 3: analysis_report.py Tests
 # ============================================================================
 
+
 class TestAnalysisReport:
     """Test suite for analysis_report module"""
 
     def test_generate_daily_analysis_disabled(self):
         """Should return None when daily_analysis disabled"""
-        config = {
-            "daily_analysis": {"enabled": False}
-        }
+        config = {"daily_analysis": {"enabled": False}}
         # Expected: returns None
         assert True  # Placeholder
 
@@ -282,12 +257,7 @@ class TestAnalysisReport:
             reports_dir = Path(tmpdir) / ".moai" / "reports"
             reports_dir.mkdir(parents=True, exist_ok=True)
 
-            config = {
-                "daily_analysis": {
-                    "enabled": True,
-                    "report_location": str(reports_dir)
-                }
-            }
+            config = {"daily_analysis": {"enabled": True, "report_location": str(reports_dir)}}
 
             # Expected: returns path to created report
             assert True  # Placeholder
@@ -305,11 +275,9 @@ class TestAnalysisReport:
             session_dir.mkdir(parents=True, exist_ok=True)
 
             session_file = session_dir / "session-001.json"
-            session_file.write_text(json.dumps({
-                "start_time": "1000",
-                "end_time": "2000",
-                "tool_use": [{"name": "Read"}]
-            }))
+            session_file.write_text(
+                json.dumps({"start_time": "1000", "end_time": "2000", "tool_use": [{"name": "Read"}]})
+            )
 
             # Expected: analyzes session
             assert True  # Placeholder
@@ -321,7 +289,7 @@ class TestAnalysisReport:
             "date_range": "2025-11-14 ~ 2025-11-19",
             "tools_used": {"Read": 10, "Bash": 5},
             "errors_found": [],
-            "duration_stats": {"mean": 300, "min": 100, "max": 600, "std": 150}
+            "duration_stats": {"mean": 300, "min": 100, "max": 600, "std": 150},
         }
 
         # Expected: report contains all sections
@@ -339,7 +307,7 @@ class TestAnalysisReport:
             "date_range": "",
             "tools_used": {},
             "errors_found": [],
-            "duration_stats": {}
+            "duration_stats": {},
         }
 
         # Expected: report still valid
@@ -366,11 +334,9 @@ class TestAnalysisReport:
             # Create sessions with known durations
             for i in range(3):
                 session_file = session_dir / f"session-{i:03d}.json"
-                session_file.write_text(json.dumps({
-                    "start_time": str(1000 + i * 1000),
-                    "end_time": str(2000 + i * 1000),
-                    "tool_use": []
-                }))
+                session_file.write_text(
+                    json.dumps({"start_time": str(1000 + i * 1000), "end_time": str(2000 + i * 1000), "tool_use": []})
+                )
 
             # Expected: duration_stats has mean, min, max, std
             assert True  # Placeholder
@@ -379,6 +345,7 @@ class TestAnalysisReport:
 # ============================================================================
 # Module 4: orchestrator.py Tests
 # ============================================================================
+
 
 class TestOrchestrator:
     """Test suite for orchestrator module"""
@@ -391,15 +358,15 @@ class TestOrchestrator:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
-                "auto_cleanup": {
-                    "enabled": True,
-                    "cleanup_days": 7,
-                    "max_reports": 10
-                },
-                "daily_analysis": {"enabled": True}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": True, "cleanup_days": 7, "max_reports": 10},
+                        "daily_analysis": {"enabled": True},
+                    }
+                )
+            )
 
             # Expected: main() returns success result
             assert True  # Placeholder
@@ -411,11 +378,15 @@ class TestOrchestrator:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 100, "graceful_degradation": True},
-                "auto_cleanup": {"enabled": False},
-                "daily_analysis": {"enabled": False}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 100, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": False},
+                        "daily_analysis": {"enabled": False},
+                    }
+                )
+            )
 
             # Expected: timeout error handled, continues due to graceful degradation
             assert True  # Placeholder
@@ -427,11 +398,15 @@ class TestOrchestrator:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
-                "auto_cleanup": {"enabled": True},
-                "daily_analysis": {"enabled": True}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": True},
+                        "daily_analysis": {"enabled": True},
+                    }
+                )
+            )
 
             # Expected: exception caught, returns error result
             assert True  # Placeholder
@@ -443,11 +418,15 @@ class TestOrchestrator:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
-                "auto_cleanup": {"enabled": False},
-                "daily_analysis": {"enabled": False}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": False},
+                        "daily_analysis": {"enabled": False},
+                    }
+                )
+            )
 
             # Expected output:
             # {
@@ -463,10 +442,7 @@ class TestOrchestrator:
     def test_execute_cleanup_sequence_calls_all_handlers(self):
         """Should call cleanup, analysis, and stats functions"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = {
-                "auto_cleanup": {"enabled": True, "cleanup_days": 7},
-                "daily_analysis": {"enabled": True}
-            }
+            config = {"auto_cleanup": {"enabled": True, "cleanup_days": 7}, "daily_analysis": {"enabled": True}}
 
             # Expected: all functions called in sequence
             assert True  # Placeholder
@@ -489,7 +465,7 @@ class TestOrchestrator:
             "execution_time_seconds": 0.023,
             "cleanup_stats": {"total_cleaned": 5},
             "daily_analysis_report": "/path/to/report.md",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         # Expected: valid JSON with all fields
@@ -502,7 +478,7 @@ class TestOrchestrator:
             "success": False,
             "error": "Timeout occurred",
             "graceful_degradation": True,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         # Expected: valid JSON error format
@@ -512,6 +488,7 @@ class TestOrchestrator:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestSessionStartIntegration:
     """Integration tests for complete session_start hook"""
@@ -534,15 +511,15 @@ class TestSessionStartIntegration:
             old_report.write_text("{}")
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
-                "auto_cleanup": {
-                    "enabled": True,
-                    "cleanup_days": 7,
-                    "max_reports": 10
-                },
-                "daily_analysis": {"enabled": False}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": True, "cleanup_days": 7, "max_reports": 10},
+                        "daily_analysis": {"enabled": False},
+                    }
+                )
+            )
 
             # Expected: sequence completes successfully
             assert True  # Placeholder
@@ -554,14 +531,15 @@ class TestSessionStartIntegration:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 3000},
-                "auto_cleanup": {
-                    "enabled": True,
-                    "cleanup_days": 7
-                },
-                "daily_analysis": {"enabled": False}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000},
+                        "auto_cleanup": {"enabled": True, "cleanup_days": 7},
+                        "daily_analysis": {"enabled": False},
+                    }
+                )
+            )
 
             # Expected: config.json updated with today's date
             assert True  # Placeholder
@@ -575,11 +553,15 @@ class TestSessionStartIntegration:
             config_dir.mkdir(parents=True, exist_ok=True)
 
             config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps({
-                "hooks": {"timeout_ms": 3000},
-                "auto_cleanup": {"enabled": False},
-                "daily_analysis": {"enabled": False}
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000},
+                        "auto_cleanup": {"enabled": False},
+                        "daily_analysis": {"enabled": False},
+                    }
+                )
+            )
 
             start = time.time()
             # Expected: execution time < 30ms

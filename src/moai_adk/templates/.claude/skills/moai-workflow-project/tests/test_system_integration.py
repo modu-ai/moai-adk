@@ -28,6 +28,7 @@ class TestSystemIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_complete_project_initialization(self):
@@ -39,7 +40,7 @@ class TestSystemIntegration(unittest.TestCase):
             user_name="테스트 사용자",
             domains=["backend", "frontend"],
             project_type="web_application",
-            optimization_enabled=True
+            optimization_enabled=True,
         )
 
         # Verify successful initialization
@@ -51,7 +52,7 @@ class TestSystemIntegration(unittest.TestCase):
         self.assertTrue(config_path.exists())
 
         # Verify configuration content
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
         self.assertEqual(config["project"]["type"], "web_application")
@@ -67,48 +68,32 @@ class TestSystemIntegration(unittest.TestCase):
         self.assertIsNotNone(self.project.template_optimizer)
 
         # Modules should share the same project root and config
-        self.assertEqual(
-            self.project.documentation_manager.project_root,
-            str(self.test_dir)
-        )
-        self.assertEqual(
-            self.project.language_initializer.project_root,
-            str(self.test_dir)
-        )
+        self.assertEqual(self.project.documentation_manager.project_root, str(self.test_dir))
+        self.assertEqual(self.project.language_initializer.project_root, str(self.test_dir))
 
     def test_configuration_sharing(self):
         """Test configuration sharing between modules."""
 
         # Update language settings
-        updates = {
-            "language.conversation_language": "ja",
-            "language.agent_prompt_language": "english"
-        }
+        updates = {"language.conversation_language": "ja", "language.agent_prompt_language": "english"}
 
         result = self.project.update_language_settings(updates)
         self.assertTrue(result["success"])
 
         # Verify configuration was updated
-        self.assertEqual(
-            self.project.config["language"]["conversation_language"],
-            "ja"
-        )
+        self.assertEqual(self.project.config["language"]["conversation_language"], "ja")
 
     def test_error_handling_and_recovery(self):
         """Test error handling and recovery mechanisms."""
 
         # Test with invalid project type
-        result = self.project.initialize_complete_project(
-            project_type="invalid_type"
-        )
+        result = self.project.initialize_complete_project(project_type="invalid_type")
 
         # Should still succeed but log error
         self.assertTrue(result["success"])
 
         # Test with invalid language
-        result = self.project.initialize_complete_project(
-            language="invalid_language"
-        )
+        result = self.project.initialize_complete_project(language="invalid_language")
 
         # Should handle gracefully
         self.assertTrue(result["success"])
@@ -117,10 +102,7 @@ class TestSystemIntegration(unittest.TestCase):
         """Test integration of different workflows."""
 
         # Step 1: Initialize project
-        init_result = self.project.initialize_complete_project(
-            language="en",
-            project_type="web_application"
-        )
+        init_result = self.project.initialize_complete_project(language="en", project_type="web_application")
 
         self.assertTrue(init_result["success"])
 
@@ -130,13 +112,7 @@ class TestSystemIntegration(unittest.TestCase):
             "title": "Test Feature",
             "description": "Test feature implementation",
             "requirements": ["Requirement 1", "Requirement 2"],
-            "api_endpoints": [
-                {
-                    "path": "/api/test",
-                    "method": "POST",
-                    "description": "Test endpoint"
-                }
-            ]
+            "api_endpoints": [{"path": "/api/test", "method": "POST", "description": "Test endpoint"}],
         }
 
         docs_result = self.project.generate_documentation_from_spec(spec_data)
@@ -217,29 +193,25 @@ class TestSystemIntegration(unittest.TestCase):
         test_dir2 = Path(tempfile.mkdtemp())
 
         try:
-            result = initialize_project(
-                str(test_dir2),
-                language="en",
-                project_type="mobile_application"
-            )
+            result = initialize_project(str(test_dir2), language="en", project_type="mobile_application")
 
             self.assertTrue(result["success"])
 
         finally:
             import shutil
+
             shutil.rmtree(test_dir2, ignore_errors=True)
 
     def test_module_error_isolation(self):
         """Test that module errors don't crash the entire system."""
 
         # Mock a module to raise an exception
-        with patch.object(self.project.template_optimizer, 'analyze_project_templates',
-                         side_effect=Exception("Module error")):
+        with patch.object(
+            self.project.template_optimizer, "analyze_project_templates", side_effect=Exception("Module error")
+        ):
 
             # Should still complete initialization with optimization disabled
-            result = self.project.initialize_complete_project(
-                optimization_enabled=False  # Disable to avoid the error
-            )
+            result = self.project.initialize_complete_project(optimization_enabled=False)  # Disable to avoid the error
 
             self.assertTrue(result["success"])
             self.assertIn("language_initializer", result["modules_initialized"])

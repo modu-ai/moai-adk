@@ -138,9 +138,7 @@ class TestCreateAnalysisPrompt:
 
             analyzer = MergeAnalyzer(Path(tmpdir))
             diff_files = {}
-            prompt = analyzer._create_analysis_prompt(
-                backup_path, template_path, diff_files
-            )
+            prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
 
             # Check essential prompt components
             assert "MoAI-ADK 설정 파일 병합 전문가" in prompt
@@ -159,9 +157,7 @@ class TestCreateAnalysisPrompt:
 
             analyzer = MergeAnalyzer(Path(tmpdir))
             diff_files = {}
-            prompt = analyzer._create_analysis_prompt(
-                backup_path, template_path, diff_files
-            )
+            prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
 
             # Check merge rules are in prompt
             assert "CLAUDE.md" in prompt
@@ -247,9 +243,7 @@ class TestFallbackAnalysis:
             analyzer = MergeAnalyzer(Path(tmpdir))
             diff_files = analyzer._collect_diff_files(backup_path, template_path)
 
-            fallback = analyzer._fallback_analysis(
-                backup_path, template_path, diff_files
-            )
+            fallback = analyzer._fallback_analysis(backup_path, template_path, diff_files)
 
             # Check structure
             assert "files" in fallback
@@ -274,16 +268,12 @@ class TestFallbackAnalysis:
             template_config.parent.mkdir(parents=True)
 
             backup_config.write_text(json.dumps({"version": "0.25.0"}))
-            template_config.write_text(
-                json.dumps({"version": "0.26.0", "extra": "fields" * 20})
-            )
+            template_config.write_text(json.dumps({"version": "0.26.0", "extra": "fields" * 20}))
 
             analyzer = MergeAnalyzer(Path(tmpdir))
             diff_files = analyzer._collect_diff_files(backup_path, template_path)
 
-            fallback = analyzer._fallback_analysis(
-                backup_path, template_path, diff_files
-            )
+            fallback = analyzer._fallback_analysis(backup_path, template_path, diff_files)
 
             # High risk files should be noted
             assert isinstance(fallback["files"], list)

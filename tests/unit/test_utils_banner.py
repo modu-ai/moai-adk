@@ -65,11 +65,7 @@ class TestPrintWelcomeMessage:
             calls = [str(call) for call in mock_print.call_args_list]
             # Check for keywords
             all_calls_str = " ".join(str(call) for call in calls)
-            assert (
-                "Initialization" in all_calls_str
-                or "initialization" in all_calls_str
-                or "Welcome" in all_calls_str
-            )
+            assert "Initialization" in all_calls_str or "initialization" in all_calls_str or "Welcome" in all_calls_str
 
     def test_print_welcome_message_mentions_cancel(self):
         """Should inform user about cancellation option"""

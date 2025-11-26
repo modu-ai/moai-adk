@@ -36,6 +36,7 @@ from moai_adk.utils.toon_utils import (
 # Helper Function Tests
 # ============================================================================
 
+
 class TestIsTabular:
     """Tests for _is_tabular helper function."""
 
@@ -214,6 +215,7 @@ class TestEncodeValue:
 # Encoding Tests
 # ============================================================================
 
+
 class TestToonEncode:
     """Tests for toon_encode function."""
 
@@ -238,13 +240,7 @@ class TestToonEncode:
 
     def test_encode_nested_dict(self):
         """Test encoding nested dictionary."""
-        data = {
-            "user": {
-                "id": 1,
-                "name": "Alice",
-                "profile": {"age": 30, "city": "NYC"}
-            }
-        }
+        data = {"user": {"id": 1, "name": "Alice", "profile": {"age": 30, "city": "NYC"}}}
         result = toon_encode(data)
         decoded = json.loads(result)
         assert decoded == data
@@ -349,6 +345,7 @@ class TestToonEncode:
 
     def test_encode_unserializable_object(self):
         """Test encoding unserializable object raises ValueError."""
+
         class CustomObject:
             pass
 
@@ -404,6 +401,7 @@ class TestToonEncode:
 # Decoding Tests
 # ============================================================================
 
+
 class TestToonDecode:
     """Tests for toon_decode function."""
 
@@ -441,7 +439,7 @@ class TestToonDecode:
 
     def test_decode_mixed_types(self):
         """Test decoding mixed data types."""
-        toon_str = '''
+        toon_str = """
         {
             "string": "value",
             "number": 42,
@@ -449,7 +447,7 @@ class TestToonDecode:
             "bool": true,
             "null": null
         }
-        '''
+        """
         result = toon_decode(toon_str)
         assert result["string"] == "value"
         assert result["number"] == 42
@@ -480,7 +478,7 @@ class TestToonDecode:
 
     def test_decode_invalid_json(self):
         """Test decoding invalid JSON raises ValueError."""
-        invalid_toon = '{invalid json}'
+        invalid_toon = "{invalid json}"
         with pytest.raises(ValueError) as exc_info:
             toon_decode(invalid_toon)
         assert "Failed to decode TOON" in str(exc_info.value)
@@ -535,14 +533,14 @@ class TestToonDecode:
 
     def test_decode_special_string_values(self):
         """Test decoding special string patterns."""
-        toon_str = '''
+        toon_str = """
         {
             "empty": "",
             "spaces": "   ",
             "newlines": "line1\\nline2",
             "tabs": "col1\\tcol2"
         }
-        '''
+        """
         result = toon_decode(toon_str)
         assert result["empty"] == ""
         assert result["spaces"] == "   "
@@ -553,6 +551,7 @@ class TestToonDecode:
 # ============================================================================
 # Roundtrip Validation Tests
 # ============================================================================
+
 
 class TestValidateRoundtrip:
     """Tests for validate_roundtrip function."""
@@ -574,12 +573,7 @@ class TestValidateRoundtrip:
 
     def test_roundtrip_nested_dict(self):
         """Test roundtrip validation for nested dict."""
-        data = {
-            "user": {
-                "id": 1,
-                "profile": {"age": 30}
-            }
-        }
+        data = {"user": {"id": 1, "profile": {"age": 30}}}
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_list_of_dicts(self):
@@ -616,12 +610,7 @@ class TestValidateRoundtrip:
 
     def test_roundtrip_large_data_structure(self):
         """Test roundtrip validation with large data."""
-        data = {
-            "users": [
-                {"id": i, "name": f"User{i}", "active": i % 2 == 0}
-                for i in range(100)
-            ]
-        }
+        data = {"users": [{"id": i, "name": f"User{i}", "active": i % 2 == 0} for i in range(100)]}
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_with_special_strings(self):
@@ -648,6 +637,7 @@ class TestValidateRoundtrip:
 
     def test_roundtrip_unserializable_object(self):
         """Test roundtrip validation returns False for unserializable object."""
+
         class CustomObject:
             pass
 
@@ -667,25 +657,13 @@ class TestValidateRoundtrip:
             "nested": {
                 "empty_inner_list": [],
                 "empty_inner_dict": {},
-            }
+            },
         }
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_deeply_nested(self):
         """Test roundtrip with deeply nested structure."""
-        data = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "level4": {
-                            "level5": {
-                                "value": "deep"
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        data = {"level1": {"level2": {"level3": {"level4": {"level5": {"value": "deep"}}}}}}
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_zero_and_negative_numbers(self):
@@ -702,6 +680,7 @@ class TestValidateRoundtrip:
 # ============================================================================
 # Format Comparison Tests
 # ============================================================================
+
 
 class TestCompareFormats:
     """Tests for compare_formats function."""
@@ -725,12 +704,7 @@ class TestCompareFormats:
 
     def test_compare_large_data_structure(self):
         """Test format comparison shows token savings."""
-        data = {
-            "users": [
-                {"id": i, "name": f"User{i}", "email": f"user{i}@example.com"}
-                for i in range(50)
-            ]
-        }
+        data = {"users": [{"id": i, "name": f"User{i}", "email": f"user{i}@example.com"} for i in range(50)]}
         result = compare_formats(data)
         assert "json" in result
         assert "toon" in result
@@ -776,18 +750,13 @@ class TestCompareFormats:
 
     def test_compare_nested_structure(self):
         """Test format comparison with nested structure."""
-        data = {
-            "level1": {
-                "level2": {
-                    "level3": "value"
-                }
-            }
-        }
+        data = {"level1": {"level2": {"level3": "value"}}}
         result = compare_formats(data)
         assert isinstance(result["reduction"], float)
 
     def test_compare_unserializable_raises_error(self):
         """Test format comparison raises error for unserializable data."""
+
         class CustomObject:
             pass
 
@@ -815,10 +784,7 @@ class TestCompareFormats:
     def test_compare_with_repeated_patterns(self):
         """Test comparison with repeated patterns (good for TOON)."""
         # Repeated patterns should show token savings
-        data = {
-            f"item_{i}": {"id": i, "type": "standard"}
-            for i in range(20)
-        }
+        data = {f"item_{i}": {"id": i, "type": "standard"} for i in range(20)}
         result = compare_formats(data)
         assert "json" in result
         assert "toon" in result
@@ -827,6 +793,7 @@ class TestCompareFormats:
 # ============================================================================
 # File I/O Tests
 # ============================================================================
+
 
 class TestToonSave:
     """Tests for toon_save function."""
@@ -948,12 +915,7 @@ class TestToonSave:
         """Test saving large data structure."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "large.toon"
-            data = {
-                "items": [
-                    {"id": i, "name": f"Item{i}", "data": list(range(10))}
-                    for i in range(100)
-                ]
-            }
+            data = {"items": [{"id": i, "name": f"Item{i}", "data": list(range(10))} for i in range(100)]}
             toon_save(data, path)
 
             assert path.exists()
@@ -1075,12 +1037,7 @@ class TestToonLoad:
         """Test loading large TOON file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "large.toon"
-            data = {
-                "items": [
-                    {"id": i, "name": f"Item{i}"}
-                    for i in range(100)
-                ]
-            }
+            data = {"items": [{"id": i, "name": f"Item{i}"} for i in range(100)]}
             toon_save(data, path)
 
             loaded = toon_load(path)
@@ -1090,6 +1047,7 @@ class TestToonLoad:
 # ============================================================================
 # Migration Tests
 # ============================================================================
+
 
 class TestMigrateJsonToToon:
     """Tests for migrate_json_to_toon function."""
@@ -1170,7 +1128,7 @@ class TestMigrateJsonToToon:
                     {"id": 1, "name": "Alice"},
                     {"id": 2, "name": "Bob"},
                 ],
-                "meta": {"version": "1.0"}
+                "meta": {"version": "1.0"},
             }
 
             json_path.write_text(json.dumps(data))
@@ -1208,12 +1166,7 @@ class TestMigrateJsonToToon:
         """Test migration of large JSON file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "large.json"
-            data = {
-                "items": [
-                    {"id": i, "data": f"Item{i}"}
-                    for i in range(100)
-                ]
-            }
+            data = {"items": [{"id": i, "data": f"Item{i}"} for i in range(100)]}
 
             json_path.write_text(json.dumps(data))
             toon_path = migrate_json_to_toon(json_path)
@@ -1226,6 +1179,7 @@ class TestMigrateJsonToToon:
 # Integration and Edge Case Tests
 # ============================================================================
 
+
 class TestErrorHandlingCoverage:
     """Tests for error handling paths and edge cases."""
 
@@ -1236,7 +1190,7 @@ class TestErrorHandlingCoverage:
             data = {"key": "value"}
 
             # Mock write_text to raise IOError
-            with patch.object(Path, 'write_text', side_effect=IOError("Permission denied")):
+            with patch.object(Path, "write_text", side_effect=IOError("Permission denied")):
                 with pytest.raises(IOError) as exc_info:
                     toon_save(data, path)
                 assert "Failed to write TOON file" in str(exc_info.value)
@@ -1298,7 +1252,7 @@ class TestErrorHandlingCoverage:
 
     def test_validate_roundtrip_with_nan(self):
         """Test roundtrip validation with NaN values."""
-        data = {"nan": float('nan')}
+        data = {"nan": float("nan")}
         assert validate_roundtrip(data) is False
 
     def test_migrate_json_to_toon_with_read_error(self):
@@ -1315,10 +1269,11 @@ class TestErrorHandlingCoverage:
 
             # Mock write_text to raise OSError
             original_write = Path.write_text
+
             def mock_write(*args, **kwargs):
                 raise OSError("Permission denied")
 
-            with patch.object(Path, 'write_text', side_effect=mock_write):
+            with patch.object(Path, "write_text", side_effect=mock_write):
                 with pytest.raises(IOError):
                     toon_save(data, path)
 
@@ -1346,7 +1301,7 @@ class TestIntegrationScenarios:
                 "version": "1.0",
                 "created": "2024-01-01",
                 "count": 2,
-            }
+            },
         }
 
         # Encode
@@ -1362,13 +1317,7 @@ class TestIntegrationScenarios:
         """Test save-load file I/O roundtrip."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "data.toon"
-            original = {
-                "config": {
-                    "debug": True,
-                    "port": 8080,
-                    "hosts": ["localhost", "127.0.0.1"]
-                }
-            }
+            original = {"config": {"debug": True, "port": 8080, "hosts": ["localhost", "127.0.0.1"]}}
 
             # Save
             toon_save(original, path)
@@ -1383,13 +1332,7 @@ class TestIntegrationScenarios:
         """Test complete JSON to TOON migration pipeline."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_file = Path(tmpdir) / "config.json"
-            data = {
-                "database": {
-                    "host": "localhost",
-                    "port": 5432,
-                    "name": "myapp"
-                }
-            }
+            data = {"database": {"host": "localhost", "port": 5432, "name": "myapp"}}
 
             # Create JSON
             json_file.write_text(json.dumps(data))
@@ -1438,15 +1381,15 @@ class TestIntegrationScenarios:
                                 "members": [
                                     {"id": 1, "name": "Alice"},
                                     {"id": 2, "name": "Bob"},
-                                ]
+                                ],
                             },
                             {
                                 "name": "Frontend",
                                 "members": [
                                     {"id": 3, "name": "Charlie"},
-                                ]
-                            }
-                        ]
+                                ],
+                            },
+                        ],
                     }
                 ]
             }
@@ -1458,12 +1401,7 @@ class TestIntegrationScenarios:
         """Test complete workflow using all major functions."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Start data
-            data = {
-                "items": [
-                    {"id": i, "name": f"Item{i}", "active": i % 2 == 0}
-                    for i in range(10)
-                ]
-            }
+            data = {"items": [{"id": i, "name": f"Item{i}", "active": i % 2 == 0} for i in range(10)]}
 
             # 1. Validate roundtrip
             assert validate_roundtrip(data) is True

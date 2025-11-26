@@ -24,18 +24,14 @@ if str(LIB_DIR) not in sys.path:
 try:
     from models import HookPayload, HookResult  # noqa: E402
 except ImportError as e:
-    raise ImportError(
-        f"Failed to import from models: {e}. LIB_DIR={LIB_DIR}, sys.path={sys.path[:3]}"
-    ) from e
+    raise ImportError(f"Failed to import from models: {e}. LIB_DIR={LIB_DIR}, sys.path={sys.path[:3]}") from e
 
 import pytest
 
 # Skip this file - outdated test file
 # handlers modules don't exist yet in the moai structure
 # The test file references undefined handlers that haven't been implemented
-pytestmark = pytest.mark.skip(
-    reason="Outdated test file - handlers modules not implemented in moai structure"
-)
+pytestmark = pytest.mark.skip(reason="Outdated test file - handlers modules not implemented in moai structure")
 # try:
 #     from handlers.notification import (  # noqa: E402
 #         handle_notification,
@@ -95,9 +91,7 @@ class TestPreToolUseHandler:
 
     @patch("handlers.tool.detect_risky_operation")
     @patch("handlers.tool.create_checkpoint")
-    def test_pre_tool_use_risky_operation(
-        self, mock_create_checkpoint, mock_detect_risky
-    ):
+    def test_pre_tool_use_risky_operation(self, mock_create_checkpoint, mock_detect_risky):
         """위험한 작업 감지 시 체크포인트 생성 알림
 
         SPEC 요구사항:
@@ -311,10 +305,7 @@ class TestUserPromptSubmitHandler:
         ]
         # UserPromptSubmit은 특별한 스키마 사용
         user_submit_output = result.to_user_prompt_submit_dict()
-        assert (
-            user_submit_output["hookSpecificOutput"]["hookEventName"]
-            == "UserPromptSubmit"
-        )
+        assert user_submit_output["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
 
     @patch("handlers.user.get_jit_context")
     def test_user_prompt_submit_empty_context(self, mock_get_jit):

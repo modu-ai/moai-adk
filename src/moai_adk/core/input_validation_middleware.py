@@ -802,7 +802,9 @@ class EnhancedInputValidationMiddleware:
                     normalized_bool = value.lower() in ["true", "1", "yes", "on"]
                     if value != str(normalized_bool):
                         input_data[param.name] = normalized_bool
-                        transformations.append(f"Normalized '{param.name}' boolean from '{value}' to '{normalized_bool}'")
+                        transformations.append(
+                            f"Normalized '{param.name}' boolean from '{value}' to '{normalized_bool}'"
+                        )
 
             # Normalize file paths
             elif param.name in ["file_path", "path", "directory"] and isinstance(value, str):
@@ -961,8 +963,8 @@ if __name__ == "__main__":
 
     for i, test_case in enumerate(test_cases, 1):
         print(f"\n{i}. {test_case['name']}")
-        tool_name: str = test_case['tool']  # type: ignore[assignment]
-        tool_input: Dict[str, Any] = test_case['input']  # type: ignore[assignment]
+        tool_name: str = test_case["tool"]  # type: ignore[assignment]
+        tool_input: Dict[str, Any] = test_case["input"]  # type: ignore[assignment]
         print(f"   Tool: {tool_name}")
         print(f"   Original input: {tool_input}")
 

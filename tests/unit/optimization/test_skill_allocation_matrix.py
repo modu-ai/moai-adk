@@ -4,7 +4,6 @@ Unit tests for skill allocation matrix system.
 Tests the TAG-002 component: Skill Allocation Matrix System
 """
 
-
 import time
 
 import pytest
@@ -47,6 +46,7 @@ class TestSkillAllocationMatrix:
         matrix = SkillMatrix(categories=["frontend", "backend", "devops"], skills_per_category=10)
 
         import time
+
         start_time = time.time()
 
         # Perform allocation optimization
@@ -119,7 +119,7 @@ class TestSkillAllocationIntegration:
             "name": "test-agent",
             "domain": "frontend",
             "required_skills": ["react", "css", "javascript"],
-            "priority_weights": {"react": 0.9, "css": 0.8, "javascript": 0.7}
+            "priority_weights": {"react": 0.9, "css": 0.8, "javascript": 0.7},
         }
 
         optimized_skills = matrix.optimize_allocation_for_agent(mock_agent_config)

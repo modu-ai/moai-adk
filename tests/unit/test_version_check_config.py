@@ -7,6 +7,7 @@ This module tests configuration-based version checking with:
 - Backward compatibility with old configs
 
 """
+
 import importlib.util
 import io
 import json
@@ -50,6 +51,7 @@ def project_module():
 # Phase 4: Config Integration Tests
 # ========================================
 
+
 def test_get_version_check_config_defaults(tmp_path: Path, project_module):
     """Returns defaults if config missing
 
@@ -84,13 +86,7 @@ def test_get_version_check_config_custom(tmp_path: Path, project_module):
     # Create config with custom frequency
     config_path = moai_dir / "config.json"
     config_data = {
-        "moai": {
-            "update_check_frequency": "weekly",
-            "version_check": {
-                "enabled": True,
-                "cache_ttl_hours": 168
-            }
-        }
+        "moai": {"update_check_frequency": "weekly", "version_check": {"enabled": True, "cache_ttl_hours": 168}}
     }
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
@@ -116,17 +112,11 @@ def test_version_check_disabled(tmp_path: Path, project_module):
 
     # Create config with disabled version check
     config_path = moai_dir / "config.json"
-    config_data = {
-        "moai": {
-            "version_check": {
-                "enabled": False
-            }
-        }
-    }
+    config_data = {"moai": {"version_check": {"enabled": False}}}
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
     # Mock urllib to ensure it's not called
-    with patch('urllib.request.urlopen') as mock_urlopen:
+    with patch("urllib.request.urlopen") as mock_urlopen:
         mock_urlopen.side_effect = Exception("Should not call PyPI when disabled!")
 
         result = project_module.get_package_version_info(cwd=str(project_dir))
@@ -158,11 +148,7 @@ def test_cache_ttl_by_frequency(tmp_path: Path, project_module):
     config_path = moai_dir / "config.json"
 
     # Test frequency: always
-    config_data = {
-        "moai": {
-            "update_check_frequency": "always"
-        }
-    }
+    config_data = {"moai": {"update_check_frequency": "always"}}
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
     result = project_module.get_version_check_config(str(project_dir))
     assert result["cache_ttl_hours"] == 0
@@ -183,7 +169,7 @@ def test_cache_ttl_by_frequency(tmp_path: Path, project_module):
     config_data["moai"]["update_check_frequency"] = "never"
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
     result = project_module.get_version_check_config(str(project_dir))
-    assert result["cache_ttl_hours"] == float('inf')
+    assert result["cache_ttl_hours"] == float("inf")
 
 
 def test_session_start_respects_config(tmp_path: Path, project_module):
@@ -200,18 +186,12 @@ def test_session_start_respects_config(tmp_path: Path, project_module):
 
     # Create config with disabled version check
     config_path = moai_dir / "config.json"
-    config_data = {
-        "moai": {
-            "version_check": {
-                "enabled": False
-            }
-        }
-    }
+    config_data = {"moai": {"version_check": {"enabled": False}}}
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
     # Mock network check to ensure it's not even attempted
-    with patch.object(project_module, 'is_network_available', return_value=True):
-        with patch('urllib.request.urlopen') as mock_urlopen:
+    with patch.object(project_module, "is_network_available", return_value=True):
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = Exception("Should not reach here!")
 
             result = project_module.get_package_version_info(cwd=str(project_dir))
@@ -238,12 +218,7 @@ def test_version_check_config_backward_compatible(tmp_path: Path, project_module
 
     # Create old-style config (no moai.version_check section)
     config_path = moai_dir / "config.json"
-    config_data = {
-        "project": {
-            "name": "MoAI-ADK",
-            "language": "python"
-        }
-    }
+    config_data = {"project": {"name": "MoAI-ADK", "language": "python"}}
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
     result = project_module.get_version_check_config(str(project_dir))
@@ -271,32 +246,21 @@ def test_full_version_check_workflow_with_config(tmp_path: Path, project_module)
     # Test 1: Enabled with daily frequency (should use cache)
     config_path = moai_dir / "config.json"
     config_data = {
-        "moai": {
-            "update_check_frequency": "daily",
-            "version_check": {
-                "enabled": True,
-                "cache_ttl_hours": 24
-            }
-        }
+        "moai": {"update_check_frequency": "daily", "version_check": {"enabled": True, "cache_ttl_hours": 24}}
     }
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
     # Mock PyPI response
     pypi_data = {
-        "info": {
-            "version": "0.9.0",
-            "project_urls": {
-                "Changelog": "https://github.com/modu-ai/moai-adk/releases"
-            }
-        }
+        "info": {"version": "0.9.0", "project_urls": {"Changelog": "https://github.com/modu-ai/moai-adk/releases"}}
     }
 
     mock_response = MagicMock()
     mock_response.__enter__ = MagicMock(return_value=io.BytesIO(json.dumps(pypi_data).encode()))
     mock_response.__exit__ = MagicMock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
-        with patch.object(project_module, 'is_network_available', return_value=True):
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        with patch.object(project_module, "is_network_available", return_value=True):
             result = project_module.get_package_version_info(cwd=str(project_dir))
 
             # Assert: Should have version info
@@ -312,7 +276,7 @@ def test_full_version_check_workflow_with_config(tmp_path: Path, project_module)
     if cache_file.exists():
         cache_file.unlink()
 
-    with patch('urllib.request.urlopen') as mock_urlopen:
+    with patch("urllib.request.urlopen") as mock_urlopen:
         mock_urlopen.side_effect = Exception("Should not call PyPI!")
 
         result = project_module.get_package_version_info(cwd=str(project_dir))
@@ -339,23 +303,14 @@ def test_backward_compatibility_old_cache(tmp_path: Path, project_module):
 
     # Create old-style cache (no is_major_update, release_notes_url)
     import time
+
     cache_path = cache_dir / "version-check.json"
-    old_cache = {
-        "latest": "0.9.0",
-        "timestamp": time.time(),
-        "update_available": True
-    }
+    old_cache = {"latest": "0.9.0", "timestamp": time.time(), "update_available": True}
     cache_path.write_text(json.dumps(old_cache), encoding="utf-8")
 
     # Create config enabling version check
     config_path = moai_dir / "config.json"
-    config_data = {
-        "moai": {
-            "version_check": {
-                "enabled": True
-            }
-        }
-    }
+    config_data = {"moai": {"version_check": {"enabled": True}}}
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
     result = project_module.get_package_version_info(cwd=str(project_dir))

@@ -28,7 +28,7 @@ class LanguageInitializer:
             "documentation_language": "en",
             "rtl": False,
             "date_format": "%Y-%m-%d",
-            "time_format": "%H:%M:%S"
+            "time_format": "%H:%M:%S",
         },
         "ko": {
             "name": "Korean",
@@ -39,7 +39,7 @@ class LanguageInitializer:
             "documentation_language": "ko",
             "rtl": False,
             "date_format": "%Y년 %m월 %d일",
-            "time_format": "%H:%M:%S"
+            "time_format": "%H:%M:%S",
         },
         "ja": {
             "name": "Japanese",
@@ -50,7 +50,7 @@ class LanguageInitializer:
             "documentation_language": "ja",
             "rtl": False,
             "date_format": "%Y年%m月%d日",
-            "time_format": "%H:%M:%S"
+            "time_format": "%H:%M:%S",
         },
         "zh": {
             "name": "Chinese",
@@ -61,8 +61,8 @@ class LanguageInitializer:
             "documentation_language": "zh",
             "rtl": False,
             "date_format": "%Y年%m月%d日",
-            "time_format": "%H:%M:%S"
-        }
+            "time_format": "%H:%M:%S",
+        },
     }
 
     # Domain-specific language mappings
@@ -75,7 +75,7 @@ class LanguageInitializer:
         "ai_ml": ["en", "ko", "ja", "zh"],
         "security": ["en"],
         "testing": ["en", "ko"],
-        "documentation": ["en", "ko", "ja", "zh"]
+        "documentation": ["en", "ko", "ja", "zh"],
     }
 
     def __init__(self, project_root: str, config: Dict[str, Any]):
@@ -94,21 +94,12 @@ class LanguageInitializer:
                     "conversation_language": "en",
                     "conversation_language_name": "English",
                     "agent_prompt_language": "english",
-                    "documentation_language": "en"
+                    "documentation_language": "en",
                 },
-                "user": {
-                    "name": "Developer",
-                    "selected_at": datetime.now().isoformat()
-                },
-                "project": {
-                    "name": "My Project",
-                    "type": "web_application"
-                }
+                "user": {"name": "Developer", "selected_at": datetime.now().isoformat()},
+                "project": {"name": "My Project", "type": "web_application"},
             }
-            self.config_path.write_text(
-                json.dumps(default_config, indent=2, ensure_ascii=False),
-                encoding='utf-8'
-            )
+            self.config_path.write_text(json.dumps(default_config, indent=2, ensure_ascii=False), encoding="utf-8")
 
     def detect_project_language(self) -> str:
         """
@@ -120,7 +111,7 @@ class LanguageInitializer:
 
         # Method 1: Check existing config
         if self.config_path.exists():
-            existing_config = json.loads(self.config_path.read_text(encoding='utf-8'))
+            existing_config = json.loads(self.config_path.read_text(encoding="utf-8"))
             existing_lang = existing_config.get("language", {}).get("conversation_language")
             if existing_lang:
                 return existing_lang
@@ -146,13 +137,13 @@ class LanguageInitializer:
             "ko": ["한국어", "한글", "ko_KR", ".ko."],
             "ja": ["日本語", "ja_JP", ".ja."],
             "zh": ["中文", "简体中文", "zh_CN", ".zh."],
-            "en": ["English", "en_US", ".en."]
+            "en": ["English", "en_US", ".en."],
         }
 
         # Search in README files
         for readme_file in self.project_root.glob("README*"):
             if readme_file.is_file():
-                content = readme_file.read_text(encoding='utf-8', errors='ignore')
+                content = readme_file.read_text(encoding="utf-8", errors="ignore")
                 for lang_code, lang_indicators in indicators.items():
                     for indicator in lang_indicators:
                         if indicator in content:
@@ -162,7 +153,7 @@ class LanguageInitializer:
         package_json = self.project_root / "package.json"
         if package_json.exists():
             try:
-                package_data = json.loads(package_json.read_text(encoding='utf-8'))
+                package_data = json.loads(package_json.read_text(encoding="utf-8"))
                 # Check for language-specific fields
                 if "name" in package_data:
                     name = package_data["name"]
@@ -179,9 +170,9 @@ class LanguageInitializer:
         src_dir = self.project_root / "src"
         if src_dir.exists():
             for file_path in src_dir.rglob("*"):
-                if file_path.is_file() and file_path.suffix in ['.py', '.js', '.ts', '.java', '.cpp']:
+                if file_path.is_file() and file_path.suffix in [".py", ".js", ".ts", ".java", ".cpp"]:
                     try:
-                        content = file_path.read_text(encoding='utf-8', errors='ignore')
+                        content = file_path.read_text(encoding="utf-8", errors="ignore")
                         for lang_code, lang_indicators in indicators.items():
                             for indicator in lang_indicators:
                                 if indicator in content:
@@ -198,22 +189,22 @@ class LanguageInitializer:
             # Try to get system locale
             system_locale = locale.getdefaultlocale()
             if system_locale and system_locale[0]:
-                lang_code = system_locale[0].split('_')[0]
+                lang_code = system_locale[0].split("_")[0]
                 if lang_code in self.LANGUAGE_CONFIG:
                     return lang_code
         except (ValueError, IndexError):
             pass
 
         # Try environment variables
-        env_lang = os.environ.get('LANG', '').split('.')[0].split('_')[0]
+        env_lang = os.environ.get("LANG", "").split(".")[0].split("_")[0]
         if env_lang in self.LANGUAGE_CONFIG:
             return env_lang
 
         return "en"
 
-    def initialize_language_configuration(self, language: str = None,
-                                       user_name: str = None,
-                                       domains: List[str] = None) -> Dict[str, Any]:
+    def initialize_language_configuration(
+        self, language: str = None, user_name: str = None, domains: List[str] = None
+    ) -> Dict[str, Any]:
         """
         Initialize comprehensive language configuration.
 
@@ -239,27 +230,26 @@ class LanguageInitializer:
         # Load existing config
         current_config = {}
         if self.config_path.exists():
-            current_config = json.loads(self.config_path.read_text(encoding='utf-8'))
+            current_config = json.loads(self.config_path.read_text(encoding="utf-8"))
 
         # Update language settings
-        current_config.setdefault("language", {}).update({
-            "conversation_language": language,
-            "conversation_language_name": lang_config["native_name"],
-            "agent_prompt_language": lang_config["agent_prompt_language"],
-            "documentation_language": lang_config["documentation_language"],
-            "locale": lang_config["locale"],
-            "rtl": lang_config["rtl"],
-            "date_format": lang_config["date_format"],
-            "time_format": lang_config["time_format"],
-            "initialized_at": datetime.now().isoformat()
-        })
+        current_config.setdefault("language", {}).update(
+            {
+                "conversation_language": language,
+                "conversation_language_name": lang_config["native_name"],
+                "agent_prompt_language": lang_config["agent_prompt_language"],
+                "documentation_language": lang_config["documentation_language"],
+                "locale": lang_config["locale"],
+                "rtl": lang_config["rtl"],
+                "date_format": lang_config["date_format"],
+                "time_format": lang_config["time_format"],
+                "initialized_at": datetime.now().isoformat(),
+            }
+        )
 
         # Update user settings
         if user_name:
-            current_config.setdefault("user", {}).update({
-                "name": user_name,
-                "selected_at": datetime.now().isoformat()
-            })
+            current_config.setdefault("user", {}).update({"name": user_name, "selected_at": datetime.now().isoformat()})
 
         # Update domain settings if provided
         if domains:
@@ -269,19 +259,15 @@ class LanguageInitializer:
                 if language in self.DOMAIN_LANGUAGES.get(domain, ["en"]):
                     valid_domains.append(domain)
 
-            current_config.setdefault("project", {}).update({
-                "selected_domains": valid_domains,
-                "domain_selection_date": datetime.now().isoformat()
-            })
+            current_config.setdefault("project", {}).update(
+                {"selected_domains": valid_domains, "domain_selection_date": datetime.now().isoformat()}
+            )
 
         # Generate localized templates
         templates = self._generate_localized_templates(language)
 
         # Save updated configuration
-        self.config_path.write_text(
-            json.dumps(current_config, indent=2, ensure_ascii=False),
-            encoding='utf-8'
-        )
+        self.config_path.write_text(json.dumps(current_config, indent=2, ensure_ascii=False), encoding="utf-8")
 
         return {
             "language": language,
@@ -289,95 +275,98 @@ class LanguageInitializer:
             "updated_config": current_config,
             "templates": templates,
             "domains_supported": self._get_supported_domains(language),
-            "token_cost_impact": self._calculate_token_impact(language)
+            "token_cost_impact": self._calculate_token_impact(language),
         }
 
     def _generate_localized_templates(self, language: str) -> Dict[str, str]:
         """Generate language-specific templates and prompts."""
 
-        templates = {
-            "welcome_message": "",
-            "error_messages": {},
-            "success_messages": {},
-            "prompts": {}
-        }
+        templates = {"welcome_message": "", "error_messages": {}, "success_messages": {}, "prompts": {}}
 
         if language == "ko":
-            templates.update({
-                "welcome_message": "MoAI 프로젝트에 오신 것을 환영합니다!",
-                "error_messages": {
-                    "config_load_error": "구성 파일을 로드할 수 없습니다.",
-                    "invalid_language": "지원되지 않는 언어입니다.",
-                    "file_not_found": "파일을 찾을 수 없습니다."
-                },
-                "success_messages": {
-                    "config_saved": "구성이 성공적으로 저장되었습니다.",
-                    "project_initialized": "프로젝트가 초기화되었습니다.",
-                    "language_set": "언어가 한국어로 설정되었습니다."
-                },
-                "prompts": {
-                    "select_language": "사용할 언어를 선택해주세요:",
-                    "enter_name": "사용자 이름을 입력해주세요:",
-                    "select_domains": "작업할 도메인을 선택해주세요:"
+            templates.update(
+                {
+                    "welcome_message": "MoAI 프로젝트에 오신 것을 환영합니다!",
+                    "error_messages": {
+                        "config_load_error": "구성 파일을 로드할 수 없습니다.",
+                        "invalid_language": "지원되지 않는 언어입니다.",
+                        "file_not_found": "파일을 찾을 수 없습니다.",
+                    },
+                    "success_messages": {
+                        "config_saved": "구성이 성공적으로 저장되었습니다.",
+                        "project_initialized": "프로젝트가 초기화되었습니다.",
+                        "language_set": "언어가 한국어로 설정되었습니다.",
+                    },
+                    "prompts": {
+                        "select_language": "사용할 언어를 선택해주세요:",
+                        "enter_name": "사용자 이름을 입력해주세요:",
+                        "select_domains": "작업할 도메인을 선택해주세요:",
+                    },
                 }
-            })
+            )
         elif language == "ja":
-            templates.update({
-                "welcome_message": "MoAIプロジェクトへようこそ！",
-                "error_messages": {
-                    "config_load_error": "設定ファイルを読み込めませんでした。",
-                    "invalid_language": "サポートされていない言語です。",
-                    "file_not_found": "ファイルが見つかりません。"
-                },
-                "success_messages": {
-                    "config_saved": "設定が正常に保存されました。",
-                    "project_initialized": "プロジェクトが初期化されました。",
-                    "language_set": "言語が日本語に設定されました。"
-                },
-                "prompts": {
-                    "select_language": "使用する言語を選択してください：",
-                    "enter_name": "ユーザー名を入力してください：",
-                    "select_domains": "作業するドメインを選択してください："
+            templates.update(
+                {
+                    "welcome_message": "MoAIプロジェクトへようこそ！",
+                    "error_messages": {
+                        "config_load_error": "設定ファイルを読み込めませんでした。",
+                        "invalid_language": "サポートされていない言語です。",
+                        "file_not_found": "ファイルが見つかりません。",
+                    },
+                    "success_messages": {
+                        "config_saved": "設定が正常に保存されました。",
+                        "project_initialized": "プロジェクトが初期化されました。",
+                        "language_set": "言語が日本語に設定されました。",
+                    },
+                    "prompts": {
+                        "select_language": "使用する言語を選択してください：",
+                        "enter_name": "ユーザー名を入力してください：",
+                        "select_domains": "作業するドメインを選択してください：",
+                    },
                 }
-            })
+            )
         elif language == "zh":
-            templates.update({
-                "welcome_message": "欢迎使用 MoAI 项目！",
-                "error_messages": {
-                    "config_load_error": "无法加载配置文件。",
-                    "invalid_language": "不支持的语言。",
-                    "file_not_found": "找不到文件。"
-                },
-                "success_messages": {
-                    "config_saved": "配置已成功保存。",
-                    "project_initialized": "项目已初始化。",
-                    "language_set": "语言已设置为中文。"
-                },
-                "prompts": {
-                    "select_language": "请选择使用的语言：",
-                    "enter_name": "请输入用户名：",
-                    "select_domains": "请选择工作领域："
+            templates.update(
+                {
+                    "welcome_message": "欢迎使用 MoAI 项目！",
+                    "error_messages": {
+                        "config_load_error": "无法加载配置文件。",
+                        "invalid_language": "不支持的语言。",
+                        "file_not_found": "找不到文件。",
+                    },
+                    "success_messages": {
+                        "config_saved": "配置已成功保存。",
+                        "project_initialized": "项目已初始化。",
+                        "language_set": "语言已设置为中文。",
+                    },
+                    "prompts": {
+                        "select_language": "请选择使用的语言：",
+                        "enter_name": "请输入用户名：",
+                        "select_domains": "请选择工作领域：",
+                    },
                 }
-            })
+            )
         else:  # English (default)
-            templates.update({
-                "welcome_message": "Welcome to MoAI Project!",
-                "error_messages": {
-                    "config_load_error": "Cannot load configuration file.",
-                    "invalid_language": "Unsupported language.",
-                    "file_not_found": "File not found."
-                },
-                "success_messages": {
-                    "config_saved": "Configuration saved successfully.",
-                    "project_initialized": "Project initialized successfully.",
-                    "language_set": "Language set to English."
-                },
-                "prompts": {
-                    "select_language": "Please select your preferred language:",
-                    "enter_name": "Please enter your name:",
-                    "select_domains": "Please select your work domains:"
+            templates.update(
+                {
+                    "welcome_message": "Welcome to MoAI Project!",
+                    "error_messages": {
+                        "config_load_error": "Cannot load configuration file.",
+                        "invalid_language": "Unsupported language.",
+                        "file_not_found": "File not found.",
+                    },
+                    "success_messages": {
+                        "config_saved": "Configuration saved successfully.",
+                        "project_initialized": "Project initialized successfully.",
+                        "language_set": "Language set to English.",
+                    },
+                    "prompts": {
+                        "select_language": "Please select your preferred language:",
+                        "enter_name": "Please enter your name:",
+                        "select_domains": "Please select your work domains:",
+                    },
                 }
-            })
+            )
 
         return templates
 
@@ -400,35 +389,40 @@ class LanguageInitializer:
             "agent_prompt_overhead": 0,
             "documentation_overhead": 0,
             "total_overhead_percentage": 0,
-            "recommendations": []
+            "recommendations": [],
         }
 
         if language == "en":
-            impact.update({
-                "conversation_overhead": 0,
-                "agent_prompt_overhead": 0,
-                "documentation_overhead": 0,
-                "total_overhead_percentage": 0,
-                "recommendations": [
-                    "Most token-efficient choice",
-                    "Widely supported documentation and libraries"
-                ]
-            })
+            impact.update(
+                {
+                    "conversation_overhead": 0,
+                    "agent_prompt_overhead": 0,
+                    "documentation_overhead": 0,
+                    "total_overhead_percentage": 0,
+                    "recommendations": ["Most token-efficient choice", "Widely supported documentation and libraries"],
+                }
+            )
         else:
             # Non-English languages typically require 15-25% more tokens
             overhead_percentage = 20
 
-            impact.update({
-                "conversation_overhead": overhead_percentage,
-                "agent_prompt_overhead": 15 if self.LANGUAGE_CONFIG[language]["agent_prompt_language"] == "english" else overhead_percentage,
-                "documentation_overhead": overhead_percentage,
-                "total_overhead_percentage": overhead_percentage,
-                "recommendations": [
-                    f"Expect ~{overhead_percentage}% increase in token usage",
-                    "Consider using English for agent prompts to reduce costs",
-                    "Localized prompts provide better user experience"
-                ]
-            })
+            impact.update(
+                {
+                    "conversation_overhead": overhead_percentage,
+                    "agent_prompt_overhead": (
+                        15
+                        if self.LANGUAGE_CONFIG[language]["agent_prompt_language"] == "english"
+                        else overhead_percentage
+                    ),
+                    "documentation_overhead": overhead_percentage,
+                    "total_overhead_percentage": overhead_percentage,
+                    "recommendations": [
+                        f"Expect ~{overhead_percentage}% increase in token usage",
+                        "Consider using English for agent prompts to reduce costs",
+                        "Localized prompts provide better user experience",
+                    ],
+                }
+            )
 
         return impact
 
@@ -449,7 +443,7 @@ class LanguageInitializer:
 
         # Load current configuration
         if self.config_path.exists():
-            config = json.loads(self.config_path.read_text(encoding='utf-8'))
+            config = json.loads(self.config_path.read_text(encoding="utf-8"))
             agent_lang = config.get("language", {}).get("agent_prompt_language", "english")
         else:
             agent_lang = "english"
@@ -473,7 +467,9 @@ class LanguageInitializer:
 
         elif language == "zh":
             # Add Chinese-specific instructions
-            chinese_additions = "\n\nIMPORTANT: Please respond in Chinese (中文) when interacting with the user. Use standard Mandarin."
+            chinese_additions = (
+                "\n\nIMPORTANT: Please respond in Chinese (中文) when interacting with the user. Use standard Mandarin."
+            )
             localized_prompt += chinese_additions
 
         return localized_prompt
@@ -515,15 +511,12 @@ class LanguageInitializer:
             "supported_languages": list(lang_dirs.keys()),
             "directory_structure": {k: str(v) for k, v in lang_dirs.items()},
             "fallback_language": "en",
-            "auto_redirect": True
+            "auto_redirect": True,
         }
 
         # Save language index
         index_path = docs_root / "languages.json"
-        index_path.write_text(
-            json.dumps(language_index, indent=2, ensure_ascii=False),
-            encoding='utf-8'
-        )
+        index_path.write_text(json.dumps(language_index, indent=2, ensure_ascii=False), encoding="utf-8")
 
         # Create .htaccess for language redirection (if web docs)
         htaccess_content = f"""
@@ -545,13 +538,13 @@ DefaultLanguage {language}
 """
 
         htaccess_path = docs_root / ".htaccess"
-        htaccess_path.write_text(htaccess_content.strip(), encoding='utf-8')
+        htaccess_path.write_text(htaccess_content.strip(), encoding="utf-8")
 
         return {
             "created_directories": [str(d) for d in lang_dirs.values()],
             "language_index": language_index,
             "primary_language": language,
-            "total_languages": len(lang_dirs)
+            "total_languages": len(lang_dirs),
         }
 
     def validate_language_configuration(self) -> Dict[str, Any]:
@@ -562,13 +555,7 @@ DefaultLanguage {language}
             Validation results with recommendations
         """
 
-        validation_result = {
-            "valid": True,
-            "errors": [],
-            "warnings": [],
-            "recommendations": [],
-            "current_config": {}
-        }
+        validation_result = {"valid": True, "errors": [], "warnings": [], "recommendations": [], "current_config": {}}
 
         if not self.config_path.exists():
             validation_result["errors"].append("Configuration file does not exist")
@@ -576,7 +563,7 @@ DefaultLanguage {language}
             return validation_result
 
         try:
-            current_config = json.loads(self.config_path.read_text(encoding='utf-8'))
+            current_config = json.loads(self.config_path.read_text(encoding="utf-8"))
             validation_result["current_config"] = current_config
 
             # Validate language section
@@ -587,7 +574,7 @@ DefaultLanguage {language}
                 "conversation_language",
                 "conversation_language_name",
                 "agent_prompt_language",
-                "documentation_language"
+                "documentation_language",
             ]
 
             for field in required_fields:
@@ -615,9 +602,7 @@ DefaultLanguage {language}
             # Validate user section
             user_config = current_config.get("user", {})
             if "name" not in user_config:
-                validation_result["recommendations"].append(
-                    "Set user name for personalized experience"
-                )
+                validation_result["recommendations"].append("Set user name for personalized experience")
 
         except json.JSONDecodeError as e:
             validation_result["errors"].append(f"Invalid JSON in configuration: {e}")
@@ -637,18 +622,15 @@ DefaultLanguage {language}
         """
 
         if not self.config_path.exists():
-            return {
-                "success": False,
-                "error": "Configuration file does not exist"
-            }
+            return {"success": False, "error": "Configuration file does not exist"}
 
         try:
             # Load current config
-            current_config = json.loads(self.config_path.read_text(encoding='utf-8'))
+            current_config = json.loads(self.config_path.read_text(encoding="utf-8"))
 
             # Apply updates
             for key_path, value in updates.items():
-                keys = key_path.split('.')
+                keys = key_path.split(".")
                 target = current_config
 
                 for key in keys[:-1]:
@@ -657,22 +639,12 @@ DefaultLanguage {language}
                 target[keys[-1]] = value
 
             # Save updated config
-            self.config_path.write_text(
-                json.dumps(current_config, indent=2, ensure_ascii=False),
-                encoding='utf-8'
-            )
+            self.config_path.write_text(json.dumps(current_config, indent=2, ensure_ascii=False), encoding="utf-8")
 
-            return {
-                "success": True,
-                "updated_config": current_config,
-                "updates_applied": updates
-            }
+            return {"success": True, "updated_config": current_config, "updates_applied": updates}
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def get_language_status(self) -> Dict[str, Any]:
         """
@@ -689,13 +661,13 @@ DefaultLanguage {language}
             "supported_languages": list(self.LANGUAGE_CONFIG.keys()),
             "configuration_exists": self.config_path.exists(),
             "token_impact": {},
-            "domain_support": {}
+            "domain_support": {},
         }
 
         # Load current configuration if exists
         if self.config_path.exists():
             try:
-                config = json.loads(self.config_path.read_text(encoding='utf-8'))
+                config = json.loads(self.config_path.read_text(encoding="utf-8"))
                 lang_config = config.get("language", {})
                 status["configured_language"] = lang_config.get("conversation_language")
 

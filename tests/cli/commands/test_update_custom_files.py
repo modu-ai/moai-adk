@@ -339,9 +339,7 @@ class TestGroupCustomFiles:
         from moai_adk.cli.commands.update import _group_custom_files_by_type
 
         grouped = _group_custom_files_by_type(
-            custom_commands=["cmd1.md", "cmd2.md"],
-            custom_agents=["agent1.md"],
-            custom_hooks=["hook1.py"]
+            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"]
         )
 
         assert grouped["commands"] == ["cmd1.md", "cmd2.md"]
@@ -372,19 +370,10 @@ class TestPromptCustomFilesRestore:
         """
         from moai_adk.cli.commands.update import _prompt_custom_files_restore
 
-        result = _prompt_custom_files_restore(
-            custom_commands=[],
-            custom_agents=[],
-            custom_hooks=[],
-            yes=False
-        )
+        result = _prompt_custom_files_restore(custom_commands=[], custom_agents=[], custom_hooks=[], yes=False)
 
         # Should return empty selections
-        assert result == {
-            "commands": [],
-            "agents": [],
-            "hooks": []
-        }
+        assert result == {"commands": [], "agents": [], "hooks": []}
 
     def test_prompt_custom_files_restore_yes_mode(self):
         """Given: --yes flag enabled
@@ -394,20 +383,13 @@ class TestPromptCustomFilesRestore:
         from moai_adk.cli.commands.update import _prompt_custom_files_restore
 
         result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md", "cmd2.md"],
-            custom_agents=["agent1.md"],
-            custom_hooks=["hook1.py"],
-            yes=True
+            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=True
         )
 
         # In --yes mode, skip restoration (return empty to be safe)
-        assert result == {
-            "commands": [],
-            "agents": [],
-            "hooks": []
-        }
+        assert result == {"commands": [], "agents": [], "hooks": []}
 
-    @patch('questionary.checkbox')
+    @patch("questionary.checkbox")
     def test_prompt_custom_files_restore_user_selects_all(self, mock_checkbox):
         """Given: User selects all custom files via questionary
         When: _prompt_custom_files_restore() is called
@@ -419,14 +401,11 @@ class TestPromptCustomFilesRestore:
         mock_checkbox.return_value.ask.return_value = {
             "commands": ["cmd1.md", "cmd2.md"],
             "agents": ["agent1.md"],
-            "hooks": ["hook1.py"]
+            "hooks": ["hook1.py"],
         }
 
         result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md", "cmd2.md"],
-            custom_agents=["agent1.md"],
-            custom_hooks=["hook1.py"],
-            yes=False
+            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=False
         )
 
         # Verify result structure
@@ -435,7 +414,7 @@ class TestPromptCustomFilesRestore:
         assert "agents" in result
         assert "hooks" in result
 
-    @patch('questionary.checkbox')
+    @patch("questionary.checkbox")
     def test_prompt_custom_files_restore_user_selects_none(self, mock_checkbox):
         """Given: User deselects all files in questionary
         When: _prompt_custom_files_restore() is called
@@ -447,18 +426,11 @@ class TestPromptCustomFilesRestore:
         mock_checkbox.return_value.ask.return_value = None
 
         result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md"],
-            custom_agents=["agent1.md"],
-            custom_hooks=["hook1.py"],
-            yes=False
+            custom_commands=["cmd1.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=False
         )
 
         # When user cancels or selects nothing
-        assert result == {
-            "commands": [],
-            "agents": [],
-            "hooks": []
-        }
+        assert result == {"commands": [], "agents": [], "hooks": []}
 
 
 class TestRestoreCustomFiles:
@@ -486,7 +458,7 @@ class TestRestoreCustomFiles:
             backup_path=backup_path,
             selected_commands=["custom.md"],
             selected_agents=[],
-            selected_hooks=[]
+            selected_hooks=[],
         )
 
         # Should succeed
@@ -513,7 +485,7 @@ class TestRestoreCustomFiles:
             backup_path=backup_path,
             selected_commands=["nonexistent.md"],
             selected_agents=[],
-            selected_hooks=[]
+            selected_hooks=[],
         )
 
         # Should handle gracefully
@@ -548,7 +520,7 @@ class TestRestoreCustomFiles:
             backup_path=backup_path,
             selected_commands=["cmd.md"],
             selected_agents=["agent.md"],
-            selected_hooks=["hook.py"]
+            selected_hooks=["hook.py"],
         )
 
         assert result is True
@@ -572,7 +544,7 @@ class TestRestoreCustomFiles:
             backup_path=backup_path,
             selected_commands=[],
             selected_agents=[],
-            selected_hooks=[]
+            selected_hooks=[],
         )
 
         # Should succeed (no-op)

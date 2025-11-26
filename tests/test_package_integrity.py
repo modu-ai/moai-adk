@@ -30,23 +30,15 @@ class TestSourceFilesVerification:
 
     def test_verify_source_files_checks_output_styles_r2d2(self):
         """Test that r2d2.md output style is checked."""
-        assert any(
-            "output-styles/moai/r2d2.md" in str(path)
-            for path in REQUIRED_SOURCE_FILES
-        )
+        assert any("output-styles/moai/r2d2.md" in str(path) for path in REQUIRED_SOURCE_FILES)
 
     def test_verify_source_files_checks_output_styles_yoda(self):
         """Test that yoda.md output style is checked."""
-        assert any(
-            "output-styles/moai/yoda.md" in str(path)
-            for path in REQUIRED_SOURCE_FILES
-        )
+        assert any("output-styles/moai/yoda.md" in str(path) for path in REQUIRED_SOURCE_FILES)
 
     def test_verify_source_files_checks_skills_directory(self):
         """Test that skills directory is checked."""
-        assert any(
-            "skills" in str(path) for path in REQUIRED_SOURCE_FILES
-        )
+        assert any("skills" in str(path) for path in REQUIRED_SOURCE_FILES)
 
     def test_verify_source_files_checks_agents_directory(self):
         """Test that agents directory is checked."""
@@ -54,9 +46,7 @@ class TestSourceFilesVerification:
 
     def test_verify_source_files_checks_config_json(self):
         """Test that config.json is checked."""
-        assert any(
-            "config/config.json" in str(path) for path in REQUIRED_SOURCE_FILES
-        )
+        assert any("config/config.json" in str(path) for path in REQUIRED_SOURCE_FILES)
 
     def test_verify_source_files_returns_false_when_file_missing(self):
         """Test that verification fails when a required file is missing."""
@@ -135,9 +125,7 @@ class TestWheelContentsVerification:
 
     def test_verify_wheel_contents_checks_templates_output_styles(self):
         """Test that templates output-styles pattern is checked."""
-        assert any(
-            "output-styles" in pattern for pattern in REQUIRED_WHEEL_PATTERNS
-        )
+        assert any("output-styles" in pattern for pattern in REQUIRED_WHEEL_PATTERNS)
 
     def test_verify_wheel_contents_checks_templates_skills(self):
         """Test that templates skills pattern is checked."""
@@ -147,9 +135,7 @@ class TestWheelContentsVerification:
         """Test that templates config pattern is checked."""
         assert any("config" in pattern for pattern in REQUIRED_WHEEL_PATTERNS)
 
-    def test_verify_wheel_contents_prints_error_on_missing_pattern(
-        self, capsys
-    ):
+    def test_verify_wheel_contents_prints_error_on_missing_pattern(self, capsys):
         """Test that error message is printed for missing patterns."""
         with tempfile.NamedTemporaryFile(suffix=".whl", delete=False) as tmp:
             wheel_path = tmp.name
@@ -160,11 +146,7 @@ class TestWheelContentsVerification:
 
             verify_wheel_contents(wheel_path)
             captured = capsys.readouterr()
-            assert (
-                "Missing" in captured.out
-                or "Missing" in captured.err
-                or "Pattern" in captured.out
-            )
+            assert "Missing" in captured.out or "Missing" in captured.err or "Pattern" in captured.out
         finally:
             Path(wheel_path).unlink(missing_ok=True)
 
@@ -185,9 +167,7 @@ class TestTarballContentsVerification:
                 for pattern in REQUIRED_WHEEL_PATTERNS:
                     info = tarfile.TarInfo(name=f"{pattern}/dummy.txt")
                     info.size = 7
-                    tar.addfile(
-                        info, fileobj=io.BytesIO(b"content")
-                    )
+                    tar.addfile(info, fileobj=io.BytesIO(b"content"))
 
             result = verify_tarball_contents(tarball_path)
             assert result is True
@@ -250,9 +230,7 @@ class TestRequiredPatterns:
 
     def test_required_wheel_patterns_include_output_styles(self):
         """Test that output-styles is in patterns."""
-        assert any(
-            "output-styles" in pattern for pattern in REQUIRED_WHEEL_PATTERNS
-        )
+        assert any("output-styles" in pattern for pattern in REQUIRED_WHEEL_PATTERNS)
 
     def test_required_wheel_patterns_include_skills(self):
         """Test that skills is in patterns."""

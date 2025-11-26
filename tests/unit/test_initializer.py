@@ -33,9 +33,7 @@ class TestInstallationResult:
             created_files=[".moai/", ".claude/"],
         )
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.project_path == "/path/to/project"
         assert result.language == "python"
         assert result.mode == "personal"
@@ -118,9 +116,7 @@ class TestInitialize:
         result = initializer.initialize(reinit=True, backup_enabled=False)
 
         # Should succeed
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
 
     def test_initialize_detects_language(self, tmp_path: Path) -> None:
         """Should accept explicit language parameter"""
@@ -131,9 +127,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(language="python")
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.language == "python"
 
     def test_initialize_uses_specified_language(self, tmp_path: Path) -> None:
@@ -141,9 +135,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(language="typescript")
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.language == "typescript"
 
     def test_initialize_executes_all_phases(self, tmp_path: Path) -> None:
@@ -151,14 +143,10 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
 
         with (
-            patch.object(
-                initializer.executor, "execute_preparation_phase"
-            ) as mock_prep,
+            patch.object(initializer.executor, "execute_preparation_phase") as mock_prep,
             patch.object(initializer.executor, "execute_directory_phase") as mock_dir,
             patch.object(initializer.executor, "execute_resource_phase") as mock_res,
-            patch.object(
-                initializer.executor, "execute_configuration_phase"
-            ) as mock_conf,
+            patch.object(initializer.executor, "execute_configuration_phase") as mock_conf,
             patch.object(initializer.executor, "execute_validation_phase") as mock_val,
         ):
             # Setup mocks
@@ -174,22 +162,16 @@ class TestInitialize:
             mock_conf.assert_called_once()
             mock_val.assert_called_once()
 
-            assert (
-                result.success is True
-            ), f"Initialization failed with errors: {result.errors}"
+            assert result.success is True, f"Initialization failed with errors: {result.errors}"
 
     def test_initialize_passes_correct_config(self, tmp_path: Path) -> None:
         """Should pass correct configuration to phase 4"""
         initializer = ProjectInitializer(tmp_path)
 
-        with patch.object(
-            initializer.executor, "execute_configuration_phase"
-        ) as mock_conf:
+        with patch.object(initializer.executor, "execute_configuration_phase") as mock_conf:
             mock_conf.return_value = [".moai/config.json"]
 
-            initializer.initialize(
-                mode="team", locale="en", language="go", backup_enabled=False
-            )
+            initializer.initialize(mode="team", locale="en", language="go", backup_enabled=False)
 
             # Check config passed to phase 4
             call_args = mock_conf.call_args
@@ -217,9 +199,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize()
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
 
         # Required directories should exist
         assert (tmp_path / ".moai").exists()
@@ -236,13 +216,9 @@ class TestInitialize:
         assert result.success is True
         claude_content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
         # Check that template variables are substituted (not literal {{VARIABLE}} placeholders)
-        assert (
-            "You are the SuperAgent" in claude_content
-        )  # Updated to match current template
+        assert "You are the SuperAgent" in claude_content  # Updated to match current template
         assert "SuperAgent" in claude_content
-        assert (
-            "{{PROJECT_NAME}}" not in claude_content
-        )  # Ensure variables are substituted
+        assert "{{PROJECT_NAME}}" not in claude_content  # Ensure variables are substituted
         assert "페르소나" not in claude_content
 
     def test_initialize_measures_duration(self, tmp_path: Path) -> None:
@@ -250,9 +226,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize()
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.duration > 0
         assert isinstance(result.duration, int)
 
@@ -261,9 +235,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize()
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert len(result.created_files) > 0
         assert any(".moai" in f for f in result.created_files)
         assert any(".github" in f for f in result.created_files)
@@ -272,9 +244,7 @@ class TestInitialize:
         """Should handle errors and return failure result"""
         initializer = ProjectInitializer(tmp_path)
 
-        with patch.object(
-            initializer.executor, "execute_preparation_phase"
-        ) as mock_prep:
+        with patch.object(initializer.executor, "execute_preparation_phase") as mock_prep:
             # Simulate error
             mock_prep.side_effect = Exception("Test error")
 
@@ -289,9 +259,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(mode="team")
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.mode == "team"
 
     def test_initialize_with_different_locale(self, tmp_path: Path) -> None:
@@ -299,9 +267,7 @@ class TestInitialize:
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(locale="en")
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.locale == "en"
 
 
@@ -313,17 +279,13 @@ class TestInitializeProjectFunction:
         result = initialize_project(tmp_path)
 
         assert isinstance(result, InstallationResult)
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
 
     def test_initialize_project_passes_callback(self, tmp_path: Path) -> None:
         """Should pass progress callback to initializer"""
         callback = Mock()
         result = initialize_project(tmp_path, progress_callback=callback)
 
-        assert (
-            result.success is True
-        ), f"Initialization failed with errors: {result.errors}"
+        assert result.success is True, f"Initialization failed with errors: {result.errors}"
         # Callback should be called
         assert callback.call_count >= 5

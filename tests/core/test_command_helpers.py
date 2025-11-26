@@ -34,18 +34,12 @@ def mock_project():
 
         # Create config.json
         config = {
-            "project": {
-                "name": "TestProject",
-                "mode": "personal",
-                "owner": "@testuser"
-            },
-            "language": {
-                "conversation_language": "en"
-            }
+            "project": {"name": "TestProject", "mode": "personal", "owner": "@testuser"},
+            "language": {"conversation_language": "en"},
         }
 
         config_path = project_root / ".moai" / "config" / "config.json"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
         yield str(project_root)
@@ -124,11 +118,7 @@ class TestPhaseResultBuilder:
         files = ["/abs/path/file.txt"]
 
         result = build_phase_result(
-            phase_name="0-project",
-            status="completed",
-            outputs=outputs,
-            files_created=files,
-            next_phase="1-plan"
+            phase_name="0-project", status="completed", outputs=outputs, files_created=files, next_phase="1-plan"
         )
 
         assert result["phase"] == "0-project"
@@ -140,12 +130,7 @@ class TestPhaseResultBuilder:
 
     def test_timestamp_format(self):
         """Test that timestamp is in correct ISO 8601 UTC format"""
-        result = build_phase_result(
-            phase_name="test",
-            status="completed",
-            outputs={},
-            files_created=[]
-        )
+        result = build_phase_result(phase_name="test", status="completed", outputs={}, files_created=[])
 
         # Check UTC format
         assert result["timestamp"].endswith("Z")
@@ -189,11 +174,7 @@ class TestContextSaving:
         files = [".moai/config/config.json"]
 
         saved_path = save_command_context(
-            phase_name="0-project",
-            project_root=mock_project,
-            outputs=outputs,
-            files_created=files,
-            next_phase="1-plan"
+            phase_name="0-project", project_root=mock_project, outputs=outputs, files_created=files, next_phase="1-plan"
         )
 
         if saved_path:  # Only if ContextManager available
@@ -201,7 +182,7 @@ class TestContextSaving:
             assert saved_path.endswith(".json")
 
             # Verify content
-            with open(saved_path, 'r') as f:
+            with open(saved_path, "r") as f:
                 data = json.load(f)
 
             assert data["phase"] == "0-project"
@@ -211,10 +192,7 @@ class TestContextSaving:
         """Test error handling when save fails"""
         # Invalid project root
         saved_path = save_command_context(
-            phase_name="test",
-            project_root="/nonexistent/path",
-            outputs={},
-            files_created=[]
+            phase_name="test", project_root="/nonexistent/path", outputs={}, files_created=[]
         )
 
         # Should return None on error, not raise
@@ -230,12 +208,7 @@ class TestPreviousPhaseLoading:
         outputs = {"version": 1}
         files = []
 
-        save_command_context(
-            phase_name="0-project",
-            project_root=mock_project,
-            outputs=outputs,
-            files_created=files
-        )
+        save_command_context(phase_name="0-project", project_root=mock_project, outputs=outputs, files_created=files)
 
         # Load it back
         loaded = load_previous_phase(mock_project)
@@ -266,11 +239,11 @@ class TestEdgeCases:
             # Create incomplete config with missing project keys
             incomplete_config = {
                 "project": {},  # Missing name, mode, owner
-                "language": {}  # Missing conversation_language
+                "language": {},  # Missing conversation_language
             }
 
             config_path = project_root / ".moai" / "config" / "config.json"
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 json.dump(incomplete_config, f)
 
             result = extract_project_metadata(str(project_root))
@@ -290,12 +263,7 @@ class TestEdgeCases:
             assert result == ["python"]
 
     def test_build_phase_result_minimal_data(self):
-        result = build_phase_result(
-            phase_name="0-project",
-            status="completed",
-            outputs={},
-            files_created=[]
-        )
+        result = build_phase_result(phase_name="0-project", status="completed", outputs={}, files_created=[])
 
         # Verify all required fields present
         assert result["phase"] == "0-project"
@@ -312,11 +280,7 @@ class TestEdgeCases:
             (project_root / ".moai" / "config").mkdir(parents=True)
 
             # Paths that attempt to escape project root
-            invalid_paths = [
-                "../../../etc/passwd",
-                "/etc/passwd",
-                "../../outside/project"
-            ]
+            invalid_paths = ["../../../etc/passwd", "/etc/passwd", "../../outside/project"]
 
             result = validate_phase_files(invalid_paths, str(project_root))
 
@@ -330,13 +294,10 @@ class TestEdgeCases:
         import moai_adk.core.command_helpers as helpers
 
         # Mock CONTEXT_MANAGER_AVAILABLE to False
-        monkeypatch.setattr(helpers, 'CONTEXT_MANAGER_AVAILABLE', False)
+        monkeypatch.setattr(helpers, "CONTEXT_MANAGER_AVAILABLE", False)
 
         result = save_command_context(
-            phase_name="test",
-            project_root="/tmp/test",
-            outputs={"test": "data"},
-            files_created=[]
+            phase_name="test", project_root="/tmp/test", outputs={"test": "data"}, files_created=[]
         )
 
         # Should return None gracefully, not raise exception
@@ -358,11 +319,7 @@ class TestEdgeCases:
     def test_build_phase_result_with_next_phase(self):
         """Test phase result includes next_phase when provided"""
         result = build_phase_result(
-            phase_name="0-project",
-            status="completed",
-            outputs={},
-            files_created=[],
-            next_phase="1-plan"
+            phase_name="0-project", status="completed", outputs={}, files_created=[], next_phase="1-plan"
         )
 
         assert "next_phase" in result

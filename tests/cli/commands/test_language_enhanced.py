@@ -465,9 +465,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_native_name")
-    def test_execute_dry_run_displays_command_without_executing(
-        self, mock_get_name, mock_console, mock_engine, runner
-    ):
+    def test_execute_dry_run_displays_command_without_executing(self, mock_get_name, mock_console, mock_engine, runner):
         """Should display command in dry-run mode without execution"""
         mock_get_name.return_value = "한국어"
         mock_engine_instance = Mock()
@@ -509,9 +507,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_native_name")
-    def test_execute_injects_language_variables_when_specified(
-        self, mock_get_name, mock_console, mock_engine, runner
-    ):
+    def test_execute_injects_language_variables_when_specified(self, mock_get_name, mock_console, mock_engine, runner):
         """Should inject language variables when language is specified"""
         mock_get_name.return_value = "日本語"
         mock_engine_instance = Mock()

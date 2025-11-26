@@ -23,14 +23,8 @@ class TestLogout:
     @pytest.fixture
     def authenticated_user(self, auth_service):
         """Create and login a test user."""
-        auth_service.create_user(
-            email="logouttest@example.com",
-            password="LogoutTest123!"
-        )
-        login_response = auth_service.login(
-            email="logouttest@example.com",
-            password="LogoutTest123!"
-        )
+        auth_service.create_user(email="logouttest@example.com", password="LogoutTest123!")
+        login_response = auth_service.login(email="logouttest@example.com", password="LogoutTest123!")
         return login_response
 
     def test_logout_with_valid_token(self, auth_service, authenticated_user):
@@ -87,25 +81,13 @@ class TestLogout:
         And: Other user's token remains valid
         """
         # Create and login first user
-        auth_service.create_user(
-            email="user1@example.com",
-            password="User1Pass123!"
-        )
-        user1_token_response = auth_service.login(
-            email="user1@example.com",
-            password="User1Pass123!"
-        )
+        auth_service.create_user(email="user1@example.com", password="User1Pass123!")
+        user1_token_response = auth_service.login(email="user1@example.com", password="User1Pass123!")
         user1_token = user1_token_response["access_token"]
 
         # Create and login second user
-        auth_service.create_user(
-            email="user2@example.com",
-            password="User2Pass123!"
-        )
-        user2_token_response = auth_service.login(
-            email="user2@example.com",
-            password="User2Pass123!"
-        )
+        auth_service.create_user(email="user2@example.com", password="User2Pass123!")
+        user2_token_response = auth_service.login(email="user2@example.com", password="User2Pass123!")
         user2_token = user2_token_response["access_token"]
 
         # Logout first user

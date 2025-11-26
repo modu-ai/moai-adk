@@ -21,11 +21,7 @@ class TestSessionEndHookExecution:
             assert config_file.exists()
 
             # Simulate hook execution
-            result = {
-                "hook": "session_end__auto_cleanup",
-                "success": True,
-                "timestamp": datetime.now().isoformat()
-            }
+            result = {"hook": "session_end__auto_cleanup", "success": True, "timestamp": datetime.now().isoformat()}
 
             assert result["success"] is True
             assert result["hook"] == "session_end__auto_cleanup"
@@ -34,17 +30,13 @@ class TestSessionEndHookExecution:
         """SessionEnd hook executes with payload"""
         with hook_tmp_project as proj_root:
             # Simulate hook payload
-            payload = {
-                "event": "session_end",
-                "timestamp": datetime.now().isoformat(),
-                "cwd": str(proj_root)
-            }
+            payload = {"event": "session_end", "timestamp": datetime.now().isoformat(), "cwd": str(proj_root)}
 
             result = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
                 "payload_received": bool(payload),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             assert result["success"] is True
@@ -66,7 +58,7 @@ class TestSessionMetricsSaving:
                 "cwd": str(proj_root),
                 "files_modified": 5,
                 "git_commits": 2,
-                "specs_worked_on": ["SPEC-001", "SPEC-002"]
+                "specs_worked_on": ["SPEC-001", "SPEC-002"],
             }
 
             session_file = logs_dir / f"session-{session_metrics['session_id']}.json"
@@ -94,7 +86,7 @@ class TestSessionMetricsSaving:
                 "cwd": str(proj_root),
                 "files_modified": 3,
                 "git_commits": 1,
-                "specs_worked_on": []
+                "specs_worked_on": [],
             }
 
             session_file.write_text(json.dumps(metrics, indent=2))
@@ -127,14 +119,9 @@ class TestSessionMetricsSaving:
 
             # Create multiple session files
             for i in range(3):
-                session_id = (
-                    datetime.now() - timedelta(hours=i)
-                ).strftime("%Y-%m-%d-%H%M%S")
+                session_id = (datetime.now() - timedelta(hours=i)).strftime("%Y-%m-%d-%H%M%S")
 
-                metrics = {
-                    "session_id": session_id,
-                    "files_modified": i + 1
-                }
+                metrics = {"session_id": session_id, "files_modified": i + 1}
 
                 session_file = logs_dir / f"session-{session_id}.json"
                 session_file.write_text(json.dumps(metrics))
@@ -158,7 +145,7 @@ class TestWorkStateSaving:
                 "current_branch": "feature/test",
                 "uncommitted_changes": False,
                 "uncommitted_files": 0,
-                "specs_in_progress": ["SPEC-001"]
+                "specs_in_progress": ["SPEC-001"],
             }
 
             state_file = memory_dir / "last-session-state.json"
@@ -173,10 +160,7 @@ class TestWorkStateSaving:
     def test_work_state_includes_branch_info(self, config_file, hook_tmp_project):
         """Work state includes current branch"""
         with hook_tmp_project as proj_root:
-            work_state = {
-                "current_branch": "main",
-                "specs_in_progress": []
-            }
+            work_state = {"current_branch": "main", "specs_in_progress": []}
 
             assert "current_branch" in work_state
             assert work_state["current_branch"] == "main"
@@ -184,10 +168,7 @@ class TestWorkStateSaving:
     def test_work_state_includes_uncommitted_info(self, config_file, hook_tmp_project):
         """Work state includes uncommitted changes info"""
         with hook_tmp_project as proj_root:
-            work_state = {
-                "uncommitted_changes": True,
-                "uncommitted_files": 5
-            }
+            work_state = {"uncommitted_changes": True, "uncommitted_files": 5}
 
             assert "uncommitted_changes" in work_state
             assert "uncommitted_files" in work_state
@@ -196,10 +177,7 @@ class TestWorkStateSaving:
     def test_work_state_includes_spec_progress(self, config_file, hook_tmp_project):
         """Work state includes SPEC progress"""
         with hook_tmp_project as proj_root:
-            work_state = {
-                "specs_in_progress": ["SPEC-001", "SPEC-002"],
-                "last_updated": datetime.now().isoformat()
-            }
+            work_state = {"specs_in_progress": ["SPEC-001", "SPEC-002"], "last_updated": datetime.now().isoformat()}
 
             assert "specs_in_progress" in work_state
             assert len(work_state["specs_in_progress"]) > 0
@@ -215,12 +193,7 @@ class TestUncommittedChangesDetection:
             git_root = git_repo_with_changes
 
             # Check for uncommitted changes
-            result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=git_root,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["git", "status", "--porcelain"], cwd=git_root, capture_output=True, text=True)
 
             assert result.returncode == 0
             # Should show uncommitted files
@@ -231,16 +204,9 @@ class TestUncommittedChangesDetection:
         with hook_tmp_project:
             git_root = git_repo_with_changes
 
-            result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=git_root,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["git", "status", "--porcelain"], cwd=git_root, capture_output=True, text=True)
 
-            uncommitted_lines = [
-                line for line in result.stdout.strip().split('\n') if line
-            ]
+            uncommitted_lines = [line for line in result.stdout.strip().split("\n") if line]
             uncommitted_count = len(uncommitted_lines)
 
             # Should have at least 2 uncommitted files
@@ -251,18 +217,12 @@ class TestUncommittedChangesDetection:
         with hook_tmp_project:
             git_root = git_repo_with_changes
 
-            result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=git_root,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["git", "status", "--porcelain"], cwd=git_root, capture_output=True, text=True)
 
             if result.stdout.strip():
-                uncommitted_count = len(result.stdout.strip().split('\n'))
+                uncommitted_count = len(result.stdout.strip().split("\n"))
                 warning = (
-                    f"⚠️  {uncommitted_count} uncommitted files detected - "
-                    "Consider committing or stashing changes"
+                    f"⚠️  {uncommitted_count} uncommitted files detected - " "Consider committing or stashing changes"
                 )
 
                 assert "uncommitted files" in warning.lower()
@@ -331,11 +291,7 @@ class TestStateSavingAndRestoration:
             memory_dir = proj_root / ".moai" / "memory"
             memory_dir.mkdir(exist_ok=True)
 
-            state = {
-                "timestamp": datetime.now().isoformat(),
-                "branch": "feature/test",
-                "changes": 5
-            }
+            state = {"timestamp": datetime.now().isoformat(), "branch": "feature/test", "changes": 5}
 
             state_file = memory_dir / "session-state.json"
             state_file.write_text(json.dumps(state, indent=2))
@@ -349,10 +305,7 @@ class TestStateSavingAndRestoration:
             memory_dir.mkdir(exist_ok=True)
 
             # Save state
-            original_state = {
-                "branch": "feature/test",
-                "changes": 5
-            }
+            original_state = {"branch": "feature/test", "changes": 5}
 
             state_file = memory_dir / "session-state.json"
             state_file.write_text(json.dumps(original_state))
@@ -370,10 +323,7 @@ class TestStateSavingAndRestoration:
             memory_dir.mkdir(exist_ok=True)
 
             # Session 1: Save state
-            state1 = {
-                "session": 1,
-                "data": "session1"
-            }
+            state1 = {"session": 1, "data": "session1"}
 
             state_file = memory_dir / "persistent-state.json"
             state_file.write_text(json.dumps(state1))
@@ -390,23 +340,16 @@ class TestSessionCompletion:
     def test_session_summary_generation(self, config_file, hook_tmp_project):
         """Session summary is generated"""
         with hook_tmp_project as proj_root:
-            cleanup_stats = {
-                "total_cleaned": 5,
-                "temp_cleaned": 2,
-                "cache_cleaned": 3
-            }
+            cleanup_stats = {"total_cleaned": 5, "temp_cleaned": 2, "cache_cleaned": 3}
 
-            work_state = {
-                "specs_in_progress": ["SPEC-001"],
-                "uncommitted_files": 3
-            }
+            work_state = {"specs_in_progress": ["SPEC-001"], "uncommitted_files": 3}
 
             summary = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
                 "cleanup_stats": cleanup_stats,
                 "work_state": work_state,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             assert summary["success"] is True
@@ -442,10 +385,7 @@ class TestRootDocumentViolations:
             (proj_root / "API-DOCS.md").write_text("# API")
 
             # Scan for violations
-            root_files = [
-                f.name for f in proj_root.iterdir()
-                if f.is_file() and not f.name.startswith(".")
-            ]
+            root_files = [f.name for f in proj_root.iterdir() if f.is_file() and not f.name.startswith(".")]
 
             violations = [f for f in root_files if f.endswith(".md")]
 
@@ -456,9 +396,7 @@ class TestRootDocumentViolations:
         with hook_tmp_project as proj_root:
             config_data = json.loads(config_file.read_text())
 
-            whitelist = config_data.get(
-                "document_management", {}
-            ).get("root_whitelist", [])
+            whitelist = config_data.get("document_management", {}).get("root_whitelist", [])
 
             # README.md should be whitelisted
             (proj_root / "README.md").write_text("# Project")
@@ -492,7 +430,7 @@ class TestSessionEndResponse:
                 "cleanup_stats": {"total_cleaned": 0},
                 "session_metrics_saved": True,
                 "work_state_saved": True,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             assert "hook" in response
@@ -506,7 +444,7 @@ class TestSessionEndResponse:
                 "hook": "session_end__auto_cleanup",
                 "success": True,
                 "cleanup_stats": {"total_cleaned": 5},
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             # Should serialize
@@ -521,13 +459,7 @@ class TestSessionEndResponse:
 class TestSessionEndIntegrationScenarios:
     """Test complete SessionEnd integration scenarios"""
 
-    def test_full_session_end_flow(
-        self,
-        config_file,
-        git_repo_with_changes,
-        session_state_file,
-        hook_tmp_project
-    ):
+    def test_full_session_end_flow(self, config_file, git_repo_with_changes, session_state_file, hook_tmp_project):
         """Full SessionEnd flow executes successfully"""
         with hook_tmp_project as proj_root:
             # Verify all components exist
@@ -538,16 +470,12 @@ class TestSessionEndIntegrationScenarios:
             result = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
-                "cleanup_stats": {
-                    "total_cleaned": 3,
-                    "temp_cleaned": 1,
-                    "cache_cleaned": 2
-                },
+                "cleanup_stats": {"total_cleaned": 3, "temp_cleaned": 1, "cache_cleaned": 2},
                 "session_metrics_saved": True,
                 "work_state_saved": True,
                 "uncommitted_warning": "⚠️  2 uncommitted files detected",
                 "session_summary": "✅ Session Ended",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             assert result["success"] is True
@@ -560,14 +488,10 @@ class TestSessionEndIntegrationScenarios:
             result = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
-                "cleanup_stats": {
-                    "total_cleaned": 0,
-                    "temp_cleaned": 0,
-                    "cache_cleaned": 0
-                },
+                "cleanup_stats": {"total_cleaned": 0, "temp_cleaned": 0, "cache_cleaned": 0},
                 "uncommitted_warning": None,
                 "session_summary": "✅ Session Ended",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             assert result["success"] is True
@@ -583,7 +507,7 @@ class TestSessionEndIntegrationScenarios:
                 "error": "Some error occurred",
                 "graceful_degradation": True,
                 "message": "Hook failed but continuing due to graceful degradation",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             # Even with error, message should indicate continuation

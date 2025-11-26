@@ -19,6 +19,7 @@ def find_project_root(start_path: Path) -> Path:
         current = current.parent
     raise RuntimeError("Project root not found")
 
+
 script_path = Path(__file__).resolve()
 project_root = find_project_root(script_path.parent)
 sys.path.insert(0, str(project_root))
@@ -57,24 +58,26 @@ class MermaidDiagramValidator:
                 print(f"⚠️  파일을 찾을 수 없음: {file_rel_path}")
                 continue
 
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
 
             # Mermaid 블록 정규식: ```mermaid ... ```
-            pattern = r'```mermaid\n(.*?)\n```'
+            pattern = r"```mermaid\n(.*?)\n```"
             matches = re.finditer(pattern, content, re.DOTALL)
 
             blocks = []
             for idx, match in enumerate(matches, 1):
                 mermaid_code = match.group(1)
-                start_line = content[:match.start()].count('\n') + 1
+                start_line = content[: match.start()].count("\n") + 1
 
-                blocks.append({
-                    'id': f"{file_rel_path.split('/')[-1]}_diagram_{idx}",
-                    'file': file_rel_path,
-                    'line': start_line,
-                    'code': mermaid_code,
-                    'length': len(mermaid_code.split('\n'))
-                })
+                blocks.append(
+                    {
+                        "id": f"{file_rel_path.split('/')[-1]}_diagram_{idx}",
+                        "file": file_rel_path,
+                        "line": start_line,
+                        "code": mermaid_code,
+                        "length": len(mermaid_code.split("\n")),
+                    }
+                )
 
             if blocks:
                 mermaid_blocks[file_rel_path] = blocks
@@ -86,12 +89,12 @@ class MermaidDiagramValidator:
         code_stripped = code.strip()
 
         # %%{init: {...}}%% 설정 제거 (첫 번째 줄이 이것이면 건너뛰기)
-        lines = code_stripped.split('\n')
+        lines = code_stripped.split("\n")
         actual_code_start = 0
 
-        if lines and lines[0].startswith('%%{init:'):
+        if lines and lines[0].startswith("%%{init:"):
             actual_code_start = 1
-            while actual_code_start < len(lines) and lines[actual_code_start].strip() == '':
+            while actual_code_start < len(lines) and lines[actual_code_start].strip() == "":
                 actual_code_start += 1
 
         if actual_code_start < len(lines):
@@ -101,33 +104,33 @@ class MermaidDiagramValidator:
 
         # 지원되는 다이어그램 타입
         diagram_patterns = {
-            'graph': r'^graph\s+(TD|BT|LR|RL)',
-            'flowchart': r'^flowchart\s+(TD|BT|LR|RL)',
-            'stateDiagram': r'^stateDiagram-v2',
-            'sequenceDiagram': r'^sequenceDiagram',
-            'classDiagram': r'^classDiagram',
-            'erDiagram': r'^erDiagram',
-            'gantt': r'^gantt',
+            "graph": r"^graph\s+(TD|BT|LR|RL)",
+            "flowchart": r"^flowchart\s+(TD|BT|LR|RL)",
+            "stateDiagram": r"^stateDiagram-v2",
+            "sequenceDiagram": r"^sequenceDiagram",
+            "classDiagram": r"^classDiagram",
+            "erDiagram": r"^erDiagram",
+            "gantt": r"^gantt",
         }
 
         for diagram_type, pattern in diagram_patterns.items():
             if re.match(pattern, first_meaningful_line):
                 return diagram_type, True
 
-        return 'UNKNOWN', False
+        return "UNKNOWN", False
 
     def validate_syntax(self, code: str, diagram_type: str) -> List[str]:
         """다이어그램 문법 검증"""
         issues = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
-        if diagram_type in ['graph', 'flowchart']:
+        if diagram_type in ["graph", "flowchart"]:
             # Graph/Flowchart 검증
             self._validate_graph_syntax(lines, issues)
-        elif diagram_type == 'stateDiagram':
+        elif diagram_type == "stateDiagram":
             # State Diagram 검증
             self._validate_state_diagram_syntax(lines, issues)
-        elif diagram_type == 'sequenceDiagram':
+        elif diagram_type == "sequenceDiagram":
             # Sequence Diagram 검증
             self._validate_sequence_diagram_syntax(lines, issues)
 
@@ -140,26 +143,26 @@ class MermaidDiagramValidator:
 
         for i, line in enumerate(lines[1:], 1):  # 첫 번째 줄은 graph 정의
             line = line.strip()
-            if not line or line.startswith('%%'):  # 주석 무시
+            if not line or line.startswith("%%"):  # 주석 무시
                 continue
 
             # 노드 정의: A["텍스트"]
-            node_pattern = r'([A-Za-z0-9_]+)\s*\['
+            node_pattern = r"([A-Za-z0-9_]+)\s*\["
             node_matches = re.findall(node_pattern, line)
             for node_id in node_matches:
                 node_ids.add(node_id)
 
             # 엣지: A --> B
-            edge_pattern = r'([A-Za-z0-9_]+)\s*(?:-->|---|o\||o\)|<-->|<-->|===)\s*([A-Za-z0-9_]+)'
+            edge_pattern = r"([A-Za-z0-9_]+)\s*(?:-->|---|o\||o\)|<-->|<-->|===)\s*([A-Za-z0-9_]+)"
             edge_matches = re.findall(edge_pattern, line)
             for src, dst in edge_matches:
                 edges.append((src, dst))
 
         # 미정의 노드 참조 확인
         for src, dst in edges:
-            if src not in node_ids and not src.replace('[', '').replace(']', ''):
+            if src not in node_ids and not src.replace("[", "").replace("]", ""):
                 issues.append(f"  - 미정의 노드: {src} (라인 {i})")
-            if dst not in node_ids and not dst.replace('[', '').replace(']', ''):
+            if dst not in node_ids and not dst.replace("[", "").replace("]", ""):
                 issues.append(f"  - 미정의 노드: {dst} (라인 {i})")
 
     def _validate_state_diagram_syntax(self, lines: List[str], issues: List[str]):
@@ -168,14 +171,14 @@ class MermaidDiagramValidator:
 
         for i, line in enumerate(lines[1:], 1):
             line = line.strip()
-            if not line or line.startswith('%%'):
+            if not line or line.startswith("%%"):
                 continue
 
             # 상태 정의
-            if ':' in line or '[*]' in line:
+            if ":" in line or "[*]" in line:
                 # Simple state definition detection
-                if '--> ' in line and '[*]' not in line:
-                    parts = line.split('-->')
+                if "--> " in line and "[*]" not in line:
+                    parts = line.split("-->")
                     if len(parts) >= 2:
                         state_defs.add(parts[0].strip())
 
@@ -185,12 +188,12 @@ class MermaidDiagramValidator:
 
         for i, line in enumerate(lines[1:], 1):
             line = line.strip()
-            if not line or line.startswith('%%'):
+            if not line or line.startswith("%%"):
                 continue
 
             # Participant 정의
-            if line.startswith('participant'):
-                parts = line.split(' ')
+            if line.startswith("participant"):
+                parts = line.split(" ")
                 if len(parts) >= 2:
                     participants.add(parts[1])
 
@@ -219,7 +222,7 @@ class MermaidDiagramValidator:
 
             for block in blocks:
                 diagram_count += 1
-                diagram_type, is_valid_type = self.validate_diagram_type(block['code'])
+                diagram_type, is_valid_type = self.validate_diagram_type(block["code"])
 
                 print(f"[{diagram_count}] {block['id']}")
                 print(f"    파일: {block['file']}:{block['line']}")
@@ -234,7 +237,7 @@ class MermaidDiagramValidator:
                     issue_count += 1
 
                 # 문법 검증
-                syntax_issues = self.validate_syntax(block['code'], diagram_type)
+                syntax_issues = self.validate_syntax(block["code"], diagram_type)
                 if syntax_issues:
                     print("    문법 문제:")
                     for issue in syntax_issues:
@@ -244,7 +247,7 @@ class MermaidDiagramValidator:
                     print("    문법: ✅ 검증됨")
 
                 # 코드 스니펫 표시 (처음 3줄)
-                lines = block['code'].split('\n')[:3]
+                lines = block["code"].split("\n")[:3]
                 print("    코드 샘플:")
                 for line in lines:
                     print(f"      {line}")
@@ -287,11 +290,13 @@ def main():
     """메인 실행"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Mermaid 다이어그램 검증')
-    parser.add_argument('--path', type=str, default=str(DEFAULT_DOCS_PATH),
-                       help=f'검사할 문서 경로 (기본값: {DEFAULT_DOCS_PATH})')
-    parser.add_argument('--output', type=str, default=str(DEFAULT_REPORT_PATH),
-                       help=f'리포트 저장 경로 (기본값: {DEFAULT_REPORT_PATH})')
+    parser = argparse.ArgumentParser(description="Mermaid 다이어그램 검증")
+    parser.add_argument(
+        "--path", type=str, default=str(DEFAULT_DOCS_PATH), help=f"검사할 문서 경로 (기본값: {DEFAULT_DOCS_PATH})"
+    )
+    parser.add_argument(
+        "--output", type=str, default=str(DEFAULT_REPORT_PATH), help=f"리포트 저장 경로 (기본값: {DEFAULT_REPORT_PATH})"
+    )
 
     args = parser.parse_args()
 
@@ -301,7 +306,7 @@ def main():
     # 리포트 저장
     report_path = Path(args.output)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(report, encoding='utf-8')
+    report_path.write_text(report, encoding="utf-8")
 
     print(f"\n📁 리포트 저장됨: {report_path}")
 

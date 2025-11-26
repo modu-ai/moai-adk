@@ -372,9 +372,7 @@ class TestErrorHandling:
         """Test that critical errors trigger automatic recovery"""
         error = RuntimeError("Critical error")
 
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=True,
                 action_name="test",
@@ -394,9 +392,7 @@ class TestErrorHandling:
         """Test that high severity errors trigger automatic recovery"""
         error = RuntimeError("High severity error")
 
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
@@ -415,9 +411,7 @@ class TestErrorHandling:
         """Test that low severity errors don't trigger automatic recovery"""
         error = RuntimeError("Low severity error")
 
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             report = error_recovery_system.handle_error(
                 error, severity=ErrorSeverity.LOW, category=ErrorCategory.USER_INPUT
             )
@@ -848,9 +842,7 @@ class TestTroubleshootingGuide:
         """Test guide generation with error history"""
         # Create multiple errors of same type
         for i in range(3):
-            error_recovery_system.handle_error(
-                ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION)
 
         guide = error_recovery_system.generate_troubleshooting_guide()
 
@@ -878,9 +870,7 @@ class TestTroubleshootingGuide:
         """Test prevention tips generation"""
         # Create multiple configuration errors
         for i in range(6):
-            error_recovery_system.handle_error(
-                ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION)
 
         guide = error_recovery_system.generate_troubleshooting_guide()
 
@@ -964,9 +954,7 @@ class TestPatternDetection:
         report1 = error_recovery_system.handle_error(error1, category=ErrorCategory.VALIDATION)
         report2 = error_recovery_system.handle_error(error2, category=ErrorCategory.VALIDATION)
 
-        patterns = error_recovery_system._identify_error_patterns(
-            error_recovery_system.error_history
-        )
+        patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
         assert len(patterns) > 0
         assert any("validation" in pattern for pattern in patterns.keys())
@@ -982,9 +970,7 @@ class TestPatternDetection:
         for error, category in errors:
             error_recovery_system.handle_error(error, category=category)
 
-        patterns = error_recovery_system._identify_error_patterns(
-            error_recovery_system.error_history
-        )
+        patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
         # Should have multiple patterns
         assert len(patterns) > 1
@@ -993,13 +979,9 @@ class TestPatternDetection:
         """Test that patterns track frequency"""
         # Create multiple same-type errors
         for i in range(3):
-            error_recovery_system.handle_error(
-                ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION)
 
-        patterns = error_recovery_system._identify_error_patterns(
-            error_recovery_system.error_history
-        )
+        patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
         # Should have pattern with frequency 3
         assert any(count == 3 for count in patterns.values())
@@ -1208,9 +1190,7 @@ class TestHelperMethods:
         """Test prevention tips generation"""
         # Create multiple configuration errors
         for i in range(6):
-            error_recovery_system.handle_error(
-                ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION)
 
         tips = error_recovery_system._generate_prevention_tips()
 
@@ -1287,10 +1267,7 @@ class TestConvenienceFunctions:
 
         ers_module._error_recovery_system = None
 
-        @error_handler(
-            severity=ErrorSeverity.CRITICAL,
-            context={"operation": "test_operation"}
-        )
+        @error_handler(severity=ErrorSeverity.CRITICAL, context={"operation": "test_operation"})
         def context_function():
             raise RuntimeError("Context error")
 
@@ -1622,9 +1599,7 @@ class TestIntegration:
                 message="Recovery failed",
                 duration=1.0,
             )
-            error_recovery_system.handle_error(
-                RuntimeError("High error"), severity=ErrorSeverity.HIGH
-            )
+            error_recovery_system.handle_error(RuntimeError("High error"), severity=ErrorSeverity.HIGH)
 
         health = error_recovery_system.get_system_health()
         assert health["status"] == "degraded"
@@ -1637,9 +1612,7 @@ class TestIntegration:
                 message="Recovery failed",
                 duration=1.0,
             )
-            error_recovery_system.handle_error(
-                RuntimeError("Critical error"), severity=ErrorSeverity.CRITICAL
-            )
+            error_recovery_system.handle_error(RuntimeError("Critical error"), severity=ErrorSeverity.CRITICAL)
 
         health = error_recovery_system.get_system_health()
         assert health["status"] == "critical"

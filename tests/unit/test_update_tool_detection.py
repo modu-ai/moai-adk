@@ -17,12 +17,9 @@ class TestToolDetection:
     def test_detect_uv_tool_installed(self):
         """Test detection of uv tool installation."""
         # Mock subprocess.run to simulate uv tool list output
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # Setup mock for uv tool list (success)
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="moai-adk 0.6.1"
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="moai-adk 0.6.1")
 
             result = _detect_tool_installer()
 
@@ -32,7 +29,7 @@ class TestToolDetection:
 
     def test_detect_pipx_installed(self):
         """Test detection of pipx installation."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: uv tool list fails
             # Second call: pipx list succeeds
             mock_run.side_effect = [
@@ -48,7 +45,7 @@ class TestToolDetection:
 
     def test_detect_pip_fallback(self):
         """Test detection falls back to pip."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: uv tool list fails
             # Second call: pipx list fails
             # Third call: pip show succeeds
@@ -66,7 +63,7 @@ class TestToolDetection:
 
     def test_detect_no_tools_available(self):
         """Test when no package manager detects moai-adk."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # All calls fail
             mock_run.side_effect = [
                 MagicMock(returncode=1, stdout=""),  # uv fails
@@ -82,7 +79,7 @@ class TestToolDetection:
 
     def test_detect_prioritizes_uv_over_pipx(self):
         """Test that uv tool is prioritized over pipx when both available."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # Both uv and pipx return success
             mock_run.side_effect = [
                 MagicMock(returncode=0, stdout="moai-adk 0.6.1"),  # uv succeeds
@@ -99,7 +96,7 @@ class TestToolDetection:
         """Test graceful handling of subprocess timeout."""
         import subprocess
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: timeout
             # Second call: success with pipx
             mock_run.side_effect = [
@@ -115,7 +112,7 @@ class TestToolDetection:
 
     def test_detect_handles_file_not_found(self):
         """Test graceful handling when tool binary not found."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: FileNotFoundError (tool not installed)
             # Second call: success with pipx
             mock_run.side_effect = [
@@ -131,7 +128,7 @@ class TestToolDetection:
 
     def test_detect_handles_subprocess_error(self):
         """Test graceful handling of generic subprocess errors."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: OSError
             # Second call: success with pipx
             mock_run.side_effect = [

@@ -217,9 +217,7 @@ class TestValidateAlfredCommands:
         with pytest.raises(ValidationError, match="Alfred command"):
             validator.validate_installation(tmp_project_dir)
 
-    def test_validate_installation_succeeds_with_all_alfred_commands(
-        self, tmp_project_dir: Path
-    ):
+    def test_validate_installation_succeeds_with_all_alfred_commands(self, tmp_project_dir: Path):
         """Should pass when all Alfred command files exist"""
         validator = ProjectValidator()
 
@@ -247,9 +245,7 @@ class TestValidateAlfredCommands:
         except ValidationError:
             pytest.fail("validate_installation raised ValidationError unexpectedly")
 
-    def test_validate_installation_reports_missing_command_files(
-        self, tmp_project_dir: Path
-    ):
+    def test_validate_installation_reports_missing_command_files(self, tmp_project_dir: Path):
         """Should report which command files are missing"""
         validator = ProjectValidator()
 
@@ -281,9 +277,7 @@ class TestValidateAlfredCommands:
 class TestIsInsideMoaiPackage:
     """Test _is_inside_moai_package method"""
 
-    def test_is_inside_moai_package_returns_false_for_normal_project(
-        self, tmp_project_dir: Path
-    ):
+    def test_is_inside_moai_package_returns_false_for_normal_project(self, tmp_project_dir: Path):
         """Should return False for normal project directory"""
         validator = ProjectValidator()
 
@@ -291,9 +285,7 @@ class TestIsInsideMoaiPackage:
 
         assert result is False
 
-    def test_is_inside_moai_package_returns_true_when_in_moai_package(
-        self, tmp_project_dir: Path
-    ):
+    def test_is_inside_moai_package_returns_true_when_in_moai_package(self, tmp_project_dir: Path):
         """Should return True when inside moai-adk package"""
         validator = ProjectValidator()
 

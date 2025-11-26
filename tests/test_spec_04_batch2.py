@@ -104,9 +104,7 @@ class TestContext7Integration:
         content = skill_file.read_text(encoding="utf-8")
 
         # Check for Context7 Integration section
-        assert (
-            "Context7" in content or "context7" in content
-        ), f"{skill}: Missing Context7 Integration section"
+        assert "Context7" in content or "context7" in content, f"{skill}: Missing Context7 Integration section"
 
     @pytest.mark.parametrize("skill", ALL_BATCH2_SKILLS)
     def test_context7_library_references_exist(self, skill: str):
@@ -119,14 +117,8 @@ class TestContext7Integration:
         content = ref_file.read_text(encoding="utf-8")
 
         # Check for library references or Context7 Integration section
-        has_context7 = (
-            "Context7" in content
-            or "Official Documentation" in content
-            or "Related Libraries" in content
-        )
-        assert (
-            has_context7
-        ), f"{skill}: Missing library references or Context7 Integration"
+        has_context7 = "Context7" in content or "Official Documentation" in content or "Related Libraries" in content
+        assert has_context7, f"{skill}: Missing library references or Context7 Integration"
 
 
 class TestContentQuality:
@@ -157,9 +149,7 @@ class TestContentQuality:
         ]
 
         for section in required_sections:
-            assert (
-                section in content
-            ), f"{skill}: Missing section '{section}' in SKILL.md"
+            assert section in content, f"{skill}: Missing section '{section}' in SKILL.md"
 
     @pytest.mark.parametrize("skill", ALL_BATCH2_SKILLS)
     def test_examples_md_has_code_examples(self, skill: str):
@@ -173,9 +163,7 @@ class TestContentQuality:
 
         # Count code blocks
         code_blocks = re.findall(r"```(\w+)", content)
-        assert (
-            len(code_blocks) >= 5
-        ), f"{skill}: examples.md has less than 5 code examples"
+        assert len(code_blocks) >= 5, f"{skill}: examples.md has less than 5 code examples"
 
     @pytest.mark.parametrize("skill", ALL_BATCH2_SKILLS)
     def test_reference_md_has_links(self, skill: str):
@@ -189,9 +177,7 @@ class TestContentQuality:
 
         # Check for links
         links = re.findall(r"\[([^\]]+)\]\(([^\)]+)\)", content)
-        assert (
-            len(links) > 0
-        ), f"{skill}: reference.md has no documentation links"
+        assert len(links) > 0, f"{skill}: reference.md has no documentation links"
 
 
 class TestLanguageAndFormatting:
@@ -214,9 +200,7 @@ class TestLanguageAndFormatting:
             pytest.skip(f"Skill directory not found: {skill}")
 
         md_files = list(skill_path.rglob("*.md"))
-        assert (
-            len(md_files) >= 5
-        ), f"{skill}: Less than 5 .md files found"
+        assert len(md_files) >= 5, f"{skill}: Less than 5 .md files found"
 
     @pytest.mark.parametrize("skill", ALL_BATCH2_SKILLS)
     def test_files_use_english_text(self, skill: str):
@@ -255,9 +239,7 @@ class TestDateAndVersion:
 
         # Check for any date format like 2025-11-22 or Last Updated
         has_date = re.search(r"202[45]-\d{2}-\d{2}|Last Updated", content)
-        assert (
-            has_date
-        ), f"{skill}: Missing Last Updated date in SKILL.md"
+        assert has_date, f"{skill}: Missing Last Updated date in SKILL.md"
 
     @pytest.mark.parametrize("skill", ALL_BATCH2_SKILLS)
     def test_version_present(self, skill: str):
@@ -271,9 +253,7 @@ class TestDateAndVersion:
 
         # Check for version format like 4.0.0 or version:
         has_version = re.search(r"[Vv]ersion[:\s]+\d+\.\d+\.\d+", content)
-        assert (
-            has_version
-        ), f"{skill}: Missing version information"
+        assert has_version, f"{skill}: Missing version information"
 
 
 class TestTAGSpecificContent:
@@ -302,13 +282,9 @@ class TestTAGSpecificContent:
 
         docs_keywords = ["documentation", "generation", "linting", "validation"]
         has_keyword = any(kw in content.lower() for kw in docs_keywords)
-        assert (
-            has_keyword
-        ), f"{skill}: Missing documentation-specific keywords"
+        assert has_keyword, f"{skill}: Missing documentation-specific keywords"
 
-    @pytest.mark.parametrize(
-        "skill", ["moai-mcp-integration", "moai-context7-integration", "moai-artifacts-builder"]
-    )
+    @pytest.mark.parametrize("skill", ["moai-mcp-integration", "moai-context7-integration", "moai-artifacts-builder"])
     def test_tag004_mcp_content(self, skill: str):
         """TAG-004: Verify MCP/Context7-specific content"""
         skill_file = self.SKILLS_BASE_PATH / skill / "SKILL.md"
@@ -320,9 +296,7 @@ class TestTAGSpecificContent:
 
         mcp_keywords = ["MCP", "Context7", "integration", "artifact"]
         has_keyword = any(kw.lower() in content.lower() for kw in mcp_keywords)
-        assert (
-            has_keyword
-        ), f"{skill}: Missing MCP/Context7-specific keywords"
+        assert has_keyword, f"{skill}: Missing MCP/Context7-specific keywords"
 
     @pytest.mark.parametrize(
         "skill",
@@ -345,9 +319,7 @@ class TestTAGSpecificContent:
 
         project_keywords = ["project", "config", "question", "language", "template"]
         has_keyword = any(kw.lower() in content.lower() for kw in project_keywords)
-        assert (
-            has_keyword
-        ), f"{skill}: Missing project management-specific keywords"
+        assert has_keyword, f"{skill}: Missing project management-specific keywords"
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ NEW_SKILLS = [
     "moai-security-api-versioning",
     "moai-essentials-testing-integration",
     "moai-essentials-performance-profiling",
-    "moai-security-accessibility-wcag3"
+    "moai-security-accessibility-wcag3",
 ]
 
 
@@ -175,18 +175,21 @@ class TestAutoTriggerLogic:
 class TestAutoTriggerAccuracy:
     """AC-006-3: Keyword matching accuracy >=95%"""
 
-    @pytest.mark.parametrize("user_request,expected_skill", [
-        ("authentication", "moai-security-auth"),
-        ("python", "moai-lang-python"),
-        ("react", "moai-domain-frontend"),
-        ("database", "moai-domain-database"),
-        ("performance", "moai-essentials-perf"),
-        ("debug", "moai-essentials-debug"),
-        ("refactor", "moai-essentials-refactor"),
-        ("testing", "moai-domain-testing"),
-        ("specifications", "moai-foundation-specs"),
-        ("git", "moai-foundation-git"),
-    ])
+    @pytest.mark.parametrize(
+        "user_request,expected_skill",
+        [
+            ("authentication", "moai-security-auth"),
+            ("python", "moai-lang-python"),
+            ("react", "moai-domain-frontend"),
+            ("database", "moai-domain-database"),
+            ("performance", "moai-essentials-perf"),
+            ("debug", "moai-essentials-debug"),
+            ("refactor", "moai-essentials-refactor"),
+            ("testing", "moai-domain-testing"),
+            ("specifications", "moai-foundation-specs"),
+            ("git", "moai-foundation-git"),
+        ],
+    )
     def test_auto_trigger_keyword_matching(self, user_request, expected_skill, all_skills):
         """Auto-trigger should match keywords correctly"""
         skill_names = {s.name for s in all_skills}
@@ -205,7 +208,7 @@ class TestCLAUDEMdVersion:
         if claude_md.exists():
             content = claude_md.read_text()
             # Check for version pattern
-            has_version = re.search(r'[Vv]ersion.*?2\.[0-9]+\.[0-9]+', content)
+            has_version = re.search(r"[Vv]ersion.*?2\.[0-9]+\.[0-9]+", content)
             # assert has_version, "CLAUDE.md version not updated"
 
 

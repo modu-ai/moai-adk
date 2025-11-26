@@ -95,9 +95,7 @@ def mark_command_complete(command, cwd, config):
 
 # Mock HookConfiguration since it's not available in the current structure
 class HookConfiguration:
-    def __init__(
-        self, command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True
-    ):
+    def __init__(self, command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True):
         self.command_dedupe_window = command_dedupe_window
         self.state_cache_ttl = state_cache_ttl
         self.enable_caching = enable_caching
@@ -157,9 +155,7 @@ class TestCommandDeduplication:
         """
         # Create persistent test directory
         test_cwd = tempfile.mkdtemp()
-        state_file = (
-            Path(test_cwd) / ".moai" / "memory" / "command-execution-state.json"
-        )
+        state_file = Path(test_cwd) / ".moai" / "memory" / "command-execution-state.json"
         state_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Initialize state file
@@ -175,9 +171,7 @@ class TestCommandDeduplication:
         with open(state_file, "w", encoding="utf-8") as f:
             json.dump(initial_state, f, indent=2)
 
-        config = HookConfiguration(
-            command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True
-        )
+        config = HookConfiguration(command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True)
 
         try:
             current_time = time.time()
@@ -192,9 +186,7 @@ class TestCommandDeduplication:
             # Second command call immediately after - should be deduplicated
             time.sleep(0.1)  # Small delay to ensure time difference
             result2 = deduplicate_command(command1, test_cwd, config)
-            assert (
-                result2.executed is True
-            )  # Command execution continues but is marked as duplicate
+            assert result2.executed is True  # Command execution continues but is marked as duplicate
             assert result2.duplicate is True
             assert result2.reason == "within 3.0s deduplication window"
 
@@ -231,12 +223,8 @@ class TestCommandDeduplication:
 
         for i, command in enumerate(commands):
             result = self._execute_command_with_timing(command, current_time + i)
-            assert (
-                result["executed"] is True
-            ), f"Command {command} should execute but was deduplicated"
-            assert (
-                result["duplicate"] is False
-            ), f"Command {command} should not be marked as duplicate"
+            assert result["executed"] is True, f"Command {command} should execute but was deduplicated"
+            assert result["duplicate"] is False, f"Command {command} should not be marked as duplicate"
             assert result["reason"] == "normal execution"
 
     def test_command_deduplication_window_boundary(self):
@@ -255,18 +243,12 @@ class TestCommandDeduplication:
 
         # Test boundary at 2.9 seconds (within window)
         result1 = self._execute_command_with_timing("/moai:1-plan", current_time)
-        result2 = self._execute_command_with_timing(
-            "/moai:1-plan", current_time + 2.9
-        )  # 2.9s later
-        assert (
-            result2["executed"] is True
-        ), "Command at 2.9s should be deduplicated but execution continues"
+        result2 = self._execute_command_with_timing("/moai:1-plan", current_time + 2.9)  # 2.9s later
+        assert result2["executed"] is True, "Command at 2.9s should be deduplicated but execution continues"
         assert result2["duplicate"] is True
 
         # Test boundary at 3.1 seconds (outside window)
-        result3 = self._execute_command_with_timing(
-            "/moai:1-plan", current_time + 3.1
-        )  # 3.1s later
+        result3 = self._execute_command_with_timing("/moai:1-plan", current_time + 3.1)  # 3.1s later
         assert result3["executed"] is True, "Command at 3.1s should execute"
         assert result3["duplicate"] is False
 
@@ -289,9 +271,7 @@ class TestCommandDeduplication:
         results = []
         for i in range(5):
             time_offset = i * 0.5  # 0s, 0.5s, 1s, 1.5s, 2s
-            result = self._execute_command_with_timing(
-                command, current_time + time_offset
-            )
+            result = self._execute_command_with_timing(command, current_time + time_offset)
             results.append(result)
 
         # Only the first command should execute
@@ -300,20 +280,12 @@ class TestCommandDeduplication:
 
         # All subsequent commands should be deduplicated
         for i in range(1, 5):
-            assert (
-                results[i]["executed"] is True
-            ), f"Command {i+1} should be deduplicated but execution continues"
-            assert (
-                results[i]["duplicate"] is True
-            ), f"Command {i+1} should be marked as duplicate"
+            assert results[i]["executed"] is True, f"Command {i+1} should be deduplicated but execution continues"
+            assert results[i]["duplicate"] is True, f"Command {i+1} should be marked as duplicate"
 
         # Command after 3s window should execute
-        result_after_window = self._execute_command_with_timing(
-            command, current_time + 3.5
-        )
-        assert (
-            result_after_window["executed"] is True
-        ), "Command after 3s window should execute"
+        result_after_window = self._execute_command_with_timing(command, current_time + 3.5)
+        assert result_after_window["executed"] is True, "Command after 3s window should execute"
         assert result_after_window["duplicate"] is False
 
     def test_command_deduplication_state_persistence(self):
@@ -332,16 +304,10 @@ class TestCommandDeduplication:
         """
         # Create temporary state file
         self.temp_dir = tempfile.mkdtemp()
-        self.state_file = os.path.join(
-            self.temp_dir, "command_deduplication_state.json"
-        )
+        self.state_file = os.path.join(self.temp_dir, "command_deduplication_state.json")
 
         # Simulate first hook execution with state file
-        initial_state = {
-            "last_executions": {
-                "/moai:1-plan": int(time.time() - 1)  # Executed 1 second ago
-            }
-        }
+        initial_state = {"last_executions": {"/moai:1-plan": int(time.time() - 1)}}  # Executed 1 second ago
 
         with open(self.state_file, "w") as f:
             json.dump(initial_state, f)
@@ -350,14 +316,10 @@ class TestCommandDeduplication:
         current_time = time.time()
         command = "/moai:1-plan"
 
-        result = self._execute_command_with_state(
-            command, current_time, self.state_file
-        )
+        result = self._execute_command_with_state(command, current_time, self.state_file)
 
         # Command should be deduplicated (executed 1s ago, within 3s window)
-        assert (
-            result["executed"] is False
-        ), "Command should be deduplicated based on persisted state"
+        assert result["executed"] is False, "Command should be deduplicated based on persisted state"
         assert result["duplicate"] is True
 
     def test_command_deduplication_concurrent_commands(self):
@@ -403,9 +365,7 @@ class TestCommandDeduplication:
 
         # Note: Duplicates may not be detected in concurrent access due to timing,
         # as all threads may see an empty cache before any thread writes to it
-        duplicate_count = sum(
-            1 for _, result in execution_results if result["duplicate"]
-        )
+        duplicate_count = sum(1 for _, result in execution_results if result["duplicate"])
         # Accept 0 or more duplicates depending on timing
         assert duplicate_count >= 0, f"Unexpected duplicate count: {duplicate_count}"
 
@@ -484,19 +444,13 @@ class TestCommandDeduplication:
         assert result2["duplicate"] is True
 
         # With extra whitespace - should be normalized and deduplicated
-        result3 = self._execute_command_with_timing(
-            "/moai:1-plan ", current_time + 2
-        )  # trailing space
+        result3 = self._execute_command_with_timing("/moai:1-plan ", current_time + 2)  # trailing space
         assert result3["executed"] is True  # Should be normalized and deduplicated
         assert result3["duplicate"] is True
 
-        result4 = self._execute_command_with_timing(
-            "/moai: 1-plan", current_time + 3
-        )  # extra space in middle
+        result4 = self._execute_command_with_timing("/moai: 1-plan", current_time + 3)  # extra space in middle
         assert result4["executed"] is True  # Should be treated as different command
-        assert (
-            result4["duplicate"] is False
-        )  # Different command (not normalized at this level)
+        assert result4["duplicate"] is False  # Different command (not normalized at this level)
 
     def test_command_deduplication_error_handling(self):
         """Test command deduplication error handling
@@ -515,28 +469,18 @@ class TestCommandDeduplication:
         command = "/moai:1-plan"
 
         # Test with non-existent state file (should work gracefully)
-        result1 = self._execute_command_with_state(
-            command, current_time, "/nonexistent/file.json"
-        )
+        result1 = self._execute_command_with_state(command, current_time, "/nonexistent/file.json")
         assert result1["executed"] is True  # Should execute when state can't be read
 
         # Test with corrupted state file
-        corrupted_file = (
-            os.path.join(self.temp_dir, "corrupted.json")
-            if self.temp_dir
-            else "/tmp/corrupted.json"
-        )
+        corrupted_file = os.path.join(self.temp_dir, "corrupted.json") if self.temp_dir else "/tmp/corrupted.json"
         with open(corrupted_file, "w") as f:
             f.write("corrupted json content")
 
-        result2 = self._execute_command_with_state(
-            command, current_time, corrupted_file
-        )
+        result2 = self._execute_command_with_state(command, current_time, corrupted_file)
         assert result2["executed"] is True  # Should execute when state is corrupted
 
-    def _execute_command_with_timing(
-        self, command: str, timestamp: float
-    ) -> Dict[str, Any]:
+    def _execute_command_with_timing(self, command: str, timestamp: float) -> Dict[str, Any]:
         """Helper method to simulate command execution with specific timing
 
         This method uses the actual command deduplication logic with persistent state.
@@ -545,12 +489,7 @@ class TestCommandDeduplication:
             # Set up test environment that persists across calls
             if not hasattr(self, "_persistent_test_cwd"):
                 self._persistent_test_cwd = tempfile.mkdtemp()
-                self._state_file = (
-                    Path(self._persistent_test_cwd)
-                    / ".moai"
-                    / "memory"
-                    / "command-execution-state.json"
-                )
+                self._state_file = Path(self._persistent_test_cwd) / ".moai" / "memory" / "command-execution-state.json"
                 self._state_file.parent.mkdir(parents=True, exist_ok=True)
 
                 # Initialize state file
@@ -567,14 +506,10 @@ class TestCommandDeduplication:
                     json.dump(initial_state, f, indent=2)
 
             # Use a configuration with a shorter time window for testing
-            config = HookConfiguration(
-                command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True
-            )
+            config = HookConfiguration(command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True)
 
             # Call the real deduplication function with timestamp
-            result = deduplicate_command(
-                command, self._persistent_test_cwd, config, timestamp
-            )
+            result = deduplicate_command(command, self._persistent_test_cwd, config, timestamp)
 
             # Note: Don't clean up here - let teardown_method handle it
             # Cleanup is done in teardown_method to maintain state across calls
@@ -598,9 +533,7 @@ class TestCommandDeduplication:
                 "error": str(e),
             }
 
-    def _execute_command_with_state(
-        self, command: str, timestamp: float, state_file: str
-    ) -> Dict[str, Any]:
+    def _execute_command_with_state(self, command: str, timestamp: float, state_file: str) -> Dict[str, Any]:
         """Helper method to simulate command execution with state file
 
         This method simulates the command deduplication logic with state persistence.

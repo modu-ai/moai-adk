@@ -27,6 +27,7 @@ from moai_adk.utils.logger import SensitiveDataFilter, setup_logger
 # SensitiveDataFilter Tests
 # ============================================================================
 
+
 class TestSensitiveDataFilterInitialization:
     """Tests for SensitiveDataFilter initialization."""
 
@@ -76,7 +77,7 @@ class TestSensitiveDataFilterApiKey:
             lineno=0,
             msg="API Key: sk-secret123",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -95,7 +96,7 @@ class TestSensitiveDataFilterApiKey:
             lineno=0,
             msg="Primary: sk-abc123 Backup: sk-xyz789",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -115,7 +116,7 @@ class TestSensitiveDataFilterApiKey:
             lineno=0,
             msg="API Key: sk-secret123 is configured",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -141,7 +142,7 @@ class TestSensitiveDataFilterApiKey:
                 lineno=0,
                 msg=f"Key: {api_key}",
                 args=(),
-                exc_info=None
+                exc_info=None,
             )
 
             result = filter_instance.filter(record)
@@ -164,7 +165,7 @@ class TestSensitiveDataFilterEmail:
             lineno=0,
             msg="User: john@example.com",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -183,7 +184,7 @@ class TestSensitiveDataFilterEmail:
             lineno=0,
             msg="Contact: user@mail.example.co.uk",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -202,7 +203,7 @@ class TestSensitiveDataFilterEmail:
             lineno=0,
             msg="From: alice@example.com To: bob@example.com",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -222,7 +223,7 @@ class TestSensitiveDataFilterEmail:
             lineno=0,
             msg="Email: john.doe+tag@example-domain.com",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -241,7 +242,7 @@ class TestSensitiveDataFilterEmail:
             lineno=0,
             msg="Email format is user@domain.com format",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -264,7 +265,7 @@ class TestSensitiveDataFilterPassword:
             lineno=0,
             msg="password: mysecretpassword123",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -283,7 +284,7 @@ class TestSensitiveDataFilterPassword:
             lineno=0,
             msg="passwd=secret123",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -302,7 +303,7 @@ class TestSensitiveDataFilterPassword:
             lineno=0,
             msg="pwd: verysecret",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -322,13 +323,7 @@ class TestSensitiveDataFilterPassword:
 
         for msg in test_cases:
             record = logging.LogRecord(
-                name="test_logger",
-                level=logging.INFO,
-                pathname="test.py",
-                lineno=0,
-                msg=msg,
-                args=(),
-                exc_info=None
+                name="test_logger", level=logging.INFO, pathname="test.py", lineno=0, msg=msg, args=(), exc_info=None
             )
 
             result = filter_instance.filter(record)
@@ -347,7 +342,7 @@ class TestSensitiveDataFilterPassword:
             lineno=0,
             msg="password: mysecret123",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -371,7 +366,7 @@ class TestSensitiveDataFilterEdgeCases:
             lineno=0,
             msg="Message: %s",
             args=("value",),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -389,7 +384,7 @@ class TestSensitiveDataFilterEdgeCases:
             lineno=0,
             msg="Normal message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -400,13 +395,7 @@ class TestSensitiveDataFilterEdgeCases:
         """Test filtering empty message."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test_logger",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=0,
-            msg="",
-            args=(),
-            exc_info=None
+            name="test_logger", level=logging.INFO, pathname="test.py", lineno=0, msg="", args=(), exc_info=None
         )
 
         result = filter_instance.filter(record)
@@ -425,7 +414,7 @@ class TestSensitiveDataFilterEdgeCases:
             lineno=0,
             msg=original_msg,
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -443,7 +432,7 @@ class TestSensitiveDataFilterEdgeCases:
             lineno=0,
             msg="User john@example.com with API key sk-secret123 password: mypass123",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -464,7 +453,7 @@ class TestSensitiveDataFilterEdgeCases:
             lineno=0,
             msg="sk-key1sk-key2sk-key3",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -476,6 +465,7 @@ class TestSensitiveDataFilterEdgeCases:
 # ============================================================================
 # setup_logger Configuration Tests
 # ============================================================================
+
 
 class TestSetupLoggerInitialization:
     """Tests for setup_logger function initialization."""
@@ -596,6 +586,7 @@ class TestSetupLoggerDirectories:
 
         # Cleanup
         import shutil
+
         if os.path.exists(".moai"):
             shutil.rmtree(".moai")
 
@@ -631,9 +622,9 @@ class TestSetupLoggerHandlers:
             logger = setup_logger("app", log_dir=tmpdir)
 
             console_handlers = [
-                h for h in logger.handlers
-                if isinstance(h, logging.StreamHandler)
-                and not isinstance(h, logging.FileHandler)
+                h
+                for h in logger.handlers
+                if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
             ]
             assert len(console_handlers) > 0
 
@@ -642,10 +633,7 @@ class TestSetupLoggerHandlers:
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = setup_logger("app", log_dir=tmpdir)
 
-            file_handlers = [
-                h for h in logger.handlers
-                if isinstance(h, logging.FileHandler)
-            ]
+            file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
             assert len(file_handlers) > 0
 
     def test_setup_logger_handlers_have_formatter(self):
@@ -725,7 +713,7 @@ class TestSetupLoggerFiltering:
             logger = setup_logger("app", log_dir=tmpdir)
 
             # Capture console output
-            with patch('sys.stdout', new=StringIO()) as fake_out:
+            with patch("sys.stdout", new=StringIO()) as fake_out:
                 logger.info("API Key: sk-secret123")
                 output = fake_out.getvalue()
                 # Sensitive data should be masked
@@ -847,6 +835,7 @@ class TestSetupLoggerEdgeCases:
 
         # Cleanup
         import shutil
+
         if os.path.exists(".moai"):
             shutil.rmtree(".moai")
 
@@ -1014,22 +1003,19 @@ class TestSetupLoggerErrorHandling:
 class TestSensitiveDataFilterComprehensive:
     """Comprehensive tests for SensitiveDataFilter patterns."""
 
-    @pytest.mark.parametrize("api_key", [
-        "sk-1234567890",
-        "sk-abcdefghijklmnop",
-        "sk-" + "x" * 50,
-    ])
+    @pytest.mark.parametrize(
+        "api_key",
+        [
+            "sk-1234567890",
+            "sk-abcdefghijklmnop",
+            "sk-" + "x" * 50,
+        ],
+    )
     def test_filter_various_api_keys(self, api_key):
         """Test filtering various API key formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=0,
-            msg=f"Key: {api_key}",
-            args=(),
-            exc_info=None
+            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=f"Key: {api_key}", args=(), exc_info=None
         )
 
         result = filter_instance.filter(record)
@@ -1037,23 +1023,20 @@ class TestSensitiveDataFilterComprehensive:
         assert result is True
         assert api_key not in record.msg
 
-    @pytest.mark.parametrize("email", [
-        "user@example.com",
-        "john.doe@example.co.uk",
-        "test+tag@sub.example.com",
-        "a@b.co",
-    ])
+    @pytest.mark.parametrize(
+        "email",
+        [
+            "user@example.com",
+            "john.doe@example.co.uk",
+            "test+tag@sub.example.com",
+            "a@b.co",
+        ],
+    )
     def test_filter_various_emails(self, email):
         """Test filtering various email formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=0,
-            msg=f"Email: {email}",
-            args=(),
-            exc_info=None
+            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=f"Email: {email}", args=(), exc_info=None
         )
 
         result = filter_instance.filter(record)
@@ -1061,25 +1044,22 @@ class TestSensitiveDataFilterComprehensive:
         assert result is True
         assert email not in record.msg or "***REDACTED***" in record.msg
 
-    @pytest.mark.parametrize("password_msg", [
-        "password: mypass",
-        "PASSWORD: MYPASS",
-        "passwd: secret",
-        "pwd: sec",
-        "password=value",
-        "password:value",
-    ])
+    @pytest.mark.parametrize(
+        "password_msg",
+        [
+            "password: mypass",
+            "PASSWORD: MYPASS",
+            "passwd: secret",
+            "pwd: sec",
+            "password=value",
+            "password:value",
+        ],
+    )
     def test_filter_various_password_formats(self, password_msg):
         """Test filtering various password formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=0,
-            msg=password_msg,
-            args=(),
-            exc_info=None
+            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=password_msg, args=(), exc_info=None
         )
 
         result = filter_instance.filter(record)

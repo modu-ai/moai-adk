@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 
 # Skip this test - config_manager uses relative imports that don't work with sys.path approach
-pytestmark = pytest.mark.skip(reason="config_manager.py uses relative imports (from .path_utils), incompatible with sys.path testing")
+pytestmark = pytest.mark.skip(
+    reason="config_manager.py uses relative imports (from .path_utils), incompatible with sys.path testing"
+)
 
 # Add .claude/hooks/moai/lib to sys.path for imports
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -105,11 +107,7 @@ class TestLoadConfig:
 
     def test_load_config_merge_with_defaults(self, temp_config_dir):
         """Loaded config merges with DEFAULT_CONFIG"""
-        partial_config = {
-            "hooks": {
-                "timeout_seconds": 10
-            }
-        }
+        partial_config = {"hooks": {"timeout_seconds": 10}}
         config_file = temp_config_dir / "config.json"
         config_file.write_text(json.dumps(partial_config))
 
@@ -168,12 +166,15 @@ class TestGetMethod:
 class TestGetTimeoutMethods:
     """Test timeout configuration methods"""
 
-    @pytest.mark.parametrize("hook_type,expected", [
-        ("git", 2),
-        ("network", 0.1),
-        ("version_check", 1),
-        ("default", 5),
-    ])
+    @pytest.mark.parametrize(
+        "hook_type,expected",
+        [
+            ("git", 2),
+            ("network", 0.1),
+            ("version_check", 1),
+            ("default", 5),
+        ],
+    )
     def test_get_timeout_seconds(self, valid_config_file, hook_type, expected):
         """Get timeout seconds for various hook types"""
         cm = ConfigManager(config_path=valid_config_file)
@@ -289,12 +290,15 @@ class TestGetMessage:
 class TestGetExitCode:
     """Test ConfigManager.get_exit_code() method"""
 
-    @pytest.mark.parametrize("exit_type,expected", [
-        ("success", 0),
-        ("error", 1),
-        ("critical_error", 2),
-        ("config_error", 3),
-    ])
+    @pytest.mark.parametrize(
+        "exit_type,expected",
+        [
+            ("success", 0),
+            ("error", 1),
+            ("critical_error", 2),
+            ("config_error", 3),
+        ],
+    )
     def test_get_exit_code(self, valid_config_file, exit_type, expected):
         """Get exit code for various types"""
         cm = ConfigManager(config_path=valid_config_file)
@@ -575,12 +579,9 @@ class TestConfigManagerEdgeCases:
 
     def test_unicode_config_values(self, temp_config_dir):
         """Handle unicode characters in config"""
-        config = {
-            "hooks": {"timeout_seconds": 5},
-            "message": "🎯 테스트 메시지 テスト"
-        }
+        config = {"hooks": {"timeout_seconds": 5}, "message": "🎯 테스트 메시지 テスト"}
         config_file = temp_config_dir / "config.json"
-        config_file.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding='utf-8')
+        config_file.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
         cm = ConfigManager(config_path=config_file)
         config = cm.load_config()

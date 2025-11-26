@@ -33,7 +33,7 @@ class TestClaudeCLIIntegration:
         variables = {
             "PROJECT_NAME": "TestProject",
             "CONVERSATION_LANGUAGE": "ko",
-            "CONVERSATION_LANGUAGE_NAME": "한국어"
+            "CONVERSATION_LANGUAGE_NAME": "한국어",
         }
 
         settings_path = integration.generate_claude_settings(variables)
@@ -42,7 +42,7 @@ class TestClaudeCLIIntegration:
         assert settings_path.exists()
 
         # Verify content
-        settings_content = json.loads(settings_path.read_text(encoding='utf-8'))
+        settings_content = json.loads(settings_path.read_text(encoding="utf-8"))
         assert "variables" in settings_content
         assert settings_content["variables"]["PROJECT_NAME"] == "TestProject"
         assert settings_content["variables"]["CONVERSATION_LANGUAGE"] == "ko"
@@ -61,7 +61,7 @@ class TestClaudeCLIIntegration:
         integration = ClaudeCLIIntegration()
         variables = {"PROJECT_NAME": "TestProject"}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             custom_path = Path(f.name)
 
         try:
@@ -70,14 +70,14 @@ class TestClaudeCLIIntegration:
             assert custom_path.exists()
 
             # Verify content
-            content = json.loads(custom_path.read_text(encoding='utf-8'))
+            content = json.loads(custom_path.read_text(encoding="utf-8"))
             assert content["variables"]["PROJECT_NAME"] == "TestProject"
 
         finally:
             if custom_path.exists():
                 custom_path.unlink()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_process_template_command_success(self, mock_run):
         """Test successful template command processing."""
         # Mock subprocess result
@@ -89,10 +89,7 @@ class TestClaudeCLIIntegration:
 
         integration = ClaudeCLIIntegration()
         command_template = "Create {{PROJECT_NAME}} in {{CONVERSATION_LANGUAGE}}"
-        variables = {
-            "PROJECT_NAME": "MyApp",
-            "CONVERSATION_LANGUAGE": "ko"
-        }
+        variables = {"PROJECT_NAME": "MyApp", "CONVERSATION_LANGUAGE": "ko"}
 
         result = integration.process_template_command(command_template, variables)
 
@@ -108,7 +105,7 @@ class TestClaudeCLIIntegration:
         assert "--print" in args[0]
         assert "Create MyApp in ko" in args[0][-1]
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_process_template_command_failure(self, mock_run):
         """Test template command processing failure."""
         # Mock subprocess result
@@ -128,7 +125,7 @@ class TestClaudeCLIIntegration:
         assert result["returncode"] == 1
         assert result["stderr"] == "Error occurred"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_process_template_command_with_different_formats(self, mock_run):
         """Test command processing with different output formats."""
         mock_result = MagicMock()
@@ -141,12 +138,7 @@ class TestClaudeCLIIntegration:
         variables = {"PROJECT_NAME": "Test"}
 
         # Test with text format
-        result = integration.process_template_command(
-            "Test command",
-            variables,
-            print_mode=True,
-            output_format="text"
-        )
+        result = integration.process_template_command("Test command", variables, print_mode=True, output_format="text")
 
         assert result["success"] is True
 
@@ -159,13 +151,10 @@ class TestClaudeCLIIntegration:
     def test_generate_multilingual_descriptions(self):
         """Test multilingual description generation."""
         integration = ClaudeCLIIntegration()
-        base_descriptions = {
-            "test_agent": "A test agent for automation",
-            "helper_tool": "A helper tool for developers"
-        }
+        base_descriptions = {"test_agent": "A test agent for automation", "helper_tool": "A helper tool for developers"}
 
         # Mock the translation result
-        with patch.object(integration, 'process_template_command') as mock_translate:
+        with patch.object(integration, "process_template_command") as mock_translate:
             # Mock translation responses
             mock_translate.side_effect = [
                 {"success": True, "stdout": "한국어 설명"},
@@ -174,10 +163,7 @@ class TestClaudeCLIIntegration:
                 {"success": True, "stdout": "日本語のツール説明"},
             ]
 
-            result = integration.generate_multilingual_descriptions(
-                base_descriptions,
-                ["en", "ko", "ja"]
-            )
+            result = integration.generate_multilingual_descriptions(base_descriptions, ["en", "ko", "ja"])
 
             # Verify structure
             assert "test_agent" in result
@@ -195,13 +181,9 @@ class TestClaudeCLIIntegration:
         """Test agent creation with multilingual descriptions."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(integration, 'generate_multilingual_descriptions') as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {
-                "test-agent": {
-                    "en": "Base English description",
-                    "ko": "한국어 설명",
-                    "ja": "日本語の説明"
-                }
+                "test-agent": {"en": "Base English description", "ko": "한국어 설명", "ja": "日本語の説明"}
             }
 
             agent_config = integration.create_agent_with_multilingual_support(
@@ -209,7 +191,7 @@ class TestClaudeCLIIntegration:
                 base_description="Base English description",
                 tools=["Read", "Write"],
                 model="sonnet",
-                target_languages=["en", "ko", "ja"]
+                target_languages=["en", "ko", "ja"],
             )
 
             # Verify agent configuration
@@ -229,12 +211,9 @@ class TestClaudeCLIIntegration:
         """Test command creation with multilingual descriptions."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(integration, 'generate_multilingual_descriptions') as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {
-                "test-command": {
-                    "en": "Test command description",
-                    "es": "Descripción del comando de prueba"
-                }
+                "test-command": {"en": "Test command description", "es": "Descripción del comando de prueba"}
             }
 
             command_config = integration.create_command_with_multilingual_support(
@@ -243,7 +222,7 @@ class TestClaudeCLIIntegration:
                 argument_hint=["project_name"],
                 tools=["Bash"],
                 model="haiku",
-                target_languages=["en", "es"]
+                target_languages=["en", "es"],
             )
 
             # Verify command configuration
@@ -262,14 +241,8 @@ class TestClaudeCLIIntegration:
     def test_process_json_stream_input_dict(self):
         """Test processing JSON stream input from dictionary."""
         integration = ClaudeCLIIntegration()
-        input_data = {
-            "message": "Hello {{PROJECT_NAME}}",
-            "language": "{{CONVERSATION_LANGUAGE}}"
-        }
-        variables = {
-            "PROJECT_NAME": "MyApp",
-            "CONVERSATION_LANGUAGE": "ko"
-        }
+        input_data = {"message": "Hello {{PROJECT_NAME}}", "language": "{{CONVERSATION_LANGUAGE}}"}
+        variables = {"PROJECT_NAME": "MyApp", "CONVERSATION_LANGUAGE": "ko"}
 
         result = integration.process_json_stream_input(input_data, variables)
 
@@ -294,18 +267,14 @@ class TestClaudeCLIIntegration:
         with pytest.raises(ValueError, match="Invalid JSON input"):
             integration.process_json_stream_input(invalid_json, {})
 
-    @patch('subprocess.Popen')
+    @patch("subprocess.Popen")
     def test_execute_headless_command_streaming(self, mock_popen):
         """Test headless command execution with streaming."""
         # Mock streaming process
         mock_process = MagicMock()
         mock_process.poll.side_effect = [None, None, 0]  # Running, then finished
-        mock_process.stdout.readline.side_effect = [
-            '{"type": "start"}',
-            '{"type": "progress", "value": 50}',
-            ''
-        ]
-        mock_process.stderr.readline.side_effect = ['', '']
+        mock_process.stdout.readline.side_effect = ['{"type": "start"}', '{"type": "progress", "value": 50}', ""]
+        mock_process.stderr.readline.side_effect = ["", ""]
         mock_popen.return_value = mock_process
 
         integration = ClaudeCLIIntegration()
@@ -313,10 +282,7 @@ class TestClaudeCLIIntegration:
         variables = {"PROJECT_NAME": "Test"}
 
         result = integration.execute_headless_command(
-            prompt_template,
-            variables,
-            input_format="stream-json",
-            output_format="stream-json"
+            prompt_template, variables, input_format="stream-json", output_format="stream-json"
         )
 
         assert result["success"] is True
@@ -324,7 +290,7 @@ class TestClaudeCLIIntegration:
         assert '{"type": "start"}' in result["stdout"]
         assert '{"type": "progress"' in result["stdout"][1]
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_headless_command_non_streaming(self, mock_run):
         """Test headless command execution without streaming."""
         mock_result = MagicMock()
@@ -338,10 +304,7 @@ class TestClaudeCLIIntegration:
         variables = {"PROJECT_NAME": "Test"}
 
         result = integration.execute_headless_command(
-            prompt_template,
-            variables,
-            input_format="text",
-            output_format="json"
+            prompt_template, variables, input_format="text", output_format="json"
         )
 
         assert result["success"] is True
@@ -352,13 +315,11 @@ class TestClaudeCLIIntegration:
         """Test headless command execution with additional CLI options."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(integration, 'process_template_command') as mock_process:
+        with patch.object(integration, "process_template_command") as mock_process:
             mock_process.return_value = {"success": True}
 
             result = integration.execute_headless_command(
-                "Test command",
-                {"VAR": "value"},
-                additional_options=["--timeout", "30", "--verbose"]
+                "Test command", {"VAR": "value"}, additional_options=["--timeout", "30", "--verbose"]
             )
 
             # Verify additional options were passed through

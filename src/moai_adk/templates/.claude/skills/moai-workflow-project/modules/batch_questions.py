@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class QuestionType(Enum):
     """Question types supported by the system."""
+
     SINGLE_CHOICE = "single_choice"
     MULTI_CHOICE = "multi_choice"
     TEXT_INPUT = "text_input"
@@ -34,6 +35,7 @@ class QuestionType(Enum):
 
 class ValidationRule(Enum):
     """Validation rules for responses."""
+
     REQUIRED = "required"
     MIN_LENGTH = "min_length"
     MAX_LENGTH = "max_length"
@@ -44,15 +46,17 @@ class ValidationRule(Enum):
 @dataclass
 class QuestionOption:
     """Represents a question option."""
+
     label: str
     value: str
     description: Optional[str] = None
-    conditional_questions: Optional[List['Question']] = None
+    conditional_questions: Optional[List["Question"]] = None
 
 
 @dataclass
 class ValidationConfig:
     """Configuration for response validation."""
+
     rules: List[ValidationRule] = field(default_factory=list)
     parameters: Dict[str, Any] = field(default_factory=dict)
     error_message: Optional[str] = None
@@ -62,6 +66,7 @@ class ValidationConfig:
 @dataclass
 class Question:
     """Represents a single question in the batch."""
+
     id: str
     text: str
     type: QuestionType
@@ -77,6 +82,7 @@ class Question:
 @dataclass
 class QuestionBatch:
     """Represents a batch of questions."""
+
     id: str
     title: str
     description: str
@@ -89,6 +95,7 @@ class QuestionBatch:
 @dataclass
 class UserResponse:
     """Represents a user's response to a question."""
+
     question_id: str
     value: Any
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -144,7 +151,7 @@ class BatchQuestionsManager:
                     description=opt_config.get("description"),
                     conditional_questions=self._parse_conditional_questions(
                         opt_config.get("conditional_questions", [])
-                    )
+                    ),
                 )
                 options.append(option)
 
@@ -156,7 +163,7 @@ class BatchQuestionsManager:
                     rules=[ValidationRule(rule) for rule in val_config.get("rules", [])],
                     parameters=val_config.get("parameters", {}),
                     error_message=val_config.get("error_message"),
-                    custom_validator=val_config.get("custom_validator")
+                    custom_validator=val_config.get("custom_validator"),
                 )
 
             # Create question
@@ -170,7 +177,7 @@ class BatchQuestionsManager:
                 required=q_config.get("required", True),
                 default_value=q_config.get("default_value"),
                 conditional_on=q_config.get("conditional_on"),
-                metadata=q_config.get("metadata", {})
+                metadata=q_config.get("metadata", {}),
             )
             questions.append(question)
 
@@ -181,7 +188,7 @@ class BatchQuestionsManager:
             questions=questions,
             metadata=batch_config.get("metadata", {}),
             created_at=batch_config.get("created_at"),
-            updated_at=batch_config.get("updated_at")
+            updated_at=batch_config.get("updated_at"),
         )
 
         return batch
@@ -207,7 +214,7 @@ class BatchQuestionsManager:
             return None
 
         try:
-            with open(template_file, 'r', encoding='utf-8') as f:
+            with open(template_file, "r", encoding="utf-8") as f:
                 template_config = json.load(f)
 
             batch = self.create_batch(template_config)
@@ -245,8 +252,7 @@ class BatchQuestionsManager:
 
         return filtered_questions
 
-    def execute_batch(self, batch: QuestionBatch,
-                     context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
+    def execute_batch(self, batch: QuestionBatch, context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
         """
         Execute a question batch and collect responses.
 
@@ -269,9 +275,7 @@ class BatchQuestionsManager:
             # Check if question already has response in context
             if question.id in context:
                 responses[question.id] = UserResponse(
-                    question_id=question.id,
-                    value=context[question.id],
-                    metadata={"source": "context"}
+                    question_id=question.id, value=context[question.id], metadata={"source": "context"}
                 )
                 continue
 
@@ -286,9 +290,7 @@ class BatchQuestionsManager:
                     raise ValueError(f"Validation failed for question {question.id}: {validation_result.error}")
 
             responses[question.id] = UserResponse(
-                question_id=question.id,
-                value=response_value,
-                metadata={"source": "user_input"}
+                question_id=question.id, value=response_value, metadata={"source": "user_input"}
             )
 
             # Update context for subsequent questions
@@ -311,7 +313,7 @@ class BatchQuestionsManager:
             "moai-project-config-manager": "config-manager-setup",
             "moai-project-language-initializer": "language-initializer",
             "moai-spec-intelligent-workflow": "spec-workflow-setup",
-            "moai-menu-project": "menu-project-config"
+            "moai-menu-project": "menu-project-config",
         }
 
         template_name = template_mapping.get(skill_name)
@@ -321,8 +323,9 @@ class BatchQuestionsManager:
 
         return self.load_template(template_name)
 
-    def process_responses_for_config(self, responses: Dict[str, UserResponse],
-                                   config_path: Optional[str] = None) -> Dict[str, Any]:
+    def process_responses_for_config(
+        self, responses: Dict[str, UserResponse], config_path: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Process responses and generate configuration updates.
 
@@ -337,7 +340,7 @@ class BatchQuestionsManager:
         config = {}
         if config_path and os.path.exists(config_path):
             try:
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
             except Exception as e:
                 logger.error(f"Error loading existing config: {e}")
@@ -361,8 +364,7 @@ class BatchQuestionsManager:
 
         return config
 
-    def save_responses(self, responses: Dict[str, UserResponse],
-                      file_path: str) -> bool:
+    def save_responses(self, responses: Dict[str, UserResponse], file_path: str) -> bool:
         """
         Save responses to a file.
 
@@ -377,12 +379,9 @@ class BatchQuestionsManager:
             # Convert responses to serializable format
             serializable_responses = {}
             for resp in responses.values():
-                serializable_responses[resp.question_id] = {
-                    "value": resp.value,
-                    "metadata": resp.metadata
-                }
+                serializable_responses[resp.question_id] = {"value": resp.value, "metadata": resp.metadata}
 
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(serializable_responses, f, indent=2, ensure_ascii=False)
 
             return True
@@ -397,7 +396,7 @@ class BatchQuestionsManager:
             "project-initialization": self._create_project_init_template(),
             "git-workflow-config": self._create_git_workflow_template(),
             "quality-gates-setup": self._create_quality_gates_template(),
-            "skill-selection": self._create_skill_selection_template()
+            "skill-selection": self._create_skill_selection_template(),
         }
 
         for name, template in builtin_templates.items():
@@ -417,10 +416,7 @@ class BatchQuestionsManager:
                     "text": "What is your project name?",
                     "type": "text_input",
                     "required": True,
-                    "validation": {
-                        "rules": ["required", "min_length"],
-                        "parameters": {"min_length": 2}
-                    }
+                    "validation": {"rules": ["required", "min_length"], "parameters": {"min_length": 2}},
                 },
                 {
                     "id": "project.type",
@@ -431,8 +427,8 @@ class BatchQuestionsManager:
                         {"label": "Web Application", "value": "web"},
                         {"label": "API Service", "value": "api"},
                         {"label": "CLI Tool", "value": "cli"},
-                        {"label": "Library", "value": "library"}
-                    ]
+                        {"label": "Library", "value": "library"},
+                    ],
                 },
                 {
                     "id": "project.language",
@@ -444,10 +440,10 @@ class BatchQuestionsManager:
                         {"label": "TypeScript", "value": "typescript"},
                         {"label": "JavaScript", "value": "javascript"},
                         {"label": "Go", "value": "go"},
-                        {"label": "Rust", "value": "rust"}
-                    ]
-                }
-            ]
+                        {"label": "Rust", "value": "rust"},
+                    ],
+                },
+            ],
         }
 
     def _create_git_workflow_template(self) -> Dict[str, Any]:
@@ -466,19 +462,19 @@ class BatchQuestionsManager:
                         {
                             "label": "Manual (local only)",
                             "value": "manual",
-                            "description": "Work locally without automatic remote operations"
+                            "description": "Work locally without automatic remote operations",
                         },
                         {
                             "label": "Personal (GitHub personal project)",
                             "value": "personal",
-                            "description": "Automatic pushing to your personal GitHub repository"
+                            "description": "Automatic pushing to your personal GitHub repository",
                         },
                         {
                             "label": "Team (GitHub team project)",
                             "value": "team",
-                            "description": "Team collaboration with pull requests and reviews"
-                        }
-                    ]
+                            "description": "Team collaboration with pull requests and reviews",
+                        },
+                    ],
                 },
                 {
                     "id": "git_strategy.branch_creation.prompt_always",
@@ -486,7 +482,7 @@ class BatchQuestionsManager:
                     "type": "boolean",
                     "required": True,
                     "default_value": True,
-                    "conditional_on": {"git_strategy.mode": ["personal", "team"]}
+                    "conditional_on": {"git_strategy.mode": ["personal", "team"]},
                 },
                 {
                     "id": "git_strategy.branch_creation.auto_enabled",
@@ -496,10 +492,10 @@ class BatchQuestionsManager:
                     "default_value": False,
                     "conditional_on": {
                         "git_strategy.mode": ["personal", "team"],
-                        "git_strategy.branch_creation.prompt_always": False
-                    }
-                }
-            ]
+                        "git_strategy.branch_creation.prompt_always": False,
+                    },
+                },
+            ],
         }
 
     def _create_quality_gates_template(self) -> Dict[str, Any]:
@@ -517,31 +513,31 @@ class BatchQuestionsManager:
                     "default_value": 85,
                     "validation": {
                         "rules": ["min_value", "max_value"],
-                        "parameters": {"min_value": 0, "max_value": 100}
-                    }
+                        "parameters": {"min_value": 0, "max_value": 100},
+                    },
                 },
                 {
                     "id": "constitution.enforce_tdd",
                     "text": "Enforce Test-Driven Development (TDD)?",
                     "type": "boolean",
                     "required": True,
-                    "default_value": True
+                    "default_value": True,
                 },
                 {
                     "id": "quality.auto_linting",
                     "text": "Enable automatic code linting?",
                     "type": "boolean",
                     "required": True,
-                    "default_value": True
+                    "default_value": True,
                 },
                 {
                     "id": "quality.auto_formatting",
                     "text": "Enable automatic code formatting?",
                     "type": "boolean",
                     "required": True,
-                    "default_value": True
-                }
-            ]
+                    "default_value": True,
+                },
+            ],
         }
 
     def _create_skill_selection_template(self) -> Dict[str, Any]:
@@ -560,41 +556,41 @@ class BatchQuestionsManager:
                         {
                             "label": "Python Language Support",
                             "value": "moai-lang-python",
-                            "description": "Python-specific patterns and best practices"
+                            "description": "Python-specific patterns and best practices",
                         },
                         {
                             "label": "TypeScript Support",
                             "value": "moai-lang-typescript",
-                            "description": "TypeScript and JavaScript development tools"
+                            "description": "TypeScript and JavaScript development tools",
                         },
                         {
                             "label": "Backend Architecture",
                             "value": "moai-domain-backend",
-                            "description": "API design and backend patterns"
+                            "description": "API design and backend patterns",
                         },
                         {
                             "label": "Frontend Development",
                             "value": "moai-domain-frontend",
-                            "description": "React, Vue, and frontend frameworks"
+                            "description": "React, Vue, and frontend frameworks",
                         },
                         {
                             "label": "Security Analysis",
                             "value": "moai-security-owasp",
-                            "description": "OWASP security validation and best practices"
+                            "description": "OWASP security validation and best practices",
                         },
                         {
                             "label": "Performance Engineering",
                             "value": "moai-performance-engineering",
-                            "description": "Performance optimization and analysis"
+                            "description": "Performance optimization and analysis",
                         },
                         {
                             "label": "Documentation Generation",
                             "value": "moai-workflow-docs",
-                            "description": "Automated documentation generation"
-                        }
-                    ]
+                            "description": "Automated documentation generation",
+                        },
+                    ],
                 }
-            ]
+            ],
         }
 
     def _ask_question(self, question: Question) -> Any:
@@ -613,7 +609,7 @@ class BatchQuestionsManager:
         else:
             return None
 
-    def _validate_response(self, value: Any, validation: ValidationConfig) -> 'ValidationResult':
+    def _validate_response(self, value: Any, validation: ValidationConfig) -> "ValidationResult":
         """Validate a response value."""
         # Placeholder for validation logic
         return ValidationResult(is_valid=True, error=None)
@@ -636,7 +632,7 @@ class BatchQuestionsManager:
 
     def _set_nested_value(self, config: Dict[str, Any], path: str, value: Any):
         """Set a nested value in the configuration dict."""
-        keys = path.split('.')
+        keys = path.split(".")
         current = config
 
         for key in keys[:-1]:
@@ -654,10 +650,7 @@ class BatchQuestionsManager:
                 id=config["id"],
                 text=config["text"],
                 type=QuestionType(config["type"]),
-                options=[
-                    QuestionOption(opt["label"], opt["value"])
-                    for opt in config.get("options", [])
-                ]
+                options=[QuestionOption(opt["label"], opt["value"]) for opt in config.get("options", [])],
             )
             questions.append(question)
 
@@ -666,7 +659,7 @@ class BatchQuestionsManager:
     def _save_template_to_file(self, template: Dict[str, Any], file_path: Path):
         """Save a template to file."""
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(template, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Error saving template to {file_path}: {e}")
@@ -675,12 +668,14 @@ class BatchQuestionsManager:
 @dataclass
 class ValidationResult:
     """Result of response validation."""
+
     is_valid: bool
     error: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
 
 
 # Integration helper functions for MoAI skills
+
 
 def create_project_initializer(config: Dict[str, Any]) -> BatchQuestionsManager:
     """Create a project initializer with standard templates."""

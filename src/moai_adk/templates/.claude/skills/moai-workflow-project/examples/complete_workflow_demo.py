@@ -70,7 +70,7 @@ class DemoRunner:
             user_name="데모 사용자",
             domains=["backend", "frontend", "mobile"],
             project_type="web_application",
-            optimization_enabled=True
+            optimization_enabled=True,
         )
 
         end_time = time.time()
@@ -81,7 +81,7 @@ class DemoRunner:
             "duration": duration,
             "modules_initialized": result["modules_initialized"],
             "created_files": len(result.get("created_files", [])),
-            "optimization_applied": result["optimization_results"] is not None
+            "optimization_applied": result["optimization_results"] is not None,
         }
 
         print(f"✅ Initialization completed in {duration:.2f} seconds")
@@ -117,40 +117,31 @@ class DemoRunner:
                 "비밀번호 재설정 기능",
                 "소셜 로그인 연동 (Google, GitHub)",
                 "보안 로그인 시도 제한",
-                "사용자 프로필 관리"
+                "사용자 프로필 관리",
             ],
             "api_endpoints": [
                 {
                     "path": "/api/auth/register",
                     "method": "POST",
                     "description": "신규 사용자 등록",
-                    "parameters": {
-                        "email": "string",
-                        "password": "string",
-                        "name": "string"
-                    }
+                    "parameters": {"email": "string", "password": "string", "name": "string"},
                 },
                 {
                     "path": "/api/auth/login",
                     "method": "POST",
                     "description": "사용자 로그인",
-                    "parameters": {
-                        "email": "string",
-                        "password": "string"
-                    }
+                    "parameters": {"email": "string", "password": "string"},
                 },
                 {
                     "path": "/api/auth/refresh",
                     "method": "POST",
                     "description": "JWT 토큰 갱신",
-                    "parameters": {
-                        "refresh_token": "string"
-                    }
-                }
+                    "parameters": {"refresh_token": "string"},
+                },
             ],
             "status": "Planned",
             "priority": "High",
-            "estimated_days": 5
+            "estimated_days": 5,
         }
 
         print("📝 Generating documentation from SPEC...")
@@ -166,7 +157,7 @@ class DemoRunner:
             "duration": duration,
             "feature_docs_generated": "feature_docs" in docs_result,
             "api_docs_generated": "api_docs" in docs_result,
-            "localized_docs": "localized_documentation" in docs_result
+            "localized_docs": "localized_documentation" in docs_result,
         }
 
         print(f"✅ Documentation generated in {duration:.2f} seconds")
@@ -197,16 +188,15 @@ class DemoRunner:
             print(f"🔤 Testing {lang.upper()} language support...")
 
             # Update language settings
-            updates = {
-                "language.conversation_language": lang,
-                "language.documentation_language": lang
-            }
+            updates = {"language.conversation_language": lang, "language.documentation_language": lang}
 
             update_result = self.project.update_language_settings(updates)
 
             if update_result["success"]:
                 # Create multilingual documentation structure
-                multilingual_result = self.project.language_initializer.create_multilingual_documentation_structure(lang)
+                multilingual_result = self.project.language_initializer.create_multilingual_documentation_structure(
+                    lang
+                )
 
                 print(f"  ✅ {lang.upper()} configured")
                 print(f"  📁 Docs structure: {'✅' if multilingual_result['success'] else '❌'}")
@@ -294,11 +284,11 @@ Complex template logic:
     {% endif %}
 {% endif %}
 
-            """
+            """,
         }
 
         for template_name, content in test_templates.items():
-            (templates_dir / template_name).write_text(content, encoding='utf-8')
+            (templates_dir / template_name).write_text(content, encoding="utf-8")
 
         print(f"📝 Created {len(test_templates)} test templates for optimization")
 
@@ -317,7 +307,7 @@ Complex template logic:
         for file_analysis in analysis.get("analyzed_files", []):
             print(f"  📄 {Path(file_analysis['file_path']).name}")
             print(f"     - Size: {file_analysis.get('file_size', 0)} bytes")
-            if 'complexity_score' in file_analysis:
+            if "complexity_score" in file_analysis:
                 print(f"     - Complexity: {file_analysis['complexity_score']}/10")
 
         # Apply optimizations
@@ -328,7 +318,7 @@ Complex template logic:
             "backup_first": True,
             "apply_size_optimizations": True,
             "apply_performance_optimizations": True,
-            "apply_complexity_optimizations": True
+            "apply_complexity_optimizations": True,
         }
 
         opt_result = self.project.template_optimizer.create_optimized_templates(optimization_options)
@@ -339,7 +329,7 @@ Complex template logic:
             "analysis_time": analysis_time,
             "optimization_time": opt_time,
             "files_analyzed": len(analysis.get("analyzed_files", [])),
-            "optimizations_applied": opt_result.get("success", False)
+            "optimizations_applied": opt_result.get("success", False),
         }
 
         print(f"✅ Optimization completed in {opt_time:.2f} seconds")
@@ -379,7 +369,7 @@ Complex template logic:
         self.results["backup_creation"] = {
             "success": backup_result["success"],
             "duration": backup_time,
-            "backup_name": backup_name
+            "backup_name": backup_name,
         }
 
         print(f"✅ Backup created in {backup_time:.2f} seconds")
@@ -413,10 +403,7 @@ Complex template logic:
             start_time = time.time()
 
             # Export documentation
-            export_result = self.project.export_project_documentation(
-                format_type=format_type,
-                language="ko"
-            )
+            export_result = self.project.export_project_documentation(format_type=format_type, language="ko")
 
             export_time = time.time() - start_time
 
@@ -478,7 +465,9 @@ Complex template logic:
         print("  Module Integrations:")
         for module_name, module_info in matrix["modules"].items():
             integrates_with = module_info.get("integrates_with", [])
-            print(f"    📦 {module_name}: connects to {', '.join(integrates_with) if integrates_with else 'standalone'}")
+            print(
+                f"    📦 {module_name}: connects to {', '.join(integrates_with) if integrates_with else 'standalone'}"
+            )
 
         print("\\n  Workflows:")
         for workflow_name, workflow_steps in matrix["workflows"].items():
@@ -502,10 +491,7 @@ Complex template logic:
             start_time = time.time()
 
             init_result = initialize_project(
-                str(convenience_dir),
-                language="ja",
-                user_name="利便性テスト",
-                project_type="mobile_application"
+                str(convenience_dir), language="ja", user_name="利便性テスト", project_type="mobile_application"
             )
 
             init_time = time.time() - start_time
@@ -520,7 +506,7 @@ Complex template logic:
                 "id": "CONVENIENCE-SPEC",
                 "title": "Convenience Function Test",
                 "description": "Testing convenience functions",
-                "requirements": ["Requirement 1", "Requirement 2"]
+                "requirements": ["Requirement 1", "Requirement 2"],
             }
 
             docs_result = generate_docs(test_spec, str(convenience_dir))
@@ -628,6 +614,7 @@ Complex template logic:
         except Exception as e:
             print(f"❌ Demo failed with error: {e}")
             import traceback
+
             traceback.print_exc()
 
         finally:

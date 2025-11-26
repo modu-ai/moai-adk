@@ -21,9 +21,9 @@ class AITestGenerator:
         """Generate intelligent CSS selectors using AI pattern recognition"""
 
         # Get all interactive elements
-        buttons = page.locator('button').all()
-        page.locator('input').all()
-        page.locator('a[href]').all()
+        buttons = page.locator("button").all()
+        page.locator("input").all()
+        page.locator("a[href]").all()
 
         smart_selectors = {}
 
@@ -33,11 +33,7 @@ class AITestGenerator:
             if text:
                 # Generate robust selector
                 selector = f"button:has-text('{text.strip()}')"
-                smart_selectors[f'button_{i}'] = {
-                    'selector': selector,
-                    'text': text.strip(),
-                    'type': 'button'
-                }
+                smart_selectors[f"button_{i}"] = {"selector": selector, "text": text.strip(), "type": "button"}
 
         return smart_selectors
 
@@ -74,20 +70,14 @@ if __name__ == "__main__":
         assertions = []
 
         for action in actions:
-            if 'click' in action:
+            if "click" in action:
                 for name, info in selectors.items():
-                    if info['type'] == 'button':
-                        interactions.append(
-                            f"        page.locator('{info['selector']}').click()"
-                        )
-                        assertions.append(
-                            f"        expect(page.locator('{info['selector']}')).to_be_visible()"
-                        )
+                    if info["type"] == "button":
+                        interactions.append(f"        page.locator('{info['selector']}').click()")
+                        assertions.append(f"        expect(page.locator('{info['selector']}')).to_be_visible()")
 
-        return script_template.format(
-            interactions='\n'.join(interactions),
-            assertions='\n'.join(assertions)
-        )
+        return script_template.format(interactions="\n".join(interactions), assertions="\n".join(assertions))
+
 
 class Context7TestEnhancer:
     """Context7 MCP integration for enhanced testing"""
@@ -97,21 +87,21 @@ class Context7TestEnhancer:
 
         # Simulate Context7 integration (would use actual Context7 client)
         patterns = {
-            'visual_regression': {
-                'screenshot_comparison': True,
-                'ignore_regions': ['dynamic-content', 'timestamps'],
-                'threshold': 0.1,
-                'wait_before_capture': 1000
+            "visual_regression": {
+                "screenshot_comparison": True,
+                "ignore_regions": ["dynamic-content", "timestamps"],
+                "threshold": 0.1,
+                "wait_before_capture": 1000,
             },
-            'cross_browser': {
-                'browsers': ['chromium', 'firefox', 'webkit'],
-                'viewports': [{'width': 1920, 'height': 1080}, {'width': 375, 'height': 667}],
-                'devices': ['Desktop Chrome', 'iPhone 12']
+            "cross_browser": {
+                "browsers": ["chromium", "firefox", "webkit"],
+                "viewports": [{"width": 1920, "height": 1080}, {"width": 375, "height": 667}],
+                "devices": ["Desktop Chrome", "iPhone 12"],
             },
-            'performance_testing': {
-                'metrics': ['FCP', 'LCP', 'TTI', 'CLS'],
-                'thresholds': {'FCP': 1.8, 'LCP': 2.5, 'CLS': 0.1}
-            }
+            "performance_testing": {
+                "metrics": ["FCP", "LCP", "TTI", "CLS"],
+                "thresholds": {"FCP": 1.8, "LCP": 2.5, "CLS": 0.1},
+            },
         }
 
         return patterns.get(topic, {})
@@ -122,33 +112,26 @@ class Context7TestEnhancer:
         enhanced_config = test_config.copy()
 
         # Apply Context7 patterns
-        enhanced_config['screenshot_options'] = {
-            'full_page': True,
-            'animations': 'disabled',
-            'caret': 'hide'
-        }
+        enhanced_config["screenshot_options"] = {"full_page": True, "animations": "disabled", "caret": "hide"}
 
-        enhanced_config['wait_strategies'] = {
-            'networkidle': True,
-            'element_visible': True,
-            'timeout': 10000
-        }
+        enhanced_config["wait_strategies"] = {"networkidle": True, "element_visible": True, "timeout": 10000}
 
         return enhanced_config
+
 
 class VisualRegressionTester:
     """AI-powered visual regression testing"""
 
-    def __init__(self, baseline_dir: str = './baseline'):
+    def __init__(self, baseline_dir: str = "./baseline"):
         self.baseline_dir = baseline_dir
-        self.current_dir = './current'
-        self.diff_dir = './diff'
+        self.current_dir = "./current"
+        self.diff_dir = "./diff"
 
     async def capture_screenshot(self, page: Page, name: str, selector: Optional[str] = None):
         """Capture intelligent screenshot with Context7 patterns"""
 
         # Wait for dynamic content
-        page.wait_for_load_state('networkidle')
+        page.wait_for_load_state("networkidle")
         await page.wait_for_timeout(1000)  # Allow animations
 
         # Capture full page or specific element
@@ -167,20 +150,21 @@ class VisualRegressionTester:
 
         # Simulate AI comparison (would use actual image comparison library)
         comparison_result = {
-            'passed': True,
-            'diff_pixels': 0,
-            'diff_percentage': 0.0,
-            'regions_with_diff': [],
-            'recommendations': []
+            "passed": True,
+            "diff_pixels": 0,
+            "diff_percentage": 0.0,
+            "regions_with_diff": [],
+            "recommendations": [],
         }
 
         return comparison_result
+
 
 class CrossBrowserOrchestrator:
     """AI-coordinated cross-browser testing"""
 
     def __init__(self):
-        self.browsers = ['chromium', 'firefox', 'webkit']
+        self.browsers = ["chromium", "firefox", "webkit"]
         self.results = {}
 
     async def run_cross_browser_test(self, test_script: str) -> Dict:
@@ -198,19 +182,16 @@ class CrossBrowserOrchestrator:
                     test_result = await self.execute_test_in_browser(page, test_script)
 
                     results[browser_name] = {
-                        'status': 'passed',
-                        'execution_time': test_result['time'],
-                        'assertions': test_result['assertions'],
-                        'issues': test_result.get('issues', [])
+                        "status": "passed",
+                        "execution_time": test_result["time"],
+                        "assertions": test_result["assertions"],
+                        "issues": test_result.get("issues", []),
                     }
 
                     browser.close()
 
             except Exception as e:
-                results[browser_name] = {
-                    'status': 'failed',
-                    'error': str(e)
-                }
+                results[browser_name] = {"status": "failed", "error": str(e)}
 
         return results
 
@@ -218,11 +199,12 @@ class CrossBrowserOrchestrator:
         """Execute test script and capture results"""
 
         import time
+
         start_time = time.time()
 
         # Simulate test execution
-        page.goto('https://example.com')
-        page.wait_for_load_state('networkidle')
+        page.goto("https://example.com")
+        page.wait_for_load_state("networkidle")
 
         # Perform assertions
         assertions_passed = 0
@@ -230,18 +212,15 @@ class CrossBrowserOrchestrator:
 
         # Basic assertions
         try:
-            expect(page.locator('h1')).to_be_visible()
+            expect(page.locator("h1")).to_be_visible()
             assertions_passed += 1
         except:
             pass
 
         execution_time = time.time() - start_time
 
-        return {
-            'time': execution_time,
-            'assertions': f"{assertions_passed}/{assertions_total}",
-            'issues': []
-        }
+        return {"time": execution_time, "assertions": f"{assertions_passed}/{assertions_total}", "issues": []}
+
 
 # Example usage and integration
 async def main():
@@ -255,9 +234,9 @@ async def main():
 
     # Enhanced test configuration
     test_config = {
-        'url': 'https://example.com',
-        'browsers': ['chromium', 'firefox'],
-        'viewports': [{'width': 1920, 'height': 1080}]
+        "url": "https://example.com",
+        "browsers": ["chromium", "firefox"],
+        "viewports": [{"width": 1920, "height": 1080}],
     }
 
     # Apply Context7 patterns
@@ -272,8 +251,8 @@ async def main():
         page = browser.new_page()
 
         # Navigate and analyze
-        page.goto('https://example.com')
-        page.wait_for_load_state('networkidle')
+        page.goto("https://example.com")
+        page.wait_for_load_state("networkidle")
 
         # AI-powered analysis
         smart_selectors = await ai_generator.generate_smart_selectors(page)
@@ -290,6 +269,7 @@ async def main():
     print(f"🌐 Cross-browser results: {json.dumps(cross_browser_results, indent=2)}")
 
     print("✅ AI-powered testing workflow completed")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -27,12 +27,7 @@ class TestUbiquitousRequirements:
     def test_u1_uvx_environment_available(self):
         """U1: uvx environment is correctly recognized"""
         # Check uvx is available
-        result = subprocess.run(
-            ["uvx", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["uvx", "--version"], capture_output=True, text=True, timeout=5)
         assert result.returncode == 0, "uvx command should be available"
         assert "uv" in result.stdout.lower(), "uvx --version should show uv info"
 
@@ -40,7 +35,12 @@ class TestUbiquitousRequirements:
         """U1: Python version is 3.13.9+ compatible"""
         version_info = sys.version_info
         assert (version_info.major == 3 and version_info.minor >= 13) or version_info.major > 3
-        assert version_info.major == 3 and version_info.minor == 14 or (version_info.major == 3 and version_info.minor == 13 and version_info.micro >= 9) or version_info.major > 3
+        assert (
+            version_info.major == 3
+            and version_info.minor == 14
+            or (version_info.major == 3 and version_info.minor == 13 and version_info.micro >= 9)
+            or version_info.major > 3
+        )
 
     def test_u2_config_json_version_field(self, tmp_path):
         """U2: config.json contains moai.version field"""
@@ -48,11 +48,7 @@ class TestUbiquitousRequirements:
         config_path.mkdir(parents=True)
 
         config_file = config_path / "config.json"
-        config_data = {
-            "moai": {
-                "version": "0.26.0"
-            }
-        }
+        config_data = {"moai": {"version": "0.26.0"}}
         config_file.write_text(json.dumps(config_data))
 
         # Read it back
@@ -77,7 +73,7 @@ class TestUbiquitousRequirements:
             capture_output=True,
             text=True,
             timeout=5,
-            cwd="/Users/goos/MoAI/MoAI-ADK"
+            cwd="/Users/goos/MoAI/MoAI-ADK",
         )
         assert result.returncode == 0, f"statusline command failed: {result.stderr}"
         assert "Ver" in result.stdout, "Output should contain version info"
@@ -88,10 +84,7 @@ class TestEventDrivenRequirements:
 
     def test_ed1_version_not_unknown(self):
         """ED1: Version should never be 'unknown' when config.json exists"""
-        session_context = {
-            "model": {"display_name": "Haiku 4.5"},
-            "cwd": "/Users/goos/MoAI/MoAI-ADK"
-        }
+        session_context = {"model": {"display_name": "Haiku 4.5"}, "cwd": "/Users/goos/MoAI/MoAI-ADK"}
 
         statusline = build_statusline_data(session_context, mode="compact")
 
@@ -155,10 +148,7 @@ class TestUnwantedScenarioPrevention:
 
     def test_uw1_no_ver_unknown_message(self):
         """UW1: 'Ver unknown' message should never appear"""
-        session_context = {
-            "model": {"display_name": "Haiku 4.5"},
-            "cwd": "/Users/goos/MoAI/MoAI-ADK"
-        }
+        session_context = {"model": {"display_name": "Haiku 4.5"}, "cwd": "/Users/goos/MoAI/MoAI-ADK"}
 
         statusline = build_statusline_data(session_context, mode="compact")
 
@@ -176,10 +166,7 @@ class TestUnwantedScenarioPrevention:
 
     def test_uw2_no_infinite_loop_on_import_failure(self):
         """UW2: No infinite loop when import fails"""
-        config = VersionConfig(
-            timeout_seconds=3,
-            cache_ttl_seconds=60
-        )
+        config = VersionConfig(timeout_seconds=3, cache_ttl_seconds=60)
         reader = VersionReader(config=config)
 
         # This should complete within timeout
@@ -233,10 +220,7 @@ class TestStateDrivenRequirements:
 
     def test_sd1_git_status_updates(self):
         """SD1: Git status updates while version stays constant"""
-        session_context = {
-            "model": {"display_name": "Haiku 4.5"},
-            "cwd": "/Users/goos/MoAI/MoAI-ADK"
-        }
+        session_context = {"model": {"display_name": "Haiku 4.5"}, "cwd": "/Users/goos/MoAI/MoAI-ADK"}
 
         statusline1 = build_statusline_data(session_context, mode="compact")
 
@@ -266,11 +250,7 @@ class TestStateDrivenRequirements:
         config_path.mkdir(parents=True)
 
         config_file = config_path / "config.json"
-        config_data = {
-            "moai": {"version": "0.26.0"},
-            "project": {"version": "1.0.0"},
-            "version": "2.0.0"
-        }
+        config_data = {"moai": {"version": "0.26.0"}, "project": {"version": "1.0.0"}, "version": "2.0.0"}
         config_file.write_text(json.dumps(config_data))
 
         reader = VersionReader(working_dir=tmp_path)
@@ -288,7 +268,7 @@ class TestOptionalFeatures:
         session_context = {
             "model": {"display_name": "Haiku 4.5"},
             "statusline": {"enabled": True},
-            "cwd": "/Users/goos/MoAI/MoAI-ADK"
+            "cwd": "/Users/goos/MoAI/MoAI-ADK",
         }
 
         statusline = build_statusline_data(session_context, mode="extended")
@@ -340,7 +320,7 @@ class TestAcceptanceCriteria:
             capture_output=True,
             text=True,
             timeout=5,
-            cwd="/Users/goos/MoAI/MoAI-ADK"
+            cwd="/Users/goos/MoAI/MoAI-ADK",
         )
         assert result.returncode == 0
         assert "Ver" in result.stdout
@@ -376,10 +356,7 @@ class TestAcceptanceCriteria:
 
     def test_ac_git_status_accuracy(self):
         """AC: Git status is accurately reported"""
-        session_context = {
-            "model": {"display_name": "Haiku 4.5"},
-            "cwd": "/Users/goos/MoAI/MoAI-ADK"
-        }
+        session_context = {"model": {"display_name": "Haiku 4.5"}, "cwd": "/Users/goos/MoAI/MoAI-ADK"}
 
         statusline = build_statusline_data(session_context, mode="compact")
 
@@ -393,10 +370,7 @@ class TestIntegration:
 
     def test_full_statusline_pipeline(self):
         """Full statusline generation pipeline works end-to-end"""
-        session_context = {
-            "model": {"display_name": "Haiku 4.5"},
-            "cwd": "/Users/goos/MoAI/MoAI-ADK"
-        }
+        session_context = {"model": {"display_name": "Haiku 4.5"}, "cwd": "/Users/goos/MoAI/MoAI-ADK"}
 
         # Build statusline
         statusline = build_statusline_data(session_context, mode="extended")
@@ -415,7 +389,7 @@ class TestIntegration:
             capture_output=True,
             text=True,
             timeout=5,
-            cwd="/Users/goos/MoAI/MoAI-ADK"
+            cwd="/Users/goos/MoAI/MoAI-ADK",
         )
 
         assert result.returncode == 0

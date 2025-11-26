@@ -208,9 +208,7 @@ class TestCanMergeDetection:
                 capture_output=True,
                 check=True,
             )
-            (repo_path / "auth.py").write_text(
-                "def login():\n    return authenticate()\n"
-            )
+            (repo_path / "auth.py").write_text("def login():\n    return authenticate()\n")
             subprocess.run(
                 ["git", "add", "auth.py"],
                 cwd=repo_path,
@@ -231,9 +229,7 @@ class TestCanMergeDetection:
                 capture_output=True,
                 check=True,
             )
-            (repo_path / "auth.py").write_text(
-                "def login():\n    return user.authenticate()\n"
-            )
+            (repo_path / "auth.py").write_text("def login():\n    return user.authenticate()\n")
             subprocess.run(
                 ["git", "add", "auth.py"],
                 cwd=repo_path,
@@ -380,9 +376,7 @@ class TestAutoResolveSafe:
 
             # Create CLAUDE.md with project info
             claude_md = repo_path / "CLAUDE.md"
-            claude_md.write_text(
-                "# Project\n\n## Project Information\n\nCustom project info"
-            )
+            claude_md.write_text("# Project\n\n## Project Information\n\nCustom project info")
 
             subprocess.run(
                 ["git", "add", "CLAUDE.md"],
@@ -425,9 +419,7 @@ class TestAutoResolveSafe:
                 capture_output=True,
                 check=True,
             )
-            claude_md.write_text(
-                "# Project\n\n## Project Information\n\nUpdated custom info"
-            )
+            claude_md.write_text("# Project\n\n## Project Information\n\nUpdated custom info")
             subprocess.run(
                 ["git", "add", "CLAUDE.md"],
                 cwd=repo_path,
@@ -483,8 +475,7 @@ class TestAutoResolveSafe:
 
             # Verify conflict is safe for auto-resolution
             is_safe = all(
-                c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"]
-                and c.severity == ConflictSeverity.LOW
+                c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"] and c.severity == ConflictSeverity.LOW
                 for c in conflicts
             )
             assert is_safe is True
@@ -513,8 +504,7 @@ class TestAutoResolveSafe:
             ]
 
             is_safe = all(
-                c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"]
-                and c.severity == ConflictSeverity.LOW
+                c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"] and c.severity == ConflictSeverity.LOW
                 for c in conflicts
             )
             # This should be safe to auto-resolve but may require special handling
@@ -545,8 +535,7 @@ class TestAutoResolveSafe:
 
             # Code conflicts should NOT be auto-resolved
             is_safe = all(
-                c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"]
-                and c.severity == ConflictSeverity.LOW
+                c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"] and c.severity == ConflictSeverity.LOW
                 for c in conflicts
             )
             assert is_safe is False

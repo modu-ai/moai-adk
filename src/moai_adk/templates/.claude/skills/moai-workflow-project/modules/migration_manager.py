@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MigrationStep:
     """Single migration step definition."""
+
     from_version: str
     to_version: str
     description: str
@@ -29,6 +30,7 @@ class MigrationStep:
 @dataclass
 class LegacyConfigInfo:
     """Information about legacy configuration file."""
+
     path: Path
     module_name: str
     version: str
@@ -48,31 +50,11 @@ class LegacyConfigDetector:
         """
         self.search_dirs = search_dirs
         self.legacy_patterns = {
-            'batch_questions': [
-                'batch_questions_config.json',
-                'batch-config.json',
-                '.batch_questions.json'
-            ],
-            'documentation': [
-                'docs_config.json',
-                'documentation.json',
-                '.docs_config.json'
-            ],
-            'language_config': [
-                'language_settings.json',
-                'i18n_config.json',
-                '.language_config.json'
-            ],
-            'template_optimizer': [
-                'template_config.json',
-                'optimizer_config.json',
-                '.template_config.json'
-            ],
-            'project_initializer': [
-                'init_config.json',
-                'project_config.json',
-                '.init_config.json'
-            ]
+            "batch_questions": ["batch_questions_config.json", "batch-config.json", ".batch_questions.json"],
+            "documentation": ["docs_config.json", "documentation.json", ".docs_config.json"],
+            "language_config": ["language_settings.json", "i18n_config.json", ".language_config.json"],
+            "template_optimizer": ["template_config.json", "optimizer_config.json", ".template_config.json"],
+            "project_initializer": ["init_config.json", "project_config.json", ".init_config.json"],
         }
 
     def find_legacy_configs(self) -> List[LegacyConfigInfo]:
@@ -109,23 +91,24 @@ class LegacyConfigDetector:
 
         # Determine format
         suffix = file_path.suffix.lower()
-        if suffix == '.json':
-            format_type = 'json'
-        elif suffix in ['.yml', '.yaml']:
-            format_type = 'yaml'
-        elif suffix == '.ini':
-            format_type = 'ini'
+        if suffix == ".json":
+            format_type = "json"
+        elif suffix in [".yml", ".yaml"]:
+            format_type = "yaml"
+        elif suffix == ".ini":
+            format_type = "ini"
         else:
-            format_type = 'unknown'
+            format_type = "unknown"
 
         # Try to load and analyze
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                if format_type == 'json':
+            with open(file_path, "r", encoding="utf-8") as f:
+                if format_type == "json":
                     data = json.load(f)
-                elif format_type == 'yaml':
+                elif format_type == "yaml":
                     try:
                         import yaml
+
                         data = yaml.safe_load(f)
                     except ImportError:
                         logger.warning(f"PyYAML not available, skipping {file_path}")
@@ -134,17 +117,13 @@ class LegacyConfigDetector:
                     return None
 
             # Extract version if available
-            version = data.get('version', '1.0.0') if isinstance(data, dict) else '1.0.0'
+            version = data.get("version", "1.0.0") if isinstance(data, dict) else "1.0.0"
 
             # Determine priority based on file location and naming
             priority = self._calculate_priority(file_path, module_name)
 
             return LegacyConfigInfo(
-                path=file_path,
-                module_name=module_name,
-                version=version,
-                format=format_type,
-                priority=priority
+                path=file_path, module_name=module_name, version=version, format=format_type, priority=priority
             )
 
         except Exception as e:
@@ -156,11 +135,11 @@ class LegacyConfigDetector:
         priority = 100  # Default priority
 
         # Hidden files have higher priority
-        if file_path.name.startswith('.'):
+        if file_path.name.startswith("."):
             priority -= 30
 
         # Files in .moai or .claude directories have higher priority
-        if '.moai' in str(file_path) or '.claude' in str(file_path):
+        if ".moai" in str(file_path) or ".claude" in str(file_path):
             priority -= 20
 
         # Files with exact module name have higher priority
@@ -193,11 +172,11 @@ class ConfigurationMigrator:
 
         # Migration steps registry
         self.migration_steps: Dict[str, List[MigrationStep]] = {
-            'batch_questions': self._get_batch_questions_migrations(),
-            'documentation': self._get_documentation_migrations(),
-            'language_config': self._get_language_config_migrations(),
-            'template_optimizer': self._get_template_optimizer_migrations(),
-            'project_initializer': self._get_project_initializer_migrations()
+            "batch_questions": self._get_batch_questions_migrations(),
+            "documentation": self._get_documentation_migrations(),
+            "language_config": self._get_language_config_migrations(),
+            "template_optimizer": self._get_template_optimizer_migrations(),
+            "project_initializer": self._get_project_initializer_migrations(),
         }
 
     def detect_and_migrate(self, backup: bool = True) -> Dict[str, Any]:
@@ -215,12 +194,7 @@ class ConfigurationMigrator:
 
         if not legacy_configs:
             logger.info("No legacy configurations found")
-            return {
-                'migrated': 0,
-                'failed': 0,
-                'skipped': 0,
-                'details': []
-            }
+            return {"migrated": 0, "failed": 0, "skipped": 0, "details": []}
 
         logger.info(f"Found {len(legacy_configs)} legacy configuration files")
 
@@ -232,34 +206,31 @@ class ConfigurationMigrator:
             module_configs[config_info.module_name].append(config_info)
 
         # Migrate each module
-        results = {
-            'migrated': 0,
-            'failed': 0,
-            'skipped': 0,
-            'details': []
-        }
+        results = {"migrated": 0, "failed": 0, "skipped": 0, "details": []}
 
         for module_name, configs in module_configs.items():
             try:
                 module_result = self._migrate_module(module_name, configs, backup)
-                results['details'].append(module_result)
+                results["details"].append(module_result)
 
-                if module_result['status'] == 'success':
-                    results['migrated'] += len(configs)
-                elif module_result['status'] == 'failed':
-                    results['failed'] += len(configs)
+                if module_result["status"] == "success":
+                    results["migrated"] += len(configs)
+                elif module_result["status"] == "failed":
+                    results["failed"] += len(configs)
                 else:
-                    results['skipped'] += len(configs)
+                    results["skipped"] += len(configs)
 
             except Exception as e:
                 logger.error(f"Failed to migrate module {module_name}: {e}")
-                results['failed'] += len(configs)
-                results['details'].append({
-                    'module': module_name,
-                    'status': 'failed',
-                    'error': str(e),
-                    'files': [str(c.path) for c in configs]
-                })
+                results["failed"] += len(configs)
+                results["details"].append(
+                    {
+                        "module": module_name,
+                        "status": "failed",
+                        "error": str(e),
+                        "files": [str(c.path) for c in configs],
+                    }
+                )
 
         return results
 
@@ -293,10 +264,10 @@ class ConfigurationMigrator:
 
         if not merged_legacy_config:
             return {
-                'module': module_name,
-                'status': 'skipped',
-                'message': 'No valid configuration data found',
-                'files': [str(c.path) for c in configs]
+                "module": module_name,
+                "status": "skipped",
+                "message": "No valid configuration data found",
+                "files": [str(c.path) for c in configs],
             }
 
         # Create backup if requested
@@ -316,22 +287,23 @@ class ConfigurationMigrator:
             logger.info(f"Successfully migrated {module_name} configuration")
 
         return {
-            'module': module_name,
-            'status': 'success',
-            'merged_keys': list(merged_legacy_config.keys()),
-            'files': [str(c.path) for c in configs],
-            'dry_run': self.dry_run
+            "module": module_name,
+            "status": "success",
+            "merged_keys": list(merged_legacy_config.keys()),
+            "files": [str(c.path) for c in configs],
+            "dry_run": self.dry_run,
         }
 
     def _load_legacy_config(self, config_info: LegacyConfigInfo) -> Dict[str, Any]:
         """Load legacy configuration file."""
         try:
-            with open(config_info.path, 'r', encoding='utf-8') as f:
-                if config_info.format == 'json':
+            with open(config_info.path, "r", encoding="utf-8") as f:
+                if config_info.format == "json":
                     return json.load(f)
-                elif config_info.format == 'yaml':
+                elif config_info.format == "yaml":
                     try:
                         import yaml
+
                         return yaml.safe_load(f)
                     except ImportError:
                         raise ImportError("PyYAML is required for YAML migration")
@@ -364,7 +336,7 @@ class ConfigurationMigrator:
     def _version_matches(self, current_version: str, target_version: str) -> bool:
         """Check if current version matches target pattern."""
         # Simple version matching - can be enhanced
-        return current_version.startswith(target_version.rstrip('x'))
+        return current_version.startswith(target_version.rstrip("x"))
 
     def _get_batch_questions_migrations(self) -> List[MigrationStep]:
         """Get migration steps for batch questions module."""
@@ -373,7 +345,7 @@ class ConfigurationMigrator:
                 from_version="1.0",
                 to_version="1.0.0",
                 description="Initial format standardization",
-                migration_func="_migrate_batch_questions_1_0"
+                migration_func="_migrate_batch_questions_1_0",
             )
         ]
 
@@ -384,7 +356,7 @@ class ConfigurationMigrator:
                 from_version="1.0",
                 to_version="1.0.0",
                 description="Initial format standardization",
-                migration_func="_migrate_documentation_1_0"
+                migration_func="_migrate_documentation_1_0",
             )
         ]
 
@@ -395,7 +367,7 @@ class ConfigurationMigrator:
                 from_version="1.0",
                 to_version="1.0.0",
                 description="Initial format standardization",
-                migration_func="_migrate_language_config_1_0"
+                migration_func="_migrate_language_config_1_0",
             )
         ]
 
@@ -406,7 +378,7 @@ class ConfigurationMigrator:
                 from_version="1.0",
                 to_version="1.0.0",
                 description="Initial format standardization",
-                migration_func="_migrate_template_optimizer_1_0"
+                migration_func="_migrate_template_optimizer_1_0",
             )
         ]
 
@@ -417,7 +389,7 @@ class ConfigurationMigrator:
                 from_version="1.0",
                 to_version="1.0.0",
                 description="Initial format standardization",
-                migration_func="_migrate_project_initializer_1_0"
+                migration_func="_migrate_project_initializer_1_0",
             )
         ]
 
@@ -425,80 +397,80 @@ class ConfigurationMigrator:
     def _migrate_batch_questions_1_0(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Migrate batch questions from 1.0 format."""
         # Example transformation logic
-        if 'max_batch_size' in data:
-            data['max_questions'] = data.pop('max_batch_size')
+        if "max_batch_size" in data:
+            data["max_questions"] = data.pop("max_batch_size")
 
-        if 'timeout' in data:
-            data['timeout_seconds'] = data.pop('timeout')
+        if "timeout" in data:
+            data["timeout_seconds"] = data.pop("timeout")
 
         # Ensure default values
-        data.setdefault('enabled', True)
-        data.setdefault('max_questions', 50)
-        data.setdefault('timeout_seconds', 300)
-        data.setdefault('retry_attempts', 3)
-        data.setdefault('output_format', 'json')
+        data.setdefault("enabled", True)
+        data.setdefault("max_questions", 50)
+        data.setdefault("timeout_seconds", 300)
+        data.setdefault("retry_attempts", 3)
+        data.setdefault("output_format", "json")
 
         return data
 
     def _migrate_documentation_1_0(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Migrate documentation from 1.0 format."""
         # Example transformation logic
-        if 'auto_docs' in data:
-            data['auto_generate'] = data.pop('auto_docs')
+        if "auto_docs" in data:
+            data["auto_generate"] = data.pop("auto_docs")
 
-        if 'doc_format' in data:
-            data['format'] = data.pop('doc_format')
+        if "doc_format" in data:
+            data["format"] = data.pop("doc_format")
 
         # Ensure defaults
-        data.setdefault('auto_generate', True)
-        data.setdefault('format', 'markdown')
-        data.setdefault('include_api_docs', True)
-        data.setdefault('include_examples', True)
-        data.setdefault('template_engine', 'jinja2')
-        data.setdefault('output_directory', 'docs')
+        data.setdefault("auto_generate", True)
+        data.setdefault("format", "markdown")
+        data.setdefault("include_api_docs", True)
+        data.setdefault("include_examples", True)
+        data.setdefault("template_engine", "jinja2")
+        data.setdefault("output_directory", "docs")
 
         return data
 
     def _migrate_language_config_1_0(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Migrate language configuration from 1.0 format."""
         # Example transformation logic
-        if 'default_lang' in data:
-            data['default_language'] = data.pop('default_lang')
+        if "default_lang" in data:
+            data["default_language"] = data.pop("default_lang")
 
-        if 'supported_langs' in data:
-            data['supported_languages'] = data.pop('supported_langs')
+        if "supported_langs" in data:
+            data["supported_languages"] = data.pop("supported_langs")
 
         # Ensure defaults
-        data.setdefault('default_language', 'en')
-        data.setdefault('supported_languages', ['en'])
-        data.setdefault('auto_detect', True)
-        data.setdefault('fallback_language', 'en')
+        data.setdefault("default_language", "en")
+        data.setdefault("supported_languages", ["en"])
+        data.setdefault("auto_detect", True)
+        data.setdefault("fallback_language", "en")
 
         return data
 
     def _migrate_template_optimizer_1_0(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Migrate template optimizer from 1.0 format."""
         # Example transformation logic
-        if 'optimize_level' in data:
-            data['optimization_level'] = data.pop('optimize_level')
+        if "optimize_level" in data:
+            data["optimization_level"] = data.pop("optimize_level")
 
         # Ensure defaults
-        data.setdefault('enabled', True)
-        data.setdefault('optimization_level', 'basic')
-        data.setdefault('minification', False)
+        data.setdefault("enabled", True)
+        data.setdefault("optimization_level", "basic")
+        data.setdefault("minification", False)
 
         return data
 
     def _migrate_project_initializer_1_0(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Migrate project initializer from 1.0 format."""
         # Example transformation logic
-        if 'auto_install' in data:
-            data['auto_dependencies'] = data.pop('auto_install')
+        if "auto_install" in data:
+            data["auto_dependencies"] = data.pop("auto_install")
 
         # Ensure defaults
-        data.setdefault('auto_dependencies', True)
-        data.setdefault('git_init', True)
-        data.setdefault('create_virtual_env', True)
+        data.setdefault("auto_dependencies", True)
+        data.setdefault("git_init", True)
+        data.setdefault("create_virtual_env", True)
 
         return data
 
@@ -597,16 +569,11 @@ def check_migration_status(config_dir: Union[str, Path]) -> Dict[str, Any]:
     legacy_configs = detector.find_legacy_configs()
 
     return {
-        'has_unified_config': has_unified_config,
-        'legacy_configs_found': len(legacy_configs),
-        'legacy_configs': [
-            {
-                'path': str(c.path),
-                'module': c.module_name,
-                'version': c.version,
-                'format': c.format
-            }
+        "has_unified_config": has_unified_config,
+        "legacy_configs_found": len(legacy_configs),
+        "legacy_configs": [
+            {"path": str(c.path), "module": c.module_name, "version": c.version, "format": c.format}
             for c in legacy_configs
         ],
-        'migration_needed': len(legacy_configs) > 0
+        "migration_needed": len(legacy_configs) > 0,
     }

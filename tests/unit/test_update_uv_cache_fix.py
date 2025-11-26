@@ -2,6 +2,7 @@
 
 SPEC-UPDATE-CACHE-FIX-001: UV cache auto-refresh on stale PyPI metadata
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -22,27 +23,15 @@ def test_detect_stale_cache_true():
     from moai_adk.cli.commands.update import _detect_stale_cache
 
     # Scenario 1: Minor version difference
-    result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade",
-        current_version="0.8.3",
-        latest_version="0.9.0"
-    )
+    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.8.3", latest_version="0.9.0")
     assert result is True
 
     # Scenario 2: Patch version difference
-    result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade",
-        current_version="0.8.3",
-        latest_version="0.8.4"
-    )
+    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.8.3", latest_version="0.8.4")
     assert result is True
 
     # Scenario 3: Major version difference
-    result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade",
-        current_version="0.9.0",
-        latest_version="1.0.0"
-    )
+    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.9.0", latest_version="1.0.0")
     assert result is True
 
 
@@ -58,42 +47,26 @@ def test_detect_stale_cache_false():
     from moai_adk.cli.commands.update import _detect_stale_cache
 
     # Scenario 1: Already up to date (same version)
-    result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade",
-        current_version="0.9.0",
-        latest_version="0.9.0"
-    )
+    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.9.0", latest_version="0.9.0")
     assert result is False
 
     # Scenario 2: Upgrade succeeded (different message)
     result = _detect_stale_cache(
-        upgrade_output="Successfully updated moai-adk 0.8.3 -> 0.9.0",
-        current_version="0.8.3",
-        latest_version="0.9.0"
+        upgrade_output="Successfully updated moai-adk 0.8.3 -> 0.9.0", current_version="0.8.3", latest_version="0.9.0"
     )
     assert result is False
 
     # Scenario 3: Empty output
-    result = _detect_stale_cache(
-        upgrade_output="",
-        current_version="0.8.3",
-        latest_version="0.9.0"
-    )
+    result = _detect_stale_cache(upgrade_output="", current_version="0.8.3", latest_version="0.9.0")
     assert result is False
 
     # Scenario 4: Current version is newer (dev version)
-    result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade",
-        current_version="0.9.1",
-        latest_version="0.9.0"
-    )
+    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.9.1", latest_version="0.9.0")
     assert result is False
 
     # Scenario 5: Invalid version string (graceful degradation)
     result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade",
-        current_version="invalid-version",
-        latest_version="0.9.0"
+        upgrade_output="Nothing to upgrade", current_version="invalid-version", latest_version="0.9.0"
     )
     assert result is False
 
@@ -149,10 +122,7 @@ def test_clear_cache_failure(monkeypatch):
 
     # Scenario 2: Timeout expired
     def mock_timeout(*args, **kwargs):
-        raise subprocess.TimeoutExpired(
-            cmd=["uv", "cache", "clean", "moai-adk"],
-            timeout=10
-        )
+        raise subprocess.TimeoutExpired(cmd=["uv", "cache", "clean", "moai-adk"], timeout=10)
 
     monkeypatch.setattr("subprocess.run", mock_timeout)
     result = _clear_uv_package_cache("moai-adk")

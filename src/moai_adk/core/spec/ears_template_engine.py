@@ -587,11 +587,13 @@ class EARSTemplateEngine:
         if extraction["classes"]:
             models = []
             for class_name in extraction["classes"][:3]:  # Limit to 3 models
-                models.append(f"""
+                models.append(
+                    f"""
 **{class_name}**:
 - Attributes: ID, created_at, status
 - Methods: create, update, delete, retrieve
-- Relations: Relationships with other models""")
+- Relations: Relationships with other models"""
+                )
             return "\n".join(models)
         else:
             return "Data models are not explicitly defined."

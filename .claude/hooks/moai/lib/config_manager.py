@@ -304,9 +304,7 @@ class ConfigManager:
 
         return True
 
-    def _merge_configs(
-        self, base: Dict[str, Any], override: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively merge two configuration dictionaries.
 
         Args:

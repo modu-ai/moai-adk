@@ -122,7 +122,7 @@ class TestEngine:
         tests = [
             (lambda: test_func("result1"), "test1", ["comp1"]),
             (lambda: test_func("result2"), "test2", ["comp2"]),
-            (lambda: test_func("result3"), "test3", ["comp3"])
+            (lambda: test_func("result3"), "test3", ["comp3"]),
         ]
 
         results = engine.run_concurrent_tests(tests)
@@ -142,10 +142,7 @@ class TestEngine:
         def failure_test():
             raise ValueError("Test failure")
 
-        tests = [
-            (success_test, "success_test", []),
-            (failure_test, "failure_test", [])
-        ]
+        tests = [(success_test, "success_test", []), (failure_test, "failure_test", [])]
 
         results = engine.run_concurrent_tests(tests)
 
@@ -169,10 +166,7 @@ class TestEngine:
             time.sleep(2.0)  # Slower than batch timeout
             return "slow"
 
-        tests = [
-            (quick_test, "quick_test", []),
-            (slow_test, "slow_test", [])
-        ]
+        tests = [(quick_test, "quick_test", []), (slow_test, "slow_test", [])]
 
         # Should handle timeout gracefully
         try:
@@ -191,10 +185,7 @@ class TestEngine:
         def test_func(value):
             return value
 
-        tests = [
-            (lambda: test_func("async1"), "async_test1", []),
-            (lambda: test_func("async2"), "async_test2", [])
-        ]
+        tests = [(lambda: test_func("async1"), "async_test1", []), (lambda: test_func("async2"), "async_test2", [])]
 
         results = await engine.run_concurrent_tests_async(tests)
 

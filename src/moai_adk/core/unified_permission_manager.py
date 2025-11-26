@@ -694,7 +694,7 @@ if __name__ == "__main__":
 
     for agent in test_agents:
         print(f"\nTesting agent: {agent['name']}")
-        agent_config: Dict[str, Any] = agent['config']  # type: ignore[assignment]
+        agent_config: Dict[str, Any] = agent["config"]  # type: ignore[assignment]
         print(f"Original permissionMode: {agent_config.get('permissionMode', 'default')}")
 
         agent_name: str = agent["name"]  # type: ignore[assignment]

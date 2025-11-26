@@ -28,7 +28,7 @@ class TestEnhancedVersionReader:
             fallback_version="custom-fallback",
             version_format_regex=r"^v?(\d+\.\d+\.\d+)$",
             cache_enabled=True,
-            debug_mode=True
+            debug_mode=True,
         )
 
         reader = VersionReader(config=custom_config)
@@ -49,14 +49,9 @@ class TestEnhancedVersionReader:
 
             # Test config with multiple version fields
             config_data = {
-                "moai": {
-                    "version": "1.2.3",
-                    "template_version": "0.9.0"
-                },
+                "moai": {"version": "1.2.3", "template_version": "0.9.0"},
                 "version": "2.0.0",  # This should take priority over moai.version
-                "project": {
-                    "version": "3.0.0"  # This should take highest priority
-                }
+                "project": {"version": "3.0.0"},  # This should take highest priority
             }
             config_file.write_text(json.dumps(config_data))
 
@@ -96,11 +91,7 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "invalid-version-format"
-                }
-            }
+            config_data = {"moai": {"version": "invalid-version-format"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -117,11 +108,7 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -137,8 +124,8 @@ class TestEnhancedVersionReader:
 
             # Verify cache stats
             stats = reader.get_cache_stats()
-            assert stats['hits'] >= 1
-            assert stats['misses'] >= 1
+            assert stats["hits"] >= 1
+            assert stats["misses"] >= 1
 
     def test_cache_expiration(self):
         """
@@ -150,11 +137,7 @@ class TestEnhancedVersionReader:
             config_file = Path(tmpdir) / "config.json"
 
             # Create initial config
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -175,11 +158,7 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -204,18 +183,14 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
             reader._config_path = config_file
 
             # Clear initial stats
-            reader._cache_stats = {'hits': 0, 'misses': 0, 'errors': 0}
+            reader._cache_stats = {"hits": 0, "misses": 0, "errors": 0}
 
             # Make some calls
             reader.get_version()  # miss
@@ -223,9 +198,9 @@ class TestEnhancedVersionReader:
             reader.get_version()  # hit
 
             stats = reader.get_cache_stats()
-            assert stats['hits'] == 2
-            assert stats['misses'] == 1
-            assert stats['errors'] == 0
+            assert stats["hits"] == 2
+            assert stats["misses"] == 1
+            assert stats["errors"] == 0
 
     def test_cache_age_tracking(self):
         """
@@ -235,11 +210,7 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -263,12 +234,8 @@ class TestEnhancedVersionReader:
             config_file = Path(tmpdir) / "config.json"
             config_data = {
                 "version": "should-not-be-used",
-                "custom": {
-                    "version": "1.2.3"
-                },
-                "moai": {
-                    "version": "should-not-be-used"
-                }
+                "custom": {"version": "1.2.3"},
+                "moai": {"version": "should-not-be-used"},
             }
             config_file.write_text(json.dumps(config_data))
 
@@ -288,14 +255,7 @@ class TestEnhancedVersionReader:
         WHEN: _get_nested_value() called
         THEN: Should extract nested values correctly
         """
-        config = {
-            "moai": {
-                "version": "1.2.3",
-                "config": {
-                    "debug": True
-                }
-            }
-        }
+        config = {"moai": {"version": "1.2.3", "config": {"debug": True}}}
 
         reader = VersionReader()
 
@@ -337,11 +297,7 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -362,11 +318,7 @@ class TestEnhancedVersionReader:
         """
         reader = VersionReader()
 
-        new_config = VersionConfig(
-            cache_ttl_seconds=120,
-            fallback_version="new-fallback",
-            cache_enabled=False
-        )
+        new_config = VersionConfig(cache_ttl_seconds=120, fallback_version="new-fallback", cache_enabled=False)
 
         reader.update_config(new_config)
 
@@ -393,8 +345,8 @@ class TestEnhancedVersionReader:
             # Check error count in stats
             stats = reader.get_cache_stats()
             # The error count might be 0 due to the specific way we handle exceptions
-            assert isinstance(stats['errors'], int)
-            assert stats['errors'] >= 0
+            assert isinstance(stats["errors"], int)
+            assert stats["errors"] >= 0
 
     def test_file_not_found_handling(self):
         """
@@ -431,17 +383,11 @@ class TestEnhancedVersionReader:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_data = {
-                "moai": {
-                    "version": "1.2.3"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3"}}
             config_file.write_text(json.dumps(config_data))
 
             # Create config with invalid regex
-            invalid_config = VersionConfig(
-                version_format_regex="invalid[regex"
-            )
+            invalid_config = VersionConfig(version_format_regex="invalid[regex")
             reader = VersionReader(config=invalid_config)
             reader._config_path = config_file
 
@@ -477,7 +423,7 @@ class TestVersionConfig:
             fallback_version="custom-fallback",
             version_format_regex=r"^v?(\d+\.\d+\.\d+)$",
             cache_enabled=False,
-            debug_mode=True
+            debug_mode=True,
         )
 
         assert config.cache_ttl_seconds == 300

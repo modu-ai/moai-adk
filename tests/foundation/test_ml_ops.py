@@ -467,9 +467,7 @@ class TestModelVersionManager:
 
     def test_track_model_lineage_include_data_sources(self, manager):
         """Test model lineage with data sources."""
-        lineage = manager.track_model_lineage(
-            model_id="model_001", include_data_sources=True
-        )
+        lineage = manager.track_model_lineage(model_id="model_001", include_data_sources=True)
 
         assert lineage["data_sources"] is not None
         assert len(lineage["data_sources"]) == 2
@@ -478,17 +476,13 @@ class TestModelVersionManager:
 
     def test_track_model_lineage_exclude_data_sources(self, manager):
         """Test model lineage without data sources."""
-        lineage = manager.track_model_lineage(
-            model_id="model_001", include_data_sources=False
-        )
+        lineage = manager.track_model_lineage(model_id="model_001", include_data_sources=False)
 
         assert lineage["data_sources"] is None
 
     def test_track_model_lineage_include_training_runs(self, manager):
         """Test model lineage with training runs."""
-        lineage = manager.track_model_lineage(
-            model_id="model_001", include_training_runs=True
-        )
+        lineage = manager.track_model_lineage(model_id="model_001", include_training_runs=True)
 
         assert lineage["training_runs"] is not None
         assert len(lineage["training_runs"]) == 1
@@ -497,9 +491,7 @@ class TestModelVersionManager:
 
     def test_track_model_lineage_exclude_training_runs(self, manager):
         """Test model lineage without training runs."""
-        lineage = manager.track_model_lineage(
-            model_id="model_001", include_training_runs=False
-        )
+        lineage = manager.track_model_lineage(model_id="model_001", include_training_runs=False)
 
         assert lineage["training_runs"] is None
 

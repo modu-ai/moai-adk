@@ -26,7 +26,7 @@ def is_server_ready(port, timeout=30):
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
-            with socket.create_connection(('localhost', port), timeout=1):
+            with socket.create_connection(("localhost", port), timeout=1):
                 return True
         except (socket.error, ConnectionRefusedError):
             time.sleep(0.5)
@@ -34,16 +34,25 @@ def is_server_ready(port, timeout=30):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Run command with one or more servers')
-    parser.add_argument('--server', action='append', dest='servers', required=True, help='Server command (can be repeated)')
-    parser.add_argument('--port', action='append', dest='ports', type=int, required=True, help='Port for each server (must match --server count)')
-    parser.add_argument('--timeout', type=int, default=30, help='Timeout in seconds per server (default: 30)')
-    parser.add_argument('command', nargs=argparse.REMAINDER, help='Command to run after server(s) ready')
+    parser = argparse.ArgumentParser(description="Run command with one or more servers")
+    parser.add_argument(
+        "--server", action="append", dest="servers", required=True, help="Server command (can be repeated)"
+    )
+    parser.add_argument(
+        "--port",
+        action="append",
+        dest="ports",
+        type=int,
+        required=True,
+        help="Port for each server (must match --server count)",
+    )
+    parser.add_argument("--timeout", type=int, default=30, help="Timeout in seconds per server (default: 30)")
+    parser.add_argument("command", nargs=argparse.REMAINDER, help="Command to run after server(s) ready")
 
     args = parser.parse_args()
 
     # Remove the '--' separator if present
-    if args.command and args.command[0] == '--':
+    if args.command and args.command[0] == "--":
         args.command = args.command[1:]
 
     if not args.command:
@@ -57,7 +66,7 @@ def main():
 
     servers = []
     for cmd, port in zip(args.servers, args.ports):
-        servers.append({'cmd': cmd, 'port': port})
+        servers.append({"cmd": cmd, "port": port})
 
     server_processes = []
 
@@ -67,17 +76,12 @@ def main():
             print(f"Starting server {i+1}/{len(servers)}: {server['cmd']}")
 
             # Use shell=True to support commands with cd and &&
-            process = subprocess.Popen(
-                server['cmd'],
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
+            process = subprocess.Popen(server["cmd"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             server_processes.append(process)
 
             # Wait for this server to be ready
             print(f"Waiting for server on port {server['port']}...")
-            if not is_server_ready(server['port'], timeout=args.timeout):
+            if not is_server_ready(server["port"], timeout=args.timeout):
                 raise RuntimeError(f"Server failed to start on port {server['port']} within {args.timeout}s")
 
             print(f"Server ready on port {server['port']}")
@@ -103,5 +107,5 @@ def main():
         print("All servers stopped")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

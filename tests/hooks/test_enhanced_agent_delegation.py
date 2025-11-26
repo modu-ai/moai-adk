@@ -28,9 +28,7 @@ import pytest
 
 # Skip this file - outdated test using 'shared' module and 'alfred' hook structure
 # The actual hook structure now uses 'moai' and different module organization
-pytestmark = pytest.mark.skip(
-    reason="Outdated test using 'shared' module and 'alfred' hook structure (moved to moai)"
-)
+pytestmark = pytest.mark.skip(reason="Outdated test using 'shared' module and 'alfred' hook structure (moved to moai)")
 
 
 class TestAgentContextModule:
@@ -133,14 +131,9 @@ class TestAgentContextModule:
             assert result["intent_detected"] is True
             assert result["primary_agent"] == "test-engineer"
             assert result["confidence"] > 0.5
-            assert (
-                "test" in result["matched_keywords"]
-                or "pytest" in result["matched_keywords"]
-            )
+            assert "test" in result["matched_keywords"] or "pytest" in result["matched_keywords"]
             assert len(result["recommended_skills"]) > 0
-            assert (
-                len(result["context_files"]) >= 0
-            )  # 파일이 있을 수도 있고 없을 수도 있음
+            assert len(result["context_files"]) >= 0  # 파일이 있을 수도 있고 없을 수도 있음
 
     def test_get_agent_delegation_context_without_intent(self):
         """에이전트 위임 컨텍스트 생성 테스트 (의도 없음)"""
@@ -245,18 +238,14 @@ class TestEnhancedUserHandler:
                 "🎯 전문가 에이전트 추천: backend-expert",
             )
 
-            payload = HookPayload(
-                userPrompt="API 엔드포인트를 구현해주세요", cwd="/tmp/test_project"
-            )
+            payload = HookPayload(userPrompt="API 엔드포인트를 구현해주세요", cwd="/tmp/test_project")
 
             result = handle_user_prompt_submit(payload)
 
             # 결과 확인
             assert result is not None
             assert result.system_message is not None
-            assert (
-                "Agent" in result.system_message or "에이전트" in result.system_message
-            )
+            assert "Agent" in result.system_message or "에이전트" in result.system_message
             assert len(result.context_files) > 0
             assert any("skills" in str(f) for f in result.context_files)
 
@@ -269,9 +258,7 @@ class TestEnhancedUserHandler:
         with patch("shared.handlers.user.get_enhanced_jit_context") as mock_context:
             mock_context.return_value = ([], None)
 
-            payload = HookPayload(
-                userPrompt="간단한 질문입니다", cwd="/tmp/test_project"
-            )
+            payload = HookPayload(userPrompt="간단한 질문입니다", cwd="/tmp/test_project")
 
             result = handle_user_prompt_submit(payload)
 
@@ -297,17 +284,13 @@ class TestEnhancedUserHandler:
                 "🎯 전문가 에이전트 추천: spec-builder",
             )
 
-            payload = HookPayload(
-                userPrompt="/moai:1-plan 새로운 기능 명세", cwd="/tmp/test_project"
-            )
+            payload = HookPayload(userPrompt="/moai:1-plan 새로운 기능 명세", cwd="/tmp/test_project")
 
             result = handle_user_prompt_submit(payload)
 
             # 결과 확인
             assert result is not None
-            assert isinstance(
-                result.system_message, (str, type(None))
-            )  # Either string or None
+            assert isinstance(result.system_message, (str, type(None)))  # Either string or None
 
 
 if __name__ == "__main__":

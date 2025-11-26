@@ -22,12 +22,7 @@ class TestLanguageConfigReading:
     def test_reads_nested_language_config(self) -> None:
         """PhaseExecutor reads language from nested config.language.conversation_language."""
         # Arrange
-        config = {
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            }
-        }
+        config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
 
         # Act
         language_config = config.get("language", {})
@@ -55,9 +50,7 @@ class TestLanguageConfigReading:
     def test_handles_invalid_language_config_type(self) -> None:
         """When language config is not a dict, uses defaults."""
         # Arrange
-        config = {
-            "language": "invalid"  # Wrong type
-        }
+        config = {"language": "invalid"}  # Wrong type
 
         # Act
         language_config = config.get("language", {})
@@ -71,12 +64,7 @@ class TestLanguageConfigReading:
     def test_japanese_language_config(self) -> None:
         """Reads Japanese language configuration correctly."""
         # Arrange
-        config = {
-            "language": {
-                "conversation_language": "ja",
-                "conversation_language_name": "日本語"
-            }
-        }
+        config = {"language": {"conversation_language": "ja", "conversation_language_name": "日本語"}}
 
         # Act
         language_config = config.get("language", {})
@@ -90,12 +78,7 @@ class TestLanguageConfigReading:
     def test_spanish_language_config(self) -> None:
         """Reads Spanish language configuration correctly."""
         # Arrange
-        config = {
-            "language": {
-                "conversation_language": "es",
-                "conversation_language_name": "Español"
-            }
-        }
+        config = {"language": {"conversation_language": "es", "conversation_language_name": "Español"}}
 
         # Act
         language_config = config.get("language", {})
@@ -112,10 +95,7 @@ class TestTemplateVariableSubstitution:
         """{{CONVERSATION_LANGUAGE}} substitutes correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ko",
-            "CONVERSATION_LANGUAGE_NAME": "한국어"
-        })
+        processor.set_context({"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어"})
 
         template_content = "Language: {{CONVERSATION_LANGUAGE}}"
 
@@ -130,10 +110,7 @@ class TestTemplateVariableSubstitution:
         """{{CONVERSATION_LANGUAGE_NAME}} substitutes correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ko",
-            "CONVERSATION_LANGUAGE_NAME": "한국어"
-        })
+        processor.set_context({"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어"})
 
         template_content = "Language Name: {{CONVERSATION_LANGUAGE_NAME}}"
 
@@ -148,11 +125,9 @@ class TestTemplateVariableSubstitution:
         """Multiple language variables substitute correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ja",
-            "CONVERSATION_LANGUAGE_NAME": "日本語",
-            "PROJECT_NAME": "TestProject"
-        })
+        processor.set_context(
+            {"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語", "PROJECT_NAME": "TestProject"}
+        )
 
         template_content = """
         Project: {{PROJECT_NAME}}
@@ -173,9 +148,7 @@ class TestTemplateVariableSubstitution:
         """Detects variables that couldn't be substituted."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ko"
-        })
+        processor.set_context({"CONVERSATION_LANGUAGE": "ko"})
 
         template_content = "Language: {{CONVERSATION_LANGUAGE}}, Missing: {{MISSING_VAR}}"
 
@@ -192,7 +165,7 @@ class TestTemplateVariableSubstitution:
 class TestPhaseExecutorResourcePhase:
     """Test PhaseExecutor.execute_resource_phase language handling."""
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
     def test_resource_phase_sets_language_context(
         self,
         mock_processor_class: type,
@@ -206,11 +179,8 @@ class TestPhaseExecutorResourcePhase:
         executor = PhaseExecutor(validator)
 
         config = {
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            },
-            "name": "TestProject"
+            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "name": "TestProject",
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -226,7 +196,7 @@ class TestPhaseExecutorResourcePhase:
             assert context["CONVERSATION_LANGUAGE"] == "ko", "Should set Korean language"
             assert context["CONVERSATION_LANGUAGE_NAME"] == "한국어", "Should set Korean name"
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
     def test_resource_phase_defaults_language_context(
         self,
         mock_processor_class: type,
@@ -264,10 +234,7 @@ class TestLanguageConfigMigration:
     def test_legacy_config_structure(self) -> None:
         """Legacy flat config structure is recognized."""
         # This tests that we understand the old structure
-        legacy_config = {
-            "conversation_language": "ko",
-            "locale": "ko"
-        }
+        legacy_config = {"conversation_language": "ko", "locale": "ko"}
 
         # Act
         has_conversation_language = "conversation_language" in legacy_config
@@ -277,12 +244,7 @@ class TestLanguageConfigMigration:
 
     def test_new_config_structure(self) -> None:
         """New nested config structure is recognized."""
-        new_config = {
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            }
-        }
+        new_config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
 
         # Act
         language_config = new_config.get("language", {})

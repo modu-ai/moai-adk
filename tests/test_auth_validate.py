@@ -6,7 +6,6 @@ NOTE: Auth module is not yet implemented in this version.
 These tests are marked as skipped to allow test collection without ImportError.
 """
 
-
 import pytest
 
 # Auth module tests are skipped - module not implemented
@@ -24,14 +23,8 @@ class TestTokenValidation:
     @pytest.fixture
     def authenticated_user(self, auth_service):
         """Create and login a test user."""
-        auth_service.create_user(
-            email="testuser@example.com",
-            password="TestPassword123!"
-        )
-        login_response = auth_service.login(
-            email="testuser@example.com",
-            password="TestPassword123!"
-        )
+        auth_service.create_user(email="testuser@example.com", password="TestPassword123!")
+        login_response = auth_service.login(email="testuser@example.com", password="TestPassword123!")
         return login_response
 
     def test_get_user_info_with_valid_token(self, auth_service, authenticated_user):
@@ -59,10 +52,7 @@ class TestTokenValidation:
         And: HTTP status code is 401 Unauthorized
         """
         # Create an expired token
-        expired_token = create_expired_token(
-            user_id="test-user-123",
-            email="testuser@example.com"
-        )
+        expired_token = create_expired_token(user_id="test-user-123", email="testuser@example.com")
 
         with pytest.raises(ValueError, match="Token expired"):
             auth_service.get_user_from_token(expired_token)

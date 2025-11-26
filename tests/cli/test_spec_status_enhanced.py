@@ -84,9 +84,7 @@ class TestUpdateSpecStatus:
         assert "Invalid status" in result["error"]
         assert "invalid-status" in result["error"]
 
-    @pytest.mark.parametrize(
-        "valid_status", ["draft", "in-progress", "completed", "archived"]
-    )
+    @pytest.mark.parametrize("valid_status", ["draft", "in-progress", "completed", "archived"])
     def test_update_spec_status_all_valid_statuses(self, tmp_path, valid_status):
         """Test all valid status values are accepted"""
         spec_dir = tmp_path / ".moai" / "specs" / "SPEC-001"
@@ -195,11 +193,7 @@ class TestValidateSpecCompletion:
         """Test successful SPEC validation with valid SPEC ID"""
         validation_result = {
             "valid": True,
-            "criteria_met": {
-                "code_coverage": 0.90,
-                "acceptance_criteria": True,
-                "implementation_age_days": 5
-            }
+            "criteria_met": {"code_coverage": 0.90, "acceptance_criteria": True, "implementation_age_days": 5},
         }
 
         with patch("moai_adk.cli.spec_status.SpecStatusManager") as mock_manager_class:
@@ -221,9 +215,9 @@ class TestValidateSpecCompletion:
             "criteria_met": {
                 "code_coverage": 0.70,  # Below threshold
                 "acceptance_criteria": False,
-                "implementation_age_days": 0
+                "implementation_age_days": 0,
             },
-            "errors": ["Coverage below 85%", "Missing acceptance criteria"]
+            "errors": ["Coverage below 85%", "Missing acceptance criteria"],
         }
 
         with patch("moai_adk.cli.spec_status.SpecStatusManager") as mock_manager_class:
@@ -271,12 +265,7 @@ class TestBatchUpdateCompletedSpecs:
 
     def test_batch_update_completed_specs_success(self, tmp_path):
         """Test successful batch update of multiple completed SPECs"""
-        batch_results = {
-            "updated": ["SPEC-001", "SPEC-002"],
-            "skipped": ["SPEC-003"],
-            "errors": [],
-            "total": 3
-        }
+        batch_results = {"updated": ["SPEC-001", "SPEC-002"], "skipped": ["SPEC-003"], "errors": [], "total": 3}
 
         with patch("moai_adk.cli.spec_status.SpecStatusManager") as mock_manager_class:
             mock_manager = MagicMock()
@@ -301,12 +290,7 @@ class TestBatchUpdateCompletedSpecs:
 
     def test_batch_update_completed_specs_empty_results(self, tmp_path):
         """Test batch update when no SPECs need updating"""
-        batch_results = {
-            "updated": [],
-            "skipped": [],
-            "errors": [],
-            "total": 0
-        }
+        batch_results = {"updated": [], "skipped": [], "errors": [], "total": 0}
 
         with patch("moai_adk.cli.spec_status.SpecStatusManager") as mock_manager_class:
             mock_manager = MagicMock()
@@ -325,7 +309,7 @@ class TestBatchUpdateCompletedSpecs:
             "updated": ["SPEC-001"],
             "skipped": ["SPEC-002"],
             "errors": [{"spec_id": "SPEC-003", "error": "Invalid format"}],
-            "total": 3
+            "total": 3,
         }
 
         with patch("moai_adk.cli.spec_status.SpecStatusManager") as mock_manager_class:
@@ -610,8 +594,18 @@ class TestMain:
             mock_manager_class.return_value = mock_manager
 
             with patch("moai_adk.cli.spec_status.Path.cwd", return_value=tmp_path):
-                with patch("sys.argv", ["spec_status.py", "status_update", "SPEC-001",
-                                       "--status", "completed", "--reason", "All tests pass"]):
+                with patch(
+                    "sys.argv",
+                    [
+                        "spec_status.py",
+                        "status_update",
+                        "SPEC-001",
+                        "--status",
+                        "completed",
+                        "--reason",
+                        "All tests pass",
+                    ],
+                ):
                     main()
 
         captured = capsys.readouterr()
@@ -763,12 +757,7 @@ class TestIntegrationScenarios:
 
     def test_batch_update_workflow(self, tmp_path):
         """Test batch update workflow with multiple SPECs"""
-        batch_results = {
-            "updated": ["SPEC-001", "SPEC-002"],
-            "skipped": ["SPEC-003"],
-            "errors": [],
-            "total": 3
-        }
+        batch_results = {"updated": ["SPEC-001", "SPEC-002"], "skipped": ["SPEC-003"], "errors": [], "total": 3}
 
         with patch("moai_adk.cli.spec_status.SpecStatusManager") as mock_manager_class:
             mock_manager = MagicMock()

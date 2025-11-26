@@ -144,6 +144,7 @@ class TestCacheSystem:
 
             # Wait for TTL to expire
             import time
+
             time.sleep(1.1)
 
             # Value should now be expired
@@ -185,11 +186,7 @@ class TestCacheSystem:
 
             # Get multiple keys
             result = cache.get_multiple(["key1", "key3", "nonexistent"])
-            assert result == {
-                "key1": "value1",
-                "key3": "value3",
-                "nonexistent": None
-            }
+            assert result == {"key1": "value1", "key3": "value3", "nonexistent": None}
 
     def test_cache_system_persistence(self):
         """Test that cache persists across CacheSystem instances."""
@@ -248,6 +245,7 @@ class TestCacheSystem:
 
             # Wait for expiration
             import time
+
             time.sleep(1.1)
 
             # With auto-cleanup, key1 should be gone
@@ -281,6 +279,7 @@ class TestCacheSystem:
 
             # Wait for expiration
             import time
+
             time.sleep(1.1)
 
             # Stats should show 1 expired file

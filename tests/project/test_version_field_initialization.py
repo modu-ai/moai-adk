@@ -82,8 +82,9 @@ class TestVersionFieldInitialization:
         # RED: This assertion will fail because reinitialization doesn't preserve the version field
         assert "moai" in final_config, "Config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert final_config["moai"]["version"] == custom_version, \
-            f"Version should be preserved during reinitialization, expected {custom_version}, got {final_config['moai']['version']}"
+        assert (
+            final_config["moai"]["version"] == custom_version
+        ), f"Version should be preserved during reinitialization, expected {custom_version}, got {final_config['moai']['version']}"
 
     def test_version_field_correct_in_personal_mode(self, tmp_path: Path) -> None:
         """
@@ -144,14 +145,7 @@ class TestVersionFieldInitialization:
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Config without version field
-        config_data = {
-            "moai": {
-                "update_check_frequency": "daily"
-            },
-            "project": {
-                "name": "TestProject"
-            }
-        }
+        config_data = {"moai": {"update_check_frequency": "daily"}, "project": {"name": "TestProject"}}
         config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
         # This should pass but return 'unknown' (existing behavior)
@@ -186,8 +180,9 @@ class TestVersionFieldInitialization:
         assert "version" in config["moai"], "moai section should have 'version' field"
 
         config_version = config["moai"]["version"]
-        assert config_version == package_version, \
-            f"Config version {config_version} should match package version {package_version}"
+        assert (
+            config_version == package_version
+        ), f"Config version {config_version} should match package version {package_version}"
 
 
 class TestVersionFieldIntegration:
@@ -204,11 +199,13 @@ class TestVersionFieldIntegration:
             initializer = ProjectInitializer(tmp_path)
 
             # Track all phases
-            with patch.object(initializer.executor, 'execute_preparation_phase') as mock_prep, \
-                 patch.object(initializer.executor, 'execute_directory_phase') as mock_dir, \
-                 patch.object(initializer.executor, 'execute_resource_phase') as mock_res, \
-                 patch.object(initializer.executor, 'execute_configuration_phase') as mock_conf, \
-                 patch.object(initializer.executor, 'execute_validation_phase') as mock_val:
+            with (
+                patch.object(initializer.executor, "execute_preparation_phase") as mock_prep,
+                patch.object(initializer.executor, "execute_directory_phase") as mock_dir,
+                patch.object(initializer.executor, "execute_resource_phase") as mock_res,
+                patch.object(initializer.executor, "execute_configuration_phase") as mock_conf,
+                patch.object(initializer.executor, "execute_validation_phase") as mock_val,
+            ):
 
                 # Mock resource phase to return typical files
                 mock_res.return_value = [".moai/", ".claude/"]
@@ -245,13 +242,8 @@ class TestVersionFieldIntegration:
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         existing_config = {
-            "moai": {
-                "version": "2.0.0-custom",
-                "update_check_frequency": "weekly"
-            },
-            "project": {
-                "name": "ExistingProject"
-            }
+            "moai": {"version": "2.0.0-custom", "update_check_frequency": "weekly"},
+            "project": {"name": "ExistingProject"},
         }
         config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
@@ -266,5 +258,6 @@ class TestVersionFieldIntegration:
             final_config = json.load(f)
 
         # RED: This assertion will fail because reinitialization overwrites the version field
-        assert final_config["moai"]["version"] == "2.0.0-custom", \
-            f"Custom version should be preserved, got {final_config['moai']['version']}"
+        assert (
+            final_config["moai"]["version"] == "2.0.0-custom"
+        ), f"Custom version should be preserved, got {final_config['moai']['version']}"

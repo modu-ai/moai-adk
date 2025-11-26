@@ -104,8 +104,7 @@ class TestPythonWorkflowCorrectness:
             content = f.read()
 
         # RED: Should mention 85% coverage
-        assert "85" in content or "coverage" in content.lower(), \
-            "Should specify 85% coverage target"
+        assert "85" in content or "coverage" in content.lower(), "Should specify 85% coverage target"
 
 
 class TestJavaScriptWorkflowCorrectness:
@@ -150,8 +149,7 @@ class TestJavaScriptWorkflowCorrectness:
         has_npm = "npm" in content
         has_conditional = "if:" in content or "package" in content.lower()
 
-        assert has_npm or has_conditional, \
-            "Should have package manager detection or conditional logic"
+        assert has_npm or has_conditional, "Should have package manager detection or conditional logic"
 
 
 class TestTypeScriptWorkflowCorrectness:
@@ -222,5 +220,4 @@ class TestGoWorkflowCorrectness:
             content = f.read()
 
         # RED: Should mention coverage
-        assert "coverage" in content.lower() or "cover" in content.lower(), \
-            "Should specify coverage target"
+        assert "coverage" in content.lower() or "cover" in content.lower(), "Should specify coverage target"

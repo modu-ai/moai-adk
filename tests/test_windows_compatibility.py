@@ -41,7 +41,7 @@ class TestWindowsPathHandling:
         # Verify no hardcoded /tmp path is used
         assert "/tmp/moai_error_recovery.log" not in str(system.error_log_dir)
         # The system should have an error_log_dir attribute
-        assert hasattr(system, 'error_log_dir')
+        assert hasattr(system, "error_log_dir")
         assert system.error_log_dir is not None
 
 
@@ -187,9 +187,7 @@ class TestFileEncodingUTF8:
         session_file = tmp_path / "sessions.json"
         session_data = {
             "sessions": {"agent_1": "session_001"},
-            "metadata": {
-                "session_001": {"note": "테스트 세션 with émojis 📝"}
-            },
+            "metadata": {"session_001": {"note": "테스트 세션 with émojis 📝"}},
             "chains": {},
         }
 
@@ -245,10 +243,7 @@ class TestFileEncodingUTF8:
         from moai_adk.core.context_manager import save_phase_result
 
         target_path = tmp_path / "phase_result.json"
-        data = {
-            "phase": "test",
-            "message": "테스트 결과 with émojis ✅"
-        }
+        data = {"phase": "test", "message": "테스트 결과 with émojis ✅"}
 
         save_phase_result(data, str(target_path))
 

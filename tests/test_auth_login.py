@@ -6,7 +6,6 @@ NOTE: Auth module is not yet implemented in this version.
 These tests are marked as skipped to allow test collection without ImportError.
 """
 
-
 import pytest
 
 # Auth module tests are skipped - module not implemented
@@ -24,10 +23,7 @@ class TestUserLogin:
     @pytest.fixture
     def test_user(self, auth_service):
         """Create a test user in the database."""
-        user = auth_service.create_user(
-            email="user@example.com",
-            password="SecurePassword123!"
-        )
+        user = auth_service.create_user(email="user@example.com", password="SecurePassword123!")
         return user
 
     def test_login_with_valid_credentials(self, auth_service, test_user):
@@ -38,10 +34,7 @@ class TestUserLogin:
         And: Token contains user ID, email, and issued time
         And: Token expiration is 1 hour
         """
-        login_request = {
-            "email": "user@example.com",
-            "password": "SecurePassword123!"
-        }
+        login_request = {"email": "user@example.com", "password": "SecurePassword123!"}
 
         response = auth_service.login(**login_request)
 
@@ -63,10 +56,7 @@ class TestUserLogin:
         Then: Return 'User not found' error
         And: HTTP status code is 401 Unauthorized
         """
-        login_request = {
-            "email": "nonexistent@example.com",
-            "password": "SomePassword123!"
-        }
+        login_request = {"email": "nonexistent@example.com", "password": "SomePassword123!"}
 
         with pytest.raises(ValueError, match="User not found"):
             auth_service.login(**login_request)
@@ -78,10 +68,7 @@ class TestUserLogin:
         Then: Return 'Invalid password' error
         And: HTTP status code is 401 Unauthorized
         """
-        login_request = {
-            "email": "user@example.com",
-            "password": "WrongPassword123!"
-        }
+        login_request = {"email": "user@example.com", "password": "WrongPassword123!"}
 
         with pytest.raises(ValueError, match="Invalid password"):
             auth_service.login(**login_request)
@@ -93,10 +80,7 @@ class TestUserLogin:
         Then: Token contains user_id, email, iat, exp claims
         """
 
-        login_response = auth_service.login(
-            email="user@example.com",
-            password="SecurePassword123!"
-        )
+        login_response = auth_service.login(email="user@example.com", password="SecurePassword123!")
 
         token_data = auth_service.verify_token(login_response["access_token"])
 

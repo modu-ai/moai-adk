@@ -14,8 +14,4 @@ from .documentation_manager import DocumentationManager
 from .language_initializer import LanguageInitializer
 from .template_optimizer import TemplateOptimizer
 
-__all__ = [
-    "DocumentationManager",
-    "LanguageInitializer",
-    "TemplateOptimizer"
-]
+__all__ = ["DocumentationManager", "LanguageInitializer", "TemplateOptimizer"]

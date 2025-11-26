@@ -126,12 +126,8 @@ class TestCacheManagement:
         reader = VersionReader(config=config, working_dir=tmp_path)
 
         # Fill cache
-        reader._cache["key1"] = CacheEntry(
-            version="0.20.1", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE
-        )
-        reader._cache["key2"] = CacheEntry(
-            version="0.20.2", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE
-        )
+        reader._cache["key1"] = CacheEntry(version="0.20.1", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE)
+        reader._cache["key2"] = CacheEntry(version="0.20.2", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE)
 
         # Try to evict (should do nothing)
         reader._evict_oldest_cache_entry()

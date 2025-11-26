@@ -26,6 +26,7 @@ from moai_adk.utils.banner import (
 # Module Constants and Initialization Tests
 # ============================================================================
 
+
 class TestModuleConstants:
     """Tests for module-level constants."""
 
@@ -75,6 +76,7 @@ class TestModuleConstants:
 # print_banner Function Tests
 # ============================================================================
 
+
 class TestPrintBanner:
     """Tests for print_banner function."""
 
@@ -123,7 +125,9 @@ class TestPrintBanner:
 
         # First call should include banner
         first_call_args = mock_print.call_args_list[0][0][0]
-        assert "███" in first_call_args or "blue" in str(first_call_args).lower() or "cyan" in str(first_call_args).lower()
+        assert (
+            "███" in first_call_args or "blue" in str(first_call_args).lower() or "cyan" in str(first_call_args).lower()
+        )
 
     @patch("moai_adk.utils.banner.console.print")
     def test_print_banner_includes_welcome_text(self, mock_print):
@@ -227,6 +231,7 @@ class TestPrintBanner:
 # ============================================================================
 # print_welcome_message Function Tests
 # ============================================================================
+
 
 class TestPrintWelcomeMessage:
     """Tests for print_welcome_message function."""
@@ -338,6 +343,7 @@ class TestPrintWelcomeMessage:
 # Console Integration Tests
 # ============================================================================
 
+
 class TestConsoleIntegration:
     """Tests for console integration and output behavior."""
 
@@ -378,6 +384,7 @@ class TestConsoleIntegration:
 # ============================================================================
 # Edge Cases and Error Handling Tests
 # ============================================================================
+
 
 class TestEdgeCasesAndErrorHandling:
     """Tests for edge cases and error handling."""
@@ -459,6 +466,7 @@ class TestEdgeCasesAndErrorHandling:
 # ============================================================================
 # Integration and Workflow Tests
 # ============================================================================
+
 
 class TestIntegrationAndWorkflow:
     """Integration tests for banner display workflow."""
@@ -568,6 +576,7 @@ class TestIntegrationAndWorkflow:
 # Output Content Verification Tests
 # ============================================================================
 
+
 class TestOutputContent:
     """Tests verifying specific output content."""
 
@@ -635,6 +644,7 @@ class TestOutputContent:
 # Formatting and Style Tests
 # ============================================================================
 
+
 class TestFormattingAndStyle:
     """Tests for Rich console markup and formatting."""
 
@@ -701,6 +711,7 @@ class TestFormattingAndStyle:
 # ============================================================================
 # Parameter Variation Tests
 # ============================================================================
+
 
 class TestParameterVariations:
     """Tests for various parameter combinations."""

@@ -307,9 +307,7 @@ class SpecStatusManager:
             if result["is_ready"]:
                 recs_list = result["recommendations"]
                 if isinstance(recs_list, list):
-                    recs_list.append(
-                        "SPEC is ready for completion. Consider updating status to 'completed'"
-                    )
+                    recs_list.append("SPEC is ready for completion. Consider updating status to 'completed'")
 
         except Exception as e:
             logger.error(f"Error validating SPEC {spec_id}: {e}")

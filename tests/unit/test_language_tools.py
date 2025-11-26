@@ -34,9 +34,26 @@ class TestLanguageToolsMapping:
         tools = SystemChecker.LANGUAGE_TOOLS
         # 20개 언어 지원 확인
         expected_languages = [
-            "python", "typescript", "javascript", "java", "go", "rust",
-            "dart", "swift", "kotlin", "csharp", "php", "ruby",
-            "elixir", "scala", "clojure", "haskell", "c", "cpp", "lua", "ocaml"
+            "python",
+            "typescript",
+            "javascript",
+            "java",
+            "go",
+            "rust",
+            "dart",
+            "swift",
+            "kotlin",
+            "csharp",
+            "php",
+            "ruby",
+            "elixir",
+            "scala",
+            "clojure",
+            "haskell",
+            "c",
+            "cpp",
+            "lua",
+            "ocaml",
         ]
         assert len(tools) >= 20, f"Expected at least 20 languages, got {len(tools)}"
         for lang in expected_languages:

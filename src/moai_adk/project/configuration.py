@@ -1062,9 +1062,6 @@ class TabSchemaValidator:
         # Check for common emoji Unicode ranges
         for char in text:
             code = ord(char)
-            if (
-                0x1F300 <= code <= 0x1F9FF  # Emoji range
-                or 0x2600 <= code <= 0x27BF
-            ):  # Misc symbols
+            if 0x1F300 <= code <= 0x1F9FF or 0x2600 <= code <= 0x27BF:  # Emoji range  # Misc symbols
                 return True
         return False

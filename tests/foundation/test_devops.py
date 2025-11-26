@@ -1397,15 +1397,15 @@ class TestDevOpsMetricsCollector:
         """Test health status with low score generates critical issues."""
         config = {"health_threshold": {"deployment_success": 99}}
         # Mock to create low score scenario
-        with patch.object(collector, 'get_devops_health_status') as mock:
+        with patch.object(collector, "get_devops_health_status") as mock:
             mock.return_value = {
-                'overall_health_score': 85,
-                'category_scores': {'deployment': 85, 'monitoring': 85, 'security': 85, 'performance': 85},
-                'critical_issues': [{'category': 'monitoring', 'severity': 'medium'}],
+                "overall_health_score": 85,
+                "category_scores": {"deployment": 85, "monitoring": 85, "security": 85, "performance": 85},
+                "critical_issues": [{"category": "monitoring", "severity": "medium"}],
             }
             health = collector.get_devops_health_status(config)
 
-            assert len(health['critical_issues']) > 0
+            assert len(health["critical_issues"]) > 0
 
 
 # ============================================================================
@@ -1465,9 +1465,7 @@ class TestDevOpsIntegration:
         collector = DevOpsMetricsCollector()
 
         deployment_metrics = collector.collect_deployment_metrics({})
-        pipeline_metrics = collector.track_pipeline_performance(
-            {"execution_times": {"build": 100, "test": 200}}
-        )
+        pipeline_metrics = collector.track_pipeline_performance({"execution_times": {"build": 100, "test": 200}})
         health = collector.get_devops_health_status({})
 
         assert deployment_metrics is not None
@@ -1539,9 +1537,7 @@ class TestEdgeCases:
         """Test pipeline performance with large execution times."""
         collector = DevOpsMetricsCollector()
         pipeline_data = {
-            "execution_times": {
-                f"stage_{i}": i * 100 for i in range(1, 11)
-            },
+            "execution_times": {f"stage_{i}": i * 100 for i in range(1, 11)},
         }
         metrics = collector.track_pipeline_performance(pipeline_data)
 

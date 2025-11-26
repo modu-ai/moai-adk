@@ -1339,15 +1339,17 @@ class DevOpsMetricsCollector:
         health_status = {
             "overall_health_score": round(overall_health_score, 1),
             "category_scores": category_scores,
-            "critical_issues": [
-                {
-                    "category": "monitoring",
-                    "severity": "medium",
-                    "description": "Some monitoring endpoints showing increased latency",
-                }
-            ]
-            if overall_health_score < 90
-            else [],
+            "critical_issues": (
+                [
+                    {
+                        "category": "monitoring",
+                        "severity": "medium",
+                        "description": "Some monitoring endpoints showing increased latency",
+                    }
+                ]
+                if overall_health_score < 90
+                else []
+            ),
             "recommendations": ["Optimize monitoring performance", "Review deployment automation"],
             "trends": {"overall_trend": "improving", "deployment_trend": "stable", "performance_trend": "improving"},
             "alerts": [
@@ -1355,9 +1357,11 @@ class DevOpsMetricsCollector:
                     "category": "deployment",
                     "threshold": thresholds.get("deployment_success", 95),
                     "current_value": category_scores.get("deployment", 0),
-                    "status": "healthy"
-                    if category_scores.get("deployment", 0) >= thresholds.get("deployment_success", 95)
-                    else "warning",
+                    "status": (
+                        "healthy"
+                        if category_scores.get("deployment", 0) >= thresholds.get("deployment_success", 95)
+                        else "warning"
+                    ),
                 }
             ],
         }

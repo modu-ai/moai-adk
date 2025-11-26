@@ -9,7 +9,9 @@ from unittest.mock import patch
 import pytest
 
 # Skip this test - json_utils.py module doesn't exist in codebase
-pytestmark = pytest.mark.skip(reason="json_utils.py module not found in .claude/hooks/moai/lib/ - may have been removed or refactored")
+pytestmark = pytest.mark.skip(
+    reason="json_utils.py module not found in .claude/hooks/moai/lib/ - may have been removed or refactored"
+)
 
 # Add .claude/hooks/moai/lib to sys.path for imports
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -32,46 +34,38 @@ class TestReadJsonFromStdin:
         test_data = {"key": "value", "number": 42}
         json_str = json.dumps(test_data)
 
-        with patch('sys.stdin', StringIO(json_str)):
+        with patch("sys.stdin", StringIO(json_str)):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == test_data
 
     def test_read_complex_json_from_stdin(self):
         """Read complex nested JSON from stdin"""
-        test_data = {
-            "nested": {
-                "deep": {
-                    "value": "test"
-                }
-            },
-            "list": [1, 2, 3],
-            "bool": True
-        }
+        test_data = {"nested": {"deep": {"value": "test"}}, "list": [1, 2, 3], "bool": True}
         json_str = json.dumps(test_data)
 
-        with patch('sys.stdin', StringIO(json_str)):
+        with patch("sys.stdin", StringIO(json_str)):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == test_data
 
     def test_read_json_from_stdin_empty_input(self):
         """Read from empty stdin returns empty dict"""
-        with patch('sys.stdin', StringIO("")):
+        with patch("sys.stdin", StringIO("")):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == {}
 
     def test_read_json_from_stdin_whitespace_only(self):
         """Read from stdin with whitespace only returns empty dict"""
-        with patch('sys.stdin', StringIO("   \n\t  ")):
+        with patch("sys.stdin", StringIO("   \n\t  ")):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == {}
 
     def test_read_json_from_stdin_invalid_raises_error(self):
         """Read invalid JSON from stdin raises JSONDecodeError"""
-        with patch('sys.stdin', StringIO("{ invalid json }")):
+        with patch("sys.stdin", StringIO("{ invalid json }")):
             with pytest.raises(json.JSONDecodeError):
                 JSONUtils.read_json_from_stdin()
 
@@ -80,7 +74,7 @@ class TestReadJsonFromStdin:
         test_data = [1, 2, 3, 4, 5]
         json_str = json.dumps(test_data)
 
-        with patch('sys.stdin', StringIO(json_str)):
+        with patch("sys.stdin", StringIO(json_str)):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == test_data
@@ -90,33 +84,33 @@ class TestReadJsonFromStdin:
         test_data = "hello world"
         json_str = json.dumps(test_data)
 
-        with patch('sys.stdin', StringIO(json_str)):
+        with patch("sys.stdin", StringIO(json_str)):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == test_data
 
     def test_read_json_null_from_stdin(self):
         """Read JSON null from stdin"""
-        with patch('sys.stdin', StringIO("null")):
+        with patch("sys.stdin", StringIO("null")):
             result = JSONUtils.read_json_from_stdin()
 
         assert result is None
 
     def test_read_json_boolean_from_stdin(self):
         """Read JSON boolean from stdin"""
-        with patch('sys.stdin', StringIO("true")):
+        with patch("sys.stdin", StringIO("true")):
             result = JSONUtils.read_json_from_stdin()
 
         assert result is True
 
-        with patch('sys.stdin', StringIO("false")):
+        with patch("sys.stdin", StringIO("false")):
             result = JSONUtils.read_json_from_stdin()
 
         assert result is False
 
     def test_read_json_number_from_stdin(self):
         """Read JSON number from stdin"""
-        with patch('sys.stdin', StringIO("42")):
+        with patch("sys.stdin", StringIO("42")):
             result = JSONUtils.read_json_from_stdin()
 
         assert result == 42
@@ -198,14 +192,8 @@ class TestSafeJsonLoads:
     def test_safe_json_loads_complex_structure(self):
         """Safely load complex nested structure"""
         test_data = {
-            "users": [
-                {"id": 1, "name": "Alice"},
-                {"id": 2, "name": "Bob"}
-            ],
-            "metadata": {
-                "count": 2,
-                "active": True
-            }
+            "users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}],
+            "metadata": {"count": 2, "active": True},
         }
         json_str = json.dumps(test_data)
 
@@ -265,7 +253,7 @@ class TestSafeJsonLoadFile:
         """Safely load JSON file with unicode content"""
         test_data = {"message": "🎯 테스트 メッセージ"}
         json_file = tmp_path / "unicode.json"
-        json_file.write_text(json.dumps(test_data, ensure_ascii=False), encoding='utf-8')
+        json_file.write_text(json.dumps(test_data, ensure_ascii=False), encoding="utf-8")
 
         result = JSONUtils.safe_json_load_file(json_file)
 
@@ -301,16 +289,7 @@ class TestWriteJsonToFile:
 
     def test_write_json_to_file_complex_structure(self, tmp_path):
         """Write complex nested structure to file"""
-        data = {
-            "nested": {
-                "deep": {
-                    "value": "test"
-                }
-            },
-            "list": [1, 2, 3, 4, 5],
-            "bool": True,
-            "null": None
-        }
+        data = {"nested": {"deep": {"value": "test"}}, "list": [1, 2, 3, 4, 5], "bool": True, "null": None}
         file_path = tmp_path / "complex.json"
 
         success = JSONUtils.write_json_to_file(data, file_path)
@@ -339,7 +318,7 @@ class TestWriteJsonToFile:
         success = JSONUtils.write_json_to_file(data, file_path)
 
         assert success is True
-        written_data = json.loads(file_path.read_text(encoding='utf-8'))
+        written_data = json.loads(file_path.read_text(encoding="utf-8"))
         assert written_data["message"] == "🎯 테스트 メッセージ"
 
     def test_write_json_to_file_overwrites_existing(self, tmp_path):
@@ -468,11 +447,7 @@ class TestGetNestedValue:
 
     def test_get_nested_value_missing_key_with_default(self, sample_json_data):
         """Get nonexistent key with custom default"""
-        value = JSONUtils.get_nested_value(
-            sample_json_data,
-            ["nonexistent"],
-            default="default_value"
-        )
+        value = JSONUtils.get_nested_value(sample_json_data, ["nonexistent"], default="default_value")
 
         assert value == "default_value"
 
@@ -533,18 +508,8 @@ class TestMergeJson:
 
     def test_merge_complex_structure(self):
         """Merge complex nested structures"""
-        base = {
-            "config": {
-                "debug": True,
-                "level": "info"
-            },
-            "name": "app"
-        }
-        updates = {
-            "config": {
-                "level": "debug"
-            }
-        }
+        base = {"config": {"debug": True, "level": "info"}, "name": "app"}
+        updates = {"config": {"level": "debug"}}
 
         result = JSONUtils.merge_json(base, updates)
 
@@ -574,20 +539,14 @@ class TestCreateStandardResponse:
 
     def test_create_error_response(self):
         """Create error response"""
-        response = JSONUtils.create_standard_response(
-            success=False,
-            error="Something went wrong"
-        )
+        response = JSONUtils.create_standard_response(success=False, error="Something went wrong")
 
         assert response["success"] is False
         assert response["error"] == "Something went wrong"
 
     def test_create_response_with_message(self):
         """Create response with message"""
-        response = JSONUtils.create_standard_response(
-            success=True,
-            message="Operation completed"
-        )
+        response = JSONUtils.create_standard_response(success=True, message="Operation completed")
 
         assert response["success"] is True
         assert response["message"] == "Operation completed"
@@ -595,10 +554,7 @@ class TestCreateStandardResponse:
     def test_create_response_with_data(self):
         """Create response with data payload"""
         data = {"user_id": 123, "username": "test"}
-        response = JSONUtils.create_standard_response(
-            success=True,
-            data=data
-        )
+        response = JSONUtils.create_standard_response(success=True, data=data)
 
         assert response["success"] is True
         assert response["data"] == data
@@ -606,10 +562,7 @@ class TestCreateStandardResponse:
     def test_create_response_all_fields(self):
         """Create response with all fields"""
         response = JSONUtils.create_standard_response(
-            success=False,
-            message="Operation failed",
-            error="Database error",
-            data={"retry_after": 60}
+            success=False, message="Operation failed", error="Database error", data={"retry_after": 60}
         )
 
         assert response["success"] is False
@@ -625,12 +578,7 @@ class TestCreateStandardResponse:
 
     def test_create_response_empty_optional_fields(self):
         """Create response omits empty optional fields"""
-        response = JSONUtils.create_standard_response(
-            success=True,
-            message=None,
-            error=None,
-            data=None
-        )
+        response = JSONUtils.create_standard_response(success=True, message=None, error=None, data=None)
 
         assert response == {"success": True}
 
@@ -744,13 +692,7 @@ class TestJSONSchemas:
 
     def test_validate_config_schema_with_tags(self):
         """Validate config with tags"""
-        data = {
-            "tags": {
-                "policy": {
-                    "enforcement_mode": "strict"
-                }
-            }
-        }
+        data = {"tags": {"policy": {"enforcement_mode": "strict"}}}
 
         result = JSONSchemas.validate_config_schema(data)
 
@@ -774,13 +716,7 @@ class TestJsonUtilsIntegration:
 
     def test_write_read_roundtrip(self, tmp_path):
         """Write and read JSON file roundtrip"""
-        original_data = {
-            "name": "test",
-            "config": {
-                "enabled": True,
-                "count": 42
-            }
-        }
+        original_data = {"name": "test", "config": {"enabled": True, "count": 42}}
         file_path = tmp_path / "roundtrip.json"
 
         # Write
@@ -809,11 +745,7 @@ class TestJsonUtilsIntegration:
 
     def test_standard_response_roundtrip(self, tmp_path):
         """Create response, write, and read"""
-        response = JSONUtils.create_standard_response(
-            success=True,
-            message="Test message",
-            data={"id": 123}
-        )
+        response = JSONUtils.create_standard_response(success=True, message="Test message", data={"id": 123})
 
         file_path = tmp_path / "response.json"
         write_success = JSONUtils.write_json_to_file(response, file_path)

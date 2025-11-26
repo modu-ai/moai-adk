@@ -46,18 +46,21 @@ class NanoBananaImageGenerator:
     """
 
     # Supported models (gemini-3-pro-image-preview only)
-    MODELS = {
-        "pro": "gemini-3-pro-image-preview"     # High quality 4K (Nano Banana Pro)
-    }
+    MODELS = {"pro": "gemini-3-pro-image-preview"}  # High quality 4K (Nano Banana Pro)
 
     # Supported aspect ratios (11 options)
     ASPECT_RATIOS = [
-        "1:1",      # Square
-        "2:3", "3:2",  # Portrait/Landscape
-        "3:4", "4:3",  # Standard
-        "4:5", "5:4",  # Instagram
-        "9:16", "16:9",  # Mobile/Wide
-        "21:9", "9:21"  # Ultra wide
+        "1:1",  # Square
+        "2:3",
+        "3:2",  # Portrait/Landscape
+        "3:4",
+        "4:3",  # Standard
+        "4:5",
+        "5:4",  # Instagram
+        "9:16",
+        "16:9",  # Mobile/Wide
+        "21:9",
+        "9:21",  # Ultra wide
     ]
 
     # Default configuration
@@ -65,7 +68,7 @@ class NanoBananaImageGenerator:
         "model": "pro",  # gemini-3-pro-image-preview
         "aspect_ratio": "16:9",
         "max_retries": 3,
-        "timeout": 60
+        "timeout": 60,
     }
 
     def __init__(self, api_key: Optional[str] = None):
@@ -94,11 +97,7 @@ class NanoBananaImageGenerator:
         logger.info("Nano Banana Image Generator initialized")
 
     def generate(
-        self,
-        prompt: str,
-        model: str = "pro",
-        aspect_ratio: str = "16:9",
-        save_path: Optional[str] = None
+        self, prompt: str, model: str = "pro", aspect_ratio: str = "16:9", save_path: Optional[str] = None
     ) -> Tuple[Any, Dict[str, Any]]:
         """
         Generate Text-to-Image
@@ -160,11 +159,12 @@ class NanoBananaImageGenerator:
             description = ""
 
             for part in response.parts:
-                if hasattr(part, 'text') and part.text:
+                if hasattr(part, "text") and part.text:
                     description = part.text
-                elif hasattr(part, 'inline_data') and part.inline_data:
+                elif hasattr(part, "inline_data") and part.inline_data:
                     # inline_data.data is already bytes type (no base64 decoding needed)
                     from PIL import Image
+
                     image_data = part.inline_data.data
                     if isinstance(image_data, str):
                         # If string, decode base64
@@ -179,8 +179,8 @@ class NanoBananaImageGenerator:
 
             # Build metadata
             tokens_used = 0
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                tokens_used = getattr(response.usage_metadata, 'total_token_count', 0)
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                tokens_used = getattr(response.usage_metadata, "total_token_count", 0)
 
             metadata = {
                 "timestamp": datetime.now().isoformat(),
@@ -189,7 +189,7 @@ class NanoBananaImageGenerator:
                 "aspect_ratio": aspect_ratio,
                 "prompt": prompt,
                 "description": description,
-                "tokens_used": tokens_used
+                "tokens_used": tokens_used,
             }
 
             # Save
@@ -233,7 +233,7 @@ class NanoBananaImageGenerator:
         instruction: str,
         model: str = "pro",
         aspect_ratio: str = "16:9",
-        save_path: Optional[str] = None
+        save_path: Optional[str] = None,
     ) -> Tuple[Any, Dict[str, Any]]:
         """
         Image-to-Image editing
@@ -264,6 +264,7 @@ class NanoBananaImageGenerator:
             raise FileNotFoundError(f"Image not found: {image_path}")
 
         from PIL import Image
+
         Image.open(image_path)
         original_path = str(Path(image_path).resolve())
 
@@ -289,7 +290,7 @@ class NanoBananaImageGenerator:
                 ".jpg": "image/jpeg",
                 ".jpeg": "image/jpeg",
                 ".webp": "image/webp",
-                ".gif": "image/gif"
+                ".gif": "image/gif",
             }
             mime_type = mime_type_map.get(ext, "image/png")
 
@@ -306,10 +307,7 @@ class NanoBananaImageGenerator:
                 model=model_name,
                 contents=[
                     types.Part.from_text(instruction),
-                    types.Part.from_bytes(
-                        data=base64.b64decode(image_data),
-                        mime_type=mime_type
-                    )
+                    types.Part.from_bytes(data=base64.b64decode(image_data), mime_type=mime_type),
                 ],
                 config=config,
             )
@@ -319,9 +317,9 @@ class NanoBananaImageGenerator:
             description = ""
 
             for part in response.parts:
-                if hasattr(part, 'text') and part.text:
+                if hasattr(part, "text") and part.text:
                     description = part.text
-                elif hasattr(part, 'inline_data') and part.inline_data:
+                elif hasattr(part, "inline_data") and part.inline_data:
                     # inline_data.data is already bytes type
                     image_data = part.inline_data.data
                     if isinstance(image_data, str):
@@ -335,8 +333,8 @@ class NanoBananaImageGenerator:
 
             # Metadata
             tokens_used = 0
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                tokens_used = getattr(response.usage_metadata, 'total_token_count', 0)
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                tokens_used = getattr(response.usage_metadata, "total_token_count", 0)
 
             metadata = {
                 "timestamp": datetime.now().isoformat(),
@@ -347,7 +345,7 @@ class NanoBananaImageGenerator:
                 "aspect_ratio": aspect_ratio,
                 "instruction": instruction,
                 "description": description,
-                "tokens_used": tokens_used
+                "tokens_used": tokens_used,
             }
 
             # Save
@@ -370,11 +368,7 @@ class NanoBananaImageGenerator:
             raise
 
     def batch_generate(
-        self,
-        prompts: List[str],
-        output_dir: str = "outputs",
-        model: str = "pro",
-        **kwargs
+        self, prompts: List[str], output_dir: str = "outputs", model: str = "pro", **kwargs
     ) -> List[Dict[str, Any]]:
         """
         Batch image generation
@@ -412,12 +406,7 @@ class NanoBananaImageGenerator:
                 print(f"\n[{i}/{len(prompts)}] Generating: {prompt[:40]}...")
 
                 filename = f"{output_dir}/image_{i:03d}.png"
-                image, metadata = self.generate(
-                    prompt,
-                    model=model,
-                    save_path=filename,
-                    **kwargs
-                )
+                image, metadata = self.generate(prompt, model=model, save_path=filename, **kwargs)
 
                 metadata["success"] = True
                 results.append(metadata)
@@ -428,11 +417,7 @@ class NanoBananaImageGenerator:
 
             except Exception as e:
                 print(f"❌ Failed: {e}")
-                results.append({
-                    "prompt": prompt,
-                    "success": False,
-                    "error": str(e)
-                })
+                results.append({"prompt": prompt, "success": False, "error": str(e)})
 
         print(f"\n{'='*70}")
         print("📊 Batch generation completed")
@@ -446,15 +431,11 @@ class NanoBananaImageGenerator:
     def _validate_params(model: str, aspect_ratio: str) -> None:
         """Validate parameters"""
         if model not in NanoBananaImageGenerator.MODELS:
-            raise ValueError(
-                f"Invalid model: {model}. "
-                f"Supported: {list(NanoBananaImageGenerator.MODELS.keys())}"
-            )
+            raise ValueError(f"Invalid model: {model}. " f"Supported: {list(NanoBananaImageGenerator.MODELS.keys())}")
 
         if aspect_ratio not in NanoBananaImageGenerator.ASPECT_RATIOS:
             raise ValueError(
-                f"Invalid aspect ratio: {aspect_ratio}. "
-                f"Supported: {NanoBananaImageGenerator.ASPECT_RATIOS}"
+                f"Invalid aspect ratio: {aspect_ratio}. " f"Supported: {NanoBananaImageGenerator.ASPECT_RATIOS}"
             )
 
     @staticmethod
@@ -487,22 +468,19 @@ if __name__ == "__main__":
     image, metadata = generator.generate(
         "A serene mountain landscape at golden hour with snow-capped peaks",
         aspect_ratio="16:9",
-        save_path="test_output/example_1.png"
+        save_path="test_output/example_1.png",
     )
 
     # Example 2: Image editing
     print("\n🔹 Example 2: Image editing")
     # First generate base image
-    image2, _ = generator.generate(
-        "A cat sitting on a chair",
-        save_path="test_output/cat_original.png"
-    )
+    image2, _ = generator.generate("A cat sitting on a chair", save_path="test_output/cat_original.png")
 
     # Edit that image
     edited, metadata2 = generator.edit(
         "test_output/cat_original.png",
         "Make the cat wear a wizard hat with magical sparkles",
-        save_path="test_output/cat_wizard.png"
+        save_path="test_output/cat_wizard.png",
     )
 
     print("\n✅ All examples completed!")

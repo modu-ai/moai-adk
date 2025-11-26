@@ -18,9 +18,7 @@ from pathlib import Path
 import pytest
 
 # Skip - outdated test using 'alfred' hook structure
-pytestmark = pytest.mark.skip(
-    reason="Outdated test - expects 'alfred' hook folder (moved to moai)"
-)
+pytestmark = pytest.mark.skip(reason="Outdated test - expects 'alfred' hook folder (moved to moai)")
 
 
 class TestUserPromptHookIntegration:
@@ -66,9 +64,7 @@ class TestUserPromptHookIntegration:
         ]:
             skill_dir = self.skills_dir / skill_name
             skill_dir.mkdir(exist_ok=True)
-            (skill_dir / "reference.md").write_text(
-                f"# {skill_name} Reference\n\nMock skill documentation."
-            )
+            (skill_dir / "reference.md").write_text(f"# {skill_name} Reference\n\nMock skill documentation.")
 
         # Mock project files
         (self.temp_dir / "src").mkdir()
@@ -177,10 +173,7 @@ class TestUserPromptHookIntegration:
 
         # Should detect frontend development intent
         if additional_context:
-            assert (
-                "frontend" in additional_context.lower()
-                or "ui" in additional_context.lower()
-            )
+            assert "frontend" in additional_context.lower() or "ui" in additional_context.lower()
 
     def test_hook_with_general_prompt(self):
         """일반 프롬프트에 대한 Hook 테스트 (에이전트 위임 없음)"""
@@ -300,9 +293,7 @@ class TestHookPerformanceAndScalability:
         self.moai_dir = self.temp_dir / ".moai"
         self.moai_dir.mkdir(parents=True, exist_ok=True)
         config_file = self.moai_dir / "config.json"
-        config_file.write_text(
-            json.dumps({"language": {"conversation_language": "ko"}})
-        )
+        config_file.write_text(json.dumps({"language": {"conversation_language": "ko"}}))
 
     def test_hook_execution_time(self):
         """Hook 실행 시간 테스트"""

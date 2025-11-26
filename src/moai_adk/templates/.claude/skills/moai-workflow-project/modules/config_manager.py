@@ -16,12 +16,14 @@ from typing import Any, Dict, List, Optional, Union
 
 try:
     import yaml
+
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
 
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -34,28 +36,27 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConfigMetadata:
     """Configuration metadata tracking."""
+
     created_at: str
     updated_at: str
     migration_history: List[Dict[str, Any]]
 
     @classmethod
-    def create_new(cls) -> 'ConfigMetadata':
+    def create_new(cls) -> "ConfigMetadata":
         """Create new metadata with current timestamp."""
-        now = datetime.utcnow().isoformat() + 'Z'
-        return cls(
-            created_at=now,
-            updated_at=now,
-            migration_history=[]
-        )
+        now = datetime.utcnow().isoformat() + "Z"
+        return cls(created_at=now, updated_at=now, migration_history=[])
 
 
 class ValidationError(Exception):
     """Configuration validation error."""
+
     pass
 
 
 class MigrationError(Exception):
     """Configuration migration error."""
+
     pass
 
 
@@ -105,7 +106,7 @@ class UnifiedConfigManager:
             return
 
         try:
-            with open(self.schema_path, 'r', encoding='utf-8') as f:
+            with open(self.schema_path, "r", encoding="utf-8") as f:
                 self._schema_cache = json.load(f)
             logger.info(f"Schema loaded from {self.schema_path}")
         except Exception as e:
@@ -147,8 +148,8 @@ class UnifiedConfigManager:
             return config
 
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                if self.config_path.suffix.lower() in ['.yml', '.yaml']:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                if self.config_path.suffix.lower() in [".yml", ".yaml"]:
                     if not HAS_YAML:
                         raise ImportError("PyYAML is required for YAML configuration files")
                     config = yaml.safe_load(f)
@@ -190,13 +191,13 @@ class UnifiedConfigManager:
             self._create_backup()
 
         # Ensure config has version
-        if 'version' not in config:
-            config['version'] = '1.0.0'
+        if "version" not in config:
+            config["version"] = "1.0.0"
 
         try:
             # Save with atomic write
-            temp_path = self.config_path.with_suffix('.tmp')
-            with open(temp_path, 'w', encoding='utf-8') as f:
+            temp_path = self.config_path.with_suffix(".tmp")
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
             # Atomic replace
@@ -224,21 +225,17 @@ class UnifiedConfigManager:
 
     def _create_default_config(self) -> Dict[str, Any]:
         """Create default configuration."""
-        now = datetime.utcnow().isoformat() + 'Z'
+        now = datetime.utcnow().isoformat() + "Z"
 
         return {
             "version": "1.0.0",
-            "metadata": {
-                "created_at": now,
-                "updated_at": now,
-                "migration_history": []
-            },
+            "metadata": {"created_at": now, "updated_at": now, "migration_history": []},
             "project_settings": {
                 "name": "MoAI Menu Project",
                 "type": "web",
                 "description": "Menu project management system",
                 "author": "MoAI Team",
-                "license": "MIT"
+                "license": "MIT",
             },
             "batch_questions": {
                 "enabled": True,
@@ -246,11 +243,7 @@ class UnifiedConfigManager:
                 "timeout_seconds": 300,
                 "retry_attempts": 3,
                 "output_format": "json",
-                "caching": {
-                    "enabled": True,
-                    "ttl_hours": 24,
-                    "max_cache_size_mb": 100
-                }
+                "caching": {"enabled": True, "ttl_hours": 24, "max_cache_size_mb": 100},
             },
             "documentation": {
                 "auto_generate": True,
@@ -258,52 +251,36 @@ class UnifiedConfigManager:
                 "include_api_docs": True,
                 "include_examples": True,
                 "template_engine": "jinja2",
-                "output_directory": "docs"
+                "output_directory": "docs",
             },
             "language_config": {
                 "default_language": "en",
                 "supported_languages": ["en", "ko", "ja", "zh"],
                 "auto_detect": True,
                 "fallback_language": "en",
-                "translation_service": {
-                    "provider": "local",
-                    "cache_enabled": True
-                }
+                "translation_service": {"provider": "local", "cache_enabled": True},
             },
             "template_optimizer": {
                 "enabled": True,
                 "optimization_level": "basic",
                 "minification": False,
-                "caching": {
-                    "enabled": True,
-                    "strategy": "memory",
-                    "ttl_minutes": 60
-                },
-                "validation": {
-                    "strict_mode": False,
-                    "check_syntax": True,
-                    "check_security": True
-                }
+                "caching": {"enabled": True, "strategy": "memory", "ttl_minutes": 60},
+                "validation": {"strict_mode": False, "check_syntax": True, "check_security": True},
             },
             "project_initializer": {
                 "auto_dependencies": True,
                 "git_init": True,
                 "create_virtual_env": True,
-                "package_managers": {
-                    "python": {
-                        "enabled": True,
-                        "tool": "pip"
-                    }
-                }
-            }
+                "package_managers": {"python": {"enabled": True, "tool": "pip"}},
+            },
         }
 
     def _update_metadata(self, config: Dict[str, Any]) -> None:
         """Update configuration metadata."""
-        if 'metadata' not in config:
-            config['metadata'] = ConfigMetadata.create_new().__dict__
+        if "metadata" not in config:
+            config["metadata"] = ConfigMetadata.create_new().__dict__
 
-        config['metadata']['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+        config["metadata"]["updated_at"] = datetime.utcnow().isoformat() + "Z"
 
     def _create_backup(self) -> None:
         """Create backup of current configuration."""
@@ -366,7 +343,7 @@ class UnifiedConfigManager:
             target_version: Target version to migrate to
         """
         config = self.load_config()
-        current_version = config.get('version', '1.0.0')
+        current_version = config.get("version", "1.0.0")
 
         if current_version == target_version:
             logger.info("Configuration already at target version")
@@ -376,15 +353,15 @@ class UnifiedConfigManager:
         migration_record = {
             "from_version": current_version,
             "to_version": target_version,
-            "timestamp": datetime.utcnow().isoformat() + 'Z',
-            "description": f"Migrated from {current_version} to {target_version}"
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "description": f"Migrated from {current_version} to {target_version}",
         }
 
-        if 'metadata' not in config:
-            config['metadata'] = ConfigMetadata.create_new().__dict__
+        if "metadata" not in config:
+            config["metadata"] = ConfigMetadata.create_new().__dict__
 
-        config['metadata']['migration_history'].append(migration_record)
-        config['version'] = target_version
+        config["metadata"]["migration_history"].append(migration_record)
+        config["version"] = target_version
 
         # Perform actual migration logic here
         # This would be version-specific
@@ -433,19 +410,19 @@ class BatchQuestionsConfigManager:
 
     def get_config(self) -> Dict[str, Any]:
         """Get batch questions configuration."""
-        return self.config_manager.get_module_config('batch_questions')
+        return self.config_manager.get_module_config("batch_questions")
 
     def update_config(self, updates: Dict[str, Any]) -> None:
         """Update batch questions configuration."""
-        self.config_manager.update_module_config('batch_questions', updates)
+        self.config_manager.update_module_config("batch_questions", updates)
 
     def is_enabled(self) -> bool:
         """Check if batch questions is enabled."""
-        return self.get_config().get('enabled', True)
+        return self.get_config().get("enabled", True)
 
     def get_max_questions(self) -> int:
         """Get maximum questions limit."""
-        return self.get_config().get('max_questions', 50)
+        return self.get_config().get("max_questions", 50)
 
 
 class DocumentationConfigManager:
@@ -456,15 +433,15 @@ class DocumentationConfigManager:
 
     def get_config(self) -> Dict[str, Any]:
         """Get documentation configuration."""
-        return self.config_manager.get_module_config('documentation')
+        return self.config_manager.get_module_config("documentation")
 
     def update_config(self, updates: Dict[str, Any]) -> None:
         """Update documentation configuration."""
-        self.config_manager.update_module_config('documentation', updates)
+        self.config_manager.update_module_config("documentation", updates)
 
     def should_auto_generate(self) -> bool:
         """Check if auto-generation is enabled."""
-        return self.get_config().get('auto_generate', True)
+        return self.get_config().get("auto_generate", True)
 
 
 class LanguageConfigManager:
@@ -475,19 +452,19 @@ class LanguageConfigManager:
 
     def get_config(self) -> Dict[str, Any]:
         """Get language configuration."""
-        return self.config_manager.get_module_config('language_config')
+        return self.config_manager.get_module_config("language_config")
 
     def update_config(self, updates: Dict[str, Any]) -> None:
         """Update language configuration."""
-        self.config_manager.update_module_config('language_config', updates)
+        self.config_manager.update_module_config("language_config", updates)
 
     def get_default_language(self) -> str:
         """Get default language."""
-        return self.get_config().get('default_language', 'en')
+        return self.get_config().get("default_language", "en")
 
     def get_supported_languages(self) -> List[str]:
         """Get list of supported languages."""
-        return self.get_config().get('supported_languages', ['en'])
+        return self.get_config().get("supported_languages", ["en"])
 
 
 class TemplateOptimizerConfigManager:
@@ -498,15 +475,15 @@ class TemplateOptimizerConfigManager:
 
     def get_config(self) -> Dict[str, Any]:
         """Get template optimizer configuration."""
-        return self.config_manager.get_module_config('template_optimizer')
+        return self.config_manager.get_module_config("template_optimizer")
 
     def update_config(self, updates: Dict[str, Any]) -> None:
         """Update template optimizer configuration."""
-        self.config_manager.update_module_config('template_optimizer', updates)
+        self.config_manager.update_module_config("template_optimizer", updates)
 
     def get_optimization_level(self) -> str:
         """Get optimization level."""
-        return self.get_config().get('optimization_level', 'basic')
+        return self.get_config().get("optimization_level", "basic")
 
 
 class ProjectInitializerConfigManager:
@@ -517,15 +494,15 @@ class ProjectInitializerConfigManager:
 
     def get_config(self) -> Dict[str, Any]:
         """Get project initializer configuration."""
-        return self.config_manager.get_module_config('project_initializer')
+        return self.config_manager.get_module_config("project_initializer")
 
     def update_config(self, updates: Dict[str, Any]) -> None:
         """Update project initializer configuration."""
-        self.config_manager.update_module_config('project_initializer', updates)
+        self.config_manager.update_module_config("project_initializer", updates)
 
     def should_auto_dependencies(self) -> bool:
         """Check if auto-dependency installation is enabled."""
-        return self.get_config().get('auto_dependencies', True)
+        return self.get_config().get("auto_dependencies", True)
 
 
 # Factory function

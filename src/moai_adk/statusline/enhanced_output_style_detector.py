@@ -149,10 +149,7 @@ class OutputStyleDetector:
                 yoda_files = list(moai_dir.rglob("*yoda*"))
                 if yoda_files:
                     # Check if any Yoda files are recently modified
-                    recent_yoda = any(
-                        f.stat().st_mtime > (time.time() - 300)  # Last 5 minutes
-                        for f in yoda_files
-                    )
+                    recent_yoda = any(f.stat().st_mtime > (time.time() - 300) for f in yoda_files)  # Last 5 minutes
                     if recent_yoda:
                         return "🧙 Yoda Master"
 

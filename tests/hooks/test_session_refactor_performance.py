@@ -30,11 +30,13 @@ class TestSessionStartPerformance:
 
             config_file = config_dir / "config.json"
             config_file.write_text(
-                json.dumps({
-                    "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
-                    "auto_cleanup": {"enabled": True, "cleanup_days": 7},
-                    "daily_analysis": {"enabled": True}
-                })
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": True, "cleanup_days": 7},
+                        "daily_analysis": {"enabled": True},
+                    }
+                )
             )
 
             # Measure load_config execution time
@@ -78,9 +80,7 @@ class TestSessionStartPerformance:
             "total_sessions": 10,
             "date_range": "2025-11-14 ~ 2025-11-19",
             "tools_used": {"Read": 50, "Bash": 30, "Write": 20},
-            "errors_found": [
-                {"timestamp": "2025-11-19T10:00:00", "error": "Test error"}
-            ],
+            "errors_found": [{"timestamp": "2025-11-19T10:00:00", "error": "Test error"}],
             "duration_stats": {
                 "mean": 300,
                 "min": 100,
@@ -112,11 +112,13 @@ class TestSessionStartPerformance:
 
             config_file = config_dir / "config.json"
             config_file.write_text(
-                json.dumps({
-                    "hooks": {"timeout_ms": 3000},
-                    "auto_cleanup": {"enabled": False},  # Disable for speed
-                    "daily_analysis": {"enabled": False}  # Disable for speed
-                })
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000},
+                        "auto_cleanup": {"enabled": False},  # Disable for speed
+                        "daily_analysis": {"enabled": False},  # Disable for speed
+                    }
+                )
             )
 
             from moai_adk.hooks.session_start import (
@@ -204,7 +206,6 @@ class TestSessionStartLoadingCharacteristics:
     def test_logging_overhead(self):
         """Verify logging doesn't add significant overhead"""
         import logging
-
 
         logger = logging.getLogger("moai_adk.hooks.session_start.state_cleanup")
         logger.setLevel(logging.WARNING)  # Reduce noise

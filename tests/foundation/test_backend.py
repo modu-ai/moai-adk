@@ -103,11 +103,7 @@ class TestAPIDesignValidator:
 
     def test_validate_rest_endpoint_valid_get(self, validator):
         """Test valid GET endpoint."""
-        result = validator.validate_rest_endpoint({
-            "method": "GET",
-            "path": "/api/v1/users",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "GET", "path": "/api/v1/users", "status_code": 200})
         assert result["valid"] is True
         assert result["method"] == "GET"
         assert result["status_code"] == 200
@@ -115,11 +111,7 @@ class TestAPIDesignValidator:
 
     def test_validate_rest_endpoint_valid_post(self, validator):
         """Test valid POST endpoint returns 201."""
-        result = validator.validate_rest_endpoint({
-            "method": "POST",
-            "path": "/api/v1/users",
-            "status_code": 201
-        })
+        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/v1/users", "status_code": 201})
         assert result["valid"] is True
         assert result["method"] == "POST"
         assert result["status_code"] == 201
@@ -127,121 +119,75 @@ class TestAPIDesignValidator:
 
     def test_validate_rest_endpoint_valid_delete(self, validator):
         """Test valid DELETE endpoint returns 204."""
-        result = validator.validate_rest_endpoint({
-            "method": "DELETE",
-            "path": "/api/v1/users/123",
-            "status_code": 204
-        })
+        result = validator.validate_rest_endpoint({"method": "DELETE", "path": "/api/v1/users/123", "status_code": 204})
         assert result["valid"] is True
         assert result["method"] == "DELETE"
         assert result["status_code"] == 204
 
     def test_validate_rest_endpoint_valid_put(self, validator):
         """Test valid PUT endpoint returns 200."""
-        result = validator.validate_rest_endpoint({
-            "method": "PUT",
-            "path": "/api/v1/users/123",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "PUT", "path": "/api/v1/users/123", "status_code": 200})
         assert result["valid"] is True
         assert result["method"] == "PUT"
 
     def test_validate_rest_endpoint_valid_patch(self, validator):
         """Test valid PATCH endpoint returns 200."""
-        result = validator.validate_rest_endpoint({
-            "method": "PATCH",
-            "path": "/api/v1/users/123",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "PATCH", "path": "/api/v1/users/123", "status_code": 200})
         assert result["valid"] is True
         assert result["method"] == "PATCH"
 
     def test_validate_rest_endpoint_invalid_http_method(self, validator):
         """Test invalid HTTP method."""
-        result = validator.validate_rest_endpoint({
-            "method": "INVALID",
-            "path": "/api/v1/users",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "INVALID", "path": "/api/v1/users", "status_code": 200})
         assert result["valid"] is False
         assert "Invalid HTTP method" in result["errors"][0]
 
     def test_validate_rest_endpoint_invalid_path_no_slash(self, validator):
         """Test path without leading slash."""
-        result = validator.validate_rest_endpoint({
-            "method": "GET",
-            "path": "api/v1/users",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "GET", "path": "api/v1/users", "status_code": 200})
         assert result["valid"] is False
         assert "must start with '/'" in result["errors"][0]
 
     def test_validate_rest_endpoint_invalid_path_empty(self, validator):
         """Test empty path."""
-        result = validator.validate_rest_endpoint({
-            "method": "GET",
-            "path": "",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "GET", "path": "", "status_code": 200})
         assert result["valid"] is False
         assert "must start with '/'" in result["errors"][0]
 
     def test_validate_rest_endpoint_invalid_status_code(self, validator):
         """Test invalid status code."""
-        result = validator.validate_rest_endpoint({
-            "method": "GET",
-            "path": "/api/v1/users",
-            "status_code": 999
-        })
+        result = validator.validate_rest_endpoint({"method": "GET", "path": "/api/v1/users", "status_code": 999})
         assert result["valid"] is False
         assert "Invalid status code" in result["errors"][0]
 
     def test_validate_rest_endpoint_post_returns_200_not_201(self, validator):
         """Test POST endpoint with wrong status code."""
-        result = validator.validate_rest_endpoint({
-            "method": "POST",
-            "path": "/api/v1/users",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/v1/users", "status_code": 200})
         assert result["valid"] is False
         assert "not allowed for POST" in result["errors"][0]
 
     def test_validate_rest_endpoint_delete_returns_200_not_204(self, validator):
         """Test DELETE endpoint with wrong status code."""
-        result = validator.validate_rest_endpoint({
-            "method": "DELETE",
-            "path": "/api/v1/users/123",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "DELETE", "path": "/api/v1/users/123", "status_code": 200})
         assert result["valid"] is False
         assert "not allowed for DELETE" in result["errors"][0]
 
     def test_validate_rest_endpoint_get_returns_206_partial_content(self, validator):
         """Test GET endpoint with 206 Partial Content."""
-        result = validator.validate_rest_endpoint({
-            "method": "GET",
-            "path": "/api/v1/files/download",
-            "status_code": 206
-        })
+        result = validator.validate_rest_endpoint(
+            {"method": "GET", "path": "/api/v1/files/download", "status_code": 206}
+        )
         assert result["valid"] is True
 
     def test_validate_rest_endpoint_lowercase_method(self, validator):
         """Test lowercase HTTP method is normalized."""
-        result = validator.validate_rest_endpoint({
-            "method": "get",
-            "path": "/api/v1/users",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "get", "path": "/api/v1/users", "status_code": 200})
         assert result["valid"] is True
         assert result["method"] == "GET"
 
     def test_validate_rest_endpoint_multiple_errors(self, validator):
         """Test endpoint with multiple validation errors."""
-        result = validator.validate_rest_endpoint({
-            "method": "INVALID",
-            "path": "no-slash",
-            "status_code": 999
-        })
+        result = validator.validate_rest_endpoint({"method": "INVALID", "path": "no-slash", "status_code": 999})
         assert result["valid"] is False
         assert len(result["errors"]) >= 3
 
@@ -288,7 +234,7 @@ class TestAPIDesignValidator:
             "message": "Invalid input",
             "status_code": 400,
             "details": {"field": "email"},
-            "path": "/api/v1/users"
+            "path": "/api/v1/users",
         }
         response = validator.standardize_error_response(error)
 
@@ -354,11 +300,7 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_valid(self, architect):
         """Test valid service boundary."""
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"]
-        }
+        service = {"name": "user-service", "domain": "auth", "endpoints": ["/api/v1/users"]}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is True
@@ -368,11 +310,7 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_invalid_name_no_hyphen(self, architect):
         """Test service name without hyphen."""
-        service = {
-            "name": "userservice",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"]
-        }
+        service = {"name": "userservice", "domain": "auth", "endpoints": ["/api/v1/users"]}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
@@ -380,21 +318,14 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_invalid_name_empty(self, architect):
         """Test empty service name."""
-        service = {
-            "name": "",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"]
-        }
+        service = {"name": "", "domain": "auth", "endpoints": ["/api/v1/users"]}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
 
     def test_validate_service_boundary_missing_domain(self, architect):
         """Test service without domain."""
-        service = {
-            "name": "user-service",
-            "endpoints": ["/api/v1/users"]
-        }
+        service = {"name": "user-service", "endpoints": ["/api/v1/users"]}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
@@ -402,11 +333,7 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_missing_endpoints(self, architect):
         """Test service without endpoints."""
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": []
-        }
+        service = {"name": "user-service", "domain": "auth", "endpoints": []}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
@@ -414,11 +341,7 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_stores_service(self, architect):
         """Test validated service is stored."""
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"]
-        }
+        service = {"name": "user-service", "domain": "auth", "endpoints": ["/api/v1/users"]}
         architect.validate_service_boundary(service)
 
         assert "user-service" in architect.services
@@ -430,11 +353,9 @@ class TestMicroserviceArchitect:
 
     def test_get_communication_pattern_rest(self, architect):
         """Test REST communication pattern."""
-        pattern = architect.get_communication_pattern("rest", {
-            "source": "api-gateway",
-            "target": "user-service",
-            "operation": "query"
-        })
+        pattern = architect.get_communication_pattern(
+            "rest", {"source": "api-gateway", "target": "user-service", "operation": "query"}
+        )
 
         assert pattern["pattern"] == "rest"
         assert pattern["protocol"] == "HTTP/REST"
@@ -469,11 +390,9 @@ class TestMicroserviceArchitect:
 
     def test_configure_service_discovery_consul(self, architect):
         """Test Consul service discovery configuration."""
-        config = architect.configure_service_discovery("consul", {
-            "consul_host": "consul.local",
-            "consul_port": 8500,
-            "health_check_interval": 5
-        })
+        config = architect.configure_service_discovery(
+            "consul", {"consul_host": "consul.local", "consul_port": 8500, "health_check_interval": 5}
+        )
 
         assert config["registry"] == "consul"
         assert config["host"] == "consul.local"
@@ -483,10 +402,7 @@ class TestMicroserviceArchitect:
 
     def test_configure_service_discovery_eureka(self, architect):
         """Test Eureka service discovery configuration."""
-        config = architect.configure_service_discovery("eureka", {
-            "consul_host": "eureka.local",
-            "consul_port": 8761
-        })
+        config = architect.configure_service_discovery("eureka", {"consul_host": "eureka.local", "consul_port": 8761})
 
         assert config["registry"] == "eureka"
         assert config["health_check_enabled"] is True
@@ -508,9 +424,7 @@ class TestMicroserviceArchitect:
 
     def test_configure_service_discovery_deregister_after(self, architect):
         """Test deregister_critical_service_after configuration."""
-        config = architect.configure_service_discovery("consul", {
-            "deregister_critical_service_after": "60s"
-        })
+        config = architect.configure_service_discovery("consul", {"deregister_critical_service_after": "60s"})
 
         assert config["deregister_after"] == "60s"
 
@@ -539,6 +453,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_execute_concurrent_single_operation(self, advisor):
         """Test concurrent execution of single operation."""
+
         async def dummy_op():
             return "result"
 
@@ -548,6 +463,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_execute_concurrent_multiple_operations(self, advisor):
         """Test concurrent execution of multiple operations."""
+
         async def op1():
             return "result1"
 
@@ -566,6 +482,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_execute_concurrent_with_timeout_success(self, advisor):
         """Test concurrent execution completes within timeout."""
+
         async def quick_op():
             await asyncio.sleep(0.01)
             return "done"
@@ -576,6 +493,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_execute_concurrent_with_timeout_exceeds(self, advisor):
         """Test concurrent execution raises timeout error."""
+
         async def slow_op():
             await asyncio.sleep(1.0)
             return "done"
@@ -586,6 +504,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_execute_concurrent_timeout_cancels_tasks(self, advisor):
         """Test concurrent execution cancels remaining tasks on timeout."""
+
         async def slow_op():
             try:
                 await asyncio.sleep(2.0)
@@ -599,6 +518,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_execute_concurrent_without_timeout(self, advisor):
         """Test concurrent execution without timeout."""
+
         async def op():
             await asyncio.sleep(0.01)
             return "result"
@@ -613,6 +533,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_with_timeout_success(self, advisor):
         """Test operation completes within timeout."""
+
         async def quick_coro():
             await asyncio.sleep(0.01)
             return "success"
@@ -623,6 +544,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_with_timeout_exceeds(self, advisor):
         """Test operation exceeds timeout."""
+
         async def slow_coro():
             await asyncio.sleep(1.0)
             return "done"
@@ -685,6 +607,7 @@ class TestAsyncPatternAdvisor:
     @pytest.mark.asyncio
     async def test_async_retry_with_custom_backoff(self, advisor):
         """Test async retry with custom backoff factor."""
+
         @advisor.async_retry(max_attempts=2, backoff_factor=2.0)
         async def should_work_second_time():
             await asyncio.sleep(0.01)
@@ -742,11 +665,7 @@ class TestAuthenticationManager:
 
     def test_generate_jwt_token_with_multiple_claims(self, auth):
         """Test JWT token with multiple claims."""
-        claims = {
-            "sub": "user@example.com",
-            "name": "John Doe",
-            "email": "john@example.com"
-        }
+        claims = {"sub": "user@example.com", "name": "John Doe", "email": "john@example.com"}
         token = auth.generate_jwt_token(claims)
 
         assert isinstance(token, str)
@@ -791,11 +710,7 @@ class TestAuthenticationManager:
 
     def test_generate_oauth_auth_code(self, auth):
         """Test generate OAuth2 authorization code."""
-        params = {
-            "client_id": "client123",
-            "redirect_uri": "https://example.com/callback",
-            "state": "state123"
-        }
+        params = {"client_id": "client123", "redirect_uri": "https://example.com/callback", "state": "state123"}
         result = auth.generate_oauth_auth_code(params)
 
         assert "code" in result
@@ -828,20 +743,14 @@ class TestAuthenticationManager:
 
     def test_has_permission_granted(self, auth):
         """Test user has required permission."""
-        user = {
-            "id": "user1",
-            "permissions": ["read:posts", "write:posts"]
-        }
+        user = {"id": "user1", "permissions": ["read:posts", "write:posts"]}
 
         assert auth.has_permission(user, "read:posts") is True
         assert auth.has_permission(user, "write:posts") is True
 
     def test_has_permission_denied(self, auth):
         """Test user lacks required permission."""
-        user = {
-            "id": "user1",
-            "permissions": ["read:posts"]
-        }
+        user = {"id": "user1", "permissions": ["read:posts"]}
 
         assert auth.has_permission(user, "write:posts") is False
         assert auth.has_permission(user, "delete:posts") is False
@@ -854,10 +763,7 @@ class TestAuthenticationManager:
 
     def test_has_permission_empty_permissions(self, auth):
         """Test user with empty permissions list."""
-        user = {
-            "id": "user1",
-            "permissions": []
-        }
+        user = {"id": "user1", "permissions": []}
 
         assert auth.has_permission(user, "read:posts") is False
 
@@ -877,7 +783,7 @@ class TestErrorLog:
             message="Something went wrong",
             timestamp="2025-01-01T00:00:00Z",
             trace_id="trace-123",
-            context={"user_id": "user1"}
+            context={"user_id": "user1"},
         )
 
         assert log.level == "ERROR"
@@ -889,11 +795,7 @@ class TestErrorLog:
         """Test ErrorLog with different log levels."""
         for level in ["INFO", "WARNING", "ERROR", "CRITICAL"]:
             log = ErrorLog(
-                level=level,
-                message="Message",
-                timestamp="2025-01-01T00:00:00Z",
-                trace_id="trace-123",
-                context={}
+                level=level, message="Message", timestamp="2025-01-01T00:00:00Z", trace_id="trace-123", context={}
             )
             assert log.level == level
 
@@ -927,7 +829,7 @@ class TestErrorHandlingStrategy:
             "message": "Invalid email format",
             "status_code": 400,
             "details": {"field": "email"},
-            "path": "/api/v1/users"
+            "path": "/api/v1/users",
         }
 
         result = handler.handle_error(error)
@@ -941,11 +843,7 @@ class TestErrorHandlingStrategy:
 
     def test_handle_error_server_error(self, handler):
         """Test handle server error."""
-        error = {
-            "type": "InternalServerError",
-            "message": "Database connection failed",
-            "status_code": 500
-        }
+        error = {"type": "InternalServerError", "message": "Database connection failed", "status_code": 500}
 
         result = handler.handle_error(error)
 
@@ -978,11 +876,7 @@ class TestErrorHandlingStrategy:
 
     def test_log_with_context_info(self, handler):
         """Test log with INFO level."""
-        result = handler.log_with_context(
-            "INFO",
-            "User logged in",
-            {"user_id": "user1"}
-        )
+        result = handler.log_with_context("INFO", "User logged in", {"user_id": "user1"})
 
         assert result["level"] == "INFO"
         assert result["message"] == "User logged in"
@@ -991,11 +885,7 @@ class TestErrorHandlingStrategy:
 
     def test_log_with_context_error(self, handler):
         """Test log with ERROR level."""
-        result = handler.log_with_context(
-            "ERROR",
-            "Payment failed",
-            {"order_id": "order123"}
-        )
+        result = handler.log_with_context("ERROR", "Payment failed", {"order_id": "order123"})
 
         assert result["level"] == "ERROR"
         assert result["message"] == "Payment failed"
@@ -1027,7 +917,7 @@ class TestErrorHandlingStrategy:
         assert handler.logs[1].level == "WARNING"
         assert handler.logs[2].level == "ERROR"
 
-    @patch('src.moai_adk.foundation.backend.logger')
+    @patch("src.moai_adk.foundation.backend.logger")
     def test_log_with_context_calls_logger(self, mock_logger, handler):
         """Test log_with_context calls logger."""
         handler.log_with_context("INFO", "Test message")
@@ -1081,20 +971,14 @@ class TestPerformanceOptimizer:
 
     def test_configure_cache_with_key_pattern(self, optimizer):
         """Test cache configuration with key pattern."""
-        config = optimizer.configure_cache(
-            backend="redis",
-            key_pattern="user:{user_id}:posts"
-        )
+        config = optimizer.configure_cache(backend="redis", key_pattern="user:{user_id}:posts")
 
         assert config["key_pattern"] == "user:{user_id}:posts"
 
     def test_configure_cache_with_invalidation_triggers(self, optimizer):
         """Test cache configuration with invalidation triggers."""
         triggers = ["user_updated", "post_created"]
-        config = optimizer.configure_cache(
-            backend="redis",
-            invalidation_triggers=triggers
-        )
+        config = optimizer.configure_cache(backend="redis", invalidation_triggers=triggers)
 
         assert config["invalidation_triggers"] == triggers
 
@@ -1116,11 +1000,7 @@ class TestPerformanceOptimizer:
 
     def test_configure_rate_limit_basic(self, optimizer):
         """Test basic rate limit configuration."""
-        config = optimizer.configure_rate_limit(
-            requests_per_minute=100,
-            requests_per_hour=5000,
-            burst_size=20
-        )
+        config = optimizer.configure_rate_limit(requests_per_minute=100, requests_per_hour=5000, burst_size=20)
 
         assert config["requests_per_minute"] == 100
         assert config["requests_per_hour"] == 5000
@@ -1129,20 +1009,13 @@ class TestPerformanceOptimizer:
 
     def test_configure_rate_limit_custom_strategy(self, optimizer):
         """Test rate limit with custom strategy."""
-        config = optimizer.configure_rate_limit(
-            strategy="sliding_window",
-            requests_per_minute=150
-        )
+        config = optimizer.configure_rate_limit(strategy="sliding_window", requests_per_minute=150)
 
         assert config["strategy"] == "sliding_window"
 
     def test_configure_rate_limit_token_bucket(self, optimizer):
         """Test token bucket rate limiting."""
-        config = optimizer.configure_rate_limit(
-            strategy="token_bucket",
-            requests_per_minute=200,
-            burst_size=50
-        )
+        config = optimizer.configure_rate_limit(strategy="token_bucket", requests_per_minute=200, burst_size=50)
 
         assert config["strategy"] == "token_bucket"
         assert config["burst_size"] == 50
@@ -1205,7 +1078,7 @@ class TestRequestMetric:
             status_code=200,
             duration_ms=45.5,
             response_size_bytes=1024,
-            timestamp="2025-01-01T00:00:00Z"
+            timestamp="2025-01-01T00:00:00Z",
         )
 
         assert metric.path == "/api/v1/users"
@@ -1223,7 +1096,7 @@ class TestRequestMetric:
                 status_code=200,
                 duration_ms=10.0,
                 response_size_bytes=100,
-                timestamp="2025-01-01T00:00:00Z"
+                timestamp="2025-01-01T00:00:00Z",
             )
             assert metric.method == method
 
@@ -1252,12 +1125,7 @@ class TestBackendMetricsCollector:
 
     def test_record_request_metrics_basic(self, collector):
         """Test record basic request metrics."""
-        result = collector.record_request_metrics(
-            path="/api/v1/users",
-            method="GET",
-            status_code=200,
-            duration_ms=45.5
-        )
+        result = collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=200, duration_ms=45.5)
 
         assert result["path"] == "/api/v1/users"
         assert result["method"] == "GET"
@@ -1268,23 +1136,14 @@ class TestBackendMetricsCollector:
     def test_record_request_metrics_with_response_size(self, collector):
         """Test record metrics with response size."""
         result = collector.record_request_metrics(
-            path="/api/v1/users",
-            method="GET",
-            status_code=200,
-            duration_ms=50.0,
-            response_size_bytes=2048
+            path="/api/v1/users", method="GET", status_code=200, duration_ms=50.0, response_size_bytes=2048
         )
 
         assert result["response_size_bytes"] == 2048
 
     def test_record_request_metrics_stores_metric(self, collector):
         """Test recorded metric is stored."""
-        collector.record_request_metrics(
-            path="/api/v1/users",
-            method="GET",
-            status_code=200,
-            duration_ms=30.0
-        )
+        collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=200, duration_ms=30.0)
 
         assert len(collector.metrics) == 1
         assert collector.metrics[0].path == "/api/v1/users"
@@ -1299,12 +1158,7 @@ class TestBackendMetricsCollector:
 
     def test_record_request_metrics_tracks_errors(self, collector):
         """Test error metrics are tracked."""
-        collector.record_request_metrics(
-            path="/api/v1/users",
-            method="GET",
-            status_code=404,
-            duration_ms=20.0
-        )
+        collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=404, duration_ms=20.0)
 
         assert "/api/v1/users:404" in collector.error_counts
         assert collector.error_counts["/api/v1/users:404"] == 1
@@ -1525,19 +1379,17 @@ class TestBackendIntegration:
         handler = ErrorHandlingStrategy()
 
         # Validate invalid endpoint
-        result = validator.validate_rest_endpoint({
-            "method": "POST",
-            "path": "/api/v1/users",
-            "status_code": 200
-        })
+        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/v1/users", "status_code": 200})
 
         # Handle validation error
         if not result["valid"]:
-            error_response = handler.handle_error({
-                "type": "ValidationError",
-                "message": f"Endpoint validation failed: {result['errors']}",
-                "status_code": 400
-            })
+            error_response = handler.handle_error(
+                {
+                    "type": "ValidationError",
+                    "message": f"Endpoint validation failed: {result['errors']}",
+                    "status_code": 400,
+                }
+            )
 
             assert error_response["type"] == "ValidationError"
             assert error_response["status_code"] == 400
@@ -1548,19 +1400,12 @@ class TestBackendIntegration:
         auth = AuthenticationManager(secret_key="test-secret")
 
         # Validate service
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"]
-        }
+        service = {"name": "user-service", "domain": "auth", "endpoints": ["/api/v1/users"]}
         result = architect.validate_service_boundary(service)
         assert result["valid"] is True
 
         # Generate token for service communication
-        token = auth.generate_jwt_token({
-            "sub": "user-service",
-            "aud": "api-gateway"
-        })
+        token = auth.generate_jwt_token({"sub": "user-service", "aud": "api-gateway"})
 
         payload = auth.validate_jwt_token(token)
         assert payload["sub"] == "user-service"

@@ -15,7 +15,7 @@ class TestWorkflowSelection:
 
     def test_python_project_gets_python_workflow(self, tmp_path):
         """Test: Python project receives python-tag-validation.yml"""
-        (tmp_path / "pyproject.toml").write_text('[tool.poetry]')
+        (tmp_path / "pyproject.toml").write_text("[tool.poetry]")
         detector = LanguageDetector()
         template_path = detector.get_workflow_template_path(detector.detect(tmp_path))
         assert "python-tag-validation.yml" in template_path
@@ -30,14 +30,14 @@ class TestWorkflowSelection:
     def test_typescript_project_gets_typescript_workflow(self, tmp_path):
         """Test: TypeScript project receives typescript-tag-validation.yml"""
         (tmp_path / "package.json").write_text('{"name": "test"}')
-        (tmp_path / "tsconfig.json").write_text('{}')
+        (tmp_path / "tsconfig.json").write_text("{}")
         detector = LanguageDetector()
         template_path = detector.get_workflow_template_path(detector.detect(tmp_path))
         assert "typescript-tag-validation.yml" in template_path
 
     def test_go_project_gets_go_workflow(self, tmp_path):
         """Test: Go project receives go-tag-validation.yml"""
-        (tmp_path / "go.mod").write_text('module test')
+        (tmp_path / "go.mod").write_text("module test")
         detector = LanguageDetector()
         template_path = detector.get_workflow_template_path(detector.detect(tmp_path))
         assert "go-tag-validation.yml" in template_path
@@ -112,7 +112,7 @@ class TestIntegrationScenarios:
     def test_full_workflow_for_mixed_language_project(self, tmp_path):
         """Test: Priority handling for mixed language projects"""
         # Setup: Both Python and JavaScript
-        (tmp_path / "pyproject.toml").write_text('[tool.poetry]')
+        (tmp_path / "pyproject.toml").write_text("[tool.poetry]")
         (tmp_path / "package.json").write_text('{"name": "test"}')
 
         # Detect (Python has priority in LANGUAGE_PATTERNS order)
@@ -134,7 +134,7 @@ class TestIntegrationScenarios:
             "python-tag-validation.yml",
             "javascript-tag-validation.yml",
             "typescript-tag-validation.yml",
-            "go-tag-validation.yml"
+            "go-tag-validation.yml",
         ]
         templates_dir = Path("src/moai_adk/templates/.github/workflows")
         for template in new_templates:

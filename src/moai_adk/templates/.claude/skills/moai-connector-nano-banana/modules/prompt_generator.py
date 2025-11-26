@@ -38,7 +38,7 @@ class PromptGenerator:
             "cool blue hour",
             "neon glow",
             "natural window light",
-            "soft backlighting"
+            "soft backlighting",
         ],
         "camera": [
             "wide shot",
@@ -48,7 +48,7 @@ class PromptGenerator:
             "Dutch angle",
             "drone perspective",
             "macro shot",
-            "telephoto compression"
+            "telephoto compression",
         ],
         "lens": [
             "24mm wide angle",
@@ -57,7 +57,7 @@ class PromptGenerator:
             "85mm portrait lens",
             "135mm telephoto",
             "macro lens",
-            "fisheye lens"
+            "fisheye lens",
         ],
         "depth": [
             "shallow depth of field (f/1.8)",
@@ -65,7 +65,7 @@ class PromptGenerator:
             "deep focus (f/16)",
             "soft bokeh background",
             "tack-sharp focus",
-            "motion blur"
+            "motion blur",
         ],
         "mood": [
             "serene and peaceful",
@@ -75,7 +75,7 @@ class PromptGenerator:
             "majestic and grand",
             "eerie and mysterious",
             "joyful and vibrant",
-            "melancholic and thoughtful"
+            "melancholic and thoughtful",
         ],
         "color": [
             "warm golden tones",
@@ -85,8 +85,8 @@ class PromptGenerator:
             "vibrant saturated colors",
             "vintage film stock colors",
             "cyberpunk neon",
-            "earthy natural tones"
-        ]
+            "earthy natural tones",
+        ],
     }
 
     # 주제별 스타일 제안
@@ -95,41 +95,38 @@ class PromptGenerator:
             "lighting": "golden hour light",
             "mood": "serene and peaceful",
             "camera": "wide shot",
-            "depth": "deep focus (f/16)"
+            "depth": "deep focus (f/16)",
         },
         "portrait": {
             "lighting": "soft backlighting",
             "mood": "intimate and cozy",
             "camera": "close-up portrait",
             "lens": "85mm portrait lens",
-            "depth": "shallow depth of field (f/1.8)"
+            "depth": "shallow depth of field (f/1.8)",
         },
         "architecture": {
             "lighting": "golden hour light",
             "mood": "majestic and grand",
             "camera": "wide shot",
-            "depth": "deep focus (f/16)"
+            "depth": "deep focus (f/16)",
         },
         "product": {
             "lighting": "soft diffuse light",
             "mood": "clean and professional",
             "camera": "close-up",
-            "depth": "medium depth (f/5.6)"
+            "depth": "medium depth (f/5.6)",
         },
         "landscape": {
             "lighting": "golden hour light",
             "mood": "majestic and grand",
             "camera": "wide shot",
-            "color": "warm golden tones"
-        }
+            "color": "warm golden tones",
+        },
     }
 
     @staticmethod
     def generate(
-        user_request: str,
-        style: Optional[str] = None,
-        mood: Optional[str] = None,
-        resolution: str = "2K"
+        user_request: str, style: Optional[str] = None, mood: Optional[str] = None, resolution: str = "2K"
     ) -> str:
         """
         자연어 요청을 Nano Banana Pro 최적화 프롬프트로 변환
@@ -161,18 +158,14 @@ class PromptGenerator:
         scene = PromptGenerator._build_scene(user_request)
 
         # Step 2: 포토그래픽 요소 추가
-        photographic = PromptGenerator._add_photographic_elements(
-            user_request, style, mood
-        )
+        photographic = PromptGenerator._add_photographic_elements(user_request, style, mood)
 
         # Step 3: 색감 및 품질 추가
         quality = PromptGenerator._add_quality_specs(resolution)
 
         # Step 4: 프롬프트 조합
         final_prompt = (
-            f"{scene}\n\n"
-            f"Photographic elements:\n{photographic}\n\n"
-            f"Quality and technical specs:\n{quality}"
+            f"{scene}\n\n" f"Photographic elements:\n{photographic}\n\n" f"Quality and technical specs:\n{quality}"
         )
 
         logger.info("Prompt generation complete")
@@ -220,11 +213,7 @@ class PromptGenerator:
             )
 
     @staticmethod
-    def _add_photographic_elements(
-        user_request: str,
-        style: Optional[str] = None,
-        mood: Optional[str] = None
-    ) -> str:
+    def _add_photographic_elements(user_request: str, style: Optional[str] = None, mood: Optional[str] = None) -> str:
         """
         포토그래픽 요소 추가
 
@@ -272,7 +261,7 @@ class PromptGenerator:
         quality_map = {
             "1K": "High quality, clear composition",
             "2K": "Excellent quality, studio-grade detail",
-            "4K": "Ultra-high quality, studio-grade professional"
+            "4K": "Ultra-high quality, studio-grade professional",
         }
 
         quality_text = quality_map.get(resolution, quality_map["2K"])
@@ -289,11 +278,7 @@ class PromptGenerator:
         )
 
     @staticmethod
-    def display_prompt(
-        original_request: str,
-        generated_prompt: str,
-        config: Optional[Dict] = None
-    ) -> None:
+    def display_prompt(original_request: str, generated_prompt: str, config: Optional[Dict] = None) -> None:
         """
         생성된 프롬프트 표시
 
@@ -302,16 +287,16 @@ class PromptGenerator:
             generated_prompt: 생성된 프롬프트
             config: 추가 설정 정보
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📸 프롬프트 생성 완료")
-        print("="*70)
+        print("=" * 70)
 
         print(f"\n📝 원래 요청: {original_request}")
 
         print("\n🎨 최적화된 프롬프트:")
-        print("-"*70)
+        print("-" * 70)
         print(generated_prompt)
-        print("-"*70)
+        print("-" * 70)
 
         if config:
             print("\n⚙️  설정:")
@@ -338,12 +323,7 @@ class PromptGenerator:
             - 구조 (포토그래픽 요소 포함 여부)
             - 품질 점수 (1-10)
         """
-        result = {
-            "is_valid": True,
-            "issues": [],
-            "quality_score": 0,
-            "length": len(prompt)
-        }
+        result = {"is_valid": True, "issues": [], "quality_score": 0, "length": len(prompt)}
 
         # 길이 검증
         if len(prompt) < 50:
@@ -355,12 +335,8 @@ class PromptGenerator:
             result["issues"].append("프롬프트가 너무 깁니다 (최대 2000자)")
 
         # 구조 검증
-        photographic_keywords = [
-            "lighting", "camera", "lens", "depth", "mood", "color"
-        ]
-        has_photographic = any(
-            keyword in prompt.lower() for keyword in photographic_keywords
-        )
+        photographic_keywords = ["lighting", "camera", "lens", "depth", "mood", "color"]
+        has_photographic = any(keyword in prompt.lower() for keyword in photographic_keywords)
 
         if not has_photographic:
             result["issues"].append("포토그래픽 요소가 부족합니다")
@@ -384,26 +360,12 @@ if __name__ == "__main__":
     generator = PromptGenerator()
 
     # 예제 1: 산경
-    prompt1 = generator.generate(
-        "멋진 산경",
-        style="landscape",
-        mood="serene and peaceful"
-    )
-    generator.display_prompt("멋진 산경", prompt1, {
-        "Resolution": "2K",
-        "Style": "landscape",
-        "Mood": "serene"
-    })
+    prompt1 = generator.generate("멋진 산경", style="landscape", mood="serene and peaceful")
+    generator.display_prompt("멋진 산경", prompt1, {"Resolution": "2K", "Style": "landscape", "Mood": "serene"})
 
     # 예제 2: 고양이
-    prompt2 = generator.generate(
-        "나노바나나 먹는 고양이",
-        style="portrait"
-    )
-    generator.display_prompt("나노바나나 먹는 고양이", prompt2, {
-        "Resolution": "2K",
-        "Style": "portrait"
-    })
+    prompt2 = generator.generate("나노바나나 먹는 고양이", style="portrait")
+    generator.display_prompt("나노바나나 먹는 고양이", prompt2, {"Resolution": "2K", "Style": "portrait"})
 
     # 검증
     validation = PromptGenerator.validate_prompt(prompt1)

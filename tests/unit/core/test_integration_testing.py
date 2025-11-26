@@ -138,10 +138,7 @@ class TestIntegrationTester:
         comp1 = TestComponent("comp1", "type1", "1.0.0")
         comp2 = TestComponent("comp2", "type2", "2.0.0")
         suite = TestSuite(
-            name="test_suite",
-            description="Test suite",
-            components=[comp1, comp2],
-            test_cases=["test1", "test2"]
+            name="test_suite", description="Test suite", components=[comp1, comp2], test_cases=["test1", "test2"]
         )
 
         results = tester.run_test_suite(suite)
@@ -160,7 +157,7 @@ class TestIntegrationTester:
         tests = [
             (lambda: test_func("result1"), "test1", ["comp1"]),
             (lambda: test_func("result2"), "test2", ["comp2"]),
-            (lambda: test_func("result3"), "test3", ["comp3"])
+            (lambda: test_func("result3"), "test3", ["comp3"]),
         ]
 
         results = tester.run_concurrent_tests(tests)
@@ -177,10 +174,7 @@ class TestIntegrationTester:
         def test_func(value):
             return value
 
-        tests = [
-            (lambda: test_func("async1"), "async_test1", []),
-            (lambda: test_func("async2"), "async_test2", [])
-        ]
+        tests = [(lambda: test_func("async1"), "async_test1", []), (lambda: test_func("async2"), "async_test2", [])]
 
         results = await tester.run_concurrent_tests_async(tests)
 

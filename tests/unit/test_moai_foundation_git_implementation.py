@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 @dataclass
 class GitInfo:
     """Git version and feature information."""
+
     version: str
     supports_switch: bool = False
     supports_worktree: bool = False
@@ -87,31 +88,19 @@ class TestBranchingStrategySelection:
     def test_select_feature_branch_strategy(self):
         """Test feature branch strategy for teams."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=3,
-            risk_level="high",
-            need_review=True
-        )
+        strategy = selector.select_strategy(team_size=3, risk_level="high", need_review=True)
         assert strategy == "feature_branch"
 
     def test_select_direct_commit_strategy(self):
         """Test direct commit strategy for individuals."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=1,
-            risk_level="low",
-            need_review=False
-        )
+        strategy = selector.select_strategy(team_size=1, risk_level="low", need_review=False)
         assert strategy == "direct_commit"
 
     def test_select_per_spec_strategy(self):
         """Test flexible per-SPEC strategy."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=2,
-            risk_level="medium",
-            need_review=False
-        )
+        strategy = selector.select_strategy(team_size=2, risk_level="medium", need_review=False)
         assert strategy in ["feature_branch", "direct_commit"]
 
 
@@ -172,6 +161,7 @@ class TestGitPerformanceOptimization:
 @dataclass
 class ValidateResult:
     """Validation result."""
+
     is_valid: bool
     type: Optional[str] = None
     scope: Optional[str] = None
@@ -189,12 +179,13 @@ class GitVersionDetector:
     def detect(self, version_string: str) -> GitInfo:
         """Detect Git version from version string."""
         import re
-        match = re.search(r'git version ([\d.]+)', version_string)
+
+        match = re.search(r"git version ([\d.]+)", version_string)
         if not match:
             return GitInfo(version="unknown")
 
         version = match.group(1)
-        parts = [int(x) for x in version.split('.')[:2]]  # major.minor
+        parts = [int(x) for x in version.split(".")[:2]]  # major.minor
         major, minor = parts[0], parts[1] if len(parts) > 1 else 0
 
         # Git 2.40+ has switch/restore
@@ -218,7 +209,7 @@ class GitVersionDetector:
             supports_switch=supports_switch,
             supports_worktree=supports_worktree,
             supports_sparse_checkout=supports_sparse,
-            modern_features=modern_features
+            modern_features=modern_features,
         )
 
 
@@ -231,45 +222,34 @@ class ConventionalCommitValidator:
         """Validate Conventional Commits format."""
         import re
 
-        lines = message.strip().split('\n')
+        lines = message.strip().split("\n")
         first_line = lines[0]
 
         # Check for breaking change
-        is_breaking = '!' in first_line or any('BREAKING' in line for line in lines)
+        is_breaking = "!" in first_line or any("BREAKING" in line for line in lines)
 
         # Parse: type(scope): subject
-        pattern = r'^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$'
+        pattern = r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
         if not re.match(pattern, first_line):
             return ValidateResult(
-                is_valid=False,
-                errors=["Invalid Conventional Commits format. Expected: type(scope): subject"]
+                is_valid=False, errors=["Invalid Conventional Commits format. Expected: type(scope): subject"]
             )
 
         # Extract type and scope
-        match = re.match(r'^(\w+)(\((.+?)\))?', first_line)
+        match = re.match(r"^(\w+)(\((.+?)\))?", first_line)
         if not match:
             return ValidateResult(is_valid=False, errors=["Could not parse type/scope"])
 
         commit_type = match.group(1)
         scope = match.group(3)
 
-        return ValidateResult(
-            is_valid=True,
-            type=commit_type,
-            scope=scope,
-            is_breaking_change=is_breaking
-        )
+        return ValidateResult(is_valid=True, type=commit_type, scope=scope, is_breaking_change=is_breaking)
 
 
 class BranchingStrategySelector:
     """Selects appropriate branching strategy."""
 
-    def select_strategy(
-        self,
-        team_size: int,
-        risk_level: str,
-        need_review: bool
-    ) -> str:
+    def select_strategy(self, team_size: int, risk_level: str, need_review: bool) -> str:
         """Select branching strategy based on parameters."""
         # Feature branch for teams, risky changes, or review requirements
         if team_size > 1 or risk_level == "high" or need_review:
@@ -290,13 +270,7 @@ class GitWorkflowManager:
         """Create branch creation command."""
         return f"git switch -c {branch_name}"
 
-    def format_tdd_commit(
-        self,
-        commit_type: str,
-        scope: str,
-        subject: str,
-        phase: str
-    ) -> str:
+    def format_tdd_commit(self, commit_type: str, scope: str, subject: str, phase: str) -> str:
         """Format TDD commit message with phase information."""
         base_msg = f"{commit_type}({scope}): {subject}"
         return f"{base_msg} ({phase})"
@@ -306,23 +280,19 @@ class GitPerformanceOptimizer:
     """Provides Git performance optimization tips."""
 
     PERFORMANCE_TIPS = {
-        "small": [
-            "Standard clone operations",
-            "Keep working directory clean",
-            "Regular garbage collection"
-        ],
+        "small": ["Standard clone operations", "Keep working directory clean", "Regular garbage collection"],
         "medium": [
             "Enable MIDX for faster operations",
             "Use shallow clones for CI/CD",
-            "Consider sparse-checkout for selective directories"
+            "Consider sparse-checkout for selective directories",
         ],
         "large": [
             "Enable MIDX for 38% performance improvement",
             "Use partial clones (--filter=blob:none) for 81% smaller downloads",
             "Use sparse-checkout to clone only needed directories",
             "Implement shallow clones for CI/CD (73% faster)",
-            "Configure git config --global gc.writeMultiPackIndex true"
-        ]
+            "Configure git config --global gc.writeMultiPackIndex true",
+        ],
     }
 
     def get_tips_for_repo_size(self, size: str) -> List[str]:

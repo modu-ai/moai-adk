@@ -27,15 +27,15 @@ def example_basic_setup():
         language="en",
         user_name="John Doe",
         domains=["backend", "frontend"],
-        project_type="web_application"
+        project_type="web_application",
     )
 
     print(f"Setup Success: {result['success']}")
     print(f"Modules Initialized: {', '.join(result['modules_initialized'])}")
     print(f"Created Files: {len(result['created_files'])}")
 
-    if result.get('optimization_results'):
-        opt_results = result['optimization_results']
+    if result.get("optimization_results"):
+        opt_results = result["optimization_results"]
         print(f"Optimized Files: {len(opt_results.get('optimized_files', []))}")
 
     return result
@@ -52,7 +52,7 @@ def example_multilingual_setup():
         language="ko",
         user_name="김개발",
         domains=["backend", "frontend", "mobile"],
-        project_type="web_application"
+        project_type="web_application",
     )
 
     print(f"설정 성공: {result['success']}")
@@ -60,7 +60,7 @@ def example_multilingual_setup():
     print(f"사용자 이름: {result['configuration_updates']['language']['updated_config']['user']['name']}")
 
     # Check token impact
-    token_impact = result['configuration_updates']['language']['token_cost_impact']
+    token_impact = result["configuration_updates"]["language"]["token_cost_impact"]
     print(f"토큰 오버헤드: {token_impact['total_overhead_percentage']}%")
 
     return result
@@ -84,7 +84,7 @@ def example_documentation_generation():
             "Login with email and password",
             "JWT token generation and validation",
             "Password reset functionality",
-            "Session management"
+            "Session management",
         ],
         "status": "Planned",
         "priority": "High",
@@ -95,8 +95,8 @@ def example_documentation_generation():
                 "description": "Register new user",
                 "parameters": [
                     {"name": "email", "type": "string", "required": True},
-                    {"name": "password", "type": "string", "required": True}
-                ]
+                    {"name": "password", "type": "string", "required": True},
+                ],
             },
             {
                 "path": "/api/auth/login",
@@ -104,10 +104,10 @@ def example_documentation_generation():
                 "description": "User login",
                 "parameters": [
                     {"name": "email", "type": "string", "required": True},
-                    {"name": "password", "type": "string", "required": True}
-                ]
-            }
-        ]
+                    {"name": "password", "type": "string", "required": True},
+                ],
+            },
+        ],
     }
 
     # Generate documentation
@@ -116,8 +116,8 @@ def example_documentation_generation():
     print(f"Documentation generated for SPEC: {docs_result['spec_id']}")
     print(f"Updated files: {', '.join(docs_result['updated_files'])}")
 
-    if docs_result.get('api_documentation'):
-        api_docs = docs_result['api_documentation']
+    if docs_result.get("api_documentation"):
+        api_docs = docs_result["api_documentation"]
         print(f"API endpoints documented: {len(api_docs.get('endpoints', []))}")
 
     return docs_result
@@ -137,7 +137,7 @@ def example_template_optimization():
         "apply_size_optimizations": True,
         "apply_performance_optimizations": True,
         "apply_complexity_optimizations": True,
-        "preserve_functionality": True
+        "preserve_functionality": True,
     }
 
     # Run optimization
@@ -154,7 +154,7 @@ def example_template_optimization():
         print(f"Size reduction: {optimization.get('size_reduction', 0):.1f}%")
 
         # Show applied optimizations
-        applied_opts = optimization.get('optimizations_applied', [])
+        applied_opts = optimization.get("optimizations_applied", [])
         unique_opts = list(set(applied_opts))
         print(f"Optimization types applied: {', '.join(unique_opts)}")
     else:
@@ -180,9 +180,9 @@ def example_project_status():
     print(f"Language: {status['language_status']['configured_language']}")
 
     # Documentation status
-    docs_status = status['documentation_status']
+    docs_status = status["documentation_status"]
     print(f"Documentation files: {docs_status['total_files']}")
-    if docs_status['missing_sections']:
+    if docs_status["missing_sections"]:
         print(f"Missing sections: {', '.join(docs_status['missing_sections'])}")
 
     # Integration matrix
@@ -211,7 +211,7 @@ def example_export_documentation():
         print(f"Files exported: {len(export_result.get('files', []))}")
         print(f"Output directory: {export_result.get('output_directory', 'N/A')}")
 
-        if not export_result.get('success'):
+        if not export_result.get("success"):
             print(f"Error: {export_result.get('error', 'Unknown error')}")
 
     return export_result
@@ -227,18 +227,15 @@ def example_multilingual_workflow():
 
     # Step 1: Initialize with Korean language
     init_result = project.initialize_complete_project(
-        language="ko",
-        user_name="박디벨로퍼",
-        domains=["backend", "frontend"],
-        project_type="web_application"
+        language="ko", user_name="박디벨로퍼", domains=["backend", "frontend"], project_type="web_application"
     )
 
     print(f"Korean project initialized: {init_result['success']}")
 
     # Step 2: Update language settings
-    lang_update = project.update_language_settings({
-        "language.agent_prompt_language": "english"  # Use English for agent prompts to save tokens
-    })
+    lang_update = project.update_language_settings(
+        {"language.agent_prompt_language": "english"}  # Use English for agent prompts to save tokens
+    )
 
     print(f"Language settings updated: {lang_update['success']}")
 
@@ -247,14 +244,9 @@ def example_multilingual_workflow():
         "id": "SPEC-KO-001",
         "title": "사용자 관리 시스템",
         "description": "사용자 등록, 인증, 프로필 관리 기능 구현",
-        "requirements": [
-            "이메일을 통한 사용자 등록",
-            "소셜 로그인 지원",
-            "프로필 관리 및 수정",
-            "사용자 권한 관리"
-        ],
+        "requirements": ["이메일을 통한 사용자 등록", "소셜 로그인 지원", "프로필 관리 및 수정", "사용자 권한 관리"],
         "status": "Planned",
-        "priority": "High"
+        "priority": "High",
     }
 
     docs_result = project.generate_documentation_from_spec(spec_data)
@@ -270,7 +262,7 @@ def example_multilingual_workflow():
         "initialization": init_result,
         "language_update": lang_update,
         "documentation": docs_result,
-        "export": export_result
+        "export": export_result,
     }
 
 
@@ -287,7 +279,7 @@ def main():
         ("Template Optimization", example_template_optimization),
         ("Project Status", example_project_status),
         ("Documentation Export", example_export_documentation),
-        ("Multilingual Workflow", example_multilingual_workflow)
+        ("Multilingual Workflow", example_multilingual_workflow),
     ]
 
     results = {}
@@ -306,7 +298,7 @@ def main():
         if "error" in result:
             print(f"❌ {name}: Failed - {result['error']}")
         else:
-            success = result.get('success', True)
+            success = result.get("success", True)
             print(f"{'✅' if success else '⚠️'} {name}: {'Success' if success else 'Partial'}")
 
     return results

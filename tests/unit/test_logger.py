@@ -54,9 +54,7 @@ class TestConsoleHandler:
         log_dir = tmp_path / ".moai" / "logs"
         logger = setup_logger("test_logger", log_dir=str(log_dir))
 
-        console_handlers = [
-            h for h in logger.handlers if isinstance(h, logging.StreamHandler)
-        ]
+        console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
         assert len(console_handlers) > 0
 
     def test_console_handler_format(self, tmp_path: Path, caplog):
@@ -81,9 +79,7 @@ class TestFileHandler:
         log_dir = tmp_path / ".moai" / "logs"
         logger = setup_logger("test_logger", log_dir=str(log_dir))
 
-        file_handlers = [
-            h for h in logger.handlers if isinstance(h, logging.FileHandler)
-        ]
+        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
         assert len(file_handlers) > 0
 
     def test_file_handler_writes_to_file(self, tmp_path: Path):

@@ -27,9 +27,7 @@ from project import get_git_info, get_package_version_info  # noqa: E402
 
 
 class TestSessionStartPerformance:
-    """Performance tests for SessionStart Hook optimization
-
-    """
+    """Performance tests for SessionStart Hook optimization"""
 
     def test_version_info_first_call_baseline(self, tmp_path):
         """RED: Measure baseline performance of get_package_version_info()
@@ -89,24 +87,12 @@ class TestSessionStartPerformance:
         """
         # Initialize a git repo for testing
         import subprocess
+
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
         subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
-        )
-        subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
+            ["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False
         )
 
         # Measure first call
@@ -128,24 +114,12 @@ class TestSessionStartPerformance:
         """
         # Initialize a git repo
         import subprocess
+
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
         subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
-        )
-        subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
+            ["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False
         )
 
         # First call to populate cache
@@ -195,24 +169,12 @@ class TestSessionStartPerformance:
         """
         # Initialize git repo for testing
         import subprocess
+
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
         subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
-        )
-        subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial"],
-            cwd=tmp_path,
-            capture_output=True,
-            check=False
+            ["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False
         )
 
         # First call to populate all caches
@@ -235,9 +197,7 @@ class TestSessionStartPerformance:
 
 
 class TestCacheHitRate:
-    """Tests for cache hit rate tracking
-
-    """
+    """Tests for cache hit rate tracking"""
 
     def test_cache_hit_rate_in_typical_session(self, tmp_path):
         """RED: Verify cache hit rate > 90% in typical session
@@ -259,9 +219,7 @@ class TestCacheHitRate:
 
 
 class TestCacheErrorHandling:
-    """Tests for cache error handling and fallback behavior
-
-    """
+    """Tests for cache error handling and fallback behavior"""
 
     def test_cache_failure_fallback_to_direct_call(self, tmp_path):
         """RED: Verify graceful degradation when cache fails

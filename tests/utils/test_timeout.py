@@ -31,6 +31,7 @@ from moai_adk.utils.timeout import (
 # TimeoutError Exception Tests
 # ============================================================================
 
+
 class TestTimeoutError:
     """Tests for TimeoutError exception class."""
 
@@ -60,6 +61,7 @@ class TestTimeoutError:
 # CrossPlatformTimeout Initialization Tests
 # ============================================================================
 
+
 class TestCrossPlatformTimeoutInitialization:
     """Tests for CrossPlatformTimeout initialization."""
 
@@ -87,14 +89,14 @@ class TestCrossPlatformTimeoutInitialization:
 
     def test_initialization_platform_detection_windows(self):
         """Test platform detection for Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(5)
             assert timeout._is_windows is True
 
     def test_initialization_platform_detection_unix(self):
         """Test platform detection for Unix/Linux/macOS."""
-        for system in ['Linux', 'Darwin', 'Unix']:
-            with patch('platform.system', return_value=system):
+        for system in ["Linux", "Darwin", "Unix"]:
+            with patch("platform.system", return_value=system):
                 timeout = CrossPlatformTimeout(5)
                 assert timeout._is_windows is False
 
@@ -125,6 +127,7 @@ class TestCrossPlatformTimeoutInitialization:
 # ============================================================================
 # CrossPlatformTimeout.start() Tests
 # ============================================================================
+
 
 class TestCrossPlatformTimeoutStart:
     """Tests for CrossPlatformTimeout.start method."""
@@ -161,7 +164,7 @@ class TestCrossPlatformTimeoutStart:
 
     def test_start_windows_creates_timer(self):
         """Test that start creates timer on Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
             timeout.start()
 
@@ -170,7 +173,7 @@ class TestCrossPlatformTimeoutStart:
 
             timeout.cancel()
 
-    @pytest.mark.skipif(platform.system() == 'Windows', reason='Unix-only test')
+    @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-only test")
     def test_start_unix_sets_signal_handler(self):
         """Test that start sets signal handler on Unix."""
         timeout = CrossPlatformTimeout(10)
@@ -184,7 +187,7 @@ class TestCrossPlatformTimeoutStart:
 
     def test_start_multiple_calls_windows(self):
         """Test multiple start calls on Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
             timeout.start()
             timer1 = timeout.timer
@@ -203,12 +206,13 @@ class TestCrossPlatformTimeoutStart:
 # CrossPlatformTimeout.cancel() Tests
 # ============================================================================
 
+
 class TestCrossPlatformTimeoutCancel:
     """Tests for CrossPlatformTimeout.cancel method."""
 
     def test_cancel_windows_timeout(self):
         """Test canceling Windows timeout."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(5)
             timeout.start()
 
@@ -216,7 +220,7 @@ class TestCrossPlatformTimeoutCancel:
             timeout.cancel()
             assert timeout.timer is None
 
-    @pytest.mark.skipif(platform.system() == 'Windows', reason='Unix-only test')
+    @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-only test")
     def test_cancel_unix_timeout(self):
         """Test canceling Unix timeout."""
         timeout = CrossPlatformTimeout(10)
@@ -242,7 +246,7 @@ class TestCrossPlatformTimeoutCancel:
 
     def test_cancel_clears_windows_timer(self):
         """Test that cancel properly clears Windows timer."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
             timeout.start()
             timer = timeout.timer
@@ -257,10 +261,11 @@ class TestCrossPlatformTimeoutCancel:
 # Windows Timeout Tests
 # ============================================================================
 
+
 class TestWindowsTimeout:
     """Tests for Windows threading-based timeout."""
 
-    @pytest.mark.skipif(platform.system() != 'Windows', reason='Windows-only test')
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
     def test_windows_timeout_fires_on_windows(self):
         """Test timeout fires on actual Windows system."""
         timeout = CrossPlatformTimeout(1)
@@ -271,14 +276,14 @@ class TestWindowsTimeout:
 
     def test_windows_timeout_exception_message(self):
         """Test Windows timeout exception message."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
 
             def raise_timeout():
                 timeout.start()
                 time.sleep(2.5)
 
-            with patch.object(threading.Timer, 'start'):
+            with patch.object(threading.Timer, "start"):
                 # Just verify the timer was created with proper function
                 timeout.start()
                 assert timeout.timer is not None
@@ -286,11 +291,11 @@ class TestWindowsTimeout:
 
     def test_windows_callback_execution(self):
         """Test callback is executed before timeout on Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             callback = Mock()
             timeout = CrossPlatformTimeout(2, callback=callback)
 
-            with patch('threading.Timer') as mock_timer_class:
+            with patch("threading.Timer") as mock_timer_class:
                 mock_timer_instance = MagicMock()
                 mock_timer_class.return_value = mock_timer_instance
 
@@ -305,10 +310,11 @@ class TestWindowsTimeout:
 # Unix Timeout Tests
 # ============================================================================
 
+
 class TestUnixTimeout:
     """Tests for Unix signal-based timeout."""
 
-    @pytest.mark.skipif(platform.system() == 'Windows', reason='Unix-only test')
+    @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-only test")
     def test_unix_timeout_fires_on_unix(self):
         """Test timeout fires on actual Unix system."""
         # This test is platform-specific and might need adjustment
@@ -317,8 +323,8 @@ class TestUnixTimeout:
 
     def test_unix_signal_handler_saved(self):
         """Test that Unix saves previous signal handler."""
-        with patch('platform.system', return_value='Linux'):
-            with patch('signal.signal') as mock_signal:
+        with patch("platform.system", return_value="Linux"):
+            with patch("signal.signal") as mock_signal:
                 original_handler = Mock()
                 mock_signal.return_value = original_handler
 
@@ -332,12 +338,12 @@ class TestUnixTimeout:
 
     def test_unix_callback_exception_ignored(self):
         """Test that callback exceptions are ignored in Unix handler."""
-        with patch('platform.system', return_value='Linux'):
+        with patch("platform.system", return_value="Linux"):
             callback = Mock(side_effect=RuntimeError("Callback error"))
             timeout = CrossPlatformTimeout(10, callback=callback)
 
-            with patch('signal.signal') as mock_signal:
-                with patch('signal.alarm'):
+            with patch("signal.signal") as mock_signal:
+                with patch("signal.alarm"):
                     timeout.start()
                     # Callback is stored for later execution
                     assert timeout.callback is callback
@@ -345,9 +351,9 @@ class TestUnixTimeout:
 
     def test_unix_handler_restoration(self):
         """Test that Unix restores previous signal handler on cancel."""
-        with patch('platform.system', return_value='Linux'):
-            with patch('signal.signal') as mock_signal:
-                with patch('signal.alarm'):
+        with patch("platform.system", return_value="Linux"):
+            with patch("signal.signal") as mock_signal:
+                with patch("signal.alarm"):
                     original_handler = Mock()
                     mock_signal.return_value = original_handler
 
@@ -366,6 +372,7 @@ class TestUnixTimeout:
 # ============================================================================
 # Context Manager Tests
 # ============================================================================
+
 
 class TestContextManager:
     """Tests for context manager functionality."""
@@ -387,7 +394,7 @@ class TestContextManager:
 
     def test_context_manager_cancels_on_exit(self):
         """Test that context manager cancels timeout on exit."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             with CrossPlatformTimeout(5) as timeout:
                 timer = timeout.timer
                 assert timer is not None
@@ -403,7 +410,7 @@ class TestContextManager:
 
     def test_context_manager_with_exception_still_cancels(self):
         """Test timeout is canceled even if exception occurs."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             try:
                 with CrossPlatformTimeout(5):
                     raise RuntimeError("Test error")
@@ -422,6 +429,7 @@ class TestContextManager:
 # ============================================================================
 # timeout_context Function Tests
 # ============================================================================
+
 
 class TestTimeoutContextFunction:
     """Tests for timeout_context decorator/context manager function."""
@@ -467,7 +475,7 @@ class TestTimeoutContextFunction:
 
     def test_timeout_context_cleanup(self):
         """Test that timeout_context properly cleans up."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             with timeout_context(5) as timeout:
                 timer = timeout.timer
 
@@ -493,6 +501,7 @@ class TestTimeoutContextFunction:
 # ============================================================================
 # Callback Tests
 # ============================================================================
+
 
 class TestCallback:
     """Tests for callback functionality."""
@@ -538,6 +547,7 @@ class TestCallback:
 # ============================================================================
 # Edge Cases and Error Handling Tests
 # ============================================================================
+
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
@@ -585,13 +595,13 @@ class TestEdgeCases:
     def test_platform_switch_behavior(self):
         """Test behavior with different platform configurations."""
         for is_windows in [True, False]:
-            with patch('platform.system', return_value='Windows' if is_windows else 'Linux'):
+            with patch("platform.system", return_value="Windows" if is_windows else "Linux"):
                 timeout = CrossPlatformTimeout(5)
                 assert timeout._is_windows == is_windows
 
     def test_timeout_doesnt_execute_work_after_cancel(self):
         """Test that timeout doesn't interrupt canceled work."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
             timeout.start()
             time.sleep(0.1)
@@ -604,6 +614,7 @@ class TestEdgeCases:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestIntegration:
     """Integration tests for timeout functionality."""
@@ -662,7 +673,7 @@ class TestIntegration:
 
     def test_timeout_cancel_prevents_interrupt(self):
         """Test that canceling timeout prevents interruption."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             interrupted = []
 
             timeout = CrossPlatformTimeout(2)
@@ -699,6 +710,7 @@ class TestIntegration:
 # ============================================================================
 # Error Handling Tests
 # ============================================================================
+
 
 class TestErrorHandling:
     """Tests for error handling scenarios."""
@@ -749,6 +761,7 @@ class TestErrorHandling:
 # Performance and Timing Tests
 # ============================================================================
 
+
 class TestPerformanceAndTiming:
     """Tests for performance characteristics."""
 
@@ -786,24 +799,25 @@ class TestPerformanceAndTiming:
 # Platform-Specific Tests
 # ============================================================================
 
+
 class TestPlatformSpecific:
     """Platform-specific behavior tests."""
 
     def test_windows_path(self):
         """Test Windows-specific timeout path."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(5)
             assert timeout._is_windows is True
 
     def test_unix_path(self):
         """Test Unix-specific timeout path."""
-        with patch('platform.system', return_value='Darwin'):
+        with patch("platform.system", return_value="Darwin"):
             timeout = CrossPlatformTimeout(5)
             assert timeout._is_windows is False
 
     def test_linux_path(self):
         """Test Linux-specific timeout path."""
-        with patch('platform.system', return_value='Linux'):
+        with patch("platform.system", return_value="Linux"):
             timeout = CrossPlatformTimeout(5)
             assert timeout._is_windows is False
 
@@ -812,6 +826,7 @@ class TestPlatformSpecific:
 # Type and Structure Tests
 # ============================================================================
 
+
 class TestTypeAndStructure:
     """Tests for type consistency and structure."""
 
@@ -819,21 +834,21 @@ class TestTypeAndStructure:
         """Test that timeout object has all expected attributes."""
         timeout = CrossPlatformTimeout(5)
 
-        assert hasattr(timeout, 'timeout_seconds')
-        assert hasattr(timeout, 'timeout_seconds_int')
-        assert hasattr(timeout, 'callback')
-        assert hasattr(timeout, 'timer')
-        assert hasattr(timeout, '_is_windows')
-        assert hasattr(timeout, '_old_handler')
+        assert hasattr(timeout, "timeout_seconds")
+        assert hasattr(timeout, "timeout_seconds_int")
+        assert hasattr(timeout, "callback")
+        assert hasattr(timeout, "timer")
+        assert hasattr(timeout, "_is_windows")
+        assert hasattr(timeout, "_old_handler")
 
     def test_timeout_methods_exist(self):
         """Test that all timeout methods exist."""
         timeout = CrossPlatformTimeout(5)
 
-        assert hasattr(timeout, 'start')
-        assert hasattr(timeout, 'cancel')
-        assert hasattr(timeout, '__enter__')
-        assert hasattr(timeout, '__exit__')
+        assert hasattr(timeout, "start")
+        assert hasattr(timeout, "cancel")
+        assert hasattr(timeout, "__enter__")
+        assert hasattr(timeout, "__exit__")
 
     def test_timeout_context_function_signature(self):
         """Test timeout_context function signature."""
@@ -842,5 +857,5 @@ class TestTypeAndStructure:
         sig = inspect.signature(timeout_context)
         params = list(sig.parameters.keys())
 
-        assert 'timeout_seconds' in params
-        assert 'callback' in params
+        assert "timeout_seconds" in params
+        assert "callback" in params

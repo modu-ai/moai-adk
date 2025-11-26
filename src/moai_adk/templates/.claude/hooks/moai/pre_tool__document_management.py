@@ -134,7 +134,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
         "whitelisted": False,
         "suggested_location": None,
         "warning": None,
-        "should_block": False
+        "should_block": False,
     }
 
     # If not in root, validation passes
@@ -162,7 +162,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
         f"   Reason: Not in root_whitelist\n"
         f"   ✅ Suggested: {suggested}{filename}\n"
         f"\n"
-        f"   Tip: Use Skill(\"moai-core-document-management\") for guidance"
+        f'   Tip: Use Skill("moai-core-document-management") for guidance'
     )
 
     if block_violations:
@@ -232,10 +232,7 @@ def handle_pre_tool_use(payload: Dict) -> Dict[str, Any]:
         return {"continue": True}
 
     # Validation failed
-    response = {
-        "continue": not validation["should_block"],
-        "systemMessage": validation["warning"]
-    }
+    response = {"continue": not validation["should_block"], "systemMessage": validation["warning"]}
 
     return response
 

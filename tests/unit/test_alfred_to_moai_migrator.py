@@ -86,9 +86,7 @@ class TestNeedsMigration:
 
         # Mark as already migrated in config
         config = migrator._load_config()
-        config["migration"] = {
-            "alfred_to_moai": {"migrated": True, "timestamp": "2025-11-18 10:00:00"}
-        }
+        config["migration"] = {"alfred_to_moai": {"migrated": True, "timestamp": "2025-11-18 10:00:00"}}
         migrator._save_config(config)
 
         # Should return False because already migrated
@@ -326,9 +324,7 @@ class TestMigrationIntegration:
 
         # Create settings.json with alfred paths
         settings = migrator.claude_root / "settings.json"
-        settings.write_text(
-            '{"hooks": "{{PROJECT_DIR}}/.claude/hooks/alfred/test.py"}'
-        )
+        settings.write_text('{"hooks": "{{PROJECT_DIR}}/.claude/hooks/alfred/test.py"}')
 
         # Create backup
         backup_path = tmp_path / "test_backup"

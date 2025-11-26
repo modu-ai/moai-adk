@@ -3,7 +3,7 @@ MoAI Menu Project - Modules Package
 
 Integrated module system for project management including:
 - DocumentationManager: Template-based documentation generation
-- LanguageInitializer: Language detection and configuration  
+- LanguageInitializer: Language detection and configuration
 - TemplateOptimizer: Template analysis and optimization
 """
 
@@ -14,8 +14,4 @@ from .documentation_manager import DocumentationManager
 from .language_initializer import LanguageInitializer
 from .template_optimizer import TemplateOptimizer
 
-__all__ = [
-    "DocumentationManager",
-    "LanguageInitializer",
-    "TemplateOptimizer"
-]
+__all__ = ["DocumentationManager", "LanguageInitializer", "TemplateOptimizer"]

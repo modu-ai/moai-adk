@@ -25,19 +25,15 @@ class TestDocumentationManager(unittest.TestCase):
         """Set up test environment."""
         self.test_dir = Path(tempfile.mkdtemp())
         self.config = {
-            "project": {
-                "name": "Test Project",
-                "type": "web_application"
-            },
-            "language": {
-                "conversation_language": "en"
-            }
+            "project": {"name": "Test Project", "type": "web_application"},
+            "language": {"conversation_language": "en"},
         }
         self.doc_manager = DocumentationManager(str(self.test_dir), self.config)
 
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_documentation_structure_initialization(self):
@@ -59,17 +55,8 @@ class TestDocumentationManager(unittest.TestCase):
             "id": "SPEC-001",
             "title": "User Authentication",
             "description": "Implement secure authentication system",
-            "requirements": [
-                "User registration with email verification",
-                "JWT token generation and validation"
-            ],
-            "api_endpoints": [
-                {
-                    "path": "/api/auth/login",
-                    "method": "POST",
-                    "description": "User login endpoint"
-                }
-            ]
+            "requirements": ["User registration with email verification", "JWT token generation and validation"],
+            "api_endpoints": [{"path": "/api/auth/login", "method": "POST", "description": "User login endpoint"}],
         }
 
         result = self.doc_manager.generate_documentation_from_spec(spec_data)
@@ -125,15 +112,13 @@ class TestLanguageInitializer(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.test_dir = Path(tempfile.mkdtemp())
-        self.config = {
-            "project": {"name": "Test Project"},
-            "language": {"conversation_language": "en"}
-        }
+        self.config = {"project": {"name": "Test Project"}, "language": {"conversation_language": "en"}}
         self.lang_init = LanguageInitializer(str(self.test_dir), self.config)
 
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_language_detection(self):
@@ -141,13 +126,16 @@ class TestLanguageInitializer(unittest.TestCase):
 
         # Create test files with Korean content
         test_file = self.test_dir / "test.py"
-        test_file.write_text("""
+        test_file.write_text(
+            """
 # 한국어 주석 예제
 def calculate_score():
     # 점수 계산 함수
     score = 100  # 최종 점수
     return score
-        """, encoding='utf-8')
+        """,
+            encoding="utf-8",
+        )
 
         detected_lang = self.lang_init.detect_project_language()
         self.assertIsInstance(detected_lang, str)
@@ -156,9 +144,7 @@ def calculate_score():
         """Test language configuration initialization."""
 
         result = self.lang_init.initialize_language_configuration(
-            language="ko",
-            user_name="테스트 사용자",
-            domains=["backend", "frontend"]
+            language="ko", user_name="테스트 사용자", domains=["backend", "frontend"]
         )
 
         self.assertTrue(result["success"])
@@ -188,10 +174,7 @@ def calculate_score():
     def test_language_settings_update(self):
         """Test language settings update functionality."""
 
-        updates = {
-            "language.conversation_language": "ja",
-            "language.agent_prompt_language": "english"
-        }
+        updates = {"language.conversation_language": "ja", "language.agent_prompt_language": "english"}
 
         result = self.lang_init.update_language_settings(updates)
 
@@ -226,12 +209,7 @@ class TestTemplateOptimizer(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.test_dir = Path(tempfile.mkdtemp())
-        self.config = {
-            "project": {
-                "name": "Test Project",
-                "type": "web_application"
-            }
-        }
+        self.config = {"project": {"name": "Test Project", "type": "web_application"}}
         self.template_opt = TemplateOptimizer(str(self.test_dir), self.config)
 
         # Create test template files
@@ -240,6 +218,7 @@ class TestTemplateOptimizer(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def _create_test_templates(self):
@@ -278,7 +257,7 @@ Complex logic that could be simplified:
 {% endif %}
         """
 
-        (templates_dir / "test_template.md").write_text(test_template, encoding='utf-8')
+        (templates_dir / "test_template.md").write_text(test_template, encoding="utf-8")
 
     def test_template_analysis(self):
         """Test template analysis functionality."""
@@ -292,11 +271,7 @@ Complex logic that could be simplified:
     def test_optimization_creation(self):
         """Test optimized template creation."""
 
-        options = {
-            "backup_first": True,
-            "apply_size_optimizations": True,
-            "apply_performance_optimizations": True
-        }
+        options = {"backup_first": True, "apply_size_optimizations": True, "apply_performance_optimizations": True}
 
         result = self.template_opt.create_optimized_templates(options)
 
@@ -351,23 +326,17 @@ class TestModuleInteractions(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_language_documentation_integration(self):
         """Test integration between language and documentation modules."""
 
         # Initialize with Korean language
-        self.project.initialize_complete_project(
-            language="ko",
-            project_type="web_application"
-        )
+        self.project.initialize_complete_project(language="ko", project_type="web_application")
 
         # Generate documentation
-        spec_data = {
-            "id": "SPEC-001",
-            "title": "테스트 기능",
-            "description": "한국어 테스트 기능 구현"
-        }
+        spec_data = {"id": "SPEC-001", "title": "테스트 기능", "description": "한국어 테스트 기능 구현"}
 
         docs_result = self.project.generate_documentation_from_spec(spec_data)
 

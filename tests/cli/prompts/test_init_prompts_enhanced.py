@@ -76,9 +76,7 @@ class TestProjectNameHandling:
         mock_select_instance.ask.return_value = "English"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name=None, is_current_dir=True, project_path=project_path
-        )
+        result = prompt_project_setup(project_name=None, is_current_dir=True, project_path=project_path)
 
         assert result["project_name"] == "custom-project"
         mock_cwd.assert_not_called()  # Should not use fallback
@@ -208,9 +206,7 @@ class TestDefaultLocaleHandling:
         mock_select_instance.ask.return_value = "Korean (한국어)"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name="test-project", is_current_dir=False, initial_locale="ko"
-        )
+        result = prompt_project_setup(project_name="test-project", is_current_dir=False, initial_locale="ko")
 
         # Verify questionary.select was called with Korean as default
         call_args = mock_select.call_args
@@ -224,9 +220,7 @@ class TestDefaultLocaleHandling:
         mock_select_instance.ask.return_value = "English"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name="test-project", is_current_dir=False, initial_locale="en"
-        )
+        result = prompt_project_setup(project_name="test-project", is_current_dir=False, initial_locale="en")
 
         call_args = mock_select.call_args
         assert call_args.kwargs["default"] == "English"
@@ -239,9 +233,7 @@ class TestDefaultLocaleHandling:
         mock_select_instance.ask.return_value = "Japanese (日本語)"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name="test-project", is_current_dir=False, initial_locale="ja"
-        )
+        result = prompt_project_setup(project_name="test-project", is_current_dir=False, initial_locale="ja")
 
         call_args = mock_select.call_args
         assert call_args.kwargs["default"] == "Japanese (日本語)"
@@ -254,9 +246,7 @@ class TestDefaultLocaleHandling:
         mock_select_instance.ask.return_value = "Chinese (中文)"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name="test-project", is_current_dir=False, initial_locale="zh"
-        )
+        result = prompt_project_setup(project_name="test-project", is_current_dir=False, initial_locale="zh")
 
         call_args = mock_select.call_args
         assert call_args.kwargs["default"] == "Chinese (中文)"
@@ -269,9 +259,7 @@ class TestDefaultLocaleHandling:
         mock_select_instance.ask.return_value = "English"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name="test-project", is_current_dir=False, initial_locale="fr"
-        )
+        result = prompt_project_setup(project_name="test-project", is_current_dir=False, initial_locale="fr")
 
         call_args = mock_select.call_args
         assert call_args.kwargs["default"] == "English"  # Should fallback to index 1
@@ -284,9 +272,7 @@ class TestDefaultLocaleHandling:
         mock_select_instance.ask.return_value = "English"
         mock_select.return_value = mock_select_instance
 
-        result = prompt_project_setup(
-            project_name="test-project", is_current_dir=False, initial_locale=None
-        )
+        result = prompt_project_setup(project_name="test-project", is_current_dir=False, initial_locale=None)
 
         call_args = mock_select.call_args
         assert call_args.kwargs["default"] == "English"
@@ -385,9 +371,7 @@ class TestEdgeCases:
                     mock_text_instance.ask.return_value = "Test Language"
                     mock_text.return_value = mock_text_instance
 
-                    result = prompt_project_setup(
-                        project_name="test-project", is_current_dir=False
-                    )
+                    result = prompt_project_setup(project_name="test-project", is_current_dir=False)
                     assert result["locale"] == expected_locale
                     assert result["custom_language"] == "Test Language"
             else:

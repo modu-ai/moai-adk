@@ -25,6 +25,7 @@ from unittest.mock import Mock, patch, MagicMock
 # TEST GROUP 1: Component Architecture (4 tests)
 # ============================================================================
 
+
 class TestComponentArchitecture:
     """Test component design patterns and architecture."""
 
@@ -39,7 +40,7 @@ class TestComponentArchitecture:
             "atoms": ["Button", "Input", "Label", "Icon"],
             "molecules": ["FormInput", "SearchBar", "Card"],
             "organisms": ["LoginForm", "Navigation", "Dashboard"],
-            "pages": ["HomePage", "DashboardPage", "ProfilePage"]
+            "pages": ["HomePage", "DashboardPage", "ProfilePage"],
         }
 
         # Validate structure
@@ -47,8 +48,7 @@ class TestComponentArchitecture:
         assert result["valid"] is True
         assert result["hierarchy_level"] == 4
         assert len(result["components"]) == len(
-            components["atoms"] + components["molecules"] +
-            components["organisms"] + components["pages"]
+            components["atoms"] + components["molecules"] + components["organisms"] + components["pages"]
         )
 
     def test_component_reusability_analysis(self):
@@ -62,15 +62,17 @@ class TestComponentArchitecture:
             "variant": ["primary", "secondary", "ghost"],
             "size": ["sm", "md", "lg"],
             "disabled": bool,
-            "onClick": callable
+            "onClick": callable,
         }
 
         # Analyze reusability
-        result = architect.analyze_reusability({
-            "Button": button_props,
-            "Card": {"children": Any, "className": str},
-            "Input": {"type": str, "value": str, "onChange": callable}
-        })
+        result = architect.analyze_reusability(
+            {
+                "Button": button_props,
+                "Card": {"children": Any, "className": str},
+                "Input": {"type": str, "value": str, "onChange": callable},
+            }
+        )
 
         assert result["reusable_count"] >= 3
         assert result["composition_score"] > 0.7
@@ -87,7 +89,7 @@ class TestComponentArchitecture:
             "render_props": "Component renders a function as children",
             "compound_components": "Tabs.Header, Tabs.Content working together",
             "hooks": "Custom hooks for shared logic",
-            "hoc": "Higher-order components for prop passing"
+            "hoc": "Higher-order components for prop passing",
         }
 
         result = architect.validate_composition_patterns(patterns)
@@ -120,6 +122,7 @@ class TestComponentArchitecture:
 # TEST GROUP 2: State Management (4 tests)
 # ============================================================================
 
+
 class TestStateManagement:
     """Test state management patterns and strategy selection."""
 
@@ -130,12 +133,7 @@ class TestStateManagement:
         advisor = StateManagementAdvisor()
 
         # Test small app (Context API recommended)
-        small_app = {
-            "complexity": "small",
-            "components": 15,
-            "shared_state": ["theme", "user"],
-            "async_actions": False
-        }
+        small_app = {"complexity": "small", "components": 15, "shared_state": ["theme", "user"], "async_actions": False}
         result = advisor.recommend_solution(small_app)
         assert result["solution"] in ["Context API", "Local State"]
         assert result["confidence"] > 0.8
@@ -146,7 +144,7 @@ class TestStateManagement:
             "components": 50,
             "shared_state": ["user", "cart", "filters", "pagination"],
             "async_actions": True,
-            "cache_needed": True
+            "cache_needed": True,
         }
         result = advisor.recommend_solution(medium_app)
         assert result["solution"] == "Zustand"
@@ -159,7 +157,7 @@ class TestStateManagement:
             "async_actions": True,
             "cache_needed": True,
             "time_travel_debug": True,
-            "middleware_needed": True
+            "middleware_needed": True,
         }
         result = advisor.recommend_solution(large_app)
         assert result["solution"] == "Redux Toolkit"
@@ -176,7 +174,7 @@ class TestStateManagement:
             "initial_state": {"user": None, "token": None},
             "actions": ["login", "logout", "refresh"],
             "performance": "single_provider",
-            "splitting": False
+            "splitting": False,
         }
 
         result = advisor.validate_context_pattern(context_pattern)
@@ -197,7 +195,7 @@ class TestStateManagement:
             "selectors": ["useUser", "useToken", "useLoading"],
             "devtools_enabled": True,
             "persist_enabled": True,
-            "persist_fields": ["user", "token"]
+            "persist_fields": ["user", "token"],
         }
 
         result = advisor.validate_zustand_design(store_design)
@@ -216,12 +214,9 @@ class TestStateManagement:
             "auth": {
                 "actions": ["login", "logout", "refreshToken"],
                 "reducers": {"setUser": "updates user", "clearUser": "clears user"},
-                "async_thunks": ["loginAsync", "refreshAsync"]
+                "async_thunks": ["loginAsync", "refreshAsync"],
             },
-            "cart": {
-                "actions": ["addItem", "removeItem", "updateQuantity"],
-                "async_thunks": ["checkoutAsync"]
-            }
+            "cart": {"actions": ["addItem", "removeItem", "updateQuantity"], "async_thunks": ["checkoutAsync"]},
         }
 
         result = advisor.validate_redux_design(slices)
@@ -233,6 +228,7 @@ class TestStateManagement:
 # ============================================================================
 # TEST GROUP 3: Accessibility (3 tests)
 # ============================================================================
+
 
 class TestAccessibility:
     """Test accessibility compliance and WCAG standards."""
@@ -250,7 +246,7 @@ class TestAccessibility:
             "role": "button",
             "keyboard_accessible": True,
             "focus_visible": True,
-            "color_contrast_ratio": 4.5
+            "color_contrast_ratio": 4.5,
         }
 
         result = validator.validate_wcag_compliance(button_component, level="AA")
@@ -267,25 +263,15 @@ class TestAccessibility:
         # Define form with ARIA attributes
         form_component = {
             "inputs": [
-                {
-                    "name": "email",
-                    "aria_label": "Email address",
-                    "aria_required": True,
-                    "aria_invalid": False
-                },
+                {"name": "email", "aria_label": "Email address", "aria_required": True, "aria_invalid": False},
                 {
                     "name": "password",
                     "aria_label": "Password",
                     "aria_required": True,
-                    "aria_describedby": "password-hint"
-                }
+                    "aria_describedby": "password-hint",
+                },
             ],
-            "buttons": [
-                {
-                    "text": "Sign In",
-                    "aria_label": "Sign in to account"
-                }
-            ]
+            "buttons": [{"text": "Sign In", "aria_label": "Sign in to account"}],
         }
 
         result = validator.validate_aria_implementation(form_component)
@@ -306,7 +292,7 @@ class TestAccessibility:
             "focus_trap": True,
             "escape_key_handler": True,
             "focus_restoration": True,
-            "skip_links": True
+            "skip_links": True,
         }
 
         result = validator.validate_keyboard_navigation(modal_component)
@@ -318,6 +304,7 @@ class TestAccessibility:
 # ============================================================================
 # TEST GROUP 4: Performance Optimization (3 tests)
 # ============================================================================
+
 
 class TestPerformanceOptimization:
     """Test performance optimization patterns and metrics."""
@@ -332,20 +319,10 @@ class TestPerformanceOptimization:
         splitting_strategy = {
             "route_based_splitting": True,
             "component_based_splitting": True,
-            "lazy_loaded_routes": [
-                "/dashboard",
-                "/profile",
-                "/settings",
-                "/admin"
-            ],
+            "lazy_loaded_routes": ["/dashboard", "/profile", "/settings", "/admin"],
             "dynamic_imports": 8,
             "chunk_size_target_kb": 50,
-            "chunks": {
-                "main": 120,
-                "dashboard": 45,
-                "profile": 38,
-                "vendor": 150
-            }
+            "chunks": {"main": 120, "dashboard": 45, "profile": 38, "vendor": 150},
         }
 
         result = optimizer.validate_code_splitting(splitting_strategy)
@@ -366,7 +343,7 @@ class TestPerformanceOptimization:
             "useCallback_hooks": 8,
             "custom_comparison_functions": 2,
             "render_count_baseline": 100,
-            "render_count_optimized": 15
+            "render_count_optimized": 15,
         }
 
         result = optimizer.validate_memoization(memoization_strategy)
@@ -390,7 +367,7 @@ class TestPerformanceOptimization:
             "cls_value": 0.08,
             "tti_seconds": 3.2,
             "fcp_seconds": 0.9,
-            "ttfb_milliseconds": 200
+            "ttfb_milliseconds": 200,
         }
 
         result = optimizer.validate_performance_metrics(metrics)
@@ -404,6 +381,7 @@ class TestPerformanceOptimization:
 # ============================================================================
 # TEST GROUP 5: Responsive Design (3 tests)
 # ============================================================================
+
 
 class TestResponsiveDesign:
     """Test responsive design patterns and mobile-first approach."""
@@ -422,7 +400,7 @@ class TestResponsiveDesign:
             "lg": 1024,
             "xl": 1280,
             "2xl": 1536,
-            "mobile_first": True
+            "mobile_first": True,
         }
 
         result = planner.validate_breakpoints(breakpoint_config)
@@ -444,12 +422,7 @@ class TestResponsiveDesign:
             "responsive_images": True,
             "aspect_ratio_preserved": True,
             "max_width_constraint": 1200,
-            "grid_columns_responsive": {
-                "mobile": 1,
-                "tablet": 2,
-                "desktop": 3,
-                "wide": 4
-            }
+            "grid_columns_responsive": {"mobile": 1, "tablet": 2, "desktop": 3, "wide": 4},
         }
 
         result = planner.validate_fluid_layout(layout_config)
@@ -469,12 +442,8 @@ class TestResponsiveDesign:
             "lazy_loading": "native",
             "image_optimization": True,
             "webp_format": True,
-            "breakpoint_images": {
-                "mobile": "400px",
-                "tablet": "800px",
-                "desktop": "1200px"
-            },
-            "placeholder_strategy": "blur"
+            "breakpoint_images": {"mobile": "400px", "tablet": "800px", "desktop": "1200px"},
+            "placeholder_strategy": "blur",
         }
 
         result = planner.validate_image_strategy(image_strategy)

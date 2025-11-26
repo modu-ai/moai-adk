@@ -29,13 +29,13 @@ class MoaiMenuProject:
 
         if config is None:
             config = {
-                'project': {'name': 'Test Project', 'type': 'web_application'},
-                'language': {'conversation_language': 'en'},
-                'user': {'name': 'Test User'}
+                "project": {"name": "Test Project", "type": "web_application"},
+                "language": {"conversation_language": "en"},
+                "user": {"name": "Test User"},
             }
 
         self.config = config
-        self.version = '1.0.0'
+        self.version = "1.0.0"
 
         # Initialize modules
         self.documentation_manager = DocumentationManager(str(project_root), config)
@@ -46,11 +46,11 @@ class MoaiMenuProject:
         """Initialize complete project with all modules."""
 
         result = {
-            'success': True,
-            'modules_initialized': ['documentation_manager', 'language_initializer', 'template_optimizer'],
-            'created_files': [],
-            'configuration_updates': {},
-            'timestamp': datetime.now().isoformat()
+            "success": True,
+            "modules_initialized": ["documentation_manager", "language_initializer", "template_optimizer"],
+            "created_files": [],
+            "configuration_updates": {},
+            "timestamp": datetime.now().isoformat(),
         }
 
         # Update configuration with provided parameters
@@ -63,38 +63,38 @@ class MoaiMenuProject:
     def get_project_status(self) -> Dict[str, Any]:
         """Get project status."""
         return {
-            'configuration': {
-                'project_name': self.config.get('project', {}).get('name', 'Unknown'),
-                'project_type': self.config.get('project', {}).get('type', 'unknown'),
-                'menu_system_version': self.version
+            "configuration": {
+                "project_name": self.config.get("project", {}).get("name", "Unknown"),
+                "project_type": self.config.get("project", {}).get("type", "unknown"),
+                "menu_system_version": self.version,
             },
-            'fully_initialized': True
+            "fully_initialized": True,
         }
 
     def generate_documentation_from_spec(self, spec_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate documentation from SPEC data."""
         return {
-            'spec_id': spec_data.get('id', 'SPEC-001'),
-            'success': True,
-            'updated_files': ['docs/product.md', 'docs/structure.md', 'docs/tech.md']
+            "spec_id": spec_data.get("id", "SPEC-001"),
+            "success": True,
+            "updated_files": ["docs/product.md", "docs/structure.md", "docs/tech.md"],
         }
 
     def export_project_documentation(self, format_type: str = "markdown") -> Dict[str, Any]:
         """Export project documentation."""
         return {
-            'success': True,
-            'format': format_type,
-            'files': ['docs/product.md', 'docs/structure.md', 'docs/tech.md'],
-            'output_directory': str(self.project_root / 'docs-export')
+            "success": True,
+            "format": format_type,
+            "files": ["docs/product.md", "docs/structure.md", "docs/tech.md"],
+            "output_directory": str(self.project_root / "docs-export"),
         }
 
     def optimize_project_templates(self, **options) -> Dict[str, Any]:
         """Optimize project templates."""
         return {
-            'success': True,
-            'optimized_files': [],
-            'size_reduction': 15.5,
-            'optimizations_applied': ['size_optimization', 'performance_optimization']
+            "success": True,
+            "optimized_files": [],
+            "size_reduction": 15.5,
+            "optimizations_applied": ["size_optimization", "performance_optimization"],
         }
 
 
@@ -111,10 +111,10 @@ def quick_start():
     # Step 2: Complete setup with default settings
     print("2. Setting up project modules...")
     result = project.initialize_complete_project(
-        language="en",           # Change to "ko", "ja", or "zh" for other languages
+        language="en",  # Change to "ko", "ja", or "zh" for other languages
         user_name="Your Name",
         domains=["backend", "frontend"],
-        project_type="web_application"
+        project_type="web_application",
     )
 
     if result["success"]:
@@ -146,10 +146,10 @@ def quick_start():
             "User registration with email verification",
             "Secure login system",
             "User profile management",
-            "Password reset functionality"
+            "Password reset functionality",
         ],
         "status": "Planned",
-        "priority": "High"
+        "priority": "High",
     }
 
     docs_result = project.generate_documentation_from_spec(sample_spec)
@@ -187,5 +187,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error during quick start: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

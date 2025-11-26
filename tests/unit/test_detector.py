@@ -224,7 +224,7 @@ class TestLanguageDetectorLaravel:
         (tmp_project_dir / "app").mkdir()
         (tmp_project_dir / "bootstrap").mkdir()
         (tmp_project_dir / "bootstrap" / "laravel.php").write_text("<?php")
-        (tmp_project_dir / "composer.json").write_text('{}')
+        (tmp_project_dir / "composer.json").write_text("{}")
 
         # When
         detector = LanguageDetector()
@@ -239,7 +239,7 @@ class TestLanguageDetectorLaravel:
         (tmp_project_dir / "deploy.py").write_text("import os")
         (tmp_project_dir / "index.php").write_text("<?php")
         (tmp_project_dir / "artisan").write_text("#!/usr/bin/env php")
-        (tmp_project_dir / "composer.json").write_text('{}')
+        (tmp_project_dir / "composer.json").write_text("{}")
 
         # When
         detector = LanguageDetector()
@@ -256,12 +256,8 @@ class TestLanguageDetectorLaravel:
         """Should detect PHP from composer.json with laravel/framework"""
         # Given
         import json
-        composer_content = {
-            "require": {
-                "php": "^8.2",
-                "laravel/framework": "^11.0"
-            }
-        }
+
+        composer_content = {"require": {"php": "^8.2", "laravel/framework": "^11.0"}}
         (tmp_project_dir / "composer.json").write_text(json.dumps(composer_content))
         (tmp_project_dir / "index.php").write_text("<?php")
 
@@ -334,7 +330,7 @@ class TestLanguageDetectorPackageManager:
         # Given: both bun.lockb and yarn.lock
         (tmp_project_dir / "bun.lockb").write_text("bun lock")
         (tmp_project_dir / "yarn.lock").write_text("# yarn")
-        (tmp_project_dir / "package.json").write_text('{}')
+        (tmp_project_dir / "package.json").write_text("{}")
 
         # When
         detector = LanguageDetector()

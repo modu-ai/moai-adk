@@ -35,9 +35,7 @@ class TestCheckCommandsFlag:
     """Test --check-commands flag and _check_slash_commands function"""
 
     @patch("moai_adk.core.diagnostics.slash_commands.diagnose_slash_commands")
-    def test_check_commands_flag_executes_slash_command_diagnostics(
-        self, mock_diagnose
-    ):
+    def test_check_commands_flag_executes_slash_command_diagnostics(self, mock_diagnose):
         """Should execute slash command diagnostics when --check-commands is passed"""
         mock_diagnose.return_value = {
             "total_files": 5,
@@ -127,8 +125,7 @@ class TestCheckCommandsFlag:
         assert result.exit_code == 0
         assert "1/3 command files are valid" in result.output
         # The error may be wrapped or truncated in table display
-        assert ("Missing YAML front matter" in result.output or
-                "Missing YAML front" in result.output)
+        assert "Missing YAML front matter" in result.output or "Missing YAML front" in result.output
 
     @patch("moai_adk.core.diagnostics.slash_commands.diagnose_slash_commands")
     def test_check_slash_commands_with_no_files(self, mock_diagnose):
@@ -152,9 +149,7 @@ class TestVerboseModeWithLanguageDetection:
     @patch("moai_adk.cli.commands.doctor.detect_project_language")
     @patch("moai_adk.cli.commands.doctor.check_environment")
     @patch("moai_adk.cli.commands.doctor.SystemChecker")
-    def test_verbose_detects_language_and_shows_tools(
-        self, mock_checker_class, mock_check_env, mock_detect_lang
-    ):
+    def test_verbose_detects_language_and_shows_tools(self, mock_checker_class, mock_check_env, mock_detect_lang):
         """Should detect language and display language-specific tools in verbose mode"""
         mock_check_env.return_value = {"Python >= 3.13": True, "Git installed": True}
         mock_detect_lang.return_value = "python"
@@ -165,9 +160,7 @@ class TestVerboseModeWithLanguageDetection:
             "mypy": False,
             "ruff": True,
         }
-        mock_checker.get_tool_version.side_effect = lambda tool: (
-            "pytest 8.4.2" if tool == "pytest" else "ruff 0.11.0"
-        )
+        mock_checker.get_tool_version.side_effect = lambda tool: ("pytest 8.4.2" if tool == "pytest" else "ruff 0.11.0")
         mock_checker_class.return_value = mock_checker
 
         runner = CliRunner()
@@ -193,9 +186,7 @@ class TestVerboseModeWithLanguageDetection:
     @patch("moai_adk.cli.commands.doctor.detect_project_language")
     @patch("moai_adk.cli.commands.doctor.check_environment")
     @patch("moai_adk.cli.commands.doctor.SystemChecker")
-    def test_display_language_tools_with_versions(
-        self, mock_checker_class, mock_check_env, mock_detect_lang
-    ):
+    def test_display_language_tools_with_versions(self, mock_checker_class, mock_check_env, mock_detect_lang):
         """Should display tool versions correctly"""
         mock_check_env.return_value = {"Python >= 3.13": True}
         mock_detect_lang.return_value = "typescript"
@@ -206,9 +197,7 @@ class TestVerboseModeWithLanguageDetection:
             "npm": True,
             "vitest": False,
         }
-        mock_checker.get_tool_version.side_effect = lambda tool: (
-            "v22.0.0" if tool == "node" else "10.2.0"
-        )
+        mock_checker.get_tool_version.side_effect = lambda tool: ("v22.0.0" if tool == "node" else "10.2.0")
         mock_checker_class.return_value = mock_checker
 
         runner = CliRunner()
@@ -337,9 +326,7 @@ class TestFixModeAndSuggestions:
     @patch("moai_adk.cli.commands.doctor.detect_project_language")
     @patch("moai_adk.cli.commands.doctor.check_environment")
     @patch("moai_adk.cli.commands.doctor.SystemChecker")
-    def test_fix_with_all_tools_installed(
-        self, mock_checker_class, mock_check_env, mock_detect_lang
-    ):
+    def test_fix_with_all_tools_installed(self, mock_checker_class, mock_check_env, mock_detect_lang):
         """Should report success when all tools are installed"""
         mock_check_env.return_value = {"Python >= 3.13": True}
         mock_detect_lang.return_value = "python"
@@ -448,11 +435,7 @@ class TestExportDiagnostics:
             _export_diagnostics(invalid_path, {"test": "data"})
 
             # Should print error message
-            error_calls = [
-                call
-                for call in mock_print.call_args_list
-                if "Failed to export" in str(call)
-            ]
+            error_calls = [call for call in mock_print.call_args_list if "Failed to export" in str(call)]
             assert len(error_calls) > 0
 
     def test_export_diagnostics_success_message(self, tmp_path):
@@ -466,11 +449,7 @@ class TestExportDiagnostics:
             _export_diagnostics(str(export_path), data)
 
             # Should print success message
-            success_calls = [
-                call
-                for call in mock_print.call_args_list
-                if "exported to" in str(call).lower()
-            ]
+            success_calls = [call for call in mock_print.call_args_list if "exported to" in str(call).lower()]
             assert len(success_calls) > 0
 
 
@@ -495,9 +474,7 @@ class TestDisplayLanguageTools:
         from moai_adk.cli.commands.doctor import console
 
         mock_checker = Mock()
-        mock_checker.get_tool_version.side_effect = (
-            lambda tool: "1.0.0" if tool != "mypy" else "not installed"
-        )
+        mock_checker.get_tool_version.side_effect = lambda tool: "1.0.0" if tool != "mypy" else "not installed"
 
         tools = {"pytest": True, "mypy": False, "ruff": True}
 
@@ -536,9 +513,7 @@ class TestErrorHandling:
 
     @patch("moai_adk.cli.commands.doctor.detect_project_language")
     @patch("moai_adk.cli.commands.doctor.check_environment")
-    def test_doctor_handles_language_detection_exception(
-        self, mock_check_env, mock_detect_lang
-    ):
+    def test_doctor_handles_language_detection_exception(self, mock_check_env, mock_detect_lang):
         """Should handle exceptions during language detection"""
         mock_check_env.return_value = {"Python >= 3.13": True}
         mock_detect_lang.side_effect = Exception("Language detection failed")
@@ -592,9 +567,7 @@ class TestIntegrationScenarios:
     @patch("moai_adk.cli.commands.doctor.detect_project_language")
     @patch("moai_adk.cli.commands.doctor.check_environment")
     @patch("moai_adk.cli.commands.doctor.SystemChecker")
-    def test_verbose_fix_export_combined(
-        self, mock_checker_class, mock_check_env, mock_detect_lang, mock_questionary
-    ):
+    def test_verbose_fix_export_combined(self, mock_checker_class, mock_check_env, mock_detect_lang, mock_questionary):
         """Should handle --verbose --fix --export combination"""
         mock_check_env.return_value = {"Python >= 3.13": True, "Git installed": True}
         mock_detect_lang.return_value = "python"
@@ -611,9 +584,7 @@ class TestIntegrationScenarios:
 
         runner = CliRunner()
         with runner.isolated_filesystem():
-            result = runner.invoke(
-                doctor, ["--verbose", "--fix", "--export", "full_report.json"]
-            )
+            result = runner.invoke(doctor, ["--verbose", "--fix", "--export", "full_report.json"])
 
             assert result.exit_code == 0
             assert Path("full_report.json").exists()
@@ -632,9 +603,7 @@ class TestEdgeCases:
         from moai_adk.cli.commands.doctor import console
 
         with patch.object(console, "print") as mock_print:
-            with patch(
-                "moai_adk.cli.commands.doctor.SystemChecker"
-            ) as mock_checker_class:
+            with patch("moai_adk.cli.commands.doctor.SystemChecker") as mock_checker_class:
                 mock_checker = Mock()
                 mock_checker._is_tool_available.return_value = True
                 mock_checker.get_tool_version.return_value = "v1.0.0"
@@ -650,9 +619,7 @@ class TestEdgeCases:
         with patch.object(console, "print") as mock_print:
             _suggest_fixes({}, "python")
             # Should print "All tools are installed"
-            success_calls = [
-                call for call in mock_print.call_args_list if "All tools" in str(call)
-            ]
+            success_calls = [call for call in mock_print.call_args_list if "All tools" in str(call)]
             assert len(success_calls) > 0
 
     @patch("moai_adk.cli.commands.doctor.check_environment")

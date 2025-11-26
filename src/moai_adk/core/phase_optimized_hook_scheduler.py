@@ -731,11 +731,11 @@ class PhaseOptimizedHookScheduler:
                 "total_schedules": total_schedules,
                 "strategy_performance": strategy_stats,
                 "recent_performance": recent_performance,
-                "recommended_strategy": max(
-                    strategy_stats.keys(), key=lambda k: strategy_stats[k]["recommendation_score"]
-                )
-                if strategy_stats
-                else None,
+                "recommended_strategy": (
+                    max(strategy_stats.keys(), key=lambda k: strategy_stats[k]["recommendation_score"])
+                    if strategy_stats
+                    else None
+                ),
             }
 
     def get_phase_optimization_insights(self, phase: Phase) -> Dict[str, Any]:
@@ -764,16 +764,12 @@ class PhaseOptimizedHookScheduler:
         else:
             recs_list = insights["optimization_recommendations"]
             if isinstance(recs_list, list):
-                recs_list.append(
-                    "This phase prefers sequential hook execution for consistency"
-                )
+                recs_list.append("This phase prefers sequential hook execution for consistency")
 
         if phase_params.get("token_budget_ratio", 0) > 0.2:
             recs_list = insights["optimization_recommendations"]
             if isinstance(recs_list, list):
-                recs_list.append(
-                    "This phase requires significant token budget - consider token-efficient scheduling"
-                )
+                recs_list.append("This phase requires significant token budget - consider token-efficient scheduling")
 
         # Add strategy recommendations
         strategy_stats = self.get_scheduling_statistics()["strategy_performance"]

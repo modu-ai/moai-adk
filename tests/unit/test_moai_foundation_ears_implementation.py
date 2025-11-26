@@ -23,6 +23,7 @@ def ears_parser():
     """Create an EARS parser instance."""
     # Will be implemented in GREEN phase
     from moai_adk.foundation.ears import EARSParser
+
     return EARSParser()
 
 
@@ -30,6 +31,7 @@ def ears_parser():
 def ears_validator():
     """Create an EARS validator instance."""
     from moai_adk.foundation.ears import EARSValidator
+
     return EARSValidator()
 
 
@@ -37,6 +39,7 @@ def ears_validator():
 def ears_analyzer():
     """Create an EARS analyzer instance."""
     from moai_adk.foundation.ears import EARSAnalyzer
+
     return EARSAnalyzer()
 
 
@@ -60,11 +63,11 @@ class TestEARSEventPatternParsing:
         result = ears_parser.parse(requirement)
 
         assert result is not None
-        assert result['pattern_type'] == 'event'
-        assert 'trigger' in result
-        assert 'result' in result
-        assert 'Submit Order' in result['trigger'].lower() or 'submit' in result['trigger'].lower()
-        assert 'validate' in result['result'].lower() or 'confirmation' in result['result'].lower()
+        assert result["pattern_type"] == "event"
+        assert "trigger" in result
+        assert "result" in result
+        assert "Submit Order" in result["trigger"].lower() or "submit" in result["trigger"].lower()
+        assert "validate" in result["result"].lower() or "confirmation" in result["result"].lower()
 
     def test_parse_event_with_agent(self, ears_parser):
         """Parse event pattern that includes agent role.
@@ -81,11 +84,11 @@ class TestEARSEventPatternParsing:
 
         result = ears_parser.parse(requirement)
 
-        assert result['pattern_type'] == 'event'
-        assert 'agent' in result
-        assert 'customer' in result['agent'].lower()
-        assert 'trigger' in result
-        assert 'result' in result
+        assert result["pattern_type"] == "event"
+        assert "agent" in result
+        assert "customer" in result["agent"].lower()
+        assert "trigger" in result
+        assert "result" in result
 
     def test_parse_event_multiple_triggers(self, ears_parser):
         """Parse event pattern with multiple possible triggers.
@@ -101,10 +104,10 @@ class TestEARSEventPatternParsing:
 
         result = ears_parser.parse(requirement)
 
-        assert result['pattern_type'] == 'event'
-        assert 'triggers' in result or isinstance(result.get('trigger'), list)
-        triggers = result.get('triggers') or [result.get('trigger')]
-        assert len(triggers) >= 2 or ('Submit' in result.get('trigger', '') and 'Enter' in result.get('trigger', ''))
+        assert result["pattern_type"] == "event"
+        assert "triggers" in result or isinstance(result.get("trigger"), list)
+        triggers = result.get("triggers") or [result.get("trigger")]
+        assert len(triggers) >= 2 or ("Submit" in result.get("trigger", "") and "Enter" in result.get("trigger", ""))
 
 
 # ===== TEST CLASS 2: Agent Pattern Parsing =====
@@ -126,12 +129,12 @@ class TestEARSAgentPatternParsing:
 
         result = ears_parser.parse(requirement)
 
-        assert result['pattern_type'] == 'agent'
-        assert 'agent' in result
-        assert 'administrator' in result['agent'].lower()
-        assert 'capability' in result or 'action' in result
-        capability = result.get('capability') or result.get('action')
-        assert 'manage' in capability.lower() or 'permission' in capability.lower()
+        assert result["pattern_type"] == "agent"
+        assert "agent" in result
+        assert "administrator" in result["agent"].lower()
+        assert "capability" in result or "action" in result
+        capability = result.get("capability") or result.get("action")
+        assert "manage" in capability.lower() or "permission" in capability.lower()
 
     def test_parse_multiple_agent_roles(self, ears_parser):
         """Parse requirements with multiple agent roles.
@@ -147,13 +150,13 @@ class TestEARSAgentPatternParsing:
 
         result = ears_parser.parse(requirement)
 
-        assert result['pattern_type'] == 'agent'
-        agents = result.get('agents', [])
+        assert result["pattern_type"] == "agent"
+        agents = result.get("agents", [])
         if agents:
             assert len(agents) >= 2
         else:
-            assert 'customer' in result.get('agent', '').lower()
-            assert 'guest' in result.get('agent', '').lower()
+            assert "customer" in result.get("agent", "").lower()
+            assert "guest" in result.get("agent", "").lower()
 
 
 # ===== TEST CLASS 3: Condition and Result Parsing =====
@@ -175,10 +178,10 @@ class TestEARSConditionResultParsing:
 
         result = ears_parser.parse(requirement)
 
-        assert 'condition' in result
-        assert 'result' in result
-        assert '8' in result['condition'] or 'password' in result['condition'].lower()
-        assert 'reject' in result['result'].lower()
+        assert "condition" in result
+        assert "result" in result
+        assert "8" in result["condition"] or "password" in result["condition"].lower()
+        assert "reject" in result["result"].lower()
 
     def test_parse_success_and_failure_paths(self, ears_parser):
         """Parse requirement with both success and failure conditions.
@@ -202,8 +205,8 @@ class TestEARSConditionResultParsing:
         result = ears_parser.parse(requirement)
 
         # Should identify at least condition-result pairs
-        assert 'condition' in result or 'conditions' in result
-        assert 'result' in result or 'results' in result
+        assert "condition" in result or "conditions" in result
+        assert "result" in result or "results" in result
 
 
 # ===== TEST CLASS 4: Scenario Pattern Parsing =====
@@ -230,11 +233,11 @@ class TestEARSScenarioPatternParsing:
 
         result = ears_parser.parse(requirement)
 
-        assert result['pattern_type'] == 'scenario'
-        assert 'scenario' in result
-        assert 'monthly' in result['scenario'].lower() or 'invoice' in result['scenario'].lower()
-        assert 'trigger' in result or 'when' in result
-        assert 'result' in result
+        assert result["pattern_type"] == "scenario"
+        assert "scenario" in result
+        assert "monthly" in result["scenario"].lower() or "invoice" in result["scenario"].lower()
+        assert "trigger" in result or "when" in result
+        assert "result" in result
 
 
 # ===== TEST CLASS 5: Validation Rules =====
@@ -258,8 +261,8 @@ class TestEARSValidationRules:
         result = ears_validator.validate(requirement)
 
         assert result is not None
-        assert result.get('is_valid') == True
-        assert len(result.get('errors', [])) == 0
+        assert result.get("is_valid") == True
+        assert len(result.get("errors", [])) == 0
 
     def test_validate_incomplete_requirement(self, ears_validator):
         """Validate incomplete requirement missing key elements.
@@ -274,12 +277,12 @@ class TestEARSValidationRules:
 
         result = ears_validator.validate(requirement)
 
-        assert result.get('is_valid') == False
-        errors = result.get('errors', [])
-        missing = result.get('missing_elements', [])
+        assert result.get("is_valid") == False
+        errors = result.get("errors", [])
+        missing = result.get("missing_elements", [])
         # Should identify missing 'When' clause
         assert len(errors) > 0 or len(missing) > 0
-        assert any('when' in str(e).lower() for e in errors + missing)
+        assert any("when" in str(e).lower() for e in errors + missing)
 
 
 # ===== TEST CLASS 6: Test Case Generation =====
@@ -309,8 +312,8 @@ class TestEARSTestCaseGeneration:
 
         assert test_cases is not None
         assert len(test_cases) >= 2  # Happy path + error path
-        assert any('valid' in str(tc).lower() for tc in test_cases)
-        assert any('invalid' in str(tc).lower() for tc in test_cases)
+        assert any("valid" in str(tc).lower() for tc in test_cases)
+        assert any("invalid" in str(tc).lower() for tc in test_cases)
 
 
 # ===== TEST CLASS 7: Complete Workflow =====
@@ -335,18 +338,18 @@ class TestEARSCompleteWorkflow:
         # Step 1: Parse
         parsed = ears_parser.parse(requirement)
         assert parsed is not None
-        assert 'pattern_type' in parsed
+        assert "pattern_type" in parsed
 
         # Step 2: Validate
         validated = ears_validator.validate(requirement)
-        assert validated['is_valid'] == True
+        assert validated["is_valid"] == True
 
         # Step 3: Generate tests
         tests = ears_analyzer.generate_test_cases(requirement)
         assert len(tests) > 0
 
         # All steps should succeed for valid requirement
-        assert parsed and validated.get('is_valid') and len(tests) > 0
+        assert parsed and validated.get("is_valid") and len(tests) > 0
 
     def test_requirement_analysis_priority_assignment(self, ears_analyzer):
         """Analyze requirement and assign priority based on type.
@@ -369,8 +372,8 @@ class TestEARSCompleteWorkflow:
         security_analysis = ears_analyzer.analyze(security_req)
         usability_analysis = ears_analyzer.analyze(usability_req)
 
-        security_priority = security_analysis.get('priority', 0)
-        usability_priority = usability_analysis.get('priority', 0)
+        security_priority = security_analysis.get("priority", 0)
+        usability_priority = usability_analysis.get("priority", 0)
 
         # Security should have higher priority than usability
         assert security_priority >= usability_priority
@@ -390,7 +393,7 @@ class TestEARSErrorHandling:
         result = ears_parser.parse("")
 
         # Should either return empty dict or be None
-        assert result == {} or result is None or result.get('pattern_type') == 'unknown'
+        assert result == {} or result is None or result.get("pattern_type") == "unknown"
 
     def test_handle_ambiguous_requirement(self, ears_validator):
         """Handle ambiguous requirement with unclear patterns.
@@ -405,10 +408,10 @@ class TestEARSErrorHandling:
 
         result = ears_validator.validate(ambiguous)
 
-        assert result.get('is_valid') == False
+        assert result.get("is_valid") == False
         # Should provide suggestions
-        suggestions = result.get('suggestions', [])
-        errors = result.get('errors', [])
+        suggestions = result.get("suggestions", [])
+        errors = result.get("errors", [])
         assert len(suggestions) > 0 or len(errors) > 0
 
 
@@ -435,7 +438,7 @@ class TestEARSIntegration:
         validated = ears_validator.validate(requirement)
 
         assert parsed is not None
-        assert validated.get('is_valid') == True
+        assert validated.get("is_valid") == True
 
     def test_real_world_business_requirement(self, ears_parser, ears_validator):
         """Test real-world business requirement."""
@@ -455,5 +458,5 @@ class TestEARSIntegration:
         validated = ears_validator.validate(requirement)
 
         assert parsed is not None
-        assert parsed['pattern_type'] == 'scenario'
-        assert validated.get('is_valid') == True
+        assert parsed["pattern_type"] == "scenario"
+        assert validated.get("is_valid") == True

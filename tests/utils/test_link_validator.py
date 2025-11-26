@@ -34,6 +34,7 @@ from moai_adk.utils.common import HTTPResponse
 # LinkResult Tests
 # ============================================================================
 
+
 class TestLinkResult:
     """Tests for LinkResult dataclass."""
 
@@ -142,6 +143,7 @@ class TestLinkResult:
 # ============================================================================
 # ValidationResult Tests
 # ============================================================================
+
 
 class TestValidationResult:
     """Tests for ValidationResult dataclass."""
@@ -259,14 +261,17 @@ class TestValidationResult:
         )
         assert val_result.success_rate == 0.0
 
-    @pytest.mark.parametrize("total,valid,invalid,expected_rate", [
-        (10, 10, 0, 100.0),
-        (10, 5, 5, 50.0),
-        (10, 0, 10, 0.0),
-        (1, 1, 0, 100.0),
-        (4, 1, 3, 25.0),
-        (4, 3, 1, 75.0),
-    ])
+    @pytest.mark.parametrize(
+        "total,valid,invalid,expected_rate",
+        [
+            (10, 10, 0, 100.0),
+            (10, 5, 5, 50.0),
+            (10, 0, 10, 0.0),
+            (1, 1, 0, 100.0),
+            (4, 1, 3, 25.0),
+            (4, 3, 1, 75.0),
+        ],
+    )
     def test_validation_result_success_rate_parametrized(self, total, valid, invalid, expected_rate):
         """Test success_rate with parametrized values."""
         results = [
@@ -285,6 +290,7 @@ class TestValidationResult:
 # ============================================================================
 # LinkValidator Tests - Initialization
 # ============================================================================
+
 
 class TestLinkValidatorInitialization:
     """Tests for LinkValidator initialization."""
@@ -305,15 +311,16 @@ class TestLinkValidatorInitialization:
     def test_link_validator_inherits_from_httpclient(self):
         """Test LinkValidator inherits from HTTPClient."""
         validator = LinkValidator()
-        assert hasattr(validator, 'fetch_url')
-        assert hasattr(validator, 'session')
-        assert hasattr(validator, 'max_concurrent')
-        assert hasattr(validator, 'timeout')
+        assert hasattr(validator, "fetch_url")
+        assert hasattr(validator, "session")
+        assert hasattr(validator, "max_concurrent")
+        assert hasattr(validator, "timeout")
 
 
 # ============================================================================
 # LinkValidator Tests - Link Extraction
 # ============================================================================
+
 
 class TestLinkValidatorExtractLinksFromFile:
     """Tests for LinkValidator.extract_links_from_file method."""
@@ -322,12 +329,14 @@ class TestLinkValidatorExtractLinksFromFile:
         """Test extracting links from an existing file."""
         validator = LinkValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(
+                """
 # Test Document
 Check out [Google](https://www.google.com)
 Visit [GitHub](https://github.com)
-            """)
+            """
+            )
             temp_path = Path(f.name)
 
         try:
@@ -349,7 +358,7 @@ Visit [GitHub](https://github.com)
         validator = LinkValidator()
         nonexistent_path = Path("/nonexistent/path/file.md")
 
-        with patch('moai_adk.utils.link_validator.logger') as mock_logger:
+        with patch("moai_adk.utils.link_validator.logger") as mock_logger:
             validator.extract_links_from_file(nonexistent_path)
             mock_logger.warning.assert_called()
 
@@ -357,7 +366,7 @@ Visit [GitHub](https://github.com)
         """Test extracting links from empty file."""
         validator = LinkValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("")
             temp_path = Path(f.name)
 
@@ -372,7 +381,7 @@ Visit [GitHub](https://github.com)
         validator = LinkValidator()
         test_path = Path("/tmp/test.md")
 
-        with patch('moai_adk.utils.link_validator.SafeFileReader') as mock_reader_class:
+        with patch("moai_adk.utils.link_validator.SafeFileReader") as mock_reader_class:
             mock_reader = MagicMock()
             mock_reader.read_text.return_value = None
             mock_reader_class.return_value = mock_reader
@@ -385,18 +394,18 @@ Visit [GitHub](https://github.com)
         validator = LinkValidator()
 
         # Create a temporary file that exists but will cause an error
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("test content")
             temp_path = Path(f.name)
 
         try:
             # Patch SafeFileReader to raise exception
-            with patch('moai_adk.utils.link_validator.SafeFileReader') as mock_reader_class:
+            with patch("moai_adk.utils.link_validator.SafeFileReader") as mock_reader_class:
                 mock_reader = MagicMock()
                 mock_reader.read_text.side_effect = Exception("Read error")
                 mock_reader_class.return_value = mock_reader
 
-                with patch('moai_adk.utils.link_validator.logger') as mock_logger:
+                with patch("moai_adk.utils.link_validator.logger") as mock_logger:
                     links = validator.extract_links_from_file(temp_path)
                     assert links == []
                     mock_logger.error.assert_called()
@@ -407,15 +416,15 @@ Visit [GitHub](https://github.com)
         """Test extracting links logs the number found."""
         validator = LinkValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("[Link](https://example.com)")
             temp_path = Path(f.name)
 
         try:
-            with patch('moai_adk.utils.link_validator.logger') as mock_logger:
+            with patch("moai_adk.utils.link_validator.logger") as mock_logger:
                 validator.extract_links_from_file(temp_path)
                 # Check that logger.info was called
-                assert any('Found' in str(call_obj) for call_obj in mock_logger.info.call_args_list)
+                assert any("Found" in str(call_obj) for call_obj in mock_logger.info.call_args_list)
         finally:
             temp_path.unlink()
 
@@ -423,6 +432,7 @@ Visit [GitHub](https://github.com)
 # ============================================================================
 # LinkValidator Tests - Single Link Validation
 # ============================================================================
+
 
 class TestLinkValidatorValidateLink:
     """Tests for LinkValidator.validate_link method."""
@@ -432,7 +442,7 @@ class TestLinkValidatorValidateLink:
         """Test validating a valid URL."""
         validator = LinkValidator()
 
-        with patch.object(validator, 'fetch_url') as mock_fetch:
+        with patch.object(validator, "fetch_url") as mock_fetch:
             mock_fetch.return_value = HTTPResponse(
                 status_code=200,
                 url="https://example.com",
@@ -453,7 +463,7 @@ class TestLinkValidatorValidateLink:
         """Test validating invalid URL format."""
         validator = LinkValidator()
 
-        with patch('moai_adk.utils.link_validator.is_valid_url', return_value=False):
+        with patch("moai_adk.utils.link_validator.is_valid_url", return_value=False):
             result = await validator.validate_link("not-a-url")
 
             assert result.url == "not-a-url"
@@ -467,7 +477,7 @@ class TestLinkValidatorValidateLink:
         """Test validating link that returns 404."""
         validator = LinkValidator()
 
-        with patch.object(validator, 'fetch_url') as mock_fetch:
+        with patch.object(validator, "fetch_url") as mock_fetch:
             mock_fetch.return_value = HTTPResponse(
                 status_code=404,
                 url="https://example.com/notfound",
@@ -485,7 +495,7 @@ class TestLinkValidatorValidateLink:
         """Test validating link that returns 500."""
         validator = LinkValidator()
 
-        with patch.object(validator, 'fetch_url') as mock_fetch:
+        with patch.object(validator, "fetch_url") as mock_fetch:
             mock_fetch.return_value = HTTPResponse(
                 status_code=500,
                 url="https://example.com/error",
@@ -512,7 +522,7 @@ class TestLinkValidatorValidateLink:
         ]
 
         for status_code, expected_valid in test_cases:
-            with patch.object(validator, 'fetch_url') as mock_fetch:
+            with patch.object(validator, "fetch_url") as mock_fetch:
                 mock_fetch.return_value = HTTPResponse(
                     status_code=status_code,
                     url="https://example.com",
@@ -530,7 +540,7 @@ class TestLinkValidatorValidateLink:
         """Test validating link with error message from fetch."""
         validator = LinkValidator()
 
-        with patch.object(validator, 'fetch_url') as mock_fetch:
+        with patch.object(validator, "fetch_url") as mock_fetch:
             mock_fetch.return_value = HTTPResponse(
                 status_code=0,
                 url="https://example.com",
@@ -549,7 +559,7 @@ class TestLinkValidatorValidateLink:
         """Test validate_link handles unexpected exceptions."""
         validator = LinkValidator()
 
-        with patch.object(validator, 'fetch_url') as mock_fetch:
+        with patch.object(validator, "fetch_url") as mock_fetch:
             mock_fetch.side_effect = RuntimeError("Unexpected error")
 
             result = await validator.validate_link("https://example.com")
@@ -562,6 +572,7 @@ class TestLinkValidatorValidateLink:
 # ============================================================================
 # LinkValidator Tests - Batch Link Validation
 # ============================================================================
+
 
 class TestLinkValidatorValidateAllLinks:
     """Tests for LinkValidator.validate_all_links method."""
@@ -583,7 +594,7 @@ class TestLinkValidatorValidateAllLinks:
         """Test validating single link."""
         validator = LinkValidator()
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.return_value = LinkResult(
                 url="https://example.com",
                 status_code=200,
@@ -609,7 +620,7 @@ class TestLinkValidatorValidateAllLinks:
             "https://github.com",
         ]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
                 LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1),
                 LinkResult(url=links[1], status_code=200, is_valid=True, response_time=0.1),
@@ -629,11 +640,12 @@ class TestLinkValidatorValidateAllLinks:
 
         links = [f"https://example.com/{i}" for i in range(5)]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             # Alternate valid and invalid
             mock_validate.side_effect = [
-                LinkResult(url=links[i], status_code=(200 if i % 2 == 0 else 404),
-                          is_valid=(i % 2 == 0), response_time=0.1)
+                LinkResult(
+                    url=links[i], status_code=(200 if i % 2 == 0 else 404), is_valid=(i % 2 == 0), response_time=0.1
+                )
                 for i in range(5)
             ]
 
@@ -650,10 +662,9 @@ class TestLinkValidatorValidateAllLinks:
 
         links = [f"https://example.com/{i}" for i in range(5)]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
-                LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1)
-                for link in links
+                LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1) for link in links
             ]
 
             result = await validator.validate_all_links(links)
@@ -668,7 +679,7 @@ class TestLinkValidatorValidateAllLinks:
 
         links = ["https://valid.com", "https://invalid.com"]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
                 LinkResult(url="https://valid.com", status_code=200, is_valid=True, response_time=0.5),
                 LinkResult(url="https://invalid.com", status_code=404, is_valid=False, response_time=0.3),
@@ -692,7 +703,7 @@ class TestLinkValidatorValidateAllLinks:
             await asyncio.sleep(0.01)
             return LinkResult(url=url, status_code=200, is_valid=True, response_time=0.01)
 
-        with patch.object(validator, 'validate_link', side_effect=mock_validate_link):
+        with patch.object(validator, "validate_link", side_effect=mock_validate_link):
             result = await validator.validate_all_links(links)
 
             assert result.total_links == 10
@@ -705,7 +716,7 @@ class TestLinkValidatorValidateAllLinks:
 
         links = ["https://example.com"]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.return_value = LinkResult(
                 url="https://example.com",
                 status_code=200,
@@ -713,7 +724,7 @@ class TestLinkValidatorValidateAllLinks:
                 response_time=0.1,
             )
 
-            with patch('moai_adk.utils.link_validator.logger') as mock_logger:
+            with patch("moai_adk.utils.link_validator.logger") as mock_logger:
                 result = await validator.validate_all_links(links)
 
                 # Check logger was called during validation
@@ -726,10 +737,9 @@ class TestLinkValidatorValidateAllLinks:
 
         links = ["https://example.com/1", "https://example.com/2", "https://example.com/3"]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
-                LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1)
-                for link in links
+                LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1) for link in links
             ]
 
             result = await validator.validate_all_links(links)
@@ -742,6 +752,7 @@ class TestLinkValidatorValidateAllLinks:
 # ============================================================================
 # LinkValidator Tests - Report Generation
 # ============================================================================
+
 
 class TestLinkValidatorGenerateReport:
     """Tests for LinkValidator.generate_report method."""
@@ -789,8 +800,13 @@ class TestLinkValidatorGenerateReport:
         """Test generating report with all invalid links."""
         validator = LinkValidator()
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=404, is_valid=False, response_time=0.1,
-                      error_message=f"Not found")
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=404,
+                is_valid=False,
+                response_time=0.1,
+                error_message=f"Not found",
+            )
             for i in range(2)
         ]
         val_result = ValidationResult(
@@ -813,8 +829,9 @@ class TestLinkValidatorGenerateReport:
         validator = LinkValidator()
         results = [
             LinkResult(url="https://example.com", status_code=200, is_valid=True, response_time=0.5),
-            LinkResult(url="https://broken.com", status_code=404, is_valid=False, response_time=0.2,
-                      error_message="Not found"),
+            LinkResult(
+                url="https://broken.com", status_code=404, is_valid=False, response_time=0.2, error_message="Not found"
+            ),
             LinkResult(url="https://slow.com", status_code=200, is_valid=True, response_time=2.0),
         ]
         val_result = ValidationResult(
@@ -858,8 +875,13 @@ class TestLinkValidatorGenerateReport:
         """Test report includes error messages for failed links."""
         validator = LinkValidator()
         results = [
-            LinkResult(url="https://timeout.com", status_code=0, is_valid=False, response_time=0.0,
-                      error_message="Connection timeout"),
+            LinkResult(
+                url="https://timeout.com",
+                status_code=0,
+                is_valid=False,
+                response_time=0.0,
+                error_message="Connection timeout",
+            ),
         ]
         val_result = ValidationResult(
             total_links=1,
@@ -901,13 +923,16 @@ class TestLinkValidatorGenerateReport:
 
         assert "Validation Time" in report
 
-    @pytest.mark.parametrize("total,valid,invalid", [
-        (0, 0, 0),
-        (1, 1, 0),
-        (5, 5, 0),
-        (5, 0, 5),
-        (10, 7, 3),
-    ])
+    @pytest.mark.parametrize(
+        "total,valid,invalid",
+        [
+            (0, 0, 0),
+            (1, 1, 0),
+            (5, 5, 0),
+            (5, 0, 5),
+            (10, 7, 3),
+        ],
+    )
     def test_generate_report_parametrized(self, total, valid, invalid):
         """Test generating reports with parametrized data."""
         validator = LinkValidator()
@@ -933,17 +958,18 @@ class TestLinkValidatorGenerateReport:
 # validate_readme_links Tests
 # ============================================================================
 
+
 class TestValidateReadmeLinks:
     """Tests for validate_readme_links convenience function."""
 
     def test_validate_readme_links_default_path(self):
         """Test validate_readme_links uses default path when not provided."""
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = []
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.asyncio.run') as mock_asyncio_run:
+            with patch("moai_adk.utils.link_validator.asyncio.run") as mock_asyncio_run:
                 mock_asyncio_run.return_value = ValidationResult(
                     total_links=0, valid_links=0, invalid_links=0, results=[]
                 )
@@ -957,12 +983,12 @@ class TestValidateReadmeLinks:
         """Test validate_readme_links with custom path."""
         custom_path = Path("/custom/README.md")
 
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = []
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.asyncio.run') as mock_asyncio_run:
+            with patch("moai_adk.utils.link_validator.asyncio.run") as mock_asyncio_run:
                 mock_asyncio_run.return_value = ValidationResult(
                     total_links=0, valid_links=0, invalid_links=0, results=[]
                 )
@@ -973,12 +999,12 @@ class TestValidateReadmeLinks:
 
     def test_validate_readme_links_no_links_found(self):
         """Test validate_readme_links when no links found."""
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = []
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.logger') as mock_logger:
+            with patch("moai_adk.utils.link_validator.logger") as mock_logger:
                 result = validate_readme_links()
 
                 assert result.total_links == 0
@@ -989,7 +1015,7 @@ class TestValidateReadmeLinks:
         """Test validate_readme_links executes link validation."""
         links = ["https://example.com", "https://google.com"]
 
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = links
 
@@ -1001,7 +1027,7 @@ class TestValidateReadmeLinks:
                 results=[
                     LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1),
                     LinkResult(url=links[1], status_code=200, is_valid=True, response_time=0.1),
-                ]
+                ],
             )
 
             async def mock_validate_all_links(link_list):
@@ -1010,7 +1036,7 @@ class TestValidateReadmeLinks:
             mock_validator.validate_all_links.side_effect = mock_validate_all_links
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.create_report_path') as mock_create_path:
+            with patch("moai_adk.utils.link_validator.create_report_path") as mock_create_path:
                 mock_path = MagicMock()
                 mock_create_path.return_value = mock_path
 
@@ -1023,7 +1049,7 @@ class TestValidateReadmeLinks:
         """Test validate_readme_links generates report."""
         links = ["https://example.com"]
 
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = links
 
@@ -1031,15 +1057,15 @@ class TestValidateReadmeLinks:
                 total_links=1,
                 valid_links=1,
                 invalid_links=0,
-                results=[LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1)]
+                results=[LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1)],
             )
 
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.asyncio.run') as mock_asyncio_run:
+            with patch("moai_adk.utils.link_validator.asyncio.run") as mock_asyncio_run:
                 mock_asyncio_run.return_value = expected_result
 
-                with patch('moai_adk.utils.link_validator.create_report_path') as mock_create_path:
+                with patch("moai_adk.utils.link_validator.create_report_path") as mock_create_path:
                     mock_path = MagicMock()
                     mock_create_path.return_value = mock_path
 
@@ -1051,7 +1077,7 @@ class TestValidateReadmeLinks:
         """Test validate_readme_links saves report to file."""
         links = ["https://example.com"]
 
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = links
             mock_validator.generate_report.return_value = "Report content"
@@ -1060,15 +1086,15 @@ class TestValidateReadmeLinks:
                 total_links=1,
                 valid_links=1,
                 invalid_links=0,
-                results=[LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1)]
+                results=[LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1)],
             )
 
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.asyncio.run') as mock_asyncio_run:
+            with patch("moai_adk.utils.link_validator.asyncio.run") as mock_asyncio_run:
                 mock_asyncio_run.return_value = expected_result
 
-                with patch('moai_adk.utils.link_validator.create_report_path') as mock_create_path:
+                with patch("moai_adk.utils.link_validator.create_report_path") as mock_create_path:
                     mock_path = MagicMock()
                     mock_create_path.return_value = mock_path
 
@@ -1080,7 +1106,7 @@ class TestValidateReadmeLinks:
         """Test validate_readme_links logs when report is saved."""
         links = ["https://example.com"]
 
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = links
             mock_validator.generate_report.return_value = "Report"
@@ -1089,26 +1115,26 @@ class TestValidateReadmeLinks:
                 total_links=1,
                 valid_links=1,
                 invalid_links=0,
-                results=[LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1)]
+                results=[LinkResult(url=links[0], status_code=200, is_valid=True, response_time=0.1)],
             )
 
             mock_validator_class.return_value = mock_validator
 
-            with patch('moai_adk.utils.link_validator.asyncio.run') as mock_asyncio_run:
+            with patch("moai_adk.utils.link_validator.asyncio.run") as mock_asyncio_run:
                 mock_asyncio_run.return_value = expected_result
 
-                with patch('moai_adk.utils.link_validator.create_report_path') as mock_create_path:
+                with patch("moai_adk.utils.link_validator.create_report_path") as mock_create_path:
                     mock_path = MagicMock()
                     mock_create_path.return_value = mock_path
 
-                    with patch('moai_adk.utils.link_validator.logger') as mock_logger:
+                    with patch("moai_adk.utils.link_validator.logger") as mock_logger:
                         result = validate_readme_links()
 
                         mock_logger.info.assert_called()
 
     def test_validate_readme_links_returns_validation_result(self):
         """Test validate_readme_links returns ValidationResult."""
-        with patch('moai_adk.utils.link_validator.LinkValidator') as mock_validator_class:
+        with patch("moai_adk.utils.link_validator.LinkValidator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator.extract_links_from_file.return_value = []
             mock_validator_class.return_value = mock_validator
@@ -1122,6 +1148,7 @@ class TestValidateReadmeLinks:
 # Integration Tests
 # ============================================================================
 
+
 class TestLinkValidatorIntegration:
     """Integration tests for LinkValidator."""
 
@@ -1131,7 +1158,7 @@ class TestLinkValidatorIntegration:
         validator = LinkValidator()
 
         # Create a temporary file with links
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("[Valid](https://valid.com)\n[Invalid](https://invalid.com)")
             temp_path = Path(f.name)
 
@@ -1142,10 +1169,9 @@ class TestLinkValidatorIntegration:
 
             # Validate links
             if links:
-                with patch.object(validator, 'validate_link') as mock_validate:
+                with patch.object(validator, "validate_link") as mock_validate:
                     mock_validate.side_effect = [
-                        LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1)
-                        for link in links
+                        LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1) for link in links
                     ]
 
                     result = await validator.validate_all_links(links)
@@ -1166,10 +1192,9 @@ class TestLinkValidatorIntegration:
         for max_concurrent in [1, 3, 5, 10]:
             validator = LinkValidator(max_concurrent=max_concurrent)
 
-            with patch.object(validator, 'validate_link') as mock_validate:
+            with patch.object(validator, "validate_link") as mock_validate:
                 mock_validate.side_effect = [
-                    LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1)
-                    for link in links
+                    LinkResult(url=link, status_code=200, is_valid=True, response_time=0.1) for link in links
                 ]
 
                 result = await validator.validate_all_links(links)
@@ -1181,6 +1206,7 @@ class TestLinkValidatorIntegration:
 # ============================================================================
 # Edge Cases and Error Handling
 # ============================================================================
+
 
 class TestLinkValidatorMainBlock:
     """Tests for __main__ block functionality."""
@@ -1227,7 +1253,7 @@ class TestLinkValidatorMainBlock:
         assert links == []
 
         # Test with existing file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("[Link](https://example.com)")
             temp_path = Path(f.name)
 
@@ -1242,12 +1268,12 @@ class TestLinkValidatorMainBlock:
         """Test extract_links handles SafeFileReader returning None."""
         validator = LinkValidator()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("test")
             temp_path = Path(f.name)
 
         try:
-            with patch('moai_adk.utils.link_validator.SafeFileReader') as mock_reader_class:
+            with patch("moai_adk.utils.link_validator.SafeFileReader") as mock_reader_class:
                 mock_reader = MagicMock()
                 mock_reader.read_text.return_value = None
                 mock_reader_class.return_value = mock_reader
@@ -1266,7 +1292,7 @@ class TestLinkValidatorEdgeCases:
         """Test validating empty URL."""
         validator = LinkValidator()
 
-        with patch('moai_adk.utils.link_validator.is_valid_url', return_value=False):
+        with patch("moai_adk.utils.link_validator.is_valid_url", return_value=False):
             result = await validator.validate_link("")
 
             assert result.is_valid is False
@@ -1278,10 +1304,9 @@ class TestLinkValidatorEdgeCases:
 
         links = ["https://example.com", "https://example.com", "https://example.com"]
 
-        with patch.object(validator, 'validate_link') as mock_validate:
+        with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
-                LinkResult(url="https://example.com", status_code=200, is_valid=True, response_time=0.1)
-                for _ in links
+                LinkResult(url="https://example.com", status_code=200, is_valid=True, response_time=0.1) for _ in links
             ]
 
             result = await validator.validate_all_links(links)
@@ -1322,7 +1347,7 @@ class TestLinkValidatorEdgeCases:
 
         precise_time = 0.123456789
 
-        with patch.object(validator, 'fetch_url') as mock_fetch:
+        with patch.object(validator, "fetch_url") as mock_fetch:
             mock_fetch.return_value = HTTPResponse(
                 status_code=200,
                 url="https://example.com",

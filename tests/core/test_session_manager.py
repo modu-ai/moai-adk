@@ -62,6 +62,7 @@ def session_manager(temp_project_dir):
 def reset_global_instance():
     """Reset global session manager instance between tests"""
     import moai_adk.core.session_manager as sm_module
+
     sm_module._session_manager_instance = None
     yield
     sm_module._session_manager_instance = None
@@ -233,11 +234,14 @@ class TestAgentResultRegistration:
         assert "id-old" in session_manager._results  # Old result still stored
         assert session_manager._results["id-new"]["result"]["version"] == 2
 
-    @pytest.mark.parametrize("agent_name,agent_id", [
-        ("agent-1", "id-12345"),
-        ("complex-agent-name", "id-abcdef123456"),
-        ("a", "id-x"),
-    ])
+    @pytest.mark.parametrize(
+        "agent_name,agent_id",
+        [
+            ("agent-1", "id-12345"),
+            ("complex-agent-name", "id-abcdef123456"),
+            ("a", "id-x"),
+        ],
+    )
     def test_register_various_agent_names(self, session_manager, agent_name, agent_id):
         """Test registering agents with various name formats"""
         session_manager.register_agent_result(
@@ -372,13 +376,16 @@ class TestResumeDecision:
 
         assert result is False
 
-    @pytest.mark.parametrize("current,previous,expected", [
-        ("Implement authentication", "Design authentication", True),
-        ("Write API documentation", "Write client documentation", True),
-        ("Fix database connection", "Fix database schema", True),
-        ("Deploy to production", "Analyze performance report", False),
-        ("Create REST endpoints", "Delete test files", False),
-    ])
+    @pytest.mark.parametrize(
+        "current,previous,expected",
+        [
+            ("Implement authentication", "Design authentication", True),
+            ("Write API documentation", "Write client documentation", True),
+            ("Fix database connection", "Fix database schema", True),
+            ("Deploy to production", "Analyze performance report", False),
+            ("Create REST endpoints", "Delete test files", False),
+        ],
+    )
     def test_should_resume_keyword_matching(self, session_manager, current, previous, expected):
         """Test keyword matching in resume decision"""
         session_manager.register_agent_result(
@@ -885,6 +892,7 @@ class TestSingletonPattern:
         """Test convenience function register_agent"""
         # Reset singleton
         import moai_adk.core.session_manager as sm_module
+
         sm_module._session_manager_instance = None
 
         # Patch default paths to use temp dir
@@ -904,6 +912,7 @@ class TestSingletonPattern:
         """Test convenience function get_resume_id"""
         # Reset singleton
         import moai_adk.core.session_manager as sm_module
+
         sm_module._session_manager_instance = None
 
         with patch("moai_adk.core.session_manager.Path.cwd") as mock_cwd:
@@ -922,6 +931,7 @@ class TestSingletonPattern:
         """Test convenience function should_resume"""
         # Reset singleton
         import moai_adk.core.session_manager as sm_module
+
         sm_module._session_manager_instance = None
 
         with patch("moai_adk.core.session_manager.Path.cwd") as mock_cwd:

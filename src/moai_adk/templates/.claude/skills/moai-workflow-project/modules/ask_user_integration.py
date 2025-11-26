@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AskUserConfig:
     """Configuration for AskUserQuestion integration."""
+
     max_options_per_question: int = 10
     enable_descriptions: bool = True
     enable_conditional: bool = True
@@ -50,14 +51,16 @@ class AskUserQuestionIntegrator:
         try:
             # In actual Claude Code environment, this would be available
             from claude_code import ask_user_question as AskUserQuestion
+
             self.AskUserQuestion = AskUserQuestion
         except ImportError:
             # Mock implementation for development/testing
             self.AskUserQuestion = self._mock_ask_user_question
             logger.warning("Using mock AskUserQuestion - not in Claude Code environment")
 
-    def _mock_ask_user_question(self, questions: List[Dict[str, Any]],
-                              answers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    def _mock_ask_user_question(
+        self, questions: List[Dict[str, Any]], answers: Optional[Dict[str, str]] = None
+    ) -> Dict[str, str]:
         """Mock implementation of AskUserQuestion for development."""
         logger.info(f"Mock AskUserQuestion called with {len(questions)} questions")
 
@@ -104,7 +107,7 @@ class AskUserQuestionIntegrator:
             for opt in question.options:
                 option_dict = {
                     "label": opt.label,
-                    "description": opt.description if self.config.enable_descriptions else None
+                    "description": opt.description if self.config.enable_descriptions else None,
                 }
 
                 # Only include non-None descriptions
@@ -117,15 +120,13 @@ class AskUserQuestionIntegrator:
 
         # Handle text input questions (convert to choice with text input)
         elif question.type in [QuestionType.TEXT_INPUT, QuestionType.NUMBER_INPUT]:
-            ask_user_q["options"] = [
-                {"label": "Enter value...", "description": f"Type your {question.type.value}"}
-            ]
+            ask_user_q["options"] = [{"label": "Enter value...", "description": f"Type your {question.type.value}"}]
 
         # Handle boolean questions
         elif question.type == QuestionType.BOOLEAN:
             ask_user_q["options"] = [
                 {"label": "Yes", "description": "Confirm or accept"},
-                {"label": "No", "description": "Decline or reject"}
+                {"label": "No", "description": "Decline or reject"},
             ]
 
         # Add validation metadata
@@ -134,8 +135,7 @@ class AskUserQuestionIntegrator:
 
         return ask_user_q
 
-    def process_ask_user_response(self, question: Question,
-                                 response_value: Union[str, List[str]]) -> Any:
+    def process_ask_user_response(self, question: Question, response_value: Union[str, List[str]]) -> Any:
         """
         Process AskUserQuestion response back to our expected format.
 
@@ -184,8 +184,7 @@ class AskUserQuestionIntegrator:
 
         return response_value
 
-    def ask_question(self, question: Question,
-                    context: Optional[Dict[str, Any]] = None) -> UserResponse:
+    def ask_question(self, question: Question, context: Optional[Dict[str, Any]] = None) -> UserResponse:
         """
         Ask a single question using AskUserQuestion.
 
@@ -204,7 +203,7 @@ class AskUserQuestionIntegrator:
                 return UserResponse(
                     question_id=question.id,
                     value=question.default_value,
-                    metadata={"skipped": True, "reason": "conditional_not_met"}
+                    metadata={"skipped": True, "reason": "conditional_not_met"},
                 )
 
         # Convert to AskUserQuestion format
@@ -227,20 +226,19 @@ class AskUserQuestionIntegrator:
             return UserResponse(
                 question_id=question.id,
                 value=processed_value,
-                metadata={"source": "ask_user_question", "raw_response": raw_response}
+                metadata={"source": "ask_user_question", "raw_response": raw_response},
             )
 
         except Exception as e:
             logger.error(f"Error asking question {question.id}: {e}")
             # Return default value on error
             return UserResponse(
-                question_id=question.id,
-                value=question.default_value,
-                metadata={"error": str(e), "fallback": True}
+                question_id=question.id, value=question.default_value, metadata={"error": str(e), "fallback": True}
             )
 
-    def ask_question_batch(self, questions: List[Question],
-                          context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
+    def ask_question_batch(
+        self, questions: List[Question], context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, UserResponse]:
         """
         Ask multiple questions in sequence using AskUserQuestion.
 
@@ -260,9 +258,7 @@ class AskUserQuestionIntegrator:
             # Check if question already has response in context
             if question.id in context:
                 responses[question.id] = UserResponse(
-                    question_id=question.id,
-                    value=context[question.id],
-                    metadata={"source": "context"}
+                    question_id=question.id, value=context[question.id], metadata={"source": "context"}
                 )
                 continue
 
@@ -294,7 +290,7 @@ class AskUserQuestionIntegrator:
 
         return True
 
-    def _validate_response(self, value: Any, validation) -> 'ValidationResult':
+    def _validate_response(self, value: Any, validation) -> "ValidationResult":
         """Validate a response value."""
         # This would integrate with the validation system
         # For now, return a simple validation result
@@ -304,12 +300,14 @@ class AskUserQuestionIntegrator:
 @dataclass
 class ValidationResult:
     """Result of response validation."""
+
     is_valid: bool
     error: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
 
 
 # Monkey patch BatchQuestionsManager to use AskUserQuestion integration
+
 
 def enhance_batch_questions_manager():
     """Enhance BatchQuestionsManager with AskUserQuestion integration."""
