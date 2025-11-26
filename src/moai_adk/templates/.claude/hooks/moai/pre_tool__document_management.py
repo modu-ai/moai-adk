@@ -28,6 +28,8 @@ LIB_DIR = HOOKS_DIR / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
+from lib.path_utils import find_project_root
+
 try:
     from lib.config_manager import ConfigManager  # noqa: E402
     from lib.timeout import CrossPlatformTimeout  # noqa: E402
@@ -111,7 +113,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
     try:
         project_root = Path(".moai/config/config.json").parent.parent.resolve()
     except Exception:
-        project_root = Path.cwd()
+        project_root = find_project_root()
 
     # Get absolute path
     try:

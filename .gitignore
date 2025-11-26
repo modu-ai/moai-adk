@@ -129,6 +129,8 @@ mock_api_response_*.json
 # Test coverage
 .coverage
 coverage.json
+htmlcov/
+htmlcov_spec/
 
 
 # Environment variables and deployment secrets

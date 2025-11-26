@@ -30,6 +30,8 @@ from typing import Any, Dict, List, Optional
 # Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
+from lib.path_utils import find_project_root
+
 try:
     from lib.config_manager import ConfigManager  # noqa: E402
     from lib.common import (  # noqa: E402
@@ -230,7 +232,7 @@ def save_session_metrics(payload: Dict[str, Any]) -> bool:
         session_metrics = {
             "session_id": datetime.now().strftime("%Y-%m-%d-%H%M%S"),
             "end_time": datetime.now().isoformat(),
-            "cwd": str(Path.cwd()),
+            "cwd": str(find_project_root()),
             "files_modified": count_modified_files(),
             "git_commits": count_recent_commits(),
             "specs_worked_on": extract_specs_from_memory(),
@@ -424,7 +426,7 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
         # Get project root
         project_root = Path(".moai/config/config.json").parent.parent
         if not project_root.exists():
-            project_root = Path.cwd()
+            project_root = find_project_root()
 
         # Scan root directory
         for item in project_root.iterdir():
@@ -565,7 +567,7 @@ def main() -> None:
                 config = {}
 
             # Generate hook payload (simple version)
-            payload = {"cwd": str(Path.cwd())}
+            payload = {"cwd": str(find_project_root())}
 
             results = {
                 "hook": "session_end__auto_cleanup",

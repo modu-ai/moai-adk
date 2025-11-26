@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
 
+from .path_utils import find_project_root
+
 # Default configuration
 DEFAULT_CONFIG = {
     "hooks": {
@@ -70,7 +72,7 @@ class ConfigManager:
         Args:
             config_path: Path to configuration file (defaults to .moai/config/config.json)
         """
-        self.config_path = config_path or Path.cwd() / ".moai" / "config" / "config.json"
+        self.config_path = config_path or find_project_root() / ".moai" / "config" / "config.json"
         self._config: Optional[Dict[str, Any]] = None
 
     def load_config(self) -> Dict[str, Any]:

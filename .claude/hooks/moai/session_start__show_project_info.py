@@ -27,6 +27,9 @@ LIB_DIR = HOOKS_DIR / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
+# Import path utils for project root resolution
+from lib.path_utils import find_project_root
+
 # Try to import existing modules, provide fallbacks if not available
 try:
     from lib.timeout import CrossPlatformTimeout
@@ -64,7 +67,7 @@ except ImportError:
         return None
 
     def get_cached_spec_progress():
-        specs_dir = Path.cwd() / ".moai" / "specs"
+        specs_dir = find_project_root() / ".moai" / "specs"
         if not specs_dir.exists():
             return {"completed": 0, "total": 0, "percentage": 0}
         try:
@@ -156,7 +159,7 @@ def _run_git_command(cmd: list[str]) -> str:
 
 def get_git_cache_file() -> Path:
     """Get path to git info cache file"""
-    cache_dir = Path.cwd() / ".moai" / "cache"
+    cache_dir = find_project_root() / ".moai" / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir / "git-info.json"
 
@@ -324,7 +327,7 @@ def check_version_update() -> tuple[str, bool]:
             return "(latest)", False
 
         # Try to load cached PyPI version from Phase 1
-        version_cache_file = Path.cwd() / ".moai" / "cache" / "version-check.json"
+        version_cache_file = find_project_root() / ".moai" / "cache" / "version-check.json"
         latest_version = None
 
         if version_cache_file.exists():
