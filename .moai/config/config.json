@@ -13,6 +13,7 @@
     "description": "MoAI-ADK",
     "language": "python",
     "locale": "ko_KR",
+    "mode": "development",
     "template_version": "0.28.0",
     "documentation_mode": "skip"
   },

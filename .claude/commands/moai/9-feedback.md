@@ -69,7 +69,6 @@ Output: Issue created with link
 | Agent/Skill | Purpose |
 |------------|---------|
 | core-quality | Feedback collection and GitHub issue creation |
-| moai-core-issue-labels | GitHub issue integration and labeling |
 
 ---
 
@@ -107,8 +106,8 @@ Parameters:
    - Ask for 'Priority' (Low/Medium/High)
 
 3. **Create GitHub Issue**:
-   - Use `Skill("moai-core-issue-labels")` or `Bash` (gh issue create) to submit.
-   - Add appropriate labels (bug, enhancement, question).
+   - Use `Bash` with GitHub CLI (`gh issue create`) to submit.
+   - Add appropriate labels (bug, enhancement, question) via `--label` flag.
    - Format the body with standard templates.
 
 4. **Report Result**:

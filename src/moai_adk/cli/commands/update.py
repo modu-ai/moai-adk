@@ -793,12 +793,145 @@ def _restore_user_settings(
     return success
 
 
-def _sync_templates(project_path: Path, force: bool = False) -> bool:
+def _get_template_skill_names() -> set[str]:
+    """Get set of skill folder names from installed template.
+
+    Returns:
+        Set of skill folder names that are part of the template package.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    skills_path = template_path / ".claude" / "skills"
+
+    if not skills_path.exists():
+        return set()
+
+    return {d.name for d in skills_path.iterdir() if d.is_dir()}
+
+
+def _detect_custom_skills(project_path: Path, template_skills: set[str]) -> list[str]:
+    """Detect skills NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_skills: Set of template skill names
+
+    Returns:
+        Sorted list of custom skill names.
+    """
+    skills_path = project_path / ".claude" / "skills"
+
+    if not skills_path.exists():
+        return []
+
+    project_skills = {d.name for d in skills_path.iterdir() if d.is_dir()}
+    custom_skills = project_skills - template_skills
+
+    return sorted(custom_skills)
+
+
+def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[str]:
+    """Interactive questionary multi-select for skill restore (opt-in default).
+
+    Args:
+        custom_skills: List of custom skill names
+        yes: Auto-confirm flag (skips restoration in CI/CD mode)
+
+    Returns:
+        List of skills user selected to restore.
+    """
+    import questionary
+
+    if not custom_skills:
+        return []
+
+    console.print("\n[cyan]📦 Custom skills detected in backup:[/cyan]")
+    for skill in custom_skills:
+        console.print(f"   • {skill}")
+    console.print()
+
+    if yes:
+        console.print("[dim]   Skipping restoration (--yes mode)[/dim]\n")
+        return []
+
+    selected = questionary.checkbox(
+        "Select skills to restore (none selected by default):",
+        choices=[
+            questionary.Choice(title=skill, checked=False)
+            for skill in custom_skills
+        ]
+    ).ask()
+
+    return selected if selected else []
+
+
+def _restore_selected_skills(
+    skills: list[str],
+    backup_path: Path,
+    project_path: Path
+) -> bool:
+    """Restore selected skills from backup.
+
+    Args:
+        skills: List of skill names to restore
+        backup_path: Backup directory path
+        project_path: Project path (absolute)
+
+    Returns:
+        True if all restorations succeeded.
+    """
+    import shutil
+
+    if not skills:
+        return True
+
+    console.print("\n[cyan]📥 Restoring selected skills...[/cyan]")
+    skills_dst = project_path / ".claude" / "skills"
+    skills_dst.mkdir(parents=True, exist_ok=True)
+
+    success = True
+    for skill_name in skills:
+        src = backup_path / ".claude" / "skills" / skill_name
+        dst = skills_dst / skill_name
+
+        if src.exists():
+            try:
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+                console.print(f"   [green]✓ Restored: {skill_name}[/green]")
+            except Exception as e:
+                console.print(f"   [red]✗ Failed: {skill_name} - {e}[/red]")
+                success = False
+        else:
+            console.print(f"   [yellow]⚠ Not in backup: {skill_name}[/yellow]")
+            success = False
+
+    return success
+
+
+def _show_post_update_guidance(backup_path: Path) -> None:
+    """Show post-update guidance for running /moai:0-project update.
+
+    Args:
+        backup_path: Backup directory path for reference
+    """
+    console.print("\n" + "[cyan]" + "=" * 60 + "[/cyan]")
+    console.print("[green]✅ Update complete![/green]")
+    console.print("\n[yellow]📝 IMPORTANT - Next step:[/yellow]")
+    console.print("   Run [cyan]/moai:0-project update[/cyan] in Claude Code")
+    console.print("\n   This will:")
+    console.print("   • Merge your settings with new templates")
+    console.print("   • Validate configuration compatibility")
+    console.print("\n[dim]💡 Personal instructions should go in CLAUDE.local.md[/dim]")
+    console.print(f"[dim]📂 Backup location: {backup_path}[/dim]")
+    console.print("[cyan]" + "=" * 60 + "[/cyan]\n")
+
+
+def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) -> bool:
     """Sync templates to project with rollback mechanism.
 
     Args:
         project_path: Project path (absolute)
         force: Force update without backup
+        yes: Auto-confirm flag (skips interactive prompts)
 
     Returns:
         True if sync succeeded, False otherwise
@@ -807,6 +940,10 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
 
     backup_path = None
     try:
+        # NEW: Detect custom skills BEFORE backup/sync
+        template_skills = _get_template_skill_names()
+        custom_skills = _detect_custom_skills(project_path, template_skills)
+
         processor = TemplateProcessor(project_path)
 
         # Create pre-sync backup for rollback
@@ -921,6 +1058,16 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
 
         except Exception as e:
             console.print(f"[yellow]⚠️  Announcement module not available: {e}[/yellow]")
+
+        # NEW: Interactive skill restore if custom skills found
+        if custom_skills and backup_path:
+            skills_to_restore = _prompt_skill_restore(custom_skills, yes)
+            if skills_to_restore:
+                _restore_selected_skills(skills_to_restore, backup_path, project_path)
+
+        # NEW: Show post-update guidance
+        if backup_path:
+            _show_post_update_guidance(backup_path)
 
         return True
     except Exception as e:
@@ -1563,7 +1710,7 @@ def update(
             preserved_settings = _preserve_user_settings(project_path)
 
             try:
-                if not _sync_templates(project_path, force):
+                if not _sync_templates(project_path, force, yes):
                     raise TemplateSyncError("Template sync returned False")
             except TemplateSyncError:
                 console.print("[red]Error: Template sync failed[/red]")
@@ -1761,7 +1908,7 @@ def update(
 
         # Sync templates
         try:
-            if not _sync_templates(project_path, force):
+            if not _sync_templates(project_path, force, yes):
                 raise TemplateSyncError("Template sync returned False")
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")

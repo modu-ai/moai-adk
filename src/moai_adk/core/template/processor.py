@@ -860,6 +860,7 @@ class TemplateProcessor:
             "output-styles/moai",
             "agents/alfred",
             "agents/moai",
+            "skills",  # NEW: Complete replacement for skills folder
         ]
 
         # 1. Copy Alfred and Moai folders wholesale (backup before delete & overwrite)
@@ -1022,7 +1023,7 @@ class TemplateProcessor:
             )
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with smart merge (preserves \"## Project Information\" section)."""
+        """Copy CLAUDE.md with complete replacement (no merge)."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 
@@ -1031,27 +1032,11 @@ class TemplateProcessor:
                 console.print("⚠️ CLAUDE.md template not found")
             return
 
-        # Smart merge: preserve existing "## Project Information" section
-        if dst.exists():
-            self._merge_claude_md(src, dst)
-            # Substitute variables in the merged content
-            if self.context:
-                content = dst.read_text(encoding="utf-8")
-                content, warnings = self._substitute_variables(content)
-                dst.write_text(content, encoding="utf-8")
-                if warnings and not silent:
-                    console.print("[yellow]⚠️ Template warnings:[/yellow]")
-                    for warning in set(warnings):
-                        console.print(f"   {warning}")
-            if not silent:
-                console.print(
-                    "   🔄 CLAUDE.md merged (project information preserved, variables substituted)"
-                )
-        else:
-            # First time: just copy
-            self._copy_file_with_substitution(src, dst)
-            if not silent:
-                console.print("   ✅ CLAUDE.md created")
+        # Simple copy with substitution (no merge)
+        self._copy_file_with_substitution(src, dst)
+
+        if not silent:
+            console.print("   ✅ CLAUDE.md replaced (use CLAUDE.local.md for personal instructions)")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for CLAUDE.md.

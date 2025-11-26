@@ -69,7 +69,6 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 | Explore | Codebase exploration and file system analysis |
 | workflow-spec | SPEC generation in EARS format and planning |
 | core-git | Git workflow and branch management |
-| moai-core-issue-labels | GitHub issue integration and labeling |
 | moai-spec-intelligent-workflow | SPEC workflow orchestration |
 | moai-alfred-ask-user-questions | User interaction patterns |
 
@@ -299,7 +298,7 @@ Analyze the project based on user request: "{{USER_REQUEST}}"
 
 2. **SPEC Candidate Generation**: Create 1-3 SPEC candidates
    - Analyze existing SPECs in `.moai/specs/` for duplicates
-   - Check related GitHub issues via `Skill("moai-core-issue-labels")`
+   - Check related GitHub issues via `gh issue list` (Bash + GitHub CLI)
    - Generate unique SPEC candidates with proper naming
 
 3. **EARS Structure Design**: For each SPEC candidate:
