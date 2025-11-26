@@ -4,8 +4,8 @@ Nano Banana Pro - 프롬프트 생성 모듈
 자연어 사용자 요청을 Nano Banana Pro 최적화 프롬프트로 변환하는 모듈
 """
 
-from typing import Dict, List, Optional
 import logging
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -245,16 +245,16 @@ class PromptGenerator:
                 elements.append(f"- {key.capitalize()}: {value}")
         else:
             # 자동 추천 (기본값)
-            elements.append(f"- Lighting: Golden hour light from side angle")
-            elements.append(f"- Camera: Professional composition")
-            elements.append(f"- Lens: 50mm-85mm equivalent")
-            elements.append(f"- Depth of field: Medium depth for clarity")
+            elements.append("- Lighting: Golden hour light from side angle")
+            elements.append("- Camera: Professional composition")
+            elements.append("- Lens: 50mm-85mm equivalent")
+            elements.append("- Depth of field: Medium depth for clarity")
 
         # 분위기 추가
         if mood:
             elements.append(f"- Mood: {mood}")
         else:
-            elements.append(f"- Mood: Professional and refined")
+            elements.append("- Mood: Professional and refined")
 
         return "\n".join(elements)
 

@@ -9,17 +9,17 @@ Official API Documentation:
 - SDK: google-genai>=1.0.0
 """
 
-import os
 import base64
-from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any
-from datetime import datetime
 import logging
+import os
+from datetime import datetime
 from io import BytesIO
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from google import genai
-from google.genai import types
 from google.api_core import exceptions
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +130,11 @@ class NanoBananaImageGenerator:
         self._validate_params(model, aspect_ratio)
 
         print(f"\n{'='*70}")
-        print(f"🎨 Nano Banana image generation started")
+        print("🎨 Nano Banana image generation started")
         print(f"{'='*70}")
         print(f"📝 Prompt: {prompt[:50]}...")
         print(f"🎯 Settings: {model.upper()} | {aspect_ratio}")
-        print(f"⏳ Processing...\n")
+        print("⏳ Processing...\n")
 
         try:
             # Get model name
@@ -199,7 +199,7 @@ class NanoBananaImageGenerator:
                 metadata["saved_to"] = save_path
                 print(f"✅ Image saved: {save_path}\n")
 
-            print(f"✅ Image generation completed!")
+            print("✅ Image generation completed!")
             print(f"   • Model: {model.upper()}")
             print(f"   • Aspect ratio: {aspect_ratio}")
             print(f"   • Tokens: {metadata['tokens_used']}")
@@ -268,12 +268,12 @@ class NanoBananaImageGenerator:
         original_path = str(Path(image_path).resolve())
 
         print(f"\n{'='*70}")
-        print(f"✏️  Image editing started")
+        print("✏️  Image editing started")
         print(f"{'='*70}")
         print(f"📁 Original: {original_path}")
         print(f"📝 Instruction: {instruction[:50]}...")
         print(f"🎯 Settings: {model.upper()} | {aspect_ratio}")
-        print(f"⏳ Processing...\n")
+        print("⏳ Processing...\n")
 
         try:
             model_name = self.MODELS[model]
@@ -357,7 +357,7 @@ class NanoBananaImageGenerator:
                 metadata["saved_to"] = save_path
                 print(f"✅ Edited image saved: {save_path}\n")
 
-            print(f"✅ Image editing completed!")
+            print("✅ Image editing completed!")
             print(f"   • Model: {model.upper()}")
             print(f"   • Aspect ratio: {aspect_ratio}")
             print(f"   • Tokens: {metadata['tokens_used']}")
@@ -435,7 +435,7 @@ class NanoBananaImageGenerator:
                 })
 
         print(f"\n{'='*70}")
-        print(f"📊 Batch generation completed")
+        print("📊 Batch generation completed")
         print(f"{'='*70}")
         print(f"✅ Success: {successful}/{len(prompts)}")
         print(f"❌ Failed: {len(prompts) - successful}/{len(prompts)}")

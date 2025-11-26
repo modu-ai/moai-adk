@@ -8,29 +8,22 @@ Integrates patterns from moai-project-documentation skill with advanced
 template processing and automation capabilities.
 """
 
-import json
-import os
-import re
 import shutil
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-
-import yaml
+from typing import Any, Dict, Optional
 
 
 class DocumentationManager:
     """Comprehensive documentation management system."""
-    
+
     def __init__(self, project_root: str, config: Dict[str, Any]):
         self.project_root = Path(project_root)
         self.config = config
         self.docs_dir = self.project_root / "docs"
         self.templates_dir = self.project_root / ".claude/skills/moai-menu-project/templates/doc-templates"
         self._ensure_directories()
-        
+
     def _ensure_directories(self):
         """Ensure all necessary directories exist."""
         self.docs_dir.mkdir(parents=True, exist_ok=True)
@@ -38,7 +31,7 @@ class DocumentationManager:
         (self.docs_dir / "api").mkdir(exist_ok=True)
         (self.docs_dir / "architecture").mkdir(exist_ok=True)
         (self.docs_dir / "guides").mkdir(exist_ok=True)
-        
+
     def initialize_documentation_structure(self) -> Dict[str, Any]:
         """
         Initialize project documentation structure based on project type.
@@ -48,28 +41,28 @@ class DocumentationManager:
         """
         project_type = self._detect_project_type()
         language = self.config.get("language", {}).get("conversation_language", "en")
-        
+
         # Initialize core documentation files
         core_docs = {
             "product.md": self._generate_product_doc(project_type, language),
             "structure.md": self._generate_structure_doc(project_type, language),
             "tech.md": self._generate_tech_doc(project_type, language)
         }
-        
+
         created_files = []
-        
+
         for doc_name, content in core_docs.items():
             doc_path = self.docs_dir / doc_name
             if not doc_path.exists():
                 doc_path.write_text(content, encoding='utf-8')
                 created_files.append(str(doc_path))
-                
+
         # Create API documentation structure
         api_structure = self._create_api_structure(project_type)
-        
+
         # Create guides structure
         guides_structure = self._create_guides_structure(project_type, language)
-        
+
         return {
             "project_type": project_type,
             "language": language,
@@ -77,36 +70,36 @@ class DocumentationManager:
             "api_structure": api_structure,
             "guides_structure": guides_structure
         }
-        
+
     def _detect_project_type(self) -> str:
         """Detect project type based on project structure and configuration."""
-        
+
         # Check for explicit project type in config
         project_type = self.config.get("project", {}).get("type")
         if project_type:
             return project_type
-            
+
         # Analyze project structure
         src_path = self.project_root / "src"
         if not src_path.exists():
             return "unknown"
-            
+
         # Web Application detection
-        if (src_path / "routes" or src_path / "controllers" or 
+        if (src_path / "routes" or src_path / "controllers" or
             src_path / "api" or src_path / "web").exists():
             if (self.project_root / "package.json").exists():
                 return "web_application"
-                
+
         # Mobile Application detection
-        if (src_path / "android" or src_path / "ios" or 
+        if (src_path / "android" or src_path / "ios" or
             src_path / "flutter" or self.project_root / "pubspec.yaml").exists():
             return "mobile_application"
-            
+
         # CLI Tool detection
         main_files = list(src_path.glob("main.*")) + list(src_path.glob("cli.*")) + list(src_path.glob("index.*"))
         if main_files and not (src_path / "web" or src_path / "api").exists():
             return "cli_tool"
-            
+
         # Library/SDK detection
         if (self.project_root / "setup.py").exists() or (self.project_root / "pyproject.toml").exists():
             setup_content = ""
@@ -114,17 +107,17 @@ class DocumentationManager:
                 setup_content = (self.project_root / "setup.py").read_text()
             if "library" in setup_content.lower() or "sdk" in setup_content.lower():
                 return "library_sdk"
-                
+
         # Data Science/ML detection
-        if (src_path / "models" or src_path / "data" or 
+        if (src_path / "models" or src_path / "data" or
             src_path / "ml" or src_path / "pipeline").exists():
             return "data_science_ml"
-            
+
         return "web_application"  # Default fallback
-        
+
     def _generate_product_doc(self, project_type: str, language: str) -> str:
         """Generate product.md based on project type and language."""
-        
+
         templates = {
             "en": {
                 "web_application": """# Mission & Strategy
@@ -282,18 +275,18 @@ class DocumentationManager:
 """
             }
         }
-        
+
         lang_templates = templates.get(language, templates["en"])
         template = lang_templates.get(project_type, lang_templates["web_application"])
-        
+
         return template.format(
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             project_name=self.config.get("project", {}).get("name", "My Project")
         )
-        
+
     def _generate_structure_doc(self, project_type: str, language: str) -> str:
         """Generate structure.md based on project type."""
-        
+
         templates = {
             "en": {
                 "web_application": """# System Architecture
@@ -448,18 +441,18 @@ graph TB
 """
             }
         }
-        
+
         lang_templates = templates.get(language, templates["en"])
         template = lang_templates.get(project_type, lang_templates["web_application"])
-        
+
         return template.format(
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             project_name=self.config.get("project", {}).get("name", "My Project")
         )
-        
+
     def _generate_tech_doc(self, project_type: str, language: str) -> str:
         """Generate tech.md based on project type."""
-        
+
         templates = {
             "en": {
                 "web_application": """# Technology Stack
@@ -672,42 +665,42 @@ stages:
 """
             }
         }
-        
+
         lang_templates = templates.get(language, templates["en"])
         template = lang_templates.get(project_type, lang_templates["web_application"])
-        
+
         return template.format(
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             project_name=self.config.get("project", {}).get("name", "My Project")
         )
-        
+
     def _create_api_structure(self, project_type: str) -> Dict[str, Any]:
         """Create API documentation structure."""
-        
+
         api_structure = {
             "openapi_spec": self._generate_openapi_spec(project_type),
             "endpoint_docs": {},
             "schema_docs": {},
             "authentication_guide": self._generate_auth_guide(project_type)
         }
-        
+
         return api_structure
-        
+
     def _create_guides_structure(self, project_type: str, language: str) -> Dict[str, Any]:
         """Create user guides structure."""
-        
+
         guides = {
             "getting_started": self._generate_getting_started_guide(project_type, language),
             "user_guide": self._generate_user_guide(project_type, language),
             "developer_guide": self._generate_developer_guide(project_type, language),
             "deployment_guide": self._generate_deployment_guide(project_type, language)
         }
-        
+
         return guides
-        
+
     def _generate_openapi_spec(self, project_type: str) -> Dict[str, Any]:
         """Generate OpenAPI specification template."""
-        
+
         base_spec = {
             "openapi": "3.0.0",
             "info": {
@@ -752,12 +745,12 @@ stages:
                 }
             }
         }
-        
+
         return base_spec
-        
+
     def _generate_auth_guide(self, project_type: str) -> str:
         """Generate authentication guide."""
-        
+
         return """# Authentication Guide
 
 ## Overview
@@ -777,10 +770,10 @@ Authorization: Bearer <your-jwt-token>
 - Tokens expire after 24 hours
 - Refresh tokens available for extended sessions
 """
-        
+
     def _generate_getting_started_guide(self, project_type: str, language: str) -> str:
         """Generate getting started guide."""
-        
+
         if language == "ko":
             return f"""# 시작 가이드
 
@@ -887,10 +880,10 @@ npm run dev
 - Check [User Guide](./user-guide.md)
 - Reference [Developer Guide](./developer-guide.md)
 """
-        
+
     def _generate_user_guide(self, project_type: str, language: str) -> str:
         """Generate user guide."""
-        
+
         if language == "ko":
             return """# 사용자 가이드
 
@@ -927,10 +920,10 @@ npm run dev
 - FAQ
 - Support contacts
 """
-        
+
     def _generate_developer_guide(self, project_type: str, language: str) -> str:
         """Generate developer guide."""
-        
+
         if language == "ko":
             return """# 개발자 가이드
 
@@ -967,10 +960,10 @@ npm run dev
 - Module structure
 - Data flow
 """
-        
+
     def _generate_deployment_guide(self, project_type: str, language: str) -> str:
         """Generate deployment guide."""
-        
+
         if language == "ko":
             return """# 배포 가이드
 
@@ -1007,7 +1000,7 @@ npm run dev
 - Metrics
 - Alerts
 """
-        
+
     def generate_documentation_from_spec(self, spec_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate documentation based on SPEC data.
@@ -1018,46 +1011,46 @@ npm run dev
         Returns:
             Dict with generated documentation results
         """
-        
+
         spec_id = spec_data.get("id", "SPEC-001")
         spec_title = spec_data.get("title", "Untitled Feature")
         spec_description = spec_data.get("description", "")
-        
+
         # Generate feature documentation
         feature_doc = self._generate_feature_documentation(spec_data)
-        
+
         # Generate API documentation if applicable
         api_doc = self._generate_api_documentation(spec_data)
-        
+
         # Update product.md with new feature
         self._update_product_documentation(spec_data)
-        
+
         # Update structure.md if architecture changes
         self._update_structure_documentation(spec_data)
-        
+
         # Update tech.md if new technologies introduced
         self._update_tech_documentation(spec_data)
-        
+
         return {
             "spec_id": spec_id,
             "feature_documentation": feature_doc,
             "api_documentation": api_doc,
             "updated_files": [
                 "docs/product.md",
-                "docs/structure.md", 
+                "docs/structure.md",
                 "docs/tech.md",
                 f"docs/features/{spec_id.lower()}.md"
             ]
         }
-        
+
     def _generate_feature_documentation(self, spec_data: Dict[str, Any]) -> str:
         """Generate feature documentation from SPEC."""
-        
+
         spec_id = spec_data.get("id", "SPEC-001")
         title = spec_data.get("title", "Untitled Feature")
         description = spec_data.get("description", "")
         requirements = spec_data.get("requirements", [])
-        
+
         doc_content = f"""# {title}
 
 ## Overview
@@ -1065,10 +1058,10 @@ npm run dev
 
 ## Requirements
 """
-        
+
         for i, req in enumerate(requirements, 1):
             doc_content += f"{i}. {req}\n"
-            
+
         doc_content += f"""
 ## Implementation Details
 - **SPEC ID**: {spec_id}
@@ -1093,21 +1086,21 @@ npm run dev
 *Generated from: {spec_id}*
 *Last updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}*
 """
-        
+
         return doc_content
-        
+
     def _generate_api_documentation(self, spec_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Generate API documentation if SPEC includes API changes."""
-        
+
         if "api_endpoints" not in spec_data:
             return None
-            
+
         api_doc = {
             "endpoints": [],
             "schemas": [],
             "examples": []
         }
-        
+
         for endpoint in spec_data.get("api_endpoints", []):
             api_doc["endpoints"].append({
                 "path": endpoint.get("path", ""),
@@ -1116,25 +1109,25 @@ npm run dev
                 "parameters": endpoint.get("parameters", []),
                 "responses": endpoint.get("responses", {})
             })
-            
+
         return api_doc
-        
+
     def _update_product_documentation(self, spec_data: Dict[str, Any]):
         """Update product.md with new feature information."""
-        
+
         product_path = self.docs_dir / "product.md"
         if not product_path.exists():
             return
-            
+
         content = product_path.read_text(encoding='utf-8')
-        
+
         # Find SPEC Backlog section
         spec_id = spec_data.get("id", "SPEC-001")
         title = spec_data.get("title", "Untitled Feature")
-        
+
         # Add to next features section
         spec_entry = f"- [{spec_id}] {title}\n"
-        
+
         if "# Next Features (SPEC Backlog)" in content:
             # Find insertion point after High Priority
             insertion_point = content.find("## High Priority")
@@ -1143,40 +1136,40 @@ npm run dev
                 end_point = content.find("##", insertion_point + 1)
                 if end_point == -1:
                     end_point = len(content)
-                    
+
                 new_content = (
-                    content[:end_point] + 
-                    spec_entry + 
+                    content[:end_point] +
+                    spec_entry +
                     content[end_point:]
                 )
                 product_path.write_text(new_content, encoding='utf-8')
-                
+
     def _update_structure_documentation(self, spec_data: Dict[str, Any]):
         """Update structure.md with architecture changes."""
-        
+
         if "architecture_changes" not in spec_data:
             return
-            
+
         structure_path = self.docs_dir / "structure.md"
         if not structure_path.exists():
             return
-            
+
         # Implementation for updating architecture documentation
         # This would be more sophisticated in practice
-        
+
     def _update_tech_documentation(self, spec_data: Dict[str, Any]):
         """Update tech.md with new technologies."""
-        
+
         if "technologies" not in spec_data:
             return
-            
+
         tech_path = self.docs_dir / "tech.md"
         if not tech_path.exists():
             return
-            
+
         # Implementation for updating technology stack documentation
         # This would be more sophisticated in practice
-        
+
     def export_documentation(self, format_type: str = "markdown") -> Dict[str, Any]:
         """
         Export documentation in specified format.
@@ -1187,14 +1180,14 @@ npm run dev
         Returns:
             Dict with export results
         """
-        
+
         export_results = {
             "format": format_type,
             "files": [],
             "output_directory": "",
             "success": False
         }
-        
+
         if format_type == "markdown":
             export_results = self._export_markdown()
         elif format_type == "html":
@@ -1203,18 +1196,18 @@ npm run dev
             export_results = self._export_pdf()
         else:
             export_results["error"] = f"Unsupported format: {format_type}"
-            
+
         return export_results
-        
+
     def _export_markdown(self) -> Dict[str, Any]:
         """Export documentation as markdown bundle."""
-        
+
         output_dir = self.project_root / "docs-export"
         output_dir.mkdir(exist_ok=True)
-        
+
         # Copy all markdown files
         markdown_files = list(self.docs_dir.glob("**/*.md"))
-        
+
         exported_files = []
         for md_file in markdown_files:
             relative_path = md_file.relative_to(self.docs_dir)
@@ -1222,76 +1215,76 @@ npm run dev
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(md_file, output_path)
             exported_files.append(str(output_path))
-            
+
         return {
             "format": "markdown",
             "files": exported_files,
             "output_directory": str(output_dir),
             "success": True
         }
-        
+
     def _export_html(self) -> Dict[str, Any]:
         """Export documentation as HTML."""
-        
+
         # Check for markdown to HTML converter
         try:
-            import markdown
             import jinja2
+            import markdown
         except ImportError:
             return {
                 "format": "html",
                 "error": "Required packages not found: markdown, jinja2",
                 "success": False
             }
-            
+
         output_dir = self.project_root / "docs-html"
         output_dir.mkdir(exist_ok=True)
-        
+
         # Generate HTML from markdown files
         exported_files = []
         markdown_files = list(self.docs_dir.glob("**/*.md"))
-        
+
         for md_file in markdown_files:
             html_content = markdown.markdown(
                 md_file.read_text(encoding='utf-8'),
                 extensions=['toc', 'codehilite', 'tables']
             )
-            
+
             relative_path = md_file.relative_to(self.docs_dir)
             html_path = output_dir / relative_path.with_suffix('.html')
             html_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             html_path.write_text(html_content, encoding='utf-8')
             exported_files.append(str(html_path))
-            
+
         return {
             "format": "html",
             "files": exported_files,
             "output_directory": str(output_dir),
             "success": True
         }
-        
+
     def _export_pdf(self) -> Dict[str, Any]:
         """Export documentation as PDF."""
-        
+
         # Check for PDF converter
         try:
             import markdown
             import weasyprint
         except ImportError:
             return {
-                "format": "pdf", 
+                "format": "pdf",
                 "error": "Required packages not found: markdown, weasyprint",
                 "success": False
             }
-            
+
         output_dir = self.project_root / "docs-pdf"
         output_dir.mkdir(exist_ok=True)
-        
+
         # Generate PDF from main documentation files
         main_files = ["product.md", "structure.md", "tech.md"]
         exported_files = []
-        
+
         for filename in main_files:
             md_path = self.docs_dir / filename
             if md_path.exists():
@@ -1299,23 +1292,23 @@ npm run dev
                     md_path.read_text(encoding='utf-8'),
                     extensions=['toc', 'codehilite', 'tables']
                 )
-                
+
                 pdf_path = output_dir / filename.replace('.md', '.pdf')
-                
+
                 # Convert HTML to PDF
                 weasyprint.HTML(string=html_content).write_pdf(pdf_path)
                 exported_files.append(str(pdf_path))
-                
+
         return {
             "format": "pdf",
             "files": exported_files,
             "output_directory": str(output_dir),
             "success": True
         }
-        
+
     def get_documentation_status(self) -> Dict[str, Any]:
         """Get current documentation status and metrics."""
-        
+
         status = {
             "total_files": 0,
             "file_types": {},
@@ -1323,23 +1316,23 @@ npm run dev
             "missing_sections": [],
             "quality_metrics": {}
         }
-        
+
         if not self.docs_dir.exists():
             return status
-            
+
         # Count files by type
         for file_path in self.docs_dir.rglob("*"):
             if file_path.is_file():
                 status["total_files"] += 1
                 suffix = file_path.suffix.lower()
                 status["file_types"][suffix] = status["file_types"].get(suffix, 0) + 1
-                
+
         # Check for required documentation files
         required_files = ["product.md", "structure.md", "tech.md"]
         for req_file in required_files:
             if not (self.docs_dir / req_file).exists():
                 status["missing_sections"].append(req_file)
-                
+
         # Get last update time
         try:
             latest_file = max(self.docs_dir.rglob("*"), key=lambda f: f.stat().st_mtime)
@@ -1348,5 +1341,5 @@ npm run dev
             ).isoformat()
         except ValueError:
             pass
-            
+
         return status

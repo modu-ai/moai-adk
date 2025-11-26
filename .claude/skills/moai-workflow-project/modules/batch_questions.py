@@ -10,12 +10,12 @@ Version: 1.0.0
 """
 
 import json
-import os
-from typing import Dict, List, Optional, Any, Union, Callable
-from dataclasses import dataclass, field
-from pathlib import Path
 import logging
+import os
+from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -105,23 +105,23 @@ class BatchQuestionsManager:
     - moai-spec-intelligent-workflow
     - moai-menu-project
     """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize the batch questions manager."""
         self.config = config or {}
         self.template_dir = Path(__file__).parent.parent / "templates" / "question-templates"
         self.cache_dir = Path(__file__).parent.parent / "cache"
-        
+
         # Ensure directories exist
         self.template_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Initialize template cache
         self._template_cache = {}
-        
+
         # Load built-in templates
         self._load_builtin_templates()
-    
+
     def create_batch(self, batch_config: Dict[str, Any]) -> QuestionBatch:
         """
         Create a question batch from configuration.
@@ -133,7 +133,7 @@ class BatchQuestionsManager:
             QuestionBatch: Created question batch
         """
         questions = []
-        
+
         for q_config in batch_config.get("questions", []):
             # Convert options
             options = []
@@ -147,7 +147,7 @@ class BatchQuestionsManager:
                     )
                 )
                 options.append(option)
-            
+
             # Convert validation
             validation = None
             if "validation" in q_config:
@@ -158,7 +158,7 @@ class BatchQuestionsManager:
                     error_message=val_config.get("error_message"),
                     custom_validator=val_config.get("custom_validator")
                 )
-            
+
             # Create question
             question = Question(
                 id=q_config["id"],
@@ -173,7 +173,7 @@ class BatchQuestionsManager:
                 metadata=q_config.get("metadata", {})
             )
             questions.append(question)
-        
+
         batch = QuestionBatch(
             id=batch_config["id"],
             title=batch_config["title"],
@@ -183,9 +183,9 @@ class BatchQuestionsManager:
             created_at=batch_config.get("created_at"),
             updated_at=batch_config.get("updated_at")
         )
-        
+
         return batch
-    
+
     def load_template(self, template_name: str) -> Optional[QuestionBatch]:
         """
         Load a question template from file or cache.
@@ -199,28 +199,28 @@ class BatchQuestionsManager:
         # Check cache first
         if template_name in self._template_cache:
             return self._template_cache[template_name]
-        
+
         # Load from file
         template_file = self.template_dir / f"{template_name}.json"
         if not template_file.exists():
             logger.warning(f"Template not found: {template_name}")
             return None
-        
+
         try:
             with open(template_file, 'r', encoding='utf-8') as f:
                 template_config = json.load(f)
-            
+
             batch = self.create_batch(template_config)
-            
+
             # Cache the template
             self._template_cache[template_name] = batch
-            
+
             return batch
-            
+
         except Exception as e:
             logger.error(f"Error loading template {template_name}: {e}")
             return None
-    
+
     def filter_questions(self, batch: QuestionBatch, context: Dict[str, Any]) -> List[Question]:
         """
         Filter questions based on context and conditional logic.
@@ -233,19 +233,19 @@ class BatchQuestionsManager:
             List[Question]: Filtered list of questions
         """
         filtered_questions = []
-        
+
         for question in batch.questions:
             # Check conditional logic
             if question.conditional_on:
                 should_show = self._evaluate_condition(question.conditional_on, context)
                 if not should_show:
                     continue
-            
+
             filtered_questions.append(question)
-        
+
         return filtered_questions
-    
-    def execute_batch(self, batch: QuestionBatch, 
+
+    def execute_batch(self, batch: QuestionBatch,
                      context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
         """
         Execute a question batch and collect responses.
@@ -259,12 +259,12 @@ class BatchQuestionsManager:
         """
         if context is None:
             context = {}
-        
+
         # Filter questions based on context
         questions = self.filter_questions(batch, context)
-        
+
         responses = {}
-        
+
         for question in questions:
             # Check if question already has response in context
             if question.id in context:
@@ -274,28 +274,28 @@ class BatchQuestionsManager:
                     metadata={"source": "context"}
                 )
                 continue
-            
+
             # Ask the question
             response_value = self._ask_question(question)
-            
+
             # Validate response
             if question.validation:
                 validation_result = self._validate_response(response_value, question.validation)
                 if not validation_result.is_valid:
                     # Handle validation error
                     raise ValueError(f"Validation failed for question {question.id}: {validation_result.error}")
-            
+
             responses[question.id] = UserResponse(
                 question_id=question.id,
                 value=response_value,
                 metadata={"source": "user_input"}
             )
-            
+
             # Update context for subsequent questions
             context[question.id] = response_value
-        
+
         return responses
-    
+
     def get_skill_specific_template(self, skill_name: str) -> Optional[QuestionBatch]:
         """
         Get a skill-specific question template.
@@ -313,14 +313,14 @@ class BatchQuestionsManager:
             "moai-spec-intelligent-workflow": "spec-workflow-setup",
             "moai-menu-project": "menu-project-config"
         }
-        
+
         template_name = template_mapping.get(skill_name)
         if not template_name:
             logger.warning(f"No template mapping for skill: {skill_name}")
             return None
-        
+
         return self.load_template(template_name)
-    
+
     def process_responses_for_config(self, responses: Dict[str, UserResponse],
                                    config_path: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -341,27 +341,27 @@ class BatchQuestionsManager:
                     config = json.load(f)
             except Exception as e:
                 logger.error(f"Error loading existing config: {e}")
-        
+
         # Process each response
         for response in responses.values():
             # Apply response to config based on metadata
             config_path = response.metadata.get("config_path", response.question_id)
             value = response.value
-            
+
             # Handle special cases
             if isinstance(value, list) and len(value) == 1:
                 # Single selection in multi-choice format
                 value = value[0]
-            
+
             # Nested path handling (e.g., "git_strategy.mode")
             if "." in config_path:
                 self._set_nested_value(config, config_path, value)
             else:
                 config[config_path] = value
-        
+
         return config
-    
-    def save_responses(self, responses: Dict[str, UserResponse], 
+
+    def save_responses(self, responses: Dict[str, UserResponse],
                       file_path: str) -> bool:
         """
         Save responses to a file.
@@ -381,16 +381,16 @@ class BatchQuestionsManager:
                     "value": resp.value,
                     "metadata": resp.metadata
                 }
-            
+
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(serializable_responses, f, indent=2, ensure_ascii=False)
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error saving responses: {e}")
             return False
-    
+
     def _load_builtin_templates(self):
         """Load built-in question templates."""
         builtin_templates = {
@@ -399,12 +399,12 @@ class BatchQuestionsManager:
             "quality-gates-setup": self._create_quality_gates_template(),
             "skill-selection": self._create_skill_selection_template()
         }
-        
+
         for name, template in builtin_templates.items():
             template_file = self.template_dir / f"{name}.json"
             if not template_file.exists():
                 self._save_template_to_file(template, template_file)
-    
+
     def _create_project_init_template(self) -> Dict[str, Any]:
         """Create project initialization template."""
         return {
@@ -449,7 +449,7 @@ class BatchQuestionsManager:
                 }
             ]
         }
-    
+
     def _create_git_workflow_template(self) -> Dict[str, Any]:
         """Create Git workflow configuration template."""
         return {
@@ -501,7 +501,7 @@ class BatchQuestionsManager:
                 }
             ]
         }
-    
+
     def _create_quality_gates_template(self) -> Dict[str, Any]:
         """Create quality gates configuration template."""
         return {
@@ -543,7 +543,7 @@ class BatchQuestionsManager:
                 }
             ]
         }
-    
+
     def _create_skill_selection_template(self) -> Dict[str, Any]:
         """Create skill selection template."""
         return {
@@ -596,7 +596,7 @@ class BatchQuestionsManager:
                 }
             ]
         }
-    
+
     def _ask_question(self, question: Question) -> Any:
         """
         Ask a single question to the user.
@@ -612,40 +612,40 @@ class BatchQuestionsManager:
             return "default_response"
         else:
             return None
-    
+
     def _validate_response(self, value: Any, validation: ValidationConfig) -> 'ValidationResult':
         """Validate a response value."""
         # Placeholder for validation logic
         return ValidationResult(is_valid=True, error=None)
-    
+
     def _evaluate_condition(self, condition: Dict[str, Any], context: Dict[str, Any]) -> bool:
         """Evaluate conditional logic for questions."""
         # Simple implementation for now
         for key, expected in condition.items():
             if key not in context:
                 return False
-            
+
             actual = context[key]
             if isinstance(expected, list):
                 if actual not in expected:
                     return False
             elif actual != expected:
                 return False
-        
+
         return True
-    
+
     def _set_nested_value(self, config: Dict[str, Any], path: str, value: Any):
         """Set a nested value in the configuration dict."""
         keys = path.split('.')
         current = config
-        
+
         for key in keys[:-1]:
             if key not in current:
                 current[key] = {}
             current = current[key]
-        
+
         current[keys[-1]] = value
-    
+
     def _parse_conditional_questions(self, conditional_configs: List[Dict[str, Any]]) -> List[Question]:
         """Parse conditional questions from configuration."""
         questions = []
@@ -660,9 +660,9 @@ class BatchQuestionsManager:
                 ]
             )
             questions.append(question)
-        
+
         return questions
-    
+
     def _save_template_to_file(self, template: Dict[str, Any], file_path: Path):
         """Save a template to file."""
         try:
@@ -700,9 +700,9 @@ def ask_skill_questions(skill_name: str, context: Optional[Dict[str, Any]] = Non
     """
     manager = BatchQuestionsManager()
     template = manager.get_skill_specific_template(skill_name)
-    
+
     if not template:
         logger.warning(f"No template found for skill: {skill_name}")
         return {}
-    
+
     return manager.execute_batch(template, context or {})

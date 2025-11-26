@@ -230,6 +230,10 @@ uv.lock
 .claude/local/
 .claude/settings.local.json
 
+# Prevent .venv and cache in .claude directory
+.claude/.venv/
+.claude/.pytest_cache/
+
 # .moai/ directory management
 # Tracked in git: config/, memory/, scripts/, specs/
 # User-generated content: logs/, cache/, reports/, etc.
