@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11--3.14-blue)](https://www.python.org/)
 
 MoAI-ADK (Agentic Development Kit) 是一个开源框架，结合了 **SPEC-First 开发**、**测试驱动开发 (TDD)** 和 **AI 智能体**，提供完整且透明的开发生命周期。
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate MoAI-ADK Agent Orchestration Architecture Infographic
-Using Nano Banana Pro (Gemini 3 Pro Image Preview)
+Generate Agent Ecosystem Infographic
+Hand-drawn diagram showing MoAI-ADK's 24-agent orchestration with ALFRED logo
 """
 
 import os
@@ -22,7 +22,7 @@ def generate_agent_ecosystem_infographic():
     from dotenv import load_dotenv
     load_dotenv()
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise EnvironmentError(
             "❌ Google API Key not found!\n\n"
@@ -35,118 +35,83 @@ def generate_agent_ecosystem_infographic():
     # Initialize generator
     generator = NanoBananaImageGenerator(api_key=api_key)
 
-    # Optimized prompt following Nano Banana Pro best practices
+    # Optimized prompt following Nano Banana Pro narrative style best practices
     prompt = """
-A professional hand-drawn infographic diagram on cream-colored paper showing an AI agent orchestration architecture.
+A hand-drawn infographic on cream-colored paper showing an agent orchestration architecture diagram in a radial hub-and-spoke pattern. The illustration has a warm, friendly, hand-drawn notebook aesthetic with slightly wobbly organic lines and colored pencil shading throughout.
 
-CENTRAL HUB - ALFRED LOGO:
-In the center, draw the bold text "ALFRED" in large black letters with a distinctive bowtie symbol elegantly integrated into the letter 'F'. The bowtie should be a focal point, rendered in black with fine sketch lines. Below the logo, write in smaller handwritten text: "AI-powered Super Agent for Agentic Coding". Below that, a label reading "Orchestrator" in a hand-drawn box.
+At the center of the composition, the ALFRED logo is prominently displayed as bold black text with a distinctive bowtie graphic cleverly integrated into the letter 'F'. The bowtie is rendered as an elegant black bow tie shape that forms part of the horizontal bar of the letter F. Below the logo are two descriptive labels written in neat handwriting: "AI-powered Super Agent for Agentic Coding" and underneath that "Orchestrator". The central ALFRED logo serves as the hub of the entire system.
 
-RADIAL AGENT LAYOUT (24 agents arranged in hub-and-spoke pattern):
-Around the ALFRED logo, arrange 24 small rounded rectangles in five color-coded groups:
+Surrounding the central ALFRED logo in a circular radial arrangement are 24 sub-agents, each represented as rounded rectangular cards with hand-drawn borders. These agents are organized into five distinct groups, positioned around the circle like spokes on a wheel:
 
-UPPER RIGHT QUADRANT (7 agents in green tones #7ED321):
-- expert-backend
-- expert-frontend
-- expert-database
-- expert-devops
-- expert-security
-- expert-uiux
-- expert-debug
-Group label above: "7 Domain Experts"
+In the upper right section, seven green-colored cards in warm grass green tones represent the Domain Experts. Each card contains an agent name in clear handwriting: expert-backend, expert-frontend, expert-database, expert-devops, expert-security, expert-uiux, and expert-debug. Above this group is a label that reads "7 Domain Experts" with a subtle green underline.
 
-RIGHT SIDE (8 agents in orange tones #F5A623):
-- manager-tdd
-- manager-spec
-- manager-docs
-- manager-strategy
-- manager-quality
-- manager-git
-- manager-project
-- manager-claude-code
-Group label: "8 Workflow Managers"
+In the right section, eight orange-colored cards in warm tangerine tones represent the Workflow Managers. The cards are labeled: manager-tdd, manager-spec, manager-docs, manager-strategy, manager-quality, manager-git, manager-project, and manager-claude-code. A label reading "8 Workflow Managers" with an orange underline sits above this cluster.
 
-LOWER RIGHT QUADRANT (3 agents in purple tones #BD10E0):
-- builder-agent
-- builder-skill
-- builder-command
-Group label: "3 Meta-Builders"
+In the lower right section, three purple-colored cards in rich violet tones show the Meta-Builders: builder-agent, builder-skill, and builder-command. The label "3 Meta-Builders" with purple underline marks this group.
 
-LOWER LEFT QUADRANT (5 agents in teal tones #50E3C2):
-- mcp-docs
-- mcp-design
-- mcp-notion
-- mcp-browser
-- mcp-ultrathink
-Group label: "5 MCP Integrators"
+In the lower left section, five teal-colored cards in bright turquoise tones display the MCP Integrators: mcp-context7, mcp-figma, mcp-notion, mcp-playwright, and mcp-sequential-thinking. The label "5 MCP Integrators" with teal underline identifies this section.
 
-UPPER LEFT QUADRANT (1 agent in pink tones #FF6B9D):
-- ai-nano-banana
-Group label: "1 AI Service"
+In the upper left section, a single pink-colored card in warm rose tones shows the AI Service: ai-nano-banana. It is labeled "1 AI Service" with a pink underline.
 
-USER INTERACTION (top-left corner):
-Draw a simple person silhouette icon. Next to it, a hand-drawn speech bubble containing the text "Agentic Coding". A flowing wavy arrow connects from the user icon to the central ALFRED logo, showing the conversation flow.
+From the central ALFRED logo, brown and gray hand-drawn chain lines radiate outward like spokes to connect to all 24 surrounding agent cards, creating a visual representation of orchestration and control. The chain lines are sketchy and organic with hand-drawn link shapes, emphasizing the hand-drawn aesthetic.
 
-CHAIN CONNECTIONS:
-Draw organic, slightly wobbly brown-gray chain lines connecting from the ALFRED logo hub to each of the 24 agent boxes, creating a radial network pattern. The chains should have a hand-drawn quality with sketchy links.
+In the top-left corner of the image, there is a simple stick figure silhouette representing a user. Next to the user is a speech bubble drawn with wobbly lines containing the text "Agentic Coding". A curvy arrow flows from the user icon toward the central ALFRED logo, showing the direction of interaction.
 
-STYLE SPECIFICATIONS:
-Art style: Hand-drawn sketch notes aesthetic with colored pencils on cream paper.
-Background color: Warm cream paper texture (#F5F1E8).
-Line quality: Slightly wobbly, organic hand-drawn lines with visible pencil strokes.
-Shading: Soft colored pencil shading for depth and dimension.
-Typography: Handwritten style text throughout, clear and legible.
-Color palette: Green (#7ED321), Orange (#F5A623), Purple (#BD10E0), Teal (#50E3C2), Pink (#FF6B9D), Brown-gray chains, Black ALFRED logo with bowtie.
-Composition: Radial symmetry with ALFRED as the strong central focal point.
-Mood: Professional yet approachable, educational, organized.
+The entire composition is arranged on cream-colored paper with a flat lay, top-down perspective. The lighting is soft and even, showing the texture of colored pencil shading. The style maintains a professional yet approachable, friendly visual language with clear hierarchy: the ALFRED logo is the central authority from which all agent connections radiate.
 
-TECHNICAL SPECIFICATIONS:
-Quality: Professional infographic quality, high-resolution detail.
-Lighting: Soft, even lighting as if photographed from directly above.
-Format: Clean digital scan aesthetic of hand-drawn artwork.
-Aspect ratio: 16:9 landscape orientation.
-Style reference: Sketchnotes, visual thinking, educational infographics.
+Photographic elements: Flat lay composition, top-down view, soft natural lighting showing paper texture and colored pencil details. The entire infographic is captured as if it were a high-quality scan of hand-drawn sketch notes. Camera: overhead shot with 50mm lens, even depth of field across the entire surface.
 
-The overall visual should communicate a sophisticated yet friendly AI orchestration system, with the ALFRED logo clearly positioned as the central coordinator managing all 24 specialized agents through a hub-and-spoke architecture pattern.
+Color palette: Warm cream background, vibrant grass green for experts, warm tangerine orange for managers, rich violet purple for builders, bright turquoise teal for MCP, warm rose pink for AI service, brown-gray for chain connections, and bold black for the ALFRED logo and text.
+
+Style: Hand-drawn sketch notes infographic, colored pencil on cream paper, organic and approachable, professional educational design.
+
+Quality: High-resolution professional scan, 16:9 aspect ratio, studio-grade lighting, crisp text legibility while maintaining hand-drawn character. The ALFRED logo should be the dominant focal point with the bowtie clearly visible as part of the letter F design.
 """
 
     # Output path
     output_path = "/Users/goos/MoAI/MoAI-ADK/assets/images/readme/agent-skill-ecosystem.png"
 
-    print("🎨 Generating MoAI-ADK Agent Orchestration Architecture Infographic...")
-    print("📝 Using Nano Banana Pro (Gemini 3 Pro Image Preview)")
-    print(f"📊 Resolution: 2K (optimized for web)")
-    print(f"📐 Aspect Ratio: 16:9")
-    print(f"💾 Output: {output_path}")
-    print("\n⏳ Generation in progress (estimated 20-40 seconds)...\n")
+    print("\n" + "="*70)
+    print("🍌 Generating Agent Ecosystem Infographic with ALFRED Logo")
+    print("="*70)
+    print("\n📋 Configuration:")
+    print(f"   • Model: Nano Banana Pro (gemini-3-pro-image-preview)")
+    print(f"   • Style: Hand-drawn sketch notes on cream paper")
+    print(f"   • Aspect Ratio: 16:9 (1920x1080)")
+    print(f"   • Output: {output_path}")
+    print("\n⏳ Generating image (this may take 20-60 seconds)...\n")
 
     try:
         # Generate image with Nano Banana Pro
-        result = generator.generate(
+        image, metadata = generator.generate(
             prompt=prompt,
-            model="pro",  # Use gemini-3-pro-image-preview
+            model="pro",
             aspect_ratio="16:9",
             save_path=output_path
         )
 
-        image_data = result["image"]
-        metadata = result["metadata"]
-
-        print("✅ Image generation successful!")
-        print(f"\n📸 Generation Details:")
-        print(f"   - Model: {metadata.get('model', 'gemini-3-pro-image-preview')}")
-        print(f"   - Processing Time: {metadata.get('processing_time_seconds', 'N/A')}s")
-        print(f"   - Aspect Ratio: {metadata.get('aspect_ratio', '16:9')}")
-        print(f"   - SynthID Watermark: Included (digital authentication)")
-        print(f"   - Google Search Integration: {metadata.get('google_search_enabled', False)}")
-        print(f"   - Thinking Process: {metadata.get('thinking_enabled', False)}")
+        print("\n" + "="*70)
+        print("✅ Agent Ecosystem Infographic Generated Successfully!")
+        print("="*70)
+        print(f"\n📊 Generation Details:")
+        print(f"   • Model: {metadata['model_name']}")
+        print(f"   • Aspect Ratio: {metadata['aspect_ratio']}")
+        print(f"   • Tokens Used: {metadata['tokens_used']}")
+        print(f"   • Timestamp: {metadata['timestamp']}")
         print(f"\n💾 Saved to: {output_path}")
-        print(f"\n🎯 Optimized Prompt Length: {len(prompt)} characters")
+        print("\n🎨 Visual Elements:")
+        print("   ✓ Central ALFRED logo with bowtie")
+        print("   ✓ 24 agents in hub-and-spoke pattern")
+        print("   ✓ 5-tier color coding (green, orange, purple, teal, pink)")
+        print("   ✓ User interaction (top-left corner)")
+        print("   ✓ Chain connections from ALFRED to all agents")
+        print("   ✓ Hand-drawn sketch aesthetic on cream paper")
+        print("\n✨ Ready for README integration!")
 
         return True
 
     except Exception as e:
-        print(f"❌ Error during image generation: {e}")
+        print(f"\n❌ Error during image generation: {e}")
         print("\n🔧 Troubleshooting:")
         print("   1. Check API key in .env file")
         print("   2. Verify API quota (https://console.cloud.google.com/)")

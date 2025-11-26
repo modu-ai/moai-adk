@@ -46,7 +46,7 @@ All MoAI-ADK agents follow consistent naming:
 | `infra` | Infrastructure/DevOps experts | infra-devops |
 | `design` | Design/UX experts | design-uiux |
 | `security` | Security experts | security-expert |
-| `mcp` | MCP server integrations | mcp-context7, mcp-ultrathink |
+| `mcp` | MCP server integrations | mcp-context7, mcp-sequential-thinking |
 | `factory` | Meta-generation agents | factory-agent, factory-skill |
 | `support` | Support services | support-debug, support-claude |
 | `ai` | AI model integrations | ai-codex, ai-gemini |
@@ -117,7 +117,7 @@ External MCP server integrations with context continuity support.
 | `mcp-figma` | Figma | Design system integration |
 | `mcp-notion` | Notion | Knowledge base integration |
 | `mcp-playwright` | Playwright | Browser automation and E2E testing |
-| `mcp-ultrathink` | Sequential-Thinking | Complex reasoning and strategic analysis |
+| `mcp-sequential-thinking` | Sequential-Thinking | Complex reasoning and strategic analysis |
 
 **Resume Pattern** (40-60% token savings):
 ```python

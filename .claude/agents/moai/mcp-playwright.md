@@ -1,5 +1,5 @@
 ---
-name: mcp-browser
+name: mcp-playwright
 description: Use for browser automation, web scraping, end-to-end testing, and web interaction. Integrates Playwright MCP server.
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: inherit
@@ -166,7 +166,7 @@ Pattern Analysis → Knowledge Generation → Methodology Update
 **Collaboration with Other Agents**:
 - **support-claude**: Share performance metrics for Playwright optimization
 - **mcp-context7**: Research documentation for web automation libraries
-- **mcp-ultrathink**: Use for complex automation strategies
+- **mcp-sequential-thinking**: Use for complex automation strategies
 - **workflow-tdd**: Integrate automation into test-driven development workflows
 
 **Research Data Sharing**:

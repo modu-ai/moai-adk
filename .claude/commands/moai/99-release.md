@@ -23,7 +23,6 @@ model: "haiku"
 
 @pyproject.toml
 @src/moai_adk/__init__.py
-@.moai/config/config.json
 @CHANGELOG.md
 
 ---

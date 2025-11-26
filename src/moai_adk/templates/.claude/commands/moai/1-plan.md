@@ -81,8 +81,8 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 
 **Phase 1B: Specialized Analysis**
 - Use MoAI domain agents (expert-backend, expert-database, etc.) for specialized decisions
-- Use **mcp-docs** for API documentation research
-- Use **mcp-ultrathink** for complex architectural decisions
+- Use **mcp-context7** for API documentation research
+- Use **mcp-sequential-thinking** for complex architectural decisions
 
 ---
 

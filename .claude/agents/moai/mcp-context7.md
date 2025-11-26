@@ -1,5 +1,5 @@
 ---
-name: mcp-docs
+name: mcp-context7
 description: Use when documentation research, library lookups, API references, or official documentation is needed. Integrates Context7 MCP server for real-time documentation access.
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
@@ -178,7 +178,7 @@ Quality Assessment → Pattern Analysis → Methodology Update
 **Collaboration with Other Agents**:
 - **support-claude**: Share performance metrics for Context7 optimization
 - **mcp-playwright**: Coordinate on browser automation documentation needs
-- **mcp-ultrathink**: Use for complex research strategies
+- **mcp-sequential-thinking**: Use for complex research strategies
 - **workflow-spec**: Provide research insights for specification development
 
 **Research Data Sharing**:

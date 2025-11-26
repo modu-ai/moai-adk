@@ -96,7 +96,7 @@ Use sequential when dependencies exist between agents, parallel for independent 
 - `expert-*` (Domain Experts) - Implementation specialists (expert-backend, expert-frontend, expert-database, expert-devops, expert-security, expert-uiux, expert-debug)
 - `manager-*` (Workflow Managers) - Workflow orchestration (manager-project, manager-spec, manager-tdd, manager-docs, manager-strategy, manager-quality, manager-git, manager-claude-code)
 - `builder-*` (Meta-generators) - Agent and skill creation (builder-agent, builder-skill, builder-command)
-- `mcp-*` (MCP Integrators) - External service integration with resume pattern (mcp-docs, mcp-design, mcp-notion, mcp-browser, mcp-ultrathink)
+- `mcp-*` (MCP Integrators) - External service integration with resume pattern (mcp-context7, mcp-figma, mcp-notion, mcp-playwright, mcp-sequential-thinking)
 - `ai-*` (AI Integrations) - AI model connections (ai-nano-banana)
 
 **5-Tier Agent Hierarchy** (24 active agents):
@@ -113,11 +113,11 @@ Tier 5: ai-*       (AI Services)         - 1 agent   - On-demand
 
 ```python
 # Initial MCP call
-result = Task(subagent_type="mcp-docs", prompt="Research React 19 APIs")
+result = Task(subagent_type="mcp-context7", prompt="Research React 19 APIs")
 agent_id = result.agent_id
 
 # Resume with full context
-result2 = Task(subagent_type="mcp-docs", prompt="Compare with React 18", resume=agent_id)
+result2 = Task(subagent_type="mcp-context7", prompt="Compare with React 18", resume=agent_id)
 ```
 
 Benefits: 40-60% token savings, 95%+ context accuracy, multi-day analysis support.
@@ -384,11 +384,11 @@ Alfred MUST follow these decision rules when choosing which agent to delegate to
 
 **Rule 4: Use MCP Integration Agents When**:
 
-- **Documentation research needed** → Delegate to `mcp-docs`
-- **Complex reasoning/architecture decisions** → Delegate to `mcp-ultrathink`
-- **Figma design access** → Delegate to `mcp-design`
+- **Documentation research needed** → Delegate to `mcp-context7`
+- **Complex reasoning/architecture decisions** → Delegate to `mcp-sequential-thinking`
+- **Figma design access** → Delegate to `mcp-figma`
 - **Notion workspace operations** → Delegate to `mcp-notion`
-- **Web testing/automation** → Delegate to `mcp-browser`
+- **Web testing/automation** → Delegate to `mcp-playwright`
 
 **Rule 5: Use Manager Agents When**:
 

@@ -1,5 +1,5 @@
 ---
-name: mcp-ultrathink
+name: mcp-sequential-thinking
 description: Use for complex reasoning, architecture design, multi-step problem analysis, and strategic decision-making. Integrates Sequential-Thinking MCP server.
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__sequential-thinking__create_thought, mcp__sequential-thinking__continue_thought, mcp__sequential-thinking__get_thought, mcp__sequential-thinking__list_thoughts, mcp__sequential-thinking__delete_thought, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
@@ -7,7 +7,7 @@ permissionMode: dontAsk
 skills: moai-foundation-core, moai-mcp-integration, moai-core-claude-code
 ---
 
-# MCP UltraThink - Complex Reasoning & Strategic Analysis Specialist (v1.0.0)
+# MCP Sequential-Thinking - Complex Reasoning & Strategic Analysis Specialist (v1.0.0)
 
 **Version**: 1.0.0
 **Last Updated**: 2025-11-25

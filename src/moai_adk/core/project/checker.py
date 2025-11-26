@@ -258,7 +258,7 @@ def check_environment() -> dict[str, bool]:
         Mapping from check description to boolean status.
     """
     return {
-        "Python >= 3.13": sys.version_info >= (3, 13),
+        "Python >= 3.11": sys.version_info >= (3, 11),
         "Git installed": shutil.which("git") is not None,
         "Project structure (.moai/)": Path(".moai").exists(),
         "Config file (.moai/config/config.json)": Path(".moai/config/config.json").exists(),
