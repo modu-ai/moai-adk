@@ -62,7 +62,7 @@ class MigrationError(Exception):
 class UnifiedConfigManager:
     """
     Centralized configuration manager for menu project system.
-    
+
     Features:
     - Single source of truth for all configuration
     - JSON Schema validation
@@ -75,7 +75,7 @@ class UnifiedConfigManager:
     def __init__(self, config_path: Union[str, Path], schema_path: Optional[Union[str, Path]] = None):
         """
         Initialize configuration manager.
-        
+
         Args:
             config_path: Path to configuration file
             schema_path: Path to JSON schema file (optional)
@@ -130,10 +130,10 @@ class UnifiedConfigManager:
     def load_config(self, force_reload: bool = False) -> Dict[str, Any]:
         """
         Load configuration from file with caching.
-        
+
         Args:
             force_reload: Force reload even if cache is valid
-            
+
         Returns:
             Configuration dictionary
         """
@@ -173,7 +173,7 @@ class UnifiedConfigManager:
     def save_config(self, config: Dict[str, Any], create_backup: bool = True) -> None:
         """
         Save configuration to file.
-        
+
         Args:
             config: Configuration dictionary to save
             create_backup: Whether to create backup before saving
@@ -320,10 +320,10 @@ class UnifiedConfigManager:
     def get_module_config(self, module_name: str) -> Dict[str, Any]:
         """
         Get configuration for specific module.
-        
+
         Args:
             module_name: Name of module (e.g., 'batch_questions', 'documentation')
-            
+
         Returns:
             Module configuration dictionary
         """
@@ -343,7 +343,7 @@ class UnifiedConfigManager:
     def update_module_config(self, module_name: str, updates: Dict[str, Any]) -> None:
         """
         Update configuration for specific module.
-        
+
         Args:
             module_name: Name of module to update
             updates: Configuration updates to apply
@@ -361,7 +361,7 @@ class UnifiedConfigManager:
     def migrate_config(self, target_version: str) -> None:
         """
         Migrate configuration to target version.
-        
+
         Args:
             target_version: Target version to migrate to
         """
@@ -395,7 +395,7 @@ class UnifiedConfigManager:
     def restore_backup(self, backup_name: str) -> None:
         """
         Restore configuration from backup.
-        
+
         Args:
             backup_name: Name of backup file to restore
         """
@@ -532,10 +532,10 @@ class ProjectInitializerConfigManager:
 def create_config_manager(config_dir: Union[str, Path]) -> UnifiedConfigManager:
     """
     Create unified configuration manager with default schema.
-    
+
     Args:
         config_dir: Directory containing configuration files
-        
+
     Returns:
         Configured UnifiedConfigManager instance
     """

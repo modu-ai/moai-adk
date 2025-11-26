@@ -32,7 +32,7 @@ class AskUserConfig:
 class AskUserQuestionIntegrator:
     """
     Integrates BatchQuestionsManager with Claude Code's AskUserQuestion.
-    
+
     This class provides a bridge between our question system and Claude Code's
     built-in user interaction capabilities, ensuring consistent UX across
     all MoAI skills.
@@ -82,10 +82,10 @@ class AskUserQuestionIntegrator:
     def convert_question_to_ask_user_format(self, question: Question) -> Dict[str, Any]:
         """
         Convert a Question object to AskUserQuestion format.
-        
+
         Args:
             question: Question to convert
-            
+
         Returns:
             Dict: AskUserQuestion compatible format
         """
@@ -138,11 +138,11 @@ class AskUserQuestionIntegrator:
                                  response_value: Union[str, List[str]]) -> Any:
         """
         Process AskUserQuestion response back to our expected format.
-        
+
         Args:
             question: Original question
             response_value: Response from AskUserQuestion
-            
+
         Returns:
             Processed response value in our expected format
         """
@@ -188,11 +188,11 @@ class AskUserQuestionIntegrator:
                     context: Optional[Dict[str, Any]] = None) -> UserResponse:
         """
         Ask a single question using AskUserQuestion.
-        
+
         Args:
             question: Question to ask
             context: Current context for conditional questions
-            
+
         Returns:
             UserResponse: The user's response
         """
@@ -243,11 +243,11 @@ class AskUserQuestionIntegrator:
                           context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
         """
         Ask multiple questions in sequence using AskUserQuestion.
-        
+
         Args:
             questions: List of questions to ask
             context: Current context for conditional questions
-            
+
         Returns:
             Dict[str, UserResponse]: All user responses
         """

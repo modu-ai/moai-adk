@@ -35,7 +35,7 @@ class TemplateOptimizer:
     def analyze_project_templates(self) -> Dict[str, Any]:
         """
         Perform comprehensive analysis of project templates.
-        
+
         Returns:
             Analysis results with performance metrics and optimization recommendations
         """
@@ -624,10 +624,10 @@ class TemplateOptimizer:
     def create_optimized_templates(self, optimization_options: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Create optimized versions of templates.
-        
+
         Args:
             optimization_options: Options for optimization process
-            
+
         Returns:
             Optimization results and created files
         """
@@ -907,10 +907,10 @@ class TemplateOptimizer:
     def benchmark_template_performance(self, template_paths: List[str] = None) -> Dict[str, Any]:
         """
         Benchmark template rendering performance.
-        
+
         Args:
             template_paths: Specific templates to benchmark (all if None)
-            
+
         Returns:
             Performance benchmark results
         """

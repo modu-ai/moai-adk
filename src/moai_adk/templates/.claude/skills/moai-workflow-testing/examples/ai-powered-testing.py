@@ -22,8 +22,8 @@ class AITestGenerator:
 
         # Get all interactive elements
         buttons = page.locator('button').all()
-        inputs = page.locator('input').all()
-        links = page.locator('a[href]').all()
+        page.locator('input').all()
+        page.locator('a[href]').all()
 
         smart_selectors = {}
 
@@ -49,21 +49,21 @@ from playwright.sync_api import sync_playwright, expect
 
 def test_ai_generated_workflow():
     """AI-generated test case with Context7 best practices"""
-    
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         page = browser.new_page()
-        
+
         # Navigate and wait for content
         page.goto('https://example.com')
         page.wait_for_load_state('networkidle')
-        
+
         # AI-generated interactions
 {interactions}
-        
+
         # AI-powered assertions
 {assertions}
-        
+
         browser.close()
 
 if __name__ == "__main__":

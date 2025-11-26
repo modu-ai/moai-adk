@@ -3,7 +3,7 @@ MoAI Menu Project - Modules Package
 
 Integrated module system for project management including:
 - DocumentationManager: Template-based documentation generation
-- LanguageInitializer: Language detection and configuration  
+- LanguageInitializer: Language detection and configuration
 - TemplateOptimizer: Template analysis and optimization
 """
 

@@ -97,7 +97,7 @@ class UserResponse:
 class BatchQuestionsManager:
     """
     Unified question management system for MoAI skills.
-    
+
     Consolidates question functionality from:
     - moai-project-batch-questions
     - moai-project-config-manager
@@ -125,10 +125,10 @@ class BatchQuestionsManager:
     def create_batch(self, batch_config: Dict[str, Any]) -> QuestionBatch:
         """
         Create a question batch from configuration.
-        
+
         Args:
             batch_config: Configuration dictionary for the batch
-            
+
         Returns:
             QuestionBatch: Created question batch
         """
@@ -189,10 +189,10 @@ class BatchQuestionsManager:
     def load_template(self, template_name: str) -> Optional[QuestionBatch]:
         """
         Load a question template from file or cache.
-        
+
         Args:
             template_name: Name of the template to load
-            
+
         Returns:
             QuestionBatch: Loaded template or None if not found
         """
@@ -224,11 +224,11 @@ class BatchQuestionsManager:
     def filter_questions(self, batch: QuestionBatch, context: Dict[str, Any]) -> List[Question]:
         """
         Filter questions based on context and conditional logic.
-        
+
         Args:
             batch: Question batch to filter
             context: Current context (previous answers, config values, etc.)
-            
+
         Returns:
             List[Question]: Filtered list of questions
         """
@@ -249,11 +249,11 @@ class BatchQuestionsManager:
                      context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
         """
         Execute a question batch and collect responses.
-        
+
         Args:
             batch: Question batch to execute
             context: Current context for conditional questions
-            
+
         Returns:
             Dict[str, UserResponse]: Collected responses
         """
@@ -299,10 +299,10 @@ class BatchQuestionsManager:
     def get_skill_specific_template(self, skill_name: str) -> Optional[QuestionBatch]:
         """
         Get a skill-specific question template.
-        
+
         Args:
             skill_name: Name of the skill
-            
+
         Returns:
             QuestionBatch: Skill-specific template or None
         """
@@ -325,11 +325,11 @@ class BatchQuestionsManager:
                                    config_path: Optional[str] = None) -> Dict[str, Any]:
         """
         Process responses and generate configuration updates.
-        
+
         Args:
             responses: User responses to process
             config_path: Path to existing config file (optional)
-            
+
         Returns:
             Dict[str, Any]: Updated configuration
         """
@@ -365,11 +365,11 @@ class BatchQuestionsManager:
                       file_path: str) -> bool:
         """
         Save responses to a file.
-        
+
         Args:
             responses: Responses to save
             file_path: Path to save the responses
-            
+
         Returns:
             bool: True if saved successfully
         """
@@ -690,11 +690,11 @@ def create_project_initializer(config: Dict[str, Any]) -> BatchQuestionsManager:
 def ask_skill_questions(skill_name: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Ask skill-specific questions and return responses.
-    
+
     Args:
         skill_name: Name of the skill
         context: Existing context for conditional questions
-        
+
     Returns:
         Dict[str, Any]: User responses
     """

@@ -113,7 +113,7 @@ class LanguageInitializer:
     def detect_project_language(self) -> str:
         """
         Auto-detect project language based on project structure and content.
-        
+
         Returns:
             Detected language code (en, ko, ja, zh)
         """
@@ -216,12 +216,12 @@ class LanguageInitializer:
                                        domains: List[str] = None) -> Dict[str, Any]:
         """
         Initialize comprehensive language configuration.
-        
+
         Args:
             language: Target language code (auto-detected if not provided)
             user_name: User name for personalization
             domains: List of selected domains
-            
+
         Returns:
             Configuration results and updated settings
         """
@@ -435,11 +435,11 @@ class LanguageInitializer:
     def localize_agent_prompts(self, prompt_template: str, language: str = None) -> str:
         """
         Localize agent prompts based on language configuration.
-        
+
         Args:
             prompt_template: Base prompt template
             language: Target language (uses config default if not provided)
-            
+
         Returns:
             Localized prompt string
         """
@@ -481,10 +481,10 @@ class LanguageInitializer:
     def create_multilingual_documentation_structure(self, language: str = None) -> Dict[str, Any]:
         """
         Create documentation structure for multilingual support.
-        
+
         Args:
             language: Primary language for documentation
-            
+
         Returns:
             Documentation structure configuration
         """
@@ -557,7 +557,7 @@ DefaultLanguage {language}
     def validate_language_configuration(self) -> Dict[str, Any]:
         """
         Validate current language configuration.
-        
+
         Returns:
             Validation results with recommendations
         """
@@ -628,10 +628,10 @@ DefaultLanguage {language}
     def update_language_settings(self, updates: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update specific language settings.
-        
+
         Args:
             updates: Dictionary of settings to update
-            
+
         Returns:
             Update results
         """
@@ -677,7 +677,7 @@ DefaultLanguage {language}
     def get_language_status(self) -> Dict[str, Any]:
         """
         Get comprehensive language configuration status.
-        
+
         Returns:
             Language status and metrics
         """

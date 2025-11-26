@@ -23,7 +23,7 @@ from .modules.template_optimizer import TemplateOptimizer
 class MoaiMenuProject:
     """
     Main interface for MoAI Menu Project integrated system.
-    
+
     Provides unified access to documentation management, language initialization,
     and template optimization capabilities.
     """
@@ -31,7 +31,7 @@ class MoaiMenuProject:
     def __init__(self, project_root: str = None, config: Dict[str, Any] = None):
         """
         Initialize the MoAI Menu Project system.
-        
+
         Args:
             project_root: Root directory of the project
             config: Configuration dictionary
@@ -113,14 +113,14 @@ class MoaiMenuProject:
                                   optimization_enabled: bool = True) -> Dict[str, Any]:
         """
         Initialize complete project with all modules.
-        
+
         Args:
             language: Primary language for the project
             user_name: User name for personalization
             domains: List of domains to enable
             project_type: Type of project (web_application, mobile_application, etc.)
             optimization_enabled: Whether to run template optimization
-            
+
         Returns:
             Complete initialization results
         """
@@ -198,10 +198,10 @@ class MoaiMenuProject:
     def generate_documentation_from_spec(self, spec_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate comprehensive documentation from SPEC data.
-        
+
         Args:
             spec_data: SPEC specification data
-            
+
         Returns:
             Documentation generation results
         """
@@ -236,10 +236,10 @@ class MoaiMenuProject:
     def optimize_project_templates(self, options: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Optimize project templates with advanced analysis.
-        
+
         Args:
             options: Optimization options
-            
+
         Returns:
             Template optimization results
         """
@@ -263,10 +263,10 @@ class MoaiMenuProject:
     def update_language_settings(self, language_updates: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update language configuration.
-        
+
         Args:
             language_updates: Language configuration updates
-            
+
         Returns:
             Update results
         """
@@ -290,7 +290,7 @@ class MoaiMenuProject:
     def get_project_status(self) -> Dict[str, Any]:
         """
         Get comprehensive project status.
-        
+
         Returns:
             Project status and metrics
         """
@@ -322,11 +322,11 @@ class MoaiMenuProject:
     def export_project_documentation(self, format_type: str = "markdown", language: str = None) -> Dict[str, Any]:
         """
         Export project documentation in specified format.
-        
+
         Args:
             format_type: Export format (markdown, html, pdf)
             language: Target language for export
-            
+
         Returns:
             Export results
         """
@@ -347,10 +347,10 @@ class MoaiMenuProject:
     def create_project_backup(self, backup_name: str = None) -> Dict[str, Any]:
         """
         Create comprehensive project backup.
-        
+
         Args:
             backup_name: Name for the backup
-            
+
         Returns:
             Backup creation results
         """
@@ -417,7 +417,7 @@ class MoaiMenuProject:
     def get_integration_matrix(self) -> Dict[str, Any]:
         """
         Get module integration matrix and workflow.
-        
+
         Returns:
             Integration information and workflows
         """
@@ -477,11 +477,11 @@ class MoaiMenuProject:
 def initialize_project(project_root: str = None, **kwargs) -> Dict[str, Any]:
     """
     Convenience function to initialize a complete MoAI project.
-    
+
     Args:
         project_root: Root directory of the project
         **kwargs: Additional initialization parameters
-        
+
     Returns:
         Initialization results
     """
@@ -493,11 +493,11 @@ def initialize_project(project_root: str = None, **kwargs) -> Dict[str, Any]:
 def generate_docs(spec_data: Dict[str, Any], project_root: str = None) -> Dict[str, Any]:
     """
     Convenience function to generate documentation from SPEC.
-    
+
     Args:
         spec_data: SPEC specification data
         project_root: Root directory of the project
-        
+
     Returns:
         Documentation generation results
     """
@@ -509,11 +509,11 @@ def generate_docs(spec_data: Dict[str, Any], project_root: str = None) -> Dict[s
 def optimize_templates(project_root: str = None, **options) -> Dict[str, Any]:
     """
     Convenience function to optimize project templates.
-    
+
     Args:
         project_root: Root directory of the project
         **options: Optimization options
-        
+
     Returns:
         Template optimization results
     """

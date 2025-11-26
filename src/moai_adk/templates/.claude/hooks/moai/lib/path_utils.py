@@ -5,13 +5,13 @@ from pathlib import Path
 def find_project_root() -> Path:
     """
     Find project root by locating .moai directory.
-    
+
     Starts from current file location and traverses upward
     until .moai directory is found.
-    
+
     Returns:
         Path: Project root directory containing .moai/
-        
+
     Fallback:
         Returns Path.cwd() if .moai not found
     """

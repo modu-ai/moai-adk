@@ -47,7 +47,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast, Union
+from typing import Any, Union, cast
 
 import click
 from packaging import version
@@ -953,7 +953,7 @@ def _prompt_custom_files_restore(
         }
 
     # Build checkbox choices grouped by type
-    from questionary import Separator, Choice
+    from questionary import Choice, Separator
     choices: list[Union[Separator, Choice]] = []
 
     if custom_commands:

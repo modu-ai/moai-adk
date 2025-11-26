@@ -261,7 +261,7 @@ This section describes the project again.
 - Feature 2
 - Feature 3
 
-Extra whitespace:   
+Extra whitespace:
 
 
 

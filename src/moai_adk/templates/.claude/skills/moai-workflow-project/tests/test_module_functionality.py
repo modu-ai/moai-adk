@@ -3,7 +3,7 @@ Module Functionality Tests
 
 Tests for individual module functionality including:
 - DocumentationManager
-- LanguageInitializer  
+- LanguageInitializer
 - TemplateOptimizer
 - Module-specific features and capabilities
 """
@@ -266,7 +266,7 @@ Duplicate content here...
 
 More content...
 
-Extra whitespace:   
+Extra whitespace:
 
 
 

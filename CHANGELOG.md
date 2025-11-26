@@ -1,3 +1,71 @@
+# v0.30.0 - Skill Synchronization & Project Structure Cleanup (2025-11-27)
+
+## Summary
+
+Major maintenance release focusing on project structure integrity and Python skill synchronization. Removed 874MB of misplaced virtual environment files and synchronized 24 Python skill files with template source.
+
+## Added
+
+- Comprehensive pre-release validation system (pytest, ruff, mypy, bandit, pip-audit)
+- Enhanced `.gitignore` rules to prevent `.claude/.venv` pollution
+
+## Fixed
+
+- **Critical**: Removed 874MB misplaced `.claude/.venv` directory
+- Synchronized 24 Python skill files with template definitions
+- Corrected project structure (28,725 files → 291 files, 99% reduction)
+- Import order unified across skill modules
+
+## Changed
+
+- Improved skill file organization and consistency
+- Enhanced pre-commit security scanning
+
+## Technical Details
+
+- **TRUST 5 Compliance**: Testable, Readable, Unified, Secured, Traceable
+- **Tests**: 2255/2256 passing (99.96%)
+- **Code Quality**: mypy ✅, bandit ✅, 123 ruff fixes applied
+- **Disk Space Saved**: 870MB
+- **Files Synchronized**: 24 Python skill modules
+- **Git Commit**: 21420139 (Sync Python skills from template and prevent .venv in .claude)
+
+## Files Modified
+
+### Skills Synchronized
+- `moai-connector-nano-banana/modules/image_generator.py`
+- `moai-connector-nano-banana/modules/prompt_generator.py`
+- `moai-platform-baas/scripts/provider-selector.py`
+- `moai-workflow-project/` (16 files)
+- `moai-workflow-testing/` (5 files)
+
+### Configuration Updated
+- `.gitignore`: Added `.claude/.venv/` and `.claude/.pytest_cache/` rules
+- `pyproject.toml`: Version bumped to 0.30.0
+- `src/moai_adk/__init__.py`: Version synchronized
+- `.moai/config/config.json`: Version updated
+
+## Breaking Changes
+
+None
+
+## Deprecations
+
+None
+
+## Security
+
+- All pre-commit security checks passed
+- No new vulnerabilities detected
+- Bandit security scan: Clean
+- pip-audit dependency check: Clean
+
+## Migration Guide
+
+No migration needed for users. This is primarily a maintenance release.
+
+---
+
 # v0.31.0 - Custom Files Backup & Restore in moai-adk update (2025-11-27)
 
 ## Added

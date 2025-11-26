@@ -42,7 +42,7 @@ class LegacyConfigDetector:
     def __init__(self, search_dirs: List[Path]):
         """
         Initialize detector with search directories.
-        
+
         Args:
             search_dirs: List of directories to search for legacy configs
         """
@@ -78,7 +78,7 @@ class LegacyConfigDetector:
     def find_legacy_configs(self) -> List[LegacyConfigInfo]:
         """
         Find all legacy configuration files.
-        
+
         Returns:
             List of legacy configuration information
         """
@@ -182,7 +182,7 @@ class ConfigurationMigrator:
     def __init__(self, config_manager: UnifiedConfigManager, dry_run: bool = False):
         """
         Initialize migrator.
-        
+
         Args:
             config_manager: Target configuration manager
             dry_run: If True, only show what would be migrated
@@ -203,10 +203,10 @@ class ConfigurationMigrator:
     def detect_and_migrate(self, backup: bool = True) -> Dict[str, Any]:
         """
         Detect legacy configurations and migrate them.
-        
+
         Args:
             backup: Whether to create backup before migration
-            
+
         Returns:
             Migration result summary
         """
@@ -505,10 +505,10 @@ class ConfigurationMigrator:
     def rollback_migration(self, target_timestamp: Optional[str] = None) -> bool:
         """
         Rollback migration to specific timestamp or latest backup.
-        
+
         Args:
             target_timestamp: Target timestamp for rollback (optional)
-            
+
         Returns:
             True if rollback successful, False otherwise
         """
@@ -545,7 +545,7 @@ class ConfigurationMigrator:
     def preview_migration(self) -> Dict[str, Any]:
         """
         Preview what would be migrated without actually doing it.
-        
+
         Returns:
             Migration preview information
         """
@@ -560,12 +560,12 @@ class ConfigurationMigrator:
 def run_migration(config_dir: Union[str, Path], backup: bool = True, dry_run: bool = False) -> Dict[str, Any]:
     """
     Run complete migration process.
-    
+
     Args:
         config_dir: Directory containing configuration files
         backup: Whether to create backup before migration
         dry_run: If True, only preview what would be migrated
-        
+
     Returns:
         Migration result summary
     """
@@ -579,10 +579,10 @@ def run_migration(config_dir: Union[str, Path], backup: bool = True, dry_run: bo
 def check_migration_status(config_dir: Union[str, Path]) -> Dict[str, Any]:
     """
     Check migration status for configuration directory.
-    
+
     Args:
         config_dir: Directory to check
-        
+
     Returns:
         Migration status information
     """
