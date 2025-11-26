@@ -786,6 +786,302 @@ def _get_template_skill_names() -> set[str]:
     return {d.name for d in skills_path.iterdir() if d.is_dir()}
 
 
+def _get_template_command_names() -> set[str]:
+    """Get set of command file names from installed template.
+
+    Returns:
+        Set of .md command file names from .claude/commands/moai/ in template.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    commands_path = template_path / ".claude" / "commands" / "moai"
+
+    if not commands_path.exists():
+        return set()
+
+    return {f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"}
+
+
+def _get_template_agent_names() -> set[str]:
+    """Get set of agent file names from installed template.
+
+    Returns:
+        Set of agent file names from .claude/agents/ in template.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    agents_path = template_path / ".claude" / "agents"
+
+    if not agents_path.exists():
+        return set()
+
+    return {f.name for f in agents_path.iterdir() if f.is_file()}
+
+
+def _get_template_hook_names() -> set[str]:
+    """Get set of hook file names from installed template.
+
+    Returns:
+        Set of .py hook file names from .claude/hooks/moai/ in template.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    hooks_path = template_path / ".claude" / "hooks" / "moai"
+
+    if not hooks_path.exists():
+        return set()
+
+    return {f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"}
+
+
+def _detect_custom_commands(project_path: Path, template_commands: set[str]) -> list[str]:
+    """Detect custom commands NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_commands: Set of template command file names
+
+    Returns:
+        Sorted list of custom command file names.
+    """
+    commands_path = project_path / ".claude" / "commands" / "moai"
+
+    if not commands_path.exists():
+        return []
+
+    project_commands = {f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"}
+    custom_commands = project_commands - template_commands
+
+    return sorted(custom_commands)
+
+
+def _detect_custom_agents(project_path: Path, template_agents: set[str]) -> list[str]:
+    """Detect custom agents NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_agents: Set of template agent file names
+
+    Returns:
+        Sorted list of custom agent file names.
+    """
+    agents_path = project_path / ".claude" / "agents"
+
+    if not agents_path.exists():
+        return []
+
+    project_agents = {f.name for f in agents_path.iterdir() if f.is_file()}
+    custom_agents = project_agents - template_agents
+
+    return sorted(custom_agents)
+
+
+def _detect_custom_hooks(project_path: Path, template_hooks: set[str]) -> list[str]:
+    """Detect custom hooks NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_hooks: Set of template hook file names
+
+    Returns:
+        Sorted list of custom hook file names.
+    """
+    hooks_path = project_path / ".claude" / "hooks" / "moai"
+
+    if not hooks_path.exists():
+        return []
+
+    project_hooks = {f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"}
+    custom_hooks = project_hooks - template_hooks
+
+    return sorted(custom_hooks)
+
+
+def _group_custom_files_by_type(
+    custom_commands: list[str],
+    custom_agents: list[str],
+    custom_hooks: list[str],
+) -> dict[str, list[str]]:
+    """Group custom files by type for UI display.
+
+    Args:
+        custom_commands: List of custom command file names
+        custom_agents: List of custom agent file names
+        custom_hooks: List of custom hook file names
+
+    Returns:
+        Dictionary with keys: commands, agents, hooks
+    """
+    return {
+        "commands": custom_commands,
+        "agents": custom_agents,
+        "hooks": custom_hooks,
+    }
+
+
+def _prompt_custom_files_restore(
+    custom_commands: list[str],
+    custom_agents: list[str],
+    custom_hooks: list[str],
+    yes: bool = False,
+) -> dict[str, list[str]]:
+    """Interactive questionary multi-select for custom files restore (opt-in default).
+
+    Args:
+        custom_commands: List of custom command file names
+        custom_agents: List of custom agent file names
+        custom_hooks: List of custom hook file names
+        yes: Auto-confirm flag (skips restoration in CI/CD mode)
+
+    Returns:
+        Dictionary with selected files grouped by type.
+    """
+    import questionary
+
+    # If no custom files, skip UI
+    if not (custom_commands or custom_agents or custom_hooks):
+        return {
+            "commands": [],
+            "agents": [],
+            "hooks": [],
+        }
+
+    # In --yes mode, skip restoration (safest default)
+    if yes:
+        console.print("\n[dim]   Skipping custom files restoration (--yes mode)[/dim]\n")
+        return {
+            "commands": [],
+            "agents": [],
+            "hooks": [],
+        }
+
+    # Build checkbox choices grouped by type
+    choices = []
+
+    if custom_commands:
+        choices.append(questionary.Separator("Commands (.claude/commands/moai/)"))
+        for cmd in custom_commands:
+            choices.append(questionary.Choice(title=cmd, value=f"cmd:{cmd}"))
+
+    if custom_agents:
+        choices.append(questionary.Separator("Agents (.claude/agents/)"))
+        for agent in custom_agents:
+            choices.append(questionary.Choice(title=agent, value=f"agent:{agent}"))
+
+    if custom_hooks:
+        choices.append(questionary.Separator("Hooks (.claude/hooks/moai/)"))
+        for hook in custom_hooks:
+            choices.append(questionary.Choice(title=hook, value=f"hook:{hook}"))
+
+    console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
+    console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
+
+    selected = questionary.checkbox(
+        "Select custom files to restore:",
+        choices=choices,
+    ).ask()
+
+    # Parse results
+    result_commands = []
+    result_agents = []
+    result_hooks = []
+
+    if selected:
+        for item in selected:
+            if item.startswith("cmd:"):
+                result_commands.append(item[4:])
+            elif item.startswith("agent:"):
+                result_agents.append(item[6:])
+            elif item.startswith("hook:"):
+                result_hooks.append(item[5:])
+
+    return {
+        "commands": result_commands,
+        "agents": result_agents,
+        "hooks": result_hooks,
+    }
+
+
+def _restore_custom_files(
+    project_path: Path,
+    backup_path: Path,
+    selected_commands: list[str],
+    selected_agents: list[str],
+    selected_hooks: list[str],
+) -> bool:
+    """Restore selected custom files from backup to project.
+
+    Args:
+        project_path: Project directory path
+        backup_path: Backup directory path
+        selected_commands: List of command files to restore
+        selected_agents: List of agent files to restore
+        selected_hooks: List of hook files to restore
+
+    Returns:
+        True if all restorations succeeded, False otherwise.
+    """
+    import shutil
+
+    success = True
+
+    # Restore commands
+    if selected_commands:
+        commands_dst = project_path / ".claude" / "commands" / "moai"
+        commands_dst.mkdir(parents=True, exist_ok=True)
+
+        for cmd_file in selected_commands:
+            src = backup_path / ".claude" / "commands" / "moai" / cmd_file
+            dst = commands_dst / cmd_file
+
+            if src.exists():
+                try:
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    logger.warning(f"Failed to restore command {cmd_file}: {e}")
+                    success = False
+            else:
+                logger.warning(f"Command file not in backup: {cmd_file}")
+                success = False
+
+    # Restore agents
+    if selected_agents:
+        agents_dst = project_path / ".claude" / "agents"
+        agents_dst.mkdir(parents=True, exist_ok=True)
+
+        for agent_file in selected_agents:
+            src = backup_path / ".claude" / "agents" / agent_file
+            dst = agents_dst / agent_file
+
+            if src.exists():
+                try:
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    logger.warning(f"Failed to restore agent {agent_file}: {e}")
+                    success = False
+            else:
+                logger.warning(f"Agent file not in backup: {agent_file}")
+                success = False
+
+    # Restore hooks
+    if selected_hooks:
+        hooks_dst = project_path / ".claude" / "hooks" / "moai"
+        hooks_dst.mkdir(parents=True, exist_ok=True)
+
+        for hook_file in selected_hooks:
+            src = backup_path / ".claude" / "hooks" / "moai" / hook_file
+            dst = hooks_dst / hook_file
+
+            if src.exists():
+                try:
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    logger.warning(f"Failed to restore hook {hook_file}: {e}")
+                    success = False
+            else:
+                logger.warning(f"Hook file not in backup: {hook_file}")
+                success = False
+
+    return success
+
+
 def _detect_custom_skills(project_path: Path, template_skills: set[str]) -> list[str]:
     """Detect skills NOT in template (user-created).
 
@@ -911,9 +1207,19 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
 
     backup_path = None
     try:
-        # NEW: Detect custom skills BEFORE backup/sync
+        # NEW: Detect custom files and skills BEFORE backup/sync
         template_skills = _get_template_skill_names()
         custom_skills = _detect_custom_skills(project_path, template_skills)
+
+        # Detect custom commands, agents, and hooks
+        template_commands = _get_template_command_names()
+        custom_commands = _detect_custom_commands(project_path, template_commands)
+
+        template_agents = _get_template_agent_names()
+        custom_agents = _detect_custom_agents(project_path, template_agents)
+
+        template_hooks = _get_template_hook_names()
+        custom_hooks = _detect_custom_hooks(project_path, template_hooks)
 
         processor = TemplateProcessor(project_path)
 
@@ -1019,6 +1325,18 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
             skills_to_restore = _prompt_skill_restore(custom_skills, yes)
             if skills_to_restore:
                 _restore_selected_skills(skills_to_restore, backup_path, project_path)
+
+        # NEW: Interactive custom files restore if custom files found
+        if (custom_commands or custom_agents or custom_hooks) and backup_path:
+            files_to_restore = _prompt_custom_files_restore(custom_commands, custom_agents, custom_hooks, yes)
+            if any([files_to_restore.get("commands"), files_to_restore.get("agents"), files_to_restore.get("hooks")]):
+                _restore_custom_files(
+                    project_path=project_path,
+                    backup_path=backup_path,
+                    selected_commands=files_to_restore.get("commands", []),
+                    selected_agents=files_to_restore.get("agents", []),
+                    selected_hooks=files_to_restore.get("hooks", []),
+                )
 
         # NEW: Show post-update guidance
         if backup_path:
