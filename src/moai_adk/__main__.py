@@ -72,12 +72,58 @@ def cli(ctx: click.Context) -> None:
 
 # Lazy-loaded commands (imported only when invoked)
 @cli.command()
+@click.argument("path", type=click.Path(), default=".")
+@click.option(
+    "--non-interactive",
+    "-y",
+    is_flag=True,
+    help="Non-interactive mode (use defaults)",
+)
+@click.option(
+    "--mode",
+    type=click.Choice(["personal", "team"]),
+    default="personal",
+    help="Project mode",
+)
+@click.option(
+    "--locale",
+    type=click.Choice(["ko", "en", "ja", "zh"]),
+    default=None,
+    help="Preferred language (ko/en/ja/zh, default: en)",
+)
+@click.option(
+    "--language",
+    type=str,
+    default=None,
+    help="Programming language (auto-detect if not specified)",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force reinitialize without confirmation",
+)
 @click.pass_context
-def init(ctx: click.Context, **kwargs) -> None:
-    """Initialize MoAI-ADK project"""
+def init(
+    ctx: click.Context,
+    path: str,
+    non_interactive: bool,
+    mode: str,
+    locale: str,
+    language: str | None,
+    force: bool,
+) -> None:
+    """Initialize a new MoAI-ADK project"""
     from moai_adk.cli.commands.init import init as _init
 
-    ctx.invoke(_init, **kwargs)
+    ctx.invoke(
+        _init,
+        path=path,
+        non_interactive=non_interactive,
+        mode=mode,
+        locale=locale,
+        language=language,
+        force=force,
+    )
 
 
 @cli.command()
