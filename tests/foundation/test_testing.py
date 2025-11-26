@@ -1602,7 +1602,7 @@ class TestEdgeCases:
         report = generate_test_report(results)
 
         assert report["summary"]["total_tests"] == 10000
-        assert report["summary"]["average_duration"] == 0.1
+        assert report["summary"]["average_duration"] == pytest.approx(0.1)
 
     def test_extreme_coverage_values(self):
         """Test handling extreme coverage values."""
