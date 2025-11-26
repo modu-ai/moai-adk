@@ -228,18 +228,23 @@ Studio-grade photography, 2K resolution, 16:9 aspect ratio."
 **Implementation Pattern**:
 
 ```python
-from moai_connector_nano_banana import NanoBananaPro
+# Import from skill modules
+import sys
+from pathlib import Path
 
-# Load API key from .env
-client = NanoBananaPro(api_key=os.getenv("GOOGLE_API_KEY"))
+skill_path = Path(".claude/skills/moai-connector-nano-banana/modules")
+sys.path.insert(0, str(skill_path))
+
+from image_generator import NanoBananaImageGenerator
+
+# Initialize with API key from .env
+generator = NanoBananaImageGenerator(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Generate image
-result = client.generate_image(
+image, metadata = generator.generate(
     prompt="[optimized_prompt_from_stage_2]",
-    resolution="2K",          # From user choice
-    aspect_ratio="16:9",      # Default or user specified
-    enable_google_search=True, # Real-time information
-    enable_thinking=True,     # Auto-optimize composition
+    model="pro",              # gemini-3-pro-image-preview
+    aspect_ratio="16:9",      # User specified or default
     save_path="outputs/image-{timestamp}.png"
 )
 ```
@@ -248,32 +253,34 @@ result = client.generate_image(
 
 ```python
 {
-    "resolution": "1K" | "2K" | "4K",
-    "aspect_ratio": "1:1" | "16:9" | "21:9" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16",
-    "enable_thinking": True,          # Composition auto-optimization
-    "enable_google_search": True,     # Real-time factual grounding
-    "timeout_seconds": 60,            # Maximum wait time
-    "max_retries": 3                  # Retry on transient errors
+    "model": "pro",  # gemini-3-pro-image-preview (4K quality)
+    "aspect_ratio": "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9" | "9:21",
+    "save_path": Optional[str],       # Output path
 }
 ```
 
 **Error Handling Strategy**:
 
 ```python
+from google.api_core import exceptions
+
 try:
-    result = client.generate_image(...)
-except QuotaExceededError:
-    # Suggest: downgrade resolution to 1K or wait
-    suggest_alternative("quota_exceeded")
-except SafetyFilterError:
-    # Suggest: rephrase prompt, avoid explicit content
-    suggest_prompt_refinement("safety_filter")
-except TimeoutError:
-    # Suggest: simplify prompt or retry
-    retry_with_simpler_prompt()
+    image, metadata = generator.generate(...)
+except exceptions.ResourceExhausted:
+    # API quota exceeded - suggest retry later
+    print("Quota exceeded. Please try again in a few minutes.")
+except exceptions.PermissionDenied:
+    # API key issue - check .env configuration
+    print("Permission error. Please check API key in .env file.")
+except exceptions.InvalidArgument as e:
+    # Invalid parameters - check aspect ratio or model
+    print(f"Invalid parameter: {e}")
+except Exception as e:
+    # General error with retry logic
+    print(f"Error occurred: {e}")
 ```
 
-**Output**: Base64-encoded PNG image + metadata + SynthID watermark
+**Output**: PIL Image object + metadata dict + saved PNG file
 
 ---
 
@@ -482,25 +489,25 @@ if not api_key:
 
 ## 📊 Performance & Optimization
 
-**Resolution Selection Guide**:
+**Model Selection Guide**:
 
-| Resolution           | Use Case                              | Processing Time | Token Cost | Output Quality |
-| -------------------- | ------------------------------------- | --------------- | ---------- | -------------- |
-| **1K**               | Quick preview, iteration testing      | 10-20s          | ~1-2K      | Good           |
-| **2K** (Recommended) | Web images, social media, general use | 20-35s          | ~2-4K      | Excellent      |
-| **4K**               | Print materials, posters, high-detail | 40-60s          | ~4-8K      | Studio-grade   |
+| Model                          | Use Case                              | Processing Time | Token Cost | Output Quality |
+| ------------------------------ | ------------------------------------- | --------------- | ---------- | -------------- |
+| **gemini-3-pro-image-preview** | High-quality 4K images for all uses   | 20-40s          | ~2-4K      | Studio-grade   |
+
+**Note**: Currently only gemini-3-pro-image-preview is supported (Nano Banana Pro)
 
 **Cost Optimization Strategies**:
 
-1. **Use 1K for initial iterations** → upgrade to 2K/4K for finals
+1. **Use appropriate aspect ratio** for your use case
 2. **Batch similar requests** together to maximize throughput
-3. **Enable caching** for frequently used prompts
-4. **Reuse reference images** across multiple generations
+3. **Reuse optimized prompts** for similar images
+4. **Save metadata** to track and optimize usage
 
 **Performance Metrics** (Expected):
 
 - Success rate: ≥98%
-- Average generation time: 25s (2K)
+- Average generation time: 30s (gemini-3-pro-image-preview)
 - User satisfaction: ≥4.5/5.0 stars
 - Error recovery rate: 95%
 
@@ -510,29 +517,36 @@ if not api_key:
 
 **Common Errors & Solutions**:
 
-| Error                | Cause                   | Solution                                           |
-| -------------------- | ----------------------- | -------------------------------------------------- |
-| `RESOURCE_EXHAUSTED` | Quota exceeded          | Downgrade resolution to 1K or wait for quota reset |
-| `SAFETY_RATING`      | Safety filter triggered | Rephrase prompt, avoid explicit/violent content    |
-| `DEADLINE_EXCEEDED`  | Timeout (>60s)          | Simplify prompt, reduce detail complexity          |
-| `INVALID_ARGUMENT`   | Invalid parameter       | Check resolution, aspect ratio, or prompt format   |
-| `API_KEY_INVALID`    | Wrong API key           | Verify .env file and key from AI Studio            |
+| Error                | Cause                   | Solution                                        |
+| -------------------- | ----------------------- | ----------------------------------------------- |
+| `RESOURCE_EXHAUSTED` | Quota exceeded          | Wait for quota reset or request quota increase  |
+| `PERMISSION_DENIED`  | Invalid API key         | Verify .env file and key from AI Studio         |
+| `DEADLINE_EXCEEDED`  | Timeout (>60s)          | Simplify prompt, reduce detail complexity       |
+| `INVALID_ARGUMENT`   | Invalid parameter       | Check aspect ratio (must be from supported list)|
+| `API_KEY_INVALID`    | Wrong API key           | Verify .env file and key from AI Studio         |
 
 **Retry Strategy**:
 
 ```python
-def generate_with_retry(prompt: str, max_retries: int = 3) -> dict:
+import time
+from google.api_core import exceptions
+
+def generate_with_retry(generator, prompt: str, max_retries: int = 3):
     """Generate image with automatic retry on transient errors."""
 
     for attempt in range(1, max_retries + 1):
         try:
-            return client.generate_image(prompt)
-        except TransientError as e:
+            return generator.generate(
+                prompt=prompt,
+                model="pro",
+                aspect_ratio="16:9"
+            )
+        except exceptions.ResourceExhausted:
             if attempt == max_retries:
                 raise
 
             wait_time = 2 ** attempt  # Exponential backoff
-            logger.warning(f"Retry {attempt}/{max_retries} after {wait_time}s")
+            print(f"Retry {attempt}/{max_retries} after {wait_time}s")
             time.sleep(wait_time)
 
     raise RuntimeError("Max retries exceeded")

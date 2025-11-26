@@ -1,5 +1,5 @@
 ---
-name: core-planner
+name: manager-strategy
 description: Use when SPEC analysis and implementation strategy need to be established. Called from /moai:2-run Phase 1.
 tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit

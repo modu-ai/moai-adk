@@ -1,5 +1,5 @@
 ---
-name: factory-command
+name: builder-command
 description: Use when creating or optimizing custom slash commands. Maximizes reuse through asset discovery and match scoring.
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit

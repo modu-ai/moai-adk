@@ -1,5 +1,5 @@
 ---
-name: workflow-docs
+name: manager-docs
 description: Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting.
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit

@@ -19,9 +19,7 @@ except ImportError:
     # Fallback if lib.timeout not available
     class TimeoutError(Exception):  # type: ignore[no-redef]
         """Signal-based timeout exception"""
-
         pass
-
 
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
@@ -62,7 +60,7 @@ def find_project_root(start_path: str | Path = ".") -> Path:
 
     for _ in range(max_depth):
         # Check for .moai/config/config.json (primary indicator)
-        if (current / ".moai" / "config" / "config.json").exists():
+        if (current / ".moai" / "config.json").exists():
             return current
 
         # Check for CLAUDE.md (secondary indicator)
@@ -224,7 +222,9 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
 
             # Check exit code manually
             if result.returncode != 0:
-                raise subprocess.CalledProcessError(result.returncode, ["git"] + args, result.stdout, result.stderr)
+                raise subprocess.CalledProcessError(
+                    result.returncode, ["git"] + args, result.stdout, result.stderr
+                )
 
             return result.stdout.strip()
 
@@ -389,7 +389,7 @@ def get_project_language(cwd: str) -> str:
     """
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config" / "config.json"
+    config_path = project_root / ".moai" / "config.json"
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text())
@@ -414,7 +414,7 @@ def _validate_project_structure(cwd: str) -> bool:
         bool: True if .moai/config/config.json exists, False otherwise
     """
     project_root = find_project_root(cwd)
-    return (project_root / ".moai" / "config" / "config.json").exists()
+    return (project_root / ".moai" / "config.json").exists()
 
 
 def get_version_check_config(cwd: str) -> dict[str, Any]:
@@ -451,7 +451,7 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
 
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config" / "config.json"
+    config_path = project_root / ".moai" / "config.json"
     if not config_path.exists():
         return defaults
 
@@ -700,7 +700,9 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                     release_url = project_urls.get("Changelog", "")
                     if not release_url:
                         # Fallback to GitHub releases URL pattern
-                        release_url = f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                        release_url = (
+                            f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                        )
                     result["release_notes_url"] = release_url
                 except (KeyError, AttributeError, TypeError):
                     result["release_notes_url"] = None
@@ -730,7 +732,9 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                 result["upgrade_command"] = "uv tool upgrade moai-adk"
 
                 # Detect major version change
-                result["is_major_update"] = is_major_version_change(current_str, latest_str)
+                result["is_major_update"] = is_major_version_change(
+                    current_str, latest_str
+                )
             else:
                 result["is_major_update"] = False
         except (ValueError, AttributeError):

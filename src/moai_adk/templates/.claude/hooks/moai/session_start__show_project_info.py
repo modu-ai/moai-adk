@@ -68,9 +68,15 @@ except ImportError:
         if not specs_dir.exists():
             return {"completed": 0, "total": 0, "percentage": 0}
         try:
-            spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
+            spec_folders = [
+                d
+                for d in specs_dir.iterdir()
+                if d.is_dir() and d.name.startswith("SPEC-")
+            ]
             total = len(spec_folders)
-            completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
+            completed = sum(
+                1 for folder in spec_folders if (folder / "spec.md").exists()
+            )
             percentage = (completed / total * 100) if total > 0 else 0
             return {
                 "completed": completed,
@@ -124,7 +130,11 @@ def should_show_setup_messages() -> bool:
 
     try:
         suppressed_at = datetime.fromisoformat(suppressed_at_str)
-        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        now = (
+            datetime.now(suppressed_at.tzinfo)
+            if suppressed_at.tzinfo
+            else datetime.now()
+        )
         days_passed = (now - suppressed_at).days
 
         # Show messages if more than 7 days have passed
@@ -218,7 +228,9 @@ def get_git_info() -> dict[str, Any]:
         results = {}
         with ThreadPoolExecutor(max_workers=4) as executor:
             # Submit all tasks
-            futures = {executor.submit(_run_git_command, cmd): key for cmd, key in git_commands}
+            futures = {
+                executor.submit(_run_git_command, cmd): key for cmd, key in git_commands
+            }
 
             # Collect results as they complete
             for future in as_completed(futures):
@@ -234,7 +246,11 @@ def get_git_info() -> dict[str, Any]:
             "branch": results.get("branch", "unknown"),
             "last_commit": results.get("last_commit", "unknown"),
             "commit_time": results.get("commit_time", "unknown"),
-            "changes": (len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0),
+            "changes": (
+                len(results.get("changes_raw", "").splitlines())
+                if results.get("changes_raw")
+                else 0
+            ),
         }
 
         # Cache the results

@@ -1,5 +1,5 @@
 ---
-name: factory-agent
+name: builder-agent
 description: Use when creating new sub-agents or generating agent blueprints from requirements. Follows Claude Code official sub-agent standards.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit

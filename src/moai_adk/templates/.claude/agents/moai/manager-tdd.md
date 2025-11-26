@@ -1,5 +1,5 @@
 ---
-name: workflow-tdd
+name: manager-tdd
 description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='workflow-tdd') - NEVER executed directly.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku

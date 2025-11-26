@@ -1,12 +1,12 @@
 """
-Nano Banana Pro - 이미지 생성 모듈
+Nano Banana Pro - Image Generation Module
 
-Google Gemini 3 Pro Image Preview (Nano Banana) API를 사용한 이미지 생성/편집
+Image generation and editing using Google Gemini 3 Pro Image Preview API
 
 Official API Documentation:
 - https://ai.google.dev/gemini-api/docs/image-generation
-- Models: gemini-2.5-flash-image, gemini-3-pro-image-preview
-- API: POST /v1beta/models/{model}:generateContent
+- Models: gemini-2-5-flash-image, gemini-3-pro-image-preview
+- SDK: google-genai>=1.0.0
 """
 
 import os
@@ -17,7 +17,8 @@ from datetime import datetime
 import logging
 from io import BytesIO
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from google.api_core import exceptions
 
 logger = logging.getLogger(__name__)
@@ -25,54 +26,44 @@ logger = logging.getLogger(__name__)
 
 class NanoBananaImageGenerator:
     """
-    Gemini 3 Nano Banana API를 사용한 이미지 생성 및 편집
+    Image generation and editing using Gemini 3 Nano Banana API
 
     Features:
-    - Text-to-Image 생성 (1K/2K/4K 해상도)
-    - Image-to-Image 편집 (스타일 전이, 객체 조작)
-    - Google Search 실시간 정보 연동
-    - Multi-turn 대화형 편집
-    - 에러 처리 및 재시도 로직
+    - Text-to-Image generation (1K/4K resolution)
+    - Image-to-Image editing (style transfer, object manipulation)
+    - Multi-turn conversational editing
+    - Error handling and retry logic
 
     Models:
-    - gemini-2.5-flash-image: 빠른 생성, 1K 해상도 (권장: 프로토타입)
-    - gemini-3-pro-image-preview: 고품질, 4K 해상도 (권장: 프로덕션)
+    - gemini-3-pro-image-preview: High quality, 4K resolution (Nano Banana Pro)
 
     Example:
-        >>> from env_key_manager import EnvKeyManager
-        >>> api_key = EnvKeyManager.load_api_key()
-        >>> generator = NanoBananaImageGenerator(api_key)
+        >>> generator = NanoBananaImageGenerator()
         >>> image, metadata = generator.generate(
         ...     "A serene mountain landscape at golden hour"
         ... )
         >>> image.save("output.png")
     """
 
-    # 지원 모델
+    # Supported models (gemini-3-pro-image-preview only)
     MODELS = {
-        "flash": "gemini-2.5-flash-image",      # 빠른 생성
-        "pro": "gemini-3-pro-image-preview"     # 고품질
+        "pro": "gemini-3-pro-image-preview"     # High quality 4K (Nano Banana Pro)
     }
 
-    # 지원 해상도
-    RESOLUTIONS = ["1K", "2K", "4K"]
-
-    # 지원 종횡비
+    # Supported aspect ratios (11 options)
     ASPECT_RATIOS = [
-        "1:1",      # 정사각형
-        "2:3", "3:2",  # 세로/가로
-        "3:4", "4:3",  # 표준
-        "4:5", "5:4",  # 인스타그램
-        "9:16", "16:9",  # 모바일/와이드
-        "21:9"      # 울트라 와이드
+        "1:1",      # Square
+        "2:3", "3:2",  # Portrait/Landscape
+        "3:4", "4:3",  # Standard
+        "4:5", "5:4",  # Instagram
+        "9:16", "16:9",  # Mobile/Wide
+        "21:9", "9:21"  # Ultra wide
     ]
 
-    # 기본 설정
+    # Default configuration
     DEFAULT_CONFIG = {
-        "model": "flash",
-        "resolution": "2K",
+        "model": "pro",  # gemini-3-pro-image-preview
         "aspect_ratio": "16:9",
-        "use_google_search": False,
         "max_retries": 3,
         "timeout": 60
     }
@@ -83,216 +74,192 @@ class NanoBananaImageGenerator:
 
         Args:
             api_key: Google Gemini API key
-                    (if None, loads from environment variable)
+                    (if None, loads from GEMINI_API_KEY or GOOGLE_API_KEY environment variable)
 
         Example:
             >>> generator = NanoBananaImageGenerator()
             >>> # or
-            >>> generator = NanoBananaImageGenerator("gsk_...")
+            >>> generator = NanoBananaImageGenerator("your-api-key")
         """
         if api_key is None:
-            api_key = os.getenv("GOOGLE_API_KEY")
+            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
         if not api_key:
             raise ValueError(
-                "API key not found. Set GOOGLE_API_KEY environment variable "
+                "API key not found. Set GEMINI_API_KEY or GOOGLE_API_KEY environment variable "
                 "or pass api_key parameter"
             )
 
-        genai.configure(api_key=api_key)
         self.client = genai.Client(api_key=api_key)
         logger.info("Nano Banana Image Generator initialized")
 
     def generate(
         self,
         prompt: str,
-        model: str = "flash",
-        resolution: str = "2K",
+        model: str = "pro",
         aspect_ratio: str = "16:9",
-        use_google_search: bool = False,
         save_path: Optional[str] = None
     ) -> Tuple[Any, Dict[str, Any]]:
         """
-        Text-to-Image 생성
+        Generate Text-to-Image
 
         Args:
-            prompt: 이미지 생성 프롬프트
-            model: 모델 선택 ("flash" 또는 "pro")
-            resolution: 해상도 ("1K", "2K", "4K")
-            aspect_ratio: 종횡비 (기본: "16:9")
-            use_google_search: Google Search 연동 여부
-            save_path: 이미지 저장 경로 (선택사항)
+            prompt: Image generation prompt
+            model: Model selection ("pro": gemini-3-pro-image-preview)
+            aspect_ratio: Aspect ratio (default: "16:9")
+            save_path: Image save path (optional)
 
         Returns:
-            Tuple[PIL.Image, Dict]: (생성된 이미지, 메타데이터)
+            Tuple[PIL.Image, Dict]: (Generated image, metadata)
 
         Raises:
-            ValueError: 잘못된 파라미터
-            Exception: API 호출 실패
+            ValueError: Invalid parameter
+            Exception: API call failed
 
         Example:
             >>> image, metadata = generator.generate(
             ...     "A futuristic city at sunset",
             ...     model="pro",
-            ...     resolution="4K",
             ...     aspect_ratio="16:9"
             ... )
             >>> print(metadata['tokens_used'])
             1234
             >>> image.save("city.png")
         """
-        # 파라미터 검증
-        self._validate_params(model, resolution, aspect_ratio)
+        # Validate parameters
+        self._validate_params(model, aspect_ratio)
 
         print(f"\n{'='*70}")
-        print(f"🎨 Nano Banana 이미지 생성 시작")
+        print(f"🎨 Nano Banana image generation started")
         print(f"{'='*70}")
-        print(f"📝 프롬프트: {prompt[:50]}...")
-        print(f"🎯 설정: {model.upper()} | {resolution} | {aspect_ratio}")
-        print(f"🔍 Google Search: {'활성화' if use_google_search else '비활성화'}")
-        print(f"⏳ 처리 중...\n")
+        print(f"📝 Prompt: {prompt[:50]}...")
+        print(f"🎯 Settings: {model.upper()} | {aspect_ratio}")
+        print(f"⏳ Processing...\n")
 
         try:
-            # 모델명 확인
+            # Get model name
             model_name = self.MODELS[model]
 
-            # 요청 구성
-            generation_config = {
-                "response_modalities": ["TEXT", "IMAGE"],
-                "image_config": {
-                    "aspect_ratio": aspect_ratio,
-                    "image_size": resolution
-                }
-            }
-
-            # Google Search 연동
-            tools = []
-            if use_google_search:
-                tools = [{"google_search": {}}]
-
-            # API 호출
-            response = self.client.models.generate_content(
-                model=model_name,
-                contents=[{"parts": [{"text": prompt}]}],
-                config=generation_config,
-                tools=tools if tools else None
+            # Configure request (latest google-genai SDK)
+            config = types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(
+                    aspect_ratio=aspect_ratio,
+                ),
             )
 
-            # 응답 처리
+            # API call
+            response = self.client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=config,
+            )
+
+            # Process response
             image = None
             description = ""
 
-            for part in response.candidates[0].content.parts:
+            for part in response.parts:
                 if hasattr(part, 'text') and part.text:
                     description = part.text
                 elif hasattr(part, 'inline_data') and part.inline_data:
-                    # Base64 데이터를 PIL Image로 변환
-                    image_bytes = base64.b64decode(part.inline_data.data)
+                    # inline_data.data is already bytes type (no base64 decoding needed)
                     from PIL import Image
+                    image_data = part.inline_data.data
+                    if isinstance(image_data, str):
+                        # If string, decode base64
+                        image_bytes = base64.b64decode(image_data)
+                    else:
+                        # If already bytes, use directly
+                        image_bytes = image_data
                     image = Image.open(BytesIO(image_bytes))
 
             if not image:
                 raise ValueError("No image data in response")
 
-            # 메타데이터 구성
+            # Build metadata
+            tokens_used = 0
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                tokens_used = getattr(response.usage_metadata, 'total_token_count', 0)
+
             metadata = {
                 "timestamp": datetime.now().isoformat(),
                 "model": model,
-                "resolution": resolution,
+                "model_name": model_name,
                 "aspect_ratio": aspect_ratio,
                 "prompt": prompt,
                 "description": description,
-                "finish_reason": response.candidates[0].finish_reason,
-                "tokens_used": response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else None,
-                "use_google_search": use_google_search,
-                "grounding_sources": []
+                "tokens_used": tokens_used
             }
 
-            # Google Search 출처 정보
-            if use_google_search and hasattr(response.candidates[0], 'grounding_metadata'):
-                grounding = response.candidates[0].grounding_metadata
-                if hasattr(grounding, 'grounding_chunks'):
-                    for chunk in grounding.grounding_chunks:
-                        if hasattr(chunk, 'web') and chunk.web:
-                            metadata["grounding_sources"].append({
-                                "uri": chunk.web.uri,
-                                "title": chunk.web.title
-                            })
-
-            # 저장
+            # Save
             if save_path:
                 Path(save_path).parent.mkdir(parents=True, exist_ok=True)
                 image.save(save_path)
                 metadata["saved_to"] = save_path
-                print(f"✅ 이미지 저장: {save_path}\n")
+                print(f"✅ Image saved: {save_path}\n")
 
-            print(f"✅ 이미지 생성 완료!")
-            print(f"   • 모델: {model.upper()}")
-            print(f"   • 해상도: {resolution}")
-            print(f"   • 토큰: {metadata['tokens_used']}")
-            if metadata["grounding_sources"]:
-                print(f"   • 출처: {len(metadata['grounding_sources'])}개 웹 페이지")
+            print(f"✅ Image generation completed!")
+            print(f"   • Model: {model.upper()}")
+            print(f"   • Aspect ratio: {aspect_ratio}")
+            print(f"   • Tokens: {metadata['tokens_used']}")
 
             return image, metadata
 
         except exceptions.ResourceExhausted:
             logger.error("API quota exceeded")
-            print("❌ API 할당량 초과")
-            print("   • 해상도를 1K로 다운그레이드하거나")
-            print("   • 몇 분 후에 다시 시도하세요")
+            print("❌ API quota exceeded")
+            print("   • Please try again in a few minutes")
             raise
 
         except exceptions.PermissionDenied:
             logger.error("Permission denied - check API key")
-            print("❌ 권한 오류 - API 키 확인이 필요합니다")
+            print("❌ Permission error - Please check API key")
             raise
 
         except exceptions.InvalidArgument as e:
             logger.error(f"Invalid argument: {e}")
-            print(f"❌ 잘못된 파라미터: {e}")
+            print(f"❌ Invalid parameter: {e}")
             raise
 
         except Exception as e:
             logger.error(f"Error generating image: {e}")
-            print(f"❌ 오류 발생: {e}")
+            print(f"❌ Error occurred: {e}")
             raise
 
     def edit(
         self,
         image_path: str,
         instruction: str,
-        model: str = "flash",
-        resolution: str = "2K",
+        model: str = "pro",
         aspect_ratio: str = "16:9",
         save_path: Optional[str] = None
     ) -> Tuple[Any, Dict[str, Any]]:
         """
-        Image-to-Image 편집
+        Image-to-Image editing
 
         Args:
-            image_path: 편집할 이미지 경로
-            instruction: 편집 지시사항
-            model: 모델 선택
-            resolution: 출력 해상도
-            aspect_ratio: 출력 종횡비
-            save_path: 결과 저장 경로
+            image_path: Path to image to edit
+            instruction: Edit instruction
+            model: Model selection
+            aspect_ratio: Output aspect ratio
+            save_path: Result save path
 
         Returns:
-            Tuple[PIL.Image, Dict]: (편집된 이미지, 메타데이터)
+            Tuple[PIL.Image, Dict]: (Edited image, metadata)
 
         Example:
             >>> edited_image, metadata = generator.edit(
             ...     "original.png",
             ...     "Add a sunset in the background",
-            ...     model="pro",
-            ...     resolution="2K"
+            ...     model="pro"
             ... )
             >>> edited_image.save("with_sunset.png")
         """
-        # 파라미터 검증
-        self._validate_params(model, resolution, aspect_ratio)
+        # Validate parameters
+        self._validate_params(model, aspect_ratio)
 
-        # 이미지 로드
+        # Load image
         if not Path(image_path).exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
 
@@ -301,21 +268,21 @@ class NanoBananaImageGenerator:
         original_path = str(Path(image_path).resolve())
 
         print(f"\n{'='*70}")
-        print(f"✏️  이미지 편집 시작")
+        print(f"✏️  Image editing started")
         print(f"{'='*70}")
-        print(f"📁 원본: {original_path}")
-        print(f"📝 지시사항: {instruction[:50]}...")
-        print(f"🎯 설정: {model.upper()} | {resolution} | {aspect_ratio}")
-        print(f"⏳ 처리 중...\n")
+        print(f"📁 Original: {original_path}")
+        print(f"📝 Instruction: {instruction[:50]}...")
+        print(f"🎯 Settings: {model.upper()} | {aspect_ratio}")
+        print(f"⏳ Processing...\n")
 
         try:
             model_name = self.MODELS[model]
 
-            # 이미지를 Base64로 인코딩
+            # Encode image to Base64
             with open(image_path, "rb") as f:
                 image_data = base64.b64encode(f.read()).decode("utf-8")
 
-            # MIME type 결정
+            # Determine MIME type
             ext = Path(image_path).suffix.lower()
             mime_type_map = {
                 ".png": "image/png",
@@ -326,98 +293,100 @@ class NanoBananaImageGenerator:
             }
             mime_type = mime_type_map.get(ext, "image/png")
 
-            # API 호출
-            response = self.client.models.generate_content(
-                model=model_name,
-                contents=[{
-                    "parts": [
-                        {
-                            "text": instruction
-                        },
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": image_data
-                            }
-                        }
-                    ]
-                }],
-                config={
-                    "response_modalities": ["TEXT", "IMAGE"],
-                    "image_config": {
-                        "aspect_ratio": aspect_ratio,
-                        "image_size": resolution
-                    }
-                }
+            # Configure request
+            config = types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(
+                    aspect_ratio=aspect_ratio,
+                ),
             )
 
-            # 응답 처리
+            # API call (multimodal input)
+            response = self.client.models.generate_content(
+                model=model_name,
+                contents=[
+                    types.Part.from_text(instruction),
+                    types.Part.from_bytes(
+                        data=base64.b64decode(image_data),
+                        mime_type=mime_type
+                    )
+                ],
+                config=config,
+            )
+
+            # Process response
             edited_image = None
             description = ""
 
-            for part in response.candidates[0].content.parts:
+            for part in response.parts:
                 if hasattr(part, 'text') and part.text:
                     description = part.text
                 elif hasattr(part, 'inline_data') and part.inline_data:
-                    image_bytes = base64.b64decode(part.inline_data.data)
+                    # inline_data.data is already bytes type
+                    image_data = part.inline_data.data
+                    if isinstance(image_data, str):
+                        image_bytes = base64.b64decode(image_data)
+                    else:
+                        image_bytes = image_data
                     edited_image = Image.open(BytesIO(image_bytes))
 
             if not edited_image:
                 raise ValueError("No edited image in response")
 
-            # 메타데이터
+            # Metadata
+            tokens_used = 0
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                tokens_used = getattr(response.usage_metadata, 'total_token_count', 0)
+
             metadata = {
                 "timestamp": datetime.now().isoformat(),
                 "type": "edit",
                 "original_image": original_path,
                 "model": model,
-                "resolution": resolution,
+                "model_name": model_name,
                 "aspect_ratio": aspect_ratio,
                 "instruction": instruction,
                 "description": description,
-                "finish_reason": response.candidates[0].finish_reason,
-                "tokens_used": response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else None
+                "tokens_used": tokens_used
             }
 
-            # 저장
+            # Save
             if save_path:
                 Path(save_path).parent.mkdir(parents=True, exist_ok=True)
                 edited_image.save(save_path)
                 metadata["saved_to"] = save_path
-                print(f"✅ 편집된 이미지 저장: {save_path}\n")
+                print(f"✅ Edited image saved: {save_path}\n")
 
-            print(f"✅ 이미지 편집 완료!")
-            print(f"   • 모델: {model.upper()}")
-            print(f"   • 해상도: {resolution}")
-            print(f"   • 토큰: {metadata['tokens_used']}")
+            print(f"✅ Image editing completed!")
+            print(f"   • Model: {model.upper()}")
+            print(f"   • Aspect ratio: {aspect_ratio}")
+            print(f"   • Tokens: {metadata['tokens_used']}")
 
             return edited_image, metadata
 
         except Exception as e:
             logger.error(f"Error editing image: {e}")
-            print(f"❌ 오류 발생: {e}")
+            print(f"❌ Error occurred: {e}")
             raise
 
     def batch_generate(
         self,
         prompts: List[str],
         output_dir: str = "outputs",
-        model: str = "flash",
-        resolution: str = "2K",
+        model: str = "pro",
         **kwargs
     ) -> List[Dict[str, Any]]:
         """
-        대량 이미지 생성 (배치)
+        Batch image generation
 
         Args:
-            prompts: 프롬프트 리스트
-            output_dir: 출력 디렉토리
-            model: 모델 선택
-            resolution: 해상도
-            **kwargs: 추가 파라미터
+            prompts: List of prompts
+            output_dir: Output directory
+            model: Model selection
+            **kwargs: Additional parameters
 
         Returns:
-            List[Dict]: 생성 결과 리스트
+            List[Dict]: List of generation results
 
         Example:
             >>> prompts = [
@@ -427,8 +396,7 @@ class NanoBananaImageGenerator:
             ... ]
             >>> results = generator.batch_generate(
             ...     prompts,
-            ...     output_dir="batch_output",
-            ...     resolution="2K"
+            ...     output_dir="batch_output"
             ... )
             >>> print(f"Generated {len([r for r in results if r['success']])} images")
         """
@@ -441,13 +409,12 @@ class NanoBananaImageGenerator:
 
         for i, prompt in enumerate(prompts, 1):
             try:
-                print(f"\n[{i}/{len(prompts)}] 생성 중: {prompt[:40]}...")
+                print(f"\n[{i}/{len(prompts)}] Generating: {prompt[:40]}...")
 
                 filename = f"{output_dir}/image_{i:03d}.png"
                 image, metadata = self.generate(
                     prompt,
                     model=model,
-                    resolution=resolution,
                     save_path=filename,
                     **kwargs
                 )
@@ -460,7 +427,7 @@ class NanoBananaImageGenerator:
                 time.sleep(2)
 
             except Exception as e:
-                print(f"❌ 실패: {e}")
+                print(f"❌ Failed: {e}")
                 results.append({
                     "prompt": prompt,
                     "success": False,
@@ -468,26 +435,20 @@ class NanoBananaImageGenerator:
                 })
 
         print(f"\n{'='*70}")
-        print(f"📊 배치 생성 완료")
+        print(f"📊 Batch generation completed")
         print(f"{'='*70}")
-        print(f"✅ 성공: {successful}/{len(prompts)}")
-        print(f"❌ 실패: {len(prompts) - successful}/{len(prompts)}")
+        print(f"✅ Success: {successful}/{len(prompts)}")
+        print(f"❌ Failed: {len(prompts) - successful}/{len(prompts)}")
 
         return results
 
     @staticmethod
-    def _validate_params(model: str, resolution: str, aspect_ratio: str) -> None:
-        """파라미터 검증"""
+    def _validate_params(model: str, aspect_ratio: str) -> None:
+        """Validate parameters"""
         if model not in NanoBananaImageGenerator.MODELS:
             raise ValueError(
                 f"Invalid model: {model}. "
                 f"Supported: {list(NanoBananaImageGenerator.MODELS.keys())}"
-            )
-
-        if resolution not in NanoBananaImageGenerator.RESOLUTIONS:
-            raise ValueError(
-                f"Invalid resolution: {resolution}. "
-                f"Supported: {NanoBananaImageGenerator.RESOLUTIONS}"
             )
 
         if aspect_ratio not in NanoBananaImageGenerator.ASPECT_RATIOS:
@@ -498,68 +459,50 @@ class NanoBananaImageGenerator:
 
     @staticmethod
     def list_models() -> Dict[str, str]:
-        """사용 가능한 모델 목록 반환"""
+        """Return list of available models"""
         return NanoBananaImageGenerator.MODELS
 
     @staticmethod
-    def list_resolutions() -> List[str]:
-        """지원 해상도 목록"""
-        return NanoBananaImageGenerator.RESOLUTIONS
-
-    @staticmethod
     def list_aspect_ratios() -> List[str]:
-        """지원 종횡비 목록"""
+        """Return list of supported aspect ratios"""
         return NanoBananaImageGenerator.ASPECT_RATIOS
 
 
 if __name__ == "__main__":
-    # 테스트
+    # Test
     from env_key_manager import EnvKeyManager
 
-    # API 키 확인
+    # Check API key
     if not EnvKeyManager.is_configured():
-        print("❌ API 키가 설정되지 않았습니다")
-        print("다음 명령으로 설정하세요:")
+        print("❌ API key not configured")
+        print("Please configure with:")
         print("  EnvKeyManager.setup_api_key()")
         exit(1)
 
     api_key = EnvKeyManager.load_api_key()
     generator = NanoBananaImageGenerator(api_key)
 
-    # 예제 1: 기본 생성
-    print("\n🔹 예제 1: 기본 이미지 생성")
+    # Example 1: Basic generation
+    print("\n🔹 Example 1: Basic image generation")
     image, metadata = generator.generate(
         "A serene mountain landscape at golden hour with snow-capped peaks",
-        model="flash",
-        resolution="2K",
         aspect_ratio="16:9",
         save_path="test_output/example_1.png"
     )
 
-    # 예제 2: Google Search 연동
-    print("\n🔹 예제 2: Google Search 연동")
-    image2, metadata2 = generator.generate(
-        "Visualize the latest technology trends in 2025",
-        model="flash",
-        use_google_search=True,
-        save_path="test_output/example_2.png"
-    )
-
-    # 예제 3: 이미지 편집
-    print("\n🔹 예제 3: 이미지 편집")
-    # 먼저 기본 이미지 생성
-    image3, _ = generator.generate(
+    # Example 2: Image editing
+    print("\n🔹 Example 2: Image editing")
+    # First generate base image
+    image2, _ = generator.generate(
         "A cat sitting on a chair",
         save_path="test_output/cat_original.png"
     )
 
-    # 그 이미지 편집
-    edited, metadata3 = generator.edit(
+    # Edit that image
+    edited, metadata2 = generator.edit(
         "test_output/cat_original.png",
         "Make the cat wear a wizard hat with magical sparkles",
-        model="flash",
-        resolution="2K",
         save_path="test_output/cat_wizard.png"
     )
 
-    print("\n✅ 모든 예제 완료!")
+    print("\n✅ All examples completed!")

@@ -1,5 +1,5 @@
 ---
-name: security-expert
+name: expert-security
 description: Use for security analysis, vulnerability assessment, secure code reviews, and security best practices.
 model: inherit
 permissionMode: default

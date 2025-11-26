@@ -46,7 +46,7 @@ def get_summary_stats(values: List[float]) -> Dict[str, float]:
         "mean": statistics.mean(values),
         "min": min(values),
         "max": max(values),
-        "std": statistics.stdev(values) if len(values) > 1 else 0,
+        "std": statistics.stdev(values) if len(values) > 1 else 0
     }
 
 

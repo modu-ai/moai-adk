@@ -1,5 +1,5 @@
 ---
-name: data-database
+name: expert-database
 description: Use for database design, schema optimization, query performance, and data modeling decisions.
 model: inherit
 permissionMode: default

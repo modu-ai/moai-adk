@@ -1,5 +1,5 @@
 ---
-name: mcp-context7
+name: mcp-docs
 description: Use when documentation research, library lookups, API references, or official documentation is needed. Integrates Context7 MCP server for real-time documentation access.
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku

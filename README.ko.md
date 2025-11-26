@@ -1,5 +1,7 @@
 # 🗿 MoAI-ADK: Agentic AI 기반 SPEC-First TDD 개발 프레임워크
 
+![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
+
 **사용 가능한 언어:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
@@ -51,7 +53,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **26개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **24개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -69,21 +71,27 @@ MoAI-ADK의 해결책:
 - ✅ **TDD 강제**로 85% 이상 테스트 커버리지 보장
 - ✅ **AI 에이전트**가 반복 작업을 자동화
 
+![Traditional vs MoAI-ADK](./assets/images/readme/before-after-comparison.png)
+
 ### 🎯 핵심 특징
 
 | 특징                  | 설명                                           | 정량적 효과                                                                                                                                                                                      |
 | --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**        | 모든 개발은 명확한 명세서로 시작               | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화               | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
-| **AI 오케스트레이션** | Mr.Alfred가 26개의 전문 AI 에이전트 지휘       | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **AI 오케스트레이션** | Mr.Alfred가 24개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
 | **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`/moai:3-sync`) | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
 | **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable    | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소**                                                                                                                                      |
+
+![5 Core Features](./assets/images/readme/feature-overview-grid.png)
 
 ---
 
 ## 2. 빠른 시작 (5분)
 
 ### 🎯 목표: 첫 번째 기능을 5분 안에 완성하기
+
+![Quick Start Journey](./assets/images/readme/quickstart-journey-map.png)
 
 ---
 
@@ -256,6 +264,8 @@ Claude Code에서 다음을 실행하세요:
 ## 3. 핵심 개념
 
 ### 📋 SPEC-First Development
+
+![SPEC-First Visual Guide](./assets/images/readme/spec-first-visual-guide.png)
 
 **SPEC-First란?**
 
@@ -1022,6 +1032,8 @@ flowchart LR
 
 ## 6. 핵심 커맨드
 
+![Core Commands Cheatsheet](./assets/images/readme/command-cheatsheet-card.png)
+
 MoAI-ADK의 개발 워크플로우는 6개의 핵심 커맨드로 구성되어 있습니다. 이 커맨드들은 처음 프로젝트 초기화부터 최종 프로덕션 배포까지 완전한 개발 라이프사이클을 자동화합니다. 각 커맨드는 Mr.Alfred 슈퍼 에이전트 오케스트레이터에 의해 관리되며, 필요한 전문 AI 에이전트들을 자동으로 선택하고 조율합니다. SPEC-First TDD 방식을 따르므로 명확한 요구사항에서 시작하여 테스트 기반 구현, 자동 문서화까지 모든 단계가 체계적으로 진행됩니다.
 
 ### `/moai:0-project` - 프로젝트 초기화
@@ -1052,7 +1064,7 @@ MoAI-ADK의 개발 워크플로우는 6개의 핵심 커맨드로 구성되어 �
 - TDD 및 품질 기준 설정
 - `tab_schema.json` 자동 완성 지원
 
-**위임 에이전트:** `workflow-project`
+**위임 에이전트:** `manager-project`
 
 ---
 
@@ -1170,168 +1182,178 @@ MoAI-ADK의 개발 워크플로우는 6개의 핵심 커맨드로 구성되어 �
 
 ## 7. 에이전트 가이드
 
-MoAI-ADK는 26개의 전문 에이전트를 7-Tier 계층 구조로 제공합니다. 각 에이전트는 특정 도메인의 전문가로서 Alfred에 의해 자동으로 선택되고 조율됩니다.
+![Agent-Skill Ecosystem](./assets/images/readme/agent-skill-ecosystem.png)
 
-### 7-Tier 에이전트 계층 구조
+MoAI-ADK는 24개의 전문 에이전트를 5-Tier 계층 구조로 제공합니다. 각 에이전트는 특정 도메인의 전문가로서 Alfred에 의해 자동으로 선택되고 조율됩니다.
+
+### 5-Tier 에이전트 계층 구조
 
 ```mermaid
 graph TB
-    subgraph Tier1["Tier 1: Command Processors"]
-        W1[workflow-project]
-        W2[workflow-spec]
-        W3[workflow-tdd]
-        W4[workflow-docs]
+    subgraph Tier1["Tier 1: Domain Experts"]
+        E1[expert-backend]
+        E2[expert-frontend]
+        E3[expert-database]
+        E4[expert-devops]
+        E5[expert-security]
+        E6[expert-uiux]
+        E7[expert-debug]
     end
 
-    subgraph Tier2["Tier 2: Orchestration & Quality"]
-        C1[core-planner]
-        C2[core-quality]
-        C3[core-git]
+    subgraph Tier2["Tier 2: Workflow Managers"]
+        M1[manager-project]
+        M2[manager-spec]
+        M3[manager-tdd]
+        M4[manager-docs]
+        M5[manager-strategy]
+        M6[manager-quality]
+        M7[manager-git]
+        M8[manager-claude-code]
     end
 
-    subgraph Tier3["Tier 3: Domain Experts"]
-        D1[expert-backend]
-        D2[expert-frontend]
-        D3[expert-database]
-        D4[design-uiux]
-        D5[expert-security]
-        D6[infra-devops]
+    subgraph Tier3["Tier 3: Meta Builders"]
+        B1[builder-agent]
+        B2[builder-skill]
+        B3[builder-command]
     end
 
     subgraph Tier4["Tier 4: MCP Integrators"]
-        M1[mcp-context7]
-        M2[mcp-sequential-thinking]
-        M3[mcp-figma]
-        M4[mcp-playwright]
-        M5[mcp-notion]
+        MC1[mcp-docs]
+        MC2[mcp-design]
+        MC3[mcp-notion]
+        MC4[mcp-browser]
+        MC5[mcp-ultrathink]
     end
 
-    subgraph Tier5["Tier 5: Factory Agents"]
-        F1[factory-agent]
-        F2[factory-skill]
-        F3[factory-command]
+    subgraph Tier5["Tier 5: AI Services"]
+        A1[ai-nano-banana]
     end
 
-    subgraph Tier6["Tier 6: Support Services"]
-        S1[support-debug]
-        S2[support-claude]
-    end
+    M1 --> E1
+    M2 --> E2
+    M3 --> E3
+    M4 --> E4
 
-    subgraph Tier7["Tier 7: AI Integrations"]
-        A1[ai-codex]
-        A2[ai-gemini]
-        A3[ai-nano-banana]
-    end
+    E1 --> MC1
+    E2 --> MC2
+    E3 --> MC3
 
-    W1 --> C1
-    W2 --> C1
-    W3 --> C2
-    W4 --> C1
-
-    C1 --> D1
-    C1 --> D2
-    C2 --> D3
-
-    D1 --> M1
-    D2 --> M2
-    D3 --> M3
-
-    style Tier1 fill:#e1f5ff
+    style Tier1 fill:#e8f5e9
     style Tier2 fill:#fff4e1
-    style Tier3 fill:#e8f5e9
+    style Tier3 fill:#fff9c4
     style Tier4 fill:#f3e5f5
-    style Tier5 fill:#fff9c4
-    style Tier6 fill:#ffebee
-    style Tier7 fill:#e0f2f1
+    style Tier5 fill:#e0f2f1
 ```
 
 ---
 
-### Tier 1: Command Processors (Always Active)
-
-명령어와 직접 바인딩되어 항상 활성화된 워크플로우 에이전트입니다.
-
-| 에이전트             | 명령어            | 설명                               | 주요 스킬                                   |
-| -------------------- | ----------------- | ---------------------------------- | ------------------------------------------- |
-| **workflow-project** | `/moai:0-project` | 프로젝트 초기화 및 메타데이터 관리 | moai-foundation-core                        |
-| **workflow-spec**    | `/moai:1-plan`    | EARS 기반 SPEC 문서 생성           | moai-foundation-core                        |
-| **workflow-tdd**     | `/moai:2-run`     | RED-GREEN-REFACTOR TDD 사이클 실행 | moai-lang-unified, moai-foundation-core     |
-| **workflow-docs**    | `/moai:3-sync`    | 문서 동기화 및 Nextra 최적화       | moai-nextra-architecture, moai-docs-unified |
-
-**사용 예시**:
-
-```bash
-> /moai:1-plan "사용자 로그인 기능"
-# workflow-spec 에이전트가 자동 호출되어 SPEC-001 생성
-```
-
----
-
-### Tier 2: Orchestration & Quality (Auto-triggered)
-
-복잡한 작업을 조율하고 품질을 보장하는 핵심 에이전트입니다.
-
-| 에이전트         | 역할           | 설명                             | 주요 스킬                            |
-| ---------------- | -------------- | -------------------------------- | ------------------------------------ |
-| **core-planner** | 실행 계획 수립 | SPEC 분석 및 구현 전략 설계      | moai-foundation-core                 |
-| **core-quality** | 품질 게이트    | TRUST 5 검증 및 자동 테스트 생성 | moai-core-quality, moai-lang-unified |
-| **core-git**     | Git 워크플로우 | 브랜치 전략, 커밋, PR 자동화     | moai-foundation-core                 |
-
-**자동 트리거 조건**:
-
-- `core-planner`: `/moai:2-run` 실행 시 Phase 1에서 자동 호출
-- `core-quality`: TDD GREEN 단계 완료 후 자동 호출
-- `core-git`: `/moai:3-sync` 실행 시 자동 호출
-
----
-
-### Tier 3: Domain Experts (Lazy-loaded)
+### Tier 1: Domain Experts (전문가 에이전트)
 
 특정 도메인의 전문 지식을 제공하는 에이전트입니다. 필요시에만 로드됩니다.
 
 | 에이전트            | 전문 분야         | 설명                              | 주요 스킬                            |
 | ------------------- | ----------------- | --------------------------------- | ------------------------------------ |
-| **expert-backend**    | 백엔드 아키텍처   | API, 서버, 데이터베이스 통합      | moai-lang-unified, moai-baas-unified |
-| **expert-frontend**   | 프론트엔드 개발   | React, Vue, UI 컴포넌트           | moai-lang-unified, moai-core-uiux    |
-| **expert-database**   | 데이터베이스 설계 | 스키마 최적화, 쿼리 성능          | moai-lang-unified                    |
-| **design-uiux**     | UI/UX 디자인      | 디자인 시스템, 접근성, Figma 연동 | moai-core-uiux, moai-lib-shadcn-ui   |
+| **expert-backend**  | 백엔드 아키텍처   | API, 서버, 데이터베이스 통합      | moai-lang-unified, moai-baas-unified |
+| **expert-frontend** | 프론트엔드 개발   | React, Vue, UI 컴포넌트           | moai-lang-unified, moai-core-uiux    |
+| **expert-database** | 데이터베이스 설계 | 스키마 최적화, 쿼리 성능          | moai-lang-unified                    |
+| **expert-devops**   | 인프라/배포       | CI/CD, 컨테이너, 클라우드         | moai-lang-unified                    |
 | **expert-security** | 보안 분석         | 취약점 진단, OWASP 준수           | moai-lang-unified                    |
-| **infra-devops**    | 인프라/배포       | CI/CD, 컨테이너, 클라우드         | moai-lang-unified                    |
+| **expert-uiux**     | UI/UX 디자인      | 디자인 시스템, 접근성, Figma 연동 | moai-core-uiux, moai-lib-shadcn-ui   |
+| **expert-debug**    | 디버깅 및 오류분석 | 런타임 에러 분석 및 해결         | moai-essentials-unified              |
 
 **사용 시나리오**:
 
 ```bash
 # 백엔드 API 설계가 필요한 경우
-Alfred → core-planner → expert-backend
+Alfred → manager-strategy → expert-backend
 
 # UI 컴포넌트 개발이 필요한 경우
-Alfred → core-planner → expert-frontend → design-uiux
+Alfred → manager-strategy → expert-frontend → expert-uiux
 ```
 
 ---
 
-### Tier 4: MCP Integrators (Resume-enabled)
+### Tier 2: Workflow Managers (워크플로우 관리자)
+
+복잡한 작업을 조율하고 품질을 보장하는 핵심 에이전트입니다.
+
+| 에이전트                | 역할             | 설명                               | 주요 스킬                                   |
+| ----------------------- | ---------------- | ---------------------------------- | ------------------------------------------- |
+| **manager-project**     | 프로젝트 초기화  | 프로젝트 구조 및 메타데이터 관리   | moai-command-project                        |
+| **manager-spec**        | SPEC 생성        | EARS 기반 SPEC 문서 생성           | moai-foundation-core                        |
+| **manager-tdd**         | TDD 구현         | RED-GREEN-REFACTOR TDD 사이클 실행 | moai-lang-unified, moai-foundation-core     |
+| **manager-docs**        | 문서화           | 문서 동기화 및 Nextra 최적화       | moai-nextra-architecture, moai-docs-unified |
+| **manager-strategy**    | 실행 전략 수립   | SPEC 분석 및 구현 전략 설계        | moai-foundation-core                        |
+| **manager-quality**     | 품질 게이트      | TRUST 5 검증 및 자동 테스트 생성   | moai-core-quality, moai-lang-unified        |
+| **manager-git**         | Git 워크플로우   | 브랜치 전략, 커밋, PR 자동화       | moai-foundation-core                        |
+| **manager-claude-code** | Claude Code 관리 | 설정 검증, 성능 모니터링           | moai-core-claude-code                       |
+
+**자동 트리거 조건**:
+
+- `manager-project`: `/moai:0-project` 실행 시 자동 호출
+- `manager-spec`: `/moai:1-plan` 실행 시 자동 호출
+- `manager-tdd`: `/moai:2-run` 실행 시 자동 호출
+- `manager-docs`: `/moai:3-sync` 실행 시 자동 호출
+- `manager-strategy`: `/moai:2-run` Phase 1에서 자동 호출
+- `manager-quality`: TDD GREEN 단계 완료 후 자동 호출
+- `manager-git`: `/moai:3-sync` 실행 시 자동 호출
+
+**사용 예시**:
+
+```bash
+> /moai:1-plan "사용자 로그인 기능"
+# manager-spec 에이전트가 자동 호출되어 SPEC-001 생성
+```
+
+---
+
+### Tier 3: Meta Builders (메타 빌더)
+
+MoAI-ADK 자체를 확장하는 메타 에이전트입니다.
+
+| 에이전트            | 생성 대상     | 설명                      | 주요 스킬                                   |
+| ------------------- | ------------- | ------------------------- | ------------------------------------------- |
+| **builder-agent**   | 에이전트 생성 | 새로운 전문 에이전트 생성 | moai-foundation-core, moai-core-claude-code |
+| **builder-skill**   | 스킬 생성     | 새로운 지식 스킬 생성     | moai-foundation-core, moai-core-claude-code |
+| **builder-command** | 명령어 생성   | 커스텀 슬래시 명령 생성   | moai-foundation-core, moai-core-claude-code |
+
+**사용 예시**:
+
+```bash
+# 새 에이전트 생성
+Alfred → builder-agent → "mobile-app-expert 에이전트 생성"
+
+# 새 스킬 생성
+Alfred → builder-skill → "moai-lib-nextjs 스킬 생성"
+
+# 새 명령어 생성
+Alfred → builder-command → "/moai:deploy 명령어 생성"
+```
+
+---
+
+### Tier 4: MCP Integrators (MCP 통합자)
 
 외부 서비스와 통합하는 MCP(Model Context Protocol) 에이전트입니다. Resume 패턴으로 컨텍스트 연속성을 보장합니다.
 
-| 에이전트                    | 통합 서비스             | 설명                         | 주요 기능                    |
-| --------------------------- | ----------------------- | ---------------------------- | ---------------------------- |
-| **mcp-context7**            | Context7 MCP            | 실시간 라이브러리 문서 검색  | API 레퍼런스, 버전 호환성    |
-| **mcp-sequential-thinking** | Sequential-Thinking MCP | 복잡한 추론 및 아키텍처 설계 | 다단계 분석, 전략 수립       |
-| **mcp-figma**               | Figma MCP               | Figma 디자인 파일 분석       | 디자인-코드 변환             |
-| **mcp-playwright**          | Playwright MCP          | 웹 자동화 및 테스트          | E2E 테스트, 스크래핑         |
-| **mcp-notion**              | Notion MCP              | Notion 워크스페이스 관리     | 데이터베이스 작업, 문서 생성 |
+| 에이전트           | 통합 서비스             | 설명                         | 주요 기능                    |
+| ------------------ | ----------------------- | ---------------------------- | ---------------------------- |
+| **mcp-docs**       | Context7 MCP            | 실시간 라이브러리 문서 검색  | API 레퍼런스, 버전 호환성    |
+| **mcp-design**     | Figma MCP               | Figma 디자인 파일 분석       | 디자인-코드 변환             |
+| **mcp-notion**     | Notion MCP              | Notion 워크스페이스 관리     | 데이터베이스 작업, 문서 생성 |
+| **mcp-browser**    | Playwright MCP          | 웹 자동화 및 테스트          | E2E 테스트, 스크래핑         |
+| **mcp-ultrathink** | Sequential-Thinking MCP | 복잡한 추론 및 아키텍처 설계 | 다단계 분석, 전략 수립       |
 
 **Resume 패턴 예시**:
 
 ```python
 # 초기 호출
-result = Task(subagent_type="mcp-context7",
+result = Task(subagent_type="mcp-docs",
               prompt="React 19 API 조사")
 agent_id = result.agent_id
 
 # 이전 컨텍스트로 이어서 작업
-result2 = Task(subagent_type="mcp-context7",
+result2 = Task(subagent_type="mcp-docs",
                prompt="React 18과 비교",
                resume=agent_id)
 ```
@@ -1344,60 +1366,17 @@ result2 = Task(subagent_type="mcp-context7",
 
 ---
 
-### Tier 5: Factory Agents (Meta-development)
-
-MoAI-ADK 자체를 확장하는 메타 에이전트입니다.
-
-| 에이전트            | 생성 대상     | 설명                      | 주요 스킬                                   |
-| ------------------- | ------------- | ------------------------- | ------------------------------------------- |
-| **factory-agent**   | 에이전트 생성 | 새로운 전문 에이전트 생성 | moai-foundation-core, moai-core-claude-code |
-| **factory-skill**   | 스킬 생성     | 새로운 지식 스킬 생성     | moai-foundation-core, moai-core-claude-code |
-| **factory-command** | 명령어 생성   | 커스텀 슬래시 명령 생성   | moai-foundation-core, moai-core-claude-code |
-
-**사용 예시**:
-
-```bash
-# 새 에이전트 생성
-Alfred → factory-agent → "mobile-app-expert 에이전트 생성"
-
-# 새 스킬 생성
-Alfred → factory-skill → "moai-lib-nextjs 스킬 생성"
-
-# 새 명령어 생성
-Alfred → factory-command → "/moai:deploy 명령어 생성"
-```
-
----
-
-### Tier 6: Support Services (On-demand)
-
-유틸리티 및 디버깅 지원 에이전트입니다.
-
-| 에이전트           | 역할             | 설명                     | 주요 스킬             |
-| ------------------ | ---------------- | ------------------------ | --------------------- |
-| **support-debug**  | 오류 진단        | 런타임 에러 분석 및 해결 | moai-lang-unified     |
-| **support-claude** | Claude Code 지원 | 설정 검증, 성능 모니터링 | moai-core-claude-code |
-
-**호출 시기**:
-
-- `support-debug`: 런타임 에러 발생 시
-- `support-claude`: Claude Code 설정 문제 발생 시
-
----
-
-### Tier 7: AI Integrations (Specialized)
+### Tier 5: AI Services (AI 서비스)
 
 AI 모델 통합 및 특수 작업 에이전트입니다.
 
-| 에이전트           | AI 모델                | 설명               | 주요 기능               |
-| ------------------ | ---------------------- | ------------------ | ----------------------- |
-| **ai-codex**       | OpenAI Codex           | 코드 생성 및 분석  | 빠른 프로토타이핑       |
-| **ai-gemini**      | Google Gemini          | 프론트엔드 UI 생성 | React/Next.js 컴포넌트  |
-| **ai-nano-banana** | Gemini Nano Banana Pro | 이미지 생성        | 자연어 기반 이미지 생성 |
+| 에이전트           | AI 모델                | 설명        | 주요 기능               |
+| ------------------ | ---------------------- | ----------- | ----------------------- |
+| **ai-nano-banana** | Gemini Nano Banana Pro | 이미지 생성 | 자연어 기반 이미지 생성 |
 
 **사용 조건**:
 
-- 각 AI 모델 CLI 설치 및 인증 필요
+- Gemini API 키 필요
 - 사용 불가 시 네이티브 Claude Code로 폴백
 
 ---
@@ -1409,23 +1388,23 @@ AI 모델 통합 및 특수 작업 에이전트입니다.
 #### 패턴 1: 신규 기능 개발 (Full Cycle)
 
 ```text
-workflow-spec → core-planner → workflow-tdd → core-quality → workflow-docs → core-git
+manager-spec → manager-strategy → manager-tdd → manager-quality → manager-docs → manager-git
 ```
 
-- SPEC 생성 → 계획 수립 → TDD 구현 → 품질 검증 → 문서화 → Git 커밋
+- SPEC 생성 → 전략 수립 → TDD 구현 → 품질 검증 → 문서화 → Git 커밋
 
 #### 패턴 2: 백엔드 API 개발
 
 ```text
-workflow-spec → core-planner → expert-backend → expert-database → mcp-context7 → workflow-tdd
+manager-spec → manager-strategy → expert-backend → expert-database → mcp-docs → manager-tdd
 ```
 
-- SPEC 생성 → 계획 → 백엔드 설계 → DB 스키마 → API 문서 조회 → TDD 구현
+- SPEC 생성 → 전략 수립 → 백엔드 설계 → DB 스키마 → API 문서 조회 → TDD 구현
 
 #### 패턴 3: 프론트엔드 UI 개발
 
 ```text
-design-uiux → mcp-figma → expert-frontend → mcp-playwright → core-quality
+expert-uiux → mcp-design → expert-frontend → mcp-browser → manager-quality
 ```
 
 - 디자인 분석 → Figma 연동 → 컴포넌트 구현 → E2E 테스트 → 품질 검증
@@ -1433,7 +1412,7 @@ design-uiux → mcp-figma → expert-frontend → mcp-playwright → core-qualit
 #### 패턴 4: 성능 최적화
 
 ```text
-support-debug → mcp-sequential-thinking → expert-backend → core-quality
+expert-debug → mcp-ultrathink → expert-backend → manager-quality
 ```
 
 - 문제 진단 → 복잡한 분석 → 최적화 구현 → 품질 검증
@@ -1441,7 +1420,7 @@ support-debug → mcp-sequential-thinking → expert-backend → core-quality
 #### 패턴 5: 보안 감사
 
 ```text
-expert-security → expert-backend → core-quality → workflow-docs
+expert-security → expert-backend → manager-quality → manager-docs
 ```
 
 - 취약점 스캔 → 수정 구현 → 품질 검증 → 문서화
@@ -1454,8 +1433,8 @@ Alfred는 다음 우선순위로 에이전트를 선택합니다:
 
 1. **읽기 전용 탐색** → Built-in `Explore` 에이전트
 2. **MCP 서비스 필요** → Tier 4 MCP 에이전트
-3. **도메인 전문성** → Tier 3 Domain 에이전트
-4. **워크플로우 매칭** → Tier 1 Workflow 에이전트
+3. **도메인 전문성** → Tier 1 Expert 에이전트
+4. **워크플로우 매칭** → Tier 2 Manager 에이전트
 5. **복잡한 다단계 작업** → Built-in `general-purpose` 에이전트
 
 **사용자 개입 없이 자동 선택**:
@@ -1466,14 +1445,14 @@ Alfred가 요청을 분석하고 최적의 에이전트를 자동으로 선택�
 "사용자 로그인 기능을 구현해줘"
 
 # Alfred의 자동 에이전트 선택
-workflow-spec (SPEC 생성)
-  → core-planner (계획 수립)
+manager-spec (SPEC 생성)
+  → manager-strategy (전략 수립)
   → expert-backend (백엔드 구현)
   → expert-security (보안 검증)
-  → workflow-tdd (TDD 구현)
-  → core-quality (품질 검증)
-  → workflow-docs (문서화)
-  → core-git (Git 커밋)
+  → manager-tdd (TDD 구현)
+  → manager-quality (품질 검증)
+  → manager-docs (문서화)
+  → manager-git (Git 커밋)
 ```
 
 ---
@@ -1484,31 +1463,29 @@ workflow-spec (SPEC 생성)
 
 ```
 .claude/agents/moai/
-├── workflow-project.md
-├── workflow-spec.md
-├── workflow-tdd.md
-├── workflow-docs.md
-├── core-planner.md
-├── core-quality.md
-├── core-git.md
 ├── expert-backend.md
 ├── expert-frontend.md
 ├── expert-database.md
-├── design-uiux.md
+├── expert-devops.md
 ├── expert-security.md
-├── infra-devops.md
-├── mcp-context7.md
-├── mcp-sequential-thinking.md
-├── mcp-figma.md
-├── mcp-playwright.md
+├── expert-uiux.md
+├── expert-debug.md
+├── manager-project.md
+├── manager-spec.md
+├── manager-tdd.md
+├── manager-docs.md
+├── manager-strategy.md
+├── manager-quality.md
+├── manager-git.md
+├── manager-claude-code.md
+├── builder-agent.md
+├── builder-skill.md
+├── builder-command.md
+├── mcp-docs.md
+├── mcp-design.md
 ├── mcp-notion.md
-├── factory-agent.md
-├── factory-skill.md
-├── factory-command.md
-├── support-debug.md
-├── support-claude.md
-├── ai-codex.md
-├── ai-gemini.md
+├── mcp-browser.md
+├── mcp-ultrathink.md
 └── ai-nano-banana.md
 ```
 
@@ -1521,6 +1498,8 @@ workflow-spec (SPEC 생성)
 ---
 
 ## 8. 스킬 라이브러리 (22개)
+
+![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
 MoAI-ADK는 **22개의 전문 스킬**을 제공합니다. 각 스킬은 특정 도메인의 지식 모듈로서 에이전트에게 전문성을 부여하며, 7가지 카테고리로 체계화되어 있습니다.
 
@@ -1611,7 +1590,7 @@ MoAI-ADK의 기본 원칙과 품질 기준을 정의합니다.
 - 언어별 패턴 및 베스트 프랙티스
 - 프레임워크 통합 (React 19, Next.js 15, FastAPI, Spring Boot 등)
 
-**관련 에이전트**: expert-backend, expert-frontend, workflow-tdd, expert-database
+**관련 에이전트**: expert-backend, expert-frontend, manager-tdd, expert-database
 
 ---
 
@@ -1653,7 +1632,7 @@ MoAI-ADK의 기본 원칙과 품질 기준을 정의합니다.
 - **Playwright**: 웹 자동화
 - **Notion**: 워크스페이스 관리
 
-**관련 에이전트**: mcp-context7, mcp-sequential-thinking, mcp-figma, mcp-playwright, mcp-notion
+**관련 에이전트**: mcp-docs, mcp-ultrathink, mcp-design, mcp-browser, mcp-notion
 
 ---
 
@@ -2148,23 +2127,23 @@ MoAI-ADK의 26개 에이전트는 작업 유형에 따라 최적의 조합으로
 ### 패턴 1: 신규 기능 개발
 
 ```text
-workflow-spec (SPEC 생성)
+manager-spec (SPEC 생성)
   ↓
-core-planner (실행 계획)
+manager-strategy (실행 계획)
   ↓
-workflow-tdd (TDD 구현)
+manager-tdd (TDD 구현)
   ↓
-workflow-docs (문서 동기화)
+manager-docs (문서 동기화)
 ```
 
 **예시:**
 
 ```bash
-/moai:1-plan "사용자 로그인 기능"   # workflow-spec
+/moai:1-plan "사용자 로그인 기능"   # manager-spec
 /clear
-/moai:2-run SPEC-001               # core-planner → workflow-tdd
+/moai:2-run SPEC-001               # manager-strategy → manager-tdd
 /clear
-/moai:3-sync SPEC-001              # workflow-docs
+/moai:3-sync SPEC-001              # manager-docs
 ```
 
 ---
@@ -2172,19 +2151,19 @@ workflow-docs (문서 동기화)
 ### 패턴 2: 성능 최적화
 
 ```text
-support-debug (문제 분석)
+expert-debug (문제 분석)
   ↓
 mcp-sequential-thinking (복잡도 분석)
   ↓
 expert-backend (최적화 구현)
   ↓
-core-quality (검증)
+manager-quality (검증)
 ```
 
 **예시:**
 
 ```bash
-Task(subagent_type="support-debug", prompt="API 응답 느림 분석")
+Task(subagent_type="expert-debug", prompt="API 응답 느림 분석")
 # → 병목 지점 발견 (DB 쿼리 N+1 문제)
 
 Task(subagent_type="mcp-sequential-thinking",
@@ -2195,7 +2174,7 @@ Task(subagent_type="expert-backend",
      prompt="ORM 쿼리 최적화 구현")
 # → select_related(), prefetch_related() 적용
 
-Task(subagent_type="core-quality",
+Task(subagent_type="manager-quality",
      prompt="성능 테스트 및 검증")
 # → 응답 시간 500ms → 50ms (90% 개선)
 ```
@@ -2205,7 +2184,7 @@ Task(subagent_type="core-quality",
 ### 패턴 3: UI/UX 개발
 
 ```text
-design-uiux (디자인 시스템)
+expert-uiux (디자인 시스템)
   ↓
 expert-frontend (컴포넌트 구현)
   ↓
@@ -2215,7 +2194,7 @@ mcp-playwright (E2E 테스트)
 **예시:**
 
 ```bash
-Task(subagent_type="design-uiux",
+Task(subagent_type="expert-uiux",
      prompt="로그인 페이지 디자인 shadcn/ui 기반")
 # → Button, Input, Card 컴포넌트 조합
 
@@ -2237,7 +2216,7 @@ expert-security (취약점 스캔)
   ↓
 expert-backend (보안 패치)
   ↓
-core-quality (재검증)
+manager-quality (재검증)
 ```
 
 ---
@@ -3181,7 +3160,7 @@ Redis 캐싱, Elasticsearch 분석"
 - 실행 주체 (Executor)
 - 스킬을 활용하여 작업 수행
 - `Task(subagent_type="agent-name")`으로 호출
-- 예: `workflow-spec`, `expert-backend`, `expert-security`
+- 예: `manager-spec`, `expert-backend`, `expert-security`
 
 **관계:**
 
@@ -3329,6 +3308,8 @@ cat .claude/mcp.json
 
 ## 10. TRUST 5 품질 보증
 
+![TRUST 5 Pentagon](./assets/images/readme/trust5-pentagon.png)
+
 모든 MoAI-ADK 프로젝트는 **TRUST 5** 품질 프레임워크를 준수합니다. TRUST 5는 Test-First, Readable, Unified, Secured, Trackable의 5가지 핵심 원칙으로 구성되어 있으며, 엔터프라이즈급 소프트웨어의 품질을 보증하는 체계입니다. 각 원칙은 명확한 검증 기준을 가지고 있으며, MoAI-ADK의 자동화된 에이전트들이 이 기준들을 자동으로 검사하고 검증합니다. `/moai:2-run` TDD 구현 시 자동으로 모든 TRUST 5 검증이 수행되며, 기준을 충족하지 못하면 구현이 완료되지 않습니다. 이는 개발자가 고품질 코드를 작성하도록 강제하는 동시에, 반복적인 코드 리뷰 시간을 획기적으로 단축시킵니다.
 
 ### T - Test-First (테스트 우선)
@@ -3425,11 +3406,11 @@ cat .claude/mcp.json
 
 ### 핵심 에이전트 (Top 5)
 
-1. **`workflow-spec`**: SPEC 문서 생성 (EARS 포맷)
-2. **`workflow-tdd`**: RED-GREEN-REFACTOR TDD 구현
+1. **`manager-spec`**: SPEC 문서 생성 (EARS 포맷)
+2. **`manager-tdd`**: RED-GREEN-REFACTOR TDD 구현
 3. **`expert-backend`**: 백엔드 API 개발
 4. **`expert-security`**: 보안 취약점 분석
-5. **`core-quality`**: TRUST 5 품질 검증
+5. **`manager-quality`**: TRUST 5 품질 검증
 
 ---
 

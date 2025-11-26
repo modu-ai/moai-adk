@@ -1,5 +1,5 @@
 ---
-name: factory-skill
+name: builder-skill
 description: Creates modular Skills for Claude Code extensions with official standards compliance and progressive disclosure patterns.
 tools: Read, Write, Edit, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit

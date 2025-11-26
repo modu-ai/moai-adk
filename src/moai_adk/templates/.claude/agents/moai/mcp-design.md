@@ -1,5 +1,5 @@
 ---
-name: mcp-figma
+name: mcp-design
 description: Use for Figma design analysis, design-to-code conversion, design system management, and component extraction. Integrates Figma MCP server.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit

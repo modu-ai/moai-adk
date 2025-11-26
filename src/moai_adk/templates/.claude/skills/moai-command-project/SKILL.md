@@ -12,7 +12,7 @@ tags:
   - commands
   - documentation
   - templates
-tools: Read, Write, Bash, Glob, Grep
+allowed-tools: Read, Write, Bash, Glob, Grep
 ---
 
 # MoAI Command Project - Integrated Project Management System
