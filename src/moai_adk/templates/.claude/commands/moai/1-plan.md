@@ -67,8 +67,8 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 | Agent/Skill | Purpose |
 |------------|---------|
 | Explore | Codebase exploration and file system analysis |
-| workflow-spec | SPEC generation in EARS format and planning |
-| core-git | Git workflow and branch management |
+| manager-spec | SPEC generation in EARS format and planning |
+| manager-git | Git workflow and branch management |
 | moai-spec-intelligent-workflow | SPEC workflow orchestration |
 | moai-alfred-ask-user-questions | User interaction patterns |
 
@@ -77,12 +77,12 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 **Phase 1A: Research & Analysis**
 - Use built-in **Explore** agent for fast codebase analysis (read-only)
 - Use **Plan** agent (auto-invoked in plan mode) for SPEC research
-- Use MoAI **workflow-spec** agent for SPEC generation
+- Use MoAI **manager-spec** agent for SPEC generation
 
 **Phase 1B: Specialized Analysis**
-- Use MoAI domain agents (code-backend, data-database, etc.) for specialized decisions
-- Use **mcp-context7** for API documentation research
-- Use **mcp-sequential-thinking** for complex architectural decisions
+- Use MoAI domain agents (expert-backend, expert-database, etc.) for specialized decisions
+- Use **mcp-docs** for API documentation research
+- Use **mcp-ultrathink** for complex architectural decisions
 
 ---
 
@@ -94,7 +94,7 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 User Command: /moai:1-plan "description"
     ↓
 /moai:1-plan Command
-    └─ Task(subagent_type="Explore" or "workflow-spec")
+    └─ Task(subagent_type="Explore" or "manager-spec")
         ├─ Phase 1A (Optional): Project Exploration
         ├─ Phase 1B (Required): SPEC Planning
         ├─ Phase 2: SPEC Document Creation
@@ -124,7 +124,7 @@ This command implements the first 2 steps of Alfred's 4-step workflow:
 
 1. **STEP 1**: Intent Understanding (Clarify user requirements)
 2. **STEP 2**: Plan Creation (Create execution strategy with agent delegation)
-3. **STEP 3**: Task Execution (Execute via workflow-tdd - NOT in this command)
+3. **STEP 3**: Task Execution (Execute via manager-tdd - NOT in this command)
 4. **STEP 4**: Report & Commit (Documentation and git operations - NOT in this command)
 
 **Command Scope**: Only executes Steps 1-2. Steps 3-4 are executed by `/moai:2-run` and `/moai:3-sync`.
@@ -164,7 +164,7 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 │                    ↓                                        │
 │  Phase B (REQUIRED)                                         │
 │  ┌─────────────────────────────────────────┐               │
-│  │ ⚙️ workflow-spec Agent                   │               │
+│  │ ⚙️ manager-spec Agent                   │               │
 │  │ • Analyze project documents             │               │
 │  │ • Propose SPEC candidates               │               │
 │  │ • Design EARS structure                 │               │
@@ -222,7 +222,7 @@ Report back:
 - Technical constraints and dependencies
 - Recommendations for user clarification
 
-Return comprehensive results to guide workflow-spec agent.
+Return comprehensive results to guide manager-spec agent.
 """
     )
 
@@ -254,17 +254,17 @@ PROCEED TO PHASE 1B
 
 ### 📋 PHASE 1B: SPEC Planning (Required)
 
-#### Step 1B.1: Invoke workflow-spec for project analysis (Resume from Phase 1A if applicable)
+#### Step 1B.1: Invoke manager-spec for project analysis (Resume from Phase 1A if applicable)
 
-Use the Task tool to call the workflow-spec agent with conditional resume:
+Use the Task tool to call the manager-spec agent with conditional resume:
 
 ```
 # Phase 1B: SPEC Planning (Resume from Phase 1A if exploration was done)
 planning_result = Task(
-    subagent_type="workflow-spec",
+    subagent_type="manager-spec",
     resume="$EXPLORE_AGENT_ID",  # ⭐ Resume if Phase 1A executed, null if skipped
     description="Analyze project and create SPEC plan for: $ARGUMENTS",
-    prompt="""You are the workflow-spec agent.
+    prompt="""You are the manager-spec agent.
 
 IF $EXPLORE_AGENT_ID is set:
     You are continuing from project exploration in Phase 1A.
@@ -355,7 +355,7 @@ Log to .moai/logs/phase-checkpoints.json:
 
 #### Step 1B.2: Request user approval
 
-After the workflow-spec presents the implementation plan report, use AskUserQuestion tool for explicit approval:
+After the manager-spec presents the implementation plan report, use AskUserQuestion tool for explicit approval:
 
 Tool: AskUserQuestion
 Parameters:
@@ -442,8 +442,8 @@ Based on the user's choice:
 
 1. Ask the user: "What changes would you like to make to the plan?"
 2. Wait for user's feedback
-3. Pass feedback to workflow-spec agent
-4. workflow-spec updates the plan
+3. Pass feedback to manager-spec agent
+4. manager-spec updates the plan
 5. Return to Step 3.5 (request approval again with updated plan)
 
 **IF user selected "Save as Draft"**:
@@ -500,24 +500,24 @@ Return:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
 
-### Step 1: Invoke workflow-spec for SPEC creation (Resume from Phase 1B)
+### Step 1: Invoke manager-spec for SPEC creation (Resume from Phase 1B)
 
-Use the Task tool to call the workflow-spec agent with resume to maintain context:
+Use the Task tool to call the manager-spec agent with resume to maintain context:
 
 ```
 # Phase 2: SPEC Document Creation (Resume from Phase 1B)
 spec_result = Task(
-    subagent_type="workflow-spec",
+    subagent_type="manager-spec",
     resume="$PLANNING_AGENT_ID",  # ⭐ Resume: Inherit full planning context
     description="Create SPEC document files for approved plan",
-    prompt="""You are the workflow-spec agent.
+    prompt="""You are the manager-spec agent.
 
 You are continuing from the SPEC planning phase in Phase 1B.
 
 The full planning context (project analysis, SPEC candidates, implementation plan) is inherited via resume.
 This preserves all planning decisions without requiring re-analysis. Use this context to generate comprehensive SPEC document files.
 
-You are the workflow-spec agent.
+You are the manager-spec agent.
 
 Language settings:
 - conversation_language: {{CONVERSATION_LANGUAGE}}
@@ -755,14 +755,14 @@ else:
 
 **CONDITION**: User selected "Auto create" OR (`prompt_always: false` AND git_mode in [personal, team])
 
-**ACTION**: Invoke core-git to create feature branch
+**ACTION**: Invoke manager-git to create feature branch
 
 ```python
 # Step 2.3: Create feature branch
 Task(
-    subagent_type="core-git",
+    subagent_type="manager-git",
     description="Create feature branch for SPEC implementation",
-    prompt="""You are the core-git agent.
+    prompt="""You are the manager-git agent.
 
 INSTRUCTION: Create feature branch for SPEC implementation.
 
@@ -805,7 +805,7 @@ NOTE: PR creation is handled separately in /moai:2-run or /moai:3-sync (Team mod
 
 Behavior:
 - SPEC files created on current branch
-- NO core-git agent invoked
+- NO manager-git agent invoked
 - Ready for /moai:2-run implementation
 - Commits will be made directly to current branch during TDD cycle
 ```
@@ -821,9 +821,9 @@ Behavior:
 ```python
 # Step 2.5: Create draft PR (Team mode only)
 Task(
-    subagent_type="core-git",
+    subagent_type="manager-git",
     description="Create draft PR for SPEC (Team mode)",
-    prompt="""You are the core-git agent.
+    prompt="""You are the manager-git agent.
 
 INSTRUCTION: Create draft pull request for SPEC implementation.
 
@@ -925,7 +925,7 @@ Display status based on configuration and execution result:
 
 ✅ **No Branch Created** (Manual Mode Default):
 - SPEC files created on current branch
-- NO core-git invoked (as configured)
+- NO manager-git invoked (as configured)
 - Ready for direct implementation
 - Commits will be made directly to current branch
 
@@ -1013,15 +1013,15 @@ Would you like to enable automatic branch creation for future SPEC creations?
 
 Before you consider this command complete, verify:
 
-- [ ] **PHASE 1 executed**: workflow-spec analyzed project and proposed SPEC candidates
+- [ ] **PHASE 1 executed**: manager-spec analyzed project and proposed SPEC candidates
 - [ ] **Progress report displayed**: User shown detailed progress report with analysis results
 - [ ] **User approval obtained**: User explicitly approved SPEC creation (via enhanced AskUserQuestion)
-- [ ] **PHASE 2 executed**: workflow-spec created all 3 SPEC files (spec.md, plan.md, acceptance.md)
+- [ ] **PHASE 2 executed**: manager-spec created all 3 SPEC files (spec.md, plan.md, acceptance.md)
 - [ ] **Directory naming correct**: `.moai/specs/SPEC-{ID}/` format followed
 - [ ] **YAML frontmatter valid**: All 7 required fields present
 - [ ] **HISTORY section present**: Immediately after YAML frontmatter
 - [ ] **EARS structure complete**: All 5 requirement types included
-- [ ] **PHASE 3 executed**: core-git created branch and PR (if Team mode)
+- [ ] **PHASE 3 executed**: manager-git created branch and PR (if Team mode)
 - [ ] **Branch naming correct**: `feature/SPEC-{ID}` format
 - [ ] **GitFlow enforced**: PR targets `develop` branch (not `main`)
 - [ ] **Next steps presented**: User asked what to do next (via AskUserQuestion)
@@ -1045,8 +1045,8 @@ IF any checkbox is unchecked → Identify missing step and complete it before en
 **Associated Agents**:
 
 - `Explore` - Project exploration and file discovery (Phase 1A, optional)
-- `workflow-spec` - SPEC planning and document creation (Phase 1B-2, required)
-- `core-git` - Branch and PR creation (Phase 3, conditional)
+- `manager-spec` - SPEC planning and document creation (Phase 1B-2, required)
+- `manager-git` - Branch and PR creation (Phase 3, conditional)
 
 **SPEC Documents Directory**:
 
@@ -1102,5 +1102,5 @@ AskUserQuestion({
 **You must NOW execute the command following the "The 4-Step Agent-Based Workflow Command Logic" described above.**
 
 1. Start PHASE 1: Project Analysis & SPEC Planning immediately.
-2. Call the `Task` tool with `subagent_type="workflow-spec"` (or `Explore` as appropriate).
+2. Call the `Task` tool with `subagent_type="manager-spec"` (or `Explore` as appropriate).
 3. Do NOT just describe what you will do. DO IT.

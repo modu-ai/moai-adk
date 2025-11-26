@@ -8,9 +8,9 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Set
+from typing import Any, Dict, List, Set
 
-import yaml
+import yaml  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class SpecStatusManager:
         Returns:
             Set of SPEC IDs that have draft status
         """
-        draft_specs = set()
+        draft_specs: Set[str] = set()
 
         if not self.specs_dir.exists():
             logger.warning(f"SPEC directory not found: {self.specs_dir}")
@@ -223,7 +223,7 @@ class SpecStatusManager:
         """
         return self.validation_criteria.copy()
 
-    def validate_spec_for_completion(self, spec_id: str) -> Dict:
+    def validate_spec_for_completion(self, spec_id: str) -> Dict[str, Any]:
         """Validate if a SPEC is ready for completion
 
         Args:
@@ -238,7 +238,7 @@ class SpecStatusManager:
                 'recommendations': List[str]
             }
         """
-        result = {
+        result: Dict[str, Any] = {
             "is_ready": False,
             "criteria_met": {},
             "issues": [],
@@ -250,30 +250,38 @@ class SpecStatusManager:
             spec_file = spec_dir / "spec.md"
 
             if not spec_file.exists():
-                result["issues"].append(f"SPEC file not found: {spec_file}")
+                issues_list = result["issues"]
+                if isinstance(issues_list, list):
+                    issues_list.append(f"SPEC file not found: {spec_file}")
                 return result
 
             # Check implementation status
-            criteria_checks = {}
+            criteria_checks: Dict[str, bool] = {}
 
             # Check for code implementation
             spec_dir = spec_file.parent
             src_dir = spec_dir.parent.parent / "src"
             criteria_checks["code_implemented"] = src_dir.exists() and len(list(src_dir.rglob("*.py"))) > 0
             if not criteria_checks["code_implemented"]:
-                result["issues"].append("No source code files found")
+                issues_list = result["issues"]
+                if isinstance(issues_list, list):
+                    issues_list.append("No source code files found")
 
             # Check for test implementation
             test_dir = spec_dir.parent.parent / "tests"
             test_files = list(test_dir.rglob("test_*.py")) if test_dir.exists() else []
             criteria_checks["test_implemented"] = len(test_files) > 0
             if not criteria_checks["test_implemented"]:
-                result["issues"].append("No test files found")
+                issues_list = result["issues"]
+                if isinstance(issues_list, list):
+                    issues_list.append("No test files found")
 
             # Check for acceptance criteria
             criteria_checks["tasks_completed"] = self._check_acceptance_criteria(spec_file)
             if not criteria_checks["tasks_completed"]:
-                result["issues"].append("Missing acceptance criteria section")
+                issues_list = result["issues"]
+                if isinstance(issues_list, list):
+                    issues_list.append("Missing acceptance criteria section")
 
             # 4. Acceptance criteria present
             criteria_checks["has_acceptance_criteria"] = self._check_acceptance_criteria(spec_file)
@@ -281,29 +289,37 @@ class SpecStatusManager:
                 not criteria_checks["has_acceptance_criteria"]
                 and self.validation_criteria["require_acceptance_criteria"]
             ):
-                result["issues"].append("Missing acceptance criteria section")
+                issues_list = result["issues"]
+                if isinstance(issues_list, list):
+                    issues_list.append("Missing acceptance criteria section")
 
             # 5. Documentation sync
             criteria_checks["docs_synced"] = self._check_documentation_sync(spec_id)
             if not criteria_checks["docs_synced"]:
-                result["recommendations"].append("Consider running /moai:3-sync to update documentation")
+                recs_list = result["recommendations"]
+                if isinstance(recs_list, list):
+                    recs_list.append("Consider running /moai:3-sync to update documentation")
 
             result["criteria_met"] = criteria_checks
             result["is_ready"] = all(criteria_checks.values())
 
             # Add recommendations
             if result["is_ready"]:
-                result["recommendations"].append(
-                    "SPEC is ready for completion. Consider updating status to 'completed'"
-                )
+                recs_list = result["recommendations"]
+                if isinstance(recs_list, list):
+                    recs_list.append(
+                        "SPEC is ready for completion. Consider updating status to 'completed'"
+                    )
 
         except Exception as e:
             logger.error(f"Error validating SPEC {spec_id}: {e}")
-            result["issues"].append(f"Validation error: {e}")
+            issues_list = result["issues"]
+            if isinstance(issues_list, list):
+                issues_list.append(f"Validation error: {e}")
 
         return result
 
-    def batch_update_completed_specs(self) -> Dict:
+    def batch_update_completed_specs(self) -> Dict[str, List[str]]:
         """Batch update all draft SPECs that have completed implementations
 
         Returns:
@@ -314,7 +330,7 @@ class SpecStatusManager:
                 'skipped': List[str]   # Incomplete SPEC IDs
             }
         """
-        results = {"updated": [], "failed": [], "skipped": []}
+        results: Dict[str, List[str]] = {"updated": [], "failed": [], "skipped": []}
 
         draft_specs = self.detect_draft_specs()
         logger.info(f"Checking {len(draft_specs)} draft SPECs for completion")
@@ -327,17 +343,25 @@ class SpecStatusManager:
                 if validation["is_ready"]:
                     # Update status
                     if self.update_spec_status(spec_id, "completed"):
-                        results["updated"].append(spec_id)
+                        updated_list = results["updated"]
+                        if isinstance(updated_list, list):
+                            updated_list.append(spec_id)
                         logger.info(f"Updated SPEC {spec_id} to completed")
                     else:
-                        results["failed"].append(spec_id)
+                        failed_list = results["failed"]
+                        if isinstance(failed_list, list):
+                            failed_list.append(spec_id)
                         logger.error(f"Failed to update SPEC {spec_id}")
                 else:
-                    results["skipped"].append(spec_id)
+                    skipped_list = results["skipped"]
+                    if isinstance(skipped_list, list):
+                        skipped_list.append(spec_id)
                     logger.debug(f"SPEC {spec_id} not ready for completion: {validation['issues']}")
 
             except Exception as e:
-                results["failed"].append(spec_id)
+                failed_list = results["failed"]
+                if isinstance(failed_list, list):
+                    failed_list.append(spec_id)
                 logger.error(f"Error processing SPEC {spec_id}: {e}")
 
         logger.info(

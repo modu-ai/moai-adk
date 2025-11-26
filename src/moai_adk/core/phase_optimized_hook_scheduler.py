@@ -141,7 +141,7 @@ class PhaseOptimizedHookScheduler:
         self.enable_adaptive_scheduling = enable_adaptive_scheduling
 
         # Performance tracking
-        self._scheduling_history: List[SchedulingResult] = []
+        self._scheduling_history: List[Dict[str, Any]] = []
         self._performance_cache: Dict[str, Dict[str, float]] = {}
         self._scheduling_lock = threading.Lock()
 
@@ -656,7 +656,7 @@ class PhaseOptimizedHookScheduler:
     def _update_scheduling_history(self, result: SchedulingResult, planning_time_ms: float) -> None:
         """Update scheduling history for learning"""
         with self._scheduling_lock:
-            history_entry = {
+            history_entry: Dict[str, Any] = {
                 "timestamp": datetime.now().isoformat(),
                 "strategy": result.scheduling_strategy.value,
                 "planning_time_ms": planning_time_ms,
@@ -749,7 +749,7 @@ class PhaseOptimizedHookScheduler:
             if any(phase.value.lower() in s.get("context", "").lower() for phase in [phase])
         ]
 
-        insights = {
+        insights: Dict[str, Any] = {
             "phase": phase.value,
             "parameters": phase_params,
             "historical_schedules": len(phase_schedules),
@@ -758,16 +758,22 @@ class PhaseOptimizedHookScheduler:
 
         # Generate recommendations based on phase parameters
         if phase_params.get("prefer_parallel", False):
-            insights["optimization_recommendations"].append("This phase benefits from parallel hook execution")
+            recs_list = insights["optimization_recommendations"]
+            if isinstance(recs_list, list):
+                recs_list.append("This phase benefits from parallel hook execution")
         else:
-            insights["optimization_recommendations"].append(
-                "This phase prefers sequential hook execution for consistency"
-            )
+            recs_list = insights["optimization_recommendations"]
+            if isinstance(recs_list, list):
+                recs_list.append(
+                    "This phase prefers sequential hook execution for consistency"
+                )
 
         if phase_params.get("token_budget_ratio", 0) > 0.2:
-            insights["optimization_recommendations"].append(
-                "This phase requires significant token budget - consider token-efficient scheduling"
-            )
+            recs_list = insights["optimization_recommendations"]
+            if isinstance(recs_list, list):
+                recs_list.append(
+                    "This phase requires significant token budget - consider token-efficient scheduling"
+                )
 
         # Add strategy recommendations
         strategy_stats = self.get_scheduling_statistics()["strategy_performance"]

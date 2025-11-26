@@ -8,7 +8,7 @@ which migrations are needed.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class VersionDetector:
         # Version 0.23.0 or earlier needs migration
         return True
 
-    def get_migration_plan(self) -> Dict[str, List[Dict[str, str]]]:
+    def get_migration_plan(self) -> Dict[str, Any]:
         """
         Get detailed migration plan
 
@@ -86,7 +86,7 @@ class VersionDetector:
                 "cleanup": ["old_file1", "old_file2"]
             }
         """
-        plan = {"move": [], "create": [], "cleanup": []}
+        plan: Dict[str, Any] = {"move": [], "create": [], "cleanup": []}
 
         if not self.needs_migration():
             return plan
@@ -122,7 +122,7 @@ class VersionDetector:
 
         return plan
 
-    def get_version_info(self) -> Dict[str, Optional[str]]:
+    def get_version_info(self) -> Dict[str, Any]:
         """
         Get detailed version information
 

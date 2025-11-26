@@ -29,7 +29,7 @@ except ImportError:
 
     sys.path.insert(0, str(Path(__file__).parent.parent))
     try:
-        from core.spec_status_manager import SpecStatusManager
+        from core.spec_status_manager import SpecStatusManager  # type: ignore[no-redef]
     except ImportError:
         raise ImportError("SpecStatusManager not found")
 

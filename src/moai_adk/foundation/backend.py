@@ -110,7 +110,7 @@ class APIDesignValidator:
         "DELETE": [204],
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize API design validator."""
         self.validated_endpoints: Dict[str, Dict[str, Any]] = {}
 
@@ -280,7 +280,7 @@ class MicroserviceArchitect:
         "etcd": {"service": "etcd", "health_check_enabled": True, "auto_deregister": True},
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize microservice architect."""
         self.services: Dict[str, Dict[str, Any]] = {}
         self.communication_matrix: Dict[str, List[str]] = {}
@@ -400,7 +400,7 @@ class AsyncPatternAdvisor:
         >>> results = await advisor.execute_concurrent(tasks, timeout=30)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize async pattern advisor."""
         self.async_operations: List[asyncio.Task] = []
 
@@ -644,7 +644,7 @@ class ErrorHandlingStrategy:
         >>> handler.log_with_context("ERROR", "Payment failed", {"trace_id": "..."})
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize error handling strategy."""
         self.error_handlers: Dict[str, Callable] = {}
         self.logs: List[ErrorLog] = []
@@ -680,11 +680,14 @@ class ErrorHandlingStrategy:
         Returns:
             Log entry
         """
+        timestamp_str = datetime.utcnow().isoformat() + "Z"
+        trace_id_str = str(uuid.uuid4())
+
         log_entry = {
             "level": level,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "trace_id": str(uuid.uuid4()),
+            "timestamp": timestamp_str,
+            "trace_id": trace_id_str,
             "context": context or {},
         }
 
@@ -693,8 +696,8 @@ class ErrorHandlingStrategy:
             ErrorLog(
                 level=level,
                 message=message,
-                timestamp=log_entry["timestamp"],
-                trace_id=log_entry["trace_id"],
+                timestamp=timestamp_str,
+                trace_id=trace_id_str,
                 context=context or {},
             )
         )
@@ -741,7 +744,7 @@ class PerformanceOptimizer:
         ... )
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize performance optimizer."""
         self.cache_configs: Dict[str, Dict[str, Any]] = {}
         self.rate_limits: Dict[str, Dict[str, Any]] = {}
@@ -869,7 +872,7 @@ class BackendMetricsCollector:
         >>> print(f"Service status: {health['status']}")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize metrics collector."""
         self.metrics: List[RequestMetric] = []
         self.error_counts: Dict[str, int] = {}
@@ -948,7 +951,7 @@ class BackendMetricsCollector:
         else:
             status = "unhealthy"
 
-        avg_duration = 0
+        avg_duration: float = 0.0
         if self.metrics:
             avg_duration = sum(m.duration_ms for m in self.metrics) / len(self.metrics)
 

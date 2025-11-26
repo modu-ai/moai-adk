@@ -192,7 +192,7 @@ class IntegrationTester:
             Exported results
         """
         if format == "dict":
-            return [vars(result) for result in self.test_results]
+            return [vars(result) for result in self.test_results]  # type: ignore[return-value]
         elif format == "summary":
             return {
                 "stats": self.get_test_stats(),

@@ -29,7 +29,7 @@ class ComponentDiscovery:
         Returns:
             List of discovered components
         """
-        components = []
+        components: List[TestComponent] = []
         base_dir = Path(base_path)
 
         if not base_dir.exists():

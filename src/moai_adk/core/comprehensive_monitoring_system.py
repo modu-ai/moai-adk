@@ -988,20 +988,23 @@ class ComprehensiveMonitoringSystem:
 
             # Alert summary
             alert_history = self.alert_manager.get_alert_history(hours=hours)
-            alert_summary = {
-                "total_alerts": len(alert_history),
-                "by_severity": {},
-                "by_metric_type": {},
-                "resolved_count": sum(1 for a in alert_history if a.resolved),
-                "acknowledged_count": sum(1 for a in alert_history if a.acknowledged),
-            }
+            by_severity: Dict[str, int] = {}
+            by_metric_type: Dict[str, int] = {}
 
             for alert in alert_history:
                 severity_key = alert.severity.name
-                alert_summary["by_severity"][severity_key] = alert_summary["by_severity"].get(severity_key, 0) + 1
+                by_severity[severity_key] = by_severity.get(severity_key, 0) + 1
 
                 metric_key = alert.metric_type.value
-                alert_summary["by_metric_type"][metric_key] = alert_summary["by_metric_type"].get(metric_key, 0) + 1
+                by_metric_type[metric_key] = by_metric_type.get(metric_key, 0) + 1
+
+            alert_summary = {
+                "total_alerts": len(alert_history),
+                "by_severity": by_severity,
+                "by_metric_type": by_metric_type,
+                "resolved_count": sum(1 for a in alert_history if a.resolved),
+                "acknowledged_count": sum(1 for a in alert_history if a.acknowledged),
+            }
 
             return {
                 "report_period_hours": hours,

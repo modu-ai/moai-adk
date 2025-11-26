@@ -103,11 +103,14 @@ class LanguageVersionManager:
         lang_info = self.SUPPORTED_LANGUAGES[lang_name]
         is_supported = self._check_version_support(lang_name, version)
 
+        tier_value = lang_info.get("tier")
+        tier_str: Optional[str] = str(tier_value) if tier_value is not None else None
+
         return LanguageInfo(
             name=lang_name,
             version=version,
             is_supported=is_supported,
-            tier=lang_info.get("tier"),
+            tier=tier_str,
             frameworks=[],
             features=[],
         )
@@ -126,7 +129,8 @@ class LanguageVersionManager:
 
     def get_tier(self, language: str) -> Optional[str]:
         """Get language tier (1, 2, or 3)."""
-        return self.SUPPORTED_LANGUAGES.get(language, {}).get("tier")
+        tier_value = self.SUPPORTED_LANGUAGES.get(language, {}).get("tier")
+        return str(tier_value) if tier_value is not None else None
 
 
 class FrameworkRecommender:

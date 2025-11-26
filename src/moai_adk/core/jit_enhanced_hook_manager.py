@@ -25,48 +25,59 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Import JIT Context Loading System from Phase 2
 try:
-    from .jit_context_loader import ContextCache, JITContextLoader, TokenBudgetManager
+    from .jit_context_loader import (
+        ContextCache as _ImportedContextCache,
+        JITContextLoader as _ImportedJITContextLoader,
+        Phase as _ImportedPhase,
+        TokenBudgetManager as _ImportedTokenBudgetManager,
+    )
+
+    JITContextLoader = _ImportedJITContextLoader
+    ContextCache = _ImportedContextCache
+    TokenBudgetManager = _ImportedTokenBudgetManager
+    Phase = _ImportedPhase
+    _JIT_AVAILABLE = True
 except ImportError:
+    _JIT_AVAILABLE = False
     # Fallback for environments where JIT system might not be available
-    class JITContextLoader:
-        def __init__(self, *args, **kwargs):
+    class JITContextLoader:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-    class ContextCache:
-        def __init__(self, max_size=100, max_memory_mb=50):
+    class ContextCache:  # type: ignore[no-redef]
+        def __init__(self, max_size: int = 100, max_memory_mb: int = 50) -> None:
             self.max_size = max_size
             self.max_memory_mb = max_memory_mb
             self.hits = 0
             self.misses = 0
-            self.cache = {}
+            self.cache: dict[Any, Any] = {}
 
-        def get(self, key):
+        def get(self, key: Any) -> Any:
             self.misses += 1
             return None
 
-        def put(self, key, value):
+        def put(self, key: Any, value: Any, token_count: int = 0) -> None:
             pass
 
-        def clear(self):
+        def clear(self) -> None:
             pass
 
-        def get_stats(self):
+        def get_stats(self) -> dict[str, Any]:
             return {"hits": self.hits, "misses": self.misses}
 
-    class TokenBudgetManager:
-        def __init__(self, *args, **kwargs):
+    class TokenBudgetManager:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-
-# Create Phase enum for hook system
-class Phase(Enum):
-    SPEC = "SPEC"
-    RED = "RED"
-    GREEN = "GREEN"
-    REFACTOR = "REFACTOR"
-    SYNC = "SYNC"
-    DEBUG = "DEBUG"
-    PLANNING = "PLANNING"
+    # Create Phase enum for hook system (fallback)
+    class Phase(Enum):  # type: ignore[no-redef]
+        SPEC = "SPEC"
+        RED = "RED"
+        GREEN = "GREEN"
+        REFACTOR = "REFACTOR"
+        SYNC = "SYNC"
+        DEBUG = "DEBUG"
+        PLANNING = "PLANNING"
 
 
 class HookEvent(Enum):
@@ -661,8 +672,10 @@ class JITEnhancedHookManager:
         try:
             # Check cache for recent results
             cache_key = f"hook_result:{hook_path}:{hash(str(context))}"
-            cached_result = self._result_cache.get(cache_key)
-            if cached_result:
+            cached_entry = self._result_cache.get(cache_key)
+            if cached_entry:
+                # Extract HookExecutionResult from ContextEntry
+                cached_result: HookExecutionResult = cached_entry.content if hasattr(cached_entry, 'content') else cached_entry  # type: ignore[assignment]
                 return cached_result
 
             # Prepare hook execution
@@ -675,7 +688,9 @@ class JITEnhancedHookManager:
 
             # Cache successful results
             if result.success:
-                self._result_cache.put(cache_key, result)
+                # Calculate token count for the result
+                token_count = result.token_usage if hasattr(result, 'token_usage') else 0
+                self._result_cache.put(cache_key, result, token_count=token_count)
 
             # Update metadata
             self._update_hook_metadata(hook_path, result)
@@ -875,7 +890,7 @@ class JITEnhancedHookManager:
         Returns:
             Dictionary with optimization recommendations
         """
-        recommendations = {
+        recommendations: Dict[str, List[Any]] = {
             "slow_hooks": [],
             "unreliable_hooks": [],
             "phase_mismatched_hooks": [],

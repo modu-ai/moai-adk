@@ -929,11 +929,11 @@ class TransactionManager:
         # Detect cycles using DFS from each node
         deadlock_detected = False
         involved = set()
-        visited_global = set()
+        visited_global: set[str] = set()
 
         for tx_id in wait_graph:
             if tx_id not in visited_global:
-                rec_stack = set()
+                rec_stack: set[str] = set()
                 if self._has_cycle_dfs(tx_id, wait_graph, visited_global, rec_stack):
                     deadlock_detected = True
                     # Add all nodes in cycle to involved list

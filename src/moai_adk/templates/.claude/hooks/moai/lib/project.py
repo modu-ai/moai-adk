@@ -62,7 +62,7 @@ def find_project_root(start_path: str | Path = ".") -> Path:
 
     for _ in range(max_depth):
         # Check for .moai/config/config.json (primary indicator)
-        if (current / ".moai" / "config.json").exists():
+        if (current / ".moai" / "config" / "config.json").exists():
             return current
 
         # Check for CLAUDE.md (secondary indicator)
@@ -389,7 +389,7 @@ def get_project_language(cwd: str) -> str:
     """
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config.json"
+    config_path = project_root / ".moai" / "config" / "config.json"
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text())
@@ -414,7 +414,7 @@ def _validate_project_structure(cwd: str) -> bool:
         bool: True if .moai/config/config.json exists, False otherwise
     """
     project_root = find_project_root(cwd)
-    return (project_root / ".moai" / "config.json").exists()
+    return (project_root / ".moai" / "config" / "config.json").exists()
 
 
 def get_version_check_config(cwd: str) -> dict[str, Any]:
@@ -451,7 +451,7 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
 
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config.json"
+    config_path = project_root / ".moai" / "config" / "config.json"
     if not config_path.exists():
         return defaults
 

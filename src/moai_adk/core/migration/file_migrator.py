@@ -8,7 +8,7 @@ during migration processes.
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ class FileMigrator:
             logger.error(f"Failed to delete file {file_path}: {e}")
             return False
 
-    def execute_migration_plan(self, plan: Dict[str, List]) -> Dict[str, any]:
+    def execute_migration_plan(self, plan: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute a migration plan
 
@@ -137,7 +137,7 @@ class FileMigrator:
         Returns:
             Dictionary with execution results
         """
-        results = {
+        results: Dict[str, Any] = {
             "success": True,
             "created_dirs": 0,
             "moved_files": 0,
@@ -195,7 +195,7 @@ class FileMigrator:
 
         return cleaned
 
-    def get_migration_summary(self) -> Dict[str, any]:
+    def get_migration_summary(self) -> Dict[str, Any]:
         """
         Get summary of migration operations performed
 

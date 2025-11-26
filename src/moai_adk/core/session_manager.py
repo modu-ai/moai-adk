@@ -630,9 +630,10 @@ if __name__ == "__main__":
     }
 
     for expert_name, data in experts_results.items():
+        agent_id_value: str = data["agent_id"]  # type: ignore[assignment]
         manager.register_agent_result(
             agent_name=expert_name,
-            agent_id=data["agent_id"],
+            agent_id=agent_id_value,
             result={k: v for k, v in data.items() if k != "agent_id"},
             chain_id="SPEC-AUTH-001-review",
         )

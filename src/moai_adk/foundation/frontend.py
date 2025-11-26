@@ -67,7 +67,7 @@ class ComponentArchitect:
         >>> assert result["valid"] is True
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize component architect."""
         self.components_registry: Dict[str, Dict[str, Any]] = {}
         self.composition_patterns: Set[str] = {"render_props", "compound_components", "hooks", "hoc"}
@@ -586,7 +586,7 @@ class DesignSystemBuilder:
         >>> assert result["token_count"] > 0
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize design system builder."""
         self.tokens: Dict[str, Dict[str, Any]] = {}
         self.components_doc: Dict[str, str] = {}
@@ -757,7 +757,7 @@ class FrontendMetricsCollector:
         >>> assert result["performance_score"] > 0.7
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize metrics collector."""
         self.metrics_history: List[PerformanceMetrics] = []
         self.thresholds = {"lcp": 2.5, "fid": 100, "cls": 0.1}

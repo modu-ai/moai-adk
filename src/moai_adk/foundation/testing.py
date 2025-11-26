@@ -277,7 +277,11 @@ class CoverageAnalyzer:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize coverage analyzer."""
         self.config = config or {}
-        self.coverage_thresholds = {"min_line_coverage": 85, "min_branch_coverage": 80, "min_function_coverage": 90}
+        self.coverage_thresholds: Dict[str, float] = {
+            "min_line_coverage": 85.0,
+            "min_branch_coverage": 80.0,
+            "min_function_coverage": 90.0,
+        }
 
     def analyze_code_coverage(self) -> Dict[str, Any]:
         """Analyze code coverage across the project."""
@@ -923,7 +927,7 @@ class TestingMetricsCollector:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize testing metrics collector."""
         self.config = config or {}
-        self.metrics_history = []
+        self.metrics_history: List[Dict[str, Any]] = []
 
     def collect_test_metrics(self) -> Dict[str, Any]:
         """Collect comprehensive test metrics."""
@@ -1145,7 +1149,12 @@ def export_test_results(results: Dict[str, Any], format: str = "json") -> str:
 
 def validate_test_configuration(config: Dict[str, Any]) -> Dict[str, Any]:
     """Validate test configuration and return validation results."""
-    validation_results = {"is_valid": True, "errors": [], "warnings": [], "recommendations": []}
+    validation_results: Dict[str, Any] = {
+        "is_valid": True,
+        "errors": [],
+        "warnings": [],
+        "recommendations": [],
+    }
 
     # Validate required fields
     required_fields = ["frameworks", "test_paths", "thresholds"]

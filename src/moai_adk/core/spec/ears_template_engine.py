@@ -199,7 +199,7 @@ class EARSTemplateEngine:
             "extraction": extraction_result,
         }
 
-        return result
+        return result  # type: ignore[return-value]
 
     def _extract_information_from_analysis(self, code_analysis: Dict[str, Any], file_path: str) -> Dict[str, Any]:
         """Extract information from code analysis."""

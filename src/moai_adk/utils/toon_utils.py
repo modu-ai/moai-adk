@@ -184,7 +184,7 @@ def validate_roundtrip(data: Any, strict: bool = False) -> bool:
         return False
 
 
-def compare_formats(data: Any) -> dict[str, dict]:
+def compare_formats(data: Any) -> dict[str, Any]:
     """Compare encoding efficiency between JSON and TOON.
 
     Args:

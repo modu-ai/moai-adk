@@ -20,7 +20,7 @@ class AutoSpecConfig:
     def __init__(self, config_path: str = None):
         """Initialize the configuration reader."""
         self.config_path = config_path or self._get_default_config_path()
-        self.config = {}
+        self.config: dict[str, Any] = {}
         self.load_config()
 
     def _get_default_config_path(self) -> str:

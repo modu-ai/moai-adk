@@ -8,7 +8,7 @@ Supports modern DevOps tools and practices for scalable deployments.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 
 @dataclass
@@ -263,7 +263,7 @@ class InfrastructureManager:
         Returns:
             Kubernetes manifests dictionary
         """
-        manifests = {
+        manifests: Dict[str, Any] = {
             "deployment": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
@@ -324,7 +324,9 @@ class InfrastructureManager:
         # Add health check configuration if provided
         if "health_check" in app_config:
             health_config = app_config["health_check"]
-            containers = manifests["deployment"]["spec"]["template"]["spec"]["containers"][0]
+            deployment_spec = manifests["deployment"]["spec"]["template"]["spec"]
+            containers_list = cast(List[Dict[str, Any]], deployment_spec["containers"])
+            containers = containers_list[0]
             containers["livenessProbe"] = {
                 "httpGet": {"path": health_config.get("path", "/health"), "port": app_config.get("port", 8080)},
                 "initialDelaySeconds": health_config.get("initial_delay", 30),

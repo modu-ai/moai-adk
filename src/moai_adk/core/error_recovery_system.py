@@ -248,6 +248,7 @@ class ErrorRecoverySystem:
                 success=False,
                 action_name=action_name,
                 message=f"Error {error_id} not found in active errors",
+                duration=0.0,
             )
 
         if action_name not in self.recovery_actions:
@@ -255,6 +256,7 @@ class ErrorRecoverySystem:
                 success=False,
                 action_name=action_name,
                 message=f"Recovery action {action_name} not found",
+                duration=0.0,
             )
 
         error_report = self.active_errors[error_id]
@@ -315,14 +317,19 @@ class ErrorRecoverySystem:
         """
         self._update_system_health()
 
+        last_check: datetime = self.system_health["last_check"]  # type: ignore[assignment]
+        error_stats: Dict[str, Any] = self.error_stats  # type: ignore[assignment]
+        issues: List[str] = self.system_health["issues"]  # type: ignore[assignment]
+        metrics: Dict[str, Any] = self.system_health["metrics"]  # type: ignore[assignment]
+
         return {
             "status": self.system_health["status"],
-            "last_check": self.system_health["last_check"].isoformat(),
+            "last_check": last_check.isoformat(),
             "active_errors": len(self.active_errors),
             "total_errors": len(self.error_history),
-            "error_stats": self.error_stats.copy(),
-            "issues": self.system_health["issues"].copy(),
-            "metrics": self.system_health["metrics"].copy(),
+            "error_stats": error_stats.copy(),
+            "issues": issues.copy(),
+            "metrics": metrics.copy(),
             "recovery_actions_available": len(self.recovery_actions),
         }
 
@@ -339,8 +346,8 @@ class ErrorRecoverySystem:
         recent_errors = self.error_history[-limit:]
 
         # Categorize errors
-        by_severity = {}
-        by_category = {}
+        by_severity: Dict[str, List[str]] = {}
+        by_category: Dict[str, List[str]] = {}
 
         for error in recent_errors:
             # By severity
@@ -385,19 +392,24 @@ class ErrorRecoverySystem:
         Returns:
             Troubleshooting guide with solutions
         """
+        common_issues: List[Dict[str, Any]] = []
+        recovery_procedures: Dict[str, Dict[str, Any]] = {}
+        prevention_tips: List[str] = []
+        emergency_procedures: List[Dict[str, str]] = []
+
         guide = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "common_issues": [],
-            "recovery_procedures": {},
-            "prevention_tips": [],
-            "emergency_procedures": [],
+            "common_issues": common_issues,
+            "recovery_procedures": recovery_procedures,
+            "prevention_tips": prevention_tips,
+            "emergency_procedures": emergency_procedures,
         }
 
         # Analyze common issues
         error_patterns = self._identify_error_patterns(self.error_history)
         for pattern, frequency in error_patterns.items():
             if frequency > 2:  # Issues that occurred more than twice
-                guide["common_issues"].append(
+                common_issues.append(
                     {
                         "pattern": pattern,
                         "frequency": frequency,
@@ -408,7 +420,7 @@ class ErrorRecoverySystem:
 
         # Generate recovery procedures
         for action_name, action in self.recovery_actions.items():
-            guide["recovery_procedures"][action_name] = {
+            recovery_procedures[action_name] = {
                 "description": action.description,
                 "type": action.action_type,
                 "for_severities": [s.value for s in action.severity_filter],
@@ -416,10 +428,10 @@ class ErrorRecoverySystem:
             }
 
         # Prevention tips
-        guide["prevention_tips"] = self._generate_prevention_tips()
+        prevention_tips.extend(self._generate_prevention_tips())
 
         # Emergency procedures
-        guide["emergency_procedures"] = self._generate_emergency_procedures()
+        emergency_procedures.extend(self._generate_emergency_procedures())
 
         return guide
 
@@ -592,6 +604,7 @@ class ErrorRecoverySystem:
             success=False,
             action_name="none",
             message="No suitable automatic recovery action succeeded",
+            duration=0.0,
         )
 
     def _restart_research_engines(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
@@ -688,13 +701,16 @@ class ErrorRecoverySystem:
 
     def _validate_research_integrity(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Validate research component integrity"""
+        issues_found: List[str] = []
+        repairs_made: List[str] = []
+
         validation_results = {
             "skills_valid": True,
             "agents_valid": True,
             "commands_valid": True,
             "hooks_valid": True,
-            "issues_found": [],
-            "repairs_made": [],
+            "issues_found": issues_found,
+            "repairs_made": repairs_made,
         }
 
         try:
@@ -706,11 +722,11 @@ class ErrorRecoverySystem:
                 for skill_file in skills_dir.glob("*.md"):
                     if not self._validate_skill_file(skill_file):
                         validation_results["skills_valid"] = False
-                        validation_results["issues_found"].append(f"Invalid skill file: {skill_file}")
+                        issues_found.append(f"Invalid skill file: {skill_file}")
 
                         # Attempt repair
                         if self._repair_skill_file(skill_file):
-                            validation_results["repairs_made"].append(f"Repaired: {skill_file}")
+                            repairs_made.append(f"Repaired: {skill_file}")
 
             # Validate agents
             agents_dir = self.project_root / ".claude" / "agents" / "alfred"
@@ -718,7 +734,7 @@ class ErrorRecoverySystem:
                 for agent_file in agents_dir.glob("*.md"):
                     if not self._validate_agent_file(agent_file):
                         validation_results["agents_valid"] = False
-                        validation_results["issues_found"].append(f"Invalid agent file: {agent_file}")
+                        issues_found.append(f"Invalid agent file: {agent_file}")
 
             # Validate commands
             commands_dir = self.project_root / ".claude" / "commands" / "alfred"
@@ -726,12 +742,12 @@ class ErrorRecoverySystem:
                 for command_file in commands_dir.glob("*.md"):
                     if not self._validate_command_file(command_file):
                         validation_results["commands_valid"] = False
-                        validation_results["issues_found"].append(f"Invalid command file: {command_file}")
+                        issues_found.append(f"Invalid command file: {command_file}")
 
             logger.info(
                 f"Research integrity validation completed. Issues: "
-                f"{len(validation_results['issues_found'])}, "
-                f"Repairs: {len(validation_results['repairs_made'])}"
+                f"{len(issues_found)}, "
+                f"Repairs: {len(repairs_made)}"
             )
 
         except Exception as e:
@@ -966,7 +982,7 @@ class ErrorRecoverySystem:
 
         # Check for repeated errors
         error_messages = [e.message for e in recent_errors]
-        message_counts = {}
+        message_counts: Dict[str, int] = {}
         for msg in error_messages:
             message_counts[msg] = message_counts.get(msg, 0) + 1
 
@@ -984,7 +1000,7 @@ class ErrorRecoverySystem:
 
     def _identify_error_patterns(self, errors: List[ErrorReport]) -> Dict[str, int]:
         """Identify common error patterns"""
-        patterns = {}
+        patterns: Dict[str, int] = {}
 
         for error in errors:
             # Pattern by exception type
@@ -1040,7 +1056,7 @@ class ErrorRecoverySystem:
         tips = []
 
         # Add tips based on common error categories
-        category_counts = {}
+        category_counts: Dict[str, int] = {}
         for error in self.error_history:
             category = error.category.value
             category_counts[category] = category_counts.get(category, 0) + 1

@@ -7,7 +7,7 @@ allowed-tools:
   - AskUserQuestion
   - TodoWrite
 model: haiku
-skills: moai-core-quality
+skills: moai-manager-quality
 ---
 
 ## 📋 Pre-execution Context
@@ -25,7 +25,7 @@ skills: moai-core-quality
 # 🗣️ MoAI-ADK Step 9: Feedback Loop
 
 > **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
-> **Delegation Model**: Feedback collection delegated to `core-quality` agent.
+> **Delegation Model**: Feedback collection delegated to `manager-quality` agent.
 
 **Workflow Integration**: This command implements the feedback loop of the MoAI workflow, allowing users to report issues or suggestions directly from the CLI.
 
@@ -46,7 +46,7 @@ Collect user feedback, bug reports, or feature suggestions and create GitHub iss
 ```
 User Command: /moai:9-feedback [type]
     ↓
-Phase 1: Task(subagent_type="core-quality")
+Phase 1: Task(subagent_type="manager-quality")
     → Analyze feedback type
     → Collect details via AskUserQuestion
     → Create GitHub Issue via Skill
@@ -68,7 +68,7 @@ Output: Issue created with link
 
 | Agent/Skill | Purpose |
 |------------|---------|
-| core-quality | Feedback collection and GitHub issue creation |
+| manager-quality | Feedback collection and GitHub issue creation |
 
 ---
 
@@ -76,14 +76,14 @@ Output: Issue created with link
 
 ### Step 1: Delegate to Quality Gate Agent
 
-Use Task tool to call the `core-quality` agent (which has access to issue creation skills):
+Use Task tool to call the `manager-quality` agent (which has access to issue creation skills):
 
 ```yaml
 Tool: Task
 Parameters:
-- subagent_type: "core-quality"
+- subagent_type: "manager-quality"
 - description: "Collect and submit user feedback"
-- prompt: """You are the core-quality agent acting as the feedback manager.
+- prompt: """You are the manager-quality agent acting as the feedback manager.
 
 **Task**: Collect user feedback and create a GitHub issue.
 
@@ -126,7 +126,7 @@ Parameters:
 
 Before you consider this command complete, verify:
 
-- [ ] **Agent Called**: `core-quality` agent was invoked.
+- [ ] **Agent Called**: `manager-quality` agent was invoked.
 - [ ] **Feedback Collected**: User was asked for details.
 - [ ] **Issue Created**: GitHub issue was successfully created.
 - [ ] **Link Provided**: User received the issue URL.
@@ -144,7 +144,7 @@ Before you consider this command complete, verify:
 
 **Associated Agent**:
 
-- `core-quality` - Feedback manager and GitHub issue creator
+- `manager-quality` - Feedback manager and GitHub issue creator
 
 **Feedback Types**:
 
@@ -199,5 +199,5 @@ AskUserQuestion({
 
 **You must NOW execute the command following the "Execution Process" described above.**
 
-1. Call the `Task` tool with `subagent_type="core-quality"`.
+1. Call the `Task` tool with `subagent_type="manager-quality"`.
 2. Do NOT just describe what you will do. DO IT.

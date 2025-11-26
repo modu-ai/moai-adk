@@ -13,7 +13,7 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class RobustJSONParser:
             "control_chars": re.compile(r"[\x00-\x1F\x7F-\x9F]"),
         }
 
-    def _load_recovery_strategies(self) -> List[callable]:
+    def _load_recovery_strategies(self) -> List[Callable]:
         """Load error recovery strategies in order of application"""
         return [
             self._fix_missing_quotes,
@@ -113,7 +113,7 @@ class RobustJSONParser:
         original_input = json_string
         current_input = json_string
         recovery_attempts = 0
-        warnings = []
+        warnings: List[str] = []
 
         # Initial validation
         if not isinstance(json_string, str):
@@ -349,36 +349,36 @@ class RobustJSONParser:
         # This handles cases like {'name': 'test'} -> {"name": "test"}
         if json_string.startswith("'") or ("'" in json_string and '"' not in json_string):
             # Case: entirely single-quoted JSON
-            modified = json_string.replace("'", '"')
-            if modified != json_string:
+            modified_str = json_string.replace("'", '"')
+            if modified_str != json_string:
                 warnings.append("Replaced single quotes with double quotes")
-                return modified, warnings
+                return modified_str, warnings
 
         # More complex case: mixed quotes
         # Replace unescaped single quotes that appear to be string delimiters
-        modified = []
+        char_list: list[str] = []
         i = 0
         while i < len(json_string):
             char = json_string[i]
 
             if char == "\\":
                 # Preserve escape sequences
-                modified.append(char)
+                char_list.append(char)
                 i += 1
                 if i < len(json_string):
-                    modified.append(json_string[i])
+                    char_list.append(json_string[i])
                     i += 1
                 continue
 
             if char == "'":
                 # Replace single quote with double quote
-                modified.append('"')
+                char_list.append('"')
                 i += 1
             else:
-                modified.append(char)
+                char_list.append(char)
                 i += 1
 
-        final_modified = "".join(modified)
+        final_modified = "".join(char_list)
         if final_modified != json_string:
             warnings.append("Replaced single quotes with double quotes")
 

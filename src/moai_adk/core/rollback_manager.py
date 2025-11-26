@@ -314,10 +314,12 @@ class RollbackManager:
         Returns:
             Validation results with system health information
         """
+        issues: List[str] = []
+        recommendations: List[str] = []
         validation_results = {
             "system_healthy": True,
-            "issues": [],
-            "recommendations": [],
+            "issues": issues,
+            "recommendations": recommendations,
             "rollback_points_count": len(self.registry),
             "backup_size": self._calculate_backup_size(),
             "last_rollback": None,
@@ -334,25 +336,25 @@ class RollbackManager:
 
             for dir_path in required_dirs:
                 if not dir_path.exists():
-                    validation_results["issues"].append(f"Missing backup directory: {dir_path}")
+                    issues.append(f"Missing backup directory: {dir_path}")
                     validation_results["system_healthy"] = False
 
             # Validate rollback points
-            invalid_rollback_points = []
+            invalid_rollback_points: List[str] = []
             for rollback_id, rollback_data in self.registry.items():
                 backup_path = Path(rollback_data["backup_path"])
                 if not backup_path.exists():
                     invalid_rollback_points.append(rollback_id)
 
             if invalid_rollback_points:
-                validation_results["issues"].append(f"Invalid rollback points: {invalid_rollback_points}")
+                issues.append(f"Invalid rollback points: {invalid_rollback_points}")
                 validation_results["system_healthy"] = False
 
             # Check available disk space
-            backup_size = validation_results["backup_size"]
+            backup_size: int = validation_results["backup_size"]  # type: ignore[assignment]
             free_space = shutil.disk_usage(self.backup_root).free
             if backup_size > free_space * 0.8:  # Using more than 80% of free space
-                validation_results["recommendations"].append("Consider cleaning up old rollback points")
+                recommendations.append("Consider cleaning up old rollback points")
 
             # Check last rollback
             if self.registry:
@@ -361,7 +363,7 @@ class RollbackManager:
 
         except Exception as e:
             validation_results["system_healthy"] = False
-            validation_results["issues"].append(f"Validation error: {str(e)}")
+            issues.append(f"Validation error: {str(e)}")
 
         return validation_results
 
@@ -518,10 +520,11 @@ class RollbackManager:
 
     def _validate_rollback_point(self, rollback_point: RollbackPoint) -> Dict[str, Any]:
         """Validate rollback point before restoration"""
+        warnings: List[str] = []
         validation_result = {
             "valid": True,
             "message": "Rollback point is valid",
-            "warnings": [],
+            "warnings": warnings,
         }
 
         try:
@@ -535,7 +538,7 @@ class RollbackManager:
             # Verify checksum
             current_checksum = self._calculate_backup_checksum(backup_path)
             if current_checksum != rollback_point.checksum:
-                validation_result["warnings"].append("Backup checksum mismatch - possible corruption")
+                warnings.append("Backup checksum mismatch - possible corruption")
 
             # Check essential files exist
             required_files = [
@@ -545,7 +548,7 @@ class RollbackManager:
 
             missing_files = [f for f in required_files if not f.exists()]
             if missing_files:
-                validation_result["warnings"].append(f"Missing backup files: {missing_files}")
+                warnings.append(f"Missing backup files: {missing_files}")
 
         except Exception as e:
             validation_result["valid"] = False
@@ -556,8 +559,8 @@ class RollbackManager:
     def _perform_rollback(self, rollback_point: RollbackPoint) -> Tuple[List[str], List[str]]:
         """Perform the actual rollback operation"""
         backup_path = Path(rollback_point.backup_path)
-        restored_files = []
-        failed_files = []
+        restored_files: List[str] = []
+        failed_files: List[str] = []
 
         try:
             # Restore configuration
@@ -571,7 +574,7 @@ class RollbackManager:
                             shutil.copy2(config_file, target_path)
                             restored_files.append(str(target_path))
                         except Exception as e:
-                            failed_files.append((str(target_path), str(e)))
+                            failed_files.append(f"{target_path}: {str(e)}")
 
             # Restore research components
             research_backup = backup_path / "research"
@@ -584,7 +587,7 @@ class RollbackManager:
                             shutil.copy2(research_file, target_path)
                             restored_files.append(str(target_path))
                         except Exception as e:
-                            failed_files.append((str(target_path), str(e)))
+                            failed_files.append(f"{target_path}: {str(e)}")
 
             # Restore code files
             code_backup = backup_path / "code"
@@ -597,11 +600,11 @@ class RollbackManager:
                             shutil.copy2(code_file, target_path)
                             restored_files.append(str(target_path))
                         except Exception as e:
-                            failed_files.append((str(target_path), str(e)))
+                            failed_files.append(f"{target_path}: {str(e)}")
 
         except Exception as e:
             logger.error(f"Rollback operation failed: {str(e)}")
-            failed_files.append(("rollback_operation", str(e)))
+            failed_files.append(f"rollback_operation: {str(e)}")
 
         return restored_files, failed_files
 
@@ -615,11 +618,11 @@ class RollbackManager:
         backup_path = Path(rollback_point["backup_path"])
         research_backup = backup_path / "research"
 
-        restored_files = []
-        failed_files = []
+        restored_files: List[str] = []
+        failed_files: List[str] = []
 
         if not research_backup.exists():
-            failed_files.append(("research_backup", "Research backup not found"))
+            failed_files.append("research_backup: Research backup not found")
             return restored_files, failed_files
 
         try:
@@ -638,7 +641,7 @@ class RollbackManager:
                             shutil.copy2(component_file, target_file)
                             restored_files.append(str(target_file))
                         else:
-                            failed_files.append((component_name, "Component file not found in backup"))
+                            failed_files.append(f"{component_name}: Component file not found in backup")
                     else:
                         # Restore entire component type
                         if target_dir.exists():
@@ -646,7 +649,7 @@ class RollbackManager:
                         shutil.copytree(component_backup_dir, target_dir)
                         restored_files.append(str(target_dir))
                 else:
-                    failed_files.append((component_type, "Component type not found in backup"))
+                    failed_files.append(f"{component_type}: Component type not found in backup")
             else:
                 # Restore all research components
                 for research_dir in research_backup.iterdir():
@@ -659,16 +662,17 @@ class RollbackManager:
 
         except Exception as e:
             logger.error(f"Research rollback failed: {str(e)}")
-            failed_files.append(("research_rollback", str(e)))
+            failed_files.append(f"research_rollback: {str(e)}")
 
         return restored_files, failed_files
 
     def _validate_system_after_rollback(self) -> Dict[str, Any]:
         """Validate system state after rollback"""
+        issues: List[str] = []
         validation_results = {
             "config_valid": True,
             "research_valid": True,
-            "issues": [],
+            "issues": issues,
         }
 
         try:
@@ -680,10 +684,10 @@ class RollbackManager:
                         json.load(f)  # Validate JSON syntax
                 except json.JSONDecodeError:
                     validation_results["config_valid"] = False
-                    validation_results["issues"].append("Invalid JSON in config.json")
+                    issues.append("Invalid JSON in config.json")
             else:
                 validation_results["config_valid"] = False
-                validation_results["issues"].append("config.json not found")
+                issues.append("config.json not found")
 
             # Validate research components
             for research_dir in self.research_dirs:
@@ -695,21 +699,22 @@ class RollbackManager:
                                 f.read()  # Validate file can be read
                         except Exception as e:
                             validation_results["research_valid"] = False
-                            validation_results["issues"].append(f"Cannot read {file_path}: {str(e)}")
+                            issues.append(f"Cannot read {file_path}: {str(e)}")
 
         except Exception as e:
-            validation_results["issues"].append(f"Validation error: {str(e)}")
+            issues.append(f"Validation error: {str(e)}")
 
         return validation_results
 
     def _validate_research_components(self) -> Dict[str, Any]:
         """Validate research components after rollback"""
+        issues: List[str] = []
         validation_results = {
             "skills_valid": True,
             "agents_valid": True,
             "commands_valid": True,
             "hooks_valid": True,
-            "issues": [],
+            "issues": issues,
         }
 
         component_checks = [
@@ -725,7 +730,7 @@ class RollbackManager:
                 files = list(component_path.rglob("*.md"))
                 if not files:
                     validation_results[f"{component_key}_valid"] = False
-                    validation_results["issues"].append(f"{component_name} directory is empty")
+                    issues.append(f"{component_name} directory is empty")
 
                 # Validate file content
                 for file_path in files[:5]:  # Check first 5 files
@@ -734,13 +739,13 @@ class RollbackManager:
                             content = f.read()
                             if not content.strip():
                                 validation_results[f"{component_key}_valid"] = False
-                                validation_results["issues"].append(f"Empty file: {file_path}")
+                                issues.append(f"Empty file: {file_path}")
                     except Exception as e:
                         validation_results[f"{component_key}_valid"] = False
-                        validation_results["issues"].append(f"Cannot read {file_path}: {str(e)}")
+                        issues.append(f"Cannot read {file_path}: {str(e)}")
             else:
                 validation_results[f"{component_key}_valid"] = False
-                validation_results["issues"].append(f"{component_name} directory not found")
+                issues.append(f"{component_name} directory not found")
 
         return validation_results
 

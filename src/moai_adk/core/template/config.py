@@ -159,24 +159,25 @@ class ConfigManager:
         """
         # Use unified config if available
         if UNIFIED_AVAILABLE:
-            config = get_unified_config(config_path)
-            config.set(field_path, value)
-            config.save(backup=False)  # Skip backup for optimization flag
+            unified_config = get_unified_config(config_path)
+            unified_config.set(field_path, value)
+            unified_config.save(backup=False)  # Skip backup for optimization flag
             return
 
         # Fallback implementation
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Read current config
+        config_dict: dict[str, Any]
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+                config_dict = json.load(f)
         else:
-            config = {}
+            config_dict = {}
 
         # Navigate to target field
         keys = field_path.split(".")
-        current = config
+        current: dict[str, Any] = config_dict
         for key in keys[:-1]:
             if key not in current:
                 current[key] = {}
@@ -187,4 +188,4 @@ class ConfigManager:
 
         # Atomic write
         with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
+            json.dump(config_dict, f, ensure_ascii=False, indent=2)

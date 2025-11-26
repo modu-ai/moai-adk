@@ -19,7 +19,7 @@ import logging
 import statistics
 import uuid
 from collections import Counter, defaultdict, deque
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -358,7 +358,7 @@ class UserBehaviorAnalytics:
 
         patterns = self.get_user_patterns(user_id, days)
 
-        insights = {
+        insights: Dict[str, Any] = {
             "productivity_insights": [],
             "efficiency_recommendations": [],
             "collaboration_insights": [],
@@ -467,7 +467,7 @@ class UserBehaviorAnalytics:
             team_metrics["most_active_users"] = dict(user_session_counts.most_common(10))
 
             # Most used tools across team
-            all_tools = []
+            all_tools: List[str] = []
             for session in recent_sessions:
                 all_tools.extend(session.tools_used)
 
@@ -605,7 +605,7 @@ class UserBehaviorAnalytics:
         tool_diversity = min(len(session.tools_used) / 10, 1) * 15
 
         # File modifications factor (if it's a coding session)
-        file_factor = 0
+        file_factor: float = 0.0
         if session.modified_files:
             file_factor = min(len(session.modified_files) / 5, 1) * 10
 
@@ -687,7 +687,7 @@ class UserBehaviorAnalytics:
                 export_data["data"] = {
                     "patterns": patterns,
                     "insights": insights,
-                    "preferences": prefs.to_dict() if prefs else None,
+                    "preferences": asdict(prefs) if prefs else None,
                 }
             else:
                 # Export team data
@@ -710,7 +710,7 @@ class UserBehaviorAnalytics:
         """Get real-time analytics metrics"""
         current_time = datetime.now()
 
-        metrics = {
+        metrics: Dict[str, Any] = {
             "timestamp": current_time.isoformat(),
             "active_sessions": len(self.active_sessions),
             "total_sessions_today": 0,
@@ -731,10 +731,11 @@ class UserBehaviorAnalytics:
                 metrics["avg_session_duration"] = statistics.mean(durations)
 
         # Current productivity scores
+        productivity_scores: List[Dict[str, Any]] = []
         for session in self.active_sessions.values():
             if user_id is None or session.user_id == user_id:
                 current_score = self._calculate_productivity_score(session)
-                metrics["current_productivity_scores"].append(
+                productivity_scores.append(
                     {
                         "user_id": session.user_id,
                         "session_id": session.session_id,
@@ -742,6 +743,7 @@ class UserBehaviorAnalytics:
                         "state": session.state.value,
                     }
                 )
+        metrics["current_productivity_scores"] = productivity_scores
 
         return metrics
 

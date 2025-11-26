@@ -103,7 +103,7 @@ class EnhancedInputValidationMiddleware:
         self.parameter_mappings = self._load_parameter_mappings()
 
         # Validation cache
-        self.validation_cache = {} if enable_caching else None
+        self.validation_cache: Optional[Dict[str, Any]] = {} if enable_caching else None
 
         # Statistics
         self.stats = {
@@ -330,7 +330,7 @@ class EnhancedInputValidationMiddleware:
             ],
         }
 
-    def _load_parameter_mappings(self) -> Dict[str, Dict[str, str]]:
+    def _load_parameter_mappings(self) -> Dict[str, str]:
         """Load parameter mapping for compatibility with different versions"""
         return {
             # Grep tool mappings
@@ -695,7 +695,7 @@ class EnhancedInputValidationMiddleware:
         input_data: Dict[str, Any],
     ) -> List[ValidationError]:
         """Validate parameter value against expected type"""
-        errors = []
+        errors: List[ValidationError] = []
 
         # Type mapping
         type_validators = {
@@ -799,30 +799,30 @@ class EnhancedInputValidationMiddleware:
             # Normalize boolean values
             if param.param_type == "boolean":
                 if isinstance(value, str):
-                    normalized = value.lower() in ["true", "1", "yes", "on"]
-                    if value != str(normalized):
-                        input_data[param.name] = normalized
-                        transformations.append(f"Normalized '{param.name}' boolean from '{value}' to '{normalized}'")
+                    normalized_bool = value.lower() in ["true", "1", "yes", "on"]
+                    if value != str(normalized_bool):
+                        input_data[param.name] = normalized_bool
+                        transformations.append(f"Normalized '{param.name}' boolean from '{value}' to '{normalized_bool}'")
 
             # Normalize file paths
             elif param.name in ["file_path", "path", "directory"] and isinstance(value, str):
                 # Convert to forward slashes and remove trailing slash
-                normalized = value.replace("\\", "/").rstrip("/")
-                if value != normalized:
-                    input_data[param.name] = normalized
-                    transformations.append(f"Normalized '{param.name}' path from '{value}' to '{normalized}'")
+                normalized_path = value.replace("\\", "/").rstrip("/")
+                if value != normalized_path:
+                    input_data[param.name] = normalized_path
+                    transformations.append(f"Normalized '{param.name}' path from '{value}' to '{normalized_path}'")
 
             # Normalize numeric formats - Always attempt conversion for numeric types
             elif param.param_type in ["integer", "float"] and isinstance(value, str):
                 try:
                     if param.param_type == "integer":
-                        normalized = int(float(value.strip()))  # Handle "123.0" -> 123
+                        normalized_num: int | float = int(float(value.strip()))  # Handle "123.0" -> 123
                     else:  # float
-                        normalized = float(value.strip())
+                        normalized_num = float(value.strip())
 
-                    input_data[param.name] = normalized
+                    input_data[param.name] = normalized_num
                     transformations.append(
-                        f"Normalized '{param.name}' {param.param_type} from '{value}' to '{normalized}'"
+                        f"Normalized '{param.name}' {param.param_type} from '{value}' to '{normalized_num}'"
                     )
                 except ValueError:
                     # Keep original value if conversion fails
@@ -961,10 +961,12 @@ if __name__ == "__main__":
 
     for i, test_case in enumerate(test_cases, 1):
         print(f"\n{i}. {test_case['name']}")
-        print(f"   Tool: {test_case['tool']}")
-        print(f"   Original input: {test_case['input']}")
+        tool_name: str = test_case['tool']  # type: ignore[assignment]
+        tool_input: Dict[str, Any] = test_case['input']  # type: ignore[assignment]
+        print(f"   Tool: {tool_name}")
+        print(f"   Original input: {tool_input}")
 
-        result = validate_tool_input(test_case["tool"], test_case["input"])
+        result = validate_tool_input(tool_name, tool_input)
 
         print(f"   Valid: {result.valid}")
         print(f"   Errors: {len(result.errors)}")

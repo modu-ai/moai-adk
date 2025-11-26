@@ -122,7 +122,7 @@ class UnifiedPermissionManager:
     def __init__(self, config_path: Optional[str] = None, enable_logging: bool = True):
         self.config_path = config_path or ".claude/settings.json"
         self.enable_logging = enable_logging
-        self.permission_cache = {}
+        self.permission_cache: Dict[str, Any] = {}
         self.audit_log: List[PermissionAudit] = []
         self.stats = {
             "validations_performed": 0,
@@ -694,9 +694,11 @@ if __name__ == "__main__":
 
     for agent in test_agents:
         print(f"\nTesting agent: {agent['name']}")
-        print(f"Original permissionMode: {agent['config'].get('permissionMode', 'default')}")
+        agent_config: Dict[str, Any] = agent['config']  # type: ignore[assignment]
+        print(f"Original permissionMode: {agent_config.get('permissionMode', 'default')}")
 
-        result = permission_manager.validate_agent_permission(agent["name"], agent["config"])
+        agent_name: str = agent["name"]  # type: ignore[assignment]
+        result = permission_manager.validate_agent_permission(agent_name, agent_config)
 
         print(f"Valid: {result.valid}")
         print(f"Auto-corrected: {result.auto_corrected}")

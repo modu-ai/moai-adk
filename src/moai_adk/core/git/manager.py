@@ -189,7 +189,7 @@ class GitManager:
         """
         result = self.conflict_detector.can_merge(feature_branch, base_branch)
         conflicts = result.get("conflicts", [])
-        return self.conflict_detector.summarize_conflicts(conflicts)
+        return self.conflict_detector.summarize_conflicts(conflicts)  # type: ignore[arg-type]
 
     def auto_resolve_safe_conflicts(self) -> bool:
         """

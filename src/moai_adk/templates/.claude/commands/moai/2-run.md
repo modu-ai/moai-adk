@@ -7,7 +7,7 @@ allowed-tools:
   - AskUserQuestion
   - TodoWrite
 model: sonnet
-skills: moai-essentials-unified, moai-core-quality, moai-lang-unified
+skills: moai-essentials-unified, moai-manager-quality, moai-lang-unified
 ---
 
 ## 📋 Pre-execution Context
@@ -56,16 +56,16 @@ The `/moai:2-run` command orchestrates the complete implementation workflow:
 ```
 User Command: /moai:2-run SPEC-001
     ↓
-Phase 1: Task(subagent_type="core-planner")
+Phase 1: Task(subagent_type="manager-strategy")
     → SPEC Analysis & Execution Plan Creation
     ↓
-Phase 2: Task(subagent_type="workflow-tdd")
+Phase 2: Task(subagent_type="manager-tdd")
     → RED → GREEN → REFACTOR TDD Cycle
     ↓
-Phase 2.5: Task(subagent_type="core-quality")
+Phase 2.5: Task(subagent_type="manager-quality")
     → TRUST 5 Quality Validation
     ↓
-Phase 3: Task(subagent_type="core-git")
+Phase 3: Task(subagent_type="manager-git")
     → Commit Creation & Git Operations
     ↓
 Phase 4: AskUserQuestion(...)
@@ -78,7 +78,7 @@ Output: Implemented feature with passing tests and commits
 
 **This command uses ONLY these tools:**
 
-- ✅ **Task()** for phase agent delegation (core-planner → workflow-tdd → core-quality → core-git)
+- ✅ **Task()** for phase agent delegation (manager-strategy → manager-tdd → manager-quality → manager-git)
 - ✅ **AskUserQuestion()** for user approval and next steps
 - ✅ **TodoWrite()** for task tracking
 - ❌ No Read/Write/Edit/Bash (all delegated to agents)
@@ -91,10 +91,10 @@ Command orchestrates phases sequentially; agents handle complexity.
 
 | Agent/Skill | Purpose |
 |------------|---------|
-| core-planner | Analyzes SPEC and creates execution strategy |
-| workflow-tdd | Implements code through TDD cycle (RED-GREEN-REFACTOR) |
-| core-quality | Verifies TRUST 5 principles and validates quality |
-| core-git | Creates and manages Git commits |
+| manager-strategy | Analyzes SPEC and creates execution strategy |
+| manager-tdd | Implements code through TDD cycle (RED-GREEN-REFACTOR) |
+| manager-quality | Verifies TRUST 5 principles and validates quality |
+| manager-git | Creates and manages Git commits |
 | moai-alfred-workflow | Workflow orchestration patterns |
 | moai-alfred-todowrite-pattern | Task tracking and progress management |
 | moai-alfred-ask-user-questions | User interaction patterns |
@@ -106,7 +106,7 @@ Command orchestrates phases sequentially; agents handle complexity.
 
 ### Phase 1: Analysis & Planning
 
-Command calls `Task(subagent_type="core-planner")`:
+Command calls `Task(subagent_type="manager-strategy")`:
 
 1. Agent reads SPEC document
 2. Analyzes requirements and creates execution strategy
@@ -116,7 +116,7 @@ Command calls `Task(subagent_type="core-planner")`:
 
 ### Phase 2: TDD Implementation
 
-Command calls `Task(subagent_type="workflow-tdd")`:
+Command calls `Task(subagent_type="manager-tdd")`:
 
 1. Agent initializes task tracking (TodoWrite)
 2. Checks domain readiness (if multi-domain SPEC)
@@ -125,7 +125,7 @@ Command calls `Task(subagent_type="workflow-tdd")`:
 
 ### Phase 2.5: Quality Validation
 
-Command calls `Task(subagent_type="core-quality")`:
+Command calls `Task(subagent_type="manager-quality")`:
 
 1. Agent verifies TRUST 5 principles (Test-first, Readable, Unified, Secured, Trackable)
 2. Validates test coverage (>= 85%)
@@ -134,7 +134,7 @@ Command calls `Task(subagent_type="core-quality")`:
 
 ### Phase 3: Git Operations
 
-Command calls `Task(subagent_type="core-git")`:
+Command calls `Task(subagent_type="manager-git")`:
 
 1. Agent creates feature branch if needed
 2. Creates commits with implementation changes
@@ -158,16 +158,16 @@ Command calls `AskUserQuestion()`:
     ↓
 Parse SPEC ID from $ARGUMENTS
     ↓
-✅ Phase 1: Task(subagent_type="core-planner")
+✅ Phase 1: Task(subagent_type="manager-strategy")
     → Analyze SPEC → Create execution plan → Get approval
     ↓
-✅ Phase 2: Task(subagent_type="workflow-tdd")
+✅ Phase 2: Task(subagent_type="manager-tdd")
     → RED-GREEN-REFACTOR → Tests passing → Coverage verified
     ↓
-✅ Phase 2.5: Task(subagent_type="core-quality")
+✅ Phase 2.5: Task(subagent_type="manager-quality")
     → Validate TRUST 5 principles → Return quality status
     ↓
-✅ Phase 3: Task(subagent_type="core-git")
+✅ Phase 3: Task(subagent_type="manager-git")
     → Create feature branch → Commit changes → Verify commits
     ↓
 ✅ Phase 4: AskUserQuestion(...)
@@ -187,7 +187,7 @@ Output: "Implementation complete. Next step: /moai:3-sync"
 ```
 # Phase 1: SPEC Analysis & Planning
 plan_result = Task(
-  subagent_type="core-planner",
+  subagent_type="manager-strategy",
   description="Analyze SPEC-$ARGUMENTS and create execution plan",
   prompt="""
 SPEC ID: $ARGUMENTS
@@ -227,13 +227,13 @@ approval = AskUserQuestion({
 # Phase 2: TDD Implementation (Resume from Phase 1)
 if approval == "Proceed with plan":
     implementation_result = Task(
-        subagent_type="workflow-tdd",
+        subagent_type="manager-tdd",
         resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Inherit planning context
         description="Implement SPEC-$ARGUMENTS using TDD cycle",
         prompt="""
 SPEC ID: $ARGUMENTS
 
-You are the workflow-tdd agent. You are continuing from the implementation plan created in Phase 1.
+You are the manager-tdd agent. You are continuing from the implementation plan created in Phase 1.
 
 The full planning context (analysis, decisions, architecture) is inherited from previous phase via resume.
 Use this context to proceed directly to implementation without re-analyzing requirements.
@@ -261,13 +261,13 @@ Execute complete TDD implementation:
 
     # Phase 2.5: Quality Validation (Resume from Phase 1)
     quality_result = Task(
-        subagent_type="core-quality",
+        subagent_type="manager-quality",
         resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Keep full context chain
         description="Validate TRUST 5 compliance for SPEC-$ARGUMENTS",
         prompt="""
 SPEC ID: $ARGUMENTS
 
-You are the core-quality agent. You are continuing from the implementation context.
+You are the manager-quality agent. You are continuing from the implementation context.
 
 The full context (planning, implementation results) is inherited from previous phases via resume.
 This ensures quality validation has complete architectural and implementation context.
@@ -297,13 +297,13 @@ Return quality assessment with specific findings.
     # Phase 3: Git Operations (Resume from Phase 1)
     if quality_result.status == "PASS" or quality_result.status == "WARNING":
         git_result = Task(
-            subagent_type="core-git",
+            subagent_type="manager-git",
             resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Maintain full feature context
             description="Create commits for SPEC-$ARGUMENTS implementation",
             prompt="""
 SPEC ID: $ARGUMENTS
 
-You are the core-git agent. You are continuing from the full implementation context.
+You are the manager-git agent. You are continuing from the full implementation context.
 
 The complete context (planning, implementation, quality review) is inherited via resume.
 This context enables creation of meaningful commit messages with full understanding of feature scope and design decisions.
@@ -376,7 +376,7 @@ Phase 3: Task(resume="abc123")
 - ✅ **99K Token Savings**: No re-transmission of context between phases
 - ✅ **Context Continuity**: Full knowledge chain across all phases
 - ✅ **Unified Coding**: Phase 1 architectural decisions naturally propagate
-- ✅ **Better Commits**: core-git understands full context for meaningful messages
+- ✅ **Better Commits**: manager-git understands full context for meaningful messages
 
 ---
 
@@ -400,10 +400,10 @@ After implementation, verify:
 - [ ] ✅ Command has ONLY `Task`, `AskUserQuestion`, `TodoWrite` in allowed-tools
 - [ ] ✅ Command contains NO `Read`, `Write`, `Edit`, `Bash` usage
 - [ ] ✅ Command delegates execution to phase agents sequentially
-- [ ] ✅ Phase 1: core-planner executes successfully
-- [ ] ✅ Phase 2: workflow-tdd executes successfully
-- [ ] ✅ Phase 2.5: core-quality validates TRUST 5
-- [ ] ✅ Phase 3: core-git creates commits
+- [ ] ✅ Phase 1: manager-strategy executes successfully
+- [ ] ✅ Phase 2: manager-tdd executes successfully
+- [ ] ✅ Phase 2.5: manager-quality validates TRUST 5
+- [ ] ✅ Phase 3: manager-git creates commits
 - [ ] ✅ Phase 4: User guided to next steps
 - [ ] ✅ User approval checkpoints working
 
@@ -419,10 +419,10 @@ After implementation, verify:
 
 **Associated Agents**:
 
-- `core-planner` - SPEC analysis and execution strategy
-- `workflow-tdd` - TDD implementation (RED-GREEN-REFACTOR)
-- `core-quality` - TRUST 5 validation
-- `core-git` - Git operations and commit management
+- `manager-strategy` - SPEC analysis and execution strategy
+- `manager-tdd` - TDD implementation (RED-GREEN-REFACTOR)
+- `manager-quality` - TRUST 5 validation
+- `manager-git` - Git operations and commit management
 
 **Implementation Results**:
 
@@ -478,5 +478,5 @@ AskUserQuestion({
 **You must NOW execute the command following the "Execution Philosophy" described above.**
 
 1. Start Phase 1: Analysis & Planning immediately.
-2. Call the `Task` tool with `subagent_type="core-planner"`.
+2. Call the `Task` tool with `subagent_type="manager-strategy"`.
 3. Do NOT just describe what you will do. DO IT.

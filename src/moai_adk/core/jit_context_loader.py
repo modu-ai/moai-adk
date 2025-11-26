@@ -267,8 +267,8 @@ class SkillFilterEngine:
 
     def __init__(self, skills_dir: str = ".claude/skills"):
         self.skills_dir = Path(skills_dir)
-        self.skills_cache = {}
-        self.skill_index = {}
+        self.skills_cache: Dict[str, Any] = {}
+        self.skill_index: Dict[str, SkillInfo] = {}
         self.phase_preferences = self._load_phase_preferences()
         self._build_skill_index()
 
@@ -396,7 +396,7 @@ class SkillFilterEngine:
         total_skills = len(self.skill_index)
         total_tokens = sum(skill.tokens for skill in self.skill_index.values())
 
-        categories = {}
+        categories: Dict[str, int] = {}
         for skill in self.skill_index.values():
             for category in skill.categories:
                 categories[category] = categories.get(category, 0) + 1
@@ -416,8 +416,8 @@ class TokenBudgetManager:
         self.max_total_tokens = max_total_tokens
         self.phase_budgets = self._initialize_phase_budgets()
         self.current_usage = 0
-        self.usage_history = []
-        self.budget_warnings = []
+        self.usage_history: List[Dict[str, Any]] = []
+        self.budget_warnings: List[Dict[str, Any]] = []
 
     def _initialize_phase_budgets(self) -> Dict[str, int]:
         """Initialize token budgets for each phase"""
@@ -515,7 +515,7 @@ class ContextCache:
     def __init__(self, max_size: int = 100, max_memory_mb: int = 50):
         self.max_size = max_size
         self.max_memory_bytes = max_memory_mb * 1024 * 1024
-        self.cache = OrderedDict()
+        self.cache: OrderedDict[str, ContextEntry] = OrderedDict()
         self.current_memory = 0
         self.hits = 0
         self.misses = 0
@@ -608,11 +608,11 @@ class JITContextLoader:
         self.token_manager = TokenBudgetManager()
         self.context_cache = ContextCache(cache_size, cache_memory_mb)
 
-        self.metrics_history = []
+        self.metrics_history: List[ContextMetrics] = []
         self.current_phase = Phase.SPEC
 
         # Performance monitoring
-        self.performance_stats = {"total_loads": 0, "average_load_time": 0, "cache_hit_rate": 0, "efficiency_score": 0}
+        self.performance_stats: Dict[str, Any] = {"total_loads": 0, "average_load_time": 0, "cache_hit_rate": 0, "efficiency_score": 0}
 
     async def load_context(
         self, user_input: str, conversation_history: List[str] = None, context: Dict[str, Any] = None
@@ -690,7 +690,7 @@ class JITContextLoader:
 
     async def _build_context(self, phase: Phase, phase_config: PhaseConfig, context: Dict[str, Any]) -> Dict[str, Any]:
         """Build optimized context for the current phase"""
-        context_data = {
+        context_data: Dict[str, Any] = {
             "phase": phase.value,
             "skills": [],
             "documents": [],
@@ -706,28 +706,32 @@ class JITContextLoader:
         for skill in skills:
             skill_content = await self._load_skill_content(skill)
             if skill_content:
-                context_data["skills"].append(
-                    {
-                        "name": skill.name,
-                        "content": skill_content,
-                        "tokens": skill.tokens,
-                        "categories": skill.categories,
-                        "priority": skill.priority,
-                    }
-                )
+                skills_list = context_data["skills"]
+                if isinstance(skills_list, list):
+                    skills_list.append(
+                        {
+                            "name": skill.name,
+                            "content": skill_content,
+                            "tokens": skill.tokens,
+                            "categories": skill.categories,
+                            "priority": skill.priority,
+                        }
+                    )
 
         # Load essential documents
         for doc_path in phase_config.essential_documents:
             doc_content = await self._load_document(doc_path, context)
             if doc_content:
-                context_data["documents"].append(
-                    {
-                        "path": doc_path,
-                        "content": doc_content["content"],
-                        "tokens": doc_content["tokens"],
-                        "type": doc_content["type"],
-                    }
-                )
+                docs_list = context_data["documents"]
+                if isinstance(docs_list, list):
+                    docs_list.append(
+                        {
+                            "path": doc_path,
+                            "content": doc_content["content"],
+                            "tokens": doc_content["tokens"],
+                            "type": doc_content["type"],
+                        }
+                    )
 
         return context_data
 

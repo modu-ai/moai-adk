@@ -321,7 +321,7 @@ class ModelVersionManager:
         Returns:
             Lineage graph with data sources, training runs, and deployments
         """
-        lineage = {
+        lineage: Dict[str, Any] = {
             "model_id": model_id,
             "data_sources": [] if include_data_sources else None,
             "training_runs": [] if include_training_runs else None,
@@ -376,7 +376,7 @@ class ModelVersionManager:
         Returns:
             Artifact paths and metadata
         """
-        artifacts = {
+        artifacts: Dict[str, Any] = {
             "storage_backend": storage_backend,
         }
 
@@ -438,7 +438,7 @@ class DataPipelineBuilder:
         Returns:
             Feature pipeline specification
         """
-        pipeline = {
+        pipeline: Dict[str, Any] = {
             "features": features,
             "transformations": transformations,
             "pipeline_steps": [],
@@ -480,7 +480,7 @@ class DataPipelineBuilder:
         Returns:
             Validation result with quality score and violations
         """
-        validation = {
+        validation: Dict[str, Any] = {
             "dataset_id": dataset_id,
             "quality_score": 0.0,
             "violations": [],
@@ -784,7 +784,7 @@ class DriftDetectionMonitor:
         """
         # Simulate drift detection (Kolmogorov-Smirnov test)
         drift_score = 0.08  # Below threshold
-        drifted_features = []
+        drifted_features: List[str] = []
 
         result = {
             "drift_detected": drift_score > self.threshold,

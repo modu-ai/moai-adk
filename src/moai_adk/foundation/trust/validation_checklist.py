@@ -1086,7 +1086,7 @@ class TRUSTValidationChecklist:
     def _check_ci_automation(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check CI automated testing"""
         try:
-            ci_files = []
+            ci_files: List[Path] = []
             ci_patterns = [
                 ".github/workflows/",
                 ".gitlab-ci.yml",
@@ -1102,7 +1102,7 @@ class TRUSTValidationChecklist:
                         ci_files.extend(list((project_dir / pattern).rglob("*.yaml")))
                 else:
                     if (project_dir / pattern).exists():
-                        ci_files.append(pattern)
+                        ci_files.append(Path(pattern))
 
             return len(ci_files) > 0, {"result": len(ci_files), "ci_files": ci_files}
         except Exception as e:
@@ -1515,8 +1515,8 @@ class TRUSTValidationChecklist:
         summary.append("# TRUST 5 Principles Checklist Summary")
         summary.append("")
 
-        total_score = 0
-        total_max_score = 0
+        total_score: float = 0.0
+        total_max_score: float = 0.0
         total_passed = 0
         total_items = 0
 

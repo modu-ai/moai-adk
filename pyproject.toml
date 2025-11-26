@@ -36,6 +36,9 @@ dependencies = [
     "aiohttp>=3.13.2",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
+    "google-genai>=1.0.0",  # Gemini 3 Pro image generation (moai-connector-nano-banana)
+    "pillow>=10.0.0",  # Image processing for nano-banana skill
+    "requests>=2.28.0",  # Already included, used for REST API fallback
 ]
 
 [project.optional-dependencies]

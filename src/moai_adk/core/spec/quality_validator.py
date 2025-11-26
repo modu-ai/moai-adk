@@ -95,7 +95,7 @@ class QualityValidator:
         logger.info("Starting SPEC quality validation")
 
         # Initialize validation results
-        validation_result = {
+        validation_result: Dict[str, Any] = {
             "validation_time": 0.0,
             "overall_score": 0.0,
             "quality_grade": "F",

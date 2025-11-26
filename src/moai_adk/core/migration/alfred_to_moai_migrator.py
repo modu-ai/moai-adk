@@ -134,7 +134,7 @@ class AlfredToMoaiMigrator:
                 logger.info(f"✅ Using existing backup: {backup_path}")
 
             # Step 2: Detect alfred folders
-            logger.info("\n[2/5] Alfred folders detected: ", end="")
+            logger.info("\n[2/5] Alfred folders detected:")
             alfred_detected = {name: folder for name, folder in self.alfred_folders.items() if folder.exists()}
 
             if not alfred_detected:

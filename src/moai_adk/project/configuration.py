@@ -21,7 +21,7 @@ class ConfigurationManager:
     def __init__(self, config_path: Optional[Path] = None):
         self.config_path = config_path or Path(".moai/config/config.json")
         self.schema = None
-        self._config_cache = None
+        self._config_cache: Optional[Dict[str, Any]] = None
 
     def load(self) -> Dict[str, Any]:
         """Load configuration from file"""
@@ -94,7 +94,7 @@ class ConfigurationManager:
 
     def _parse_responses(self, responses: Dict[str, Any]) -> Dict[str, Any]:
         """Parse flat response dict into nested config structure"""
-        config = {
+        config: Dict[str, Any] = {
             "user": {},
             "language": {},
             "project": {},

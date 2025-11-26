@@ -136,7 +136,7 @@ class VersionReader:
 
         # Enhanced caching with LRU support
         self._cache: Dict[str, CacheEntry] = {}
-        self._cache_stats = {
+        self._cache_stats: Dict[str, Any] = {
             "hits": 0,
             "misses": 0,
             "errors": 0,
@@ -148,7 +148,7 @@ class VersionReader:
         }
 
         # Performance tracking
-        self._performance_metrics = {
+        self._performance_metrics: Dict[str, List[float]] = {
             "read_times": [],
             "validation_times": [],
             "cache_operation_times": [],
@@ -392,7 +392,7 @@ class VersionReader:
         Returns:
             Dictionary containing performance metrics
         """
-        metrics = {
+        metrics: Dict[str, Any] = {
             "cache_stats": self._cache_stats.copy(),
             "cache_size": len(self._cache),
             "max_cache_size": self.config.cache_size,

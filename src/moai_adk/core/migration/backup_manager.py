@@ -10,7 +10,7 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class BackupManager:
         Returns:
             List of backup information dictionaries
         """
-        backups = []
+        backups: List[Dict[str, Any]] = []
 
         if not self.backup_base_dir.exists():
             return backups

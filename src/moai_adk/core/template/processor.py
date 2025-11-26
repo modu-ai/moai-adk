@@ -123,7 +123,7 @@ class TemplateProcessor:
         self.context: dict[str, str] = {}  # Template variable substitution context
         self._version_reader: VersionReader | None = None
         self.config = config or TemplateProcessorConfig()
-        self._substitution_cache: Dict[str, str] = {}  # Cache for substitution results
+        self._substitution_cache: Dict[int, tuple[str, list[str]]] = {}  # Cache for substitution results (key: hash, value: (content, warnings))
         self._variable_validation_cache: Dict[str, bool] = {}  # Cache for variable validation
         self.logger = logging.getLogger(__name__)
 
@@ -600,7 +600,7 @@ class TemplateProcessor:
         Returns:
             Content with localized descriptions.
         """
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         # Pattern to match YAML frontmatter
         frontmatter_pattern = r"^---\n(.*?)\n---"

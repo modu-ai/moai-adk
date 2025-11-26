@@ -51,7 +51,7 @@ Alfred executes the following commands based on Plan agent decisions:
 
 If SPEC is required, call `/moai:1-plan "clear description"` to generate SPEC-001.
 
-For implementation, call `/moai:2-run SPEC-001`. The workflow-tdd agent automatically executes the RED-GREEN-REFACTOR cycle.
+For implementation, call `/moai:2-run SPEC-001`. The manager-tdd agent automatically executes the RED-GREEN-REFACTOR cycle.
 
 For documentation, call `/moai:3-sync SPEC-001`.
 
@@ -91,37 +91,33 @@ Analyze request complexity and dependencies:
 
 Use sequential when dependencies exist between agents, parallel for independent tasks.
 
-**Naming Convention**: All agents follow `{domain}-{role}` naming pattern:
+**Naming Convention**: All agents follow `{role}-{domain}` naming pattern:
 
-- `workflow-*` (Command Processors) - Direct command binding (workflow-project, workflow-spec, workflow-tdd, workflow-docs)
-- `core-*` (Orchestration & Quality) - Planning and quality management (core-planner, core-quality, core-git)
-- `{domain}-*` (Domain Experts) - Specialized implementation (code-backend, data-database, infra-devops, design-uiux, security-expert)
-- `mcp-*` (MCP Integrators) - External service integration with resume pattern (mcp-context7, mcp-ultrathink, mcp-figma, mcp-playwright)
-- `factory-*` (Meta-generators) - Agent and skill creation (factory-agent, factory-skill, factory-command)
-- `support-*` (Support Services) - Utilities and debugging (support-debug, support-claude)
-- `ai-*` (AI Integrations) - AI model connections (ai-codex, ai-gemini, ai-banana)
+- `expert-*` (Domain Experts) - Implementation specialists (expert-backend, expert-frontend, expert-database, expert-devops, expert-security, expert-uiux, expert-debug)
+- `manager-*` (Workflow Managers) - Workflow orchestration (manager-project, manager-spec, manager-tdd, manager-docs, manager-strategy, manager-quality, manager-git, manager-claude-code)
+- `builder-*` (Meta-generators) - Agent and skill creation (builder-agent, builder-skill, builder-command)
+- `mcp-*` (MCP Integrators) - External service integration with resume pattern (mcp-docs, mcp-design, mcp-notion, mcp-browser, mcp-ultrathink)
+- `ai-*` (AI Integrations) - AI model connections (ai-nano-banana)
 
-**7-Tier Agent Hierarchy**:
+**5-Tier Agent Hierarchy** (24 active agents):
 
 ```
-Tier 1: workflow-* (Command Processors)      - Always Active
-Tier 2: core-* (Orchestration & Quality)     - Auto-triggered
-Tier 3: {domain}-* (Domain Experts)          - Lazy-loaded
-Tier 4: mcp-* (MCP Integrators)              - Resume-enabled
-Tier 5: factory-* (Factory Agents)           - Meta-development
-Tier 6: support-* (Support Services)         - On-demand
-Tier 7: ai-* (AI & Specialized)              - Specialized tasks
+Tier 1: expert-*   (Domain Experts)      - 7 agents  - Lazy-loaded
+Tier 2: manager-*  (Workflow Managers)   - 8 agents  - Auto-triggered
+Tier 3: builder-*  (Meta-creation)       - 3 agents  - On-demand
+Tier 4: mcp-*      (MCP Integrations)    - 5 agents  - Resume-enabled
+Tier 5: ai-*       (AI Services)         - 1 agent   - On-demand
 ```
 
 **MCP Resume Pattern**: All MCP integrators support context continuity via resume parameter:
 
 ```python
 # Initial MCP call
-result = Task(subagent_type="mcp-context7", prompt="Research React 19 APIs")
+result = Task(subagent_type="mcp-docs", prompt="Research React 19 APIs")
 agent_id = result.agent_id
 
 # Resume with full context
-result2 = Task(subagent_type="mcp-context7", prompt="Compare with React 18", resume=agent_id)
+result2 = Task(subagent_type="mcp-docs", prompt="Compare with React 18", resume=agent_id)
 ```
 
 Benefits: 40-60% token savings, 95%+ context accuracy, multi-day analysis support.
@@ -191,7 +187,7 @@ else:
 
 | Module                           | Content                                    |
 | -------------------------------- | ------------------------------------------ |
-| `modules/agents-reference.md`    | 26-agent catalog, 7-Tier hierarchy         |
+| `modules/agents-reference.md`    | 24-agent catalog, 5-Tier hierarchy         |
 | `modules/commands-reference.md`  | /moai:0-3, 9 command patterns              |
 | `modules/delegation-patterns.md` | Sequential, Parallel, Conditional patterns |
 | `modules/token-optimization.md`  | 200K budget, /clear strategies             |
@@ -201,8 +197,8 @@ else:
 
 For simple tasks (file reading, basic questions, simple modifications), Alfred uses the inlined Quick Reference without loading the skill:
 
-- **Agent naming**: `{domain}-{role}` pattern
-- **7-Tier hierarchy**: workflow → core → domain → mcp → factory → support → ai
+- **Agent naming**: `{role}-{domain}` pattern
+- **5-Tier hierarchy**: expert → manager → builder → mcp → ai
 - **Token threshold**: 150K context → execute `/clear`
 - **SPEC decision**: 3+ criteria met → SPEC recommended
 - **Delegation principle**: NEVER execute directly, ALWAYS delegate via Task()
@@ -377,48 +373,53 @@ Alfred MUST follow these decision rules when choosing which agent to delegate to
 
 **Rule 3: Use MoAI Domain Agents When**:
 
-- **Backend architecture** → Delegate to `code-backend`
-- **Frontend/UI implementation** → Delegate to `code-frontend`
-- **TDD implementation cycles** → Delegate to `workflow-tdd`
-- **Database design/queries** → Delegate to `data-database`
-- **DevOps/deployment** → Delegate to `infra-devops`
-- **Security analysis** → Delegate to `security-expert`
-- **UI/UX design** → Delegate to `design-uiux`
+- **Backend architecture** → Delegate to `expert-backend`
+- **Frontend/UI implementation** → Delegate to `expert-frontend`
+- **TDD implementation cycles** → Delegate to `manager-tdd`
+- **Database design/queries** → Delegate to `expert-database`
+- **DevOps/deployment** → Delegate to `expert-devops`
+- **Security analysis** → Delegate to `expert-security`
+- **UI/UX design** → Delegate to `expert-uiux`
+- **Debugging/error analysis** → Delegate to `expert-debug`
 
 **Rule 4: Use MCP Integration Agents When**:
 
-- **Documentation research needed** → Delegate to `mcp-context7`
+- **Documentation research needed** → Delegate to `mcp-docs`
 - **Complex reasoning/architecture decisions** → Delegate to `mcp-ultrathink`
-- **Figma design access** → Delegate to `mcp-figma`
+- **Figma design access** → Delegate to `mcp-design`
 - **Notion workspace operations** → Delegate to `mcp-notion`
-- **Web testing/automation** → Delegate to `mcp-playwright`
+- **Web testing/automation** → Delegate to `mcp-browser`
 
-**Rule 5: Use Workflow Agents When**:
+**Rule 5: Use Manager Agents When**:
 
-- **SPEC generation** → Delegate to `workflow-spec`
-- **Documentation creation** → Delegate to `workflow-docs`
-- **Project initialization** → Delegate to `workflow-project`
+- **SPEC generation** → Delegate to `manager-spec`
+- **Documentation creation** → Delegate to `manager-docs`
+- **Project initialization** → Delegate to `manager-project`
+- **Implementation strategy** → Delegate to `manager-strategy`
+- **Quality validation** → Delegate to `manager-quality`
+- **Git operations** → Delegate to `manager-git`
 
-**Rule 6: Use Factory Agents When**:
+**Rule 6: Use Builder Agents When**:
 
-- **Creating new agents** → Delegate to `factory-agent`
-- **Creating new skills** → Delegate to `factory-skill`
-- **Creating new commands** → Delegate to `factory-command`
+- **Creating new agents** → Delegate to `builder-agent`
+- **Creating new skills** → Delegate to `builder-skill`
+- **Creating new commands** → Delegate to `builder-command`
 
 **Decision Priority** (check in this order):
 
 1. Is it read-only exploration? → Use `Explore`
 2. Does it need specific MCP service? → Use MCP agent
-3. Does it match a domain specialty? → Use domain agent
-4. Does it match a workflow? → Use workflow agent
+3. Does it match a domain specialty? → Use expert agent
+4. Does it match a workflow? → Use manager agent
 5. Is it complex multi-step general task? → Use `general-purpose`
 
 **Best Practice**:
 
 1. **Explore** for all read-only searches (fastest)
 2. **general-purpose** for complex multi-step tasks without domain specialty
-3. **MoAI agents** for domain-specific expertise (backend, frontend, TDD, etc.)
-4. **MCP agents** when external service integration required
+3. **Expert agents** for domain-specific expertise (backend, frontend, database, etc.)
+4. **Manager agents** for workflow orchestration (TDD, SPEC, docs, quality, git)
+5. **MCP agents** when external service integration required
 
 ---
 
@@ -509,17 +510,15 @@ AskUserQuestion({
 - Context > 150K → Execute /clear
 - After /moai:1-plan → Execute /clear (mandatory)
 
-**Agent Selection** (7-Tier):
+**Agent Selection** (5-Tier):
 
 | Tier | Domain      | Loading        |
 | ---- | ----------- | -------------- |
-| 1    | workflow-\* | Always Active  |
-| 2    | core-\*     | Auto-triggered |
-| 3    | {domain}-\* | Lazy-loaded    |
+| 1    | expert-\*   | Lazy-loaded    |
+| 2    | manager-\*  | Auto-triggered |
+| 3    | builder-\*  | On-demand      |
 | 4    | mcp-\*      | Resume-enabled |
-| 5    | factory-\*  | On-demand      |
-| 6    | support-\*  | On-demand      |
-| 7    | ai-\*       | Specialized    |
+| 5    | ai-\*       | On-demand      |
 
 **SPEC Decision**:
 
@@ -553,12 +552,12 @@ If 3 or more criteria match pattern 2-3, proceed to Step 3 for AskUserQuestion r
 
 When Alfred encounters the following errors:
 
-"Agent not found" → Verify agent name format: `{domain}-{role}` (lowercase, hyphenated)
+"Agent not found" → Verify agent name format: `{role}-{domain}` (lowercase, hyphenated)
 Detailed agent catalog: Skill("moai-foundation-core") → modules/agents-reference.md
 
 "Token limit exceeded" → Immediately execute `/clear` then restrict file loading selectively
 
-"Coverage < 85%" → Call core-quality agent to auto-generate tests
+"Coverage < 85%" → Call manager-quality agent to auto-generate tests
 
 "Permission denied" → Check permissions in `.claude/settings.json`
 Detailed permission guide: Skill("moai-foundation-core") → modules/execution-rules.md

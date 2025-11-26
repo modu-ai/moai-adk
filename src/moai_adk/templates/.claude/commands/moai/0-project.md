@@ -27,7 +27,7 @@ skills: moai-command-project, moai-templates
 
 > **Interactive Prompts**: Use `AskUserQuestion` tool for TUI-based user interaction.
 > **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
-> **Delegation Model**: Complete agent-first pattern. All execution delegated to workflow-project.
+> **Delegation Model**: Complete agent-first pattern. All execution delegated to manager-project.
 
 **4-Step Workflow Integration**: This command implements Step 0 of Alfred's workflow (Project Bootstrap). See CLAUDE.md for full workflow details.
 
@@ -49,7 +49,7 @@ Initialize or update project metadata with **language-first architecture**. Supp
 
 | Agent/Skill          | Purpose                                                                  |
 | -------------------- | ------------------------------------------------------------------------ |
-| workflow-project     | Orchestrates language-first initialization and configuration             |
+| manager-project     | Orchestrates language-first initialization and configuration             |
 | moai-command-project | Unified project management (language init, config, templates, batch Q&A) |
 | moai-templates       | Template management and generation                                       |
 
@@ -77,7 +77,7 @@ Initialize or update project metadata with **language-first architecture**. Supp
 User Command: /moai:0-project [setting]
     ↓
 /moai:0-project Command
-    └─ Task(subagent_type="workflow-project")
+    └─ Task(subagent_type="manager-project")
         ├─ Phase 1: Route and analyze
         ├─ Phase 2: Execute mode (INIT/AUTO-DETECT/SETTINGS/UPDATE)
         ├─ Phase 2.5: Save phase context
@@ -94,11 +94,11 @@ User Command: /moai:0-project [setting]
 - ❌ No Write (file operations delegated)
 - ❌ No Edit (file operations delegated)
 - ❌ No Bash (all bash commands delegated)
-- ❌ No TodoWrite (delegated to workflow-project)
+- ❌ No TodoWrite (delegated to manager-project)
 - ✅ **Task()** for orchestration
 - ✅ **AskUserQuestion()** for user interaction
 
-All complexity is handled by the **workflow-project** agent.
+All complexity is handled by the **manager-project** agent.
 
 ---
 
@@ -116,7 +116,7 @@ Analyze the command user provided:
    - If token missing: Check `.env.glm` (auto-load if exists)
    - If token missing: Check `ANTHROPIC_AUTH_TOKEN` environment variable
    - If all missing: Request token from user
-   - Delegate to workflow-project with GLM context
+   - Delegate to manager-project with GLM context
    - Call setup-glm.py script to configure GLM
 
 2. **`/moai:0-project setting`** → SETTINGS MODE
@@ -138,12 +138,12 @@ Analyze the command user provided:
 
 Use Task tool:
 
-- `subagent_type`: "workflow-project"
+- `subagent_type`: "manager-project"
 - `description`: "Route and analyze project setup request"
 - `prompt`:
 
   ```
-  You are the workflow-project agent.
+  You are the manager-project agent.
 
   **Task**: Analyze project context and route to appropriate mode.
 
@@ -215,9 +215,9 @@ Use Task tool:
 
 **Goal**: Execute the appropriate mode based on routing decision.
 
-### Mode Handler: workflow-project Agent
+### Mode Handler: manager-project Agent
 
-The workflow-project agent handles all mode-specific workflows:
+The manager-project agent handles all mode-specific workflows:
 
 **INITIALIZATION MODE**:
 
@@ -348,7 +348,7 @@ Location: `.claude/skills/moai-command-project/schemas/tab_schema.json`
 - Batch 2.2: Auto-processed locale settings (0 questions - UPDATED: internal analysis only)
   - project.locale, default_language, optimized_for_language (auto-determined from conversation_language)
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
-  - **Auto-Processing Delegation**: Command does NOT perform auto-processing. workflow-project agent receives user selections, determines derived fields, then delegates atomic update to UnifiedConfigManager skill.
+  - **Auto-Processing Delegation**: Command does NOT perform auto-processing. manager-project agent receives user selections, determines derived fields, then delegates atomic update to UnifiedConfigManager skill.
 - Setting count: 4
 
 **Tab 3: Git Strategy & Workflow** (Recommended with Validation - REDESIGNED v2.0.0)
@@ -693,16 +693,16 @@ Tab completion order (recommended):
 
 ### Step 1: Extract Context from Agent Response
 
-After workflow-project agent completes, extract the following information:
+After manager-project agent completes, extract the following information:
 
 - **Project metadata**: name, mode, owner, language
 - **Files created**: List of generated files with absolute paths
 - **Tech stack**: Primary codebase language
 - **Next phase**: Recommended next command (1-plan)
 
-### Step 2: Delegate Context Saving to workflow-project
+### Step 2: Delegate Context Saving to manager-project
 
-The workflow-project agent handles all context saving:
+The manager-project agent handles all context saving:
 
 ```markdown
 Context data to persist:
@@ -769,7 +769,7 @@ Use AskUserQuestion in user's language:
 - Always use user's `conversation_language` for all output
 - Auto-translate announcements after language changes
 - Route to correct mode based on command analysis
-- Delegate ALL execution to workflow-project agent
+- Delegate ALL execution to manager-project agent
 - Use AskUserQuestion for ALL user interaction
 - NO EMOJIS in AskUserQuestion fields
 
@@ -867,5 +867,5 @@ AskUserQuestion({
 **You must NOW execute the command following the "Execution Philosophy" described above.**
 
 1. Analyze the subcommand/context.
-2. Call the `Task` tool with `subagent_type="workflow-project"` immediately.
+2. Call the `Task` tool with `subagent_type="manager-project"` immediately.
 3. Do NOT just describe what you will do. DO IT.
