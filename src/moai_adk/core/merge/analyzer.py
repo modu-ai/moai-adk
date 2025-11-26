@@ -43,9 +43,7 @@ class MergeAnalyzer:
         """Initialize analyzer with project path."""
         self.project_path = project_path
 
-    def analyze_merge(
-        self, backup_path: Path, template_path: Path
-    ) -> dict[str, Any]:
+    def analyze_merge(self, backup_path: Path, template_path: Path) -> dict[str, Any]:
         """Perform merge analysis using Claude Code headless mode
 
         Args:
@@ -64,9 +62,7 @@ class MergeAnalyzer:
         diff_files = self._collect_diff_files(backup_path, template_path)
 
         # 2. Create Claude headless prompt
-        prompt = self._create_analysis_prompt(
-            backup_path, template_path, diff_files
-        )
+        prompt = self._create_analysis_prompt(backup_path, template_path, diff_files)
 
         # 3. Run Claude Code headless (show spinner)
         spinner = Spinner("dots", text="[cyan]Running Claude Code analysis...[/cyan]")
@@ -87,37 +83,19 @@ class MergeAnalyzer:
                     console.print("[green]✅ Analysis complete[/green]")
                     return analysis
                 except json.JSONDecodeError as e:
-                    console.print(
-                        f"[yellow]⚠️  Failed to parse Claude response: {e}[/yellow]"
-                    )
-                    return self._fallback_analysis(
-                        backup_path, template_path, diff_files
-                    )
+                    console.print(f"[yellow]⚠️  Failed to parse Claude response: {e}[/yellow]")
+                    return self._fallback_analysis(backup_path, template_path, diff_files)
             else:
-                console.print(
-                    f"[yellow]⚠️  Claude execution error: {result.stderr[:200]}[/yellow]"
-                )
-                return self._fallback_analysis(
-                    backup_path, template_path, diff_files
-                )
+                console.print(f"[yellow]⚠️  Claude execution error: {result.stderr[:200]}[/yellow]")
+                return self._fallback_analysis(backup_path, template_path, diff_files)
 
         except subprocess.TimeoutExpired:
-            console.print(
-                "[yellow]⚠️  Claude analysis timeout (exceeded 120 seconds)[/yellow]"
-            )
-            return self._fallback_analysis(
-                backup_path, template_path, diff_files
-            )
+            console.print("[yellow]⚠️  Claude analysis timeout (exceeded 120 seconds)[/yellow]")
+            return self._fallback_analysis(backup_path, template_path, diff_files)
         except FileNotFoundError:
-            console.print(
-                "[red]❌ Claude Code not found.[/red]"
-            )
-            console.print(
-                "[cyan]   Install Claude Code: https://claude.com/claude-code[/cyan]"
-            )
-            return self._fallback_analysis(
-                backup_path, template_path, diff_files
-            )
+            console.print("[red]❌ Claude Code not found.[/red]")
+            console.print("[cyan]   Install Claude Code: https://claude.com/claude-code[/cyan]")
+            return self._fallback_analysis(backup_path, template_path, diff_files)
 
     def ask_user_confirmation(self, analysis: dict[str, Any]) -> bool:
         """Display analysis results and request user confirmation
@@ -151,9 +129,7 @@ class MergeAnalyzer:
 
         return proceed
 
-    def _collect_diff_files(
-        self, backup_path: Path, template_path: Path
-    ) -> dict[str, dict[str, Any]]:
+    def _collect_diff_files(self, backup_path: Path, template_path: Path) -> dict[str, dict[str, Any]]:
         """Collect differences between backup and template files
 
         Returns:
@@ -210,7 +186,7 @@ class MergeAnalyzer:
 ## Context
 - Backed-up user configuration: {backup_path}
 - New template: {template_path}
-- Files to analyze: {', '.join(self.ANALYZED_FILES)}
+- Files to analyze: {", ".join(self.ANALYZED_FILES)}
 
 ## Files to Analyze
 {self._format_diff_summary(diff_files)}
@@ -338,18 +314,12 @@ Analyze the following items and provide a JSON response:
             "dontAsk",  # Auto-approval (safe, read-only)
         ]
 
-    def _format_diff_summary(
-        self, diff_files: dict[str, dict[str, Any]]
-    ) -> str:
+    def _format_diff_summary(self, diff_files: dict[str, dict[str, Any]]) -> str:
         """Format diff_files for prompt"""
         summary = []
         for file_name, info in diff_files.items():
             if info["backup_exists"] and info["template_exists"]:
-                status = (
-                    f"✏️  Modified ({info['diff_lines']} lines)"
-                    if info["has_diff"]
-                    else "✓ Identical"
-                )
+                status = f"✏️  Modified ({info['diff_lines']} lines)" if info["has_diff"] else "✓ Identical"
             elif info["backup_exists"]:
                 status = "❌ Deleted from template"
             else:
@@ -386,12 +356,14 @@ Analyze the following items and provide a JSON response:
             if file_name in [".claude/settings.json", ".moai/config/config.json"]:
                 severity = "medium" if info["diff_lines"] > 10 else "low"
 
-            files_analysis.append({
-                "filename": file_name,
-                "changes": f"{info['diff_lines']} lines changed",
-                "recommendation": "smart_merge",
-                "conflict_severity": severity,
-            })
+            files_analysis.append(
+                {
+                    "filename": file_name,
+                    "changes": f"{info['diff_lines']} lines changed",
+                    "recommendation": "smart_merge",
+                    "conflict_severity": severity,
+                }
+            )
 
             if severity == "high":
                 has_high_risk = True

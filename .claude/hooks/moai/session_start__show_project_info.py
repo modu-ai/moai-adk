@@ -58,7 +58,8 @@ except ImportError:
         if config_path.exists():
             try:
                 return json.loads(config_path.read_text())
-            except Exception:
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+                # JSON parsing, file read, or encoding errors
                 return None
         return None
 
@@ -82,7 +83,8 @@ except ImportError:
                 "total": total,
                 "percentage": round(percentage, 0),
             }
-        except Exception:
+        except (OSError, PermissionError):
+            # Directory access or permission errors
             return {"completed": 0, "total": 0, "percentage": 0}
 
 
@@ -147,7 +149,8 @@ def _run_git_command(cmd: list[str]) -> str:
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
         return result.stdout.strip() if result.returncode == 0 else ""
-    except Exception:
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, OSError):
+        # Git command timeout, subprocess error, or git not found
         return ""
 
 
@@ -181,7 +184,8 @@ def load_git_cache() -> dict[str, Any] | None:
             return cache_data
 
         return None
-    except Exception:
+    except (json.JSONDecodeError, OSError, ValueError, KeyError):
+        # JSON parsing, file read, datetime parsing, or missing key errors
         return None
 
 
@@ -193,7 +197,8 @@ def save_git_cache(data: dict[str, Any]) -> None:
 
         cache_data = {**data, "last_check": datetime.now().isoformat()}
         cache_file.write_text(json.dumps(cache_data, indent=2))
-    except Exception:
+    except (OSError, PermissionError, TypeError):
+        # File write, permission, or JSON serialization errors
         pass  # Silently fail on cache write
 
 
@@ -232,7 +237,8 @@ def get_git_info() -> dict[str, Any]:
                 key = futures[future]
                 try:
                     results[key] = future.result()
-                except Exception:
+                except (TimeoutError, RuntimeError):
+                    # Future execution timeout or runtime errors
                     results[key] = ""
 
         # Process results
@@ -252,7 +258,8 @@ def get_git_info() -> dict[str, Any]:
 
         return git_data
 
-    except Exception:
+    except (RuntimeError, OSError, TimeoutError):
+        # ThreadPoolExecutor, git command, or timeout errors
         return {
             "branch": "unknown",
             "last_commit": "unknown",
@@ -276,7 +283,8 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
         clean = version_str.lstrip("v")
         parts = [int(x) for x in re.split(r"[^\d]+", clean) if x.isdigit()]
         return tuple(parts) if parts else (0,)
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
+        # Version parsing errors (invalid format, None input, type mismatch)
         return (0,)
 
 
@@ -323,7 +331,8 @@ def check_version_update() -> tuple[str, bool]:
             try:
                 cache_data = json.loads(version_cache_file.read_text())
                 latest_version = cache_data.get("latest")
-            except Exception:
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+                # Cache file read or JSON parsing errors
                 pass
 
         # If no cache or cache is stale, skip check (avoid slow subprocess)
@@ -341,7 +350,8 @@ def check_version_update() -> tuple[str, bool]:
             # Same version
             return "(latest)", False
 
-    except Exception:
+    except (ImportError, AttributeError, TypeError):
+        # Import errors or unexpected type/attribute errors
         return "(latest)", False
 
 

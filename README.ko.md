@@ -33,7 +33,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | 섹션 | 대상 |
 |------|------|
 | [7️⃣ 에이전트 가이드](#7-에이전트-가이드) | 전문 에이전트 활용 |
-| [8️⃣ 스킬 라이브러리](#8-스킬-라이브러리-147개) | 147개 스킬 탐색 |
+| [8️⃣ 스킬 라이브러리](#8-스킬-라이브러리-171개) | 171개 스킬 탐색 |
 | [9️⃣ 실용 예제](#9-실용-예제) | 실제 프로젝트 예제 |
 | [🔟 TRUST 5](#10-trust-5-품질-보증) | 품질 보증 체계 |
 
@@ -51,7 +51,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **35명의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **26명의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -75,7 +75,7 @@ MoAI-ADK의 해결책:
 | --------------------- | ------------------------------------------- | ---------------------------------------------- |
 | **SPEC-First**        | 모든 개발은 명확한 명세서로 시작            | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거 |
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화            | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축** |
-| **AI 오케스트레이션** | Mr.Alfred가 35명의 전문 에이전트 지휘       | **SPEC 15-20분**(15-20K tokens)<br/>**구현 1-2시간**(RED-GREEN-REFACTOR)<br/>**문서 10-15분**<br/>수동 대비 **60-70% 시간 절감** |
+| **AI 오케스트레이션** | Mr.Alfred가 26명의 전문 에이전트 지휘       | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
 | **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`/moai:3-sync`)               | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화 |
 | **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소** |
 
@@ -250,7 +250,7 @@ MoAI-ADK로 새로운 기능을 만드는 과정을 **실제 프로젝트 예시
    - ✅ 아키텍처 다이어그램 생성
    - 🚀 배포 준비 완료
 
-**총 시간: 35분**
+**예상 소요 시간: 약 35분** (프로젝트 복잡도에 따라 다름)
 
 ---
 
@@ -341,7 +341,7 @@ sequenceDiagram
 
 **스킬(Skill)란?**
 
-에이전트가 사용하는 전문 지식 모듈입니다. 147개의 스킬이 도메인별로 체계화되어 있습니다.
+에이전트가 사용하는 전문 지식 모듈입니다. 171개의 스킬 (24개 주요 + 147개 모듈)이 도메인별로 체계화되어 있습니다.
 
 **예시:**
 
@@ -639,6 +639,65 @@ def test_calculate_discount_no_discount_for_cheap_items():
 
 ---
 
+### 🚀 v0.28.0 주요 업데이트
+
+**2025년 11월 업데이트**: MoAI-ADK v0.28.0은 토큰 효율성, 스킬 통합, 그리고 에이전트 최적화를 중심으로 대폭 개선되었습니다.
+
+#### 1️⃣ Conditional Auto-load (토큰 최적화)
+
+**문제**: 모든 작업에서 전체 Foundation 스킬을 로드하여 불필요한 토큰 소비
+
+**해결책**: 작업 복잡도에 따라 자동 선택
+- **Simple 작업** (파일 읽기, 간단한 수정): 0 토큰 (Quick Reference만 사용)
+- **Complex 작업** (아키텍처 변경, SPEC 생성): 8,470 토큰 (전체 스킬 자동 로드)
+- **평균 절감**: 세션당 약 5,000 토큰
+
+#### 2️⃣ Skill 통합 및 표준화
+
+**통합 전** (v0.27.x):
+- 5개 분산된 `moai-foundation-*` 스킬
+- 11개 분산된 `moai-core-*` 스킬
+- 91개 스킬에서 표준화 문제 발견
+
+**통합 후** (v0.28.0):
+- `moai-foundation-core`: 9개 모듈 통합 (TRUST 5, SPEC-First TDD, Delegation Patterns 등)
+- `moai-core-claude-code`: 7개 레퍼런스 통합 (Skills, Sub-agents, Commands 등)
+- **91개 스킬 표준화 완료**: 일관된 YAML 헤더, Progressive Disclosure 구조
+
+#### 3️⃣ 에이전트 최적화 (35 → 26)
+
+**변경사항**:
+- **역할 명확화**: 중복된 에이전트 통합 및 재분류
+- **7-Tier 계층**: `{domain}-{role}` 명명 규칙 엄격 적용
+- **MCP Resume Pattern**: Context 연속성으로 40-60% 토큰 절감
+
+**7-Tier 구조**:
+```
+Tier 1: workflow-* (Command Processors)      - Always Active
+Tier 2: core-* (Orchestration & Quality)     - Auto-triggered
+Tier 3: {domain}-* (Domain Experts)          - Lazy-loaded
+Tier 4: mcp-* (MCP Integrators)              - Resume-enabled
+Tier 5: factory-* (Factory Agents)           - Meta-development
+Tier 6: support-* (Support Services)         - On-demand
+Tier 7: ai-* (AI & Specialized)              - Specialized tasks
+```
+
+#### 4️⃣ 백업 및 복구 전략
+
+**기능**:
+- **Backup-and-replace**: 업데이트 전 자동 백업
+- **Interactive Skills 복구**: 사용자가 선택적으로 스킬 복원
+- **충돌 방지**: 템플릿과 로컬 변경사항 안전하게 병합
+
+#### 5️⃣ 다국어 지원 강화
+
+**완료**:
+- 63개 파일 Korean → English 완전 번역
+- **Rule 10**: AskUserQuestion 언어 규칙 추가
+- 모든 사용자 인터페이스 다국어 지원
+
+---
+
 ## 4. 설치 및 설정
 
 ### 📋 전제조건
@@ -847,17 +906,27 @@ MoAI-ADK의 개발 워크플로우는 6개의 핵심 커맨드로 구성되어 �
 **사용법:**
 
 ```bash
-/moai:0-project
+/moai:0-project              # 기본 모드 (프로젝트 초기화)
+/moai:0-project SETTINGS     # 설정 모드 (v0.28.0 신규)
 ```
 
-**동작:**
+**기본 모드 동작:**
 
 1. `.moai/` 디렉토리 구조 생성
 2. `.claude/settings.json` 템플릿 생성
 3. Git 저장소 초기화 (선택)
 4. `.claude/` 에이전트/스킬 동기화
 
-**위임 에이전트:** `project-manager`
+**SETTINGS 모드 (v0.28.0 신규):**
+
+대화형 프로젝트 설정 구성:
+- 프로젝트 이름 및 소유자 설정
+- 언어 및 로케일 선택
+- Git 전략 선택 (Personal/Team)
+- TDD 및 품질 기준 설정
+- `tab_schema.json` 자동 완성 지원
+
+**위임 에이전트:** `workflow-project`
 
 ---
 
@@ -975,7 +1044,14 @@ MoAI-ADK의 개발 워크플로우는 6개의 핵심 커맨드로 구성되어 �
 
 ## 7. 에이전트 가이드
 
-MoAI-ADK는 **35명의 전문 AI 에이전트**를 제공합니다. 각 에이전트는 특정 분야의 전문가로서 고도로 특화된 역할을 수행하며, Mr.Alfred 슈퍼 에이전트 오케스트레이터에 의해 자동으로 선택되고 조율됩니다. 사용자가 요청하면 Alfred는 요구사항을 분석하여 필요한 에이전트들을 순차적으로 또는 병렬로 위임하며, 각 에이전트의 결과를 다음 에이전트의 입력으로 전달하는 방식으로 작업을 진행합니다. 이러한 시스템을 통해 요구사항 분석, 설계, 구현, 테스트, 보안 검증, 배포에 이르기까지 전체 개발 라이프사이클이 자동화되고 최적화됩니다. 에이전트들은 5가지 카테고리로 분류되며, 각 카테고리는 특정 개발 단계를 담당합니다.
+MoAI-ADK는 **26명의 전문 AI 에이전트**를 제공합니다. 각 에이전트는 특정 분야의 전문가로서 고도로 특화된 역할을 수행하며, Mr.Alfred 슈퍼 에이전트 오케스트레이터에 의해 자동으로 선택되고 조율됩니다. 사용자가 요청하면 Alfred는 요구사항을 분석하여 필요한 에이전트들을 순차적으로 또는 병렬로 위임하며, 각 에이전트의 결과를 다음 에이전트의 입력으로 전달하는 방식으로 작업을 진행합니다.
+
+**v0.28.0 주요 개선사항**:
+- **에이전트 통합 및 최적화**: 35개 → 26개로 통합하여 역할 명확화 및 효율성 향상
+- **7-Tier 계층 구조**: `{domain}-{role}` 명명 규칙으로 일관성 강화
+- **MCP Resume Pattern**: MCP 통합 에이전트의 컨텍스트 연속성 지원으로 40-60% 토큰 절감
+
+에이전트들은 7-Tier 계층 구조로 분류되며, 각 계층은 특정 개발 단계를 담당합니다.
 
 ### 📋 기획 및 설계 (Planning & Design)
 
@@ -983,7 +1059,7 @@ MoAI-ADK는 **35명의 전문 AI 에이전트**를 제공합니다. 각 에이�
 | ---------------------- | ------------- | ------------------------------------ | ---------------------- |
 | **spec-builder**       | 요구사항 분석 | EARS 포맷 SPEC 작성, 요구사항 명확화 | `moai-foundation-ears` |
 | **api-designer**       | API 설계      | REST/GraphQL 엔드포인트 설계         | `moai-domain-web-api`  |
-| **component-designer** | 컴포넌트 설계 | 재사용 가능한 UI 컴포넌트 설계       | `moai-design-systems`  |
+| **component-designer** | 컴포넌트 설계 | 재사용 가능한 UI 컴포넌트 설계       | `moai-core-uiux`  |
 | **ui-ux-expert**       | UX 설계       | 사용자 경험 및 인터페이스 설계       | `moai-domain-figma`    |
 | **plan**               | 전략 수립     | 복잡한 작업을 단계별로 분해          | `moai-core-workflow`   |
 
@@ -1026,9 +1102,15 @@ MoAI-ADK는 **35명의 전문 AI 에이전트**를 제공합니다. 각 에이�
 
 ---
 
-## 8. 스킬 라이브러리 (106개)
+## 8. 스킬 라이브러리 (171개)
 
-스킬(Skill)은 MoAI-ADK의 핵심 지식 모듈입니다. 각 에이전트가 작업할 때 사용하는 전문 지식, 패턴, 최적 사례를 담고 있으며, **106개의 스킬**이 **10개 Tier**로 체계화되어 있습니다.
+스킬(Skill)은 MoAI-ADK의 핵심 지식 모듈입니다. 각 에이전트가 작업할 때 사용하는 전문 지식, 패턴, 최적 사례를 담고 있으며, **171개의 스킬** (24개 주요 스킬 + 147개 모듈)이 체계화되어 있습니다.
+
+**v0.28.0 주요 개선사항**:
+- **Skill 통합**: 5개 `moai-foundation-*` → `moai-foundation-core` 통합
+- **Skill 표준화**: 11개 `moai-core-*` → `moai-core-claude-code` 통합
+- **91개 스킬 표준화 완료**: 일관된 구조 및 메타데이터
+- **Conditional Auto-load**: Simple 작업 0 토큰, Complex 작업 8,470 토큰
 
 ### 🚀 작업별 스킬 찾기 (Task-Based Search)
 
@@ -1053,19 +1135,25 @@ MoAI-ADK는 **35명의 전문 AI 에이전트**를 제공합니다. 각 에이�
 
 ### 📊 스킬 포트폴리오 통계
 
-- **총 스킬 수**: 106개 (82개 계층화 + 24개 특수)
-- **10-Tier 분류**: 언어에서 특화 라이브러리까지 체계적 조직화
-- **100% 메타데이터 준수**: 모든 스킬에 7개 필수 필드 포함
-- **1,270개 자동 트리거 키워드**: 사용자 요청에서 지능적 스킬 선택
-- **94% 에이전트-스킬 커버리지**: 35개 에이전트 중 33개가 명시적 스킬 참조
+- **총 스킬 수**: 171개 (24개 주요 스킬 디렉토리 + 147개 모듈 파일)
+- **통합된 Foundation 스킬**: `moai-foundation-core` (9개 모듈 통합)
+- **통합된 Claude Code 스킬**: `moai-core-claude-code` (7개 레퍼런스 통합)
+- **Progressive Disclosure**: Quick Reference (30초) → Implementation (5분) → Advanced (10+분)
+- **100% 메타데이터 준수**: 모든 스킬에 필수 YAML 헤더 포함
+- **Conditional Auto-load**: 작업 복잡도에 따라 0 또는 8,470 토큰 자동 선택
 
-### 🎯 계층별 스킬 구조 (Tier Structure)
+### 🎯 주요 통합 스킬 (Merged Skills)
 
-- **Tier 1-2**: Foundation (언어, 도메인) - 36개 스킬
-- **Tier 3-5**: Core Architecture (보안, 코어, 파운데이션) - 19개 스킬
-- **Tier 6-7**: Platform Integration (Claude Code, BaaS) - 17개 스킬
-- **Tier 8-10**: Applied Workflows (필수 도구, 프로젝트, 라이브러리) - 6개 스킬
-- **Special Skills**: 계층 미분류 유틸리티 - 24개 스킬
+**moai-foundation-core** (9개 모듈):
+- TRUST 5 Framework (품질 보증)
+- SPEC-First TDD (개발 워크플로우)
+- Delegation Patterns (에이전트 조율)
+- Token Optimization (200K 예산 관리)
+- Progressive Disclosure (3-tier 지식 전달)
+- Modular System (파일 조직화)
+- Agents Reference (26개 에이전트 카탈로그)
+- Commands Reference (6개 핵심 커맨드)
+- Execution Rules (보안, Git 전략)
 
 💡 **팁**: 위의 "작업별 검색"으로 필요한 스킬을 빠르게 찾거나, 아래에서 Tier별로 탐색할 수 있습니다.
 
@@ -1238,11 +1326,9 @@ AI 및 특화 라이브러리 (2개)
 | `moai-change-logger`             | 변경 로그 (변경 추적, 버전 관리, Changelog 생성)                          |
 | `moai-cloud-aws-advanced`        | AWS 고급 (고급 AWS 패턴, 서버리스, Lambda, S3)                           |
 | `moai-cloud-gcp-advanced`        | GCP 고급 (고급 GCP 패턴, Cloud Run, BigQuery)                            |
-| `moai-component-designer`        | 컴포넌트 설계 (컴포넌트 패턴, 재사용성, 구조화)                          |
 | `moai-context7-integration`      | Context7 통합 (Context7 MCP, 라이브러리 문서 조회)                       |
-| `moai-design-systems`            | 디자인 시스템 (디자인 패턴, 디자인 토큰, 일관성)                         |
+| `moai-core-uiux`                 | 핵심 UI/UX (디자인 시스템, 컴포넌트 아키텍처, 접근성, 아이콘, 테마)      |
 | `moai-document-processing`       | 문서 처리 (문서 파싱, 변환, 추출, 처리)                                  |
-| `moai-icons-vector`              | 벡터 아이콘 (아이콘 관리, SVG, 아이콘 시스템)                            |
 | `moai-internal-comms`            | 내부 통신 (에이전트 조율, 메시지 전달, 워크플로우)                       |
 | `moai-jit-docs-enhanced`         | JIT 문서 강화 (즉시 문서, 컨텍스트 인식, 동적 생성)                      |
 | `moai-learning-optimizer`        | 학습 최적화 (적응형 학습, 최적화, 추천 시스템)                           |
@@ -2641,7 +2727,7 @@ claude
 MoAI-ADK는 프로젝트 내부에 포괄적인 메모리 파일 시스템을 제공합니다:
 
 - `.moai/memory/execution-rules.md` - 실행 규칙 및 제약사항
-- `.moai/memory/agents.md` - 35개 전문 에이전트 카탈로그
+- `.moai/memory/agents.md` - 26개 전문 에이전트 카탈로그
 - `.moai/memory/commands.md` - MoAI 커맨드 레퍼런스
 - `.moai/memory/delegation-patterns.md` - 에이전트 위임 패턴
 - `.moai/memory/token-optimization.md` - 토큰 최적화 전략

@@ -56,9 +56,7 @@ def status() -> None:
         config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
             console.print("[yellow]⚠ No .moai/config/config.json found[/yellow]")
-            console.print(
-                "[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]"
-            )
+            console.print("[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]")
             raise click.Abort()
 
         with open(config_path) as f:
@@ -66,9 +64,7 @@ def status() -> None:
 
         # Count SPEC documents
         specs_dir = Path.cwd() / ".moai" / "specs"
-        spec_count = (
-            len(list(specs_dir.glob("SPEC-*/spec.md"))) if specs_dir.exists() else 0
-        )
+        spec_count = len(list(specs_dir.glob("SPEC-*/spec.md"))) if specs_dir.exists() else 0
 
         # Build the status table
         table = Table(show_header=False, box=None, padding=(0, 2))
@@ -78,9 +74,7 @@ def status() -> None:
         # Read from project section (with legacy fallback)
         project = config.get("project", {})
         table.add_row("Mode", project.get("mode") or config.get("mode", "unknown"))
-        table.add_row(
-            "Locale", project.get("locale") or config.get("locale", "unknown")
-        )
+        table.add_row("Locale", project.get("locale") or config.get("locale", "unknown"))
         table.add_row("SPECs", str(spec_count))
 
         # Optionally include Git information

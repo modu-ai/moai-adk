@@ -51,14 +51,12 @@ except ImportError:
             pass
 
         def get_stats(self):
-            return {
-                'hits': self.hits,
-                'misses': self.misses
-            }
+            return {"hits": self.hits, "misses": self.misses}
 
     class TokenBudgetManager:
         def __init__(self, *args, **kwargs):
             pass
+
 
 # Create Phase enum for hook system
 class Phase(Enum):
@@ -73,6 +71,7 @@ class Phase(Enum):
 
 class HookEvent(Enum):
     """Hook event types from Claude Code"""
+
     SESSION_START = "SessionStart"
     SESSION_END = "SessionEnd"
     USER_PROMPT_SUBMIT = "UserPromptSubmit"
@@ -84,15 +83,17 @@ class HookEvent(Enum):
 
 class HookPriority(Enum):
     """Hook execution priority levels"""
-    CRITICAL = 1    # System-critical hooks (security, validation)
-    HIGH = 2        # High-impact hooks (performance optimization)
-    NORMAL = 3      # Standard hooks (logging, cleanup)
-    LOW = 4         # Optional hooks (analytics, metrics)
+
+    CRITICAL = 1  # System-critical hooks (security, validation)
+    HIGH = 2  # High-impact hooks (performance optimization)
+    NORMAL = 3  # Standard hooks (logging, cleanup)
+    LOW = 4  # Optional hooks (analytics, metrics)
 
 
 @dataclass
 class HookMetadata:
     """Metadata for a hook execution"""
+
     hook_path: str
     event_type: HookEvent
     priority: HookPriority
@@ -108,6 +109,7 @@ class HookMetadata:
 @dataclass
 class HookExecutionResult:
     """Result of hook execution"""
+
     hook_path: str
     success: bool
     execution_time_ms: float
@@ -120,6 +122,7 @@ class HookExecutionResult:
 @dataclass
 class HookPerformanceMetrics:
     """Performance metrics for hook system"""
+
     total_executions: int = 0
     successful_executions: int = 0
     average_execution_time_ms: float = 0.0
@@ -143,7 +146,7 @@ class JITEnhancedHookManager:
         hooks_directory: Optional[Path] = None,
         cache_directory: Optional[Path] = None,
         max_concurrent_hooks: int = 5,
-        enable_performance_monitoring: bool = True
+        enable_performance_monitoring: bool = True,
     ):
         """Initialize JIT-Enhanced Hook Manager
 
@@ -180,10 +183,7 @@ class JITEnhancedHookManager:
         self.cache_directory.mkdir(parents=True, exist_ok=True)
 
         # Initialize hook result cache
-        self._result_cache = ContextCache(
-            max_size=100,
-            max_memory_mb=50
-        )
+        self._result_cache = ContextCache(max_size=100, max_memory_mb=50)
 
         # Initialize metadata cache
         self._metadata_cache: Dict[str, Dict[str, Any]] = {}
@@ -236,7 +236,7 @@ class JITEnhancedHookManager:
             estimated_execution_time_ms=self._estimate_execution_time(hook_path),
             phase_relevance=self._determine_phase_relevance(hook_path, event_type),
             token_cost_estimate=self._estimate_token_cost(hook_path),
-            parallel_safe=self._is_parallel_safe(hook_path)
+            parallel_safe=self._is_parallel_safe(hook_path),
         )
 
         self._hook_registry[hook_path] = metadata
@@ -363,7 +363,7 @@ class JITEnhancedHookManager:
         if any(keyword in filename for keyword in ["analysis", "report", "generate"]):
             base_cost += 500  # Higher cost for analysis/generation
         elif any(keyword in filename for keyword in ["log", "simple", "basic"]):
-            base_cost += 50   # Lower cost for simple operations
+            base_cost += 50  # Lower cost for simple operations
 
         return base_cost
 
@@ -388,7 +388,7 @@ class JITEnhancedHookManager:
         context: Dict[str, Any],
         user_input: Optional[str] = None,
         phase: Optional[Phase] = None,
-        max_total_execution_time_ms: float = 1000.0
+        max_total_execution_time_ms: float = 1000.0,
     ) -> List[HookExecutionResult]:
         """Execute hooks for a specific event with JIT optimization
 
@@ -419,14 +419,10 @@ class JITEnhancedHookManager:
         prioritized_hooks = self._prioritize_hooks(hook_paths, phase)
 
         # Load optimized context using JIT system
-        optimized_context = await self._load_optimized_context(
-            event_type, context, phase, prioritized_hooks
-        )
+        optimized_context = await self._load_optimized_context(event_type, context, phase, prioritized_hooks)
 
         # Execute hooks with optimization
-        results = await self._execute_hooks_optimized(
-            prioritized_hooks, optimized_context, max_total_execution_time_ms
-        )
+        results = await self._execute_hooks_optimized(prioritized_hooks, optimized_context, max_total_execution_time_ms)
 
         # Update performance metrics
         if self.enable_performance_monitoring:
@@ -434,11 +430,7 @@ class JITEnhancedHookManager:
 
         return results
 
-    def _prioritize_hooks(
-        self,
-        hook_paths: List[str],
-        phase: Optional[Phase]
-    ) -> List[Tuple[str, float]]:
+    def _prioritize_hooks(self, hook_paths: List[str], phase: Optional[Phase]) -> List[Tuple[str, float]]:
         """Prioritize hooks based on phase relevance and performance characteristics
 
         Args:
@@ -485,7 +477,7 @@ class JITEnhancedHookManager:
         event_type: HookEvent,
         context: Dict[str, Any],
         phase: Optional[Phase],
-        prioritized_hooks: List[Tuple[str, float]]
+        prioritized_hooks: List[Tuple[str, float]],
     ) -> Dict[str, Any]:
         """Load optimized context using JIT system for hook execution
 
@@ -506,8 +498,7 @@ class JITEnhancedHookManager:
         # Load context using JIT system
         try:
             jit_context, context_metrics = await self.jit_loader.load_context(
-                user_input=synthetic_input,
-                context=context
+                user_input=synthetic_input, context=context
             )
         except (TypeError, AttributeError):
             # Fallback to basic context if JIT loader interface is different
@@ -515,20 +506,19 @@ class JITEnhancedHookManager:
 
         # Add hook-specific context
         optimized_context = jit_context.copy()
-        optimized_context.update({
-            "hook_event_type": event_type.value,
-            "hook_phase": phase.value if phase else None,
-            "hook_execution_mode": "optimized",
-            "prioritized_hooks": [hook_path for hook_path, _ in prioritized_hooks[:5]]  # Top 5 hooks
-        })
+        optimized_context.update(
+            {
+                "hook_event_type": event_type.value,
+                "hook_phase": phase.value if phase else None,
+                "hook_execution_mode": "optimized",
+                "prioritized_hooks": [hook_path for hook_path, _ in prioritized_hooks[:5]],  # Top 5 hooks
+            }
+        )
 
         return optimized_context
 
     async def _execute_hooks_optimized(
-        self,
-        prioritized_hooks: List[Tuple[str, float]],
-        context: Dict[str, Any],
-        max_total_execution_time_ms: float
+        self, prioritized_hooks: List[Tuple[str, float]], context: Dict[str, Any], max_total_execution_time_ms: float
     ) -> List[HookExecutionResult]:
         """Execute hooks with optimization and time management
 
@@ -556,9 +546,7 @@ class JITEnhancedHookManager:
 
         # Execute parallel hooks first (faster)
         if parallel_hooks and remaining_time > 0:
-            parallel_results = await self._execute_hooks_parallel(
-                parallel_hooks, context, remaining_time
-            )
+            parallel_results = await self._execute_hooks_parallel(parallel_hooks, context, remaining_time)
             results.extend(parallel_results)
 
             # Update remaining time
@@ -567,18 +555,13 @@ class JITEnhancedHookManager:
 
         # Execute sequential hooks with remaining time
         if sequential_hooks and remaining_time > 0:
-            sequential_results = await self._execute_hooks_sequential(
-                sequential_hooks, context, remaining_time
-            )
+            sequential_results = await self._execute_hooks_sequential(sequential_hooks, context, remaining_time)
             results.extend(sequential_results)
 
         return results
 
     async def _execute_hooks_parallel(
-        self,
-        hook_paths: List[str],
-        context: Dict[str, Any],
-        max_total_time_ms: float
+        self, hook_paths: List[str], context: Dict[str, Any], max_total_time_ms: float
     ) -> List[HookExecutionResult]:
         """Execute hooks in parallel with time management"""
         results = []
@@ -597,7 +580,7 @@ class JITEnhancedHookManager:
                         execution_time_ms=0.0,
                         token_usage=0,
                         output=None,
-                        error_message=str(e)
+                        error_message=str(e),
                     )
 
         # Execute hooks with timeout
@@ -606,8 +589,7 @@ class JITEnhancedHookManager:
         try:
             # Wait for all hooks with total timeout
             completed_results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=max_total_time_ms / 1000.0
+                asyncio.gather(*tasks, return_exceptions=True), timeout=max_total_time_ms / 1000.0
             )
 
             for result in completed_results:
@@ -621,7 +603,7 @@ class JITEnhancedHookManager:
                         execution_time_ms=0.0,
                         token_usage=0,
                         output=None,
-                        error_message=str(result)
+                        error_message=str(result),
                     )
                     results.append(error_result)
 
@@ -632,10 +614,7 @@ class JITEnhancedHookManager:
         return results
 
     async def _execute_hooks_sequential(
-        self,
-        hook_paths: List[str],
-        context: Dict[str, Any],
-        max_total_time_ms: float
+        self, hook_paths: List[str], context: Dict[str, Any], max_total_time_ms: float
     ) -> List[HookExecutionResult]:
         """Execute hooks sequentially with time management"""
         results = []
@@ -660,17 +639,13 @@ class JITEnhancedHookManager:
                     execution_time_ms=0.0,
                     token_usage=0,
                     output=None,
-                    error_message=str(e)
+                    error_message=str(e),
                 )
                 results.append(error_result)
 
         return results
 
-    async def _execute_single_hook(
-        self,
-        hook_path: str,
-        context: Dict[str, Any]
-    ) -> HookExecutionResult:
+    async def _execute_single_hook(self, hook_path: str, context: Dict[str, Any]) -> HookExecutionResult:
         """Execute a single hook and return result
 
         Args:
@@ -696,9 +671,7 @@ class JITEnhancedHookManager:
                 raise ValueError(f"Hook metadata not found for {hook_path}")
 
             # Execute hook in subprocess for isolation
-            result = await self._execute_hook_subprocess(
-                full_hook_path, context, metadata
-            )
+            result = await self._execute_hook_subprocess(full_hook_path, context, metadata)
 
             # Cache successful results
             if result.success:
@@ -718,14 +691,11 @@ class JITEnhancedHookManager:
                 execution_time_ms=execution_time,
                 token_usage=0,
                 output=None,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     async def _execute_hook_subprocess(
-        self,
-        hook_path: Path,
-        context: Dict[str, Any],
-        metadata: HookMetadata
+        self, hook_path: Path, context: Dict[str, Any], metadata: HookMetadata
     ) -> HookExecutionResult:
         """Execute hook in isolated subprocess
 
@@ -747,17 +717,18 @@ class JITEnhancedHookManager:
             timeout_seconds = max(1.0, metadata.estimated_execution_time_ms / 1000.0)
 
             process = await asyncio.create_subprocess_exec(
-                "uv", "run", str(hook_path),
+                "uv",
+                "run",
+                str(hook_path),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=Path.cwd()
+                cwd=Path.cwd(),
             )
 
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(input=hook_input.encode()),
-                    timeout=timeout_seconds
+                    process.communicate(input=hook_input.encode()), timeout=timeout_seconds
                 )
             except asyncio.TimeoutError:
                 process.kill()
@@ -787,7 +758,7 @@ class JITEnhancedHookManager:
                 execution_time_ms=execution_time_ms,
                 token_usage=metadata.token_cost_estimate,
                 output=output,
-                error_message=error_message
+                error_message=error_message,
             )
 
         except Exception as e:
@@ -799,7 +770,7 @@ class JITEnhancedHookManager:
                 execution_time_ms=execution_time_ms,
                 token_usage=metadata.token_cost_estimate,
                 output=None,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     def _update_hook_metadata(self, hook_path: str, result: HookExecutionResult) -> None:
@@ -823,11 +794,7 @@ class JITEnhancedHookManager:
         metadata.last_execution_time = datetime.now()
 
     def _update_performance_metrics(
-        self,
-        event_type: HookEvent,
-        phase: Optional[Phase],
-        results: List[HookExecutionResult],
-        start_time: float
+        self, event_type: HookEvent, phase: Optional[Phase], results: List[HookExecutionResult], start_time: float
     ) -> None:
         """Update performance metrics"""
         with self._performance_lock:
@@ -835,17 +802,14 @@ class JITEnhancedHookManager:
             self.metrics.successful_executions += sum(1 for r in results if r.success)
 
             total_execution_time = sum(r.execution_time_ms for r in results)
-            self.metrics.average_execution_time_ms = (
-                (self.metrics.average_execution_time_ms * 0.9) +
-                (total_execution_time / len(results) * 0.1)
+            self.metrics.average_execution_time_ms = (self.metrics.average_execution_time_ms * 0.9) + (
+                total_execution_time / len(results) * 0.1
             )
 
             self.metrics.total_token_usage += sum(r.token_usage for r in results)
 
             if phase:
-                self.metrics.phase_distribution[phase] = (
-                    self.metrics.phase_distribution.get(phase, 0) + 1
-                )
+                self.metrics.phase_distribution[phase] = self.metrics.phase_distribution.get(phase, 0) + 1
 
             self.metrics.event_type_distribution[event_type] = (
                 self.metrics.event_type_distribution.get(event_type, 0) + 1
@@ -855,11 +819,7 @@ class JITEnhancedHookManager:
             self._log_performance_data(event_type, phase, results, start_time)
 
     def _log_performance_data(
-        self,
-        event_type: HookEvent,
-        phase: Optional[Phase],
-        results: List[HookExecutionResult],
-        start_time: float
+        self, event_type: HookEvent, phase: Optional[Phase], results: List[HookExecutionResult], start_time: float
     ) -> None:
         """Log performance data to file"""
         log_entry = {
@@ -877,10 +837,10 @@ class JITEnhancedHookManager:
                     "success": r.success,
                     "execution_time_ms": r.execution_time_ms,
                     "token_usage": r.token_usage,
-                    "error_message": r.error_message
+                    "error_message": r.error_message,
                 }
                 for r in results
-            ]
+            ],
         }
 
         try:
@@ -900,13 +860,11 @@ class JITEnhancedHookManager:
                 cache_hits=self._result_cache.get_stats().get("hits", 0),
                 cache_misses=self._result_cache.get_stats().get("misses", 0),
                 phase_distribution=self.metrics.phase_distribution.copy(),
-                event_type_distribution=self.metrics.event_type_distribution.copy()
+                event_type_distribution=self.metrics.event_type_distribution.copy(),
             )
 
     def get_hook_recommendations(
-        self,
-        event_type: Optional[HookEvent] = None,
-        phase: Optional[Phase] = None
+        self, event_type: Optional[HookEvent] = None, phase: Optional[Phase] = None
     ) -> Dict[str, Any]:
         """Get recommendations for hook optimization
 
@@ -921,7 +879,7 @@ class JITEnhancedHookManager:
             "slow_hooks": [],
             "unreliable_hooks": [],
             "phase_mismatched_hooks": [],
-            "optimization_suggestions": []
+            "optimization_suggestions": [],
         }
 
         # Analyze hook performance
@@ -931,30 +889,36 @@ class JITEnhancedHookManager:
 
             # Check for slow hooks
             if metadata.estimated_execution_time_ms > 200:
-                recommendations["slow_hooks"].append({
-                    "hook_path": hook_path,
-                    "estimated_time_ms": metadata.estimated_execution_time_ms,
-                    "suggestion": "Consider optimizing or making this hook parallel-safe"
-                })
+                recommendations["slow_hooks"].append(
+                    {
+                        "hook_path": hook_path,
+                        "estimated_time_ms": metadata.estimated_execution_time_ms,
+                        "suggestion": "Consider optimizing or making this hook parallel-safe",
+                    }
+                )
 
             # Check for unreliable hooks
             if metadata.success_rate < 0.8:
-                recommendations["unreliable_hooks"].append({
-                    "hook_path": hook_path,
-                    "success_rate": metadata.success_rate,
-                    "suggestion": "Review error handling and improve reliability"
-                })
+                recommendations["unreliable_hooks"].append(
+                    {
+                        "hook_path": hook_path,
+                        "success_rate": metadata.success_rate,
+                        "suggestion": "Review error handling and improve reliability",
+                    }
+                )
 
             # Check for phase mismatch
             if phase:
                 relevance = metadata.phase_relevance.get(phase, 0.0)
                 if relevance < 0.3:
-                    recommendations["phase_mismatched_hooks"].append({
-                        "hook_path": hook_path,
-                        "phase": phase.value,
-                        "relevance": relevance,
-                        "suggestion": "This hook may not be relevant for the current phase"
-                    })
+                    recommendations["phase_mismatched_hooks"].append(
+                        {
+                            "hook_path": hook_path,
+                            "phase": phase.value,
+                            "relevance": relevance,
+                            "suggestion": "This hook may not be relevant for the current phase",
+                        }
+                    )
 
         # Generate optimization suggestions
         if recommendations["slow_hooks"]:
@@ -986,10 +950,12 @@ class JITEnhancedHookManager:
                     hook_path: {
                         "estimated_execution_time_ms": metadata.estimated_execution_time_ms,
                         "success_rate": metadata.success_rate,
-                        "last_execution_time": metadata.last_execution_time.isoformat() if metadata.last_execution_time else None
+                        "last_execution_time": metadata.last_execution_time.isoformat()
+                        if metadata.last_execution_time
+                        else None,
                     }
                     for hook_path, metadata in self._hook_registry.items()
-                }
+                },
             }
 
             with open(metrics_file, "w") as f:
@@ -1016,42 +982,27 @@ def get_jit_hook_manager() -> JITEnhancedHookManager:
 
 # Convenience functions for common hook operations
 async def execute_session_start_hooks(
-    context: Dict[str, Any],
-    user_input: Optional[str] = None
+    context: Dict[str, Any], user_input: Optional[str] = None
 ) -> List[HookExecutionResult]:
     """Execute SessionStart hooks with JIT optimization"""
     manager = get_jit_hook_manager()
-    return await manager.execute_hooks(
-        HookEvent.SESSION_START,
-        context,
-        user_input=user_input
-    )
+    return await manager.execute_hooks(HookEvent.SESSION_START, context, user_input=user_input)
 
 
 async def execute_pre_tool_hooks(
-    context: Dict[str, Any],
-    user_input: Optional[str] = None
+    context: Dict[str, Any], user_input: Optional[str] = None
 ) -> List[HookExecutionResult]:
     """Execute PreToolUse hooks with JIT optimization"""
     manager = get_jit_hook_manager()
-    return await manager.execute_hooks(
-        HookEvent.PRE_TOOL_USE,
-        context,
-        user_input=user_input
-    )
+    return await manager.execute_hooks(HookEvent.PRE_TOOL_USE, context, user_input=user_input)
 
 
 async def execute_session_end_hooks(
-    context: Dict[str, Any],
-    user_input: Optional[str] = None
+    context: Dict[str, Any], user_input: Optional[str] = None
 ) -> List[HookExecutionResult]:
     """Execute SessionEnd hooks with JIT optimization"""
     manager = get_jit_hook_manager()
-    return await manager.execute_hooks(
-        HookEvent.SESSION_END,
-        context,
-        user_input=user_input
-    )
+    return await manager.execute_hooks(HookEvent.SESSION_END, context, user_input=user_input)
 
 
 def get_hook_performance_metrics() -> HookPerformanceMetrics:
@@ -1061,8 +1012,7 @@ def get_hook_performance_metrics() -> HookPerformanceMetrics:
 
 
 def get_hook_optimization_recommendations(
-    event_type: Optional[HookEvent] = None,
-    phase: Optional[Phase] = None
+    event_type: Optional[HookEvent] = None, phase: Optional[Phase] = None
 ) -> Dict[str, Any]:
     """Get hook optimization recommendations"""
     manager = get_jit_hook_manager()
@@ -1077,9 +1027,7 @@ if __name__ == "__main__":
         # Test hook execution
         context = {"test": True, "user": "test_user"}
         results = await manager.execute_hooks(
-            HookEvent.SESSION_START,
-            context,
-            user_input="Testing JIT enhanced hook system"
+            HookEvent.SESSION_START, context, user_input="Testing JIT enhanced hook system"
         )
 
         print(f"Executed {len(results)} hooks")

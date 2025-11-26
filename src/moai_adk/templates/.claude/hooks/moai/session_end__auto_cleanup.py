@@ -31,14 +31,14 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
-    from lib.config_manager import ConfigManager  # noqa: E402
     from lib.common import (  # noqa: E402
         format_duration,
+        get_file_pattern_category,
         get_summary_stats,
         is_root_whitelisted,
-        get_file_pattern_category,
         suggest_moai_location,
     )
+    from lib.config_manager import ConfigManager  # noqa: E402
 except ImportError:
     ConfigManager = None  # type: ignore
     # Fallback implementations if module not found
@@ -62,8 +62,9 @@ except ImportError:
             "mean": statistics.mean(values),
             "min": min(values),
             "max": max(values),
-            "std": statistics.stdev(values) if len(values) > 1 else 0
+            "std": statistics.stdev(values) if len(values) > 1 else 0,
         }
+
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def load_hook_timeout() -> int:
     try:
         config_file = Path(".moai/config/config.json")
         if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 config: Dict[str, Any] = json.load(f)
                 return config.get("hooks", {}).get("timeout_ms", 5000)
     except Exception:
@@ -94,7 +95,7 @@ def get_graceful_degradation() -> bool:
     try:
         config_file = Path(".moai/config/config.json")
         if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 config: Dict[str, Any] = json.load(f)
                 return config.get("hooks", {}).get("graceful_degradation", True)
     except Exception:
@@ -111,11 +112,7 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
     Returns:
         Statistics of cleaned files
     """
-    stats = {
-        "temp_cleaned": 0,
-        "cache_cleaned": 0,
-        "total_cleaned": 0
-    }
+    stats = {"temp_cleaned": 0, "cache_cleaned": 0, "total_cleaned": 0}
 
     try:
         cleanup_config = config.get("auto_cleanup", {})
@@ -128,27 +125,14 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
         # Clean up temporary files
         temp_dir = Path(".moai/temp")
         if temp_dir.exists():
-            stats["temp_cleaned"] = cleanup_directory(
-                temp_dir,
-                cutoff_date,
-                None,
-                patterns=["*"]
-            )
+            stats["temp_cleaned"] = cleanup_directory(temp_dir, cutoff_date, None, patterns=["*"])
 
         # Clean up cache files
         cache_dir = Path(".moai/cache")
         if cache_dir.exists():
-            stats["cache_cleaned"] = cleanup_directory(
-                cache_dir,
-                cutoff_date,
-                None,
-                patterns=["*"]
-            )
+            stats["cache_cleaned"] = cleanup_directory(cache_dir, cutoff_date, None, patterns=["*"])
 
-        stats["total_cleaned"] = (
-            stats["temp_cleaned"] +
-            stats["cache_cleaned"]
-        )
+        stats["total_cleaned"] = stats["temp_cleaned"] + stats["cache_cleaned"]
 
     except Exception as e:
         logger.error(f"File cleanup failed: {e}")
@@ -156,12 +140,7 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
     return stats
 
 
-def cleanup_directory(
-    directory: Path,
-    cutoff_date: datetime,
-    max_files: Optional[int],
-    patterns: List[str]
-) -> int:
+def cleanup_directory(directory: Path, cutoff_date: datetime, max_files: Optional[int], patterns: List[str]) -> int:
     """Clean up directory files
 
     Args:
@@ -238,7 +217,7 @@ def save_session_metrics(payload: Dict[str, Any]) -> bool:
 
         # Save session metrics
         session_file = logs_dir / f"session-{session_metrics['session_id']}.json"
-        with open(session_file, 'w', encoding='utf-8') as f:
+        with open(session_file, "w", encoding="utf-8") as f:
             json.dump(session_metrics, f, indent=2, ensure_ascii=False)
 
         logger.info(f"Session metrics saved: {session_file}")
@@ -274,7 +253,7 @@ def save_work_state(payload: Dict[str, Any]) -> bool:
 
         # Save state
         state_file = memory_dir / "last-session-state.json"
-        with open(state_file, 'w', encoding='utf-8') as f:
+        with open(state_file, "w", encoding="utf-8") as f:
             json.dump(work_state, f, indent=2, ensure_ascii=False)
 
         logger.info(f"Work state saved: {state_file}")
@@ -295,16 +274,13 @@ def check_uncommitted_changes() -> Optional[str]:
         # Execute Git command
         try:
             result: subprocess.CompletedProcess[str] = subprocess.run(
-                ["git", "status", "--porcelain"],
-                capture_output=True,
-                text=True,
-                timeout=1
+                ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1
             )
 
             if result.returncode == 0:
                 uncommitted: str = result.stdout.strip()
                 if uncommitted:
-                    line_count: int = len(uncommitted.split('\n'))
+                    line_count: int = len(uncommitted.split("\n"))
                     return f"⚠️  {line_count} uncommitted files detected - Consider committing or stashing changes"
 
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -323,12 +299,7 @@ def get_current_branch() -> Optional[str]:
         Branch name or None if query fails
     """
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=1
-        )
+        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=1)
 
         if result.returncode == 0:
             return result.stdout.strip()
@@ -342,15 +313,10 @@ def get_current_branch() -> Optional[str]:
 def count_modified_files() -> int:
     """Count number of modified files"""
     try:
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            timeout=1
-        )
+        result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1)
 
         if result.returncode == 0:
-            return len([line for line in result.stdout.strip().split('\n') if line])
+            return len([line for line in result.stdout.strip().split("\n") if line])
 
     except Exception:
         pass
@@ -368,14 +334,11 @@ def count_recent_commits() -> int:
     try:
         # Query commits within 1 hour
         result = subprocess.run(
-            ["git", "rev-list", "--since=1 hour", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=1
+            ["git", "rev-list", "--since=1 hour", "HEAD"], capture_output=True, text=True, timeout=1
         )
 
         if result.returncode == 0:
-            commits = [line for line in result.stdout.strip().split('\n') if line]
+            commits = [line for line in result.stdout.strip().split("\n") if line]
             return len(commits)
 
     except Exception:
@@ -392,7 +355,7 @@ def extract_specs_from_memory() -> List[str]:
         # Query recent SPECs from command_execution_state.json
         state_file = Path(".moai/memory/command-execution-state.json")
         if state_file.exists():
-            with open(state_file, 'r', encoding='utf-8') as f:
+            with open(state_file, "r", encoding="utf-8") as f:
                 state_data = json.load(f)
 
             # Extract recent SPEC IDs
@@ -433,11 +396,7 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
                 # Check for backup directories
                 if item.name.endswith("-backup") or item.name.endswith("_backup") or "_backup_" in item.name:
                     suggested = suggest_moai_location(item.name, config)
-                    violations.append({
-                        "file": item.name + "/",
-                        "type": "directory",
-                        "suggested": suggested
-                    })
+                    violations.append({"file": item.name + "/", "type": "directory", "suggested": suggested})
                 continue
 
             # Skip hidden files and directories
@@ -450,11 +409,7 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
 
             # Not whitelisted - add to violations
             suggested = suggest_moai_location(item.name, config)
-            violations.append({
-                "file": item.name,
-                "type": "file",
-                "suggested": suggested
-            })
+            violations.append({"file": item.name, "type": "file", "suggested": suggested})
 
     except Exception as e:
         logger.warning(f"Failed to scan root violations: {e}")
@@ -476,7 +431,7 @@ def generate_migration_report(violations: List[Dict[str, str]]) -> str:
 
     report_lines = [
         "\n⚠️ Document Management Violations Detected",
-        f"   Found {len(violations)} misplaced file(s) in project root:\n"
+        f"   Found {len(violations)} misplaced file(s) in project root:\n",
     ]
 
     for idx, violation in enumerate(violations, 1):
@@ -485,12 +440,14 @@ def generate_migration_report(violations: List[Dict[str, str]]) -> str:
         report_lines.append(f"   {idx}. {file_display} → {suggested}")
 
     report_lines.append("\n   Action: Move files to suggested locations or update root_whitelist")
-    report_lines.append("   Guide: Skill(\"moai-core-document-management\")")
+    report_lines.append('   Guide: Skill("moai-core-document-management")')
 
     return "\n".join(report_lines)
 
 
-def generate_session_summary(cleanup_stats: Dict[str, int], work_state: Dict[str, Any], violations_count: int = 0) -> str:
+def generate_session_summary(
+    cleanup_stats: Dict[str, int], work_state: Dict[str, Any], violations_count: int = 0
+) -> str:
     """Generate session summary (P1-3)
 
     Args:
@@ -576,7 +533,7 @@ def main() -> None:
                 "session_metrics_saved": False,
                 "uncommitted_warning": None,
                 "session_summary": "",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             # P0-1: Save session metrics
@@ -589,7 +546,7 @@ def main() -> None:
                 results["work_state_saved"] = True
                 work_state = {
                     "uncommitted_files": count_uncommitted_files(),
-                    "specs_in_progress": extract_specs_from_memory()
+                    "specs_in_progress": extract_specs_from_memory(),
                 }
 
             # P0-3: Warn uncommitted changes
@@ -609,10 +566,7 @@ def main() -> None:
                 violations = scan_root_violations(config)
                 if violations:
                     migration_report = generate_migration_report(violations)
-                    results["document_violations"] = {
-                        "count": len(violations),
-                        "violations": violations
-                    }
+                    results["document_violations"] = {"count": len(violations), "violations": violations}
 
             # P1-3: Generate session summary
             session_summary = generate_session_summary(cleanup_stats, work_state, len(violations))
@@ -645,7 +599,7 @@ def main() -> None:
             "success": False,
             "error": f"Hook execution timeout: {str(e)}",
             "graceful_degradation": graceful_degradation,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         if graceful_degradation:
@@ -660,7 +614,7 @@ def main() -> None:
             "success": False,
             "error": f"Hook execution failed: {str(e)}",
             "graceful_degradation": graceful_degradation,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         if graceful_degradation:

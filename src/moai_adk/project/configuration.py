@@ -19,14 +19,14 @@ class ConfigurationManager:
     """Manages project configuration with 31 settings coverage"""
 
     def __init__(self, config_path: Optional[Path] = None):
-        self.config_path = config_path or Path('.moai/config/config.json')
+        self.config_path = config_path or Path(".moai/config/config.json")
         self.schema = None
         self._config_cache = None
 
     def load(self) -> Dict[str, Any]:
         """Load configuration from file"""
         if self.config_path.exists():
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, "r") as f:
                 self._config_cache = json.load(f)
                 return self._config_cache
         return {}
@@ -39,11 +39,11 @@ class ConfigurationManager:
     def get_auto_detect_fields(self) -> List[Dict[str, str]]:
         """Get auto-detect field definitions"""
         return [
-            {'field': 'project.language', 'type': 'auto-detect'},
-            {'field': 'project.locale', 'type': 'auto-detect'},
-            {'field': 'language.conversation_language_name', 'type': 'auto-detect'},
-            {'field': 'project.template_version', 'type': 'auto-detect'},
-            {'field': 'moai.version', 'type': 'auto-detect'},
+            {"field": "project.language", "type": "auto-detect"},
+            {"field": "project.locale", "type": "auto-detect"},
+            {"field": "language.conversation_language_name", "type": "auto-detect"},
+            {"field": "project.template_version", "type": "auto-detect"},
+            {"field": "moai.version", "type": "auto-detect"},
         ]
 
     def save(self, config: Dict[str, Any]) -> bool:
@@ -53,15 +53,15 @@ class ConfigurationManager:
 
         # Validate completeness
         if not self._validate_complete(config):
-            raise ValueError('Configuration missing required fields')
+            raise ValueError("Configuration missing required fields")
 
         # Ensure directory exists
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Write atomically
-        temp_path = self.config_path.with_suffix('.tmp')
+        temp_path = self.config_path.with_suffix(".tmp")
         try:
-            with open(temp_path, 'w') as f:
+            with open(temp_path, "w") as f:
                 json.dump(config, f, indent=2)
 
             # Atomic rename
@@ -95,35 +95,35 @@ class ConfigurationManager:
     def _parse_responses(self, responses: Dict[str, Any]) -> Dict[str, Any]:
         """Parse flat response dict into nested config structure"""
         config = {
-            'user': {},
-            'language': {},
-            'project': {},
-            'git_strategy': {
-                'personal': {},
-                'team': {},
+            "user": {},
+            "language": {},
+            "project": {},
+            "git_strategy": {
+                "personal": {},
+                "team": {},
             },
-            'constitution': {},
-            'moai': {},
+            "constitution": {},
+            "moai": {},
         }
 
         # Map responses to config structure
         mapping = {
-            'user_name': ('user', 'name'),
-            'conversation_language': ('language', 'conversation_language'),
-            'agent_prompt_language': ('language', 'agent_prompt_language'),
-            'project_name': ('project', 'name'),
-            'project_owner': ('project', 'owner'),
-            'project_description': ('project', 'description'),
-            'git_strategy_mode': ('git_strategy', 'mode'),
-            'git_strategy_workflow': ('git_strategy', 'workflow'),
-            'git_personal_auto_checkpoint': ('git_strategy', 'personal', 'auto_checkpoint'),
-            'git_personal_push_remote': ('git_strategy', 'personal', 'push_to_remote'),
-            'git_team_auto_pr': ('git_strategy', 'team', 'auto_pr'),
-            'git_team_draft_pr': ('git_strategy', 'team', 'draft_pr'),
-            'test_coverage_target': ('constitution', 'test_coverage_target'),
-            'enforce_tdd': ('constitution', 'enforce_tdd'),
-            'documentation_mode': ('project', 'documentation_mode'),
-            'documentation_depth': ('project', 'documentation_depth'),
+            "user_name": ("user", "name"),
+            "conversation_language": ("language", "conversation_language"),
+            "agent_prompt_language": ("language", "agent_prompt_language"),
+            "project_name": ("project", "name"),
+            "project_owner": ("project", "owner"),
+            "project_description": ("project", "description"),
+            "git_strategy_mode": ("git_strategy", "mode"),
+            "git_strategy_workflow": ("git_strategy", "workflow"),
+            "git_personal_auto_checkpoint": ("git_strategy", "personal", "auto_checkpoint"),
+            "git_personal_push_remote": ("git_strategy", "personal", "push_to_remote"),
+            "git_team_auto_pr": ("git_strategy", "team", "auto_pr"),
+            "git_team_draft_pr": ("git_strategy", "team", "draft_pr"),
+            "test_coverage_target": ("constitution", "test_coverage_target"),
+            "enforce_tdd": ("constitution", "enforce_tdd"),
+            "documentation_mode": ("project", "documentation_mode"),
+            "documentation_depth": ("project", "documentation_depth"),
         }
 
         for response_key, response_value in responses.items():
@@ -146,27 +146,27 @@ class ConfigurationManager:
     def _validate_complete(self, config: Dict[str, Any]) -> bool:
         """Validate that config has all required fields"""
         required_fields = [
-            'user.name',
-            'language.conversation_language',
-            'language.agent_prompt_language',
-            'project.name',
-            'project.owner',
-            'git_strategy.mode',
-            'constitution.test_coverage_target',
-            'constitution.enforce_tdd',
-            'project.documentation_mode',
+            "user.name",
+            "language.conversation_language",
+            "language.agent_prompt_language",
+            "project.name",
+            "project.owner",
+            "git_strategy.mode",
+            "constitution.test_coverage_target",
+            "constitution.enforce_tdd",
+            "project.documentation_mode",
         ]
 
         flat = self._flatten_config(config)
         return all(field in flat for field in required_fields)
 
     @staticmethod
-    def _flatten_config(config: Dict[str, Any], prefix: str = '') -> Dict[str, Any]:
+    def _flatten_config(config: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
         """Flatten nested config for easier validation"""
         result = {}
 
         for key, value in config.items():
-            new_key = f'{prefix}.{key}' if prefix else key
+            new_key = f"{prefix}.{key}" if prefix else key
             if isinstance(value, dict):
                 result.update(ConfigurationManager._flatten_config(value, new_key))
             else:
@@ -177,9 +177,9 @@ class ConfigurationManager:
     def _create_backup(self) -> None:
         """Create backup of existing config"""
         if self.config_path.exists():
-            backup_path = self.config_path.with_suffix('.backup')
-            with open(self.config_path, 'r') as src:
-                with open(backup_path, 'w') as dst:
+            backup_path = self.config_path.with_suffix(".backup")
+            with open(self.config_path, "r") as src:
+                with open(backup_path, "w") as dst:
                     dst.write(src.read())
 
 
@@ -200,22 +200,22 @@ class SmartDefaultsEngine:
     def __init__(self):
         """Initialize SmartDefaultsEngine with 16+ predefined defaults."""
         self.defaults = {
-            'git_strategy.personal.workflow': 'github-flow',
-            'git_strategy.team.workflow': 'git-flow',
-            'git_strategy.personal.auto_checkpoint': 'disabled',
-            'git_strategy.personal.push_to_remote': False,
-            'git_strategy.team.auto_pr': False,
-            'git_strategy.team.draft_pr': False,
-            'constitution.test_coverage_target': 90,
-            'constitution.enforce_tdd': True,
-            'language.agent_prompt_language': 'en',
-            'project.description': '',
-            'language.conversation_language_name': '',  # Will be detected
-            'project.template_version': '',  # Will be detected
-            'moai.version': '',  # Will be detected
-            'project.language': '',  # Will be detected
-            'project.locale': '',  # Will be detected
-            'git_strategy.mode': 'personal',  # 16th default
+            "git_strategy.personal.workflow": "github-flow",
+            "git_strategy.team.workflow": "git-flow",
+            "git_strategy.personal.auto_checkpoint": "disabled",
+            "git_strategy.personal.push_to_remote": False,
+            "git_strategy.team.auto_pr": False,
+            "git_strategy.team.draft_pr": False,
+            "constitution.test_coverage_target": 90,
+            "constitution.enforce_tdd": True,
+            "language.agent_prompt_language": "en",
+            "project.description": "",
+            "language.conversation_language_name": "",  # Will be detected
+            "project.template_version": "",  # Will be detected
+            "moai.version": "",  # Will be detected
+            "project.language": "",  # Will be detected
+            "project.locale": "",  # Will be detected
+            "git_strategy.mode": "personal",  # 16th default
         }
 
     def get_all_defaults(self) -> Dict[str, Any]:
@@ -270,25 +270,25 @@ class SmartDefaultsEngine:
         config = deepcopy(config)
 
         # Ensure nested structure
-        if 'git_strategy' not in config:
-            config['git_strategy'] = {}
-        if 'personal' not in config['git_strategy']:
-            config['git_strategy']['personal'] = {}
-        if 'team' not in config['git_strategy']:
-            config['git_strategy']['team'] = {}
-        if 'constitution' not in config:
-            config['constitution'] = {}
-        if 'language' not in config:
-            config['language'] = {}
-        if 'project' not in config:
-            config['project'] = {}
+        if "git_strategy" not in config:
+            config["git_strategy"] = {}
+        if "personal" not in config["git_strategy"]:
+            config["git_strategy"]["personal"] = {}
+        if "team" not in config["git_strategy"]:
+            config["git_strategy"]["team"] = {}
+        if "constitution" not in config:
+            config["constitution"] = {}
+        if "language" not in config:
+            config["language"] = {}
+        if "project" not in config:
+            config["project"] = {}
 
         # Apply defaults only if not set
         for field_path, default_value in self.defaults.items():
-            if default_value == '':  # Skip auto-detect fields
+            if default_value == "":  # Skip auto-detect fields
                 continue
 
-            parts = field_path.split('.')
+            parts = field_path.split(".")
             current = config
             for part in parts[:-1]:
                 if part not in current:
@@ -310,28 +310,28 @@ class AutoDetectionEngine:
         """Detect all auto-detect fields and apply"""
         config = deepcopy(config)
 
-        if 'project' not in config:
-            config['project'] = {}
-        if 'language' not in config:
-            config['language'] = {}
-        if 'moai' not in config:
-            config['moai'] = {}
+        if "project" not in config:
+            config["project"] = {}
+        if "language" not in config:
+            config["language"] = {}
+        if "moai" not in config:
+            config["moai"] = {}
 
         # Detect project language
-        config['project']['language'] = self.detect_language()
+        config["project"]["language"] = self.detect_language()
 
         # Detect locale from conversation language
-        conv_lang = config.get('language', {}).get('conversation_language', 'en')
-        config['project']['locale'] = self.detect_locale(conv_lang)
+        conv_lang = config.get("language", {}).get("conversation_language", "en")
+        config["project"]["locale"] = self.detect_locale(conv_lang)
 
         # Detect language name
-        config['language']['conversation_language_name'] = self.detect_language_name(conv_lang)
+        config["language"]["conversation_language_name"] = self.detect_language_name(conv_lang)
 
         # Detect template version
-        config['project']['template_version'] = self.detect_template_version()
+        config["project"]["template_version"] = self.detect_template_version()
 
         # Detect MoAI version
-        config['moai']['version'] = self.detect_moai_version()
+        config["moai"]["version"] = self.detect_moai_version()
 
         return config
 
@@ -358,45 +358,45 @@ class AutoDetectionEngine:
         cwd = Path.cwd()
 
         # Check for TypeScript indicators first (tsconfig.json indicates TypeScript)
-        if (cwd / 'tsconfig.json').exists():
-            return 'typescript'
+        if (cwd / "tsconfig.json").exists():
+            return "typescript"
 
         # Check for Python indicators
-        if (cwd / 'pyproject.toml').exists() or (cwd / 'setup.py').exists():
-            return 'python'
+        if (cwd / "pyproject.toml").exists() or (cwd / "setup.py").exists():
+            return "python"
 
         # Check for JavaScript indicators (after TypeScript)
-        if (cwd / 'package.json').exists():
-            return 'javascript'
+        if (cwd / "package.json").exists():
+            return "javascript"
 
         # Check for Go indicators
-        if (cwd / 'go.mod').exists():
-            return 'go'
+        if (cwd / "go.mod").exists():
+            return "go"
 
         # Default to Python
-        return 'python'
+        return "python"
 
     @staticmethod
     def detect_locale(language_code: str) -> str:
         """Map language code to locale"""
         mapping = {
-            'ko': 'ko_KR',
-            'en': 'en_US',
-            'ja': 'ja_JP',
-            'zh': 'zh_CN',
+            "ko": "ko_KR",
+            "en": "en_US",
+            "ja": "ja_JP",
+            "zh": "zh_CN",
         }
-        return mapping.get(language_code, 'en_US')
+        return mapping.get(language_code, "en_US")
 
     @staticmethod
     def detect_language_name(language_code: str) -> str:
         """Convert language code to language name"""
         mapping = {
-            'ko': 'Korean',
-            'en': 'English',
-            'ja': 'Japanese',
-            'zh': 'Chinese',
+            "ko": "Korean",
+            "en": "English",
+            "ja": "Japanese",
+            "zh": "Chinese",
         }
-        return mapping.get(language_code, 'English')
+        return mapping.get(language_code, "English")
 
     @staticmethod
     def detect_template_version() -> str:
@@ -414,6 +414,7 @@ class AutoDetectionEngine:
             '3.0.0'
         """
         from moai_adk.version import TEMPLATE_VERSION
+
         return TEMPLATE_VERSION
 
     @staticmethod
@@ -432,6 +433,7 @@ class AutoDetectionEngine:
             '0.26.0'
         """
         from moai_adk.version import MOAI_VERSION
+
         return MOAI_VERSION
 
 
@@ -479,47 +481,47 @@ class ConfigurationCoverageValidator:
         """
         # User input fields (10) - explicitly provided by users
         user_input_fields = [
-            'user.name',
-            'language.conversation_language',
-            'language.agent_prompt_language',
-            'project.name',
-            'project.owner',
-            'project.description',
-            'git_strategy.mode',
-            'constitution.test_coverage_target',
-            'constitution.enforce_tdd',
-            'project.documentation_mode',
+            "user.name",
+            "language.conversation_language",
+            "language.agent_prompt_language",
+            "project.name",
+            "project.owner",
+            "project.description",
+            "git_strategy.mode",
+            "constitution.test_coverage_target",
+            "constitution.enforce_tdd",
+            "project.documentation_mode",
         ]
 
         # Auto-detect fields (5) - detected from system/codebase
         auto_detect_fields = [
-            'project.language',
-            'project.locale',
-            'language.conversation_language_name',
-            'project.template_version',
-            'moai.version',
+            "project.language",
+            "project.locale",
+            "language.conversation_language_name",
+            "project.template_version",
+            "moai.version",
         ]
 
         # Smart default fields (16) - intelligent defaults from SmartDefaultsEngine
         # Listed separately from user_input and auto_detect to show all 31 unique fields
         # Some may overlap with other categories in implementation
         smart_default_fields = [
-            'git_strategy.personal.workflow',
-            'git_strategy.team.workflow',
-            'git_strategy.personal.auto_checkpoint',
-            'git_strategy.personal.push_to_remote',
-            'git_strategy.team.auto_pr',
-            'git_strategy.team.draft_pr',
-            'constitution.test_coverage_target',
-            'constitution.enforce_tdd',
-            'language.agent_prompt_language',
-            'project.description',
-            'git_strategy.mode',
-            'project.documentation_depth',  # Conditional field
-            'git_strategy.{mode}.workflow',  # Mode-dependent workflow
-            'language.conversation_language_name',
-            'project.template_version',
-            'moai.version',
+            "git_strategy.personal.workflow",
+            "git_strategy.team.workflow",
+            "git_strategy.personal.auto_checkpoint",
+            "git_strategy.personal.push_to_remote",
+            "git_strategy.team.auto_pr",
+            "git_strategy.team.draft_pr",
+            "constitution.test_coverage_target",
+            "constitution.enforce_tdd",
+            "language.agent_prompt_language",
+            "project.description",
+            "git_strategy.mode",
+            "project.documentation_depth",  # Conditional field
+            "git_strategy.{mode}.workflow",  # Mode-dependent workflow
+            "language.conversation_language_name",
+            "project.template_version",
+            "moai.version",
         ]
 
         # Total unique coverage breakdown (31 settings total):
@@ -531,10 +533,10 @@ class ConfigurationCoverageValidator:
         # user-input and have smart defaults)
 
         return {
-            'user_input': user_input_fields,
-            'auto_detect': auto_detect_fields,
-            'smart_defaults': smart_default_fields,
-            'total_coverage': 31,  # Documented as 31 settings total
+            "user_input": user_input_fields,
+            "auto_detect": auto_detect_fields,
+            "smart_defaults": smart_default_fields,
+            "total_coverage": 31,  # Documented as 31 settings total
         }
 
     def validate_required_settings(self, required: List[str]) -> Dict[str, Any]:
@@ -558,12 +560,12 @@ class ConfigurationCoverageValidator:
         coverage = self.validate()
         # Include user_input, auto_detect, smart_defaults, and conditional fields
         all_settings = (
-            coverage['user_input']
-            + coverage['auto_detect']
-            + coverage['smart_defaults']
+            coverage["user_input"]
+            + coverage["auto_detect"]
+            + coverage["smart_defaults"]
             + [
-                'project.documentation_depth',  # Conditional field
-                'git_strategy.{mode}.workflow',  # Mode-dependent field
+                "project.documentation_depth",  # Conditional field
+                "git_strategy.{mode}.workflow",  # Mode-dependent field
             ]
         )
 
@@ -573,10 +575,10 @@ class ConfigurationCoverageValidator:
         missing = [s for s in required if s not in all_settings]
 
         return {
-            'required': required,
-            'covered': [s for s in required if s in all_settings],
-            'missing_settings': missing,
-            'total_covered': len([s for s in required if s in all_settings]),
+            "required": required,
+            "covered": [s for s in required if s in all_settings],
+            "missing_settings": missing,
+            "total_covered": len([s for s in required if s in all_settings]),
         }
 
 
@@ -634,12 +636,11 @@ class ConditionalBatchRenderer:
         if "mode" in context and "git_strategy_mode" not in context:
             context["git_strategy_mode"] = context["mode"]
 
-
-        for tab in self.schema.get('tabs', []):
+        for tab in self.schema.get("tabs", []):
             # Support both exact match and partial match (e.g., 'tab_3' matches 'tab_3_git_automation')
-            if tab['id'] == tab_id or tab['id'].startswith(tab_id):
-                for batch in tab.get('batches', []):
-                    if self.evaluate_condition(batch.get('show_if', 'true'), context):
+            if tab["id"] == tab_id or tab["id"].startswith(tab_id):
+                for batch in tab.get("batches", []):
+                    if self.evaluate_condition(batch.get("show_if", "true"), context):
                         visible_batches.append(batch)
 
         return visible_batches
@@ -677,7 +678,7 @@ class ConditionalBatchRenderer:
             ... )
             True
         """
-        if condition == 'true' or not condition:
+        if condition == "true" or not condition:
             return True
 
         try:
@@ -770,8 +771,7 @@ class ConditionalBatchRenderer:
             Resolved value
         """
         operand = operand.strip()
-        if (operand.startswith("'") and operand.endswith("'")) or \
-           (operand.startswith('"') and operand.endswith('"')):
+        if (operand.startswith("'") and operand.endswith("'")) or (operand.startswith('"') and operand.endswith('"')):
             return operand[1:-1]
         try:
             if "." in operand:
@@ -831,14 +831,14 @@ class TemplateVariableInterpolator:
         result = template
 
         # Find all {{variable}} patterns
-        pattern = r'\{\{([\w\.]+)\}\}'
+        pattern = r"\{\{([\w\.]+)\}\}"
         matches = re.findall(pattern, template)
 
         for match in matches:
             value = TemplateVariableInterpolator._get_nested_value(config, match)
             if value is None:
-                raise KeyError(f'Template variable {match} not found in config')
-            result = result.replace(f'{{{{{match}}}}}', str(value))
+                raise KeyError(f"Template variable {match} not found in config")
+            result = result.replace(f"{{{{{match}}}}}", str(value))
 
         return result
 
@@ -863,7 +863,7 @@ class TemplateVariableInterpolator:
             >>> TemplateVariableInterpolator._get_nested_value(config, 'missing.path')
             None
         """
-        parts = path.split('.')
+        parts = path.split(".")
         current = obj
 
         for part in parts:
@@ -950,29 +950,29 @@ class ConfigurationMigrator:
             'github-flow'
         """
         v3_config = {
-            'version': '3.0.0',
-            'user': {},
-            'language': {},
-            'project': {},
-            'git_strategy': {
-                'personal': {},
-                'team': {},
+            "version": "3.0.0",
+            "user": {},
+            "language": {},
+            "project": {},
+            "git_strategy": {
+                "personal": {},
+                "team": {},
             },
-            'constitution': {},
-            'moai': {},
+            "constitution": {},
+            "moai": {},
         }
 
         # Map v2 fields to v3
-        if 'user' in v2_config:
-            v3_config['user'] = deepcopy(v2_config['user'])
-        if 'language' in v2_config:
-            v3_config['language'] = deepcopy(v2_config['language'])
-        if 'project' in v2_config:
-            v3_config['project'] = deepcopy(v2_config['project'])
-        if 'git_strategy' in v2_config:
-            v3_config['git_strategy'] = deepcopy(v2_config['git_strategy'])
-        if 'constitution' in v2_config:
-            v3_config['constitution'] = deepcopy(v2_config['constitution'])
+        if "user" in v2_config:
+            v3_config["user"] = deepcopy(v2_config["user"])
+        if "language" in v2_config:
+            v3_config["language"] = deepcopy(v2_config["language"])
+        if "project" in v2_config:
+            v3_config["project"] = deepcopy(v2_config["project"])
+        if "git_strategy" in v2_config:
+            v3_config["git_strategy"] = deepcopy(v2_config["git_strategy"])
+        if "constitution" in v2_config:
+            v3_config["constitution"] = deepcopy(v2_config["constitution"])
 
         # Apply smart defaults for missing v3 fields
         defaults_engine = SmartDefaultsEngine()
@@ -990,13 +990,13 @@ class TabSchemaValidator:
         errors = []
 
         # Check version
-        if schema.get('version') != '3.0.0':
-            errors.append('Schema version must be 3.0.0')
+        if schema.get("version") != "3.0.0":
+            errors.append("Schema version must be 3.0.0")
 
         # Check tab count
-        tabs = schema.get('tabs', [])
+        tabs = schema.get("tabs", [])
         if len(tabs) != 3:
-            errors.append(f'Must have exactly 3 tabs, found {len(tabs)}')
+            errors.append(f"Must have exactly 3 tabs, found {len(tabs)}")
 
         # Validate each tab
         for tab_idx, tab in enumerate(tabs):
@@ -1009,11 +1009,11 @@ class TabSchemaValidator:
     def _validate_tab(tab: Dict[str, Any], tab_idx: int) -> List[str]:
         """Validate single tab"""
         errors = []
-        batches = tab.get('batches', [])
+        batches = tab.get("batches", [])
 
         for batch_idx, batch in enumerate(batches):
             batch_errors = TabSchemaValidator._validate_batch(batch)
-            errors.extend([f'Tab {tab_idx}, Batch {batch_idx}: {e}' for e in batch_errors])
+            errors.extend([f"Tab {tab_idx}, Batch {batch_idx}: {e}" for e in batch_errors])
 
         return errors
 
@@ -1023,9 +1023,9 @@ class TabSchemaValidator:
         errors = []
 
         # Check question count (max 4)
-        questions = batch.get('questions', [])
+        questions = batch.get("questions", [])
         if len(questions) > 4:
-            errors.append(f'Batch has {len(questions)} questions, max is 4')
+            errors.append(f"Batch has {len(questions)} questions, max is 4")
 
         # Validate questions
         for question in questions:
@@ -1040,19 +1040,19 @@ class TabSchemaValidator:
         errors = []
 
         # Check header length
-        header = question.get('header', '')
+        header = question.get("header", "")
         if len(header) > 12:
             errors.append(f'Header "{header}" exceeds 12 chars')
 
         # Check emoji in question
-        question_text = question.get('question', '')
+        question_text = question.get("question", "")
         if TabSchemaValidator._has_emoji(question_text):
-            errors.append(f'Question contains emoji: {question_text}')
+            errors.append(f"Question contains emoji: {question_text}")
 
         # Check options count (2-4)
-        options = question.get('options', [])
+        options = question.get("options", [])
         if not (2 <= len(options) <= 4):
-            errors.append(f'Question has {len(options)} options, must be 2-4')
+            errors.append(f"Question has {len(options)} options, must be 2-4")
 
         return errors
 
@@ -1062,7 +1062,9 @@ class TabSchemaValidator:
         # Check for common emoji Unicode ranges
         for char in text:
             code = ord(char)
-            if (0x1F300 <= code <= 0x1F9FF or  # Emoji range
-                0x2600 <= code <= 0x27BF):    # Misc symbols
+            if (
+                0x1F300 <= code <= 0x1F9FF  # Emoji range
+                or 0x2600 <= code <= 0x27BF
+            ):  # Misc symbols
                 return True
         return False

@@ -449,9 +449,7 @@ class DataPipelineBuilder:
             # Create interaction features if needed
             if transformation == "create_interactions":
                 interaction_features = [
-                    f"{features[i]}_{features[j]}"
-                    for i in range(len(features))
-                    for j in range(i + 1, len(features))
+                    f"{features[i]}_{features[j]}" for i in range(len(features)) for j in range(i + 1, len(features))
                 ]
                 output_features = features + interaction_features
             else:

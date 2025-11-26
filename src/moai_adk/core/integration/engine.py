@@ -63,9 +63,7 @@ class TestEngine:
             components = []
 
         start_time = time.time()
-        result = IntegrationTestResult(
-            test_name=test_name, passed=False, components_tested=components
-        )
+        result = IntegrationTestResult(test_name=test_name, passed=False, components_tested=components)
 
         try:
             # Execute test with timeout
@@ -74,9 +72,7 @@ class TestEngine:
                 try:
                     test_result = future.result(timeout=self.test_timeout)
                     result.passed = bool(test_result)
-                    result.status = (
-                        TestStatus.PASSED if result.passed else TestStatus.FAILED
-                    )
+                    result.status = TestStatus.PASSED if result.passed else TestStatus.FAILED
 
                 except TimeoutError:
                     result.error_message = f"Test timed out after {self.test_timeout}s"
@@ -106,13 +102,9 @@ class TestEngine:
             IntegrationTestResult: Test execution result
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self.execute_test, test_func, test_name, components
-        )
+        return await loop.run_in_executor(None, self.execute_test, test_func, test_name, components)
 
-    def run_concurrent_tests(
-        self, tests: List[tuple], timeout: Optional[float] = None
-    ) -> List[IntegrationTestResult]:
+    def run_concurrent_tests(self, tests: List[tuple], timeout: Optional[float] = None) -> List[IntegrationTestResult]:
         """
         Run multiple tests concurrently.
 
@@ -130,9 +122,7 @@ class TestEngine:
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all tests
-            future_to_test = {
-                executor.submit(self.execute_test, *test): test for test in tests
-            }
+            future_to_test = {executor.submit(self.execute_test, *test): test for test in tests}
 
             # Collect results as they complete
             for future in as_completed(future_to_test, timeout=timeout):
@@ -164,6 +154,4 @@ class TestEngine:
             List of test results
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self.run_concurrent_tests, tests, timeout
-        )
+        return await loop.run_in_executor(None, self.run_concurrent_tests, tests, timeout)

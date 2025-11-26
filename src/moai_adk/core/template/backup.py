@@ -41,10 +41,7 @@ class TemplateBackup:
         Returns:
             True when any tracked file exists.
         """
-        return any(
-            (self.target_path / item).exists()
-            for item in [".moai", ".claude", ".github", "CLAUDE.md"]
-        )
+        return any((self.target_path / item).exists() for item in [".moai", ".claude", ".github", "CLAUDE.md"])
 
     def create_backup(self) -> Path:
         """Create a single backup (always at .moai-backups/backup/).
@@ -94,10 +91,7 @@ class TemplateBackup:
             rel_path_str = str(rel_path)
 
             # Skip excluded paths
-            if any(
-                rel_path_str.startswith(exclude_dir)
-                for exclude_dir in self.BACKUP_EXCLUDE_DIRS
-            ):
+            if any(rel_path_str.startswith(exclude_dir) for exclude_dir in self.BACKUP_EXCLUDE_DIRS):
                 continue
 
             dst_item = dst / rel_path

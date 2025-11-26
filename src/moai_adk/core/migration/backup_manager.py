@@ -108,9 +108,7 @@ class BackupManager:
                                 {
                                     "path": str(backup_dir),
                                     "timestamp": metadata.get("timestamp", "unknown"),
-                                    "description": metadata.get(
-                                        "description", "unknown"
-                                    ),
+                                    "description": metadata.get("description", "unknown"),
                                     "files": len(metadata.get("backed_up_files", [])),
                                 }
                             )
@@ -207,9 +205,7 @@ class BackupManager:
             return Path(backups[0]["path"])
         return None
 
-    def create_full_project_backup(
-        self, description: str = "pre-update-backup"
-    ) -> Path:
+    def create_full_project_backup(self, description: str = "pre-update-backup") -> Path:
         """
         Create a complete backup of entire project structure before update
 

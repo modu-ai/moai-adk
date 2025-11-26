@@ -43,9 +43,7 @@ class TrustChecker:
     # T: Test First - Coverage Validation
     # ========================================
 
-    def validate_coverage(
-        self, project_path: Path, coverage_data: dict[str, Any]
-    ) -> ValidationResult:
+    def validate_coverage(self, project_path: Path, coverage_data: dict[str, Any]) -> ValidationResult:
         """
         Validate test coverage (≥85%)
 
@@ -119,9 +117,7 @@ class TrustChecker:
                 loc = len(lines)
 
                 if loc > MAX_FILE_LINES_OF_CODE:
-                    violations.append(
-                        f"{py_file.name}: {loc} LOC (Limit: {MAX_FILE_LINES_OF_CODE})"
-                    )
+                    violations.append(f"{py_file.name}: {loc} LOC (Limit: {MAX_FILE_LINES_OF_CODE})")
             except (UnicodeDecodeError, PermissionError):
                 # Security: handle file access errors
                 continue
@@ -129,9 +125,7 @@ class TrustChecker:
         if not violations:
             return ValidationResult(passed=True, message="All files within 300 LOC")
 
-        details = "Files exceeding 300 LOC:\n" + "\n".join(
-            f"  - {v}" for v in violations
-        )
+        details = "Files exceeding 300 LOC:\n" + "\n".join(f"  - {v}" for v in violations)
         details += "\n\nRecommended: Refactor large files into smaller modules."
 
         return ValidationResult(
@@ -181,9 +175,7 @@ class TrustChecker:
         if not violations:
             return ValidationResult(passed=True, message="All functions within 50 LOC")
 
-        details = "Functions exceeding 50 LOC:\n" + "\n".join(
-            f"  - {v}" for v in violations
-        )
+        details = "Functions exceeding 50 LOC:\n" + "\n".join(f"  - {v}" for v in violations)
         details += "\n\nRecommended: Extract complex functions into smaller ones."
 
         return ValidationResult(
@@ -222,13 +214,9 @@ class TrustChecker:
                 continue
 
         if not violations:
-            return ValidationResult(
-                passed=True, message="All functions within 5 parameters"
-            )
+            return ValidationResult(passed=True, message="All functions within 5 parameters")
 
-        details = "Functions exceeding 5 parameters:\n" + "\n".join(
-            f"  - {v}" for v in violations
-        )
+        details = "Functions exceeding 5 parameters:\n" + "\n".join(f"  - {v}" for v in violations)
         details += "\n\nRecommended: Use data classes or parameter objects."
 
         return ValidationResult(
@@ -267,13 +255,9 @@ class TrustChecker:
                 continue
 
         if not violations:
-            return ValidationResult(
-                passed=True, message="All functions within complexity 10"
-            )
+            return ValidationResult(passed=True, message="All functions within complexity 10")
 
-        details = "Functions exceeding complexity 10:\n" + "\n".join(
-            f"  - {v}" for v in violations
-        )
+        details = "Functions exceeding complexity 10:\n" + "\n".join(f"  - {v}" for v in violations)
         details += "\n\nRecommended: Simplify complex logic using guard clauses."
 
         return ValidationResult(
@@ -295,9 +279,7 @@ class TrustChecker:
         complexity = 1
         for child in ast.walk(node):
             # Add 1 for each branching statement
-            if isinstance(
-                child, (ast.If, ast.While, ast.For, ast.ExceptHandler, ast.With)
-            ):
+            if isinstance(child, (ast.If, ast.While, ast.For, ast.ExceptHandler, ast.With)):
                 complexity += 1
             # Add 1 for each and/or operator
             elif isinstance(child, ast.BoolOp):

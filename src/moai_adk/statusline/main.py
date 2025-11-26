@@ -39,12 +39,14 @@ def read_session_context() -> dict:
                 return json.loads(input_data)
             except json.JSONDecodeError as e:
                 import logging
+
                 logging.error(f"Failed to parse JSON from stdin: {e}")
                 logging.debug(f"Input data: {input_data[:200]}")
                 return {}
         return {}
     except (EOFError, ValueError) as e:
         import logging
+
         logging.error(f"Error reading stdin: {e}")
         return {}
 
@@ -64,7 +66,8 @@ def safe_collect_git_info() -> tuple[str, str]:
         git_status = f"+{git_info.staged} M{git_info.modified} ?{git_info.untracked}"
 
         return branch, git_status
-    except Exception:
+    except (OSError, AttributeError, RuntimeError):
+        # Git collector errors (file access, attribute, or runtime errors)
         return "N/A", ""
 
 
@@ -78,7 +81,8 @@ def safe_collect_duration() -> str:
     try:
         tracker = MetricsTracker()
         return tracker.get_duration()
-    except Exception:
+    except (OSError, AttributeError, ValueError):
+        # Metrics tracker errors (file access, attribute, or value errors)
         return "0m"
 
 
@@ -97,7 +101,8 @@ def safe_collect_alfred_task() -> str:
             stage_suffix = f"-{task.stage}" if task.stage else ""
             return f"[{task.command.upper()}{stage_suffix}]"
         return ""
-    except Exception:
+    except (OSError, AttributeError, RuntimeError):
+        # Alfred detector errors (file access, attribute, or runtime errors)
         return ""
 
 
@@ -112,7 +117,8 @@ def safe_collect_version() -> str:
         reader = VersionReader()
         version = reader.get_version()
         return version or "unknown"
-    except Exception:
+    except (ImportError, AttributeError, OSError):
+        # Version reader errors (import, attribute, or file access errors)
         return "unknown"
 
 
@@ -134,10 +140,9 @@ def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
         update_info = checker.check_for_update(current_version)
 
         return update_info.available, update_info.latest_version
-    except Exception:
+    except (OSError, AttributeError, RuntimeError, ValueError):
+        # Update checker errors (file access, attribute, runtime, or value errors)
         return False, None
-
-
 
 
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:

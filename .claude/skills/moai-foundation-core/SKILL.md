@@ -2,7 +2,7 @@
 name: moai-foundation-core
 description: MoAI-ADK's foundational principles - TRUST 5, SPEC-First TDD, delegation patterns, token optimization, progressive disclosure, modular architecture, agent catalog, command reference, and execution rules for building AI-powered development workflows
 version: 2.2.0
-modularized: false
+modularized: true
 updated: 2025-11-26
 tools: Read, Grep, Glob
 ---

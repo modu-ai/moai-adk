@@ -1,3 +1,4 @@
+## Works Well With**Agents**:- **workflow-docs** - Documentation with diagrams- **workflow-spec** - SPEC diagrams- **design-uiux** - Architecture visualization**Skills**:- **moai-docs-generation** - Documentation generation- **moai-docs-unified** - Diagram validation- **moai-nextra-architecture** - Architecture docs**Commands**:- `/moai:3-sync` - Documentation with diagrams- `/moai:1-plan` - SPEC with diagrams
 ---
 name: moai-mermaid-diagram-expert
 description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright
@@ -7,7 +8,7 @@ tags:
   - enterprise
   - diagram
   - development
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 ---
 

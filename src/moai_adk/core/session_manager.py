@@ -57,12 +57,8 @@ class SessionManager:
         """
         # Default paths
         project_root = Path.cwd()
-        self._session_file = (
-            session_file or project_root / ".moai" / "memory" / "agent-sessions.json"
-        )
-        self._transcript_dir = (
-            transcript_dir or project_root / ".moai" / "logs" / "agent-transcripts"
-        )
+        self._session_file = session_file or project_root / ".moai" / "memory" / "agent-sessions.json"
+        self._transcript_dir = transcript_dir or project_root / ".moai" / "logs" / "agent-transcripts"
 
         # Ensure directories exist
         self._session_file.parent.mkdir(parents=True, exist_ok=True)
@@ -86,9 +82,7 @@ class SessionManager:
                     self._sessions = data.get("sessions", {})
                     self._chains = data.get("chains", {})
                     self._metadata = data.get("metadata", {})
-                logger.info(
-                    f"Loaded {len(self._sessions)} sessions from {self._session_file}"
-                )
+                logger.info(f"Loaded {len(self._sessions)} sessions from {self._session_file}")
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to load sessions: {e}")
                 self._sessions = {}
@@ -158,9 +152,7 @@ class SessionManager:
         # Persist to disk
         self._save_sessions()
 
-        logger.info(
-            f"Registered agent result: {agent_name} (agentId: {agent_id[:8]}..., chain: {chain_id})"
-        )
+        logger.info(f"Registered agent result: {agent_name} (agentId: {agent_id[:8]}..., chain: {chain_id})")
 
     def get_resume_id(
         self,
@@ -192,10 +184,7 @@ class SessionManager:
         if chain_id:
             metadata = self._metadata.get(agent_id, {})
             if metadata.get("chain_id") != chain_id:
-                logger.debug(
-                    f"Chain mismatch: {agent_name} was in {metadata.get('chain_id')}, "
-                    f"requested {chain_id}"
-                )
+                logger.debug(f"Chain mismatch: {agent_name} was in {metadata.get('chain_id')}, requested {chain_id}")
                 return None
 
         logger.info(f"Resume ID for {agent_name}: {agent_id[:8]}...")
@@ -236,17 +225,13 @@ class SessionManager:
         resume_count = metadata.get("resume_count", 0)
 
         if resume_count >= 5:  # Max resume depth from config
-            logger.warning(
-                f"{agent_name} has been resumed {resume_count} times, starting new session"
-            )
+            logger.warning(f"{agent_name} has been resumed {resume_count} times, starting new session")
             return False
 
         # Heuristic: Check if tasks are related
         # (This can be enhanced with semantic similarity)
         task_keywords_match = any(
-            keyword in current_task.lower()
-            for keyword in previous_task.lower().split()
-            if len(keyword) > 4
+            keyword in current_task.lower() for keyword in previous_task.lower().split() if len(keyword) > 4
         )
 
         if task_keywords_match:
@@ -442,9 +427,7 @@ class SessionManager:
         with open(chains_file, "w", encoding="utf-8") as f:
             json.dump(chains_data, f, indent=2, ensure_ascii=False)
 
-        logger.info(
-            f"Created workflow chain: {chain_id} with {len(agent_sequence)} agents"
-        )
+        logger.info(f"Created workflow chain: {chain_id} with {len(agent_sequence)} agents")
 
 
 # Global instance (singleton pattern)

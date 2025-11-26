@@ -4,7 +4,7 @@ description: Use for Figma design analysis, design-to-code conversion, design sy
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills: moai-foundation-core, moai-mcp-integration, moai-design-systems, moai-connector-figma
+skills: moai-foundation-core, moai-mcp-integration, moai-core-uiux, moai-connector-figma
 ---
 
 # MCP Figma Integrator - Design Systems & Design-to-Code Specialist

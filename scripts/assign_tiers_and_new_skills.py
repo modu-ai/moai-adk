@@ -59,13 +59,13 @@ TIER_MAPPING = {
 # Special skills that don't fit standard tiers
 SPECIAL_SKILLS = {
     "moai-docs-generation", "moai-docs-toolkit", "moai-docs-validation", "moai-docs-linting", "moai-docs-unified",
-    "moai-design-systems", "moai-component-designer", "moai-icons-vector",
-    "moai-mermaid-diagram-expert", "moai-playwright-webapp-testing",
+    "moai-core-uiux",
+    "moai-mermaid-diagram-expert", "moai-webapp-testing",
     "moai-artifacts-builder", "moai-streaming-ui",
     "moai-mcp-integration", "moai-internal-comms",
     "moai-change-logger", "moai-learning-optimizer",
     "moai-document-processing", "moai-readme-expert", "moai-session-info",
-    "moai-spec-intelligent-workflow", "moai-webapp-testing",
+    "moai-spec-intelligent-workflow",
     "moai-jit-docs-enhanced", "moai-context7-integration",
     "moai-nextra-architecture",
     "moai-cloud-aws-advanced", "moai-cloud-gcp-advanced"

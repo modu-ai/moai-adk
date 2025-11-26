@@ -20,18 +20,16 @@ TRUST 5 Compliance: Full
 """
 
 import asyncio
-import json
-import uuid
-import hmac
 import hashlib
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Callable
-from enum import Enum
+import hmac
+import json
 import logging
-from dataclasses import dataclass, asdict
+import uuid
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
 from functools import wraps
-
+from typing import Any, Callable, Dict, List, Optional
 
 # ============================================================================
 # Logging Configuration
@@ -45,8 +43,10 @@ logger.setLevel(logging.INFO)
 # CLASS 1: API Design Validator
 # ============================================================================
 
+
 class HTTPMethod(Enum):
     """Supported HTTP methods."""
+
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -78,10 +78,29 @@ class APIDesignValidator:
 
     VALID_HTTP_METHODS = {method.value for method in HTTPMethod}
     VALID_STATUS_CODES = {
-        200, 201, 204, 206,  # 2xx Success
-        301, 302, 304, 307, 308,  # 3xx Redirection
-        400, 401, 403, 404, 405, 409, 410, 422, 429,  # 4xx Client errors
-        500, 501, 502, 503, 504  # 5xx Server errors
+        200,
+        201,
+        204,
+        206,  # 2xx Success
+        301,
+        302,
+        304,
+        307,
+        308,  # 3xx Redirection
+        400,
+        401,
+        403,
+        404,
+        405,
+        409,
+        410,
+        422,
+        429,  # 4xx Client errors
+        500,
+        501,
+        502,
+        503,
+        504,  # 5xx Server errors
     }
     STATUS_CODE_RANGES = {
         "GET": [200, 206],
@@ -140,17 +159,14 @@ class APIDesignValidator:
         if method in self.STATUS_CODE_RANGES:
             valid_codes = self.STATUS_CODE_RANGES[method]
             if status_code not in valid_codes:
-                errors.append(
-                    f"Status code {status_code} not allowed for {method} "
-                    f"(expected: {valid_codes})"
-                )
+                errors.append(f"Status code {status_code} not allowed for {method} (expected: {valid_codes})")
 
         return {
             "valid": len(errors) == 0,
             "method": method,
             "path": path,
             "status_code": status_code,
-            "errors": errors if errors else None
+            "errors": errors if errors else None,
         }
 
     def get_versioning_strategy(self, strategy_type: str) -> Dict[str, Any]:
@@ -169,22 +185,22 @@ class APIDesignValidator:
                 "pattern": "/api/v{version}/",
                 "example": "/api/v1/users",
                 "pros": ["SEO friendly", "Clear in URLs"],
-                "cons": ["Duplicate code paths"]
+                "cons": ["Duplicate code paths"],
             },
             "header": {
                 "strategy": "header",
                 "header_name": "API-Version",
                 "example": "API-Version: 1",
                 "pros": ["Clean URLs", "Backward compatible"],
-                "cons": ["Less visible"]
+                "cons": ["Less visible"],
             },
             "content-type": {
                 "strategy": "content-type",
                 "content_type": "application/vnd.api+json;version=1",
                 "example": "application/vnd.api+json;version=1",
                 "pros": ["RESTful", "Standards-based"],
-                "cons": ["Complex negotiation"]
-            }
+                "cons": ["Complex negotiation"],
+            },
         }
 
         return strategies.get(strategy_type, strategies["url"])
@@ -214,6 +230,7 @@ class APIDesignValidator:
 # CLASS 2: Microservice Architect
 # ============================================================================
 
+
 class MicroserviceArchitect:
     """
     Enterprise microservice architecture design and validation.
@@ -241,20 +258,20 @@ class MicroserviceArchitect:
             "pattern": "rest",
             "protocol": "HTTP/REST",
             "async": False,
-            "use_cases": ["Synchronous operations", "Query-based communication"]
+            "use_cases": ["Synchronous operations", "Query-based communication"],
         },
         "async": {
             "pattern": "async",
             "protocol": "Message Queue",
             "async": True,
-            "use_cases": ["Event-driven", "Notification", "Async tasks"]
+            "use_cases": ["Event-driven", "Notification", "Async tasks"],
         },
         "grpc": {
             "pattern": "grpc",
             "protocol": "gRPC",
             "async": True,
-            "use_cases": ["High-performance", "Streaming", "Type-safe"]
-        }
+            "use_cases": ["High-performance", "Streaming", "Type-safe"],
+        },
     }
 
     SERVICE_DISCOVERY_BACKENDS = {
@@ -303,12 +320,10 @@ class MicroserviceArchitect:
             "name": name,
             "domain": domain,
             "endpoints": endpoints,
-            "errors": errors if errors else None
+            "errors": errors if errors else None,
         }
 
-    def get_communication_pattern(
-        self, pattern_type: str, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def get_communication_pattern(self, pattern_type: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get inter-service communication pattern.
 
@@ -319,9 +334,7 @@ class MicroserviceArchitect:
         Returns:
             Communication pattern configuration
         """
-        pattern = self.COMMUNICATION_PATTERNS.get(
-            pattern_type, self.COMMUNICATION_PATTERNS["rest"]
-        )
+        pattern = self.COMMUNICATION_PATTERNS.get(pattern_type, self.COMMUNICATION_PATTERNS["rest"])
 
         # Determine message broker for async patterns
         if pattern_type == "async":
@@ -332,12 +345,10 @@ class MicroserviceArchitect:
             **pattern,
             "source": context.get("source", ""),
             "target": context.get("target", ""),
-            "operation": context.get("operation", "")
+            "operation": context.get("operation", ""),
         }
 
-    def configure_service_discovery(
-        self, backend: str, config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def configure_service_discovery(self, backend: str, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Configure service discovery backend.
 
@@ -348,9 +359,7 @@ class MicroserviceArchitect:
         Returns:
             Service discovery configuration
         """
-        discovery_config = self.SERVICE_DISCOVERY_BACKENDS.get(
-            backend, self.SERVICE_DISCOVERY_BACKENDS["consul"]
-        )
+        discovery_config = self.SERVICE_DISCOVERY_BACKENDS.get(backend, self.SERVICE_DISCOVERY_BACKENDS["consul"])
 
         return {
             "registry": backend,
@@ -366,6 +375,7 @@ class MicroserviceArchitect:
 # ============================================================================
 # CLASS 3: Async Pattern Advisor
 # ============================================================================
+
 
 class AsyncPatternAdvisor:
     """
@@ -394,9 +404,7 @@ class AsyncPatternAdvisor:
         """Initialize async pattern advisor."""
         self.async_operations: List[asyncio.Task] = []
 
-    async def execute_concurrent(
-        self, operations: List[Callable], timeout: Optional[float] = None
-    ) -> List[Any]:
+    async def execute_concurrent(self, operations: List[Callable], timeout: Optional[float] = None) -> List[Any]:
         """
         Execute multiple async operations concurrently.
 
@@ -411,9 +419,7 @@ class AsyncPatternAdvisor:
 
         try:
             if timeout:
-                results = await asyncio.wait_for(
-                    asyncio.gather(*tasks), timeout=timeout
-                )
+                results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
             else:
                 results = await asyncio.gather(*tasks)
             return results
@@ -437,9 +443,7 @@ class AsyncPatternAdvisor:
         """
         return await asyncio.wait_for(coro, timeout=timeout)
 
-    def async_retry(
-        self, max_attempts: int = 3, backoff_factor: float = 2.0
-    ) -> Callable:
+    def async_retry(self, max_attempts: int = 3, backoff_factor: float = 2.0) -> Callable:
         """
         Decorator for async function retry logic.
 
@@ -450,23 +454,27 @@ class AsyncPatternAdvisor:
         Returns:
             Decorated async function
         """
+
         def decorator(func: Callable) -> Callable:
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 for attempt in range(max_attempts):
                     try:
                         return await func(*args, **kwargs)
-                    except Exception as e:
+                    except Exception:
                         if attempt == max_attempts - 1:
                             raise
-                        await asyncio.sleep(backoff_factor ** attempt)
+                        await asyncio.sleep(backoff_factor**attempt)
+
             return wrapper
+
         return decorator
 
 
 # ============================================================================
 # CLASS 4: Authentication Manager
 # ============================================================================
+
 
 class AuthenticationManager:
     """
@@ -503,9 +511,7 @@ class AuthenticationManager:
         self.algorithms = ["HS256"]
         self.oauth_codes: Dict[str, Dict[str, Any]] = {}
 
-    def generate_jwt_token(
-        self, data: Dict[str, Any], expires_in_hours: int = 1
-    ) -> str:
+    def generate_jwt_token(self, data: Dict[str, Any], expires_in_hours: int = 1) -> str:
         """
         Generate JWT token.
 
@@ -522,24 +528,16 @@ class AuthenticationManager:
         payload = {
             **data,
             "iat": int(datetime.utcnow().timestamp()),
-            "exp": int((datetime.utcnow() + timedelta(hours=expires_in_hours)).timestamp())
+            "exp": int((datetime.utcnow() + timedelta(hours=expires_in_hours)).timestamp()),
         }
 
         # Create JWT parts
-        header_encoded = base64.urlsafe_b64encode(
-            json.dumps(header).encode()
-        ).decode().rstrip("=")
-        payload_encoded = base64.urlsafe_b64encode(
-            json.dumps(payload).encode()
-        ).decode().rstrip("=")
+        header_encoded = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
 
         # Create signature
         message = f"{header_encoded}.{payload_encoded}"
-        signature = hmac.new(
-            self.secret_key.encode(),
-            message.encode(),
-            hashlib.sha256
-        ).digest()
+        signature = hmac.new(self.secret_key.encode(), message.encode(), hashlib.sha256).digest()
         signature_encoded = base64.urlsafe_b64encode(signature).decode().rstrip("=")
 
         return f"{message}.{signature_encoded}"
@@ -584,21 +582,11 @@ class AuthenticationManager:
             Authorization code response
         """
         code = str(uuid.uuid4())
-        self.oauth_codes[code] = {
-            "params": params,
-            "created_at": datetime.utcnow(),
-            "expires_in": 600
-        }
+        self.oauth_codes[code] = {"params": params, "created_at": datetime.utcnow(), "expires_in": 600}
 
-        return {
-            "code": code,
-            "expires_in": 600,
-            "state": params.get("state", "")
-        }
+        return {"code": code, "expires_in": 600, "state": params.get("state", "")}
 
-    def has_permission(
-        self, user: Dict[str, Any], permission: str
-    ) -> bool:
+    def has_permission(self, user: Dict[str, Any], permission: str) -> bool:
         """
         Check if user has specific permission.
 
@@ -617,9 +605,11 @@ class AuthenticationManager:
 # CLASS 5: Error Handling Strategy
 # ============================================================================
 
+
 @dataclass
 class ErrorLog:
     """Structured error log entry."""
+
     level: str
     message: str
     timestamp: str
@@ -678,9 +668,7 @@ class ErrorHandlingStrategy:
             "details": error.get("details", {}),
         }
 
-    def log_with_context(
-        self, level: str, message: str, context: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+    def log_with_context(self, level: str, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Log with request context and correlation ID.
 
@@ -707,7 +695,7 @@ class ErrorHandlingStrategy:
                 message=message,
                 timestamp=log_entry["timestamp"],
                 trace_id=log_entry["trace_id"],
-                context=context or {}
+                context=context or {},
             )
         )
 
@@ -721,6 +709,7 @@ class ErrorHandlingStrategy:
 # ============================================================================
 # CLASS 6: Performance Optimizer
 # ============================================================================
+
 
 class PerformanceOptimizer:
     """
@@ -758,11 +747,7 @@ class PerformanceOptimizer:
         self.rate_limits: Dict[str, Dict[str, Any]] = {}
 
     def configure_cache(
-        self,
-        backend: str = "redis",
-        ttl: int = 3600,
-        key_pattern: str = "",
-        invalidation_triggers: List[str] = None
+        self, backend: str = "redis", ttl: int = 3600, key_pattern: str = "", invalidation_triggers: List[str] = None
     ) -> Dict[str, Any]:
         """
         Configure caching strategy.
@@ -789,7 +774,7 @@ class PerformanceOptimizer:
         requests_per_minute: int = 100,
         requests_per_hour: int = 5000,
         burst_size: int = 20,
-        strategy: str = "token_bucket"
+        strategy: str = "token_bucket",
     ) -> Dict[str, Any]:
         """
         Configure rate limiting.
@@ -825,18 +810,14 @@ class PerformanceOptimizer:
             "SELECT": [
                 "Add indexes on WHERE clause columns",
                 "Use SELECT specific columns, not *",
-                "Consider pagination for large result sets"
+                "Consider pagination for large result sets",
             ],
             "JOIN": [
                 "Ensure JOIN columns are indexed",
                 "Use INNER JOIN when possible",
-                "Avoid multiple JOINs in single query"
+                "Avoid multiple JOINs in single query",
             ],
-            "UPDATE": [
-                "Batch multiple updates",
-                "Use indexes on WHERE clauses",
-                "Consider performance during updates"
-            ]
+            "UPDATE": ["Batch multiple updates", "Use indexes on WHERE clauses", "Consider performance during updates"],
         }
         return tips.get(query_type, [])
 
@@ -845,9 +826,11 @@ class PerformanceOptimizer:
 # CLASS 7: Backend Metrics Collector
 # ============================================================================
 
+
 @dataclass
 class RequestMetric:
     """Request/response metric data."""
+
     path: str
     method: str
     status_code: int
@@ -892,12 +875,7 @@ class BackendMetricsCollector:
         self.error_counts: Dict[str, int] = {}
 
     def record_request_metrics(
-        self,
-        path: str,
-        method: str,
-        status_code: int,
-        duration_ms: float,
-        response_size_bytes: int = 0
+        self, path: str, method: str, status_code: int, duration_ms: float, response_size_bytes: int = 0
     ) -> Dict[str, Any]:
         """
         Record request/response metrics.
@@ -918,7 +896,7 @@ class BackendMetricsCollector:
             status_code=status_code,
             duration_ms=duration_ms,
             response_size_bytes=response_size_bytes,
-            timestamp=datetime.utcnow().isoformat() + "Z"
+            timestamp=datetime.utcnow().isoformat() + "Z",
         )
 
         self.metrics.append(metric)
@@ -981,9 +959,9 @@ class BackendMetricsCollector:
                 "total_requests": len(self.metrics),
                 "error_rate": error_rate,
                 "avg_duration_ms": avg_duration,
-                "uptime_seconds": 3600  # Placeholder
+                "uptime_seconds": 3600,  # Placeholder
             },
-            "error_summary": self.error_counts
+            "error_summary": self.error_counts,
         }
 
     def get_metrics_summary(self) -> Dict[str, Any]:
@@ -997,7 +975,7 @@ class BackendMetricsCollector:
             "total_requests": len(self.metrics),
             "health": self.get_service_health(),
             "error_rate": self.get_error_rate(),
-            "endpoints": len(set(m.path for m in self.metrics))
+            "endpoints": len(set(m.path for m in self.metrics)),
         }
 
 

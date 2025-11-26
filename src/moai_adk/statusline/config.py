@@ -2,11 +2,13 @@
 """
 Statusline configuration loader for Claude Code
 
-
 Loads and manages statusline configuration from .moai/config/statusline-config.yaml
+
+Performance: Thread-safe singleton with double-checked locking pattern
 """
 
 import logging
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -115,19 +117,26 @@ class ErrorHandlingConfig:
 
 class StatuslineConfig:
     """
-    Singleton configuration loader for statusline
+    Thread-safe singleton configuration loader for statusline
 
     Loads configuration from .moai/config/statusline-config.yaml
     Falls back to default values if file not found or parsing fails
+
+    Performance: Double-checked locking pattern for thread safety
     """
 
     _instance: Optional["StatuslineConfig"] = None
     _config: Dict[str, Any] = {}
+    _lock = threading.Lock()  # Thread-safe singleton lock
 
     def __new__(cls):
+        # Double-checked locking pattern for thread-safe singleton
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._load_config()
+            with cls._lock:
+                # Double-check after acquiring lock
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._load_config()
         return cls._instance
 
     def _load_config(self) -> None:

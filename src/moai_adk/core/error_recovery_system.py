@@ -146,9 +146,7 @@ class ErrorRecoverySystem:
 
         # Background monitoring thread
         self.monitoring_active = True
-        self.monitor_thread = threading.Thread(
-            target=self._background_monitoring, daemon=True
-        )
+        self.monitor_thread = threading.Thread(target=self._background_monitoring, daemon=True)
         self.monitor_thread.start()
 
         logger.info("Error Recovery System initialized")
@@ -214,9 +212,7 @@ class ErrorRecoverySystem:
                 logger.info(f"Automatic recovery successful for error {error_id}")
                 self.active_errors.pop(error_id, None)
             else:
-                logger.warning(
-                    f"Automatic recovery failed for error {error_id}: {recovery_result.message}"
-                )
+                logger.warning(f"Automatic recovery failed for error {error_id}: {recovery_result.message}")
 
         # Update system health
         self._update_system_health()
@@ -443,9 +439,7 @@ class ErrorRecoverySystem:
         removed_count = len(old_errors)
 
         # Keep only recent errors
-        self.error_history = [
-            e for e in self.error_history if e.timestamp >= cutoff_date
-        ]
+        self.error_history = [e for e in self.error_history if e.timestamp >= cutoff_date]
 
         # Save updated error history
         self._save_error_history()
@@ -600,9 +594,7 @@ class ErrorRecoverySystem:
             message="No suitable automatic recovery action succeeded",
         )
 
-    def _restart_research_engines(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _restart_research_engines(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Restart research engines and clear caches"""
         try:
             logger.info("Restarting research engines...")
@@ -635,9 +627,7 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to restart research engines: {str(e)}")
             return False
 
-    def _restore_config_backup(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _restore_config_backup(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Restore configuration from backup"""
         try:
             logger.info("Restoring configuration from backup...")
@@ -668,9 +658,7 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to restore configuration: {str(e)}")
             return False
 
-    def _clear_agent_cache(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _clear_agent_cache(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Clear agent communication cache"""
         try:
             logger.info("Clearing agent cache...")
@@ -698,9 +686,7 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to clear agent cache: {str(e)}")
             return False
 
-    def _validate_research_integrity(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _validate_research_integrity(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Validate research component integrity"""
         validation_results = {
             "skills_valid": True,
@@ -720,15 +706,11 @@ class ErrorRecoverySystem:
                 for skill_file in skills_dir.glob("*.md"):
                     if not self._validate_skill_file(skill_file):
                         validation_results["skills_valid"] = False
-                        validation_results["issues_found"].append(
-                            f"Invalid skill file: {skill_file}"
-                        )
+                        validation_results["issues_found"].append(f"Invalid skill file: {skill_file}")
 
                         # Attempt repair
                         if self._repair_skill_file(skill_file):
-                            validation_results["repairs_made"].append(
-                                f"Repaired: {skill_file}"
-                            )
+                            validation_results["repairs_made"].append(f"Repaired: {skill_file}")
 
             # Validate agents
             agents_dir = self.project_root / ".claude" / "agents" / "alfred"
@@ -736,9 +718,7 @@ class ErrorRecoverySystem:
                 for agent_file in agents_dir.glob("*.md"):
                     if not self._validate_agent_file(agent_file):
                         validation_results["agents_valid"] = False
-                        validation_results["issues_found"].append(
-                            f"Invalid agent file: {agent_file}"
-                        )
+                        validation_results["issues_found"].append(f"Invalid agent file: {agent_file}")
 
             # Validate commands
             commands_dir = self.project_root / ".claude" / "commands" / "alfred"
@@ -746,9 +726,7 @@ class ErrorRecoverySystem:
                 for command_file in commands_dir.glob("*.md"):
                     if not self._validate_command_file(command_file):
                         validation_results["commands_valid"] = False
-                        validation_results["issues_found"].append(
-                            f"Invalid command file: {command_file}"
-                        )
+                        validation_results["issues_found"].append(f"Invalid command file: {command_file}")
 
             logger.info(
                 f"Research integrity validation completed. Issues: "
@@ -762,9 +740,7 @@ class ErrorRecoverySystem:
 
         return validation_results
 
-    def _rollback_last_changes(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _rollback_last_changes(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Rollback last research integration changes"""
         try:
             logger.info("Rolling back last research changes...")
@@ -796,9 +772,7 @@ class ErrorRecoverySystem:
             logger.error(f"Rollback operation failed: {str(e)}")
             return False
 
-    def _reset_system_state(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _reset_system_state(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Reset system to known good state"""
         try:
             logger.info("Resetting system to known good state...")
@@ -831,9 +805,7 @@ class ErrorRecoverySystem:
             logger.error(f"System state reset failed: {str(e)}")
             return False
 
-    def _optimize_performance(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _optimize_performance(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Optimize system performance"""
         try:
             logger.info("Optimizing system performance...")
@@ -865,9 +837,7 @@ class ErrorRecoverySystem:
             logger.error(f"Performance optimization failed: {str(e)}")
             return False
 
-    def _free_resources(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _free_resources(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Free up system resources"""
         try:
             logger.info("Freeing up system resources...")
@@ -938,14 +908,8 @@ class ErrorRecoverySystem:
         current_time = datetime.now(timezone.utc)
 
         # Determine system status
-        critical_errors = [
-            e
-            for e in self.active_errors.values()
-            if e.severity == ErrorSeverity.CRITICAL
-        ]
-        high_errors = [
-            e for e in self.active_errors.values() if e.severity == ErrorSeverity.HIGH
-        ]
+        critical_errors = [e for e in self.active_errors.values() if e.severity == ErrorSeverity.CRITICAL]
+        high_errors = [e for e in self.active_errors.values() if e.severity == ErrorSeverity.HIGH]
 
         if critical_errors:
             self.system_health["status"] = "critical"
@@ -970,16 +934,8 @@ class ErrorRecoverySystem:
                 "type": "active_errors",
                 "count": len(self.active_errors),
                 "severity_distribution": {
-                    severity: len(
-                        [
-                            e
-                            for e in self.active_errors.values()
-                            if e.severity.value == severity
-                        ]
-                    )
-                    for severity in set(
-                        e.severity.value for e in self.active_errors.values()
-                    )
+                    severity: len([e for e in self.active_errors.values() if e.severity.value == severity])
+                    for severity in set(e.severity.value for e in self.active_errors.values())
                 },
             }
         ]
@@ -1001,16 +957,12 @@ class ErrorRecoverySystem:
     def _check_error_patterns(self):
         """Check for concerning error patterns"""
         recent_errors = [
-            e
-            for e in self.error_history
-            if (datetime.now(timezone.utc) - e.timestamp).total_seconds() < 300
+            e for e in self.error_history if (datetime.now(timezone.utc) - e.timestamp).total_seconds() < 300
         ]  # Last 5 minutes
 
         # Check for error bursts
         if len(recent_errors) > 10:
-            logger.warning(
-                f"High error rate detected: {len(recent_errors)} errors in last 5 minutes"
-            )
+            logger.warning(f"High error rate detected: {len(recent_errors)} errors in last 5 minutes")
 
         # Check for repeated errors
         error_messages = [e.message for e in recent_errors]
@@ -1097,9 +1049,7 @@ class ErrorRecoverySystem:
             tips.append("Regularly validate configuration files before making changes")
 
         if category_counts.get("research", 0) > 5:
-            tips.append(
-                "Monitor research engine performance and clear caches regularly"
-            )
+            tips.append("Monitor research engine performance and clear caches regularly")
 
         if category_counts.get("communication", 0) > 5:
             tips.append("Ensure stable network connections for agent communication")
@@ -1207,9 +1157,7 @@ class ErrorRecoverySystem:
         history_file = self.error_log_dir / "error_history.json"
         try:
             with open(history_file, "w") as f:
-                json.dump(
-                    [asdict(e) for e in self.error_history], f, indent=2, default=str
-                )
+                json.dump([asdict(e) for e in self.error_history], f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save error history: {str(e)}")
 

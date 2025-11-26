@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from git import InvalidGitRepositoryError, Repo
+from git import GitCommandError, InvalidGitRepositoryError, Repo
 
 
 class ConflictSeverity(Enum):
@@ -71,13 +71,9 @@ class GitConflictDetector:
             self.repo_path = repo_path
             self.git = self.repo.git
         except InvalidGitRepositoryError as e:
-            raise InvalidGitRepositoryError(
-                f"Path {repo_path} is not a valid Git repository"
-            ) from e
+            raise InvalidGitRepositoryError(f"Path {repo_path} is not a valid Git repository") from e
 
-    def can_merge(
-        self, feature_branch: str, base_branch: str
-    ) -> dict[str, bool | list | str]:
+    def can_merge(self, feature_branch: str, base_branch: str) -> dict[str, bool | list | str]:
         """Check if merge is possible without conflicts.
 
         Uses git merge --no-commit --no-ff for safe detection without
@@ -167,15 +163,13 @@ class GitConflictDetector:
                             description=f"Merge conflict in {path_str}",
                         )
                     )
-        except Exception:
-            # If we can't use the index, fall back to checking files
+        except (AttributeError, OSError, UnicodeDecodeError):
+            # Git index access errors, file read errors, or encoding issues
             pass
 
         return conflicts
 
-    def analyze_conflicts(
-        self, conflicts: list[ConflictFile]
-    ) -> list[ConflictFile]:
+    def analyze_conflicts(self, conflicts: list[ConflictFile]) -> list[ConflictFile]:
         """Analyze and categorize conflict severity.
 
         Args:
@@ -188,16 +182,12 @@ class GitConflictDetector:
 
         for conflict in conflicts:
             # Update severity based on analysis
-            conflict.severity = self._determine_severity(
-                conflict.path, conflict.conflict_type
-            )
+            conflict.severity = self._determine_severity(conflict.path, conflict.conflict_type)
             analyzed.append(conflict)
 
         # Sort by severity (HIGH first, LOW last)
         severity_order = {ConflictSeverity.HIGH: 0, ConflictSeverity.MEDIUM: 1, ConflictSeverity.LOW: 2}
-        analyzed.sort(
-            key=lambda c: severity_order.get(c.severity, 3)
-        )
+        analyzed.sort(key=lambda c: severity_order.get(c.severity, 3))
 
         return analyzed
 
@@ -308,13 +298,15 @@ class GitConflictDetector:
                         # Use merger's settings merge logic
                         self.git.add(conflict.path)
 
-                except Exception:
+                except (GitCommandError, OSError):
+                    # Git add command failed or file access error
                     return False
 
             # Mark merge as complete
             return True
 
-        except Exception:
+        except (GitCommandError, OSError, AttributeError):
+            # Git operations failed, file access error, or attribute access error
             return False
 
     def cleanup_merge_state(self) -> None:
@@ -336,15 +328,16 @@ class GitConflictDetector:
             # Also reset the index
             try:
                 self.git.merge("--abort")
-            except Exception:
-                # If merge --abort fails, try reset
+            except (GitCommandError, OSError):
+                # Merge abort failed, try reset as fallback
                 try:
                     self.git.reset("--hard", "HEAD")
-                except Exception:
+                except (GitCommandError, OSError):
+                    # Reset also failed, skip cleanup
                     pass
 
-        except Exception:
-            # If cleanup fails, continue anyway
+        except (GitCommandError, OSError, AttributeError):
+            # Git operations failed, file access error, or attribute access error
             pass
 
     def rebase_branch(self, feature_branch: str, onto_branch: str) -> bool:
@@ -375,11 +368,12 @@ class GitConflictDetector:
 
             return True
 
-        except Exception:
-            # Abort rebase if it fails
+        except (GitCommandError, OSError, AttributeError):
+            # Git operations failed, file access error, or attribute access error
             try:
                 self.git.rebase("--abort")
-            except Exception:
+            except (GitCommandError, OSError):
+                # Rebase abort also failed, skip cleanup
                 pass
             return False
 
@@ -410,8 +404,6 @@ class GitConflictDetector:
             if severity in by_severity:
                 summary_lines.append(f"\n{severity.upper()} severity:")
                 for conflict in by_severity[severity]:
-                    summary_lines.append(
-                        f"  - {conflict.path} ({conflict.conflict_type}): {conflict.description}"
-                    )
+                    summary_lines.append(f"  - {conflict.path} ({conflict.conflict_type}): {conflict.description}")
 
         return "\n".join(summary_lines)

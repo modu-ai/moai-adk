@@ -26,42 +26,42 @@ class EARSTemplateEngine:
 
         # Domain-specific templates
         self.domain_templates = {
-            'auth': {
-                'description': 'User authentication and security system',
-                'common_features': ['Login', 'Registration', 'Password Reset', 'Session Management'],
-                'security_requirements': ['Encryption', 'Password Hashing', 'Rate Limiting'],
-                'environment': 'Web Application with User Management'
+            "auth": {
+                "description": "User authentication and security system",
+                "common_features": ["Login", "Registration", "Password Reset", "Session Management"],
+                "security_requirements": ["Encryption", "Password Hashing", "Rate Limiting"],
+                "environment": "Web Application with User Management",
             },
-            'api': {
-                'description': 'RESTful API service',
-                'common_features': ['Endpoints', 'Authentication', 'Rate Limiting', 'Caching'],
-                'technical_requirements': ['RESTful Design', 'JSON Format', 'HTTP Status Codes'],
-                'environment': 'Microservice Architecture'
+            "api": {
+                "description": "RESTful API service",
+                "common_features": ["Endpoints", "Authentication", "Rate Limiting", "Caching"],
+                "technical_requirements": ["RESTful Design", "JSON Format", "HTTP Status Codes"],
+                "environment": "Microservice Architecture",
             },
-            'data': {
-                'description': 'Data processing and storage system',
-                'common_features': ['Data Validation', 'Persistence', 'Backup', 'Migration'],
-                'technical_requirements': ['Data Integrity', 'Performance', 'Scalability'],
-                'environment': 'Database System with Analytics'
+            "data": {
+                "description": "Data processing and storage system",
+                "common_features": ["Data Validation", "Persistence", "Backup", "Migration"],
+                "technical_requirements": ["Data Integrity", "Performance", "Scalability"],
+                "environment": "Database System with Analytics",
             },
-            'ui': {
-                'description': 'User interface and experience system',
-                'common_features': ['Components', 'Navigation', 'Forms', 'Validation'],
-                'experience_requirements': ['Responsive Design', 'Accessibility', 'Performance'],
-                'environment': 'Web Frontend with React/Angular/Vue'
+            "ui": {
+                "description": "User interface and experience system",
+                "common_features": ["Components", "Navigation", "Forms", "Validation"],
+                "experience_requirements": ["Responsive Design", "Accessibility", "Performance"],
+                "environment": "Web Frontend with React/Angular/Vue",
             },
-            'business': {
-                'description': 'Business logic and workflow system',
-                'common_features': ['Process Management', 'Rules Engine', 'Notifications'],
-                'business_requirements': ['Compliance', 'Audit Trail', 'Reporting'],
-                'environment': 'Enterprise Application'
-            }
+            "business": {
+                "description": "Business logic and workflow system",
+                "common_features": ["Process Management", "Rules Engine", "Notifications"],
+                "business_requirements": ["Compliance", "Audit Trail", "Reporting"],
+                "environment": "Enterprise Application",
+            },
         }
 
         # EARS section templates
         self.ears_templates = {
-            'environment': {
-                'template': '''### Environment
+            "environment": {
+                "template": """### Environment
 
 - **Project**: {project_name}
 - **Language**: {language}
@@ -70,11 +70,11 @@ class EARSTemplateEngine:
 - **Platform**: {platform}
 - **Deployment**: {deployment}
 - **Status**: {status}
-- **Generation Method**: Auto-analysis based''',
-                'required_fields': ['project_name', 'language', 'framework', 'paradigm']
+- **Generation Method**: Auto-analysis based""",
+                "required_fields": ["project_name", "language", "framework", "paradigm"],
             },
-            'assumptions': {
-                'template': '''### Assumptions
+            "assumptions": {
+                "template": """### Assumptions
 
 1. System follows standard development practices
 2. Users have basic domain knowledge
@@ -83,11 +83,11 @@ class EARSTemplateEngine:
 5. Security requirements comply with industry standards
 6. Data integrity is maintained
 7. User interface is intuitively designed
-8. Performance requirements are met''',
-                'required_fields': []
+8. Performance requirements are met""",
+                "required_fields": [],
             },
-            'requirements': {
-                'template': '''### Requirements
+            "requirements": {
+                "template": """### Requirements
 
 #### Ubiquitous Requirements
 
@@ -113,11 +113,11 @@ class EARSTemplateEngine:
 - **REQ-009**: Automatic backup and restore features MAY be required
 - **REQ-010**: User activity logging MAY be required
 - **REQ-011**: Multi-language support MAY be required
-- **REQ-012**: Mobile compatibility MAY be required''',
-                'required_fields': ['primary_function']
+- **REQ-012**: Mobile compatibility MAY be required""",
+                "required_fields": ["primary_function"],
             },
-            'specifications': {
-                'template': '''### Specifications
+            "specifications": {
+                "template": """### Specifications
 
 {technical_specs}
 
@@ -147,14 +147,14 @@ class EARSTemplateEngine:
 
 #### Scalability Specifications
 
-{scalability_specs}''',
-                'required_fields': []
-            }
+{scalability_specs}""",
+                "required_fields": [],
+            },
         }
 
-    def generate_complete_spec(self, code_analysis: Dict[str, Any],
-                            file_path: str,
-                            custom_config: Dict[str, Any] = None) -> Dict[str, str]:
+    def generate_complete_spec(
+        self, code_analysis: Dict[str, Any], file_path: str, custom_config: Dict[str, Any] = None
+    ) -> Dict[str, str]:
         """
         Generate complete SPEC document in EARS format.
 
@@ -183,22 +183,20 @@ class EARSTemplateEngine:
         acceptance_md_content = self._generate_acceptance_content(extraction_result, domain, spec_id, custom_config)
 
         # Validate content
-        validation_result = self._validate_ears_compliance({
-            'spec_md': spec_md_content,
-            'plan_md': plan_md_content,
-            'acceptance_md': acceptance_md_content
-        })
+        validation_result = self._validate_ears_compliance(
+            {"spec_md": spec_md_content, "plan_md": plan_md_content, "acceptance_md": acceptance_md_content}
+        )
 
         # Create result
         result = {
-            'spec_id': spec_id,
-            'domain': domain,
-            'spec_md': spec_md_content,
-            'plan_md': plan_md_content,
-            'acceptance_md': acceptance_md_content,
-            'validation': validation_result,
-            'generation_time': time.time() - start_time,
-            'extraction': extraction_result
+            "spec_id": spec_id,
+            "domain": domain,
+            "spec_md": spec_md_content,
+            "plan_md": plan_md_content,
+            "acceptance_md": acceptance_md_content,
+            "validation": validation_result,
+            "generation_time": time.time() - start_time,
+            "extraction": extraction_result,
         }
 
         return result
@@ -206,37 +204,37 @@ class EARSTemplateEngine:
     def _extract_information_from_analysis(self, code_analysis: Dict[str, Any], file_path: str) -> Dict[str, Any]:
         """Extract information from code analysis."""
         extraction = {
-            'file_path': file_path,
-            'file_name': Path(file_path).stem,
-            'file_extension': Path(file_path).suffix,
-            'language': self._detect_language(file_path),
-            'classes': [],
-            'functions': [],
-            'imports': [],
-            'domain_keywords': [],
-            'technical_indicators': [],
-            'complexity': 'low',
-            'architecture': 'simple'
+            "file_path": file_path,
+            "file_name": Path(file_path).stem,
+            "file_extension": Path(file_path).suffix,
+            "language": self._detect_language(file_path),
+            "classes": [],
+            "functions": [],
+            "imports": [],
+            "domain_keywords": [],
+            "technical_indicators": [],
+            "complexity": "low",
+            "architecture": "simple",
         }
 
         # Extract from code_analysis
-        if 'structure_info' in code_analysis:
-            structure = code_analysis['structure_info']
-            extraction['classes'] = structure.get('classes', [])
-            extraction['functions'] = structure.get('functions', [])
-            extraction['imports'] = structure.get('imports', [])
+        if "structure_info" in code_analysis:
+            structure = code_analysis["structure_info"]
+            extraction["classes"] = structure.get("classes", [])
+            extraction["functions"] = structure.get("functions", [])
+            extraction["imports"] = structure.get("imports", [])
 
-        if 'domain_keywords' in code_analysis:
-            extraction['domain_keywords'] = code_analysis['domain_keywords']
+        if "domain_keywords" in code_analysis:
+            extraction["domain_keywords"] = code_analysis["domain_keywords"]
 
         # Extract from AST analysis if available
-        if hasattr(code_analysis, 'ast_info'):
+        if hasattr(code_analysis, "ast_info"):
             pass
             # Additional extraction logic here
 
         # Determine complexity and architecture
-        extraction['complexity'] = self._analyze_complexity(extraction)
-        extraction['architecture'] = self._analyze_architecture(extraction)
+        extraction["complexity"] = self._analyze_complexity(extraction)
+        extraction["architecture"] = self._analyze_architecture(extraction)
 
         return extraction
 
@@ -245,64 +243,64 @@ class EARSTemplateEngine:
         extension = Path(file_path).suffix.lower()
 
         language_map = {
-            '.py': 'Python',
-            '.js': 'JavaScript',
-            '.jsx': 'JavaScript',
-            '.ts': 'TypeScript',
-            '.tsx': 'TypeScript',
-            '.go': 'Go',
-            '.java': 'Java',
-            '.cpp': 'C++',
-            '.c': 'C',
-            '.cs': 'C#',
-            '.rb': 'Ruby',
-            '.php': 'PHP',
-            '.swift': 'Swift',
-            '.kt': 'Kotlin'
+            ".py": "Python",
+            ".js": "JavaScript",
+            ".jsx": "JavaScript",
+            ".ts": "TypeScript",
+            ".tsx": "TypeScript",
+            ".go": "Go",
+            ".java": "Java",
+            ".cpp": "C++",
+            ".c": "C",
+            ".cs": "C#",
+            ".rb": "Ruby",
+            ".php": "PHP",
+            ".swift": "Swift",
+            ".kt": "Kotlin",
         }
 
-        return language_map.get(extension, 'Unknown')
+        return language_map.get(extension, "Unknown")
 
     def _analyze_complexity(self, extraction: Dict[str, Any]) -> str:
         """Analyze code complexity."""
-        class_count = len(extraction['classes'])
-        function_count = len(extraction['functions'])
+        class_count = len(extraction["classes"])
+        function_count = len(extraction["functions"])
 
         if class_count > 5 or function_count > 20:
-            return 'high'
+            return "high"
         elif class_count > 2 or function_count > 10:
-            return 'medium'
+            return "medium"
         else:
-            return 'low'
+            return "low"
 
     def _analyze_architecture(self, extraction: Dict[str, Any]) -> str:
         """Analyze system architecture."""
-        imports = extraction['imports']
+        imports = extraction["imports"]
 
         # Check for architectural patterns
-        if any('django' in imp.lower() for imp in imports):
-            return 'mvc'
-        elif any('react' in imp.lower() or 'vue' in imp.lower() for imp in imports):
-            return 'frontend'
-        elif any('fastapi' in imp.lower() or 'flask' in imp.lower() for imp in imports):
-            return 'api'
-        elif any('sqlalchemy' in imp.lower() or 'django' in imp.lower() for imp in imports):
-            return 'data'
+        if any("django" in imp.lower() for imp in imports):
+            return "mvc"
+        elif any("react" in imp.lower() or "vue" in imp.lower() for imp in imports):
+            return "frontend"
+        elif any("fastapi" in imp.lower() or "flask" in imp.lower() for imp in imports):
+            return "api"
+        elif any("sqlalchemy" in imp.lower() or "django" in imp.lower() for imp in imports):
+            return "data"
         else:
-            return 'simple'
+            return "simple"
 
     def _determine_domain(self, extraction: Dict[str, Any]) -> str:
         """Determine the domain based on code analysis."""
-        domain_keywords = extraction['domain_keywords']
-        extraction['imports']
+        domain_keywords = extraction["domain_keywords"]
+        extraction["imports"]
 
         # Check for domain indicators
         domain_indicators = {
-            'auth': ['auth', 'login', 'password', 'security', 'bcrypt', 'token'],
-            'api': ['api', 'endpoint', 'route', 'controller', 'service'],
-            'data': ['model', 'entity', 'schema', 'database', 'persistence'],
-            'ui': ['ui', 'interface', 'component', 'view', 'template'],
-            'business': ['business', 'logic', 'process', 'workflow', 'rule']
+            "auth": ["auth", "login", "password", "security", "bcrypt", "token"],
+            "api": ["api", "endpoint", "route", "controller", "service"],
+            "data": ["model", "entity", "schema", "database", "persistence"],
+            "ui": ["ui", "interface", "component", "view", "template"],
+            "business": ["business", "logic", "process", "workflow", "rule"],
         }
 
         domain_scores = {}
@@ -314,33 +312,38 @@ class EARSTemplateEngine:
         if domain_scores:
             return max(domain_scores, key=domain_scores.get)
         else:
-            return 'general'
+            return "general"
 
     def _generate_spec_id(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate unique SPEC ID."""
-        file_name = extraction['file_name']
+        file_name = extraction["file_name"]
         domain_upper = domain.upper()
 
         # Clean file name
-        clean_name = re.sub(r'[^a-zA-Z0-9]', '', file_name)
+        clean_name = re.sub(r"[^a-zA-Z0-9]", "", file_name)
 
         # Generate hash for uniqueness
         import hashlib
+
         file_hash = hashlib.md5(f"{file_name}{domain}{time.time()}".encode()).hexdigest()[:4]
 
         return f"{domain_upper}-{clean_name[:8]}-{file_hash}"
 
-    def _generate_spec_content(self, extraction: Dict[str, Any], domain: str,
-                             spec_id: str, custom_config: Dict[str, Any] = None) -> str:
+    def _generate_spec_content(
+        self, extraction: Dict[str, Any], domain: str, spec_id: str, custom_config: Dict[str, Any] = None
+    ) -> str:
         """Generate main spec.md content."""
         config = custom_config or {}
 
         # Get domain template
-        domain_info = self.domain_templates.get(domain, {
-            'description': 'General system',
-            'common_features': ['Standard Features'],
-            'environment': 'General Purpose'
-        })
+        domain_info = self.domain_templates.get(
+            domain,
+            {
+                "description": "General system",
+                "common_features": ["Standard Features"],
+                "environment": "General Purpose",
+            },
+        )
 
         # Extract information
         primary_function = self._extract_primary_function(extraction, domain)
@@ -350,44 +353,37 @@ class EARSTemplateEngine:
 
         # Generate template content
         spec_content = self._render_template(
-            self.ears_templates['environment'],
+            self.ears_templates["environment"],
             {
-                'project_name': config.get('project_name', f'{domain.capitalize()} System'),
-                'language': extraction['language'],
-                'framework': config.get('framework', self._detect_framework(extraction)),
-                'paradigm': config.get('paradigm', 'Object-Oriented'),
-                'platform': config.get('platform', 'Web/Server'),
-                'deployment': config.get('deployment', 'Cloud-based'),
-                'status': config.get('status', 'Development'),
-                **extraction
-            }
+                "project_name": config.get("project_name", f"{domain.capitalize()} System"),
+                "language": extraction["language"],
+                "framework": config.get("framework", self._detect_framework(extraction)),
+                "paradigm": config.get("paradigm", "Object-Oriented"),
+                "platform": config.get("platform", "Web/Server"),
+                "deployment": config.get("deployment", "Cloud-based"),
+                "status": config.get("status", "Development"),
+                **extraction,
+            },
         )
 
         # Add assumptions
-        spec_content += "\n\n" + self._render_template(
-            self.ears_templates['assumptions'],
-            extraction
-        )
+        spec_content += "\n\n" + self._render_template(self.ears_templates["assumptions"], extraction)
 
         # Add requirements
         spec_content += "\n\n" + self._render_template(
-            self.ears_templates['requirements'],
+            self.ears_templates["requirements"],
             {
-                'primary_function': primary_function,
-                'state_requirements': state_requirements,
-                'event_requirements': event_requirements,
-                **extraction
-            }
+                "primary_function": primary_function,
+                "state_requirements": state_requirements,
+                "event_requirements": event_requirements,
+                **extraction,
+            },
         )
 
         # Add specifications
         spec_content += "\n\n" + self._render_template(
-            self.ears_templates['specifications'],
-            {
-                'technical_specs': technical_specs,
-                **self._generate_technical_details(extraction, domain),
-                **extraction
-            }
+            self.ears_templates["specifications"],
+            {"technical_specs": technical_specs, **self._generate_technical_details(extraction, domain), **extraction},
         )
 
         # Add traceability
@@ -399,27 +395,27 @@ class EARSTemplateEngine:
         # Add meta information
         spec_md = f"""---
   "id": "SPEC-{spec_id}",
-  "title": "Auto-generated SPEC for {extraction['file_name']}",
-  "title_en": "Auto-generated SPEC for {extraction['file_name']}",
+  "title": "Auto-generated SPEC for {extraction["file_name"]}",
+  "title_en": "Auto-generated SPEC for {extraction["file_name"]}",
   "version": "1.0.0",
   "status": "pending",
-  "created": "{time.strftime('%Y-%m-%d')}",
+  "created": "{time.strftime("%Y-%m-%d")}",
   "author": "@alfred-auto",
   "reviewer": "",
   "category": "FEATURE",
   "priority": "MEDIUM",
   "tags": ["auto-generated", "{spec_id}", "{domain}"],
   "language": "en",
-  "estimated_complexity": "{extraction['complexity']}",
+  "estimated_complexity": "{extraction["complexity"]}",
   "domain": "{domain}"
 }}
 ---
 
-## Auto-generated SPEC for {extraction['file_name']}
+## Auto-generated SPEC for {extraction["file_name"]}
 
 ### Overview
 
-{domain_info['description']}
+{domain_info["description"]}
 
 {spec_content}
 """
@@ -428,7 +424,7 @@ class EARSTemplateEngine:
 
     def _render_template(self, template: Dict[str, str], context: Dict[str, Any]) -> str:
         """Render template with context."""
-        template_text = template['template']
+        template_text = template["template"]
 
         # Replace placeholders
         for key, value in context.items():
@@ -439,8 +435,8 @@ class EARSTemplateEngine:
 
     def _extract_primary_function(self, extraction: Dict[str, Any], domain: str) -> str:
         """Extract primary function from code analysis."""
-        classes = extraction['classes']
-        functions = extraction['functions']
+        classes = extraction["classes"]
+        functions = extraction["functions"]
 
         if classes:
             return f"Manage {classes[0]} class and related operations"
@@ -456,25 +452,25 @@ class EARSTemplateEngine:
             "- **REQ-007**: State changes SHALL occur only under valid conditions",
             "- **REQ-008**: System SHALL maintain integrity of each state",
             "- **REQ-009**: State changes SHALL be logged and traceable",
-            "- **REQ-010**: System SHALL provide recovery mechanism from error state"
+            "- **REQ-010**: System SHALL provide recovery mechanism from error state",
         ]
 
         domain_specific = {
-            'auth': [
+            "auth": [
                 "- **AUTH-001**: User SHALL be able to transition from unauthenticated to authenticated state",
                 "- **AUTH-002**: System SHALL be accessible in authenticated state",
-                "- **AUTH-003**: System SHALL automatically transition to unauthenticated state on session expiry"
+                "- **AUTH-003**: System SHALL automatically transition to unauthenticated state on session expiry",
             ],
-            'api': [
+            "api": [
                 "- **API-001**: API SHALL have ready, executing, and error states",
                 "- **API-002**: System SHALL return appropriate error response in error state",
-                "- **API-003**: State changes SHALL be notified as events"
+                "- **API-003**: State changes SHALL be notified as events",
             ],
-            'data': [
+            "data": [
                 "- **DATA-001**: Data SHALL have create, update, and delete states",
                 "- **DATA-002**: Data integrity SHALL be maintained at all times",
-                "- **DATA-003**: Data backup state SHALL be monitored"
-            ]
+                "- **DATA-003**: Data backup state SHALL be monitored",
+            ],
         }
 
         result = "\n".join(base_requirements)
@@ -490,25 +486,25 @@ class EARSTemplateEngine:
             "- **EVT-002**: System SHALL handle internal system events",
             "- **EVT-003**: System SHALL receive external service events",
             "- **EVT-004**: Event processing errors SHALL be handled appropriately",
-            "- **EVT-005**: Event logs SHALL be maintained"
+            "- **EVT-005**: Event logs SHALL be maintained",
         ]
 
         domain_specific = {
-            'auth': [
+            "auth": [
                 "- **AUTH-EVT-001**: System SHALL handle login events",
                 "- **AUTH-EVT-002**: System SHALL handle logout events",
-                "- **AUTH-EVT-003**: System SHALL handle password change events"
+                "- **AUTH-EVT-003**: System SHALL handle password change events",
             ],
-            'api': [
+            "api": [
                 "- **API-EVT-001**: System SHALL handle API request events",
                 "- **API-EVT-002**: System SHALL handle authentication events",
-                "- **API-EVT-003**: System SHALL handle rate limit events"
+                "- **API-EVT-003**: System SHALL handle rate limit events",
             ],
-            'data': [
+            "data": [
                 "- **DATA-EVT-001**: System SHALL handle data save events",
                 "- **DATA-EVT-002**: System SHALL handle data retrieval events",
-                "- **DATA-EVT-003**: System SHALL handle data deletion events"
-            ]
+                "- **DATA-EVT-003**: System SHALL handle data deletion events",
+            ],
         }
 
         result = "\n".join(base_events)
@@ -521,22 +517,19 @@ class EARSTemplateEngine:
         """Generate technical specifications."""
         technical_specs = [
             "#### Core Implementation",
-
             f"- **SPEC-001**: {extraction['classes'][0] if extraction['classes'] else 'Main'} class SHALL be implemented",
             f"- **SPEC-002**: {extraction['functions'][0] if extraction['functions'] else 'Core'} function SHALL be implemented",
             "- **SPEC-003**: Input validation SHALL be implemented",
             "- **SPEC-004**: Error handling mechanism SHALL be implemented",
             "- **SPEC-005**: Logging system SHALL be implemented",
-
             "#### Extensibility",
             "- **SPEC-006**: Plugin architecture support",
             "- **SPEC-007**: Configuration-based feature enable/disable",
             "- **SPEC-008**: Testable design",
-
             "#### Maintainability",
             "- **SPEC-009**: Code documentation",
             "- **SPEC-010**: Unit test coverage",
-            "- **SPEC-011**: Code quality validation"
+            "- **SPEC-011**: Code quality validation",
         ]
 
         return "\n".join(technical_specs)
@@ -544,13 +537,13 @@ class EARSTemplateEngine:
     def _generate_technical_details(self, extraction: Dict[str, Any], domain: str) -> Dict[str, str]:
         """Generate technical details for specifications."""
         return {
-            'technical_details': f"""#### Technical Details
+            "technical_details": f"""#### Technical Details
 
-- **Architecture**: {extraction['architecture'].title()} Architecture
-- **Complexity**: {extraction['complexity'].title()}
-- **Language**: {extraction['language']}
-- **Module Count**: {len(extraction['classes'])} classes, {len(extraction['functions'])} functions
-- **Dependencies**: {len(extraction['imports'])} external dependencies
+- **Architecture**: {extraction["architecture"].title()} Architecture
+- **Complexity**: {extraction["complexity"].title()}
+- **Language**: {extraction["language"]}
+- **Module Count**: {len(extraction["classes"])} classes, {len(extraction["functions"])} functions
+- **Dependencies**: {len(extraction["imports"])} external dependencies
 
 #### Data Models
 
@@ -575,19 +568,19 @@ class EARSTemplateEngine:
 #### Scalability Specification
 
 {self._generate_scalability_specs(extraction, domain)}""",
-            'data_models': self._generate_data_models(extraction, domain),
-            'api_specs': self._generate_api_specs(extraction, domain),
-            'interface_specs': self._generate_interface_specs(extraction, domain),
-            'security_specs': self._generate_security_specs(extraction, domain),
-            'performance_specs': self._generate_performance_specs(extraction, domain),
-            'scalability_specs': self._generate_scalability_specs(extraction, domain)
+            "data_models": self._generate_data_models(extraction, domain),
+            "api_specs": self._generate_api_specs(extraction, domain),
+            "interface_specs": self._generate_interface_specs(extraction, domain),
+            "security_specs": self._generate_security_specs(extraction, domain),
+            "performance_specs": self._generate_performance_specs(extraction, domain),
+            "scalability_specs": self._generate_scalability_specs(extraction, domain),
         }
 
     def _generate_data_models(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate data models section."""
-        if extraction['classes']:
+        if extraction["classes"]:
             models = []
-            for class_name in extraction['classes'][:3]:  # Limit to 3 models
+            for class_name in extraction["classes"][:3]:  # Limit to 3 models
                 models.append(f"""
 **{class_name}**:
 - Attributes: ID, created_at, status
@@ -599,7 +592,7 @@ class EARSTemplateEngine:
 
     def _generate_api_specs(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate API specifications."""
-        if domain in ['api', 'auth']:
+        if domain in ["api", "auth"]:
             return """
 **RESTful API Endpoints**:
 - `GET /api/{resource}`: Retrieve resource list
@@ -616,7 +609,7 @@ class EARSTemplateEngine:
 
     def _generate_interface_specs(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate interface specifications."""
-        if domain in ['ui', 'api']:
+        if domain in ["ui", "api"]:
             return """
 **User Interface**:
 - Web Interface: Responsive design
@@ -632,7 +625,7 @@ class EARSTemplateEngine:
 
     def _generate_security_specs(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate security specifications."""
-        if domain in ['auth', 'api']:
+        if domain in ["auth", "api"]:
             return """
 **Security Requirements**:
 - Authentication and authorization
@@ -700,7 +693,6 @@ class EARSTemplateEngine:
 - Impact analysis documented
 - Stakeholder approvals recorded"""
 
-
     def _generate_edit_guide(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate edit guide section."""
         return f"""
@@ -726,30 +718,31 @@ class EARSTemplateEngine:
     def _get_domain_specific_review(self, domain: str) -> str:
         """Get domain-specific review guidance."""
         domain_reviews = {
-            'auth': 'Review security requirements, verify authentication flow, review session management',
-            'api': 'Review API design, review error handling, review performance',
-            'data': 'Review data integrity, review backup and restore',
-            'ui': 'Review user experience, review accessibility, review performance',
-            'business': 'Review business rules, review compliance'
+            "auth": "Review security requirements, verify authentication flow, review session management",
+            "api": "Review API design, review error handling, review performance",
+            "data": "Review data integrity, review backup and restore",
+            "ui": "Review user experience, review accessibility, review performance",
+            "business": "Review business rules, review compliance",
         }
-        return domain_reviews.get(domain, 'Review general requirements')
+        return domain_reviews.get(domain, "Review general requirements")
 
-    def _generate_plan_content(self, extraction: Dict[str, Any], domain: str,
-                             spec_id: str, custom_config: Dict[str, Any] = None) -> str:
+    def _generate_plan_content(
+        self, extraction: Dict[str, Any], domain: str, spec_id: str, custom_config: Dict[str, Any] = None
+    ) -> str:
         """Generate plan.md content."""
 
         # Generate implementation plan based on complexity and domain
         plan_content = f"""---
 id: "PLAN-{spec_id}"
 spec_id: "SPEC-{spec_id}"
-title: "Auto-generated Implementation Plan for {extraction['file_name']}"
+title: "Auto-generated Implementation Plan for {extraction["file_name"]}"
 version: "1.0.0"
 status: "pending"
-created: "{time.strftime('%Y-%m-%d')}"
+created: "{time.strftime("%Y-%m-%d")}"
 author: "@alfred-auto"
 domain: "{domain}"
 ---
-## Auto-generated Implementation Plan for {extraction['file_name']}
+## Auto-generated Implementation Plan for {extraction["file_name"]}
 
 ### Implementation Phases
 
@@ -852,13 +845,13 @@ domain: "{domain}"
 
     def _generate_architecture_diagram(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate architecture diagram."""
-        if domain == 'auth':
+        if domain == "auth":
             return """
 Client → [API Gateway] → [Auth Service] → [Database]
      ↑          ↓           ↓
   [UI Layer]  [Log Service] [Cache]
 """
-        elif domain == 'api':
+        elif domain == "api":
             return """
 Client → [Load Balancer] → [API Gateway] → [Service 1]
                                    ↓
@@ -866,7 +859,7 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
                                    ↓
                               [Database]
 """
-        elif domain == 'data':
+        elif domain == "data":
             return """
 [Application] → [Data Service] → [Database]
                 ↑          ↓
@@ -882,75 +875,76 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
     def _get_main_component(self, extraction: Dict[str, Any], domain: str) -> str:
         """Get main component name."""
         components = {
-            'auth': 'AuthService',
-            'api': 'APIController',
-            'data': 'DataService',
-            'ui': 'UIController',
-            'business': 'BusinessLogic'
+            "auth": "AuthService",
+            "api": "APIController",
+            "data": "DataService",
+            "ui": "UIController",
+            "business": "BusinessLogic",
         }
-        return components.get(domain, 'MainComponent')
+        return components.get(domain, "MainComponent")
 
     def _get_service_component(self, extraction: Dict[str, Any], domain: str) -> str:
         """Get service component name."""
         components = {
-            'auth': 'UserService',
-            'api': 'ExternalService',
-            'data': 'PersistenceService',
-            'ui': 'ClientService',
-            'business': 'WorkflowService'
+            "auth": "UserService",
+            "api": "ExternalService",
+            "data": "PersistenceService",
+            "ui": "ClientService",
+            "business": "WorkflowService",
         }
-        return components.get(domain, 'ServiceComponent')
+        return components.get(domain, "ServiceComponent")
 
     def _get_data_component(self, extraction: Dict[str, Any], domain: str) -> str:
         """Get data component name."""
         components = {
-            'auth': 'UserRepository',
-            'api': 'DataRepository',
-            'data': 'DataAccessLayer',
-            'ui': 'StateManagement',
-            'business': 'DataProcessor'
+            "auth": "UserRepository",
+            "api": "DataRepository",
+            "data": "DataAccessLayer",
+            "ui": "StateManagement",
+            "business": "DataProcessor",
         }
-        return components.get(domain, 'DataComponent')
+        return components.get(domain, "DataComponent")
 
     def _get_component_4(self, extraction: Dict[str, Any], domain: str) -> str:
         """Get fourth component name."""
         components = {
-            'auth': 'SecurityManager',
-            'api': 'RateLimiter',
-            'data': 'DataValidator',
-            'ui': 'FormValidator',
-            'business': 'RuleEngine'
+            "auth": "SecurityManager",
+            "api": "RateLimiter",
+            "data": "DataValidator",
+            "ui": "FormValidator",
+            "business": "RuleEngine",
         }
-        return components.get(domain, 'ValidationComponent')
+        return components.get(domain, "ValidationComponent")
 
     def _get_new_modules(self, extraction: Dict[str, Any], domain: str) -> str:
         """Get new modules to be added."""
         modules = {
-            'auth': 'Authentication module, Security module, Session management module',
-            'api': 'Routing module, Middleware module, Authentication module',
-            'data': 'Database module, Cache module, Backup module',
-            'ui': 'Component library, State management module',
-            'business': 'Business rules module, Workflow module'
+            "auth": "Authentication module, Security module, Session management module",
+            "api": "Routing module, Middleware module, Authentication module",
+            "data": "Database module, Cache module, Backup module",
+            "ui": "Component library, State management module",
+            "business": "Business rules module, Workflow module",
         }
-        return modules.get(domain, 'Standard modules')
+        return modules.get(domain, "Standard modules")
 
-    def _generate_acceptance_content(self, extraction: Dict[str, Any], domain: str,
-                                   spec_id: str, custom_config: Dict[str, Any] = None) -> str:
+    def _generate_acceptance_content(
+        self, extraction: Dict[str, Any], domain: str, spec_id: str, custom_config: Dict[str, Any] = None
+    ) -> str:
         """Generate acceptance.md content."""
 
         acceptance_content = f"""---
   "id": "ACCEPT-{spec_id}",
   "spec_id": "SPEC-{spec_id}",
-  "title": "Auto-generated Acceptance Criteria for {extraction['file_name']}",
+  "title": "Auto-generated Acceptance Criteria for {extraction["file_name"]}",
   "version": "1.0.0",
   "status": "pending",
-  "created": "{time.strftime('%Y-%m-%d')}",
+  "created": "{time.strftime("%Y-%m-%d")}",
   "author": "@alfred-auto",
   "domain": "{domain}"
 }}
 ---
 
-## Auto-generated Acceptance Criteria for {extraction['file_name']}
+## Auto-generated Acceptance Criteria for {extraction["file_name"]}
 
 ### Acceptance Criteria
 
@@ -1077,7 +1071,7 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
     def _generate_domain_specific_acceptance(self, domain: str) -> str:
         """Generate domain-specific acceptance criteria."""
         domain_criteria = {
-            'auth': """
+            "auth": """
 - **AUTH-001**: User login functionality validation
   - SHALL allow login with user ID and password
   - SHALL issue session token on success
@@ -1090,7 +1084,7 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
   - SHALL allow password change after verification
   - SHALL validate password complexity
   - SHALL send notification on change""",
-            'api': """
+            "api": """
 - **API-001**: REST API functionality validation
   - SHALL operate CRUD operations correctly
   - SHALL return correct HTTP status codes
@@ -1102,7 +1096,7 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
 - **API-003**: Rate limiting functionality validation
   - SHALL operate request limits correctly
   - SHALL return appropriate errors when limit exceeded""",
-            'data': """
+            "data": """
 - **DATA-001**: Data storage functionality validation
   - SHALL store data correctly
   - SHALL maintain data integrity
@@ -1114,23 +1108,16 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
 - **DATA-003**: Data management functionality validation
   - SHALL allow data modification
   - SHALL handle data deletion safely
-  - MAY require data migration functionality"""
+  - MAY require data migration functionality""",
         }
         return domain_criteria.get(domain, "")
 
     def _validate_ears_compliance(self, spec_content: Dict[str, str]) -> Dict[str, Any]:
         """Validate EARS format compliance."""
-        spec_md = spec_content.get('spec_md', '')
+        spec_md = spec_content.get("spec_md", "")
 
         # Check for required sections
-        required_sections = [
-            'Overview',
-            'Environment',
-            'Assumptions',
-            'Requirements',
-            'Specifications',
-            'Traceability'
-        ]
+        required_sections = ["Overview", "Environment", "Assumptions", "Requirements", "Specifications", "Traceability"]
 
         section_scores = {}
         for section in required_sections:
@@ -1149,27 +1136,27 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
                 suggestions.append(f"Required: {section} section must be included")
 
         return {
-            'ears_compliance': round(overall_compliance, 2),
-            'section_scores': section_scores,
-            'suggestions': suggestions[:5],  # Top 5 suggestions
-            'total_sections': len(required_sections),
-            'present_sections': sum(1 for score in section_scores.values() if score > 0)
+            "ears_compliance": round(overall_compliance, 2),
+            "section_scores": section_scores,
+            "suggestions": suggestions[:5],  # Top 5 suggestions
+            "total_sections": len(required_sections),
+            "present_sections": sum(1 for score in section_scores.values() if score > 0),
         }
 
     def _detect_framework(self, extraction: Dict[str, Any]) -> str:
         """Detect framework from imports."""
-        imports = extraction['imports']
+        imports = extraction["imports"]
 
         framework_indicators = {
-            'Django': ['django'],
-            'Flask': ['flask'],
-            'FastAPI': ['fastapi'],
-            'Spring': ['spring'],
-            'Express': ['express'],
-            'React': ['react'],
-            'Angular': ['angular'],
-            'Vue': ['vue'],
-            'Next.js': ['next']
+            "Django": ["django"],
+            "Flask": ["flask"],
+            "FastAPI": ["fastapi"],
+            "Spring": ["spring"],
+            "Express": ["express"],
+            "React": ["react"],
+            "Angular": ["angular"],
+            "Vue": ["vue"],
+            "Next.js": ["next"],
         }
 
         for framework, indicators in framework_indicators.items():
@@ -1177,4 +1164,4 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
                 if any(indicator in imp.lower() for indicator in indicators):
                     return framework
 
-        return 'Custom'
+        return "Custom"

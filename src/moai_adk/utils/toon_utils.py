@@ -12,7 +12,6 @@ Examples:
 """
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +42,7 @@ def _encode_value(val: Any) -> str:
         return str(val)
     elif isinstance(val, str):
         # Quote if contains special chars
-        if any(c in val for c in [',', ':', '\n', '"', '[']):
+        if any(c in val for c in [",", ":", "\n", '"', "["]):
             return json.dumps(val)
         return val
     else:
@@ -126,7 +125,7 @@ def toon_save(data: Any, path: Path | str, strict: bool = False) -> None:
     try:
         toon_str = toon_encode(data, strict=strict)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(toon_str, encoding='utf-8')
+        path.write_text(toon_str, encoding="utf-8")
     except ValueError:
         raise
     except IOError as e:
@@ -153,7 +152,7 @@ def toon_load(path: Path | str, strict: bool = False) -> Any:
     """
     path = Path(path)
     try:
-        toon_str = path.read_text(encoding='utf-8')
+        toon_str = path.read_text(encoding="utf-8")
         return toon_decode(toon_str, strict=strict)
     except ValueError:
         raise
@@ -209,16 +208,16 @@ def compare_formats(data: Any) -> dict[str, dict]:
         reduction = (json_tokens - toon_tokens) / json_tokens if json_tokens > 0 else 0
 
         return {
-            'json': {
-                'size_bytes': len(json_str.encode('utf-8')),
-                'tokens': json_tokens,
+            "json": {
+                "size_bytes": len(json_str.encode("utf-8")),
+                "tokens": json_tokens,
             },
-            'toon': {
-                'size_bytes': len(toon_str.encode('utf-8')),
-                'tokens': toon_tokens,
+            "toon": {
+                "size_bytes": len(toon_str.encode("utf-8")),
+                "tokens": toon_tokens,
             },
-            'reduction': reduction,
-            'size_reduction_percent': 100 * (1 - len(toon_str) / len(json_str)) if json_str else 0,
+            "reduction": reduction,
+            "size_reduction_percent": 100 * (1 - len(toon_str) / len(json_str)) if json_str else 0,
         }
     except (ValueError, TypeError) as e:
         raise ValueError(f"Failed to compare formats: {e}") from e
@@ -244,11 +243,11 @@ def migrate_json_to_toon(json_path: Path | str, toon_path: Path | str | None = N
     """
     json_path = Path(json_path)
     if toon_path is None:
-        toon_path = json_path.with_suffix('.toon')
+        toon_path = json_path.with_suffix(".toon")
     toon_path = Path(toon_path)
 
     try:
-        data = json.loads(json_path.read_text(encoding='utf-8'))
+        data = json.loads(json_path.read_text(encoding="utf-8"))
         toon_save(data, toon_path)
         return toon_path
     except json.JSONDecodeError as e:

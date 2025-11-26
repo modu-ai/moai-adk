@@ -2,7 +2,7 @@
 name: moai-context-manager
 description: Enterprise context and session management with token budget optimization and state persistence
 version: 2.0.0
-modularized: true
+modularized: false
 replaces: moai-core-context-budget, moai-core-session-state
 tags:
   - enterprise
@@ -11,7 +11,7 @@ tags:
   - session
   - budget
   - architecture
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 ---
 

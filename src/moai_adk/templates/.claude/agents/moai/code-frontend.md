@@ -4,7 +4,7 @@ description: Use when frontend architecture, component design, state management,
 tools: Read, Write, Edit, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-lang-unified, moai-icons-vector, moai-component-designer
+skills: moai-lang-unified, moai-core-uiux
 ---
 
 # Frontend Expert - Frontend Architecture Specialist

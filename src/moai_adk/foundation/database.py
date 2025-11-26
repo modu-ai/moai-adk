@@ -21,11 +21,8 @@ Created: 2025-11-24
 Status: GREEN Phase (Implementation complete)
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
-from enum import Enum
-import re
-
+from typing import Any, Dict, List, Optional
 
 # ============================================================================
 # Data Classes
@@ -136,12 +133,20 @@ class SchemaNormalizer:
                     continue
 
                 # Check for multi-valued attributes (common patterns)
-                multi_value_patterns = ["_list", "_array", "_set", "items", "tags", "categories", "numbers", "emails", "addresses"]
+                multi_value_patterns = [
+                    "_list",
+                    "_array",
+                    "_set",
+                    "items",
+                    "tags",
+                    "categories",
+                    "numbers",
+                    "emails",
+                    "addresses",
+                ]
                 if any(pattern in column_name.lower() for pattern in multi_value_patterns):
                     if "VARCHAR" in column_type or "TEXT" in column_type:
-                        violations.append(
-                            f"{table_name}.{column_name}: Likely contains multiple values"
-                        )
+                        violations.append(f"{table_name}.{column_name}: Likely contains multiple values")
 
         is_valid = len(violations) == 0
         normalization_level = "1NF" if is_valid else "0NF"
@@ -365,10 +370,7 @@ class DatabaseSelector:
             }
 
         # MongoDB for flexible schemas
-        if (
-            requirements.get("schema_flexibility") == "high"
-            or requirements.get("data_model") == "document"
-        ):
+        if requirements.get("schema_flexibility") == "high" or requirements.get("data_model") == "document":
             return {
                 "database": "MongoDB",
                 "version": "8.0",
@@ -615,9 +617,7 @@ class ConnectionPoolManager:
             "health_score": self._calculate_health_score(saturation_level, wait_time),
         }
 
-    def recommend_adjustments(
-        self, current_config: Dict[str, int], metrics: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def recommend_adjustments(self, current_config: Dict[str, int], metrics: Dict[str, Any]) -> Dict[str, Any]:
         """
         Recommend pool configuration adjustments.
 
@@ -823,7 +823,7 @@ class MigrationPlanner:
 
         steps = [
             f"Backup table {table} data",
-            f"Create temporary column with new type",
+            "Create temporary column with new type",
             f"Migrate data from {column} to temporary column",
             f"Drop original {column}",
             f"Rename temporary column to {column}",
@@ -997,7 +997,6 @@ class TransactionManager:
         }
 
 
-
 # ============================================================================
 # Class 7: PerformanceMonitor
 # ============================================================================
@@ -1022,7 +1021,7 @@ class PerformanceMonitor:
         """
         avg_time = query_stats.get("avg_execution_time_ms", 0)
         max_time = query_stats.get("max_execution_time_ms", 0)
-        call_count = query_stats.get("call_count", 0)
+        query_stats.get("call_count", 0)
 
         performance_rating = "excellent"
         if avg_time > 1000:

@@ -29,14 +29,14 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 try:
+    from lib.common import (  # noqa: E402
+        get_file_pattern_category,
+        is_root_whitelisted,
+        suggest_moai_location,
+    )
     from lib.config_manager import ConfigManager  # noqa: E402
     from lib.timeout import CrossPlatformTimeout  # noqa: E402
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
-    from lib.common import (  # noqa: E402
-        is_root_whitelisted,
-        get_file_pattern_category,
-        suggest_moai_location,
-    )
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
@@ -132,7 +132,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
         "whitelisted": False,
         "suggested_location": None,
         "warning": None,
-        "should_block": False
+        "should_block": False,
     }
 
     # If not in root, validation passes
@@ -160,7 +160,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
         f"   Reason: Not in root_whitelist\n"
         f"   ✅ Suggested: {suggested}{filename}\n"
         f"\n"
-        f"   Tip: Use Skill(\"moai-core-document-management\") for guidance"
+        f'   Tip: Use Skill("moai-core-document-management") for guidance'
     )
 
     if block_violations:
@@ -230,10 +230,7 @@ def handle_pre_tool_use(payload: Dict) -> Dict[str, Any]:
         return {"continue": True}
 
     # Validation failed
-    response = {
-        "continue": not validation["should_block"],
-        "systemMessage": validation["warning"]
-    }
+    response = {"continue": not validation["should_block"], "systemMessage": validation["warning"]}
 
     return response
 

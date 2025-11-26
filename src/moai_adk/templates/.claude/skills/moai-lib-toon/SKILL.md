@@ -1,14 +1,15 @@
+## Works Well With**Agents**:- **code-frontend** - UI implementation- **design-uiux** - Design integration- **workflow-tdd** - Testing integration**Skills**:- **moai-lib-shadcn-ui** - Complementary UI library- **moai-foundation-react** - React integration- **moai-testing-frontend** - Frontend testing**Commands**:- `/moai:2-run` - Testing with Toon UI- `/moai:3-sync` - Component documentation
 ---
 name: moai-lib-toon
 description: TOON Format Specialist - Token-efficient data encoding for LLM communication optimized per TOON Spec v2.0
 version: 2.0.0
-modularized: false
+modularized: true
 tags:
   - architecture
   - toon
   - enterprise
   - patterns
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 created: 2025-11-21
 ---

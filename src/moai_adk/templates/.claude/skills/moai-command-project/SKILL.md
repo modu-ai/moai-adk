@@ -2,7 +2,7 @@
 name: moai-command-project
 description: Integrated project management system with documentation, language initialization, and template optimization modules
 version: 1.0.0
-modularized: false
+modularized: true
 updated: 2025-11-26
 tools: Read, Write, Bash, Glob, Grep
 ---

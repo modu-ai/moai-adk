@@ -78,9 +78,7 @@ def prompt_project_setup(
                 answers["project_name"] = project_path.name
             else:
                 answers["project_name"] = Path.cwd().name  # fallback
-            console.print(
-                f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
-            )
+            console.print(f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]")
 
         # 2. Language selection - Korean, English, Japanese, Chinese, Other
         console.print("\n[blue]🌐 Language Selection[/blue]")
@@ -97,11 +95,7 @@ def prompt_project_setup(
         # Determine default choice index
         language_values = ["ko", "en", "ja", "zh", "other"]
         default_locale = initial_locale or "en"
-        default_index = (
-            language_values.index(default_locale)
-            if default_locale in language_values
-            else 1
-        )
+        default_index = language_values.index(default_locale) if default_locale in language_values else 1
 
         language_choice_name = questionary.select(
             "Select your conversation language:",
@@ -143,9 +137,7 @@ def prompt_project_setup(
                 "ja": "Japanese (日本語)",
                 "zh": "Chinese (中文)",
             }
-            console.print(
-                f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
-            )
+            console.print(f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}")
 
         return answers
 

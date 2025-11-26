@@ -11,17 +11,15 @@ tags:
   - optimization
   - feedback
   - tooling
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 ---
-
----
-
-## Quick Reference (30 seconds)
 
 # Enterprise Template Management
 
 **Unified template system** combining code boilerplates, feedback templates, and project optimization workflows for rapid development and consistent patterns.
+
+## Quick Reference (30 seconds)
 
 **Core Capabilities**:
 - Code template library (FastAPI, React, Vue, Next.js)
@@ -45,8 +43,10 @@ status: active
 3. **Template Optimizer**: Smart merge, backup restoration, version tracking
 4. **Pattern Library**: Reusable patterns for common scenarios
 
----
-
+**Quick Access**:
+- Code Templates → [code-templates.md](modules/code-templates.md)
+- Feedback Templates → [feedback-templates.md](modules/feedback-templates.md)
+- Template Optimizer → [template-optimizer.md](modules/template-optimizer.md)
 
 ## Implementation Guide (5 minutes)
 
@@ -119,27 +119,6 @@ def generate_from_template(template_name, variables):
 
 **Concept**: Rapidly scaffold projects with production-ready boilerplates.
 
-**Template Categories**:
-```
-Code Templates Library:
-├── Backend
-│   ├── FastAPI (REST API, async, Pydantic validation)
-│   ├── Django (ORM, admin, authentication)
-│   └── Express.js (Node.js, middleware, routing)
-├── Frontend
-│   ├── React (hooks, context, TypeScript)
-│   ├── Next.js 15 (App Router, RSC, Suspense)
-│   └── Vue 3 (Composition API, Pinia, TypeScript)
-├── Infrastructure
-│   ├── Docker (multi-stage, optimization)
-│   ├── CI/CD (GitHub Actions, pytest, coverage)
-│   └── Kubernetes (deployment, service, configmap)
-└── Testing
-    ├── Pytest (fixtures, mocks, parametrize)
-    ├── Vitest (React components, hooks)
-    └── Playwright (E2E, page objects)
-```
-
 **Usage Example**:
 ```python
 # Generate FastAPI project structure
@@ -151,7 +130,7 @@ project = template.scaffold(
 )
 ```
 
-**Use Case**: Initialize new microservices in 2 minutes with best practices baked in.
+**Details**: See [Code Templates](modules/code-templates.md) for complete library and examples.
 
 ---
 
@@ -159,69 +138,11 @@ project = template.scaffold(
 
 **Concept**: Structured templates for consistent GitHub issue creation.
 
-**6 Template Types**:
-```
-Feedback Template Types:
-├── 🐛 Bug Report
-│   ├── Description
-│   ├── Reproduction steps
-│   ├── Expected vs Actual behavior
-│   └── Environment info
-├── ✨ Feature Request
-│   ├── Feature description
-│   ├── Usage scenarios
-│   ├── Expected effects
-│   └── Priority
-├── ⚡ Improvement
-│   ├── Current state
-│   ├── Improved state
-│   ├── Performance/Quality impact
-│   └── Implementation complexity
-├── 🔄 Refactor
-│   ├── Refactoring scope
-│   ├── Current vs Improved structure
-│   ├── Improvement reasons
-│   └── Impact analysis
-├── 📚 Documentation
-│   ├── Document content
-│   ├── Target audience
-│   ├── Document structure
-│   └── Related docs
-└── ❓ Question/Discussion
-    ├── Background
-    ├── Question or proposal
-    ├── Options
-    └── Decision criteria
-```
-
-**Bug Report Template**:
-```markdown
-## Bug Description
-[Brief description of the bug]
-
-## Reproduction Steps
-1. [First step]
-2. [Second step]
-3. [Step where bug occurs]
-
-## Expected Behavior
-[What should happen normally]
-
-## Actual Behavior
-[What actually happens]
-
-## Environment
-- MoAI-ADK Version: [version]
-- Python Version: [version]
-- OS: [Windows/macOS/Linux]
-
-## Additional Information
-[Screenshots, error messages, logs]
-```
+**6 Template Types**: Bug Report, Feature Request, Improvement, Refactor, Documentation, Question/Discussion
 
 **Integration**: Auto-triggered by `/moai:9-feedback` command.
 
-**Use Case**: Standardize team issue reporting with 95% information completeness.
+**Details**: See [Feedback Templates](modules/feedback-templates.md) for all template types and usage.
 
 ---
 
@@ -229,33 +150,7 @@ Feedback Template Types:
 
 **Concept**: Intelligently merge template updates while preserving user customizations.
 
-**Optimization Workflow**:
-```
-6-Phase Template Optimization:
-├── Phase 1: Backup Discovery & Analysis
-│   ├── Scan .moai-backups/ directory
-│   ├── Analyze backup metadata
-│   └── Select most recent backup
-├── Phase 2: Template Comparison
-│   ├── Hash-based file comparison
-│   ├── Detect user customizations
-│   └── Identify template defaults
-├── Phase 3: Smart Merge Algorithm
-│   ├── Extract user content
-│   ├── Apply template updates
-│   └── Resolve conflicts
-├── Phase 4: Template Default Detection
-│   ├── Identify placeholder patterns
-│   └── Classify content (template/user/mixed)
-├── Phase 5: Version Management
-│   ├── Track template versions
-│   └── Update HISTORY section
-└── Phase 6: Configuration Updates
-    ├── Set optimization flags
-    └── Record customizations preserved
-```
-
-**Merge Strategy**:
+**Smart Merge Algorithm**:
 ```python
 def smart_merge(backup, template, current):
     """Three-way merge with intelligence."""
@@ -276,32 +171,13 @@ def smart_merge(backup, template, current):
     return merged
 ```
 
-**Use Case**: Safely update projects to new template versions without losing customizations.
+**Details**: See [Template Optimizer](modules/template-optimizer.md) for complete workflow and examples.
 
 ---
 
 ### Pattern 4: Backup Discovery & Restoration
 
 **Concept**: Automatic backup management with intelligent restoration.
-
-**Backup Structure**:
-```json
-{
-  "backup_id": "backup-2025-11-24-v0.28.2",
-  "created_at": "2025-11-24T10:30:00Z",
-  "template_version": "0.28.2",
-  "project_state": {
-    "name": "my-project",
-    "specs": ["SPEC-001", "SPEC-002"],
-    "files_backed_up": 47
-  },
-  "customizations": {
-    "language": "ko",
-    "team_settings": {...},
-    "domains": ["backend", "frontend"]
-  }
-}
-```
 
 **Restoration Process**:
 ```python
@@ -320,15 +196,9 @@ def restore_from_backup(backup_id: str):
 
     # Apply to current project
     apply_customizations(customizations)
-
-    # Update configuration
-    update_config({
-        "restored_from": backup_id,
-        "restored_at": datetime.now()
-    })
 ```
 
-**Use Case**: Recover from failed updates or experiment with template changes safely.
+**Details**: See [Template Optimizer - Backup Restoration](modules/template-optimizer.md#restoration-process) for complete implementation.
 
 ---
 
@@ -347,48 +217,55 @@ def restore_from_backup(backup_id: str):
       "language",
       "team_settings",
       "domains"
-    ],
-    "optimization_flags": {
-      "merge_applied": true,
-      "conflicts_resolved": 0,
-      "user_content_extracted": true
-    }
+    ]
   }
 }
 ```
 
-**History Section Updates**:
-```markdown
-## Template Update History
-
-### v0.28.2 (2025-11-24)
-- **Optimization Applied**: Yes
-- **Backup Used**: backup-2025-10-15-v0.27.0
-- **Customizations Preserved**: language (ko), team_settings
-- **Template Updates**: 12 files updated
-- **Conflicts Resolved**: 0
-```
-
-**Use Case**: Maintain clear audit trail of template changes and optimizations.
+**Details**: See [Template Optimizer - Version Tracking](modules/template-optimizer.md#version-tracking) for complete implementation.
 
 ---
+
+## Module Reference
+
+### Core Modules
+
+- **[Code Templates](modules/code-templates.md)** - Boilerplate library, scaffold patterns, framework templates
+- **[Feedback Templates](modules/feedback-templates.md)** - 6 GitHub issue types, usage examples, best practices
+- **[Template Optimizer](modules/template-optimizer.md)** - Smart merge algorithm, backup restoration, version management
+
+### Module Contents
+
+**Code Templates**:
+- FastAPI REST API template
+- React component template
+- Docker & CI/CD templates
+- Template variables and scaffolding
+
+**Feedback Templates**:
+- Bug Report template
+- Feature Request template
+- Improvement, Refactor, Documentation, Question templates
+- Integration with `/moai:9-feedback`
+
+**Template Optimizer**:
+- 6-phase optimization workflow
+- Smart merge algorithm
+- Backup discovery and restoration
+- Version tracking and history
 
 ## Advanced Documentation
 
 For detailed patterns and implementation strategies:
 
-- **[Code Templates Guide](./modules/code-templates-guide.md)** - Boilerplate library, scaffold patterns, framework templates
-- **[Feedback Templates](./modules/feedback-templates.md)** - 6 GitHub issue types, usage examples, best practices
-- **[Template Optimizer](./modules/template-optimizer.md)** - Smart merge algorithm, backup restoration, version management
-- **[Pattern Library](./modules/pattern-library.md)** - Reusable patterns, customization strategies, common scenarios
-- **[Version Management](./modules/version-management.md)** - Version tracking, history maintenance, rollback procedures
-- **[Reference Guide](./modules/reference.md)** - API reference, troubleshooting, FAQ
-
----
+- **[Code Templates Guide](modules/code-templates.md)** - Complete template library
+- **[Feedback Templates](modules/feedback-templates.md)** - Issue template reference
+- **[Template Optimizer](modules/template-optimizer.md)** - Optimization and merge strategies
 
 ## Best Practices
 
-### ✅ DO
+### DO
+
 - Use templates for consistent project structure
 - Preserve user customizations during updates
 - Create backups before major template changes
@@ -398,7 +275,8 @@ For detailed patterns and implementation strategies:
 - Track template versions in config
 - Test templates before production use
 
-### ❌ DON'T
+### DON'T
+
 - Modify template defaults without documentation
 - Skip backup before template optimization
 - Ignore merge conflicts during updates
@@ -408,17 +286,23 @@ For detailed patterns and implementation strategies:
 - Exceed template complexity limits
 - Bypass version tracking
 
----
-
 ## Works Well With
 
-- `moai-project-config-manager` - Configuration management and validation
-- `moai-cc-configuration` - Claude Code settings integration
-- `moai-foundation-specs` - SPEC template generation
-- `moai-docs-generation` - Documentation template scaffolding
-- `moai-core-workflow` - Template-driven workflows
+**Agents**:
+- **workflow-project** - Project initialization
+- **core-planner** - Template planning
+- **workflow-spec** - SPEC template generation
 
----
+**Skills**:
+- **moai-project-config-manager** - Configuration management and validation
+- **moai-cc-configuration** - Claude Code settings integration
+- **moai-foundation-specs** - SPEC template generation
+- **moai-docs-generation** - Documentation template scaffolding
+- **moai-core-workflow** - Template-driven workflows
+
+**Commands**:
+- `/moai:0-project` - Project initialization with templates
+- `/moai:9-feedback` - Feedback template selection and issue creation
 
 ## Workflow Integration
 
@@ -455,74 +339,6 @@ For detailed patterns and implementation strategies:
 4. Update version history (Pattern 5)
 ```
 
----
-
-## Code Template Examples
-
-### FastAPI REST API
-```python
-# Scaffolded FastAPI project structure
-my-api/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app initialization
-│   ├── api/
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       └── router.py
-│   ├── core/
-│   │   ├── config.py        # Settings (Pydantic)
-│   │   └── security.py      # Auth (JWT)
-│   ├── db/
-│   │   ├── session.py       # DB session
-│   │   └── base.py          # Base model
-│   ├── models/
-│   ├── schemas/             # Pydantic schemas
-│   └── services/
-├── tests/
-│   ├── conftest.py          # pytest fixtures
-│   └── test_api/
-├── alembic/                 # DB migrations
-├── .env.example
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-└── README.md
-```
-
-### React Component Template
-```typescript
-// Scaffolded React component (TypeScript)
-import React, { useState, useEffect } from 'react';
-
-interface ComponentProps {
-  title: string;
-  onAction: () => void;
-}
-
-export const Component: React.FC<ComponentProps> = ({
-  title,
-  onAction
-}) => {
-  const [state, setState] = useState<string>('');
-
-  useEffect(() => {
-    // Initialization logic
-  }, []);
-
-  return (
-    <div className="component">
-      <h1>{title}</h1>
-      <button onClick={onAction}>Action</button>
-    </div>
-  );
-};
-
-export default Component;
-```
-
----
-
 ## Success Metrics
 
 - **Scaffold Time**: 2 minutes for new projects (vs 30 minutes manual)
@@ -530,8 +346,6 @@ export default Component;
 - **Customization Preservation**: 100% user content retained during updates
 - **Feedback Completeness**: 95% GitHub issues with complete information
 - **Merge Success Rate**: 99% conflicts resolved automatically
-
----
 
 ## Changelog
 
@@ -541,6 +355,6 @@ export default Component;
 ---
 
 **Status**: Production Ready (Enterprise)
-**Modular Architecture**: SKILL.md + 6 modules
+**Modular Architecture**: SKILL.md + 3 core modules
 **Integration**: Plan-Run-Sync workflow optimized
 **Generated with**: MoAI-ADK Skill Factory

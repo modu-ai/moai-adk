@@ -1,3 +1,4 @@
+## Works Well With**Agents**:- **workflow-docs** - Documentation generation- **core-planner** - Documentation planning- **workflow-spec** - SPEC documentation**Skills**:- **moai-docs-generation** - Documentation generation- **moai-docs-unified** - Documentation validation- **moai-nextra-architecture** - Nextra documentation**Commands**:- `/moai:3-sync` - Documentation synchronization- `/moai:9-feedback** - Documentation improvements
 ---
 name: moai-jit-docs-enhanced
 description: Enhanced Just-In-Time document loading system that intelligently discovers, loads, and caches relevant documentation based on user intent and project context. Use when users need specific documentation, when working with new technologies, when answering domain-specific questions, or when context indicates documentation gaps.
@@ -8,7 +9,7 @@ tags:
   - enterprise
   - enhanced
   - development
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 ---
 

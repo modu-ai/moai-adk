@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class ErrorSeverity(Enum):
     """Error severity levels for classification"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -30,6 +31,7 @@ class ErrorSeverity(Enum):
 @dataclass
 class ParseResult:
     """Result of JSON parsing with metadata"""
+
     success: bool
     data: Optional[Any]
     error: Optional[str]
@@ -58,23 +60,23 @@ class RobustJSONParser:
         self.error_patterns = self._load_error_patterns()
         self.recovery_strategies = self._load_recovery_strategies()
         self.stats = {
-            'total_parses': 0,
-            'successful_parses': 0,
-            'recovered_parses': 0,
-            'failed_parses': 0,
-            'total_recovery_time': 0.0
+            "total_parses": 0,
+            "successful_parses": 0,
+            "recovered_parses": 0,
+            "failed_parses": 0,
+            "total_recovery_time": 0.0,
         }
 
     def _load_error_patterns(self) -> Dict[str, re.Pattern]:
         """Load common JSON error patterns"""
         return {
-            'missing_quotes': re.compile(r'(?<!\\)"(?:[^"\\]|\\.)*$'),
-            'trailing_comma': re.compile(r',\s*[}\]]'),
-            'escape_sequence': re.compile(r'\\(?![nrtbf"\'\\/])'),
-            'partial_object': re.compile(r'^\s*\{[^}]*\s*$'),
-            'missing_brace': re.compile(r'^[^{]*\{[^}]*[^}]*$'),
-            'invalid_quotes': re.compile(r'(?<!\\)"(?:[^"\\]|\\.)*?[^\\]"(?![\s,}\]:])'),
-            'control_chars': re.compile(r'[\x00-\x1F\x7F-\x9F]'),
+            "missing_quotes": re.compile(r'(?<!\\)"(?:[^"\\]|\\.)*$'),
+            "trailing_comma": re.compile(r",\s*[}\]]"),
+            "escape_sequence": re.compile(r'\\(?![nrtbf"\'\\/])'),
+            "partial_object": re.compile(r"^\s*\{[^}]*\s*$"),
+            "missing_brace": re.compile(r"^[^{]*\{[^}]*[^}]*$"),
+            "invalid_quotes": re.compile(r'(?<!\\)"(?:[^"\\]|\\.)*?[^\\]"(?![\s,}\]:])'),
+            "control_chars": re.compile(r"[\x00-\x1F\x7F-\x9F]"),
         }
 
     def _load_recovery_strategies(self) -> List[callable]:
@@ -103,9 +105,10 @@ class RobustJSONParser:
             ParseResult with data and metadata
         """
         import time
+
         start_time = time.time()
 
-        self.stats['total_parses'] += 1
+        self.stats["total_parses"] += 1
 
         original_input = json_string
         current_input = json_string
@@ -122,15 +125,15 @@ class RobustJSONParser:
                 recovery_attempts=0,
                 severity=ErrorSeverity.CRITICAL,
                 parse_time_ms=(time.time() - start_time) * 1000,
-                warnings=warnings
+                warnings=warnings,
             )
-            self.stats['failed_parses'] += 1
+            self.stats["failed_parses"] += 1
             return result
 
         # Try direct parsing first
         try:
             data = json.loads(json_string)
-            self.stats['successful_parses'] += 1
+            self.stats["successful_parses"] += 1
 
             result = ParseResult(
                 success=True,
@@ -140,7 +143,7 @@ class RobustJSONParser:
                 recovery_attempts=0,
                 severity=ErrorSeverity.LOW,
                 parse_time_ms=(time.time() - start_time) * 1000,
-                warnings=warnings
+                warnings=warnings,
             )
 
             if self.enable_logging:
@@ -176,7 +179,7 @@ class RobustJSONParser:
 
                     # Try parsing with recovered input
                     data = json.loads(current_input)
-                    self.stats['recovered_parses'] += 1
+                    self.stats["recovered_parses"] += 1
 
                     result = ParseResult(
                         success=True,
@@ -186,7 +189,7 @@ class RobustJSONParser:
                         recovery_attempts=recovery_attempts,
                         severity=ErrorSeverity.MEDIUM if recovery_attempts > 0 else ErrorSeverity.LOW,
                         parse_time_ms=(time.time() - start_time) * 1000,
-                        warnings=warnings
+                        warnings=warnings,
                     )
 
                     if self.enable_logging:
@@ -207,7 +210,7 @@ class RobustJSONParser:
                     current_input = self._apply_aggressive_recovery(current_input)
 
             # All recovery attempts failed
-            self.stats['failed_parses'] += 1
+            self.stats["failed_parses"] += 1
 
             result = ParseResult(
                 success=False,
@@ -217,7 +220,7 @@ class RobustJSONParser:
                 recovery_attempts=recovery_attempts,
                 severity=ErrorSeverity.HIGH if recovery_attempts > 0 else ErrorSeverity.CRITICAL,
                 parse_time_ms=(time.time() - start_time) * 1000,
-                warnings=warnings
+                warnings=warnings,
             )
 
             if self.enable_logging:
@@ -231,7 +234,7 @@ class RobustJSONParser:
 
         # Look for unquoted property names - more comprehensive pattern
         # Pattern: property_name: (instead of "property_name":)
-        pattern = r'(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:'
+        pattern = r"(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:"
         matches = list(re.finditer(pattern, json_string))
 
         modified = json_string
@@ -249,7 +252,7 @@ class RobustJSONParser:
                 end_pos = match.end() + offset
                 modified = modified[:start_pos] + replacement + modified[end_pos:]
                 offset += len(replacement) - (end_pos - start_pos)
-                warnings.append(f'Added quotes to property name: {match.group(2)}')
+                warnings.append(f"Added quotes to property name: {match.group(2)}")
 
         return modified, warnings
 
@@ -258,7 +261,7 @@ class RobustJSONParser:
         warnings = []
 
         # Remove trailing commas before } or ]
-        pattern = r',(\s*[}\]])'
+        pattern = r",(\s*[}\]])"
         matches = list(re.finditer(pattern, json_string))
 
         modified = json_string
@@ -276,7 +279,7 @@ class RobustJSONParser:
                 end_pos = match.end() + offset
                 modified = modified[:start_pos] + replacement + modified[end_pos:]
                 offset -= (match.end() - match.start()) + len(replacement)
-                warnings.append('Removed trailing comma')
+                warnings.append("Removed trailing comma")
 
         return modified, warnings
 
@@ -298,12 +301,12 @@ class RobustJSONParser:
 
             if string_context:
                 # Remove the invalid backslash
-                replacement = match.group(1)[1:] if len(match.group(1)) > 1 else ''
+                replacement = match.group(1)[1:] if len(match.group(1)) > 1 else ""
                 start_pos = match.start() + offset + 1  # Skip the backslash
                 end_pos = match.end() + offset
                 modified = modified[:start_pos] + replacement + modified[end_pos:]
                 offset -= 1
-                warnings.append('Removed invalid escape sequence')
+                warnings.append("Removed invalid escape sequence")
 
         return modified, warnings
 
@@ -314,26 +317,26 @@ class RobustJSONParser:
         stripped = json_string.strip()
 
         # Check if it's a partial object
-        if stripped.startswith('{') and not stripped.endswith('}'):
+        if stripped.startswith("{") and not stripped.endswith("}"):
             # Count braces
-            open_braces = stripped.count('{')
-            close_braces = stripped.count('}')
+            open_braces = stripped.count("{")
+            close_braces = stripped.count("}")
 
             if open_braces > close_braces:
                 missing_braces = open_braces - close_braces
-                modified = stripped + '}' * missing_braces
-                warnings.append(f'Added {missing_braces} closing brace(s)')
+                modified = stripped + "}" * missing_braces
+                warnings.append(f"Added {missing_braces} closing brace(s)")
                 return modified, warnings
 
         # Check for partial arrays
-        if stripped.startswith('[') and not stripped.endswith(']'):
-            open_brackets = stripped.count('[')
-            close_brackets = stripped.count(']')
+        if stripped.startswith("[") and not stripped.endswith("]"):
+            open_brackets = stripped.count("[")
+            close_brackets = stripped.count("]")
 
             if open_brackets > close_brackets:
                 missing_brackets = open_brackets - close_brackets
-                modified = stripped + ']' * missing_brackets
-                warnings.append(f'Added {missing_brackets} closing bracket(s)')
+                modified = stripped + "]" * missing_brackets
+                warnings.append(f"Added {missing_brackets} closing bracket(s)")
                 return modified, warnings
 
         return json_string, warnings
@@ -348,7 +351,7 @@ class RobustJSONParser:
             # Case: entirely single-quoted JSON
             modified = json_string.replace("'", '"')
             if modified != json_string:
-                warnings.append('Replaced single quotes with double quotes')
+                warnings.append("Replaced single quotes with double quotes")
                 return modified, warnings
 
         # More complex case: mixed quotes
@@ -375,9 +378,9 @@ class RobustJSONParser:
                 modified.append(char)
                 i += 1
 
-        final_modified = ''.join(modified)
+        final_modified = "".join(modified)
         if final_modified != json_string:
-            warnings.append('Replaced single quotes with double quotes')
+            warnings.append("Replaced single quotes with double quotes")
 
         return final_modified, warnings
 
@@ -386,12 +389,12 @@ class RobustJSONParser:
         warnings = []
 
         # Remove control characters except allowed ones (tab, newline, carriage return)
-        pattern = r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]'
+        pattern = r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]"
         matches = re.findall(pattern, json_string)
 
         if matches:
-            modified = re.sub(pattern, '', json_string)
-            warnings.append(f'Removed {len(matches)} control character(s)')
+            modified = re.sub(pattern, "", json_string)
+            warnings.append(f"Removed {len(matches)} control character(s)")
             return modified, warnings
 
         return json_string, warnings
@@ -401,10 +404,10 @@ class RobustJSONParser:
         warnings = []
 
         # Replace escaped newlines with proper JSON representation
-        modified = json_string.replace('\\n', '\\n')
+        modified = json_string.replace("\\n", "\\n")
 
         if modified != json_string:
-            warnings.append('Normalized escaped newlines')
+            warnings.append("Normalized escaped newlines")
 
         return modified, warnings
 
@@ -414,22 +417,22 @@ class RobustJSONParser:
         modified = json_string
 
         # Fix missing commas between array elements
-        pattern = r'(\]\s*\[)'
+        pattern = r"(\]\s*\[)"
         matches = re.finditer(pattern, modified)
 
         for match in reversed(list(matches)):
-            replacement = f'{match.group(1).strip()},{match.group(1).strip()}'
-            modified = modified[:match.start()] + replacement + modified[match.end():]
-            warnings.append('Added missing comma between array elements')
+            replacement = f"{match.group(1).strip()},{match.group(1).strip()}"
+            modified = modified[: match.start()] + replacement + modified[match.end() :]
+            warnings.append("Added missing comma between array elements")
 
         # Fix missing colons in object properties
         pattern = r'("[^"]+")\s+("[^"]*"|\d+|true|false|null|\{|\[)'
         matches = re.finditer(pattern, modified)
 
         for match in reversed(list(matches)):
-            replacement = f'{match.group(1)}:{match.group(2)}'
-            modified = modified[:match.start()] + replacement + modified[match.end():]
-            warnings.append(f'Added missing colon for property: {match.group(1)}')
+            replacement = f"{match.group(1)}:{match.group(2)}"
+            modified = modified[: match.start()] + replacement + modified[match.end() :]
+            warnings.append(f"Added missing colon for property: {match.group(1)}")
 
         return modified, warnings
 
@@ -439,10 +442,10 @@ class RobustJSONParser:
 
         # Look for JSON-like patterns in the string
         patterns = [
-            r'\{[^{}]*\}',  # Simple object
-            r'\[[^\[\]]*\]',  # Simple array
-            r'\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}',  # Nested objects (one level)
-            r'\[(?:[^\[\]]*\[[^\[\]]*\])*[^\[\]]*\]',  # Nested arrays (one level)
+            r"\{[^{}]*\}",  # Simple object
+            r"\[[^\[\]]*\]",  # Simple array
+            r"\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}",  # Nested objects (one level)
+            r"\[(?:[^\[\]]*\[[^\[\]]*\])*[^\[\]]*\]",  # Nested arrays (one level)
         ]
 
         for pattern in patterns:
@@ -454,7 +457,7 @@ class RobustJSONParser:
                     json.loads(match.group())
 
                     # If successful, return this as the cleaned string
-                    warnings.append('Extracted valid JSON from larger string')
+                    warnings.append("Extracted valid JSON from larger string")
                     return match.group(), warnings
 
                 except json.JSONDecodeError:
@@ -469,9 +472,9 @@ class RobustJSONParser:
         # Try to extract just the JSON part from a response that might include other text
         # Look for patterns that might contain JSON
         json_patterns = [
-            r'```json\s*(.*?)\s*```',  # Markdown code blocks
-            r'\{.*\}',  # Anything between braces
-            r'\[.*\]',  # Anything between brackets
+            r"```json\s*(.*?)\s*```",  # Markdown code blocks
+            r"\{.*\}",  # Anything between braces
+            r"\[.*\]",  # Anything between brackets
         ]
 
         for pattern in json_patterns:
@@ -485,18 +488,17 @@ class RobustJSONParser:
 
         # If no JSON found, try to clean up the string
         # Remove common non-JSON prefixes/suffixes
-        lines = modified.split('\n')
+        lines = modified.split("\n")
         json_lines = []
 
         for line in lines:
             line = line.strip()
             # Skip lines that are clearly not JSON
-            if (line.startswith(('```', '#', '*', '-', '>', 'Error:', 'Success:')) or
-                line.endswith(('```', '.'))):
+            if line.startswith(("```", "#", "*", "-", ">", "Error:", "Success:")) or line.endswith(("```", ".")):
                 continue
             json_lines.append(line)
 
-        return '\n'.join(json_lines)
+        return "\n".join(json_lines)
 
     def _get_string_context(self, json_string: str, position: int) -> bool:
         """Check if position is inside a JSON string"""
@@ -510,7 +512,7 @@ class RobustJSONParser:
                 escape_next = False
                 continue
 
-            if char == '\\':
+            if char == "\\":
                 escape_next = True
                 continue
 
@@ -521,25 +523,27 @@ class RobustJSONParser:
 
     def get_stats(self) -> Dict[str, Union[int, float]]:
         """Get parsing statistics"""
-        total = self.stats['total_parses']
+        total = self.stats["total_parses"]
         if total > 0:
             return {
                 **self.stats,
-                'success_rate': (self.stats['successful_parses'] + self.stats['recovered_parses']) / total,
-                'recovery_rate': self.stats['recovered_parses'] / total,
-                'failure_rate': self.stats['failed_parses'] / total,
-                'avg_recovery_time': self.stats['total_recovery_time'] / self.stats['recovered_parses'] if self.stats['recovered_parses'] > 0 else 0
+                "success_rate": (self.stats["successful_parses"] + self.stats["recovered_parses"]) / total,
+                "recovery_rate": self.stats["recovered_parses"] / total,
+                "failure_rate": self.stats["failed_parses"] / total,
+                "avg_recovery_time": self.stats["total_recovery_time"] / self.stats["recovered_parses"]
+                if self.stats["recovered_parses"] > 0
+                else 0,
             }
         return self.stats
 
     def reset_stats(self) -> None:
         """Reset parsing statistics"""
         self.stats = {
-            'total_parses': 0,
-            'successful_parses': 0,
-            'recovered_parses': 0,
-            'failed_parses': 0,
-            'total_recovery_time': 0.0
+            "total_parses": 0,
+            "successful_parses": 0,
+            "recovered_parses": 0,
+            "failed_parses": 0,
+            "total_recovery_time": 0.0,
         }
 
 
@@ -568,22 +572,16 @@ if __name__ == "__main__":
     test_cases = [
         # Valid JSON
         '{"name": "test", "value": 123}',
-
         # Missing quotes
         '{name: "test", value: 123}',
-
         # Trailing comma
         '{"name": "test", "value": 123,}',
-
         # Invalid escape sequences
         '{"name": "test\\invalid", "value": 123}',
-
         # Partial object
         '{"name": "test"',
-
         # Mixed single quotes
         "{'name': 'test', 'value': 123}",
-
         # Control characters
         '{"name": "test\x00", "value": 123}',
     ]

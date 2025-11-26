@@ -12,14 +12,15 @@ Provides:
 Reference: moai-foundation-langs for modern language patterns and best practices
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
 import re
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 
 @dataclass
 class LanguageInfo:
     """Language information and ecosystem details."""
+
     name: str
     version: str
     is_supported: bool = True
@@ -35,6 +36,7 @@ class LanguageInfo:
 @dataclass
 class Pattern:
     """Code pattern with recommendations."""
+
     pattern_type: str  # "best_practice" or "anti_pattern"
     language: str
     description: str
@@ -47,6 +49,7 @@ class Pattern:
 @dataclass
 class TestingStrategy:
     """Testing strategy recommendation."""
+
     framework: str
     features: str
     language: str
@@ -62,62 +65,32 @@ class LanguageVersionManager:
             "current": "3.13",
             "lts": "3.12",
             "tier": "Tier 1",
-            "deprecated_versions": ["2.7", "3.9"]
+            "deprecated_versions": ["2.7", "3.9"],
         },
-        "TypeScript": {
-            "min_version": "4.5",
-            "current": "5.9",
-            "tier": "Tier 1",
-            "deprecated_versions": []
-        },
-        "Go": {
-            "min_version": "1.20",
-            "current": "1.23",
-            "tier": "Tier 1",
-            "deprecated_versions": ["1.19"]
-        },
-        "Rust": {
-            "min_version": "1.70",
-            "current": "1.77",
-            "tier": "Tier 1",
-            "deprecated_versions": []
-        },
+        "TypeScript": {"min_version": "4.5", "current": "5.9", "tier": "Tier 1", "deprecated_versions": []},
+        "Go": {"min_version": "1.20", "current": "1.23", "tier": "Tier 1", "deprecated_versions": ["1.19"]},
+        "Rust": {"min_version": "1.70", "current": "1.77", "tier": "Tier 1", "deprecated_versions": []},
         "Java": {
             "min_version": "11",
             "current": "23",
             "lts": "21",
             "tier": "Tier 2",
-            "deprecated_versions": ["8", "9", "10"]
+            "deprecated_versions": ["8", "9", "10"],
         },
-        "C#": {
-            "min_version": "11",
-            "current": "12",
-            "tier": "Tier 2",
-            "deprecated_versions": ["7", "8"]
-        },
+        "C#": {"min_version": "11", "current": "12", "tier": "Tier 2", "deprecated_versions": ["7", "8"]},
         "PHP": {
             "min_version": "8.2",
             "current": "8.4",
             "tier": "Tier 2",
-            "deprecated_versions": ["5.6", "7.0", "7.1", "7.2"]
+            "deprecated_versions": ["5.6", "7.0", "7.1", "7.2"],
         },
-        "JavaScript": {
-            "min_version": "ES2020",
-            "current": "ES2024",
-            "tier": "Tier 2",
-            "deprecated_versions": ["ES5"]
-        },
-        "R": {
-            "min_version": "4.2",
-            "current": "4.4",
-            "tier": "Tier 3",
-            "deprecated_versions": ["3.x"]
-        },
+        "JavaScript": {"min_version": "ES2020", "current": "ES2024", "tier": "Tier 2", "deprecated_versions": ["ES5"]},
+        "R": {"min_version": "4.2", "current": "4.4", "tier": "Tier 3", "deprecated_versions": ["3.x"]},
     }
 
     def detect(self, language_version_str: str) -> LanguageInfo:
         """Detect language and version from string."""
-        match = re.match(r'(\w+(?:\s+\w+)?)\s+([\d.]+|ES\d{4}|\w+\d+)', language_version_str)
+        match = re.match(r"(\w+(?:\s+\w+)?)\s+([\d.]+|ES\d{4}|\w+\d+)", language_version_str)
         if not match:
             return LanguageInfo(name="Unknown", version="unknown", is_supported=False)
 
@@ -136,7 +109,7 @@ class LanguageVersionManager:
             is_supported=is_supported,
             tier=lang_info.get("tier"),
             frameworks=[],
-            features=[]
+            features=[],
         )
 
     def _check_version_support(self, language: str, version: str) -> bool:
@@ -209,19 +182,19 @@ class PatternAnalyzer:
     BEST_PRACTICES = {
         "async": {
             "languages": ["Python", "JavaScript", "TypeScript", "C#"],
-            "description": "Async/await pattern for non-blocking I/O"
+            "description": "Async/await pattern for non-blocking I/O",
         },
         "type_hints": {
             "languages": ["Python", "TypeScript", "Go", "Rust", "Java"],
-            "description": "Type hints for better code clarity and safety"
+            "description": "Type hints for better code clarity and safety",
         },
         "error_handling": {
             "languages": ["Go", "Rust", "Python"],
-            "description": "Proper error handling with Result/Option types"
+            "description": "Proper error handling with Result/Option types",
         },
         "dependency_injection": {
             "languages": ["Python", "Java", "C#"],
-            "description": "Dependency injection for loose coupling"
+            "description": "Dependency injection for loose coupling",
         },
     }
 
@@ -236,7 +209,7 @@ class PatternAnalyzer:
                 language=language or "Multi-language",
                 description="Async/await pattern for non-blocking I/O",
                 example=code,
-                priority=9
+                priority=9,
             )
 
         # Type hints (Python, TypeScript)
@@ -246,7 +219,7 @@ class PatternAnalyzer:
                 language=language or "Python/TypeScript",
                 description="Type hints/annotations for type safety",
                 example=code,
-                priority=8
+                priority=8,
             )
 
         # Parameterized queries
@@ -256,7 +229,7 @@ class PatternAnalyzer:
                 language=language or "Multi-language",
                 description="Parameterized queries for SQL safety",
                 example=code,
-                priority=10
+                priority=10,
             )
 
         return None
@@ -270,25 +243,25 @@ class AntiPatternDetector:
             "keywords": ["callback", "=>"],
             "language": "JavaScript",
             "severity": "high",
-            "alternative": "Use async/await or Promises"
+            "alternative": "Use async/await or Promises",
         },
         "global_state": {
             "keywords": ["GLOBAL", "global "],
             "language": "Python/Go",
             "severity": "medium",
-            "alternative": "Use dependency injection or functional patterns"
+            "alternative": "Use dependency injection or functional patterns",
         },
         "sql_injection": {
             "keywords": ["f'", 'f"', "+ str(", "+ var"],
             "language": "Python/JavaScript",
             "severity": "critical",
-            "alternative": "Use parameterized queries or ORM"
+            "alternative": "Use parameterized queries or ORM",
         },
         "silent_failure": {
             "keywords": ["pass", "except:", "try"],
             "language": "Python",
             "severity": "high",
-            "alternative": "Use proper error handling"
+            "alternative": "Use proper error handling",
         },
     }
 
@@ -305,7 +278,7 @@ class AntiPatternDetector:
                 example=code,
                 severity="high",
                 alternative="Use async/await or Promises",
-                priority=9
+                priority=9,
             )
 
         # Global state detection
@@ -317,7 +290,7 @@ class AntiPatternDetector:
                 example=code,
                 severity="medium",
                 alternative="Use dependency injection or functional patterns",
-                priority=7
+                priority=7,
             )
 
         # SQL injection detection
@@ -329,7 +302,7 @@ class AntiPatternDetector:
                 example=code,
                 severity="critical",
                 alternative="Use parameterized queries with ORM",
-                priority=10
+                priority=10,
             )
 
         return None
@@ -346,21 +319,21 @@ class EcosystemAnalyzer:
                 version="3.12+",
                 tier="Tier 1",
                 frameworks=["FastAPI", "Django"],
-                features=["async", "type hints", "dataclasses"]
+                features=["async", "type hints", "dataclasses"],
             ),
             "TypeScript": LanguageInfo(
                 name="TypeScript",
                 version="5.0+",
                 tier="Tier 1",
                 frameworks=["Next.js", "React"],
-                features=["strict typing", "type safety", "decorators"]
+                features=["strict typing", "type safety", "decorators"],
             ),
             "Go": LanguageInfo(
                 name="Go",
                 version="1.20+",
                 tier="Tier 1",
                 frameworks=["Fiber", "GORM"],
-                features=["goroutines", "channels", "simplicity"]
+                features=["goroutines", "channels", "simplicity"],
             ),
         }
         return ecosystems.get(language)
@@ -392,28 +365,28 @@ class PerformanceOptimizer:
             "Leverage type hints for faster execution",
             "Batch database operations",
             "Use connection pooling (asyncpg, psycopg[c])",
-            "Profile code with cProfile or py-spy"
+            "Profile code with cProfile or py-spy",
         ],
         "TypeScript": [
             "Enable strict mode for better optimization",
             "Use const assertions for literals",
             "Tree-shake unused code",
             "Optimize bundle size with dynamic imports",
-            "Use native Node.js features instead of polyfills"
+            "Use native Node.js features instead of polyfills",
         ],
         "Go": [
             "Use goroutines for lightweight concurrency",
             "Implement connection pooling for databases",
             "Use buffered channels for performance",
             "Profile with pprof",
-            "Compile with release optimizations"
+            "Compile with release optimizations",
         ],
         "Rust": [
             "Use zero-cost abstractions",
             "Enable compile-time optimizations",
             "Avoid unnecessary allocations",
             "Use release builds for production",
-            "Profile with flamegraph"
+            "Profile with flamegraph",
         ],
     }
 
@@ -431,24 +404,16 @@ class TestingStrategyAdvisor:
 
     STRATEGIES = {
         "Python": TestingStrategy(
-            framework="pytest",
-            features="async support, fixtures, parametrization, pytest-asyncio",
-            language="Python"
+            framework="pytest", features="async support, fixtures, parametrization, pytest-asyncio", language="Python"
         ),
         "TypeScript": TestingStrategy(
-            framework="Vitest/Jest",
-            features="snapshot testing, coverage reporting, mocking",
-            language="TypeScript"
+            framework="Vitest/Jest", features="snapshot testing, coverage reporting, mocking", language="TypeScript"
         ),
         "Go": TestingStrategy(
-            framework="testing + testify",
-            features="assertions, mocking, test helpers, benchmarks",
-            language="Go"
+            framework="testing + testify", features="assertions, mocking, test helpers, benchmarks", language="Go"
         ),
         "Rust": TestingStrategy(
-            framework="cargo test",
-            features="unit tests, integration tests, doc tests",
-            language="Rust"
+            framework="cargo test", features="unit tests, integration tests, doc tests", language="Rust"
         ),
     }
 
@@ -464,14 +429,14 @@ class TestingStrategyAdvisor:
 
 # Export public API
 __all__ = [
-    'LanguageInfo',
-    'Pattern',
-    'TestingStrategy',
-    'LanguageVersionManager',
-    'FrameworkRecommender',
-    'PatternAnalyzer',
-    'AntiPatternDetector',
-    'EcosystemAnalyzer',
-    'PerformanceOptimizer',
-    'TestingStrategyAdvisor',
+    "LanguageInfo",
+    "Pattern",
+    "TestingStrategy",
+    "LanguageVersionManager",
+    "FrameworkRecommender",
+    "PatternAnalyzer",
+    "AntiPatternDetector",
+    "EcosystemAnalyzer",
+    "PerformanceOptimizer",
+    "TestingStrategyAdvisor",
 ]

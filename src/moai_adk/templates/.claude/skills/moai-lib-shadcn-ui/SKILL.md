@@ -2,13 +2,13 @@
 name: moai-lib-shadcn-ui
 description: Moai Lib Shadcn Ui - Professional implementation guide
 version: 1.0.0
-modularized: false
+modularized: true
 tags:
   - shadcn
   - enterprise
   - development
   - ui
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 ---
 
@@ -34,8 +34,10 @@ Comprehensive shadcn/ui expertise with AI-powered design system architecture, Co
 
 **Module Organization**:
 - **Core Concepts**: This file (shadcn/ui overview, architecture, ecosystem)
-- **Components**: `SKILL-components.md` (component library, advanced patterns)
-- **Theming**: `SKILL-theming.md` (theme system, customization)
+- **Components**: [shadcn Components](modules/shadcn-components.md) (component library, advanced patterns)
+- **Theming**: [shadcn Theming](modules/shadcn-theming.md) (theme system, customization)
+- **Advanced Patterns**: [Advanced Patterns](modules/advanced-patterns.md) (complex implementations)
+- **Optimization**: [Optimization](modules/optimization.md) (performance tuning)
 
 ---
 
@@ -313,11 +315,11 @@ export function LoginForm() {
 
 ## Works Well With
 
-- `SKILL-components.md` - Advanced component patterns and implementation
-- `SKILL-theming.md` - Theme system and customization strategies
-- `moai-design-systems` - Design system architecture
-- `moai-lang-typescript` - TypeScript best practices
-- `moai-domain-frontend` - Frontend development patterns
+- [shadcn Components](modules/shadcn-components.md) - Advanced component patterns and implementation
+- [shadcn Theming](modules/shadcn-theming.md) - Theme system and customization strategies
+- `moai-core-uiux` - Design system architecture and foundations
+- `moai-lang-unified` - TypeScript best practices
+- `code-frontend` - Frontend development patterns
 
 ---
 

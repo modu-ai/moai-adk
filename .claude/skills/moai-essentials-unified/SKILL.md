@@ -1,3 +1,4 @@
+## Works Well With**Agents**:- **workflow-spec** - SPEC generation- **workflow-tdd** - TDD implementation- **core-quality** - Quality validation**Skills**:- **moai-foundation-core** - Core principles- **moai-cc-configuration** - Configuration management- **moai-templates** - Template management**Commands**:- `/moai:1-plan` - SPEC generation- `/moai:2-run` - TDD execution- `/moai:3-sync` - Documentation
 ---
 name: moai-essentials-unified
 description: AI-powered unified development orchestrator combining debugging, refactoring, performance optimization, code review, testing integration, and profiling into comprehensive development workflows with Context7 integration, TRUST 5 validation, and enterprise-grade automation

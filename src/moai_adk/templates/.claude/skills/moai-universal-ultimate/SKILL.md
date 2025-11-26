@@ -12,7 +12,7 @@ tags:
   - enterprise
   - ai-powered
   - orchestration
-updated: 2025-11-25
+updated: 2025-11-26
 status: active
 author: MoAI-ADK Team
 ---

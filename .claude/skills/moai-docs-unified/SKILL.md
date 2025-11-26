@@ -7,13 +7,11 @@ tags:
   - enterprise
   - unified
   - development
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
 ---
 
----
-
-## 🎯 Quick Reference (30 seconds)
+## Quick Reference (30 seconds)
 
 **Purpose**: Comprehensive documentation validation framework with 5 specialized phases.
 
@@ -170,7 +168,7 @@ uv run .claude/skills/moai-docs-unified/scripts/generate_quality_report.py
 
 ---
 
-## 📖 Advanced Documentation
+## Advanced Documentation
 
 This Skill uses Progressive Disclosure. For detailed implementation:
 
@@ -178,6 +176,8 @@ This Skill uses Progressive Disclosure. For detailed implementation:
 - **[modules/execution-guide.md](modules/execution-guide.md)** - How to run validations
 - **[modules/troubleshooting.md](modules/troubleshooting.md)** - Common issues and fixes
 - **[modules/reference.md](modules/reference.md)** - API reference and configuration
+- **[modules/scripts-reference.md](modules/scripts-reference.md)** - Script API reference
+- **[modules/integration-patterns.md](modules/integration-patterns.md)** - Integration patterns and examples
 
 ---
 
@@ -255,6 +255,26 @@ uv run .claude/skills/moai-docs-unified/scripts/generate_quality_report.py \
 - ✨ Mermaid diagram validation
 - ✨ Korean typography validation
 - ✨ Comprehensive quality reporting
+
+---
+
+## Works Well With
+
+**Agents**:
+- **workflow-docs** - Documentation generation workflow
+- **core-quality** - Quality assurance and validation
+- **workflow-spec** - Specification documentation
+
+**Skills**:
+- **moai-docs-generation** - Generate documentation automatically
+- **moai-docs-toolkit** - Document manipulation and conversion
+- **moai-cc-claude-md** - Markdown formatting standards
+- **moai-mermaid-diagram-expert** - Advanced diagram validation
+- **moai-nextra-architecture** - Nextra-based documentation architecture
+
+**Commands**:
+- `/moai:3-sync` - Documentation synchronization
+- `/moai:9-feedback` - Documentation improvement feedback
 
 ---
 

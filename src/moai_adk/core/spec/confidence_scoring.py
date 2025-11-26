@@ -148,9 +148,7 @@ class ConfidenceScoringSystem:
             structure_scores["nesting_depth"] = self._calculate_nesting_depth(tree)
 
             # Calculate naming consistency
-            structure_scores["naming_consistency"] = self._calculate_naming_consistency(
-                tree
-            )
+            structure_scores["naming_consistency"] = self._calculate_naming_consistency(tree)
 
             # Normalize scores (0-1 range)
             max_classes = 5  # Reasonable upper bound
@@ -163,24 +161,12 @@ class ConfidenceScoringSystem:
 
             normalized_scores = {
                 "class_ratio": min(structure_scores["class_count"] / max_classes, 1.0),
-                "function_ratio": min(
-                    structure_scores["function_count"] / max_functions, 1.0
-                ),
-                "method_ratio": min(
-                    structure_scores["method_count"] / max_methods, 1.0
-                ),
-                "import_ratio": min(
-                    structure_scores["import_count"] / max_imports, 1.0
-                ),
-                "complexity_ratio": max(
-                    0, 1.0 - structure_scores["complexity_score"] / max_complexity
-                ),
-                "nesting_ratio": max(
-                    0, 1.0 - structure_scores["nesting_depth"] / max_nesting
-                ),
-                "docstring_score": min(
-                    structure_scores["docstring_coverage"] / max_docstring, 1.0
-                ),
+                "function_ratio": min(structure_scores["function_count"] / max_functions, 1.0),
+                "method_ratio": min(structure_scores["method_count"] / max_methods, 1.0),
+                "import_ratio": min(structure_scores["import_count"] / max_imports, 1.0),
+                "complexity_ratio": max(0, 1.0 - structure_scores["complexity_score"] / max_complexity),
+                "nesting_ratio": max(0, 1.0 - structure_scores["nesting_depth"] / max_nesting),
+                "docstring_score": min(structure_scores["docstring_coverage"] / max_docstring, 1.0),
                 "naming_score": structure_scores["naming_consistency"],
             }
 
@@ -303,9 +289,7 @@ class ConfidenceScoringSystem:
 
             # Calculate overall domain relevance
             total_relevance = sum(domain_scores.values())
-            domain_scores["overall_relevance"] = min(
-                total_relevance / len(self.word_patterns), 1.0
-            )
+            domain_scores["overall_relevance"] = min(total_relevance / len(self.word_patterns), 1.0)
 
             # Calculate domain specificity (how focused the code is)
             max_domain = max(domain_scores.values()) if domain_scores.values() else 0
@@ -321,9 +305,7 @@ class ConfidenceScoringSystem:
             total_words = len(content.split())
 
             if total_words > 0:
-                domain_scores["technical_density"] = min(
-                    technical_words / total_words, 1.0
-                )
+                domain_scores["technical_density"] = min(technical_words / total_words, 1.0)
             else:
                 domain_scores["technical_density"] = 0.0
 
@@ -381,17 +363,11 @@ class ConfidenceScoringSystem:
                     if ast.get_docstring(node):
                         documented_functions += 1
                         # Check for parameter documentation
-                        if ":" in ast.get_docstring(
-                            node
-                        ) or "param" in ast.get_docstring(node):
+                        if ":" in ast.get_docstring(node) or "param" in ast.get_docstring(node):
                             doc_scores["parameter_documentation"] = 0.8
-                        if "return" in ast.get_docstring(
-                            node
-                        ) or "->" in ast.get_docstring(node):
+                        if "return" in ast.get_docstring(node) or "->" in ast.get_docstring(node):
                             doc_scores["return_documentation"] = 0.8
-                        if "raise" in ast.get_docstring(
-                            node
-                        ) or "exception" in ast.get_docstring(node):
+                        if "raise" in ast.get_docstring(node) or "exception" in ast.get_docstring(node):
                             doc_scores["exception_documentation"] = 0.8
 
                 elif isinstance(node, ast.ClassDef):
@@ -401,14 +377,10 @@ class ConfidenceScoringSystem:
 
             # Calculate docstring coverage
             if total_functions > 0:
-                doc_scores["docstring_coverage"] = (
-                    documented_functions / total_functions
-                )
+                doc_scores["docstring_coverage"] = documented_functions / total_functions
             if total_classes > 0:
                 class_coverage = documented_classes / total_classes
-                doc_scores["docstring_coverage"] = max(
-                    doc_scores["docstring_coverage"], class_coverage
-                )
+                doc_scores["docstring_coverage"] = max(doc_scores["docstring_coverage"], class_coverage)
 
             # Calculate comment density
             lines = content.split("\n")
@@ -419,11 +391,7 @@ class ConfidenceScoringSystem:
                 stripped = line.strip()
                 if stripped.startswith("#"):
                     comment_lines += 1
-                elif (
-                    stripped
-                    and not stripped.startswith('"""')
-                    and not stripped.startswith("'''")
-                ):
+                elif stripped and not stripped.startswith('"""') and not stripped.startswith("'''"):
                     code_lines += 1
 
             if code_lines > 0:
@@ -432,9 +400,7 @@ class ConfidenceScoringSystem:
             # Check for examples in docstrings
             total_docstring_length = len(ast.get_docstring(tree) or "")
             if total_docstring_length > 0:
-                example_count = len(
-                    re.findall(r">>>|Example:|example:|\b\d+\.\s", content)
-                )
+                example_count = len(re.findall(r">>>|Example:|example:|\b\d+\.\s", content))
                 doc_scores["examples_present"] = min(example_count / 3, 1.0)
 
             # Calculate explanation quality based on docstring content
@@ -450,14 +416,8 @@ class ConfidenceScoringSystem:
                     "processes",
                     "manages",
                 ]
-                explanation_count = sum(
-                    1
-                    for indicator in explanation_indicators
-                    if indicator in docstring_content
-                )
-                doc_scores["explanation_quality"] = min(
-                    explanation_count / len(explanation_indicators), 1.0
-                )
+                explanation_count = sum(1 for indicator in explanation_indicators if indicator in docstring_content)
+                doc_scores["explanation_quality"] = min(explanation_count / len(explanation_indicators), 1.0)
 
             return doc_scores
 
@@ -534,25 +494,14 @@ class ConfidenceScoringSystem:
         doc_analysis = self.analyze_documentation_quality(file_path)
 
         # Calculate weighted scores
-        structure_score = sum(
-            structure_analysis[key] * structure_weights.get(key, 0)
-            for key in structure_analysis
-        )
+        structure_score = sum(structure_analysis[key] * structure_weights.get(key, 0) for key in structure_analysis)
 
-        domain_score = sum(
-            domain_analysis[key] * domain_weights.get(key, 0) for key in domain_analysis
-        )
+        domain_score = sum(domain_analysis[key] * domain_weights.get(key, 0) for key in domain_analysis)
 
-        doc_score = sum(
-            doc_analysis[key] * doc_weights.get(key, 0) for key in doc_analysis
-        )
+        doc_score = sum(doc_analysis[key] * doc_weights.get(key, 0) for key in doc_analysis)
 
         # Final confidence score (weighted average)
-        total_weights = (
-            sum(structure_weights.values())
-            + sum(domain_weights.values())
-            + sum(doc_weights.values())
-        )
+        total_weights = sum(structure_weights.values()) + sum(domain_weights.values()) + sum(doc_weights.values())
 
         final_confidence = (structure_score + domain_score + doc_score) / total_weights
 
@@ -579,9 +528,7 @@ class ConfidenceScoringSystem:
                 "details": doc_analysis,
                 "weights": doc_weights,
             },
-            "recommendations": self._generate_recommendations(
-                structure_analysis, domain_analysis, doc_analysis
-            ),
+            "recommendations": self._generate_recommendations(structure_analysis, domain_analysis, doc_analysis),
         }
 
         return final_confidence, detailed_analysis
@@ -594,36 +541,24 @@ class ConfidenceScoringSystem:
 
         # Structure recommendations
         if structure_analysis.get("docstring_score", 0) < 0.5:
-            recommendations.append(
-                "Add more docstrings to improve documentation coverage"
-            )
+            recommendations.append("Add more docstrings to improve documentation coverage")
 
         if structure_analysis.get("complexity_ratio", 0) < 0.7:
-            recommendations.append(
-                "Consider refactoring complex functions to improve maintainability"
-            )
+            recommendations.append("Consider refactoring complex functions to improve maintainability")
 
         if structure_analysis.get("naming_score", 0) < 0.7:
-            recommendations.append(
-                "Improve naming consistency (use consistent naming convention)"
-            )
+            recommendations.append("Improve naming consistency (use consistent naming convention)")
 
         # Domain recommendations
         if domain_analysis.get("overall_relevance", 0) < 0.6:
-            recommendations.append(
-                "Add domain-specific terminology to improve relevance"
-            )
+            recommendations.append("Add domain-specific terminology to improve relevance")
 
         if domain_analysis.get("technical_density", 0) < 0.3:
-            recommendations.append(
-                "Increase technical vocabulary for better specification"
-            )
+            recommendations.append("Increase technical vocabulary for better specification")
 
         # Documentation recommendations
         if doc_analysis.get("examples_present", 0) < 0.5:
-            recommendations.append(
-                "Add usage examples in docstrings for better understanding"
-            )
+            recommendations.append("Add usage examples in docstrings for better understanding")
 
         if doc_analysis.get("parameter_documentation", 0) < 0.5:
             recommendations.append("Document function parameters and return values")
@@ -656,16 +591,12 @@ class ConfidenceScoringSystem:
             "confidence_score": confidence_score,
             "threshold": threshold,
             "difference": confidence_score - threshold,
-            "recommendation": self._get_threshold_recommendation(
-                confidence_score, threshold
-            ),
+            "recommendation": self._get_threshold_recommendation(confidence_score, threshold),
         }
 
         return validation_result
 
-    def _get_threshold_recommendation(
-        self, confidence_score: float, threshold: float
-    ) -> str:
+    def _get_threshold_recommendation(self, confidence_score: float, threshold: float) -> str:
         """Get recommendation based on confidence score."""
         if confidence_score >= threshold:
             if confidence_score >= 0.9:

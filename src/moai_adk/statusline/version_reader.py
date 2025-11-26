@@ -73,9 +73,9 @@ class VersionConfig:
     # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     version_fields: List[str] = field(
         default_factory=lambda: [
-            "moai.version",          # ← 1st priority: MoAI-ADK version
-            "project.version",       # ← 2nd priority: Project version
-            "version",               # ← 3rd priority: General version
+            "moai.version",  # ← 1st priority: MoAI-ADK version
+            "project.version",  # ← 2nd priority: Project version
+            "version",  # ← 3rd priority: General version
             "project.template_version",  # ← 4th priority: Template version
             "template_version",
         ]
@@ -104,9 +104,9 @@ class VersionReader:
     # Supported version fields in order of priority
     # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     DEFAULT_VERSION_FIELDS = [
-        "moai.version",          # ← 1st priority: MoAI-ADK version
-        "project.version",       # ← 2nd priority: Project version
-        "version",               # ← 3rd priority: General version
+        "moai.version",  # ← 1st priority: MoAI-ADK version
+        "project.version",  # ← 2nd priority: Project version
+        "version",  # ← 3rd priority: General version
         "project.template_version",  # ← 4th priority: Template version
         "template_version",
     ]
@@ -204,9 +204,7 @@ class VersionReader:
             version = self._check_cache()
             if version is not None:
                 self._cache_stats["hits"] += 1
-                self._cache_stats["cache_hits_by_source"][
-                    VersionSource.CACHE.value
-                ] += 1
+                self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
                 return version
 
             # Read from config file
@@ -238,9 +236,7 @@ class VersionReader:
             version = self._check_cache()
             if version is not None:
                 self._cache_stats["hits"] += 1
-                self._cache_stats["cache_hits_by_source"][
-                    VersionSource.CACHE.value
-                ] += 1
+                self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
                 return version
 
             # Read from config file asynchronously
@@ -279,14 +275,10 @@ class VersionReader:
                 entry.access_count += 1
                 entry.last_access = datetime.now()
                 self._cache_stats["hits"] += 1
-                self._cache_stats["cache_hits_by_source"][
-                    VersionSource.CACHE.value
-                ] += 1
+                self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
 
                 if self.config.debug_mode:
-                    self._logger.debug(
-                        f"Cache hit: {entry.version} (source: {entry.source.value})"
-                    )
+                    self._logger.debug(f"Cache hit: {entry.version} (source: {entry.source.value})")
 
                 return entry.version
 
@@ -331,9 +323,7 @@ class VersionReader:
             self._evict_oldest_cache_entry()
 
         if self.config.debug_mode:
-            self._logger.debug(
-                f"Cache updated with version: {version} (source: {source.value})"
-            )
+            self._logger.debug(f"Cache updated with version: {version} (source: {source.value})")
 
     def _evict_oldest_cache_entry(self) -> None:
         """
@@ -489,9 +479,7 @@ class VersionReader:
         logger.debug("No version field found in config")
         return ""
 
-    def _get_nested_value(
-        self, config: Dict[str, Any], field_path: str
-    ) -> Optional[str]:
+    def _get_nested_value(self, config: Dict[str, Any], field_path: str) -> Optional[str]:
         """
         Get nested value from config using dot notation.
 
@@ -598,7 +586,6 @@ class VersionReader:
         except Exception as e:
             self._logger.debug(f"Error getting package version: {e}")
             return ""
-
 
     async def _file_exists_async(self, path: Path) -> bool:
         """Async file existence check"""

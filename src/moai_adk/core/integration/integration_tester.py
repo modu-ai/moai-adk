@@ -120,16 +120,12 @@ class IntegrationTester:
         for test_case_name in test_suite.test_cases:
             # This is a simplified implementation
             # In practice, you would map test case names to actual test functions
-            result = self.run_test(
-                placeholder_test, test_case_name, [c.name for c in test_suite.components]
-            )
+            result = self.run_test(placeholder_test, test_case_name, [c.name for c in test_suite.components])
             results.append(result)
 
         return results
 
-    def run_concurrent_tests(
-        self, tests: List[tuple], timeout: Optional[float] = None
-    ) -> List[IntegrationTestResult]:
+    def run_concurrent_tests(self, tests: List[tuple], timeout: Optional[float] = None) -> List[IntegrationTestResult]:
         """
         Run multiple tests concurrently.
 
@@ -173,9 +169,7 @@ class IntegrationTester:
         """
         return self.discovery.discover_components(base_path)
 
-    def create_test_environment(
-        self, temp_dir: Optional[str] = None
-    ) -> TestEnvironment:
+    def create_test_environment(self, temp_dir: Optional[str] = None) -> TestEnvironment:
         """
         Create a test environment for integration testing.
 

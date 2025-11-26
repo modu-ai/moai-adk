@@ -226,12 +226,36 @@ This Skill uses Progressive Disclosure. For detailed implementation:
 
 ---
 
-## 🔗 Integration with Other Skills
+## Quick Reference (30 seconds)
 
-**Complementary Skills**:
-- Skill("moai-lang-unified") - UI/UX implementation with generated assets
-- Skill("moai-docs-generation") - Create visual documentation
-- Skill("moai-cc-claude-md") - Embed generated images in markdown
+**Core Purpose**: Professional AI image generation using Nano Banana Pro (Gemini 3 Pro) and Gemini 2.5 Flash.
+
+**Key Features**: Text-to-image, image-to-image editing, multi-turn refinement, reference guidance, 4K resolution.
+
+**When to Use**: Visual asset creation, prototyping, documentation, UI mockups, marketing materials.
+
+---
+
+## Works Well With
+
+**Agents**:
+- **design-uiux** - UI/UX design integration
+- **code-frontend** - Frontend asset implementation
+- **workflow-docs** - Visual documentation generation
+
+**Skills**:
+- **moai-lang-unified** - UI/UX implementation with generated assets
+- **moai-docs-generation** - Create visual documentation
+- **moai-cc-claude-md** - Embed generated images in markdown
+- **moai-domain-frontend** - Frontend integration
+
+**Commands**:
+- `/moai:3-sync` - Documentation with visual assets
+- `/moai:9-feedback` - Image generation improvements
+
+---
+
+## 🔗 Integration with Other Skills
 
 **Typical Workflow**:
 1. Use this Skill to generate visual assets

@@ -43,7 +43,6 @@ class OutputStyleDetector:
         "yoda": "🧙 Yoda Master",
         "yoda-master": "🧙 Yoda Master",
         "tutorial": "🧙 Yoda Master",
-
         # Display values with emojis
         "🤖 R2-D2": "R2-D2",
         "R2-D2": "R2-D2",
@@ -248,11 +247,7 @@ class OutputStyleDetector:
                 return None
 
             # Look for style indicators in recent responses
-            full_text = " ".join(
-                msg.get("content", "")
-                for msg in messages[-3:]
-                if msg.get("role") == "assistant"
-            )
+            full_text = " ".join(msg.get("content", "") for msg in messages[-3:] if msg.get("role") == "assistant")
 
             if not full_text:
                 return None
@@ -269,8 +264,9 @@ class OutputStyleDetector:
 
             # Explanatory indicators
             if len(full_text) > 2000:  # Long responses
-                explanatory_count = sum(1 for phrase in
-                    ["let me explain", "here's how", "the reason is", "to understand"]
+                explanatory_count = sum(
+                    1
+                    for phrase in ["let me explain", "here's how", "the reason is", "to understand"]
                     if phrase in text_lower
                 )
                 if explanatory_count >= 2:

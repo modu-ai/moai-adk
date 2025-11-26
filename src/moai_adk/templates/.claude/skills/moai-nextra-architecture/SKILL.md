@@ -1,3 +1,4 @@
+## Works Well With**Agents**:- **workflow-docs** - Documentation generation- **code-frontend** - Nextra implementation- **workflow-spec** - Architecture documentation**Skills**:- **moai-docs-generation** - Content generation- **moai-docs-unified** - Documentation validation- **moai-mermaid-diagram-expert** - Diagram integration**Commands**:- `/moai:3-sync` - Documentation deployment- `/moai:0-project` - Nextra project initialization
 ---
 name: moai-nextra-architecture
 description: Enterprise Nextra documentation framework with Next.js
@@ -7,10 +8,8 @@ tags:
   - architecture
   - enterprise
   - development
-updated: 2025-11-24
+updated: 2025-11-26
 status: active
----
-
 ---
 
 ## 🎯 Quick Reference (30 seconds)
@@ -18,6 +17,7 @@ status: active
 **Purpose**: Build professional documentation sites with Nextra + Next.js.
 
 **Nextra Advantages**:
+
 - Zero config MDX (Markdown + JSX seamlessly)
 - File-system routing (automatic routes)
 - Performance optimized (code splitting, prefetching)
@@ -25,12 +25,10 @@ status: active
 - i18n built-in (internationalization)
 
 **Core Files**:
+
 - `pages/` - Documentation pages (MDX)
 - `theme.config.tsx` - Site configuration
 - `_meta.js` - Navigation structure
-
----
-
 
 ## Implementation Guide (5 minutes)
 
@@ -54,6 +52,7 @@ status: active
 ### Core Patterns
 
 **Pattern 1: Nextra Project Setup**
+
 ```bash
 # Initialize Nextra docs site
 npx create-nextra-app@latest my-docs --template docs
@@ -69,31 +68,29 @@ pages/
 ```
 
 **Pattern 2: Custom Theme Configuration**
+
 ```typescript
 // theme.config.tsx
 export default {
   logo: <span>My Documentation</span>,
-  project: { link: 'https://github.com/user/repo' },
-  docsRepositoryBase: 'https://github.com/user/repo/tree/main',
+  project: { link: "https://github.com/user/repo" },
+  docsRepositoryBase: "https://github.com/user/repo/tree/main",
   useNextSeoProps: () => ({
-    titleTemplate: '%s – My Docs'
-  })
-}
+    titleTemplate: "%s – My Docs",
+  }),
+};
 ```
 
 **Pattern 3: MDX with React Components**
+
 ```mdx
-import { Callout } from 'nextra/components'
+import { Callout } from "nextra/components";
 
 # API Reference
 
-<Callout type="info">
-  This API requires authentication.
-</Callout>
+<Callout type="info">This API requires authentication.</Callout>
 
-<CustomCodeBlock language="typescript">
-  // Your code here
-</CustomCodeBlock>
+<CustomCodeBlock language="typescript">// Your code here</CustomCodeBlock>
 ```
 
 ## 📚 Core Patterns (5-10 minutes)
@@ -103,6 +100,7 @@ import { Callout } from 'nextra/components'
 **Key Concept**: Organize documentation files logically
 
 **Recommended Structure**:
+
 ```
 docs/
 ├── pages/
@@ -129,15 +127,16 @@ docs/
 **Key Concept**: Customize site appearance and behavior
 
 **Essential Config**:
+
 ```typescript
 const config: DocsThemeConfig = {
   // Branding
   logo: <span>My Docs</span>,
-  logoLink: '/',
+  logoLink: "/",
 
   // Navigation
-  project: { link: 'https://github.com/...' },
-  docsRepositoryBase: 'https://github.com/.../tree/main',
+  project: { link: "https://github.com/..." },
+  docsRepositoryBase: "https://github.com/.../tree/main",
 
   // Sidebar
   sidebar: {
@@ -149,24 +148,25 @@ const config: DocsThemeConfig = {
   toc: { backToTop: true },
 
   // Footer
-  footer: { text: 'Built with Nextra' },
+  footer: { text: "Built with Nextra" },
 };
 ```
 
-### Pattern 3: Navigation Structure (_meta.js)
+### Pattern 3: Navigation Structure (\_meta.js)
 
 **Key Concept**: Control sidebar menu and page ordering
 
 **Example**:
+
 ```javascript
 // pages/guides/_meta.js
 export default {
-  'index': 'Overview',
-  'getting-started': 'Getting Started',
-  'basics': 'Basic Concepts',
-  'advanced': 'Advanced Topics',
-  '---': '', // Separator
-  'faq': 'FAQ',
+  index: "Overview",
+  "getting-started": "Getting Started",
+  basics: "Basic Concepts",
+  advanced: "Advanced Topics",
+  "---": "", // Separator
+  faq: "FAQ",
 };
 ```
 
@@ -175,6 +175,7 @@ export default {
 **Key Concept**: Mix Markdown with React components
 
 **Example**:
+
 ```mdx
 # My Documentation
 
@@ -186,9 +187,7 @@ export default {
 ## Code Examples
 
 export const MyComponent = () => (
-  <button onClick={() => alert('Clicked!')}>
-    Click me
-  </button>
+  <button onClick={() => alert("Clicked!")}>Click me</button>
 );
 
 <MyComponent />
@@ -199,12 +198,13 @@ export const MyComponent = () => (
 **Key Concept**: Make documentation discoverable
 
 **Config**:
+
 ```typescript
 // theme.config.tsx
 const config: DocsThemeConfig = {
   // Enable search
   search: {
-    placeholder: 'Search docs...',
+    placeholder: "Search docs...",
   },
 
   // SEO metadata
@@ -219,8 +219,8 @@ const config: DocsThemeConfig = {
   // Analytics
   useNextSeoProps() {
     return {
-      titleTemplate: '%s - My Docs'
-    }
+      titleTemplate: "%s - My Docs",
+    };
   },
 };
 ```
@@ -241,10 +241,12 @@ This Skill uses Progressive Disclosure. For detailed patterns:
 ## 🎨 Theme Options
 
 **Built-in Themes**:
+
 - **nextra-theme-docs** (recommended for documentation)
 - **nextra-theme-blog** (for blogs)
 
 **Customization**:
+
 - CSS variables for colors
 - Custom sidebar components
 - Footer customization
@@ -255,12 +257,14 @@ This Skill uses Progressive Disclosure. For detailed patterns:
 ## 🚀 Deployment
 
 **Popular Platforms**:
+
 - **Vercel** (zero-config, recommended)
 - **GitHub Pages** (free, self-hosted)
 - **Netlify** (flexible, CI/CD)
 - **Custom servers** (full control)
 
 **Vercel Deployment**:
+
 ```bash
 npm install -g vercel
 vercel
@@ -272,6 +276,7 @@ vercel
 ## 🔗 Integration with Other Skills
 
 **Complementary Skills**:
+
 - Skill("moai-docs-generation") - Auto-generate docs from code
 - Skill("moai-docs-unified") - Validate documentation quality
 - Skill("moai-cc-claude-md") - Markdown formatting
@@ -281,11 +286,13 @@ vercel
 ## 📈 Version History
 
 **1.0.1** (2025-11-23)
+
 - 🔄 Refactored with Progressive Disclosure
 - ✨ Configuration patterns highlighted
 - ✨ MDX integration guide
 
 **1.0.0** (2025-11-12)
+
 - ✨ Nextra architecture guide
 - ✨ Theme configuration
 - ✨ i18n support

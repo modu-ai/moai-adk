@@ -6,7 +6,7 @@ Provides centralized configuration management with fallbacks and validation.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -302,9 +302,7 @@ class ConfigManager:
 
         return True
 
-    def _merge_configs(
-        self, base: Dict[str, Any], override: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively merge two configuration dictionaries.
 
         Args:

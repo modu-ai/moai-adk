@@ -131,9 +131,7 @@ class LinkValidator(HTTPClient):
                 result = await self.validate_link(link)
                 results.append(result)
                 # Log progress
-                logger.info(
-                    f"Validation complete: {link} -> {result.status_code} ({result.is_valid})"
-                )
+                logger.info(f"Validation complete: {link} -> {result.status_code} ({result.is_valid})")
                 return result
 
         # Validate all links asynchronously
@@ -158,9 +156,7 @@ class LinkValidator(HTTPClient):
 
         report = []
         report.append("# Online Documentation Link Validation Report")
-        report.append(
-            f"**Validation Time**: {validation_result.completed_at.strftime('%Y-%m-%d %H:%M:%S')}"
-        )
+        report.append(f"**Validation Time**: {validation_result.completed_at.strftime('%Y-%m-%d %H:%M:%S')}")
         report.append(f"**Total Links**: {validation_result.total_links}")
         report.append(f"**Valid Links**: {validation_result.valid_links}")
         report.append(f"**Invalid Links**: {validation_result.invalid_links}")
@@ -197,9 +193,7 @@ class LinkValidator(HTTPClient):
         if validation_result.valid_links > 0:
             report.append("## ✅ Successful Links")
             report.append("")
-            report.append(
-                f"Total of {validation_result.valid_links} links validated successfully."
-            )
+            report.append(f"Total of {validation_result.valid_links} links validated successfully.")
 
         return "\n".join(report)
 
@@ -216,9 +210,7 @@ def validate_readme_links(readme_path: Optional[Path] = None) -> ValidationResul
 
     if not links:
         logger.warning("No links to validate")
-        return ValidationResult(
-            total_links=0, valid_links=0, invalid_links=0, results=[]
-        )
+        return ValidationResult(total_links=0, valid_links=0, invalid_links=0, results=[])
 
     logger.info(f"Validating total of {len(links)} links...")
 

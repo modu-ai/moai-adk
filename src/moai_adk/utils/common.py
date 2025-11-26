@@ -49,9 +49,7 @@ class HTTPClient:
         self.session = aiohttp.ClientSession(
             connector=connector,
             timeout=timeout,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            },
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
         )
         return self
 
@@ -159,7 +157,7 @@ def create_report_path(base_path: Path, suffix: str = "report") -> Path:
 def format_duration(seconds: float) -> str:
     """Convert time (seconds) to readable format"""
     if seconds < 1:
-        return f"{seconds*1000:.0f}ms"
+        return f"{seconds * 1000:.0f}ms"
     elif seconds < 60:
         return f"{seconds:.1f}s"
     elif seconds < 3600:
@@ -172,9 +170,7 @@ def format_duration(seconds: float) -> str:
         return f"{hours}h {remaining_minutes}m"
 
 
-def calculate_score(
-    values: List[float], weights: Optional[List[float]] = None
-) -> float:
+def calculate_score(values: List[float], weights: Optional[List[float]] = None) -> float:
     """Calculate weighted average score"""
     if not values:
         return 0.0
@@ -223,11 +219,7 @@ class RateLimiter:
         now = datetime.now()
 
         # Remove old requests
-        self.requests = [
-            req_time
-            for req_time in self.requests
-            if (now - req_time).total_seconds() < self.time_window
-        ]
+        self.requests = [req_time for req_time in self.requests if (now - req_time).total_seconds() < self.time_window]
 
         return len(self.requests) < self.max_requests
 
@@ -236,17 +228,13 @@ class RateLimiter:
         if self.can_make_request():
             self.requests.append(datetime.now())
         else:
-            raise RateLimitError(
-                f"Rate limit exceeded: {self.max_requests} requests per {self.time_window}s"
-            )
+            raise RateLimitError(f"Rate limit exceeded: {self.max_requests} requests per {self.time_window}s")
 
     async def wait_if_needed(self):
         """Wait until request can be made"""
         if not self.can_make_request():
             oldest_request = min(self.requests)
-            wait_time = (
-                self.time_window - (datetime.now() - oldest_request).total_seconds()
-            )
+            wait_time = self.time_window - (datetime.now() - oldest_request).total_seconds()
             if wait_time > 0:
                 logger.info(f"Rate limiting: waiting {wait_time:.1f}s")
                 await asyncio.sleep(wait_time)
@@ -302,7 +290,5 @@ def get_graceful_degradation() -> bool:
         hooks_config = config.get("hooks", {})
         return hooks_config.get("graceful_degradation", True)
     except (json.JSONDecodeError, FileNotFoundError, KeyError):
-        logger.warning(
-            "Failed to load graceful_degradation from config, using default True"
-        )
+        logger.warning("Failed to load graceful_degradation from config, using default True")
         return True
