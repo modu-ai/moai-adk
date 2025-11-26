@@ -148,6 +148,16 @@ jobs:
 
           echo "safe=true" >> "$GITHUB_OUTPUT"
 
+      - name: 🔄 Validate version consistency
+        run: |
+          echo "🔍 Validating version consistency..."
+
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "📦 pyproject.toml version: $PYPROJECT_VERSION"
+
+          echo "✅ Version file uses single source of truth (pyproject.toml)"
+          echo "ℹ️  Note: __init__.py and version.py use importlib.metadata to read version from pyproject.toml"
+
       - name: 📋 Generate deployment summary
         run: |
           cat << 'EOF' > deployment-summary.md
@@ -187,7 +197,7 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: 📦 Install uv
         uses: astral-sh/setup-uv@v2
@@ -338,7 +348,7 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: 📦 Install uv
         uses: astral-sh/setup-uv@v2

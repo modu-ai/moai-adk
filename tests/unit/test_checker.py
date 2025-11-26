@@ -3,8 +3,6 @@
 Tests for SystemChecker class and check_environment function.
 """
 
-
-
 from moai_adk.core.project.checker import SystemChecker, check_environment
 
 

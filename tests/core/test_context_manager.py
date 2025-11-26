@@ -160,7 +160,7 @@ class TestAtomicJsonWrite:
             "phase": "0-project",
             "timestamp": "2025-11-12T10:30:00Z",
             "status": "completed",
-            "outputs": {"project_name": "TestProject"}
+            "outputs": {"project_name": "TestProject"},
         }
         target_path = os.path.join(temp_state_dir, "test-state.json")
 
@@ -168,7 +168,7 @@ class TestAtomicJsonWrite:
 
         assert os.path.exists(target_path), f"File should be created: {target_path}"
 
-        with open(target_path, 'r') as f:
+        with open(target_path, "r") as f:
             loaded_data = json.load(f)
 
         assert loaded_data == test_data, "Written data should match original"
@@ -183,8 +183,7 @@ class TestAtomicJsonWrite:
         save_phase_result(test_data, target_path)
 
         # Check no temp files in the directory
-        temp_files = [f for f in os.listdir(temp_state_dir)
-                     if f.startswith('.tmp') or f.endswith('.tmp')]
+        temp_files = [f for f in os.listdir(temp_state_dir) if f.startswith(".tmp") or f.endswith(".tmp")]
 
         assert len(temp_files) == 0, f"No temporary files should remain: {temp_files}"
 
@@ -197,7 +196,7 @@ class TestAtomicJsonWrite:
         save_phase_result(original_data, target_path)
 
         # Verify original write succeeded
-        with open(target_path, 'r') as f:
+        with open(target_path, "r") as f:
             assert json.load(f) == original_data
 
         # Note: Full failure test with mocked os.replace would be implemented
@@ -209,16 +208,13 @@ class TestAtomicJsonWrite:
             "phase": "2-run",
             "timestamp": "2025-11-12T10:30:00Z",
             "files_created": [f"/path/to/file_{i}.py" for i in range(100)],
-            "test_results": {
-                f"test_{i}": {"passed": True, "duration": 0.5 + i * 0.01}
-                for i in range(50)
-            }
+            "test_results": {f"test_{i}": {"passed": True, "duration": 0.5 + i * 0.01} for i in range(50)},
         }
         target_path = os.path.join(temp_state_dir, "large-state.json")
 
         save_phase_result(large_data, target_path)
 
-        with open(target_path, 'r') as f:
+        with open(target_path, "r") as f:
             loaded_data = json.load(f)
 
         assert loaded_data == large_data, "Large JSON should be preserved"
@@ -245,7 +241,7 @@ class TestLoadPhaseResult:
             "phase": "0-project",
             "timestamp": "2025-11-12T10:30:00Z",
             "status": "completed",
-            "outputs": {"project_name": "TestProject"}
+            "outputs": {"project_name": "TestProject"},
         }
         target_path = os.path.join(temp_state_dir, "phase-result.json")
 
@@ -265,7 +261,7 @@ class TestLoadPhaseResult:
         """Test that corrupted JSON files raise appropriate error"""
         corrupted_path = os.path.join(temp_state_dir, "corrupted.json")
 
-        with open(corrupted_path, 'w') as f:
+        with open(corrupted_path, "w") as f:
             f.write("{invalid json content")
 
         with pytest.raises(json.JSONDecodeError):
@@ -290,16 +286,12 @@ class TestContextManager:
         manager = ContextManager(project_root=temp_project_dir)
 
         assert manager.project_root == temp_project_dir
-        assert hasattr(manager, 'state_dir')
+        assert hasattr(manager, "state_dir")
 
     def test_context_manager_saves_phase_result(self, temp_project_dir):
         """Test that ContextManager can save phase results"""
         manager = ContextManager(project_root=temp_project_dir)
-        phase_data = {
-            "phase": "0-project",
-            "status": "completed",
-            "outputs": {"project_name": "Test"}
-        }
+        phase_data = {"phase": "0-project", "status": "completed", "outputs": {"project_name": "Test"}}
 
         manager.save_phase_result(phase_data)
 
@@ -311,11 +303,7 @@ class TestContextManager:
         """Test loading the latest phase result"""
         manager = ContextManager(project_root=temp_project_dir)
 
-        phase_data = {
-            "phase": "0-project",
-            "status": "completed",
-            "outputs": {"project_name": "Test"}
-        }
+        phase_data = {"phase": "0-project", "status": "completed", "outputs": {"project_name": "Test"}}
 
         manager.save_phase_result(phase_data)
         loaded = manager.load_latest_phase()

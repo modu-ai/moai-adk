@@ -5,6 +5,7 @@
 NOTE: These tests require fixing the relative import structure in .claude/hooks/alfred/
 Currently skipped due to import path issues - requires refactoring the shared/handlers modules
 """
+
 import importlib.util
 import json
 import sys
@@ -94,10 +95,7 @@ def test_detect_language_typescript_with_tsconfig(tmp_path: Path, project_module
     project_dir.mkdir()
 
     # Create both package.json and tsconfig.json
-    (project_dir / "package.json").write_text(
-        json.dumps({"dependencies": {"typescript": "^5.0.0"}}),
-        encoding="utf-8"
-    )
+    (project_dir / "package.json").write_text(json.dumps({"dependencies": {"typescript": "^5.0.0"}}), encoding="utf-8")
     (project_dir / "tsconfig.json").write_text("{}", encoding="utf-8")
 
     assert project_module.detect_language(str(project_dir)) == "typescript"
@@ -109,10 +107,7 @@ def test_detect_language_javascript_without_tsconfig(tmp_path: Path, project_mod
     project_dir.mkdir()
 
     # Create package.json without tsconfig.json
-    (project_dir / "package.json").write_text(
-        json.dumps({"dependencies": {"react": "^18.0.0"}}),
-        encoding="utf-8"
-    )
+    (project_dir / "package.json").write_text(json.dumps({"dependencies": {"react": "^18.0.0"}}), encoding="utf-8")
 
     assert project_module.detect_language(str(project_dir)) == "javascript"
 
@@ -152,9 +147,9 @@ def test_get_package_version_offline_mode(tmp_path: Path, monkeypatch: pytest.Mo
     from unittest.mock import patch
 
     # Mock is_network_available to return False
-    with patch.object(project_module, 'is_network_available', return_value=False):
+    with patch.object(project_module, "is_network_available", return_value=False):
         # Also mock urllib to ensure it's not called
-        with patch('urllib.request.urlopen') as mock_urlopen:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = Exception("Should not call PyPI in offline mode!")
 
             result = project_module.get_package_version_info(cwd=str(tmp_path))
@@ -175,6 +170,7 @@ def test_get_package_version_offline_mode(tmp_path: Path, monkeypatch: pytest.Mo
 # ========================================
 # Phase 3: Major Version Warning Tests
 # ========================================
+
 
 def test_is_major_version_change_0_to_1(project_module):
     """Detects 0.x → 1.x major version change
@@ -236,12 +232,7 @@ def test_get_package_version_includes_release_url(tmp_path: Path, project_module
 
     # Mock PyPI response with release notes URL
     pypi_data = {
-        "info": {
-            "version": "0.9.0",
-            "project_urls": {
-                "Changelog": "https://github.com/modu-ai/moai-adk/releases"
-            }
-        }
+        "info": {"version": "0.9.0", "project_urls": {"Changelog": "https://github.com/modu-ai/moai-adk/releases"}}
     }
 
     # Create a file-like object for json.load()
@@ -249,8 +240,8 @@ def test_get_package_version_includes_release_url(tmp_path: Path, project_module
     mock_response.__enter__ = MagicMock(return_value=io.BytesIO(json.dumps(pypi_data).encode()))
     mock_response.__exit__ = MagicMock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
-        with patch.object(project_module, 'is_network_available', return_value=True):
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        with patch.object(project_module, "is_network_available", return_value=True):
             result = project_module.get_package_version_info(cwd=str(tmp_path))
 
     # Assert: Should include release_notes_url
@@ -271,15 +262,10 @@ def test_get_package_version_includes_major_flag(tmp_path: Path, project_module)
     from unittest.mock import MagicMock, patch
 
     # Mock current version as 0.8.1
-    with patch('importlib.metadata.version', return_value='0.8.1'):
+    with patch("importlib.metadata.version", return_value="0.8.1"):
         # Mock PyPI response with version 1.0.0
         pypi_data = {
-            "info": {
-                "version": "1.0.0",
-                "project_urls": {
-                    "Changelog": "https://github.com/modu-ai/moai-adk/releases"
-                }
-            }
+            "info": {"version": "1.0.0", "project_urls": {"Changelog": "https://github.com/modu-ai/moai-adk/releases"}}
         }
 
         # Create a file-like object for json.load()
@@ -287,8 +273,8 @@ def test_get_package_version_includes_major_flag(tmp_path: Path, project_module)
         mock_response.__enter__ = MagicMock(return_value=io.BytesIO(json.dumps(pypi_data).encode()))
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch('urllib.request.urlopen', return_value=mock_response):
-            with patch.object(project_module, 'is_network_available', return_value=True):
+        with patch("urllib.request.urlopen", return_value=mock_response):
+            with patch.object(project_module, "is_network_available", return_value=True):
                 result = project_module.get_package_version_info(cwd=str(tmp_path))
 
         # Assert: Should include is_major_update flag

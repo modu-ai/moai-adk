@@ -94,9 +94,7 @@ class TestAlfredCommandAvailability:
         command_name = yaml_data.get("name", "")
 
         # Assert
-        assert (
-            command_name == "alfred:0-project"
-        ), f"Expected 'alfred:0-project', got '{command_name}'"
+        assert command_name == "alfred:0-project", f"Expected 'alfred:0-project', got '{command_name}'"
 
     def test_all_4_alfred_commands_exist(self):
         """Should ensure all 4 Alfred commands exist (0-3)"""
@@ -117,9 +115,7 @@ class TestAlfredCommandAvailability:
             yaml_data = load_command_yaml(file_path)
             actual_name = yaml_data.get("name", "")
 
-            assert (
-                actual_name == expected_name
-            ), f"{filename}: Expected name '{expected_name}', got '{actual_name}'"
+            assert actual_name == expected_name, f"{filename}: Expected name '{expected_name}', got '{actual_name}'"
 
     def test_project_manager_integration(self):
         """Should verify project-manager agent is referenced in 0-project command"""
@@ -130,9 +126,7 @@ class TestAlfredCommandAvailability:
         content = command_file.read_text()
 
         # Assert
-        assert "project-manager" in content, (
-            "0-project.md should reference 'project-manager' agent"
-        )
+        assert "project-manager" in content, "0-project.md should reference 'project-manager' agent"
 
     def test_template_file_synchronized(self):
         """Should verify template file matches local file"""
@@ -161,9 +155,7 @@ class TestAlfredCommandAvailability:
         content = command_file.read_text()
 
         # Assert
-        assert "Task(" in content, (
-            "0-project command should use Task() for agent delegation"
-        )
+        assert "Task(" in content, "0-project command should use Task() for agent delegation"
 
     def test_command_has_ask_user_question(self):
         """Should verify command includes AskUserQuestion for user interaction"""
@@ -174,9 +166,7 @@ class TestAlfredCommandAvailability:
         content = command_file.read_text()
 
         # Assert
-        assert "AskUserQuestion" in content, (
-            "0-project command should include AskUserQuestion for user interaction"
-        )
+        assert "AskUserQuestion" in content, "0-project command should include AskUserQuestion for user interaction"
 
 
 class TestAlfredCommandDirectory:
@@ -222,9 +212,7 @@ class TestAlfredCommandDirectory:
                 pass
 
         # Assert
-        assert len(command_names) == len(
-            set(command_names)
-        ), f"Duplicate command names found: {command_names}"
+        assert len(command_names) == len(set(command_names)), f"Duplicate command names found: {command_names}"
 
 
 class TestAlfredCommandIntegration:
@@ -239,12 +227,8 @@ class TestAlfredCommandIntegration:
         content = command_file.read_text()
 
         # Assert
-        assert "project-manager" in content, (
-            "0-project must reference project-manager agent"
-        )
-        assert "Task(" in content, (
-            "0-project must use Task() for delegation"
-        )
+        assert "project-manager" in content, "0-project must reference project-manager agent"
+        assert "Task(" in content, "0-project must use Task() for delegation"
 
     def test_command_workflow_sequence(self):
         """Should verify command workflow sequence is valid"""

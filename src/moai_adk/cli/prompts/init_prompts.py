@@ -18,8 +18,8 @@ class ProjectSetupAnswers(TypedDict):
     project_name: str
     mode: str  # personal | team (default from init)
     locale: str  # ko | en | ja | zh | other (default from init)
-    language: str | None  # Will be set in /alfred:0-project
-    author: str  # Will be set in /alfred:0-project
+    language: str | None  # Will be set in /moai:project
+    author: str  # Will be set in /moai:project
     custom_language: str | None  # User input for "other" language option
 
 
@@ -45,16 +45,16 @@ def prompt_project_setup(
     """
     answers: ProjectSetupAnswers = {
         "project_name": "",
-        "mode": "personal",  # Default: will be configurable in /alfred:0-project
-        "locale": "en",  # Default: will be configurable in /alfred:0-project
-        "language": None,  # Will be detected in /alfred:0-project
-        "author": "",  # Will be set in /alfred:0-project
+        "mode": "personal",  # Default: will be configurable in /moai:project
+        "locale": "en",  # Default: will be configurable in /moai:project
+        "language": None,  # Will be detected in /moai:project
+        "author": "",  # Will be set in /moai:project
         "custom_language": None,  # User input for other language
     }
 
     try:
         # SIMPLIFIED: Only ask for project name
-        # All other settings (mode, locale, language, author) are now configured in /alfred:0-project
+        # All other settings (mode, locale, language, author) are now configured in /moai:project
 
         # 1. Project name (only when not using the current directory)
         if not is_current_dir:
@@ -78,9 +78,7 @@ def prompt_project_setup(
                 answers["project_name"] = project_path.name
             else:
                 answers["project_name"] = Path.cwd().name  # fallback
-            console.print(
-                f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
-            )
+            console.print(f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]")
 
         # 2. Language selection - Korean, English, Japanese, Chinese, Other
         console.print("\n[blue]🌐 Language Selection[/blue]")
@@ -139,9 +137,7 @@ def prompt_project_setup(
                 "ja": "Japanese (日本語)",
                 "zh": "Chinese (中文)",
             }
-            console.print(
-                f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
-            )
+            console.print(f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}")
 
         return answers
 

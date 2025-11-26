@@ -79,16 +79,12 @@ class TestProjectInitializerInit:
 class TestIsInitialized:
     """Test initialization status check"""
 
-    def test_is_initialized_returns_false_for_new_project(
-        self, tmp_path: Path
-    ) -> None:
+    def test_is_initialized_returns_false_for_new_project(self, tmp_path: Path) -> None:
         """Should return False when .moai doesn't exist"""
         initializer = ProjectInitializer(tmp_path)
         assert initializer.is_initialized() is False
 
-    def test_is_initialized_returns_true_when_moai_exists(
-        self, tmp_path: Path
-    ) -> None:
+    def test_is_initialized_returns_true_when_moai_exists(self, tmp_path: Path) -> None:
         """Should return True when .moai exists"""
         (tmp_path / ".moai").mkdir()
         initializer = ProjectInitializer(tmp_path)
@@ -124,7 +120,7 @@ class TestInitialize:
 
     def test_initialize_detects_language(self, tmp_path: Path) -> None:
         """Should accept explicit language parameter"""
-        # Language detection moved to project-manager in /alfred:0-project
+        # Language detection moved to project-manager in /moai:0-project
         # ProjectInitializer accepts explicit language parameter
         (tmp_path / "requirements.txt").write_text("pytest==8.0.0")
 
@@ -146,17 +142,13 @@ class TestInitialize:
         """Should execute all 5 phases"""
         initializer = ProjectInitializer(tmp_path)
 
-        with patch.object(
-            initializer.executor, "execute_preparation_phase"
-        ) as mock_prep, patch.object(
-            initializer.executor, "execute_directory_phase"
-        ) as mock_dir, patch.object(
-            initializer.executor, "execute_resource_phase"
-        ) as mock_res, patch.object(
-            initializer.executor, "execute_configuration_phase"
-        ) as mock_conf, patch.object(
-            initializer.executor, "execute_validation_phase"
-        ) as mock_val:
+        with (
+            patch.object(initializer.executor, "execute_preparation_phase") as mock_prep,
+            patch.object(initializer.executor, "execute_directory_phase") as mock_dir,
+            patch.object(initializer.executor, "execute_resource_phase") as mock_res,
+            patch.object(initializer.executor, "execute_configuration_phase") as mock_conf,
+            patch.object(initializer.executor, "execute_validation_phase") as mock_val,
+        ):
             # Setup mocks
             mock_res.return_value = [".moai/", ".claude/"]
             mock_conf.return_value = [".moai/config.json"]
@@ -176,14 +168,10 @@ class TestInitialize:
         """Should pass correct configuration to phase 4"""
         initializer = ProjectInitializer(tmp_path)
 
-        with patch.object(
-            initializer.executor, "execute_configuration_phase"
-        ) as mock_conf:
+        with patch.object(initializer.executor, "execute_configuration_phase") as mock_conf:
             mock_conf.return_value = [".moai/config.json"]
 
-            initializer.initialize(
-                mode="team", locale="en", language="go", backup_enabled=False
-            )
+            initializer.initialize(mode="team", locale="en", language="go", backup_enabled=False)
 
             # Check config passed to phase 4
             call_args = mock_conf.call_args
@@ -256,9 +244,7 @@ class TestInitialize:
         """Should handle errors and return failure result"""
         initializer = ProjectInitializer(tmp_path)
 
-        with patch.object(
-            initializer.executor, "execute_preparation_phase"
-        ) as mock_prep:
+        with patch.object(initializer.executor, "execute_preparation_phase") as mock_prep:
             # Simulate error
             mock_prep.side_effect = Exception("Test error")
 

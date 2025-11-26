@@ -50,7 +50,7 @@ class TestAgentOptimizationTemplates:
         # Test invalid template configuration
         invalid_config = {
             "name": "invalid-template",
-            "missing_required_field": "value"
+            "missing_required_field": "value",
             # Missing 'skills' and 'optimization' required fields
         }
 
@@ -68,9 +68,7 @@ class TestAgentOptimizationTemplates:
 
         # Customize template
         customized = registry.customize_template(
-            "backend-expert",
-            skill_priorities={"python": 0.9, "django": 0.8},
-            optimization_target="performance"
+            "backend-expert", skill_priorities={"python": 0.9, "django": 0.8}, optimization_target="performance"
         )
 
         # Verify customization
@@ -85,13 +83,13 @@ class TestAgentOptimizationTemplates:
         registry = TemplateRegistry()
 
         # Measure template application time
-        start_time = __import__('time').time()
+        start_time = __import__("time").time()
 
         # Apply template multiple times (should use caching)
         for i in range(10):
-            result = registry.apply_template("frontend-expert", {"project_type": "web"})
+            registry.apply_template("frontend-expert", {"project_type": "web"})
 
-        end_time = __import__('time').time()
+        end_time = __import__("time").time()
         avg_time = (end_time - start_time) / 10
 
         # Performance target: template application < 5ms average
@@ -105,9 +103,7 @@ class TestAgentOptimizationTemplates:
 
         # Create composite template
         composite = registry.compose_templates(
-            ["frontend-expert", "backend-expert"],
-            frontend_weight=0.6,
-            backend_weight=0.4
+            ["frontend-expert", "backend-expert"], frontend_weight=0.6, backend_weight=0.4
         )
 
         # Verify composition
@@ -124,7 +120,7 @@ class TestAgentOptimizationTemplates:
 
         # Get template version info
         template = registry.get_template("frontend-expert")
-        assert hasattr(template, 'version')
+        assert hasattr(template, "version")
         assert template.version is not None
 
         # Test version compatibility
@@ -139,9 +135,7 @@ class TestAgentOptimizationTemplates:
 
         # Apply template with skill optimization
         optimized = registry.apply_template(
-            "backend-expert",
-            {"project_type": "api", "performance_critical": True},
-            optimize_skills=True
+            "backend-expert", {"project_type": "api", "performance_critical": True}, optimize_skills=True
         )
 
         # Verify skill optimization
@@ -173,15 +167,15 @@ class TestAgentOptimizationTemplates:
         registry = TemplateRegistry()
 
         # Mock template data
-        with patch.object(registry, '_load_template') as mock_load:
+        with patch.object(registry, "_load_template") as mock_load:
             mock_load.return_value = {"name": "test", "config": {"test": "data"}}
 
             # First access loads from source
-            result1 = registry.get_template("test-template")
+            registry.get_template("test-template")
             assert mock_load.call_count == 1
 
             # Second access uses cache
-            result2 = registry.get_template("test-template")
+            registry.get_template("test-template")
             assert mock_load.call_count == 1  # No additional load
 
 
@@ -198,10 +192,7 @@ class TestTemplateIntegration:
 
         # Get template and apply skill allocation
         template = registry.get_template("frontend-expert")
-        allocated_skills = matrix.optimize_allocation(
-            "frontend",
-            template.config.get("skill_priorities", {})
-        )
+        allocated_skills = matrix.optimize_allocation("frontend", template.config.get("skill_priorities", {}))
 
         # Verify integration
         assert allocated_skills is not None
@@ -216,20 +207,13 @@ class TestTemplateIntegration:
         loader = SkillLoader()
 
         # Mock skill data for template
-        mock_skills = {
-            "react": {"type": "frontend", "complexity": 0.8},
-            "vue": {"type": "frontend", "complexity": 0.7}
-        }
+        mock_skills = {"react": {"type": "frontend", "complexity": 0.8}, "vue": {"type": "frontend", "complexity": 0.7}}
 
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = mock_skills
 
             # Apply template with dynamic loading
-            result = registry.apply_template(
-                "frontend-expert",
-                {"load_skills_dynamically": True},
-                skill_loader=loader
-            )
+            result = registry.apply_template("frontend-expert", {"load_skills_dynamically": True}, skill_loader=loader)
 
             # Verify dynamic loading integration
             assert result is not None
@@ -243,11 +227,12 @@ class TestTemplateIntegration:
 
         # Test template performance under load
         import time
+
         performance_results = []
 
         for i in range(100):
             start_time = time.time()
-            result = registry.apply_template("backend-expert", {"test": i})
+            registry.apply_template("backend-expert", {"test": i})
             end_time = time.time()
             performance_results.append(end_time - start_time)
 
@@ -282,7 +267,7 @@ class TestTemplateQuality:
 
         # Test graceful error handling
         try:
-            result = registry.apply_template("invalid-template", {})
+            registry.apply_template("invalid-template", {})
             assert False, "Should have raised an error"
         except Exception:
             # Exception should be raised with proper message
@@ -298,7 +283,7 @@ class TestTemplateQuality:
         safe_config = {
             "name": "safe-template",
             "skills": ["safe_skill_1", "safe_skill_2"],
-            "optimization": {"performance": True}
+            "optimization": {"performance": True},
         }
 
         # Should not raise security issues

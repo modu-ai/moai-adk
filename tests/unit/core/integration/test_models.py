@@ -27,10 +27,7 @@ class TestIntegrationTestResult:
     def test_result_creation(self):
         """Test basic result creation"""
         result = IntegrationTestResult(
-            test_name="test_example",
-            passed=True,
-            execution_time=1.5,
-            components_tested=["comp1", "comp2"]
+            test_name="test_example", passed=True, execution_time=1.5, components_tested=["comp1", "comp2"]
         )
 
         assert result.test_name == "test_example"
@@ -41,11 +38,7 @@ class TestIntegrationTestResult:
 
     def test_result_with_error(self):
         """Test result with error"""
-        result = IntegrationTestResult(
-            test_name="test_failed",
-            passed=False,
-            error_message="Something went wrong"
-        )
+        result = IntegrationTestResult(test_name="test_failed", passed=False, error_message="Something went wrong")
 
         assert result.passed is False
         assert result.error_message == "Something went wrong"
@@ -53,10 +46,7 @@ class TestIntegrationTestResult:
 
     def test_result_defaults(self):
         """Test result with default values"""
-        result = IntegrationTestResult(
-            test_name="test_defaults",
-            passed=True
-        )
+        result = IntegrationTestResult(test_name="test_defaults", passed=True)
 
         assert result.error_message is None
         assert result.execution_time == 0.0
@@ -70,10 +60,7 @@ class TestComponent:
     def test_component_creation(self):
         """Test basic component creation"""
         component = TestComponentClass(
-            name="test_component",
-            component_type="python_module",
-            version="1.0.0",
-            dependencies=["dep1", "dep2"]
+            name="test_component", component_type="python_module", version="1.0.0", dependencies=["dep1", "dep2"]
         )
 
         assert component.name == "test_component"
@@ -83,11 +70,7 @@ class TestComponent:
 
     def test_component_defaults(self):
         """Test component with default dependencies"""
-        component = TestComponentClass(
-            name="test_comp",
-            component_type="module",
-            version="2.0.0"
-        )
+        component = TestComponentClass(name="test_comp", component_type="module", version="2.0.0")
 
         assert component.dependencies == []
 
@@ -104,7 +87,7 @@ class TestSuite:
             name="test_suite",
             description="Test suite description",
             components=[comp1, comp2],
-            test_cases=["test1", "test2"]
+            test_cases=["test1", "test2"],
         )
 
         assert suite.name == "test_suite"
@@ -115,11 +98,7 @@ class TestSuite:
     def test_suite_defaults(self):
         """Test suite with default test cases"""
         component = TestComponentClass("comp", "type", "1.0.0")
-        suite = TestSuiteClass(
-            name="empty_suite",
-            description="Empty test suite",
-            components=[component]
-        )
+        suite = TestSuiteClass(name="empty_suite", description="Empty test suite", components=[component])
 
         assert suite.test_cases == []
 

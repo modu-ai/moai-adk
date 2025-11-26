@@ -12,6 +12,17 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+# Import TimeoutError from lib.timeout (canonical definition)
+try:
+    from lib.timeout import TimeoutError  # noqa: F401
+except ImportError:
+    # Fallback if lib.timeout not available
+    class TimeoutError(Exception):  # type: ignore[no-redef]
+        """Signal-based timeout exception"""
+
+        pass
+
+
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
 
@@ -66,12 +77,6 @@ def find_project_root(start_path: str | Path = ".") -> Path:
 
     # Not found - return start_path as absolute
     return Path(start_path).resolve()
-
-
-class TimeoutError(Exception):
-    """Signal-based timeout exception"""
-
-    pass
 
 
 @contextmanager
@@ -219,9 +224,7 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
 
             # Check exit code manually
             if result.returncode != 0:
-                raise subprocess.CalledProcessError(
-                    result.returncode, ["git"] + args, result.stdout, result.stderr
-                )
+                raise subprocess.CalledProcessError(result.returncode, ["git"] + args, result.stdout, result.stderr)
 
             return result.stdout.strip()
 
@@ -697,9 +700,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                     release_url = project_urls.get("Changelog", "")
                     if not release_url:
                         # Fallback to GitHub releases URL pattern
-                        release_url = (
-                            f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
-                        )
+                        release_url = f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
                     result["release_notes_url"] = release_url
                 except (KeyError, AttributeError, TypeError):
                     result["release_notes_url"] = None
@@ -729,9 +730,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                 result["upgrade_command"] = "uv tool upgrade moai-adk"
 
                 # Detect major version change
-                result["is_major_update"] = is_major_version_change(
-                    current_str, latest_str
-                )
+                result["is_major_update"] = is_major_version_change(current_str, latest_str)
             else:
                 result["is_major_update"] = False
         except (ValueError, AttributeError):

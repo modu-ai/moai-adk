@@ -20,12 +20,8 @@ class TestPerformanceBaseline:
         metrics = PerformanceMetrics()
 
         # Mock some performance data
-        with patch.object(metrics, '_collect_system_metrics') as mock_collect:
-            mock_collect.return_value = {
-                "memory_usage": 50.0,
-                "cpu_usage": 30.0,
-                "response_time": 0.05
-            }
+        with patch.object(metrics, "_collect_system_metrics") as mock_collect:
+            mock_collect.return_value = {"memory_usage": 50.0, "cpu_usage": 30.0, "response_time": 0.05}
 
             # Collect metrics
             collected = metrics.collect_metrics("test_operation")
@@ -47,10 +43,10 @@ class TestPerformanceBaseline:
             "name": "skill_allocation_benchmark",
             "operation": lambda: None,  # Mock operation
             "iterations": 10,
-            "warmup_iterations": 2
+            "warmup_iterations": 2,
         }
 
-        with patch.object(benchmark, '_execute_operation') as mock_execute:
+        with patch.object(benchmark, "_execute_operation") as mock_execute:
             mock_execute.return_value = 0.01  # Mock result time
 
             # Run benchmark
@@ -72,7 +68,7 @@ class TestPerformanceBaseline:
         # Mock performance data
         performance_data = {
             "operation_1": [0.01, 0.02, 0.015, 0.025, 0.01],
-            "operation_2": [0.05, 0.06, 0.045, 0.07, 0.05]
+            "operation_2": [0.05, 0.06, 0.045, 0.07, 0.05],
         }
 
         # Analyze performance
@@ -89,25 +85,17 @@ class TestPerformanceBaseline:
         """Test that performance thresholds are validated correctly."""
         from moai_adk.optimization.performance import PerformanceThreshold
 
-        threshold = PerformanceThreshold(
-            max_response_time=0.1,
-            max_memory_usage=80.0,
-            max_cpu_usage=70.0
-        )
+        threshold = PerformanceThreshold(max_response_time=0.1, max_memory_usage=80.0, max_cpu_usage=70.0)
 
         # Test valid performance
-        valid_metrics = {
-            "response_time": 0.05,
-            "memory_usage": 60.0,
-            "cpu_usage": 50.0
-        }
+        valid_metrics = {"response_time": 0.05, "memory_usage": 60.0, "cpu_usage": 50.0}
         assert threshold.validate_metrics(valid_metrics) is True
 
         # Test invalid performance
         invalid_metrics = {
             "response_time": 0.15,  # Exceeds max
             "memory_usage": 90.0,  # Exceeds max
-            "cpu_usage": 80.0      # Exceeds max
+            "cpu_usage": 80.0,  # Exceeds max
         }
         assert threshold.validate_metrics(invalid_metrics) is False
 
@@ -119,16 +107,8 @@ class TestPerformanceBaseline:
 
         # Mock baseline data
         baseline_data = {
-            "skill_allocation": {
-                "mean": 0.025,
-                "stddev": 0.005,
-                "percentile_95": 0.035
-            },
-            "dynamic_loading": {
-                "mean": 0.015,
-                "stddev": 0.003,
-                "percentile_95": 0.020
-            }
+            "skill_allocation": {"mean": 0.025, "stddev": 0.005, "percentile_95": 0.035},
+            "dynamic_loading": {"mean": 0.015, "stddev": 0.003, "percentile_95": 0.020},
         }
 
         # Create baseline
@@ -145,19 +125,11 @@ class TestPerformanceBaseline:
         baseline = PerformanceBaseline()
 
         # Create baseline
-        baseline_data = {
-            "mean": 0.025,
-            "stddev": 0.005,
-            "percentile_95": 0.035
-        }
+        baseline_data = {"mean": 0.025, "stddev": 0.005, "percentile_95": 0.035}
         baseline.create_baseline("test_operation", baseline_data)
 
         # Test current performance
-        current_performance = {
-            "mean": 0.030,
-            "stddev": 0.006,
-            "percentile_95": 0.040
-        }
+        current_performance = {"mean": 0.030, "stddev": 0.006, "percentile_95": 0.040}
 
         # Compare performance
         comparison = baseline.compare_performance("test_operation", current_performance)
@@ -174,17 +146,9 @@ class TestPerformanceBaseline:
         detector = PerformanceRegressionDetector()
 
         # Mock performance data with regression
-        baseline = {
-            "mean": 0.025,
-            "stddev": 0.005,
-            "percentile_95": 0.035
-        }
+        baseline = {"mean": 0.025, "stddev": 0.005, "percentile_95": 0.035}
 
-        current = {
-            "mean": 0.050,  # 100% increase - clear regression
-            "stddev": 0.010,
-            "percentile_95": 0.060
-        }
+        current = {"mean": 0.050, "stddev": 0.010, "percentile_95": 0.060}  # 100% increase - clear regression
 
         # Detect regression
         regression = detector.detect_regression("test_operation", baseline, current)
@@ -207,15 +171,15 @@ class TestPerformanceBaseline:
                 "issue": "high_memory_usage",
                 "current": 85.0,
                 "target": 50.0,
-                "severity": "high"
+                "severity": "high",
             },
             {
                 "operation": "dynamic_loading",
                 "issue": "slow_response_time",
                 "current": 0.100,
                 "target": 0.050,
-                "severity": "medium"
-            }
+                "severity": "medium",
+            },
         ]
 
         # Generate optimization suggestions
@@ -234,12 +198,8 @@ class TestPerformanceBaseline:
         monitor = PerformanceMonitor()
 
         # Mock continuous monitoring
-        with patch.object(monitor, 'collect_metrics') as mock_collect:
-            mock_collect.return_value = {
-                "response_time": 0.025,
-                "memory_usage": 60.0,
-                "cpu_usage": 40.0
-            }
+        with patch.object(monitor, "collect_metrics") as mock_collect:
+            mock_collect.return_value = {"response_time": 0.025, "memory_usage": 60.0, "cpu_usage": 40.0}
 
             # Start monitoring
             monitor.start_monitoring("test_operation", interval=1.0)
@@ -260,11 +220,7 @@ class TestPerformanceBaseline:
         history = PerformanceHistory()
 
         # Add performance metrics
-        history.add_metrics("test_operation", {
-            "response_time": 0.025,
-            "memory_usage": 60.0,
-            "timestamp": time.time()
-        })
+        history.add_metrics("test_operation", {"response_time": 0.025, "memory_usage": 60.0, "timestamp": time.time()})
 
         # Get history
         operation_history = history.get_history("test_operation")
@@ -291,7 +247,7 @@ class TestPerformanceIntegration:
             "name": "skill_allocation_benchmark",
             "operation": lambda: matrix.optimize_allocation("frontend", {"react": 0.9, "css": 0.8}),
             "iterations": 10,
-            "warmup_iterations": 2
+            "warmup_iterations": 2,
         }
 
         results = benchmark.run_benchmark(benchmark_scenario)
@@ -310,7 +266,7 @@ class TestPerformanceIntegration:
         loader = SkillLoader()
 
         # Mock skill loading
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = {"skill": "data"}
 
             # Monitor skill loading performance
@@ -336,7 +292,7 @@ class TestPerformanceIntegration:
             "name": "template_application_benchmark",
             "operation": lambda: registry.apply_template("frontend-expert", {"project_type": "web"}),
             "iterations": 10,
-            "warmup_iterations": 2
+            "warmup_iterations": 2,
         }
 
         results = benchmark.run_benchmark(template_scenario)
@@ -357,18 +313,10 @@ class TestPerformanceIntegration:
         baseline.create_baseline("template_application", {"max_response_time": 0.005})
 
         # Test each component against baselines
-        components = [
-            "skill_allocation",
-            "dynamic_loading",
-            "template_application"
-        ]
+        components = ["skill_allocation", "dynamic_loading", "template_application"]
 
         for component in components:
-            current_performance = {
-                "mean": 0.008,  # Below baseline
-                "stddev": 0.001,
-                "percentile_95": 0.010
-            }
+            current_performance = {"mean": 0.008, "stddev": 0.001, "percentile_95": 0.010}  # Below baseline
 
             comparison = baseline.compare_performance(component, current_performance)
             assert comparison.is_regression is False, f"{component} performance regression detected"
@@ -383,7 +331,7 @@ class TestPerformanceIntegration:
         component_metrics = {
             "skill_allocation": [0.01, 0.012, 0.009, 0.011, 0.01],
             "dynamic_loading": [0.005, 0.006, 0.004, 0.007, 0.005],
-            "template_application": [0.004, 0.005, 0.003, 0.006, 0.004]
+            "template_application": [0.004, 0.005, 0.003, 0.006, 0.004],
         }
 
         # Aggregate performance
@@ -409,7 +357,7 @@ class TestPerformanceQuality:
         invalid_data = {
             "negative_value": -1.0,  # Invalid
             "string_instead_of_number": "invalid",
-            "missing_required_field": {}
+            "missing_required_field": {},
         }
 
         with pytest.raises(DataValidationError):
@@ -437,10 +385,7 @@ class TestPerformanceQuality:
         generator = PerformanceReportGenerator()
 
         # Mock performance data
-        performance_data = {
-            "skill_allocation": [0.01, 0.012, 0.009],
-            "dynamic_loading": [0.005, 0.006, 0.004]
-        }
+        performance_data = {"skill_allocation": [0.01, 0.012, 0.009], "dynamic_loading": [0.005, 0.006, 0.004]}
 
         # Generate report
         report = generator.generate_report(performance_data)

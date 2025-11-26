@@ -1,5 +1,3 @@
-
-
 import unittest
 
 # from src.auth.example import example_function  # TODO: Fix import path
@@ -15,5 +13,5 @@ class TestAuth(unittest.TestCase):
         self.skipTest("TODO: Fix import path for src.auth.example")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -27,23 +27,41 @@ class TestUserPromptHookIntegration:
     def setup_method(self):
         """테스트 환경 설정"""
         self.temp_dir = Path(tempfile.mkdtemp())
-        self.hook_path = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred" / "user_prompt__jit_load_docs.py"
+        self.hook_path = (
+            Path(__file__).parent.parent.parent
+            / "src"
+            / "moai_adk"
+            / "templates"
+            / ".claude"
+            / "hooks"
+            / "alfred"
+            / "user_prompt__jit_load_docs.py"
+        )
 
         # Mock .moai/config.json
         self.moai_dir = self.temp_dir / ".moai"
         self.moai_dir.mkdir(parents=True, exist_ok=True)
         config_file = self.moai_dir / "config.json"
-        config_file.write_text(json.dumps({
-            "language": {"conversation_language": "ko"},
-            "hooks": {"user_prompt_jit_loading": {"enabled": True}}
-        }, indent=2))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "language": {"conversation_language": "ko"},
+                    "hooks": {"user_prompt_jit_loading": {"enabled": True}},
+                },
+                indent=2,
+            )
+        )
 
         # Mock .claude/skills directory
         self.skills_dir = self.temp_dir / ".claude" / "skills"
         self.skills_dir.mkdir(parents=True, exist_ok=True)
 
         # Create mock skill references
-        for skill_name in ["moai-core-spec-authoring", "moai-domain-frontend", "moai-essentials-debug"]:
+        for skill_name in [
+            "moai-core-spec-authoring",
+            "moai-domain-frontend",
+            "moai-essentials-debug",
+        ]:
             skill_dir = self.skills_dir / skill_name
             skill_dir.mkdir(exist_ok=True)
             (skill_dir / "reference.md").write_text(f"# {skill_name} Reference\n\nMock skill documentation.")
@@ -59,7 +77,7 @@ class TestUserPromptHookIntegration:
         # Input payload
         payload = {
             "userPrompt": "새로운 기능에 대한 명세서를 작성해주세요",
-            "cwd": str(self.temp_dir)
+            "cwd": str(self.temp_dir),
         }
 
         # Execute hook
@@ -68,7 +86,7 @@ class TestUserPromptHookIntegration:
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Parse output
@@ -94,8 +112,8 @@ class TestUserPromptHookIntegration:
     def test_hook_with_implementation_prompt(self):
         """구현 프롬프트에 대한 Hook 테스트"""
         payload = {
-            "userPrompt": "/alfred:2-run 사용자 인증 기능을 구현해주세요",
-            "cwd": str(self.temp_dir)
+            "userPrompt": "/moai:2-run 사용자 인증 기능을 구현해주세요",
+            "cwd": str(self.temp_dir),
         }
 
         result = subprocess.run(
@@ -103,7 +121,7 @@ class TestUserPromptHookIntegration:
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Parse output
@@ -120,7 +138,7 @@ class TestUserPromptHookIntegration:
         hook_output = output.get("hookSpecificOutput", {})
         assert "hookEventName" in hook_output
 
-        # Should have agent delegation for /alfred:2-run command
+        # Should have agent delegation for /moai:2-run command
         additional_context = hook_output.get("additionalContext")
         if additional_context:
             print(f"Additional context: {additional_context}")
@@ -129,7 +147,7 @@ class TestUserPromptHookIntegration:
         """프론트엔드 개발 프롬프트에 대한 Hook 테스트"""
         payload = {
             "userPrompt": "React 컴포넌트를 만들어주세요. UI/UX 디자인이 필요합니다.",
-            "cwd": str(self.temp_dir)
+            "cwd": str(self.temp_dir),
         }
 
         result = subprocess.run(
@@ -137,7 +155,7 @@ class TestUserPromptHookIntegration:
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Parse output
@@ -159,17 +177,14 @@ class TestUserPromptHookIntegration:
 
     def test_hook_with_general_prompt(self):
         """일반 프롬프트에 대한 Hook 테스트 (에이전트 위임 없음)"""
-        payload = {
-            "userPrompt": "오늘 날씨가 어때요?",
-            "cwd": str(self.temp_dir)
-        }
+        payload = {"userPrompt": "오늘 날씨가 어때요?", "cwd": str(self.temp_dir)}
 
         result = subprocess.run(
             ["python3", str(self.hook_path)],
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Parse output
@@ -194,7 +209,7 @@ class TestUserPromptHookIntegration:
         # Create a scenario that might cause timeout
         payload = {
             "userPrompt": "매우 긴 프롬프트 " * 1000,  # Very long prompt
-            "cwd": str(self.temp_dir)
+            "cwd": str(self.temp_dir),
         }
 
         # Execute with short timeout
@@ -204,7 +219,7 @@ class TestUserPromptHookIntegration:
             capture_output=True,
             text=True,
             timeout=10,  # 10 second timeout
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Should handle gracefully (either succeed or timeout gracefully)
@@ -225,7 +240,7 @@ class TestUserPromptHookIntegration:
             input="invalid json input",
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Should handle gracefully
@@ -245,7 +260,7 @@ class TestUserPromptHookIntegration:
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Should handle gracefully
@@ -263,23 +278,30 @@ class TestHookPerformanceAndScalability:
     def setup_method(self):
         """테스트 환경 설정"""
         self.temp_dir = Path(tempfile.mkdtemp())
-        self.hook_path = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred" / "user_prompt__jit_load_docs.py"
+        self.hook_path = (
+            Path(__file__).parent.parent.parent
+            / "src"
+            / "moai_adk"
+            / "templates"
+            / ".claude"
+            / "hooks"
+            / "alfred"
+            / "user_prompt__jit_load_docs.py"
+        )
 
         # Create minimal test environment
         self.moai_dir = self.temp_dir / ".moai"
         self.moai_dir.mkdir(parents=True, exist_ok=True)
         config_file = self.moai_dir / "config.json"
-        config_file.write_text(json.dumps({
-            "language": {"conversation_language": "ko"}
-        }))
+        config_file.write_text(json.dumps({"language": {"conversation_language": "ko"}}))
 
     def test_hook_execution_time(self):
         """Hook 실행 시간 테스트"""
         import time
 
         payload = {
-            "userPrompt": "/alfred:1-plan 새로운 기능 명세",
-            "cwd": str(self.temp_dir)
+            "userPrompt": "/moai:1-plan 새로운 기능 명세",
+            "cwd": str(self.temp_dir),
         }
 
         # Measure execution time
@@ -289,7 +311,7 @@ class TestHookPerformanceAndScalability:
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
         execution_time = time.time() - start_time
 
@@ -309,7 +331,7 @@ class TestHookPerformanceAndScalability:
 
         payload = {
             "userPrompt": "복잡한 작업을 위한 프롬프트 " * 100,  # Moderate complexity
-            "cwd": str(self.temp_dir)
+            "cwd": str(self.temp_dir),
         }
 
         result = subprocess.run(
@@ -317,7 +339,7 @@ class TestHookPerformanceAndScalability:
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            cwd=str(self.temp_dir)
+            cwd=str(self.temp_dir),
         )
 
         # Check memory usage (should not increase dramatically)
@@ -325,7 +347,9 @@ class TestHookPerformanceAndScalability:
         memory_increase = final_memory - initial_memory
 
         # Memory increase should be reasonable (less than 50MB)
-        assert memory_increase < 50 * 1024 * 1024, f"Memory usage increased too much: {memory_increase / (1024*1024):.2f} MB"
+        assert (
+            memory_increase < 50 * 1024 * 1024
+        ), f"Memory usage increased too much: {memory_increase / (1024*1024):.2f} MB"
         assert result.returncode == 0
 
 

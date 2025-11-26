@@ -1,0 +1,3 @@
+"""
+Foundation module tests package.
+"""

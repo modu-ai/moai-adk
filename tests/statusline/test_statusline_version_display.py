@@ -27,15 +27,11 @@ class TestStatuslineVersionDisplay:
             # Create config with version
             config_path = tmp_path / ".moai" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            config_data = {
-                "moai": {
-                    "version": "0.22.4"
-                }
-            }
+            config_data = {"moai": {"version": "0.22.4"}}
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Mock VersionReader to return our version
-            with patch.object(VersionReader, 'get_version', return_value="0.22.4") as mock_version:
+            with patch.object(VersionReader, "get_version", return_value="0.22.4"):
                 # Create statusline data
                 data = StatuslineData(
                     model="TestProject",
@@ -45,7 +41,7 @@ class TestStatuslineVersionDisplay:
                     version="0.22.4",  # This should match what VersionReader returns
                     branch="main",
                     git_status="clean",
-                    active_task="testing"
+                    active_task="testing",
                 )
 
                 # Create renderer
@@ -75,15 +71,11 @@ class TestStatuslineVersionDisplay:
             # Create config without version
             config_path = tmp_path / ".moai" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            config_data = {
-                "moai": {
-                    "update_check_frequency": "daily"
-                }
-            }
+            config_data = {"moai": {"update_check_frequency": "daily"}}
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Mock VersionReader to return 'unknown'
-            with patch.object(VersionReader, 'get_version', return_value="unknown") as mock_version:
+            with patch.object(VersionReader, "get_version", return_value="unknown"):
                 # Create statusline data
                 data = StatuslineData(
                     model="TestProject",
@@ -93,7 +85,7 @@ class TestStatuslineVersionDisplay:
                     version="unknown",  # VersionReader returns this
                     branch="main",
                     git_status="clean",
-                    active_task="testing"
+                    active_task="testing",
                 )
 
                 # Create renderer
@@ -103,8 +95,9 @@ class TestStatuslineVersionDisplay:
                 statusline = renderer.render(data)
 
                 # Statusline shows "unknown" for missing version - this is current behavior
-                assert "unknown" in statusline.lower(), \
-                    f"Statusline should contain 'unknown' for missing version, got {statusline}"
+                assert (
+                    "unknown" in statusline.lower()
+                ), f"Statusline should contain 'unknown' for missing version, got {statusline}"
 
     def test_statusline_reads_version_from_config_correctly(self) -> None:
         """
@@ -121,15 +114,11 @@ class TestStatuslineVersionDisplay:
             # Create config with version
             config_path = tmp_path / ".moai" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            config_data = {
-                "moai": {
-                    "version": "1.2.3-custom"
-                }
-            }
+            config_data = {"moai": {"version": "1.2.3-custom"}}
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Mock VersionReader to test config path reading
-            with patch.object(VersionReader, 'get_version') as mock_get_version:
+            with patch.object(VersionReader, "get_version") as mock_get_version:
                 mock_get_version.return_value = "1.2.3-custom"
 
                 # Create statusline data
@@ -141,7 +130,7 @@ class TestStatuslineVersionDisplay:
                     version="1.2.3-custom",
                     branch="main",
                     git_status="clean",
-                    active_task="testing"
+                    active_task="testing",
                 )
 
                 # Create renderer
@@ -152,8 +141,9 @@ class TestStatuslineVersionDisplay:
 
                 # RED: This assertion will fail because VersionReader is not reading
                 # from the correct config path
-                assert "1.2.3-custom" in statusline, \
-                    f"Statusline should show custom version '1.2.3-custom', got {statusline}"
+                assert (
+                    "1.2.3-custom" in statusline
+                ), f"Statusline should show custom version '1.2.3-custom', got {statusline}"
 
                 # Verify VersionReader was called with correct path
                 mock_get_version.assert_called_once()
@@ -173,15 +163,11 @@ class TestStatuslineVersionDisplay:
             # Create config with version
             config_path = tmp_path / ".moai" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            config_data = {
-                "moai": {
-                    "version": "2.0.0"
-                }
-            }
+            config_data = {"moai": {"version": "2.0.0"}}
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Mock VersionReader to track calls
-            with patch.object(VersionReader, 'get_version') as mock_get_version:
+            with patch.object(VersionReader, "get_version") as mock_get_version:
                 mock_get_version.return_value = "2.0.0"
 
                 # Create statusline data
@@ -193,7 +179,7 @@ class TestStatuslineVersionDisplay:
                     version="2.0.0",
                     branch="main",
                     git_status="clean",
-                    active_task="testing"
+                    active_task="testing",
                 )
 
                 # Create renderer
@@ -220,12 +206,7 @@ class TestStatuslineVersionDisplay:
         from moai_adk.statusline.renderer import StatuslineData, StatuslineRenderer
         from moai_adk.statusline.version_reader import VersionReader
 
-        test_versions = [
-            "0.22.4",
-            "v0.22.4",
-            "1.0.0",
-            "v1.0.0"
-        ]
+        test_versions = ["0.22.4", "v0.22.4", "1.0.0", "v1.0.0"]
 
         for version in test_versions:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -234,15 +215,11 @@ class TestStatuslineVersionDisplay:
                 # Create config with version
                 config_path = tmp_path / ".moai" / "config.json"
                 config_path.parent.mkdir(parents=True, exist_ok=True)
-                config_data = {
-                    "moai": {
-                        "version": version
-                    }
-                }
+                config_data = {"moai": {"version": version}}
                 config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
                 # Mock VersionReader
-                with patch.object(VersionReader, 'get_version', return_value=version) as mock_version:
+                with patch.object(VersionReader, "get_version", return_value=version):
                     # Create statusline data
                     data = StatuslineData(
                         model="TestProject",
@@ -252,7 +229,7 @@ class TestStatuslineVersionDisplay:
                         version=version,
                         branch="main",
                         git_status="clean",
-                        active_task="testing"
+                        active_task="testing",
                     )
 
                     # Create renderer
@@ -263,10 +240,10 @@ class TestStatuslineVersionDisplay:
 
                     # RED: These assertions will fail because the current implementation
                     # doesn't handle version formatting consistently
-                    assert version in statusline or version[1:] in statusline, \
-                        f"Statusline should contain version '{version}', got {statusline}"
-                    assert "unknown" not in statusline, \
-                        f"Statusline should not show 'unknown', got {statusline}"
+                    assert (
+                        version in statusline or version[1:] in statusline
+                    ), f"Statusline should contain version '{version}', got {statusline}"
+                    assert "unknown" not in statusline, f"Statusline should not show 'unknown', got {statusline}"
 
     def test_statusline_integration_with_version_reader(self) -> None:
         """
@@ -284,13 +261,8 @@ class TestStatuslineVersionDisplay:
             config_path = tmp_path / ".moai" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
             config_data = {
-                "moai": {
-                    "version": "0.22.4",
-                    "update_check_frequency": "daily"
-                },
-                "project": {
-                    "name": "IntegrationTest"
-                }
+                "moai": {"version": "0.22.4", "update_check_frequency": "daily"},
+                "project": {"name": "IntegrationTest"},
             }
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
@@ -310,7 +282,7 @@ class TestStatuslineVersionDisplay:
                 version=actual_version,
                 branch="main",
                 git_status="clean",
-                active_task="testing"
+                active_task="testing",
             )
 
             # Create renderer
@@ -321,10 +293,8 @@ class TestStatuslineVersionDisplay:
 
             # RED: This assertion will fail because VersionReader returns 'unknown'
             # when it should read the actual version from config
-            assert "0.22.4" in statusline, \
-                f"Statusline should contain version '0.22.4', got {statusline}"
-            assert "unknown" not in statusline, \
-                f"Statusline should not contain 'unknown', got {statusline}"
+            assert "0.22.4" in statusline, f"Statusline should contain version '0.22.4', got {statusline}"
+            assert "unknown" not in statusline, f"Statusline should not contain 'unknown', got {statusline}"
 
     def test_statusline_fallback_to_package_version(self) -> None:
         """
@@ -344,7 +314,7 @@ class TestStatuslineVersionDisplay:
             version=package_version,  # Use package version as fallback
             branch="main",
             git_status="clean",
-            active_task="testing"
+            active_task="testing",
         )
 
         # Create renderer
@@ -355,8 +325,9 @@ class TestStatuslineVersionDisplay:
 
         # RED: This assertion will fail because the current implementation
         # doesn't have fallback logic to package version
-        assert package_version in statusline, \
-            f"Statusline should contain package version '{package_version}', got {statusline}"
+        assert (
+            package_version in statusline
+        ), f"Statusline should contain package version '{package_version}', got {statusline}"
 
     def test_statusline_version_error_handling(self) -> None:
         """
@@ -375,7 +346,7 @@ class TestStatuslineVersionDisplay:
             version="error",
             branch="main",
             git_status="clean",
-            active_task="testing"
+            active_task="testing",
         )
 
         # Create renderer
@@ -386,10 +357,8 @@ class TestStatuslineVersionDisplay:
 
         # RED: This assertion will fail because the current implementation
         # should handle version reading errors more gracefully
-        assert "error" not in statusline.lower(), \
-            f"Statusline should not contain 'error', got {statusline}"
-        assert "version" in statusline.lower(), \
-            f"Statusline should mention version, got {statusline}"
+        assert "error" not in statusline.lower(), f"Statusline should not contain 'error', got {statusline}"
+        assert "version" in statusline.lower(), f"Statusline should mention version, got {statusline}"
 
     def test_statusline_performance_with_cache(self) -> None:
         """
@@ -406,11 +375,7 @@ class TestStatuslineVersionDisplay:
             # Create config with version
             config_path = tmp_path / ".moai" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            config_data = {
-                "moai": {
-                    "version": "0.22.4"
-                }
-            }
+            config_data = {"moai": {"version": "0.22.4"}}
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Create version reader
@@ -426,7 +391,7 @@ class TestStatuslineVersionDisplay:
                 version="0.22.4",
                 branch="main",
                 git_status="clean",
-                active_task="testing"
+                active_task="testing",
             )
 
             # Create renderer
@@ -436,7 +401,7 @@ class TestStatuslineVersionDisplay:
             versions = []
             for _ in range(3):
                 # Mock the version reader to track caching
-                with patch.object(version_reader, 'get_version', return_value="0.22.4") as mock_get:
+                with patch.object(version_reader, "get_version", return_value="0.22.4") as mock_get:
                     statusline = renderer.render(data)
                     versions.append(statusline)
                     mock_get.assert_called_once()  # Should use cache
@@ -454,7 +419,7 @@ class TestStatuslineVersionDisplay:
 
         test_cases = [
             ("0.22.4", "v0.22.4"),  # Add v prefix
-            ("1.2.3", "v1.2.3"),    # Add v prefix
+            ("1.2.3", "v1.2.3"),  # Add v prefix
             ("2.0.0-beta", "v2.0.0-beta"),  # Add v prefix to beta
         ]
 
@@ -468,7 +433,7 @@ class TestStatuslineVersionDisplay:
                 version=input_version,
                 branch="main",
                 git_status="clean",
-                active_task="testing"
+                active_task="testing",
             )
 
             # Create renderer
@@ -479,5 +444,6 @@ class TestStatuslineVersionDisplay:
 
             # RED: This assertion will fail because the current implementation
             # doesn't apply consistent formatting to versions
-            assert expected_format in statusline, \
-                f"Statusline should contain formatted version '{expected_format}', got {statusline}"
+            assert (
+                expected_format in statusline
+            ), f"Statusline should contain formatted version '{expected_format}', got {statusline}"

@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class ValidationSeverity(Enum):
     """Input validation severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -29,6 +30,7 @@ class ValidationSeverity(Enum):
 
 class ToolCategory(Enum):
     """Categories of tools with specific validation requirements"""
+
     SEARCH = "search"
     FILE_OPERATIONS = "file_operations"
     TEXT_PROCESSING = "text_processing"
@@ -40,6 +42,7 @@ class ToolCategory(Enum):
 @dataclass
 class ValidationError:
     """Individual validation error details"""
+
     code: str
     message: str
     path: List[str]
@@ -53,6 +56,7 @@ class ValidationError:
 @dataclass
 class ValidationResult:
     """Result of input validation and normalization"""
+
     valid: bool
     normalized_input: Dict[str, Any]
     errors: List[ValidationError] = field(default_factory=list)
@@ -64,6 +68,7 @@ class ValidationResult:
 @dataclass
 class ToolParameter:
     """Tool parameter definition for validation"""
+
     name: str
     param_type: str
     required: bool = False
@@ -98,14 +103,14 @@ class EnhancedInputValidationMiddleware:
         self.parameter_mappings = self._load_parameter_mappings()
 
         # Validation cache
-        self.validation_cache = {} if enable_caching else None
+        self.validation_cache: Optional[Dict[str, Any]] = {} if enable_caching else None
 
         # Statistics
         self.stats = {
-            'validations_performed': 0,
-            'auto_corrections': 0,
-            'errors_resolved': 0,
-            'transformations_applied': 0
+            "validations_performed": 0,
+            "auto_corrections": 0,
+            "errors_resolved": 0,
+            "transformations_applied": 0,
         }
 
     def _load_tool_parameter_definitions(self) -> Dict[str, List[ToolParameter]]:
@@ -117,7 +122,7 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Regex pattern to search for",
-                    aliases=["regex", "search_pattern"]
+                    aliases=["regex", "search_pattern"],
                 ),
                 ToolParameter(
                     name="output_mode",
@@ -125,7 +130,7 @@ class EnhancedInputValidationMiddleware:
                     default_value="content",
                     description="Output format mode",
                     aliases=["mode", "format"],
-                    validation_function=self._validate_grep_mode
+                    validation_function=self._validate_grep_mode,
                 ),
                 ToolParameter(
                     name="head_limit",
@@ -133,34 +138,34 @@ class EnhancedInputValidationMiddleware:
                     description="Limit number of results",
                     default_value=None,
                     aliases=["limit", "max_results", "count", "head"],
-                    deprecated_aliases=["max"]
+                    deprecated_aliases=["max"],
                 ),
                 ToolParameter(
                     name="path",
                     param_type="string",
                     description="Path to search in",
-                    aliases=["directory", "folder", "search_path", "root"]
+                    aliases=["directory", "folder", "search_path", "root"],
                 ),
                 ToolParameter(
                     name="file_pattern",
                     param_type="string",
                     description="File pattern to match",
-                    aliases=["glob", "pattern", "files", "file_glob"]
+                    aliases=["glob", "pattern", "files", "file_glob"],
                 ),
                 ToolParameter(
                     name="case_sensitive",
                     param_type="boolean",
                     default_value=False,
                     description="Case sensitive search",
-                    aliases=["case", "ignore_case", "sensitive"]
+                    aliases=["case", "ignore_case", "sensitive"],
                 ),
                 ToolParameter(
                     name="context_lines",
                     param_type="integer",
                     default_value=0,
                     description="Number of context lines",
-                    aliases=["context", "before_context", "after_context", "C"]
-                )
+                    aliases=["context", "before_context", "after_context", "C"],
+                ),
             ],
             "Glob": [
                 ToolParameter(
@@ -168,21 +173,21 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Glob pattern to match",
-                    aliases=["glob", "file_pattern", "search_pattern"]
+                    aliases=["glob", "file_pattern", "search_pattern"],
                 ),
                 ToolParameter(
                     name="path",
                     param_type="string",
                     description="Base path for glob",
-                    aliases=["directory", "folder", "root", "base_path"]
+                    aliases=["directory", "folder", "root", "base_path"],
                 ),
                 ToolParameter(
                     name="recursive",
                     param_type="boolean",
                     default_value=True,
                     description="Recursive directory search",
-                    aliases=["recurse", "recursive_search"]
-                )
+                    aliases=["recurse", "recursive_search"],
+                ),
             ],
             "Read": [
                 ToolParameter(
@@ -190,21 +195,21 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Path to file to read",
-                    aliases=["path", "filename", "file", "source"]
+                    aliases=["path", "filename", "file", "source"],
                 ),
                 ToolParameter(
                     name="offset",
                     param_type="integer",
                     default_value=0,
                     description="Starting line number",
-                    aliases=["start", "start_line", "begin", "from"]
+                    aliases=["start", "start_line", "begin", "from"],
                 ),
                 ToolParameter(
                     name="limit",
                     param_type="integer",
                     description="Number of lines to read",
-                    aliases=["count", "max_lines", "lines", "size"]
-                )
+                    aliases=["count", "max_lines", "lines", "size"],
+                ),
             ],
             "Bash": [
                 ToolParameter(
@@ -212,27 +217,27 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Command to execute",
-                    aliases=["cmd", "execute", "run", "script"]
+                    aliases=["cmd", "execute", "run", "script"],
                 ),
                 ToolParameter(
                     name="timeout",
                     param_type="integer",
                     default_value=10000,
                     description="Timeout in milliseconds",
-                    aliases=["timeout_ms", "max_time", "time_limit"]
+                    aliases=["timeout_ms", "max_time", "time_limit"],
                 ),
                 ToolParameter(
                     name="working_directory",
                     param_type="string",
                     description="Working directory for command",
-                    aliases=["cwd", "work_dir", "directory", "folder"]
+                    aliases=["cwd", "work_dir", "directory", "folder"],
                 ),
                 ToolParameter(
                     name="environment",
                     param_type="dict",
                     description="Environment variables",
-                    aliases=["env", "env_vars", "variables"]
-                )
+                    aliases=["env", "env_vars", "variables"],
+                ),
             ],
             "Task": [
                 ToolParameter(
@@ -240,28 +245,28 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Type of subagent to use",
-                    aliases=["agent_type", "type", "agent", "model"]
+                    aliases=["agent_type", "type", "agent", "model"],
                 ),
                 ToolParameter(
                     name="prompt",
                     param_type="string",
                     required=True,
                     description="Prompt for the subagent",
-                    aliases=["message", "input", "query", "instruction"]
+                    aliases=["message", "input", "query", "instruction"],
                 ),
                 ToolParameter(
                     name="context",
                     param_type="dict",
                     description="Additional context",
-                    aliases=["data", "variables", "params"]
+                    aliases=["data", "variables", "params"],
                 ),
                 ToolParameter(
                     name="debug",
                     param_type="boolean",
                     default_value=False,
                     description="Enable debug mode",
-                    aliases=["verbose", "debug_mode"]
-                )
+                    aliases=["verbose", "debug_mode"],
+                ),
             ],
             "Write": [
                 ToolParameter(
@@ -269,29 +274,29 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Path to file to write",
-                    aliases=["path", "filename", "file", "destination"]
+                    aliases=["path", "filename", "file", "destination"],
                 ),
                 ToolParameter(
                     name="content",
                     param_type="string",
                     required=True,
                     description="Content to write",
-                    aliases=["data", "text", "body", "contents"]
+                    aliases=["data", "text", "body", "contents"],
                 ),
                 ToolParameter(
                     name="create_directories",
                     param_type="boolean",
                     default_value=False,
                     description="Create parent directories if needed",
-                    aliases=["mkdir", "create_dirs", "make_dirs"]
+                    aliases=["mkdir", "create_dirs", "make_dirs"],
                 ),
                 ToolParameter(
                     name="backup",
                     param_type="boolean",
                     default_value=False,
                     description="Create backup of existing file",
-                    aliases=["backup_existing", "make_backup"]
-                )
+                    aliases=["backup_existing", "make_backup"],
+                ),
             ],
             "Edit": [
                 ToolParameter(
@@ -299,33 +304,33 @@ class EnhancedInputValidationMiddleware:
                     param_type="string",
                     required=True,
                     description="Path to file to edit",
-                    aliases=["path", "filename", "file"]
+                    aliases=["path", "filename", "file"],
                 ),
                 ToolParameter(
                     name="old_string",
                     param_type="string",
                     required=True,
                     description="String to replace",
-                    aliases=["search", "find", "from", "original"]
+                    aliases=["search", "find", "from", "original"],
                 ),
                 ToolParameter(
                     name="new_string",
                     param_type="string",
                     required=True,
                     description="Replacement string",
-                    aliases=["replace", "to", "replacement"]
+                    aliases=["replace", "to", "replacement"],
                 ),
                 ToolParameter(
                     name="replace_all",
                     param_type="boolean",
                     default_value=False,
                     description="Replace all occurrences",
-                    aliases=["global", "all", "replace_all_occurrences"]
-                )
-            ]
+                    aliases=["global", "all", "replace_all_occurrences"],
+                ),
+            ],
         }
 
-    def _load_parameter_mappings(self) -> Dict[str, Dict[str, str]]:
+    def _load_parameter_mappings(self) -> Dict[str, str]:
         """Load parameter mapping for compatibility with different versions"""
         return {
             # Grep tool mappings
@@ -337,33 +342,28 @@ class EnhancedInputValidationMiddleware:
             "max_results": "head_limit",
             "result_limit": "head_limit",
             "num_results": "head_limit",
-
             # Output mode mappings
             "grep_mode": "output_mode",
             "grep_format": "output_mode",
             "output_format": "output_mode",
             "display_mode": "output_mode",
             "show_mode": "output_mode",
-
             # Path mappings
             "search_path": "path",
             "base_path": "path",
             "root_dir": "path",
             "target_dir": "path",
-
             # Glob tool mappings
             "glob_pattern": "pattern",
             "file_glob": "pattern",
             "search_pattern": "pattern",
             "match_pattern": "pattern",
-
             # Read tool mappings
             "start_line": "offset",
             "begin_line": "offset",
             "from_line": "offset",
             "max_lines": "limit",
             "line_count": "limit",
-
             # Bash tool mappings
             "cmd": "command",
             "execute": "command",
@@ -373,13 +373,11 @@ class EnhancedInputValidationMiddleware:
             "time_limit": "timeout",
             "work_dir": "working_directory",
             "cwd": "working_directory",
-
             # Task tool mappings
             "agent_type": "subagent_type",
             "message": "prompt",
             "instruction": "prompt",
             "query": "prompt",
-
             # Write tool mappings
             "filename": "file_path",
             "destination": "file_path",
@@ -387,7 +385,6 @@ class EnhancedInputValidationMiddleware:
             "text": "content",
             "body": "content",
             "make_backup": "backup",
-
             # Edit tool mappings
             "search": "old_string",
             "find": "old_string",
@@ -395,7 +392,7 @@ class EnhancedInputValidationMiddleware:
             "replace": "new_string",
             "to": "new_string",
             "global": "replace_all",
-            "all": "replace_all"
+            "all": "replace_all",
         }
 
     def _validate_grep_mode(self, mode: str) -> bool:
@@ -411,14 +408,12 @@ class EnhancedInputValidationMiddleware:
         from the debug logs (Lines 476-495).
         """
         import time
+
         start_time = time.time()
 
-        self.stats['validations_performed'] += 1
+        self.stats["validations_performed"] += 1
 
-        result = ValidationResult(
-            valid=True,
-            normalized_input=input_data.copy()
-        )
+        result = ValidationResult(valid=True, normalized_input=input_data.copy())
 
         try:
             # Get tool parameters
@@ -465,25 +460,29 @@ class EnhancedInputValidationMiddleware:
 
             # Update statistics
             auto_corrected = len([e for e in result.errors if e.auto_corrected])
-            self.stats['auto_corrections'] += auto_corrected
+            self.stats["auto_corrections"] += auto_corrected
             if auto_corrected > 0:
-                self.stats['errors_resolved'] += auto_corrected
+                self.stats["errors_resolved"] += auto_corrected
 
-            self.stats['transformations_applied'] += len(result.transformations)
+            self.stats["transformations_applied"] += len(result.transformations)
 
             if self.enable_logging and (result.errors or result.warnings or result.transformations):
-                logger.info(f"Input validation for {tool_name}: "
-                          f"valid={result.valid}, errors={len(result.errors)}, "
-                          f"warnings={len(result.warnings)}, transformations={len(result.transformations)}")
+                logger.info(
+                    f"Input validation for {tool_name}: "
+                    f"valid={result.valid}, errors={len(result.errors)}, "
+                    f"warnings={len(result.warnings)}, transformations={len(result.transformations)}"
+                )
 
         except Exception as e:
             result.valid = False
-            result.errors.append(ValidationError(
-                code="validation_exception",
-                message=f"Validation error: {str(e)}",
-                path=[],
-                severity=ValidationSeverity.CRITICAL
-            ))
+            result.errors.append(
+                ValidationError(
+                    code="validation_exception",
+                    message=f"Validation error: {str(e)}",
+                    path=[],
+                    severity=ValidationSeverity.CRITICAL,
+                )
+            )
 
             if self.enable_logging:
                 logger.error(f"Exception during input validation for {tool_name}: {e}")
@@ -517,7 +516,7 @@ class EnhancedInputValidationMiddleware:
         global_mapping_prefix = f"{tool_name.lower()}_"
         for global_key, canonical_key in self.parameter_mappings.items():
             if global_key.startswith(global_mapping_prefix):
-                short_key = global_key[len(global_mapping_prefix):]
+                short_key = global_key[len(global_mapping_prefix) :]
                 alias_mapping[short_key] = canonical_key
 
         # Check each input parameter
@@ -534,16 +533,18 @@ class EnhancedInputValidationMiddleware:
                 mapped_input[canonical_name] = original_value
                 del mapped_input[param_name]
 
-                errors.append(ValidationError(
-                    code="parameter_mapped",
-                    message=f"Mapped parameter '{param_name}' to '{canonical_name}'",
-                    path=[param_name],
-                    severity=ValidationSeverity.LOW,
-                    auto_corrected=True,
-                    original_value=original_value,
-                    corrected_value=original_value,
-                    suggestion=f"Use '{canonical_name}' instead of '{param_name}'"
-                ))
+                errors.append(
+                    ValidationError(
+                        code="parameter_mapped",
+                        message=f"Mapped parameter '{param_name}' to '{canonical_name}'",
+                        path=[param_name],
+                        severity=ValidationSeverity.LOW,
+                        auto_corrected=True,
+                        original_value=original_value,
+                        corrected_value=original_value,
+                        suggestion=f"Use '{canonical_name}' instead of '{param_name}'",
+                    )
+                )
 
             else:
                 # Unknown parameter - create error
@@ -552,14 +553,16 @@ class EnhancedInputValidationMiddleware:
                 # Suggest closest match
                 suggestion = self._find_closest_parameter_match(param_name, valid_names)
 
-                errors.append(ValidationError(
-                    code="unrecognized_parameter",
-                    message=f"Unrecognized parameter: '{param_name}'",
-                    path=[param_name],
-                    severity=ValidationSeverity.HIGH,
-                    original_value=original_value,
-                    suggestion=suggestion
-                ))
+                errors.append(
+                    ValidationError(
+                        code="unrecognized_parameter",
+                        message=f"Unrecognized parameter: '{param_name}'",
+                        path=[param_name],
+                        severity=ValidationSeverity.HIGH,
+                        original_value=original_value,
+                        suggestion=suggestion,
+                    )
+                )
 
         return mapped_input, errors
 
@@ -575,7 +578,7 @@ class EnhancedInputValidationMiddleware:
 
         # Find best match using Levenshtein distance
         best_match = None
-        best_score = float('inf')
+        best_score = float("inf")
 
         for valid_lower_name, canonical_name in valid_lower.items():
             # Simple similarity score
@@ -623,13 +626,15 @@ class EnhancedInputValidationMiddleware:
 
         for param in tool_params:
             if param.required and param.name not in input_data:
-                errors.append(ValidationError(
-                    code="missing_required_parameter",
-                    message=f"Missing required parameter: '{param.name}'",
-                    path=[],
-                    severity=ValidationSeverity.CRITICAL,
-                    suggestion=f"Add '{param.name}' parameter"
-                ))
+                errors.append(
+                    ValidationError(
+                        code="missing_required_parameter",
+                        message=f"Missing required parameter: '{param.name}'",
+                        path=[],
+                        severity=ValidationSeverity.CRITICAL,
+                        suggestion=f"Add '{param.name}' parameter",
+                    )
+                )
 
         return errors
 
@@ -661,21 +666,25 @@ class EnhancedInputValidationMiddleware:
             if param.validation_function and not type_errors:
                 try:
                     if not param.validation_function(value):
-                        errors.append(ValidationError(
-                            code="validation_function_failed",
-                            message=f"Parameter '{param.name}' failed custom validation",
+                        errors.append(
+                            ValidationError(
+                                code="validation_function_failed",
+                                message=f"Parameter '{param.name}' failed custom validation",
+                                path=[param.name],
+                                severity=ValidationSeverity.HIGH,
+                                original_value=value,
+                            )
+                        )
+                except Exception as e:
+                    errors.append(
+                        ValidationError(
+                            code="validation_function_error",
+                            message=f"Error validating parameter '{param.name}': {str(e)}",
                             path=[param.name],
                             severity=ValidationSeverity.HIGH,
-                            original_value=value
-                        ))
-                except Exception as e:
-                    errors.append(ValidationError(
-                        code="validation_function_error",
-                        message=f"Error validating parameter '{param.name}': {str(e)}",
-                        path=[param.name],
-                        severity=ValidationSeverity.HIGH,
-                        original_value=value
-                    ))
+                            original_value=value,
+                        )
+                    )
 
         return errors
 
@@ -686,16 +695,16 @@ class EnhancedInputValidationMiddleware:
         input_data: Dict[str, Any],
     ) -> List[ValidationError]:
         """Validate parameter value against expected type"""
-        errors = []
+        errors: List[ValidationError] = []
 
         # Type mapping
         type_validators = {
             "string": lambda v: isinstance(v, str),
             "integer": lambda v: isinstance(v, int) or (isinstance(v, str) and v.isdigit()),
-            "boolean": lambda v: isinstance(v, bool) or str(v).lower() in ['true', 'false', '1', '0'],
+            "boolean": lambda v: isinstance(v, bool) or str(v).lower() in ["true", "false", "1", "0"],
             "dict": lambda v: isinstance(v, dict),
             "list": lambda v: isinstance(v, list),
-            "float": lambda v: isinstance(v, float) or (isinstance(v, (int, str)) and self._is_float(v))
+            "float": lambda v: isinstance(v, float) or (isinstance(v, (int, str)) and self._is_float(v)),
         }
 
         validator = type_validators.get(param.param_type)
@@ -708,24 +717,28 @@ class EnhancedInputValidationMiddleware:
             if converted_value is not None:
                 # Apply the converted value to input_data
                 input_data[param.name] = converted_value
-                errors.append(ValidationError(
-                    code="type_conversion",
-                    message=f"Converted parameter '{param.name}' from {type(value).__name__} to {param.param_type}",
-                    path=[param.name],
-                    severity=ValidationSeverity.LOW,
-                    auto_corrected=True,
-                    original_value=value,
-                    corrected_value=converted_value
-                ))
+                errors.append(
+                    ValidationError(
+                        code="type_conversion",
+                        message=f"Converted parameter '{param.name}' from {type(value).__name__} to {param.param_type}",
+                        path=[param.name],
+                        severity=ValidationSeverity.LOW,
+                        auto_corrected=True,
+                        original_value=value,
+                        corrected_value=converted_value,
+                    )
+                )
             else:
-                errors.append(ValidationError(
-                    code="type_mismatch",
-                    message=f"Parameter '{param.name}' expects {param.param_type}, got {type(value).__name__}",
-                    path=[param.name],
-                    severity=ValidationSeverity.HIGH,
-                    original_value=value,
-                    suggestion=f"Provide a {param.param_type} value for '{param.name}'"
-                ))
+                errors.append(
+                    ValidationError(
+                        code="type_mismatch",
+                        message=f"Parameter '{param.name}' expects {param.param_type}, got {type(value).__name__}",
+                        path=[param.name],
+                        severity=ValidationSeverity.HIGH,
+                        original_value=value,
+                        suggestion=f"Provide a {param.param_type} value for '{param.name}'",
+                    )
+                )
 
         return errors
 
@@ -752,7 +765,7 @@ class EnhancedInputValidationMiddleware:
                     return int(value)
             elif target_type == "boolean":
                 if isinstance(value, str):
-                    return value.lower() in ['true', '1', 'yes', 'on']
+                    return value.lower() in ["true", "1", "yes", "on"]
                 elif isinstance(value, (int, float)):
                     return bool(value)
             elif target_type == "float":
@@ -786,29 +799,33 @@ class EnhancedInputValidationMiddleware:
             # Normalize boolean values
             if param.param_type == "boolean":
                 if isinstance(value, str):
-                    normalized = value.lower() in ['true', '1', 'yes', 'on']
-                    if value != str(normalized):
-                        input_data[param.name] = normalized
-                        transformations.append(f"Normalized '{param.name}' boolean from '{value}' to '{normalized}'")
+                    normalized_bool = value.lower() in ["true", "1", "yes", "on"]
+                    if value != str(normalized_bool):
+                        input_data[param.name] = normalized_bool
+                        transformations.append(
+                            f"Normalized '{param.name}' boolean from '{value}' to '{normalized_bool}'"
+                        )
 
             # Normalize file paths
             elif param.name in ["file_path", "path", "directory"] and isinstance(value, str):
                 # Convert to forward slashes and remove trailing slash
-                normalized = value.replace("\\", "/").rstrip("/")
-                if value != normalized:
-                    input_data[param.name] = normalized
-                    transformations.append(f"Normalized '{param.name}' path from '{value}' to '{normalized}'")
+                normalized_path = value.replace("\\", "/").rstrip("/")
+                if value != normalized_path:
+                    input_data[param.name] = normalized_path
+                    transformations.append(f"Normalized '{param.name}' path from '{value}' to '{normalized_path}'")
 
             # Normalize numeric formats - Always attempt conversion for numeric types
             elif param.param_type in ["integer", "float"] and isinstance(value, str):
                 try:
                     if param.param_type == "integer":
-                        normalized = int(float(value.strip()))  # Handle "123.0" -> 123
+                        normalized_num: int | float = int(float(value.strip()))  # Handle "123.0" -> 123
                     else:  # float
-                        normalized = float(value.strip())
+                        normalized_num = float(value.strip())
 
-                    input_data[param.name] = normalized
-                    transformations.append(f"Normalized '{param.name}' {param.param_type} from '{value}' to '{normalized}'")
+                    input_data[param.name] = normalized_num
+                    transformations.append(
+                        f"Normalized '{param.name}' {param.param_type} from '{value}' to '{normalized_num}'"
+                    )
                 except ValueError:
                     # Keep original value if conversion fails
                     pass
@@ -830,8 +847,10 @@ class EnhancedInputValidationMiddleware:
                     input_data[param.name] = value
                     del input_data[deprecated_alias]
 
-                    warnings.append(f"Deprecated parameter '{deprecated_alias}' replaced with '{param.name}'. "
-                                  f"This alias will be removed in future versions.")
+                    warnings.append(
+                        f"Deprecated parameter '{deprecated_alias}' replaced with '{param.name}'. "
+                        f"This alias will be removed in future versions."
+                    )
 
         return warnings
 
@@ -839,9 +858,9 @@ class EnhancedInputValidationMiddleware:
         """Get input validation statistics"""
         return {
             **self.stats,
-            'tools_configured': len(self.tool_parameters),
-            'parameter_mappings': len(self.parameter_mappings),
-            'cache_size': len(self.validation_cache) if self.validation_cache else 0
+            "tools_configured": len(self.tool_parameters),
+            "parameter_mappings": len(self.parameter_mappings),
+            "cache_size": len(self.validation_cache) if self.validation_cache else 0,
         }
 
     def register_tool_parameters(self, tool_name: str, parameters: List[ToolParameter]) -> None:
@@ -855,13 +874,13 @@ class EnhancedInputValidationMiddleware:
     def export_validation_report(self, output_path: str) -> None:
         """Export validation report to file"""
         report = {
-            'generated_at': __import__('time').time(),
-            'stats': self.get_validation_stats(),
-            'configured_tools': list(self.tool_parameters.keys()),
-            'parameter_mappings': self.parameter_mappings
+            "generated_at": __import__("time").time(),
+            "stats": self.get_validation_stats(),
+            "configured_tools": list(self.tool_parameters.keys()),
+            "parameter_mappings": self.parameter_mappings,
         }
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
 
@@ -892,8 +911,8 @@ if __name__ == "__main__":
             "input": {
                 "pattern": "test",
                 "head_limit": 10,  # This was causing the error
-                "output_mode": "content"
-            }
+                "output_mode": "content",
+            },
         },
         {
             "name": "Grep with alternative parameter names",
@@ -901,8 +920,8 @@ if __name__ == "__main__":
             "input": {
                 "pattern": "test",
                 "max_results": 20,  # Should be mapped to head_limit
-                "search_path": "/src"  # Should be mapped to path
-            }
+                "search_path": "/src",  # Should be mapped to path
+            },
         },
         {
             "name": "Grep with deprecated parameters",
@@ -910,8 +929,8 @@ if __name__ == "__main__":
             "input": {
                 "pattern": "test",
                 "count": 15,  # Deprecated alias
-                "folder": "/src"  # Should be mapped to path
-            }
+                "folder": "/src",  # Should be mapped to path
+            },
         },
         {
             "name": "Read with parameter aliases",
@@ -919,8 +938,8 @@ if __name__ == "__main__":
             "input": {
                 "filename": "/path/to/file.txt",  # Should be mapped to file_path
                 "start_line": 10,  # Should be mapped to offset
-                "lines": 50  # Should be mapped to limit
-            }
+                "lines": 50,  # Should be mapped to limit
+            },
         },
         {
             "name": "Task with mixed parameter names",
@@ -928,8 +947,8 @@ if __name__ == "__main__":
             "input": {
                 "agent_type": "debug-helper",  # Should be mapped to subagent_type
                 "message": "test message",  # Should be mapped to prompt
-                "verbose": True  # Should be mapped to debug
-            }
+                "verbose": True,  # Should be mapped to debug
+            },
         },
         {
             "name": "Bash with alternative parameters",
@@ -937,17 +956,19 @@ if __name__ == "__main__":
             "input": {
                 "cmd": "ls -la",  # Should be mapped to command
                 "cwd": "/home/user",  # Should be mapped to working_directory
-                "timeout_ms": 5000  # Should be mapped to timeout
-            }
-        }
+                "timeout_ms": 5000,  # Should be mapped to timeout
+            },
+        },
     ]
 
     for i, test_case in enumerate(test_cases, 1):
         print(f"\n{i}. {test_case['name']}")
-        print(f"   Tool: {test_case['tool']}")
-        print(f"   Original input: {test_case['input']}")
+        tool_name: str = test_case["tool"]  # type: ignore[assignment]
+        tool_input: Dict[str, Any] = test_case["input"]  # type: ignore[assignment]
+        print(f"   Tool: {tool_name}")
+        print(f"   Original input: {tool_input}")
 
-        result = validate_tool_input(test_case['tool'], test_case['input'])
+        result = validate_tool_input(tool_name, tool_input)
 
         print(f"   Valid: {result.valid}")
         print(f"   Errors: {len(result.errors)}")

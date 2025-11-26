@@ -32,7 +32,7 @@ def expected_templates():
         "python-tag-validation.yml",
         "javascript-tag-validation.yml",
         "typescript-tag-validation.yml",
-        "go-tag-validation.yml"
+        "go-tag-validation.yml",
     ]
 
 
@@ -94,19 +94,19 @@ class TestLanguageDetection:
     def test_detect_typescript_project_with_tsconfig(self, tmp_path, detector):
         """Test: TypeScript project with tsconfig.json detected"""
         (tmp_path / "package.json").write_text('{"name": "test"}')
-        (tmp_path / "tsconfig.json").write_text('{}')
+        (tmp_path / "tsconfig.json").write_text("{}")
         # TypeScript should be detected before JavaScript due to priority
         assert detector.detect(tmp_path) == "typescript"
 
     def test_detect_go_project_with_go_mod(self, tmp_path, detector):
         """Test: Go project with go.mod correctly detected"""
-        (tmp_path / "go.mod").write_text('module test')
+        (tmp_path / "go.mod").write_text("module test")
         assert detector.detect(tmp_path) == "go"
 
     def test_priority_typescript_over_javascript(self, tmp_path, detector):
         """Test: TypeScript has priority when both package.json and tsconfig.json exist"""
         (tmp_path / "package.json").write_text('{"name": "test"}')
-        (tmp_path / "tsconfig.json").write_text('{}')
+        (tmp_path / "tsconfig.json").write_text("{}")
         detected = detector.detect(tmp_path)
         assert detected == "typescript"
         assert detected != "javascript"
@@ -114,20 +114,20 @@ class TestLanguageDetection:
     def test_package_manager_detection_all_types(self, tmp_path, detector):
         """Test: Package manager detection for all types (npm, yarn, pnpm, bun)"""
         # Test npm
-        (tmp_path / "package-lock.json").write_text('{}')
+        (tmp_path / "package-lock.json").write_text("{}")
         assert detector.detect_package_manager(tmp_path) == "npm"
         (tmp_path / "package-lock.json").unlink()
 
         # Test yarn
-        (tmp_path / "yarn.lock").write_text('')
+        (tmp_path / "yarn.lock").write_text("")
         assert detector.detect_package_manager(tmp_path) == "yarn"
         (tmp_path / "yarn.lock").unlink()
 
         # Test pnpm
-        (tmp_path / "pnpm-lock.yaml").write_text('')
+        (tmp_path / "pnpm-lock.yaml").write_text("")
         assert detector.detect_package_manager(tmp_path) == "pnpm"
         (tmp_path / "pnpm-lock.yaml").unlink()
 
         # Test bun (highest priority)
-        (tmp_path / "bun.lockb").write_bytes(b'binary')
+        (tmp_path / "bun.lockb").write_bytes(b"binary")
         assert detector.detect_package_manager(tmp_path) == "bun"

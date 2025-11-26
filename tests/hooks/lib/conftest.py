@@ -22,31 +22,18 @@ def valid_config_file(temp_config_dir):
             "timeout_ms": 5000,
             "minimum_timeout_seconds": 1,
             "graceful_degradation": True,
-            "exit_codes": {
-                "success": 0,
-                "error": 1,
-                "critical_error": 2,
-                "config_error": 3
-            },
+            "exit_codes": {"success": 0, "error": 1, "critical_error": 2, "config_error": 3},
             "messages": {
                 "timeout": {
                     "post_tool_use": "⚠️ PostToolUse timeout",
                     "session_end": "⚠️ SessionEnd cleanup timeout",
-                    "session_start": "⚠️ Session start timeout"
+                    "session_start": "⚠️ Session start timeout",
                 }
             },
-            "cache": {
-                "directory": ".moai/cache",
-                "version_ttl_seconds": 1800,
-                "git_ttl_seconds": 10
-            },
-            "git": {
-                "timeout_seconds": 2
-            }
+            "cache": {"directory": ".moai/cache", "version_ttl_seconds": 1800, "git_ttl_seconds": 10},
+            "git": {"timeout_seconds": 2},
         },
-        "language": {
-            "conversation_language": "en"
-        }
+        "language": {"conversation_language": "en"},
     }
     config_file = temp_config_dir / "config.json"
     config_file.write_text(json.dumps(config, indent=2))
@@ -75,13 +62,8 @@ def sample_json_data():
     return {
         "name": "test",
         "version": "1.0.0",
-        "nested": {
-            "key": "value",
-            "deep": {
-                "data": "test"
-            }
-        },
-        "list": [1, 2, 3, 4, 5]
+        "nested": {"key": "value", "deep": {"data": "test"}},
+        "list": [1, 2, 3, 4, 5],
     }
 
 

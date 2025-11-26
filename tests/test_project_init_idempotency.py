@@ -285,7 +285,7 @@ class TestClearUserGuidance:
         # When reinit happens, optimized should be False
         config = {"project": {"optimized": False}}
 
-        # Guidance should recommend running /alfred:0-project
+        # Guidance should recommend running /moai:0-project
         optimized = config.get("project", {}).get("optimized", True)
 
         if not optimized:

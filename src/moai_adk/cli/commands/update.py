@@ -47,7 +47,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Union, cast
 
 import click
 from packaging import version
@@ -287,9 +287,7 @@ def _get_project_config_version(project_path: Path) -> str:
 
     def _is_placeholder(value: str) -> bool:
         """Check if value contains unsubstituted template placeholders."""
-        return (
-            isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
-        )
+        return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
 
     config_path = project_path / ".moai" / "config" / "config.json"
 
@@ -330,13 +328,9 @@ def _ask_merge_strategy(yes: bool = False) -> str:
 
     console.print("\n[cyan]🔀 Choose merge strategy:[/cyan]")
     console.print("[cyan]  [1] Auto-merge (default)[/cyan]")
-    console.print(
-        "[dim]     → Template installs fresh + user changes preserved + minimal conflicts[/dim]"
-    )
+    console.print("[dim]     → Template installs fresh + user changes preserved + minimal conflicts[/dim]")
     console.print("[cyan]  [2] Manual merge[/cyan]")
-    console.print(
-        "[dim]     → Backup preserved + merge guide generated + you control merging[/dim]"
-    )
+    console.print("[dim]     → Backup preserved + merge guide generated + you control merging[/dim]")
 
     response = click.prompt("Select [1 or 2]", default="1")
     if response == "2":
@@ -344,9 +338,7 @@ def _ask_merge_strategy(yes: bool = False) -> str:
     return "auto"
 
 
-def _generate_manual_merge_guide(
-    backup_path: Path, template_path: Path, project_path: Path
-) -> Path:
+def _generate_manual_merge_guide(backup_path: Path, template_path: Path, project_path: Path) -> Path:
     """
     Generate comprehensive merge guide for manual merging.
 
@@ -366,7 +358,7 @@ def _generate_manual_merge_guide(
     # Find changed files
     changed_files = []
     backup_claude = backup_path / ".claude"
-    backup_moai = backup_path / ".moai"
+    backup_path / ".moai"
 
     # Compare .claude/
     if backup_claude.exists():
@@ -501,9 +493,7 @@ If you encounter merge conflicts or issues:
     return guide_path
 
 
-def _detect_stale_cache(
-    upgrade_output: str, current_version: str, latest_version: str
-) -> bool:
+def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
 
@@ -598,9 +588,7 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-def _execute_upgrade_with_retry(
-    installer_cmd: list[str], package_name: str = "moai-adk"
-) -> bool:
+def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
 
@@ -647,9 +635,7 @@ def _execute_upgrade_with_retry(
     """
     # Stage 1: First upgrade attempt
     try:
-        result = subprocess.run(
-            installer_cmd, capture_output=True, text=True, timeout=60, check=False
-        )
+        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
     except Exception:
@@ -718,9 +704,7 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
         subprocess.TimeoutExpired: If upgrade times out
     """
     try:
-        result = subprocess.run(
-            installer_cmd, capture_output=True, text=True, timeout=60, check=False
-        )
+        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
         return result.returncode == 0
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
@@ -789,12 +773,436 @@ def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]
     return success
 
 
-def _sync_templates(project_path: Path, force: bool = False) -> bool:
+def _get_template_skill_names() -> set[str]:
+    """Get set of skill folder names from installed template.
+
+    Returns:
+        Set of skill folder names that are part of the template package.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    skills_path = template_path / ".claude" / "skills"
+
+    if not skills_path.exists():
+        return set()
+
+    return {d.name for d in skills_path.iterdir() if d.is_dir()}
+
+
+def _get_template_command_names() -> set[str]:
+    """Get set of command file names from installed template.
+
+    Returns:
+        Set of .md command file names from .claude/commands/moai/ in template.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    commands_path = template_path / ".claude" / "commands" / "moai"
+
+    if not commands_path.exists():
+        return set()
+
+    return {f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"}
+
+
+def _get_template_agent_names() -> set[str]:
+    """Get set of agent file names from installed template.
+
+    Returns:
+        Set of agent file names from .claude/agents/ in template.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    agents_path = template_path / ".claude" / "agents"
+
+    if not agents_path.exists():
+        return set()
+
+    return {f.name for f in agents_path.iterdir() if f.is_file()}
+
+
+def _get_template_hook_names() -> set[str]:
+    """Get set of hook file names from installed template.
+
+    Returns:
+        Set of .py hook file names from .claude/hooks/moai/ in template.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates"
+    hooks_path = template_path / ".claude" / "hooks" / "moai"
+
+    if not hooks_path.exists():
+        return set()
+
+    return {f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"}
+
+
+def _detect_custom_commands(project_path: Path, template_commands: set[str]) -> list[str]:
+    """Detect custom commands NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_commands: Set of template command file names
+
+    Returns:
+        Sorted list of custom command file names.
+    """
+    commands_path = project_path / ".claude" / "commands" / "moai"
+
+    if not commands_path.exists():
+        return []
+
+    project_commands = {f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"}
+    custom_commands = project_commands - template_commands
+
+    return sorted(custom_commands)
+
+
+def _detect_custom_agents(project_path: Path, template_agents: set[str]) -> list[str]:
+    """Detect custom agents NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_agents: Set of template agent file names
+
+    Returns:
+        Sorted list of custom agent file names.
+    """
+    agents_path = project_path / ".claude" / "agents"
+
+    if not agents_path.exists():
+        return []
+
+    project_agents = {f.name for f in agents_path.iterdir() if f.is_file()}
+    custom_agents = project_agents - template_agents
+
+    return sorted(custom_agents)
+
+
+def _detect_custom_hooks(project_path: Path, template_hooks: set[str]) -> list[str]:
+    """Detect custom hooks NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_hooks: Set of template hook file names
+
+    Returns:
+        Sorted list of custom hook file names.
+    """
+    hooks_path = project_path / ".claude" / "hooks" / "moai"
+
+    if not hooks_path.exists():
+        return []
+
+    project_hooks = {f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"}
+    custom_hooks = project_hooks - template_hooks
+
+    return sorted(custom_hooks)
+
+
+def _group_custom_files_by_type(
+    custom_commands: list[str],
+    custom_agents: list[str],
+    custom_hooks: list[str],
+) -> dict[str, list[str]]:
+    """Group custom files by type for UI display.
+
+    Args:
+        custom_commands: List of custom command file names
+        custom_agents: List of custom agent file names
+        custom_hooks: List of custom hook file names
+
+    Returns:
+        Dictionary with keys: commands, agents, hooks
+    """
+    return {
+        "commands": custom_commands,
+        "agents": custom_agents,
+        "hooks": custom_hooks,
+    }
+
+
+def _prompt_custom_files_restore(
+    custom_commands: list[str],
+    custom_agents: list[str],
+    custom_hooks: list[str],
+    yes: bool = False,
+) -> dict[str, list[str]]:
+    """Interactive questionary multi-select for custom files restore (opt-in default).
+
+    Args:
+        custom_commands: List of custom command file names
+        custom_agents: List of custom agent file names
+        custom_hooks: List of custom hook file names
+        yes: Auto-confirm flag (skips restoration in CI/CD mode)
+
+    Returns:
+        Dictionary with selected files grouped by type.
+    """
+    import questionary
+
+    # If no custom files, skip UI
+    if not (custom_commands or custom_agents or custom_hooks):
+        return {
+            "commands": [],
+            "agents": [],
+            "hooks": [],
+        }
+
+    # In --yes mode, skip restoration (safest default)
+    if yes:
+        console.print("\n[dim]   Skipping custom files restoration (--yes mode)[/dim]\n")
+        return {
+            "commands": [],
+            "agents": [],
+            "hooks": [],
+        }
+
+    # Build checkbox choices grouped by type
+    from questionary import Choice, Separator
+
+    choices: list[Union[Separator, Choice]] = []
+
+    if custom_commands:
+        choices.append(Separator("Commands (.claude/commands/moai/)"))
+        for cmd in custom_commands:
+            choices.append(Choice(title=cmd, value=f"cmd:{cmd}"))
+
+    if custom_agents:
+        choices.append(Separator("Agents (.claude/agents/)"))
+        for agent in custom_agents:
+            choices.append(Choice(title=agent, value=f"agent:{agent}"))
+
+    if custom_hooks:
+        choices.append(Separator("Hooks (.claude/hooks/moai/)"))
+        for hook in custom_hooks:
+            choices.append(Choice(title=hook, value=f"hook:{hook}"))
+
+    console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
+    console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
+
+    selected = questionary.checkbox(
+        "Select custom files to restore:",
+        choices=choices,
+    ).ask()
+
+    # Parse results
+    result_commands = []
+    result_agents = []
+    result_hooks = []
+
+    if selected:
+        for item in selected:
+            if item.startswith("cmd:"):
+                result_commands.append(item[4:])
+            elif item.startswith("agent:"):
+                result_agents.append(item[6:])
+            elif item.startswith("hook:"):
+                result_hooks.append(item[5:])
+
+    return {
+        "commands": result_commands,
+        "agents": result_agents,
+        "hooks": result_hooks,
+    }
+
+
+def _restore_custom_files(
+    project_path: Path,
+    backup_path: Path,
+    selected_commands: list[str],
+    selected_agents: list[str],
+    selected_hooks: list[str],
+) -> bool:
+    """Restore selected custom files from backup to project.
+
+    Args:
+        project_path: Project directory path
+        backup_path: Backup directory path
+        selected_commands: List of command files to restore
+        selected_agents: List of agent files to restore
+        selected_hooks: List of hook files to restore
+
+    Returns:
+        True if all restorations succeeded, False otherwise.
+    """
+    import shutil
+
+    success = True
+
+    # Restore commands
+    if selected_commands:
+        commands_dst = project_path / ".claude" / "commands" / "moai"
+        commands_dst.mkdir(parents=True, exist_ok=True)
+
+        for cmd_file in selected_commands:
+            src = backup_path / ".claude" / "commands" / "moai" / cmd_file
+            dst = commands_dst / cmd_file
+
+            if src.exists():
+                try:
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    logger.warning(f"Failed to restore command {cmd_file}: {e}")
+                    success = False
+            else:
+                logger.warning(f"Command file not in backup: {cmd_file}")
+                success = False
+
+    # Restore agents
+    if selected_agents:
+        agents_dst = project_path / ".claude" / "agents"
+        agents_dst.mkdir(parents=True, exist_ok=True)
+
+        for agent_file in selected_agents:
+            src = backup_path / ".claude" / "agents" / agent_file
+            dst = agents_dst / agent_file
+
+            if src.exists():
+                try:
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    logger.warning(f"Failed to restore agent {agent_file}: {e}")
+                    success = False
+            else:
+                logger.warning(f"Agent file not in backup: {agent_file}")
+                success = False
+
+    # Restore hooks
+    if selected_hooks:
+        hooks_dst = project_path / ".claude" / "hooks" / "moai"
+        hooks_dst.mkdir(parents=True, exist_ok=True)
+
+        for hook_file in selected_hooks:
+            src = backup_path / ".claude" / "hooks" / "moai" / hook_file
+            dst = hooks_dst / hook_file
+
+            if src.exists():
+                try:
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    logger.warning(f"Failed to restore hook {hook_file}: {e}")
+                    success = False
+            else:
+                logger.warning(f"Hook file not in backup: {hook_file}")
+                success = False
+
+    return success
+
+
+def _detect_custom_skills(project_path: Path, template_skills: set[str]) -> list[str]:
+    """Detect skills NOT in template (user-created).
+
+    Args:
+        project_path: Project path (absolute)
+        template_skills: Set of template skill names
+
+    Returns:
+        Sorted list of custom skill names.
+    """
+    skills_path = project_path / ".claude" / "skills"
+
+    if not skills_path.exists():
+        return []
+
+    project_skills = {d.name for d in skills_path.iterdir() if d.is_dir()}
+    custom_skills = project_skills - template_skills
+
+    return sorted(custom_skills)
+
+
+def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[str]:
+    """Interactive questionary multi-select for skill restore (opt-in default).
+
+    Args:
+        custom_skills: List of custom skill names
+        yes: Auto-confirm flag (skips restoration in CI/CD mode)
+
+    Returns:
+        List of skills user selected to restore.
+    """
+    import questionary
+
+    if not custom_skills:
+        return []
+
+    console.print("\n[cyan]📦 Custom skills detected in backup:[/cyan]")
+    for skill in custom_skills:
+        console.print(f"   • {skill}")
+    console.print()
+
+    if yes:
+        console.print("[dim]   Skipping restoration (--yes mode)[/dim]\n")
+        return []
+
+    selected = questionary.checkbox(
+        "Select skills to restore (none selected by default):",
+        choices=[questionary.Choice(title=skill, checked=False) for skill in custom_skills],
+    ).ask()
+
+    return selected if selected else []
+
+
+def _restore_selected_skills(skills: list[str], backup_path: Path, project_path: Path) -> bool:
+    """Restore selected skills from backup.
+
+    Args:
+        skills: List of skill names to restore
+        backup_path: Backup directory path
+        project_path: Project path (absolute)
+
+    Returns:
+        True if all restorations succeeded.
+    """
+    import shutil
+
+    if not skills:
+        return True
+
+    console.print("\n[cyan]📥 Restoring selected skills...[/cyan]")
+    skills_dst = project_path / ".claude" / "skills"
+    skills_dst.mkdir(parents=True, exist_ok=True)
+
+    success = True
+    for skill_name in skills:
+        src = backup_path / ".claude" / "skills" / skill_name
+        dst = skills_dst / skill_name
+
+        if src.exists():
+            try:
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+                console.print(f"   [green]✓ Restored: {skill_name}[/green]")
+            except Exception as e:
+                console.print(f"   [red]✗ Failed: {skill_name} - {e}[/red]")
+                success = False
+        else:
+            console.print(f"   [yellow]⚠ Not in backup: {skill_name}[/yellow]")
+            success = False
+
+    return success
+
+
+def _show_post_update_guidance(backup_path: Path) -> None:
+    """Show post-update guidance for running /moai:0-project update.
+
+    Args:
+        backup_path: Backup directory path for reference
+    """
+    console.print("\n" + "[cyan]" + "=" * 60 + "[/cyan]")
+    console.print("[green]✅ Update complete![/green]")
+    console.print("\n[yellow]📝 IMPORTANT - Next step:[/yellow]")
+    console.print("   Run [cyan]/moai:0-project update[/cyan] in Claude Code")
+    console.print("\n   This will:")
+    console.print("   • Merge your settings with new templates")
+    console.print("   • Validate configuration compatibility")
+    console.print("\n[dim]💡 Personal instructions should go in CLAUDE.local.md[/dim]")
+    console.print(f"[dim]📂 Backup location: {backup_path}[/dim]")
+    console.print("[cyan]" + "=" * 60 + "[/cyan]\n")
+
+
+def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) -> bool:
     """Sync templates to project with rollback mechanism.
 
     Args:
         project_path: Project path (absolute)
         force: Force update without backup
+        yes: Auto-confirm flag (skips interactive prompts)
 
     Returns:
         True if sync succeeded, False otherwise
@@ -803,6 +1211,20 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
 
     backup_path = None
     try:
+        # NEW: Detect custom files and skills BEFORE backup/sync
+        template_skills = _get_template_skill_names()
+        custom_skills = _detect_custom_skills(project_path, template_skills)
+
+        # Detect custom commands, agents, and hooks
+        template_commands = _get_template_command_names()
+        custom_commands = _detect_custom_commands(project_path, template_commands)
+
+        template_agents = _get_template_agent_names()
+        custom_agents = _detect_custom_agents(project_path, template_agents)
+
+        template_hooks = _get_template_hook_names()
+        custom_hooks = _detect_custom_hooks(project_path, template_hooks)
+
         processor = TemplateProcessor(project_path)
 
         # Create pre-sync backup for rollback
@@ -816,9 +1238,7 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
                 try:
                     analyzer = MergeAnalyzer(project_path)
                     # Template source path from installed package
-                    template_path = (
-                        Path(__file__).parent.parent.parent / "templates"
-                    )
+                    template_path = Path(__file__).parent.parent.parent / "templates"
 
                     console.print("\n[cyan]🔍 Starting merge analysis (max 2 mins)...[/cyan]")
                     console.print("[dim]   Analyzing intelligent merge with Claude Code.[/dim]")
@@ -827,18 +1247,12 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
 
                     # Ask user confirmation
                     if not analyzer.ask_user_confirmation(analysis):
-                        console.print(
-                            "[yellow]⚠️  User cancelled the update.[/yellow]"
-                        )
+                        console.print("[yellow]⚠️  User cancelled the update.[/yellow]")
                         backup.restore_backup(backup_path)
                         return False
                 except Exception as e:
-                    console.print(
-                        f"[yellow]⚠️  Merge analysis failed: {e}[/yellow]"
-                    )
-                    console.print(
-                        "[yellow]Proceeding with automatic merge.[/yellow]"
-                    )
+                    console.print(f"[yellow]⚠️  Merge analysis failed: {e}[/yellow]")
+                    console.print("[yellow]Proceeding with automatic merge.[/yellow]")
 
         # Load existing config
         existing_config = _load_existing_config(project_path)
@@ -858,34 +1272,24 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
             console.print("\n[cyan]🔄 Migrating folder structure: Alfred → Moai[/cyan]")
             try:
                 if not migrator.execute_migration(backup_path):
-                    console.print(
-                        "[red]❌ Alfred → Moai migration failed[/red]"
-                    )
+                    console.print("[red]❌ Alfred → Moai migration failed[/red]")
                     if backup_path:
-                        console.print(
-                            "[yellow]🔄 Restoring from backup...[/yellow]"
-                        )
+                        console.print("[yellow]🔄 Restoring from backup...[/yellow]")
                         backup = TemplateBackup(project_path)
                         backup.restore_backup(backup_path)
                     return False
             except Exception as e:
-                console.print(
-                    f"[red]❌ Error during migration: {e}[/red]"
-                )
+                console.print(f"[red]❌ Error during migration: {e}[/red]")
                 if backup_path:
                     backup = TemplateBackup(project_path)
                     backup.restore_backup(backup_path)
                 return False
 
         # Validate template substitution
-        validation_passed = _validate_template_substitution_with_rollback(
-            project_path, backup_path
-        )
+        validation_passed = _validate_template_substitution_with_rollback(project_path, backup_path)
         if not validation_passed:
             if backup_path:
-                console.print(
-                    f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]"
-                )
+                console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
                 backup.restore_backup(backup_path)
             return False
 
@@ -899,12 +1303,16 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Update companyAnnouncements in settings.local.json
         try:
             import sys
-            utils_dir = Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
+
+            utils_dir = (
+                Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
+            )
 
             if utils_dir.exists():
                 sys.path.insert(0, str(utils_dir))
                 try:
                     from announcement_translator import auto_translate_and_update
+
                     console.print("[cyan]Updating announcements...[/cyan]")
                     auto_translate_and_update(project_path)
                     console.print("[green]✓ Announcements updated[/green]")
@@ -916,13 +1324,33 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         except Exception as e:
             console.print(f"[yellow]⚠️  Announcement module not available: {e}[/yellow]")
 
+        # NEW: Interactive skill restore if custom skills found
+        if custom_skills and backup_path:
+            skills_to_restore = _prompt_skill_restore(custom_skills, yes)
+            if skills_to_restore:
+                _restore_selected_skills(skills_to_restore, backup_path, project_path)
+
+        # NEW: Interactive custom files restore if custom files found
+        if (custom_commands or custom_agents or custom_hooks) and backup_path:
+            files_to_restore = _prompt_custom_files_restore(custom_commands, custom_agents, custom_hooks, yes)
+            if any([files_to_restore.get("commands"), files_to_restore.get("agents"), files_to_restore.get("hooks")]):
+                _restore_custom_files(
+                    project_path=project_path,
+                    backup_path=backup_path,
+                    selected_commands=files_to_restore.get("commands", []),
+                    selected_agents=files_to_restore.get("agents", []),
+                    selected_hooks=files_to_restore.get("hooks", []),
+                )
+
+        # NEW: Show post-update guidance
+        if backup_path:
+            _show_post_update_guidance(backup_path)
+
         return True
     except Exception as e:
         console.print(f"[red]✗ Template sync failed: {e}[/red]")
         if backup_path:
-            console.print(
-                f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]"
-            )
+            console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
             try:
                 backup = TemplateBackup(project_path)
                 backup.restore_backup(backup_path)
@@ -977,19 +1405,13 @@ def _load_existing_config(project_path: Path) -> dict[str, Any]:
         try:
             return json.loads(config_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            console.print(
-                "[yellow]⚠ Existing config.json could not be parsed. Proceeding with defaults.[/yellow]"
-            )
+            console.print("[yellow]⚠ Existing config.json could not be parsed. Proceeding with defaults.[/yellow]")
     return {}
 
 
 def _is_placeholder(value: Any) -> bool:
     """Check if a string value is an unsubstituted template placeholder."""
-    return (
-        isinstance(value, str)
-        and value.strip().startswith("{{")
-        and value.strip().endswith("}}")
-    )
+    return isinstance(value, str) and value.strip().startswith("{{") and value.strip().endswith("}}")
 
 
 def _coalesce(*values: Any, default: str = "") -> str:
@@ -1053,19 +1475,56 @@ def _build_template_context(
     )
 
     # Detect OS for cross-platform Hook path configuration
-    hook_project_dir = (
-        "%CLAUDE_PROJECT_DIR%"
-        if platform.system() == "Windows"
-        else "$CLAUDE_PROJECT_DIR"
-    )
+    hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
 
     # Extract language configuration
     language_config = existing_config.get("language", {})
     if not isinstance(language_config, dict):
         language_config = {}
 
+    # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
+    def format_short_version(v: str) -> str:
+        """Remove 'v' prefix if present."""
+        return v[1:] if v.startswith("v") else v
+
+    def format_display_version(v: str) -> str:
+        """Format display version with proper formatting."""
+        if v == "unknown":
+            return "MoAI-ADK unknown version"
+        elif v.startswith("v"):
+            return f"MoAI-ADK {v}"
+        else:
+            return f"MoAI-ADK v{v}"
+
+    def format_trimmed_version(v: str, max_length: int = 10) -> str:
+        """Format version with maximum length for UI displays."""
+        if v == "unknown":
+            return "unknown"
+        clean_version = v[1:] if v.startswith("v") else v
+        if len(clean_version) > max_length:
+            return clean_version[:max_length]
+        return clean_version
+
+    def format_semver_version(v: str) -> str:
+        """Format version as semantic version."""
+        if v == "unknown":
+            return "0.0.0"
+        clean_version = v[1:] if v.startswith("v") else v
+        import re
+
+        semver_match = re.match(r"^(\d+\.\d+\.\d+)", clean_version)
+        if semver_match:
+            return semver_match.group(1)
+        return "0.0.0"
+
     return {
         "MOAI_VERSION": version_for_config,
+        "MOAI_VERSION_SHORT": format_short_version(version_for_config),
+        "MOAI_VERSION_DISPLAY": format_display_version(version_for_config),
+        "MOAI_VERSION_TRIMMED": format_trimmed_version(version_for_config),
+        "MOAI_VERSION_SEMVER": format_semver_version(version_for_config),
+        "MOAI_VERSION_VALID": "true" if version_for_config != "unknown" else "false",
+        "MOAI_VERSION_SOURCE": "config_cached",
         "PROJECT_NAME": project_name,
         "PROJECT_MODE": project_mode,
         "PROJECT_DESCRIPTION": project_description,
@@ -1073,9 +1532,7 @@ def _build_template_context(
         "CREATION_TIMESTAMP": created_at,
         "PROJECT_DIR": hook_project_dir,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
-        "CONVERSATION_LANGUAGE_NAME": language_config.get(
-            "conversation_language_name", "English"
-        ),
+        "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
         "PROJECT_OWNER": project_section.get("author", "@user"),
         "AUTHOR": project_section.get("author", "@user"),
@@ -1119,9 +1576,7 @@ def _preserve_project_metadata(
     if locale:
         project_data["locale"] = locale
 
-    language = _coalesce(
-        existing_project.get("language"), existing_config.get("language")
-    )
+    language = _coalesce(existing_project.get("language"), existing_config.get("language"))
     if language:
         project_data["language"] = language
 
@@ -1131,9 +1586,7 @@ def _preserve_project_metadata(
     # This allows Stage 2 to compare package vs project template versions
     project_data["template_version"] = version_for_config
 
-    config_path.write_text(
-        json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> None:
@@ -1146,9 +1599,7 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
     except UnicodeDecodeError:
         return
 
-    substituted, warnings = processor._substitute_variables(
-        content
-    )  # pylint: disable=protected-access
+    substituted, warnings = processor._substitute_variables(content)  # pylint: disable=protected-access
     if warnings:
         console.print("[yellow]⚠ Template warnings:[/yellow]")
         for warning in warnings:
@@ -1179,28 +1630,20 @@ def _validate_template_substitution(project_path: Path) -> None:
             unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
                 unique_vars = sorted(set(unsubstituted))
-                issues_found.append(
-                    f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}"
-                )
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
         except Exception as e:
-            console.print(
-                f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]"
-            )
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
 
     if issues_found:
         console.print("[red]✗ Template substitution validation failed:[/red]")
         for issue in issues_found:
             console.print(f"   {issue}")
-        console.print(
-            "[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]"
-        )
+        console.print("[yellow]💡 Run '/moai:project' to fix template variables[/yellow]")
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
 
 
-def _validate_template_substitution_with_rollback(
-    project_path: Path, backup_path: Path | None
-) -> bool:
+def _validate_template_substitution_with_rollback(project_path: Path, backup_path: Path | None) -> bool:
     """Validate template substitution with rollback capability.
 
     Returns:
@@ -1226,13 +1669,9 @@ def _validate_template_substitution_with_rollback(
             unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
                 unique_vars = sorted(set(unsubstituted))
-                issues_found.append(
-                    f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}"
-                )
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
         except Exception as e:
-            console.print(
-                f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]"
-            )
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
 
     if issues_found:
         console.print("[red]✗ Template substitution validation failed:[/red]")
@@ -1240,13 +1679,9 @@ def _validate_template_substitution_with_rollback(
             console.print(f"   {issue}")
 
         if backup_path:
-            console.print(
-                "[yellow]🔄 Rolling back due to validation failure...[/yellow]"
-            )
+            console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
         else:
-            console.print(
-                "[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]"
-            )
+            console.print("[yellow]💡 Run '/moai:project' to fix template variables[/yellow]")
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
         return False
@@ -1301,18 +1736,14 @@ def _show_network_error_help() -> None:
     console.print("Options:")
     console.print("  1. Check network connection")
     console.print("  2. Try again with: [cyan]moai-adk update --force[/cyan]")
-    console.print(
-        "  3. Skip version check: [cyan]moai-adk update --templates-only[/cyan]"
-    )
+    console.print("  3. Skip version check: [cyan]moai-adk update --templates-only[/cyan]")
 
 
 def _show_template_sync_failure_help() -> None:
     """Show help when template sync fails."""
     console.print("[yellow]⚠️  Template sync failed[/yellow]\n")
     console.print("Rollback options:")
-    console.print(
-        "  1. Restore from backup: [cyan]cp -r .moai-backups/TIMESTAMP .moai/[/cyan]"
-    )
+    console.print("  1. Restore from backup: [cyan]cp -r .moai-backups/TIMESTAMP .moai/[/cyan]")
     console.print("  2. Skip backup and retry: [cyan]moai-adk update --force[/cyan]")
     console.print("  3. Report issue: https://github.com/modu-ai/moai-adk/issues")
 
@@ -1350,24 +1781,16 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
         console.print()
         console.print("   This will migrate configuration files to new locations:")
         console.print("   • .moai/config.json → .moai/config/config.json")
-        console.print(
-            "   • .claude/statusline-config.yaml → .moai/config/statusline-config.yaml"
-        )
+        console.print("   • .claude/statusline-config.yaml → .moai/config/statusline-config.yaml")
         console.print()
         console.print("   A backup will be created automatically.")
         console.print()
 
         # Confirm with user (unless --yes)
         if not yes:
-            if not click.confirm(
-                "Do you want to proceed with migration?", default=True
-            ):
-                console.print(
-                    "[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]"
-                )
-                console.print(
-                    "[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]"
-                )
+            if not click.confirm("Do you want to proceed with migration?", default=True):
+                console.print("[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]")
+                console.print("[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]")
                 return False
 
         # Execute migration
@@ -1379,9 +1802,7 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
             return True
         else:
             console.print("[red]❌ Migration failed[/red]")
-            console.print(
-                "[cyan]💡 Use 'moai-adk migrate --rollback' to restore from backup[/cyan]"
-            )
+            console.print("[cyan]💡 Use 'moai-adk migrate --rollback' to restore from backup[/cyan]")
             return False
 
     except Exception as e:
@@ -1399,9 +1820,7 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
 )
 @click.option("--force", is_flag=True, help="Skip backup and force the update")
 @click.option("--check", is_flag=True, help="Only check version (do not update)")
-@click.option(
-    "--templates-only", is_flag=True, help="Skip package upgrade, sync templates only"
-)
+@click.option("--templates-only", is_flag=True, help="Skip package upgrade, sync templates only")
 @click.option("--yes", is_flag=True, help="Auto-confirm all prompts (CI/CD mode)")
 @click.option(
     "--merge",
@@ -1481,9 +1900,7 @@ def update(
             except RuntimeError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 if not force:
-                    console.print(
-                        "[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]"
-                    )
+                    console.print("[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]")
                     raise click.Abort()
                 # With --force, proceed to Stage 2 even if version check fails
                 current = __version__
@@ -1495,16 +1912,12 @@ def update(
         if check:
             comparison = _compare_versions(current, latest)
             if comparison < 0:
-                console.print(
-                    f"\n[yellow]📦 Update available: {current} → {latest}[/yellow]"
-                )
+                console.print(f"\n[yellow]📦 Update available: {current} → {latest}[/yellow]")
                 console.print("   Run 'moai-adk update' to upgrade")
             elif comparison == 0:
                 console.print(f"[green]✓ Already up to date ({current})[/green]")
             else:
-                console.print(
-                    f"[cyan]ℹ️  Dev version: {current} (latest: {latest})[/cyan]"
-                )
+                console.print(f"[cyan]ℹ️  Dev version: {current} (latest: {latest})[/cyan]")
             return
 
         # Step 2: Handle --templates-only (skip upgrade, go straight to sync)
@@ -1516,7 +1929,7 @@ def update(
             preserved_settings = _preserve_user_settings(project_path)
 
             try:
-                if not _sync_templates(project_path, force):
+                if not _sync_templates(project_path, force, yes):
                     raise TemplateSyncError("Template sync returned False")
             except TemplateSyncError:
                 console.print("[red]Error: Template sync failed[/red]")
@@ -1531,9 +1944,7 @@ def update(
             _restore_user_settings(project_path, preserved_settings)
 
             console.print("   [green]✅ .claude/ update complete[/green]")
-            console.print(
-                "   [green]✅ .moai/ update complete (specs/reports preserved)[/green]"
-            )
+            console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
             console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
             console.print("   [green]🔄 config.json merge complete[/green]")
             console.print("\n[green]✓ Template sync complete![/green]")
@@ -1568,9 +1979,7 @@ def update(
             try:
                 upgrade_result = _execute_upgrade(installer_cmd)
                 if not upgrade_result:
-                    raise UpgradeError(
-                        f"Upgrade command failed: {' '.join(installer_cmd)}"
-                    )
+                    raise UpgradeError(f"Upgrade command failed: {' '.join(installer_cmd)}")
             except subprocess.TimeoutExpired:
                 _show_timeout_error_help()
                 raise click.Abort()
@@ -1580,9 +1989,7 @@ def update(
 
             # Prompt re-run
             console.print("\n[green]✓ Upgrade complete![/green]")
-            console.print(
-                "[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]"
-            )
+            console.print("[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]")
             return
 
         # Stage 1.5: Migration Check (NEW in v0.24.0)
@@ -1591,9 +1998,7 @@ def update(
         # Execute migration if needed
         if not _execute_migration_if_needed(project_path, yes):
             console.print("[yellow]⚠️  Update continuing without migration[/yellow]")
-            console.print(
-                "[cyan]💡 Some features may require migration to work correctly[/cyan]"
-            )
+            console.print("[cyan]💡 Some features may require migration to work correctly[/cyan]")
 
         # Stage 2: Config Version Comparison
         try:
@@ -1610,32 +2015,22 @@ def update(
         console.print(f"   Project config:   {project_config_version}")
 
         try:
-            config_comparison = _compare_versions(
-                package_config_version, project_config_version
-            )
+            config_comparison = _compare_versions(package_config_version, project_config_version)
         except version.InvalidVersion as e:
             # Handle invalid version strings (e.g., unsubstituted template placeholders, corrupted configs)
             console.print(f"[yellow]⚠ Invalid version format in config: {e}[/yellow]")
-            console.print(
-                "[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]"
-            )
+            console.print("[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]")
             # Force template sync by treating project version as outdated
             config_comparison = 1  # package_config_version > project_config_version
 
         # If versions are equal, no sync needed
         if config_comparison <= 0:
-            console.print(
-                f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]"
-            )
-            console.print(
-                "[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]"
-            )
+            console.print(f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]")
+            console.print("[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]")
             return
 
         # Stage 3: Template Sync (Only if package_config_version > project_config_version)
-        console.print(
-            f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]"
-        )
+        console.print(f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]")
 
         # Determine merge strategy (default: auto-merge)
         final_merge_strategy = merge_strategy or "auto"
@@ -1651,46 +2046,24 @@ def update(
                 from moai_adk.core.migration.backup_manager import BackupManager
 
                 backup_manager = BackupManager(project_path)
-                full_backup_path = backup_manager.create_full_project_backup(
-                    description="pre-update-backup"
-                )
-                console.print(
-                    f"   [green]✓ Backup: {full_backup_path.relative_to(project_path)}/[/green]"
-                )
+                full_backup_path = backup_manager.create_full_project_backup(description="pre-update-backup")
+                console.print(f"   [green]✓ Backup: {full_backup_path.relative_to(project_path)}/[/green]")
 
                 # Generate merge guide
                 console.print("   [cyan]📋 Generating merge guide...[/cyan]")
                 template_path = Path(__file__).parent.parent.parent / "templates"
-                guide_path = _generate_manual_merge_guide(
-                    full_backup_path, template_path, project_path
-                )
-                console.print(
-                    f"   [green]✓ Guide: {guide_path.relative_to(project_path)}[/green]"
-                )
+                guide_path = _generate_manual_merge_guide(full_backup_path, template_path, project_path)
+                console.print(f"   [green]✓ Guide: {guide_path.relative_to(project_path)}[/green]")
 
                 # Summary
                 console.print("\n[green]✓ Manual merge setup complete![/green]")
-                console.print(
-                    f"[cyan]📍 Backup location: {full_backup_path.relative_to(project_path)}/[/cyan]"
-                )
-                console.print(
-                    f"[cyan]📋 Merge guide: {guide_path.relative_to(project_path)}[/cyan]"
-                )
-                console.print(
-                    "\n[yellow]⚠️  Next steps:[/yellow]"
-                )
-                console.print(
-                    "[yellow]  1. Review the merge guide[/yellow]"
-                )
-                console.print(
-                    "[yellow]  2. Compare files using diff or visual tools[/yellow]"
-                )
-                console.print(
-                    "[yellow]  3. Manually merge your customizations[/yellow]"
-                )
-                console.print(
-                    "[yellow]  4. Test and commit changes[/yellow]"
-                )
+                console.print(f"[cyan]📍 Backup location: {full_backup_path.relative_to(project_path)}/[/cyan]")
+                console.print(f"[cyan]📋 Merge guide: {guide_path.relative_to(project_path)}[/cyan]")
+                console.print("\n[yellow]⚠️  Next steps:[/yellow]")
+                console.print("[yellow]  1. Review the merge guide[/yellow]")
+                console.print("[yellow]  2. Compare files using diff or visual tools[/yellow]")
+                console.print("[yellow]  3. Manually merge your customizations[/yellow]")
+                console.print("[yellow]  4. Test and commit changes[/yellow]")
 
             except Exception as e:
                 console.print(f"[red]Error: Manual merge setup failed - {e}[/red]")
@@ -1709,9 +2082,7 @@ def update(
             try:
                 processor = TemplateProcessor(project_path)
                 backup_path = processor.create_backup()
-                console.print(
-                    f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]"
-                )
+                console.print(f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]")
             except Exception as e:
                 console.print(f"   [yellow]⚠ Backup failed: {e}[/yellow]")
                 console.print("   [yellow]⚠ Continuing without backup...[/yellow]")
@@ -1720,7 +2091,7 @@ def update(
 
         # Sync templates
         try:
-            if not _sync_templates(project_path, force):
+            if not _sync_templates(project_path, force, yes):
                 raise TemplateSyncError("Template sync returned False")
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")
@@ -1735,19 +2106,13 @@ def update(
         _restore_user_settings(project_path, preserved_settings)
 
         console.print("   [green]✅ .claude/ update complete[/green]")
-        console.print(
-            "   [green]✅ .moai/ update complete (specs/reports preserved)[/green]"
-        )
+        console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
         console.print("   [green]🔄 config.json merge complete[/green]")
-        console.print(
-            "   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]"
-        )
+        console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
 
         console.print("\n[green]✓ Update complete![/green]")
-        console.print(
-            "[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]"
-        )
+        console.print("[cyan]ℹ️  Next step: Run /moai:project update to optimize template changes[/cyan]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")

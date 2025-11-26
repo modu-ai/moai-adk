@@ -73,6 +73,7 @@ docs/
 
 # Secrets and credentials (CRITICAL)
 .env
+.env.*
 .env.local
 .env.*.local
 .env.production.local
@@ -91,9 +92,45 @@ credentials/
 google-credentials.json
 firebase-key.json
 
+# API Keys and Tokens (CRITICAL - SECURITY)
+# Google APIs
+GEMINI_API_KEY=*
+AIzaSy*
+gsk_*
+sk_*
+# OpenAI
+sk-*
+# Anthropic
+sk-ant-*
+# AWS
+AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=*
+# Azure
+azure_credentials*
+# JWT & Bearer tokens
+*_token=*
+*_secret=*
+bearer_token*
+access_token*
+refresh_token*
+
+# Skill-specific credentials (CRITICAL)
+.claude/skills/*/.env*
+.claude/skills/*/secrets/
+.claude/skills/*/*/*secret*
+.claude/skills/*/*/*key*
+.claude/skills/*/*/*token*
+
+# Test credentials and mock data with real keys
+test_*_credentials.json
+test_*_keys.json
+mock_api_response_*.json
+
 # Test coverage
 .coverage
 coverage.json
+htmlcov/
+htmlcov_spec/
 
 
 # Environment variables and deployment secrets
@@ -190,8 +227,53 @@ ehthumbs.db
 uv.lock
 
 # Local configuration files
-CLAUDE.local.md
 .claude/local/
+.claude/settings.local.json
+
+# Prevent .venv and cache in .claude directory
+.claude/.venv/
+.claude/.pytest_cache/
+
+# .moai/ directory management
+# Tracked in git: config/, memory/, scripts/, specs/
+# User-generated content: logs/, cache/, reports/, etc.
+.moai/*
+!.moai/config/
+!.moai/config/**
+!.moai/memory/
+!.moai/memory/**
+!.moai/scripts/
+!.moai/scripts/**
+!.moai/specs/
+!.moai/specs/**
+
+# .moai local-only directories (explicitly excluded)
+.moai/cache/
+.moai/logs/
+.moai/docs/
+.moai/reports/
+.moai/analytics/
+.moai/archive/
+.moai/archived-skills/
+
+# .moai/scripts local development scripts (not in package)
+.moai/scripts/phase*.py
+.moai/scripts/phase*.sh
+.moai/scripts/sync-*.sh
+.moai/scripts/sync-*.py
+.moai/scripts/*sync*.sh
+.moai/scripts/__pycache__/
+.moai/backups/
+.moai/error_logs/
+.moai/indexes/
+.moai/learning/
+.moai/optimization/
+.moai/release/
+.moai/research/
+.moai/templates/
+
+# @CLAUDE.local.md is tracked (local development guide)
+!@CLAUDE.local.md
 
 # Documentation site files (not related to package distribution)
 theme.config.tsx

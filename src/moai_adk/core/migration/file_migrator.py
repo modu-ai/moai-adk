@@ -8,7 +8,7 @@ during migration processes.
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +47,7 @@ class FileMigrator:
             logger.error(f"Failed to create directory {directory}: {e}")
             return False
 
-    def move_file(
-        self, source: Path, destination: Path, copy_instead: bool = True
-    ) -> bool:
+    def move_file(self, source: Path, destination: Path, copy_instead: bool = True) -> bool:
         """
         Move a file from source to destination
 
@@ -116,10 +114,7 @@ class FileMigrator:
                 ".moai/config.json",
                 ".claude/statusline-config.yaml",
             ]
-            is_safe = any(
-                str(file_path.relative_to(self.project_root)).endswith(pattern)
-                for pattern in safe_patterns
-            )
+            is_safe = any(str(file_path.relative_to(self.project_root)).endswith(pattern) for pattern in safe_patterns)
             if not is_safe:
                 logger.warning(f"Refusing to delete non-safe file: {file_path}")
                 return False
@@ -132,7 +127,7 @@ class FileMigrator:
             logger.error(f"Failed to delete file {file_path}: {e}")
             return False
 
-    def execute_migration_plan(self, plan: Dict[str, List]) -> Dict[str, any]:
+    def execute_migration_plan(self, plan: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute a migration plan
 
@@ -142,7 +137,7 @@ class FileMigrator:
         Returns:
             Dictionary with execution results
         """
-        results = {
+        results: Dict[str, Any] = {
             "success": True,
             "created_dirs": 0,
             "moved_files": 0,
@@ -166,13 +161,9 @@ class FileMigrator:
 
             if self.move_file(source, dest, copy_instead=True):
                 results["moved_files"] += 1
-                logger.info(
-                    f"✅ {move_op['description']}: {move_op['from']} → {move_op['to']}"
-                )
+                logger.info(f"✅ {move_op['description']}: {move_op['from']} → {move_op['to']}")
             else:
-                results["errors"].append(
-                    f"Failed to move: {move_op['from']} → {move_op['to']}"
-                )
+                results["errors"].append(f"Failed to move: {move_op['from']} → {move_op['to']}")
                 results["success"] = False
 
         return results
@@ -204,7 +195,7 @@ class FileMigrator:
 
         return cleaned
 
-    def get_migration_summary(self) -> Dict[str, any]:
+    def get_migration_summary(self) -> Dict[str, Any]:
         """
         Get summary of migration operations performed
 

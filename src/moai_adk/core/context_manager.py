@@ -37,9 +37,7 @@ def _is_path_within_root(abs_path: str, project_root: str) -> bool:
         real_abs_path = os.path.realpath(abs_path)
         real_project_root = os.path.realpath(project_root)
 
-        return real_abs_path == real_project_root or real_abs_path.startswith(
-            real_project_root + os.sep
-        )
+        return real_abs_path == real_project_root or real_abs_path.startswith(real_project_root + os.sep)
     except OSError:
         return False
 
@@ -129,9 +127,7 @@ def save_phase_result(data: Dict[str, Any], target_path: str) -> None:
 
     try:
         # Create temp file in target directory for atomic rename
-        temp_fd, temp_path = tempfile.mkstemp(
-            dir=target_dir, prefix=".tmp_phase_", suffix=".json"
-        )
+        temp_fd, temp_path = tempfile.mkstemp(dir=target_dir, prefix=".tmp_phase_", suffix=".json")
 
         # Write JSON to temp file
         with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
@@ -261,9 +257,7 @@ class ContextManager:
             Phase result dictionary or None if no phase files exist
         """
         # List all phase files
-        phase_files = sorted(
-            [f for f in os.listdir(self.state_dir) if f.endswith(".json")]
-        )
+        phase_files = sorted([f for f in os.listdir(self.state_dir) if f.endswith(".json")])
 
         if not phase_files:
             return None

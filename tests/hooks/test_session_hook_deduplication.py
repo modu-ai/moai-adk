@@ -25,16 +25,19 @@ LIB_DIR = PROJECT_ROOT / ".claude" / "hooks" / "moai" / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
-# Import the SessionStart hook modules
-try:
-    from session import handle_session_start
-except ImportError as e:
-    raise ImportError(f"Failed to import SessionStart handler: {e}. Check if hooks are properly structured.") from e
-
 import pytest
 
 # Skip this file - outdated test using lib.* mock paths that don't exist
-pytestmark = pytest.mark.skip(reason="Outdated test - mock paths reference non-existent lib.project and lib.checkpoint modules")
+pytestmark = pytest.mark.skip(
+    reason="Outdated test - mock paths reference non-existent lib.project and lib.checkpoint modules"
+)
+
+# Import the SessionStart hook modules (after skip mark to prevent collection errors)
+try:
+    from session import handle_session_start
+except ImportError:
+    # If import fails, skip is already set, so this is safe
+    handle_session_start = None
 
 
 class TestSessionHookPhaseDeduplication:
@@ -68,10 +71,7 @@ class TestSessionHookPhaseDeduplication:
             - No duplicate execution should occur
         """
         # First call with clear phase - should execute
-        payload_clear: Dict[str, Any] = {
-            "cwd": self.test_cwd,
-            "phase": "clear"
-        }
+        payload_clear: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "clear"}
 
         result1 = handle_session_start(payload_clear)
 
@@ -113,33 +113,20 @@ class TestSessionHookPhaseDeduplication:
             - Detailed project info should only appear once
         """
         # Mock the dependencies for compact phase
-        with patch("lib.project.get_git_info") as mock_git, \
-             patch("lib.project.count_specs") as mock_specs, \
-             patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-             patch("lib.project.get_package_version_info") as mock_version:
+        with (
+            patch("lib.project.get_git_info") as mock_git,
+            patch("lib.project.count_specs") as mock_specs,
+            patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+            patch("lib.project.get_package_version_info") as mock_version,
+        ):
 
-            mock_git.return_value = {
-                "branch": "main",
-                "commit": "abc123def456",
-                "changes": 0
-            }
-            mock_specs.return_value = {
-                "completed": 5,
-                "total": 10,
-                "percentage": 50
-            }
+            mock_git.return_value = {"branch": "main", "commit": "abc123def456", "changes": 0}
+            mock_specs.return_value = {"completed": 5, "total": 10, "percentage": 50}
             mock_checkpoints.return_value = []
-            mock_version.return_value = {
-                "current": "0.22.4",
-                "latest": "0.22.4",
-                "update_available": False
-            }
+            mock_version.return_value = {"current": "0.22.4", "latest": "0.22.4", "update_available": False}
 
             # First call with compact phase - should execute
-            payload_compact: Dict[str, Any] = {
-                "cwd": self.test_cwd,
-                "phase": "compact"
-            }
+            payload_compact: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "compact"}
 
             result1 = handle_session_start(payload_compact)
 
@@ -171,30 +158,26 @@ class TestSessionHookPhaseDeduplication:
             - clear → compact again: deduplication should prevent duplicate execution
         """
         # First clear phase call
-        payload_clear: Dict[str, Any] = {
-            "cwd": self.test_cwd,
-            "phase": "clear"
-        }
+        payload_clear: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "clear"}
 
         result1 = handle_session_start(payload_clear)
         assert result1.continue_execution is True
         assert result1.system_message is None  # Clear phase has no message
 
         # Then compact phase call (phase transition - should execute)
-        with patch("lib.project.get_git_info") as mock_git, \
-             patch("lib.project.count_specs") as mock_specs, \
-             patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-             patch("lib.project.get_package_version_info") as mock_version:
+        with (
+            patch("lib.project.get_git_info") as mock_git,
+            patch("lib.project.count_specs") as mock_specs,
+            patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+            patch("lib.project.get_package_version_info") as mock_version,
+        ):
 
             mock_git.return_value = {"branch": "feature/test", "commit": "def456abc123", "changes": 0}
             mock_specs.return_value = {"completed": 3, "total": 8, "percentage": 38}
             mock_checkpoints.return_value = []
             mock_version.return_value = {"current": "0.22.4", "latest": "0.22.4", "update_available": False}
 
-            payload_compact: Dict[str, Any] = {
-                "cwd": self.test_cwd,
-                "phase": "compact"
-            }
+            payload_compact: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "compact"}
 
             result2 = handle_session_start(payload_compact)
             assert result2.continue_execution is True
@@ -218,30 +201,26 @@ class TestSessionHookPhaseDeduplication:
             - compact → clear again: deduplication should prevent duplicate execution
         """
         # First compact phase call
-        with patch("lib.project.get_git_info") as mock_git, \
-             patch("lib.project.count_specs") as mock_specs, \
-             patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-             patch("lib.project.get_package_version_info") as mock_version:
+        with (
+            patch("lib.project.get_git_info") as mock_git,
+            patch("lib.project.count_specs") as mock_specs,
+            patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+            patch("lib.project.get_package_version_info") as mock_version,
+        ):
 
             mock_git.return_value = {"branch": "main", "commit": "abc123def456", "changes": 0}
             mock_specs.return_value = {"completed": 5, "total": 10, "percentage": 50}
             mock_checkpoints.return_value = []
             mock_version.return_value = {"current": "0.22.4", "latest": "0.22.4", "update_available": False}
 
-            payload_compact: Dict[str, Any] = {
-                "cwd": self.test_cwd,
-                "phase": "compact"
-            }
+            payload_compact: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "compact"}
 
             result1 = handle_session_start(payload_compact)
             assert result1.continue_execution is True
             assert result1.system_message is not None
 
         # Then clear phase call (phase transition - should execute)
-        payload_clear: Dict[str, Any] = {
-            "cwd": self.test_cwd,
-            "phase": "clear"
-        }
+        payload_clear: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "clear"}
 
         result2 = handle_session_start(payload_clear)
         assert result2.continue_execution is True
@@ -274,15 +253,14 @@ class TestSessionHookPhaseDeduplication:
         phases = ["clear", "compact", "clear", "compact", "clear", "compact"]
 
         for i, phase in enumerate(phases):
-            payload: Dict[str, Any] = {
-                "cwd": self.test_cwd,
-                "phase": phase
-            }
+            payload: Dict[str, Any] = {"cwd": self.test_cwd, "phase": phase}
 
-            with patch("lib.project.get_git_info") as mock_git, \
-                 patch("lib.project.count_specs") as mock_specs, \
-                 patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-                 patch("lib.project.get_package_version_info") as mock_version:
+            with (
+                patch("lib.project.get_git_info") as mock_git,
+                patch("lib.project.count_specs") as mock_specs,
+                patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+                patch("lib.project.get_package_version_info") as mock_version,
+            ):
 
                 mock_git.return_value = {"branch": "test", "commit": "test123", "changes": i}
                 mock_specs.return_value = {"completed": i, "total": 10, "percentage": i * 10}
@@ -327,10 +305,12 @@ class TestSessionHookPhaseDeduplication:
             - Multiple calls without phase should be deduplicated
         """
         # First call without phase field
-        with patch("lib.project.get_git_info") as mock_git, \
-             patch("lib.project.count_specs") as mock_specs, \
-             patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-             patch("lib.project.get_package_version_info") as mock_version:
+        with (
+            patch("lib.project.get_git_info") as mock_git,
+            patch("lib.project.count_specs") as mock_specs,
+            patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+            patch("lib.project.get_package_version_info") as mock_version,
+        ):
 
             mock_git.return_value = {"branch": "main", "commit": "abc123", "changes": 0}
             mock_specs.return_value = {"completed": 1, "total": 5, "percentage": 20}
@@ -370,20 +350,19 @@ class TestSessionHookPhaseDeduplication:
             - Multiple calls with invalid phase should be deduplicated
         """
         # First call with invalid phase
-        with patch("lib.project.get_git_info") as mock_git, \
-             patch("lib.project.count_specs") as mock_specs, \
-             patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-             patch("lib.project.get_package_version_info") as mock_version:
+        with (
+            patch("lib.project.get_git_info") as mock_git,
+            patch("lib.project.count_specs") as mock_specs,
+            patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+            patch("lib.project.get_package_version_info") as mock_version,
+        ):
 
             mock_git.return_value = {"branch": "main", "commit": "abc123", "changes": 0}
             mock_specs.return_value = {"completed": 1, "total": 5, "percentage": 20}
             mock_checkpoints.return_value = []
             mock_version.return_value = {"current": "0.22.4", "latest": "0.22.4", "update_available": False}
 
-            payload_invalid_phase: Dict[str, Any] = {
-                "cwd": self.test_cwd,
-                "phase": "invalid_phase_value"
-            }
+            payload_invalid_phase: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "invalid_phase_value"}
 
             result1 = handle_session_start(payload_invalid_phase)
             assert result1.continue_execution is True
@@ -414,23 +393,21 @@ class TestSessionHookPhaseDeduplication:
             - Different phase calls: execution count increases with each transition
             - No duplicate executions should occur
         """
-        execution_count = {"clear": 0, "compact": 0}
 
         # Test multiple calls to same phase (clear)
         for i in range(3):
-            payload_clear: Dict[str, Any] = {
-                "cwd": self.test_cwd,
-                "phase": "clear"
-            }
+            payload_clear: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "clear"}
             result = handle_session_start(payload_clear)
             assert result.continue_execution is True
             assert result.system_message is None  # Clear phase has no message
 
         # Test phase transition to compact
-        with patch("lib.project.get_git_info") as mock_git, \
-             patch("lib.project.count_specs") as mock_specs, \
-             patch("lib.checkpoint.list_checkpoints") as mock_checkpoints, \
-             patch("lib.project.get_package_version_info") as mock_version:
+        with (
+            patch("lib.project.get_git_info") as mock_git,
+            patch("lib.project.count_specs") as mock_specs,
+            patch("lib.checkpoint.list_checkpoints") as mock_checkpoints,
+            patch("lib.project.get_package_version_info") as mock_version,
+        ):
 
             mock_git.return_value = {"branch": "main", "commit": "test123", "changes": 0}
             mock_specs.return_value = {"completed": 1, "total": 5, "percentage": 20}
@@ -438,10 +415,7 @@ class TestSessionHookPhaseDeduplication:
             mock_version.return_value = {"current": "0.22.4", "latest": "0.22.4", "update_available": False}
 
             for i in range(3):
-                payload_compact: Dict[str, Any] = {
-                    "cwd": self.test_cwd,
-                    "phase": "compact"
-                }
+                payload_compact: Dict[str, Any] = {"cwd": self.test_cwd, "phase": "compact"}
                 result = handle_session_start(payload_compact)
                 assert result.continue_execution is True
                 assert result.system_message is not None  # Compact phase has message

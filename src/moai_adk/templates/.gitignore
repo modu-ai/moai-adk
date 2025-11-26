@@ -1,88 +1,202 @@
-# Build artifacts
+# ============================================
+# MoAI-ADK Package Distribution .gitignore
+# ============================================
+# Version: 0.28.0
+# Purpose: Essential patterns for user projects
+# ============================================
+
+# ---------------------------------------------
+# Build Artifacts
+# ---------------------------------------------
 build/
 dist/
 *.egg-info/
 *.egg
 
-# Cache
+# ---------------------------------------------
+# Python Cache & Database
+# ---------------------------------------------
 __pycache__/
 .pytest_cache/
 *.pyc
 *.pyo
-node_modules/
-*.tsbuildinfo
-.tscache/
+*.pyd
+.mypy_cache/
+.ruff_cache/
+*.db
+*.sqlite
+*.sqlite3
+*.rdb
+*.dbm
 
-# Backups
-.moai-backups/
-*.backup/
-*-backup/
-*_backup_*/
-hooks_backup_*/
-docs_backup_*/
-
-# Virtual environment
+# ---------------------------------------------
+# Virtual Environments
+# ---------------------------------------------
 venv/
 .venv/
 env/
 .env/
+.uv_cache/
+.uv-cache/
 
-# IDE
+# ---------------------------------------------
+# IDE & Editors
+# ---------------------------------------------
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sw?
 *~
+.cursor/
+*.sublime-project
+*.sublime-workspace
+*.njsproj
+*.sln
+*.suo
+.#*
 
-# OS
+# ---------------------------------------------
+# OS Files
+# ---------------------------------------------
+# Mac
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
 
-# Logs
+# Windows
+[Dd]esktop.ini
+Thumbs.db
+ehthumbs.db
+
+# Linux
+.directory
+
+# ---------------------------------------------
+# Node.js (for docs/Nextra)
+# ---------------------------------------------
+node_modules/
+*.tsbuildinfo
+.tscache/
+.next/
+out/
+
+# ---------------------------------------------
+# Logs & Temporary Files
+# ---------------------------------------------
 *.log
 logs/
-
-# Temporary files
 *.tmp
 *.temp
 *.bak
 *.backup
 
-# Test coverage
+# ---------------------------------------------
+# Test Coverage
+# ---------------------------------------------
 .coverage
 coverage.json
+htmlcov/
+.pytest_cache/
 
-# Next.js build output
-docs/.next/
-docs/out/
-
-# Claude and MoAI configuration (user-specific, root only)
-# Package templates (src/moai_adk/templates/) are tracked
-/CLAUDE.md
-.claude/settings.local.json
-.claude/settings.local.*.json
-.claude/.env.local*
-
-# MoAI dynamic content (로컬 프로젝트만 무시, but package templates are tracked)
-.moai/logs/
-.moai/temp/
-.moai/*.tmp
-.moai/reports/*.tmp
-.moai/reports/*-draft.*
-
-# MoAI reports (임시 보고서만 무시)
-.moai/reports/*.tmp
-.moai/reports/*-draft.*
-
-# Environment variables and deployment secrets
-.env*
+# ---------------------------------------------
+# Environment Variables & Secrets
+# ---------------------------------------------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*_secret=*
+*_token=*
+*secret*
+*key*
+.aws/config
+.aws/credentials
 .vercel/
 .netlify/
 .firebase/
-.aws/
-.mypy_cache
-.playwright-mcp
-.ruff_cache
-.uv_cache
-.uv-cache
-.venv_issue43_py313
+
+# Claude Code Skills Secrets
+.claude/skills/*/.env*
+.claude/skills/*/secrets/
+.claude/skills/*/*/*secret*
+.claude/skills/*/*/*key*
+.claude/skills/*/*/*token*
+
+# ---------------------------------------------
+# Backups
+# ---------------------------------------------
+.moai-backups/
+*.backup/
+*-backup/
+*_backup_*/
+
+# ---------------------------------------------
+# Claude Code Local Configuration
+# ---------------------------------------------
+.claude/settings.local.json
+.claude/settings.local.*.json
+.claude/.env.local*
+.claude/local/
+
+# ---------------------------------------------
+# MoAI Directory Management
+# ---------------------------------------------
+# Tracked in git: config/, memory/, scripts/, specs/
+# User-generated content: logs/, cache/, reports/, etc.
+
+.moai/*
+!.moai/config/
+!.moai/config/**
+!.moai/memory/
+!.moai/memory/**
+!.moai/scripts/
+!.moai/scripts/**
+!.moai/specs/
+!.moai/specs/**
+
+# .moai local-only directories (user projects only)
+.moai/cache/
+.moai/logs/
+.moai/docs/
+.moai/reports/
+.moai/analytics/
+.moai/archive/
+.moai/archived-skills/
+.moai/backups/
+.moai/error_logs/
+.moai/indexes/
+.moai/learning/
+.moai/temp/
+.moai/work/
+
+# .moai local development scripts (not distributed)
+.moai/scripts/phase*.py
+.moai/scripts/phase*.sh
+.moai/scripts/sync-*.sh
+.moai/scripts/sync-*.py
+.moai/scripts/*sync*.sh
+.moai/scripts/__pycache__/
+
+# ---------------------------------------------
+# CI/CD
+# ---------------------------------------------
+.github/workflows/*.yml.bak
+.gitlab-ci.yml.bak
+
+# ---------------------------------------------
+# Package Distribution
+# ---------------------------------------------
+# uv.lock is intentionally included for reproducible builds
+# Add to .gitignore if needed per project
+# uv.lock

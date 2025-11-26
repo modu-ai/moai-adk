@@ -21,7 +21,9 @@ import pytest
 
 # Skip this file - outdated integration tests
 # Tests expect 'alfred' hook structure and subagent_start/stop hooks that don't exist
-pytestmark = pytest.mark.skip(reason="Outdated integration test - expects 'alfred' folder structure and unimplemented subagent hooks")
+pytestmark = pytest.mark.skip(
+    reason="Outdated integration test - expects 'alfred' folder structure and unimplemented subagent hooks"
+)
 
 
 class TestHookModelParameter:
@@ -98,9 +100,7 @@ class TestHookModelParameter:
         hooks = settings["hooks"]["UserPromptSubmit"]
         for hook_entry in hooks:
             for hook_def in hook_entry["hooks"]:
-                assert (
-                    hook_def["model"] == "sonnet"
-                ), "UserPromptSubmit should use sonnet"
+                assert hook_def["model"] == "sonnet", "UserPromptSubmit should use sonnet"
 
     def test_session_end_uses_haiku(self):
         """Verify SessionEnd Hook uses Haiku model"""
@@ -165,30 +165,18 @@ class TestSubagentStartHook:
     def setup_method(self):
         """Setup test fixtures"""
         self.project_root = Path("/Users/goos/MoAI/MoAI-ADK")
-        self.hook_file = (
-            self.project_root
-            / ".claude"
-            / "hooks"
-            / "alfred"
-            / "subagent_start__context_optimizer.py"
-        )
+        self.hook_file = self.project_root / ".claude" / "hooks" / "alfred" / "subagent_start__context_optimizer.py"
         self.metadata_dir = self.project_root / ".moai" / "logs" / "agent-transcripts"
 
     def test_subagent_start_hook_exists(self):
         """TC-5: Verify SubagentStart Hook file exists"""
-        assert (
-            self.hook_file.exists()
-        ), f"Hook file not found: {self.hook_file}"
+        assert self.hook_file.exists(), f"Hook file not found: {self.hook_file}"
 
     def test_hook_has_graceful_degradation(self):
         """Verify hook has exception handling"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "except Exception" in hook_content
-        ), "Hook should have exception handling"
-        assert (
-            "graceful degradation" in hook_content
-        ), "Hook should document graceful degradation"
+        assert "except Exception" in hook_content, "Hook should have exception handling"
+        assert "graceful degradation" in hook_content, "Hook should document graceful degradation"
 
     def test_hook_optimization_strategies_defined(self):
         """Verify hook defines context optimization strategies"""
@@ -207,43 +195,31 @@ class TestSubagentStartHook:
         ]
 
         for agent in agents:
-            assert (
-                f'"{agent}"' in hook_content
-            ), f"Agent {agent} not in hook strategies"
+            assert f'"{agent}"' in hook_content, f"Agent {agent} not in hook strategies"
 
     def test_hook_saves_metadata(self):
         """Verify hook saves metadata to correct location"""
         hook_content = self.hook_file.read_text()
-        assert (
-            ".moai/logs/agent-transcripts" in hook_content
-        ), "Hook should save to agent-transcripts"
-        assert (
-            "json.dumps" in hook_content
-        ), "Hook should serialize to JSON"
+        assert ".moai/logs/agent-transcripts" in hook_content, "Hook should save to agent-transcripts"
+        assert "json.dumps" in hook_content, "Hook should serialize to JSON"
 
     def test_context_strategies_have_max_tokens(self):
         """Verify each strategy defines max_tokens"""
         hook_content = self.hook_file.read_text()
-        assert 'max_tokens' in hook_content, "Strategies should define max_tokens"
+        assert "max_tokens" in hook_content, "Strategies should define max_tokens"
         # Check for reasonable token counts
-        assert (
-            "20000" in hook_content or "15000" in hook_content
-        ), "Token counts should be reasonable"
+        assert "20000" in hook_content or "15000" in hook_content, "Token counts should be reasonable"
 
     def test_context_strategies_have_priority_files(self):
         """Verify each strategy defines priority_files"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "priority_files" in hook_content
-        ), "Strategies should define priority_files"
+        assert "priority_files" in hook_content, "Strategies should define priority_files"
         assert "src/" in hook_content, "Should prioritize source files"
 
     def test_hook_auto_load_skills(self):
         """Verify auto_load_skills is enabled"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "auto_load_skills" in hook_content
-        ), "Hook should enable auto_load_skills"
+        assert "auto_load_skills" in hook_content, "Hook should enable auto_load_skills"
 
 
 class TestSubagentStopHook:
@@ -252,37 +228,23 @@ class TestSubagentStopHook:
     def setup_method(self):
         """Setup test fixtures"""
         self.project_root = Path("/Users/goos/MoAI/MoAI-ADK")
-        self.hook_file = (
-            self.project_root
-            / ".claude"
-            / "hooks"
-            / "alfred"
-            / "subagent_stop__lifecycle_tracker.py"
-        )
+        self.hook_file = self.project_root / ".claude" / "hooks" / "alfred" / "subagent_stop__lifecycle_tracker.py"
         self.performance_file = self.project_root / ".moai" / "logs" / "agent-performance.jsonl"
 
     def test_subagent_stop_hook_exists(self):
         """TC-6: Verify SubagentStop Hook file exists"""
-        assert (
-            self.hook_file.exists()
-        ), f"Hook file not found: {self.hook_file}"
+        assert self.hook_file.exists(), f"Hook file not found: {self.hook_file}"
 
     def test_hook_measures_execution_time(self):
         """Verify hook measures execution time"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "execution_time_ms" in hook_content
-        ), "Hook should measure execution_time_ms"
-        assert (
-            "execution_time_seconds" in hook_content
-        ), "Hook should convert to seconds"
+        assert "execution_time_ms" in hook_content, "Hook should measure execution_time_ms"
+        assert "execution_time_seconds" in hook_content, "Hook should convert to seconds"
 
     def test_hook_saves_performance_stats(self):
         """Verify hook saves performance statistics"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "agent-performance.jsonl" in hook_content
-        ), "Hook should save to JSONL file"
+        assert "agent-performance.jsonl" in hook_content, "Hook should save to JSONL file"
         assert "JSONL" in hook_content or ".jsonl" in hook_content, "Should use JSONL format"
 
     def test_hook_tracks_completion_status(self):
@@ -294,16 +256,12 @@ class TestSubagentStopHook:
     def test_hook_has_exception_handling(self):
         """Verify hook has exception handling"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "except Exception" in hook_content
-        ), "Hook should have exception handling"
+        assert "except Exception" in hook_content, "Hook should have exception handling"
 
     def test_hook_updates_metadata_file(self):
         """Verify hook updates agent metadata files"""
         hook_content = self.hook_file.read_text()
-        assert (
-            "agent-" in hook_content and ".json" in hook_content
-        ), "Hook should update metadata files"
+        assert "agent-" in hook_content and ".json" in hook_content, "Hook should update metadata files"
 
     def test_hook_returns_system_message(self):
         """Verify hook returns system message with status"""
@@ -343,9 +301,7 @@ class TestPermissionMode:
             if "permissionMode: auto" in content:
                 auto_agents.append(agent_file.stem)
 
-        assert len(auto_agents) == 11, (
-            f"Expected 11 auto mode agents, got {len(auto_agents)}: {auto_agents}"
-        )
+        assert len(auto_agents) == 11, f"Expected 11 auto mode agents, got {len(auto_agents)}: {auto_agents}"
 
     def test_ask_mode_agents_count(self):
         """Verify ask mode agents count is 21"""
@@ -357,9 +313,7 @@ class TestPermissionMode:
             if "permissionMode: ask" in content:
                 ask_agents.append(agent_file.stem)
 
-        assert len(ask_agents) == 21, (
-            f"Expected 21 ask mode agents, got {len(ask_agents)}: {ask_agents}"
-        )
+        assert len(ask_agents) == 21, f"Expected 21 ask mode agents, got {len(ask_agents)}: {ask_agents}"
 
     def test_total_agent_count(self):
         """Verify total of 32 agents (11 auto + 21 ask)"""
@@ -379,9 +333,7 @@ class TestPermissionMode:
             agent_file = self.agents_dir / f"{agent_name}.md"
             if agent_file.exists():
                 content = agent_file.read_text()
-                assert "permissionMode: auto" in content, (
-                    f"{agent_name} should have auto mode"
-                )
+                assert "permissionMode: auto" in content, f"{agent_name} should have auto mode"
 
     def test_ask_mode_agents_require_approval(self):
         """Verify ask mode agents require user approval for code changes"""
@@ -396,9 +348,7 @@ class TestPermissionMode:
             agent_file = self.agents_dir / f"{agent_name}.md"
             if agent_file.exists():
                 content = agent_file.read_text()
-                assert "permissionMode: ask" in content, (
-                    f"{agent_name} should have ask mode"
-                )
+                assert "permissionMode: ask" in content, f"{agent_name} should have ask mode"
 
 
 class TestSkillsFrontmatter:
@@ -440,10 +390,10 @@ class TestSkillsFrontmatter:
                 if skills_idx >= 0 and skills_idx + 1 < len(lines):
                     # Skills should exist in frontmatter (before closing ---)
                     # Just verify skills field is present and not empty
-                    remaining_content = "\n".join(lines[skills_idx:skills_idx+5])
-                    assert "moai-" in remaining_content or "skill" in remaining_content.lower(), (
-                        f"{agent_file.name}: Skills should reference moai-* skills"
-                    )
+                    remaining_content = "\n".join(lines[skills_idx : skills_idx + 5])
+                    assert (
+                        "moai-" in remaining_content or "skill" in remaining_content.lower()
+                    ), f"{agent_file.name}: Skills should reference moai-* skills"
 
     def test_moai_skills_are_used(self):
         """Verify agents reference moai-* skills"""
@@ -461,18 +411,14 @@ class TestSkillsFrontmatter:
                     skills_found[agent_file.stem] = len(set(moai_skills))
 
         # At least some agents should reference moai skills
-        assert (
-            len(skills_found) > 20
-        ), "Most agents should reference moai-* skills"
+        assert len(skills_found) > 20, "Most agents should reference moai-* skills"
 
     def test_backend_expert_has_relevant_skills(self):
         """Verify backend-expert has domain skills"""
         agent_file = self.agents_dir / "backend-expert.md"
         if agent_file.exists():
             content = agent_file.read_text()
-            assert "moai-domain-backend" in content or "moai-" in content, (
-                "backend-expert should have domain skills"
-            )
+            assert "moai-domain-backend" in content or "moai-" in content, "backend-expert should have domain skills"
 
 
 class TestYAMLValidation:
@@ -532,14 +478,10 @@ class TestYAMLValidation:
 
         hooks = settings.get("hooks", {})
         for hook_name, hook_config in hooks.items():
-            assert isinstance(hook_config, list), (
-                f"Hook {hook_name} should be a list"
-            )
+            assert isinstance(hook_config, list), f"Hook {hook_name} should be a list"
             for entry in hook_config:
                 assert "hooks" in entry, f"Hook {hook_name} entry missing 'hooks'"
-                assert isinstance(entry["hooks"], list), (
-                    f"Hook {hook_name} hooks should be a list"
-                )
+                assert isinstance(entry["hooks"], list), f"Hook {hook_name} hooks should be a list"
 
 
 class TestGracefulDegradation:
@@ -548,20 +490,8 @@ class TestGracefulDegradation:
     def setup_method(self):
         """Setup test fixtures"""
         self.project_root = Path("/Users/goos/MoAI/MoAI-ADK")
-        self.start_hook = (
-            self.project_root
-            / ".claude"
-            / "hooks"
-            / "alfred"
-            / "subagent_start__context_optimizer.py"
-        )
-        self.stop_hook = (
-            self.project_root
-            / ".claude"
-            / "hooks"
-            / "alfred"
-            / "subagent_stop__lifecycle_tracker.py"
-        )
+        self.start_hook = self.project_root / ".claude" / "hooks" / "alfred" / "subagent_start__context_optimizer.py"
+        self.stop_hook = self.project_root / ".claude" / "hooks" / "alfred" / "subagent_stop__lifecycle_tracker.py"
 
     def test_start_hook_graceful_degradation(self):
         """TC-10: Verify SubagentStart Hook graceful degradation"""
@@ -592,9 +522,9 @@ class TestGracefulDegradation:
             content = hook_file.read_text()
 
             # Verify error message format
-            assert '"continue": True' in content or '"continue": true' in content, (
-                f"{hook_file.name}: Should return continue: true on error"
-            )
+            assert (
+                '"continue": True' in content or '"continue": true' in content
+            ), f"{hook_file.name}: Should return continue: true on error"
 
             # Verify warning emoji for degradation
             if "⚠️" in content or "⚠" in content:
@@ -651,9 +581,7 @@ class TestCostSavings:
             strategy = hooks_config["model_strategy"].get("v2_0_43", {})
             if "cost_savings" in strategy:
                 # Should document ~70% savings
-                assert "70%" in strategy.get("cost_savings", ""), (
-                    "Cost savings should document ~70% savings"
-                )
+                assert "70%" in strategy.get("cost_savings", ""), "Cost savings should document ~70% savings"
 
 
 class TestIntegration:

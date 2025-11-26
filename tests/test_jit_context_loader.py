@@ -19,7 +19,7 @@ from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from moai_adk.core.jit_context_loader import (
     ContextCache,
@@ -50,7 +50,7 @@ class TestPhaseDetector:
             "/moai:1-plan create user authentication system",
             "Create SPEC-001 for login functionality",
             "Design system requirements for user authentication",
-            "spec requirements for API design"
+            "spec requirements for API design",
         ]
 
         for input_text in spec_inputs:
@@ -65,7 +65,7 @@ class TestPhaseDetector:
             "/moai:2-run SPEC-001 RED phase",
             "test failing for user authentication",
             "Red phase: write failing tests",
-            "TDD red phase implementation"
+            "TDD red phase implementation",
         ]
 
         for input_text in red_inputs:
@@ -80,7 +80,7 @@ class TestPhaseDetector:
             "/moai:2-run SPEC-001 GREEN phase",
             "make tests pass with minimal implementation",
             "Green phase: minimal implementation",
-            "TDD green phase coding"
+            "TDD green phase coding",
         ]
 
         for input_text in green_inputs:
@@ -93,15 +93,15 @@ class TestPhaseDetector:
 
         # Simulate phase progression with explicit phase indicators
         detector.detect_phase("/moai:1-plan user authentication system")  # SPEC
-        detector.detect_phase("RED phase: write failing tests for authentication") # RED
-        detector.detect_phase("Green phase: minimal implementation to pass tests") # GREEN
+        detector.detect_phase("RED phase: write failing tests for authentication")  # RED
+        detector.detect_phase("Green phase: minimal implementation to pass tests")  # GREEN
 
         # Check history - should have 2 transitions
         assert len(detector.phase_history) == 2
-        assert detector.phase_history[0]['from'] == Phase.SPEC.value
-        assert detector.phase_history[0]['to'] == Phase.RED.value
-        assert detector.phase_history[1]['from'] == Phase.RED.value
-        assert detector.phase_history[1]['to'] == Phase.GREEN.value
+        assert detector.phase_history[0]["from"] == Phase.SPEC.value
+        assert detector.phase_history[0]["to"] == Phase.RED.value
+        assert detector.phase_history[1]["from"] == Phase.RED.value
+        assert detector.phase_history[1]["to"] == Phase.GREEN.value
 
     def test_get_phase_config(self):
         """Test phase configuration retrieval"""
@@ -111,11 +111,12 @@ class TestPhaseDetector:
         assert isinstance(spec_config, PhaseConfig)
         assert spec_config.max_tokens == 30000
         assert len(spec_config.essential_skills) > 0
-        assert spec_config.cache_clear_on_phase_change == True
+        assert spec_config.cache_clear_on_phase_change
 
         green_config = detector.get_phase_config(Phase.GREEN)
         assert green_config.max_tokens == 25000
         assert not green_config.cache_clear_on_phase_change
+
 
 class TestSkillFilterEngine:
     """Test skill filtering functionality"""
@@ -131,7 +132,7 @@ class TestSkillFilterEngine:
                 "moai-foundation-ears",
                 "moai-domain-testing",
                 "moai-lang-python",
-                "moai-essentials-debug"
+                "moai-essentials-debug",
             ]:
                 skill_dir = skills_dir / skill_name
                 skill_dir.mkdir()
@@ -187,21 +188,22 @@ class TestSkillFilterEngine:
         # Check priority assignments
         spec_prefs = engine.phase_preferences["spec"]
         assert spec_prefs["moai-foundation-ears"] == 1  # High priority
-        assert spec_prefs["moai-lang-python"] == 3      # Low priority
+        assert spec_prefs["moai-lang-python"] == 3  # Low priority
 
     def test_get_skill_stats(self, temp_skills_dir):
         """Test skill statistics generation"""
         engine = SkillFilterEngine(str(temp_skills_dir))
 
         stats = engine.get_skill_stats()
-        assert stats['total_skills'] == 4
-        assert stats['total_tokens'] > 0
-        assert 'categories' in stats
-        assert stats['average_tokens_per_skill'] > 0
+        assert stats["total_skills"] == 4
+        assert stats["total_tokens"] > 0
+        assert "categories" in stats
+        assert stats["average_tokens_per_skill"] > 0
 
         # Check category statistics
-        assert 'core' in stats['categories']
-        assert stats['categories']['core'] > 0
+        assert "core" in stats["categories"]
+        assert stats["categories"]["core"] > 0
+
 
 class TestTokenBudgetManager:
     """Test token budget management"""
@@ -217,9 +219,9 @@ class TestTokenBudgetManager:
             assert manager.phase_budgets[phase] > 0
 
         # Check reduced budgets
-        assert manager.phase_budgets["spec"] == 30000      # Reduced from 50K
-        assert manager.phase_budgets["refactor"] == 20000 # Reduced from 50K
-        assert manager.phase_budgets["sync"] == 40000     # Reduced from 50K
+        assert manager.phase_budgets["spec"] == 30000  # Reduced from 50K
+        assert manager.phase_budgets["refactor"] == 20000  # Reduced from 50K
+        assert manager.phase_budgets["sync"] == 40000  # Reduced from 50K
 
     def test_check_budget(self):
         """Test budget checking functionality"""
@@ -227,12 +229,12 @@ class TestTokenBudgetManager:
 
         # Test within budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 25000)
-        assert within_budget == True
+        assert within_budget
         assert remaining == 5000
 
         # Test over budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 35000)
-        assert within_budget == False
+        assert not within_budget
         assert remaining == 30000
 
     def test_record_usage(self):
@@ -247,7 +249,7 @@ class TestTokenBudgetManager:
         # Record over-budget usage
         manager.record_usage(Phase.SPEC, 40000, "over budget test")
         assert len(manager.budget_warnings) == 1
-        assert "exceeded budget" in manager.budget_warnings[0]['warning']
+        assert "exceeded budget" in manager.budget_warnings[0]["warning"]
 
     def test_efficiency_metrics(self):
         """Test efficiency metrics calculation"""
@@ -259,13 +261,14 @@ class TestTokenBudgetManager:
         manager.record_usage(Phase.SPEC, 35000, "inefficient usage")  # Over budget
 
         metrics = manager.get_efficiency_metrics()
-        assert 'efficiency_score' in metrics
-        assert 'budget_compliance' in metrics
-        assert 'total_usage' in metrics
-        assert metrics['total_usage'] == 80000
+        assert "efficiency_score" in metrics
+        assert "budget_compliance" in metrics
+        assert "total_usage" in metrics
+        assert metrics["total_usage"] == 80000
 
         # Budget compliance should be less than 100% due to over-budget usage
-        assert metrics['budget_compliance'] < 100
+        assert metrics["budget_compliance"] < 100
+
 
 class TestContextCache:
     """Test context caching functionality"""
@@ -339,10 +342,11 @@ class TestContextCache:
         cache.get("key2")  # Miss
 
         stats = cache.get_stats()
-        assert stats['entries'] == 1
-        assert stats['hits'] == 1
-        assert stats['misses'] == 1
-        assert stats['hit_rate'] == 50.0
+        assert stats["entries"] == 1
+        assert stats["hits"] == 1
+        assert stats["misses"] == 1
+        assert stats["hit_rate"] == 50.0
+
 
 class TestJITContextLoader:
     """Test main JIT Context Loader functionality"""
@@ -377,7 +381,7 @@ class TestJITContextLoader:
     @pytest.fixture
     def jit_loader(self, temp_project_dir):
         """Create JIT loader instance with temp directory"""
-        with patch('moai_adk.core.jit_context_loader.SkillFilterEngine') as mock_engine:
+        with patch("moai_adk.core.jit_context_loader.SkillFilterEngine") as mock_engine:
             # Mock skill filter to use temp directory
             mock_engine.return_value.skills_dir = temp_project_dir / ".claude" / "skills"
             mock_engine.return_value.skill_index = {
@@ -387,7 +391,7 @@ class TestJITContextLoader:
                     size=1000,
                     tokens=250,
                     categories=["core"],
-                    priority=1
+                    priority=1,
                 ),
                 "moai-lang-python": SkillInfo(
                     name="moai-lang-python",
@@ -395,8 +399,8 @@ class TestJITContextLoader:
                     size=1000,
                     tokens=250,
                     categories=["language"],
-                    priority=2
-                )
+                    priority=2,
+                ),
             }
             mock_engine.return_value.filter_skills.return_value = [
                 mock_engine.return_value.skill_index["moai-foundation-ears"]
@@ -415,10 +419,10 @@ class TestJITContextLoader:
         context_data, metrics = await jit_loader.load_context(user_input, context=context)
 
         # Verify context structure
-        assert context_data['phase'] == Phase.SPEC.value
-        assert 'skills' in context_data
-        assert 'documents' in context_data
-        assert 'metadata' in context_data
+        assert context_data["phase"] == Phase.SPEC.value
+        assert "skills" in context_data
+        assert "documents" in context_data
+        assert "metadata" in context_data
 
         # Verify metrics
         assert isinstance(metrics, ContextMetrics)
@@ -434,11 +438,11 @@ class TestJITContextLoader:
 
         # First load (cache miss)
         context_data1, metrics1 = await jit_loader.load_context(user_input, context=context)
-        assert metrics1.cache_hit == False
+        assert not metrics1.cache_hit
 
         # Second load (cache hit)
         context_data2, metrics2 = await jit_loader.load_context(user_input, context=context)
-        assert metrics2.cache_hit == True
+        assert metrics2.cache_hit
         assert metrics2.load_time < metrics1.load_time  # Should be faster
 
         # Content should be identical
@@ -449,17 +453,17 @@ class TestJITContextLoader:
         """Test phase transition handling"""
         # Start with SPEC phase
         context_data1, _ = await jit_loader.load_context("/moai:1-plan user system")
-        assert context_data1['phase'] == Phase.SPEC.value
+        assert context_data1["phase"] == Phase.SPEC.value
 
         # Transition to RED phase
         context_data2, _ = await jit_loader.load_context("/moai:2-run SPEC-001 RED phase")
-        assert context_data2['phase'] == Phase.RED.value
+        assert context_data2["phase"] == Phase.RED.value
 
         # Check phase history
         assert len(jit_loader.phase_detector.phase_history) > 0
         last_transition = jit_loader.phase_detector.phase_history[-1]
-        assert last_transition['from'] == Phase.SPEC.value
-        assert last_transition['to'] == Phase.RED.value
+        assert last_transition["from"] == Phase.SPEC.value
+        assert last_transition["to"] == Phase.RED.value
 
     @pytest.mark.asyncio
     async def test_token_budget_enforcement(self, jit_loader):
@@ -468,12 +472,7 @@ class TestJITContextLoader:
         large_skills = []
         for i in range(20):
             skill = SkillInfo(
-                name=f"skill-{i}",
-                path=f"/mock/path/skill-{i}",
-                size=2000,
-                tokens=2000,
-                categories=["test"],
-                priority=3
+                name=f"skill-{i}", path=f"/mock/path/skill-{i}", size=2000, tokens=2000, categories=["test"], priority=3
             )
             large_skills.append(skill)
 
@@ -486,25 +485,26 @@ class TestJITContextLoader:
 
         # Should apply aggressive optimization
         assert metrics.token_count <= 25000  # GREEN phase budget
-        assert len(context_data['skills']) < len(large_skills)  # Skills filtered
+        assert len(context_data["skills"]) < len(large_skills)  # Skills filtered
 
     def test_get_comprehensive_stats(self, jit_loader):
         """Test comprehensive statistics gathering"""
         stats = jit_loader.get_comprehensive_stats()
 
         # Check all required sections
-        assert 'performance' in stats
-        assert 'cache' in stats
-        assert 'token_efficiency' in stats
-        assert 'skill_filter' in stats
-        assert 'current_phase' in stats
+        assert "performance" in stats
+        assert "cache" in stats
+        assert "token_efficiency" in stats
+        assert "skill_filter" in stats
+        assert "current_phase" in stats
 
         # Check performance stats
-        perf = stats['performance']
-        assert 'total_loads' in perf
-        assert 'average_load_time' in perf
-        assert 'cache_hit_rate' in perf
-        assert 'efficiency_score' in perf
+        perf = stats["performance"]
+        assert "total_loads" in perf
+        assert "average_load_time" in perf
+        assert "cache_hit_rate" in perf
+        assert "efficiency_score" in perf
+
 
 class TestIntegration:
     """Integration tests for the complete JIT system"""
@@ -518,7 +518,7 @@ class TestIntegration:
             ("/moai:2-run SPEC-001 RED phase", {"spec_id": "SPEC-001"}),
             ("/moai:2-run SPEC-001 GREEN phase", {"spec_id": "SPEC-001"}),
             ("/moai:2-run SPEC-001 REFACTOR phase", {"spec_id": "SPEC-001"}),
-            ("/moai:3-sync auto SPEC-001", {"spec_id": "SPEC-001"})
+            ("/moai:3-sync auto SPEC-001", {"spec_id": "SPEC-001"}),
         ]
 
         for user_input, context in workflow_steps:
@@ -526,9 +526,9 @@ class TestIntegration:
             context_data, metrics = await load_optimized_context(user_input, context=context)
 
             # Verify basic structure
-            assert 'phase' in context_data
-            assert 'skills' in context_data
-            assert 'documents' in context_data
+            assert "phase" in context_data
+            assert "skills" in context_data
+            assert "documents" in context_data
 
             # Verify metrics
             assert isinstance(metrics, ContextMetrics)
@@ -539,7 +539,7 @@ class TestIntegration:
         # Test stats function
         stats = get_jit_stats()
         assert isinstance(stats, dict)
-        assert 'performance' in stats
+        assert "performance" in stats
 
         # Test cache clearing
         clear_jit_cache()
@@ -547,7 +547,7 @@ class TestIntegration:
 
         # Test system initialization
         result = initialize_jit_system()
-        assert result == True
+        assert result
 
     @pytest.mark.asyncio
     async def test_performance_benchmarks(self):
@@ -574,7 +574,8 @@ class TestIntegration:
 
         # Check final stats
         stats = loader.get_comprehensive_stats()
-        assert stats['cache']['hit_rate'] > 0
+        assert stats["cache"]["hit_rate"] > 0
+
 
 class TestErrorHandling:
     """Test error handling and edge cases"""
@@ -585,7 +586,7 @@ class TestErrorHandling:
         loader = JITContextLoader()
 
         context_data, metrics = await loader.load_context("", [])
-        assert context_data['phase'] == Phase.SPEC.value  # Should default to SPEC
+        assert context_data["phase"] == Phase.SPEC.value  # Should default to SPEC
         assert isinstance(metrics, ContextMetrics)
 
     @pytest.mark.asyncio
@@ -594,10 +595,7 @@ class TestErrorHandling:
         loader = JITContextLoader()
 
         # Test with malformed context
-        context_data, metrics = await loader.load_context(
-            "/moai:1-plan test",
-            context={"invalid_key": "value"}
-        )
+        context_data, metrics = await loader.load_context("/moai:1-plan test", context={"invalid_key": "value"})
         assert context_data is not None
         assert metrics is not None
 
@@ -607,7 +605,7 @@ class TestErrorHandling:
 
         # Should not crash, just return empty results
         stats = engine.get_skill_stats()
-        assert stats['total_skills'] == 0
+        assert stats["total_skills"] == 0
 
     def test_token_budget_extreme_cases(self):
         """Test token budget manager with extreme values"""
@@ -615,12 +613,12 @@ class TestErrorHandling:
 
         # Test zero budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 0)
-        assert within_budget == True
+        assert within_budget
         assert remaining == 30000
 
         # Test extremely large budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 1000000)
-        assert within_budget == False
+        assert not within_budget
 
     def test_cache_memory_limits(self):
         """Test cache memory limit enforcement"""
@@ -634,6 +632,7 @@ class TestErrorHandling:
         # Should have evicted many entries due to memory limit
         assert len(cache.cache) < 20
         assert cache.evictions > 0
+
 
 if __name__ == "__main__":
     # Run tests

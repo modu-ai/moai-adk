@@ -37,9 +37,7 @@ class TestConfigSchemaCompleteness:
 
             # Check personal mode exists
             assert "personal" in config["git_strategy"], "personal mode missing from git_strategy"
-            assert isinstance(
-                config["git_strategy"]["personal"], dict
-            ), "personal should be a dict"
+            assert isinstance(config["git_strategy"]["personal"], dict), "personal should be a dict"
 
             # Verify key fields in personal mode
             personal = config["git_strategy"]["personal"]
@@ -75,19 +73,13 @@ class TestConfigSchemaCompleteness:
 
             # Verify required fields
             constitution = config["constitution"]
-            assert (
-                "enforce_tdd" in constitution
-            ), "enforce_tdd missing from constitution"
-            assert (
-                "test_coverage_target" in constitution
-            ), "test_coverage_target missing from constitution"
+            assert "enforce_tdd" in constitution, "enforce_tdd missing from constitution"
+            assert "test_coverage_target" in constitution, "test_coverage_target missing from constitution"
             assert "principles" in constitution, "principles missing from constitution"
 
             # Verify values
             assert constitution["enforce_tdd"] is True, "enforce_tdd should default to True"
-            assert (
-                constitution["test_coverage_target"] == 90
-            ), "test_coverage_target should default to 90"
+            assert constitution["test_coverage_target"] == 90, "test_coverage_target should default to 90"
 
     def test_config_has_session_field(self):
         """Test that config_data includes session field with suppress_setup_messages"""
@@ -110,14 +102,10 @@ class TestConfigSchemaCompleteness:
 
             # Check suppress_setup_messages exists
             session = config["session"]
-            assert (
-                "suppress_setup_messages" in session
-            ), "suppress_setup_messages missing from session"
+            assert "suppress_setup_messages" in session, "suppress_setup_messages missing from session"
 
             # Verify default value
-            assert (
-                session["suppress_setup_messages"] is False
-            ), "suppress_setup_messages should default to False"
+            assert session["suppress_setup_messages"] is False, "suppress_setup_messages should default to False"
 
 
 class TestVersionComparison:
@@ -161,17 +149,13 @@ class TestVersionComparison:
         installed = Version("0.25.7")
         latest = Version("1.0.0")
 
-        assert (
-            latest > installed
-        ), "1.0.0 should be greater than 0.25.7 with semantic versioning"
+        assert latest > installed, "1.0.0 should be greater than 0.25.7 with semantic versioning"
 
         # Also test: 0.3.0 < 0.25.7 (to ensure we don't suggest upgrade to lower version)
         installed2 = Version("0.25.7")
         latest2 = Version("0.3.0")
 
-        assert (
-            latest2 < installed2
-        ), "0.3.0 should be less than 0.25.7 with semantic versioning"
+        assert latest2 < installed2, "0.3.0 should be less than 0.25.7 with semantic versioning"
 
 
 class TestSuppressSetupMessagesWithNewFields:
@@ -183,14 +167,11 @@ class TestSuppressSetupMessagesWithNewFields:
         from pathlib import Path as PathlibPath
 
         hook_path = (
-            PathlibPath(__file__).parent.parent.parent
-            / ".claude/hooks/alfred/session_start__config_health_check.py"
+            PathlibPath(__file__).parent.parent.parent / ".claude/hooks/alfred/session_start__config_health_check.py"
         )
 
         # Read hook as module
-        spec = __import__("importlib.util").util.spec_from_file_location(
-            "config_health_check", hook_path
-        )
+        spec = __import__("importlib.util").util.spec_from_file_location("config_health_check", hook_path)
         assert spec is not None, "Hook module should be importable"
         hook = __import__("importlib.util").util.module_from_spec(spec)
         assert spec.loader is not None
@@ -216,9 +197,7 @@ class TestSuppressSetupMessagesWithNewFields:
             with mock.patch("pathlib.Path.cwd", return_value=project_path):
                 # suppress_setup_messages should be False initially
                 is_suppressed = hook.should_suppress_setup()
-                assert (
-                    is_suppressed is False
-                ), "Setup should not be suppressed when flag is False"
+                assert is_suppressed is False, "Setup should not be suppressed when flag is False"
 
                 # Update to suppress
                 config_data["session"]["suppress_setup_messages"] = True
@@ -226,9 +205,7 @@ class TestSuppressSetupMessagesWithNewFields:
                 config_file.write_text(json.dumps(config_data))
 
                 is_suppressed = hook.should_suppress_setup()
-                assert (
-                    is_suppressed is True
-                ), "Setup should be suppressed when flag is True and timestamp is recent"
+                assert is_suppressed is True, "Setup should be suppressed when flag is True and timestamp is recent"
 
 
 class TestConfigHealthCheckValidation:
@@ -239,14 +216,11 @@ class TestConfigHealthCheckValidation:
         from pathlib import Path as PathlibPath
 
         hook_path = (
-            PathlibPath(__file__).parent.parent.parent
-            / ".claude/hooks/alfred/session_start__config_health_check.py"
+            PathlibPath(__file__).parent.parent.parent / ".claude/hooks/alfred/session_start__config_health_check.py"
         )
 
         # Import hook module
-        spec = __import__("importlib.util").util.spec_from_file_location(
-            "config_health_check", hook_path
-        )
+        spec = __import__("importlib.util").util.spec_from_file_location("config_health_check", hook_path)
         assert spec is not None
         hook = __import__("importlib.util").util.module_from_spec(spec)
         assert spec.loader is not None
@@ -261,9 +235,7 @@ class TestConfigHealthCheckValidation:
         }
 
         is_complete, missing = hook.check_config_completeness(incomplete_config)
-        assert (
-            not is_complete
-        ), "Config without session should be incomplete"
+        assert not is_complete, "Config without session should be incomplete"
         assert "session" in missing, "Missing 'session' should be reported"
 
         # Test config with session field
@@ -292,6 +264,4 @@ class TestClaudeMdReduction:
         # Target is under 40KB (40,000 bytes)
         # SPEC says <40KB but current is ~8.5KB which is ideal
         # We'll check it's still reasonable
-        assert (
-            file_size < 80000
-        ), f"CLAUDE.md should be optimized, current size: {file_size} bytes"
+        assert file_size < 80000, f"CLAUDE.md should be optimized, current size: {file_size} bytes"

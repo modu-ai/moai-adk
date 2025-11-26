@@ -1,0 +1,97 @@
+{
+  "id": "project-batch-questions",
+  "title": "Project Batch Questions Configuration",
+  "description": "Configure project-specific question batches and templates",
+  "questions": [
+    {
+      "id": "batch_questions.enable",
+      "text": "Enable batch question processing for this project?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Allow collecting multiple questions in batches for better workflow"
+    },
+    {
+      "id": "batch_questions.template_directory",
+      "text": "Where should question templates be stored?",
+      "type": "single_choice",
+      "required": true,
+      "default_value": ".moai/templates/questions",
+      "options": [
+        {
+          "label": "Default (.moai/templates/questions)",
+          "value": ".moai/templates/questions",
+          "description": "Standard MoAI template location"
+        },
+        {
+          "label": "Project root (.questions)",
+          "value": ".questions",
+          "description": "Project root directory"
+        },
+        {
+          "label": "Custom location",
+          "value": "custom",
+          "description": "Specify custom directory path"
+        }
+      ]
+    },
+    {
+      "id": "batch_questions.custom_path",
+      "text": "Enter custom template directory path:",
+      "type": "text_input",
+      "required": false,
+      "conditional_on": {
+        "batch_questions.template_directory": "custom"
+      },
+      "validation": {
+        "rules": ["min_length"],
+        "parameters": {"min_length": 1}
+      }
+    },
+    {
+      "id": "batch_questions.auto_save",
+      "text": "Automatically save question responses?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Save responses to .moai/responses/ for future reference"
+    },
+    {
+      "id": "batch_questions.validation_level",
+      "text": "What level of response validation should be applied?",
+      "type": "single_choice",
+      "required": true,
+      "default_value": "standard",
+      "options": [
+        {
+          "label": "Basic (required fields only)",
+          "value": "basic",
+          "description": "Only validate required fields are present"
+        },
+        {
+          "label": "Standard (type and format validation)",
+          "value": "standard",
+          "description": "Validate field types and basic formats"
+        },
+        {
+          "label": "Strict (custom validation rules)",
+          "value": "strict",
+          "description": "Apply comprehensive validation including custom rules"
+        }
+      ]
+    },
+    {
+      "id": "batch_questions.conditional_logic",
+      "text": "Enable conditional question logic?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Show/hide questions based on previous answers"
+    }
+  ],
+  "metadata": {
+    "skill": "moai-project-batch-questions",
+    "category": "project_configuration",
+    "version": "1.0.0"
+  }
+}

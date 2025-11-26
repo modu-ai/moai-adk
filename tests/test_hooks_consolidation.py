@@ -218,8 +218,7 @@ class TestImportPathMigration:
             except py_compile.PyCompileError as e:
                 compile_errors.append((py_file.name, str(e)))
 
-        assert len(compile_errors) == 0, \
-            f"Found {len(compile_errors)} compilation errors: {compile_errors}"
+        assert len(compile_errors) == 0, f"Found {len(compile_errors)} compilation errors: {compile_errors}"
 
 
 # ==============================================================================
@@ -238,31 +237,27 @@ class TestIntegrationAndPerformance:
     def test_hook_json_interface(self, hooks_dir: Path):
         """Test: Hook files implement JSON stdin/stdout interface"""
         # Find main hook files (in moai/ directory, not in subdirectories)
-        main_hooks = [f for f in (hooks_dir / "moai").glob("*.py")
-                      if f.name not in ["__init__.py", "spec_status_hooks.py"]]
+        main_hooks = [
+            f for f in (hooks_dir / "moai").glob("*.py") if f.name not in ["__init__.py", "spec_status_hooks.py"]
+        ]
 
         assert len(main_hooks) > 0, "Should have Hook files to test"
 
         # Create sample input
-        sample_input = json.dumps({
-            "hook_name": "session_start",
-            "context": {"project_root": "/tmp", "config": {"version": "0.26.0"}}
-        })
+        sample_input = json.dumps(
+            {"hook_name": "session_start", "context": {"project_root": "/tmp", "config": {"version": "0.26.0"}}}
+        )
 
         # Test first hook (if exists)
         if main_hooks:
             hook_file = main_hooks[0]
 
             result = subprocess.run(
-                [sys.executable, str(hook_file)],
-                input=sample_input.encode(),
-                capture_output=True,
-                timeout=2.0
+                [sys.executable, str(hook_file)], input=sample_input.encode(), capture_output=True, timeout=2.0
             )
 
             # Should have valid exit code
-            assert result.returncode in [0, 1, 2, 3], \
-                f"Hook exit code should be 0-3, got {result.returncode}"
+            assert result.returncode in [0, 1, 2, 3], f"Hook exit code should be 0-3, got {result.returncode}"
 
     def test_hook_execution_time_baseline(self, hooks_dir: Path):
         """Test: Measure Hook execution time baseline (<500ms target)"""
@@ -274,19 +269,13 @@ class TestIntegrationAndPerformance:
 
         # Run hook 3 times and measure
         times = []
-        sample_input = json.dumps({
-            "hook_name": "session_start",
-            "context": {"project_root": "/tmp"}
-        })
+        sample_input = json.dumps({"hook_name": "session_start", "context": {"project_root": "/tmp"}})
 
         for _ in range(3):
             start = time.perf_counter()
             try:
-                result = subprocess.run(
-                    [sys.executable, str(sample_hook)],
-                    input=sample_input.encode(),
-                    capture_output=True,
-                    timeout=2.0
+                subprocess.run(
+                    [sys.executable, str(sample_hook)], input=sample_input.encode(), capture_output=True, timeout=2.0
                 )
                 elapsed = (time.perf_counter() - start) * 1000  # Convert to ms
                 times.append(elapsed)
@@ -336,7 +325,7 @@ class TestAcceptanceCriteria:
             "version_cache.py",
             "config_manager.py",
             "checkpoint.py",
-            "context.py"
+            "context.py",
         ]
 
         for required in required_files:

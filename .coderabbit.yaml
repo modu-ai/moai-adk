@@ -135,3 +135,43 @@ coderabbit:
 
   # Disable review_skip_pattern to enable reviews on all branches
   skip_review_on_forbidden_base_branch: false
+
+  # Changelog generation rules (Automated Release Pipeline)
+  changelog:
+    enabled: true
+    auto_generate_on_release: true
+    bilingual_support: true
+    languages:
+      - ko  # Korean
+      - en  # English
+    commit_analysis:
+      enabled: true
+      conventional_commits: true
+      scope_mapping:
+        feat: "✨ Features"
+        fix: "🐛 Bug Fixes"
+        docs: "📚 Documentation"
+        refactor: "♻️ Refactoring"
+        perf: "⚡ Performance"
+        test: "🧪 Testing"
+        chore: "🔧 Chore"
+        ci: "👷 CI/CD"
+    template: |
+      ## {VERSION} - {RELEASE_DATE}
+
+      ### 🇰🇷 한국어
+      {COMMITS_KO}
+
+      ### 🇺🇸 English
+      {COMMITS_EN}
+
+  # Auto-merge rules for automated version/changelog updates
+  auto_merge:
+    enabled: true
+    conditions:
+      - "title_contains: 'chore: Auto-update version'"
+      - "title_contains: 'docs: Auto-generated Changelog'"
+      - "coderabbit_score >= 0.75"
+      - "ci_passing: true"
+    delete_branch_on_merge: true
+    merge_method: squash  # Squash commits for cleaner history

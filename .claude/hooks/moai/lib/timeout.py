@@ -20,6 +20,7 @@ from typing import Any, Callable, Optional
 
 class TimeoutError(Exception):
     """Timeout exception raised when deadline exceeded"""
+
     pass
 
 
@@ -85,12 +86,11 @@ class CrossPlatformTimeout:
 
     def _start_windows_timeout(self) -> None:
         """Windows: Use threading.Timer to raise exception."""
+
         def timeout_handler():
             if self.callback:
                 self.callback()
-            raise TimeoutError(
-                f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)"
-            )
+            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)")
 
         self.timer = threading.Timer(self.timeout_seconds, timeout_handler)
         self.timer.daemon = True
@@ -104,6 +104,7 @@ class CrossPlatformTimeout:
 
     def _start_unix_timeout(self) -> None:
         """Unix/POSIX: Use signal.SIGALRM for timeout."""
+
         def signal_handler(signum, frame):
             if self.callback:
                 try:
@@ -111,9 +112,7 @@ class CrossPlatformTimeout:
                 except Exception:
                     # Ignore callback exceptions, timeout error takes precedence
                     pass
-            raise TimeoutError(
-                f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)"
-            )
+            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)")
 
         # Save old handler to restore later
         self._old_handler = signal.signal(signal.SIGALRM, signal_handler)  # type: ignore[assignment]

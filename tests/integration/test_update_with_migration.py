@@ -43,15 +43,7 @@ def temp_project(tmp_path):
     settings = claude_root / "settings.json"
     settings.write_text(
         json.dumps(
-            {
-                "hooks": {
-                    "SessionStart": [
-                        {
-                            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start.py"
-                        }
-                    ]
-                }
-            }
+            {"hooks": {"SessionStart": [{"command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start.py"}]}}
         )
     )
 
@@ -165,13 +157,11 @@ class TestFullMigrationWorkflow:
         """Should record migration state in config.json"""
         migrator = AlfredToMoaiMigrator(temp_project)
 
-        config_path = temp_project / ".moai" / "config" / "config.json"
+        temp_project / ".moai" / "config" / "config.json"
         config = migrator._load_config()
 
         # Verify no migration state initially
-        assert "migration" not in config or "alfred_to_moai" not in config.get(
-            "migration", {}
-        )
+        assert "migration" not in config or "alfred_to_moai" not in config.get("migration", {})
 
         # Execute migration
         result = migrator.execute_migration()
@@ -192,16 +182,12 @@ class TestFullMigrationWorkflow:
 class TestMigrationRollback:
     """Tests for migration rollback on failure"""
 
-    def test_rollback_restores_alfred_folders_on_settings_update_failure(
-        self, temp_project
-    ):
+    def test_rollback_restores_alfred_folders_on_settings_update_failure(self, temp_project):
         """Should rollback (restore from backup) if settings.json update fails"""
         migrator = AlfredToMoaiMigrator(temp_project)
 
         # Store original state
-        original_alfred_commands = (
-            temp_project / ".claude" / "commands" / "alfred"
-        ).exists()
+        (temp_project / ".claude" / "commands" / "alfred").exists()
 
         # Create invalid settings.json that will fail JSON parsing
         settings_path = temp_project / ".claude" / "settings.json"
@@ -210,7 +196,7 @@ class TestMigrationRollback:
 
         # This should fail during settings.json update
         # and trigger rollback
-        result = migrator.execute_migration()
+        migrator.execute_migration()
 
         # Migration should fail
         # (Note: actual rollback depends on backup creation)
@@ -291,7 +277,7 @@ class TestMigrationEdgeCases:
 
         # Migration should attempt but handle the error
         # (exact behavior depends on error handling strategy)
-        result = migrator.execute_migration()
+        migrator.execute_migration()
 
         # Should either fail or attempt recovery
         # This test verifies it doesn't crash unexpectedly

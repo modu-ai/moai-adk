@@ -1,7 +1,380 @@
+# v0.30.0 - Skill Synchronization & Project Structure Cleanup (2025-11-27)
+
+## Summary
+
+Major maintenance release focusing on project structure integrity and Python skill synchronization. Removed 874MB of misplaced virtual environment files and synchronized 24 Python skill files with template source.
+
+## Added
+
+- Comprehensive pre-release validation system (pytest, ruff, mypy, bandit, pip-audit)
+- Enhanced `.gitignore` rules to prevent `.claude/.venv` pollution
+
+## Fixed
+
+- **Critical**: Removed 874MB misplaced `.claude/.venv` directory
+- Synchronized 24 Python skill files with template definitions
+- Corrected project structure (28,725 files → 291 files, 99% reduction)
+- Import order unified across skill modules
+
+## Changed
+
+- Improved skill file organization and consistency
+- Enhanced pre-commit security scanning
+
+## Technical Details
+
+- **TRUST 5 Compliance**: Testable, Readable, Unified, Secured, Traceable
+- **Tests**: 2255/2256 passing (99.96%)
+- **Code Quality**: mypy ✅, bandit ✅, 123 ruff fixes applied
+- **Disk Space Saved**: 870MB
+- **Files Synchronized**: 24 Python skill modules
+- **Git Commit**: 21420139 (Sync Python skills from template and prevent .venv in .claude)
+
+## Files Modified
+
+### Skills Synchronized
+- `moai-connector-nano-banana/modules/image_generator.py`
+- `moai-connector-nano-banana/modules/prompt_generator.py`
+- `moai-platform-baas/scripts/provider-selector.py`
+- `moai-workflow-project/` (16 files)
+- `moai-workflow-testing/` (5 files)
+
+### Configuration Updated
+- `.gitignore`: Added `.claude/.venv/` and `.claude/.pytest_cache/` rules
+- `pyproject.toml`: Version bumped to 0.30.0
+- `src/moai_adk/__init__.py`: Version synchronized
+- `.moai/config/config.json`: Version updated
+
+## Breaking Changes
+
+None
+
+## Deprecations
+
+None
+
+## Security
+
+- All pre-commit security checks passed
+- No new vulnerabilities detected
+- Bandit security scan: Clean
+- pip-audit dependency check: Clean
+
+## Migration Guide
+
+No migration needed for users. This is primarily a maintenance release.
+
+---
+
+# v0.31.0 - Custom Files Backup & Restore in moai-adk update (2025-11-27)
+
+## Added
+
+- Custom files backup/restore in `moai-adk update` command:
+  - Automatic detection of custom commands (.md files in `.claude/commands/moai/`)
+  - Automatic detection of custom agents (files in `.claude/agents/`)
+  - Automatic detection of custom hooks (.py files in `.claude/hooks/moai/`)
+  - Unified questionary multi-select UI for selective restoration
+  - Safe `--yes` mode (skips restoration prompts by default)
+  - Comprehensive backup before any update operations
+  - Detailed detection and restoration logging
+
+- 9 new internal functions for backup/restore operations:
+  - `_detect_custom_commands()` - Detect custom command files
+  - `_detect_custom_agents()` - Detect custom agent files
+  - `_detect_custom_hooks()` - Detect custom hook files
+  - `_get_template_command_names()` - Get template command references
+  - `_get_template_agent_names()` - Get template agent references
+  - `_get_template_hook_names()` - Get template hook references
+  - `_group_custom_files_by_type()` - Organize files for UI presentation
+  - `_prompt_custom_files_restore()` - Interactive restoration UI
+  - `_restore_custom_files()` - Execute selective file restoration
+
+- 26 comprehensive tests covering all functions:
+  - 100% passing rate (26/26 tests)
+  - >85% code coverage
+  - Tests for detection, filtering, grouping, and restoration
+  - Tests for edge cases and error handling
+  - Tests for questionary UI integration
+
+## Changed
+
+- Enhanced `moai-adk update` workflow to include custom files detection
+- Improved update process with safe-by-default restoration behavior
+- Updated documentation with update-guide.md and API reference
+
+## Technical Details
+
+- **TRUST 5 Compliance**: Testable, Readable, Unified, Secured, Traceable
+- **Tests**: 26/26 passing (100%)
+- **Code Coverage**: >85% (comprehensive test coverage)
+- **Security**: Validated (no path traversal, safe file operations, proper error handling)
+- **Location**: `src/moai_adk/cli/commands/update.py` (+370 lines)
+- **Dependencies**: questionary for interactive UI, existing MoAI-ADK modules
+
+## Documentation
+
+- **README.md**: Updated with detailed moai-adk update section
+- **README.ko.md**: Korean translation of update documentation
+- **.moai/docs/update-guide.md**: Comprehensive usage guide (NEW)
+- **.moai/docs/API-UPDATE-FUNCTIONS.md**: API reference for developers (NEW)
+
+---
+
+# v0.28.2 - Naming Consistency: /alfred: → /moai: (2025-11-24)
+
+## 🔄 Refactoring
+
+### Command Naming Standardization
+- **Change**: Rename all internal `/alfred:` references to `/moai:`
+  - `/alfred:0-project` → `/moai:0-project`
+  - `/alfred:1-plan` → `/moai:1-plan`
+  - `/alfred:2-run` → `/moai:2-run`
+  - `/alfred:3-sync` → `/moai:3-sync`
+  - `/alfred:9-feedback` → `/moai:9-feedback`
+- **Reason**: Align internal naming with public Claude Code slash command prefix
+- **Impact**: Consistent user experience across all documentation and code
+
+## 📊 Changes
+- Updated 155+ files with new command naming
+- Updated agent and skill documentation
+- Updated CLI output messages and help text
+- Updated code comments and docstrings
+
+---
+
+# v0.28.1 - Hotfix: Template Variable & Merge Analysis (2025-11-24)
+
+## 🔧 Bug Fixes
+
+### Template Variable Substitution
+- **Issue**: Missing `MOAI_VERSION_*` variables caused `{{VARIABLE}}` placeholders in config.json after template sync
+- **Fix**: Add comprehensive version formatting in `_build_template_context()`
+  - `MOAI_VERSION_SHORT`: Version without 'v' prefix
+  - `MOAI_VERSION_DISPLAY`: Formatted display version
+  - `MOAI_VERSION_TRIMMED`: UI-optimized version (max 10 chars)
+  - `MOAI_VERSION_SEMVER`: Semantic version format
+  - `MOAI_VERSION_VALID`: Version validation status
+- **Impact**: Resolves "Template variable warnings" on `moai-adk update`
+
+### Merge Analysis Robustness
+- **Issue**: `'list' object has no attribute 'get'` error in merge analysis
+- **Fix**: Add type checking and validation in `_display_analysis()`
+  - Validate `analysis["files"]` is list before iteration
+  - Validate `file_info` is dict before accessing `.get()` method
+  - Graceful fallback if JSON parsing fails
+- **Impact**: Merge analysis now survives malformed JSON responses
+
+## 📦 Package Delivery
+
+- TestPyPI: https://test.pypi.org/project/moai-adk/0.28.1/
+- Build: Both sdist and wheel distributions verified
+- Quality Gates: All TRUST 5 checks passing
+
+---
+
+# v0.28.0 - AI Model Integration & Template Synchronization (2025-11-24)
+
+## ✨ Major Features
+
+### 🤖 AI Model Integration Update
+
+**Latest Model Versions**:
+- **OpenAI Codex CLI**: Updated to `gpt-5.1-codex-max` (released 2025-11-18)
+  - $0.001/1K tokens, 1M token context window
+  - Dynamic thinking for complex backend architecture
+  - 24h+ continuous work capability
+  - Version: 1.1.0
+
+- **Google Gemini CLI**: Updated to `gemini-3-pro` (single standard model)
+  - $2/M input, $12/M output tokens
+  - 1M token context window with advanced reasoning
+  - Removed dual-model strategy (gemini-3-flash removed)
+  - Fallback: Native Claude Code
+  - Version: 1.1.0
+
+**Documentation**:
+- `ai-codex.md`: Comprehensive OpenAI Codex CLI integration guide
+- `ai-gemini.md`: Google Gemini CLI integration with single model policy
+- `README-AI-MODELS.md`: AI model selection and comparison guide
+
+### 📦 Template Synchronization
+
+**Local → Package Sync Completed**:
+- Synced 428 files total
+- AI agent documentation (1 new file: README-AI-MODELS.md)
+- 120+ skill optimizations synchronized
+- 102 module directories verified
+- All optimizations and validations included
+
+**Verification**:
+- Local skills: 781 files (includes 3 local reports)
+- Package skills: 778 files (correctly excludes local-only files)
+- Local modules: 102, Package modules: 102 ✓
+- All local-only files correctly excluded (commands/moai/, settings.local.json, etc.)
+
+**Exclusions (Correctly Preserved as Local-Only)**:
+- `.claude/commands/moai/` (local development commands)
+- `.claude/settings.local.json` (personal user settings)
+- `CLAUDE.local.md` (local development guide)
+- `.SKILLS-OPTIMIZATION-*.md` (3 local optimization reports)
+- Runtime files (.moai/cache/, logs/, config/)
+
+### 🔄 Security & Validation
+
+**Pre-Release Quality Gates**:
+- ✅ pytest test suite (2,300+ tests)
+- ✅ ruff code linting
+- ✅ mypy type checking
+- ⚠️ Known issues: Legacy test imports (hooks module removed)
+
+**Security Improvements**:
+- Replaced API key examples with safe os.getenv() patterns
+- Sanitized JWT token handling examples
+- All documentation passes pre-commit security validation
+
+## 📊 Statistics
+
+| Metric | Value |
+|--------|-------|
+| **Files Synced** | 428 |
+| **Skills Updated** | 120+ |
+| **Modules Verified** | 102 |
+| **AI Models** | 2 (codex, gemini) |
+| **Lines Added** | 79,690 |
+| **Lines Removed** | 3,434 |
+
+## 🔗 Related Commits
+
+1. `adb8fc81`: sync(templates) - Local AI models and skills synchronization
+2. `c2a228a2`: feat(ai-models) - Update to latest OpenAI Codex and Gemini models
+3. `cd6aaf26`: docs(skills) - Add optimization reports and metadata
+
+## 📚 Documentation Updates
+
+- **README.md**: Updated with AI model references, v0.27.2 → current
+- **README.ko.md**: Korean translation with token handling examples sanitized
+- **AI Model Guide**: New comprehensive guide for model selection
+- **Template Sync Script**: `.moai/scripts/sync-local-to-package.sh` for reproducible syncs
+
+## 🚀 Next Steps
+
+### Recommended for Users
+
+1. **Update Package**: `pip install --upgrade moai-adk`
+2. **Configure AI Models**: Update `.moai/config/config.json` with new models
+3. **Review AI Guides**: Check `README-AI-MODELS.md` for model selection
+
+### For New Projects
+
+- Automatically includes latest AI model documentation
+- Ready for OpenAI Codex and Google Gemini CLI integration
+- Skills portfolio with 102 modules fully synchronized
+
+## 🔒 Notes
+
+**Backward Compatibility**: ✅ Fully compatible with v0.27.x
+**Breaking Changes**: None
+**Python Version**: 3.11+ (tested with 3.14)
+**Installation**: `pip install moai-adk==0.28.0` (TestPyPI: 0.28.0rc1)
+
+---
+
+# v0.27.2 - Skills Portfolio Optimization Complete (2025-11-22)
+
+## 🎯 Portfolio Optimization Achievement
+
+### SPEC-SKILL-PORTFOLIO-OPT-001 Completion
+
+**Project Status**: COMPLETED ✅
+
+**Major Milestones**:
+- **127 Skills Standardized**: 100% metadata compliance with YAML frontmatter
+- **10-Tier Categorization**: Organized portfolio from 32 domains into 10 logical tiers
+- **1,270 Auto-Trigger Keywords**: Intelligent skill selection from natural language requests
+- **5 New Essential Skills**: code-templates, api-versioning, testing-integration, performance-profiling, accessibility-wcag3
+- **7 Skill Merges**: Consolidated duplicate documentation, testing, and security skills
+- **94% Agent-Skill Coverage**: 33 of 35 agents with explicit skill references (exceeds 85% target)
+
+**Metrics**:
+- Skills standardized: 127/127 (100%)
+- Metadata compliance: 147/147 (100%)
+- Quality gates passed: 13/13 (100%)
+- Agent coverage: 33/35 (94%)
+- Auto-trigger accuracy: 94% (47/50 test cases)
+
+### New Documentation (14 Documents)
+
+**SPEC Completion Documents**:
+1. `.moai/specs/SPEC-SKILL-PORTFOLIO-OPT-001/spec.md` - Updated with completion status
+2. `.moai/specs/SPEC-SKILL-PORTFOLIO-OPT-001/acceptance-criteria-verification.md` - 28 ACs, 100% passing
+3. `.moai/specs/SPEC-SKILL-PORTFOLIO-OPT-001/implementation-summary.md` - Technical delivery details
+4. `.moai/specs/index.md` - SPEC registry index
+
+**Architecture Documents**:
+5. `.moai/project/structure.md` - Project organization and tier system overview
+6. `.moai/project/skills-tier-system.md` - Comprehensive 10-tier classification guide
+7. `.moai/project/tier-distribution-analysis.md` - Statistical analysis of tier distribution
+8. `.moai/project/tech.md` - Metadata standards and YAML frontmatter schema
+
+**Portfolio Analysis**:
+9. `docs/skills-portfolio-overview.md` - Executive summary of achievements
+10. `docs/agent-skill-coverage-matrix.md` - Agent-to-skill mapping and integration
+11. `docs/skills-statistics-and-metrics.md` - Quantitative portfolio metrics
+12. `docs/skills-compatibility-matrix.md` - Tier-agent compatibility analysis
+
+**Adoption & Deployment**:
+13. `.moai/project/skills-adoption-guide.md` - Practical skill discovery and usage guide
+14. `docs/status/sync-report.md` - Documentation synchronization report
+
+**README Enhancement**:
+- Added Skills Portfolio Optimization Achievement section with statistics and tier structure
+
+### Features Added
+
+**10-Tier Categorization System**:
+- Tier 1: Languages (13 skills) - Python, JS, TS, Go, Rust, Kotlin, Java, PHP, Ruby, Swift, Scala, C#, Dart
+- Tier 2: Domains (13 skills) - Backend, Frontend, Database, Cloud, CLI, Mobile, IoT, Figma, Notion, Toon, ML-ops, Monitoring, DevOps
+- Tier 3: Security (10 skills) - Auth, API, OWASP, Zero-trust, Encryption, Identity, SSRF, Threat, API-versioning, Accessibility
+- Tier 4: Core (9 skills) - Context-budget, Code-reviewer, Workflow, Issue-labels, Personas, Spec-authoring, Env-security, Clone-pattern, Code-templates
+- Tier 5: Foundation (5 skills) - EARS, Specs, Trust, Git, Langs
+- Tier 6: Claude Code (7 skills) - Hooks, Commands, Skill-factory, Configuration, Claude-md, Claude-settings, Memory
+- Tier 7: BaaS (10 skills) - Vercel, Neon, Clerk, Auth0, Supabase, Firebase, Railway, Cloudflare, Convex, Foundation
+- Tier 8: Essentials (6 skills) - Debug, Perf, Refactor, Review, Testing-integration, Performance-profiling
+- Tier 9: Project (4 skills) - Config-manager, Language-initializer, Batch-questions, Documentation
+- Tier 10: Library (1 skill) - shadcn-ui
+
+**Metadata Standards** (YAML Frontmatter):
+- Required fields: name, description, version, modularized, last_updated, allowed-tools, compliance_score
+- Optional fields: modules, dependencies, deprecated, successor, category_tier, auto_trigger_keywords, agent_coverage, context7_references
+- All 147 skills 100% compliant
+
+**Auto-Trigger System**:
+- 1,270 total keywords across 127 skills (avg 10/skill)
+- 94% accuracy in primary skill selection
+- 100% accuracy in alternative skill recommendations
+- Integrated with CLAUDE.md auto-trigger logic (Rule 8)
+
+**Quality Assurance**:
+- All 127 skills pass TRUST 5 quality gates
+- Zero breaking changes to existing agents
+- 100% backward compatibility maintained
+- 13/13 unit tests passing
+
+---
+
 # v0.27.0 - Major Release with Comprehensive Refactoring (2025-11-20)
 # v0.27.2 (2025-11-20)
 
 ## 🎯 English Section
+
+### New Features
+- **TOON Format Utilities** (Optional): Added token-optimized data encoding/decoding for LLM prompts
+  - `toon_encode()`, `toon_decode()` for string conversion
+  - `toon_save()`, `toon_load()` for file operations
+  - `validate_roundtrip()`, `compare_formats()` for validation
+  - ~35-40% token savings for large datasets
+  - See `.moai/docs/toon-integration-guide.md`
 
 ### Bug Fixes and Improvements
 - **Version Consistency Fix**: Resolved version mismatch between SessionStart hook and Statusline
@@ -10,6 +383,14 @@
 - **Configuration Synchronization**: Automated .moai/config/config.json version updates
 
 ## 🎯 한글 섹션
+
+### 새 기능
+- **TOON 형식 유틸리티** (선택적): LLM 프롬프트 최적화를 위한 토큰 효율화 인코딩/디코딩
+  - `toon_encode()`, `toon_decode()` - 문자열 변환
+  - `toon_save()`, `toon_load()` - 파일 I/O
+  - `validate_roundtrip()`, `compare_formats()` - 검증
+  - 대규모 데이터셋에 대해 ~35-40% 토큰 절감
+  - 자세한 내용: `.moai/docs/toon-integration-guide.md`
 
 ### 버그 수정 및 개선
 - **버전 일치성 문제 해결**: SessionStart hook과 Statusline의 버전 불일치 수정
@@ -1011,7 +1392,7 @@ uv install moai-adk==0.25.1
      - Preserved user-facing content in conversation language (Korean)
      - Updated all agent prompt structures and documentation
    - **Command Infrastructure Translation**: Translated 6 CLI commands to English
-     - `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`, `/alfred:9-feedback`, `/moai:release`
+     - `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:9-feedback`, `/moai:release`
      - Unified layer separation: Commands (English) → Agents → Skills
    - **Instruction Files Cleanup**: Removed all .backup files and standardized documentation
      - Cleaned up 45+ backup files from skill optimization processes
@@ -1146,9 +1527,9 @@ pip install moai-adk==0.25.0
 
 ### v0.23.1 (2025-11-12)
 
-**Major Refactoring: `/alfred:2-run` Agent-First Orchestration Pattern**
+**Major Refactoring: `/moai:2-run` Agent-First Orchestration Pattern**
 
-**⚠️ Breaking Change**: Complete refactoring of `/alfred:2-run` command to follow Claude Code official best practices.
+**⚠️ Breaking Change**: Complete refactoring of `/moai:2-run` command to follow Claude Code official best practices.
 
 **What Changed**:
 
@@ -1183,7 +1564,7 @@ pip install moai-adk==0.25.0
 - ✅ Compliance with Claude Code 2025 best practices
 
 **Breaking Changes**:
-- `/alfred:2-run` behavior unchanged from user perspective
+- `/moai:2-run` behavior unchanged from user perspective
 - Internal architecture completely refactored
 - requires new `run-orchestrator` agent
 - Migration guide: `.moai/docs/migration/2-run-command-refactor.md`
@@ -1241,7 +1622,7 @@ pip install moai-adk==0.25.0
 - **Files Modified**: 11 files across validation, automation, and feedback systems
 - **Lines of Code**: Added 1,200+ lines of validation and feedback logic
 - **Test Coverage**: Comprehensive testing of all new components
-- **Integration**: Seamless integration with existing `/alfred:9-feedback` command
+- **Integration**: Seamless integration with existing `/moai:9-feedback` command
 
 **User Experience**:
 - **Automated Compliance**: Documentation quality automatically validated on every PR
@@ -1734,7 +2115,7 @@ Quality Metrics:
 - 2025-10-01 | 264c124d | feat: Output Styles rebuild completed (4 styles)
 - 2025-10-02 | 907243d1 | docs: Auto Mode document synchronization completed (2025-10-02)
 - 2025-10-02 | 5283abeb | docs: Output Styles rebuild and document synchronization complete
-- 2025-10-02 | 1eda9708 | docs: Output Styles rebuild and /alfred:9-update improvements completed.
+- 2025-10-02 | 1eda9708 | docs: Output Styles rebuild and /moai:9-update improvements completed.
 - 2025-10-02 | 47f4d94d | docs: Completely improved README.md (Option C completed)
 - 2025-10-02 | 0a99d622 | docs: README table of contents updated
 - 2025-10-02 | 1265b65b | docs: CLI Reference usage example added
@@ -1961,7 +2342,7 @@ Quality Metrics:
 - 2025-10-19 | 7d90a527 | REFACTOR: Commands name change (2-build -> 2-run)
 - 2025-10-19 | 91b72f21 | DOCS: Skills system guide added to cc-manager
 - 2025-10-19 | 8bb7e7e8 | SYNC: Sync Alfred Skill Pack and Commands to package templates
-- 2025-10-19 | 829328e4 | FIX: Fix /alfred:0-project naming consistency.
+- 2025-10-19 | 829328e4 | FIX: Fix /moai:0-project naming consistency.
 - 2025-10-19 | e7330600 | REFACTOR: Commands name change (1-spec -> 1-plan)
 - 2025-10-19 | 7b8ecb07 | REFACTOR: Reorganized Skills folder structure (3-tier classification system)
 - 2025-10-19 | 535d0caa | FIX: Remove Alfred Skills name field prefix
@@ -2002,7 +2383,7 @@ Quality Metrics:
 - 2025-10-22 | 50613692 | FIX: Add Korean header support in merger.py
 - 2025-10-22 | e8995796 | docs: Add Interactive Question Tool guide to CLAUDE.md
 - 2025-10-22 | c3e0e0ef | docs: Refactor Interactive Question Tool to use moai-alfred-tui-survey Skill
-- 2025-10-22 | af9947d9 | docs: Fix /alfred:3-sync to load moai-alfred-tui-survey Skill before AskUserQuestion
+- 2025-10-22 | af9947d9 | docs: Fix /moai:3-sync to load moai-alfred-tui-survey Skill before AskUserQuestion
 - 2025-10-22 | 4ee4d43c | refactor: Remove duplicate Skill calls from 3-sync.md
 - 2025-10-22 | 58bbaa7c | refactor: Simplify Skill tables across all /alfred commands (0-3)
 - 2025-10-22 | f370ad82 | RELEASE: v0.4.4
@@ -2156,7 +2537,7 @@ Quality Metrics:
 - 2025-10-28 | 421c29db | docs(sync): Add final synchronization completion report
 - 2025-10-28 | 4c5a60e7 | test: Add comprehensive UPDATE command test report
 - 2025-10-28 | e47d6f9b | docs: Add detailed UPDATE process execution log
-- 2025-10-29 | 315167d1 | docs: Add clarification on moai-adk update vs /alfred:0-project update
+- 2025-10-29 | 315167d1 | docs: Add clarification on moai-adk update vs /moai:0-project update
 - 2025-10-29 | 4751dec9 | proposal: Propose enhanced moai-adk update workflow with config.json version check
 - 2025-10-29 | 87614dee | feat(update): Implement 3-stage workflow with config version comparison (v0.6.3)
 - 2025-10-29 | 4077923e | docs(changelog): Add v0.6.3 release notes with 3-stage workflow improvements
@@ -2196,8 +2577,8 @@ Quality Metrics:
 - 2025-10-29 | 57b030c5 | docs(template): Update git-manager.md with new Alfred Signature Rules
 - 2025-10-29 | 8812d699 | docs(claude): Clarify English-Only Core Files rule - CLAUDE.md exception
 - 2025-10-29 | b912cc03 | docs(claude): Remove Alfred Signature Rules - moved to agent templates
-- 2025-10-29 | ef0dd25c | docs(readme): Update /alfred:9-help documentation to interactive dialog format
-- 2025-10-29 | 73299749 | feat: Rename /alfred:9-help to /alfred:9-feedback for clarity
+- 2025-10-29 | ef0dd25c | docs(readme): Update /moai:9-help documentation to interactive dialog format
+- 2025-10-29 | 73299749 | feat: Rename /moai:9-help to /moai:9-feedback for clarity
 - 2025-10-29 | 2ff3a8a2 | RELEASE: v0.8.1
 - 2025-10-29 | a0b995ba | Merge pull request #102 from modu-ai/develop
 - 2025-10-29 | a988b61e | docs(UPDATE-REFACTOR-002): Sync documentation for double-update bug fix
@@ -2257,9 +2638,9 @@ Quality Metrics:
 - 2025-10-30 | f74cb063 | fix: TAG workflow hotfixes (#127)
 - 2025-10-30 | 0c6ea6e9 | Release v0.9.1 (Squash Merge) (#126)
 - 2025-10-30 | fd15d655 | chore: Add .moai/docs to .gitignore
-- 2025-10-30 | d382cb08 | docs: Add /alfred:9-feedback documentation to all README files
+- 2025-10-30 | d382cb08 | docs: Add /moai:9-feedback documentation to all README files
 - 2025-10-30 | 125ce64e | docs: Add Reporting Style guide to CLAUDE.md
-- 2025-10-30 | 92fe4679 | Merge feature/DOCS-README-MULTILINGUAL: Add /alfred:9-feedback documentation
+- 2025-10-30 | 92fe4679 | Merge feature/DOCS-README-MULTILINGUAL: Add /moai:9-feedback documentation
 - 2025-10-30 | a62affca | merge: Sync develop with main branch updates
 - 2025-10-30 | 9d24169a | chore: Add template pre-push hook with team mode enforcement
 - 2025-10-30 | 7ebb092e | Merge pull request #128 from modu-ai/develop
@@ -2269,7 +2650,7 @@ Quality Metrics:
 - 2025-10-30 | b31b040d | docs: Convert template CLAUDE.md Reporting Style section to English
 - 2025-10-30 | c22ab496 | docs: Convert local CLAUDE.md Reporting Style section to English
 - 2025-10-30 | e5a0952a | feat(hooks): Implement duplicate command execution detection
-- 2025-10-30 | 926dd033 | feat: Improve /alfred:9-feedback UX with 2-phase batched design
+- 2025-10-30 | 926dd033 | feat: Improve /moai:9-feedback UX with 2-phase batched design
 - 2025-10-30 | 409c9c22 | feat: Implement batched AskUserQuestion design across all Alfred commands
 - 2025-10-30 | 4e7b1d0c | feat: Implement Python 3.11+ support with enhanced stability (v0.10.2)
 - 2025-10-30 | 4698ad63 | chore: Remove deprecated Output Style feature (EOL 2025-11-05)
@@ -2315,8 +2696,8 @@ Quality Metrics:
 - 2025-10-31 | a4e4f6b1 | chore: Bump version to v0.11.1
 - 2025-10-31 | 4801797d | chore: Update uv.lock for v0.11.1
 - 2025-10-31 | 1b3907c7 | Release v0.11.1 | minor | 11 Language CI/CD Workflow Support (#145)
-- 2025-10-31 | 6293200a | feat: Add GitHub branch auto-delete setting detection to /alfred:0-project
-- 2025-10-31 | cb69ff09 | feat: Add GitHub branch auto-delete setting detection to /alfred:0-project (#147)
+- 2025-10-31 | 6293200a | feat: Add GitHub branch auto-delete setting detection to /moai:0-project
+- 2025-10-31 | cb69ff09 | feat: Add GitHub branch auto-delete setting detection to /moai:0-project (#147)
 - 2025-10-31 | 8ed2e5ba | RELEASE: v0.12.0
 - 2025-10-31 | a3262f89 | fix: Fix hook import syntax errors in local .claude/
 - 2025-10-31 | 8236aa97 | fix: Synchronize all local hook files with corrected template versions
@@ -2339,7 +2720,7 @@ Quality Metrics:
 - 2025-11-01 | f575f7a4 | fix: Change PyPI deployment trigger from release event to tag push (#160)
 - 2025-11-01 | ed6192cd | restore: Recover uiux-plugin source files from git history
 - 2025-11-02 | d676901c | feat: Add Claude Code v2.0.30+ 6 new features integrated SPEC (SPEC-CLAUDE-CODE-FEATURES-001)
-- 2025-11-02 | d69366c4 | feat(commands): Add AskUserQuestion completion pattern to /alfred:2-run command
+- 2025-11-02 | d69366c4 | feat(commands): Add AskUserQuestion completion pattern to /moai:2-run command
 - 2025-11-02 | 500e7335 | fix(template): Remove .github/ from package template - deployment files only
 - 2025-11-02 | c44c8eb3 | feat(spec): Simplify Claude Code Features to 3 implementable features with comprehensive documentation
 - 2025-11-02 | 653d44be | feat(workflow): Add PyPI deployment verification step
@@ -2359,7 +2740,7 @@ Quality Metrics:
 - 2025-11-02 | a52b156a | fix: Restore full user nickname in config.json
 - 2025-11-02 | f953c737 | feat: Implement multilingual Task prompts for sub-agents
 - 2025-11-02 | b9566e58 | refactor: Establish package template as source of truth for .claude infrastructure
-- 2025-11-02 | 003435d6 | docs: Add comprehensive guide for /alfred:0-project update workflow
+- 2025-11-02 | 003435d6 | docs: Add comprehensive guide for /moai:0-project update workflow
 - 2025-11-02 | d6f27f95 | docs: Update package template command description for alfred:0-project update support
 - 2025-11-02 | 71ef7b2e | feat: Add developer local settings to gitignore and establish infrastructure policy
 - 2025-11-02 | 5205bbde | refactor: Remove multilingual translations from command descriptions
@@ -2426,9 +2807,9 @@ Quality Metrics:
 - 2025-11-04 | 1f424fbc | docs: Clearly explain the difference between Step 2 and Step 3
 - 2025-11-04 | 2e4ab64e | docs: moai-adk update vs moai-adk init . Clarified with real code analysis
 - 2025-11-04 | 3a3241f8 | docs: Simplification of update process - unified around moai-adk update
-- 2025-11-04 | 5363f835 | docs: /alfred:9-feedback feature guide added
-- 2025-11-04 | d7a4067d | docs: Synchronize /alfred:9-feedback documentation across English and Korean versions
-- 2025-11-04 | a48d1283 | docs: Enhance AskUserQuestion integration in /alfred:0-project command
+- 2025-11-04 | 5363f835 | docs: /moai:9-feedback feature guide added
+- 2025-11-04 | d7a4067d | docs: Synchronize /moai:9-feedback documentation across English and Korean versions
+- 2025-11-04 | a48d1283 | docs: Enhance AskUserQuestion integration in /moai:0-project command
 - 2025-11-04 | f929fdf3 | docs: Standardize AskUserQuestion patterns across all command files
 - 2025-11-04 | 7297e738 | docs: Synchronize local command files with template updates
 - 2025-11-04 | d9171cdd | chore: Commit all pending changes from Priority 1 infrastructure work
@@ -2468,20 +2849,20 @@ Quality Metrics:
 - 2025-11-04 | 2ee9841e | Phase 4: Agent logic update completed
 - 2025-11-04 | 7b2e5d57 | feat: v0.17.0 fully implemented - 7 steps completed
 - 2025-11-04 | 8de9eb5c | Optimize CLAUDE.md template: reduce from 45.5k to 25.6k
-- 2025-11-04 | ca04d644 | feat: Phase 1 UX improvements - Implement /alfred:0-project immediate execution mode
-- 2025-11-04 | 1741bc0f | feat: /alfred:0-project 3-tier subcommand architecture implementation
-- 2025-11-04 | a06c587c | docs: README.ko.md update - /alfred:0-project 3-tier subcommand guide added
-- 2025-11-04 | c07a9276 | refactor: /alfred:0-project Declarative -> Imperative instruction conversion (Phase 1/2)
+- 2025-11-04 | ca04d644 | feat: Phase 1 UX improvements - Implement /moai:0-project immediate execution mode
+- 2025-11-04 | 1741bc0f | feat: /moai:0-project 3-tier subcommand architecture implementation
+- 2025-11-04 | a06c587c | docs: README.ko.md update - /moai:0-project 3-tier subcommand guide added
+- 2025-11-04 | c07a9276 | refactor: /moai:0-project Declarative -> Imperative instruction conversion (Phase 1/2)
 - 2025-11-04 | 2d10a2a3 | fix: Remove emojis from AskUserQuestion fields (JSON encoding fix)
 - 2025-11-04 | e5f16051 | docs: Always invoke moai-alfred-interactive-questions Skill for AskUserQuestion
 - 2025-11-04 | 8ab0ef56 | refactor: Move AskUserQuestion specs to moai-alfred-interactive-questions Skill
 - 2025-11-04 | ba614250 | refactor: Rename skill moai-alfred-interactive-questions -> moai-alfred-ask-user-questions
-- 2025-11-04 | 612c5f7a | refactor: /alfred:0-project STEP 0-SETTING Complete imperative instructions (Phase 2/2)
-- 2025-11-04 | e1e60f80 | refactor: /alfred:0-project STEP 0-UPDATE Imperative instruction completion (final)
-- 2025-11-04 | 24e16a8c | refactor: /alfred:1-plan Completely converts the command from declarative to imperative.
+- 2025-11-04 | 612c5f7a | refactor: /moai:0-project STEP 0-SETTING Complete imperative instructions (Phase 2/2)
+- 2025-11-04 | e1e60f80 | refactor: /moai:0-project STEP 0-UPDATE Imperative instruction completion (final)
+- 2025-11-04 | 24e16a8c | refactor: /moai:1-plan Completely converts the command from declarative to imperative.
 - 2025-11-04 | 8d282efb | docs: Add ban on AskUserQuestion emojis and add placement strategy guidelines
-- 2025-11-04 | a22551a3 | refactor: /alfred:2-run Imperative instruction completion (TDD 3-PHASE workflow)
-- 2025-11-04 | 54f236a2 | refactor: /alfred:3-sync Imperative instruction completion (declarative -> imperative conversion)
+- 2025-11-04 | a22551a3 | refactor: /moai:2-run Imperative instruction completion (TDD 3-PHASE workflow)
+- 2025-11-04 | 54f236a2 | refactor: /moai:3-sync Imperative instruction completion (declarative -> imperative conversion)
 - 2025-11-04 | eb175073 | fix: Cross-platform Hook path automatic setting (Windows/macOS/Linux compatibility)
 - 2025-11-04 | fac006b1 | refactor: convert 3-sync.md to 100% imperative style
 - 2025-11-04 | 591e98a6 | RELEASE: v0.17.0

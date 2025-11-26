@@ -5,36 +5,10 @@ Detect risky tasks and create automatic checkpoints
 """
 
 import json
-import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-# Script execution pattern for each language supported by MoAI-ADK
-# Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin + Shell
-SCRIPT_EXECUTION_PATTERN = re.compile(
-    r"\b("
-    # Python ecosystem
-    r"python3?|pytest|pip|uv|"
-    # JavaScript/TypeScript ecosystem
-    r"node|npm|npx|yarn|bun|tsx|ts-node|vitest|jest|"
-    # Java ecosystem
-    r"java|javac|mvn|gradle|"
-    # Go
-    r"go|"
-    # Rust
-    r"cargo|"
-    # Dart/Flutter
-    r"dart|flutter|"
-    # Swift
-    r"swift|xcodebuild|"
-    # Kotlin
-    r"kotlinc?|"
-    # Shell scripts and build tools
-    r"bash|sh|zsh|fish|make"
-    r")\b"
-)
 
 
 def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) -> tuple[bool, str]:
@@ -161,7 +135,11 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
 
         return branch_name
 
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         # Fallback (ignore) in case of Git error
         return "checkpoint-failed"
 
@@ -213,7 +191,7 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
     """Checkpoint list (parsing .moai/checkpoints.log)
 
     Returns a list of recently created checkpoints.
-    Used in the SessionStart, /alfred:0-project restore command.
+    Used in the SessionStart, /moai:0-project restore command.
 
     Args:
         cwd: Project root directory path

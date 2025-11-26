@@ -15,11 +15,12 @@ import platform
 import signal
 import threading
 from contextlib import contextmanager
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 
 class TimeoutError(Exception):
     """Timeout exception raised when deadline exceeded"""
+
     pass
 
 
@@ -56,7 +57,7 @@ class CrossPlatformTimeout:
         self.callback = callback
         self.timer: Optional[threading.Timer] = None
         self._is_windows = platform.system() == "Windows"
-        self._old_handler = None
+        self._old_handler: Optional[Union[Callable, int]] = None
 
     def start(self) -> None:
         """Start timeout countdown."""
@@ -85,12 +86,11 @@ class CrossPlatformTimeout:
 
     def _start_windows_timeout(self) -> None:
         """Windows: Use threading.Timer to raise exception."""
+
         def timeout_handler():
             if self.callback:
                 self.callback()
-            raise TimeoutError(
-                f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)"
-            )
+            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)")
 
         self.timer = threading.Timer(self.timeout_seconds, timeout_handler)
         self.timer.daemon = True
@@ -104,6 +104,7 @@ class CrossPlatformTimeout:
 
     def _start_unix_timeout(self) -> None:
         """Unix/POSIX: Use signal.SIGALRM for timeout."""
+
         def signal_handler(signum, frame):
             if self.callback:
                 try:
@@ -111,9 +112,7 @@ class CrossPlatformTimeout:
                 except Exception:
                     # Ignore callback exceptions, timeout error takes precedence
                     pass
-            raise TimeoutError(
-                f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)"
-            )
+            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)")
 
         # Save old handler to restore later
         self._old_handler = signal.signal(signal.SIGALRM, signal_handler)

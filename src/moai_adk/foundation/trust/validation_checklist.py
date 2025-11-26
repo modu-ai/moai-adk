@@ -628,9 +628,7 @@ class TRUSTValidationChecklist:
 
         return checklists
 
-    def execute_checklist(
-        self, project_path: str, checklist_type: ChecklistType
-    ) -> ChecklistReport:
+    def execute_checklist(self, project_path: str, checklist_type: ChecklistType) -> ChecklistReport:
         """Execute a specific checklist"""
         import time
 
@@ -671,9 +669,7 @@ class TRUSTValidationChecklist:
 
         return report
 
-    def _execute_checklist_item(
-        self, project_path: str, item: ChecklistItem
-    ) -> ChecklistResult:
+    def _execute_checklist_item(self, project_path: str, item: ChecklistItem) -> ChecklistResult:
         """Execute a single checklist item"""
         import time
 
@@ -681,9 +677,7 @@ class TRUSTValidationChecklist:
 
         try:
             # Parse validation rule and execute appropriate check
-            passed, details = self._evaluate_validation_rule(
-                project_path, item.validation_rule
-            )
+            passed, details = self._evaluate_validation_rule(project_path, item.validation_rule)
 
             result = ChecklistResult(
                 item=item,
@@ -711,9 +705,7 @@ class TRUSTValidationChecklist:
 
         return result
 
-    def _evaluate_validation_rule(
-        self, project_path: str, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _evaluate_validation_rule(self, project_path: str, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Evaluate a validation rule"""
         project_dir = Path(project_path)
 
@@ -828,9 +820,7 @@ class TRUSTValidationChecklist:
         else:
             return False, {"error": f"Unknown validation rule: {rule}"}
 
-    def _check_test_coverage(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_test_coverage(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check test coverage ratio"""
         try:
             # Extract target ratio from rule
@@ -842,8 +832,7 @@ class TRUSTValidationChecklist:
             source_files = [
                 f
                 for f in python_files
-                if not f.name.startswith("test_")
-                and not any(parent.name == "tests" for parent in f.parents)
+                if not f.name.startswith("test_") and not any(parent.name == "tests" for parent in f.parents)
             ]
 
             coverage_ratio = len(test_files) / max(len(source_files), 1)
@@ -877,9 +866,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_integration_tests(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_integration_tests(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check for integration tests"""
         try:
             python_files = list(project_dir.rglob("*.py"))
@@ -901,9 +888,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_test_docstrings(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_test_docstrings(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check test docstring coverage"""
         try:
             target_ratio = float(rule.split(">=")[-1].strip())
@@ -939,9 +924,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_assertion_quality(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_assertion_quality(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check assertion quality"""
         try:
             python_files = list(project_dir.rglob("test_*.py"))
@@ -987,9 +970,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_test_data_isolation(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_test_data_isolation(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check test data isolation"""
         try:
             python_files = list(project_dir.rglob("test_*.py"))
@@ -1002,12 +983,8 @@ class TRUSTValidationChecklist:
                     content = file_path.read_text(encoding="utf-8")
 
                     # Look for isolation patterns
-                    isolation_patterns += len(
-                        re.findall(r"@pytest\.fixture|setUp|tearDown", content)
-                    )
-                    fixtures_count += len(
-                        re.findall(r"def\s+test_\w+.*\(.*\):", content)
-                    )
+                    isolation_patterns += len(re.findall(r"@pytest\.fixture|setUp|tearDown", content))
+                    fixtures_count += len(re.findall(r"def\s+test_\w+.*\(.*\):", content))
 
                 except Exception:
                     continue
@@ -1049,9 +1026,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_performance_tests(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_performance_tests(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check for performance tests"""
         try:
             python_files = list(project_dir.rglob("*.py"))
@@ -1111,7 +1086,7 @@ class TRUSTValidationChecklist:
     def _check_ci_automation(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check CI automated testing"""
         try:
-            ci_files = []
+            ci_files: List[Path] = []
             ci_patterns = [
                 ".github/workflows/",
                 ".gitlab-ci.yml",
@@ -1127,7 +1102,7 @@ class TRUSTValidationChecklist:
                         ci_files.extend(list((project_dir / pattern).rglob("*.yaml")))
                 else:
                     if (project_dir / pattern).exists():
-                        ci_files.append(pattern)
+                        ci_files.append(Path(pattern))
 
             return len(ci_files) > 0, {"result": len(ci_files), "ci_files": ci_files}
         except Exception as e:
@@ -1136,9 +1111,7 @@ class TRUSTValidationChecklist:
     # Add other validation methods as needed...
     # For brevity, implementing a few key ones
 
-    def _check_function_length(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_function_length(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check maximum function length"""
         try:
             max_length = int(rule.split("<=")[-1].strip())
@@ -1159,9 +1132,7 @@ class TRUSTValidationChecklist:
                     for line_num, line in enumerate(lines, 1):
                         stripped = line.strip()
 
-                        if stripped.startswith("def ") or stripped.startswith(
-                            "async def "
-                        ):
+                        if stripped.startswith("def ") or stripped.startswith("async def "):
                             if in_function:
                                 total_functions += 1
                                 if function_lines > max_length:
@@ -1172,10 +1143,7 @@ class TRUSTValidationChecklist:
                             function_indent = len(line) - len(line.lstrip())
 
                         elif in_function:
-                            if (
-                                stripped
-                                and len(line) - len(line.lstrip()) <= function_indent
-                            ):
+                            if stripped and len(line) - len(line.lstrip()) <= function_indent:
                                 total_functions += 1
                                 if function_lines > max_length:
                                     long_functions += 1
@@ -1204,9 +1172,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_class_length(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_class_length(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check maximum class length"""
         try:
             max_length = int(rule.split("<=")[-1].strip())
@@ -1260,9 +1226,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_naming_conventions(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_naming_conventions(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check naming conventions consistency"""
         try:
             python_files = list(project_dir.rglob("*.py"))
@@ -1279,14 +1243,10 @@ class TRUSTValidationChecklist:
                     violations += snake_case_violations
 
                     # Check for UPPER_CASE constants
-                    constant_violations = len(
-                        re.findall(r"[a-z_][a-z0-9_]*\s*=\s*[A-Z_][A-Z0-9_]*", content)
-                    )
+                    constant_violations = len(re.findall(r"[a-z_][a-z0-9_]*\s*=\s*[A-Z_][A-Z0-9_]*", content))
                     violations += constant_violations
 
-                    total_checks += len(re.findall(r"def\s+\w+", content)) + len(
-                        re.findall(r"\w+\s*=", content)
-                    )
+                    total_checks += len(re.findall(r"def\s+\w+", content)) + len(re.findall(r"\w+\s*=", content))
 
                 except Exception:
                     continue
@@ -1300,9 +1260,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_docstring_coverage(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_docstring_coverage(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check docstring coverage"""
         try:
             target_ratio = float(rule.split(">=")[-1].strip())
@@ -1319,9 +1277,7 @@ class TRUSTValidationChecklist:
                     tree = ast.parse(content)
 
                     for node in ast.walk(tree):
-                        if isinstance(
-                            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-                        ):
+                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                             total_items += 1
                             if ast.get_docstring(node):
                                 docstringed_items += 1
@@ -1338,9 +1294,7 @@ class TRUSTValidationChecklist:
         except Exception as e:
             return False, {"error": str(e)}
 
-    def _check_type_hint_coverage(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_type_hint_coverage(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check type hint coverage"""
         try:
             target_ratio = float(rule.split(">=")[-1].strip())
@@ -1360,8 +1314,7 @@ class TRUSTValidationChecklist:
                         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                             total_functions += 1
                             if node.returns or any(
-                                isinstance(arg, ast.arg) and arg.annotation
-                                for arg in node.args.args
+                                isinstance(arg, ast.arg) and arg.annotation for arg in node.args.args
                             ):
                                 hinted_functions += 1
                 except Exception:
@@ -1386,28 +1339,20 @@ class TRUSTValidationChecklist:
         """Check code structure"""
         return True, {"result": "Code structure is logical"}
 
-    def _check_cyclomatic_complexity(
-        self, project_dir: Path, rule: str
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_cyclomatic_complexity(self, project_dir: Path, rule: str) -> Tuple[bool, Dict[str, Any]]:
         """Check cyclomatic complexity"""
         max_complexity = int(rule.split("<=")[-1].strip())
         return True, {"result": f"Complexity within {max_complexity}"}
 
-    def _check_import_compliance(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_import_compliance(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check import PEP 8 compliance"""
         return True, {"result": "Imports follow PEP 8"}
 
-    def _check_error_message_quality(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_error_message_quality(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check error message quality"""
         return True, {"result": "Error messages are clear"}
 
-    def _check_architectural_consistency(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_architectural_consistency(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check architectural consistency"""
         return True, {"result": "Architecture is consistent"}
 
@@ -1415,21 +1360,15 @@ class TRUSTValidationChecklist:
         """Check design patterns"""
         return True, {"result": "Design patterns are appropriate"}
 
-    def _check_error_handling_consistency(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_error_handling_consistency(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check error handling consistency"""
         return True, {"result": "Error handling is consistent"}
 
-    def _check_logging_consistency(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_logging_consistency(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check logging consistency"""
         return True, {"result": "Logging is consistent"}
 
-    def _check_configuration_consistency(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_configuration_consistency(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check configuration consistency"""
         return True, {"result": "Configuration is consistent"}
 
@@ -1437,9 +1376,7 @@ class TRUSTValidationChecklist:
         """Check API standards"""
         return True, {"result": "API standards are consistent"}
 
-    def _check_database_patterns(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_database_patterns(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check database patterns"""
         return True, {"result": "Database patterns are consistent"}
 
@@ -1447,9 +1384,7 @@ class TRUSTValidationChecklist:
         """Check state management"""
         return True, {"result": "State management is consistent"}
 
-    def _check_file_organization(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_file_organization(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check file organization"""
         return True, {"result": "File organization is consistent"}
 
@@ -1461,9 +1396,7 @@ class TRUSTValidationChecklist:
         """Check input validation"""
         return True, {"result": "Input validation is present"}
 
-    def _check_sql_injection_prevention(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_sql_injection_prevention(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check SQL injection prevention"""
         return True, {"result": "SQL injection is prevented"}
 
@@ -1475,15 +1408,11 @@ class TRUSTValidationChecklist:
         """Check authentication"""
         return True, {"result": "Authentication is present"}
 
-    def _check_secret_management(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_secret_management(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check secret management"""
         return True, {"result": "Secrets are properly managed"}
 
-    def _check_https_enforcement(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_https_enforcement(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check HTTPS enforcement"""
         return True, {"result": "HTTPS is enforced"}
 
@@ -1491,9 +1420,7 @@ class TRUSTValidationChecklist:
         """Check security headers"""
         return True, {"result": "Security headers are present"}
 
-    def _check_dependency_security(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_dependency_security(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check dependency security"""
         return True, {"result": "Dependencies are secure"}
 
@@ -1501,9 +1428,7 @@ class TRUSTValidationChecklist:
         """Check logging security"""
         return True, {"result": "Logging is secure"}
 
-    def _check_error_message_security(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_error_message_security(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check error message security"""
         return True, {"result": "Error messages are secure"}
 
@@ -1527,9 +1452,7 @@ class TRUSTValidationChecklist:
             "documentation_files": len(doc_files),
         }
 
-    def _check_semantic_versioning(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_semantic_versioning(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check semantic versioning"""
         return True, {"result": "Semantic versioning is used"}
 
@@ -1543,23 +1466,17 @@ class TRUSTValidationChecklist:
         """Check code annotations"""
         return True, {"result": "Code annotations are present"}
 
-    def _check_api_documentation(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_api_documentation(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check API documentation"""
         return True, {"result": "API documentation is present"}
 
-    def _check_dependency_tracking(
-        self, project_dir: Path
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def _check_dependency_tracking(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check dependency tracking"""
         req_files = ["requirements.txt", "pyproject.toml", "setup.py"]
         exists = any((project_dir / f).exists() for f in req_files)
         return exists, {"result": exists, "dependency_files": req_files}
 
-    def _generate_recommendations(
-        self, checklist_type: ChecklistType, results: List[ChecklistResult]
-    ) -> List[str]:
+    def _generate_recommendations(self, checklist_type: ChecklistType, results: List[ChecklistResult]) -> List[str]:
         """Generate recommendations based on checklist results"""
         recommendations = []
 
@@ -1568,9 +1485,7 @@ class TRUSTValidationChecklist:
         if len(failed_results) == 0:
             recommendations.append("✅ Excellent! All checklists passed")
         else:
-            recommendations.append(
-                f"🔍 Review {len(failed_results)} failed checklist items"
-            )
+            recommendations.append(f"🔍 Review {len(failed_results)} failed checklist items")
 
             # Generate specific recommendations based on failed items
             for result in failed_results[:5]:  # Top 5 failed items
@@ -1585,40 +1500,30 @@ class TRUSTValidationChecklist:
 
         return recommendations
 
-    def execute_all_checklists(
-        self, project_path: str
-    ) -> Dict[ChecklistType, ChecklistReport]:
+    def execute_all_checklists(self, project_path: str) -> Dict[ChecklistType, ChecklistReport]:
         """Execute all TRUST checklists"""
         reports = {}
 
         for checklist_type in ChecklistType:
-            reports[checklist_type] = self.execute_checklist(
-                project_path, checklist_type
-            )
+            reports[checklist_type] = self.execute_checklist(project_path, checklist_type)
 
         return reports
 
-    def generate_summary_report(
-        self, reports: Dict[ChecklistType, ChecklistReport]
-    ) -> str:
+    def generate_summary_report(self, reports: Dict[ChecklistType, ChecklistReport]) -> str:
         """Generate summary report for all checklists"""
         summary = []
         summary.append("# TRUST 5 Principles Checklist Summary")
         summary.append("")
 
-        total_score = 0
-        total_max_score = 0
+        total_score: float = 0.0
+        total_max_score: float = 0.0
         total_passed = 0
         total_items = 0
 
         for checklist_type, report in reports.items():
             summary.append(f"## {checklist_type.value.replace('_', ' ').title()}")
-            summary.append(
-                f"**Score**: {report.total_score}/{report.max_score} ({report.percentage_score}%)"
-            )
-            summary.append(
-                f"**Status**: {report.passed_items}/{report.total_items} passed"
-            )
+            summary.append(f"**Score**: {report.total_score}/{report.max_score} ({report.percentage_score}%)")
+            summary.append(f"**Status**: {report.passed_items}/{report.total_items} passed")
             summary.append(f"**Time**: {report.execution_time:.2f}s")
             summary.append("")
 
@@ -1634,30 +1539,20 @@ class TRUSTValidationChecklist:
             total_items += report.total_items
 
         # Overall summary
-        overall_percentage = (
-            (total_score / total_max_score) * 100 if total_max_score > 0 else 0
-        )
+        overall_percentage = (total_score / total_max_score) * 100 if total_max_score > 0 else 0
         summary.append("## Overall Summary")
-        summary.append(
-            f"**Total Score**: {total_score}/{total_max_score} ({overall_percentage:.1f}%)"
-        )
+        summary.append(f"**Total Score**: {total_score}/{total_max_score} ({overall_percentage:.1f}%)")
         summary.append(f"**Total Passed**: {total_passed}/{total_items}")
         summary.append("")
 
         if overall_percentage >= 90:
-            summary.append(
-                "🟢 **EXCELLENT**: Project meets TRUST principles at an excellent level"
-            )
+            summary.append("🟢 **EXCELLENT**: Project meets TRUST principles at an excellent level")
         elif overall_percentage >= 80:
             summary.append("🟡 **GOOD**: Project mostly follows TRUST principles")
         elif overall_percentage >= 70:
-            summary.append(
-                "🟠 **NEEDS IMPROVEMENT**: Project has gaps in TRUST principles"
-            )
+            summary.append("🟠 **NEEDS IMPROVEMENT**: Project has gaps in TRUST principles")
         else:
-            summary.append(
-                "🔴 **CRITICAL**: Project requires immediate attention to TRUST principles"
-            )
+            summary.append("🔴 **CRITICAL**: Project requires immediate attention to TRUST principles")
 
         return "\n".join(summary)
 

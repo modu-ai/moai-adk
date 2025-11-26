@@ -1,0 +1,481 @@
+# GitHub Actions Quality Gate Workflow
+# Enterprise code quality validation with moai-core-quality
+# Copy to .github/workflows/quality-gate.yml
+
+name: Quality Gate
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily quality check at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      quality_threshold:
+        description: 'Quality threshold (0.0-1.0)'
+        required: false
+        default: '0.85'
+        type: string
+      fail_on_threshold:
+        description: 'Fail workflow on quality gate violation'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+  QUALITY_THRESHOLD: ${{ github.event.inputs.quality_threshold || '0.85' }}
+
+jobs:
+  quality-analysis:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+
+    outputs:
+      quality-score: ${{ steps.analysis.outputs.quality-score }}
+      quality-passed: ${{ steps.analysis.outputs.quality-passed }}
+      test-coverage: ${{ steps.analysis.outputs.test-coverage }}
+      security-score: ${{ steps.analysis.outputs.security-score }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better analysis
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Cache quality analysis results
+      uses: actions/cache@v3
+      with:
+        path: |
+          .moai/cache/
+          .moai/reports/
+        key: quality-${{ runner.os }}-${{ hashFiles('**/src/**') }}
+        restore-keys: |
+          quality-${{ runner.os }}-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          curl \
+          git \
+          jq
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install moai-core-quality
+
+    - name: Install Node.js dependencies (if present)
+      run: |
+        if [ -f "package.json" ]; then
+          npm ci
+        fi
+
+    - name: Detect project languages
+      id: languages
+      run: |
+        languages=()
+
+        # Detect Python
+        if find src/ -name "*.py" -type f | head -1 | grep -q . 2>/dev/null; then
+          languages+=("python")
+        fi
+
+        # Detect JavaScript/TypeScript
+        if find src/ -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" | head -1 | grep -q . 2>/dev/null; then
+          languages+=("javascript")
+        fi
+
+        # Detect Go
+        if find src/ -name "*.go" | head -1 | grep -q . 2>/dev/null; then
+          languages+=("go")
+        fi
+
+        # Detect Java
+        if find src/ -name "*.java" | head -1 | grep -q . 2>/dev/null; then
+          languages+=("java")
+        fi
+
+        # Set output for later steps
+        echo "languages=$(IFS=,; echo "${languages[*]}")" >> $GITHUB_OUTPUT
+        echo "detected_languages=${languages[*]}" >> $GITHUB_OUTPUT
+
+        echo "Detected languages: ${languages[*]}"
+
+    - name: Create quality configuration
+      run: |
+        mkdir -p .moai/config
+
+        # Create quality config from template
+        cat > .moai/config/quality-config.yaml << EOF
+        quality_analysis:
+          enabled: true
+          trust5_framework: true
+          proactive_analysis: true
+          best_practices_enforcement: true
+          context7_integration: true
+          quality_threshold: ${{ env.QUALITY_THRESHOLD }}
+          test_coverage_threshold: 0.80
+          security_threshold: 0.90
+          languages: [${{ steps.languages.outputs.languages }}]
+
+        trust5_framework:
+          enabled: true
+          thresholds:
+            overall: ${{ env.QUALITY_THRESHOLD }}
+            testable: 0.85
+            readable: 0.80
+            unified: 0.85
+            secured: 0.90
+            trackable: 0.80
+
+        reporting:
+          enabled: true
+          formats: ["json", "sarif"]
+          output_directory: ".moai/reports/quality"
+
+        context7:
+          enabled: true
+          cache_ttl: 3600
+          max_tokens: 3000
+
+        integrations:
+          cicd:
+            enabled: true
+            quality_gate_enforcement: true
+            fail_on_threshold: ${{ github.event.inputs.fail_on_threshold || true }}
+        EOF
+
+    - name: Run Quality Analysis
+      id: analysis
+      run: |
+        # Create output directory
+        mkdir -p .moai/reports/quality
+
+        # Set CI mode for clean output
+        export CI=true
+
+        # Run quality gate script
+        bash .claude/skills/moai-core-quality/scripts/quality-gate.sh \
+          --ci \
+          --threshold ${{ env.QUALITY_THRESHOLD }} \
+          --output-dir .moai/reports/quality \
+          --config .moai/config/quality-config.yaml \
+          src/ 2>&1 | tee quality-analysis.log
+
+        # Extract results from JSON output
+        if [ -f .moai/reports/quality/quality-results.json ]; then
+          QUALITY_SCORE=$(jq -r '.overall_score // 0' .moai/reports/quality/quality-results.json)
+          QUALITY_PASSED=$(jq -r '.passed // false' .moai/reports/quality/quality-results.json)
+          TEST_COVERAGE=$(jq -r '.metrics.test_coverage // 0' .moai/reports/quality/quality-results.json)
+          SECURITY_SCORE=$(jq -r '.metrics.security_score // 0' .moai/reports/quality/quality-results.json)
+
+          echo "quality-score=$QUALITY_SCORE" >> $GITHUB_OUTPUT
+          echo "quality-passed=$QUALITY_PASSED" >> $GITHUB_OUTPUT
+          echo "test-coverage=$TEST_COVERAGE" >> $GITHUB_OUTPUT
+          echo "security-score=$SECURITY_SCORE" >> $GITHUB_OUTPUT
+
+          echo "Quality Score: $QUALITY_SCORE"
+          echo "Quality Gate: $QUALITY_PASSED"
+          echo "Test Coverage: $(awk "BEGIN {printf \"%.1f%%\", $TEST_COVERAGE * 100}")"
+          echo "Security Score: $SECURITY_SCORE"
+        else
+          echo "No quality results found"
+          echo "quality-score=0" >> $GITHUB_OUTPUT
+          echo "quality-passed=false" >> $GITHUB_OUTPUT
+          echo "test-coverage=0" >> $GITHUB_OUTPUT
+          echo "security-score=0" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Generate Quality Badge
+      if: always()
+      run: |
+        SCORE=${{ steps.analysis.outputs.quality-score }}
+        PASSED=${{ steps.analysis.outputs.quality-passed }}
+
+        # Determine badge color
+        if [ "$PASSED" = "true" ]; then
+          COLOR="brightgreen"
+          STATUS="passing"
+        else
+          COLOR="red"
+          STATUS="failing"
+        fi
+
+        # Create badge URL
+        BADGE_URL="https://img.shields.io/badge/quality-$SCORE-$COLOR"
+
+        # Save badge URL for README
+        echo "quality_badge_url=$BADGE_URL" >> $GITHUB_ENV
+
+        # Generate badge content
+        cat > quality-badge.svg << EOF
+        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="20">
+          <rect width="100" height="20" rx="3" fill="$COLOR"/>
+          <text x="50" y="14" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="11">
+            Quality: $SCORE
+          </text>
+        </svg>
+        EOF
+
+    - name: Upload Quality Results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-reports-${{ github.run_number }}
+        path: |
+          .moai/reports/quality/
+          quality-analysis.log
+        retention-days: 30
+
+    - name: Generate SARIF Report
+      if: always()
+      run: |
+        # Generate SARIF for GitHub Advanced Security
+        if [ -f .moai/reports/quality/quality-results.json ]; then
+          python3 << 'EOF'
+import json
+import sys
+from datetime import datetime
+
+# Load quality results
+with open('.moai/reports/quality/quality-results.json', 'r') as f:
+    quality_data = json.load(f)
+
+# Create SARIF structure
+sarif = {
+    "$schema": "https://json.schemastore.org/sarif-2.1.0",
+    "version": "2.1.0",
+    "runs": [{
+        "tool": {
+            "driver": {
+                "name": "moai-core-quality",
+                "version": "1.0.0",
+                "informationUri": "https://github.com/moai-adk/moai-core-quality"
+            }
+        },
+        "results": []
+    }]
+}
+
+# Add quality gate failure as result if failed
+if not quality_data.get('passed', True):
+    sarif["runs"][0]["results"].append({
+        "ruleId": "quality-gate-failure",
+        "level": "error",
+        "message": {
+            "text": f"Quality gate failed with score {quality_data.get('overall_score', 0):.2f} (threshold: 0.85)"
+        },
+        "locations": [{
+            "physicalLocation": {
+                "artifactLocation": {
+                    "uri": "src/"
+                }
+            }
+        }]
+    })
+
+# Write SARIF file
+with open('.moai/reports/quality/quality-results.sarif', 'w') as f:
+    json.dump(sarif, f, indent=2)
+
+print("SARIF report generated")
+EOF
+        fi
+
+    - name: Upload SARIF to GitHub Security
+      if: always()
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: .moai/reports/quality/quality-results.sarif
+
+  quality-summary:
+    name: Quality Summary
+    runs-on: ubuntu-latest
+    needs: quality-analysis
+    if: always()
+
+    steps:
+    - name: Download Quality Results
+      uses: actions/download-artifact@v3
+      with:
+        name: quality-reports-${{ github.run_number }}
+        path: ./quality-results/
+
+    - name: Create PR Comment
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = './quality-results/.moai/reports/quality/quality-results.json';
+
+          let comment = '## 🔍 Code Quality Analysis\n\n';
+
+          if (fs.existsSync(path)) {
+            const qualityData = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const score = qualityData.overall_score || 0;
+            const passed = qualityData.passed || false;
+            const coverage = qualityData.metrics?.test_coverage || 0;
+            const security = qualityData.metrics?.security_score || 0;
+            const criticalIssues = qualityData.critical_issues || 0;
+
+            comment += '| Metric | Score | Status |\n';
+            comment += '|--------|-------|--------|\n';
+            comment += `| **Overall Quality** | ${score.toFixed(2)} | ${passed ? '✅ PASSED' : '❌ FAILED'} |\n`;
+            comment += `| **Test Coverage** | ${(coverage * 100).toFixed(1)}% | ${coverage >= 0.80 ? '✅' : '❌'} |\n`;
+            comment += `| **Security Score** | security.toFixed(2) | ${security >= 0.90 ? '✅' : '❌'} |\n`;
+            comment += `| **Critical Issues** | ${criticalIssues} | ${criticalIssues === 0 ? '✅' : '❌'} |\n\n`;
+
+            if (!passed) {
+              comment += '### ❌ Quality Gate Failed\n\n';
+              comment += 'The quality gate has failed. Please address the issues before merging.\n\n';
+            }
+
+            if (criticalIssues > 0) {
+              comment += `### 🚨 Critical Issues (${criticalIssues})\n\n`;
+              comment += 'Critical security or quality issues need immediate attention.\n\n';
+            }
+
+            comment += '### 📊 Detailed Reports\n\n';
+            comment += 'The detailed quality report has been generated and is available in the workflow artifacts.\n\n';
+            comment += '---\n';
+            comment += '*Generated by moai-core-quality*';
+          } else {
+            comment += '⚠️ Quality analysis results not found. Please check the workflow logs.\n';
+          }
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+    - name: Update Check Status
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const passed = '${{ needs.quality-analysis.outputs.quality-passed }}' === 'true';
+
+          await github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: passed ? 'success' : 'failure',
+            target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            description: `Quality Score: ${{ needs.quality-analysis.outputs.quality-score }}`,
+            context: 'quality-gate'
+          });
+
+  notification:
+    name: Quality Notifications
+    runs-on: ubuntu-latest
+    needs: quality-analysis
+    if: failure() && (github.event_name == 'push' || github.event_name == 'schedule')
+
+    steps:
+    - name: Notify Slack on Failure
+      if: env.SLACK_WEBHOOK_URL != ''
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"🚨 Quality Gate Failed for ${{ github.repository }}\\n\\nBranch: ${{ github.ref_name }}\\nCommit: ${{ github.sha }}\\nQuality Score: ${{ needs.quality-analysis.outputs.quality-score }}\\n\\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.runId }}|View Details>\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Send Email Notification
+      if: env.SMTP_HOST != ''
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.SMTP_HOST }}
+        server_port: ${{ secrets.SMTP_PORT }}
+        username: ${{ secrets.SMTP_USERNAME }}
+        password: ${{ secrets.SMTP_PASSWORD }}
+        subject: "Quality Gate Failed - ${{ github.repository }}"
+        body: |
+          The quality gate has failed for the repository ${{ github.repository }}.
+
+          Details:
+          - Branch: ${{ github.ref_name }}
+          - Commit: ${{ github.sha }}
+          - Quality Score: ${{ needs.quality-analysis.outputs.quality-score }}
+          - Test Coverage: ${{ needs.quality-analysis.outputs.test-coverage }}
+          - Security Score: ${{ needs.quality-analysis.outputs.security-score }}
+
+          View the detailed report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.runId }}
+        to: ${{ secrets.NOTIFICATION_EMAIL }}
+        from: ${{ secrets.SMTP_FROM }}
+
+  schedule-report:
+    name: Scheduled Quality Report
+    runs-on: ubuntu-latest
+    needs: quality-analysis
+    if: github.event_name == 'schedule'
+
+    steps:
+    - name: Generate Daily Report
+      run: |
+        python3 << 'EOF'
+import json
+import os
+from datetime import datetime, timedelta
+
+# Load quality results
+try:
+    with open('.moai/reports/quality/quality-results.json', 'r') as f:
+        quality_data = json.load(f)
+except:
+    quality_data = {}
+
+# Generate report
+report = f"""
+# Daily Quality Report - {os.getenv('GITHUB_REPOSITORY')}
+
+**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
+**Quality Score:** {quality_data.get('overall_score', 0):.2f}
+**Status:** {'✅ PASSED' if quality_data.get('passed', False) else '❌ FAILED'}
+
+## Metrics
+- **Test Coverage:** {quality_data.get('metrics', {}).get('test_coverage', 0):.1%}
+- **Security Score:** {quality_data.get('metrics', {}).get('security_score', 0):.2f}
+- **Technical Debt:** {quality_data.get('metrics', {}).get('technical_debt', 0):.1f} hours
+- **Critical Issues:** {quality_data.get('critical_issues', 0)}
+
+## Recommendations
+{len(quality_data.get('recommendations', []))} improvement suggestions generated.
+
+---
+*Generated by moai-core-quality*
+"""
+
+# Save report
+with open('daily-quality-report.md', 'w') as f:
+    f.write(report)
+
+print("Daily report generated")
+EOF
+
+    - name: Upload Daily Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: daily-quality-report-${{ github.run_number }}
+        path: daily-quality-report.md
+        retention-days: 7

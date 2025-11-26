@@ -105,7 +105,7 @@ class TestLanguageValidator:
             "tests/test_main.py": True,
             "README.md": True,
             "requirements.txt": True,
-            "node_modules/package.json": False  # Should be excluded
+            "node_modules/package.json": False,  # Should be excluded
         }
 
         # Test Python project validation
@@ -217,27 +217,14 @@ class TestLanguageValidator:
         validator = LanguageValidator()
 
         # Valid Python configuration
-        valid_config = {
-            "project": {
-                "language": "python",
-                "name": "test-project"
-            },
-            "directories": {
-                "source": "src/"
-            }
-        }
+        valid_config = {"project": {"language": "python", "name": "test-project"}, "directories": {"source": "src/"}}
 
         is_valid, issues = validator.validate_project_configuration(valid_config)
         assert isinstance(is_valid, bool)
         assert isinstance(issues, list)
 
         # Invalid configuration - unsupported language
-        invalid_config = {
-            "project": {
-                "language": "cobol",
-                "name": "test-project"
-            }
-        }
+        invalid_config = {"project": {"language": "cobol", "name": "test-project"}}
 
         is_valid, issues = validator.validate_project_configuration(invalid_config)
         assert isinstance(is_valid, bool)
@@ -250,14 +237,7 @@ class TestLanguageValidator:
 
         validator = LanguageValidator()
 
-        files = [
-            "src/main.py",
-            "src/utils.py",
-            "tests/test_main.py",
-            "app.js",
-            "styles.css",
-            "README.md"
-        ]
+        files = ["src/main.py", "src/utils.py", "tests/test_main.py", "app.js", "styles.css", "README.md"]
 
         stats = validator.get_language_statistics(files)
 

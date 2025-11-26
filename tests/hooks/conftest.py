@@ -9,15 +9,13 @@ import sys
 from pathlib import Path
 
 # Hook 디렉토리를 sys.path에 추가
-HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
-SHARED_DIR = HOOKS_DIR / "shared"
-UTILS_DIR = HOOKS_DIR / "utils"
+HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks"
+MOAI_LIB_DIR = HOOKS_DIR / "moai" / "lib"
+SHARED_DIR = HOOKS_DIR / "moai" / "shared"
+UTILS_DIR = HOOKS_DIR / "moai" / "utils"
 
 # sys.path에 추가 (앞에 추가하여 우선순위 높임)
 # 이 코드는 conftest.py가 import될 때 즉시 실행됨
-if str(SHARED_DIR) not in sys.path:
-    sys.path.insert(0, str(SHARED_DIR))
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
-if str(UTILS_DIR) not in sys.path:
-    sys.path.insert(0, str(UTILS_DIR))
+for dir_path in [MOAI_LIB_DIR, SHARED_DIR, UTILS_DIR, HOOKS_DIR]:
+    if str(dir_path) not in sys.path:
+        sys.path.insert(0, str(dir_path))

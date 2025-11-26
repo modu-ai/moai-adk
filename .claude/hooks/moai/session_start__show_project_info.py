@@ -27,24 +27,29 @@ LIB_DIR = HOOKS_DIR / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
+# Import path utils for project root resolution
+from lib.path_utils import find_project_root
+
 # Try to import existing modules, provide fallbacks if not available
 try:
     from lib.timeout import CrossPlatformTimeout
     from lib.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
     # Fallback timeout implementation
+
     class CrossPlatformTimeout:  # type: ignore[no-redef]
-        def __init__(self, seconds: int) -> None:
+        def __init__(self, seconds):
             self.seconds = seconds
 
-        def start(self) -> None:
+        def start(self):
             pass
 
-        def cancel(self) -> None:
+        def cancel(self):
             pass
 
     class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
         pass
+
 
 # Import config cache
 try:
@@ -56,12 +61,13 @@ except ImportError:
         if config_path.exists():
             try:
                 return json.loads(config_path.read_text())
-            except Exception:
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+                # JSON parsing, file read, or encoding errors
                 return None
         return None
 
     def get_cached_spec_progress():
-        specs_dir = Path.cwd() / ".moai" / "specs"
+        specs_dir = find_project_root() / ".moai" / "specs"
         if not specs_dir.exists():
             return {"completed": 0, "total": 0, "percentage": 0}
         try:
@@ -72,9 +78,10 @@ except ImportError:
             return {
                 "completed": completed,
                 "total": total,
-                "percentage": round(percentage, 0)
+                "percentage": round(percentage, 0),
             }
-        except Exception:
+        except (OSError, PermissionError):
+            # Directory access or permission errors
             return {"completed": 0, "total": 0, "percentage": 0}
 
 
@@ -133,20 +140,16 @@ def should_show_setup_messages() -> bool:
 def _run_git_command(cmd: list[str]) -> str:
     """Run a single git command with timeout"""
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=3
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
         return result.stdout.strip() if result.returncode == 0 else ""
-    except Exception:
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, OSError):
+        # Git command timeout, subprocess error, or git not found
         return ""
 
 
 def get_git_cache_file() -> Path:
     """Get path to git info cache file"""
-    cache_dir = Path.cwd() / ".moai" / "cache"
+    cache_dir = find_project_root() / ".moai" / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir / "git-info.json"
 
@@ -174,7 +177,8 @@ def load_git_cache() -> dict[str, Any] | None:
             return cache_data
 
         return None
-    except Exception:
+    except (json.JSONDecodeError, OSError, ValueError, KeyError):
+        # JSON parsing, file read, datetime parsing, or missing key errors
         return None
 
 
@@ -184,12 +188,10 @@ def save_git_cache(data: dict[str, Any]) -> None:
         cache_file = get_git_cache_file()
         cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-        cache_data = {
-            **data,
-            "last_check": datetime.now().isoformat()
-        }
+        cache_data = {**data, "last_check": datetime.now().isoformat()}
         cache_file.write_text(json.dumps(cache_data, indent=2))
-    except Exception:
+    except (OSError, PermissionError, TypeError):
+        # File write, permission, or JSON serialization errors
         pass  # Silently fail on cache write
 
 
@@ -219,17 +221,15 @@ def get_git_info() -> dict[str, Any]:
         results = {}
         with ThreadPoolExecutor(max_workers=4) as executor:
             # Submit all tasks
-            futures = {
-                executor.submit(_run_git_command, cmd): key
-                for cmd, key in git_commands
-            }
+            futures = {executor.submit(_run_git_command, cmd): key for cmd, key in git_commands}
 
             # Collect results as they complete
             for future in as_completed(futures):
                 key = futures[future]
                 try:
                     results[key] = future.result()
-                except Exception:
+                except (TimeoutError, RuntimeError):
+                    # Future execution timeout or runtime errors
                     results[key] = ""
 
         # Process results
@@ -237,7 +237,7 @@ def get_git_info() -> dict[str, Any]:
             "branch": results.get("branch", "unknown"),
             "last_commit": results.get("last_commit", "unknown"),
             "commit_time": results.get("commit_time", "unknown"),
-            "changes": len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0
+            "changes": (len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0),
         }
 
         # Cache the results
@@ -245,12 +245,13 @@ def get_git_info() -> dict[str, Any]:
 
         return git_data
 
-    except Exception:
+    except (RuntimeError, OSError, TimeoutError):
+        # ThreadPoolExecutor, git command, or timeout errors
         return {
             "branch": "unknown",
             "last_commit": "unknown",
             "commit_time": "unknown",
-            "changes": 0
+            "changes": 0,
         }
 
 
@@ -265,10 +266,12 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
     """
     try:
         import re
+
         clean = version_str.lstrip("v")
         parts = [int(x) for x in re.split(r"[^\d]+", clean) if x.isdigit()]
         return tuple(parts) if parts else (0,)
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
+        # Version parsing errors (invalid format, None input, type mismatch)
         return (0,)
 
 
@@ -308,14 +311,15 @@ def check_version_update() -> tuple[str, bool]:
             return "(latest)", False
 
         # Try to load cached PyPI version from Phase 1
-        version_cache_file = Path.cwd() / ".moai" / "cache" / "version-check.json"
+        version_cache_file = find_project_root() / ".moai" / "cache" / "version-check.json"
         latest_version = None
 
         if version_cache_file.exists():
             try:
                 cache_data = json.loads(version_cache_file.read_text())
                 latest_version = cache_data.get("latest")
-            except Exception:
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+                # Cache file read or JSON parsing errors
                 pass
 
         # If no cache or cache is stale, skip check (avoid slow subprocess)
@@ -333,7 +337,8 @@ def check_version_update() -> tuple[str, bool]:
             # Same version
             return "(latest)", False
 
-    except Exception:
+    except (ImportError, AttributeError, TypeError):
+        # Import errors or unexpected type/attribute errors
         return "(latest)", False
 
 
@@ -344,13 +349,10 @@ def get_test_info() -> dict[str, Any]:
     Running pytest is too slow (5+ seconds), so we skip it and return unknown status.
     Users can run tests manually with: pytest --cov
 
-    To check test status, use: /alfred:test-status (future feature)
+    To check test status, use: /moai:test-status (future feature)
     """
     # Skip pytest execution - it's too slow for SessionStart
-    return {
-        "coverage": "unknown",
-        "status": "❓"
-    }
+    return {"coverage": "unknown", "status": "❓"}
 
 
 def get_spec_progress() -> dict[str, Any]:
@@ -411,16 +413,6 @@ def format_project_metadata() -> str:
     return f"📦 Version: {moai_version} {version_status}"
 
 
-def display_project_info() -> None:
-    """Display project information to stdout.
-
-    Returns:
-        None
-    """
-    # This function is a placeholder for future display logic
-    pass
-
-
 def format_session_output() -> str:
     """Format the complete session start output with proper line alignment (optimized).
 
@@ -447,7 +439,7 @@ def format_session_output() -> str:
         f"🌿 Branch: {git_info['branch']}",
         f"🔄 Changes: {git_info['changes']}",
         f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
-        f"🔨 Last Commit: {git_info['last_commit']}"
+        f"🔨 Last Commit: {git_info['last_commit']}",
     ]
 
     return "\n".join(output)
@@ -473,7 +465,8 @@ def main() -> None:
 
     try:
         # Read JSON payload from stdin (for compatibility)
-        input_data = sys.stdin.read()
+        # Handle Docker/non-interactive environments by checking TTY
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         _data = json.loads(input_data) if input_data.strip() else {}
 
         # Check if setup messages should be shown
@@ -483,10 +476,7 @@ def main() -> None:
         session_output = format_session_output() if show_messages else ""
 
         # Return as system message
-        result: dict[str, Any] = {
-            "continue": True,
-            "systemMessage": session_output
-        }
+        result: dict[str, Any] = {"continue": True, "systemMessage": session_output}
 
         print(json.dumps(result))
         sys.exit(0)

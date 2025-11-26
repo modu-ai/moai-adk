@@ -7,7 +7,7 @@ and cleanup processes for automatic project upgrades.
 
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 from .backup_manager import BackupManager
 from .file_migrator import FileMigrator
@@ -49,7 +49,7 @@ class VersionMigrator:
         """
         return self.detector.needs_migration()
 
-    def get_migration_info(self) -> Dict[str, any]:
+    def get_migration_info(self) -> Dict[str, Any]:
         """
         Get detailed migration information
 
@@ -191,7 +191,7 @@ class VersionMigrator:
         logger.debug("All verification checks passed")
         return True
 
-    def check_status(self) -> Dict[str, any]:
+    def check_status(self) -> Dict[str, Any]:
         """
         Check migration status and return detailed information
 

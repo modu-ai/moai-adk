@@ -70,17 +70,18 @@ def function2():
 """
 
         # Write test files
-        self.high_quality_file = os.path.join(self.test_dir, 'high_quality.py')
-        with open(self.high_quality_file, 'w') as f:
+        self.high_quality_file = os.path.join(self.test_dir, "high_quality.py")
+        with open(self.high_quality_file, "w") as f:
             f.write(self.high_quality_code)
 
-        self.low_quality_file = os.path.join(self.test_dir, 'low_quality.py')
-        with open(self.low_quality_file, 'w') as f:
+        self.low_quality_file = os.path.join(self.test_dir, "low_quality.py")
+        with open(self.low_quality_file, "w") as f:
             f.write(self.low_quality_code)
 
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_analyze_code_structure_high_quality(self):
@@ -89,8 +90,14 @@ def function2():
 
         # Check that all expected keys are present
         expected_keys = [
-            'class_ratio', 'function_ratio', 'method_ratio', 'import_ratio',
-            'complexity_ratio', 'nesting_ratio', 'docstring_score', 'naming_score'
+            "class_ratio",
+            "function_ratio",
+            "method_ratio",
+            "import_ratio",
+            "complexity_ratio",
+            "nesting_ratio",
+            "docstring_score",
+            "naming_score",
         ]
 
         for key in expected_keys:
@@ -100,18 +107,18 @@ def function2():
             self.assertLessEqual(structure_scores[key], 1.0)
 
         # High-quality code should have good scores
-        self.assertGreater(structure_scores['class_ratio'], 0.05)  # Has classes
-        self.assertGreater(structure_scores['method_ratio'], 0.05)  # Has methods
-        self.assertGreater(structure_scores['docstring_score'], 0.3)  # Has docstrings
-        self.assertGreater(structure_scores['naming_score'], 0.5)  # Good naming
+        self.assertGreater(structure_scores["class_ratio"], 0.05)  # Has classes
+        self.assertGreater(structure_scores["method_ratio"], 0.05)  # Has methods
+        self.assertGreater(structure_scores["docstring_score"], 0.3)  # Has docstrings
+        self.assertGreater(structure_scores["naming_score"], 0.5)  # Good naming
 
     def test_analyze_code_structure_low_quality(self):
         """Test code structure analysis for low-quality code."""
         structure_scores = self.scorer.analyze_code_structure(self.low_quality_file)
 
         # Low-quality code should have lower scores
-        self.assertGreaterEqual(structure_scores['docstring_score'], 0.0)
-        self.assertLessEqual(structure_scores['docstring_score'], 0.6)  # Few docstrings
+        self.assertGreaterEqual(structure_scores["docstring_score"], 0.0)
+        self.assertLessEqual(structure_scores["docstring_score"], 0.6)  # Few docstrings
 
     def test_analyze_domain_relevance(self):
         """Test domain relevance analysis."""
@@ -119,9 +126,15 @@ def function2():
 
         # Check that expected keys are present
         expected_keys = [
-            'security_coverage', 'data_coverage', 'api_coverage', 'ui_coverage',
-            'business_coverage', 'testing_coverage', 'overall_relevance',
-            'specificity', 'technical_density'
+            "security_coverage",
+            "data_coverage",
+            "api_coverage",
+            "ui_coverage",
+            "business_coverage",
+            "testing_coverage",
+            "overall_relevance",
+            "specificity",
+            "technical_density",
         ]
 
         for key in expected_keys:
@@ -131,8 +144,8 @@ def function2():
             self.assertLessEqual(domain_scores[key], 1.0)
 
         # High-quality code should have good domain relevance
-        self.assertGreater(domain_scores['overall_relevance'], 0.1)
-        self.assertGreater(domain_scores['technical_density'], 0.1)
+        self.assertGreater(domain_scores["overall_relevance"], 0.1)
+        self.assertGreater(domain_scores["technical_density"], 0.1)
 
     def test_analyze_documentation_quality(self):
         """Test documentation quality analysis."""
@@ -140,9 +153,13 @@ def function2():
 
         # Check that expected keys are present
         expected_keys = [
-            'docstring_coverage', 'comment_density', 'explanation_quality',
-            'examples_present', 'parameter_documentation', 'return_documentation',
-            'exception_documentation'
+            "docstring_coverage",
+            "comment_density",
+            "explanation_quality",
+            "examples_present",
+            "parameter_documentation",
+            "return_documentation",
+            "exception_documentation",
         ]
 
         for key in expected_keys:
@@ -152,14 +169,12 @@ def function2():
             self.assertLessEqual(doc_scores[key], 1.0)
 
         # High-quality code should have good documentation
-        self.assertGreater(doc_scores['docstring_coverage'], 0.3)
-        self.assertGreaterEqual(doc_scores['parameter_documentation'], 0.0)
+        self.assertGreater(doc_scores["docstring_coverage"], 0.3)
+        self.assertGreaterEqual(doc_scores["parameter_documentation"], 0.0)
 
     def test_calculate_confidence_score(self):
         """Test confidence score calculation."""
-        confidence, detailed_analysis = self.scorer.calculate_confidence_score(
-            self.high_quality_file
-        )
+        confidence, detailed_analysis = self.scorer.calculate_confidence_score(self.high_quality_file)
 
         # Check confidence score
         self.assertIsInstance(confidence, float)
@@ -167,21 +182,21 @@ def function2():
         self.assertLessEqual(confidence, 1.0)
 
         # Check detailed analysis structure
-        self.assertIn('file_path', detailed_analysis)
-        self.assertIn('analysis_time', detailed_analysis)
-        self.assertIn('confidence_score', detailed_analysis)
-        self.assertIn('structure_analysis', detailed_analysis)
-        self.assertIn('domain_analysis', detailed_analysis)
-        self.assertIn('documentation_analysis', detailed_analysis)
-        self.assertIn('recommendations', detailed_analysis)
+        self.assertIn("file_path", detailed_analysis)
+        self.assertIn("analysis_time", detailed_analysis)
+        self.assertIn("confidence_score", detailed_analysis)
+        self.assertIn("structure_analysis", detailed_analysis)
+        self.assertIn("domain_analysis", detailed_analysis)
+        self.assertIn("documentation_analysis", detailed_analysis)
+        self.assertIn("recommendations", detailed_analysis)
 
         # Check that analysis time is reasonable
-        self.assertGreater(detailed_analysis['analysis_time'], 0.0)
-        self.assertLess(detailed_analysis['analysis_time'], 1.0)
+        self.assertGreater(detailed_analysis["analysis_time"], 0.0)
+        self.assertLess(detailed_analysis["analysis_time"], 1.0)
 
         # Check recommendations
-        self.assertIsInstance(detailed_analysis['recommendations'], list)
-        self.assertLessEqual(len(detailed_analysis['recommendations']), 5)
+        self.assertIsInstance(detailed_analysis["recommendations"], list)
+        self.assertLessEqual(len(detailed_analysis["recommendations"]), 5)
 
     def test_confidence_score_comparison(self):
         """Test confidence score comparison between high and low quality code."""
@@ -198,17 +213,17 @@ def function2():
 
         validation = self.scorer.validate_confidence_threshold(confidence, threshold)
 
-        self.assertIn('meets_threshold', validation)
-        self.assertIn('confidence_score', validation)
-        self.assertIn('threshold', validation)
-        self.assertIn('difference', validation)
-        self.assertIn('recommendation', validation)
+        self.assertIn("meets_threshold", validation)
+        self.assertIn("confidence_score", validation)
+        self.assertIn("threshold", validation)
+        self.assertIn("difference", validation)
+        self.assertIn("recommendation", validation)
 
         # Should meet threshold
-        self.assertTrue(validation['meets_threshold'])
-        self.assertEqual(validation['confidence_score'], confidence)
-        self.assertEqual(validation['threshold'], threshold)
-        self.assertAlmostEqual(validation['difference'], 0.1, places=10)
+        self.assertTrue(validation["meets_threshold"])
+        self.assertEqual(validation["confidence_score"], confidence)
+        self.assertEqual(validation["threshold"], threshold)
+        self.assertAlmostEqual(validation["difference"], 0.1, places=10)
 
     def test_get_confidence_breakdown(self):
         """Test confidence score breakdown."""
@@ -216,19 +231,19 @@ def function2():
 
         breakdown = self.scorer.get_confidence_breakdown(confidence)
 
-        self.assertIn('overall_score', breakdown)
-        self.assertIn('interpretation', breakdown)
-        self.assertIn('risk_level', breakdown)
-        self.assertIn('action_required', breakdown)
+        self.assertIn("overall_score", breakdown)
+        self.assertIn("interpretation", breakdown)
+        self.assertIn("risk_level", breakdown)
+        self.assertIn("action_required", breakdown)
 
-        self.assertEqual(breakdown['overall_score'], confidence)
-        self.assertIsInstance(breakdown['interpretation'], str)
-        self.assertIsInstance(breakdown['risk_level'], str)
-        self.assertIsInstance(breakdown['action_required'], str)
+        self.assertEqual(breakdown["overall_score"], confidence)
+        self.assertIsInstance(breakdown["interpretation"], str)
+        self.assertIsInstance(breakdown["risk_level"], str)
+        self.assertIsInstance(breakdown["action_required"], str)
 
     def test_error_handling(self):
         """Test error handling for invalid files."""
-        invalid_file = os.path.join(self.test_dir, 'nonexistent.py')
+        invalid_file = os.path.join(self.test_dir, "nonexistent.py")
 
         # Should not raise exceptions but return default values
         structure_scores = self.scorer.analyze_code_structure(invalid_file)
@@ -243,45 +258,42 @@ def function2():
     def test_custom_weights(self):
         """Test custom weights for confidence calculation."""
         custom_structure_weights = {
-            'class_ratio': 0.2,
-            'function_ratio': 0.2,
-            'method_ratio': 0.2,
-            'import_ratio': 0.1,
-            'complexity_ratio': 0.1,
-            'nesting_ratio': 0.1,
-            'docstring_score': 0.05,
-            'naming_score': 0.05
+            "class_ratio": 0.2,
+            "function_ratio": 0.2,
+            "method_ratio": 0.2,
+            "import_ratio": 0.1,
+            "complexity_ratio": 0.1,
+            "nesting_ratio": 0.1,
+            "docstring_score": 0.05,
+            "naming_score": 0.05,
         }
 
         confidence1, _ = self.scorer.calculate_confidence_score(self.high_quality_file)
         confidence2, _ = self.scorer.calculate_confidence_score(
-            self.high_quality_file,
-            structure_weights=custom_structure_weights
+            self.high_quality_file, structure_weights=custom_structure_weights
         )
 
         # Should be different with custom weights
         self.assertIsInstance(confidence1, float)
         self.assertIsInstance(confidence2, float)
 
-    @patch('moai_adk.core.tags.spec_generator.SpecGenerator')
+    @patch("moai_adk.core.tags.spec_generator.SpecGenerator")
     def test_integration_with_spec_generator(self, mock_spec_generator):
         """Test integration with existing SpecGenerator."""
         mock_generator = Mock()
         mock_generator.analyze.return_value = {
-            'file_path': self.high_quality_file,
-            'domain_keywords': ['auth', 'user', 'bcrypt'],
-            'structure_info': {
-                'classes': ['UserAuth'],
-                'functions': ['register_user', 'login'],
-                'imports': ['bcrypt', 'typing']
-            }
+            "file_path": self.high_quality_file,
+            "domain_keywords": ["auth", "user", "bcrypt"],
+            "structure_info": {
+                "classes": ["UserAuth"],
+                "functions": ["register_user", "login"],
+                "imports": ["bcrypt", "typing"],
+            },
         }
 
         self.scorer.spec_generator = mock_generator
 
-        confidence, detailed_analysis = self.scorer.calculate_confidence_score(
-            self.high_quality_file
-        )
+        confidence, detailed_analysis = self.scorer.calculate_confidence_score(self.high_quality_file)
 
         # Should integrate properly
         self.assertIsInstance(confidence, float)
@@ -293,10 +305,10 @@ def function2():
         from moai_adk.core.spec.confidence_scoring import calculate_completion_confidence
 
         analysis = {
-            'file_path': self.high_quality_file,
-            'structure_score': 0.9,
-            'domain_accuracy': 0.95,
-            'documentation_level': 0.85
+            "file_path": self.high_quality_file,
+            "structure_score": 0.9,
+            "domain_accuracy": 0.95,
+            "documentation_level": 0.85,
         }
 
         confidence = calculate_completion_confidence(analysis)
@@ -307,5 +319,5 @@ def function2():
         self.assertLessEqual(confidence, 1.0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

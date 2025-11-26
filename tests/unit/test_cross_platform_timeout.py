@@ -33,6 +33,7 @@ class TestCrossPlatformTimeoutWindows:
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
     def test_timeout_windows_threading_fires(self):
         """Test that Windows timeout fires with threading.Timer."""
+
         def slow_operation():
             time.sleep(2)  # Sleep longer than timeout
 
@@ -266,6 +267,7 @@ class TestCrossPlatformTimeoutIntegration:
         # Skip on Windows as socket timeout behavior differs
         if sys.platform != "win32":
             import socket
+
             with pytest.raises(TimeoutError):
                 with CrossPlatformTimeout(0.1):
                     # Try to connect to non-routable address (will timeout)
@@ -276,6 +278,7 @@ class TestCrossPlatformTimeoutIntegration:
     def test_timeout_preserves_system_state(self):
         """Test that timeout doesn't leave system in bad state."""
         import os
+
         # Create a file to test cleanup
         test_file = "/tmp/timeout_test.txt"
 
@@ -310,10 +313,12 @@ class TestCrossPlatformTimeoutDocumentation:
     def test_module_has_proper_docstring(self):
         """Test that module has proper documentation."""
         from moai_adk.utils import timeout as timeout_module
+
         assert timeout_module.__doc__ is not None
 
 
 # Markers and fixtures for test organization
+
 
 @pytest.fixture
 def timeout_context():

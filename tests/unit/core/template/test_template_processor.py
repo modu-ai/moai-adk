@@ -21,9 +21,9 @@ class TestTemplateProcessor:
             processor = TemplateProcessor(target_path)
             assert processor is not None
             assert processor.target_path == target_path.resolve()
-            assert hasattr(processor, 'backup')
-            assert hasattr(processor, 'merger')
-            assert hasattr(processor, 'context')
+            assert hasattr(processor, "backup")
+            assert hasattr(processor, "merger")
+            assert hasattr(processor, "context")
 
     def test_template_processor_with_context(self):
         """Test template processor with variable context."""
@@ -34,11 +34,7 @@ class TestTemplateProcessor:
             target_path = Path(temp_dir)
             processor = TemplateProcessor(target_path)
 
-            context = {
-                "PROJECT_NAME": "test-project",
-                "AUTHOR": "Test Author",
-                "CONVERSATION_LANGUAGE": "ko"
-            }
+            context = {"PROJECT_NAME": "test-project", "AUTHOR": "Test Author", "CONVERSATION_LANGUAGE": "ko"}
             processor.set_context(context)
             assert processor.context == context
 
@@ -82,11 +78,7 @@ class TestTemplateProcessor:
             target_path = Path(temp_dir)
             processor = TemplateProcessor(target_path)
 
-            context = {
-                "PROJECT_NAME": "test-project",
-                "AUTHOR": "Test Author",
-                "VERSION": "1.0.0"
-            }
+            context = {"PROJECT_NAME": "test-project", "AUTHOR": "Test Author", "VERSION": "1.0.0"}
             processor.set_context(context)
 
             content = "{{PROJECT_NAME}} by {{AUTHOR}}, version {{VERSION}}"
@@ -420,10 +412,7 @@ Content here
             processor = TemplateProcessor(target_path)
 
             # Test with value that contains problematic characters
-            context = {
-                "PROJECT_NAME": "test\nproject\r{{BAD}}",
-                "SAFE_VALUE": "normal_value"
-            }
+            context = {"PROJECT_NAME": "test\nproject\r{{BAD}}", "SAFE_VALUE": "normal_value"}
             processor.set_context(context)
 
             content = "{{PROJECT_NAME}} and {{SAFE_VALUE}}"

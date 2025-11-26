@@ -95,7 +95,7 @@ class QualityValidator:
         logger.info("Starting SPEC quality validation")
 
         # Initialize validation results
-        validation_result = {
+        validation_result: Dict[str, Any] = {
             "validation_time": 0.0,
             "overall_score": 0.0,
             "quality_grade": "F",
@@ -116,9 +116,7 @@ class QualityValidator:
             validation_result["details"]["content_completeness"] = completeness_result
 
             # Validate technical accuracy
-            technical_result = self._validate_technical_accuracy(
-                spec_content, code_analysis
-            )
+            technical_result = self._validate_technical_accuracy(spec_content, code_analysis)
             validation_result["details"]["technical_accuracy"] = technical_result
 
             # Validate clarity and readability
@@ -134,9 +132,7 @@ class QualityValidator:
             validation_result["overall_score"] = overall_score
 
             # Determine quality grade
-            validation_result["quality_grade"] = self._determine_quality_grade(
-                overall_score
-            )
+            validation_result["quality_grade"] = self._determine_quality_grade(overall_score)
 
             # Check if SPEC meets minimum quality standards
             meets_standards = self._check_quality_standards(validation_result)
@@ -147,12 +143,8 @@ class QualityValidator:
             validation_result["recommendations"] = recommendations
 
             # Compile check results
-            validation_result["passed_checks"] = self._compile_passed_checks(
-                validation_result["details"]
-            )
-            validation_result["failed_checks"] = self._compile_failed_checks(
-                validation_result["details"]
-            )
+            validation_result["passed_checks"] = self._compile_passed_checks(validation_result["details"])
+            validation_result["failed_checks"] = self._compile_failed_checks(validation_result["details"])
 
         except Exception as e:
             logger.error(f"Error during SPEC validation: {str(e)}")
@@ -161,9 +153,7 @@ class QualityValidator:
         # Set validation time
         validation_result["validation_time"] = time.time() - start_time
 
-        logger.info(
-            f"SPEC quality validation completed in {validation_result['validation_time']:.2f}s"
-        )
+        logger.info(f"SPEC quality validation completed in {validation_result['validation_time']:.2f}s")
 
         return validation_result
 
@@ -203,14 +193,10 @@ class QualityValidator:
             "has_tags": has_tags,
             "has_proper_structure": has_proper_headings,
             "total_sections": len(required_sections),
-            "present_sections": sum(
-                1 for score in section_scores.values() if score > 0
-            ),
+            "present_sections": sum(1 for score in section_scores.values() if score > 0),
         }
 
-    def _validate_content_completeness(
-        self, spec_content: Dict[str, str]
-    ) -> Dict[str, Any]:
+    def _validate_content_completeness(self, spec_content: Dict[str, str]) -> Dict[str, Any]:
         """Validate content completeness across all SPEC files."""
         logger.info("Validating content completeness")
 
@@ -237,9 +223,7 @@ class QualityValidator:
         results["acceptance_completeness"] = acceptance_completeness
 
         # Calculate overall completeness
-        overall_completeness = (
-            spec_completeness + plan_completeness + acceptance_completeness
-        ) / 3
+        overall_completeness = (spec_completeness + plan_completeness + acceptance_completeness) / 3
         results["overall_completeness"] = round(overall_completeness, 2)
 
         return results
@@ -308,13 +292,7 @@ class QualityValidator:
             "ambiguity_score": ambiguity_score,
             "consistency_score": consistency_score,
             "overall_clarity": round(
-                (
-                    language_quality
-                    + clarity_requirements
-                    + (1.0 - ambiguity_score)
-                    + consistency_score
-                )
-                / 4,
+                (language_quality + clarity_requirements + (1.0 - ambiguity_score) + consistency_score) / 4,
                 2,
             ),
         }
@@ -338,12 +316,9 @@ class QualityValidator:
         weights = self.quality_weights
 
         overall_score = (
-            details["ears_compliance"]["overall_compliance"]
-            * weights["ears_compliance"]
-            + details["content_completeness"]["overall_completeness"]
-            * weights["content_completeness"]
-            + details["technical_accuracy"]["overall_accuracy"]
-            * weights["technical_accuracy"]
+            details["ears_compliance"]["overall_compliance"] * weights["ears_compliance"]
+            + details["content_completeness"]["overall_completeness"] * weights["content_completeness"]
+            + details["technical_accuracy"]["overall_accuracy"] * weights["technical_accuracy"]
             + details["clarity_score"]["overall_clarity"] * weights["clarity_score"]
             + details["traceability"]["overall_traceability"] * weights["traceability"]
         )
@@ -366,9 +341,7 @@ class QualityValidator:
     def _check_quality_standards(self, validation_result: Dict[str, Any]) -> bool:
         """Check if SPEC meets minimum quality standards."""
         overall_score = validation_result["overall_score"]
-        ears_compliance = validation_result["details"]["ears_compliance"][
-            "overall_compliance"
-        ]
+        ears_compliance = validation_result["details"]["ears_compliance"]["overall_compliance"]
 
         meets_overall = overall_score >= self.min_confidence_score
         meets_ears = ears_compliance >= self.min_ears_compliance
@@ -383,15 +356,11 @@ class QualityValidator:
         # EARS compliance recommendations
         if details["ears_compliance"]["overall_compliance"] < 1.0:
             missing = details["ears_compliance"]["missing_sections"]
-            recommendations.append(
-                f"Add missing EARS sections: {', '.join(missing[:3])}"
-            )
+            recommendations.append(f"Add missing EARS sections: {', '.join(missing[:3])}")
 
         # Content completeness recommendations
         if details["content_completeness"]["overall_completeness"] < 0.8:
-            recommendations.append(
-                "Expand content sections with more detailed requirements"
-            )
+            recommendations.append("Expand content sections with more detailed requirements")
 
         # Technical accuracy recommendations
         if details["technical_accuracy"]["overall_accuracy"] < 0.8:
@@ -501,9 +470,7 @@ class QualityValidator:
 
         return min(score, 1.0)
 
-    def _assess_acceptance_criteria_completeness(
-        self, acceptance_content: str
-    ) -> float:
+    def _assess_acceptance_criteria_completeness(self, acceptance_content: str) -> float:
         """Assess completeness of acceptance criteria."""
         if not acceptance_content:
             return 0.0
@@ -533,9 +500,7 @@ class QualityValidator:
 
         return len(found_keywords) / len(keywords)
 
-    def _check_code_consistency(
-        self, spec_md: str, code_analysis: Dict[str, Any]
-    ) -> float:
+    def _check_code_consistency(self, spec_md: str, code_analysis: Dict[str, Any]) -> float:
         """Check consistency between SPEC and code analysis."""
         # Extract key elements from code analysis
         classes = code_analysis.get("structure_info", {}).get("classes", [])
@@ -597,9 +562,7 @@ class QualityValidator:
             r"Relevant",
         ]
 
-        found_indicators = sum(
-            1 for indicator in clarity_indicators if re.search(indicator, spec_md)
-        )
+        found_indicators = sum(1 for indicator in clarity_indicators if re.search(indicator, spec_md))
 
         return min(found_indicators / len(clarity_indicators), 1.0)
 
@@ -613,9 +576,7 @@ class QualityValidator:
             r"around",
         ]
 
-        ambiguous_count = sum(
-            1 for indicator in ambiguity_indicators if re.search(indicator, spec_md)
-        )
+        ambiguous_count = sum(1 for indicator in ambiguity_indicators if re.search(indicator, spec_md))
 
         # Normalize by content length
         content_length = len(spec_md.split())
@@ -666,9 +627,7 @@ class QualityValidator:
             r"Trace",
         ]
 
-        found_indicators = sum(
-            1 for indicator in traceability_indicators if re.search(indicator, spec_md)
-        )
+        found_indicators = sum(1 for indicator in traceability_indicators if re.search(indicator, spec_md))
 
         return min(found_indicators / len(traceability_indicators), 1.0)
 
@@ -698,14 +657,14 @@ class QualityValidator:
         report = f"""
 # Quality Validation Report
 
-## Overall Quality Score: {validation_result['overall_score']:.2f}/1.0
-## Quality Grade: {validation_result['quality_grade']}
-## Validation Time: {validation_result['validation_time']:.2f}s
+## Overall Quality Score: {validation_result["overall_score"]:.2f}/1.0
+## Quality Grade: {validation_result["quality_grade"]}
+## Validation Time: {validation_result["validation_time"]:.2f}s
 
 ## Summary
-- Passed Checks: {len(validation_result['passed_checks'])}
-- Failed Checks: {len(validation_result['failed_checks'])}
-- Recommendations: {len(validation_result['recommendations'])}
+- Passed Checks: {len(validation_result["passed_checks"])}
+- Failed Checks: {len(validation_result["failed_checks"])}
+- Recommendations: {len(validation_result["recommendations"])}
 
 ## Detailed Metrics
 """

@@ -5,12 +5,27 @@ argument-hint: "[issue|suggestion|question]"
 allowed-tools:
   - Task
   - AskUserQuestion
+  - TodoWrite
+model: haiku
+skills: moai-manager-quality
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -1
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+
 ---
 
 # 🗣️ MoAI-ADK Step 9: Feedback Loop
 
 > **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
-> **Delegation Model**: Feedback collection delegated to `quality-gate` agent.
+> **Delegation Model**: Feedback collection delegated to `manager-quality` agent.
 
 **Workflow Integration**: This command implements the feedback loop of the MoAI workflow, allowing users to report issues or suggestions directly from the CLI.
 
@@ -31,7 +46,7 @@ Collect user feedback, bug reports, or feature suggestions and create GitHub iss
 ```
 User Command: /moai:9-feedback [type]
     ↓
-Phase 1: Task(subagent_type="quality-gate")
+Phase 1: Task(subagent_type="manager-quality")
     → Analyze feedback type
     → Collect details via AskUserQuestion
     → Create GitHub Issue via Skill
@@ -49,18 +64,26 @@ Output: Issue created with link
 
 ---
 
+## 🧠 Associated Agents & Skills
+
+| Agent/Skill | Purpose |
+|------------|---------|
+| manager-quality | Feedback collection and GitHub issue creation |
+
+---
+
 ## 🚀 Execution Process
 
 ### Step 1: Delegate to Quality Gate Agent
 
-Use Task tool to call the `quality-gate` agent (which has access to issue creation skills):
+Use Task tool to call the `manager-quality` agent (which has access to issue creation skills):
 
 ```yaml
 Tool: Task
 Parameters:
-- subagent_type: "quality-gate"
+- subagent_type: "manager-quality"
 - description: "Collect and submit user feedback"
-- prompt: """You are the quality-gate agent acting as the feedback manager.
+- prompt: """You are the manager-quality agent acting as the feedback manager.
 
 **Task**: Collect user feedback and create a GitHub issue.
 
@@ -83,8 +106,8 @@ Parameters:
    - Ask for 'Priority' (Low/Medium/High)
 
 3. **Create GitHub Issue**:
-   - Use `Skill("moai-core-issue-labels")` or `Bash` (gh issue create) to submit.
-   - Add appropriate labels (bug, enhancement, question).
+   - Use `Bash` with GitHub CLI (`gh issue create`) to submit.
+   - Add appropriate labels (bug, enhancement, question) via `--label` flag.
    - Format the body with standard templates.
 
 4. **Report Result**:
@@ -103,10 +126,72 @@ Parameters:
 
 Before you consider this command complete, verify:
 
-- [ ] **Agent Called**: `quality-gate` agent was invoked.
+- [ ] **Agent Called**: `manager-quality` agent was invoked.
 - [ ] **Feedback Collected**: User was asked for details.
 - [ ] **Issue Created**: GitHub issue was successfully created.
 - [ ] **Link Provided**: User received the issue URL.
+
+---
+
+## 📚 Quick Reference
+
+| Scenario | Entry Point | Expected Outcome |
+|----------|-------------|------------------|
+| Report bug | `/moai:9-feedback issue` | GitHub issue created with bug label |
+| Request feature | `/moai:9-feedback suggestion` | GitHub issue created with enhancement label |
+| Ask question | `/moai:9-feedback question` | GitHub issue created with question label |
+| General feedback | `/moai:9-feedback` | Interactive feedback collection |
+
+**Associated Agent**:
+
+- `manager-quality` - Feedback manager and GitHub issue creator
+
+**Feedback Types**:
+
+- **Bug Report**: Technical issues or errors
+- **Feature Request**: Suggestions for improvements
+- **Question**: Clarifications or help needed
+- **Other**: General feedback
+
+**Version**: 1.0.0 (Agent-Delegated Pattern)
+**Last Updated**: 2025-11-25
+**Architecture**: Commands → Agents → Skills (Complete delegation)
+
+---
+
+## Final Step: Next Action Selection
+
+After feedback submission completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "Feedback submitted successfully. What would you like to do next?",
+        "header": "Next Steps",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Continue Development",
+                "description": "Return to current workflow"
+            },
+            {
+                "label": "Submit Another Feedback",
+                "description": "Report another issue or suggestion"
+            },
+            {
+                "label": "View Issue",
+                "description": "Open created GitHub issue in browser"
+            }
+        ]
+    }]
+})
+```
+
+**Important**:
+
+- Use conversation language from config
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options
 
 ---
 
@@ -114,5 +199,5 @@ Before you consider this command complete, verify:
 
 **You must NOW execute the command following the "Execution Process" described above.**
 
-1. Call the `Task` tool with `subagent_type="quality-gate"`.
+1. Call the `Task` tool with `subagent_type="manager-quality"`.
 2. Do NOT just describe what you will do. DO IT.

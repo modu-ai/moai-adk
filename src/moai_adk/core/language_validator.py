@@ -15,22 +15,23 @@ def get_all_supported_languages():
     """Get all supported programming languages."""
     return {"python", "javascript", "typescript", "java", "go", "rust", "cpp", "c"}
 
+
 def get_language_by_file_extension(extension: str) -> Optional[str]:
     """Get programming language by file extension."""
 
     # Handle Path objects and strings
-    if hasattr(extension, 'suffix'):
+    if hasattr(extension, "suffix"):
         # Path object
         ext = extension.suffix.lower()
     else:
         # String - extract extension
         ext = str(extension).lower()
-        if not ext.startswith('.'):
+        if not ext.startswith("."):
             # Extract extension from filename
-            if '.' in ext:
-                ext = '.' + ext.split('.')[-1]
+            if "." in ext:
+                ext = "." + ext.split(".")[-1]
             else:
-                ext = ''
+                ext = ""
 
     EXTENSION_MAP = {
         ".py": "python",
@@ -46,16 +47,19 @@ def get_language_by_file_extension(extension: str) -> Optional[str]:
     }
     return EXTENSION_MAP.get(ext)
 
+
 def is_code_directory(path: str) -> bool:
     """Check if directory is a code directory."""
     code_dirs = {"src", "lib", "app", "components", "modules", "packages"}
     return any(dir_name in path for dir_name in code_dirs)
+
 
 LANGUAGE_DIRECTORY_MAP = {
     "python": ["src", "tests", "examples"],
     "javascript": ["src", "lib", "packages"],
     "typescript": ["src", "lib", "packages"],
 }
+
 
 def get_exclude_patterns():
     """Get patterns to exclude from language detection."""
@@ -137,9 +141,7 @@ class LanguageValidator:
             "supported_languages_found": 0,
         }
 
-    def _validate_and_normalize_input(
-        self, value: Any, input_type: str
-    ) -> Optional[Any]:
+    def _validate_and_normalize_input(self, value: Any, input_type: str) -> Optional[Any]:
         """
         Validate and normalize input values.
 
@@ -243,11 +245,11 @@ class LanguageValidator:
         if normalized_lang in LANGUAGE_DIRECTORY_MAP:
             dirs = LANGUAGE_DIRECTORY_MAP[normalized_lang].copy()
             # Add trailing slash for consistency with test expectations
-            return [f"{dir}/" if not dir.endswith('/') else dir for dir in dirs]
+            return [f"{dir}/" if not dir.endswith("/") else dir for dir in dirs]
 
         # Return default Python directories as fallback with trailing slashes
         default_dirs = LANGUAGE_DIRECTORY_MAP.get("python", [])
-        return [f"{dir}/" if not dir.endswith('/') else dir for dir in default_dirs]
+        return [f"{dir}/" if not dir.endswith("/") else dir for dir in default_dirs]
 
     def get_file_extensions(self, language: str) -> List[str]:
         """
@@ -376,9 +378,7 @@ class LanguageValidator:
 
         return language.strip().lower()
 
-    def validate_project_configuration(
-        self, config: Dict[str, Any]
-    ) -> Tuple[bool, List[str]]:
+    def validate_project_configuration(self, config: Dict[str, Any]) -> Tuple[bool, List[str]]:
         """
         Validate project configuration for language support.
 
@@ -425,18 +425,13 @@ class LanguageValidator:
             return False, issues
 
         # Additional validation for empty strings and whitespace-only names
-        if (
-            isinstance(project_config["name"], str)
-            and not project_config["name"].strip()
-        ):
+        if isinstance(project_config["name"], str) and not project_config["name"].strip():
             issues.append("Project name cannot be empty or contain only whitespace")
             return False, issues
 
         return True, issues
 
-    def validate_project_structure(
-        self, project_files: Dict[str, bool], language: str
-    ) -> Tuple[bool, List[str]]:
+    def validate_project_structure(self, project_files: Dict[str, bool], language: str) -> Tuple[bool, List[str]]:
         """
         Validate project structure for a specific language.
 
@@ -448,12 +443,8 @@ class LanguageValidator:
             Tuple of (is_valid, issues) where is_valid is boolean and issues is list of strings.
         """
         if self.auto_validate:
-            validated_project_files = self._validate_and_normalize_input(
-                project_files, "dict"
-            )
-            validated_language = self._validate_and_normalize_input(
-                language, "language"
-            )
+            validated_project_files = self._validate_and_normalize_input(project_files, "dict")
+            validated_language = self._validate_and_normalize_input(language, "language")
             if validated_project_files is None or validated_language is None:
                 return False, ["Invalid input format for project structure validation"]
 
@@ -478,9 +469,7 @@ class LanguageValidator:
                     break
 
             if not found_files_in_dir and expected_dir != "{package_name}/":
-                issues.append(
-                    f"No source files found in expected directory: {expected_dir}"
-                )
+                issues.append(f"No source files found in expected directory: {expected_dir}")
 
         # Check for files in unexpected directories
         # Note: Using simplified check since is_code_directory signature changed

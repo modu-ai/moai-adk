@@ -131,9 +131,7 @@ class GitManager:
         else:
             self.git.push()
 
-    def check_merge_conflicts(
-        self, feature_branch: str, base_branch: str
-    ) -> dict:
+    def check_merge_conflicts(self, feature_branch: str, base_branch: str) -> dict:
         """
         Check if merge is possible without conflicts.
 
@@ -191,7 +189,7 @@ class GitManager:
         """
         result = self.conflict_detector.can_merge(feature_branch, base_branch)
         conflicts = result.get("conflicts", [])
-        return self.conflict_detector.summarize_conflicts(conflicts)
+        return self.conflict_detector.summarize_conflicts(conflicts)  # type: ignore[arg-type]
 
     def auto_resolve_safe_conflicts(self) -> bool:
         """

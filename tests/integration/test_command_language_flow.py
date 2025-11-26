@@ -25,15 +25,11 @@ from moai_adk.core.template.processor import TemplateProcessor
 class TestConfigMigration:
     """Test configuration migration from flat to nested structure."""
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_migrate_legacy_flat_config_to_nested(self) -> None:
         """Legacy flat config converts to nested structure."""
         # Arrange
-        legacy_config = {
-            "conversation_language": "ko",
-            "locale": "ko",
-            "project": {"name": "TestProject"}
-        }
+        legacy_config = {"conversation_language": "ko", "locale": "ko", "project": {"name": "TestProject"}}
 
         # Act
         migrated = migrate_config_to_nested_structure(legacy_config)
@@ -45,7 +41,7 @@ class TestConfigMigration:
         assert "conversation_language" not in migrated, "Should remove flat key"
         assert migrated["project"]["name"] == "TestProject", "Should preserve other keys"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_migrate_preserves_language_setting(self) -> None:
         """Migration preserves original language value exactly."""
         languages = [
@@ -62,16 +58,11 @@ class TestConfigMigration:
             assert migrated["language"]["conversation_language"] == lang_code
             assert migrated["language"]["conversation_language_name"] == lang_name
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_migrate_already_nested_config_unchanged(self) -> None:
         """Config already in nested structure should not be modified."""
         # Arrange
-        nested_config = {
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            }
-        }
+        nested_config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
 
         # Act
         result = migrate_config_to_nested_structure(nested_config)
@@ -79,41 +70,31 @@ class TestConfigMigration:
         # Assert
         assert result == nested_config, "Should not modify already nested config"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_get_conversation_language_from_nested(self) -> None:
         """Reading language from nested structure works."""
-        config = {
-            "language": {
-                "conversation_language": "ja",
-                "conversation_language_name": "日本語"
-            }
-        }
+        config = {"language": {"conversation_language": "ja", "conversation_language_name": "日本語"}}
 
         result = get_conversation_language(config)
 
         assert result == "ja", "Should read from nested structure"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_get_conversation_language_default_to_english(self) -> None:
         """Missing language config defaults to English."""
         result = get_conversation_language({})
         assert result == "en", "Should default to English"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_get_conversation_language_name(self) -> None:
         """Reading language name works correctly."""
-        config = {
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            }
-        }
+        config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
 
         result = get_conversation_language_name(config)
 
         assert result == "한국어", "Should read language name"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_get_conversation_language_name_default(self) -> None:
         """Missing language name maps from language code."""
         config = {
@@ -131,10 +112,8 @@ class TestConfigMigration:
 class TestPhaseExecutorLanguageContext:
     """Test that PhaseExecutor sets correct language context."""
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
-    def test_executor_sets_korean_language_context(
-        self, mock_processor_class: type
-    ) -> None:
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
+    def test_executor_sets_korean_language_context(self, mock_processor_class: type) -> None:
         """PhaseExecutor sets Korean language in context."""
         # Arrange
         mock_processor = MagicMock()
@@ -144,11 +123,8 @@ class TestPhaseExecutorLanguageContext:
         executor = PhaseExecutor(validator)
 
         config = {
-            "language": {
-                "conversation_language": "ko",
-                "conversation_language_name": "한국어"
-            },
-            "name": "TestProject"
+            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "name": "TestProject",
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -164,10 +140,8 @@ class TestPhaseExecutorLanguageContext:
             assert context["CONVERSATION_LANGUAGE"] == "ko"
             assert context["CONVERSATION_LANGUAGE_NAME"] == "한국어"
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
-    def test_executor_sets_japanese_language_context(
-        self, mock_processor_class: type
-    ) -> None:
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
+    def test_executor_sets_japanese_language_context(self, mock_processor_class: type) -> None:
         """PhaseExecutor sets Japanese language in context."""
         # Arrange
         mock_processor = MagicMock()
@@ -177,11 +151,8 @@ class TestPhaseExecutorLanguageContext:
         executor = PhaseExecutor(validator)
 
         config = {
-            "language": {
-                "conversation_language": "ja",
-                "conversation_language_name": "日本語"
-            },
-            "name": "TestProject"
+            "language": {"conversation_language": "ja", "conversation_language_name": "日本語"},
+            "name": "TestProject",
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -195,10 +166,8 @@ class TestPhaseExecutorLanguageContext:
             assert context["CONVERSATION_LANGUAGE"] == "ja"
             assert context["CONVERSATION_LANGUAGE_NAME"] == "日本語"
 
-    @patch('moai_adk.core.project.phase_executor.TemplateProcessor')
-    def test_executor_defaults_to_english_when_missing(
-        self, mock_processor_class: type
-    ) -> None:
+    @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
+    def test_executor_defaults_to_english_when_missing(self, mock_processor_class: type) -> None:
         """PhaseExecutor defaults to English when language not specified."""
         # Arrange
         mock_processor = MagicMock()
@@ -224,16 +193,14 @@ class TestPhaseExecutorLanguageContext:
 class TestTemplateVariableSubstitution:
     """Test that template variables substitute correctly in commands."""
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_conversation_language_variable_substitution(self) -> None:
         """{{CONVERSATION_LANGUAGE}} variable substitutes correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ko",
-            "CONVERSATION_LANGUAGE_NAME": "한국어",
-            "PROJECT_NAME": "TestProject"
-        })
+        processor.set_context(
+            {"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어", "PROJECT_NAME": "TestProject"}
+        )
 
         template = "Language: {{CONVERSATION_LANGUAGE}}, Project: {{PROJECT_NAME}}"
 
@@ -246,15 +213,12 @@ class TestTemplateVariableSubstitution:
         assert "{{" not in result, "Should have no remaining placeholders"
         assert not warnings, "Should have no warnings for complete substitution"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_conversation_language_name_substitution(self) -> None:
         """{{CONVERSATION_LANGUAGE_NAME}} variable substitutes correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ja",
-            "CONVERSATION_LANGUAGE_NAME": "日本語"
-        })
+        processor.set_context({"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語"})
 
         template = "Language: {{CONVERSATION_LANGUAGE_NAME}}"
 
@@ -265,14 +229,12 @@ class TestTemplateVariableSubstitution:
         assert "日本語" in result, "Should substitute Japanese name"
         assert not warnings, "Should have no warnings"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_detects_missing_variables(self) -> None:
         """Detects variables that are not substituted."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({
-            "CONVERSATION_LANGUAGE": "ko"
-        })
+        processor.set_context({"CONVERSATION_LANGUAGE": "ko"})
 
         template = "Language: {{CONVERSATION_LANGUAGE}}, Missing: {{MISSING_VAR}}"
 
@@ -291,24 +253,20 @@ class TestTemplateVariableSubstitution:
 class TestCommandLanguageParameters:
     """Test that commands properly document language parameters."""
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_0_project_command_has_language_config(self) -> None:
         """0-project command documents language configuration."""
-        with open(
-            Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "0-project.md"
-        ) as f:
+        with open(Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "0-project.md") as f:
             content = f.read()
 
         assert "CONVERSATION_LANGUAGE" in content, "Should reference language variable"
         assert "CONVERSATION_LANGUAGE_NAME" in content, "Should reference language name"
         assert "conversation_language" in content, "Should explain language parameter"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_1_plan_command_has_language_config(self) -> None:
         """1-plan command documents language configuration for both steps."""
-        with open(
-            Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "1-plan.md"
-        ) as f:
+        with open(Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "1-plan.md") as f:
             content = f.read()
 
         # Count occurrences - should be in both STEP 1 and STEP 2
@@ -316,23 +274,19 @@ class TestCommandLanguageParameters:
         assert count >= 2, "Should reference language in both STEP 1 and STEP 2"
         assert "CONVERSATION_LANGUAGE_NAME" in content
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_2_run_command_has_language_config(self) -> None:
         """2-run command documents language configuration."""
-        with open(
-            Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "2-run.md"
-        ) as f:
+        with open(Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "2-run.md") as f:
             content = f.read()
 
         assert "CONVERSATION_LANGUAGE" in content, "Should reference language variable"
         assert "Code and technical output MUST be in English" in content
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_3_sync_command_has_language_config(self) -> None:
         """3-sync command documents language configuration."""
-        with open(
-            Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "3-sync.md"
-        ) as f:
+        with open(Path(__file__).parent.parent.parent / ".claude" / "commands" / "alfred" / "3-sync.md") as f:
             content = f.read()
 
         assert "CONVERSATION_LANGUAGE" in content, "Should reference language variable"

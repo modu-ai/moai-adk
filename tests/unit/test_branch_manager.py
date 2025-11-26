@@ -6,7 +6,6 @@ Local checkpoint branch 관리 기능을 테스트합니다.
 SPEC: .moai/specs/SPEC-CHECKPOINT-EVENT-001/spec.md
 """
 
-
 import pytest
 
 from moai_adk.core.git.branch_manager import BranchManager
@@ -19,6 +18,7 @@ class TestBranchManager:
     def temp_git_repo(self, tmp_path):
         """임시 Git 저장소 생성."""
         import git
+
         repo = git.Repo.init(tmp_path)
         # 초기 커밋 생성
         test_file = tmp_path / "test.txt"

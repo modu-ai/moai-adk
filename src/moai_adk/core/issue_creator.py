@@ -2,7 +2,7 @@
 GitHub Issue Creator for MoAI-ADK quick issue reporting.
 
 Enables users to quickly create GitHub Issues with standardized templates
-using `/alfred:9-feedback` interactive dialog.
+using `/moai:9-feedback` interactive dialog.
 
 """
 
@@ -100,19 +100,11 @@ class GitHubIssueCreator:
             RuntimeError: If `gh` CLI is not found or not authenticated.
         """
         try:
-            result = subprocess.run(
-                ["gh", "auth", "status"], capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, timeout=5)
             if result.returncode != 0:
-                raise RuntimeError(
-                    "GitHub CLI (gh) is not authenticated. "
-                    "Run `gh auth login` to authenticate."
-                )
+                raise RuntimeError("GitHub CLI (gh) is not authenticated. Run `gh auth login` to authenticate.")
         except FileNotFoundError:
-            raise RuntimeError(
-                "GitHub CLI (gh) is not installed. "
-                "Please install it: https://cli.github.com"
-            )
+            raise RuntimeError("GitHub CLI (gh) is not installed. Please install it: https://cli.github.com")
 
     def create_issue(self, config: IssueConfig) -> Dict[str, Any]:
         """
@@ -146,9 +138,7 @@ class GitHubIssueCreator:
         # Collect labels
         labels = self.LABEL_MAP.get(config.issue_type, []).copy()
         if config.priority:
-            labels.append(
-                config.priority.value
-            )  # Fixed: removed "priority-" prefix (use direct label names)
+            labels.append(config.priority.value)  # Fixed: removed "priority-" prefix (use direct label names)
         if config.category:
             labels.append(f"category-{config.category.lower().replace(' ', '-')}")
         if config.custom_labels:
@@ -174,9 +164,7 @@ class GitHubIssueCreator:
             gh_command.extend(["--assignee", ",".join(config.assignees)])
 
         try:
-            result = subprocess.run(
-                gh_command, capture_output=True, text=True, timeout=30
-            )
+            result = subprocess.run(gh_command, capture_output=True, text=True, timeout=30)
 
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout
@@ -218,7 +206,7 @@ class GitHubIssueCreator:
         footer += f"**Priority**: {config.priority.value}  \n"
         if config.category:
             footer += f"**Category**: {config.category}  \n"
-        footer += "**Created via**: `/alfred:9-feedback`"
+        footer += "**Created via**: `/moai:9-feedback`"
 
         return body + footer
 
@@ -260,9 +248,7 @@ class GitHubIssueCreator:
                 output += f"🏷️  Labels: {', '.join(result['labels'])}\n"
             return output
         else:
-            return (
-                f"❌ Failed to create issue: {result.get('message', 'Unknown error')}"
-            )
+            return f"❌ Failed to create issue: {result.get('message', 'Unknown error')}"
 
 
 class IssueCreatorFactory:
@@ -271,9 +257,7 @@ class IssueCreatorFactory:
     """
 
     @staticmethod
-    def create_bug_issue(
-        title: str, description: str, priority: IssuePriority = IssuePriority.HIGH
-    ) -> IssueConfig:
+    def create_bug_issue(title: str, description: str, priority: IssuePriority = IssuePriority.HIGH) -> IssueConfig:
         """Create a bug report issue configuration."""
         return IssueConfig(
             issue_type=IssueType.BUG,
@@ -310,9 +294,7 @@ class IssueCreatorFactory:
         )
 
     @staticmethod
-    def create_question_issue(
-        title: str, description: str, priority: IssuePriority = IssuePriority.LOW
-    ) -> IssueConfig:
+    def create_question_issue(title: str, description: str, priority: IssuePriority = IssuePriority.LOW) -> IssueConfig:
         """Create a question/discussion issue configuration."""
         return IssueConfig(
             issue_type=IssueType.QUESTION,

@@ -19,6 +19,14 @@ class SpecGenerator:
         """Generate a basic SPEC document."""
         return f"SPEC document for {file_path}\n\nContent analysis:\n{content[:200]}..."
 
+    def analyze(self, file_path: str) -> Dict[str, Any]:
+        """Analyze code file for SPEC generation."""
+        return {
+            "file_path": file_path,
+            "structure_info": {},
+            "domain_keywords": [],
+        }
+
 
 # BaseHook: Simplified base hook class for auto-spec completion
 class BaseHook:
@@ -74,9 +82,7 @@ class PostToolAutoSpecCompletion(BaseHook):
                 "excluded_patterns": ["test_", "spec_", "__tests__"],
             }
 
-    def should_trigger_spec_completion(
-        self, tool_name: str, tool_args: Dict[str, Any]
-    ) -> bool:
+    def should_trigger_spec_completion(self, tool_name: str, tool_args: Dict[str, Any]) -> bool:
         """
         Determine if spec completion should be triggered.
 
@@ -110,9 +116,7 @@ class PostToolAutoSpecCompletion(BaseHook):
             if self._is_supported_file(file_path):
                 supported_files.append(file_path)
             else:
-                logger.debug(
-                    f"File {file_path} is not supported for auto-spec completion"
-                )
+                logger.debug(f"File {file_path} is not supported for auto-spec completion")
 
         if not supported_files:
             logger.debug("No supported files found")
@@ -200,9 +204,7 @@ class PostToolAutoSpecCompletion(BaseHook):
 
         return False
 
-    def detect_code_changes(
-        self, tool_name: str, tool_args: Dict[str, Any], result: Any
-    ) -> List[str]:
+    def detect_code_changes(self, tool_name: str, tool_args: Dict[str, Any], result: Any) -> List[str]:
         """
         Detect code changes from tool execution.
 
@@ -266,15 +268,11 @@ class PostToolAutoSpecCompletion(BaseHook):
         # Structure clarity: 30%
         # Domain accuracy: 40%
         # Documentation level: 30%
-        confidence = (
-            structure_score * 0.3 + domain_accuracy * 0.4 + documentation_level * 0.3
-        )
+        confidence = structure_score * 0.3 + domain_accuracy * 0.4 + documentation_level * 0.3
 
         return min(max(confidence, 0.0), 1.0)
 
-    def generate_complete_spec(
-        self, analysis: Dict[str, Any], file_path: str
-    ) -> Dict[str, str]:
+    def generate_complete_spec(self, analysis: Dict[str, Any], file_path: str) -> Dict[str, str]:
         """
         Generate complete SPEC documents in EARS format.
 
@@ -310,13 +308,11 @@ class PostToolAutoSpecCompletion(BaseHook):
         meaningful_name = "".join(part.upper() for part in name_parts if part)
 
         # Add hash to ensure uniqueness
-        file_hash = hashlib.md5(file_path.encode()).hexdigest()[:4]
+        file_hash = hashlib.md5(file_path.encode(), usedforsecurity=False).hexdigest()[:4]
 
         return f"{meaningful_name}-{file_hash}"
 
-    def _generate_spec_content(
-        self, analysis: Dict[str, Any], spec_id: str, file_name: str
-    ) -> str:
+    def _generate_spec_content(self, analysis: Dict[str, Any], spec_id: str, file_name: str) -> str:
         """Generate main spec.md content."""
         template = f"""---
   "id": "SPEC-{spec_id}",
@@ -324,7 +320,7 @@ class PostToolAutoSpecCompletion(BaseHook):
   "title_en": "Auto-generated SPEC for {file_name}",
   "version": "1.0.0",
   "status": "pending",
-  "created": "{time.strftime('%Y-%m-%d')}",
+  "created": "{time.strftime("%Y-%m-%d")}",
   "author": "@alfred-auto",
   "reviewer": "",
   "category": "FEATURE",
@@ -339,12 +335,12 @@ class PostToolAutoSpecCompletion(BaseHook):
 
 ### Overview
 
-{analysis.get('description', 'This spec was auto-generated based on code analysis.')}
+{analysis.get("description", "This spec was auto-generated based on code analysis.")}
 
 ### Environment
 
 - **Project**: MoAI-ADK Auto-generated SPEC
-- **Language**: {analysis.get('language', 'Python')}
+- **Language**: {analysis.get("language", "Python")}
 - **File**: {file_name}
 - **Generation Method**: Automatic analysis-based
 - **Status**: Review required
@@ -368,15 +364,15 @@ class PostToolAutoSpecCompletion(BaseHook):
 
 #### State-driven Requirements
 
-{analysis.get('state_requirements', '- **REQ-006**: System must transition from initial state to target state')}
+{analysis.get("state_requirements", "- **REQ-006**: System must transition from initial state to target state")}
 
 #### Event-driven Requirements
 
-{analysis.get('event_requirements', '- **REQ-007**: System must respond when user input occurs')}
+{analysis.get("event_requirements", "- **REQ-007**: System must respond when user input occurs")}
 
 ### Specifications
 
-{analysis.get('specifications', '- **SPEC-001**: System must implement requirements')}
+{analysis.get("specifications", "- **SPEC-001**: System must implement requirements")}
 
 ### Traceability
 
@@ -398,9 +394,7 @@ class PostToolAutoSpecCompletion(BaseHook):
 """
         return template
 
-    def _generate_plan_content(
-        self, analysis: Dict[str, Any], spec_id: str, file_name: str
-    ) -> str:
+    def _generate_plan_content(self, analysis: Dict[str, Any], spec_id: str, file_name: str) -> str:
         """Generate plan.md content."""
         return f"""---
   "id": "PLAN-{spec_id}",
@@ -408,7 +402,7 @@ class PostToolAutoSpecCompletion(BaseHook):
   "title": "Auto-generated Implementation Plan for {file_name}",
   "version": "1.0.0",
   "status": "pending",
-  "created": "{time.strftime('%Y-%m-%d')}",
+  "created": "{time.strftime("%Y-%m-%d")}",
   "author": "@alfred-auto"
 }}
 ---
@@ -450,25 +444,25 @@ class PostToolAutoSpecCompletion(BaseHook):
 #### Architecture Design
 
 ```
-{analysis.get('architecture', 'User Input → Validation → Business Logic → Data Processing → Output')}
+{analysis.get("architecture", "User Input → Validation → Business Logic → Data Processing → Output")}
     ↓
 [Core Components] → [External Services] → [Data Layer]
 ```
 
 #### Core Components
 
-1. **{analysis.get('main_component', 'Main Class')}**: Handle primary business logic
-2. **{analysis.get('service_component', 'Service Layer')}**: Integrate external services
-3. **{analysis.get('data_component', 'Data Layer')}**: Process and store data
-4. **{analysis.get('component_4', 'Validation Layer')}**: Validate input and check validity
+1. **{analysis.get("main_component", "Main Class")}**: Handle primary business logic
+2. **{analysis.get("service_component", "Service Layer")}**: Integrate external services
+3. **{analysis.get("data_component", "Data Layer")}**: Process and store data
+4. **{analysis.get("component_4", "Validation Layer")}**: Validate input and check validity
 
 #### Dependency Management
 
 **Utilize Existing Modules:**
-- {analysis.get('existing_modules', 'Utilize standard libraries')}
+- {analysis.get("existing_modules", "Utilize standard libraries")}
 
 **Add New Modules:**
-- {analysis.get('new_modules', 'Add as needed')}
+- {analysis.get("new_modules", "Add as needed")}
 
 ### Success Criteria
 
@@ -481,7 +475,7 @@ class PostToolAutoSpecCompletion(BaseHook):
 
 #### Performance Criteria
 
-- ✅ Response time {analysis.get('performance_target', 'within 1 second')}
+- ✅ Response time {analysis.get("performance_target", "within 1 second")}
 - ✅ Memory usage optimized
 - ✅ Parallel processing supported
 - ✅ Scalability verified
@@ -501,9 +495,7 @@ class PostToolAutoSpecCompletion(BaseHook):
 4. **Release Preparation**: Testing and validation (14-16 days)
 """
 
-    def _generate_acceptance_content(
-        self, analysis: Dict[str, Any], spec_id: str, file_name: str
-    ) -> str:
+    def _generate_acceptance_content(self, analysis: Dict[str, Any], spec_id: str, file_name: str) -> str:
         """Generate acceptance.md content."""
         return f"""---
   "id": "ACCEPT-{spec_id}",
@@ -511,7 +503,7 @@ class PostToolAutoSpecCompletion(BaseHook):
   "title": "Auto-generated Acceptance Criteria for {file_name}",
   "version": "1.0.0",
   "status": "pending",
-  "created": "{time.strftime('%Y-%m-%d')}",
+  "created": "{time.strftime("%Y-%m-%d")}",
   "author": "@alfred-auto"
 }}
 ---
@@ -523,21 +515,21 @@ class PostToolAutoSpecCompletion(BaseHook):
 #### Basic Functionality
 
 **Must-have:**
-- [ ] {analysis.get('must_have_1', 'System must operate normally')}
-- [ ] {analysis.get('must_have_2', 'User interface must display correctly')}
-- [ ] {analysis.get('must_have_3', 'Data processing logic must function properly')}
+- [ ] {analysis.get("must_have_1", "System must operate normally")}
+- [ ] {analysis.get("must_have_2", "User interface must display correctly")}
+- [ ] {analysis.get("must_have_3", "Data processing logic must function properly")}
 
 **Should-have:**
-- [ ] {analysis.get('should_have_1', 'User experience must be smooth')}
-- [ ] {analysis.get('should_have_2', 'Performance targets must be met')}
+- [ ] {analysis.get("should_have_1", "User experience must be smooth")}
+- [ ] {analysis.get("should_have_2", "Performance targets must be met")}
 
 #### Performance Testing
 
 **Performance Requirements:**
-- [ ] Response time: {analysis.get('response_time', 'within 1 second')}
-- [ ] Concurrent users: support {analysis.get('concurrent_users', '100 users')} or more
-- [ ] Memory usage: {analysis.get('memory_usage', '100MB or less')}
-- [ ] CPU utilization: {analysis.get('cpu_usage', '50% or less')}
+- [ ] Response time: {analysis.get("response_time", "within 1 second")}
+- [ ] Concurrent users: support {analysis.get("concurrent_users", "100 users")} or more
+- [ ] Memory usage: {analysis.get("memory_usage", "100MB or less")}
+- [ ] CPU utilization: {analysis.get("cpu_usage", "50% or less")}
 
 **Load Testing:**
 - [ ] Functional load testing passed
@@ -547,9 +539,9 @@ class PostToolAutoSpecCompletion(BaseHook):
 #### Security Testing
 
 **Security Requirements:**
-- [ ] {analysis.get('security_req_1', 'Authentication and authorization verification passed')}
-- [ ] {analysis.get('security_req_2', 'Input validation passed')}
-- [ ] {analysis.get('security_req_3', 'SQL injection protection passed')}
+- [ ] {analysis.get("security_req_1", "Authentication and authorization verification passed")}
+- [ ] {analysis.get("security_req_2", "Input validation passed")}
+- [ ] {analysis.get("security_req_3", "SQL injection protection passed")}
 
 **Vulnerability Testing:**
 - [ ] OWASP Top 10 inspection passed
@@ -572,9 +564,9 @@ class PostToolAutoSpecCompletion(BaseHook):
 #### User Acceptance Testing
 
 **User Scenarios:**
-- [ ] {analysis.get('user_scenario_1', 'General user scenario testing passed')}
-- [ ] {analysis.get('user_scenario_2', 'Administrator scenario testing passed')}
-- [ ] {analysis.get('user_scenario_3', 'Error handling scenario testing passed')}
+- [ ] {analysis.get("user_scenario_1", "General user scenario testing passed")}
+- [ ] {analysis.get("user_scenario_2", "Administrator scenario testing passed")}
+- [ ] {analysis.get("user_scenario_3", "Error handling scenario testing passed")}
 
 **User Feedback:**
 - [ ] User satisfaction 80% or higher
@@ -683,14 +675,10 @@ class PostToolAutoSpecCompletion(BaseHook):
             suggestions.append("Improvement needed to fully comply with EARS format.")
 
         if completeness < 0.8:
-            suggestions.append(
-                "Requirements and specifications need to be more detailed."
-            )
+            suggestions.append("Requirements and specifications need to be more detailed.")
 
         if content_quality < 0.7:
-            suggestions.append(
-                "Domain-specific terminology and technical content need to be added."
-            )
+            suggestions.append("Domain-specific terminology and technical content need to be added.")
 
         return {
             "quality_score": min(max(quality_score, 0.0), 1.0),
@@ -757,9 +745,7 @@ class PostToolAutoSpecCompletion(BaseHook):
             "component",
             "architecture",
         ]
-        technical_score = sum(
-            1 for term in technical_indicators if term in spec_md
-        ) / len(technical_indicators)
+        technical_score = sum(1 for term in technical_indicators if term in spec_md) / len(technical_indicators)
 
         # Check for specificity
         has_requirements = re.search(r"REQ-\d+", spec_md)
@@ -773,9 +759,7 @@ class PostToolAutoSpecCompletion(BaseHook):
 
         return (technical_score + specificity_score) / 2
 
-    def create_spec_files(
-        self, spec_id: str, content: Dict[str, str], base_dir: str = ".moai/specs"
-    ) -> bool:
+    def create_spec_files(self, spec_id: str, content: Dict[str, str], base_dir: str = ".moai/specs") -> bool:
         """
         Create SPEC files in the correct directory structure.
 
@@ -812,9 +796,7 @@ class PostToolAutoSpecCompletion(BaseHook):
             logger.error(f"Failed to create spec files: {e}")
             return False
 
-    def execute(
-        self, tool_name: str, tool_args: Dict[str, Any], result: Any = None
-    ) -> Dict[str, Any]:
+    def execute(self, tool_name: str, tool_args: Dict[str, Any], result: Any = None) -> Dict[str, Any]:
         """
         Execute the auto-spec completion hook.
 
@@ -860,9 +842,7 @@ class PostToolAutoSpecCompletion(BaseHook):
                     # Skip if confidence is too low
                     min_confidence = self.auto_config.get("min_confidence", 0.7)
                     if confidence < min_confidence:
-                        logger.info(
-                            f"Confidence {confidence} below threshold {min_confidence}"
-                        )
+                        logger.info(f"Confidence {confidence} below threshold {min_confidence}")
                         continue
 
                     # Generate complete spec
@@ -904,13 +884,9 @@ class PostToolAutoSpecCompletion(BaseHook):
 
             # Add notification message
             if successful_creations:
-                execution_result["message"] = (
-                    f"Auto-generated {len(successful_creations)} SPEC(s)"
-                )
+                execution_result["message"] = f"Auto-generated {len(successful_creations)} SPEC(s)"
             elif failed_creations:
-                execution_result["message"] = (
-                    "Auto-spec completion attempted but no specs created"
-                )
+                execution_result["message"] = "Auto-spec completion attempted but no specs created"
             else:
                 execution_result["message"] = "No files required auto-spec completion"
 

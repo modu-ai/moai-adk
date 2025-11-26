@@ -10,7 +10,7 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class BackupManager:
         Returns:
             List of backup information dictionaries
         """
-        backups = []
+        backups: List[Dict[str, Any]] = []
 
         if not self.backup_base_dir.exists():
             return backups
@@ -108,9 +108,7 @@ class BackupManager:
                                 {
                                     "path": str(backup_dir),
                                     "timestamp": metadata.get("timestamp", "unknown"),
-                                    "description": metadata.get(
-                                        "description", "unknown"
-                                    ),
+                                    "description": metadata.get("description", "unknown"),
                                     "files": len(metadata.get("backed_up_files", [])),
                                 }
                             )
@@ -207,9 +205,7 @@ class BackupManager:
             return Path(backups[0]["path"])
         return None
 
-    def create_full_project_backup(
-        self, description: str = "pre-update-backup"
-    ) -> Path:
+    def create_full_project_backup(self, description: str = "pre-update-backup") -> Path:
         """
         Create a complete backup of entire project structure before update
 

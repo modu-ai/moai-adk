@@ -1,0 +1,135 @@
+{
+  "examples": {
+    "basic_usage": {
+      "description": "Basic question asking example",
+      "code": "from modules.batch_questions import BatchQuestionsManager\n\nmanager = BatchQuestionsManager()\ntemplate = manager.load_template('project-initialization')\nresponses = manager.execute_batch(template)",
+      "expected_output": "Dictionary of user responses keyed by question ID"
+    },
+    "skill_specific": {
+      "description": "Using skill-specific question templates",
+      "code": "from modules.batch_questions import ask_skill_questions\n\n# Ask questions for config manager skill\nresponses = ask_skill_questions('moai-project-config-manager')\nprint(responses)",
+      "expected_output": "Config manager specific user responses"
+    },
+    "conditional_questions": {
+      "description": "Example of conditional question logic",
+      "config": {
+        "questions": [
+          {
+            "id": "use_git",
+            "text": "Use Git for version control?",
+            "type": "boolean",
+            "required": true
+          },
+          {
+            "id": "git_provider",
+            "text": "Which Git provider?",
+            "type": "single_choice",
+            "required": true,
+            "options": [
+              {"label": "GitHub", "value": "github"},
+              {"label": "GitLab", "value": "gitlab"},
+              {"label": "Bitbucket", "value": "bitbucket"}
+            ],
+            "conditional_on": {"use_git": true}
+          }
+        ]
+      }
+    },
+    "multi_select_example": {
+      "description": "Multi-select question example",
+      "config": {
+        "questions": [
+          {
+            "id": "features",
+            "text": "Select features to enable:",
+            "type": "multi_choice",
+            "required": true,
+            "options": [
+              {"label": "Authentication", "value": "auth"},
+              {"label": "Database", "value": "database"},
+              {"label": "API", "value": "api"},
+              {"label": "Web UI", "value": "web_ui"}
+            ]
+          }
+        ]
+      }
+    },
+    "validation_example": {
+      "description": "Question with validation rules",
+      "config": {
+        "questions": [
+          {
+            "id": "project_name",
+            "text": "Enter project name:",
+            "type": "text_input",
+            "required": true,
+            "validation": {
+              "rules": ["required", "min_length", "regex"],
+              "parameters": {
+                "min_length": 3,
+                "regex": "^[a-zA-Z][a-zA-Z0-9-_]*$"
+              },
+              "error_message": "Project name must start with letter and contain only letters, numbers, hyphens, underscores"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "integration_patterns": {
+    "with_config_manager": {
+      "description": "Integrating with configuration management",
+      "code": "# Process responses into config\nconfig = manager.process_responses_for_config(\n    responses, \n    config_path='.moai/config/config.json'\n)\n# Save updated config\nwith open('.moai/config/config.json', 'w') as f:\n    json.dump(config, f, indent=2)"
+    },
+    "with_menu_system": {
+      "description": "Using with menu system integration",
+      "code": "# Get questions for menu setup\ntemplate = manager.get_skill_specific_template('moai-menu-project')\nresponses = manager.execute_batch(template)\n# Apply to menu configuration\nmenu_config = manager.process_responses_for_config(responses)"
+    },
+    "conditional_workflows": {
+      "description": "Conditional workflow based on responses",
+      "code": "# Get language configuration\nlang_responses = ask_skill_questions('moai-project-language-initializer')\n\n# Conditionally ask framework questions based on language\nif lang_responses.get('language.primary') == 'python':\n    framework_responses = ask_skill_questions('python-frameworks', lang_responses)"
+    }
+  },
+  "template_customization": {
+    "custom_question_types": {
+      "description": "Creating custom question types",
+      "example": {
+        "id": "custom_type",
+        "text": "Select from custom options:",
+        "type": "single_choice",
+        "options": [
+          {"label": "Custom Option 1", "value": "custom1", "description": "Description for custom option"},
+          {"label": "Custom Option 2", "value": "custom2", "description": "Another custom option"}
+        ],
+        "metadata": {"category": "custom", "priority": "high"}
+      }
+    },
+    "dynamic_options": {
+      "description": "Questions with dynamically generated options",
+      "example": "manager = BatchQuestionsManager()\noptions = manager._generate_dynamic_options('git_providers')\nquestion = Question('git_provider', 'Select Git provider:', QuestionType.SINGLE_CHOICE, options)"
+    },
+    "nested_configuration": {
+      "description": "Handling nested configuration paths",
+      "example": {
+        "id": "git_strategy.branch_creation.prompt_always",
+        "text": "Always prompt for branch creation?",
+        "type": "boolean",
+        "metadata": {"config_path": "git_strategy.branch_creation.prompt_always"}
+      }
+    }
+  },
+  "error_handling": {
+    "validation_errors": {
+      "description": "Handling validation failures",
+      "pattern": "try:\n    responses = manager.execute_batch(template)\nexcept ValueError as e:\n    print(f'Validation error: {e}')\n    # Handle error - maybe retry with default values"
+    },
+    "missing_templates": {
+      "description": "Handling missing question templates",
+      "pattern": "template = manager.load_template('custom-template')\nif template is None:\n    # Fallback to default template\n    template = manager.load_template('project-initialization')"
+    },
+    "user_cancellation": {
+      "description": "Handling user cancellation of questions",
+      "pattern": "# Check if user cancelled responses\nfor response in responses.values():\n    if response.metadata.get('cancelled'):\n        print('User cancelled question flow')\n        break"
+    }
+  }
+}

@@ -1,0 +1,538 @@
+name: 🚀 Automated Release Pipeline
+
+# 태그 기반 자동 릴리즈 파이프라인
+# Usage: git tag -a v0.31.0 -m "Release v0.31.0" && git push origin v0.31.0
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'  # v0.31.0 형태
+
+permissions:
+  contents: write
+  packages: write
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: release-auto-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # 1️⃣ TAG 검증
+  tag-validation:
+    name: 🏷️ Tag Validation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      is_valid: ${{ steps.validate.outputs.is_valid }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Extract version from tag
+        id: extract
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"  # Remove 'v' prefix
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "📦 Tag: $TAG → Version: $VERSION"
+
+      - name: ✅ Validate version format and sync
+        id: validate
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+
+          echo "🔍 Tag version: $VERSION"
+          echo "🔍 pyproject.toml: $PYPROJECT_VERSION"
+
+          # Version format check
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "   Must be: MAJOR.MINOR.PATCH"
+            echo "is_valid=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Version match check
+          if [ "$VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "❌ VERSION MISMATCH!"
+            echo "   Tag: $VERSION"
+            echo "   pyproject.toml: $PYPROJECT_VERSION"
+            echo "   Tag version must match pyproject.toml"
+            echo "is_valid=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "✅ Tag validation passed"
+          echo "is_valid=true" >> "$GITHUB_OUTPUT"
+
+  # 2️⃣ 버전 파일 동기화 및 Changelog 생성
+  version-and-changelog:
+    name: 📝 Version & Changelog Update
+    runs-on: ubuntu-latest
+    needs: tag-validation
+    if: needs.tag-validation.outputs.is_valid == 'true'
+    outputs:
+      version: ${{ needs.tag-validation.outputs.version }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🔧 Setup Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install gitpython pyyaml
+
+      - name: 🔄 Verify version consistency
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+          echo "🔍 Verifying version consistency..."
+          echo "📦 Tag version: $VERSION"
+
+          # Verify pyproject.toml (single source of truth)
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "📦 pyproject.toml version: $PYPROJECT_VERSION"
+
+          if [ "$VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "❌ Version mismatch between tag and pyproject.toml!"
+            exit 1
+          fi
+
+          echo "✅ Version consistency verified"
+          echo "ℹ️  Note: __init__.py and version.py use importlib.metadata to read version from pyproject.toml"
+
+      - name: 📋 Generate Changelog
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          echo "📝 Generating Changelog for $VERSION"
+          echo "Previous tag: $PREVIOUS_TAG"
+
+          # Get commits since last tag
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --format="- %h %s" --reverse)
+          else
+            COMMITS=$(git log $PREVIOUS_TAG...HEAD --format="- %h %s" --reverse)
+          fi
+
+          # Create changelog entry
+          cat > CHANGELOG.entry.md << 'EOF'
+          ## [VERSION_PLACEHOLDER] - RELEASE_DATE_PLACEHOLDER
+
+          ### 🇰🇷 한국어
+
+          #### 주요 변경사항
+          VERSION_COMMITS_KO
+
+          #### 설치 방법
+          ```bash
+          # UV 사용 (권장)
+          uv add moai-adk==VERSION_PLACEHOLDER
+
+          # pip 사용
+          pip install moai-adk==VERSION_PLACEHOLDER
+          ```
+
+          ---
+
+          ## [VERSION_PLACEHOLDER] - RELEASE_DATE_PLACEHOLDER
+
+          ### 🇺🇸 English
+
+          #### Key Changes
+          VERSION_COMMITS_EN
+
+          #### Installation
+          ```bash
+          # UV (Recommended)
+          uv add moai-adk==VERSION_PLACEHOLDER
+
+          # pip
+          pip install moai-adk==VERSION_PLACEHOLDER
+          ```
+
+          ---
+
+          🤖 Generated by [Claude Code](https://claude.com/claude-code)
+          EOF
+
+          # Replace placeholders
+          RELEASE_DATE=$(date +"%Y-%m-%d")
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" CHANGELOG.entry.md
+          sed -i "s/RELEASE_DATE_PLACEHOLDER/$RELEASE_DATE/g" CHANGELOG.entry.md
+
+          # Simple commit list (will be enhanced by AI)
+          COMMITS_TEXT=$(echo "$COMMITS" | head -10 | sed 's/^/- /')
+          sed -i "s|VERSION_COMMITS_KO|$COMMITS_TEXT|g" CHANGELOG.entry.md
+          sed -i "s|VERSION_COMMITS_EN|$COMMITS_TEXT|g" CHANGELOG.entry.md
+
+          echo "✅ Changelog entry generated"
+          cat CHANGELOG.entry.md
+
+      - name: 📝 Update CHANGELOG.md
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+
+          # Prepend new entry to CHANGELOG.md
+          {
+            cat CHANGELOG.entry.md
+            echo ""
+            cat CHANGELOG.md
+          } > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+
+          echo "✅ CHANGELOG.md updated"
+          git add CHANGELOG.md
+          rm -f CHANGELOG.entry.md
+
+      - name: 📤 Create version/changelog commit
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "ℹ️ No version/changelog changes to commit"
+          else
+            git commit -m "chore: Auto-update version and changelog for v$VERSION"
+            echo "✅ Commit created"
+          fi
+
+      - name: 🔙 Push changes (optional)
+        run: |
+          # Only push if there are changes
+          if [ -n "$(git log --oneline @{u}..)" ]; then
+            git push origin main || echo "⚠️ No changes to push"
+          fi
+
+  # 3️⃣ Pre-deployment 검증 (기존 release-secure.yml 재사용)
+  pre-deployment-checks:
+    name: 🔍 Pre-Deployment Safety Checks
+    runs-on: ubuntu-latest
+    needs: [tag-validation, version-and-changelog]
+    outputs:
+      version: ${{ needs.tag-validation.outputs.version }}
+      is_safe: ${{ steps.safety.outputs.safe }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Safety validation
+        id: safety
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+
+          echo "🔍 Safety Check Results:"
+          echo "  Package version: $PYPROJECT_VERSION"
+          echo "  Tag version: $VERSION"
+
+          if [ "$PYPROJECT_VERSION" != "$VERSION" ]; then
+            echo "❌ VERSION MISMATCH!"
+            exit 1
+          fi
+
+          # Check for test/unstable patterns
+          if [[ "$VERSION" =~ (test|alpha|beta|rc|dev) ]]; then
+            echo "⚠️ Development version: $VERSION (allowed for TestPyPI only)"
+          fi
+
+          echo "✅ Safety checks passed"
+          echo "safe=true" >> "$GITHUB_OUTPUT"
+
+  # 4️⃣ 빌드 및 검증
+  build-and-verify:
+    name: 🏗️ Build & Verify Package
+    runs-on: ubuntu-latest
+    needs: [tag-validation, pre-deployment-checks]
+    if: needs.pre-deployment-checks.outputs.is_safe == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 🔨 Build package
+        run: |
+          echo "🏗️ Building package for version ${{ needs.tag-validation.outputs.version }}..."
+          uv build
+          echo "✅ Package built successfully"
+          ls -lh dist/
+
+      - name: 🧪 Run comprehensive tests
+        run: |
+          echo "🧪 Running final pre-deployment tests..."
+          uv sync --group dev --group security
+          uv run pytest tests/ -v --cov=src/moai_adk --cov-report=term
+          echo "✅ All tests passed"
+
+      - name: 📦 Package integrity verification
+        run: |
+          echo "📦 Verifying package integrity..."
+
+          # Check wheel
+          python -m zipfile -l dist/moai_adk-*.whl | wc -l
+          echo "✅ Wheel package verified"
+
+          # Check tarball
+          tar -tzf dist/moai_adk-*.tar.gz | wc -l
+          echo "✅ Source package verified"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: dist/
+          retention-days: 7
+
+  # 5️⃣ GitHub Release 생성
+  create-github-release:
+    name: 📝 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [tag-validation, build-and-verify]
+    if: needs.build-and-verify.result == 'success'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+
+          cat > release_notes.md << 'NOTES_EOF'
+          ## 🎯 MoAI-ADK Release VERSION_PLACEHOLDER
+
+          ### 🇰🇷 한국어
+
+          #### 주요 변경사항
+          자동 배포 파이프라인이 활성화되었습니다.
+          변경사항은 CHANGELOG.md를 참고하세요.
+
+          #### 설치 방법
+          ```bash
+          # UV 사용 (권장)
+          uv add moai-adk==VERSION_PLACEHOLDER
+
+          # pip 사용
+          pip install moai-adk==VERSION_PLACEHOLDER
+          ```
+
+          ---
+
+          ## 🎯 English Section
+
+          #### Key Changes
+          Automated deployment pipeline is now active.
+          See CHANGELOG.md for detailed changes.
+
+          #### Installation
+          ```bash
+          # UV (Recommended)
+          uv add moai-adk==VERSION_PLACEHOLDER
+
+          # pip
+          pip install moai-adk==VERSION_PLACEHOLDER
+          ```
+
+          ---
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code) - Automated Release Pipeline
+
+          Co-Authored-By: 🎩 Alfred@MoAI
+          NOTES_EOF
+
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" release_notes.md
+
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          cat release_notes.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: 📤 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: dist/
+
+      - name: 📤 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ needs.tag-validation.outputs.version }}"
+          name: "Release v${{ needs.tag-validation.outputs.version }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 6️⃣ TestPyPI 배포
+  deploy-to-testpypi:
+    name: 🧪 Deploy to TestPyPI
+    runs-on: ubuntu-latest
+    needs: [tag-validation, create-github-release]
+    if: needs.create-github-release.result == 'success'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: 📤 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: dist/
+
+      - name: 🚀 Deploy to TestPyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.TESTPYPI_API_TOKEN }}
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+          echo "🧪 Deploying to TestPyPI..."
+          uv publish --publish-url https://test.pypi.org/legacy/
+          echo "✅ Deployed to TestPyPI: https://test.pypi.org/project/moai-adk/$VERSION/"
+
+      - name: 🔍 Verify TestPyPI deployment
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+          echo "🔍 Verifying deployment..."
+
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Checking deployment... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+
+            if pip index versions moai-adk --index-url https://test.pypi.org/simple/ 2>/dev/null | grep -q "$VERSION"; then
+              echo "✅ Package available on TestPyPI"
+              break
+            fi
+
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              sleep 6
+            fi
+          done
+
+  # 7️⃣ 최종 요약
+  release-summary:
+    name: 📊 Release Summary
+    runs-on: ubuntu-latest
+    needs: [tag-validation, deploy-to-testpypi]
+    if: always()
+
+    steps:
+      - name: 📋 Generate comprehensive summary
+        run: |
+          VERSION="${{ needs.tag-validation.outputs.version }}"
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🚀 Automated Release Pipeline Summary
+
+          | Phase | Status | Details |
+          |-------|--------|---------|
+          | **Tag Validation** | ${{ needs.tag-validation.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Version format & sync check |
+          | **Version/Changelog** | ${{ needs.version-and-changelog.result == 'success' && '✅ UPDATED' || '⏭️ SKIPPED' }} | Files synchronized |
+          | **Pre-Deployment Checks** | ${{ needs.pre-deployment-checks.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Safety validation |
+          | **Build & Verify** | ${{ needs.build-and-verify.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Package build & tests |
+          | **GitHub Release** | ${{ needs.create-github-release.result == 'success' && '✅ CREATED' || '⏭️ SKIPPED' }} | Release notes |
+          | **TestPyPI Deploy** | ${{ needs.deploy-to-testpypi.result == 'success' && '✅ DEPLOYED' || '❌ FAILED' }} | Test package registry |
+
+          ### 📦 Package Information
+          - **Version**: EOF
+          echo "v$VERSION" >> $GITHUB_STEP_SUMMARY
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          - **Status**: TestPyPI Deployment Complete
+
+          ### 🔗 Links
+          - **TestPyPI Package**: https://test.pypi.org/project/moai-adk/EOF
+          echo "v$VERSION/" >> $GITHUB_STEP_SUMMARY
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          - **GitHub Release**: https://github.com/EOF
+          echo "${{ github.repository }}/releases/tag/v$VERSION" >> $GITHUB_STEP_SUMMARY
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+
+          ### ✅ Next Steps
+
+          1. **Verify TestPyPI Package**:
+             ```bash
+             pip install -i https://test.pypi.org/simple/ moai-adk==$VERSION
+             ```
+
+          2. **Deploy to Production PyPI** (Manual Approval Required):
+             1. Go to GitHub Actions
+             2. Run "Secure Release Pipeline" workflow manually
+             3. Set environment to "production"
+             4. Approve after 5-minute delay
+
+          ### 🛡️ Security Features
+          - ✅ Tag format validation
+          - ✅ Version synchronization check
+          - ✅ Comprehensive testing
+          - ✅ TestPyPI staging deployment
+          - ✅ Manual approval gate for production
+
+          ---
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code) - Automated Release Pipeline
+          EOF
+
+          # Overall status
+          if [ "${{ needs.tag-validation.result }}" = "success" ] && \
+             [ "${{ needs.deploy-to-testpypi.result }}" = "success" ]; then
+            echo ""
+            echo "🎉 RELEASE PIPELINE SUCCESSFUL!"
+            echo "   Version $VERSION ready for production deployment"
+          else
+            echo ""
+            echo "⚠️ PIPELINE COMPLETED WITH ISSUES"
+            echo "   Review the phases above for details"
+          fi

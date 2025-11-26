@@ -45,8 +45,6 @@ class TestInitInteractive:
             assert result.exit_code == 0 or Path(".moai").exists()
 
 
-
-
 class TestStatusEdgeCases:
     """status 명령어 edge case 테스트"""
 

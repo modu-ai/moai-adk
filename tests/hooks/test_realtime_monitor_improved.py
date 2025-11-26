@@ -34,9 +34,9 @@ class TestGetProjectFilesToScanImproved:
         """스캔이 필수 파일 패턴을 포함하는지 확인 (아직 미구현 - RED Phase)"""
         # 필수 스캔 패턴
         mandatory_patterns = [
-            "src/**/*.py",        # 구현 코드
-            "tests/**/*.py",      # 테스트 코드
-            ".moai/specs/**/*.md" # SPEC 문서
+            "src/**/*.py",  # 구현 코드
+            "tests/**/*.py",  # 테스트 코드
+            ".moai/specs/**/*.md",  # SPEC 문서
         ]
 
         # get_project_files_to_scan에서 반환되어야 하는 패턴들
@@ -54,7 +54,7 @@ class TestGetProjectFilesToScanImproved:
             ".moai/reports/",
             ".moai/analysis/",
             "templates/",
-            "examples/"
+            "examples/",
         ]
 
         # get_project_files_to_scan에서 반환된 파일들이
@@ -94,16 +94,16 @@ class TestGetProjectFilesToScanImproved:
         current_patterns = [
             "src/**/*.py",
             "tests/**/*.py",
-            "**/*.md",           # ← 모든 md 파일 (비효율)
-            ".claude/**/*",      # ← 선택적 (비효율)
-            ".moai/**/*"         # ← 일부 선택적 (비효율)
+            "**/*.md",  # ← 모든 md 파일 (비효율)
+            ".claude/**/*",  # ← 선택적 (비효율)
+            ".moai/**/*",  # ← 일부 선택적 (비효율)
         ]
 
         # 개선된 패턴:
         improved_patterns = [
             "src/**/*.py",
             "tests/**/*.py",
-            ".moai/specs/**/*.md" # ← SPEC 문서만
+            ".moai/specs/**/*.md",  # ← SPEC 문서만
             # .claude/ 제외
             # .moai/docs/, .moai/reports/ 제외
             # docs/, templates/ 제외
@@ -121,15 +121,11 @@ class TestGetProjectFilesToScanImproved:
             ".moai/docs/architecture.md",
             ".moai/reports/daily-report.md",
             "templates/spec.md",
-            "examples/example.py"
+            "examples/example.py",
         ]
 
         # 다음 파일들은 스캔 결과에 포함되어야 함:
-        included_files = [
-            "src/example.py",
-            "tests/test_example.py",
-            ".moai/specs/SPEC-001/spec.md"
-        ]
+        included_files = ["src/example.py", "tests/test_example.py", ".moai/specs/SPEC-001/spec.md"]
 
         assert len(excluded_files) == 6, "제외할 파일 6개"
         assert len(included_files) == 3, "포함할 파일 3개"
@@ -194,7 +190,7 @@ class TestExcludePatternDefinition:
         "templates/",
         "examples/",
         "__pycache__/",
-        "node_modules/"
+        "node_modules/",
     ]
 
     def test_exclude_patterns_defined(self):
@@ -232,11 +228,7 @@ class TestExcludePatternDefinition:
 
     def test_include_mandatory_patterns(self):
         """필수 패턴이 포함되는지 확인"""
-        mandatory_patterns = [
-            "src/**/*.py",
-            "tests/**/*.py",
-            ".moai/specs/**/*.md"
-        ]
+        mandatory_patterns = ["src/**/*.py", "tests/**/*.py", ".moai/specs/**/*.md"]
 
         assert len(mandatory_patterns) == 3, "필수 패턴 3개"
 

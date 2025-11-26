@@ -41,7 +41,7 @@ class DocumentationGenerator:
             Dictionary with 'product', 'structure', 'tech' template strings.
         """
         return {
-            'product': '''# Project Vision
+            "product": """# Project Vision
 
 ## Vision Statement
 {vision}
@@ -59,8 +59,8 @@ class DocumentationGenerator:
 {ai_insights}
 
 **Generated**: This document was auto-generated based on project analysis.
-''',
-            'structure': '''# System Architecture
+""",
+            "structure": """# System Architecture
 
 ## Architecture Overview
 {system_architecture}
@@ -75,8 +75,8 @@ class DocumentationGenerator:
 {dependencies}
 
 **Design Notes**: This architecture document provides reference for implementation teams.
-''',
-            'tech': '''# Technology Stack
+""",
+            "tech": """# Technology Stack
 
 ## Technology Selection
 {technology_selection}
@@ -94,7 +94,7 @@ class DocumentationGenerator:
 {setup_guide}
 
 **Version**: Technology stack selection guide, subject to updates.
-''',
+""",
         }
 
     def generate_product_md(self, responses: Dict[str, Any]) -> str:
@@ -125,13 +125,13 @@ class DocumentationGenerator:
             >>> 'Vision' in content
             True
         """
-        template = self.templates['product']
+        template = self.templates["product"]
 
         content = template.format(
-            vision=responses.get('project_vision', ''),
-            target_users=responses.get('target_users', ''),
-            value_proposition=responses.get('value_proposition', ''),
-            roadmap=responses.get('roadmap', ''),
+            vision=responses.get("project_vision", ""),
+            target_users=responses.get("target_users", ""),
+            value_proposition=responses.get("value_proposition", ""),
+            roadmap=responses.get("roadmap", ""),
             ai_insights=self._generate_ai_insights(responses),
         )
 
@@ -165,13 +165,13 @@ class DocumentationGenerator:
             >>> 'Architecture' in content.lower()
             True
         """
-        template = self.templates['structure']
+        template = self.templates["structure"]
 
         content = template.format(
-            system_architecture=responses.get('system_architecture', ''),
-            core_components=responses.get('core_components', ''),
-            relationships=responses.get('relationships', ''),
-            dependencies=responses.get('dependencies', ''),
+            system_architecture=responses.get("system_architecture", ""),
+            core_components=responses.get("core_components", ""),
+            relationships=responses.get("relationships", ""),
+            dependencies=responses.get("dependencies", ""),
         )
 
         return content.strip()
@@ -206,14 +206,14 @@ class DocumentationGenerator:
             >>> 'Technology' in content
             True
         """
-        template = self.templates['tech']
+        template = self.templates["tech"]
 
         content = template.format(
-            technology_selection=responses.get('technology_selection', ''),
-            trade_offs=responses.get('trade_offs', ''),
-            performance=responses.get('performance', ''),
-            security=responses.get('security', ''),
-            setup_guide=responses.get('setup_guide', ''),
+            technology_selection=responses.get("technology_selection", ""),
+            trade_offs=responses.get("trade_offs", ""),
+            performance=responses.get("performance", ""),
+            security=responses.get("security", ""),
+            setup_guide=responses.get("setup_guide", ""),
         )
 
         return content.strip()
@@ -242,9 +242,9 @@ class DocumentationGenerator:
             3
         """
         return {
-            'product': self.generate_product_md(brainstorm_responses),
-            'structure': self.generate_structure_md(brainstorm_responses),
-            'tech': self.generate_tech_md(brainstorm_responses),
+            "product": self.generate_product_md(brainstorm_responses),
+            "structure": self.generate_structure_md(brainstorm_responses),
+            "tech": self.generate_tech_md(brainstorm_responses),
         }
 
     @staticmethod
@@ -263,21 +263,21 @@ class DocumentationGenerator:
         # In real implementation, would call AI analysis
         insights = []
 
-        if 'project_vision' in responses:
-            insights.append('- Vision is clear and actionable')
+        if "project_vision" in responses:
+            insights.append("- Vision is clear and actionable")
 
-        if 'target_users' in responses:
-            insights.append('- Target user segment identified')
+        if "target_users" in responses:
+            insights.append("- Target user segment identified")
 
-        if 'value_proposition' in responses:
-            insights.append('- Value proposition articulated')
+        if "value_proposition" in responses:
+            insights.append("- Value proposition articulated")
 
-        return '\n'.join(insights) if insights else 'AI analysis pending'
+        return "\n".join(insights) if insights else "AI analysis pending"
 
     def save_all_documents(
         self,
         documents: Dict[str, str],
-        base_path: Path = Path('.moai/project'),
+        base_path: Path = Path(".moai/project"),
     ) -> None:
         """Save all generated documents to disk.
 
@@ -301,17 +301,17 @@ class DocumentationGenerator:
         base_path.mkdir(parents=True, exist_ok=True)
 
         file_mapping = {
-            'product': 'product.md',
-            'structure': 'structure.md',
-            'tech': 'tech.md',
+            "product": "product.md",
+            "structure": "structure.md",
+            "tech": "tech.md",
         }
 
         for doc_type, filename in file_mapping.items():
             if doc_type in documents:
                 filepath = base_path / filename
-                filepath.write_text(documents[doc_type], encoding='utf-8')
+                filepath.write_text(documents[doc_type], encoding="utf-8")
 
-    def load_document(self, doc_name: str, base_path: Path = Path('.moai/project')) -> Optional[str]:
+    def load_document(self, doc_name: str, base_path: Path = Path(".moai/project")) -> Optional[str]:
         """Load a generated document from disk.
 
         Reads markdown document content for use by agents.
@@ -332,15 +332,15 @@ class DocumentationGenerator:
         """
         filepath = base_path / doc_name
         if filepath.exists():
-            return filepath.read_text(encoding='utf-8')
+            return filepath.read_text(encoding="utf-8")
         return None
 
-    def create_minimal_templates(self, base_path: Path = Path('.moai/project')) -> None:
+    def create_minimal_templates(self, base_path: Path = Path(".moai/project")) -> None:
         """Create minimal template files for Quick Start mode"""
         base_path.mkdir(parents=True, exist_ok=True)
 
         minimal_templates = {
-            'product.md': '''# Project Vision
+            "product.md": """# Project Vision
 
 ## Vision Statement
 [Add your project vision here]
@@ -353,8 +353,8 @@ class DocumentationGenerator:
 
 ## Roadmap
 [Outline your development roadmap]
-''',
-            'structure.md': '''# System Architecture
+""",
+            "structure.md": """# System Architecture
 
 ## Architecture Overview
 [Describe the system architecture]
@@ -367,8 +367,8 @@ class DocumentationGenerator:
 
 ## Dependencies
 [Document external dependencies]
-''',
-            'tech.md': '''# Technology Stack
+""",
+            "tech.md": """# Technology Stack
 
 ## Technology Selection
 [List selected technologies and frameworks]
@@ -384,12 +384,12 @@ class DocumentationGenerator:
 
 ## Setup Guide
 [Provide setup instructions]
-''',
+""",
         }
 
         for filename, content in minimal_templates.items():
             filepath = base_path / filename
-            filepath.write_text(content, encoding='utf-8')
+            filepath.write_text(content, encoding="utf-8")
 
 
 class BrainstormQuestionGenerator:
@@ -400,29 +400,29 @@ class BrainstormQuestionGenerator:
         """Get Quick (5-10 min) brainstorm questions"""
         return [
             {
-                'id': 'q1_vision',
-                'question': 'What is your project vision in one sentence?',
-                'category': 'vision',
+                "id": "q1_vision",
+                "question": "What is your project vision in one sentence?",
+                "category": "vision",
             },
             {
-                'id': 'q2_users',
-                'question': 'Who are your target users?',
-                'category': 'vision',
+                "id": "q2_users",
+                "question": "Who are your target users?",
+                "category": "vision",
             },
             {
-                'id': 'q3_architecture',
-                'question': 'What is the basic system architecture?',
-                'category': 'architecture',
+                "id": "q3_architecture",
+                "question": "What is the basic system architecture?",
+                "category": "architecture",
             },
             {
-                'id': 'q4_tech',
-                'question': 'What are your key technologies?',
-                'category': 'tech',
+                "id": "q4_tech",
+                "question": "What are your key technologies?",
+                "category": "tech",
             },
             {
-                'id': 'q5_team',
-                'question': 'What is your team composition?',
-                'category': 'team',
+                "id": "q5_team",
+                "question": "What is your team composition?",
+                "category": "team",
             },
         ]
 
@@ -432,29 +432,29 @@ class BrainstormQuestionGenerator:
         quick = BrainstormQuestionGenerator.get_quick_questions()
         additional = [
             {
-                'id': 'q6_tradeoffs_1',
-                'question': 'What major trade-offs did you make?',
-                'category': 'tradeoffs',
+                "id": "q6_tradeoffs_1",
+                "question": "What major trade-offs did you make?",
+                "category": "tradeoffs",
             },
             {
-                'id': 'q7_tradeoffs_2',
-                'question': 'What alternatives did you consider?',
-                'category': 'tradeoffs',
+                "id": "q7_tradeoffs_2",
+                "question": "What alternatives did you consider?",
+                "category": "tradeoffs",
             },
             {
-                'id': 'q8_performance',
-                'question': 'What are your performance requirements?',
-                'category': 'performance',
+                "id": "q8_performance",
+                "question": "What are your performance requirements?",
+                "category": "performance",
             },
             {
-                'id': 'q9_security',
-                'question': 'What security considerations are important?',
-                'category': 'security',
+                "id": "q9_security",
+                "question": "What security considerations are important?",
+                "category": "security",
             },
             {
-                'id': 'q10_scalability',
-                'question': 'How should the system scale?',
-                'category': 'scalability',
+                "id": "q10_scalability",
+                "question": "How should the system scale?",
+                "category": "scalability",
             },
         ]
         return quick + additional
@@ -465,34 +465,34 @@ class BrainstormQuestionGenerator:
         standard = BrainstormQuestionGenerator.get_standard_questions()
         additional = [
             {
-                'id': 'q11_competitors_1',
-                'question': 'What competitors exist in this space?',
-                'category': 'market',
+                "id": "q11_competitors_1",
+                "question": "What competitors exist in this space?",
+                "category": "market",
             },
             {
-                'id': 'q12_competitors_2',
-                'question': 'How do you differentiate from competitors?',
-                'category': 'market',
+                "id": "q12_competitors_2",
+                "question": "How do you differentiate from competitors?",
+                "category": "market",
             },
             {
-                'id': 'q13_market',
-                'question': 'What market trends are relevant?',
-                'category': 'market',
+                "id": "q13_market",
+                "question": "What market trends are relevant?",
+                "category": "market",
             },
             {
-                'id': 'q14_innovation',
-                'question': 'What innovative approaches are you using?',
-                'category': 'innovation',
+                "id": "q14_innovation",
+                "question": "What innovative approaches are you using?",
+                "category": "innovation",
             },
             {
-                'id': 'q15_costs',
-                'question': 'What is your cost model?',
-                'category': 'business',
+                "id": "q15_costs",
+                "question": "What is your cost model?",
+                "category": "business",
             },
             {
-                'id': 'q16_best_practices',
-                'question': 'What best practices are you following?',
-                'category': 'practices',
+                "id": "q16_best_practices",
+                "question": "What best practices are you following?",
+                "category": "practices",
             },
         ]
         return standard + additional
@@ -500,11 +500,11 @@ class BrainstormQuestionGenerator:
     @staticmethod
     def get_questions_by_depth(depth: str) -> List[Dict[str, str]]:
         """Get questions for specified depth"""
-        if depth == 'quick':
+        if depth == "quick":
             return BrainstormQuestionGenerator.get_quick_questions()
-        elif depth == 'standard':
+        elif depth == "standard":
             return BrainstormQuestionGenerator.get_standard_questions()
-        elif depth == 'deep':
+        elif depth == "deep":
             return BrainstormQuestionGenerator.get_deep_questions()
         else:
             return BrainstormQuestionGenerator.get_quick_questions()
@@ -516,34 +516,34 @@ class AgentContextInjector:
     @staticmethod
     def inject_project_manager_context(
         agent_config: Dict[str, Any],
-        base_path: Path = Path('.moai/project'),
+        base_path: Path = Path(".moai/project"),
     ) -> Dict[str, Any]:
         """Inject product.md into project-manager agent"""
         config = deepcopy(agent_config)
 
-        doc_path = base_path / 'product.md'
+        doc_path = base_path / "product.md"
         if doc_path.exists():
-            content = doc_path.read_text(encoding='utf-8')
-            if 'system_context' not in config:
-                config['system_context'] = ''
-            config['system_context'] += f'\n\n## Project Documentation\n{content}'
+            content = doc_path.read_text(encoding="utf-8")
+            if "system_context" not in config:
+                config["system_context"] = ""
+            config["system_context"] += f"\n\n## Project Documentation\n{content}"
 
         return config
 
     @staticmethod
     def inject_tdd_implementer_context(
         agent_config: Dict[str, Any],
-        base_path: Path = Path('.moai/project'),
+        base_path: Path = Path(".moai/project"),
     ) -> Dict[str, Any]:
         """Inject structure.md into tdd-implementer agent"""
         config = deepcopy(agent_config)
 
-        doc_path = base_path / 'structure.md'
+        doc_path = base_path / "structure.md"
         if doc_path.exists():
-            content = doc_path.read_text(encoding='utf-8')
-            if 'architecture_context' not in config:
-                config['architecture_context'] = ''
-            config['architecture_context'] += f'\n\n## Architecture Reference\n{content}'
+            content = doc_path.read_text(encoding="utf-8")
+            if "architecture_context" not in config:
+                config["architecture_context"] = ""
+            config["architecture_context"] += f"\n\n## Architecture Reference\n{content}"
 
         return config
 
@@ -551,16 +551,16 @@ class AgentContextInjector:
     def inject_domain_expert_context(
         agent_config: Dict[str, Any],
         agent_type: str,  # 'backend_expert' or 'frontend_expert'
-        base_path: Path = Path('.moai/project'),
+        base_path: Path = Path(".moai/project"),
     ) -> Dict[str, Any]:
         """Inject tech.md into domain expert agents"""
         config = deepcopy(agent_config)
 
-        doc_path = base_path / 'tech.md'
+        doc_path = base_path / "tech.md"
         if doc_path.exists():
-            content = doc_path.read_text(encoding='utf-8')
-            if 'tech_context' not in config:
-                config['tech_context'] = ''
-            config['tech_context'] += f'\n\n## Technology Stack Reference\n{content}'
+            content = doc_path.read_text(encoding="utf-8")
+            if "tech_context" not in config:
+                config["tech_context"] = ""
+            config["tech_context"] += f"\n\n## Technology Stack Reference\n{content}"
 
         return config

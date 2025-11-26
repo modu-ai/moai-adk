@@ -59,7 +59,10 @@ class TestAgentContextModule:
 
     def test_analyze_prompt_intent_spec_creation(self):
         """SPEC 생성 의도 분석 테스트"""
-        from shared.core.agent_context import analyze_prompt_intent, load_agent_skills_mapping
+        from shared.core.agent_context import (
+            analyze_prompt_intent,
+            load_agent_skills_mapping,
+        )
 
         mapping = load_agent_skills_mapping()
         prompt = "새로운 기능에 대한 명세서를 작성해주세요"
@@ -78,10 +81,13 @@ class TestAgentContextModule:
 
     def test_analyze_prompt_intent_implementation(self):
         """구현 의도 분석 테스트"""
-        from shared.core.agent_context import analyze_prompt_intent, load_agent_skills_mapping
+        from shared.core.agent_context import (
+            analyze_prompt_intent,
+            load_agent_skills_mapping,
+        )
 
         mapping = load_agent_skills_mapping()
-        prompt = "/alfred:2-run SPEC-001을 구현해주세요"
+        prompt = "/moai:2-run SPEC-001을 구현해주세요"
 
         result = analyze_prompt_intent(prompt, mapping)
 
@@ -95,7 +101,10 @@ class TestAgentContextModule:
 
     def test_analyze_prompt_intent_no_match(self):
         """일치하는 패턴 없을 때 테스트"""
-        from shared.core.agent_context import analyze_prompt_intent, load_agent_skills_mapping
+        from shared.core.agent_context import (
+            analyze_prompt_intent,
+            load_agent_skills_mapping,
+        )
 
         mapping = load_agent_skills_mapping()
         prompt = "오늘 날씨 어때요?"
@@ -113,7 +122,7 @@ class TestAgentContextModule:
         cwd = "/tmp/test_project"
 
         # Mock Path.exists() for context files
-        with patch('pathlib.Path.exists') as mock_exists:
+        with patch("pathlib.Path.exists") as mock_exists:
             mock_exists.return_value = True
 
             result = get_agent_delegation_context(prompt, cwd)
@@ -153,7 +162,7 @@ class TestAgentContextModule:
             "recommended_skills": ["moai-domain-frontend", "component-designer"],
             "secondary_agents": ["ui-ux-expert"],
             "context_files": ["src/App.js", "package.json"],
-            "skill_references": [".claude/skills/moai-domain-frontend/reference.md"]
+            "skill_references": [".claude/skills/moai-domain-frontend/reference.md"],
         }
 
         message = format_agent_delegation_message(context)
@@ -175,7 +184,7 @@ class TestAgentContextModule:
             "primary_agent": "backend-expert",
             "confidence": 0.3,  # 낮은 신뢰도
             "intent": "backend",
-            "matched_keywords": []
+            "matched_keywords": [],
         }
 
         message = format_agent_delegation_message(context)
@@ -191,7 +200,7 @@ class TestAgentContextModule:
         cwd = "/tmp/test_project"
 
         # Mock file existence
-        with patch('pathlib.Path.exists') as mock_exists:
+        with patch("pathlib.Path.exists") as mock_exists:
             # Mock different files differently
             def exists_side_effect(self):
                 if "skill" in str(self).lower():
@@ -223,16 +232,13 @@ class TestEnhancedUserHandler:
         from shared.handlers.user import handle_user_prompt_submit
 
         # Mock the enhanced context
-        with patch('shared.handlers.user.get_enhanced_jit_context') as mock_context:
+        with patch("shared.handlers.user.get_enhanced_jit_context") as mock_context:
             mock_context.return_value = (
                 [".claude/skills/moai-domain-backend/reference.md", "src/api/"],
-                "🎯 전문가 에이전트 추천: backend-expert"
+                "🎯 전문가 에이전트 추천: backend-expert",
             )
 
-            payload = HookPayload(
-                userPrompt="API 엔드포인트를 구현해주세요",
-                cwd="/tmp/test_project"
-            )
+            payload = HookPayload(userPrompt="API 엔드포인트를 구현해주세요", cwd="/tmp/test_project")
 
             result = handle_user_prompt_submit(payload)
 
@@ -249,13 +255,10 @@ class TestEnhancedUserHandler:
         from shared.handlers.user import handle_user_prompt_submit
 
         # Mock traditional context (no agent delegation)
-        with patch('shared.handlers.user.get_enhanced_jit_context') as mock_context:
+        with patch("shared.handlers.user.get_enhanced_jit_context") as mock_context:
             mock_context.return_value = ([], None)
 
-            payload = HookPayload(
-                userPrompt="간단한 질문입니다",
-                cwd="/tmp/test_project"
-            )
+            payload = HookPayload(userPrompt="간단한 질문입니다", cwd="/tmp/test_project")
 
             result = handle_user_prompt_submit(payload)
 
@@ -269,20 +272,19 @@ class TestEnhancedUserHandler:
         from shared.core import HookPayload
         from shared.handlers.user import handle_user_prompt_submit
 
-        with patch('shared.handlers.user.get_enhanced_jit_context') as mock_context, \
-             patch('builtins.open', create=True) as mock_open, \
-             patch('pathlib.Path.mkdir') as mock_mkdir:
+        with (
+            patch("shared.handlers.user.get_enhanced_jit_context") as mock_context,
+            patch("builtins.open", create=True),
+            patch("pathlib.Path.mkdir"),
+        ):
 
             # Mock enhanced context with agent delegation
             mock_context.return_value = (
                 [".claude/skills/moai-core-spec-authoring/reference.md"],
-                "🎯 전문가 에이전트 추천: spec-builder"
+                "🎯 전문가 에이전트 추천: spec-builder",
             )
 
-            payload = HookPayload(
-                userPrompt="/alfred:1-plan 새로운 기능 명세",
-                cwd="/tmp/test_project"
-            )
+            payload = HookPayload(userPrompt="/moai:1-plan 새로운 기능 명세", cwd="/tmp/test_project")
 
             result = handle_user_prompt_submit(payload)
 

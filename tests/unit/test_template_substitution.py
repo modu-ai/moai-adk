@@ -1,6 +1,5 @@
 """Unit tests for template variable substitution (processor.py)"""
 
-
 from moai_adk.core.template.processor import TemplateProcessor
 
 
@@ -22,11 +21,9 @@ class TestBasicSubstitution:
     def test_substitute_multiple_variables(self, tmp_path):
         """Test substitution of multiple variables"""
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "MyProject",
-            "PROJECT_DESCRIPTION": "My awesome project",
-            "AUTHOR": "John Doe"
-        })
+        processor.set_context(
+            {"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "My awesome project", "AUTHOR": "John Doe"}
+        )
 
         content = """# {{PROJECT_NAME}}
 Description: {{PROJECT_DESCRIPTION}}
@@ -71,9 +68,7 @@ class TestInjectionPrevention:
     def test_recursive_substitution_prevented(self, tmp_path):
         """Test that recursive substitution attacks are prevented"""
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "Test{{ATTACK}}"
-        })
+        processor.set_context({"PROJECT_NAME": "Test{{ATTACK}}"})
 
         content = "# {{PROJECT_NAME}}"
         result, warnings = processor._substitute_variables(content)
@@ -86,9 +81,7 @@ class TestInjectionPrevention:
     def test_control_character_removal(self, tmp_path):
         """Test that control characters are removed"""
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "Test\x00Project\x01"
-        })
+        processor.set_context({"PROJECT_NAME": "Test\x00Project\x01"})
 
         content = "# {{PROJECT_NAME}}"
         result, warnings = processor._substitute_variables(content)
@@ -101,9 +94,7 @@ class TestInjectionPrevention:
     def test_whitespace_preserved(self, tmp_path):
         """Test that valid whitespace is preserved"""
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "Test\nProject\tWith\rSpaces"
-        })
+        processor.set_context({"PROJECT_NAME": "Test\nProject\tWith\rSpaces"})
 
         content = "# {{PROJECT_NAME}}"
         result, warnings = processor._substitute_variables(content)
@@ -122,10 +113,7 @@ class TestFileOperations:
 
         # Create processor and set context
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "MyProject",
-            "PROJECT_DESCRIPTION": "Test project"
-        })
+        processor.set_context({"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "Test project"})
 
         # Copy with substitution
         dst = tmp_path / "output.md"
@@ -142,7 +130,7 @@ class TestFileOperations:
         """Test that binary files are copied without substitution"""
         # Create binary file
         src = tmp_path / "image.bin"
-        src.write_bytes(b'\x89PNG\r\n\x1a\n')
+        src.write_bytes(b"\x89PNG\r\n\x1a\n")
 
         # Create processor
         processor = TemplateProcessor(tmp_path)
@@ -153,7 +141,7 @@ class TestFileOperations:
         processor._copy_file_with_substitution(src, dst)
 
         # Verify binary content unchanged
-        assert dst.read_bytes() == b'\x89PNG\r\n\x1a\n'
+        assert dst.read_bytes() == b"\x89PNG\r\n\x1a\n"
 
     def test_text_file_detection(self, tmp_path):
         """Test that file type is correctly detected"""
@@ -224,19 +212,19 @@ class TestIntegration:
         """Test complete substitution pipeline"""
         # Setup
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({
-            "PROJECT_NAME": "AwesomeApp",
-            "PROJECT_DESCRIPTION": "An awesome application",
-            "AUTHOR": "DevTeam"
-        })
+        processor.set_context(
+            {"PROJECT_NAME": "AwesomeApp", "PROJECT_DESCRIPTION": "An awesome application", "AUTHOR": "DevTeam"}
+        )
 
         # Create and copy files
         src = tmp_path / "README.md"
-        src.write_text("""# {{PROJECT_NAME}}
+        src.write_text(
+            """# {{PROJECT_NAME}}
 
 Description: {{PROJECT_DESCRIPTION}}
 Author: {{AUTHOR}}
-Version: {{VERSION}}""")
+Version: {{VERSION}}"""
+        )
 
         dst = tmp_path / "output.md"
         warnings = processor._copy_file_with_substitution(src, dst)
@@ -258,7 +246,7 @@ class TestHookProjectDirSubstitution:
         processor = TemplateProcessor(tmp_path)
         processor.set_context({"PROJECT_DIR": "%CLAUDE_PROJECT_DIR%"})
 
-        content = 'uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py'
+        content = "uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py"
         result, warnings = processor._substitute_variables(content)
 
         assert "%CLAUDE_PROJECT_DIR%" in result
@@ -270,7 +258,7 @@ class TestHookProjectDirSubstitution:
         processor = TemplateProcessor(tmp_path)
         processor.set_context({"PROJECT_DIR": "$CLAUDE_PROJECT_DIR"})
 
-        content = 'uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py'
+        content = "uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py"
         result, warnings = processor._substitute_variables(content)
 
         assert "$CLAUDE_PROJECT_DIR" in result
@@ -282,7 +270,7 @@ class TestHookProjectDirSubstitution:
         processor = TemplateProcessor(tmp_path)
         # Don't set PROJECT_DIR in context
 
-        content = 'uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py'
+        content = "uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py"
         result, warnings = processor._substitute_variables(content)
 
         assert "{{PROJECT_DIR}}" in result

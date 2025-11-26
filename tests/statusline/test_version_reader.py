@@ -53,8 +53,7 @@ class TestVersionReader:
             version = reader.get_version()
 
             # RED: 이 테스트는 실패할 것입니다. v 접두사 처리 로직이 없음
-            assert "0.22.4" in version or version == "v0.22.4", \
-                f"Expected version with 0.22.4, got {version}"
+            assert "0.22.4" in version or version == "v0.22.4", f"Expected version with 0.22.4, got {version}"
 
     def test_version_caching(self):
         """
@@ -127,8 +126,7 @@ class TestVersionReader:
             version = reader.get_version()
 
             # RED: 이 테스트는 실패할 것입니다. 현재 구현은 최상위 version 필드를 읽지 못함
-            assert version == "1.5.0" or "1.5.0" in version, \
-                f"Expected version 1.5.0, got {version}"
+            assert version == "1.5.0" or "1.5.0" in version, f"Expected version 1.5.0, got {version}"
 
     def test_version_reading_nonexistent_config(self):
         """
@@ -217,12 +215,7 @@ class TestVersionReader:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
             # Config with both version fields
-            config_data = {
-                "version": "1.0.0",  # Should be ignored
-                "moai": {
-                    "version": "2.0.0"  # Should be used
-                }
-            }
+            config_data = {"version": "1.0.0", "moai": {"version": "2.0.0"}}  # Should be ignored  # Should be used
             config_file.write_text(json.dumps(config_data))
 
             reader = VersionReader()
@@ -231,8 +224,7 @@ class TestVersionReader:
             version = reader.get_version()
 
             # RED: 이 테스트는 실패할 것입니다. 현재 구현은 올바른 우선순위를 처리하지 않음
-            assert version == "2.0.0", \
-                f"Expected moai.version '2.0.0', got {version}"
+            assert version == "2.0.0", f"Expected moai.version '2.0.0', got {version}"
 
     def test_version_reading_partial_config(self):
         """
@@ -254,8 +246,7 @@ class TestVersionReader:
             version = reader.get_version()
 
             # RED: 이 테스트는 실패할 것입니다. 부분적 구조 처리에 문제가 있음
-            assert version == "3.1.2", \
-                f"Expected version 3.1.2, got {version}"
+            assert version == "3.1.2", f"Expected version 3.1.2, got {version}"
 
     def test_version_case_sensitivity(self):
         """
@@ -280,8 +271,7 @@ class TestVersionReader:
                 result = reader.get_version()
 
                 # RED: 이 테스트는 실패할 것입니다. 정확한 문자열 처리 문제
-                assert result == version or version in result, \
-                    f"Expected version '{version}', got '{result}'"
+                assert result == version or version in result, f"Expected version '{version}', got '{result}'"
 
     def test_version_with_special_characters(self):
         """
@@ -291,12 +281,7 @@ class TestVersionReader:
         """
         from moai_adk.statusline.version_reader import VersionReader
 
-        special_versions = [
-            "0.22.4-beta.1",
-            "0.22.4-alpha",
-            "v0.22.4-rc.1",
-            "0.22.4-dev"
-        ]
+        special_versions = ["0.22.4-beta.1", "0.22.4-alpha", "v0.22.4-rc.1", "0.22.4-dev"]
 
         for version in special_versions:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -310,8 +295,7 @@ class TestVersionReader:
                 result = reader.get_version()
 
                 # RED: 이 테스트는 실패할 것입니다. 특수 문자 처리 문제
-                assert result == version or version in result, \
-                    f"Expected version '{version}', got '{result}'"
+                assert result == version or version in result, f"Expected version '{version}', got '{result}'"
 
     def test_version_cache_update_on_valid_version(self):
         """
@@ -362,5 +346,4 @@ class TestVersionReader:
             assert version == "unknown", f"Expected 'unknown', got {version}"
 
             # Cache should contain 'unknown'
-            assert reader._version_cache == "unknown", \
-                f"Cache should contain 'unknown', got {reader._version_cache}"
+            assert reader._version_cache == "unknown", f"Cache should contain 'unknown', got {reader._version_cache}"

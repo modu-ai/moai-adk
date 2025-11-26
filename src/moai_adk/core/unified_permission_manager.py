@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class PermissionMode(Enum):
     """Valid permission modes for agents"""
+
     ACCEPT_EDITS = "acceptEdits"
     BYPASS_PERMISSIONS = "bypassPermissions"
     DEFAULT = "default"
@@ -32,6 +33,7 @@ class PermissionMode(Enum):
 
 class PermissionSeverity(Enum):
     """Permission validation severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -40,6 +42,7 @@ class PermissionSeverity(Enum):
 
 class ResourceType(Enum):
     """Types of resources that can be protected"""
+
     AGENT = "agent"
     TOOL = "tool"
     FILE = "file"
@@ -50,6 +53,7 @@ class ResourceType(Enum):
 @dataclass
 class PermissionRule:
     """Individual permission rule"""
+
     resource_type: ResourceType
     resource_name: str
     action: str
@@ -61,6 +65,7 @@ class PermissionRule:
 @dataclass
 class ValidationResult:
     """Result of permission validation"""
+
     valid: bool
     corrected_mode: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
@@ -72,6 +77,7 @@ class ValidationResult:
 @dataclass
 class PermissionAudit:
     """Audit log entry for permission changes"""
+
     timestamp: float
     user_id: Optional[str]
     resource_type: ResourceType
@@ -97,13 +103,7 @@ class UnifiedPermissionManager:
     """
 
     # Valid permission modes from Claude Code
-    VALID_PERMISSION_MODES = {
-        "acceptEdits",
-        "bypassPermissions",
-        "default",
-        "dontAsk",
-        "plan"
-    }
+    VALID_PERMISSION_MODES = {"acceptEdits", "bypassPermissions", "default", "dontAsk", "plan"}
 
     # Default permission mappings
     DEFAULT_PERMISSIONS = {
@@ -122,21 +122,17 @@ class UnifiedPermissionManager:
     def __init__(self, config_path: Optional[str] = None, enable_logging: bool = True):
         self.config_path = config_path or ".claude/settings.json"
         self.enable_logging = enable_logging
-        self.permission_cache = {}
+        self.permission_cache: Dict[str, Any] = {}
         self.audit_log: List[PermissionAudit] = []
         self.stats = {
-            'validations_performed': 0,
-            'auto_corrections': 0,
-            'security_violations': 0,
-            'permission_denied': 0
+            "validations_performed": 0,
+            "auto_corrections": 0,
+            "security_violations": 0,
+            "permission_denied": 0,
         }
 
         # Role hierarchy for inheritance
-        self.role_hierarchy = {
-            "admin": ["developer", "user"],
-            "developer": ["user"],
-            "user": []
-        }
+        self.role_hierarchy = {"admin": ["developer", "user"], "developer": ["user"], "user": []}
 
         # Load and validate current configuration
         self.config = self._load_configuration()
@@ -146,7 +142,7 @@ class UnifiedPermissionManager:
         """Load configuration from file with error handling"""
         try:
             if os.path.exists(self.config_path):
-                with open(self.config_path, 'r', encoding='utf-8') as f:
+                with open(self.config_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
 
                 if self.enable_logging:
@@ -172,7 +168,7 @@ class UnifiedPermissionManager:
         corrections_made = False
 
         # Check agent permissions
-        agents_config = self.config.get('agents', {})
+        agents_config = self.config.get("agents", {})
         for agent_name, agent_config in agents_config.items():
             result = self.validate_agent_permission(agent_name, agent_config)
             if result.auto_corrected:
@@ -181,9 +177,9 @@ class UnifiedPermissionManager:
                     logger.info(f"Auto-corrected permissions for agent: {agent_name}")
 
         # Check settings permissions
-        settings_config = self.config.get('projectSettings', {})
-        if 'allowedTools' in settings_config:
-            result = self.validate_tool_permissions(settings_config['allowedTools'])
+        settings_config = self.config.get("projectSettings", {})
+        if "allowedTools" in settings_config:
+            result = self.validate_tool_permissions(settings_config["allowedTools"])
             if result.auto_corrected:
                 corrections_made = True
 
@@ -200,12 +196,12 @@ class UnifiedPermissionManager:
         Addresses the permissionMode validation errors from debug logs:
         - Lines 50-80: Multiple agents with invalid permission modes ('ask', 'auto')
         """
-        self.stats['validations_performed'] += 1
+        self.stats["validations_performed"] += 1
 
         result = ValidationResult(valid=True)
 
         # Extract current permission mode
-        current_mode = agent_config.get('permissionMode', 'default')
+        current_mode = agent_config.get("permissionMode", "default")
 
         # Validate permission mode
         if current_mode not in self.VALID_PERMISSION_MODES:
@@ -218,12 +214,12 @@ class UnifiedPermissionManager:
             )
 
             # Auto-correction
-            agent_config['permissionMode'] = suggested_mode
+            agent_config["permissionMode"] = suggested_mode
             result.corrected_mode = suggested_mode
             result.auto_corrected = True
             result.severity = PermissionSeverity.HIGH
 
-            self.stats['auto_corrections'] += 1
+            self.stats["auto_corrections"] += 1
             self._audit_permission_change(
                 resource_type=ResourceType.AGENT,
                 resource_name=agent_name,
@@ -231,29 +227,26 @@ class UnifiedPermissionManager:
                 old_permissions={"permissionMode": current_mode},
                 new_permissions={"permissionMode": suggested_mode},
                 reason=f"Invalid permission mode '{current_mode}' auto-corrected to '{suggested_mode}'",
-                auto_corrected=True
+                auto_corrected=True,
             )
 
             if self.enable_logging:
                 logger.warning(
-                    f"Auto-corrected agent '{agent_name}' permissionMode from "
-                    f"'{current_mode}' to '{suggested_mode}'"
+                    f"Auto-corrected agent '{agent_name}' permissionMode from '{current_mode}' to '{suggested_mode}'"
                 )
 
         # Validate other agent configuration
-        if 'model' in agent_config:
-            model = agent_config['model']
+        if "model" in agent_config:
+            model = agent_config["model"]
             if not isinstance(model, str) or not model.strip():
                 result.errors.append(f"Invalid model configuration for agent '{agent_name}'")
                 result.severity = PermissionSeverity.MEDIUM
 
         # Check for required fields
-        required_fields = ['description', 'systemPrompt']
+        required_fields = ["description", "systemPrompt"]
         for req_field in required_fields:
             if req_field not in agent_config or not agent_config[req_field]:
-                result.warnings.append(
-                    f"Missing or empty '{req_field}' for agent '{agent_name}'"
-                )
+                result.warnings.append(f"Missing or empty '{req_field}' for agent '{agent_name}'")
 
         return result
 
@@ -268,19 +261,19 @@ class UnifiedPermissionManager:
         agent_lower = agent_name.lower()
 
         # Security and compliance focused agents should be more restrictive
-        if any(keyword in agent_lower for keyword in ['security', 'audit', 'compliance']):
+        if any(keyword in agent_lower for keyword in ["security", "audit", "compliance"]):
             return PermissionMode.PLAN.value
 
         # Code execution and modification agents should accept edits
-        if any(keyword in agent_lower for keyword in ['expert', 'implementer', 'builder']):
+        if any(keyword in agent_lower for keyword in ["expert", "implementer", "builder"]):
             return PermissionMode.ACCEPT_EDITS.value
 
         # Planning and analysis agents should use plan mode
-        if any(keyword in agent_lower for keyword in ['planner', 'analyzer', 'designer']):
+        if any(keyword in agent_lower for keyword in ["planner", "analyzer", "designer"]):
             return PermissionMode.PLAN.value
 
         # Management agents should have appropriate permissions
-        if any(keyword in agent_lower for keyword in ['manager', 'coordinator']):
+        if any(keyword in agent_lower for keyword in ["manager", "coordinator"]):
             return PermissionMode.ACCEPT_EDITS.value
 
         # Check against our default mappings
@@ -296,25 +289,23 @@ class UnifiedPermissionManager:
 
         # Define dangerous tools that should require explicit approval
         dangerous_tools = {
-            'Bash(rm -rf:*)',
-            'Bash(sudo:*)',
-            'Bash(chmod -R 777:*)',
-            'Bash(dd:*)',
-            'Bash(mkfs:*)',
-            'Bash(fdisk:*)',
-            'Bash(reboot:*)',
-            'Bash(shutdown:*)',
-            'Bash(git push --force:*)',
-            'Bash(git reset --hard:*)'
+            "Bash(rm -rf:*)",
+            "Bash(sudo:*)",
+            "Bash(chmod -R 777:*)",
+            "Bash(dd:*)",
+            "Bash(mkfs:*)",
+            "Bash(fdisk:*)",
+            "Bash(reboot:*)",
+            "Bash(shutdown:*)",
+            "Bash(git push --force:*)",
+            "Bash(git reset --hard:*)",
         }
 
         for tool in allowed_tools:
             if tool in dangerous_tools:
-                result.warnings.append(
-                    f"Dangerous tool allowed: {tool}. Consider restricting access."
-                )
+                result.warnings.append(f"Dangerous tool allowed: {tool}. Consider restricting access.")
                 result.severity = PermissionSeverity.HIGH
-                self.stats['security_violations'] += 1
+                self.stats["security_violations"] += 1
 
         return result
 
@@ -324,7 +315,7 @@ class UnifiedPermissionManager:
 
         Implements unified permission checking with role hierarchy support.
         """
-        self.stats['validations_performed'] += 1
+        self.stats["validations_performed"] += 1
 
         # Check cache first
         cache_key = f"{user_role}:{tool_name}:{operation}"
@@ -345,7 +336,7 @@ class UnifiedPermissionManager:
         self.permission_cache[cache_key] = permitted
 
         if not permitted:
-            self.stats['permission_denied'] += 1
+            self.stats["permission_denied"] += 1
             if self.enable_logging:
                 logger.warning(f"Permission denied: {user_role} cannot {operation} with {tool_name}")
 
@@ -357,7 +348,7 @@ class UnifiedPermissionManager:
         role_permissions = {
             "admin": ["*"],  # All tools
             "developer": ["Task", "Read", "Write", "Edit", "Bash", "AskUserQuestion"],
-            "user": ["Task", "Read", "AskUserQuestion"]
+            "user": ["Task", "Read", "AskUserQuestion"],
         }
 
         allowed_tools = role_permissions.get(role, [])
@@ -386,7 +377,7 @@ class UnifiedPermissionManager:
         result = ValidationResult(valid=True)
 
         try:
-            with open(config_to_validate, 'r', encoding='utf-8') as f:
+            with open(config_to_validate, "r", encoding="utf-8") as f:
                 config = json.load(f)
         except FileNotFoundError:
             result.errors.append(f"Configuration file not found: {config_to_validate}")
@@ -409,7 +400,7 @@ class UnifiedPermissionManager:
             self._validate_file_permissions,
             self._validate_allowed_tools,
             self._validate_sandbox_settings,
-            self._validate_mcp_servers
+            self._validate_mcp_servers,
         ]
 
         for check in security_checks:
@@ -422,13 +413,13 @@ class UnifiedPermissionManager:
 
     def _validate_file_permissions(self, config: Dict[str, Any]) -> bool:
         """Validate file permission settings"""
-        permissions = config.get('permissions', {})
+        permissions = config.get("permissions", {})
 
         # Check for overly permissive settings
-        if 'deniedTools' in permissions:
-            denied_tools = permissions['deniedTools']
+        if "deniedTools" in permissions:
+            denied_tools = permissions["deniedTools"]
             # Ensure dangerous operations are denied
-            dangerous_patterns = ['rm -rf', 'sudo', 'chmod 777', 'format', 'mkfs']
+            dangerous_patterns = ["rm -rf", "sudo", "chmod 777", "format", "mkfs"]
 
             for pattern in dangerous_patterns:
                 found = any(pattern in tool for tool in denied_tools)
@@ -441,11 +432,11 @@ class UnifiedPermissionManager:
 
     def _validate_allowed_tools(self, config: Dict[str, Any]) -> bool:
         """Validate allowed tools configuration"""
-        permissions = config.get('permissions', {})
-        allowed_tools = permissions.get('allowedTools', [])
+        permissions = config.get("permissions", {})
+        allowed_tools = permissions.get("allowedTools", [])
 
         # Ensure essential tools are available (but don't fail validation)
-        essential_tools = ['Task', 'Read', 'AskUserQuestion']
+        essential_tools = ["Task", "Read", "AskUserQuestion"]
         for tool in essential_tools:
             if tool not in allowed_tools:
                 logger.warning(f"Essential tool not allowed: {tool}")
@@ -456,15 +447,15 @@ class UnifiedPermissionManager:
 
     def _validate_sandbox_settings(self, config: Dict[str, Any]) -> bool:
         """Validate sandbox security settings"""
-        sandbox = config.get('sandbox', {})
+        sandbox = config.get("sandbox", {})
 
         # Ensure sandbox is enabled
-        if not sandbox.get('allowUnsandboxedCommands', False):
+        if not sandbox.get("allowUnsandboxedCommands", False):
             return True
 
         # If sandbox is disabled, ensure validated commands are restricted
-        validated_commands = sandbox.get('validatedCommands', [])
-        dangerous_commands = ['rm -rf', 'sudo', 'format', 'mkfs']
+        validated_commands = sandbox.get("validatedCommands", [])
+        dangerous_commands = ["rm -rf", "sudo", "format", "mkfs"]
 
         for dangerous_cmd in dangerous_commands:
             if any(dangerous_cmd in validated_cmd for validated_cmd in validated_commands):
@@ -475,13 +466,13 @@ class UnifiedPermissionManager:
 
     def _validate_mcp_servers(self, config: Dict[str, Any]) -> bool:
         """Validate MCP server configuration for security"""
-        mcp_servers = config.get('mcpServers', {})
+        mcp_servers = config.get("mcpServers", {})
 
         for server_name, server_config in mcp_servers.items():
             # Ensure command doesn't use dangerous flags
-            if 'command' in server_config:
-                command = server_config['command']
-                dangerous_flags = ['--insecure', '--allow-all', '--disable-ssl']
+            if "command" in server_config:
+                command = server_config["command"]
+                dangerous_flags = ["--insecure", "--allow-all", "--disable-ssl"]
 
                 for flag in dangerous_flags:
                     if flag in command:
@@ -498,7 +489,7 @@ class UnifiedPermissionManager:
         from the debug logs (Lines 50-80).
         """
         # Get current agent configuration
-        agents_config = self.config.setdefault('agents', {})
+        agents_config = self.config.setdefault("agents", {})
         agent_config = agents_config.get(agent_name, {})
 
         # Validate and fix
@@ -518,21 +509,43 @@ class UnifiedPermissionManager:
         """Auto-fix all agent permissions in the configuration"""
         results = {}
 
-        agents_config = self.config.get('agents', {})
+        agents_config = self.config.get("agents", {})
         for agent_name in agents_config:
             results[agent_name] = self.auto_fix_agent_permissions(agent_name)
 
         # Also check for agents mentioned in the debug log that might not be in config
         debug_log_agents = [
-            "backend-expert", "security-expert", "api-designer", "monitoring-expert",
-            "performance-engineer", "migration-expert", "mcp-playwright-integrator",
-            "quality-gate", "frontend-expert", "debug-helper", "ui-ux-expert",
-            "trust-checker", "project-manager", "mcp-context7-integrator",
-            "mcp-figma-integrator", "tdd-implementer", "format-expert",
-            "mcp-notion-integrator", "devops-expert", "docs-manager",
-            "implementation-planner", "skill-factory", "component-designer",
-            "database-expert", "agent-factory", "git-manager", "sync-manager",
-            "spec-builder", "doc-syncer", "accessibility-expert", "cc-manager"
+            "backend-expert",
+            "security-expert",
+            "api-designer",
+            "monitoring-expert",
+            "performance-engineer",
+            "migration-expert",
+            "mcp-playwright-integrator",
+            "quality-gate",
+            "frontend-expert",
+            "debug-helper",
+            "ui-ux-expert",
+            "trust-checker",
+            "project-manager",
+            "mcp-context7-integrator",
+            "mcp-figma-integrator",
+            "tdd-implementer",
+            "format-expert",
+            "mcp-notion-integrator",
+            "devops-expert",
+            "docs-manager",
+            "implementation-planner",
+            "skill-factory",
+            "component-designer",
+            "database-expert",
+            "agent-factory",
+            "git-manager",
+            "sync-manager",
+            "spec-builder",
+            "doc-syncer",
+            "accessibility-expert",
+            "cc-manager",
         ]
 
         for agent_name in debug_log_agents:
@@ -541,13 +554,11 @@ class UnifiedPermissionManager:
                 agents_config[agent_name] = {
                     "permissionMode": self._suggest_permission_mode(agent_name),
                     "description": f"Auto-generated configuration for {agent_name}",
-                    "systemPrompt": f"Default system prompt for {agent_name}"
+                    "systemPrompt": f"Default system prompt for {agent_name}",
                 }
 
                 results[agent_name] = ValidationResult(
-                    valid=True,
-                    auto_corrected=True,
-                    warnings=[f"Created default configuration for agent: {agent_name}"]
+                    valid=True, auto_corrected=True, warnings=[f"Created default configuration for agent: {agent_name}"]
                 )
 
         if any(result.auto_corrected for result in results.values()):
@@ -566,7 +577,7 @@ class UnifiedPermissionManager:
                     logger.info(f"Created configuration backup: {backup_path}")
 
             # Save updated configuration
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
 
             if self.enable_logging:
@@ -576,10 +587,16 @@ class UnifiedPermissionManager:
             if self.enable_logging:
                 logger.error(f"Error saving configuration: {e}")
 
-    def _audit_permission_change(self, resource_type: ResourceType, resource_name: str,
-                               action: str, old_permissions: Optional[Dict[str, Any]],
-                               new_permissions: Optional[Dict[str, Any]], reason: str,
-                               auto_corrected: bool) -> None:
+    def _audit_permission_change(
+        self,
+        resource_type: ResourceType,
+        resource_name: str,
+        action: str,
+        old_permissions: Optional[Dict[str, Any]],
+        new_permissions: Optional[Dict[str, Any]],
+        reason: str,
+        auto_corrected: bool,
+    ) -> None:
         """Log permission changes for audit trail"""
         audit_entry = PermissionAudit(
             timestamp=time.time(),
@@ -590,7 +607,7 @@ class UnifiedPermissionManager:
             old_permissions=old_permissions,
             new_permissions=new_permissions,
             reason=reason,
-            auto_corrected=auto_corrected
+            auto_corrected=auto_corrected,
         )
 
         self.audit_log.append(audit_entry)
@@ -603,9 +620,9 @@ class UnifiedPermissionManager:
         """Get permission management statistics"""
         return {
             **self.stats,
-            'cached_permissions': len(self.permission_cache),
-            'audit_log_entries': len(self.audit_log),
-            'configured_agents': len(self.config.get('agents', {}))
+            "cached_permissions": len(self.permission_cache),
+            "audit_log_entries": len(self.audit_log),
+            "configured_agents": len(self.config.get("agents", {})),
         }
 
     def get_recent_audits(self, limit: int = 50) -> List[PermissionAudit]:
@@ -615,22 +632,22 @@ class UnifiedPermissionManager:
     def export_audit_report(self, output_path: str) -> None:
         """Export audit report to file"""
         report = {
-            'generated_at': time.time(),
-            'stats': self.get_permission_stats(),
-            'recent_audits': [
+            "generated_at": time.time(),
+            "stats": self.get_permission_stats(),
+            "recent_audits": [
                 {
-                    'timestamp': audit.timestamp,
-                    'resource_type': audit.resource_type.value,
-                    'resource_name': audit.resource_name,
-                    'action': audit.action,
-                    'reason': audit.reason,
-                    'auto_corrected': audit.auto_corrected
+                    "timestamp": audit.timestamp,
+                    "resource_type": audit.resource_type.value,
+                    "resource_name": audit.resource_name,
+                    "action": audit.action,
+                    "reason": audit.reason,
+                    "auto_corrected": audit.auto_corrected,
                 }
                 for audit in self.get_recent_audits()
-            ]
+            ],
         }
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         if self.enable_logging:
@@ -668,27 +685,20 @@ if __name__ == "__main__":
 
     # Test agent permission validation
     test_agents = [
-        {
-            "name": "backend-expert",
-            "config": {"permissionMode": "ask", "description": "Backend expert agent"}
-        },
-        {
-            "name": "security-expert",
-            "config": {"permissionMode": "auto", "description": "Security expert agent"}
-        },
-        {
-            "name": "api-designer",
-            "config": {"permissionMode": "plan", "description": "API designer agent"}
-        }
+        {"name": "backend-expert", "config": {"permissionMode": "ask", "description": "Backend expert agent"}},
+        {"name": "security-expert", "config": {"permissionMode": "auto", "description": "Security expert agent"}},
+        {"name": "api-designer", "config": {"permissionMode": "plan", "description": "API designer agent"}},
     ]
 
     print("Testing agent permission validation and auto-correction...")
 
     for agent in test_agents:
         print(f"\nTesting agent: {agent['name']}")
-        print(f"Original permissionMode: {agent['config'].get('permissionMode', 'default')}")
+        agent_config: Dict[str, Any] = agent["config"]  # type: ignore[assignment]
+        print(f"Original permissionMode: {agent_config.get('permissionMode', 'default')}")
 
-        result = permission_manager.validate_agent_permission(agent['name'], agent['config'])
+        agent_name: str = agent["name"]  # type: ignore[assignment]
+        result = permission_manager.validate_agent_permission(agent_name, agent_config)
 
         print(f"Valid: {result.valid}")
         print(f"Auto-corrected: {result.auto_corrected}")

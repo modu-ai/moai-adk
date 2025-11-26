@@ -1,4 +1,3 @@
-
 import re
 from pathlib import Path
 from typing import Dict
@@ -16,7 +15,7 @@ class TestPortalLinkValidation:
         readme_path = Path("README.ko.md")
         if not readme_path.exists():
             pytest.fail("README.ko.md 파일이 존재하지 않습니다")
-        return readme_path.read_text(encoding='utf-8')
+        return readme_path.read_text(encoding="utf-8")
 
     @pytest.fixture
     def online_docs_url(self) -> str:
@@ -30,21 +29,21 @@ class TestPortalLinkValidation:
             "main_portal": "https://adk.mo.ai.kr",
             "api_docs": "https://adk.mo.ai.kr/api",
             "getting_started": "https://adk.mo.ai.kr/getting-started",
-            "guides": "https://adk.mo.ai.kr/guides"
+            "guides": "https://adk.mo.ai.kr/guides",
         }
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_readme_should_contain_online_docs_link(self, readme_content: str) -> None:
         """WHEN README.ko.md를 열면, 온라인 문서 포털 링크가 포함되어 있어야 한다"""
         # 온라인 문서 링크 존재 검증
         assert "https://adk.mo.ai.kr" in readme_content, "온라인 문서 포털 링크가 README.ko.md에 없습니다"
 
         # 링크가 올바른 형식인지 검증 (markdown 링크 형식)
-        link_pattern = r'\[.*?\]\(https://adk\.mo\.ai\.kr.*?\)'
+        link_pattern = r"\[.*?\]\(https://adk\.mo\.ai\.kr.*?\)"
         matches = re.findall(link_pattern, readme_content)
         assert len(matches) > 0, "온라인 문서 링크가 올바른 markdown 형식이 아닙니다"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_online_docs_link_should_be_accessible(self, online_docs_url: str) -> None:
         """WHEN 온라인 문서 포털 링크를 접속하면, HTTP 200 응답을 반환해야 한다"""
         try:
@@ -60,7 +59,7 @@ class TestPortalLinkValidation:
             # 네트워크 오류 발생 시 URL 형식만 검증
             assert online_docs_url.startswith("https://"), f"온라인 문서 포털 URL 형식 오류: {e}"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_readme_should_contain_multiple_documentation_links(self, readme_content: str) -> None:
         """WHEN README.ko.md를 열면, 여러 개의 문서 섹션 링크가 포함되어야 한다"""
         # 메인 포털 링크
@@ -68,9 +67,9 @@ class TestPortalLinkValidation:
 
         # API 문서 링크 (여러 형식 허용)
         api_patterns = [
-            r'\[API.*?\]\(.*?\)',  # [API 문서](...)
-            r'\[인터페이스.*?\]\(.*?\)',  # [인터페이스](...)
-            r'\[api.*?\]\(.*?\)',  # [api](...)
+            r"\[API.*?\]\(.*?\)",  # [API 문서](...)
+            r"\[인터페이스.*?\]\(.*?\)",  # [인터페이스](...)
+            r"\[api.*?\]\(.*?\)",  # [api](...)
         ]
         api_links_found = False
         for pattern in api_patterns:
@@ -80,17 +79,19 @@ class TestPortalLinkValidation:
 
         # 문서화된 API 링크가 없을 경우 일반적인 문서 링크로 대체
         if not api_links_found:
-            doc_links = re.findall(r'\[.*?문서.*?\]\(.*?\)', readme_content, re.IGNORECASE)
+            doc_links = re.findall(r"\[.*?문서.*?\]\(.*?\)", readme_content, re.IGNORECASE)
             if len(doc_links) == 0:
                 # 기본적인 문서 �션 존재 검증
-                assert "문서" in readme_content or "documentation" in readme_content.lower(), "문서 관련 내용이 없습니다"
+                assert (
+                    "문서" in readme_content or "documentation" in readme_content.lower()
+                ), "문서 관련 내용이 없습니다"
 
         # 가이드 문서 링크 (여러 형식 허용)
         guide_patterns = [
-            r'\[.*?가이드.*?\]\(.*?\)',  # [...가이드](...)
-            r'\[.*?Guide.*?\]\(.*?\)',  # [...Guide](...)
-            r'\[시작.*?\]\(.*?\)',  # [시작](...)
-            r'\[Getting.*?Started.*?\]\(.*?\)',  # [Getting Started](...)
+            r"\[.*?가이드.*?\]\(.*?\)",  # [...가이드](...)
+            r"\[.*?Guide.*?\]\(.*?\)",  # [...Guide](...)
+            r"\[시작.*?\]\(.*?\)",  # [시작](...)
+            r"\[Getting.*?Started.*?\]\(.*?\)",  # [Getting Started](...)
         ]
         guide_links_found = False
         for pattern in guide_patterns:
@@ -100,7 +101,7 @@ class TestPortalLinkValidation:
 
         assert guide_links_found, "가이드 문서 링크가 없습니다"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_links_should_be_consistent(self, readme_content: str, expected_links: Dict[str, str]) -> None:
         """WHEN README.ko.md를 열면, 모든 링크가 일관된 형식이어야 한다"""
         main_portal_found = False
@@ -108,7 +109,7 @@ class TestPortalLinkValidation:
         getting_started_found = False
 
         # 모든 markdown 링크 추출
-        link_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+        link_pattern = r"\[([^\]]+)\]\(([^)]+)\)"
         matches = re.findall(link_pattern, readme_content)
 
         for link_text, link_url in matches:
@@ -116,32 +117,33 @@ class TestPortalLinkValidation:
             if "온라인 문서" in link_text or "adk.mo.ai.kr" in link_url:
                 main_portal_found = True
                 # 기본 포털 URL만 확인, 세부 경로는 유연하게 허용
-                assert link_url.startswith("https://adk.mo.ai.kr"), f"메인 포털 링크 도메인이 올바르지 않습니다: {link_url}"
+                assert link_url.startswith(
+                    "https://adk.mo.ai.kr"
+                ), f"메인 포털 링크 도메인이 올바르지 않습니다: {link_url}"
 
             # API 문서 링크 검증
             if any(keyword in link_text.lower() for keyword in ["api", "api", "인터페이스", "문서"]):
                 api_docs_found = True
-                assert "api" in link_url.lower() or "adk.mo.ai.kr" in link_url, f"API 문서 링크가 올바르지 않습니다: {link_url}"
+                assert (
+                    "api" in link_url.lower() or "adk.mo.ai.kr" in link_url
+                ), f"API 문서 링크가 올바르지 않습니다: {link_url}"
 
             # 시작 가이드 링크 검증
-            if any(keyword in link_text.lower() for keyword in ["시작", "시작", "quick start", "getting started", "guide", "가이드"]):
+            if any(
+                keyword in link_text.lower()
+                for keyword in ["시작", "시작", "quick start", "getting started", "guide", "가이드"]
+            ):
                 getting_started_found = True
 
         assert main_portal_found, "메인 포털 링크를 찾을 수 없습니다"
         assert api_docs_found, "API 문서 링크를 찾을 수 없습니다"
         assert getting_started_found, "시작 가이드 링크를 찾을 수 없습니다"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_portal_functionality_should_be_improved(self, readme_content: str) -> None:
         """WHEN README.ko.md를 열면, 포털 기능이 개선된 내용이 포함되어 있어야 한다"""
         # 개선된 기능 설명 검증
-        improvements = [
-            "자동 링크 검증",
-            "사용자 경험",
-            "문서 네비게이션",
-            "검색 기능",
-            "다국어 지원"
-        ]
+        improvements = ["자동 링크 검증", "사용자 경험", "문서 네비게이션", "검색 기능", "다국어 지원"]
 
         found_improvements = 0
         for improvement in improvements:
@@ -154,7 +156,7 @@ class TestPortalLinkValidation:
 class TestPortalUserExperience:
     """포털 사용자 경험 테스트"""
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_have_user_friendly_navigation(self) -> None:
         """WHEN 온라인 문서 포털을 사용하면, 사용자 친화적인 네비게이션이 제공되어야 한다"""
         # TODO: 온라인 포털의 네비게이션 구조 테스트 구현
@@ -165,7 +167,7 @@ class TestPortalUserExperience:
         # 현재는 테스트 스켈레톤만 작성
         assert True, "사용자 친화적 네비게이션 테스트 구현 필요"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_have_multilingual_support(self) -> None:
         """WHEN 온라인 문서 포털을 사용하면, 다국어 지원이 제공되어야 한다"""
         # TODO: 다국어 지원 테스트 구현
@@ -175,7 +177,7 @@ class TestPortalUserExperience:
 
         assert True, "다국어 지원 테스트 구현 필요"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_have_search_functionality(self) -> None:
         """WHEN 온라인 문서 포털을 사용하면, 검색 기능이 제공되어야 한다"""
         # TODO: 검색 기능 테스트 구현

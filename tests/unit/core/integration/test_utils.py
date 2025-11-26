@@ -55,7 +55,7 @@ class TestComponentDiscovery:
         components = [
             TestComponent("comp1", "type1", "1.0.0", ["dep1", "dep2"]),
             TestComponent("comp2", "type2", "2.0.0", ["dep3"]),
-            TestComponent("comp3", "type3", "3.0.0", [])
+            TestComponent("comp3", "type3", "3.0.0", []),
         ]
 
         discovery = ComponentDiscovery()
@@ -80,7 +80,7 @@ class TestResultAnalyzer:
         results = [
             IntegrationTestResult("test1", True),
             IntegrationTestResult("test2", True),
-            IntegrationTestResult("test3", True)
+            IntegrationTestResult("test3", True),
         ]
 
         rate = IntegrationTestResultAnalyzer.calculate_success_rate(results)
@@ -93,7 +93,7 @@ class TestResultAnalyzer:
             IntegrationTestResult("test1", True),
             IntegrationTestResult("test2", False),
             IntegrationTestResult("test3", True),
-            IntegrationTestResult("test4", False)
+            IntegrationTestResult("test4", False),
         ]
 
         rate = IntegrationTestResultAnalyzer.calculate_success_rate(results)
@@ -106,7 +106,7 @@ class TestResultAnalyzer:
             IntegrationTestResult("test1", True),
             IntegrationTestResult("test2", False, "Error 1"),
             IntegrationTestResult("test3", False, "Error 2"),
-            IntegrationTestResult("test4", True)
+            IntegrationTestResult("test4", True),
         ]
 
         failed = IntegrationTestResultAnalyzer.get_failed_tests(results)
@@ -121,14 +121,7 @@ class TestResultAnalyzer:
         """Test execution stats with empty results"""
         stats = IntegrationTestResultAnalyzer.get_execution_stats([])
 
-        expected = {
-            "total": 0,
-            "passed": 0,
-            "failed": 0,
-            "success_rate": 0.0,
-            "total_time": 0.0,
-            "avg_time": 0.0
-        }
+        expected = {"total": 0, "passed": 0, "failed": 0, "success_rate": 0.0, "total_time": 0.0, "avg_time": 0.0}
 
         assert stats == expected
 
@@ -137,7 +130,7 @@ class TestResultAnalyzer:
         results = [
             IntegrationTestResult("test1", True, execution_time=1.0),
             IntegrationTestResult("test2", False, execution_time=2.0),
-            IntegrationTestResult("test3", True, execution_time=3.0)
+            IntegrationTestResult("test3", True, execution_time=3.0),
         ]
 
         stats = IntegrationTestResultAnalyzer.get_execution_stats(results)
@@ -201,7 +194,7 @@ class TestEnvironment:
         env = TestEnvironment()
 
         # Mock rmtree to raise an exception
-        with patch('shutil.rmtree', side_effect=OSError("Permission denied")):
+        with patch("shutil.rmtree", side_effect=OSError("Permission denied")):
             # Should not raise exception
             env.cleanup()
 

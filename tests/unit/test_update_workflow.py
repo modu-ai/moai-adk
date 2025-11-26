@@ -30,11 +30,11 @@ class TestVersionManagement:
         version = _get_current_version()
         assert isinstance(version, str)
         assert version  # Not empty
-        assert version.count('.') >= 2  # Semantic version format
+        assert version.count(".") >= 2  # Semantic version format
 
     def test_get_latest_version_success(self):
         """Test fetching latest version from PyPI (success)."""
-        with patch('urllib.request.urlopen') as mock_urlopen:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
             mock_response.read.return_value = b'{"info": {"version": "0.6.2"}}'
             mock_response.__enter__ = Mock(return_value=mock_response)
@@ -46,16 +46,16 @@ class TestVersionManagement:
 
     def test_get_latest_version_network_error(self):
         """Test handling network error when fetching latest version."""
-        with patch('urllib.request.urlopen') as mock_urlopen:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = urllib.error.URLError("Network error")
             with pytest.raises(RuntimeError, match="Failed to fetch latest version"):
                 _get_latest_version()
 
     def test_get_latest_version_json_decode_error(self):
         """Test handling JSON decode error."""
-        with patch('urllib.request.urlopen') as mock_urlopen:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
-            mock_response.read.return_value = b'invalid json'
+            mock_response.read.return_value = b"invalid json"
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=False)
             mock_urlopen.return_value = mock_response
@@ -65,7 +65,7 @@ class TestVersionManagement:
 
     def test_get_latest_version_missing_version_key(self):
         """Test handling missing version key in PyPI response."""
-        with patch('urllib.request.urlopen') as mock_urlopen:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
             mock_response.read.return_value = b'{"info": {}}'
             mock_response.__enter__ = Mock(return_value=mock_response)
@@ -106,7 +106,7 @@ class TestUpgradeExecution:
 
     def test_execute_upgrade_success(self):
         """Test successful package upgrade."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="Success", stderr="")
             result = _execute_upgrade(["uv", "tool", "upgrade", "moai-adk"])
             assert result is True
@@ -114,7 +114,7 @@ class TestUpgradeExecution:
 
     def test_execute_upgrade_failure(self):
         """Test failed package upgrade."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error")
             result = _execute_upgrade(["uv", "tool", "upgrade", "moai-adk"])
             assert result is False
@@ -122,32 +122,28 @@ class TestUpgradeExecution:
     @pytest.mark.skip(reason="CLI confirm input requires interactive input - ClickException from confirm()")
     def test_execute_upgrade_timeout(self):
         """Test upgrade timeout handling."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="uv", timeout=60)
             result = _execute_upgrade(["uv", "tool", "upgrade", "moai-adk"])
             assert result is False
 
     def test_execute_upgrade_exception(self):
         """Test upgrade with unexpected exception."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = RuntimeError("Unexpected error")
             result = _execute_upgrade(["uv", "tool", "upgrade", "moai-adk"])
             assert result is False
 
     def test_execute_upgrade_captures_output(self):
         """Test that upgrade captures output correctly."""
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="Upgrading moai-adk",
-                stderr=""
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="Upgrading moai-adk", stderr="")
             result = _execute_upgrade(["pipx", "upgrade", "moai-adk"])
             assert result is True
             # Verify that capture_output and text are set
             call_kwargs = mock_run.call_args[1]
-            assert call_kwargs['capture_output'] is True
-            assert call_kwargs['text'] is True
+            assert call_kwargs["capture_output"] is True
+            assert call_kwargs["text"] is True
 
 
 class TestTemplateSyncExtraction:
@@ -159,7 +155,7 @@ class TestTemplateSyncExtraction:
         project_path.mkdir()
         (project_path / ".moai").mkdir()
 
-        with patch('moai_adk.cli.commands.update.TemplateProcessor') as mock_processor:
+        with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -174,7 +170,7 @@ class TestTemplateSyncExtraction:
         project_path.mkdir()
         (project_path / ".moai").mkdir()
 
-        with patch('moai_adk.cli.commands.update.TemplateProcessor') as mock_processor:
+        with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
             mock_instance = Mock()
             mock_processor.return_value = mock_instance
 
@@ -186,7 +182,7 @@ class TestTemplateSyncExtraction:
         project_path = tmp_path / "project"
         project_path.mkdir()
 
-        with patch('moai_adk.cli.commands.update.TemplateProcessor') as mock_processor:
+        with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
             mock_processor.side_effect = RuntimeError("Template error")
 
             result = _sync_templates(project_path, force=False)
@@ -203,18 +199,20 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._detect_tool_installer') as mock_detect, \
-                 patch('moai_adk.cli.commands.update._execute_upgrade') as mock_upgrade, \
-                 patch('moai_adk.cli.commands.update._sync_templates') as mock_sync:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
+                patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
+                patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
+            ):
 
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
                 mock_upgrade.return_value = True
 
-                result = runner.invoke(update, ['--yes'])  # Auto-confirm upgrade
+                result = runner.invoke(update, ["--yes"])  # Auto-confirm upgrade
 
                 # Should execute upgrade and exit (not sync)
                 mock_upgrade.assert_called_once()
@@ -230,9 +228,11 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._sync_templates') as mock_sync:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
+            ):
 
                 mock_current.return_value = "0.6.2"
                 mock_latest.return_value = "0.6.2"
@@ -252,19 +252,21 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._detect_tool_installer') as mock_detect:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
+            ):
 
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = None  # No installer found
 
-                result = runner.invoke(update, ['--yes'])  # Auto-confirm
+                result = runner.invoke(update, ["--yes"])  # Auto-confirm
 
                 # Should display error and exit
                 assert result.exit_code != 0 or "Error" in result.output
-                assert ("Cannot detect" in result.output or "package installer" in result.output)
+                assert "Cannot detect" in result.output or "package installer" in result.output
 
     def test_update_upgrade_failed(self, tmp_path):
         """Test Stage 1 failure: upgrade command failed."""
@@ -273,10 +275,12 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._detect_tool_installer') as mock_detect, \
-                 patch('moai_adk.cli.commands.update._execute_upgrade') as mock_upgrade:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
+                patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
+            ):
 
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
@@ -295,9 +299,11 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._sync_templates') as mock_sync:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
+            ):
 
                 mock_current.return_value = "0.6.2"
                 mock_latest.return_value = "0.6.2"
@@ -315,7 +321,7 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current:
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current:
                 mock_current.side_effect = RuntimeError("Version error")
 
                 result = runner.invoke(update)
@@ -330,17 +336,19 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._detect_tool_installer') as mock_detect, \
-                 patch('moai_adk.cli.commands.update._execute_upgrade') as mock_upgrade:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
+                patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
+            ):
 
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
                 mock_upgrade.return_value = True
 
-                result = runner.invoke(update, ['--yes'])  # Auto-confirm
+                result = runner.invoke(update, ["--yes"])  # Auto-confirm
 
                 # Should display the command being run
                 assert "uv tool upgrade moai-adk" in result.output
@@ -352,10 +360,12 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._execute_upgrade') as mock_upgrade, \
-                 patch('moai_adk.cli.commands.update._sync_templates') as mock_sync:
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
+                patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
+            ):
 
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
@@ -375,10 +385,12 @@ class TestTwoStageWorkflow:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path(".moai").mkdir()
 
-            with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
-                 patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
-                 patch('moai_adk.cli.commands.update._execute_upgrade') as mock_upgrade, \
-                 patch('moai_adk.cli.commands.update._sync_templates'):
+            with (
+                patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
+                patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
+                patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
+                patch("moai_adk.cli.commands.update._sync_templates"),
+            ):
 
                 mock_current.return_value = "0.7.0"
                 mock_latest.return_value = "0.6.2"

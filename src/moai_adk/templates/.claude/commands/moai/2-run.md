@@ -5,6 +5,23 @@ argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "
 allowed-tools:
   - Task
   - AskUserQuestion
+  - TodoWrite
+model: sonnet
+skills: moai-toolkit-essentials, moai-foundation-quality, moai-lang-unified
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -5
+!git diff --name-only HEAD
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/specs/
+
 ---
 
 # ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
@@ -36,19 +53,19 @@ The `/moai:2-run` command orchestrates the complete implementation workflow:
 
 `/moai:2-run` performs SPEC implementation through phase-based sequential agent delegation:
 
-```text
+```
 User Command: /moai:2-run SPEC-001
     ↓
-Phase 1: Task(subagent_type="implementation-planner")
+Phase 1: Task(subagent_type="manager-strategy")
     → SPEC Analysis & Execution Plan Creation
     ↓
-Phase 2: Task(subagent_type="tdd-implementer")
+Phase 2: Task(subagent_type="manager-tdd")
     → RED → GREEN → REFACTOR TDD Cycle
     ↓
-Phase 2.5: Task(subagent_type="quality-gate")
+Phase 2.5: Task(subagent_type="manager-quality")
     → TRUST 5 Quality Validation
     ↓
-Phase 3: Task(subagent_type="git-manager")
+Phase 3: Task(subagent_type="manager-git")
     → Commit Creation & Git Operations
     ↓
 Phase 4: AskUserQuestion(...)
@@ -61,33 +78,27 @@ Output: Implemented feature with passing tests and commits
 
 **This command uses ONLY these tools:**
 
-- ✅ **Task()** for phase agent delegation (implementation-planner → tdd-implementer → quality-gate → git-manager)
+- ✅ **Task()** for phase agent delegation (manager-strategy → manager-tdd → manager-quality → manager-git)
 - ✅ **AskUserQuestion()** for user approval and next steps
-- ✅ **TodoWrite()** for task tracking (delegated to agent)
+- ✅ **TodoWrite()** for task tracking
 - ❌ No Read/Write/Edit/Bash (all delegated to agents)
 
 Command orchestrates phases sequentially; agents handle complexity.
 
 ---
 
-## 🧠 Phase Agents & Skills
+## 🧠 Associated Agents & Skills
 
-### Phase Agents (Sequential Execution)
-
-| Agent                      | Purpose                                      | When                            |
-| -------------------------- | -------------------------------------------- | ------------------------------- |
-| **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1                         |
-| **tdd-implementer**        | Implements code through TDD cycle            | Phase 2                         |
-| **quality-gate**           | Verifies TRUST 5 principles                  | Phase 2 (after tdd-implementer) |
-| **git-manager**            | Creates and manages Git commits              | Phase 3                         |
-
-### Skills Used (by agents, not command)
-
-- `Skill("moai-core-workflow")` - Workflow orchestration
-- `Skill("moai-core-todowrite-pattern")` - Task tracking
-- `Skill("moai-core-ask-user-questions")` - User interaction
-- `Skill("moai-core-reporting")` - Result reporting
-- Domain-specific skills (selected per language/framework)
+| Agent/Skill | Purpose |
+|------------|---------|
+| manager-strategy | Analyzes SPEC and creates execution strategy |
+| manager-tdd | Implements code through TDD cycle (RED-GREEN-REFACTOR) |
+| manager-quality | Verifies TRUST 5 principles and validates quality |
+| manager-git | Creates and manages Git commits |
+| moai-alfred-workflow | Workflow orchestration patterns |
+| moai-alfred-todowrite-pattern | Task tracking and progress management |
+| moai-alfred-ask-user-questions | User interaction patterns |
+| moai-alfred-reporting | Result reporting and summaries |
 
 ---
 
@@ -95,7 +106,7 @@ Command orchestrates phases sequentially; agents handle complexity.
 
 ### Phase 1: Analysis & Planning
 
-Command calls `Task(subagent_type="implementation-planner")`:
+Command calls `Task(subagent_type="manager-strategy")`:
 
 1. Agent reads SPEC document
 2. Analyzes requirements and creates execution strategy
@@ -105,7 +116,7 @@ Command calls `Task(subagent_type="implementation-planner")`:
 
 ### Phase 2: TDD Implementation
 
-Command calls `Task(subagent_type="tdd-implementer")`:
+Command calls `Task(subagent_type="manager-tdd")`:
 
 1. Agent initializes task tracking (TodoWrite)
 2. Checks domain readiness (if multi-domain SPEC)
@@ -114,7 +125,7 @@ Command calls `Task(subagent_type="tdd-implementer")`:
 
 ### Phase 2.5: Quality Validation
 
-Command calls `Task(subagent_type="quality-gate")`:
+Command calls `Task(subagent_type="manager-quality")`:
 
 1. Agent verifies TRUST 5 principles (Test-first, Readable, Unified, Secured, Trackable)
 2. Validates test coverage (>= 85%)
@@ -123,7 +134,7 @@ Command calls `Task(subagent_type="quality-gate")`:
 
 ### Phase 3: Git Operations
 
-Command calls `Task(subagent_type="git-manager")`:
+Command calls `Task(subagent_type="manager-git")`:
 
 1. Agent creates feature branch if needed
 2. Creates commits with implementation changes
@@ -142,21 +153,21 @@ Command calls `AskUserQuestion()`:
 
 ## 📋 Execution Flow (High-Level)
 
-```text
-/moai:2-run [SPEC-ID]
+```
+/moai:2-run SPEC-XXX
     ↓
 Parse SPEC ID from $ARGUMENTS
     ↓
-✅ Phase 1: Task(subagent_type="implementation-planner")
+✅ Phase 1: Task(subagent_type="manager-strategy")
     → Analyze SPEC → Create execution plan → Get approval
     ↓
-✅ Phase 2: Task(subagent_type="tdd-implementer")
+✅ Phase 2: Task(subagent_type="manager-tdd")
     → RED-GREEN-REFACTOR → Tests passing → Coverage verified
     ↓
-✅ Phase 2.5: Task(subagent_type="quality-gate")
+✅ Phase 2.5: Task(subagent_type="manager-quality")
     → Validate TRUST 5 principles → Return quality status
     ↓
-✅ Phase 3: Task(subagent_type="git-manager")
+✅ Phase 3: Task(subagent_type="manager-git")
     → Create feature branch → Commit changes → Verify commits
     ↓
 ✅ Phase 4: AskUserQuestion(...)
@@ -169,14 +180,14 @@ Output: "Implementation complete. Next step: /moai:3-sync"
 
 ## 🎯 Command Implementation
 
-### Sequential Phase Execution
+### Sequential Phase Execution with Resume Chain
 
-**Command implementation flow:**
+**Command implementation flow (with Resume for context continuity):**
 
-```python
+```
 # Phase 1: SPEC Analysis & Planning
 plan_result = Task(
-  subagent_type="implementation-planner",
+  subagent_type="manager-strategy",
   description="Analyze SPEC-$ARGUMENTS and create execution plan",
   prompt="""
 SPEC ID: $ARGUMENTS
@@ -191,6 +202,16 @@ Analyze this SPEC and create detailed execution plan:
 """
 )
 
+# Store agent ID for resume chain
+$PLANNER_AGENT_ID = plan_result.metadata.agent_id
+
+# Log Phase 1 checkpoint
+Log to .moai/logs/phase-checkpoints.json:
+  phase: 1
+  agent_id: $PLANNER_AGENT_ID
+  status: "PLANNING_COMPLETE"
+  timestamp: NOW()
+
 # User approval checkpoint
 approval = AskUserQuestion({
     "question": "Does this execution plan look good?",
@@ -203,13 +224,19 @@ approval = AskUserQuestion({
     ]
 })
 
-# Phase 2: TDD Implementation
+# Phase 2: TDD Implementation (Resume from Phase 1)
 if approval == "Proceed with plan":
     implementation_result = Task(
-        subagent_type="tdd-implementer",
+        subagent_type="manager-tdd",
+        resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Inherit planning context
         description="Implement SPEC-$ARGUMENTS using TDD cycle",
         prompt="""
 SPEC ID: $ARGUMENTS
+
+You are the manager-tdd agent. You are continuing from the implementation plan created in Phase 1.
+
+The full planning context (analysis, decisions, architecture) is inherited from previous phase via resume.
+Use this context to proceed directly to implementation without re-analyzing requirements.
 
 Execute complete TDD implementation:
 1. Write failing tests (RED phase)
@@ -221,12 +248,29 @@ Execute complete TDD implementation:
 """
     )
 
-    # Phase 2.5: Quality Validation
+    # Store agent ID for next phase
+    $IMPL_AGENT_ID = implementation_result.metadata.agent_id
+
+    # Log Phase 2 checkpoint
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: 2
+      agent_id: $IMPL_AGENT_ID
+      resumed_from: $PLANNER_AGENT_ID
+      status: "IMPLEMENTATION_COMPLETE"
+      timestamp: NOW()
+
+    # Phase 2.5: Quality Validation (Resume from Phase 1)
     quality_result = Task(
-        subagent_type="quality-gate",
+        subagent_type="manager-quality",
+        resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Keep full context chain
         description="Validate TRUST 5 compliance for SPEC-$ARGUMENTS",
         prompt="""
 SPEC ID: $ARGUMENTS
+
+You are the manager-quality agent. You are continuing from the implementation context.
+
+The full context (planning, implementation results) is inherited from previous phases via resume.
+This ensures quality validation has complete architectural and implementation context.
 
 Validate implementation against TRUST 5 principles:
 - T: Test-first (tests exist and pass)
@@ -239,22 +283,51 @@ Return quality assessment with specific findings.
 """
     )
 
-    # Phase 3: Git Operations
-    if quality_result.status == "PASS":
+    # Store agent ID for next phase
+    $QA_AGENT_ID = quality_result.metadata.agent_id
+
+    # Log Phase 2.5 checkpoint
+    Log to .moai/logs/phase-checkpoints.json:
+      phase: "2.5"
+      agent_id: $QA_AGENT_ID
+      resumed_from: $PLANNER_AGENT_ID
+      status: quality_result.status
+      timestamp: NOW()
+
+    # Phase 3: Git Operations (Resume from Phase 1)
+    if quality_result.status == "PASS" or quality_result.status == "WARNING":
         git_result = Task(
-            subagent_type="git-manager",
+            subagent_type="manager-git",
+            resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Maintain full feature context
             description="Create commits for SPEC-$ARGUMENTS implementation",
             prompt="""
 SPEC ID: $ARGUMENTS
 
+You are the manager-git agent. You are continuing from the full implementation context.
+
+The complete context (planning, implementation, quality review) is inherited via resume.
+This context enables creation of meaningful commit messages with full understanding of feature scope and design decisions.
+
 Create git commits for implementation:
 1. Create feature branch: feature/SPEC-$ARGUMENTS
 2. Stage all relevant files
-3. Create meaningful commits (follow conventional commits)
+3. Create meaningful commits (follow conventional commits, use context for descriptions)
 4. Verify commits created successfully
-5. Return commit summary
+5. Return commit summary with SHA references
 """
         )
+
+        # Store agent ID for reference
+        $GIT_AGENT_ID = git_result.metadata.agent_id
+
+        # Log Phase 3 checkpoint
+        Log to .moai/logs/phase-checkpoints.json:
+          phase: 3
+          agent_id: $GIT_AGENT_ID
+          resumed_from: $PLANNER_AGENT_ID
+          status: "GIT_OPERATIONS_COMPLETE"
+          commit_shas: git_result.commits
+          timestamp: NOW()
 
         # Phase 4: Completion & Guidance
         next_steps = AskUserQuestion({
@@ -268,7 +341,42 @@ Create git commits for implementation:
                 {"label": "Finish", "description": "Session complete"}
             ]
         })
+
+        # Log Phase 4 checkpoint
+        Log to .moai/logs/phase-checkpoints.json:
+          phase: 4
+          status: "COMPLETE"
+          user_selection: next_steps
+          timestamp: NOW()
 ```
+
+### Resume Chain Summary
+
+**Context Flow (with Resume):**
+
+```
+Phase 1: SPEC Analysis
+  → Agent ID: abc123
+
+Phase 2: Task(resume="abc123")
+  → Inherits: Full planning context
+  → Implements: Without re-reading SPEC or re-analyzing
+
+Phase 2.5: Task(resume="abc123")
+  → Inherits: Planning + Implementation context
+  → Validates: With complete feature knowledge
+
+Phase 3: Task(resume="abc123")
+  → Inherits: Complete feature context
+  → Creates: Commits with full context understanding
+```
+
+**Benefits:**
+
+- ✅ **99K Token Savings**: No re-transmission of context between phases
+- ✅ **Context Continuity**: Full knowledge chain across all phases
+- ✅ **Unified Coding**: Phase 1 architectural decisions naturally propagate
+- ✅ **Better Commits**: manager-git understands full context for meaningful messages
 
 ---
 
@@ -292,10 +400,10 @@ After implementation, verify:
 - [ ] ✅ Command has ONLY `Task`, `AskUserQuestion`, `TodoWrite` in allowed-tools
 - [ ] ✅ Command contains NO `Read`, `Write`, `Edit`, `Bash` usage
 - [ ] ✅ Command delegates execution to phase agents sequentially
-- [ ] ✅ Phase 1: implementation-planner executes successfully
-- [ ] ✅ Phase 2: tdd-implementer executes successfully
-- [ ] ✅ Phase 2.5: quality-gate validates TRUST 5
-- [ ] ✅ Phase 3: git-manager creates commits
+- [ ] ✅ Phase 1: manager-strategy executes successfully
+- [ ] ✅ Phase 2: manager-tdd executes successfully
+- [ ] ✅ Phase 2.5: manager-quality validates TRUST 5
+- [ ] ✅ Phase 3: manager-git creates commits
 - [ ] ✅ Phase 4: User guided to next steps
 - [ ] ✅ User approval checkpoints working
 
@@ -303,35 +411,31 @@ After implementation, verify:
 
 ## 📚 Quick Reference
 
-**This command**:
+| Scenario | Entry Point | Key Phases | Expected Outcome |
+|----------|-------------|------------|------------------|
+| Implement SPEC feature | `/moai:2-run SPEC-XXX` | Phase 1 → Planning → Phase 2 → TDD → Phase 2.5 → Quality → Phase 3 → Git | Implemented feature with ≥85% test coverage |
+| Resume failed implementation | `/moai:2-run SPEC-XXX` (retry) | Resume from last successful phase | Completed implementation |
+| Implement with modifications | `/moai:2-run SPEC-XXX` (with plan changes) | Modify plan → Execute phases | Modified implementation |
 
-- Accepts SPEC ID: `/moai:2-run SPEC-AUTH-001`
-- Orchestrates 4 phases sequentially with user approval checkpoints
-- Outputs: Implementation summary with next steps
+**Associated Agents**:
 
-**For details, see**:
+- `manager-strategy` - SPEC analysis and execution strategy
+- `manager-tdd` - TDD implementation (RED-GREEN-REFACTOR)
+- `manager-quality` - TRUST 5 validation
+- `manager-git` - Git operations and commit management
 
-- `.claude/agents/moai/implementation-planner.md` - Phase 1: SPEC analysis
-- `.claude/agents/moai/tdd-implementer.md` - Phase 2: TDD implementation
-- `.claude/agents/moai/quality-gate.md` - Phase 2.5: Quality validation
-- `.claude/agents/moai/git-manager.md` - Phase 3: Git operations
+**Implementation Results**:
 
-**Architecture Pattern**:
+- **Code**: Implemented feature files
+- **Tests**: Test files with ≥85% coverage
+- **Commits**: Git commits with proper messages
+- **Quality**: PASS/WARNING/CRITICAL status
 
-```text
-Commands (Orchestration)
-    ↓ Task()
-Agents (Execution)
-    ↓ Skill()
-Skills (Knowledge)
-```
-
----
-
-**Version**: 3.1.0 (Command-Level Phase Orchestration)
-**Updated**: 2025-11-19
+**Version**: 3.1.0 (Command-Level Phase Orchestration with Resume Chain)
+**Updated**: 2025-11-25
 **Pattern**: Sequential Phase-Based Agent Delegation
 **Compliance**: Claude Code Best Practices + Zero Direct Tool Usage
+**Architecture**: Commands → Agents → Skills (Complete delegation)
 
 ---
 
@@ -371,8 +475,8 @@ AskUserQuestion({
 
 ## ⚡️ EXECUTION DIRECTIVE
 
-**You must NOW execute the command following the "Execution Flow" described above.**
+**You must NOW execute the command following the "Execution Philosophy" described above.**
 
-1. Start Phase 1 immediately.
-2. Call the `Task` tool with `subagent_type="implementation-planner"`.
+1. Start Phase 1: Analysis & Planning immediately.
+2. Call the `Task` tool with `subagent_type="manager-strategy"`.
 3. Do NOT just describe what you will do. DO IT.

@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "0.27.2"
+version = "0.30.0"
 description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Unified moai-core-* Skills"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -36,6 +36,9 @@ dependencies = [
     "aiohttp>=3.13.2",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
+    "google-genai>=1.0.0",  # Gemini 3 Pro image generation (moai-connector-nano-banana)
+    "pillow>=10.0.0",  # Image processing for nano-banana skill
+    "requests>=2.28.0",  # Already included, used for REST API fallback
 ]
 
 [project.optional-dependencies]
@@ -77,14 +80,14 @@ fail_under = 85
 
 [tool.ruff]
 line-length = 120
-target-version = "0.27.2"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N"]
 ignore = []
 
 [tool.mypy]
-python_version = "0.27.2"
+python_version = "3.14"
 warn_return_any = false
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -118,7 +121,18 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",
     "pytest-mock>=3.15.1",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "types-PyYAML>=6.0.0",
+    "black>=24.0.0",
+]
+security = [
+    "pip-audit>=2.7.0",
+    "bandit>=1.8.0",
 ]
 
 
@@ -131,9 +145,20 @@ exclude = [
     "src/moai_adk/templates/.moai/temp",  # Temporary files
     "src/moai_adk/templates/.claude/commands/moai/99-release.md",  # Release command - local-only
     "src/moai_adk/templates/.moai/release",  # Release scripts - local-only
+
+    # ✅ INCLUDE: User-facing workflows (distributed to users)
+    # - ci-universal.yml (Multi-language CI/CD)
+    # - security-secrets-check.yml (Security scanner)
+    # - spec-issue-sync.yml (SPEC → GitHub Issue sync)
+
+    # ❌ EXCLUDE: MoAI-ADK internal workflows (development only)
+    "src/moai_adk/templates/.github/workflows/moai-gitflow.yml",
+    "src/moai_adk/templates/.github/workflows/moai-release-create.yml",
+    "src/moai_adk/templates/.github/workflows/moai-release-pipeline.yml",
+
     "tests",  # Test directory
     ".git",  # Git directory
-    ".github/workflows",  # GitHub Actions (not needed in package)
+    ".github/workflows",  # GitHub Actions for MoAI-ADK itself (local development)
 ]
 
 [project.scripts]

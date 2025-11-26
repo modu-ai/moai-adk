@@ -3,7 +3,6 @@
 Tests for language template mapping.
 """
 
-
 from moai_adk.core.template.languages import LANGUAGE_TEMPLATES, get_language_template
 
 

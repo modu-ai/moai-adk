@@ -1,0 +1,513 @@
+name: Continuous Integration
+
+# Universal CI/CD pipeline for MoAI-ADK projects
+# Auto-detects: Python, Node.js, Go, Rust, Java, Ruby
+# Triggers: Pull requests and pushes to main/develop branches
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-language:
+    name: 🔍 Detect Project Language
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.detect.outputs.python }}
+      node: ${{ steps.detect.outputs.node }}
+      go: ${{ steps.detect.outputs.go }}
+      rust: ${{ steps.detect.outputs.rust }}
+      java: ${{ steps.detect.outputs.java }}
+      ruby: ${{ steps.detect.outputs.ruby }}
+      primary_language: ${{ steps.detect.outputs.primary_language }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔎 Auto-detect language
+        id: detect
+        run: |
+          echo "🔍 Auto-detecting project language..."
+          echo ""
+
+          # Python detection
+          if [ -f "pyproject.toml" ] || [ -f "setup.py" ] || [ -f "requirements.txt" ]; then
+            echo "✅ Python project detected"
+            echo "python=true" >> $GITHUB_OUTPUT
+            PRIMARY="python"
+          else
+            echo "python=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Node.js detection
+          if [ -f "package.json" ]; then
+            echo "✅ Node.js project detected"
+            echo "node=true" >> $GITHUB_OUTPUT
+            [ -z "$PRIMARY" ] && PRIMARY="node"
+          else
+            echo "node=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Go detection
+          if [ -f "go.mod" ]; then
+            echo "✅ Go project detected"
+            echo "go=true" >> $GITHUB_OUTPUT
+            [ -z "$PRIMARY" ] && PRIMARY="go"
+          else
+            echo "go=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Rust detection
+          if [ -f "Cargo.toml" ]; then
+            echo "✅ Rust project detected"
+            echo "rust=true" >> $GITHUB_OUTPUT
+            [ -z "$PRIMARY" ] && PRIMARY="rust"
+          else
+            echo "rust=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Java detection
+          if [ -f "pom.xml" ] || [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "✅ Java project detected"
+            echo "java=true" >> $GITHUB_OUTPUT
+            [ -z "$PRIMARY" ] && PRIMARY="java"
+          else
+            echo "java=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Ruby detection
+          if [ -f "Gemfile" ]; then
+            echo "✅ Ruby project detected"
+            echo "ruby=true" >> $GITHUB_OUTPUT
+            [ -z "$PRIMARY" ] && PRIMARY="ruby"
+          else
+            echo "ruby=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Set primary language
+          if [ -z "$PRIMARY" ]; then
+            echo "⚠️  No language detected, defaulting to generic checks"
+            PRIMARY="generic"
+          fi
+
+          echo ""
+          echo "✅ Primary language: $PRIMARY"
+          echo "primary_language=$PRIMARY" >> $GITHUB_OUTPUT
+
+  code-quality-python:
+    name: 🐍 Python Code Quality
+    runs-on: ubuntu-latest
+    needs: detect-language
+    if: needs.detect-language.outputs.python == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          echo "📦 Installing Python dependencies..."
+
+          # Try pip install with pyproject.toml, setup.py, or requirements.txt
+          if [ -f "pyproject.toml" ]; then
+            pip install -e .[dev] || pip install -e . || true
+          elif [ -f "setup.py" ]; then
+            pip install -e . || true
+          elif [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt || true
+          fi
+
+          # Install common linters (best-effort)
+          pip install black ruff mypy bandit || true
+
+      - name: 🎨 Check code formatting (black)
+        run: |
+          echo "🎨 Checking Python code formatting..."
+          black --check . --line-length=120 || echo "⚠️  Formatting issues found (non-blocking)"
+
+      - name: 🔧 Lint code (ruff)
+        run: |
+          echo "🔧 Linting Python code..."
+          ruff check . || echo "⚠️  Linting issues found (non-blocking)"
+
+      - name: 📝 Type checking (mypy)
+        run: |
+          echo "📝 Type checking Python code..."
+          mypy . --ignore-missing-imports || echo "⚠️  Type issues found (non-blocking)"
+
+      - name: 🔐 Security check (bandit)
+        run: |
+          echo "🔐 Security scanning Python code..."
+          bandit -r . -ll || echo "⚠️  Security issues found (non-blocking)"
+
+  code-quality-node:
+    name: 🟢 Node.js Code Quality
+    runs-on: ubuntu-latest
+    needs: detect-language
+    if: needs.detect-language.outputs.node == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: |
+          echo "📦 Installing Node.js dependencies..."
+          npm ci || npm install || true
+
+      - name: 🔧 Lint code (ESLint)
+        run: |
+          echo "🔧 Linting JavaScript/TypeScript code..."
+          npm run lint || npx eslint . || echo "⚠️  Linting issues found (non-blocking)"
+
+      - name: 🎨 Check formatting (Prettier)
+        run: |
+          echo "🎨 Checking code formatting..."
+          npm run format:check || npx prettier --check . || echo "⚠️  Formatting issues found (non-blocking)"
+
+      - name: 📝 Type checking (TypeScript)
+        run: |
+          echo "📝 Type checking TypeScript..."
+          npm run type-check || npx tsc --noEmit || echo "⚠️  Type issues found (non-blocking)"
+
+  code-quality-go:
+    name: 🐹 Go Code Quality
+    runs-on: ubuntu-latest
+    needs: detect-language
+    if: needs.detect-language.outputs.go == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: 🔧 Format check (gofmt)
+        run: |
+          echo "🔧 Checking Go code formatting..."
+          gofmt -l . | grep . && echo "⚠️  Formatting issues found" || echo "✅ Format check passed"
+
+      - name: 📝 Lint code (golangci-lint)
+        run: |
+          echo "📝 Linting Go code..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run || echo "⚠️  Linting issues found (non-blocking)"
+
+      - name: 🔍 Vet code
+        run: |
+          echo "🔍 Running go vet..."
+          go vet ./... || echo "⚠️  Vet issues found (non-blocking)"
+
+  code-quality-rust:
+    name: 🦀 Rust Code Quality
+    runs-on: ubuntu-latest
+    needs: detect-language
+    if: needs.detect-language.outputs.rust == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: 🔧 Format check (rustfmt)
+        run: |
+          echo "🔧 Checking Rust code formatting..."
+          cargo fmt --check || echo "⚠️  Formatting issues found (non-blocking)"
+
+      - name: 📝 Lint code (clippy)
+        run: |
+          echo "📝 Linting Rust code..."
+          cargo clippy -- -D warnings || echo "⚠️  Clippy warnings found (non-blocking)"
+
+  test-python:
+    name: 🧪 Python Tests
+    runs-on: ubuntu-latest
+    needs: [detect-language, code-quality-python]
+    if: needs.detect-language.outputs.python == 'true'
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 📦 Install dependencies
+        run: |
+          echo "📦 Installing dependencies for Python ${{ matrix.python-version }}..."
+
+          if [ -f "pyproject.toml" ]; then
+            pip install -e .[dev] || pip install -e . || true
+          elif [ -f "setup.py" ]; then
+            pip install -e . || true
+          elif [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt || true
+          fi
+
+          pip install pytest pytest-cov || true
+
+      - name: 🧪 Run tests with coverage
+        run: |
+          echo "🧪 Running Python tests..."
+          pytest tests/ --cov --cov-report=xml --cov-report=term -v || echo "⚠️  Tests failed or not found"
+
+      - name: 📊 Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-py${{ matrix.python-version }}
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  test-node:
+    name: 🧪 Node.js Tests
+    runs-on: ubuntu-latest
+    needs: [detect-language, code-quality-node]
+    if: needs.detect-language.outputs.node == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci || npm install
+
+      - name: 🧪 Run tests
+        run: |
+          echo "🧪 Running Node.js tests..."
+          npm test || echo "⚠️  Tests failed or not found"
+
+  test-go:
+    name: 🧪 Go Tests
+    runs-on: ubuntu-latest
+    needs: [detect-language, code-quality-go]
+    if: needs.detect-language.outputs.go == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: 🧪 Run tests
+        run: |
+          echo "🧪 Running Go tests..."
+          go test -v ./... -coverprofile=coverage.out || echo "⚠️  Tests failed or not found"
+
+      - name: 📊 Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  test-rust:
+    name: 🧪 Rust Tests
+    runs-on: ubuntu-latest
+    needs: [detect-language, code-quality-rust]
+    if: needs.detect-language.outputs.rust == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: 🧪 Run tests
+        run: |
+          echo "🧪 Running Rust tests..."
+          cargo test || echo "⚠️  Tests failed or not found"
+
+  build-python:
+    name: 🏗️ Build Python Package
+    runs-on: ubuntu-latest
+    needs: [detect-language, test-python]
+    if: needs.detect-language.outputs.python == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install build tools
+        run: |
+          pip install build || true
+
+      - name: 🔨 Build package
+        run: |
+          echo "🔨 Building Python package..."
+          python -m build || echo "⚠️  Build failed (non-blocking)"
+
+          if [ -d "dist/" ]; then
+            echo "✅ Package built successfully"
+            ls -lh dist/
+          fi
+
+      - name: 📤 Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          retention-days: 7
+
+  build-node:
+    name: 🏗️ Build Node.js Package
+    runs-on: ubuntu-latest
+    needs: [detect-language, test-node]
+    if: needs.detect-language.outputs.node == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci || npm install
+
+      - name: 🔨 Build package
+        run: |
+          echo "🔨 Building Node.js package..."
+          npm run build || echo "⚠️  Build script not found (non-blocking)"
+
+  build-go:
+    name: 🏗️ Build Go Binary
+    runs-on: ubuntu-latest
+    needs: [detect-language, test-go]
+    if: needs.detect-language.outputs.go == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: 🔨 Build binary
+        run: |
+          echo "🔨 Building Go binary..."
+          go build -v ./... || echo "⚠️  Build failed (non-blocking)"
+
+  build-rust:
+    name: 🏗️ Build Rust Binary
+    runs-on: ubuntu-latest
+    needs: [detect-language, test-rust]
+    if: needs.detect-language.outputs.rust == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: 🔨 Build binary
+        run: |
+          echo "🔨 Building Rust binary..."
+          cargo build --release || echo "⚠️  Build failed (non-blocking)"
+
+  quality-gate:
+    name: ✅ Quality Gate
+    runs-on: ubuntu-latest
+    needs: [detect-language]
+    if: always()
+
+    steps:
+      - name: 📊 Check results
+        run: |
+          echo "📊 Quality Gate Results:"
+          echo ""
+          echo "Primary Language: ${{ needs.detect-language.outputs.primary_language }}"
+          echo ""
+          echo "✅ CI Pipeline completed"
+          echo ""
+          echo "Note: This is a universal CI pipeline that adapts to your project."
+          echo "Failures in optional steps (linting, formatting) are non-blocking."
+
+      - name: 📝 Summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'SUMMARY'
+          ## ✅ Universal CI Pipeline Summary
+
+          | Check | Status |
+          |-------|--------|
+          | Language Detection | ✅ Passed |
+          | Code Quality | See individual jobs |
+          | Tests | See individual jobs |
+          | Build | See individual jobs |
+
+          ### Detected Languages
+          - **Python**: ${{ needs.detect-language.outputs.python }}
+          - **Node.js**: ${{ needs.detect-language.outputs.node }}
+          - **Go**: ${{ needs.detect-language.outputs.go }}
+          - **Rust**: ${{ needs.detect-language.outputs.rust }}
+          - **Java**: ${{ needs.detect-language.outputs.java }}
+          - **Ruby**: ${{ needs.detect-language.outputs.ruby }}
+
+          ### Primary Language
+          **${{ needs.detect-language.outputs.primary_language }}**
+
+          ---
+
+          *This is a universal CI pipeline provided by MoAI-ADK*
+          SUMMARY

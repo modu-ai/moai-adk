@@ -11,6 +11,7 @@ import pytest
 @dataclass
 class StatuslineData:
     """상태줄 데이터 구조"""
+
     model: str
     duration: str
     directory: str
@@ -40,7 +41,7 @@ class TestStatuslineRendererCompactMode:
             version="0.20.1",
             branch="feature/SPEC-AUTH-001",
             git_status="+2 M1",
-            active_task="[PLAN]"
+            active_task="[PLAN]",
         )
 
         result = renderer.render(data, mode="compact")
@@ -76,7 +77,7 @@ class TestStatuslineRendererCompactMode:
                 version="v0.20.1",
                 branch="feature/SPEC-VERY-LONG-SPEC-NAME-HERE",
                 git_status="+10 M5 ?2",
-                active_task="[RUN-GREEN]"
+                active_task="[RUN-GREEN]",
             ),
             StatuslineData(
                 model="S 4.5",
@@ -85,7 +86,7 @@ class TestStatuslineRendererCompactMode:
                 version="0.20.1",
                 branch="main",
                 git_status="",
-                active_task="[IDLE]"
+                active_task="[IDLE]",
             ),
         ]
 
@@ -109,7 +110,7 @@ class TestStatuslineRendererCompactMode:
             version="0.20.1",
             branch="develop",
             git_status="+1",
-            active_task="[PLAN]"
+            active_task="[PLAN]",
         )
 
         result = renderer.render(data, mode="compact")
@@ -149,7 +150,7 @@ class TestStatuslineRendererDataHandling:
             version="0.20.1 ⬆️ 0.21.0",
             branch="main",
             git_status="",
-            active_task="[IDLE]"
+            active_task="[IDLE]",
         )
 
         result = renderer.render(data, mode="compact")
@@ -174,7 +175,7 @@ class TestStatuslineRendererDataHandling:
             version="0.20.1",
             branch="develop",
             git_status="",
-            active_task="[IDLE]"
+            active_task="[IDLE]",
         )
 
         result = renderer.render(data, mode="compact")

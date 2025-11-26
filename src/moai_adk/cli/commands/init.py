@@ -152,12 +152,10 @@ def init(
         # 3. Interactive vs Non-Interactive
         if non_interactive:
             # Non-Interactive Mode
-            console.print(
-                f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n"
-            )
+            console.print(f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n")
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
-            # Language detection happens in /alfred:0-project, so default to None here
+            # Language detection happens in /moai:project, so default to None here
             # This will become "generic" internally, but Summary will show more helpful message
             if not language:
                 language = None
@@ -191,9 +189,7 @@ def init(
         if initializer.is_initialized():
             # Always reinitialize without confirmation (force mode by default)
             if non_interactive:
-                console.print(
-                    "\n[green]🔄 Reinitializing project (force mode)...[/green]\n"
-                )
+                console.print("\n[green]🔄 Reinitializing project (force mode)...[/green]\n")
             else:
                 # Interactive mode: Simple notification
                 console.print("\n[cyan]🔄 Reinitializing project...[/cyan]")
@@ -282,33 +278,23 @@ def init(
         # 6. Output results
         if result.success:
             separator = "[dim]" + ("─" * 60) + "[/dim]"
-            console.print(
-                "\n[green bold]✅ Initialization Completed Successfully![/green bold]"
-            )
+            console.print("\n[green bold]✅ Initialization Completed Successfully![/green bold]")
             console.print(separator)
             console.print("\n[cyan]📊 Summary:[/cyan]")
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
             # Show language more clearly - "generic" means auto-detect
-            language_display = (
-                "Auto-detect (use /alfred:0-project)"
-                if result.language == "generic"
-                else result.language
-            )
+            language_display = "Auto-detect (use /moai:project)" if result.language == "generic" else result.language
             console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             console.print(f"  [dim]🔧 Mode:[/dim]      {result.mode}")
             console.print(f"  [dim]🌍 Locale:[/dim]    {result.locale}")
-            console.print(
-                f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created"
-            )
+            console.print(f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created")
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
 
             # Show backup info if reinitialized
             if is_reinit:
                 backup_dir = project_path / ".moai-backups"
                 if backup_dir.exists():
-                    latest_backup = max(
-                        backup_dir.iterdir(), key=lambda p: p.stat().st_mtime
-                    )
+                    latest_backup = max(backup_dir.iterdir(), key=lambda p: p.stat().st_mtime)
                     console.print(f"  [dim]💾 Backup:[/dim]    {latest_backup.name}/")
 
             console.print(f"\n{separator}")
@@ -325,32 +311,22 @@ def init(
                 console.print("[cyan]What is optimized=false?[/cyan]")
                 console.print("  • Template version changed (you get new features)")
                 console.print("  • Your previous settings are safe (backed up)")
-                console.print("  • Next: Run /alfred:0-project to merge")
+                console.print("  • Next: Run /moai:project to merge")
                 console.print()
                 console.print("[cyan]What Happens Next:[/cyan]")
-                console.print("  1. Run [bold]/alfred:0-project[/bold] in Claude Code")
+                console.print("  1. Run [bold]/moai:project[/bold] in Claude Code")
                 console.print("  2. System intelligently merges old settings + new template")
                 console.print("  3. After successful merge → optimized becomes true")
                 console.print("  4. You're ready to continue developing\n")
 
             console.print("\n[cyan]🚀 Next Steps:[/cyan]")
             if not is_current_dir:
-                console.print(
-                    f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project"
-                )
-                console.print(
-                    "  [blue]2.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
-                )
-                console.print(
-                    "     (Configure: mode, language, report generation, etc.)"
-                )
+                console.print(f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project")
+                console.print("  [blue]2.[/blue] Run [bold]/moai:project[/bold] in Claude Code for full setup")
+                console.print("     (Configure: mode, language, report generation, etc.)")
             else:
-                console.print(
-                    "  [blue]1.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
-                )
-                console.print(
-                    "     (Configure: mode, language, report generation, etc.)"
-                )
+                console.print("  [blue]1.[/blue] Run [bold]/moai:project[/bold] in Claude Code for full setup")
+                console.print("     (Configure: mode, language, report generation, etc.)")
 
             if not is_current_dir:
                 console.print("  [blue]3.[/blue] Start developing with MoAI-ADK!\n")
@@ -370,9 +346,7 @@ def init(
         raise click.Abort()
     except FileExistsError as e:
         console.print("\n[yellow]⚠ Project already initialized[/yellow]")
-        console.print(
-            "[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n"
-        )
+        console.print("[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n")
         raise click.Abort() from e
     except Exception as e:
         console.print(f"\n[red]✗ Initialization failed: {e}[/red]\n")

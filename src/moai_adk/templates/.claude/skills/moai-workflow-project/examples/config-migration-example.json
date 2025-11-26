@@ -1,0 +1,190 @@
+{
+  "title": "Configuration Migration Example",
+  "description": "Example showing migration from legacy configuration files to unified format",
+  "legacy_configs": {
+    "batch_questions": {
+      "file": ".moai/batch_questions_config.json",
+      "content": {
+        "version": "1.0",
+        "max_batch_size": 25,
+        "timeout": 180,
+        "retry_count": 2,
+        "output_type": "yaml",
+        "cache_enabled": true,
+        "cache_ttl": 12
+      }
+    },
+    "documentation": {
+      "file": ".claude/docs_config.json", 
+      "content": {
+        "version": "1.0",
+        "auto_docs": true,
+        "doc_format": "html",
+        "include_schemas": true,
+        "template_type": "handlebars",
+        "output_path": "generated-docs"
+      }
+    },
+    "language_config": {
+      "file": ".moai/i18n_config.json",
+      "content": {
+        "version": "1.0", 
+        "default_lang": "ko",
+        "supported_langs": ["ko", "en", "ja"],
+        "auto_translate": true,
+        "fallback_lang": "en"
+      }
+    }
+  },
+  "migration_result": {
+    "unified_config": {
+      "version": "1.0.0",
+      "metadata": {
+        "created_at": "2025-01-25T10:30:00Z",
+        "updated_at": "2025-01-25T10:30:00Z",
+        "migration_history": [
+          {
+            "from_version": "1.0",
+            "to_version": "1.0.0",
+            "timestamp": "2025-01-25T10:30:00Z",
+            "description": "Migrated from legacy configurations to unified format"
+          }
+        ]
+      },
+      "project_settings": {
+        "name": "MoAI Menu Project",
+        "type": "web",
+        "description": "Menu project management system",
+        "author": "MoAI Team",
+        "license": "MIT"
+      },
+      "batch_questions": {
+        "enabled": true,
+        "max_questions": 25,
+        "timeout_seconds": 180,
+        "retry_attempts": 2,
+        "output_format": "yaml",
+        "caching": {
+          "enabled": true,
+          "ttl_hours": 12,
+          "max_cache_size_mb": 100
+        }
+      },
+      "documentation": {
+        "auto_generate": true,
+        "format": "html",
+        "include_api_docs": true,
+        "include_examples": true,
+        "template_engine": "handlebars",
+        "output_directory": "generated-docs"
+      },
+      "language_config": {
+        "default_language": "ko",
+        "supported_languages": ["ko", "en", "ja"],
+        "auto_detect": true,
+        "fallback_language": "en",
+        "translation_service": {
+          "provider": "local",
+          "cache_enabled": true
+        }
+      },
+      "template_optimizer": {
+        "enabled": true,
+        "optimization_level": "basic",
+        "minification": false,
+        "caching": {
+          "enabled": true,
+          "strategy": "memory",
+          "ttl_minutes": 60
+        },
+        "validation": {
+          "strict_mode": false,
+          "check_syntax": true,
+          "check_security": true
+        }
+      },
+      "project_initializer": {
+        "auto_dependencies": true,
+        "git_init": true,
+        "create_virtual_env": true,
+        "package_managers": {
+          "python": {
+            "enabled": true,
+            "tool": "pip"
+          }
+        }
+      }
+    }
+  },
+  "migration_steps": [
+    {
+      "step": 1,
+      "action": "Detect legacy configurations",
+      "files_found": 3,
+      "modules": ["batch_questions", "documentation", "language_config"]
+    },
+    {
+      "step": 2,
+      "action": "Create backup",
+      "backup_file": "backups/config_backup_20250125_103000.json"
+    },
+    {
+      "step": 3,
+      "action": "Transform legacy data",
+      "transformations": [
+        {
+          "module": "batch_questions",
+          "changes": [
+            "max_batch_size → max_questions",
+            "timeout → timeout_seconds", 
+            "retry_count → retry_attempts",
+            "output_type → output_format",
+            "cache_ttl → caching.ttl_hours"
+          ]
+        },
+        {
+          "module": "documentation",
+          "changes": [
+            "auto_docs → auto_generate",
+            "doc_format → format",
+            "template_type → template_engine",
+            "output_path → output_directory"
+          ]
+        },
+        {
+          "module": "language_config",
+          "changes": [
+            "default_lang → default_language",
+            "supported_langs → supported_languages",
+            "auto_translate → auto_detect (inferred)",
+            "fallback_lang → fallback_language"
+          ]
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Merge into unified configuration",
+      "result": "All legacy configurations successfully merged"
+    },
+    {
+      "step": 5,
+      "action": "Validate against schema",
+      "validation": "Passed"
+    }
+  ],
+  "post_migration": {
+    "actions": [
+      "Legacy configuration files archived",
+      "Unified configuration saved",
+      "Migration history recorded",
+      "Configuration validated"
+    ],
+    "next_steps": [
+      "Review unified configuration",
+      "Test application functionality",
+      "Remove legacy files (optional)",
+      "Update documentation"
+    ]
+  }
+}

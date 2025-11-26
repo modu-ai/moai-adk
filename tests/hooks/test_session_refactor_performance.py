@@ -30,17 +30,19 @@ class TestSessionStartPerformance:
 
             config_file = config_dir / "config.json"
             config_file.write_text(
-                json.dumps({
-                    "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
-                    "auto_cleanup": {"enabled": True, "cleanup_days": 7},
-                    "daily_analysis": {"enabled": True}
-                })
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000, "graceful_degradation": True},
+                        "auto_cleanup": {"enabled": True, "cleanup_days": 7},
+                        "daily_analysis": {"enabled": True},
+                    }
+                )
             )
 
             # Measure load_config execution time
             start = time.perf_counter()
             for _ in range(100):  # Run 100 times for accuracy
-                config = load_config()
+                load_config()
             elapsed = (time.perf_counter() - start) * 1000 / 100
 
             # Average should be < 3ms
@@ -62,7 +64,7 @@ class TestSessionStartPerformance:
             cutoff = datetime.now()
 
             start = time.perf_counter()
-            result = cleanup_directory(test_dir, cutoff, max_files=50, patterns=["*"])
+            cleanup_directory(test_dir, cutoff, max_files=50, patterns=["*"])
             elapsed = (time.perf_counter() - start) * 1000
 
             # Should process 100 files in < 50ms
@@ -78,9 +80,7 @@ class TestSessionStartPerformance:
             "total_sessions": 10,
             "date_range": "2025-11-14 ~ 2025-11-19",
             "tools_used": {"Read": 50, "Bash": 30, "Write": 20},
-            "errors_found": [
-                {"timestamp": "2025-11-19T10:00:00", "error": "Test error"}
-            ],
+            "errors_found": [{"timestamp": "2025-11-19T10:00:00", "error": "Test error"}],
             "duration_stats": {
                 "mean": 300,
                 "min": 100,
@@ -92,7 +92,7 @@ class TestSessionStartPerformance:
 
         start = time.perf_counter()
         for _ in range(100):  # Run 100 times for accuracy
-            report = format_analysis_report(analysis_data)
+            format_analysis_report(analysis_data)
         elapsed = (time.perf_counter() - start) * 1000 / 100
 
         # Average should be < 10ms
@@ -112,11 +112,13 @@ class TestSessionStartPerformance:
 
             config_file = config_dir / "config.json"
             config_file.write_text(
-                json.dumps({
-                    "hooks": {"timeout_ms": 3000},
-                    "auto_cleanup": {"enabled": False},  # Disable for speed
-                    "daily_analysis": {"enabled": False}  # Disable for speed
-                })
+                json.dumps(
+                    {
+                        "hooks": {"timeout_ms": 3000},
+                        "auto_cleanup": {"enabled": False},  # Disable for speed
+                        "daily_analysis": {"enabled": False},  # Disable for speed
+                    }
+                )
             )
 
             from moai_adk.hooks.session_start import (
@@ -128,8 +130,8 @@ class TestSessionStartPerformance:
 
             # These should be fast when disabled
             config = json.loads(config_file.read_text())
-            cleanup_result = execute_cleanup_sequence(config)
-            analysis_result = execute_analysis_sequence(config)
+            execute_cleanup_sequence(config)
+            execute_analysis_sequence(config)
 
             elapsed = (time.perf_counter() - start) * 1000
 
@@ -145,7 +147,7 @@ class TestSessionStartPerformance:
         )
 
         # Get baseline memory
-        baseline = sys.getsizeof(load_config)
+        sys.getsizeof(load_config)
 
         # Load modules and check memory growth
         config_data = {"auto_cleanup": {"enabled": False}, "daily_analysis": {"enabled": False}}
@@ -204,7 +206,6 @@ class TestSessionStartLoadingCharacteristics:
     def test_logging_overhead(self):
         """Verify logging doesn't add significant overhead"""
         import logging
-
 
         logger = logging.getLogger("moai_adk.hooks.session_start.state_cleanup")
         logger.setLevel(logging.WARNING)  # Reduce noise

@@ -15,7 +15,7 @@ class TestAlfredDetector:
 
     def test_detect_active_command(self):
         """
-        GIVEN: /alfred:2-run SPEC-AUTH-001 실행 중
+        GIVEN: /moai:2-run SPEC-AUTH-001 실행 중
         WHEN: detect_active_task() 호출
         THEN: command="run", spec_id="AUTH-001"
         """
@@ -26,19 +26,17 @@ class TestAlfredDetector:
         # Mock the session state file
         with tempfile.TemporaryDirectory() as tmpdir:
             state_file = Path(tmpdir) / "last-session-state.json"
-            state_data = {
-                "active_task": {
-                    "command": "run",
-                    "spec_id": "SPEC-AUTH-001"
-                }
-            }
+            state_data = {"active_task": {"command": "run", "spec_id": "SPEC-AUTH-001"}}
             state_file.write_text(json.dumps(state_data))
 
             detector._session_state_path = state_file
 
             task = detector.detect_active_task()
 
-            assert task.spec_id in ["SPEC-AUTH-001", "AUTH-001"], f"Expected spec_id with AUTH-001, got {task.spec_id}"
+            assert task.spec_id in [
+                "SPEC-AUTH-001",
+                "AUTH-001",
+            ], f"Expected spec_id with AUTH-001, got {task.spec_id}"
 
     def test_no_active_command(self):
         """

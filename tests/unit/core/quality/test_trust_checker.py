@@ -25,6 +25,7 @@ class TestTrustChecker:
     def trust_checker(self):
         """TrustChecker 인스턴스 생성"""
         from moai_adk.core.quality.trust_checker import TrustChecker
+
         return TrustChecker()
 
     @pytest.fixture
@@ -41,7 +42,7 @@ class TestTrustChecker:
     # AC-001: 테스트 커버리지 ≥85% 검증
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_pass_when_coverage_above_85_percent(self, trust_checker, sample_project_path):
         """
         Given: 프로젝트의 테스트 커버리지가 87%
@@ -58,7 +59,7 @@ class TestTrustChecker:
         assert result.passed is True
         assert result.message == "Test coverage: 87.5% (Target: 85%)"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_fail_when_coverage_below_85_percent(self, trust_checker, sample_project_path):
         """
         Given: 프로젝트의 테스트 커버리지가 78%
@@ -86,7 +87,7 @@ class TestTrustChecker:
     # AC-002: 파일 ≤300 LOC 검증
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_pass_when_all_files_within_300_loc(self, trust_checker, sample_project_path):
         """
         Given: 모든 소스 파일이 300 LOC 이하
@@ -103,7 +104,7 @@ class TestTrustChecker:
         assert result.passed is True
         assert "All files within 300 LOC" in result.message
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_fail_when_file_exceeds_300_loc(self, trust_checker, sample_project_path):
         """
         Given: 파일이 342 LOC로 300 LOC 초과
@@ -126,7 +127,7 @@ class TestTrustChecker:
     # AC-003: 함수 ≤50 LOC 검증
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_pass_when_all_functions_within_50_loc(self, trust_checker, sample_project_path):
         """
         Given: 모든 함수가 50 LOC 이하
@@ -137,7 +138,9 @@ class TestTrustChecker:
         code = """
 def small_function():
     # 30 LOC function
-""" + "\n".join([f"    pass  # Line {i}" for i in range(30)])
+""" + "\n".join(
+            [f"    pass  # Line {i}" for i in range(30)]
+        )
         (sample_project_path / "src" / "functions.py").write_text(code)
 
         # Act
@@ -147,7 +150,7 @@ def small_function():
         assert result.passed is True
         assert "All functions within 50 LOC" in result.message
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_fail_when_function_exceeds_50_loc(self, trust_checker, sample_project_path):
         """
         Given: 함수가 58 LOC로 50 LOC 초과
@@ -158,7 +161,9 @@ def small_function():
         code = """
 def large_function():
     # 58 LOC function
-""" + "\n".join([f"    pass  # Line {i}" for i in range(58)])
+""" + "\n".join(
+            [f"    pass  # Line {i}" for i in range(58)]
+        )
         (sample_project_path / "src" / "functions.py").write_text(code)
 
         # Act
@@ -173,7 +178,7 @@ def large_function():
     # AC-004: 매개변수 ≤5개 검증
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_pass_when_all_params_within_5(self, trust_checker, sample_project_path):
         """
         Given: 모든 함수의 매개변수가 5개 이하
@@ -194,7 +199,7 @@ def function_with_4_params(a, b, c, d):
         assert result.passed is True
         assert "All functions within 5 parameters" in result.message
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_fail_when_params_exceed_5(self, trust_checker, sample_project_path):
         """
         Given: 함수의 매개변수가 7개로 5개 초과
@@ -220,7 +225,7 @@ def function_with_7_params(a, b, c, d, e, f, g):
     # AC-005: 순환 복잡도 ≤10 검증
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_pass_when_complexity_within_10(self, trust_checker, sample_project_path):
         """
         Given: 모든 함수의 순환 복잡도가 10 이하
@@ -243,7 +248,7 @@ def simple_function(x):
         assert result.passed is True
         assert "All functions within complexity 10" in result.message
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_fail_when_complexity_exceeds_10(self, trust_checker, sample_project_path):
         """
         Given: 함수의 순환 복잡도가 15로 10 초과
@@ -281,7 +286,7 @@ def complex_function(x):
     # ========================================
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_pass_when_tag_chain_complete(self, trust_checker, sample_project_path):
         """
         When: trust_checker.validate_tag_chain() 실행
@@ -298,7 +303,7 @@ def complex_function(x):
         assert result.passed is True
         assert "chain complete" in result.message
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_fail_when_tag_chain_broken(self, trust_checker, sample_project_path):
         """
         When: trust_checker.validate_tag_chain() 실행
@@ -315,7 +320,7 @@ def complex_function(x):
         assert "auth-001" in result.details.lower()  # 소문자로 변환되므로 소문자로 검색
         assert "broken" in result.details.lower()
 
-            # Arrange
+        # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
         (sample_project_path / "src" / "user.py").write_text("# # REMOVED_ORPHAN_CODE:USER-001")
 
@@ -329,7 +334,7 @@ def complex_function(x):
     # AC-008: 검증 결과 보고서 생성
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_generate_markdown_report(self, trust_checker, sample_project_path):
         """
         Given: TRUST 검증 완료
@@ -347,7 +352,7 @@ def complex_function(x):
         assert "87%" in report
         assert "✅" in report or "PASS" in report
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_generate_json_report(self, trust_checker, sample_project_path):
         """
         Given: TRUST 검증 완료
@@ -372,7 +377,7 @@ def complex_function(x):
     # AC-009: 검증 실패 시 구체적 오류 메시지
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_provide_specific_error_message(self, trust_checker, sample_project_path):
         """
         Given: 테스트 커버리지 78% (미달)
@@ -393,7 +398,7 @@ def complex_function(x):
         assert "helper.py" in result.details
         assert "recommended" in result.details.lower() or "권장" in result.details
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_provide_generic_error_when_no_details(self, trust_checker, sample_project_path):
         """
         Given: 검증 실패했으나 상세 정보 없음
@@ -414,7 +419,7 @@ def complex_function(x):
     # AC-010: 언어별 도구 자동 선택
     # ========================================
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_select_python_tools(self, trust_checker, sample_project_path):
         """
         Given: .moai/config.json에 project.language: "python" 정의
@@ -436,7 +441,7 @@ def complex_function(x):
         assert tools["linter"] == "ruff"
         assert tools["type_checker"] == "mypy"
 
-    @pytest.mark.xfail(reason='Test data migration needed')
+    @pytest.mark.xfail(reason="Test data migration needed")
     def test_should_select_typescript_tools(self, trust_checker, sample_project_path):
         """
         Given: .moai/config.json에 project.language: "typescript" 정의
@@ -456,5 +461,3 @@ def complex_function(x):
         assert tools["test_framework"] == "vitest"
         assert tools["linter"] == "biome"
         assert tools["type_checker"] == "tsc"
-
-

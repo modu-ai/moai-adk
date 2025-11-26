@@ -1,38 +1,78 @@
-"""Configuration Manager
+"""Configuration Manager (Migrated to Unified Config)
+
+DEPRECATED: This module is maintained for backward compatibility.
+New code should use: moai_adk.core.config.unified.UnifiedConfigManager
 
 Manage .moai/config/config.json:
 - Read and write configuration files
 - Support deep merges
 - Preserve UTF-8 content
 - Create directories automatically
+
+Migration Path:
+    OLD:
+        >>> from moai_adk.core.template.config import ConfigManager
+        >>> config_mgr = ConfigManager(Path(".moai/config/config.json"))
+        >>> data = config_mgr.load()
+
+    NEW:
+        >>> from moai_adk.core.config.unified import get_unified_config
+        >>> config = get_unified_config()
+        >>> data = config.get_all()
 """
 
 import json
 from pathlib import Path
 from typing import Any
 
+# Import unified config manager
+try:
+    from moai_adk.core.config.unified import UnifiedConfigManager, get_unified_config
+
+    UNIFIED_AVAILABLE = True
+except ImportError:
+    UNIFIED_AVAILABLE = False
+
 
 class ConfigManager:
-    """Read and write .moai/config/config.json."""
+    """
+    Read and write .moai/config/config.json.
+
+    DEPRECATED: Use moai_adk.core.config.unified.UnifiedConfigManager instead.
+    This class is now a thin wrapper around UnifiedConfigManager for backward compatibility.
+    """
 
     DEFAULT_CONFIG = {"mode": "personal", "locale": "ko", "moai": {"version": "0.3.0"}}
 
     def __init__(self, config_path: Path) -> None:
-        """Initialize the ConfigManager.
+        """
+        Initialize the ConfigManager.
 
         Args:
             config_path: Path to config.json.
         """
         self.config_path = config_path
 
+        # Use unified config if available
+        if UNIFIED_AVAILABLE:
+            self._unified_config = UnifiedConfigManager(config_path)
+        else:
+            self._unified_config = None
+
     def load(self) -> dict[str, Any]:
-        """Load the configuration file.
+        """
+        Load the configuration file.
 
         Returns default values when the file is missing.
 
         Returns:
             Configuration dictionary.
         """
+        # Use unified config if available
+        if self._unified_config:
+            return self._unified_config.get_all()
+
+        # Fallback to direct file access
         if not self.config_path.exists():
             return self.DEFAULT_CONFIG.copy()
 
@@ -41,34 +81,46 @@ class ConfigManager:
             return data
 
     def save(self, config: dict[str, Any]) -> None:
-        """Persist the configuration file.
+        """
+        Persist the configuration file.
 
         Creates directories when missing and preserves UTF-8 content.
 
         Args:
             config: Configuration dictionary to save.
         """
-        # Ensure the directory exists
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Use unified config if available
+        if self._unified_config:
+            self._unified_config.update(config, deep_merge=False)
+            self._unified_config.save(backup=True)
+            return
 
-        # Write while preserving UTF-8 characters
+        # Fallback to direct file access
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 
     def update(self, updates: dict[str, Any]) -> None:
-        """Update the configuration using a deep merge.
+        """
+        Update the configuration using a deep merge.
 
         Args:
             updates: Dictionary of updates to apply.
         """
+        # Use unified config if available
+        if self._unified_config:
+            self._unified_config.update(updates, deep_merge=True)
+            self._unified_config.save(backup=True)
+            return
+
+        # Fallback to direct implementation
         current = self.load()
         merged = self._deep_merge(current, updates)
         self.save(merged)
 
-    def _deep_merge(
-        self, base: dict[str, Any], updates: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Recursively deep-merge dictionaries.
+    def _deep_merge(self, base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
+        """
+        Recursively deep-merge dictionaries.
 
         Args:
             base: Base dictionary.
@@ -78,79 +130,62 @@ class ConfigManager:
             Merged dictionary.
         """
         result = base.copy()
-
         for key, value in updates.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
-                # When both sides are dicts, merge recursively
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
-                # Otherwise, overwrite the value
                 result[key] = value
-
         return result
 
     @staticmethod
-    def set_optimized(config_path: Path, value: bool) -> None:
-        """Set the optimized field in config.json.
+    def set_optimized_field(config_path: Path, field_path: str, value: Any) -> None:
+        """
+        Optimized method for setting a single configuration field.
+
+        Reads only once, modifies in memory, writes atomically with minimal overhead.
+        Used by optimization processes to update fields like project.optimized.
 
         Args:
-            config_path: Path to config.json.
-            value: Value to set (True or False).
+            config_path: Path to config file.
+            field_path: Dot-separated field path (e.g., "project.optimized").
+            value: Value to set.
+
+        Example:
+            >>> ConfigManager.set_optimized_field(
+            ...     Path(".moai/config/config.json"),
+            ...     "project.optimized",
+            ...     True
+            ... )
         """
-        if not config_path.exists():
+        # Use unified config if available
+        if UNIFIED_AVAILABLE:
+            unified_config = get_unified_config(config_path)
+            unified_config.set(field_path, value)
+            unified_config.save(backup=False)  # Skip backup for optimization flag
             return
 
-        try:
-            with open(config_path, encoding="utf-8") as f:
-                config = json.load(f)
+        # Fallback implementation
+        config_path.parent.mkdir(parents=True, exist_ok=True)
 
-            config.setdefault("project", {})["optimized"] = value
+        # Read current config
+        config_dict: dict[str, Any]
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_dict = json.load(f)
+        else:
+            config_dict = {}
 
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
-                f.write("\n")  # Add trailing newline
-        except (json.JSONDecodeError, KeyError, OSError):
-            # Ignore errors if config.json is invalid or inaccessible
-            pass
+        # Navigate to target field
+        keys = field_path.split(".")
+        current: dict[str, Any] = config_dict
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
 
-    @staticmethod
-    def set_optimized_with_timestamp(config_path: Path, value: bool) -> None:
-        """Set the optimized field with timestamp in config.json.
+        # Set value
+        current[keys[-1]] = value
 
-        When value=True: Set optimized_at to current ISO timestamp
-        When value=False: Set optimized_at to null
-
-        Args:
-            config_path: Path to config.json.
-            value: Value to set (True or False).
-        """
-        if not config_path.exists():
-            return
-
-        try:
-            from datetime import datetime, timezone
-
-            with open(config_path, encoding="utf-8") as f:
-                config = json.load(f)
-
-            config.setdefault("project", {})["optimized"] = value
-
-            if value:
-                # Set timestamp when optimizing
-                now = datetime.now(timezone.utc)
-                timestamp_str = now.isoformat().replace("+00:00", "Z")
-                config["project"]["optimized_at"] = timestamp_str
-            else:
-                # Clear timestamp when not optimized
-                config["project"]["optimized_at"] = None
-
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
-                f.write("\n")  # Add trailing newline
-        except (json.JSONDecodeError, KeyError, OSError):
-            # Ignore errors if config.json is invalid or inaccessible
-            pass
+        # Atomic write
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config_dict, f, ensure_ascii=False, indent=2)

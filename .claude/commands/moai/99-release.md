@@ -1,15 +1,33 @@
 ---
-name: moai:release
-description: "Automated release and version management for MoAI-ADK packages"
-argument-hint: "[check|version|changelog|release|rollback] [major|minor|patch]"
+name: moai:99-release
+description: "Interactive release management for MoAI-ADK packages with menu-driven workflow"
+argument-hint: "[no arguments - uses interactive menu]"
 allowed-tools:
   - Bash
   - Read
   - Write
   - Edit
+  - AskUserQuestion
+model: "haiku"
 ---
 
-# 🚀 MoAI-ADK Release Automation
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git tag --list
+!git log --oneline -5
+!git remote -v
+
+## 📁 Essential Files
+
+@pyproject.toml
+@src/moai_adk/__init__.py
+@CHANGELOG.md
+
+---
+
+# 🚀 MoAI-ADK 인터랙티브 릴리즈 관리
 
 ## EXCEPTION: Local-Only Development Tool
 
@@ -17,372 +35,230 @@ This command is exempt from "Zero Direct Tool Usage" principle because:
 
 1. **Local development only** - Not distributed with package distributions
 2. **Maintainer-only usage** - GoosLab (project owner) exclusive access
-3. **Direct system access required** - PyPI release automation requires direct shell commands for:
-   - Version bumping in multiple files
-   - Package building and publishing
-   - GitHub release tag management
-4. **Local-only tool exception pattern** - Similar to `/moai:9-feedback` command
+3. **Direct system access required** - PyPI release automation requires direct shell commands
+4. **Interactive menu system** - Uses AskUserQuestion for user-driven workflow
 
 **Production commands** (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`) must strictly adhere to agent delegation principle.
 
 ---
 
-> **Local-Only Tool**: This command is for local development only, similar to the Yoda system.
+> **Local-Only Tool**: This command is for local development only.
 > Never deployed with package distributions.
 > Use for PyPI releases, version bumping, changelog generation, and emergency rollbacks.
 
 ---
 
-## Command Purpose
+## 🎯 사용 방법
 
-Automated release workflow for MoAI-ADK package:
+**인터랙티브 메뉴 방식**:
 
-1. **Check Quality** (`/moai:release check`)
+```bash
+/moai:99-release
+```
 
-   - Run pytest, mypy, ruff, black, bandit validation
-   - Verify all tests pass and code quality standards met
+메뉴에서 원하는 작업을 선택하고 안내에 따라 진행하세요.
 
-2. **Bump Version** (`/moai:release version [major|minor|patch]`)
+## 🔄 워크플로우
 
-   - Update version in pyproject.toml
-   - Update version in src/moai_adk/**init**.py
-   - Update .moai/config/config.json
+### 1단계: 메인 메뉴 선택
 
-3. **Generate Changelog** (`/moai:release changelog`)
+```
+🚀 MoAI-ADK 릴리즈 관리 - 원하는 작업을 선택하세요:
+```
 
-   - Analyze git history since last release
-   - Generate CHANGELOG.md automatically
-   - Include commit messages and metadata
+### 2단계: 세부 옵션 선택
 
-4. **Release to PyPI** (`/moai:release release`)
+각 작업에 맞는 세부 옵션을 선택합니다.
 
-   - Execute quality checks
-   - Build package (uv build)
-   - Publish to PyPI (requires PYPI_TOKEN)
-   - Tag commit and create GitHub release
+### 3단계: 실행 확인
 
-5. **Rollback Release** (`/moai:release rollback`)
-   - Revert version changes
-   - Delete PyPI release
-   - Delete GitHub release tags
-   - Restore previous commit state
+선택한 작업을 실행하기 전 최종 확인을 받습니다.
+
+### 4단계: 결과 보고
+
+실행 결과와 다음 단계를 안내받습니다.
 
 ---
 
-## 🎯 Release Strategy: Personal vs Team Mode
+## 📋 메인 메뉴 옵션
 
-### Personal Mode (GitHub Flow)
+### 🔍 **validate** - 사전 릴리즈 품질 검증
 
-```
-feature/SPEC-XXX (local)
-    ↓
-main (fast-forward merge, ~10 min)
-    ↓
-Auto-tag vX.X.X
-    ↓
-CI/CD → PyPI (GitHub Actions)
-```
+**목적**: 릴리즈 전 코드 품질과 보안 검증
 
-**Commands**:
+**세부 옵션**:
 
-```bash
-# 1. Switch to main (if needed)
-git checkout main
-git merge feature/SPEC-XXX
+- **⚡ Quick 검증** (5분): 기본 품질 게이트
+  - pytest 실행
+  - ruff 코드 포맷 검사
+  - mypy 타입 검사
+- **🔬 Full 검증** (15분): 전체 품질 게이트 + 보안 스캔
+  - Quick 검증 모든 항목
+  - bandit 보안 스캔
+  - pip-audit 의존성 취약점 검사
+- **🎯 사용자 정의**: 특정 검증 항목 선택
 
-# 2. Bump version (patch/minor/major)
-/moai:release version patch      # 0.25.11 → 0.25.12
+**실행 결과**:
 
-# 3. Generate changelog
-/moai:release changelog
+- 검증 통과/실패 보고
+- 문제점 상세 분석
+- 수정 권장 사항
 
-# 4. Commit and push
-git add CHANGELOG.md
-git commit -m "chore: Release v0.25.12"
-git push origin main
+### 📝 **version** - 버전 관리
 
-# 5. CI/CD auto-handles PyPI deployment
-# No need for manual /moai:release release!
-```
+**목적**: 시맨틱 버전 관리 (major/minor/patch)
 
-### Team Mode (Git-Flow)
+**세부 옵션**:
 
-```
-feature/SPEC-XXX
-    ↓
-develop (Pull Request)
-    ↓
-main (Release PR, ~30 min)
-    ↓
-Auto-tag vX.X.X
-    ↓
-CI/CD → PyPI (GitHub Actions)
-```
+- **🔢 patch**: 버그 수정 (0.27.2 → 0.27.3)
+- **🔧 minor**: 기능 추가 (0.27.2 → 0.28.0)
+- **💥 major**: 호환성 변경 (0.27.2 → 1.0.0)
 
-**Commands**:
+**업데이트 파일**:
 
-```bash
-# 1. Create feature branch (from develop)
-git checkout -b feature/SPEC-XXX
+- `pyproject.toml` - 패키지 버전
+- `src/moai_adk/__init__.py` - Python 버전
+- `.moai/config/config.json` - 설정 버전
 
-# 2. After implementation, create PR
-gh pr create --base develop
+**실행 결과**:
 
-# 3. After merge to develop, prepare release
-git checkout main
-git merge develop
+- 모든 파일 버전 동기화 완료
+- Git 커밋 생성 제안
+- 다음 단계 안내
 
-# 4. Bump version
-/moai:release version patch
+### 📋 **changelog** - 이중언어 변경로그 생성
 
-# 5. Generate changelog
-/moai:release changelog
+**목적**: 한국어/영어 이중언어 변경로그 자동 생성
 
-# 6. Commit and push
-git add CHANGELOG.md
-git commit -m "chore: Release v0.25.12"
-git push origin main
+**세부 옵션**:
 
-# 7. CI/CD auto-handles PyPI deployment
-```
+- **📝 자동 생성**: Git 히스토리 기반 자동 생성
+  - 최신 태그 이후 커밋 분석
+  - 자동 분류 (기능/버그/개선)
+  - 이중언어 번역
+- **✏️ 수동 편집**: 템플릿 제공 후 직접 편집
+  - 표준 변경로그 템플릿
+  - 사용자 편집 가이드
+- **🔄 기존 수정**: 기존 changelog.md 수정
 
-**Current Mode**: Team Mode (develop-based)
+**실행 결과**:
 
-- Auto-detection: 3+ contributors → Git-Flow
-- Manual override: Edit config.json git_strategy.team.enabled
+- `CHANGELOG.md` 업데이트
+- GitHub Release 노트 형식
+- Git 커밋 제안
 
----
+### 🚀 **prepare** - CI/CD 배포 준비
 
-## File Structure
+**목적**: PyPI/CI/CD 배포를 위한 준비 작업
 
-```
-.moai/release/
-├── quality-check.sh          # Integrated quality validation
-├── bump-version.py           # Semantic version management
-├── generate-changelog.py     # Automated CHANGELOG generation
-├── release-helper.sh         # Reusable utility functions
-├── release-rollback.sh       # Emergency rollback automation
-├── CHECKLIST.md             # Pre-release validation checklist
-├── RELEASE_SETUP.md         # PyPI token and secrets setup
-└── ROLLBACK_GUIDE.md        # Emergency procedures and recovery
-```
+**세부 옵션**:
 
----
+- **🧪 test 환경**: TestPyPI 배포 준비
+  - 패키지 빌드 검증
+  - TestPyPI 토큰 유효성 확인
+  - 테스트 배포 시뮬레이션
+- **🌍 production 환경**: PyPI 배포 준비
+  - 프로덕션 토큰 유효성 확인
+  - 보안 검증 통과 확인
+  - GitHub Actions 트리거 준비
+- **📋 검토용**: 릴리즈 검토용 번들 생성
+  - 릴리즈 노트 미리보기
+  - 배포 검토 체크리스트
+  - 승인 요청 번들
 
-## Quick Start
+**실행 결과**:
 
-### 1. Pre-Release Checklist
+- 배포 준비 상태 보고
+- GitHub Actions 실행 안내
+- 승인 절차 안내
 
-```bash
-/moai:release check           # Validate quality metrics
-cat .moai/release/CHECKLIST.md  # Review 6-phase checklist
-```
+### 🚨 **rollback** - 응급 롤백
 
-### 2. Bump Version
+**목적**: 배포 실패 시 응급 롤백 절차
 
-```bash
-/moai:release version patch   # e.g., 0.25.4 → 0.25.5
-/moai:release version minor   # e.g., 0.25.4 → 0.26.0
-/moai:release version major   # e.g., 0.25.4 → 1.0.0
-```
+**세부 옵션**:
 
-### 3. Generate Changelog
+- **📦 PyPI만**: 패키지만 롤백
+  - PyPI 버전 숨기기
+  - 다운로드 차단
+- **🔄 전체**: PyPI + GitHub Release + 태그
+  - PyPI 완전 삭제
+  - GitHub Release 삭제
+  - Git 태그 삭제
+- **🎯 특정 버전**: 특정 버전 지정 롤백
+  - 버전별 선택
+  - 부분 롤백
 
-```bash
-/moai:release changelog       # Creates CHANGELOG.md entry
-git add CHANGELOG.md
-git commit -m "docs: Update CHANGELOG for vX.X.X"
-```
+**실행 결과**:
 
-### 4. Release to PyPI (AUTOMATED via CI/CD)
-
-**✅ DO NOT run `/moai:release release` manually!**
-
-Release is **completely automated** via GitHub Actions:
-
-```bash
-# Just push to main with proper version + changelog
-git push origin main
-
-# GitHub Actions automatically:
-# 1. Detects version bump in pyproject.toml
-# 2. Runs quality checks (tests, linting)
-# 3. Builds package
-# 4. Publishes to PyPI
-# 5. Creates GitHub Release with changelog
-```
-
-**CI/CD Pipeline**: `.github/workflows/release.yml`
-
-- **Trigger**: Push to main branch (with tag v*.*.\*)
-- **Condition**: All tests must pass
-- **Action**: Auto build → PyPI publish → GitHub Release
-- **Secrets**: PYPI_API_TOKEN (configured in GitHub)
-
-**Requirements**:
-
-- PYPI_API_TOKEN secret configured in GitHub Settings
-- Version tag matches format: `v*.*.*`
-- All tests pass
-- Code quality standards met
-
-**Manual Override (Local Testing Only)**:
-
-```bash
-# Only for testing locally (do NOT use in production)
-/moai:release release       # Test locally first
-# ⚠️ This is for development testing only
-# Always use CI/CD for actual PyPI releases
-```
-
-### 5. Emergency Rollback
-
-```bash
-/moai:release rollback        # Revert everything
-# Restores:
-#  1. Version files
-#  2. Removes PyPI release
-#  3. Deletes GitHub release
-#  4. Reverts git commits
-```
+- 롤백 실행 상태
+- 복구 절차 안내
+- 팀 알림 발송
 
 ---
 
-## Configuration
+## 🔒 보안 정책
 
-### PyPI Token Setup
+### **환경별 접근 제어**:
 
-**Production PyPI Token**: Configured in `~/.pypirc` file
-**Test PyPI Token**: Needs refresh - Current token expired in `~/.pypirc`
+- **테스트 환경**: 즉시 실행 가능
+- **프로덕션 환경**: 5분 대기 + 확인 절차
 
-```bash
-# PyPI tokens are stored in ~/.pypirc:
-# [pypi] - Production PyPI deployment (valid)
-# [testpypi] - Test PyPI deployment (EXPIRED - needs refresh)
+### **토큰 관리**:
 
-# Test PyPI Token Refresh Required:
-# 1. Visit: https://test.pypi.org/manage/account/token/
-# 2. Create new token with 'Entire account' scope
-# 3. Update ~/.pypirc [testpypi] password field
-# 4. Token automatically loaded by twine upload commands
-```
+- **PyPI 토큰**: `~/.pypirc`에서 관리
+- **GitHub 토큰**: GitHub Secrets에서 관리
+- **유효성 검증**: 배포 전 자동 확인
 
-### GitHub Secrets
+### **승인 절차**:
 
-```bash
-# For automatic GitHub releases:
-# 1. GitHub Settings → Developer Settings → Personal Access Tokens
-# 2. Create token with: repo, workflow, write:packages
-# 3. Store in: ~/MoAI/MoAI-ADK/.github/workflows/secrets.json
-```
-
-### GitHub Release 문서 작성 규칙
-
-```
-📝 GitHub Release Notes 포맷:
-
-## 🎯 한글 섹션 (한국어)
-- 기능 설명
-- 버그 수정
-- 개선사항
-- 주의사항
+- **개인 모드**: 1인 승인 가능
+- **팀 모드**: 2인 이상 승인 필요
 
 ---
 
-## 🎯 English Section
-- Feature descriptions (English)
-- Bug fixes (English)
-- Improvements (English)
-- Notes (English)
+## 📊 모니터링 및 로깅
 
-🤖 Generated with Claude Code
+### **실행 기록**:
 
-Co-Authored-By: 🎩 Alfred@MoAI
-```
+- `.moai/logs/release-*.log`에 상세 기록
+- 각 단계별 타임스탬프
+- 성공/실패 상세 원인
 
-**규칙**:
+### **알림 시스템**:
 
-1. 항상 한글 섹션 먼저 작성
-2. `---` 구분선으로 구분
-3. 그 다음 영문 섹션 작성
-4. Footer: 🤖 Generated with Claude Code + Co-Authored-By
-
-### See Also
-
-- `.moai/release/RELEASE_SETUP.md` - Detailed setup instructions
-- `.moai/release/ROLLBACK_GUIDE.md` - Emergency procedures
-- `.moai/release/CHECKLIST.md` - 6-phase release validation
-- `.github/workflows/release.yml` - Automated PyPI deployment (CI/CD)
+- Slack/이메일 알림 (설정 시)
+- GitHub Issues 자동 생성 (롤백 시)
+- 팀 멤버 알림 (프로덕션 배포 시)
 
 ---
 
-## Implementation Notes
+## 🆘️ 문제 해결
 
-- **Script Location**: `.moai/release/` (not deployed with package)
-- **Execution**: All scripts via `uv run` for consistent environment
-- **Rollback Strategy**: Git history-aware with PyPI API integration
-- **Safety Checks**: Pre-flight validation before each operation
-- **Error Recovery**: Comprehensive error handling with rollback support
+### **일반적인 문제**:
 
-## 🔄 Automated CI/CD Deployment
+1. **토큰 만료**: 새 토큰 발급 필요
+2. **권한 부족**: PyPI/GitHub 권한 확인
+3. **네트워크 오류**: 방화벽/프록시 설정 확인
 
-### Main Branch → PyPI Automatic Deployment
+### **긴급 연락처**:
 
-**Trigger**: Push to main with tag `v*.*.*`
-
-**Workflow**: `.github/workflows/release.yml`
-
-**Steps** (자동 실행):
-
-1. 코드 품질 검증 (Quality checks)
-2. 패키지 빌드 (Build package)
-3. PyPI 배포 (Publish to PyPI)
-4. GitHub Release 생성 (Create GitHub Release)
-5. 배포 완료 알림 (Post deployment comment)
-
-**Requirements**:
-
-- PYPI_API_TOKEN secret configured in GitHub
-- Version tag must match `v*.*.*` format
-- All tests must pass
-- Code quality standards must be met
-
-**Manual Override**:
-
-```bash
-# Local testing before main push
-/moai:release release       # Test locally
-git add .                   # Stage changes
-git commit -m "Release v0.X.X"
-git push origin main        # Triggers CI/CD
-# → CI/CD automatically handles PyPI deployment
-```
-
-**Monitoring**:
-
-- GitHub Actions: `.github/workflows/release.yml`
-- PyPI Package: https://pypi.org/project/moai-adk/
-- GitHub Releases: Releases page
+- **팀 리드**: GitHub Issues
+- **PyPI 지원**: pypi@python.org
+- **GitHub 지원**: support@github.com
 
 ---
 
-## See Also
+## 🔗 관련 문서
 
-- `/alfred:0-project` - Project initialization
-- `/alfred:1-plan` - SPEC planning
-- `/alfred:2-run` - Implementation
-- `/alfred:3-sync` - Synchronization and validation
+- **CI/CD 워크플로우**: `.github/workflows/release-secure.yml`
+- **보안 정책**: `.moai/security/` 디렉토리
+- **모니터링**: `.moai/monitoring/` 디렉토리
+- **응급 절차**: `.moai/emergency/` 디렉토리
 
 ---
 
 **Status**: Local-Only Development Tool
-**Version**: 0.25.4+
-**Deployment**: Excluded from PyPI distributions
-
-## ⚡️ EXECUTION DIRECTIVE
-
-**You must NOW execute the requested subcommand immediately.**
-
-1. Analyze the arguments (check, version, changelog, release, rollback).
-2. Execute the corresponding bash command or script using `Bash` tool.
-3. Do NOT just describe what you will do. DO IT.
+**Python Version**: 3.14
+**MoAI-ADK Version**: 0.27.2+
+**Last Updated**: 2025-11-21

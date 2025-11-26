@@ -2,16 +2,32 @@
 name: moai:0-project
 description: "Initialize project metadata and documentation"
 argument-hint: "[<empty>|setting|update|--glm-on <token>]"
-allowed-tools:
-  - Task
-  - AskUserQuestion
+allowed-tools: Task, AskUserQuestion
+model: inherit
+skills: moai-workflow-project, moai-workflow-templates
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git config --get user.name
+!git config --get user.email
+!git branch --show-current
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/project/product.md
+@.moai/project/structure.md
+@.moai/project/tech.md
+
 ---
 
 # ⚒️ MoAI-ADK Step 0: Initialize/Update Project (Project Setup)
 
 > **Interactive Prompts**: Use `AskUserQuestion` tool for TUI-based user interaction.
 > **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
-> **Delegation Model**: Complete agent-first pattern. All execution delegated to project-manager.
+> **Delegation Model**: Complete agent-first pattern. All execution delegated to manager-project.
 
 **4-Step Workflow Integration**: This command implements Step 0 of Alfred's workflow (Project Bootstrap). See CLAUDE.md for full workflow details.
 
@@ -31,12 +47,11 @@ Initialize or update project metadata with **language-first architecture**. Supp
 
 ## 🧠 Associated Agents & Skills
 
-| Agent/Skill                       | Purpose                                                      |
-| --------------------------------- | ------------------------------------------------------------ |
-| project-manager                   | Orchestrates language-first initialization and configuration |
-| moai-project-language-initializer | Language selection and initialization workflows              |
-| moai-project-config-manager       | Configuration management with language context               |
-| moai-project-batch-questions      | Standardizes user interaction patterns with tab-based system |
+| Agent/Skill          | Purpose                                                                  |
+| -------------------- | ------------------------------------------------------------------------ |
+| manager-project     | Orchestrates language-first initialization and configuration             |
+| moai-workflow-project | Unified project management (language init, config, templates, batch Q&A) |
+| moai-workflow-templates       | Template management and generation                                       |
 
 ---
 
@@ -62,7 +77,7 @@ Initialize or update project metadata with **language-first architecture**. Supp
 User Command: /moai:0-project [setting]
     ↓
 /moai:0-project Command
-    └─ Task(subagent_type="project-manager")
+    └─ Task(subagent_type="manager-project")
         ├─ Phase 1: Route and analyze
         ├─ Phase 2: Execute mode (INIT/AUTO-DETECT/SETTINGS/UPDATE)
         ├─ Phase 2.5: Save phase context
@@ -79,11 +94,11 @@ User Command: /moai:0-project [setting]
 - ❌ No Write (file operations delegated)
 - ❌ No Edit (file operations delegated)
 - ❌ No Bash (all bash commands delegated)
-- ❌ No TodoWrite (delegated to project-manager)
+- ❌ No TodoWrite (delegated to manager-project)
 - ✅ **Task()** for orchestration
 - ✅ **AskUserQuestion()** for user interaction
 
-All complexity is handled by the **project-manager** agent.
+All complexity is handled by the **manager-project** agent.
 
 ---
 
@@ -96,20 +111,23 @@ All complexity is handled by the **project-manager** agent.
 Analyze the command user provided:
 
 1. **`/moai:0-project --glm-on [api-token]`** → GLM CONFIGURATION MODE
+
    - Detect if token provided in argument
    - If token missing: Check `.env.glm` (auto-load if exists)
    - If token missing: Check `ANTHROPIC_AUTH_TOKEN` environment variable
    - If all missing: Request token from user
-   - Delegate to project-manager with GLM context
+   - Delegate to manager-project with GLM context
    - Call setup-glm.py script to configure GLM
 
 2. **`/moai:0-project setting`** → SETTINGS MODE
+
    - Always uses interactive tab selection via AskUserQuestion
    - User selects specific tab or "Modify All Tabs" option
 
 3. **`/moai:0-project update`** → UPDATE MODE
 
 4. **`/moai:0-project`** (no args):
+
    - Check if `.moai/config/config.json` exists
    - Exists → AUTO-DETECT MODE
    - Missing → INITIALIZATION MODE
@@ -120,12 +138,12 @@ Analyze the command user provided:
 
 Use Task tool:
 
-- `subagent_type`: "project-manager"
+- `subagent_type`: "manager-project"
 - `description`: "Route and analyze project setup request"
 - `prompt`:
 
   ```
-  You are the project-manager agent.
+  You are the manager-project agent.
 
   **Task**: Analyze project context and route to appropriate mode.
 
@@ -135,11 +153,11 @@ Use Task tool:
 
   **For INITIALIZATION**:
   - Check .moai/config.json for language setting
-  - If missing: Invoke Skill("moai-project-language-initializer", mode="language_first")
+  - If missing: Use LanguageInitializer from moai-workflow-project for language detection
   - If present: Use existing language, skip language selection
   - Conduct language-aware user interview
   - Generate project documentation
-  - Invoke Skill("moai-project-config-manager") for config creation
+  - Use UnifiedConfigManager from moai-workflow-project for config creation
 
   **For AUTO-DETECT**:
   - Read current language from .moai/config.json
@@ -156,14 +174,14 @@ Use Task tool:
 
   **For SETTINGS**:
   - Load current language from .moai/config.json
-  - Load tab schema from .claude/skills/moai-project-batch-questions/tab_schema.json
-  - Execute batch questions via moai-project-batch-questions skill
-  - Process responses and update config.json atomically via Skill("moai-project-config-manager")
+  - Load tab schema from .claude/skills/moai-workflow-project/schemas/tab_schema.json
+  - Execute batch questions via BatchQuestionsManager from moai-workflow-project
+  - Process responses and update config.json atomically via UnifiedConfigManager from moai-workflow-project
   - Report changes and validation results
 
   **For UPDATE**:
   - Read language from config backup (preserve existing setting)
-  - Invoke Skill("moai-project-template-optimizer") for smart merging
+  - Use TemplateOptimizer from moai-workflow-project for smart merging
   - Update templates and configuration
   - Auto-translate announcements to current language if needed
 
@@ -184,7 +202,7 @@ Use Task tool:
   - Verify .env.glm created with secure permissions (0o600)
   - Verify .gitignore includes .env.glm entry
   - Report GLM configuration success to user with all configured keys
-  - Remind user: "Claude Code를 재시작하면 새 설정이 자동으로 로드됩니다"
+  - Remind user: "Restart Claude Code to automatically load the new settings"
 
   **Output**: Mode-specific completion report with next steps
   ```
@@ -197,9 +215,9 @@ Use Task tool:
 
 **Goal**: Execute the appropriate mode based on routing decision.
 
-### Mode Handler: project-manager Agent
+### Mode Handler: manager-project Agent
 
-The project-manager agent handles all mode-specific workflows:
+The manager-project agent handles all mode-specific workflows:
 
 **INITIALIZATION MODE**:
 
@@ -214,11 +232,11 @@ The project-manager agent handles all mode-specific workflows:
 - Read current language from config.json
 - **CRITICAL CHECK**: Detect partial initialization state
   - Check if project documentation exists in `.moai/project/`:
-    * product.md, structure.md, tech.md
+    - product.md, structure.md, tech.md
   - If ANY doc missing → Use AskUserQuestion (in user's language)
-    * Question: "Your configuration exists but project documentation is missing. Would you like to complete the initialization?"
-    * Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
-    * If "Yes" → Switch to INITIALIZATION workflow
+    - Question: "Your configuration exists but project documentation is missing. Would you like to complete the initialization?"
+    - Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+    - If "Yes" → Switch to INITIALIZATION workflow
 - Display current configuration (including language, initialization status)
 - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
 - "Change Language Only" shortcut → SETTINGS mode, Tab 1 only
@@ -232,7 +250,7 @@ The project-manager agent handles all mode-specific workflows:
 - Execute batch questions with AskUserQuestion
 - Process user responses
 - Validate settings at critical checkpoints
-- Delegate config update to `moai-project-config-manager` Skill
+- Delegate config update to UnifiedConfigManager from moai-workflow-project
 - Report changes
 
 **UPDATE MODE**:
@@ -265,7 +283,7 @@ The SETTINGS MODE uses a tab-based batch question system to provide organized, u
 
 - **5 tabs**: Organized by configuration domain
 - **17 batches**: Grouped questions within tabs (added 5 batches: Batch 3.0, 3.3, 3.5, 3.6, improved organization)
-- **57 settings**: Complete config.json v0.26.0 coverage (+39% from v1.0.0)
+- **57 settings**: Complete config.json v0.28.0 coverage (+39% from v1.0.0)
 - **54 questions**: User-facing questions (+14 from v1.0.0)
 - **Conditional batches**: Tab 3 shows Personal/Team/Hybrid batches based on mode selection
 - **Atomic updates**: Safe deep merge with backup/rollback
@@ -314,7 +332,7 @@ Would you like to modify another settings tab?
 
 ### Tab Schema Reference
 
-Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
+Location: `.claude/skills/moai-workflow-project/schemas/tab_schema.json`
 
 **Tab 1: User & Language** (Required Foundation)
 
@@ -330,6 +348,7 @@ Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
 - Batch 2.2: Auto-processed locale settings (0 questions - UPDATED: internal analysis only)
   - project.locale, default_language, optimized_for_language (auto-determined from conversation_language)
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
+  - **Auto-Processing Delegation**: Command does NOT perform auto-processing. manager-project agent receives user selections, determines derived fields, then delegates atomic update to UnifiedConfigManager skill.
 - Setting count: 4
 
 **Tab 3: Git Strategy & Workflow** (Recommended with Validation - REDESIGNED v2.0.0)
@@ -351,7 +370,7 @@ Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
 
 **Tab 5: System & GitHub Integration** (Optional - UPDATED v2.0.0)
 
-- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.json v0.26.0)
+- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.json v0.28.0)
 - Batch 5.2: GitHub automation settings (5 questions - expanded from 3, added templates & spec_workflow fields)
 - Setting count: 11 (+3 from v1.0.0)
 
@@ -360,7 +379,7 @@ Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
 #### Step 1: Load Tab Schema
 
 ```markdown
-Load: .claude/skills/moai-project-batch-questions/tab_schema.json
+Load: .claude/skills/moai-workflow-project/schemas/tab_schema.json
 Extract:
 
 - Tab definition (label, batches)
@@ -465,12 +484,12 @@ For each question in batch:
 **Update Pattern** (Skill-delegated):
 
 ```markdown
-Delegate ALL config update operations to Skill("moai-project-config-manager"):
+Delegate ALL config update operations to UnifiedConfigManager from moai-workflow-project:
 
-- Skill handles backup/rollback logic internally
-- Skill performs deep merge with validation
-- Skill writes atomically to config.json
-- Skill reports success/failure
+- Manager handles backup/rollback logic internally
+- Manager performs deep merge with validation
+- Manager writes atomically to config.json
+- Manager reports success/failure
 
 Agent responsibilities:
 
@@ -480,9 +499,9 @@ Agent responsibilities:
 - Report results to user
 ```
 
-**Skill Responsibilities**:
+**UnifiedConfigManager Responsibilities**:
 
-- Skill("moai-project-config-manager") handles ALL file operations
+- UnifiedConfigManager from moai-workflow-project handles ALL file operations
 - Internal backup/rollback if needed
 - Atomic write and validation
 - Error reporting
@@ -514,11 +533,11 @@ Step 7: Processes each response (map to config fields)
 Step 8: Runs Tab 1 validation checkpoint
   - Check language is valid
   - Verify consistency
-Step 9: Delegates atomic update to Skill("moai-project-config-manager")
-  - Skill handles backup/rollback internally
-  - Skill performs deep merge (including auto-updated conversation_language_name)
-  - Skill verifies final structure
-Step 10: Receives result from Skill
+Step 9: Delegates atomic update to UnifiedConfigManager from moai-workflow-project
+  - Manager handles backup/rollback internally
+  - Manager performs deep merge (including auto-updated conversation_language_name)
+  - Manager verifies final structure
+Step 10: Receives result from Manager
   - Success: Report changes made (4 fields: user.name, conversation_language, conversation_language_name [auto], agent_prompt_language)
   - Failure: Report error from Skill with recovery suggestions
 ```
@@ -559,16 +578,16 @@ Step 4: Run Tab 3 validation checkpoint
   - Let user confirm or retry if conflicts found
 
 Step 5: Merge all executed batches into single update object
-Step 6: Delegate atomic update to Skill("moai-project-config-manager")
-  - Skill handles backup/rollback internally
-  - Skill performs deep merge with final validation
+Step 6: Delegate atomic update to UnifiedConfigManager from moai-workflow-project
+  - Manager handles backup/rollback internally
+  - Manager performs deep merge with final validation
 
 Step 7: Report all 29 settings changes (or 16-20 depending on mode)
 ```
 
 #### Multi-Tab Workflow Example
 
-User runs: `/moai:0-project setting` (without tab_ID) → Tab Selection Screen
+User runs: `/moai:0-project setting` (always interactive, no tab_ID) → Tab Selection Screen
 
 ```
 Flow:
@@ -650,7 +669,7 @@ Tab completion order (recommended):
 - Execute ONLY ONE tab per command invocation (unless user specifies "all tabs")
 - READ language context from config.json before starting SETTINGS MODE
 - Run validation at Tab 1, Tab 3, and before final update
-- Delegate config update to `moai-project-config-manager` Skill (no direct backup in command)
+- Delegate config update to UnifiedConfigManager from moai-workflow-project (no direct backup in command)
 - Report all changes made
 - Use AskUserQuestion for ALL user interaction
 
@@ -674,16 +693,16 @@ Tab completion order (recommended):
 
 ### Step 1: Extract Context from Agent Response
 
-After project-manager agent completes, extract the following information:
+After manager-project agent completes, extract the following information:
 
 - **Project metadata**: name, mode, owner, language
 - **Files created**: List of generated files with absolute paths
 - **Tech stack**: Primary codebase language
 - **Next phase**: Recommended next command (1-plan)
 
-### Step 2: Delegate Context Saving to project-manager
+### Step 2: Delegate Context Saving to manager-project
 
-The project-manager agent handles all context saving:
+The manager-project agent handles all context saving:
 
 ```markdown
 Context data to persist:
@@ -700,7 +719,7 @@ Context data to persist:
 - Files created: [list of absolute paths]
 - Next phase: "1-plan"
 
-Agent delegates to Skill("moai-project-config-manager"):
+Agent delegates to UnifiedConfigManager from moai-workflow-project:
 
 - Save context via ContextManager
 - Handle file path validation
@@ -750,7 +769,7 @@ Use AskUserQuestion in user's language:
 - Always use user's `conversation_language` for all output
 - Auto-translate announcements after language changes
 - Route to correct mode based on command analysis
-- Delegate ALL execution to project-manager agent
+- Delegate ALL execution to manager-project agent
 - Use AskUserQuestion for ALL user interaction
 - NO EMOJIS in AskUserQuestion fields
 
@@ -782,10 +801,11 @@ Use AskUserQuestion in user's language:
 
 **Associated Skills**:
 
-- `Skill("moai-project-language-initializer")` - Language selection/change
-- `Skill("moai-project-config-manager")` - Config operations (atomic updates, backup/rollback)
-- `Skill("moai-project-template-optimizer")` - Template merging
-- `Skill("moai-project-batch-questions")` - Tab-based batch questions
+- `moai-workflow-project` - Unified project management skill providing:
+  - LanguageInitializer - Language selection/change
+  - UnifiedConfigManager - Config operations (atomic updates, backup/rollback)
+  - TemplateOptimizer - Template merging
+  - BatchQuestionsManager - Tab-based batch questions
 
 **Project Documentation Directory**:
 
@@ -796,7 +816,7 @@ Use AskUserQuestion in user's language:
 **Version**: 2.0.0 (Tab-based Configuration with Conditional Batches & Fixed Field Alignment)
 **Last Updated**: 2025-11-19
 **Architecture**: Commands → Agents → Skills (Complete delegation, no direct backup in command)
-**Tab Schema**: `.claude/skills/moai-project-batch-questions/tab_schema.json` (v2.0.0)
+**Tab Schema**: `.claude/skills/moai-workflow-project/schemas/tab_schema.json` (v2.0.0)
 **Improvements in v2.0.0**:
 
 - Removed `[tab_ID]` argument → Always use interactive tab selection
@@ -847,5 +867,5 @@ AskUserQuestion({
 **You must NOW execute the command following the "Execution Philosophy" described above.**
 
 1. Analyze the subcommand/context.
-2. Call the `Task` tool with `subagent_type="project-manager"` immediately.
+2. Call the `Task` tool with `subagent_type="manager-project"` immediately.
 3. Do NOT just describe what you will do. DO IT.

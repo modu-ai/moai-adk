@@ -317,8 +317,8 @@ class StatuslineRenderer:
         if data.claude_version:
             claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
             # For minimal mode, just show major.minor (e.g., "v2.0" from "v2.0.46")
-            if len(claude_ver_str.split('.')) > 2:
-                claude_ver_str = '.'.join(claude_ver_str.split('.')[:2])
+            if len(claude_ver_str.split(".")) > 2:
+                claude_ver_str = ".".join(claude_ver_str.split(".")[:2])
             parts.append(f"🔅 {claude_ver_str}")
 
         # Add MoAI version if display enabled
@@ -334,10 +334,7 @@ class StatuslineRenderer:
         # and if display is enabled and status not empty
         if self._display_config.git_status and data.git_status:
             status_label = f"Chg: {data.git_status}"
-            if (
-                len(result) + len(status_label) + len(self._format_config.separator)
-                <= 40
-            ):
+            if len(result) + len(status_label) + len(self._format_config.separator) <= 40:
                 result += f"{self._format_config.separator}{status_label}"
 
         return result
@@ -368,7 +365,7 @@ class StatuslineRenderer:
                         return spec_truncated
 
         # Simple truncation with ellipsis for very long names
-        return f"{branch[:max_length-1]}…" if len(branch) > max_length else branch
+        return f"{branch[: max_length - 1]}…" if len(branch) > max_length else branch
 
     @staticmethod
     def _truncate_version(version: str) -> str:

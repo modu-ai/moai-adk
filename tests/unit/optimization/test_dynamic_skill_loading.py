@@ -34,7 +34,7 @@ class TestDynamicSkillLoading:
         loader = SkillLoader()
 
         # Mock skill loading to simulate lazy behavior
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = {"mock_skill": "loaded_skill_data"}
 
             # First load - should call the actual loader
@@ -55,17 +55,17 @@ class TestDynamicSkillLoading:
         # Mock skill data
         skill_data = {"frontend": ["react", "vue", "angular"], "backend": ["django", "flask"]}
 
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = skill_data
 
             # Measure initial load time
             start_time = time.time()
-            result1 = loader.get_skill("frontend", "react")
+            loader.get_skill("frontend", "react")
             initial_load_time = time.time() - start_time
 
             # Measure cached load time
             start_time = time.time()
-            result2 = loader.get_skill("frontend", "react")
+            loader.get_skill("frontend", "react")
             cached_load_time = time.time() - start_time
 
             # Performance target: cached load should be at least 80% faster
@@ -95,7 +95,7 @@ class TestDynamicSkillLoading:
         loader = SkillLoader(max_load_time=0.01)  # 10ms timeout
 
         # Mock a slow skill loading
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.side_effect = lambda category, skill: time.sleep(0.02)  # 20ms delay
 
             # Should raise timeout error
@@ -109,7 +109,7 @@ class TestDynamicSkillLoading:
         loader = SkillLoader()
 
         # Mock invalid skill data
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = {"invalid": "data", "metadata": None}
 
             # Should raise validation error for invalid skill
@@ -123,14 +123,9 @@ class TestDynamicSkillLoading:
         loader = SkillLoader()
 
         # Batch load multiple skills
-        skills_to_load = [
-            ("frontend", "react"),
-            ("frontend", "vue"),
-            ("backend", "django"),
-            ("backend", "flask")
-        ]
+        skills_to_load = [("frontend", "react"), ("frontend", "vue"), ("backend", "django"), ("backend", "flask")]
 
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = {"skill": "data"}
 
             # Use batch loading
@@ -151,12 +146,9 @@ class TestDynamicSkillLoading:
         loader = SkillLoader()
 
         # Mock skill data
-        common_skills = {
-            "frontend": ["react", "vue", "javascript"],
-            "backend": ["python", "django", "sql"]
-        }
+        common_skills = {"frontend": ["react", "vue", "javascript"], "backend": ["python", "django", "sql"]}
 
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = {"skill": "data"}
 
             # Preload common skills
@@ -182,10 +174,10 @@ class TestSkillLoadingIntegration:
         # Mock skill data
         mock_skills = {
             "react": {"type": "frontend", "complexity": 0.8, "popularity": 0.9},
-            "django": {"type": "backend", "complexity": 0.7, "popularity": 0.8}
+            "django": {"type": "backend", "complexity": 0.7, "popularity": 0.8},
         }
 
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = mock_skills
 
             # Test integration
@@ -203,12 +195,12 @@ class TestSkillLoadingIntegration:
 
         # Mock realistic skill loading scenarios
         skill_scenarios = [
-            (10, 50),   # 10 skills, 50 accesses each
-            (20, 30),   # 20 skills, 30 accesses each
-            (50, 10),   # 50 skills, 10 accesses each
+            (10, 50),  # 10 skills, 50 accesses each
+            (20, 30),  # 20 skills, 30 accesses each
+            (50, 10),  # 50 skills, 10 accesses each
         ]
 
-        with patch.object(loader, '_load_skill') as mock_load:
+        with patch.object(loader, "_load_skill") as mock_load:
             mock_load.return_value = {"skill": "data"}
 
             total_time = 0

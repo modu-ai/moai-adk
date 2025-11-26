@@ -19,7 +19,7 @@ class TestSessionStartHookInitialization:
 
     def test_hook_initialization_with_config(self, config_file, hook_tmp_project):
         """Hook initializes with valid configuration"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             assert config_file.exists()
             assert config_file.parent.exists()
 
@@ -44,34 +44,24 @@ class TestProjectInfoDisplay:
 
     def test_git_branch_display(self, config_file, hook_tmp_project, mock_subprocess):
         """Git branch information is displayed correctly"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Mock git to return a branch
-            mock_subprocess.return_value = MagicMock(
-                returncode=0,
-                stdout="feature/test-branch\n",
-                stderr=""
-            )
+            mock_subprocess.return_value = MagicMock(returncode=0, stdout="feature/test-branch\n", stderr="")
 
             # Simulate getting git info
             from unittest.mock import MagicMock as MM
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MM(
-                    returncode=0,
-                    stdout="feature/test-branch\n"
-                )
 
-                result = subprocess.run(
-                    ["git", "branch", "--show-current"],
-                    capture_output=True,
-                    text=True
-                )
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MM(returncode=0, stdout="feature/test-branch\n")
+
+                result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True)
 
                 assert result.returncode == 0
                 assert "feature/test-branch" in result.stdout
 
     def test_project_info_output_format(self, config_file, hook_tmp_project):
         """Project info is formatted correctly"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             # Simulate format_project_metadata
@@ -108,7 +98,7 @@ class TestConfigHealthCheck:
 
     def test_config_completeness_check(self, config_file, hook_tmp_project):
         """Configuration completeness is checked"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             required_sections = ["project", "language", "git_strategy", "constitution"]
@@ -143,10 +133,12 @@ class TestConfigHealthCheck:
 
             # Touch the file with old timestamp
             import os
+
             os.utime(str(config_path), (old_timestamp, old_timestamp))
 
             # Now check age
             import time
+
             current_time = time.time()
             config_time = config_path.stat().st_mtime
             age_days = (current_time - config_time) / (24 * 3600)
@@ -161,10 +153,7 @@ class TestConfigHealthCheck:
             cache_file = cache_dir / "version-check.json"
 
             # Create cache file
-            cache_data = {
-                "latest": "0.26.0",
-                "last_check": datetime.now().isoformat()
-            }
+            cache_data = {"latest": "0.26.0", "last_check": datetime.now().isoformat()}
             cache_file.write_text(json.dumps(cache_data, indent=2))
 
             # Verify cache exists and is valid
@@ -179,7 +168,7 @@ class TestAutoCleanup:
 
     def test_cleanup_initialization(self, config_file, hook_tmp_project):
         """Cleanup is initialized with config"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             assert "auto_cleanup" in config_data
@@ -193,6 +182,7 @@ class TestAutoCleanup:
 
             # Create old files manually with old timestamps
             import os
+
             old_datetime = datetime.now() - timedelta(days=10)
             old_timestamp = old_datetime.timestamp()
 
@@ -245,7 +235,7 @@ class TestAutoCleanup:
                     "reports_cleaned": 2,
                     "cache_cleaned": 2,
                     "temp_cleaned": 1,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
             }
 
@@ -263,7 +253,7 @@ class TestHookChainExecution:
 
     def test_hook_execution_order(self, config_file, hook_tmp_project):
         """Hooks execute in correct order"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             execution_order = []
 
             # Mock each hook function to track execution order
@@ -285,15 +275,11 @@ class TestHookChainExecution:
             mock_auto_cleanup()
 
             # Verify order
-            assert execution_order == [
-                "show_project_info",
-                "config_health_check",
-                "auto_cleanup"
-            ]
+            assert execution_order == ["show_project_info", "config_health_check", "auto_cleanup"]
 
     def test_hook_payload_propagation(self, config_file, hook_payload, hook_tmp_project):
         """Hook payload is propagated through chain"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             payload = hook_payload
 
             # Verify payload structure
@@ -304,18 +290,12 @@ class TestHookChainExecution:
 
     def test_session_start_hook_main_execution(self, config_file, hook_tmp_project):
         """Session start hook main function executes successfully"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Simulate hook payload
-            hook_input = json.dumps({
-                "event": "session_start",
-                "timestamp": datetime.now().isoformat()
-            })
+            json.dumps({"event": "session_start", "timestamp": datetime.now().isoformat()})
 
             # Simulate main function execution
-            result = {
-                "continue": True,
-                "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0 (latest)"
-            }
+            result = {"continue": True, "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0 (latest)"}
 
             assert result["continue"] is True
             assert "systemMessage" in result
@@ -335,7 +315,7 @@ class TestHookChainExecution:
                 # Should handle gracefully
                 error_response = {
                     "continue": True,
-                    "systemMessage": "⚠️ Configuration not found - run /moai:0-project to initialize"
+                    "systemMessage": "⚠️ Configuration not found - run /moai:0-project to initialize",
                 }
                 assert error_response["continue"] is True
 
@@ -345,7 +325,7 @@ class TestSessionStartSetupMessages:
 
     def test_show_setup_messages_when_not_suppressed(self, config_file, hook_tmp_project):
         """Setup messages are shown when not suppressed"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             suppress = config_data.get("session", {}).get("suppress_setup_messages", False)
@@ -359,9 +339,7 @@ class TestSessionStartSetupMessages:
 
             # Update config with suppression
             config_data["session"]["suppress_setup_messages"] = True
-            config_data["session"]["setup_messages_suppressed_at"] = (
-                datetime.now().isoformat()
-            )
+            config_data["session"]["setup_messages_suppressed_at"] = datetime.now().isoformat()
 
             config_path.write_text(json.dumps(config_data, indent=2))
 
@@ -398,11 +376,8 @@ class TestHookResponse:
 
     def test_hook_response_structure(self, config_file, hook_tmp_project):
         """Hook response has correct structure"""
-        with hook_tmp_project as proj_root:
-            response = {
-                "continue": True,
-                "systemMessage": "Session started"
-            }
+        with hook_tmp_project:
+            response = {"continue": True, "systemMessage": "Session started"}
 
             assert "continue" in response
             assert isinstance(response["continue"], bool)
@@ -410,23 +385,16 @@ class TestHookResponse:
 
     def test_hook_response_with_system_message(self, config_file, hook_tmp_project):
         """Hook response includes system message"""
-        with hook_tmp_project as proj_root:
-            response = {
-                "continue": True,
-                "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0"
-            }
+        with hook_tmp_project:
+            response = {"continue": True, "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0"}
 
             assert response["systemMessage"]
             assert len(response["systemMessage"]) > 0
 
     def test_hook_response_json_serializable(self, config_file, hook_tmp_project):
         """Hook response is JSON serializable"""
-        with hook_tmp_project as proj_root:
-            response = {
-                "continue": True,
-                "systemMessage": "Session started",
-                "timestamp": datetime.now().isoformat()
-            }
+        with hook_tmp_project:
+            response = {"continue": True, "systemMessage": "Session started", "timestamp": datetime.now().isoformat()}
 
             # Should be serializable
             json_str = json.dumps(response)
@@ -442,7 +410,7 @@ class TestHookTimeoutHandling:
 
     def test_hook_timeout_configuration(self, config_file, hook_tmp_project):
         """Hook timeout is configured correctly"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             timeout_ms = config_data.get("hooks", {}).get("timeout_ms", 5000)
@@ -450,7 +418,7 @@ class TestHookTimeoutHandling:
 
     def test_graceful_degradation_enabled(self, config_file, hook_tmp_project):
         """Graceful degradation is enabled"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             graceful = config_data.get("hooks", {}).get("graceful_degradation", True)
@@ -458,12 +426,12 @@ class TestHookTimeoutHandling:
 
     def test_hook_continues_on_error(self, hook_tmp_project):
         """Hook continues session on error with graceful degradation"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Simulate error with graceful degradation
             error_response = {
                 "continue": True,  # Should continue despite error
                 "hookSpecificOutput": {"error": "Some error occurred"},
-                "graceful_degradation": True
+                "graceful_degradation": True,
             }
 
             assert error_response["continue"] is True
@@ -472,13 +440,7 @@ class TestHookTimeoutHandling:
 class TestHookIntegrationScenarios:
     """Test complete Hook integration scenarios"""
 
-    def test_full_session_start_flow(
-        self,
-        config_file,
-        spec_files,
-        session_state_file,
-        hook_tmp_project
-    ):
+    def test_full_session_start_flow(self, config_file, spec_files, session_state_file, hook_tmp_project):
         """Full SessionStart flow executes successfully"""
         with hook_tmp_project as proj_root:
             # Verify all components exist
@@ -497,18 +459,14 @@ class TestHookIntegrationScenarios:
                 "success": True,
                 "config_loaded": bool(config_data),
                 "specs_found": len(spec_folders),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             assert output["success"] is True
             assert output["config_loaded"] is True
             assert output["specs_found"] >= 2
 
-    def test_session_start_with_missing_spec_files(
-        self,
-        config_file,
-        hook_tmp_project
-    ):
+    def test_session_start_with_missing_spec_files(self, config_file, hook_tmp_project):
         """SessionStart handles missing SPEC files gracefully"""
         with hook_tmp_project as proj_root:
             # Verify specs directory exists but is empty
@@ -519,11 +477,7 @@ class TestHookIntegrationScenarios:
             assert len(spec_folders) == 0
 
             # Should not cause error
-            output = {
-                "hook": "session_start",
-                "success": True,
-                "specs_found": len(spec_folders)
-            }
+            output = {"hook": "session_start", "success": True, "specs_found": len(spec_folders)}
 
             assert output["success"] is True
             assert output["specs_found"] == 0

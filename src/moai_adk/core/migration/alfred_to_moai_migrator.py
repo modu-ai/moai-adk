@@ -103,11 +103,7 @@ class AlfredToMoaiMigrator:
         has_alfred = any(folder.exists() for folder in self.alfred_folders.values())
 
         if has_alfred:
-            detected = [
-                name
-                for name, folder in self.alfred_folders.items()
-                if folder.exists()
-            ]
+            detected = [name for name, folder in self.alfred_folders.items() if folder.exists()]
             logger.debug(f"Alfred folders detected: {', '.join(detected)}")
 
         return has_alfred
@@ -128,9 +124,7 @@ class AlfredToMoaiMigrator:
             # Step 1: Create or use existing backup
             if backup_path is None:
                 try:
-                    backup_path = self.backup_manager.create_backup(
-                        "alfred_to_moai_migration"
-                    )
+                    backup_path = self.backup_manager.create_backup("alfred_to_moai_migration")
                     logger.info(f"✅ Backup completed: {backup_path}")
                 except Exception as e:
                     logger.error("❌ Error: Backup failed")
@@ -140,12 +134,8 @@ class AlfredToMoaiMigrator:
                 logger.info(f"✅ Using existing backup: {backup_path}")
 
             # Step 2: Detect alfred folders
-            logger.info("\n[2/5] Alfred folders detected: ", end="")
-            alfred_detected = {
-                name: folder
-                for name, folder in self.alfred_folders.items()
-                if folder.exists()
-            }
+            logger.info("\n[2/5] Alfred folders detected:")
+            alfred_detected = {name: folder for name, folder in self.alfred_folders.items() if folder.exists()}
 
             if not alfred_detected:
                 logger.warning("No Alfred folders found - skipping migration")
@@ -155,16 +145,10 @@ class AlfredToMoaiMigrator:
 
             # Step 3: Verify moai folders exist (should be created in Phase 1)
             logger.info("\n[3/5] Verifying Moai template installation...")
-            missing_moai = [
-                name
-                for name, folder in self.moai_folders.items()
-                if not folder.exists()
-            ]
+            missing_moai = [name for name, folder in self.moai_folders.items() if not folder.exists()]
 
             if missing_moai:
-                logger.error(
-                    f"❌ Missing Moai folders: {', '.join(missing_moai)}"
-                )
+                logger.error(f"❌ Missing Moai folders: {', '.join(missing_moai)}")
                 logger.error("Phase 1 implementation required first (package template moai structure)")
                 self._rollback_migration(backup_path)
                 return False
@@ -256,15 +240,9 @@ class AlfredToMoaiMigrator:
 
             # Replace all alfred references with moai
             # Pattern: .claude/hooks/alfred/ → .claude/hooks/moai/
-            updated_content = settings_content.replace(
-                ".claude/hooks/alfred/", ".claude/hooks/moai/"
-            )
-            updated_content = updated_content.replace(
-                ".claude/commands/alfred/", ".claude/commands/moai/"
-            )
-            updated_content = updated_content.replace(
-                ".claude/agents/alfred/", ".claude/agents/moai/"
-            )
+            updated_content = settings_content.replace(".claude/hooks/alfred/", ".claude/hooks/moai/")
+            updated_content = updated_content.replace(".claude/commands/alfred/", ".claude/commands/moai/")
+            updated_content = updated_content.replace(".claude/agents/alfred/", ".claude/agents/moai/")
 
             # Write back to file
             with open(self.settings_path, "w", encoding="utf-8") as f:
@@ -307,7 +285,11 @@ class AlfredToMoaiMigrator:
                     settings_content = f.read()
 
                 # Only check for hooks/alfred paths, not pattern strings
-                if ".claude/hooks/alfred/" in settings_content or ".claude/commands/alfred/" in settings_content or ".claude/agents/alfred/" in settings_content:
+                if (
+                    ".claude/hooks/alfred/" in settings_content
+                    or ".claude/commands/alfred/" in settings_content
+                    or ".claude/agents/alfred/" in settings_content
+                ):
                     logger.error("❌ settings.json still contains alfred hook paths")
                     return False
 
@@ -381,16 +363,11 @@ class AlfredToMoaiMigrator:
                 logger.warning(f"⚠️  Failed to reset state: {str(e)}")
 
             logger.info("✅ Rollback completed")
-            logger.info(
-                "💡 Tip: Run `moai-adk update` again after resolving the error"
-            )
+            logger.info("💡 Tip: Run `moai-adk update` again after resolving the error")
 
         except Exception as e:
             logger.error(f"\n❌ Rollback failed: {str(e)}")
-            logger.error(
-                "⚠️  Manual recovery required: Please restore manually from backup: "
-                f"{backup_path}"
-            )
+            logger.error(f"⚠️  Manual recovery required: Please restore manually from backup: {backup_path}")
 
     def _get_package_version(self) -> str:
         """

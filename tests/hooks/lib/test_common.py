@@ -25,13 +25,16 @@ class TestFormatDuration:
         result = format_duration(30.5)
         assert result == "30.5s"
 
-    @pytest.mark.parametrize("seconds,expected", [
-        (0.1, "0.1s"),
-        (5.5, "5.5s"),
-        (15.25, "15.2s"),
-        (30.99, "31.0s"),
-        (59.9, "59.9s"),
-    ])
+    @pytest.mark.parametrize(
+        "seconds,expected",
+        [
+            (0.1, "0.1s"),
+            (5.5, "5.5s"),
+            (15.25, "15.2s"),
+            (30.99, "31.0s"),
+            (59.9, "59.9s"),
+        ],
+    )
     def test_format_various_seconds(self, seconds, expected):
         """Format various second values"""
         result = format_duration(seconds)
@@ -60,13 +63,16 @@ class TestFormatDuration:
         result = format_duration(120)
         assert result == "2.0m"
 
-    @pytest.mark.parametrize("seconds,expected_unit", [
-        (60, "m"),
-        (120, "m"),
-        (300, "m"),
-        (1200, "m"),  # 20 minutes, still in minutes
-        (3599, "m"),  # Just under 1 hour
-    ])
+    @pytest.mark.parametrize(
+        "seconds,expected_unit",
+        [
+            (60, "m"),
+            (120, "m"),
+            (300, "m"),
+            (1200, "m"),  # 20 minutes, still in minutes
+            (3599, "m"),  # Just under 1 hour
+        ],
+    )
     def test_format_minutes_range(self, seconds, expected_unit):
         """Format various minute values"""
         result = format_duration(seconds)
@@ -93,13 +99,16 @@ class TestFormatDuration:
         result = format_duration(5400)  # 1.5 hours
         assert result == "1.5h"
 
-    @pytest.mark.parametrize("seconds,expected_unit", [
-        (3600, "h"),
-        (5400, "h"),
-        (7200, "h"),
-        (10800, "h"),
-        (86400, "h"),  # 24 hours
-    ])
+    @pytest.mark.parametrize(
+        "seconds,expected_unit",
+        [
+            (3600, "h"),
+            (5400, "h"),
+            (7200, "h"),
+            (10800, "h"),
+            (86400, "h"),  # 24 hours
+        ],
+    )
     def test_format_hours_range(self, seconds, expected_unit):
         """Format various hour values"""
         result = format_duration(seconds)
@@ -180,23 +189,29 @@ class TestGetSummaryStats:
         assert stats["min"] == 1
         assert stats["max"] == 5
 
-    @pytest.mark.parametrize("values,expected_mean", [
-        ([1, 1, 1], 1),
-        ([1, 2, 3], 2),
-        ([10, 20, 30], 20),
-        ([0, 0, 0], 0),
-    ])
+    @pytest.mark.parametrize(
+        "values,expected_mean",
+        [
+            ([1, 1, 1], 1),
+            ([1, 2, 3], 2),
+            ([10, 20, 30], 20),
+            ([0, 0, 0], 0),
+        ],
+    )
     def test_summary_stats_mean_calculation(self, values, expected_mean):
         """Test mean calculation"""
         stats = get_summary_stats(values)
         assert stats["mean"] == expected_mean
 
-    @pytest.mark.parametrize("values,expected_min,expected_max", [
-        ([1, 2, 3], 1, 3),
-        ([10, 5, 15], 5, 15),
-        ([100], 100, 100),
-        ([-10, 0, 10], -10, 10),
-    ])
+    @pytest.mark.parametrize(
+        "values,expected_min,expected_max",
+        [
+            ([1, 2, 3], 1, 3),
+            ([10, 5, 15], 5, 15),
+            ([100], 100, 100),
+            ([-10, 0, 10], -10, 10),
+        ],
+    )
     def test_summary_stats_min_max(self, values, expected_min, expected_max):
         """Test min and max calculation"""
         stats = get_summary_stats(values)
@@ -384,7 +399,7 @@ class TestCommonIntegration:
         values = [30, 60, 120, 180, 360, 3600, 7200]
 
         # Get stats
-        stats = get_summary_stats(values)
+        get_summary_stats(values)
 
         # Format each value as duration
         formatted_values = [format_duration(v) for v in values]

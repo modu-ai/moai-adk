@@ -8,7 +8,7 @@ which migrations are needed.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,7 @@ class VersionDetector:
         self.old_config = self.project_root / ".moai" / "config.json"
         self.new_config = self.project_root / ".moai" / "config" / "config.json"
         self.old_statusline = self.project_root / ".claude" / "statusline-config.yaml"
-        self.new_statusline = (
-            self.project_root / ".moai" / "config" / "statusline-config.yaml"
-        )
+        self.new_statusline = self.project_root / ".moai" / "config" / "statusline-config.yaml"
 
     def detect_version(self) -> str:
         """
@@ -76,7 +74,7 @@ class VersionDetector:
         # Version 0.23.0 or earlier needs migration
         return True
 
-    def get_migration_plan(self) -> Dict[str, List[Dict[str, str]]]:
+    def get_migration_plan(self) -> Dict[str, Any]:
         """
         Get detailed migration plan
 
@@ -88,7 +86,7 @@ class VersionDetector:
                 "cleanup": ["old_file1", "old_file2"]
             }
         """
-        plan = {"move": [], "create": [], "cleanup": []}
+        plan: Dict[str, Any] = {"move": [], "create": [], "cleanup": []}
 
         if not self.needs_migration():
             return plan
@@ -120,13 +118,11 @@ class VersionDetector:
         if self.old_config.exists():
             plan["cleanup"].append(str(self.old_config.relative_to(self.project_root)))
         if self.old_statusline.exists():
-            plan["cleanup"].append(
-                str(self.old_statusline.relative_to(self.project_root))
-            )
+            plan["cleanup"].append(str(self.old_statusline.relative_to(self.project_root)))
 
         return plan
 
-    def get_version_info(self) -> Dict[str, Optional[str]]:
+    def get_version_info(self) -> Dict[str, Any]:
         """
         Get detailed version information
 

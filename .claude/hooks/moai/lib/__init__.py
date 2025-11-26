@@ -1,19 +1,31 @@
 """
-Hook utilities library - Consolidated from shared/, utils/, and handlers/
+Hook utilities library - Optimized and consolidated
 
 This module provides centralized access to all hook-related utilities:
 - Configuration management (ConfigManager)
-- Core utilities (timeout, error handling, JSON utilities)
-- Event handlers (session, tool)
-- Project and state tracking
+- Core utilities (timeout, common utilities)
+- Data models (HookPayload, HookResult)
+- Project utilities (language detection, git info, SPEC counting)
+- Checkpoint utilities (risky operation detection, checkpoint creation)
 """
 
 try:
-    # Import model classes
-    # Import utilities
-    from lib.common import format_duration
-
     # Import core components
+    # Import checkpoint utilities
+    from lib.checkpoint import (
+        create_checkpoint,
+        detect_risky_operation,
+        list_checkpoints,
+    )
+
+    # Import utilities
+    from lib.common import (
+        format_duration,
+        get_file_pattern_category,
+        get_summary_stats,
+        is_root_whitelisted,
+        suggest_moai_location,
+    )
     from lib.config_manager import (
         ConfigManager,
         get_config,
@@ -22,36 +34,47 @@ try:
         get_graceful_degradation,
         get_timeout_seconds,
     )
+
+    # Import models
     from lib.models import HookPayload, HookResult
 
-    # Import handlers
-    from lib.session import handle_session_start
-    from lib.timeout import CrossPlatformTimeout
-    from lib.tool import handle_post_tool_use, handle_pre_tool_use
+    # Import project utilities
+    from lib.project import (
+        count_specs,
+        find_project_root,
+        get_git_info,
+    )
+    from lib.timeout import CrossPlatformTimeout, TimeoutError, timeout_context
 
     __all__ = [
-        # Hook payload/result classes
-        "HookPayload",
-        "HookResult",
-
-        # Configuration
+        # Core - Timeout
+        "CrossPlatformTimeout",
+        "TimeoutError",
+        "timeout_context",
+        # Core - Configuration
         "ConfigManager",
         "get_config_manager",
         "get_config",
         "get_timeout_seconds",
         "get_graceful_degradation",
         "get_exit_code",
-
-        # Core
-        "CrossPlatformTimeout",
-
-        # Handlers
-        "handle_session_start",
-        "handle_pre_tool_use",
-        "handle_post_tool_use",
-
-        # Utilities
+        # Common utilities
         "format_duration",
+        "get_summary_stats",
+        "is_root_whitelisted",
+        "get_file_pattern_category",
+        "suggest_moai_location",
+        # Models
+        "HookPayload",
+        "HookResult",
+        # Checkpoint
+        "create_checkpoint",
+        "detect_risky_operation",
+        "list_checkpoints",
+        # Project
+        "find_project_root",
+        "get_git_info",
+        "count_specs",
     ]
 
 except ImportError:

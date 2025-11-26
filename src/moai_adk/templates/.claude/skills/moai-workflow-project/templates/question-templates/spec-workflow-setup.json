@@ -1,0 +1,150 @@
+{
+  "id": "spec-workflow-setup",
+  "title": "SPEC Workflow Configuration",
+  "description": "Configure specification-driven development workflow preferences",
+  "questions": [
+    {
+      "id": "spec_workflow.auto_generate",
+      "text": "Enable automatic SPEC generation for new features?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Automatically create SPEC documents when starting new features"
+    },
+    {
+      "id": "spec_workflow.template_style",
+      "text": "Choose SPEC template style:",
+      "type": "single_choice",
+      "required": true,
+      "default_value": "ears",
+      "options": [
+        {
+          "label": "EARS Format (Easy Approach to Requirements Syntax)",
+          "value": "ears",
+          "description": "Structured requirements format with clear syntax"
+        },
+        {
+          "label": "User Story Format",
+          "value": "user_story",
+          "description": "Agile user story format with acceptance criteria"
+        },
+        {
+          "label": "Technical Specification",
+          "value": "technical",
+          "description": "Detailed technical specification format"
+        },
+        {
+          "label": "Minimal",
+          "value": "minimal",
+          "description": "Lightweight specification format"
+        }
+      ]
+    },
+    {
+      "id": "spec_workflow.review_process",
+      "text": "Enable SPEC review process?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Require review and approval before implementation"
+    },
+    {
+      "id": "spec_workflow.reviewers",
+      "text": "Who should review SPECs?",
+      "type": "multi_choice",
+      "required": true,
+      "default_value": ["tech_lead"],
+      "conditional_on": {
+        "spec_workflow.review_process": true
+      },
+      "options": [
+        {
+          "label": "Technical Lead",
+          "value": "tech_lead",
+          "description": "Senior technical team member"
+        },
+        {
+          "label": "Product Manager",
+          "value": "product_manager",
+          "description": "Product owner or manager"
+        },
+        {
+          "label": "Security Expert",
+          "value": "security_expert",
+          "description": "Security team member or expert"
+        },
+        {
+          "label": "UX Designer",
+          "value": "ux_designer",
+          "description": "User experience designer"
+        },
+        {
+          "label": "Peer Developer",
+          "value": "peer_developer",
+          "description": "Fellow developer team member"
+        },
+        {
+          "label": "Auto-approve",
+          "value": "auto_approve",
+          "description": "No manual review required"
+        }
+      ]
+    },
+    {
+      "id": "spec_workflow.tracking",
+      "text": "Enable SPEC progress tracking?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Track SPEC status through implementation lifecycle"
+    },
+    {
+      "id": "spec_workflow.integration",
+      "text": "Integrate SPECs with development workflow:",
+      "type": "multi_choice",
+      "required": true,
+      "default_value": ["git_branches", "issue_tracking"],
+      "options": [
+        {
+          "label": "Git Branches",
+          "value": "git_branches",
+          "description": "Create branches based on SPEC IDs"
+        },
+        {
+          "label": "Issue Tracking",
+          "value": "issue_tracking",
+          "description": "Link SPECs to issue tracker tickets"
+        },
+        {
+          "label": "CI/CD Pipeline",
+          "value": "cicd",
+          "description": "Include SPEC validation in pipeline"
+        },
+        {
+          "label": "Documentation",
+          "value": "documentation",
+          "description": "Auto-generate documentation from SPECs"
+        }
+      ]
+    },
+    {
+      "id": "spec_workflow.approval_threshold",
+      "text": "Number of approvals required for SPEC:",
+      "type": "number_input",
+      "required": true,
+      "default_value": 1,
+      "conditional_on": {
+        "spec_workflow.review_process": true
+      },
+      "validation": {
+        "rules": ["min_value", "max_value"],
+        "parameters": {"min_value": 1, "max_value": 5}
+      }
+    }
+  ],
+  "metadata": {
+    "skill": "moai-spec-intelligent-workflow",
+    "category": "workflow_configuration",
+    "version": "1.0.0"
+  }
+}
