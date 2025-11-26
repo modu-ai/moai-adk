@@ -9,7 +9,7 @@ import json
 import logging
 import shutil
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -44,7 +44,7 @@ class ConfigMetadata:
     @classmethod
     def create_new(cls) -> "ConfigMetadata":
         """Create new metadata with current timestamp."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(UTC).isoformat() + "Z"
         return cls(created_at=now, updated_at=now, migration_history=[])
 
 
@@ -225,7 +225,7 @@ class UnifiedConfigManager:
 
     def _create_default_config(self) -> Dict[str, Any]:
         """Create default configuration."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(UTC).isoformat() + "Z"
 
         return {
             "version": "1.0.0",
@@ -280,7 +280,7 @@ class UnifiedConfigManager:
         if "metadata" not in config:
             config["metadata"] = ConfigMetadata.create_new().__dict__
 
-        config["metadata"]["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        config["metadata"]["updated_at"] = datetime.now(UTC).isoformat() + "Z"
 
     def _create_backup(self) -> None:
         """Create backup of current configuration."""
@@ -353,7 +353,7 @@ class UnifiedConfigManager:
         migration_record = {
             "from_version": current_version,
             "to_version": target_version,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat() + "Z",
             "description": f"Migrated from {current_version} to {target_version}",
         }
 

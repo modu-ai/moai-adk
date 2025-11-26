@@ -47,7 +47,7 @@ Enterprise Patterns:
 
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 
@@ -115,7 +115,7 @@ class MLPipelineOrchestrator:
                 "logs_path": f"/tmp/logs/{run_name}",
             },
             "tags": tags or {"framework": "pytorch", "environment": "dev"},
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         return config
 
@@ -153,7 +153,7 @@ class MLPipelineOrchestrator:
                 {"name": "data", "path": "/mnt/data"},
                 {"name": "models", "path": "/mnt/models"},
             ],
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         return spec
 
@@ -195,7 +195,7 @@ class MLPipelineOrchestrator:
             },
             "catchup": False,
             "max_active_runs": 1,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         return dag_config
 
@@ -222,7 +222,7 @@ class MLPipelineOrchestrator:
             "pipeline_id": pipeline_id,
             "status": status,
             "start_time": start_time,
-            "end_time": end_time or datetime.utcnow().isoformat(),
+            "end_time": end_time or datetime.now(UTC).isoformat(),
             "execution_metrics": {
                 "tasks_completed": 0,
                 "tasks_failed": 0,
@@ -284,7 +284,7 @@ class ModelVersionManager:
             Registration result with version_id and timestamps
         """
         version_id = str(uuid.uuid4())
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(UTC).isoformat()
 
         result = {
             "model_name": model_name,
@@ -352,7 +352,7 @@ class ModelVersionManager:
                     "run_id": "run_001",
                     "framework": "pytorch",
                     "accuracy": 0.92,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
             ]
 
@@ -395,7 +395,7 @@ class ModelVersionManager:
             elif artifact_type == "metadata":
                 artifacts["metadata"] = {
                     "path": f"{storage_backend}://models/{model_id}/metadata.yaml",
-                    "created_at": datetime.utcnow().isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                 }
 
         return artifacts
@@ -794,7 +794,7 @@ class DriftDetectionMonitor:
             "reference_data_id": reference_data_id,
             "current_data_id": current_data_id,
             "features_monitored": features,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         self.drift_history.append(result)
@@ -841,7 +841,7 @@ class DriftDetectionMonitor:
             "performance_degradation": total_degradation / len(baseline_metrics) if baseline_metrics else 0.0,
             "alert": len(degraded_metrics) > 0,
             "degraded_metrics": degraded_metrics,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         return result
@@ -875,7 +875,7 @@ class DriftDetectionMonitor:
             "threshold": threshold,
             "explanation": explanation,
             "confidence": confidence,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         return result
@@ -1076,7 +1076,7 @@ class MLOpsMetricsCollector:
             "recall": 0.94,
             "auc_roc": 0.96,
             "training_time_seconds": 3600.0,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         self.metrics_history.append(metrics)
@@ -1103,7 +1103,7 @@ class MLOpsMetricsCollector:
             "throughput_qps": 500.0,
             "error_rate": 0.001,
             "success_rate": 0.999,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         return metrics
@@ -1156,7 +1156,7 @@ class MLOpsMetricsCollector:
             },
             "alerts": [],
             "recommendations": ["Consider retraining model after 30 days"],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         return status

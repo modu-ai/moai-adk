@@ -323,7 +323,7 @@ CORS_ORIGINS=http://localhost:3000
 async def health_check(db: AsyncSession = Depends(get_db)):
     try:
         await db.execute(text("SELECT 1"))
-        return {"status": "healthy", "database": "connected", "timestamp": datetime.utcnow()}
+        return {"status": "healthy", "database": "connected", "timestamp": datetime.now(UTC)}
     except Exception as e:
         raise HTTPException(status_code=503, detail="Database unavailable")
 ```
@@ -336,7 +336,7 @@ import json
 class JSONFormatter(logging.Formatter):
     def format(self, record):
         return json.dumps({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
             "module": record.module

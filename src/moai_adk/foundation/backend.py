@@ -26,7 +26,7 @@ import json
 import logging
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
@@ -219,7 +219,7 @@ class APIDesignValidator:
             "type": error.get("type", "Error"),
             "message": error.get("message", "An error occurred"),
             "status_code": error.get("status_code", 500),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat() + "Z",
             "trace_id": str(uuid.uuid4()),
             "details": error.get("details", {}),
             "path": error.get("path", ""),
@@ -527,8 +527,8 @@ class AuthenticationManager:
         header = {"alg": "HS256", "typ": "JWT"}
         payload = {
             **data,
-            "iat": int(datetime.utcnow().timestamp()),
-            "exp": int((datetime.utcnow() + timedelta(hours=expires_in_hours)).timestamp()),
+            "iat": int(datetime.now(UTC).timestamp()),
+            "exp": int((datetime.now(UTC) + timedelta(hours=expires_in_hours)).timestamp()),
         }
 
         # Create JWT parts
@@ -564,7 +564,7 @@ class AuthenticationManager:
             payload = json.loads(payload_json)
 
             # Verify expiration
-            if payload.get("exp", 0) < int(datetime.utcnow().timestamp()):
+            if payload.get("exp", 0) < int(datetime.now(UTC).timestamp()):
                 raise ValueError("Token expired")
 
             return payload
@@ -582,7 +582,7 @@ class AuthenticationManager:
             Authorization code response
         """
         code = str(uuid.uuid4())
-        self.oauth_codes[code] = {"params": params, "created_at": datetime.utcnow(), "expires_in": 600}
+        self.oauth_codes[code] = {"params": params, "created_at": datetime.now(UTC), "expires_in": 600}
 
         return {"code": code, "expires_in": 600, "state": params.get("state", "")}
 
@@ -663,7 +663,7 @@ class ErrorHandlingStrategy:
             "type": error.get("type", "Error"),
             "message": error.get("message", "An error occurred"),
             "status_code": error.get("status_code", 500),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat() + "Z",
             "trace_id": str(uuid.uuid4()),
             "details": error.get("details", {}),
         }
@@ -680,7 +680,7 @@ class ErrorHandlingStrategy:
         Returns:
             Log entry
         """
-        timestamp_str = datetime.utcnow().isoformat() + "Z"
+        timestamp_str = datetime.now(UTC).isoformat() + "Z"
         trace_id_str = str(uuid.uuid4())
 
         log_entry = {
@@ -899,7 +899,7 @@ class BackendMetricsCollector:
             status_code=status_code,
             duration_ms=duration_ms,
             response_size_bytes=response_size_bytes,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(UTC).isoformat() + "Z",
         )
 
         self.metrics.append(metric)
@@ -957,7 +957,7 @@ class BackendMetricsCollector:
 
         return {
             "status": status,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat() + "Z",
             "metrics": {
                 "total_requests": len(self.metrics),
                 "error_rate": error_rate,

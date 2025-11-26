@@ -119,7 +119,7 @@ async def analyze_quality(request: QualityAnalysisRequest):
             overall_score=quality_result.overall_score,
             trust5_validation=quality_result.trust5_validation.dict(),
             recommendations=[rec.dict() for rec in quality_result.proactive_analysis.recommendations],
-            analysis_completed_at=datetime.utcnow()
+            analysis_completed_at=datetime.now(UTC)
         )
 
     except Exception as e:

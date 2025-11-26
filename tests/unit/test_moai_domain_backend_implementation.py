@@ -18,7 +18,7 @@ Framework: FastAPI (Python 3.13+), async/await patterns
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Dict, List
 
 import pytest
@@ -280,8 +280,8 @@ class TestAuthenticationAuthorization:
         # Generate JWT token
         token_data = {
             "sub": "user@example.com",
-            "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(hours=1),
+            "iat": datetime.now(UTC),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
 
         token = auth_manager.generate_jwt_token(token_data)
@@ -441,9 +441,9 @@ class TestBackendMetricsCollection:
         collector = BackendMetricsCollector()
 
         # Simulate request-response cycle
-        datetime.utcnow()
+        datetime.now(UTC)
         await asyncio.sleep(0.1)
-        datetime.utcnow()
+        datetime.now(UTC)
 
         # Record metrics
         metrics = collector.record_request_metrics(
@@ -518,7 +518,7 @@ class TestBackendIntegration:
 
         # Generate auth token
         token = auth_manager.generate_jwt_token(
-            {"sub": "user@example.com", "iat": datetime.utcnow(), "exp": datetime.utcnow() + timedelta(hours=1)}
+            {"sub": "user@example.com", "iat": datetime.now(UTC), "exp": datetime.now(UTC) + timedelta(hours=1)}
         )
         assert token is not None
 
