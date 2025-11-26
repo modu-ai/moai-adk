@@ -900,7 +900,7 @@ def main():
                     print(f"  - {rec}")
 
         elif args.command == "cleanup":
-            result = rollback_manager.cleanup_old_rollback_points(args.keep, dry_run=not args.execute)
+            result = rollback_manager.cleanup_old_rollbacks(args.keep, dry_run=not args.execute)
             if result["dry_run"]:
                 print(f"Dry run: Would delete {result['would_delete_count']} rollback points")
                 print(f"Would free {result['would_free_space'] / 1024 / 1024:.1f} MB")

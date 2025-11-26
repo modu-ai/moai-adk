@@ -31,14 +31,14 @@ if str(LIB_DIR) not in sys.path:
 from lib.path_utils import find_project_root
 
 try:
+    from lib.common import (  # noqa: E402
+        get_file_pattern_category,
+        is_root_whitelisted,
+        suggest_moai_location,
+    )
     from lib.config_manager import ConfigManager  # noqa: E402
     from lib.timeout import CrossPlatformTimeout  # noqa: E402
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
-    from lib.common import (  # noqa: E402
-        is_root_whitelisted,
-        get_file_pattern_category,
-        suggest_moai_location,
-    )
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal

@@ -879,7 +879,7 @@ class ErrorRecoverySystem:
     def _generate_error_id(self) -> str:
         """Generate unique error ID"""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        random_suffix = hashlib.md5(os.urandom(4)).hexdigest()[:6]
+        random_suffix = hashlib.md5(os.urandom(4), usedforsecurity=False).hexdigest()[:6]
         return f"ERR_{timestamp}_{random_suffix}"
 
     def _log_error(self, error_report: ErrorReport):

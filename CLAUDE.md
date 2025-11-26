@@ -170,16 +170,20 @@ Alfred automatically loads `Skill("moai-foundation-core")` when **any** of these
 **Trigger Checklist** (Check all that apply):
 
 - [ ] **Command Execution**: User executes any `/moai:*` command
+
   - `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:9-feedback`
 
 - [ ] **Agent Delegation**: Alfred invokes `Task()` for specialized agent delegation
-  - Any `subagent_type` call (expert-*, manager-*, builder-*, mcp-*, ai-*)
+
+  - Any `subagent_type` call (expert-_, manager-_, builder-_, mcp-_, ai-\*)
 
 - [ ] **SPEC Involvement**: Request involves SPEC analysis, creation, or validation
+
   - SPEC generation workflow
   - SPEC decision-making
 
 - [ ] **Architecture Decision**: Request requires design or architecture choices
+
   - System design decisions
   - API/Database schema design
   - Security architecture choices
@@ -198,9 +202,9 @@ If **zero triggers** apply → **Use Quick Reference** (zero token cost)
 
 **Decision Table**:
 
-| Trigger Count | Action                           | Cost  |
-| ------------- | -------------------------------- | ----- |
-| 0             | Use Quick Reference (below)      | 0 tokens |
+| Trigger Count | Action                            | Cost          |
+| ------------- | --------------------------------- | ------------- |
+| 0             | Use Quick Reference (below)       | 0 tokens      |
 | 1+            | Load `moai-foundation-core` skill | ~8,470 tokens |
 
 **Core Modules** (Available after auto-load):
@@ -216,22 +220,26 @@ If **zero triggers** apply → **Use Quick Reference** (zero token cost)
 **How Skills Are Actually Loaded**:
 
 **Method 1: Auto-load via Agent YAML Frontmatter** (Primary)
+
 ```yaml
 ---
 name: expert-backend
 skills: moai-lang-unified, moai-platform-baas, moai-connector-mcp
 ---
 ```
+
 - Skills are declared in the `skills:` field (Line 7) of agent YAML frontmatter
 - Alfred automatically loads these skills when calling the agent via Task()
 - This is the **actual mechanism** for skill loading
 
 **Method 2: Conditional Loading by Alfred** (Secondary)
+
 - Alfred loads additional skills based on context (defined in Rule 6 triggers)
 - Example: `moai-foundation-core` auto-loaded when complexity >= medium
 - Alfred adds these to the agent's skill set dynamically
 
 **Method 3: References in CLAUDE.md** (Documentation Only)
+
 - References like `Skill("moai-foundation-core")` in CLAUDE.md are **descriptive only**
 - They indicate which skill contains the information, not how to invoke it
 - Do NOT interpret these as function calls or commands
@@ -290,7 +298,7 @@ Alfred MUST use the following MCP servers. All permissions MUST be granted:
 - **Usage**: Always reference latest APIs in all code generation (prevent hallucination)
 - **Installation**: Auto-included in `.mcp.json`
 
-**2. Sequential-Thinking**(Required - Complex Reasoning)
+**2. Sequential-Thinking**(Recommendation - Complex Reasoning)
 
 - **Purpose**: Complex problem analysis, architecture design, algorithm optimization
 - **Permissions**: `mcp__sequential-thinking__*` (all permissions allowed)
@@ -555,13 +563,13 @@ AskUserQuestion({
 
 **Agent Selection** (5-Tier):
 
-| Tier | Domain      | Loading        |
-| ---- | ----------- | -------------- |
-| 1    | expert-\*   | Lazy-loaded    |
-| 2    | manager-\*  | Auto-triggered |
-| 3    | builder-\*  | On-demand      |
-| 4    | mcp-\*      | Resume-enabled |
-| 5    | ai-\*       | On-demand      |
+| Tier | Domain     | Loading        |
+| ---- | ---------- | -------------- |
+| 1    | expert-\*  | Lazy-loaded    |
+| 2    | manager-\* | Auto-triggered |
+| 3    | builder-\* | On-demand      |
+| 4    | mcp-\*     | Resume-enabled |
+| 5    | ai-\*      | On-demand      |
 
 **SPEC Decision**:
 

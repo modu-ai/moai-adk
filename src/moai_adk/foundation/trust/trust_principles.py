@@ -542,7 +542,7 @@ class TrustPrinciplesValidator:
         principle_scores[TrustPrinciple.SECURED] = self.validate_secured(project_path)
 
         # Calculate overall score
-        overall_score = 0
+        overall_score = 0.0
         for principle, score in principle_scores.items():
             weight = self.principle_weights[principle]
             overall_score += score.score * weight

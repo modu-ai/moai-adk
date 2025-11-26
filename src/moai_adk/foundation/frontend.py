@@ -473,9 +473,9 @@ class PerformanceOptimizer:
         >>> assert result["core_web_vitals_passed"] is True
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize performance optimizer."""
-        self.core_web_vitals_thresholds = {
+        self.core_web_vitals_thresholds: Dict[str, Dict[str, float]] = {
             "lcp": {"good": 2.5, "needs_improvement": 4.0},
             "fid": {"good": 100, "needs_improvement": 300},
             "cls": {"good": 0.1, "needs_improvement": 0.25},

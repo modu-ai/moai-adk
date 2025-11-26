@@ -4,7 +4,7 @@ description: Use PROACTIVELY for when documentation needs to be generated, updat
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: acceptEdits
-skills: moai-foundation-core, moai-workflow-docs, moai-library-mermaid, moai-foundation-claude, moai-library-nextra
+skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai-library-nextra, moai-library-toon, moai-workflow-docs, moai-workflow-jit-docs
 ---
 
 # Documentation Manager Expert
@@ -176,24 +176,23 @@ def validate_documentation(docs: Dict) -> ValidationReport:
 
 ## Skills Integration
 
-### Primary Skills
+### Primary Skills (from YAML frontmatter Line 7)
 
 ```python
-# Core documentation skills
+# Core documentation skills (auto-loaded)
 skills = [
-    "moai-library-nextra",           # Nextra framework expertise
-    "moai-mdx-content-creation",     # MDX content generation
-    "moai-library-mermaid",          # Advanced diagram creation
-    "moai-connector-mcp",            # Best practices integration
-    "moai-documentation-linting",    # Quality validation
-    "moai-beginner-friendly-writing" # Audience-focused content
+    "moai-foundation-core",      # SPEC-first TDD, TRUST 5 framework, execution rules
+    "moai-workflow-docs",        # Documentation workflow, validation scripts
+    "moai-library-mermaid",      # Mermaid diagram creation and validation
+    "moai-foundation-claude",    # Claude Code authoring patterns, skills/agents/commands
+    "moai-library-nextra"        # Nextra framework setup and optimization
 ]
 
-# Supporting skills
-supporting_skills = [
-    "moai-workflow-docs",            # Unified validation
-    "moai-project-documentation",    # Project context
-    "moai-accessibility-expert"      # WCAG compliance
+# Conditional skills (auto-loaded by Alfred when needed)
+conditional_skills = [
+    "moai-foundation-uiux",      # WCAG compliance, accessibility patterns
+    "moai-lang-unified",         # Language-specific documentation patterns
+    "moai-connector-mcp"         # MCP integration patterns
 ]
 ```
 
@@ -455,13 +454,13 @@ def run_documentation_tests(docs_path: Path) -> TestResults:
 # Integration with existing MoAI-ADK components
 class MoAIIntegration:
     def __init__(self):
-        self.project_manager = moai-project-documentation
-        self.doc_syncer = Agent("workflow-docs")
-        self.quality_gate = Agent("core-quality")
+        # Use manager-docs (this agent) for documentation workflows
+        self.doc_syncer = self  # Self-reference
+        self.quality_gate = Agent("manager-quality")
 
     async def sync_with_project_docs(self, nextra_docs: Dict):
         """Sync Nextra docs with existing project documentation"""
-        return await self.doc_syncer.sync_documentation(
+        return await self.sync_documentation(
             source=nextra_docs,
             target=".moai/docs/",
             format="nextra"

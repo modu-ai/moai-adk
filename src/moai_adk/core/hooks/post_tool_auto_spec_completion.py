@@ -19,6 +19,14 @@ class SpecGenerator:
         """Generate a basic SPEC document."""
         return f"SPEC document for {file_path}\n\nContent analysis:\n{content[:200]}..."
 
+    def analyze(self, file_path: str) -> Dict[str, Any]:
+        """Analyze code file for SPEC generation."""
+        return {
+            "file_path": file_path,
+            "structure_info": {},
+            "domain_keywords": [],
+        }
+
 
 # BaseHook: Simplified base hook class for auto-spec completion
 class BaseHook:
@@ -300,7 +308,7 @@ class PostToolAutoSpecCompletion(BaseHook):
         meaningful_name = "".join(part.upper() for part in name_parts if part)
 
         # Add hash to ensure uniqueness
-        file_hash = hashlib.md5(file_path.encode()).hexdigest()[:4]
+        file_hash = hashlib.md5(file_path.encode(), usedforsecurity=False).hexdigest()[:4]
 
         return f"{meaningful_name}-{file_hash}"
 

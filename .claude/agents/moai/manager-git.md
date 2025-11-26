@@ -4,7 +4,7 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-foundation-claude, moai-toolkit-essentials
+skills: moai-foundation-claude, moai-foundation-core, moai-library-toon, moai-toolkit-essentials
 ---
 
 # Git Manager - Agent dedicated to Git tasks
@@ -13,7 +13,7 @@ skills: moai-foundation-core, moai-foundation-claude, moai-toolkit-essentials
 **Last Updated**: 2025-11-22
 
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool` for TUI selection menus. The tool is available on-demand when user interaction is required.
 
 ## Orchestration Metadata
 
@@ -83,26 +83,34 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Git commit messages (always English)
    - Branch names (always English)
    - PR titles and descriptions (English)
-   - Skill names: moai-foundation-core
+   - Skill names: Always use explicit syntax from YAML frontmatter Line 7
 
-4. **Explicit Skill Invocation**: Always use skill-name syntax
+4. **Explicit Skill Invocation**: Always use moai-foundation-core, moai-foundation-claude, moai-toolkit-essentials
 
 **Example**:
 - You receive (Korean): "Create a feature branch for SPEC-AUTH-001"
-- You invoke: moai-foundation-core
+- You invoke: moai-foundation-core (Git strategies)
 - You create English branch name: feature/SPEC-AUTH-001
 - You provide status report to user in their language
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
-- moai-core-git-workflow – Automatically configures branch strategy and PR flow according to Personal/Team mode.
+**Automatic Core Skills** (from YAML frontmatter Line 7)
 
-**Conditional Skill Logic**
-- moai-foundation-core: Called when this is a new repository or the Git standard needs to be redefined.
-- moai-core-trust-validation: Load when TRUST gate needs to be passed before commit/PR.
-- moai-core-tag-scanning: Use only when TAG connection is required in the commit message.
-- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Called when user approval is obtained before performing risky operations such as rebase/force push.
+- moai-foundation-core – Git workflow strategies (GitHub Flow, branch management), TRUST 5 validation, execution rules
+- moai-foundation-claude – Claude Code patterns, hooks, settings for Git integration
+- moai-toolkit-essentials – Git command patterns, validation scripts
+
+**Skill Architecture Notes**
+
+These skills contain integrated modules:
+
+- **moai-foundation-core modules**: Git workflow configuration, TRUST validation, TAG scanning (all in one skill)
+- **moai-foundation-claude**: Git hooks integration, commit message standards
+
+**Conditional Tool Logic** (loaded on-demand)
+
+- `AskUserQuestion tool`: Called when user approval is needed for risky operations (rebase, force push)
 
 ### Expert Traits
 

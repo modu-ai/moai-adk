@@ -4,7 +4,7 @@ description: Use when deployment configuration, CI/CD pipelines, containerizatio
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-platform-baas
+skills: moai-foundation-core, moai-platform-baas, moai-workflow-jit-docs
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist
@@ -64,15 +64,12 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
-- moai-domain-devops – CI/CD, containerization, deployment strategies, monitoring, secrets management
+**Automatic Core Skills** (from YAML frontmatter Line 7)
+- moai-lang-unified – Language-specific deployment configurations (Python, TypeScript, Go, Rust, Java)
+- moai-platform-baas – Backend infrastructure patterns and deployment strategies
 
-**Conditional Skill Logic**
-- moai-language-support – Detect project language for deployment config
-- moai-lang-python, moai-lang-typescript, moai-lang-go – Framework-specific deployment
-- moai-domain-docker – Dockerfile optimization, multi-stage builds
-- moai-essentials-security – Secrets management, vulnerability scanning
-- moai-foundation-core – TRUST 5 compliance for infrastructure
+**Conditional Skills** (auto-loaded by Alfred when needed)
+- moai-foundation-core – TRUST 5 framework for infrastructure compliance
 
 ## 🎯 Core Mission
 
@@ -139,7 +136,7 @@ AskUserQuestion:
 1. **Parse SPEC metadata** for deployment platform
 2. **Scan project** (railway.json, vercel.json, Dockerfile, k8s/)
 3. **Use AskUserQuestion** if ambiguous
-4. **Load appropriate Skills**: moai-domain-devops with platform context
+4. **Use Skills**: moai-platform-baas (from YAML frontmatter) provides deployment patterns
 
 ### Step 3: Design Deployment Architecture
 
@@ -669,11 +666,12 @@ Infrastructure Security Research:
 
 ## 📚 Additional Resources
 
-**Skills** (load via skill-name):
-- moai-domain-devops – CI/CD, containerization, deployment strategies
-- moai-domain-docker – Dockerfile optimization, multi-stage builds
-- moai-essentials-security – Secrets management, vulnerability scanning
-- `moai-lang-python`, `moai-lang-typescript`, `moai-lang-go` – Framework-specific deployment
+**Skills** (from YAML frontmatter):
+- moai-lang-unified – All framework-specific deployment patterns (Python, TypeScript, Go, Rust, Java)
+- moai-platform-baas – CI/CD workflows, containerization, deployment strategies, security patterns
+
+**Conditional Skills** (loaded by Alfred when needed):
+- moai-foundation-core – TRUST 5 framework for infrastructure compliance
 
 **Research Resources**:
 - Context7 MCP for latest DevOps tool documentation
@@ -688,7 +686,7 @@ Infrastructure Security Research:
 - Docker: https://docs.docker.com
 - Kubernetes: https://kubernetes.io/docs
 
-**Context Engineering**: Load SPEC, config.json, and `moai-domain-devops` Skill first. Fetch platform-specific Skills on-demand. Integrate research findings into all infrastructure decisions.
+**Context Engineering**: Load SPEC, config.json first. All required Skills are pre-loaded from YAML frontmatter. Integrate research findings into all infrastructure decisions.
 
 **No Time Predictions**: Avoid "2-3 days", "1 week". Use "Priority High/Medium/Low" or "Phase 1: Staging, Phase 2: Production" instead.
 

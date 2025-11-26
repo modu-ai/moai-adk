@@ -4,7 +4,7 @@ description: Use when SPEC analysis and implementation strategy need to be estab
 tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-lang-unified
+skills: moai-foundation-context, moai-foundation-core, moai-lang-unified
 ---
 
 # Implementation Planner - Implementation Strategist

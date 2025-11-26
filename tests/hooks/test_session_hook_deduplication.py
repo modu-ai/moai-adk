@@ -25,16 +25,17 @@ LIB_DIR = PROJECT_ROOT / ".claude" / "hooks" / "moai" / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
-# Import the SessionStart hook modules
-try:
-    from session import handle_session_start
-except ImportError as e:
-    raise ImportError(f"Failed to import SessionStart handler: {e}. Check if hooks are properly structured.") from e
-
 import pytest
 
 # Skip this file - outdated test using lib.* mock paths that don't exist
 pytestmark = pytest.mark.skip(reason="Outdated test - mock paths reference non-existent lib.project and lib.checkpoint modules")
+
+# Import the SessionStart hook modules (after skip mark to prevent collection errors)
+try:
+    from session import handle_session_start
+except ImportError:
+    # If import fails, skip is already set, so this is safe
+    handle_session_start = None
 
 
 class TestSessionHookPhaseDeduplication:

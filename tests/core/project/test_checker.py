@@ -206,7 +206,7 @@ class TestEnvironmentCheck:
         result = check_environment()
 
         # Should check all required items
-        assert "Python >= 3.13" in result
+        assert "Python >= 3.11" in result
         assert "Git installed" in result
         assert "Project structure (.moai/)" in result
         assert "Config file (.moai/config/config.json)" in result
@@ -215,19 +215,19 @@ class TestEnvironmentCheck:
         for value in result.values():
             assert isinstance(value, bool)
 
-    @patch('sys.version_info', (3, 13, 0))
+    @patch('sys.version_info', (3, 11, 0))
     def test_check_environment_python_version_ok(self):
-        """Test environment check with Python 3.13."""
+        """Test environment check with Python 3.11."""
         result = check_environment()
 
-        assert result["Python >= 3.13"] is True
+        assert result["Python >= 3.11"] is True
 
-    @patch('sys.version_info', (3, 12, 0))
+    @patch('sys.version_info', (3, 10, 0))
     def test_check_environment_python_version_old(self):
         """Test environment check with old Python."""
         result = check_environment()
 
-        assert result["Python >= 3.13"] is False
+        assert result["Python >= 3.11"] is False
 
 
 class TestPlatformSpecificMessages:

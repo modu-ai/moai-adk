@@ -818,10 +818,9 @@ Parameters:
 - **core-quality** - Standards validation
 - **workflow-docs** - Documentation generation
 
-### Related Skills
-- **moai-foundation-claude** - Claude Code authoring patterns
-- **moai-core-workflow** - Workflow orchestration patterns
-- **moai-foundation-core** - Git integration patterns
+### Related Skills (from YAML frontmatter Line 7)
+- **moai-foundation-core** - TRUST 5 framework, workflow patterns, Git integration
+- **moai-foundation-claude** - Claude Code authoring patterns, skills/agents/commands reference
 
 ---
 
@@ -875,19 +874,19 @@ Parameters:
 1. **Workflow Command Creation**
    - User requests: "Create a command for database migration workflow"
    - Strategy: Search existing commands, clone `/moai:2-run` template
-   - Agents: data-database, core-git
-   - Skills: moai-domain-database
+   - Agents: expert-database, manager-git
+   - Skills: moai-lang-unified (for database patterns)
 
 2. **Configuration Command Creation**
    - User requests: "Create a command for environment setup"
    - Strategy: Clone `/moai:0-project` template
-   - Agents: workflow-project, core-quality
-   - Skills: moai-core-env-security
+   - Agents: manager-project, manager-quality
+   - Skills: moai-toolkit-essentials (contains environment security)
 
 3. **Simple Utility Command**
    - User requests: "Create a command to validate SPEC files"
    - Strategy: Clone `/moai:9-feedback` template
-   - Agents: core-quality
+   - Agents: manager-quality
    - Skills: moai-foundation-core
 
 4. **Complex Integration Command**

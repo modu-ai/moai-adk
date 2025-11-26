@@ -13,37 +13,38 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import modules directly
+from datetime import datetime
+from typing import Any, Dict
+
 from modules.documentation_manager import DocumentationManager
 from modules.language_initializer import LanguageInitializer
 from modules.template_optimizer import TemplateOptimizer
-from datetime import datetime
-from typing import Dict, Any
 
 
 class MoaiMenuProject:
     """Simplified version for testing."""
-    
+
     def __init__(self, project_root: str, config: Dict[str, Any] = None):
         self.project_root = Path(project_root)
-        
+
         if config is None:
             config = {
                 'project': {'name': 'Test Project', 'type': 'web_application'},
                 'language': {'conversation_language': 'en'},
                 'user': {'name': 'Test User'}
             }
-            
+
         self.config = config
         self.version = '1.0.0'
-        
+
         # Initialize modules
         self.documentation_manager = DocumentationManager(str(project_root), config)
         self.language_initializer = LanguageInitializer(str(project_root), config)
         self.template_optimizer = TemplateOptimizer(str(project_root), config)
-        
+
     def initialize_complete_project(self, **kwargs) -> Dict[str, Any]:
         """Initialize complete project with all modules."""
-        
+
         result = {
             'success': True,
             'modules_initialized': ['documentation_manager', 'language_initializer', 'template_optimizer'],
@@ -51,14 +52,14 @@ class MoaiMenuProject:
             'configuration_updates': {},
             'timestamp': datetime.now().isoformat()
         }
-        
+
         # Update configuration with provided parameters
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-                
+
         return result
-        
+
     def get_project_status(self) -> Dict[str, Any]:
         """Get project status."""
         return {
@@ -69,7 +70,7 @@ class MoaiMenuProject:
             },
             'fully_initialized': True
         }
-        
+
     def generate_documentation_from_spec(self, spec_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate documentation from SPEC data."""
         return {
@@ -77,7 +78,7 @@ class MoaiMenuProject:
             'success': True,
             'updated_files': ['docs/product.md', 'docs/structure.md', 'docs/tech.md']
         }
-        
+
     def export_project_documentation(self, format_type: str = "markdown") -> Dict[str, Any]:
         """Export project documentation."""
         return {
@@ -86,7 +87,7 @@ class MoaiMenuProject:
             'files': ['docs/product.md', 'docs/structure.md', 'docs/tech.md'],
             'output_directory': str(self.project_root / 'docs-export')
         }
-        
+
     def optimize_project_templates(self, **options) -> Dict[str, Any]:
         """Optimize project templates."""
         return {
@@ -99,14 +100,14 @@ class MoaiMenuProject:
 
 def quick_start():
     """Quick start example with minimal configuration."""
-    
+
     print("🚀 MoAI Menu Project - Quick Start")
     print("=" * 40)
-    
+
     # Step 1: Initialize project
     print("\n1. Initializing project...")
     project = MoaiMenuProject("./my-awesome-project")
-    
+
     # Step 2: Complete setup with default settings
     print("2. Setting up project modules...")
     result = project.initialize_complete_project(
@@ -115,28 +116,28 @@ def quick_start():
         domains=["backend", "frontend"],
         project_type="web_application"
     )
-    
+
     if result["success"]:
         print("✅ Project successfully initialized!")
         print(f"   📁 Project root: {project.project_root}")
-        print(f"   🌐 Language: en")
+        print("   🌐 Language: en")
         print(f"   📄 Modules initialized: {', '.join(result['modules_initialized'])}")
-        
+
     else:
         print("❌ Project initialization failed")
         return
-        
+
     # Step 3: Get project status
     print("\n3. Checking project status...")
     status = project.get_project_status()
-    
+
     print(f"   📊 Project name: {status['configuration']['project_name']}")
     print(f"   🏗️  Project type: {status['configuration']['project_type']}")
     print(f"   ✨ Fully initialized: {status['fully_initialized']}")
-    
+
     # Step 4: Create sample documentation
     print("\n4. Creating sample documentation...")
-    
+
     sample_spec = {
         "id": "SPEC-001",
         "title": "User Management System",
@@ -150,31 +151,31 @@ def quick_start():
         "status": "Planned",
         "priority": "High"
     }
-    
+
     docs_result = project.generate_documentation_from_spec(sample_spec)
-    
+
     if docs_result:
         print("✅ Sample documentation created!")
         print(f"   📝 SPEC ID: {docs_result['spec_id']}")
         print(f"   📁 Updated files: {', '.join(docs_result['updated_files'])}")
-        
+
     # Step 5: Export documentation
     print("\n5. Exporting documentation...")
-    
+
     export_result = project.export_project_documentation("markdown")
-    
+
     if export_result.get("success"):
         print("✅ Documentation exported successfully!")
         print(f"   📁 Output directory: {export_result['output_directory']}")
         print(f"   📄 Files exported: {len(export_result['files'])}")
-        
+
     print("\n🎉 Quick start completed!")
     print("\nNext steps:")
     print("   1. Explore the generated documentation in ./my-awesome-project/docs/")
     print("   2. Check the configuration in ./my-awesome-project/.moai/config/config.json")
     print("   3. Customize templates in ./my-awesome-project/.claude/skills/moai-menu-project/templates/")
     print("   4. Run additional optimizations with: project.optimize_project_templates()")
-    
+
     return result
 
 

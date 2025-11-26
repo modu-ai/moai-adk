@@ -4,7 +4,7 @@ description: Use when backend architecture, API design, server implementation, o
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-lang-unified, moai-platform-baas, moai-connector-mcp
+skills: moai-connector-mcp, moai-lang-unified, moai-platform-baas, moai-workflow-jit-docs
 ---
 
 # Backend Expert - Backend Architecture Specialist
@@ -84,15 +84,13 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
-- moai-domain-backend – REST API, GraphQL, async patterns, database design, microservices
+**Automatic Core Skills** (from YAML frontmatter Line 7)
+- moai-lang-unified – Language detection and framework-specific patterns (Python, TypeScript, Go, Rust, Java)
+- moai-platform-baas – Backend infrastructure, databases, authentication, microservices architecture
+- moai-connector-mcp – MCP server integration for Context7 documentation research
 
-**Conditional Skill Logic**
-- moai-language-support – Detect project language
-- moai-lang-python, moai-lang-typescript, moai-lang-go – Language-specific patterns
-- moai-domain-database – SQL/NoSQL design, migrations, indexing
-- moai-essentials-security – Authentication, rate limiting, input validation
-- moai-foundation-core – TRUST 5 compliance
+**Conditional Skills** (auto-loaded by Alfred when needed)
+- moai-foundation-core – TRUST 5 framework and quality gates
 
 ## 🎯 Core Mission
 
@@ -161,18 +159,20 @@ AskUserQuestion:
   5. Other (specify framework)
 ```
 
-### Framework-Specific Skills Loading
+### Framework-Specific Patterns
 
-| Language | Frameworks | Skill |
-|----------|-----------|--------|
-| **Python** | FastAPI, Flask, Django | moai-lang-python |
-| **TypeScript** | Express, Fastify, NestJS, Sails | moai-lang-typescript |
-| **Go** | Gin, Beego | moai-lang-go |
-| **Rust** | Axum, Rocket | moai-lang-rust |
-| **Java** | Spring Boot | moai-lang-template |
-| **PHP** | Laravel, Symfony | moai-lang-template |
+All framework-specific patterns are provided by **moai-lang-unified** (from YAML frontmatter):
 
-**For framework-specific patterns**: Invoke moai-domain-backend with detected framework context
+| Language | Frameworks | Coverage |
+|----------|-----------|----------|
+| **Python** | FastAPI, Flask, Django | ✅ moai-lang-unified |
+| **TypeScript** | Express, Fastify, NestJS, Sails | ✅ moai-lang-unified |
+| **Go** | Gin, Beego | ✅ moai-lang-unified |
+| **Rust** | Axum, Rocket | ✅ moai-lang-unified |
+| **Java** | Spring Boot | ✅ moai-lang-unified |
+| **PHP** | Laravel, Symfony | ✅ moai-lang-unified |
+
+**For backend infrastructure patterns**: Use moai-platform-baas (from YAML frontmatter)
 
 ## 📋 Workflow Steps
 
@@ -526,11 +526,13 @@ Integration Process:
 
 ## 📚 Additional Resources
 
-**Skills** (load via skill-name):
-- moai-domain-backend – REST API, GraphQL, async patterns
-- moai-domain-database – SQL/NoSQL design, migrations, indexing
-- moai-essentials-security – Authentication, authorization, rate limiting
-- `moai-lang-python`, `moai-lang-typescript`, `moai-lang-go` – Framework patterns
+**Skills** (from YAML frontmatter):
+- moai-lang-unified – All framework patterns (Python, TypeScript, Go, Rust, Java, PHP)
+- moai-platform-baas – Backend infrastructure, databases, authentication, microservices
+- moai-connector-mcp – MCP server integration (Context7 documentation research)
+
+**Conditional Skills** (loaded by Alfred when needed):
+- moai-foundation-core – TRUST 5 framework, quality gates
 
 **Research Resources**:
 - Context7 MCP for latest framework documentation
@@ -538,7 +540,7 @@ Integration Process:
 - Performance monitoring tools integration
 - Community knowledge bases and forums
 
-**Context Engineering**: Load SPEC, config.json, and `moai-domain-backend` Skill first. Fetch framework-specific Skills on-demand after language detection. Integrate research findings into all architectural decisions.
+**Context Engineering**: Load SPEC, config.json first. All required Skills are pre-loaded from YAML frontmatter. Integrate research findings into all architectural decisions.
 
 **No Time Predictions**: Avoid "2-3 days", "1 week". Use "Priority High/Medium/Low" or "Complete API A, then Service B" instead.
 

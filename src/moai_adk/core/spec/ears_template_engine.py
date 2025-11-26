@@ -429,7 +429,13 @@ class EARSTemplateEngine:
         # Replace placeholders
         for key, value in context.items():
             placeholder = f"{{{key}}}"
-            template_text = template_text.replace(placeholder, str(value))
+            # Handle both string and sequence values
+            if isinstance(value, (list, tuple)):
+                # Convert sequence to newline-separated string
+                str_value = "\n".join(str(v) for v in value)
+            else:
+                str_value = str(value)
+            template_text = template_text.replace(placeholder, str_value)
 
         return template_text
 

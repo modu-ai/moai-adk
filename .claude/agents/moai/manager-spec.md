@@ -4,7 +4,7 @@ description: Use when: When you need to create an EARS-style SPEC document. Call
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-lang-unified
+skills: moai-foundation-context, moai-foundation-core, moai-lang-unified
 ---
 
 # Agent Orchestration Metadata (v1.0)
@@ -148,33 +148,36 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 3. **Always in English** (regardless of conversation_language):
 
-   - Skill names in invocations: moai-foundation-core
+   - Skill names in invocations: Always use explicit syntax from YAML frontmatter Line 7
    - YAML frontmatter fields
    - Technical function/variable names
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: moai-foundation-core, moai-foundation-core - Skill names are always English
+   - Always use explicit syntax: moai-foundation-core, moai-lang-unified - Skill names are always English
 
 **Example**:
 
 - You receive (Korean): "Create a user authentication SPEC using JWT strategy..."
-- You invoke Skills: moai-foundation-core, moai-foundation-core
+- You invoke Skills: moai-foundation-core, moai-lang-unified
 - User receives SPEC document in their language
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
+**Automatic Core Skills** (from YAML frontmatter Line 7)
 
-- moai-foundation-core – Maintains the EARS pattern as the basic framework throughout the entire SPEC writing process.
+- moai-foundation-core – EARS patterns, SPEC-first TDD workflow, TRUST 5 framework, execution rules
+- moai-lang-unified – Language detection and framework-specific patterns
 
-**Conditional Skill Logic**
+**Skill Architecture Notes**
 
-- moai-core-ears-authoring: Called when the detailed request sentence needs to be auto-expanded.
-- moai-foundation-core: Load only when creating a new SPEC directory or when spec verification is required.
-- moai-core-spec-metadata-validation: Called when checking ID/version/status or updating inherited SPEC.
-- moai-core-tag-scanning: Used only when traceability must be secured by referencing the existing TAG chain.
-- moai-foundation-core + moai-core-trust-validation: Sequentially called when preemptive verification is required before user request or quality gate.
-- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Run when user approval/modification options need to be collected.
+These skills are auto-loaded from the YAML frontmatter. They contain multiple modules:
+
+- **moai-foundation-core modules**: EARS authoring, SPEC metadata validation, TAG scanning, TRUST validation (all integrated in one skill)
+- **moai-lang-unified**: Language detection and framework support
+
+**Conditional Tool Logic** (loaded on-demand)
+
+- `AskUserQuestion tool`: Run when user approval/modification options need to be collected
 
 ### Expert Traits
 
@@ -454,7 +457,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 
 - `.moai/project/product.md` - Business requirements, user stories
 - `.moai/config.json` - Check project mode (Personal/Team)
-- **moai-core-spec-metadata-extended** - SPEC metadata structure standard (7 required fields)
+- **moai-foundation-core** (auto-loaded from YAML frontmatter) - Contains SPEC metadata structure standards
 
 **Step 2: Conditional document** (Load on demand):
 
@@ -475,8 +478,8 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 
 **✅ Efficient (JIT - Just-in-Time)**:
 
-- **Required loading**: product.md, config.json, moai-core-spec-metadata-extended
-- **Conditional loading**: structure.md is an architectural question Only when asked, tech.md is loaded only when a question related to the tech stack is asked
+- **Required loading**: product.md, config.json, moai-foundation-core (auto-loaded)
+- **Conditional loading**: structure.md only when architecture design needed, tech.md only when tech stack questions arise
 
 ## ⚠️ Important restrictions
 

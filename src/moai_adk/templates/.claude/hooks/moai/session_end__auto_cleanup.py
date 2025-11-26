@@ -33,14 +33,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 from lib.path_utils import find_project_root
 
 try:
-    from lib.config_manager import ConfigManager  # noqa: E402
     from lib.common import (  # noqa: E402
         format_duration,
+        get_file_pattern_category,
         get_summary_stats,
         is_root_whitelisted,
-        get_file_pattern_category,
         suggest_moai_location,
     )
+    from lib.config_manager import ConfigManager  # noqa: E402
 except ImportError:
     ConfigManager = None  # type: ignore
     # Fallback implementations if module not found

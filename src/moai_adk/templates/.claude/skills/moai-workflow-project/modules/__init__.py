@@ -16,6 +16,6 @@ from .template_optimizer import TemplateOptimizer
 
 __all__ = [
     "DocumentationManager",
-    "LanguageInitializer", 
+    "LanguageInitializer",
     "TemplateOptimizer"
 ]

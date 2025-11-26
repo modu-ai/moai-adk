@@ -47,7 +47,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, Union
 
 import click
 from packaging import version
@@ -953,22 +953,23 @@ def _prompt_custom_files_restore(
         }
 
     # Build checkbox choices grouped by type
-    choices = []
+    from questionary import Separator, Choice
+    choices: list[Union[Separator, Choice]] = []
 
     if custom_commands:
-        choices.append(questionary.Separator("Commands (.claude/commands/moai/)"))
+        choices.append(Separator("Commands (.claude/commands/moai/)"))
         for cmd in custom_commands:
-            choices.append(questionary.Choice(title=cmd, value=f"cmd:{cmd}"))
+            choices.append(Choice(title=cmd, value=f"cmd:{cmd}"))
 
     if custom_agents:
-        choices.append(questionary.Separator("Agents (.claude/agents/)"))
+        choices.append(Separator("Agents (.claude/agents/)"))
         for agent in custom_agents:
-            choices.append(questionary.Choice(title=agent, value=f"agent:{agent}"))
+            choices.append(Choice(title=agent, value=f"agent:{agent}"))
 
     if custom_hooks:
-        choices.append(questionary.Separator("Hooks (.claude/hooks/moai/)"))
+        choices.append(Separator("Hooks (.claude/hooks/moai/)"))
         for hook in custom_hooks:
-            choices.append(questionary.Choice(title=hook, value=f"hook:{hook}"))
+            choices.append(Choice(title=hook, value=f"hook:{hook}"))
 
     console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
     console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
