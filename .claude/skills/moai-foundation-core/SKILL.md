@@ -13,7 +13,7 @@ tags:
   - commands
   - trust-5
   - spec-first-tdd
-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob
 ---
 
 # MoAI Foundation Core

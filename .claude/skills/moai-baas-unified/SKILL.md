@@ -15,7 +15,7 @@ tags:
   - clerk
   - vercel
   - railway
-tools: Read, Write, Bash, Grep, Glob
+allowed-tools: Read, Write, Bash, Grep, Glob
 ---
 
 # moai-baas-unified: Comprehensive BaaS Integration Hub

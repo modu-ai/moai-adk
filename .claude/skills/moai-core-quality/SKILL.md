@@ -12,7 +12,7 @@ tags:
   - trust-5
   - best-practices
   - code-review
-tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Enterprise Code Quality Orchestrator
