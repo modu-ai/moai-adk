@@ -2,7 +2,7 @@
 name: factory-skill
 description: Creates modular Skills for Claude Code extensions with official standards compliance and progressive disclosure patterns.
 tools: Read, Write, Edit, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-core-claude-code
 ---

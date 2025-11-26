@@ -1,4 +1,3 @@
-## Works Well With**Agents**:- **workflow-spec** - SPEC generation- **workflow-tdd** - TDD implementation- **core-quality** - Quality validation**Skills**:- **moai-foundation-core** - Core principles- **moai-cc-configuration** - Configuration management- **moai-templates** - Template management**Commands**:- `/moai:1-plan` - SPEC generation- `/moai:2-run` - TDD execution- `/moai:3-sync` - Documentation
 ---
 name: moai-essentials-unified
 description: AI-powered unified development orchestrator combining debugging, refactoring, performance optimization, code review, testing integration, and profiling into comprehensive development workflows with Context7 integration, TRUST 5 validation, and enterprise-grade automation
@@ -330,51 +329,6 @@ class AITestingIntegrator:
 
 ---
 
-### Pattern 6: Advanced Multi-Language Profiling
-
-**Concept**: Cross-language performance profiling with AI optimization and Context7 patterns.
-
-```python
-class AIMultiLanguageProfiler:
-    """AI-powered multi-language performance profiling."""
-    
-    async def profile_multi_language_performance(
-        self, codebase: MultiLanguageCodebase
-    ) -> MultiLanguageProfile:
-        profiles = {}
-        
-        for language, code in codebase.languages.items():
-            # Get language-specific Context7 patterns
-            lang_patterns = await self.context7.get_library_docs(
-                context7_library_id=self.get_language_library(language),
-                topic=f"performance profiling optimization {language} 2025",
-                tokens=3000
-            )
-            
-            # Language-specific profiling
-            if language == "python":
-                profile = await self.profile_python(code, lang_patterns)
-            elif language == "javascript":
-                profile = await self.profile_javascript(code, lang_patterns)
-            elif language == "go":
-                profile = await self.profile_go(code, lang_patterns)
-            
-            profiles[language] = profile
-        
-        # Cross-language optimization analysis
-        optimization_opportunities = self.analyze_cross_language_optimizations(
-            profiles
-        )
-        
-        return MultiLanguageProfile(
-            profiles=profiles,
-            optimization_opportunities=optimization_opportunities,
-            overall_performance_score=self.calculate_overall_score(profiles)
-        )
-```
-
-**Use Case**: Optimize multi-language applications with unified profiling and cross-language analysis.
-
 ---
 
 ## Context7 Integration Hub
@@ -483,3 +437,22 @@ class UnifiedContext7Integration:
 - Integrate testing throughout the development lifecycle
 - Monitor AI learning and improvement across all components
 - Use Context7 integration for latest patterns and best practices
+
+---
+
+## Works Well With
+
+**Agents**:
+- **workflow-spec** - SPEC generation
+- **workflow-tdd** - TDD implementation
+- **core-quality** - Quality validation
+
+**Skills**:
+- **moai-foundation-core** - Core principles
+- **moai-cc-configuration** - Configuration management
+- **moai-templates** - Template management
+
+**Commands**:
+- `/moai:1-plan` - SPEC generation
+- `/moai:2-run` - TDD execution
+- `/moai:3-sync` - Documentation

@@ -1,4 +1,3 @@
-## Works Well With**Agents**:- **workflow-docs** - Documentation generation- **code-frontend** - Nextra implementation- **workflow-spec** - Architecture documentation**Skills**:- **moai-docs-generation** - Content generation- **moai-docs-unified** - Documentation validation- **moai-mermaid-diagram-expert** - Diagram integration**Commands**:- `/moai:3-sync` - Documentation deployment- `/moai:0-project` - Nextra project initialization
 ---
 name: moai-nextra-architecture
 description: Enterprise Nextra documentation framework with Next.js
@@ -302,3 +301,21 @@ vercel
 **Maintained by**: alfred
 **Domain**: Documentation Architecture
 **Generated with**: MoAI-ADK Skill Factory
+
+---
+
+## Works Well With
+
+**Agents**:
+- **workflow-docs** - Documentation generation
+- **code-frontend** - Nextra implementation
+- **workflow-spec** - Architecture documentation
+
+**Skills**:
+- **moai-docs-generation** - Content generation
+- **moai-docs-unified** - Documentation validation
+- **moai-mermaid-diagram-expert** - Diagram integration
+
+**Commands**:
+- `/moai:3-sync` - Documentation deployment
+- `/moai:0-project` - Nextra project initialization

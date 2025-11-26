@@ -2,9 +2,9 @@
 name: mcp-notion
 description: Use for Notion workspace management, database operations, page creation, and content automation. Integrates Notion MCP server.
 tools: Read, AskUserQuestion, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-mcp-integration
+skills: moai-foundation-core, moai-mcp-integration, moai-connector-notion
 ---
 
 # MCP Notion Integrator Agent

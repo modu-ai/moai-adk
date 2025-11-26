@@ -2,7 +2,7 @@
 name: moai-lang-unified
 description: Unified enterprise programming language skill covering 25+ languages including Python 3.13, TypeScript 5.9, Go 1.23, Rust 1.91, Java 21, JavaScript ES2025, C++, C#, PHP, Swift, Kotlin, Scala, Elixir, Ruby, R, SQL, Shell, and more with patterns, best practices, and Context7 integration
 version: 1.0.0
-modularized: false
+modularized: true
 tags:
   - programming-language
   - enterprise

@@ -2,7 +2,7 @@
 name: factory-command
 description: Use when creating or optimizing custom slash commands. Maximizes reuse through asset discovery and match scoring.
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-core-claude-code
 ---

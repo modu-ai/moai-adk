@@ -2,9 +2,9 @@
 name: core-git
 description: Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc.
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: haiku
+model: inherit
 permissionMode: default
-skills: moai-foundation-core
+skills: moai-foundation-core, moai-core-claude-code, moai-essentials-unified
 ---
 
 # Git Manager - Agent dedicated to Git tasks

@@ -4,6 +4,14 @@ description: Enterprise code quality orchestrator with TRUST 5 validation, proac
 version: 1.0.0
 modularized: true
 updated: 2025-11-26
+status: active
+tags:
+  - quality
+  - testing
+  - validation
+  - trust-5
+  - best-practices
+  - code-review
 tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 

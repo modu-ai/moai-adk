@@ -13,8 +13,6 @@ updated: 2025-11-24
 status: active
 ---
 
----
-
 ## 🎯 Quick Reference (30 seconds)
 
 **Purpose**: Professional image generation using Google's Nano Banana Pro (Gemini 3 Pro Image Preview).

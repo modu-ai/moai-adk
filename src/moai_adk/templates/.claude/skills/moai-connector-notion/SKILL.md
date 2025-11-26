@@ -1,4 +1,3 @@
-## Works Well With**Agents**:- **workflow-docs** - Documentation synchronization- **workflow-spec** - SPEC documentation- **core-planner** - Project planning with Notion**Skills**:- **moai-mcp-integration** - MCP server integration- **moai-docs-generation** - Documentation generation- **moai-project-config-manager** - Configuration management**Commands**:- `/moai:3-sync` - Documentation synchronization- `/moai:9-feedback` - Feedback via Notion
 ---
 name: moai-connector-notion
 description: Enterprise Notion integration with MCP server architecture, database operations, and content management
@@ -317,3 +316,21 @@ log_operation(
 - ✅ Security best practices
 
 
+
+---
+
+## Works Well With
+
+**Agents**:
+- **workflow-docs** - Documentation synchronization
+- **workflow-spec** - SPEC documentation
+- **core-planner** - Project planning with Notion
+
+**Skills**:
+- **moai-mcp-integration** - MCP server integration
+- **moai-docs-generation** - Documentation generation
+- **moai-project-config-manager** - Configuration management
+
+**Commands**:
+- `/moai:3-sync` - Documentation synchronization
+- `/moai:9-feedback` - Feedback via Notion

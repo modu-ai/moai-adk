@@ -15,8 +15,6 @@ updated: 2025-11-26
 status: active
 ---
 
----
-
 ## Quick Reference (30 seconds)
 
 # Enterprise Context & Session Management

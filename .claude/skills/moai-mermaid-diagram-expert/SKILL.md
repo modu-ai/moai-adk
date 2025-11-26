@@ -1,9 +1,8 @@
-## Works Well With**Agents**:- **workflow-docs** - Documentation with diagrams- **workflow-spec** - SPEC diagrams- **design-uiux** - Architecture visualization**Skills**:- **moai-docs-generation** - Documentation generation- **moai-docs-unified** - Diagram validation- **moai-nextra-architecture** - Architecture docs**Commands**:- `/moai:3-sync` - Documentation with diagrams- `/moai:1-plan` - SPEC with diagrams
 ---
 name: moai-mermaid-diagram-expert
 description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright
 version: 1.0.0
-modularized: false
+modularized: true
 tags:
   - enterprise
   - diagram
@@ -300,3 +299,21 @@ Skill("moai-mermaid-diagram-expert")
 Latest stable version: 10.x
 - [Release Notes](https://github.com/mermaid-js/mermaid/releases)
 - [Migration Guide](https://mermaid.js.org/config/setup/modules/mermaidAPI.html)
+
+---
+
+## Works Well With
+
+**Agents**:
+- **workflow-docs** - Documentation with diagrams
+- **workflow-spec** - SPEC diagrams
+- **design-uiux** - Architecture visualization
+
+**Skills**:
+- **moai-docs-generation** - Documentation generation
+- **moai-docs-unified** - Diagram validation
+- **moai-nextra-architecture** - Architecture docs
+
+**Commands**:
+- `/moai:3-sync` - Documentation with diagrams
+- `/moai:1-plan` - SPEC with diagrams

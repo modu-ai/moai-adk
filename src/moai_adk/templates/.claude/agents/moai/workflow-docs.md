@@ -2,9 +2,9 @@
 name: workflow-docs
 description: Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting.
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
-permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code
+model: inherit
+permissionMode: acceptEdits
+skills: moai-foundation-core, moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code, moai-nextra-architecture
 ---
 
 # Documentation Manager Expert

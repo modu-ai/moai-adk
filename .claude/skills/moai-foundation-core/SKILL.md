@@ -4,6 +4,15 @@ description: MoAI-ADK's foundational principles - TRUST 5, SPEC-First TDD, deleg
 version: 2.2.0
 modularized: true
 updated: 2025-11-26
+status: active
+tags:
+  - foundation
+  - core
+  - orchestration
+  - agents
+  - commands
+  - trust-5
+  - spec-first-tdd
 tools: Read, Grep, Glob
 ---
 

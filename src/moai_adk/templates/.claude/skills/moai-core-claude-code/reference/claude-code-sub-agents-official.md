@@ -41,9 +41,19 @@ skills: skill1, skill2         # Available skills for agent
 
 ### Permission Modes
 
-- **default**: Standard permission prompts
-- **acceptEdits**: Automatically accept file edits
-- **dontAsk**: Suppress permission dialogs
+**Official Claude Code permissionMode values** (verified from official documentation):
+
+- **default**: Standard permission prompts. Each tool usage requires user approval on first use in the session. This is the default value if permissionMode is omitted. Recommended for most agents requiring user oversight.
+
+- **acceptEdits**: Automatically accepts file edit operations (Write, Edit, MultiEdit) without prompting. Other tool operations (like Bash) still require approval. Use for trusted development environments where file modifications are expected and safe.
+
+- **dontAsk**: Suppresses all permission dialog prompts for this agent. All tool operations proceed without user confirmation. ⚠️ Use with caution - recommended ONLY for automated environments, CI/CD pipelines, or fully sandboxed contexts.
+
+**Important Notes**:
+- If `permissionMode` is omitted, the default value is `default`
+- The values `bypassPermissions`, `plan`, and `ignore` are NOT official permissionMode values
+- For maximum security, use `default` and explicitly approve each operation
+- For automation workflows in safe environments, `acceptEdits` or `dontAsk` may be appropriate
 
 ### Tool Permissions
 

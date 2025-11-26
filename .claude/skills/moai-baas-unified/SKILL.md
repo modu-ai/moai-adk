@@ -4,6 +4,17 @@ description: Comprehensive unified BaaS (Backend-as-a-Service) integration hub f
 version: 1.0.0
 modularized: false
 updated: 2025-11-26
+status: active
+tags:
+  - baas
+  - backend
+  - integration
+  - firebase
+  - supabase
+  - auth0
+  - clerk
+  - vercel
+  - railway
 tools: Read, Write, Bash, Grep, Glob
 ---
 
