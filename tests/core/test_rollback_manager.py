@@ -13,22 +13,21 @@ Tests cover:
 - Edge cases and boundary conditions
 """
 
-import hashlib
 import json
 import os
 import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open
+from unittest.mock import patch
 
 import pytest
 
 try:
     from moai_adk.core.rollback_manager import (
+        RollbackManager,
         RollbackPoint,
         RollbackResult,
-        RollbackManager,
     )
 except ImportError:
     pytest.skip("rollback_manager not available", allow_module_level=True)
@@ -426,21 +425,21 @@ class TestRollbackResearchIntegration:
 
     def test_research_rollback_all_components(self, rollback_manager):
         """Test rolling back all research components"""
-        rollback_id = rollback_manager.create_rollback_point("Full research backup")
+        rollback_manager.create_rollback_point("Full research backup")
         result = rollback_manager.rollback_research_integration()
 
         assert isinstance(result, RollbackResult)
 
     def test_research_rollback_specific_component_type(self, rollback_manager):
         """Test rolling back specific component type"""
-        rollback_id = rollback_manager.create_rollback_point("Component type backup")
+        rollback_manager.create_rollback_point("Component type backup")
         result = rollback_manager.rollback_research_integration(component_type="skills")
 
         assert isinstance(result, RollbackResult)
 
     def test_research_rollback_specific_component(self, rollback_manager, temp_project_dir):
         """Test rolling back specific component by name"""
-        rollback_id = rollback_manager.create_rollback_point("Specific component backup")
+        rollback_manager.create_rollback_point("Specific component backup")
         result = rollback_manager.rollback_research_integration(component_type="skills", component_name="sample_skill")
 
         assert isinstance(result, RollbackResult)
@@ -454,7 +453,7 @@ class TestRollbackResearchIntegration:
 
     def test_research_rollback_uses_latest_point(self, rollback_manager):
         """Test that research rollback uses the most recent suitable point"""
-        rollback_id1 = rollback_manager.create_rollback_point("Old backup")
+        rollback_manager.create_rollback_point("Old backup")
         rollback_id2 = rollback_manager.create_rollback_point("New backup")
 
         result = rollback_manager.rollback_research_integration(component_type="skills")
@@ -462,7 +461,7 @@ class TestRollbackResearchIntegration:
 
     def test_research_rollback_validates_components(self, rollback_manager):
         """Test that research rollback validates components after restoration"""
-        rollback_id = rollback_manager.create_rollback_point("Validation backup")
+        rollback_manager.create_rollback_point("Validation backup")
         result = rollback_manager.rollback_research_integration()
 
         assert result.validation_results is not None
@@ -522,7 +521,7 @@ class TestListRollbackPoints:
 
     def test_list_includes_used_status(self, rollback_manager):
         """Test that listing includes used status"""
-        rollback_id = rollback_manager.create_rollback_point("Test")
+        rollback_manager.create_rollback_point("Test")
         points = rollback_manager.list_rollback_points()
 
         assert "used" in points[0]
@@ -879,7 +878,7 @@ class TestValidationOperations:
 
     def test_validate_system_after_rollback_invalid_config(self, rollback_manager, temp_project_dir):
         """Test system validation detects invalid config after rollback"""
-        rollback_id = rollback_manager.create_rollback_point("Invalid config test")
+        rollback_manager.create_rollback_point("Invalid config test")
 
         # Create invalid JSON in config
         config_file = temp_project_dir / ".moai" / "config" / "config.json"
@@ -891,7 +890,7 @@ class TestValidationOperations:
 
     def test_validate_research_components(self, rollback_manager, temp_project_dir):
         """Test validation of research components"""
-        rollback_id = rollback_manager.create_rollback_point("Research validation test")
+        rollback_manager.create_rollback_point("Research validation test")
 
         result = rollback_manager._validate_research_components()
 
@@ -918,7 +917,7 @@ class TestPerformRollback:
         assert config_file.read_text() == '{"modified": true}'
 
         # Perform rollback
-        result = rollback_manager.rollback_to_point(rollback_id)
+        rollback_manager.rollback_to_point(rollback_id)
 
         # Check if the restore path matches the expected location
         # The rollback restores to .moai/config.json or .moai/config/config.json
@@ -1267,7 +1266,7 @@ class TestErrorPaths:
 
     def test_validate_system_handles_unreadable_files(self, rollback_manager, temp_project_dir):
         """Test validation handles unreadable files"""
-        rollback_id = rollback_manager.create_rollback_point("Unreadable test")
+        rollback_manager.create_rollback_point("Unreadable test")
 
         # Make a research file unreadable
         skill_file = temp_project_dir / ".claude" / "skills" / "sample_skill.md"
@@ -1334,7 +1333,7 @@ class TestRollbackPointDiscovery:
 
     def test_list_with_used_and_unused_points(self, rollback_manager):
         """Test listing distinguishes between used and unused points"""
-        id1 = rollback_manager.create_rollback_point("Unused point")
+        rollback_manager.create_rollback_point("Unused point")
         id2 = rollback_manager.create_rollback_point("Used point")
 
         # Mark one as used
@@ -1504,7 +1503,7 @@ class TestFailureRecovery:
 
         # Make one backup inaccessible
         bad_backup = rollback_manager.backup_root / rollback_ids[0]
-        bad_backup_content = shutil.copytree(bad_backup, bad_backup.with_suffix(".backup"))
+        shutil.copytree(bad_backup, bad_backup.with_suffix(".backup"))
 
         result = rollback_manager.cleanup_old_rollbacks(keep_count=2, dry_run=False)
 
@@ -1530,11 +1529,6 @@ class TestComplexScenarios:
 
     def test_rollback_point_with_complex_metadata(self, rollback_manager):
         """Test rollback point with complex metadata"""
-        metadata = {
-            "nested": {"data": {"deep": ["list", "of", "values"]}},
-            "numbers": [1, 2, 3, 4, 5],
-            "bool": True,
-        }
 
         rollback_id = rollback_manager.create_rollback_point("Complex metadata test")
         rollback_data = rollback_manager.registry[rollback_id]
@@ -1683,9 +1677,9 @@ class TestDataIntegrity:
 
     def test_rollback_point_timestamp_accuracy(self, rollback_manager):
         """Test rollback point timestamp accuracy"""
-        before = datetime.now(timezone.utc)
+        datetime.now(timezone.utc)
         rollback_id = rollback_manager.create_rollback_point("Timestamp accuracy test")
-        after = datetime.now(timezone.utc)
+        datetime.now(timezone.utc)
 
         rollback_data = rollback_manager.registry[rollback_id]
         # Timestamp should be a string in ISO format (when saved to registry via asdict)

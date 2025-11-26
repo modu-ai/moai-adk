@@ -31,7 +31,7 @@ class TestStatuslineVersionDisplay:
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Mock VersionReader to return our version
-            with patch.object(VersionReader, "get_version", return_value="0.22.4") as mock_version:
+            with patch.object(VersionReader, "get_version", return_value="0.22.4"):
                 # Create statusline data
                 data = StatuslineData(
                     model="TestProject",
@@ -75,7 +75,7 @@ class TestStatuslineVersionDisplay:
             config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
             # Mock VersionReader to return 'unknown'
-            with patch.object(VersionReader, "get_version", return_value="unknown") as mock_version:
+            with patch.object(VersionReader, "get_version", return_value="unknown"):
                 # Create statusline data
                 data = StatuslineData(
                     model="TestProject",
@@ -219,7 +219,7 @@ class TestStatuslineVersionDisplay:
                 config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False))
 
                 # Mock VersionReader
-                with patch.object(VersionReader, "get_version", return_value=version) as mock_version:
+                with patch.object(VersionReader, "get_version", return_value=version):
                     # Create statusline data
                     data = StatuslineData(
                         model="TestProject",

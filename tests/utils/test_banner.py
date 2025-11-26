@@ -8,19 +8,16 @@ This module provides 90%+ coverage for banner display functionality including:
 - Output formatting and structure
 """
 
-from io import StringIO
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import patch
 
-import pytest
 from rich.console import Console
 
 from moai_adk.utils.banner import (
     MOAI_BANNER,
+    console,
     print_banner,
     print_welcome_message,
-    console,
 )
-
 
 # ============================================================================
 # Module Constants and Initialization Tests

@@ -193,12 +193,12 @@ class TestUnwantedScenarioPrevention:
 
         # First call (cold cache)
         start = time.time()
-        version1 = reader.get_version()
+        reader.get_version()
         first_time = time.time() - start
 
         # Second call (warm cache)
         start = time.time()
-        version2 = reader.get_version()
+        reader.get_version()
         second_time = time.time() - start
 
         assert first_time < 2.0, f"First call should be < 2s, was {first_time:.3f}s"
@@ -283,11 +283,11 @@ class TestOptionalFeatures:
 
         # Prime cache
         v1 = reader.get_version()
-        stats_before = reader.get_cache_stats()
+        reader.get_cache_stats()
 
         # Clear cache
         reader.clear_cache()
-        stats_after = reader.get_cache_stats()
+        reader.get_cache_stats()
 
         # Both should return same version
         v2 = reader.get_version()

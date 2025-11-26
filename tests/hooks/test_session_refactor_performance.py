@@ -42,7 +42,7 @@ class TestSessionStartPerformance:
             # Measure load_config execution time
             start = time.perf_counter()
             for _ in range(100):  # Run 100 times for accuracy
-                config = load_config()
+                load_config()
             elapsed = (time.perf_counter() - start) * 1000 / 100
 
             # Average should be < 3ms
@@ -64,7 +64,7 @@ class TestSessionStartPerformance:
             cutoff = datetime.now()
 
             start = time.perf_counter()
-            result = cleanup_directory(test_dir, cutoff, max_files=50, patterns=["*"])
+            cleanup_directory(test_dir, cutoff, max_files=50, patterns=["*"])
             elapsed = (time.perf_counter() - start) * 1000
 
             # Should process 100 files in < 50ms
@@ -92,7 +92,7 @@ class TestSessionStartPerformance:
 
         start = time.perf_counter()
         for _ in range(100):  # Run 100 times for accuracy
-            report = format_analysis_report(analysis_data)
+            format_analysis_report(analysis_data)
         elapsed = (time.perf_counter() - start) * 1000 / 100
 
         # Average should be < 10ms
@@ -130,8 +130,8 @@ class TestSessionStartPerformance:
 
             # These should be fast when disabled
             config = json.loads(config_file.read_text())
-            cleanup_result = execute_cleanup_sequence(config)
-            analysis_result = execute_analysis_sequence(config)
+            execute_cleanup_sequence(config)
+            execute_analysis_sequence(config)
 
             elapsed = (time.perf_counter() - start) * 1000
 
@@ -147,7 +147,7 @@ class TestSessionStartPerformance:
         )
 
         # Get baseline memory
-        baseline = sys.getsizeof(load_config)
+        sys.getsizeof(load_config)
 
         # Load modules and check memory growth
         config_data = {"auto_cleanup": {"enabled": False}, "daily_analysis": {"enabled": False}}

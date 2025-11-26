@@ -4,13 +4,8 @@ Focus: SPEC generation, validation, file detection, confidence scoring
 Target Coverage: 72.2% → 90.0% (+17.8%)
 """
 
-import hashlib
-import json
 import os
-import re
-import time
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

@@ -202,7 +202,7 @@ class DemoRunner:
             # Update language settings
             lang_updates = {"language.conversation_language": lang, "language.documentation_language": lang}
 
-            update_result = self.lang_init.update_language_settings(lang_updates)
+            self.lang_init.update_language_settings(lang_updates)
 
             # Create multilingual documentation structure
             multilingual_result = self.lang_init.create_multilingual_documentation_structure(lang)
@@ -266,7 +266,7 @@ This section describes the project again.
 - Feature 2
 - Feature 3
 
-Extra whitespace:   
+Extra whitespace:
 
 
 

@@ -12,9 +12,8 @@ Tests cover:
 7. Testing strategy suggestions
 """
 
-import pytest
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 @dataclass
@@ -392,7 +391,7 @@ class AntiPatternDetector:
                 severity="medium",
                 alternative="Use dependency injection or functional patterns",
             )
-        if f"f'" in code or f'f"' in code and "FROM" in code.upper():
+        if "f'" in code or 'f"' in code and "FROM" in code.upper():
             return Pattern(
                 pattern_type="anti_pattern",
                 language="Python",

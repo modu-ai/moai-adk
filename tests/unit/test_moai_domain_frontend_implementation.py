@@ -15,11 +15,7 @@ Target: 90%+ code coverage with production-ready quality
 Framework: React 19, Next.js 15, TypeScript 5.9+
 """
 
-import pytest
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from unittest.mock import Mock, patch, MagicMock
-
+from typing import Any
 
 # ============================================================================
 # TEST GROUP 1: Component Architecture (4 tests)

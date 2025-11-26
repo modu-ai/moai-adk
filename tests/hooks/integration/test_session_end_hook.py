@@ -17,7 +17,7 @@ class TestSessionEndHookExecution:
 
     def test_hook_execution_basic(self, config_file, hook_tmp_project):
         """SessionEnd hook executes successfully"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             assert config_file.exists()
 
             # Simulate hook execution
@@ -159,7 +159,7 @@ class TestWorkStateSaving:
 
     def test_work_state_includes_branch_info(self, config_file, hook_tmp_project):
         """Work state includes current branch"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             work_state = {"current_branch": "main", "specs_in_progress": []}
 
             assert "current_branch" in work_state
@@ -167,7 +167,7 @@ class TestWorkStateSaving:
 
     def test_work_state_includes_uncommitted_info(self, config_file, hook_tmp_project):
         """Work state includes uncommitted changes info"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             work_state = {"uncommitted_changes": True, "uncommitted_files": 5}
 
             assert "uncommitted_changes" in work_state
@@ -176,7 +176,7 @@ class TestWorkStateSaving:
 
     def test_work_state_includes_spec_progress(self, config_file, hook_tmp_project):
         """Work state includes SPEC progress"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             work_state = {"specs_in_progress": ["SPEC-001", "SPEC-002"], "last_updated": datetime.now().isoformat()}
 
             assert "specs_in_progress" in work_state
@@ -271,7 +271,7 @@ class TestCleanupExecution:
 
     def test_cleanup_respects_config(self, config_file, hook_tmp_project):
         """Cleanup respects configuration"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             cleanup_config = config_data.get("auto_cleanup", {})
@@ -339,7 +339,7 @@ class TestSessionCompletion:
 
     def test_session_summary_generation(self, config_file, hook_tmp_project):
         """Session summary is generated"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             cleanup_stats = {"total_cleaned": 5, "temp_cleaned": 2, "cache_cleaned": 3}
 
             work_state = {"specs_in_progress": ["SPEC-001"], "uncommitted_files": 3}
@@ -357,7 +357,7 @@ class TestSessionCompletion:
 
     def test_session_summary_includes_cleanup_info(self, config_file, hook_tmp_project):
         """Session summary includes cleanup information"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             summary = "✅ Session Ended\n   • Files modified: 3\n   • Cleaned: 5 temp files"
 
             assert "Session Ended" in summary
@@ -366,7 +366,7 @@ class TestSessionCompletion:
 
     def test_session_summary_includes_spec_info(self, config_file, hook_tmp_project):
         """Session summary includes SPEC information"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             specs = ["SPEC-001", "SPEC-002"]
             summary = f"   • Worked on: {', '.join(specs)}"
 
@@ -423,7 +423,7 @@ class TestSessionEndResponse:
 
     def test_response_structure(self, config_file, hook_tmp_project):
         """SessionEnd response has correct structure"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             response = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
@@ -439,7 +439,7 @@ class TestSessionEndResponse:
 
     def test_response_is_json_serializable(self, config_file, hook_tmp_project):
         """SessionEnd response is JSON serializable"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             response = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
@@ -461,7 +461,7 @@ class TestSessionEndIntegrationScenarios:
 
     def test_full_session_end_flow(self, config_file, git_repo_with_changes, session_state_file, hook_tmp_project):
         """Full SessionEnd flow executes successfully"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Verify all components exist
             assert config_file.exists()
             assert session_state_file.exists()
@@ -484,7 +484,7 @@ class TestSessionEndIntegrationScenarios:
 
     def test_session_end_with_no_changes(self, config_file, hook_tmp_project):
         """SessionEnd handles no changes gracefully"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             result = {
                 "hook": "session_end__auto_cleanup",
                 "success": True,
@@ -500,7 +500,7 @@ class TestSessionEndIntegrationScenarios:
 
     def test_session_end_error_handling(self, hook_tmp_project):
         """SessionEnd handles errors with graceful degradation"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             error_response = {
                 "hook": "session_end__auto_cleanup",
                 "success": False,

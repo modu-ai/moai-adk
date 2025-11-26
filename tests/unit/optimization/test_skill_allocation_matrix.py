@@ -141,7 +141,7 @@ class TestSkillAllocationIntegration:
         performance_results = []
         for _ in range(100):  # Test 100 allocations
             start_time = time.time()
-            result = matrix.optimize_allocation("backend", {"python": 0.9, "django": 0.8})
+            matrix.optimize_allocation("backend", {"python": 0.9, "django": 0.8})
             end_time = time.time()
             performance_results.append(end_time - start_time)
 

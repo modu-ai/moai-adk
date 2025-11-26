@@ -7,10 +7,10 @@ Tests validate file structure, Context7 integration, and content quality for:
 - TAG-005: Project Management Skills (5 skills)
 """
 
-import pytest
-from pathlib import Path
 import re
-from typing import List, Dict
+from pathlib import Path
+
+import pytest
 
 
 class TestSkillFileStructure:

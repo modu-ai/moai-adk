@@ -17,11 +17,8 @@ Target coverage: 90%+
 Test count: 100-150 tests
 """
 
-import ast
-import re
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -36,7 +33,6 @@ from src.moai_adk.foundation.trust.validation_checklist import (
     generate_checklist_report,
     validate_trust_checklists,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -703,7 +699,7 @@ def short_function2():
     def test_function_length_various_thresholds(self, validation_checklist, temp_project_dir):
         """Test function length with various thresholds."""
         content = "\n".join([f"# Line {i}" for i in range(30)])
-        content = f"def test():\n" + "\n".join([f"    # Line {i}" for i in range(25)])
+        content = "def test():\n" + "\n".join([f"    # Line {i}" for i in range(25)])
 
         (temp_project_dir / "src" / "module.py").write_text(content)
 
@@ -981,8 +977,7 @@ class TestChecklistItemExecution:
 
     def test_execute_checklist_item_updates_status(self, validation_checklist, temp_project_dir, sample_checklist_item):
         """Test that item status is updated after execution."""
-        initial_status = sample_checklist_item.status
-        result = validation_checklist._execute_checklist_item(str(temp_project_dir), sample_checklist_item)
+        validation_checklist._execute_checklist_item(str(temp_project_dir), sample_checklist_item)
 
         assert sample_checklist_item.status in [ChecklistStatus.PASS, ChecklistStatus.FAIL]
 

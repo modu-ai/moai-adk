@@ -15,20 +15,18 @@ Tests cover:
 """
 
 import json
-import os
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open
+from unittest.mock import patch
 
 import pytest
 
 try:
     from moai_adk.core.session_manager import (
         SessionManager,
+        get_resume_id,
         get_session_manager,
         register_agent,
-        get_resume_id,
         should_resume,
     )
 except ImportError:
@@ -73,7 +71,7 @@ class TestSessionManagerInitialization:
 
     def test_init_creates_default_directories(self, temp_project_dir):
         """Test that initialization creates default directories"""
-        manager = SessionManager(
+        SessionManager(
             session_file=temp_project_dir / ".moai" / "memory" / "agent-sessions.json",
             transcript_dir=temp_project_dir / ".moai" / "logs" / "agent-transcripts",
         )

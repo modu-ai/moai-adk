@@ -350,7 +350,7 @@ class TestUpdateConfig:
     def test_update_config_clears_cache(self, valid_config_file):
         """Update config clears cached config"""
         cm = ConfigManager(config_path=valid_config_file)
-        original = cm.load_config()
+        cm.load_config()
 
         cm.update_config({"new_key": "new_value"})
         updated = cm.load_config()
@@ -460,7 +460,7 @@ class TestMergeConfigs:
         base = {"a": 1}
         updates = {"b": 2}
 
-        result = cm._merge_configs(base, updates)
+        cm._merge_configs(base, updates)
 
         assert base == {"a": 1}
         assert "b" not in base
@@ -488,25 +488,25 @@ class TestGlobalFunctions:
 
     def test_get_config_function(self, valid_config_file):
         """Get config value via convenience function"""
-        cm = get_config_manager(config_path=valid_config_file)
+        get_config_manager(config_path=valid_config_file)
         value = get_config("hooks.timeout_seconds")
         assert value == 5
 
     def test_get_timeout_seconds_function(self, valid_config_file):
         """Get timeout seconds via convenience function"""
-        cm = get_config_manager(config_path=valid_config_file)
+        get_config_manager(config_path=valid_config_file)
         timeout = get_timeout_seconds("git")
         assert timeout == 2
 
     def test_get_graceful_degradation_function(self, valid_config_file):
         """Get graceful degradation via convenience function"""
-        cm = get_config_manager(config_path=valid_config_file)
+        get_config_manager(config_path=valid_config_file)
         graceful = get_graceful_degradation()
         assert graceful is True
 
     def test_get_exit_code_function(self, valid_config_file):
         """Get exit code via convenience function"""
-        cm = get_config_manager(config_path=valid_config_file)
+        get_config_manager(config_path=valid_config_file)
         code = get_exit_code("success")
         assert code == 0
 

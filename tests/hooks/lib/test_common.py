@@ -399,7 +399,7 @@ class TestCommonIntegration:
         values = [30, 60, 120, 180, 360, 3600, 7200]
 
         # Get stats
-        stats = get_summary_stats(values)
+        get_summary_stats(values)
 
         # Format each value as duration
         formatted_values = [format_duration(v) for v in values]

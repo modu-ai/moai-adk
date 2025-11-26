@@ -5,22 +5,19 @@ This file contains RED phase tests that should initially fail,
 then be implemented in the GREEN phase with testing.py classes.
 """
 
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-import sys
 import os
+import sys
+import unittest
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from moai_adk.foundation.testing import (
-    TestingFrameworkManager,
-    QualityGateEngine,
     CoverageAnalyzer,
+    QualityGateEngine,
     TestAutomationOrchestrator,
+    TestingFrameworkManager,
     TestReportingSpecialist,
-    TestDataManager,
-    TestingMetricsCollector,
 )
 
 

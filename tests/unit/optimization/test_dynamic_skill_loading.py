@@ -60,12 +60,12 @@ class TestDynamicSkillLoading:
 
             # Measure initial load time
             start_time = time.time()
-            result1 = loader.get_skill("frontend", "react")
+            loader.get_skill("frontend", "react")
             initial_load_time = time.time() - start_time
 
             # Measure cached load time
             start_time = time.time()
-            result2 = loader.get_skill("frontend", "react")
+            loader.get_skill("frontend", "react")
             cached_load_time = time.time() - start_time
 
             # Performance target: cached load should be at least 80% faster

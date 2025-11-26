@@ -318,7 +318,7 @@ class TestClaudeCLIIntegration:
         with patch.object(integration, "process_template_command") as mock_process:
             mock_process.return_value = {"success": True}
 
-            result = integration.execute_headless_command(
+            integration.execute_headless_command(
                 "Test command", {"VAR": "value"}, additional_options=["--timeout", "30", "--verbose"]
             )
 

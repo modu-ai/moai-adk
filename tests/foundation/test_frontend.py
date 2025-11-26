@@ -18,26 +18,23 @@ Target: 90%+ code coverage with production-ready quality
 Framework: React 19, Next.js 15, TypeScript 5.9+
 """
 
+from typing import Optional
+
 import pytest
-from datetime import datetime
-from typing import Dict, List, Any, Optional
-from unittest.mock import Mock, patch
-from dataclasses import asdict
 
 from src.moai_adk.foundation.frontend import (
+    AccessibilityValidator,
     ComponentArchitect,
     ComponentLevel,
-    StateManagementAdvisor,
-    StateManagementSolution,
-    AccessibilityValidator,
-    WCAGLevel,
-    PerformanceOptimizer,
     DesignSystemBuilder,
-    ResponsiveLayoutPlanner,
     FrontendMetricsCollector,
     PerformanceMetrics,
+    PerformanceOptimizer,
+    ResponsiveLayoutPlanner,
+    StateManagementAdvisor,
+    StateManagementSolution,
+    WCAGLevel,
 )
-
 
 # ============================================================================
 # FIXTURES - Reusable Test Data

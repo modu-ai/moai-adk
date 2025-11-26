@@ -1,9 +1,7 @@
 """Tests for checker module (SystemChecker)."""
 
-import platform
 import shutil
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

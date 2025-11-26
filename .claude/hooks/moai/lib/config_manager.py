@@ -6,7 +6,7 @@ Provides centralized configuration management with fallbacks and validation.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional
 
 from .path_utils import find_project_root
 

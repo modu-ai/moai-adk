@@ -461,7 +461,7 @@ class TestAutoResolveSafe:
                 capture_output=True,
                 check=True,
             )
-            detector = GitConflictDetector(repo_path)
+            GitConflictDetector(repo_path)
 
             conflicts = [
                 ConflictFile(
@@ -503,7 +503,7 @@ class TestAutoResolveSafe:
                 )
             ]
 
-            is_safe = all(
+            all(
                 c.path in [".gitignore", "CLAUDE.md", ".claude/settings.json"] and c.severity == ConflictSeverity.LOW
                 for c in conflicts
             )
@@ -521,7 +521,7 @@ class TestAutoResolveSafe:
                 capture_output=True,
                 check=True,
             )
-            detector = GitConflictDetector(repo_path)
+            GitConflictDetector(repo_path)
 
             conflicts = [
                 ConflictFile(

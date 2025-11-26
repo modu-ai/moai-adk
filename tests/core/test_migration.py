@@ -251,7 +251,7 @@ class TestVersionMigrator:
         migrator = VersionMigrator(mock_v023_project)
 
         # Create backup
-        backup_path = migrator.backup_manager.create_backup("before migration")
+        migrator.backup_manager.create_backup("before migration")
 
         # Modify project
         (mock_v023_project / ".moai" / "config.json").unlink()

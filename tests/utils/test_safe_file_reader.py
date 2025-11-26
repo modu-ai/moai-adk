@@ -13,18 +13,14 @@ This module provides 90%+ coverage for safe file reading functionality including
 
 import tempfile
 from pathlib import Path
-from typing import List
-from unittest.mock import MagicMock, Mock, patch, mock_open
-
-import pytest
+from unittest.mock import patch
 
 from moai_adk.utils.safe_file_reader import (
     SafeFileReader,
+    safe_glob_read,
     safe_read_file,
     safe_read_lines,
-    safe_glob_read,
 )
-
 
 # ============================================================================
 # SafeFileReader Initialization Tests
@@ -910,7 +906,6 @@ class TestEdgeCasesAndErrorHandling:
             reader = SafeFileReader()
 
             # Mock read_text to fail for some files
-            original_read_text = reader.read_text
 
             def mock_read_text(path):
                 if "good" in str(path):

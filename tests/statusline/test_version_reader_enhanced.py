@@ -4,12 +4,10 @@ Focus: Performance metrics, cache management, async operations, error recovery
 Target Coverage: 75.0% → 90.0% (+15%)
 """
 
-import asyncio
 import json
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 

@@ -3,10 +3,10 @@ PHASE 4: New Skills Creation and Auto-Trigger Logic Tests
 RED Phase - Tests for 5 new skills and auto-trigger implementation
 """
 
-import pytest
 import re
 from pathlib import Path
 
+import pytest
 
 # 5 Required new skills
 NEW_SKILLS = [
@@ -77,7 +77,7 @@ class TestNewSkillsModularization:
         not_modularized = []
 
         for skill in new_skills:
-            if skill.metadata.get("modularized") != True:
+            if not skill.metadata.get("modularized"):
                 not_modularized.append(skill.name)
 
         assert len(not_modularized) == 0, f"New skills not modularized: {not_modularized}"
@@ -147,7 +147,7 @@ class TestAutoTriggerLogic:
         claude_md = Path("/Users/goos/MoAI/MoAI-ADK/CLAUDE.md")
         if claude_md.exists():
             content = claude_md.read_text()
-            has_section = "Auto-Trigger" in content or "auto-trigger" in content.lower()
+            "Auto-Trigger" in content or "auto-trigger" in content.lower()
             # In RED phase, this will fail
             # assert has_section, "No Auto-Trigger section in CLAUDE.md"
 
@@ -157,7 +157,7 @@ class TestAutoTriggerLogic:
         if claude_md.exists():
             content = claude_md.read_text()
             # Look for keyword mapping table
-            has_mappings = "keyword" in content.lower() and "skill" in content.lower()
+            "keyword" in content.lower() and "skill" in content.lower()
             # assert has_mappings, "No keyword mappings in CLAUDE.md"
 
     def test_all_skills_have_auto_trigger_keywords(self, all_skills):
@@ -208,7 +208,7 @@ class TestCLAUDEMdVersion:
         if claude_md.exists():
             content = claude_md.read_text()
             # Check for version pattern
-            has_version = re.search(r"[Vv]ersion.*?2\.[0-9]+\.[0-9]+", content)
+            re.search(r"[Vv]ersion.*?2\.[0-9]+\.[0-9]+", content)
             # assert has_version, "CLAUDE.md version not updated"
 
 
@@ -225,6 +225,6 @@ class TestAgentSkillCoverageImproved:
             coverage = skill.metadata.get("agent_coverage", [])
             agents_with_skills.update(coverage)
 
-        coverage_percentage = len(agents_with_skills) / agents_count
+        len(agents_with_skills) / agents_count
         # In GREEN phase, should meet this
         # assert coverage_percentage >= 0.85, f"Coverage: {coverage_percentage:.2%}"

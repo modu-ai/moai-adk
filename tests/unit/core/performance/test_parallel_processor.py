@@ -115,7 +115,7 @@ class TestParallelProcessor:
             return {"id": task_id, "status": "completed"}
 
         tasks = [lambda: sample_task(i) for i in range(3)]
-        result = asyncio.run(processor.process_tasks(tasks, progress_callback))
+        asyncio.run(processor.process_tasks(tasks, progress_callback))
 
         # Check that progress was called
         assert len(progress_calls) > 0

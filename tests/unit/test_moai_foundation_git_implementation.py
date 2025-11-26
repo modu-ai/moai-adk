@@ -2,9 +2,8 @@
 RED Phase Tests for moai-foundation-git skill - Git workflow management.
 """
 
-import pytest
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 @dataclass

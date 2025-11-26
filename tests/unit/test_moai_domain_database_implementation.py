@@ -25,10 +25,8 @@ Created: 2025-11-24
 Status: RED Phase (All tests failing)
 """
 
-import pytest
-from typing import Dict, List, Any
-from decimal import Decimal
 
+import pytest
 
 # ============================================================================
 # Test Class 1: Schema Normalization (4 tests)

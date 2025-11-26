@@ -200,7 +200,7 @@ def test_implemented_function():
         """Test updating SPEC status from draft to completed"""
         # Read initial content
         with open(sample_draft_spec, "r") as f:
-            initial_content = f.read()
+            f.read()
 
         # Update status
         success = spec_status_manager.update_spec_status("SPEC-TEST-001", "completed")

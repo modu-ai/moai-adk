@@ -5,11 +5,10 @@ Tests for: moai-specialized-context7, moai-specialized-playwright,
            moai-specialized-docs
 """
 
-import pytest
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
-from enum import Enum
+from typing import Dict, List, Optional
 
+import pytest
 
 # ========================= CONTEXT7 TESTS =========================
 

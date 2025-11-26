@@ -274,8 +274,8 @@ class TestEnhancedUserHandler:
 
         with (
             patch("shared.handlers.user.get_enhanced_jit_context") as mock_context,
-            patch("builtins.open", create=True) as mock_open,
-            patch("pathlib.Path.mkdir") as mock_mkdir,
+            patch("builtins.open", create=True),
+            patch("pathlib.Path.mkdir"),
         ):
 
             # Mock enhanced context with agent delegation

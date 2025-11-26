@@ -111,7 +111,7 @@ class TestPhaseDetector:
         assert isinstance(spec_config, PhaseConfig)
         assert spec_config.max_tokens == 30000
         assert len(spec_config.essential_skills) > 0
-        assert spec_config.cache_clear_on_phase_change == True
+        assert spec_config.cache_clear_on_phase_change
 
         green_config = detector.get_phase_config(Phase.GREEN)
         assert green_config.max_tokens == 25000
@@ -229,12 +229,12 @@ class TestTokenBudgetManager:
 
         # Test within budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 25000)
-        assert within_budget == True
+        assert within_budget
         assert remaining == 5000
 
         # Test over budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 35000)
-        assert within_budget == False
+        assert not within_budget
         assert remaining == 30000
 
     def test_record_usage(self):
@@ -438,11 +438,11 @@ class TestJITContextLoader:
 
         # First load (cache miss)
         context_data1, metrics1 = await jit_loader.load_context(user_input, context=context)
-        assert metrics1.cache_hit == False
+        assert not metrics1.cache_hit
 
         # Second load (cache hit)
         context_data2, metrics2 = await jit_loader.load_context(user_input, context=context)
-        assert metrics2.cache_hit == True
+        assert metrics2.cache_hit
         assert metrics2.load_time < metrics1.load_time  # Should be faster
 
         # Content should be identical
@@ -547,7 +547,7 @@ class TestIntegration:
 
         # Test system initialization
         result = initialize_jit_system()
-        assert result == True
+        assert result
 
     @pytest.mark.asyncio
     async def test_performance_benchmarks(self):
@@ -613,12 +613,12 @@ class TestErrorHandling:
 
         # Test zero budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 0)
-        assert within_budget == True
+        assert within_budget
         assert remaining == 30000
 
         # Test extremely large budget
         within_budget, remaining = manager.check_budget(Phase.SPEC, 1000000)
-        assert within_budget == False
+        assert not within_budget
 
     def test_cache_memory_limits(self):
         """Test cache memory limit enforcement"""

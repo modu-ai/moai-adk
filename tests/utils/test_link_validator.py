@@ -11,24 +11,20 @@ This module provides 90%+ coverage for all link validation functionality includi
 """
 
 import asyncio
-import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
-from typing import List
+from unittest.mock import MagicMock, patch
 
 import pytest
-import aiohttp
 
+from moai_adk.utils.common import HTTPResponse
 from moai_adk.utils.link_validator import (
     LinkResult,
-    ValidationResult,
     LinkValidator,
+    ValidationResult,
     validate_readme_links,
 )
-from moai_adk.utils.common import HTTPResponse
-
 
 # ============================================================================
 # LinkResult Tests
@@ -725,7 +721,7 @@ class TestLinkValidatorValidateAllLinks:
             )
 
             with patch("moai_adk.utils.link_validator.logger") as mock_logger:
-                result = await validator.validate_all_links(links)
+                await validator.validate_all_links(links)
 
                 # Check logger was called during validation
                 assert mock_logger.info.called
@@ -805,7 +801,7 @@ class TestLinkValidatorGenerateReport:
                 status_code=404,
                 is_valid=False,
                 response_time=0.1,
-                error_message=f"Not found",
+                error_message="Not found",
             )
             for i in range(2)
         ]
@@ -974,7 +970,7 @@ class TestValidateReadmeLinks:
                     total_links=0, valid_links=0, invalid_links=0, results=[]
                 )
 
-                result = validate_readme_links()
+                validate_readme_links()
 
                 # Should be called with default path
                 assert mock_validator.extract_links_from_file.called
@@ -993,7 +989,7 @@ class TestValidateReadmeLinks:
                     total_links=0, valid_links=0, invalid_links=0, results=[]
                 )
 
-                result = validate_readme_links(custom_path)
+                validate_readme_links(custom_path)
 
                 mock_validator.extract_links_from_file.assert_called_with(custom_path)
 
@@ -1040,7 +1036,7 @@ class TestValidateReadmeLinks:
                 mock_path = MagicMock()
                 mock_create_path.return_value = mock_path
 
-                result = validate_readme_links()
+                validate_readme_links()
 
                 # Verify validate_all_links was called
                 assert mock_validator.validate_all_links.called
@@ -1069,7 +1065,7 @@ class TestValidateReadmeLinks:
                     mock_path = MagicMock()
                     mock_create_path.return_value = mock_path
 
-                    result = validate_readme_links()
+                    validate_readme_links()
 
                     mock_validator.generate_report.assert_called_once_with(expected_result)
 
@@ -1098,7 +1094,7 @@ class TestValidateReadmeLinks:
                     mock_path = MagicMock()
                     mock_create_path.return_value = mock_path
 
-                    result = validate_readme_links()
+                    validate_readme_links()
 
                     mock_path.write_text.assert_called_once()
 
@@ -1128,7 +1124,7 @@ class TestValidateReadmeLinks:
                     mock_create_path.return_value = mock_path
 
                     with patch("moai_adk.utils.link_validator.logger") as mock_logger:
-                        result = validate_readme_links()
+                        validate_readme_links()
 
                         mock_logger.info.assert_called()
 

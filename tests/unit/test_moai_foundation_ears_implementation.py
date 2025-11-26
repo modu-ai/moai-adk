@@ -12,9 +12,8 @@ Tests cover:
 7. Complete validation workflow
 """
 
+
 import pytest
-from typing import List, Dict, Any
-import re
 
 
 # ===== FIXTURES =====
@@ -261,7 +260,7 @@ class TestEARSValidationRules:
         result = ears_validator.validate(requirement)
 
         assert result is not None
-        assert result.get("is_valid") == True
+        assert result.get("is_valid")
         assert len(result.get("errors", [])) == 0
 
     def test_validate_incomplete_requirement(self, ears_validator):
@@ -277,7 +276,7 @@ class TestEARSValidationRules:
 
         result = ears_validator.validate(requirement)
 
-        assert result.get("is_valid") == False
+        assert not result.get("is_valid")
         errors = result.get("errors", [])
         missing = result.get("missing_elements", [])
         # Should identify missing 'When' clause
@@ -342,7 +341,7 @@ class TestEARSCompleteWorkflow:
 
         # Step 2: Validate
         validated = ears_validator.validate(requirement)
-        assert validated["is_valid"] == True
+        assert validated["is_valid"]
 
         # Step 3: Generate tests
         tests = ears_analyzer.generate_test_cases(requirement)
@@ -408,7 +407,7 @@ class TestEARSErrorHandling:
 
         result = ears_validator.validate(ambiguous)
 
-        assert result.get("is_valid") == False
+        assert not result.get("is_valid")
         # Should provide suggestions
         suggestions = result.get("suggestions", [])
         errors = result.get("errors", [])
@@ -438,7 +437,7 @@ class TestEARSIntegration:
         validated = ears_validator.validate(requirement)
 
         assert parsed is not None
-        assert validated.get("is_valid") == True
+        assert validated.get("is_valid")
 
     def test_real_world_business_requirement(self, ears_parser, ears_validator):
         """Test real-world business requirement."""
@@ -459,4 +458,4 @@ class TestEARSIntegration:
 
         assert parsed is not None
         assert parsed["pattern_type"] == "scenario"
-        assert validated.get("is_valid") == True
+        assert validated.get("is_valid")

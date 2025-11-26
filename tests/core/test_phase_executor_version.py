@@ -135,7 +135,7 @@ class TestPhaseExecutorVersion:
         new_config = {"moai": {"version": "1.0.0-template", "update_check_frequency": "daily"}}
 
         # Execute phase 4
-        result = executor.execute_configuration_phase(tmp_path, new_config)
+        executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
         actual_config_path = tmp_path / ".moai" / "config" / "config.json"
@@ -177,7 +177,7 @@ class TestPhaseExecutorVersion:
         new_config = {"project": {"name": "MyCustomProject", "locale": "en"}}  # Same name, should not overwrite
 
         # Execute phase 4 (simulating reinitialization)
-        result = executor.execute_configuration_phase(tmp_path, new_config)
+        executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
         actual_config_path = tmp_path / ".moai" / "config" / "config.json"
@@ -221,7 +221,7 @@ class TestPhaseExecutorVersion:
         new_config = {"project": {"name": "TestProject"}}
 
         # Execute phase 4
-        result = executor.execute_configuration_phase(tmp_path, new_config)
+        executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
         with open(config_path, "r", encoding="utf-8") as f:
@@ -259,7 +259,7 @@ class TestPhaseExecutorVersion:
         new_config = {"project": {"name": "TestProject", "mode": "team"}}
 
         # Execute phase 4
-        result = executor.execute_configuration_phase(tmp_path, new_config)
+        executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
         with open(config_path, "r", encoding="utf-8") as f:
@@ -305,7 +305,7 @@ class TestPhaseExecutorVersion:
         }
 
         # Execute phase 4
-        result = executor.execute_configuration_phase(tmp_path, new_config)
+        executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
         actual_config_path = tmp_path / ".moai" / "config" / "config.json"
@@ -357,7 +357,7 @@ class TestPhaseExecutorVersion:
                 new_config = {"project": {"name": "TestProject"}}
 
                 # Execute phase 4
-                result = executor.execute_configuration_phase(tmp_path, new_config)
+                executor.execute_configuration_phase(tmp_path, new_config)
 
                 # Read and verify final config
                 with open(config_path, "r", encoding="utf-8") as f:
@@ -399,7 +399,7 @@ class TestPhaseExecutorVersion:
                 new_config = {"project": {"name": "TestProject"}}
 
                 # Execute phase 4
-                result = executor.execute_configuration_phase(tmp_path, new_config)
+                executor.execute_configuration_phase(tmp_path, new_config)
 
                 # Read and verify final config
                 with open(config_path, "r", encoding="utf-8") as f:

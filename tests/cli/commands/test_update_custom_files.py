@@ -12,11 +12,7 @@ Test Coverage Strategy:
 4. Integration into template sync workflow
 """
 
-import json
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 
 class TestDetectCustomCommands:

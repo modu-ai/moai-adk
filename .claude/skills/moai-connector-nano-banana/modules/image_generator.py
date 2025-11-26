@@ -265,7 +265,7 @@ class NanoBananaImageGenerator:
 
         from PIL import Image
 
-        original_image = Image.open(image_path)
+        Image.open(image_path)
         original_path = str(Path(image_path).resolve())
 
         print(f"\n{'='*70}")

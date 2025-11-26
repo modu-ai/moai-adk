@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from moai_adk.cli.prompts.init_prompts import ProjectSetupAnswers, prompt_project_setup
+from moai_adk.cli.prompts.init_prompts import prompt_project_setup
 
 
 class TestProjectNameHandling:

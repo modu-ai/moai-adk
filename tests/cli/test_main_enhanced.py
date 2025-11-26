@@ -58,8 +58,9 @@ class TestMainModuleImports:
 
     def test_cli_is_click_command(self):
         """Test that cli is a proper Click command/group."""
-        from moai_adk.cli.main import cli
         import click
+
+        from moai_adk.cli.main import cli
 
         # Check if it's a Click command (has click.Command attributes)
         assert hasattr(cli, "invoke")
@@ -125,7 +126,6 @@ class TestShowLogoIntegration:
     def test_show_logo_displays_version(self, capsys):
         """Test that show_logo displays version information."""
         from moai_adk.cli.main import show_logo
-        from moai_adk import __version__
 
         show_logo()
         captured = capsys.readouterr()
@@ -141,16 +141,16 @@ class TestModuleReExports:
 
     def test_cli_matches_main_module_cli(self):
         """Test that re-exported cli matches the original from __main__."""
-        from moai_adk.cli.main import cli as main_cli
         from moai_adk.__main__ import cli as original_cli
+        from moai_adk.cli.main import cli as main_cli
 
         # Should be the same function object
         assert main_cli is original_cli
 
     def test_show_logo_matches_main_module_show_logo(self):
         """Test that re-exported show_logo matches the original from __main__."""
-        from moai_adk.cli.main import show_logo as main_show_logo
         from moai_adk.__main__ import show_logo as original_show_logo
+        from moai_adk.cli.main import show_logo as main_show_logo
 
         # Should be the same function object
         assert main_show_logo is original_show_logo
@@ -171,7 +171,6 @@ class TestErrorHandling:
     def test_import_star_includes_expected_symbols(self):
         """Test that 'from moai_adk.cli.main import *' works correctly."""
         # This tests the __all__ list behavior
-        import sys
         from importlib import import_module
 
         # Import the module

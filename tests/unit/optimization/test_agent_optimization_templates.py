@@ -87,7 +87,7 @@ class TestAgentOptimizationTemplates:
 
         # Apply template multiple times (should use caching)
         for i in range(10):
-            result = registry.apply_template("frontend-expert", {"project_type": "web"})
+            registry.apply_template("frontend-expert", {"project_type": "web"})
 
         end_time = __import__("time").time()
         avg_time = (end_time - start_time) / 10
@@ -171,11 +171,11 @@ class TestAgentOptimizationTemplates:
             mock_load.return_value = {"name": "test", "config": {"test": "data"}}
 
             # First access loads from source
-            result1 = registry.get_template("test-template")
+            registry.get_template("test-template")
             assert mock_load.call_count == 1
 
             # Second access uses cache
-            result2 = registry.get_template("test-template")
+            registry.get_template("test-template")
             assert mock_load.call_count == 1  # No additional load
 
 
@@ -232,7 +232,7 @@ class TestTemplateIntegration:
 
         for i in range(100):
             start_time = time.time()
-            result = registry.apply_template("backend-expert", {"test": i})
+            registry.apply_template("backend-expert", {"test": i})
             end_time = time.time()
             performance_results.append(end_time - start_time)
 
@@ -267,7 +267,7 @@ class TestTemplateQuality:
 
         # Test graceful error handling
         try:
-            result = registry.apply_template("invalid-template", {})
+            registry.apply_template("invalid-template", {})
             assert False, "Should have raised an error"
         except Exception:
             # Exception should be raised with proper message

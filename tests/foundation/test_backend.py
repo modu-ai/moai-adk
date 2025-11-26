@@ -10,30 +10,23 @@ Classes: 7 main classes, 2 data classes
 Lines: 998 total
 """
 
-import pytest
 import asyncio
-import json
-import base64
-import hmac
-import hashlib
-from datetime import datetime, timedelta
-from typing import Any, Dict, List
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from dataclasses import asdict
+from unittest.mock import patch
+
+import pytest
 
 from src.moai_adk.foundation.backend import (
-    HTTPMethod,
     APIDesignValidator,
-    MicroserviceArchitect,
     AsyncPatternAdvisor,
     AuthenticationManager,
-    ErrorLog,
+    BackendMetricsCollector,
     ErrorHandlingStrategy,
+    ErrorLog,
+    HTTPMethod,
+    MicroserviceArchitect,
     PerformanceOptimizer,
     RequestMetric,
-    BackendMetricsCollector,
 )
-
 
 # ============================================================================
 # HTTPMethod Enum Tests

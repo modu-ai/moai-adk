@@ -15,13 +15,12 @@ This test suite targets all uncovered lines in doctor.py:
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.doctor import (
-    _check_slash_commands,
     _check_specific_tool,
     _display_language_tools,
     _export_diagnostics,

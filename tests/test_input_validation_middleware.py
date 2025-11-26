@@ -266,7 +266,7 @@ class TestEnhancedInputValidationMiddleware(unittest.TestCase):
         times = []
         for _ in range(100):
             start_time = time.time()
-            result = self.middleware.validate_and_normalize_input("Grep", input_data)
+            self.middleware.validate_and_normalize_input("Grep", input_data)
             times.append(time.time() - start_time)
 
         avg_time = sum(times) / len(times) * 1000
@@ -503,7 +503,7 @@ def run_performance_benchmark():
         times = []
         for _ in range(1000):
             start = time.time()
-            result = middleware.validate_and_normalize_input("Grep", input_data)
+            middleware.validate_and_normalize_input("Grep", input_data)
             times.append(time.time() - start)
 
         avg_time = sum(times) / len(times) * 1000

@@ -278,14 +278,14 @@ class TestJITEnhancedHookManager:
         """Test parallel safety determination"""
         # Test non-parallel safe hooks
         write_metadata = hook_manager._is_parallel_safe("file_writer_hook.py")
-        assert write_metadata == False
+        assert not write_metadata
 
         modify_metadata = hook_manager._is_parallel_safe("config_modifier.py")
-        assert modify_metadata == False
+        assert not modify_metadata
 
         # Test parallel safe hooks
         read_metadata = hook_manager._is_parallel_safe("info_reader.py")
-        assert read_metadata == True
+        assert read_metadata
 
     @pytest.mark.asyncio
     async def test_hook_execution_success(self, hook_manager, sample_context):

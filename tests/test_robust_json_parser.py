@@ -456,7 +456,7 @@ def run_performance_benchmark():
         times = []
         for _ in range(100):  # Run 100 times
             start_time = time.time()
-            result = parser.parse(test_json)
+            parser.parse(test_json)
             times.append(time.time() - start_time)
 
         avg_time = sum(times) / len(times) * 1000  # Convert to ms

@@ -3,10 +3,10 @@ RED Phase Tests: Security Skills Modularization
 Tests for SPEC-04-GROUP-E: Security Skills Structure and Context7 Integration
 """
 
-import pytest
-import os
 import re
 from pathlib import Path
+
+import pytest
 
 
 class TestSecuritySkillsStructure:
@@ -132,7 +132,7 @@ class TestSecuritySkillsStructure:
         # Check for YAML frontmatter or metadata
         lines = content.split("\n")
         has_name_meta = any("name:" in line.lower() for line in lines[:20])
-        has_version = any("version" in line.lower() for line in lines[:20])
+        any("version" in line.lower() for line in lines[:20])
 
         assert has_name_meta, f"{skill_name} SKILL.md missing name metadata"
         assert "2025" in content, f"{skill_name} SKILL.md missing 2025 version reference"

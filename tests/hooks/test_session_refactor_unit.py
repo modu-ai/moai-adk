@@ -57,7 +57,7 @@ class TestStateCleanup:
 
     def test_get_graceful_degradation_default(self):
         """Should return True (default) when graceful_degradation not set"""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             # Expected: returns True
             assert True  # Placeholder
 
@@ -76,7 +76,7 @@ class TestStateCleanup:
 
     def test_load_config_empty_when_missing(self):
         """Should return empty dict when config.json missing"""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             # Expected: returns {}
             assert True  # Placeholder
 
@@ -87,13 +87,13 @@ class TestStateCleanup:
 
     def test_should_cleanup_today_recent(self):
         """Should return False when cleanup done today"""
-        today = datetime.now().strftime("%Y-%m-%d")
+        datetime.now().strftime("%Y-%m-%d")
         # Expected: False
         assert True  # Placeholder
 
     def test_should_cleanup_today_expired(self):
         """Should return True when cleanup interval expired"""
-        past = (datetime.now() - timedelta(days=8)).strftime("%Y-%m-%d")
+        (datetime.now() - timedelta(days=8)).strftime("%Y-%m-%d")
         # Expected: True
         assert True  # Placeholder
 
@@ -113,7 +113,6 @@ class TestCoreCleanup:
 
     def test_cleanup_old_files_disabled(self):
         """Should return empty stats when cleanup disabled"""
-        config = {"auto_cleanup": {"enabled": False}}
         # Expected: returns {"total_cleaned": 0, ...}
         assert True  # Placeholder
 
@@ -129,10 +128,9 @@ class TestCoreCleanup:
             old_report.touch()
 
             # Modify timestamp to 8 days ago
-            past_time = (datetime.now() - timedelta(days=8)).timestamp()
+            (datetime.now() - timedelta(days=8)).timestamp()
             Path(old_report).touch()
 
-            config = {"auto_cleanup": {"enabled": True, "cleanup_days": 7, "max_reports": 10}}
 
             # Expected: reports_cleaned >= 1
             assert True  # Placeholder
@@ -198,7 +196,6 @@ class TestCoreCleanup:
             stats_dir = Path(tmpdir) / ".moai" / "cache"
             stats_dir.mkdir(parents=True, exist_ok=True)
 
-            stats = {"total_cleaned": 5, "reports_cleaned": 2, "cache_cleaned": 2, "temp_cleaned": 1}
 
             # Expected: creates cleanup_stats.json
             assert True  # Placeholder
@@ -212,7 +209,6 @@ class TestCoreCleanup:
             stats_file = stats_dir / "cleanup_stats.json"
             stats_file.write_text(json.dumps({"2025-11-01": {"cleaned_files": 3}}))
 
-            new_stats = {"total_cleaned": 5, "reports_cleaned": 2, "cache_cleaned": 2, "temp_cleaned": 1}
 
             # Expected: file now has 2 dates
             assert True  # Placeholder
@@ -231,7 +227,6 @@ class TestCoreCleanup:
 
             stats_file.write_text(json.dumps(old_stats))
 
-            new_stats = {"total_cleaned": 1, "reports_cleaned": 0, "cache_cleaned": 1, "temp_cleaned": 0}
 
             # Expected: only 30 most recent dates retained
             assert True  # Placeholder
@@ -247,7 +242,6 @@ class TestAnalysisReport:
 
     def test_generate_daily_analysis_disabled(self):
         """Should return None when daily_analysis disabled"""
-        config = {"daily_analysis": {"enabled": False}}
         # Expected: returns None
         assert True  # Placeholder
 
@@ -257,14 +251,14 @@ class TestAnalysisReport:
             reports_dir = Path(tmpdir) / ".moai" / "reports"
             reports_dir.mkdir(parents=True, exist_ok=True)
 
-            config = {"daily_analysis": {"enabled": True, "report_location": str(reports_dir)}}
+            {"daily_analysis": {"enabled": True, "report_location": str(reports_dir)}}
 
             # Expected: returns path to created report
             assert True  # Placeholder
 
     def test_analyze_session_logs_no_logs(self):
         """Should return None when no session logs found"""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             # Expected: returns None
             assert True  # Placeholder
 
@@ -284,13 +278,6 @@ class TestAnalysisReport:
 
     def test_format_analysis_report_structure(self):
         """Should format report with required sections"""
-        analysis_data = {
-            "total_sessions": 5,
-            "date_range": "2025-11-14 ~ 2025-11-19",
-            "tools_used": {"Read": 10, "Bash": 5},
-            "errors_found": [],
-            "duration_stats": {"mean": 300, "min": 100, "max": 600, "std": 150},
-        }
 
         # Expected: report contains all sections
         # - 일일 세션 분석 보고서
@@ -302,13 +289,6 @@ class TestAnalysisReport:
 
     def test_format_analysis_report_no_tools(self):
         """Should handle case with no tools used"""
-        analysis_data = {
-            "total_sessions": 0,
-            "date_range": "",
-            "tools_used": {},
-            "errors_found": [],
-            "duration_stats": {},
-        }
 
         # Expected: report still valid
         assert True  # Placeholder
@@ -441,8 +421,7 @@ class TestOrchestrator:
 
     def test_execute_cleanup_sequence_calls_all_handlers(self):
         """Should call cleanup, analysis, and stats functions"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = {"auto_cleanup": {"enabled": True, "cleanup_days": 7}, "daily_analysis": {"enabled": True}}
+        with tempfile.TemporaryDirectory():
 
             # Expected: all functions called in sequence
             assert True  # Placeholder
@@ -459,7 +438,7 @@ class TestOrchestrator:
 
     def test_format_hook_result_success(self):
         """Should format success result correctly"""
-        result = {
+        {
             "hook": "session_start__auto_cleanup",
             "success": True,
             "execution_time_seconds": 0.023,
@@ -473,7 +452,7 @@ class TestOrchestrator:
 
     def test_format_hook_result_error(self):
         """Should format error result correctly"""
-        result = {
+        {
             "hook": "session_start__auto_cleanup",
             "success": False,
             "error": "Timeout occurred",

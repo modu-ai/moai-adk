@@ -3,12 +3,11 @@ Test suite for consolidated language skills: Python, TypeScript, Go, Rust, JVM, 
 Tests metadata compliance and consolidation patterns.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import Dict, List
-import yaml
 
+import pytest
+import yaml
 
 # ===== LANGUAGE SKILL NAMES (CONSOLIDATED) =====
 LANGUAGE_SKILLS_TO_TEST = [
@@ -149,7 +148,7 @@ class TestConsolidation:
         if language_skill_name in consolidation_expected:
             description = skill_metadata.get("description", "").lower()
             # Should mention consolidation or component languages
-            has_consolidation = any(lang in description for lang in consolidation_expected[language_skill_name])
+            any(lang in description for lang in consolidation_expected[language_skill_name])
             # Might not always be explicit, but description should exist
             assert len(description) > 0, "Consolidated skill needs description"
 

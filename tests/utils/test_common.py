@@ -13,31 +13,28 @@ This module provides 90%+ coverage for all utility functions including:
 
 import asyncio
 import json
-import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from typing import Dict, List
+from unittest.mock import AsyncMock, patch
 
-import pytest
 import aiohttp
+import pytest
 
 from moai_adk.utils.common import (
-    HTTPResponse,
     HTTPClient,
-    extract_links_from_text,
-    is_valid_url,
-    create_report_path,
-    format_duration,
-    calculate_score,
-    get_summary_stats,
+    HTTPResponse,
     RateLimiter,
     RateLimitError,
-    load_hook_timeout,
+    calculate_score,
+    create_report_path,
+    extract_links_from_text,
+    format_duration,
     get_graceful_degradation,
+    get_summary_stats,
+    is_valid_url,
+    load_hook_timeout,
 )
-
 
 # ============================================================================
 # HTTPResponse Tests
@@ -887,7 +884,7 @@ class TestLoadHookTimeout:
         config = {"other": "data"}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True) as mock_open:
+            with patch("builtins.open", create=True):
                 with patch("json.load", return_value=config):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
@@ -897,7 +894,7 @@ class TestLoadHookTimeout:
         config = {"hooks": {"other": "value"}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True) as mock_open:
+            with patch("builtins.open", create=True):
                 with patch("json.load", return_value=config):
                     timeout = load_hook_timeout()
                     assert timeout == 5000

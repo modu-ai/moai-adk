@@ -3,8 +3,6 @@ PHASE 3: Documentation and File Quality Tests
 RED Phase - Tests for modularization and document quality
 """
 
-import pytest
-from pathlib import Path
 
 
 class TestSkillFileSize:
@@ -51,7 +49,7 @@ class TestModularizationStatus:
         """If modularized=true, modules/ directory should exist"""
         missing_modules = []
         for skill in all_skills:
-            if skill.metadata.get("modularized") == True:
+            if skill.metadata.get("modularized"):
                 modules_dir = skill.path / "modules"
                 if not modules_dir.exists():
                     missing_modules.append(skill.name)
@@ -123,7 +121,7 @@ class TestDocumentationStructure:
         """Modularized skills should have examples.md"""
         missing_examples = []
         for skill in all_skills:
-            if skill.metadata.get("modularized") == True:
+            if skill.metadata.get("modularized"):
                 examples_path = skill.path / "examples.md"
                 if not examples_path.exists():
                     missing_examples.append(skill.name)

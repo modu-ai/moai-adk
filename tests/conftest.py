@@ -1,14 +1,12 @@
 """Pytest configuration and fixtures for SPEC-SKILL-PORTFOLIO-OPT-001."""
 
-import os
-import sys
-import json
-import yaml
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-import pytest
 
+import pytest
+import yaml
 
 # ===== CRITICAL: Add paths to sys.path for test imports =====
 PROJECT_ROOT = Path(__file__).parent.parent

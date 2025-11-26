@@ -3,12 +3,11 @@ Test suite for quality skills: testing, security, performance, review, debug, re
 Tests metadata compliance, quality-specific patterns, and integration.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import Dict, List
-import yaml
 
+import pytest
+import yaml
 
 # ===== QUALITY SKILL NAMES =====
 QUALITY_SKILLS_TO_TEST = [
@@ -225,7 +224,7 @@ class TestFileStructure:
         """If modularized=true, verify modules directory and references exist."""
         if skill_metadata.get("modularized"):
             modules_dir = skill_path / "modules"
-            assert modules_dir.exists(), f"Modularized skill missing modules/ directory"
+            assert modules_dir.exists(), "Modularized skill missing modules/ directory"
 
             modules = skill_metadata.get("modules", [])
             assert len(modules) > 0, "Modularized skill must list modules in metadata"
@@ -241,14 +240,14 @@ class TestContentQuality:
         # Should mention consolidation or what it covers
         assert (
             "consolidat" in description.lower() or "compre" in description.lower()
-        ), f"Description should explain what skill consolidates"
+        ), "Description should explain what skill consolidates"
 
     def test_quick_reference_not_too_long(self, skill_content):
         """Verify Quick Reference is reasonable length (<500 chars)."""
         # Extract Quick Reference section
         if "Quick Reference" in skill_content:
             start = skill_content.find("Quick Reference")
-            section = skill_content[start : start + 2000]  # Get next 2000 chars
+            skill_content[start : start + 2000]  # Get next 2000 chars
             # This is a soft check - just ensure content is reasonable
 
     def test_patterns_have_code_examples(self, skill_content):
@@ -264,11 +263,9 @@ class TestContentQuality:
     def test_has_context7_integration(self, skill_content):
         """Verify skill mentions Context7 integration if applicable."""
         # Check if skill has Context7 references (optional but preferred)
-        has_context7 = "Context7" in skill_content or "context7" in skill_content
 
     def test_has_related_skills_section(self, skill_content):
         """Verify skill mentions related skills."""
-        has_related = "Related Skills" in skill_content or "related skills" in skill_content
         # Not required but good practice
 
 
@@ -313,7 +310,7 @@ class TestIntegrationCompleteness:
         """Verify quality skill depends on foundation skills."""
         dependencies = skill_metadata.get("dependencies", [])
         # Quality skills typically depend on foundation skills
-        has_foundation = any("foundation" in dep for dep in dependencies)
+        any("foundation" in dep for dep in dependencies)
         # Not strictly required but good practice
 
     def test_category_tier_is_3_for_quality(self, skill_metadata):

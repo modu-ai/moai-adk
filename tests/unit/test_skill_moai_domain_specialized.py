@@ -3,12 +3,11 @@ Test suite for specialized domain skills: cli-tool, mobile, iot, figma, notion, 
 Tests domain-specific patterns and integration completeness.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import List
-import yaml
 
+import pytest
+import yaml
 
 # ===== SPECIALIZED DOMAIN SKILL NAMES =====
 SPECIALIZED_SKILLS_TO_TEST = [
@@ -138,7 +137,7 @@ class TestSpecializedMetadata:
     def test_description_mentions_domain(self, specialized_skill_name, skill_metadata):
         """Verify description mentions the domain."""
         desc = skill_metadata.get("description", "").lower()
-        skill_type = specialized_skill_name.split("-")[-1]  # e.g., 'cli-tool' -> 'tool'
+        specialized_skill_name.split("-")[-1]  # e.g., 'cli-tool' -> 'tool'
 
         # Description should relate to the domain
         assert len(desc) > 15, f"Description too short: {len(desc)} chars"

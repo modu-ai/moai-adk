@@ -20,20 +20,21 @@ Coverage Focus:
 """
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, mock_open, call
+from unittest.mock import Mock, patch
 
 import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.language import (
-    language,
-    list as list_command,
+    execute,
     info,
+    language,
     render_template,
     translate_descriptions,
-    execute,
     validate_config,
+)
+from moai_adk.cli.commands.language import (
+    list as list_command,
 )
 
 
@@ -315,7 +316,7 @@ class TestRenderTemplateCommand:
         variables_file = tmp_path / "vars.json"
         variables_file.write_text("invalid json{")
 
-        result = runner.invoke(render_template, [str(template_file), str(variables_file)])
+        runner.invoke(render_template, [str(template_file), str(variables_file)])
 
         # Should catch JSON decode error
         error_printed = False
@@ -338,7 +339,7 @@ class TestRenderTemplateCommand:
         mock_engine_instance.render_file.side_effect = Exception("Template syntax error")
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(render_template, [str(template_file), str(variables_file)])
+        runner.invoke(render_template, [str(template_file), str(variables_file)])
 
         # Should catch and display rendering error
         error_printed = False
@@ -433,7 +434,7 @@ class TestTranslateDescriptionsCommand:
         mock_integration_instance.generate_multilingual_descriptions.side_effect = Exception("API error")
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(translate_descriptions, ["Test description"])
+        runner.invoke(translate_descriptions, ["Test description"])
 
         # Should catch and display error
         error_printed = False
@@ -622,7 +623,7 @@ class TestExecuteCommand:
         }
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(execute, ["Test prompt"])
+        runner.invoke(execute, ["Test prompt"])
 
         # Should display failure message
         failure_printed = False
@@ -640,7 +641,7 @@ class TestExecuteCommand:
         mock_engine_instance.render_string.side_effect = Exception("Template error")
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(execute, ["Test prompt"])
+        runner.invoke(execute, ["Test prompt"])
 
         # Should catch and display error
         error_printed = False
@@ -854,7 +855,7 @@ class TestValidateConfigCommand:
         config_file = tmp_path / "config.json"
         config_file.write_text("invalid json{")
 
-        result = runner.invoke(validate_config, [str(config_file)])
+        runner.invoke(validate_config, [str(config_file)])
 
         # Should catch JSON decode error
         error_printed = False
@@ -958,7 +959,7 @@ class TestEdgeCasesAndIntegration:
         mock_integration_instance.generate_multilingual_descriptions.return_value = {}
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(translate_descriptions, [""])
+        runner.invoke(translate_descriptions, [""])
 
         # Should not crash with empty description
 
@@ -984,7 +985,7 @@ class TestParametrizedScenarios:
         """Should handle various case combinations for language codes"""
         mock_config.get.return_value = mock_language_config.get(expected_code)
 
-        result = runner.invoke(info, [lang_code])
+        runner.invoke(info, [lang_code])
 
         mock_config.get.assert_called_with(expected_code)
 

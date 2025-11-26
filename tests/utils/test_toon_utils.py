@@ -14,23 +14,21 @@ utility functions including:
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
-from typing import Any, Dict, List
+from unittest.mock import patch
 
 import pytest
 
 from moai_adk.utils.toon_utils import (
-    toon_encode,
-    toon_decode,
-    toon_save,
-    toon_load,
-    validate_roundtrip,
+    _encode_value,
+    _is_tabular,
     compare_formats,
     migrate_json_to_toon,
-    _is_tabular,
-    _encode_value,
+    toon_decode,
+    toon_encode,
+    toon_load,
+    toon_save,
+    validate_roundtrip,
 )
-
 
 # ============================================================================
 # Helper Function Tests
@@ -1268,7 +1266,6 @@ class TestErrorHandlingCoverage:
             data = {"key": "value"}
 
             # Mock write_text to raise OSError
-            original_write = Path.write_text
 
             def mock_write(*args, **kwargs):
                 raise OSError("Permission denied")

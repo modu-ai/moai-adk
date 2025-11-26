@@ -13,15 +13,12 @@ This module provides 90%+ coverage for all logging functionality including:
 import logging
 import os
 import tempfile
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 from io import StringIO
+from unittest.mock import patch
 
 import pytest
 
 from moai_adk.utils.logger import SensitiveDataFilter, setup_logger
-
 
 # ============================================================================
 # SensitiveDataFilter Tests
@@ -573,7 +570,7 @@ class TestSetupLoggerDirectories:
         """Test that setup_logger creates log directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             log_dir = os.path.join(tmpdir, "logs")
-            logger = setup_logger("app", log_dir=log_dir)
+            setup_logger("app", log_dir=log_dir)
 
             assert os.path.exists(log_dir)
             assert os.path.isdir(log_dir)
@@ -594,20 +591,20 @@ class TestSetupLoggerDirectories:
         """Test that setup_logger creates parent directories."""
         with tempfile.TemporaryDirectory() as tmpdir:
             log_dir = os.path.join(tmpdir, "parent", "child", "logs")
-            logger = setup_logger("app", log_dir=log_dir)
+            setup_logger("app", log_dir=log_dir)
 
             assert os.path.exists(log_dir)
 
     def test_setup_logger_with_existing_directory(self):
         """Test setup_logger with existing directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            logger = setup_logger("app", log_dir=tmpdir)
+            setup_logger("app", log_dir=tmpdir)
             assert os.path.exists(tmpdir)
 
     def test_setup_logger_creates_moai_log_file(self):
         """Test that setup_logger creates moai.log file."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            logger = setup_logger("app", log_dir=tmpdir)
+            setup_logger("app", log_dir=tmpdir)
 
             log_file = os.path.join(tmpdir, "moai.log")
             assert os.path.exists(log_file)
@@ -856,14 +853,14 @@ class TestSetupLoggerEdgeCases:
     def test_setup_logger_with_relative_path(self):
         """Test setup_logger with relative path."""
         # This test uses a temporary relative path
-        import tempfile
         import os
+        import tempfile
 
         original_cwd = os.getcwd()
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 os.chdir(tmpdir)
-                logger = setup_logger("app", log_dir="./logs")
+                setup_logger("app", log_dir="./logs")
                 assert os.path.exists("./logs")
         finally:
             os.chdir(original_cwd)

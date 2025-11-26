@@ -10,11 +10,9 @@ This test suite targets all lines in analyze.py (lines 8-116):
 - Error handling: missing project directory, file operations
 """
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, patch
 
-import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.analyze import analyze

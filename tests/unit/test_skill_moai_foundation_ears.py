@@ -3,10 +3,10 @@ Test suite for moai-foundation-ears skill.
 Tests metadata compliance, progressive disclosure, file size, and auto-trigger keywords.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import Dict, Any
+
+import pytest
 import yaml
 
 
@@ -245,7 +245,7 @@ class TestModularStructure:
 
         if is_modularized:
             modules_dir = skill_path / "modules"
-            assert modules_dir.exists(), f"Modularized skill missing modules/ directory"
+            assert modules_dir.exists(), "Modularized skill missing modules/ directory"
 
             # Should have at least 2 module files
             module_files = list(modules_dir.glob("*.md"))

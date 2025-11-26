@@ -20,13 +20,12 @@ Test Organization:
 
 import json
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 
-import pytest
 from click.testing import CliRunner
 
 from moai_adk import __version__
-from moai_adk.cli.commands.init import init, create_progress_callback
+from moai_adk.cli.commands.init import create_progress_callback, init
 from moai_adk.core.project.initializer import InstallationResult
 
 
@@ -165,7 +164,7 @@ class TestInitInteractiveMode:
                 )
 
                 # Interactive mode (no --non-interactive flag)
-                result = runner.invoke(init, [str(tmp_path)])
+                runner.invoke(init, [str(tmp_path)])
 
                 # prompt_project_setup should be called
                 mock_prompt.assert_called_once()
@@ -200,7 +199,7 @@ class TestInitInteractiveMode:
                     created_files=[".moai/"],
                 )
 
-                result = runner.invoke(init, [str(tmp_path)])
+                runner.invoke(init, [str(tmp_path)])
 
                 # Verify initialize was called with prompt answers
                 init_call = mock_init.return_value.initialize.call_args
@@ -235,7 +234,7 @@ class TestInitInteractiveMode:
                     created_files=[".moai/"],
                 )
 
-                result = runner.invoke(init, [str(tmp_path)])
+                runner.invoke(init, [str(tmp_path)])
 
                 # Verify custom_language is passed
                 init_call = mock_init.return_value.initialize.call_args
@@ -270,7 +269,7 @@ class TestInitInteractiveMode:
 
                 # Use "." for current directory
                 with runner.isolated_filesystem(temp_dir=tmp_path):
-                    result = runner.invoke(init, ["."])
+                    runner.invoke(init, ["."])
 
                     # Verify is_current_dir is True in prompt call
                     call_kwargs = mock_prompt.call_args.kwargs
@@ -401,7 +400,7 @@ class TestInitReinitializationFlow:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+            runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
             # Old hook file should be removed
             assert not old_hook_file.exists()
@@ -462,7 +461,7 @@ class TestInitReinitializationFlow:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+            runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
             # Config should be updated
             updated_config = json.loads(config_file.read_text())
@@ -493,7 +492,7 @@ class TestInitReinitializationFlow:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+            runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
             # moai section should be created
             updated_config = json.loads(config_file.read_text())
@@ -524,7 +523,7 @@ class TestInitReinitializationFlow:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+            runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
             # project section should be created
             updated_config = json.loads(config_file.read_text())
@@ -579,7 +578,7 @@ class TestInitReinitializationFlow:
                     created_files=[".moai/"],
                 )
 
-                result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+                runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
                 # Version from VersionReader should be used
                 updated_config = json.loads(config_file.read_text())
@@ -609,7 +608,7 @@ class TestInitReinitializationFlow:
                     created_files=[".moai/"],
                 )
 
-                result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+                runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
                 # Should fall back to __version__
                 updated_config = json.loads(config_file.read_text())
@@ -1084,7 +1083,7 @@ class TestInitConsoleFlush:
                 mock_init.return_value.is_initialized.return_value = False
                 mock_init.return_value.initialize.side_effect = Exception("Test error")
 
-                result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
+                runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
                 # Console flush should be called even on error
                 mock_console.file.flush.assert_called()

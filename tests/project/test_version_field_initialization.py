@@ -200,11 +200,11 @@ class TestVersionFieldIntegration:
 
             # Track all phases
             with (
-                patch.object(initializer.executor, "execute_preparation_phase") as mock_prep,
-                patch.object(initializer.executor, "execute_directory_phase") as mock_dir,
+                patch.object(initializer.executor, "execute_preparation_phase"),
+                patch.object(initializer.executor, "execute_directory_phase"),
                 patch.object(initializer.executor, "execute_resource_phase") as mock_res,
                 patch.object(initializer.executor, "execute_configuration_phase") as mock_conf,
-                patch.object(initializer.executor, "execute_validation_phase") as mock_val,
+                patch.object(initializer.executor, "execute_validation_phase"),
             ):
 
                 # Mock resource phase to return typical files

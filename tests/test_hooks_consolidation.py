@@ -274,7 +274,7 @@ class TestIntegrationAndPerformance:
         for _ in range(3):
             start = time.perf_counter()
             try:
-                result = subprocess.run(
+                subprocess.run(
                     [sys.executable, str(sample_hook)], input=sample_input.encode(), capture_output=True, timeout=2.0
                 )
                 elapsed = (time.perf_counter() - start) * 1000  # Convert to ms

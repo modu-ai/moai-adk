@@ -5,7 +5,6 @@ Detect risky tasks and create automatic checkpoints
 """
 
 import json
-import re
 import subprocess
 from datetime import datetime
 from pathlib import Path

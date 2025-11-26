@@ -5,18 +5,15 @@ Target Coverage: 71.4% → 90.0% (+18.6%)
 """
 
 import json
-import os
-import signal
 import socket
 import subprocess
-import time
-from pathlib import Path
-from unittest.mock import Mock, patch
-
-import pytest
 
 # Import from templates directory
 import sys
+import time
+from unittest.mock import Mock, patch
+
+import pytest
 
 sys.path.insert(0, "src/moai_adk/templates/.claude/hooks/moai/lib")
 from project import (

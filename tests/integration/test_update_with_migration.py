@@ -157,7 +157,7 @@ class TestFullMigrationWorkflow:
         """Should record migration state in config.json"""
         migrator = AlfredToMoaiMigrator(temp_project)
 
-        config_path = temp_project / ".moai" / "config" / "config.json"
+        temp_project / ".moai" / "config" / "config.json"
         config = migrator._load_config()
 
         # Verify no migration state initially
@@ -187,7 +187,7 @@ class TestMigrationRollback:
         migrator = AlfredToMoaiMigrator(temp_project)
 
         # Store original state
-        original_alfred_commands = (temp_project / ".claude" / "commands" / "alfred").exists()
+        (temp_project / ".claude" / "commands" / "alfred").exists()
 
         # Create invalid settings.json that will fail JSON parsing
         settings_path = temp_project / ".claude" / "settings.json"
@@ -196,7 +196,7 @@ class TestMigrationRollback:
 
         # This should fail during settings.json update
         # and trigger rollback
-        result = migrator.execute_migration()
+        migrator.execute_migration()
 
         # Migration should fail
         # (Note: actual rollback depends on backup creation)
@@ -277,7 +277,7 @@ class TestMigrationEdgeCases:
 
         # Migration should attempt but handle the error
         # (exact behavior depends on error handling strategy)
-        result = migrator.execute_migration()
+        migrator.execute_migration()
 
         # Should either fail or attempt recovery
         # This test verifies it doesn't crash unexpectedly

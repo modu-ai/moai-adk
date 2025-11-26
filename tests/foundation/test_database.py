@@ -10,26 +10,24 @@ Classes: 7 main classes, 5 data classes
 Lines: 1,107 total
 """
 
+
 import pytest
-from typing import Any, Dict, List
-from unittest.mock import Mock, patch, MagicMock
 
 from src.moai_adk.foundation.database import (
-    ValidationResult,
-    DatabaseRecommendation,
-    IndexRecommendation,
-    PoolConfiguration,
-    MigrationPlan,
     ACIDCompliance,
-    SchemaNormalizer,
+    ConnectionPoolManager,
+    DatabaseRecommendation,
     DatabaseSelector,
     IndexingOptimizer,
-    ConnectionPoolManager,
+    IndexRecommendation,
+    MigrationPlan,
     MigrationPlanner,
-    TransactionManager,
     PerformanceMonitor,
+    PoolConfiguration,
+    SchemaNormalizer,
+    TransactionManager,
+    ValidationResult,
 )
-
 
 # ============================================================================
 # Data Class Tests
@@ -1414,7 +1412,7 @@ class TestDatabaseIntegration:
     def test_pool_management_and_performance_monitoring(self):
         """Test connection pool management with performance monitoring."""
         pool_manager = ConnectionPoolManager()
-        perf_monitor = PerformanceMonitor()
+        PerformanceMonitor()
 
         # Calculate optimal pool size
         server_config = {
@@ -1673,21 +1671,6 @@ class TestModuleExports:
 
     def test_all_classes_exported(self):
         """Test that all classes are properly exported."""
-        expected_exports = [
-            "SchemaNormalizer",
-            "DatabaseSelector",
-            "IndexingOptimizer",
-            "ConnectionPoolManager",
-            "MigrationPlanner",
-            "TransactionManager",
-            "PerformanceMonitor",
-            "ValidationResult",
-            "DatabaseRecommendation",
-            "IndexRecommendation",
-            "PoolConfiguration",
-            "MigrationPlan",
-            "ACIDCompliance",
-        ]
         # All imports should succeed
         assert SchemaNormalizer is not None
         assert DatabaseSelector is not None

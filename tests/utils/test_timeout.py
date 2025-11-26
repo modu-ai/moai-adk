@@ -11,21 +11,18 @@ This module provides 90%+ coverage for timeout handling functionality including:
 - Timeout cancellation and cleanup
 """
 
-import asyncio
 import platform
-import signal
 import threading
 import time
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from moai_adk.utils.timeout import (
-    TimeoutError,
     CrossPlatformTimeout,
+    TimeoutError,
     timeout_context,
 )
-
 
 # ============================================================================
 # TimeoutError Exception Tests
@@ -190,7 +187,6 @@ class TestCrossPlatformTimeoutStart:
         with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
             timeout.start()
-            timer1 = timeout.timer
 
             # Second start without cancel
             timeout.start()
@@ -249,7 +245,6 @@ class TestCrossPlatformTimeoutCancel:
         with patch("platform.system", return_value="Windows"):
             timeout = CrossPlatformTimeout(2)
             timeout.start()
-            timer = timeout.timer
 
             timeout.cancel()
 
@@ -342,7 +337,7 @@ class TestUnixTimeout:
             callback = Mock(side_effect=RuntimeError("Callback error"))
             timeout = CrossPlatformTimeout(10, callback=callback)
 
-            with patch("signal.signal") as mock_signal:
+            with patch("signal.signal"):
                 with patch("signal.alarm"):
                     timeout.start()
                     # Callback is stored for later execution
@@ -477,7 +472,7 @@ class TestTimeoutContextFunction:
         """Test that timeout_context properly cleans up."""
         with patch("platform.system", return_value="Windows"):
             with timeout_context(5) as timeout:
-                timer = timeout.timer
+                pass
 
             # Timeout should be canceled
             assert timeout.timer is None

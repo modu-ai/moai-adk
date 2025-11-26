@@ -11,7 +11,21 @@ This module provides centralized access to all hook-related utilities:
 
 try:
     # Import core components
-    from lib.timeout import CrossPlatformTimeout, TimeoutError, timeout_context
+    # Import checkpoint utilities
+    from lib.checkpoint import (
+        create_checkpoint,
+        detect_risky_operation,
+        list_checkpoints,
+    )
+
+    # Import utilities
+    from lib.common import (
+        format_duration,
+        get_file_pattern_category,
+        get_summary_stats,
+        is_root_whitelisted,
+        suggest_moai_location,
+    )
     from lib.config_manager import (
         ConfigManager,
         get_config,
@@ -21,31 +35,16 @@ try:
         get_timeout_seconds,
     )
 
-    # Import utilities
-    from lib.common import (
-        format_duration,
-        get_summary_stats,
-        is_root_whitelisted,
-        get_file_pattern_category,
-        suggest_moai_location,
-    )
-
     # Import models
     from lib.models import HookPayload, HookResult
 
-    # Import checkpoint utilities
-    from lib.checkpoint import (
-        create_checkpoint,
-        detect_risky_operation,
-        list_checkpoints,
-    )
-
     # Import project utilities
     from lib.project import (
+        count_specs,
         find_project_root,
         get_git_info,
-        count_specs,
     )
+    from lib.timeout import CrossPlatformTimeout, TimeoutError, timeout_context
 
     __all__ = [
         # Core - Timeout

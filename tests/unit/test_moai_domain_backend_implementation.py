@@ -17,13 +17,11 @@ Target: 90%+ code coverage with production-ready quality
 Framework: FastAPI (Python 3.13+), async/await patterns
 """
 
-import pytest
 import asyncio
-import json
-from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from typing import Dict, List
 
+import pytest
 
 # ============================================================================
 # TEST GROUP 1: API Design Patterns (4 tests)
@@ -198,7 +196,7 @@ class TestAsyncPatterns:
         """Test concurrent execution of async operations with asyncio.gather."""
         from src.moai_adk.foundation.backend import AsyncPatternAdvisor
 
-        advisor = AsyncPatternAdvisor()
+        AsyncPatternAdvisor()
 
         # Define concurrent tasks
         async def mock_fetch_user(user_id: int) -> Dict:
@@ -223,7 +221,7 @@ class TestAsyncPatterns:
         """Test async context managers for resource management."""
         from src.moai_adk.foundation.backend import AsyncPatternAdvisor
 
-        advisor = AsyncPatternAdvisor()
+        AsyncPatternAdvisor()
 
         # Mock async resource
         class MockAsyncResource:
@@ -254,7 +252,7 @@ class TestAsyncPatterns:
         """Test async operation timeout handling and cancellation."""
         from src.moai_adk.foundation.backend import AsyncPatternAdvisor
 
-        advisor = AsyncPatternAdvisor()
+        AsyncPatternAdvisor()
 
         async def long_running_task():
             await asyncio.sleep(5)
@@ -443,9 +441,9 @@ class TestBackendMetricsCollection:
         collector = BackendMetricsCollector()
 
         # Simulate request-response cycle
-        start_time = datetime.utcnow()
+        datetime.utcnow()
         await asyncio.sleep(0.1)
-        end_time = datetime.utcnow()
+        datetime.utcnow()
 
         # Record metrics
         metrics = collector.record_request_metrics(
@@ -502,16 +500,16 @@ class TestBackendIntegration:
         from src.moai_adk.foundation.backend import (
             APIDesignValidator,
             AuthenticationManager,
+            BackendMetricsCollector,
             ErrorHandlingStrategy,
             PerformanceOptimizer,
-            BackendMetricsCollector,
         )
 
         # Initialize all components
         api_validator = APIDesignValidator()
         auth_manager = AuthenticationManager(secret_key="test-key")
-        error_handler = ErrorHandlingStrategy()
-        optimizer = PerformanceOptimizer()
+        ErrorHandlingStrategy()
+        PerformanceOptimizer()
         metrics = BackendMetricsCollector()
 
         # Validate endpoint

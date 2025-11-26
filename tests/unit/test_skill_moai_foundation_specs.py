@@ -3,10 +3,10 @@ Test suite for moai-foundation-specs skill.
 Tests metadata compliance, progressive disclosure, module structure, and integration.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import Dict, List
+
+import pytest
 import yaml
 
 
@@ -182,8 +182,8 @@ class TestConsolidationValidation:
     def test_no_function_loss_indicated(self, skill_metadata):
         """Verify metadata indicates no function loss."""
         # This is tested through comprehensive content coverage
-        dependencies = skill_metadata.get("dependencies", [])
-        description = skill_metadata.get("description", "")
+        skill_metadata.get("dependencies", [])
+        skill_metadata.get("description", "")
         # Should not mark any skills as deprecated
         assert not skill_metadata.get("deprecated", False), "Consolidated skill itself should not be deprecated"
 

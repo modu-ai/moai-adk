@@ -9,13 +9,11 @@ Performance tests and benchmarks for the moai-menu-project system including:
 - Resource efficiency metrics
 """
 
-import json
 import os
 import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from moai_menu_project import MoaiMenuProject
 
@@ -71,21 +69,21 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         from moai_menu_project.modules.documentation_manager import DocumentationManager
 
         start_time = time.time()
-        doc_manager = DocumentationManager(str(self.test_dir), self.project.config)
+        DocumentationManager(str(self.test_dir), self.project.config)
         doc_load_time = time.time() - start_time
 
         # Test LanguageInitializer load time
         from moai_menu_project.modules.language_initializer import LanguageInitializer
 
         start_time = time.time()
-        lang_init = LanguageInitializer(str(self.test_dir), self.project.config)
+        LanguageInitializer(str(self.test_dir), self.project.config)
         lang_load_time = time.time() - start_time
 
         # Test TemplateOptimizer load time
         from moai_menu_project.modules.template_optimizer import TemplateOptimizer
 
         start_time = time.time()
-        template_opt = TemplateOptimizer(str(self.test_dir), self.project.config)
+        TemplateOptimizer(str(self.test_dir), self.project.config)
         template_load_time = time.time() - start_time
 
         # Performance assertions
@@ -219,8 +217,9 @@ Complex logic:
         """Test memory usage during operations."""
 
         try:
-            import psutil
             import gc
+
+            import psutil
 
             # Get initial memory usage
             process = psutil.Process(os.getpid())
@@ -265,7 +264,6 @@ Complex logic:
     def test_concurrent_operations(self):
         """Test system performance under concurrent operations."""
 
-        import threading
         import concurrent.futures
 
         def initialize_subproject(index):

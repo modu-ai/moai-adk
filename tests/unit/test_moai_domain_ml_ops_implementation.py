@@ -18,11 +18,7 @@ Performance Targets:
 - Drift detection: < 500ms for 1000 samples
 """
 
-import pytest
 import time
-from typing import Dict, List, Any
-from unittest.mock import Mock, patch
-
 
 # Placeholder imports (will be implemented in GREEN phase)
 # from moai_adk.foundation.ml_ops import (
@@ -358,7 +354,7 @@ class TestModelDeployment:
         latencies = []
         for _ in range(100):
             start = time.time()
-            config = planner.plan_ray_serve_deployment(
+            planner.plan_ray_serve_deployment(
                 model_name="perf_test_model",
                 replicas=2,
                 route_prefix="/test",
@@ -460,11 +456,11 @@ class TestIntegration:
     def test_end_to_end_mlops_workflow(self):
         """Test end-to-end MLOps workflow from pipeline to deployment."""
         from moai_adk.foundation.ml_ops import (
-            MLPipelineOrchestrator,
-            ModelVersionManager,
             DataPipelineBuilder,
-            ModelDeploymentPlanner,
             DriftDetectionMonitor,
+            MLPipelineOrchestrator,
+            ModelDeploymentPlanner,
+            ModelVersionManager,
         )
 
         # Step 1: Orchestrate pipeline

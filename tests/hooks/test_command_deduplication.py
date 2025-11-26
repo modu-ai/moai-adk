@@ -174,7 +174,7 @@ class TestCommandDeduplication:
         config = HookConfiguration(command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True)
 
         try:
-            current_time = time.time()
+            time.time()
 
             # First command call - should execute
             command1 = "/moai:1-plan"
@@ -242,7 +242,7 @@ class TestCommandDeduplication:
         current_time = time.time()
 
         # Test boundary at 2.9 seconds (within window)
-        result1 = self._execute_command_with_timing("/moai:1-plan", current_time)
+        self._execute_command_with_timing("/moai:1-plan", current_time)
         result2 = self._execute_command_with_timing("/moai:1-plan", current_time + 2.9)  # 2.9s later
         assert result2["executed"] is True, "Command at 2.9s should be deduplicated but execution continues"
         assert result2["duplicate"] is True
@@ -412,7 +412,7 @@ class TestCommandDeduplication:
         current_time = time.time()
 
         # Same case - should be deduplicated
-        result1 = self._execute_command_with_timing("/moai:1-plan", current_time)
+        self._execute_command_with_timing("/moai:1-plan", current_time)
         result2 = self._execute_command_with_timing("/moai:1-plan", current_time + 1)
         assert result2["executed"] is True  # Deduplicated but continues execution
         assert result2["duplicate"] is True
@@ -438,7 +438,7 @@ class TestCommandDeduplication:
         current_time = time.time()
 
         # Exact match - should be deduplicated
-        result1 = self._execute_command_with_timing("/moai:1-plan", current_time)
+        self._execute_command_with_timing("/moai:1-plan", current_time)
         result2 = self._execute_command_with_timing("/moai:1-plan", current_time + 1)
         assert result2["executed"] is True  # Deduplicated but continues execution
         assert result2["duplicate"] is True

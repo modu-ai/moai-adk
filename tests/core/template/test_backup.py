@@ -271,7 +271,7 @@ class TestRestoreBackup:
     def test_restore_backup_from_default_path(self, tmp_project: Path) -> None:
         """Should restore from default backup path"""
         backup = TemplateBackup(tmp_project)
-        backup_path = backup.create_backup()
+        backup.create_backup()
 
         # Remove current files
         shutil.rmtree(tmp_project / ".moai")
@@ -314,7 +314,7 @@ class TestRestoreBackup:
     def test_restore_backup_replaces_existing_files(self, tmp_project: Path) -> None:
         """Should replace existing files during restore"""
         backup = TemplateBackup(tmp_project)
-        backup_path = backup.create_backup()
+        backup.create_backup()
 
         # Modify current files
         (tmp_project / ".moai" / "config" / "config.json").write_text('{"modified": true}')

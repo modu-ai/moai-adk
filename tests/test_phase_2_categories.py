@@ -3,8 +3,10 @@ PHASE 2: Category Consolidation Tests
 RED Phase - Tests for tier assignment and merging
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from tests.conftest import count_skills_by_tier
 
 
@@ -62,7 +64,7 @@ class TestTierListDocumentation:
 
     def test_tier_report_exists(self):
         """Tier list report should be generated"""
-        report_path = Path("/Users/goos/MoAI/MoAI-ADK/.moai/reports/skill-tiers-2025-11-22.md")
+        Path("/Users/goos/MoAI/MoAI-ADK/.moai/reports/skill-tiers-2025-11-22.md")
         # Note: This might not exist yet in RED phase
         # assert report_path.exists(), "Tier report not found"
 
@@ -81,13 +83,13 @@ class TestDuplicateSkillMerging:
     def test_total_skills_count(self, all_skills):
         """Should have 127 active skills (reduced from 134)"""
         # Excluding archived skills
-        active_skills = [s for s in all_skills if not s.path.parent.name == "archived"]
+        [s for s in all_skills if not s.path.parent.name == "archived"]
         # In RED phase, this will fail as we haven't merged yet
         # Target: 127
 
     def test_duplicate_docs_skills_merged(self, all_skills):
         """moai-docs-generation should be archived/merged"""
-        skill_names = {s.name for s in all_skills}
+        {s.name for s in all_skills}
         # In GREEN phase, one of these will be archived
         # For now, both might exist
 

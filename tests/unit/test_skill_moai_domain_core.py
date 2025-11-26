@@ -3,12 +3,11 @@ Test suite for core domain skills: backend, frontend, database, cloud.
 Tests metadata compliance, domain-specific patterns, and integration.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import Dict, List
-import yaml
 
+import pytest
+import yaml
 
 # ===== DOMAIN SKILL NAMES =====
 DOMAIN_SKILLS_TO_TEST = [

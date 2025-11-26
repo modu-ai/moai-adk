@@ -245,7 +245,7 @@ Duplicate content here...
 
 More content...
 
-Extra whitespace:   
+Extra whitespace:
 
 
 

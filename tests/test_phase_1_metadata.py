@@ -3,15 +3,13 @@ PHASE 1: Metadata Normalization Tests
 RED Phase - All tests should initially FAIL
 """
 
-import re
-import pytest
 from pathlib import Path
+
 from tests.conftest import (
-    load_all_skills,
+    calculate_compliance_score,
+    count_description_quality,
     validate_semantic_version,
     validate_skill_name,
-    count_description_quality,
-    calculate_compliance_score,
 )
 
 

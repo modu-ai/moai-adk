@@ -15,10 +15,9 @@ Test Structure:
 """
 
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -154,8 +153,8 @@ class TestUpdateSpecStatus:
             mock_manager_class.return_value = mock_manager
 
             with patch("moai_adk.cli.spec_status.Path.cwd", return_value=tmp_path):
-                result1 = update_spec_status("SPEC-001", "in-progress", "Start")
-                result2 = update_spec_status("SPEC-001", "completed", "Done")
+                update_spec_status("SPEC-001", "in-progress", "Start")
+                update_spec_status("SPEC-001", "completed", "Done")
 
         log_file = tmp_path / ".moai" / "logs" / "spec_status_changes.jsonl"
         log_lines = log_file.read_text().strip().split("\n")
@@ -349,8 +348,8 @@ class TestBatchUpdateCompletedSpecs:
             mock_manager_class.return_value = mock_manager
 
             with patch("moai_adk.cli.spec_status.Path.cwd", return_value=tmp_path):
-                result1 = batch_update_completed_specs()
-                result2 = batch_update_completed_specs()
+                batch_update_completed_specs()
+                batch_update_completed_specs()
 
         log_file = tmp_path / ".moai" / "logs" / "spec_status_changes.jsonl"
         log_lines = log_file.read_text().strip().split("\n")
@@ -622,7 +621,6 @@ class TestImportFallback:
         """Test that import fallback inserts correct path to sys.path"""
         # This test verifies the fallback logic structure
         # In practice, this is tested implicitly by successful imports
-        from pathlib import Path
 
         # Simulate the fallback path calculation
         current_file = Path(__file__)

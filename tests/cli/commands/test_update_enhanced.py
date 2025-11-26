@@ -19,20 +19,14 @@ Test Coverage Strategy:
 import json
 import subprocess
 import urllib.error
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from click.testing import CliRunner
-from packaging import version as pkg_version
 
 from moai_adk.cli.commands.update import (
     UV_TOOL_COMMAND,
-    InstallerNotFoundError,
-    NetworkError,
-    TemplateSyncError,
-    UpgradeError,
     _apply_context_to_file,
     _ask_merge_strategy,
     _build_template_context,
@@ -557,7 +551,7 @@ class TestSettingsPreservation:
         """Test preserving user settings with read error."""
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
-        settings_local = claude_dir / "settings.local.json"
+        claude_dir / "settings.local.json"
 
         with patch.object(Path, "read_text", side_effect=PermissionError("No access")):
             with patch.object(Path, "exists", return_value=True):
@@ -1348,7 +1342,7 @@ class TestSyncTemplates:
             mock_backup_instance = Mock()
             mock_backup.return_value = mock_backup_instance
 
-            backup_path = tmp_path / "backup"
+            tmp_path / "backup"
             result = _sync_templates(tmp_path, force=False, yes=False)
             assert result is False
 

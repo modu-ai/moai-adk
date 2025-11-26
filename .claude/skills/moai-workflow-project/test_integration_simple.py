@@ -117,7 +117,7 @@ Content here...
 
 Duplicate content here...
 
-Extra whitespace:   
+Extra whitespace:
 
 Complex logic:
 {% if condition %}
@@ -305,7 +305,7 @@ def test_performance():
         # Test documentation generation time
         start_time = time.time()
 
-        docs_result = doc_manager.initialize_documentation_structure()
+        doc_manager.initialize_documentation_structure()
 
         doc_time = time.time() - start_time
         performance_results["documentation_generation"] = doc_time
@@ -320,7 +320,7 @@ def test_performance():
             "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100", encoding="utf-8"
         )
 
-        detected_lang = lang_init.detect_project_language()
+        lang_init.detect_project_language()
 
         lang_time = time.time() - start_time
         performance_results["language_detection"] = lang_time
@@ -339,7 +339,7 @@ def test_performance():
 
         start_time = time.time()
 
-        analysis = template_opt.analyze_project_templates()
+        template_opt.analyze_project_templates()
 
         template_time = time.time() - start_time
         performance_results["template_analysis"] = template_time

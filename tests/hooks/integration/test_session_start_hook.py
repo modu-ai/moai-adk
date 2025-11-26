@@ -19,7 +19,7 @@ class TestSessionStartHookInitialization:
 
     def test_hook_initialization_with_config(self, config_file, hook_tmp_project):
         """Hook initializes with valid configuration"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             assert config_file.exists()
             assert config_file.parent.exists()
 
@@ -44,7 +44,7 @@ class TestProjectInfoDisplay:
 
     def test_git_branch_display(self, config_file, hook_tmp_project, mock_subprocess):
         """Git branch information is displayed correctly"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Mock git to return a branch
             mock_subprocess.return_value = MagicMock(returncode=0, stdout="feature/test-branch\n", stderr="")
 
@@ -61,7 +61,7 @@ class TestProjectInfoDisplay:
 
     def test_project_info_output_format(self, config_file, hook_tmp_project):
         """Project info is formatted correctly"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             # Simulate format_project_metadata
@@ -98,7 +98,7 @@ class TestConfigHealthCheck:
 
     def test_config_completeness_check(self, config_file, hook_tmp_project):
         """Configuration completeness is checked"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             required_sections = ["project", "language", "git_strategy", "constitution"]
@@ -168,7 +168,7 @@ class TestAutoCleanup:
 
     def test_cleanup_initialization(self, config_file, hook_tmp_project):
         """Cleanup is initialized with config"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             assert "auto_cleanup" in config_data
@@ -253,7 +253,7 @@ class TestHookChainExecution:
 
     def test_hook_execution_order(self, config_file, hook_tmp_project):
         """Hooks execute in correct order"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             execution_order = []
 
             # Mock each hook function to track execution order
@@ -279,7 +279,7 @@ class TestHookChainExecution:
 
     def test_hook_payload_propagation(self, config_file, hook_payload, hook_tmp_project):
         """Hook payload is propagated through chain"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             payload = hook_payload
 
             # Verify payload structure
@@ -290,9 +290,9 @@ class TestHookChainExecution:
 
     def test_session_start_hook_main_execution(self, config_file, hook_tmp_project):
         """Session start hook main function executes successfully"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Simulate hook payload
-            hook_input = json.dumps({"event": "session_start", "timestamp": datetime.now().isoformat()})
+            json.dumps({"event": "session_start", "timestamp": datetime.now().isoformat()})
 
             # Simulate main function execution
             result = {"continue": True, "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0 (latest)"}
@@ -325,7 +325,7 @@ class TestSessionStartSetupMessages:
 
     def test_show_setup_messages_when_not_suppressed(self, config_file, hook_tmp_project):
         """Setup messages are shown when not suppressed"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             suppress = config_data.get("session", {}).get("suppress_setup_messages", False)
@@ -376,7 +376,7 @@ class TestHookResponse:
 
     def test_hook_response_structure(self, config_file, hook_tmp_project):
         """Hook response has correct structure"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             response = {"continue": True, "systemMessage": "Session started"}
 
             assert "continue" in response
@@ -385,7 +385,7 @@ class TestHookResponse:
 
     def test_hook_response_with_system_message(self, config_file, hook_tmp_project):
         """Hook response includes system message"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             response = {"continue": True, "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0"}
 
             assert response["systemMessage"]
@@ -393,7 +393,7 @@ class TestHookResponse:
 
     def test_hook_response_json_serializable(self, config_file, hook_tmp_project):
         """Hook response is JSON serializable"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             response = {"continue": True, "systemMessage": "Session started", "timestamp": datetime.now().isoformat()}
 
             # Should be serializable
@@ -410,7 +410,7 @@ class TestHookTimeoutHandling:
 
     def test_hook_timeout_configuration(self, config_file, hook_tmp_project):
         """Hook timeout is configured correctly"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             timeout_ms = config_data.get("hooks", {}).get("timeout_ms", 5000)
@@ -418,7 +418,7 @@ class TestHookTimeoutHandling:
 
     def test_graceful_degradation_enabled(self, config_file, hook_tmp_project):
         """Graceful degradation is enabled"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
             graceful = config_data.get("hooks", {}).get("graceful_degradation", True)
@@ -426,7 +426,7 @@ class TestHookTimeoutHandling:
 
     def test_hook_continues_on_error(self, hook_tmp_project):
         """Hook continues session on error with graceful degradation"""
-        with hook_tmp_project as proj_root:
+        with hook_tmp_project:
             # Simulate error with graceful degradation
             error_response = {
                 "continue": True,  # Should continue despite error

@@ -142,7 +142,7 @@ class DocumentationManager:
 
 ## Measurement frequency
 - Daily: [Metrics tracked daily]
-- Weekly: [Metrics tracked weekly]  
+- Weekly: [Metrics tracked weekly]
 - Monthly: [Metrics tracked monthly]
 
 ## Success examples
@@ -156,7 +156,7 @@ class DocumentationManager:
 - [SPEC-XXX] [Feature description]
 - [SPEC-XXX] [Feature description]
 
-## Medium Priority (Next 3-4 sprints)  
+## Medium Priority (Next 3-4 sprints)
 - [SPEC-XXX] [Feature description]
 - [SPEC-XXX] [Feature description]
 
@@ -310,7 +310,7 @@ graph TB
 - **Responsibilities**: User interface, client-side logic
 - **Technologies**: [React/Vue/Angular, etc.]
 
-### Backend API Layer  
+### Backend API Layer
 - **Location**: `src/api/`
 - **Responsibilities**: REST/GraphQL endpoints, business logic
 - **Technologies**: [FastAPI/Express/NestJS, etc.]
@@ -352,7 +352,7 @@ graph TB
 
 ## TAG System
 - `feat:` - New features
-- `fix:` - Bug fixes  
+- `fix:` - Bug fixes
 - `docs:` - Documentation updates
 - `refactor:` - Code refactoring
 - `perf:` - Performance improvements
@@ -469,7 +469,7 @@ graph TB
 - **Version**: 18.2.0+
 - **Key Libraries**: React Router, Zustand, React Query
 
-### Backend Framework: FastAPI  
+### Backend Framework: FastAPI
 - **Reason**: Modern Python, automatic API docs, async support
 - **Version**: 0.104.0+
 - **Key Features**: Pydantic validation, OpenAPI generation
@@ -1006,8 +1006,8 @@ npm run dev
         """
 
         spec_id = spec_data.get("id", "SPEC-001")
-        spec_title = spec_data.get("title", "Untitled Feature")
-        spec_description = spec_data.get("description", "")
+        spec_data.get("title", "Untitled Feature")
+        spec_data.get("description", "")
 
         # Generate feature documentation
         feature_doc = self._generate_feature_documentation(spec_data)

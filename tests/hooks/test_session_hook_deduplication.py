@@ -393,7 +393,6 @@ class TestSessionHookPhaseDeduplication:
             - Different phase calls: execution count increases with each transition
             - No duplicate executions should occur
         """
-        execution_count = {"clear": 0, "compact": 0}
 
         # Test multiple calls to same phase (clear)
         for i in range(3):

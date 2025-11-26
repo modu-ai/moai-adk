@@ -13,29 +13,25 @@ Tests cover:
 - Troubleshooting guide generation
 """
 
-import hashlib
-import json
 import os
 import tempfile
-import time
-import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open
+from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
 try:
     from moai_adk.core.error_recovery_system import (
-        ErrorSeverity,
         ErrorCategory,
+        ErrorRecoverySystem,
         ErrorReport,
+        ErrorSeverity,
         RecoveryAction,
         RecoveryResult,
-        ErrorRecoverySystem,
+        error_handler,
         get_error_recovery_system,
         handle_error,
-        error_handler,
     )
 except ImportError:
     pytest.skip("error_recovery_system not available", allow_module_level=True)
@@ -424,7 +420,7 @@ class TestErrorHandling:
         error = ValueError("Test error for logging")
 
         with patch("builtins.open", mock_open()) as mock_file:
-            report = error_recovery_system.handle_error(error)
+            error_recovery_system.handle_error(error)
 
             # File should be opened for writing
             mock_file.assert_called()
@@ -710,7 +706,7 @@ class TestSystemHealth:
         """Test system health includes recovery success rate"""
         # Create errors
         error1 = ValueError("Error 1")
-        report1 = error_recovery_system.handle_error(error1)
+        error_recovery_system.handle_error(error1)
 
         # Simulate successful recovery
         error_recovery_system.error_history[0].recovery_successful = True
@@ -951,8 +947,8 @@ class TestPatternDetection:
         error1 = ValueError("Error 1")
         error2 = ValueError("Error 2")
 
-        report1 = error_recovery_system.handle_error(error1, category=ErrorCategory.VALIDATION)
-        report2 = error_recovery_system.handle_error(error2, category=ErrorCategory.VALIDATION)
+        error_recovery_system.handle_error(error1, category=ErrorCategory.VALIDATION)
+        error_recovery_system.handle_error(error2, category=ErrorCategory.VALIDATION)
 
         patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
@@ -1018,7 +1014,7 @@ class TestAutomaticRecovery:
         )
         error_recovery_system.register_recovery_action(action)
 
-        error = RuntimeError("Critical system error")
+        RuntimeError("Critical system error")
         report = ErrorReport(
             id="ERR_test",
             timestamp=datetime.now(timezone.utc),
@@ -1107,7 +1103,7 @@ class TestAutomaticRecovery:
             context={},
         )
 
-        result = error_recovery_system._attempt_automatic_recovery(report)
+        error_recovery_system._attempt_automatic_recovery(report)
 
         # Should try both actions, second one succeeds
         assert handler1.call_count == 1

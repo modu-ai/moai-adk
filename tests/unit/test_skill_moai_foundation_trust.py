@@ -3,10 +3,10 @@ Test suite for moai-foundation-trust skill.
 Tests TRUST 5 framework completeness, consolidated modules, and quality validation.
 """
 
-import pytest
 import re
 from pathlib import Path
-from typing import Dict, List
+
+import pytest
 import yaml
 
 
@@ -192,7 +192,7 @@ class TestGitIntegration:
 
     def test_git_workflows_module_present(self, skill_path):
         """Verify git-workflows.md module exists."""
-        git_module = skill_path / "modules" / "git-workflows.md"
+        skill_path / "modules" / "git-workflows.md"
         # Git workflows may be consolidated with this skill
         modules_dir = skill_path / "modules"
         if modules_dir.exists():
@@ -204,7 +204,7 @@ class TestGitIntegration:
         if "trackable" in module_files:
             content = module_files["trackable"]
             git_keywords = ["commit", "version", "branch", "history"]
-            matches = sum(1 for kw in git_keywords if kw.lower() in content.lower())
+            sum(1 for kw in git_keywords if kw.lower() in content.lower())
             # May or may not be here depending on modularization
             # Just verify it's mentioned somewhere
             pass
@@ -254,7 +254,7 @@ class TestAgentCoverage:
         agent_names = [str(a).lower() for a in agents]
 
         quality_agents = ["quality", "test", "review", "security"]
-        matches = sum(1 for qa in quality_agents if any(qa in an for an in agent_names))
+        sum(1 for qa in quality_agents if any(qa in an for an in agent_names))
         # Should have at least some quality agents
         assert len(agents) >= 2, f"Should reference quality agents, got {agents}"
 
