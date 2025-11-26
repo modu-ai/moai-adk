@@ -102,28 +102,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install gitpython pyyaml
 
-      - name: 🔄 Sync version files
+      - name: 🔄 Verify version consistency
         run: |
           VERSION="${{ needs.tag-validation.outputs.version }}"
-          echo "🔄 Syncing version files to: $VERSION"
+          echo "🔍 Verifying version consistency..."
+          echo "📦 Tag version: $VERSION"
 
-          # Update src/moai_adk/__init__.py
-          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" src/moai_adk/__init__.py
+          # Verify pyproject.toml (single source of truth)
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "📦 pyproject.toml version: $PYPROJECT_VERSION"
 
-          # Update src/moai_adk/version.py (fallback)
-          sed -i "s/MOAI_VERSION = \".*\"/MOAI_VERSION = \"$VERSION\"/" src/moai_adk/version.py
-
-          # Verify sync
-          INIT_VERSION=$(grep '__version__ = ' src/moai_adk/__init__.py | sed 's/__version__ = "//' | sed 's/"//')
-          VER_VERSION=$(grep 'MOAI_VERSION = ' src/moai_adk/version.py | sed 's/MOAI_VERSION = "//' | sed 's/"//')
-
-          if [ "$INIT_VERSION" != "$VERSION" ] || [ "$VER_VERSION" != "$VERSION" ]; then
-            echo "❌ Version sync failed!"
+          if [ "$VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "❌ Version mismatch between tag and pyproject.toml!"
             exit 1
           fi
 
-          echo "✅ Version files synchronized"
-          git add src/moai_adk/__init__.py src/moai_adk/version.py
+          echo "✅ Version consistency verified"
+          echo "ℹ️  Note: __init__.py and version.py use importlib.metadata to read version from pyproject.toml"
 
       - name: 📋 Generate Changelog
         run: |

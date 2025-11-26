@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 # Import the hook to test
