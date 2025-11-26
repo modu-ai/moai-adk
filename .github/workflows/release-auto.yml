@@ -6,6 +6,12 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'  # v0.31.0 형태
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.30.1)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -35,8 +41,13 @@ jobs:
       - name: 📋 Extract version from tag
         id: extract
         run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"  # Remove 'v' prefix
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="v$VERSION"
+          else
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"  # Remove 'v' prefix
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "📦 Tag: $TAG → Version: $VERSION"
