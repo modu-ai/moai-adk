@@ -102,7 +102,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install gitpython pyyaml
 
-      - name: 🔄 Verify version consistency
+      - name: 🔍 Verify version consistency
         run: |
           VERSION="${{ needs.tag-validation.outputs.version }}"
           echo "🔍 Verifying version consistency..."
@@ -119,6 +119,7 @@ jobs:
 
           echo "✅ Version consistency verified"
           echo "ℹ️  Note: __init__.py and version.py use importlib.metadata to read version from pyproject.toml"
+          echo "ℹ️  No file modifications needed - dynamic version management is already in place"
 
       - name: 📋 Generate Changelog
         run: |
@@ -182,10 +183,35 @@ jobs:
           sed -i "s/RELEASE_DATE_PLACEHOLDER/$RELEASE_DATE/g" CHANGELOG.entry.md
 
           # Simple commit list (will be enhanced by AI)
-          COMMITS_TEXT=$(echo "$COMMITS" | head -10 | sed 's/^/- /')
-          sed -i "s|VERSION_COMMITS_KO|$COMMITS_TEXT|g" CHANGELOG.entry.md
-          sed -i "s|VERSION_COMMITS_EN|$COMMITS_TEXT|g" CHANGELOG.entry.md
+          # Use Python for safe string replacement (handles special characters)
+          # Save commits to file for Python script
+          echo "$COMMITS" | head -10 > commits.txt
 
+          python3 << 'PYTHON_SCRIPT'
+# Read commits from file
+with open('commits.txt', 'r', encoding='utf-8') as f:
+    commits = f.read()
+
+# Format commits
+commits_list = [line.strip() for line in commits.split('\n') if line.strip()]
+commits_text = '\n'.join(commits_list)
+
+# Read template
+with open('CHANGELOG.entry.md', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# Replace placeholders safely
+content = content.replace('VERSION_COMMITS_KO', commits_text)
+content = content.replace('VERSION_COMMITS_EN', commits_text)
+
+# Write back
+with open('CHANGELOG.entry.md', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("✅ Commits inserted successfully")
+PYTHON_SCRIPT
+
+          rm -f commits.txt
           echo "✅ Changelog entry generated"
           cat CHANGELOG.entry.md
 
