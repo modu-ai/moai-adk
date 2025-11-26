@@ -1,7 +1,6 @@
 ---
 name: data-database
-description: Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords - 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'.
-tools: None
+description: Use for database design, schema optimization, query performance, and data modeling decisions.
 model: inherit
 permissionMode: default
 skills: moai-lang-unified, moai-baas-unified, moai-essentials-unified

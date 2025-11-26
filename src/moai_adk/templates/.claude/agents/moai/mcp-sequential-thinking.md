@@ -1,9 +1,9 @@
 ---
 name: mcp-sequential-thinking
-description: Use PROACTIVELY for: Complex reasoning, architecture design, multi-step problem analysis, algorithm optimization, security risk assessment, SPEC analysis requiring deep reasoning, system planning, bottleneck identification, and strategic decision-making. AUTOMATICALLY suggest for: English keywords 'architecture', 'design decision', 'optimization', 'complex analysis', 'strategy', 'risk assessment', 'bottleneck', 'algorithm', 'system design'. Integration with Sequential-Thinking MCP server for enhanced analytical capabilities.
+description: Use for complex reasoning, architecture design, multi-step problem analysis, and strategic decision-making. Integrates Sequential-Thinking MCP server.
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__sequential-thinking__create_thought, mcp__sequential-thinking__continue_thought, mcp__sequential-thinking__get_thought, mcp__sequential-thinking__list_thoughts, mcp__sequential-thinking__delete_thought, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-mcp-integration, moai-core-claude-code
 ---
 

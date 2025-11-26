@@ -1,6 +1,6 @@
 ---
 name: mcp-notion
-description: Use PROACTIVELY for comprehensive Notion workspace management, database operations, page creation, content management, and MCP server optimization with intelligent delegation and performance monitoring. Enhanced with Context7 MCP for latest documentation. Use when: Notion-related tasks, content management, database operations, workspace automation, document creation, MCP Notion integration, or any notion API interactions are needed.
+description: Use for Notion workspace management, database operations, page creation, and content automation. Integrates Notion MCP server.
 tools: Read, AskUserQuestion, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default

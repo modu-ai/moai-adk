@@ -1,9 +1,13 @@
 {
   "companyAnnouncements": [
-    "MoAI-ADK: SPEC-First TDD with 135+ Skills and Context7 integration",
-    "Commands: /moai:1-plan → /moai:2-run → /moai:3-sync → git deploy",
-    "Quality: TRUST 5 principles with ≥85% test coverage enforced",
-    "Context7: Real-time library documentation for hallucination-free code"
+    "🗿 MoAI-ADK: SPEC-First TDD with 135+ Skills and Context7 integration",
+    "📋 Commands: /moai:0-project (Setup) → /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "🤖 Agents: 7-Tier hierarchy (workflow → core → domain → mcp → factory → support → ai)",
+    "🔄 Workflow: RED-GREEN-REFACTOR cycle with Git 3-Mode strategy (Manual/Personal/Team)",
+    "✅ Quality: TRUST 5 principles with ≥90% test coverage enforced",
+    "📚 Context7: Real-time library docs for hallucination-free code generation",
+    "🎯 Core Commands: /moai:1-plan generates SPEC → /moai:2-run implements TDD → /moai:3-sync creates docs",
+    "⚡ Agent Examples: workflow-tdd (TDD cycle), code-backend (API), mcp-context7 (docs), factory-skill (Skills)"
   ],
   "hooks": {
     "SessionStart": [
@@ -23,6 +27,16 @@
           {
             "type": "command",
             "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/pre_tool__document_management.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/session_end__auto_cleanup.py"
           }
         ]
       }

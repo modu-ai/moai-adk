@@ -3,6 +3,7 @@ name: ai-codex
 description: Use PROACTIVELY for AI-powered code generation/analysis via OpenAI Codex CLI. Called from /moai:2-run (GREEN phase) or direct user requests for rapid prototyping. CRITICAL - Requires Codex CLI installation and authentication. Falls back to native Claude Code if unavailable.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, AskUserQuestion
 model: haiku
+permissionMode: default
 skills: moai-core-claude-code, moai-lang-unified, moai-essentials-unified
 ---
 

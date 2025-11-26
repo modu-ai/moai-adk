@@ -3,7 +3,7 @@ name: support-claude
 description: Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-core-claude-code
 ---
 

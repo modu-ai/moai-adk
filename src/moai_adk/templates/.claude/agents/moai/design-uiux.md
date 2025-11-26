@@ -1,6 +1,6 @@
 ---
 name: design-uiux
-description: Use PROACTIVELY when UI/UX design, accessibility, design systems, user research, interaction patterns, or design-to-code workflows are needed. Triggered by SPEC keywords - 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma'.
+description: Use when UI/UX design, accessibility compliance, design systems, or design-to-code workflows are needed.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default

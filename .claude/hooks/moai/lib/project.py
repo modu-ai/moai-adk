@@ -12,6 +12,15 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+# Import TimeoutError from lib.timeout (canonical definition)
+try:
+    from lib.timeout import TimeoutError  # noqa: F401
+except ImportError:
+    # Fallback if lib.timeout not available
+    class TimeoutError(Exception):  # type: ignore[no-redef]
+        """Signal-based timeout exception"""
+        pass
+
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
 
@@ -66,12 +75,6 @@ def find_project_root(start_path: str | Path = ".") -> Path:
 
     # Not found - return start_path as absolute
     return Path(start_path).resolve()
-
-
-class TimeoutError(Exception):
-    """Signal-based timeout exception"""
-
-    pass
 
 
 @contextmanager

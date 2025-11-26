@@ -1,9 +1,9 @@
 ---
 name: factory-skill
-description: Creates and optimizes modular Skills for Claude Code extensions with official standards compliance. Orchestrates user research, web documentation analysis, Skill generation with progressive disclosure, automatic file splitting for 500-line SKILL.md limits, and post-generation QA validation. Use for creating new Skills, updating existing Skills, or researching Skill development best practices. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-skill') - NEVER executed directly.
+description: Creates modular Skills for Claude Code extensions with official standards compliance and progressive disclosure patterns.
 tools: Read, Write, Edit, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-core-claude-code
 ---
 

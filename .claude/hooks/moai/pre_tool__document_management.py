@@ -32,6 +32,11 @@ try:
     from lib.config_manager import ConfigManager  # noqa: E402
     from lib.timeout import CrossPlatformTimeout  # noqa: E402
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+    from lib.common import (  # noqa: E402
+        is_root_whitelisted,
+        get_file_pattern_category,
+        suggest_moai_location,
+    )
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
@@ -51,81 +56,42 @@ except ImportError:
 
     ConfigManager = None  # type: ignore
 
+    # Fallback implementations if lib.common unavailable
+    def is_root_whitelisted(filename: str, config: Dict) -> bool:
+        """Fallback: Check if file is allowed in project root"""
+        whitelist = config.get("document_management", {}).get("root_whitelist", [])
+        for pattern in whitelist:
+            regex = pattern.replace("*", ".*").replace("?", ".")
+            if re.match(f"^{regex}$", filename):
+                return True
+        return False
 
-def get_file_pattern_category(filename: str, config: Dict) -> Optional[Tuple[str, str]]:
-    """Match filename against patterns to determine category
+    def get_file_pattern_category(filename: str, config: Dict) -> Optional[Tuple[str, str]]:
+        """Fallback: Match filename against patterns"""
+        patterns = config.get("document_management", {}).get("file_patterns", {})
+        for dir_type, categories in patterns.items():
+            for category, pattern_list in categories.items():
+                for pattern in pattern_list:
+                    regex = pattern.replace("*", ".*").replace("?", ".")
+                    if re.match(f"^{regex}$", filename):
+                        return (dir_type, category)
+        return None
 
-    Args:
-        filename: Name of the file to categorize
-        config: Configuration dictionary
-
-    Returns:
-        Tuple of (directory_type, category) or None if no match
-        Example: ("reports", "inspection") or ("scripts", "conversion")
-    """
-    patterns = config.get("document_management", {}).get("file_patterns", {})
-
-    for dir_type, categories in patterns.items():
-        for category, pattern_list in categories.items():
-            for pattern in pattern_list:
-                # Convert glob pattern to regex
-                regex = pattern.replace("*", ".*").replace("?", ".")
-                if re.match(f"^{regex}$", filename):
-                    return (dir_type, category)
-
-    return None
-
-
-def suggest_moai_location(filename: str, config: Dict) -> str:
-    """Suggest appropriate .moai/ location based on file pattern
-
-    Args:
-        filename: Name of the file
-        config: Configuration dictionary
-
-    Returns:
-        Suggested .moai/ path
-    """
-    # Try pattern matching first
-    match = get_file_pattern_category(filename, config)
-
-    if match:
-        dir_type, category = match
-        base_dir = config.get("document_management", {}).get("directories", {}).get(dir_type, {}).get("base", "")
-        if base_dir:
-            return f"{base_dir}{category}/"
-
-    # Default fallback suggestions
-    if filename.endswith(".md"):
+    def suggest_moai_location(filename: str, config: Dict) -> str:
+        """Fallback: Suggest .moai/ location"""
+        match = get_file_pattern_category(filename, config)
+        if match:
+            dir_type, category = match
+            base_dir = config.get("document_management", {}).get("directories", {}).get(dir_type, {}).get("base", "")
+            if base_dir:
+                return f"{base_dir}{category}/"
+        if filename.endswith(".md"):
+            return ".moai/temp/work/"
+        elif filename.endswith((".sh", ".py", ".js")):
+            return ".moai/scripts/dev/"
+        elif filename.endswith((".tmp", ".temp", ".bak")):
+            return ".moai/temp/work/"
         return ".moai/temp/work/"
-    elif filename.endswith((".sh", ".py", ".js")):
-        return ".moai/scripts/dev/"
-    elif filename.endswith((".tmp", ".temp", ".bak")):
-        return ".moai/temp/work/"
-
-    # Ultimate fallback
-    return ".moai/temp/work/"
-
-
-def is_root_whitelisted(filename: str, config: Dict) -> bool:
-    """Check if file is allowed in project root
-
-    Args:
-        filename: Name of the file
-        config: Configuration dictionary
-
-    Returns:
-        True if file is whitelisted for root directory
-    """
-    whitelist = config.get("document_management", {}).get("root_whitelist", [])
-
-    for pattern in whitelist:
-        # Convert glob pattern to regex
-        regex = pattern.replace("*", ".*").replace("?", ".")
-        if re.match(f"^{regex}$", filename):
-            return True
-
-    return False
 
 
 def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:

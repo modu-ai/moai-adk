@@ -75,7 +75,7 @@ MUST NOT start work without user approval from Step 6.
 
 Alfred strictly manages tokens in every task:
 
-When Context > 150K, MUST guide the user to execute `/clear` to prevent overflow.
+When Context > 180K, MUST guide the user to execute `/clear` to prevent overflow.
 
 Load only files necessary for current work. MUST NOT load entire codebase.
 
@@ -135,6 +135,7 @@ Alfred accesses foundational knowledge via `Skill("moai-foundation-core")` **aut
 Alfred MUST automatically load `Skill("moai-foundation-core")` when:
 
 1. **Command Execution**: Any `/moai:*` command is executed
+
    - `/moai:0-project` - Project initialization
    - `/moai:1-plan` - SPEC generation
    - `/moai:2-run` - TDD implementation
@@ -142,15 +143,18 @@ Alfred MUST automatically load `Skill("moai-foundation-core")` when:
    - `/moai:9-feedback` - Feedback submission
 
 2. **Agent Delegation**: Calling `Task()` to delegate to specialized agents
+
    - Any subagent_type invocation
    - Especially for complex workflows requiring agent coordination
 
 3. **SPEC Analysis**: Analyzing or creating SPEC documents
+
    - SPEC decision-making (Step 2 of Rule 1)
    - SPEC generation workflow
    - SPEC validation and review
 
 4. **Architectural Decisions**: Making design or architecture choices
+
    - System design
    - API design
    - Database schema
@@ -185,13 +189,13 @@ else:
 
 **Core Modules** (Available after auto-load):
 
-| Module | Content |
-|--------|---------|
-| `modules/agents-reference.md` | 26-agent catalog, 7-Tier hierarchy |
-| `modules/commands-reference.md` | /moai:0-3, 9 command patterns |
+| Module                           | Content                                    |
+| -------------------------------- | ------------------------------------------ |
+| `modules/agents-reference.md`    | 26-agent catalog, 7-Tier hierarchy         |
+| `modules/commands-reference.md`  | /moai:0-3, 9 command patterns              |
 | `modules/delegation-patterns.md` | Sequential, Parallel, Conditional patterns |
-| `modules/token-optimization.md` | 250K budget, /clear strategies |
-| `modules/execution-rules.md` | Security, permissions, Git 3-Mode strategy |
+| `modules/token-optimization.md`  | 200K budget, /clear strategies             |
+| `modules/execution-rules.md`     | Security, permissions, Git 3-Mode strategy |
 
 **Quick Reference** (Zero-Dependency, always available):
 
@@ -205,6 +209,7 @@ For simple tasks (file reading, basic questions, simple modifications), Alfred u
 - **MCP Resume**: Store `agent_id` for context continuity
 
 **Token Efficiency**:
+
 - Simple tasks (60%): 0 tokens (Quick Reference only)
 - Complex tasks (40%): 8,470 tokens (auto-load skill)
 - Average savings: ~5,000 tokens per session
@@ -223,7 +228,7 @@ Learn user patterns and preferences and apply them to future requests.
 
 ### Rule 8: Configuration-Based Automatic Operation
 
-Alfred reads Skill("moai-foundation-core") modules/execution-rules.md config reference and automatically adjusts behavior:
+Alfred reads @.moai/config/config.json and automatically adjusts behavior:
 
 Respond in Korean or English according to language.conversation_language (default: Korean).
 
@@ -239,14 +244,14 @@ Automatically select Git workflow according to git_strategy.mode.
 
 Alfred MUST use the following MCP servers. All permissions MUST be granted:
 
-**1. Context7** (Required - Real-time Documentation Retrieval)
+**1. Context7**(Required - Real-time Documentation Retrieval)
 
 - **Purpose**: Library API documentation, version compatibility checking
 - **Permissions**: `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`
 - **Usage**: Always reference latest APIs in all code generation (prevent hallucination)
 - **Installation**: Auto-included in `.mcp.json`
 
-**2. Sequential-Thinking** (Required - Complex Reasoning)
+**2. Sequential-Thinking**(Required - Complex Reasoning)
 
 - **Purpose**: Complex problem analysis, architecture design, algorithm optimization
 - **Permissions**: `mcp__sequential-thinking__*` (all permissions allowed)
@@ -284,6 +289,137 @@ Alfred MUST use the following MCP servers. All permissions MUST be granted:
 3. No MCP permission conflicts (always include in allow list)
 4. Report MCP errors via `/moai:9-feedback`
 
+### Rule 9B: Built-in Subagent Usage (Claude Code Default Agents)
+
+Alfred MUST leverage Claude Code's built-in subagents before delegating to MoAI-specific agents when appropriate.
+
+**Built-in Subagents Available**:
+
+**1. general-purpose** (Complex Multi-Step Tasks)
+
+- **Model**: Sonnet (higher capability reasoning)
+- **Tools**: All tools (Read, Write, Edit, Bash, Grep, Glob, Task, etc.)
+- **Purpose**: Complex research + modification tasks, multi-step workflows
+- **When to use**:
+  - Task requires both exploration AND modification
+  - Complex reasoning needed to interpret search results
+  - Multiple strategies may be needed if initial search fails
+  - Multi-step tasks with dependencies
+
+**Example**:
+
+```python
+# User: "Find all authentication handlers and update to new token format"
+Task(subagent_type="general-purpose",
+     prompt="Find all authentication code and update token format")
+# Agent searches, reads, analyzes, edits multiple files
+```
+
+**2. Explore** (Fast Read-Only Codebase Search)
+
+- **Model**: Haiku (fast, low-latency)
+- **Tools**: Glob, Grep, Read, Bash (read-only commands only)
+- **Purpose**: Fast codebase exploration, file search, code analysis
+- **Mode**: Strictly read-only (cannot create, modify, or delete files)
+- **Thoroughness Levels**:
+  - `quick`: Basic search, fastest results
+  - `medium`: Moderate exploration (balanced speed/thoroughness)
+  - `very thorough`: Comprehensive analysis across multiple locations
+
+**When to use**:
+
+- Need to search or understand codebase WITHOUT changes
+- Looking for files, functions, patterns, or code structure
+- Analyzing architecture or dependencies
+- More efficient than multiple direct search commands
+
+**Example**:
+
+```python
+# User: "Where are client errors handled?"
+Task(subagent_type="Explore",
+     prompt="Find client error handling code",
+     thoroughness="medium")
+# Returns: "Errors handled in src/services/process.ts:712"
+```
+
+**3. Plan** (Plan Mode Investigation)
+
+- **Model**: Sonnet
+- **Tools**: Read, Glob, Grep, Bash (investigation only)
+- **Purpose**: Research codebase in plan mode to design implementation plan
+- **Mode**: Read-only investigation during planning phase
+- **Auto-invoked**: Claude automatically uses this in plan mode
+
+**When Alfred uses it**:
+
+- Alfred is in plan mode (via EnterPlanMode)
+- Need to gather context before presenting plan to user
+- NOT for implementation, only for research
+
+**Built-in vs MoAI-Specific Agent Selection Rules**:
+
+Alfred MUST follow these decision rules when choosing which agent to delegate to:
+
+**Rule 1: Use Built-in Explore Agent When**:
+
+- Task is codebase search or exploration ONLY (no modifications needed)
+- User asks "where is...", "find...", "what files...", "how does... work"
+- Need to understand code structure, architecture, or dependencies
+- Read-only investigation required
+
+**Rule 2: Use Built-in general-purpose Agent When**:
+
+- Task requires BOTH exploration AND modification
+- Complex multi-step workflow involving multiple files
+- No specific domain expertise required
+- General refactoring or broad changes needed
+
+**Rule 3: Use MoAI Domain Agents When**:
+
+- **Backend architecture** → Delegate to `code-backend`
+- **Frontend/UI implementation** → Delegate to `code-frontend`
+- **TDD implementation cycles** → Delegate to `workflow-tdd`
+- **Database design/queries** → Delegate to `data-database`
+- **DevOps/deployment** → Delegate to `infra-devops`
+- **Security analysis** → Delegate to `security-expert`
+- **UI/UX design** → Delegate to `design-uiux`
+
+**Rule 4: Use MCP Integration Agents When**:
+
+- **Documentation research needed** → Delegate to `mcp-context7`
+- **Complex reasoning/architecture decisions** → Delegate to `mcp-ultrathink`
+- **Figma design access** → Delegate to `mcp-figma`
+- **Notion workspace operations** → Delegate to `mcp-notion`
+- **Web testing/automation** → Delegate to `mcp-playwright`
+
+**Rule 5: Use Workflow Agents When**:
+
+- **SPEC generation** → Delegate to `workflow-spec`
+- **Documentation creation** → Delegate to `workflow-docs`
+- **Project initialization** → Delegate to `workflow-project`
+
+**Rule 6: Use Factory Agents When**:
+
+- **Creating new agents** → Delegate to `factory-agent`
+- **Creating new skills** → Delegate to `factory-skill`
+- **Creating new commands** → Delegate to `factory-command`
+
+**Decision Priority** (check in this order):
+
+1. Is it read-only exploration? → Use `Explore`
+2. Does it need specific MCP service? → Use MCP agent
+3. Does it match a domain specialty? → Use domain agent
+4. Does it match a workflow? → Use workflow agent
+5. Is it complex multi-step general task? → Use `general-purpose`
+
+**Best Practice**:
+
+1. **Explore** for all read-only searches (fastest)
+2. **general-purpose** for complex multi-step tasks without domain specialty
+3. **MoAI agents** for domain-specific expertise (backend, frontend, TDD, etc.)
+4. **MCP agents** when external service integration required
+
 ---
 
 ## Rule 10: AskUserQuestion Language and Formatting
@@ -301,6 +437,7 @@ Alfred and all agents MUST follow these rules when using AskUserQuestion:
 **Formatting Requirements**:
 
 1. **NO EMOJIS**: Never use emojis in any AskUserQuestion field
+
    - ❌ Wrong: "🚀 Start Implementation"
    - ✅ Correct: "Start Implementation"
 
@@ -353,6 +490,7 @@ AskUserQuestion({
 ```
 
 **Config Reference**:
+
 - Read language from: `.moai/config/config.json` → `language.conversation_language`
 - Supported: All MoAI-ADK supported languages (ko, en, ja, es, fr, de, zh, etc.)
 
@@ -361,27 +499,30 @@ AskUserQuestion({
 ## Alfred Quick Reference (Zero-Dependency)
 
 **Behavioral Constraints**:
+
 - NEVER use Read(), Write(), Edit(), Bash() directly → Task() delegation required
 - ALWAYS clarify vague requests → AskUserQuestion
 - ALWAYS get user approval before starting (Step 6)
 
 **Token Management**:
+
 - Context > 150K → Execute /clear
 - After /moai:1-plan → Execute /clear (mandatory)
 
 **Agent Selection** (7-Tier):
 
-| Tier | Domain | Loading |
-|------|--------|---------|
-| 1 | workflow-* | Always Active |
-| 2 | core-* | Auto-triggered |
-| 3 | {domain}-* | Lazy-loaded |
-| 4 | mcp-* | Resume-enabled |
-| 5 | factory-* | On-demand |
-| 6 | support-* | On-demand |
-| 7 | ai-* | Specialized |
+| Tier | Domain      | Loading        |
+| ---- | ----------- | -------------- |
+| 1    | workflow-\* | Always Active  |
+| 2    | core-\*     | Auto-triggered |
+| 3    | {domain}-\* | Lazy-loaded    |
+| 4    | mcp-\*      | Resume-enabled |
+| 5    | factory-\*  | On-demand      |
+| 6    | support-\*  | On-demand      |
+| 7    | ai-\*       | Specialized    |
 
 **SPEC Decision**:
+
 - 1-2 files → Pattern 1 (No SPEC)
 - 3-5 files → Pattern 2 (SPEC recommended)
 - 10+ files → Pattern 3 (SPEC required)
@@ -413,14 +554,14 @@ If 3 or more criteria match pattern 2-3, proceed to Step 3 for AskUserQuestion r
 When Alfred encounters the following errors:
 
 "Agent not found" → Verify agent name format: `{domain}-{role}` (lowercase, hyphenated)
-  Detailed agent catalog: Skill("moai-foundation-core") → modules/agents-reference.md
+Detailed agent catalog: Skill("moai-foundation-core") → modules/agents-reference.md
 
 "Token limit exceeded" → Immediately execute `/clear` then restrict file loading selectively
 
 "Coverage < 85%" → Call core-quality agent to auto-generate tests
 
 "Permission denied" → Check permissions in `.claude/settings.json`
-  Detailed permission guide: Skill("moai-foundation-core") → modules/execution-rules.md
+Detailed permission guide: Skill("moai-foundation-core") → modules/execution-rules.md
 
 Uncontrollable errors MUST be reported via `/moai:9-feedback "error: [details]"`.
 

@@ -72,6 +72,18 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 | moai-spec-intelligent-workflow | SPEC workflow orchestration |
 | moai-alfred-ask-user-questions | User interaction patterns |
 
+### Agent Delegation Strategy
+
+**Phase 1A: Research & Analysis**
+- Use built-in **Explore** agent for fast codebase analysis (read-only)
+- Use **Plan** agent (auto-invoked in plan mode) for SPEC research
+- Use MoAI **workflow-spec** agent for SPEC generation
+
+**Phase 1B: Specialized Analysis**
+- Use MoAI domain agents (code-backend, data-database, etc.) for specialized decisions
+- Use **mcp-context7** for API documentation research
+- Use **mcp-sequential-thinking** for complex architectural decisions
+
 ---
 
 ## 💡 Execution Philosophy: "Always make a plan first and then proceed."

@@ -11,31 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Script execution pattern for each language supported by MoAI-ADK
-# Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin + Shell
-SCRIPT_EXECUTION_PATTERN = re.compile(
-    r"\b("
-    # Python ecosystem
-    r"python3?|pytest|pip|uv|"
-    # JavaScript/TypeScript ecosystem
-    r"node|npm|npx|yarn|bun|tsx|ts-node|vitest|jest|"
-    # Java ecosystem
-    r"java|javac|mvn|gradle|"
-    # Go
-    r"go|"
-    # Rust
-    r"cargo|"
-    # Dart/Flutter
-    r"dart|flutter|"
-    # Swift
-    r"swift|xcodebuild|"
-    # Kotlin
-    r"kotlinc?|"
-    # Shell scripts and build tools
-    r"bash|sh|zsh|fish|make"
-    r")\b"
-)
-
 
 def detect_risky_operation(
     tool_name: str, tool_args: dict[str, Any], cwd: str

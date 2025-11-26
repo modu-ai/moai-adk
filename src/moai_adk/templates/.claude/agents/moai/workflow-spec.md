@@ -3,7 +3,7 @@ name: workflow-spec
 description: Use when: When you need to create an EARS-style SPEC document. Called from the /moai:1-plan command.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-lang-unified
 ---
 

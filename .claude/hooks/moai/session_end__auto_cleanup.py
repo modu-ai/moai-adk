@@ -32,12 +32,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
     from lib.config_manager import ConfigManager  # noqa: E402
+    from lib.common import (  # noqa: E402
+        format_duration,
+        get_summary_stats,
+        is_root_whitelisted,
+        get_file_pattern_category,
+        suggest_moai_location,
+    )
 except ImportError:
     ConfigManager = None  # type: ignore
-
-try:
-    from lib.utils.common import format_duration, get_summary_stats
-except ImportError:
     # Fallback implementations if module not found
     import statistics
 
@@ -402,83 +405,8 @@ def extract_specs_from_memory() -> List[str]:
     return specs
 
 
-def is_root_whitelisted(filename: str, config: Dict[str, Any]) -> bool:
-    """Check if file is allowed in project root
-
-    Args:
-        filename: Name of the file
-        config: Configuration dictionary
-
-    Returns:
-        True if file is whitelisted for root directory
-    """
-    import re
-
-    whitelist = config.get("document_management", {}).get("root_whitelist", [])
-
-    for pattern in whitelist:
-        # Convert glob pattern to regex
-        regex = pattern.replace("*", ".*").replace("?", ".")
-        if re.match(f"^{regex}$", filename):
-            return True
-
-    return False
-
-
-def get_file_pattern_category(filename: str, config: Dict[str, Any]) -> Optional[tuple[str, str]]:
-    """Match filename against patterns to determine category
-
-    Args:
-        filename: Name of the file to categorize
-        config: Configuration dictionary
-
-    Returns:
-        Tuple of (directory_type, category) or None if no match
-    """
-    import re
-
-    patterns = config.get("document_management", {}).get("file_patterns", {})
-
-    for dir_type, categories in patterns.items():
-        for category, pattern_list in categories.items():
-            for pattern in pattern_list:
-                # Convert glob pattern to regex
-                regex = pattern.replace("*", ".*").replace("?", ".")
-                if re.match(f"^{regex}$", filename):
-                    return (dir_type, category)
-
-    return None
-
-
-def suggest_moai_location(filename: str, config: Dict[str, Any]) -> str:
-    """Suggest appropriate .moai/ location based on file pattern
-
-    Args:
-        filename: Name of the file
-        config: Configuration dictionary
-
-    Returns:
-        Suggested .moai/ path
-    """
-    # Try pattern matching first
-    match = get_file_pattern_category(filename, config)
-
-    if match:
-        dir_type, category = match
-        base_dir = config.get("document_management", {}).get("directories", {}).get(dir_type, {}).get("base", "")
-        if base_dir:
-            return f"{base_dir}{category}/"
-
-    # Default fallback suggestions
-    if filename.endswith(".md"):
-        return ".moai/temp/work/"
-    elif filename.endswith((".sh", ".py", ".js")):
-        return ".moai/scripts/dev/"
-    elif filename.endswith((".tmp", ".temp", ".bak")):
-        return ".moai/temp/work/"
-
-    # Ultimate fallback
-    return ".moai/temp/work/"
+# Note: is_root_whitelisted, get_file_pattern_category, and suggest_moai_location
+# are now imported from lib.common (consolidated from duplicate implementations)
 
 
 def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:

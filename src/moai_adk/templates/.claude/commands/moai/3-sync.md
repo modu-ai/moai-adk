@@ -37,18 +37,18 @@ skills: moai-docs-unified, moai-core-quality
 
 ## 🎯 Command Purpose
 
-**CRITICAL**: This command orchestrates ONLY - delegates all sync work to doc-syncer agent
+**CRITICAL**: This command orchestrates ONLY - delegates all sync work to workflow-docs agent
 
 **Document sync to**: $ARGUMENTS
 
 **Agent Delegation Pattern**:
 
 ```bash
-# ✅ CORRECT: Delegate to doc-syncer agent
+# ✅ CORRECT: Delegate to workflow-docs agent
 Task(
-  subagent_type="doc-syncer",
+  subagent_type="workflow-docs",
   description="Synchronize documentation for $ARGUMENTS",
-  prompt="You are the doc-syncer agent. Analyze changes and synchronize all relevant documentation."
+  prompt="You are the workflow-docs agent. Analyze changes and synchronize all relevant documentation."
 )
 
 # ❌ WRONG: Direct document manipulation
@@ -85,9 +85,9 @@ This command supports **4 operational modes**:
 
 | Agent/Skill | Purpose |
 |------------|---------|
-| doc-syncer | Synchronize Living Documents with code changes |
-| quality-gate | Verify project integrity and TRUST 5 compliance |
-| git-manager | Handle Git operations and commit management |
+| workflow-docs | Synchronize Living Documents with code changes |
+| core-quality | Verify project integrity and TRUST 5 compliance |
+| core-git | Handle Git operations and commit management |
 | moai-docs-toolkit | Documentation generation and validation |
 | moai-alfred-reporting | Result reporting and summaries |
 | moai-alfred-trust-validation | Project validation and quality gates |
@@ -103,10 +103,10 @@ This command supports **4 operational modes**:
 User Command: /moai:3-sync [mode] [path]
     ↓
 /moai:3-sync Command
-    └─ Task(subagent_type="doc-syncer" or "quality-gate" or "git-manager")
-        ├─ Phase 1: Analysis & Planning (doc-syncer)
-        ├─ Phase 2: Execute Sync (doc-syncer + quality-gate)
-        └─ Phase 3: Git Operations & PR (git-manager)
+    └─ Task(subagent_type="workflow-docs" or "core-quality" or "core-git")
+        ├─ Phase 1: Analysis & Planning (workflow-docs)
+        ├─ Phase 2: Execute Sync (workflow-docs + core-quality)
+        └─ Phase 3: Git Operations & PR (core-git)
             ↓
         Output: Synchronized docs + commit + PR Ready (conditional)
 ```
@@ -123,7 +123,7 @@ User Command: /moai:3-sync [mode] [path]
 - ✅ **AskUserQuestion()** for user interaction
 - ✅ **TodoWrite()** for progress tracking
 
-All complexity is handled by specialized agents (doc-syncer, quality-gate, git-manager).
+All complexity is handled by specialized agents (workflow-docs, core-quality, core-git).
 
 ---
 
@@ -131,7 +131,7 @@ All complexity is handled by specialized agents (doc-syncer, quality-gate, git-m
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ PHASE 1: Analysis & Planning (tag-agent + doc-syncer)   │
+│ PHASE 1: Analysis & Planning (tag-agent + workflow-docs)│
 │  - Verify prerequisites                                  │
 │  - Analyze project status (Git + SPEC)                    │
 │  - Request user approval                                 │
@@ -144,14 +144,14 @@ All complexity is handled by specialized agents (doc-syncer, quality-gate, git-m
           ↓                               ↓
 ┌─────────────────────────┐   ┌──────────────────────┐
 │ PHASE 2: Execute Sync   │   │ PHASE 4: Graceful    │
-│ (doc-syncer + quality)  │   │ Exit (no changes)    │
+│ (workflow-docs+quality) │   │ Exit (no changes)    │
 │  - Create backup        │   └──────────────────────┘
 │  - Sync documents       │
 │  - Verify SPECs          │
 └─────────────────────────┘
           ↓
 ┌──────────────────────────────────────────────────────────┐
-│ PHASE 3: Git Operations & PR (git-manager)               │
+│ PHASE 3: Git Operations & PR (core-git)                  │
 │  - Commit document changes                               │
 │  - Transition PR (Team mode)                             │
 │  - Auto-merge (if requested)                             │
@@ -249,16 +249,16 @@ Gather context for synchronization planning:
 
 ### Step 1.4: Invoke Doc-Syncer for Synchronization Plan
 
-**Your task**: Call doc-syncer to analyze Git changes and create synchronization strategy.
+**Your task**: Call workflow-docs to analyze Git changes and create synchronization strategy.
 
 Use Task tool:
 
-- `subagent_type`: "doc-syncer"
+- `subagent_type`: "workflow-docs"
 - `description`: "Establish a document synchronization plan"
 - `prompt`:
 
   ```
-  You are the doc-syncer agent.
+  You are the workflow-docs agent.
 
   CRITICAL LANGUAGE CONFIGURATION:
   - You receive instructions in agent_prompt_language from config (default: English for global standard)
@@ -373,16 +373,16 @@ Before making any changes:
 
 ### Step 2.2: Invoke Doc-Syncer for Document Synchronization
 
-**Your task**: Call doc-syncer to execute the approved synchronization plan.
+**Your task**: Call workflow-docs to execute the approved synchronization plan.
 
 Use Task tool:
 
-- `subagent_type`: "doc-syncer"
+- `subagent_type`: "workflow-docs"
 - `description`: "Execute Living Document synchronization"
 - `prompt`:
 
   ```
-  You are the doc-syncer agent.
+  You are the workflow-docs agent.
 
   CRITICAL LANGUAGE CONFIGURATION:
   - You receive instructions in agent_prompt_language from config (default: English for global standard)
@@ -396,7 +396,7 @@ Use Task tool:
 
   Previous analysis results:
   - Project verification: [from tag-agent]
-  - Synchronization strategy: [from doc-syncer analysis]
+  - Synchronization strategy: [from workflow-docs analysis]
 
   **Task Instructions**:
 
@@ -433,16 +433,16 @@ Use Task tool:
 
 ### Step 2.3: Invoke Quality-Gate for Verification
 
-**Your task**: Call quality-gate to verify synchronization quality.
+**Your task**: Call core-quality to verify synchronization quality.
 
 Use Task tool:
 
-- `subagent_type`: "quality-gate"
+- `subagent_type`: "core-quality"
 - `description`: "Verify document synchronization quality"
 - `prompt`:
 
   ```
-  You are the quality-gate agent.
+  You are the core-quality agent.
 
   CRITICAL LANGUAGE CONFIGURATION:
   - You receive instructions in agent_prompt_language from config (default: English for global standard)
@@ -451,7 +451,7 @@ Use Task tool:
 
   **Task**: Verify that document synchronization meets TRUST 5 principles.
 
-  Synchronization results: [from doc-syncer]
+  Synchronization results: [from workflow-docs]
 
   **Verification checks**:
   1. Test First: Are all project links complete?
@@ -506,16 +506,16 @@ Use Task tool:
 
 ### Step 3.1: Invoke Git-Manager for Commit
 
-**Your task**: Call git-manager to commit all document changes.
+**Your task**: Call core-git to commit all document changes.
 
 Use Task tool:
 
-- `subagent_type`: "git-manager"
+- `subagent_type`: "core-git"
 - `description`: "Commit document synchronization changes"
 - `prompt`:
 
   ```
-  You are the git-manager agent.
+  You are the core-git agent.
 
   CRITICAL LANGUAGE CONFIGURATION:
   - You receive instructions in agent_prompt_language from config (default: English for global standard)
@@ -581,7 +581,7 @@ For Team mode projects only:
 2. **Transition PR to Ready**:
 
    - Use Task tool:
-     - `subagent_type`: "git-manager"
+     - `subagent_type`: "core-git"
      - `description`: "Transition PR to Ready for Review"
      - `prompt`: "Transition PR from Draft to Ready. Execute: `gh pr ready`"
 
@@ -708,9 +708,9 @@ Exit command with code 0.
 
 **Associated Agents**:
 
-- `doc-syncer` - Living Document synchronization
-- `quality-gate` - TRUST 5 validation
-- `git-manager` - Git operations and PR management
+- `workflow-docs` - Living Document synchronization
+- `core-quality` - TRUST 5 validation
+- `core-git` - Git operations and PR management
 
 **Documentation Outputs**:
 
@@ -765,5 +765,5 @@ AskUserQuestion({
 **You must NOW execute the command following the "OVERALL WORKFLOW STRUCTURE" described above.**
 
 1. Start PHASE 1: Analysis & Planning immediately.
-2. Call the `Task` tool with `subagent_type="doc-syncer"` (or `tag-agent` as appropriate for the step).
+2. Call the `Task` tool with `subagent_type="workflow-docs"` (or `tag-agent` as appropriate for the step).
 3. Do NOT just describe what you will do. DO IT.

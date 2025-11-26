@@ -1,9 +1,9 @@
 ---
 name: mcp-context7
-description: Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides
+description: Use when documentation research, library lookups, API references, or official documentation is needed. Integrates Context7 MCP server for real-time documentation access.
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-mcp-integration
 ---
 

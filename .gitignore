@@ -229,7 +229,8 @@ uv.lock
 .claude/settings.local.json
 
 # .moai/ directory management
-# Only sync: config/, memory/, scripts/
+# Tracked in git: config/, memory/, scripts/, specs/
+# User-generated content: logs/, cache/, reports/, etc.
 .moai/*
 !.moai/config/
 !.moai/config/**
@@ -237,16 +238,25 @@ uv.lock
 !.moai/memory/**
 !.moai/scripts/
 !.moai/scripts/**
+!.moai/specs/
+!.moai/specs/**
 
 # .moai local-only directories (explicitly excluded)
 .moai/cache/
 .moai/logs/
 .moai/docs/
 .moai/reports/
-.moai/specs/
 .moai/analytics/
 .moai/archive/
 .moai/archived-skills/
+
+# .moai/scripts local development scripts (not in package)
+.moai/scripts/phase*.py
+.moai/scripts/phase*.sh
+.moai/scripts/sync-*.sh
+.moai/scripts/sync-*.py
+.moai/scripts/*sync*.sh
+.moai/scripts/__pycache__/
 .moai/backups/
 .moai/error_logs/
 .moai/indexes/

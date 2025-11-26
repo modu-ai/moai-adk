@@ -1,6 +1,6 @@
 ---
 name: code-backend
-description: Use PROACTIVELY when Backend architecture, API design, server implementation, database integration, or microservices architecture is needed. Triggered by SPEC keywords - 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'. CRITICAL - This agent MUST be invoked via Task(subagent_type='code-backend') - NEVER executed directly.
+description: Use when backend architecture, API design, server implementation, or database integration decisions are needed.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default

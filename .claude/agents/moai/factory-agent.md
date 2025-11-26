@@ -1,9 +1,9 @@
 ---
 name: factory-agent
-description: Use PROACTIVELY when creating new sub-agents, building domain-specific agents, generating agent blueprints from requirements, or automating agent creation with research-driven optimization. Called from /moai:0-project initialization and custom agent generation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='factory-agent') - NEVER executed directly. Follows Claude Code official Sub-agents standards and generates production-ready agents with comprehensive validation and testing.
+description: Use when creating new sub-agents or generating agent blueprints from requirements. Follows Claude Code official sub-agent standards.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-core-claude-code
 ---
 

@@ -131,9 +131,20 @@ exclude = [
     "src/moai_adk/templates/.moai/temp",  # Temporary files
     "src/moai_adk/templates/.claude/commands/moai/99-release.md",  # Release command - local-only
     "src/moai_adk/templates/.moai/release",  # Release scripts - local-only
+
+    # ✅ INCLUDE: User-facing workflows (distributed to users)
+    # - ci-universal.yml (Multi-language CI/CD)
+    # - security-secrets-check.yml (Security scanner)
+    # - spec-issue-sync.yml (SPEC → GitHub Issue sync)
+
+    # ❌ EXCLUDE: MoAI-ADK internal workflows (development only)
+    "src/moai_adk/templates/.github/workflows/moai-gitflow.yml",
+    "src/moai_adk/templates/.github/workflows/moai-release-create.yml",
+    "src/moai_adk/templates/.github/workflows/moai-release-pipeline.yml",
+
     "tests",  # Test directory
     ".git",  # Git directory
-    ".github/workflows",  # GitHub Actions (not needed in package)
+    ".github/workflows",  # GitHub Actions for MoAI-ADK itself (local development)
 ]
 
 [project.scripts]

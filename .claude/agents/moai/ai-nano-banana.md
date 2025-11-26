@@ -3,6 +3,7 @@ name: ai-nano-banana
 description: Use PROACTIVELY when user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='ai-nano-banana') - NEVER executed directly.
 tools: Read, Write, Bash, AskUserQuestion
 model: inherit
+permissionMode: default
 skills: moai-connector-nano-banana, moai-essentials-unified
 ---
 

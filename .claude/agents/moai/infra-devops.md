@@ -1,6 +1,6 @@
 ---
 name: infra-devops
-description: Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'.
+description: Use when deployment configuration, CI/CD pipelines, containerization, or cloud infrastructure setup is needed.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default

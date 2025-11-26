@@ -3,7 +3,7 @@ name: core-quality
 description: Use when code quality verification is required. Called in /moai:2-run Phase 2.5, /moai:3-sync Phase 0.5.
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 skills: moai-essentials-unified, moai-core-quality
 ---
 

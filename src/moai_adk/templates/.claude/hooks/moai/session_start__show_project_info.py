@@ -416,16 +416,6 @@ def format_project_metadata() -> str:
     return f"📦 Version: {moai_version} {version_status}"
 
 
-def display_project_info() -> None:
-    """Display project information to stdout.
-
-    Returns:
-        None
-    """
-    # This function is a placeholder for future display logic
-    pass
-
-
 def format_session_output() -> str:
     """Format the complete session start output with proper line alignment (optimized).
 
