@@ -4,7 +4,6 @@ RED Phase - Tests for modularization and document quality
 """
 
 
-
 class TestSkillFileSize:
     """Skills files should be modularized (< 500 lines)"""
 

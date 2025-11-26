@@ -131,7 +131,6 @@ class TestCoreCleanup:
             (datetime.now() - timedelta(days=8)).timestamp()
             Path(old_report).touch()
 
-
             # Expected: reports_cleaned >= 1
             assert True  # Placeholder
 
@@ -196,7 +195,6 @@ class TestCoreCleanup:
             stats_dir = Path(tmpdir) / ".moai" / "cache"
             stats_dir.mkdir(parents=True, exist_ok=True)
 
-
             # Expected: creates cleanup_stats.json
             assert True  # Placeholder
 
@@ -208,7 +206,6 @@ class TestCoreCleanup:
 
             stats_file = stats_dir / "cleanup_stats.json"
             stats_file.write_text(json.dumps({"2025-11-01": {"cleaned_files": 3}}))
-
 
             # Expected: file now has 2 dates
             assert True  # Placeholder
@@ -226,7 +223,6 @@ class TestCoreCleanup:
                 old_stats[date] = {"cleaned_files": i}
 
             stats_file.write_text(json.dumps(old_stats))
-
 
             # Expected: only 30 most recent dates retained
             assert True  # Placeholder

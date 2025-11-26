@@ -4,7 +4,6 @@ This file contains RED phase tests that will initially fail.
 Tests are written in English as per project standards.
 """
 
-
 # Import DevOps classes that will be implemented
 from src.moai_adk.foundation.devops import (
     CICDPipelineOrchestrator,

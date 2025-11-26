@@ -12,7 +12,6 @@ Tests cover:
 7. Complete validation workflow
 """
 
-
 import pytest
 
 

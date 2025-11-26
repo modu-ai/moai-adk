@@ -25,7 +25,6 @@ Created: 2025-11-24
 Status: RED Phase (All tests failing)
 """
 
-
 import pytest
 
 # ============================================================================
