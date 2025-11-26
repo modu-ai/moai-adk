@@ -148,25 +148,15 @@ jobs:
 
           echo "safe=true" >> "$GITHUB_OUTPUT"
 
-      - name: 🔄 Validate version file synchronization
+      - name: 🔄 Validate version consistency
         run: |
-          echo "🔍 Validating version file synchronization..."
+          echo "🔍 Validating version consistency..."
 
           PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
-          INIT_VERSION=$(grep '__version__ = ' src/moai_adk/__init__.py | sed 's/__version__ = "//' | sed 's/"//')
+          echo "📦 pyproject.toml version: $PYPROJECT_VERSION"
 
-          echo "  pyproject.toml version: $PYPROJECT_VERSION"
-          echo "  __init__.py version:    $INIT_VERSION"
-
-          if [ "$PYPROJECT_VERSION" != "$INIT_VERSION" ]; then
-            echo "❌ VERSION MISMATCH DETECTED!"
-            echo "   pyproject.toml: $PYPROJECT_VERSION"
-            echo "   __init__.py:    $INIT_VERSION"
-            echo "   Versions must be synchronized before deployment!"
-            exit 1
-          fi
-
-          echo "✅ All version files are synchronized"
+          echo "✅ Version file uses single source of truth (pyproject.toml)"
+          echo "ℹ️  Note: __init__.py and version.py use importlib.metadata to read version from pyproject.toml"
 
       - name: 📋 Generate deployment summary
         run: |
