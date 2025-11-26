@@ -48,20 +48,9 @@ concurrency:
   group: release-secure-${{ github.ref }}
   cancel-in-progress: false
 
-environments:
-  production:
-    # 🔒 PRODUCTION ENVIRONMENT PROTECTION
-    url: https://pypi.org/project/moai-adk/
-    protection_rules:
-      - type: wait_timer
-        minutes: 5  # ⏰ 5-minute delay for manual review
-      - type: reviewers
-        reviewers: ['modu-ai']  # 👥 Required approval from maintainers
-  test:
-    url: https://test.pypi.org/project/moai-adk/
-    protection_rules:
-      - type: wait_timer
-        minutes: 1  # ⏰ 1-minute delay for test environment
+# NOTE: Environment protection rules are configured in GitHub Repository Settings → Environments
+# - production: Requires manual approval, 5-minute wait timer
+# - test: 1-minute wait timer for testing
 
 jobs:
   # 🔍 PRE-DEPLOYMENT VALIDATION
