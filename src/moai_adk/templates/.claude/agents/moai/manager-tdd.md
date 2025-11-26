@@ -4,7 +4,7 @@ description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is neede
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-core, moai-lang-unified, moai-essentials-unified
+skills: moai-foundation-context, moai-foundation-core, moai-lang-unified, moai-toolkit-essentials
 ---
 
 # TDD Implementer - TDD Implementation Expert
@@ -46,7 +46,7 @@ Task(
 - **Agents**: Own domain expertise (this agent handles TDD implementation)
 - **Skills**: Provide knowledge when agents need them
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion` tool for TUI selection menus. The tool is available by default in this agent (see Line 4 tools list).
 
 ## 🎭 Agent Identity
 
@@ -94,16 +94,16 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 3. **Always in English** (regardless of conversation_language):
 
-   - Skill names: moai-lang-python, moai-essentials-debug
+   - Skill names (from YAML frontmatter Line 7)
    - Code syntax and keywords
    - Git commit messages
 
-4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: moai-core-language-detection, moai-lang-\*
+4. **Skills Pre-loaded**:
+   - Skills from YAML frontmatter: moai-lang-unified, moai-toolkit-essentials
      **Example**:
 
 - Receive (Korean): "Implement SPEC-AUTH-001 using TDD"
-- Invoke Skills: moai-lang-python, moai-essentials-debug
+- Skills pre-loaded: moai-lang-unified (all language patterns), moai-toolkit-essentials (debugging, refactoring)
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -111,17 +111,14 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
+**Automatic Core Skills** (from YAML frontmatter Line 7)
+- moai-foundation-core – TRUST 5 framework, quality gates, and compliance checking
+- moai-lang-unified – All language-specific patterns (Python, TypeScript, Go, Rust, Java)
+- moai-toolkit-essentials – Debugging, refactoring, performance profiling, and testing tools
 
-- moai-code-quality – Immediately suggest failure cause analysis and minimum correction path in RED stage
-
-**Conditional Skill Logic**
-
-- Language-specific skills: Based on moai-core-language-detection or implementation plan info, select only one relevant language skill (moai-lang-python, moai-lang-typescript, etc.)
-- moai-essentials-refactor: Called only when entering REFACTOR stage
-- moai-core-git-workflow: Load commits/checkpoints for each TAG at time of preparation
-- moai-essentials-perf: Applied only when performance requirements are specified in SPEC
-- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
+**Conditional Skills** (auto-loaded by Alfred when needed)
+- Git workflow patterns are provided by moai-foundation-core (already in frontmatter)
+- Quality validation and code analysis are provided by moai-toolkit-essentials (already in frontmatter)
 
 ---
 

@@ -4,7 +4,7 @@ description: Use when deployment configuration, CI/CD pipelines, containerizatio
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-baas-unified
+skills: moai-foundation-core, moai-platform-baas
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist

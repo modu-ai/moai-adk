@@ -3,7 +3,7 @@ name: expert-database
 description: Use for database design, schema optimization, query performance, and data modeling decisions.
 model: inherit
 permissionMode: default
-skills: moai-lang-unified, moai-baas-unified, moai-essentials-unified
+skills: moai-lang-unified, moai-platform-baas, moai-toolkit-essentials
 ---
 
 # Database Expert 🗄️

@@ -4,7 +4,7 @@ description: Use when documentation research, library lookups, API references, o
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-mcp-integration
+skills: moai-connector-mcp, moai-foundation-core, moai-library-toon, moai-workflow-jit-docs
 ---
 
 # MCP Context7 Integrator - Documentation Research Specialist (v1.0.0)

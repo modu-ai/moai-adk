@@ -165,23 +165,43 @@ Alfred MUST automatically load `Skill("moai-foundation-core")` when:
 
 **Loading Strategy**:
 
-```python
-def should_load_foundation_core(context):
-    triggers = [
-        context.command.startswith("/moai:"),
-        context.uses_task_delegation,
-        context.involves_spec,
-        context.requires_architecture_decision,
-        context.complexity >= "medium"
-    ]
-    return any(triggers)
+Alfred automatically loads `Skill("moai-foundation-core")` when **any** of these conditions apply:
 
-if should_load_foundation_core(current_context):
-    Skill("moai-foundation-core")  # Auto-load
-else:
-    # Use Quick Reference below (zero loading)
-    pass
-```
+**Trigger Checklist** (Check all that apply):
+
+- [ ] **Command Execution**: User executes any `/moai:*` command
+  - `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:9-feedback`
+
+- [ ] **Agent Delegation**: Alfred invokes `Task()` for specialized agent delegation
+  - Any `subagent_type` call (expert-*, manager-*, builder-*, mcp-*, ai-*)
+
+- [ ] **SPEC Involvement**: Request involves SPEC analysis, creation, or validation
+  - SPEC generation workflow
+  - SPEC decision-making
+
+- [ ] **Architecture Decision**: Request requires design or architecture choices
+  - System design decisions
+  - API/Database schema design
+  - Security architecture choices
+
+- [ ] **Medium+ Complexity**: Request meets 3 or more of these criteria:
+  - Files to modify: 3+ files
+  - Architecture impact: Medium or High
+  - Implementation time: 1+ hours
+  - Feature integration: Multiple layers
+  - Maintenance need: Ongoing requirement
+
+**Decision Rule**:
+
+If **1 or more** triggers above apply → **Load skill automatically**
+If **zero triggers** apply → **Use Quick Reference** (zero token cost)
+
+**Decision Table**:
+
+| Trigger Count | Action                           | Cost  |
+| ------------- | -------------------------------- | ----- |
+| 0             | Use Quick Reference (below)      | 0 tokens |
+| 1+            | Load `moai-foundation-core` skill | ~8,470 tokens |
 
 **Core Modules** (Available after auto-load):
 
@@ -192,6 +212,29 @@ else:
 | `modules/delegation-patterns.md` | Sequential, Parallel, Conditional patterns |
 | `modules/token-optimization.md`  | 200K budget, /clear strategies             |
 | `modules/execution-rules.md`     | Security, permissions, Git 3-Mode strategy |
+
+**How Skills Are Actually Loaded**:
+
+**Method 1: Auto-load via Agent YAML Frontmatter** (Primary)
+```yaml
+---
+name: expert-backend
+skills: moai-lang-unified, moai-platform-baas, moai-connector-mcp
+---
+```
+- Skills are declared in the `skills:` field (Line 7) of agent YAML frontmatter
+- Alfred automatically loads these skills when calling the agent via Task()
+- This is the **actual mechanism** for skill loading
+
+**Method 2: Conditional Loading by Alfred** (Secondary)
+- Alfred loads additional skills based on context (defined in Rule 6 triggers)
+- Example: `moai-foundation-core` auto-loaded when complexity >= medium
+- Alfred adds these to the agent's skill set dynamically
+
+**Method 3: References in CLAUDE.md** (Documentation Only)
+- References like `Skill("moai-foundation-core")` in CLAUDE.md are **descriptive only**
+- They indicate which skill contains the information, not how to invoke it
+- Do NOT interpret these as function calls or commands
 
 **Quick Reference** (Zero-Dependency, always available):
 
@@ -570,9 +613,9 @@ Uncontrollable errors MUST be reported via `/moai:9-feedback "error: [details]"`
 
 Alfred MUST remember and automatically apply these 10 rules (Rules 1-10) in all user requests. While following these rules, support users' final goal achievement without hesitation. When improvement opportunities arise, propose via `/moai:9-feedback` to continuously advance MoAI-ADK.
 
-**Version**: 2.2.0 (Persona system removed)
+**Version**: 2.2.1 (Loading Strategy converted to markdown, documentation updated)
 **Language**: English 100%
 **Target**: Mr.Alfred (NOT for end users)
-**Last Updated**: 2025-11-24
+**Last Updated**: 2025-11-27
 
 ---

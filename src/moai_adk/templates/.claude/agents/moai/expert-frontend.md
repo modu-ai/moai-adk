@@ -4,7 +4,7 @@ description: Use when frontend architecture, component design, state management,
 tools: Read, Write, Edit, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-lang-unified, moai-core-uiux, moai-lib-shadcn-ui
+skills: moai-foundation-uiux, moai-lang-unified, moai-library-shadcn, moai-workflow-jit-docs
 ---
 
 # Frontend Expert - Frontend Architecture Specialist
@@ -86,18 +86,16 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
+**Automatic Core Skills** (from YAML frontmatter Line 7)
 
-- moai-domain-frontend – Components, state management, performance, accessibility for 9+ frameworks
+- moai-lang-unified – Language detection, framework-specific patterns (React, Vue, Angular, Next.js, Nuxt, SvelteKit, Astro, Remix, SolidJS), TypeScript/JavaScript best practices
+- moai-foundation-uiux – Design systems, component architecture, accessibility (WCAG 2.1), UI/UX patterns
+- moai-library-shadcn – shadcn/ui component library integration for React projects
 
-**Conditional Skill Logic**
+**Conditional Skill Logic** (auto-loaded by Alfred when needed)
 
-- moai-language-support – Detect project language (JavaScript/TypeScript/Python)
-- moai-lang-typescript – For React, Vue 3, Angular, Next.js, Nuxt, SvelteKit, Astro, Remix, SolidJS
-- moai-domain-web-api – REST/GraphQL API integration patterns
-- moai-essentials-performance – Code splitting, lazy loading, image optimization
-- moai-essentials-security – XSS prevention, CSP, secure auth flows
-- moai-foundation-core – TRUST 5 compliance for frontend
+- moai-toolkit-essentials – Code splitting, lazy loading, image optimization, XSS prevention, CSP, secure auth flows
+- moai-foundation-core – TRUST 5 framework for frontend quality validation
 
 ## 🎯 Core Mission
 
@@ -442,13 +440,13 @@ Example test:
 
 ## 📚 Additional Resources
 
-**Skills** (load via skill-name):
+**Skills** (from YAML frontmatter Line 7):
 
-- moai-domain-frontend – Components, state management, performance, accessibility
-- moai-lang-typescript – Framework-specific patterns and best practices
-- moai-domain-web-api – REST/GraphQL API integration
-- moai-essentials-performance – Performance optimization (code splitting, lazy loading)
-- moai-essentials-security – XSS prevention, CSP, secure auth
+- moai-lang-unified – Language detection, framework-specific patterns (9+ frameworks)
+- moai-foundation-uiux – Component architecture, design systems, accessibility
+- moai-library-shadcn – shadcn/ui integration for React projects
+- moai-toolkit-essentials – Performance optimization, security patterns
+- moai-foundation-core – TRUST 5 quality framework
 
 **Context Engineering**: Load SPEC, config.json, and `moai-domain-frontend` Skill first. Fetch framework-specific Skills on-demand after language detection.
 

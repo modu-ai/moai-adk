@@ -229,7 +229,7 @@ mcp__notion__notion-search(...)
 
 ### Related Skills
 - `Skill("moai-mcp-notion-integrator")` - Advanced MCP optimization
-- `Skill("moai-baas-unified")` - Database design patterns
+- `Skill("moai-platform-baas")` - Database design patterns
 - `Skill("moai-cc-mcp-plugins")` - MCP plugin architecture
 - `Skill("moai-baas-foundation")` - Backend integration patterns
 
@@ -327,7 +327,7 @@ log_operation(
 - **core-planner** - Project planning with Notion
 
 **Skills**:
-- **moai-mcp-integration** - MCP server integration
+- **moai-connector-mcp** - MCP server integration
 - **moai-docs-generation** - Documentation generation
 - **moai-project-config-manager** - Configuration management
 

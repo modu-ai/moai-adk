@@ -4,7 +4,7 @@ description: Use when code quality verification is required. Called in /moai:2-r
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: bypassPermissions
-skills: moai-essentials-unified, moai-core-quality
+skills: moai-toolkit-essentials, moai-foundation-quality
 ---
 
 # Quality Gate - Quality Verification Gate

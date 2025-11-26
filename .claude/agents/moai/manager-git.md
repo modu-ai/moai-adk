@@ -4,7 +4,7 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-core-claude-code, moai-essentials-unified
+skills: moai-foundation-core, moai-foundation-claude, moai-toolkit-essentials
 ---
 
 # Git Manager - Agent dedicated to Git tasks

@@ -7,7 +7,7 @@ allowed-tools:
   - AskUserQuestion
   - TodoWrite
 model: sonnet
-skills: moai-essentials-unified, moai-manager-quality, moai-lang-unified
+skills: moai-toolkit-essentials, moai-foundation-quality, moai-lang-unified
 ---
 
 ## 📋 Pre-execution Context

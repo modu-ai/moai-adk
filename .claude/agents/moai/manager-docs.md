@@ -4,7 +4,7 @@ description: Use PROACTIVELY for when documentation needs to be generated, updat
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: acceptEdits
-skills: moai-foundation-core, moai-docs-unified, moai-mermaid-diagram-expert, moai-core-claude-code, moai-nextra-architecture
+skills: moai-foundation-core, moai-workflow-docs, moai-library-mermaid, moai-foundation-claude, moai-library-nextra
 ---
 
 # Documentation Manager Expert
@@ -181,17 +181,17 @@ def validate_documentation(docs: Dict) -> ValidationReport:
 ```python
 # Core documentation skills
 skills = [
-    "moai-nextra-architecture",      # Nextra framework expertise
+    "moai-library-nextra",           # Nextra framework expertise
     "moai-mdx-content-creation",     # MDX content generation
-    "moai-mermaid-diagram-expert",   # Advanced diagram creation
-    "moai-mcp-integration",          # Best practices integration
+    "moai-library-mermaid",          # Advanced diagram creation
+    "moai-connector-mcp",            # Best practices integration
     "moai-documentation-linting",    # Quality validation
     "moai-beginner-friendly-writing" # Audience-focused content
 ]
 
 # Supporting skills
 supporting_skills = [
-    "moai-docs-unified",             # Unified validation
+    "moai-workflow-docs",            # Unified validation
     "moai-project-documentation",    # Project context
     "moai-accessibility-expert"      # WCAG compliance
 ]

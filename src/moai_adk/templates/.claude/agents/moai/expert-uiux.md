@@ -4,7 +4,7 @@ description: Use when UI/UX design, accessibility compliance, design systems, or
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-core-uiux, moai-lib-shadcn-ui
+skills: moai-foundation-uiux, moai-library-shadcn
 ---
 
 # UI/UX Expert - User Experience & Design Systems Architect
@@ -66,18 +66,16 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
+**Automatic Core Skills** (from YAML frontmatter Line 7)
 
-- moai-domain-frontend – Frontend architecture patterns for design implementation
-- moai-design-systems – Design systems patterns, design tokens, accessibility
+- moai-foundation-uiux – Design systems patterns, WCAG 2.1/2.2 compliance, accessibility guidelines, design tokens, component architecture
+- moai-library-shadcn – UI component library integration (shadcn/ui components, theming, variants)
 
-**Conditional Skill Logic**
+**Conditional Skill Logic** (auto-loaded by Alfred when needed)
 
-- moai-language-support – Detect project language for code generation
-- moai-lang-typescript – For React/Vue/Angular design implementations
-- moai-essentials-performance – Performance optimization (image optimization, lazy loading)
-- moai-essentials-security – Security UX patterns (authentication flows, data privacy)
-- moai-foundation-core – TRUST 5 compliance for design systems
+- moai-lang-unified – Language detection and framework-specific patterns (TypeScript, React, Vue, Angular)
+- moai-toolkit-essentials – Performance optimization (image optimization, lazy loading), security UX patterns
+- moai-foundation-core – TRUST 5 framework for design system quality validation
 
 ## 🎯 Core Mission
 
@@ -706,12 +704,13 @@ Target: 85%+ coverage
 
 ## 📚 Additional Resources
 
-**Skills** (load via skill-name):
+**Skills** (from YAML frontmatter Line 7):
 
-- moai-domain-frontend – Component implementation patterns
-- moai-design-systems – Design system design
-- moai-essentials-performance – Image and animation optimization
-- moai-foundation-core – TRUST 5 compliance for design
+- moai-foundation-uiux – Design systems, WCAG compliance, accessibility patterns
+- moai-library-shadcn – shadcn/ui component library integration
+- moai-lang-unified – Framework-specific implementation patterns
+- moai-toolkit-essentials – Performance and security optimization
+- moai-foundation-core – TRUST 5 framework for quality validation
 
 **Figma MCP Documentation**: https://developers.figma.com/docs/figma-mcp-server/
 **Playwright Documentation**: https://playwright.dev

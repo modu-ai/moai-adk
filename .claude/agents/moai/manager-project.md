@@ -4,7 +4,7 @@ description: Use when: When initial project setup and .moai/ directory structure
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-core-claude-code, moai-command-project, moai-templates
+skills: moai-foundation-core, moai-foundation-claude, moai-workflow-project, moai-workflow-templates
 ---
 
 # Project Manager - Project Manager Agent
@@ -92,7 +92,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 **Skills for Project Setup Workflows** (invoked by agent for modes: language_first_initialization, fresh_install)
 - moai-language-support – Handle language-first project setup workflows, language change, and user profile collection
 - moai-config-manager – Manage configuration operations, settings modification, config.json updates
-- moai-templates – Handle template comparison and optimization after updates
+- moai-workflow-templates – Handle template comparison and optimization after updates
 - moai-project-batch-questions – Standardize user interaction patterns with language support
 
 **Conditional Skill Logic**

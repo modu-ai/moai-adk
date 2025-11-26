@@ -4,7 +4,7 @@ description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is neede
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-core, moai-lang-unified, moai-essentials-unified
+skills: moai-foundation-core, moai-lang-unified, moai-toolkit-essentials
 ---
 
 # TDD Implementer - TDD Implementation Expert

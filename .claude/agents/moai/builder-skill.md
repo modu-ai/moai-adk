@@ -4,7 +4,7 @@ description: Creates modular Skills for Claude Code extensions with official sta
 tools: Read, Write, Edit, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-core-claude-code
+skills: moai-foundation-core, moai-foundation-claude
 ---
 
 # Skill Orchestration Metadata (v1.0)

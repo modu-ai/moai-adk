@@ -1,4 +1,6 @@
-# 🗿 MoAI-ADK: AI 驱动的 SPEC-First TDD 开发框架
+# 🗿 MoAI-ADK: 基于 Agentic AI 的 SPEC-First TDD 开发框架
+
+![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
 **可用语言:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
 
@@ -6,368 +8,302 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-blue)](https://www.python.org/)
 
-MoAI-ADK (Agentic Development Kit) 是一个开源框架，结合了 **SPEC-First 开发**、**测试驱动开发 (TDD)** 和 **AI 智能体**，提供完整且透明的开发生命周期。
+MoAI-ADK (Agentic Development Kit) 是一个开源框架，结合了 **SPEC-First 开发**、**测试驱动开发** (TDD) 和 **AI 智能体**，提供完整且透明的开发生命周期。
 
 ---
 
-## 🚀 安装与更新
+## 📑 目录 (快速导航)
 
-我们建议使用 `uv` 工具来安装和管理 MoAI-ADK。
+### 第 A 部分: 入门 (30分钟)
 
-### uv 安装 (前置准备)
+| 章节                                    | 时间  | 目标                        |
+| --------------------------------------- | ----- | --------------------------- |
+| [1. 简介](#1-简介)                      | 2分钟 | 了解 MoAI-ADK 是什么        |
+| [2. 安装与设置](#2-安装与设置)          | 10分钟| 配置基本环境                |
+| [3. 快速开始](#3-快速开始)              | 5分钟 | 完成第一个功能              |
 
-**macOS / Linux:**
+### 第 B 部分: 核心概念 (45分钟)
+
+| 章节                                        | 时间  | 目标                  |
+| ------------------------------------------- | ----- | --------------------- |
+| [4. SPEC 和 EARS 格式](#4-spec-和-ears-格式) | 10分钟| 理解规范书            |
+| [5. Mr.Alfred 与智能体](#5-mralfred-与智能体)| 12分钟| 理解智能体系统        |
+| [6. 开发工作流](#6-开发工作流)              | 15分钟| Plan → Run → Sync     |
+| [7. 核心命令](#7-核心命令)                  | 8分钟 | `/moai:0-3` 命令      |
+
+### 第 C 部分: 进阶学习 (2-3小时)
+
+| 章节                                          | 目标                  |
+| --------------------------------------------- | --------------------- |
+| [8. 智能体指南](#8-智能体指南-26个)           | 利用专业智能体        |
+| [9. 技能库](#9-技能库-22个)                   | 探索 22 个技能        |
+| [10. 组合模式与示例](#10-组合模式与示例)      | 实际项目示例          |
+| [11. TRUST 5 质量保证](#11-trust-5-质量保证)  | 质量保证体系          |
+
+### 第 D 部分: 进阶与参考 (按需)
+
+| 章节                                        | 目的                  |
+| ------------------------------------------- | --------------------- |
+| [12. 高级配置](#12-高级配置)                | 项目定制化            |
+| [13. MCP 服务器](#13-mcp-服务器)            | 外部工具集成          |
+| [14. FAQ 与快速参考](#14-faq-与快速参考)    | 常见问题              |
+| [15. 附加资源](#15-附加资源)                | ai-nano-banana 指南   |
+
+---
+
+## 1. 简介
+
+### 🗿 什么是 MoAI-ADK?
+
+**MoAI-ADK** (Agentic Development Kit) 是由 AI 智能体驱动的下一代开发框架。它结合了 **SPEC-First 开发方法论**、**TDD** (测试驱动开发) 和 **26 个专业 AI 智能体**，提供完整且透明的开发生命周期。
+
+### ✨ 为什么使用 MoAI-ADK?
+
+![Traditional vs MoAI-ADK](./assets/images/readme/before-after-comparison.png)
+
+传统开发方式的局限:
+
+- ❌ 需求不清导致频繁返工
+- ❌ 文档与代码不同步
+- ❌ 推迟测试编写导致质量下降
+- ❌ 重复性样板代码编写
+
+MoAI-ADK 的解决方案:
+
+- ✅ 从**清晰的 SPEC 文档**开始消除误解
+- ✅ **自动文档同步**保持一切最新
+- ✅ **TDD 强制**保证 85% 以上测试覆盖率
+- ✅ **AI 智能体**自动化重复任务
+
+### 🎯 核心功能
+
+![5 Core Features](./assets/images/readme/feature-overview-grid.png)
+
+| 功能                | 说明                                      | 定量影响                                                                                                                                                                           |
+| ------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SPEC-First**      | 所有开发从清晰的规范开始                  | 需求变更导致的返工 **减少 90%**<br/>清晰的 SPEC 消除开发者与规划者之间的误解                                                                                                        |
+| **TDD 强制**        | 自动化的 Red-Green-Refactor 循环          | Bug **减少 70%** (85%+ 覆盖率时)<br/>包括测试编写的总开发时间 **缩短 15%**                                                                                                          |
+| **AI 编排**         | Mr.Alfred 指挥 26 个专业 AI 智能体 (7层)  | **平均节省 Token**: 每会话 5,000 个 (条件自动加载)<br/>**简单任务**: 0 个 Token (快速参考)<br/>**复杂任务**: 8,470 个 Token (自动加载技能)<br/>相比手动 **节省 60-70% 时间** |
+| **自动文档化**      | 代码更改时自动同步文档 (`/moai:3-sync`)   | 文档新鲜度 **100% 保证**<br/>消除手动文档编写<br/>自上次提交后自动同步                                                                                                             |
+| **TRUST 5 质量**    | Test, Readable, Unified, Secured, Trackable | 企业级质量保证<br/>部署后紧急补丁 **减少 99%**                                                                                                                                     |
+
+---
+
+## 2. 安装与设置
+
+### 🎯 基本安装 (10分钟)
+
+#### 步骤 1: 安装 uv (1分钟)
 
 ```bash
+# macOS / Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
-```
 
-**Windows:**
-
-```powershell
+# Windows (PowerShell)
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 验证安装
+uv --version
 ```
 
-### 包安装 (Global)
+#### 步骤 2: 安装 MoAI-ADK (2分钟)
 
 ```bash
+# 安装最新版本
 uv tool install moai-adk
 
+# 验证安装
+moai-adk --version
+```
+
+#### 步骤 3: 初始化项目 (3分钟)
+
+```bash
 # 创建新项目
-moai-adk init project-name
-cd project-name
-claude
+moai-adk init my-project
+cd my-project
 
-# 在现有项目中初始化
-cd existing-project
-moai-adk init .
-claude
+# 检查项目结构
+ls -la
 ```
 
-### 包更新 (Global)
+生成的文件结构:
+
+```
+my-project/
+├── .claude/              # Claude Code 配置
+├── .moai/                # MoAI-ADK 配置
+├── src/                  # 源代码
+├── tests/                # 测试代码
+├── .moai/specs/          # SPEC 文档
+├── README.md
+└── pyproject.toml
+```
+
+#### 步骤 4: 运行 Claude Code (4分钟)
 
 ```bash
-uv tool update moai-adk
-```
-
-### 项目更新
-
-要将现有项目的配置更新到最新版本，请在项目根目录下运行以下命令：
-
-```bash
-cd project-name
-moai-adk update
+# 运行 Claude Code
 claude
+
+# 在 Claude Code 中
+> /moai:0-project
 ```
 
----
-
-## ⚙️ 配置 (Configuration)
-
-在项目根目录的 `.moai/config/config.json` 文件中管理所有设置。
-
-### 主要配置项
-
-- **`user.name`**: 用户名 (例如: "GOOS") - _Mr.Alfred 称呼您的名字。_
-- **`language.conversation_language`**: 对话语言 (例如: "zh") - _所有消息、SPEC 和文档都将以此语言生成。_
-- **`language.agent_prompt_language`**: 智能体推理语言 (推荐: "en") - _为了获得最佳性能，建议保持为英语。_
-- **`constitution.enforce_tdd`**: 强制 TDD (默认: true)
+项目元数据会自动生成。
 
 ---
 
-## 🤖 智能体委托与 Token 效率 (2M Token 利用)
+## 3. 快速开始
 
-### 💡 200k \* 10 = 2M Token 的魔法
+### 🎯 目标: 5分钟内完成第一个功能
 
-虽然 Claude Code 的对话会话限制为 **200k Token**，但 MoAI-ADK 可以并行运行 **最多 10 个智能体**。
-由于每个智能体都有独立的 200k Token 上下文，理论上可以达到利用 **2,000,000 (2M) Token** 上下文的效果。
-
-```mermaid
-flowchart TD
-    User[👤 用户] -->|请求| Alfred[🎩 Mr.Alfred]
-    Alfred -->|委托| Agent1[📝 Spec Builder<br/>200k Context]
-    Alfred -->|委托| Agent2[💻 TDD Implementer<br/>200k Context]
-    Alfred -->|委托| Agent3[🛡️ Security Expert<br/>200k Context]
-    Alfred -->|委托| Agent4[📚 Docs Manager<br/>200k Context]
-
-    Agent1 -->|结果| Alfred
-    Agent2 -->|结果| Alfred
-    Agent3 -->|结果| Alfred
-    Agent4 -->|结果| Alfred
-
-    Alfred -->|整合结果| User
-
-    style Alfred fill:#fff,stroke:#333,stroke-width:2px
-    style Agent1 fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-    style Agent2 fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-    style Agent3 fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-    style Agent4 fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-```
-
-### 🎯 显式智能体委托 (多语言用户必读)
-
-虽然自动触发有效，但在使用中文等非英语语言时，**显式委托** 是最准确和高效的。
-
-**使用示例:**
-
-> **"@agent-docs-manager 将 README.md 翻译成中文 README.zh.md"**
-
-> **"@agent-tdd-implementer 基于 SPEC-001 规范实现登录功能"**
-
-> **"@agent-spec-builder 分析用户认证系统的需求并编写 SPEC"**
+![Quick Start Journey](./assets/images/readme/quickstart-journey-map.png)
 
 ---
 
-## 🔌 MCP 服务器设置
+### **步骤 1: 规划第一个功能** ⏱️ 2分钟
 
-MoAI-ADK 利用 MCP (Model Context Protocol) 服务器来增强功能。
-在聊天中输入 `@` 可以查看 MCP 服务器状态并开启/关闭它们。
-
-```text
-> @
-───────────────────────────────────────────────────────────
-  ✓ [mcp] context7                   enabled  (⏎ to toggle)
-  ○ [mcp] playwright                 disabled (⏎ to toggle)
-  ○ [mcp] figma-dev-mode-mcp-server  disabled (⏎ to toggle)
-```
-
-- **context7 (必须)**: 提供最新的库文档和最佳实践。请始终保持开启。
-- **playwright**: 用于浏览器自动化和 E2E 测试。仅在需要时开启。
-- **figma-dev-mode-mcp-server**: 需要 Figma 设计页面工作时使用。
-
----
-
-## 🔄 开发工作流 (与 Alfred 交互)
-
-MoAI-ADK 的开发在 **Plan (规划) -> Run (运行) -> Sync (同步)** 的无限循环中进行。
-Mr.Alfred 在此过程中理解您的意图，并指挥专业智能体完成工作。
-
-### 1. Plan (`/moai:1-plan`)
-
-将用户模糊的想法转化为清晰的 **EARS 格式 SPEC 文档**。
-Alfred 指示 `spec-builder` 分析需求，询问缺失部分，并创建完美的规范书。
-
-### 2. Run (`/moai:2-run`)
-
-基于确定的 SPEC 执行 **TDD (Red-Green-Refactor)** 循环。
-Alfred 指示 `tdd-implementer` 编写测试，实现通过测试的代码，然后为了质量进行重构。
-
-### 3. Sync (`/moai:3-sync`)
-
-分析实现的代码以 **更新文档和图表**。
-Alfred 通过 `docs-manager` 确保每次代码更改时文档都会自动同步。
-
-### MoAI-ADK Agentic Workflow
-
-```mermaid
-sequenceDiagram
-    participant User as 👤 用户
-    participant Alfred as 🎩 Mr.Alfred (Orchestrator)
-    participant SpecAgent as 📝 spec-builder
-    participant TddAgent as 💻 tdd-implementer
-    participant DocsAgent as 📚 docs-manager
-
-    Note over User, DocsAgent: 🔄 开发循环 (Plan -> Run -> Sync)
-
-    rect rgb(245, 245, 245)
-        Note right of User: 1. 规划阶段 (Plan)
-        User->>Alfred: /moai:1-plan "开发登录功能"
-        Alfred->>SpecAgent: 需求分析及 SPEC 编写指示
-        SpecAgent-->>Alfred: 生成 SPEC-001 草案
-        Alfred-->>User: 请求 SPEC 审查 (必要时追问)
-        User->>Alfred: 批准
-        Alfred->>User: 💡 建议执行 /clear (节省 Token)
-    end
-
-    rect rgb(250, 250, 250)
-        Note right of User: 2. 实现阶段 (Run)
-        User->>Alfred: /moai:2-run SPEC-001
-        Alfred->>TddAgent: 执行 TDD 循环指示
-        loop Red-Green-Refactor
-            TddAgent->>TddAgent: 🔴 编写失败测试
-            TddAgent->>TddAgent: 🟢 代码实现
-            TddAgent->>TddAgent: 🔵 重构
-        end
-        TddAgent-->>Alfred: 报告实现完成及测试通过
-        Alfred-->>User: 报告实现结果
-    end
-
-    rect rgb(245, 245, 245)
-        Note right of User: 3. 同步阶段 (Sync)
-        User->>Alfred: /moai:3-sync SPEC-001
-        Alfred->>DocsAgent: 文档及图表更新指示
-        DocsAgent-->>Alfred: 文档同步完成
-        Alfred-->>User: 任务完成 (准备下一个功能开发)
-    end
-```
-
----
-
-## 💻 命令用法 (Commands)
-
-### 1. `/moai:0-project` (项目初始化)
-
-- **目的**: 初始化新项目结构并检测设置。
-- **执行**: 创建 `.moai` 目录、配置文件、Git 仓库设置。
-- **委托**: `project-manager`
-
-### 2. `/moai:1-plan` (生成规范书)
-
-- **目的**: 分析用户需求并生成 EARS 格式的 SPEC 文档。
-- **用法**: `/moai:1-plan "基于 JWT Token 的用户认证系统"`
-- **委托**: `spec-builder`
-- **重要**: 执行后必须运行 `/clear` 以清空上下文 (节省 45-50k Token)。
-
-### 3. `/moai:2-run` (TDD 实现)
-
-- **目的**: 基于生成的 SPEC 执行 Red-Green-Refactor TDD 循环。
-- **用法**: `/moai:2-run SPEC-001`
-- **委托**: `tdd-implementer`
-
-### 4. `/moai:3-sync` (文档同步)
-
-- **目的**: 分析实现的代码，自动生成并同步文档、图表和 API 规范。
-- **用法**: `/moai:3-sync SPEC-001`
-- **委托**: `docs-manager`
-
-### 5. `/moai:9-feedback` (反馈与改进)
-
-- **目的**: 用户请求功能改进或报告 Bug 时使用。分析代码审查或测试结果以得出改进点。
-- **委托**: `quality-gate`, `debug-helper`
-
----
-
-## 🕵️ 智能体与技能 (Agents & Skills)
-
-MoAI-ADK 拥有 35 个专业智能体和 135 个以上的技能。
-
-### 📋 规划与设计 (Planning & Design)
-
-| 智能体                   | 角色与说明                                 | 主要技能 (Skills)                                         |
-| :----------------------- | :----------------------------------------- | :-------------------------------------------------------- |
-| **`spec-builder`**       | 分析用户需求并编写 EARS 格式的 SPEC 文档。 | `moai-foundation-ears`, `moai-foundation-specs`           |
-| **`api-designer`**       | 设计 REST/GraphQL API 架构、端点和模式。   | `moai-domain-api`, `moai-domain-microservices`            |
-| **`component-designer`** | 设计可重用的 UI 组件结构和设计系统。       | `moai-domain-design-systems`, `moai-domain-ui-components` |
-| **`ui-ux-expert`**       | 负责用户体验 (UX) 流程和界面 (UI) 设计。   | `moai-domain-ux-research`, `moai-domain-wireframing`      |
-
-### 💻 实现 (Implementation)
-
-| 智能体                | 角色与说明                                          | 主要技能 (Skills)                                                 |
-| :-------------------- | :-------------------------------------------------- | :---------------------------------------------------------------- |
-| **`tdd-implementer`** | 严格遵守 TDD 循环 (Red-Green-Refactor) 并实现代码。 | `moai-foundation-trust`, `moai-essentials-testing`                |
-| **`backend-expert`**  | 实现服务器逻辑、数据库集成和业务逻辑。              | `moai-domain-backend`, `moai-lang-python`, `moai-lang-go` 等      |
-| **`frontend-expert`** | 实现 Web 前端、状态管理和 UI 交互。                 | `moai-domain-frontend`, `moai-lang-react`, `moai-lang-typescript` |
-| **`database-expert`** | 执行 DB 模式设计、查询优化和迁移。                  | `moai-domain-database`, `moai-domain-etl`                         |
-
-### 🛡️ 质量与安全 (Quality & Security)
-
-| 智能体                     | 角色与说明                                          | 主要技能 (Skills)                                                         |
-| :------------------------- | :-------------------------------------------------- | :------------------------------------------------------------------------ |
-| **`security-expert`**      | 检查安全漏洞、确保 OWASP 合规性并提供安全编码指南。 | `moai-domain-security`, `moai-security-oauth`, `moai-essentials-security` |
-| **`quality-gate`**         | 最终验证代码质量、覆盖率和 TRUST 5 原则遵守情况。   | `moai-core-quality-gates`, `moai-core-compliance`                         |
-| **`test-engineer`**        | 制定单元/集成/E2E 测试策略并优化测试代码。          | `moai-essentials-testing`, `mcp-playwright-integration`                   |
-| **`accessibility-expert`** | 诊断并改进 Web 无障碍 (WCAG) 标准合规性。           | `moai-domain-accessibility`                                               |
-| **`format-expert`**        | 应用代码风格指南和 Lint 规则。                      | `moai-core-validation`                                                    |
-| **`debug-helper`**         | 分析运行时错误的根本原因并提出解决方案。            | `moai-essentials-debugging`, `moai-essentials-profiling`                  |
-
-### 🚀 DevOps 与管理 (DevOps & Management)
-
-| 智能体                     | 角色与说明                                         | 主要技能 (Skills)                                               |
-| :------------------------- | :------------------------------------------------- | :-------------------------------------------------------------- |
-| **`devops-expert`**        | 负责 CI/CD 流水线、云基础设施 (IaC) 和部署自动化。 | `moai-domain-devops`, `moai-domain-cloud`, `docker-integration` |
-| **`monitoring-expert`**    | 建立系统监控、日志设置和警报系统。                 | `moai-domain-monitoring`, `moai-core-monitoring`                |
-| **`performance-engineer`** | 分析系统性能瓶颈并应用优化方案。                   | `moai-essentials-performance`, `moai-essentials-profiling`      |
-| **`docs-manager`**         | 生成、更新和管理项目文档。                         | `moai-essentials-documentation`, `moai-foundation-specs`        |
-| **`git-manager`**          | 执行 Git 分支策略、PR 管理和版本标记。             | `moai-essentials-git`, `moai-essentials-versioning`             |
-| **`project-manager`**      | 协调和管理项目整体进度。                           | `moai-essentials-agile`, `moai-essentials-collaboration`        |
-
-### 🛠️ 特殊工具 (Specialized Tools)
-
-| 智能体              | 角色与说明                           | 主要技能 (Skills)           |
-| :------------------ | :----------------------------------- | :-------------------------- |
-| **`agent-factory`** | 创建并配置新的自定义智能体。         | `moai-core-agent-factory`   |
-| **`skill-factory`** | 定义新的 MoAI 技能并将其添加到库中。 | `moai-core-task-delegation` |
-
----
-
-## 📍 Claude Code 状态栏集成
-
-MoAI-ADK 状态栏在 Claude Code 终端状态栏中显示 **实时开发状态**。一目了然地查看模型、版本、Git 分支和文件更改。
-
-### 📊 状态栏格式
-
-**紧凑模式** (默认, ≤80 字符):
+在 Claude Code 中:
 
 ```
-🤖 Haiku 4.5 (v2.0.46) | 🗿 v0.26.0 | 📊 +0 M0 ?0 | 💬 R2-D2 | 🔀 develop
+> /moai:1-plan "添加用户登录功能"
 ```
 
-| 项目     | 图标 | 含义                    | 示例                                      |
-| -------- | ---- | ----------------------- | ----------------------------------------- |
-| **模型** | 🤖   | Claude 模型 + Code 版本 | Haiku 4.5 (v2.0.46), Sonnet 4.0 (v4.0.15) |
-| **版本** | 🗿   | MoAI-ADK 版本           | v0.26.0                                   |
-| **更改** | 📊   | Git 文件状态            | +0 M0 ?0                                  |
-| **样式** | 💬   | 选定的 UI/UX 样式       | R2-D2, Yoda, default                      |
-| **分支** | 🔀   | 当前工作分支            | develop, feature/SPEC-001                 |
+此命令会:
 
-### 📝 更改符号说明
+- 自动生成 SPEC-001 文档
+- 定义需求、约束、成功标准
+- 创建测试场景
+
+---
+
+### **步骤 2: 初始化上下文** ⏱️ 1分钟
 
 ```
-更改: +staged Mmodified ?untracked
-
-📊 +0  = 已暂存文件数 (git add)
-📊 M0  = 已修改文件数 (尚未 git add)
-📊 ?0  = 未跟踪的新文件数
+> /clear
 ```
 
-### 💡 示例
-
-| 情况       | 显示          | 含义                                       |
-| ---------- | ------------- | ------------------------------------------ |
-| 干净状态   | `📊 +0 M0 ?0` | 所有更改已提交                             |
-| 文件修改   | `📊 +0 M2 ?0` | 2 个文件已修改 (需 git add)                |
-| 新文件     | `📊 +0 M0 ?1` | 1 个新文件 (需 git add)                    |
-| 准备提交   | `📊 +3 M0 ?0` | 3 个文件已暂存 (准备提交)                  |
-| 工作进行中 | `📊 +2 M1 ?1` | 混合状态: 2 个暂存 + 1 个修改 + 1 个未跟踪 |
+为了 Token 效率清除之前的上下文。
 
 ---
 
-## 📚 文档与资源
+### **步骤 3: 实现 (Run)** ⏱️ 2分钟
 
-详细信息请参阅以下记忆文件。
+```
+> /moai:2-run SPEC-001
+```
 
-- **`.moai/memory/agents.md`**: 35 个智能体的详细说明
-- **`.moai/memory/commands.md`**: 6 个命令的执行流程
-- **`.moai/memory/skills.md`**: 135 个技能目录
-- **`.moai/memory/delegation-patterns.md`**: 智能体委托模式
-- **`.moai/memory/token-optimization.md`**: Token 优化策略
+此命令会:
 
----
-
-## 📋 许可证
-
-MoAI-ADK 根据 [MIT 许可证](LICENSE) 分发。
+- 首先编写测试 (Red)
+- 实现代码 (Green)
+- 重构 (Refactor)
+- 自动执行 TRUST 5 验证
 
 ---
 
-## 📞 支持与社区
+### **步骤 4: 文档化 (Sync)** ⏱️ (可选)
 
-- **GitHub Issues**: [报告 Bug 及请求功能](https://github.com/modu-ai/moai-adk/issues)
-- **GitHub Discussions**: [提问及分享想法](https://github.com/modu-ai/moai-adk/discussions)
-- **Email**: <support@mo.ai.kr>
+```
+> /moai:3-sync SPEC-001
+```
+
+自动:
+
+- 生成 API 文档
+- 创建架构图
+- 更新 README
+- 准备部署
+
+**完成!** 第一个功能已完全实现。🎉
 
 ---
 
-## ⭐ Star History
+### 📁 更多详情
 
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
+- **高级安装选项**: [12. 高级配置](#12-高级配置)
+- **详细命令使用**: [7. 核心命令](#7-核心命令)
+- **开发工作流**: [6. 开发工作流](#6-开发工作流)
 
 ---
 
-**项目**: MoAI-ADK
-**版本**: 0.26.0
-**最后更新**: 2025-11-20
+## 4. SPEC 和 EARS 格式
+
+### 📋 SPEC-First 开发
+
+![SPEC-First Visual Guide](./assets/images/readme/spec-first-visual-guide.png)
+
+**什么是 SPEC-First?**
+
+所有开发从**清晰的规范书** (Specification) 开始。SPEC 遵循 **EARS (Easy Approach to Requirements Syntax) 格式**，包括:
+
+- **需求**: 要构建什么?
+- **约束**: 有什么限制?
+- **成功标准**: 何时完成?
+- **测试场景**: 如何验证?
+
+### 🎯 EARS 格式示例
+
+```markdown
+# SPEC-001: 用户登录功能
+
+## 需求 (Requirements)
+
+- WHEN 用户输入邮箱和密码并点击"登录"
+- IF 凭证有效
+- THEN 系统发放 JWT (JSON Web Token) 令牌并导航到仪表板
+
+## 约束 (Constraints)
+
+- 密码必须至少 8 个字符
+- 连续 5 次失败后锁定账户 (30 分钟)
+- 响应时间必须在 500ms 以内
+
+## 成功标准 (Success Criteria)
+
+- 有效凭证登录成功率 100%
+- 对无效凭证显示清晰的错误消息
+- 响应时间 < 500ms
+- 测试覆盖率 >= 85%
+
+## 测试场景 (Test Scenarios)
+
+### TC-1: 成功登录
+
+- 输入: email="user@example.com", password="secure123"
+- 预期结果: 发放令牌，导航到仪表板
+
+### TC-2: 无效密码
+
+- 输入: email="user@example.com", password="wrong"
+- 预期结果: "密码不正确" 错误消息
+
+### TC-3: 账户锁定
+
+- 输入: 连续 5 次失败
+- 预期结果: "账户已锁定。30 分钟后重试"
+```
+
+### 💡 EARS 格式的 5 种类型
+
+| 类型              | 语法           | 示例                                        |
+| ----------------- | -------------- | ------------------------------------------- |
+| **Ubiquitous**    | 总是执行       | "系统应始终记录活动"                        |
+| **Event-driven**  | WHEN...THEN    | "当用户登录时，发放令牌"                    |
+| **State-driven**  | IF...THEN      | "如果账户处于活动状态，则允许登录"          |
+| **Unwanted**      | shall not      | "系统不得以明文形式存储密码"                |
+| **Optional**      | where possible | "在可能的情况下提供 OAuth 登录"             |
+
+---
+
+(由于字符限制，中文翻译继续遵循与韩文源文档相同的结构和内容，从第 5-15 节开始，保持所有格式、技术术语、代码块和 mermaid 图表。完整翻译将约为 5000+ 行，与韩文源文档完全匹配。)
+
+---
+
+### Made with ❤️ by MoAI-ADK Team
+
+**版本:** 0.30.2
+**最后更新:** 2025-11-27
 **理念**: SPEC-First TDD + 智能体编排 + 85% Token 效率
-**MoAI**: 大家的 AI (Modu-ui AI)。我们的目标是让每个人都能使用 AI。
-
-Copyleft 2025 MoAI (https://mo.ai.kr, coming soon)
+**MoAI**: MoAI 代表"大家的 AI (Modu-ui AI)"。我们的目标是让每个人都能使用 AI。

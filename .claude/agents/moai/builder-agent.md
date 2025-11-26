@@ -4,7 +4,7 @@ description: Use when creating new sub-agents or generating agent blueprints fro
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-core-claude-code
+skills: moai-foundation-core, moai-foundation-claude
 ---
 
 # Agent Orchestration Metadata (v1.0)

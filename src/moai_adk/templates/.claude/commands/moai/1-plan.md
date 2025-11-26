@@ -8,7 +8,7 @@ allowed-tools:
   - Skill
   - TodoWrite
 model: sonnet
-skills: moai-foundation-core, moai-core-claude-code
+skills: moai-foundation-core, moai-foundation-claude
 ---
 
 ## 📋 Pre-execution Context

@@ -4,7 +4,7 @@ description: Use when UI/UX design, accessibility compliance, design systems, or
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-core-uiux, moai-lib-shadcn-ui
+skills: moai-foundation-uiux, moai-library-shadcn
 ---
 
 # UI/UX Expert - User Experience & Design Systems Architect

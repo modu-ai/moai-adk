@@ -4,7 +4,7 @@ description: "Initialize project metadata and documentation"
 argument-hint: "[<empty>|setting|update|--glm-on <token>]"
 allowed-tools: Task, AskUserQuestion
 model: inherit
-skills: moai-command-project, moai-templates
+skills: moai-workflow-project, moai-workflow-templates
 ---
 
 ## 📋 Pre-execution Context
@@ -50,8 +50,8 @@ Initialize or update project metadata with **language-first architecture**. Supp
 | Agent/Skill          | Purpose                                                                  |
 | -------------------- | ------------------------------------------------------------------------ |
 | manager-project     | Orchestrates language-first initialization and configuration             |
-| moai-command-project | Unified project management (language init, config, templates, batch Q&A) |
-| moai-templates       | Template management and generation                                       |
+| moai-workflow-project | Unified project management (language init, config, templates, batch Q&A) |
+| moai-workflow-templates       | Template management and generation                                       |
 
 ---
 
@@ -153,11 +153,11 @@ Use Task tool:
 
   **For INITIALIZATION**:
   - Check .moai/config.json for language setting
-  - If missing: Use LanguageInitializer from moai-command-project for language detection
+  - If missing: Use LanguageInitializer from moai-workflow-project for language detection
   - If present: Use existing language, skip language selection
   - Conduct language-aware user interview
   - Generate project documentation
-  - Use UnifiedConfigManager from moai-command-project for config creation
+  - Use UnifiedConfigManager from moai-workflow-project for config creation
 
   **For AUTO-DETECT**:
   - Read current language from .moai/config.json
@@ -174,14 +174,14 @@ Use Task tool:
 
   **For SETTINGS**:
   - Load current language from .moai/config.json
-  - Load tab schema from .claude/skills/moai-command-project/schemas/tab_schema.json
-  - Execute batch questions via BatchQuestionsManager from moai-command-project
-  - Process responses and update config.json atomically via UnifiedConfigManager from moai-command-project
+  - Load tab schema from .claude/skills/moai-workflow-project/schemas/tab_schema.json
+  - Execute batch questions via BatchQuestionsManager from moai-workflow-project
+  - Process responses and update config.json atomically via UnifiedConfigManager from moai-workflow-project
   - Report changes and validation results
 
   **For UPDATE**:
   - Read language from config backup (preserve existing setting)
-  - Use TemplateOptimizer from moai-command-project for smart merging
+  - Use TemplateOptimizer from moai-workflow-project for smart merging
   - Update templates and configuration
   - Auto-translate announcements to current language if needed
 
@@ -250,7 +250,7 @@ The manager-project agent handles all mode-specific workflows:
 - Execute batch questions with AskUserQuestion
 - Process user responses
 - Validate settings at critical checkpoints
-- Delegate config update to UnifiedConfigManager from moai-command-project
+- Delegate config update to UnifiedConfigManager from moai-workflow-project
 - Report changes
 
 **UPDATE MODE**:
@@ -332,7 +332,7 @@ Would you like to modify another settings tab?
 
 ### Tab Schema Reference
 
-Location: `.claude/skills/moai-command-project/schemas/tab_schema.json`
+Location: `.claude/skills/moai-workflow-project/schemas/tab_schema.json`
 
 **Tab 1: User & Language** (Required Foundation)
 
@@ -379,7 +379,7 @@ Location: `.claude/skills/moai-command-project/schemas/tab_schema.json`
 #### Step 1: Load Tab Schema
 
 ```markdown
-Load: .claude/skills/moai-command-project/schemas/tab_schema.json
+Load: .claude/skills/moai-workflow-project/schemas/tab_schema.json
 Extract:
 
 - Tab definition (label, batches)
@@ -484,7 +484,7 @@ For each question in batch:
 **Update Pattern** (Skill-delegated):
 
 ```markdown
-Delegate ALL config update operations to UnifiedConfigManager from moai-command-project:
+Delegate ALL config update operations to UnifiedConfigManager from moai-workflow-project:
 
 - Manager handles backup/rollback logic internally
 - Manager performs deep merge with validation
@@ -501,7 +501,7 @@ Agent responsibilities:
 
 **UnifiedConfigManager Responsibilities**:
 
-- UnifiedConfigManager from moai-command-project handles ALL file operations
+- UnifiedConfigManager from moai-workflow-project handles ALL file operations
 - Internal backup/rollback if needed
 - Atomic write and validation
 - Error reporting
@@ -533,7 +533,7 @@ Step 7: Processes each response (map to config fields)
 Step 8: Runs Tab 1 validation checkpoint
   - Check language is valid
   - Verify consistency
-Step 9: Delegates atomic update to UnifiedConfigManager from moai-command-project
+Step 9: Delegates atomic update to UnifiedConfigManager from moai-workflow-project
   - Manager handles backup/rollback internally
   - Manager performs deep merge (including auto-updated conversation_language_name)
   - Manager verifies final structure
@@ -578,7 +578,7 @@ Step 4: Run Tab 3 validation checkpoint
   - Let user confirm or retry if conflicts found
 
 Step 5: Merge all executed batches into single update object
-Step 6: Delegate atomic update to UnifiedConfigManager from moai-command-project
+Step 6: Delegate atomic update to UnifiedConfigManager from moai-workflow-project
   - Manager handles backup/rollback internally
   - Manager performs deep merge with final validation
 
@@ -669,7 +669,7 @@ Tab completion order (recommended):
 - Execute ONLY ONE tab per command invocation (unless user specifies "all tabs")
 - READ language context from config.json before starting SETTINGS MODE
 - Run validation at Tab 1, Tab 3, and before final update
-- Delegate config update to UnifiedConfigManager from moai-command-project (no direct backup in command)
+- Delegate config update to UnifiedConfigManager from moai-workflow-project (no direct backup in command)
 - Report all changes made
 - Use AskUserQuestion for ALL user interaction
 
@@ -719,7 +719,7 @@ Context data to persist:
 - Files created: [list of absolute paths]
 - Next phase: "1-plan"
 
-Agent delegates to UnifiedConfigManager from moai-command-project:
+Agent delegates to UnifiedConfigManager from moai-workflow-project:
 
 - Save context via ContextManager
 - Handle file path validation
@@ -801,7 +801,7 @@ Use AskUserQuestion in user's language:
 
 **Associated Skills**:
 
-- `moai-command-project` - Unified project management skill providing:
+- `moai-workflow-project` - Unified project management skill providing:
   - LanguageInitializer - Language selection/change
   - UnifiedConfigManager - Config operations (atomic updates, backup/rollback)
   - TemplateOptimizer - Template merging
@@ -816,7 +816,7 @@ Use AskUserQuestion in user's language:
 **Version**: 2.0.0 (Tab-based Configuration with Conditional Batches & Fixed Field Alignment)
 **Last Updated**: 2025-11-19
 **Architecture**: Commands → Agents → Skills (Complete delegation, no direct backup in command)
-**Tab Schema**: `.claude/skills/moai-command-project/schemas/tab_schema.json` (v2.0.0)
+**Tab Schema**: `.claude/skills/moai-workflow-project/schemas/tab_schema.json` (v2.0.0)
 **Improvements in v2.0.0**:
 
 - Removed `[tab_ID]` argument → Always use interactive tab selection

@@ -413,7 +413,7 @@ Commands automatically integrate with Git based on `config.json` settings:
 
 **Skills**:
 - [moai-foundation-core](../SKILL.md) - Parent skill
-- [moai-context-manager](../../moai-context-manager/SKILL.md) - Token budget management
+- [moai-foundation-context](../../moai-foundation-context/SKILL.md) - Token budget management
 
 **Other Modules**:
 - [spec-first-tdd.md](spec-first-tdd.md) - Detailed SPEC-First TDD process

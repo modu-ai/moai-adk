@@ -267,14 +267,14 @@ The following legacy skills have been consolidated into unified skills:
 |------------------------|------------------------|--------|
 | moai-foundation-specs, moai-foundation-ears, moai-foundation-trust, moai-foundation-git, moai-foundation-langs | moai-foundation-core | Core principles consolidation |
 | moai-lang-python, moai-lang-typescript, moai-lang-sql | moai-lang-unified | Language unification |
-| moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor | moai-essentials-unified | Development tools unification |
-| moai-cc-claude-md, moai-cc-configuration, moai-cc-hooks, moai-cc-claude-settings | moai-core-claude-code | Claude Code features consolidation |
+| moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor | moai-toolkit-essentials | Development tools unification |
+| moai-cc-claude-md, moai-cc-configuration, moai-cc-hooks, moai-cc-claude-settings | moai-foundation-claude | Claude Code features consolidation |
 | moai-domain-backend, moai-domain-frontend | moai-lang-unified | Domain expertise integration |
-| moai-domain-database, moai-domain-devops | moai-baas-unified | Infrastructure consolidation |
-| moai-domain-security, moai-security-owasp | moai-universal-ultimate | Security consolidation |
+| moai-domain-database, moai-domain-devops | moai-platform-baas | Infrastructure consolidation |
+| moai-domain-security, moai-security-owasp | moai-system-universal | Security consolidation |
 | moai-core-spec-authoring, moai-core-todowrite-pattern | moai-foundation-core | Core workflow patterns |
-| moai-core-context-budget | moai-context-manager | Token budget management |
-| moai-quality-validation | moai-core-quality | Quality gate consolidation |
+| moai-core-context-budget | moai-foundation-context | Token budget management |
+| moai-quality-validation | moai-foundation-quality | Quality gate consolidation |
 
 **Note**: All agent_skills_mapping references have been updated to use unified skills. Legacy skill names are no longer valid.
 
@@ -325,8 +325,8 @@ except PermissionError:
 
 **Skills**:
 - [moai-foundation-core](../SKILL.md) - Parent skill (this module is part of it)
-- [moai-context-manager](../../moai-context-manager/SKILL.md) - Token budget and session state
-- [moai-core-claude-code](../../moai-core-claude-code/SKILL.md) - Claude Code configuration
+- [moai-foundation-context](../../moai-foundation-context/SKILL.md) - Token budget and session state
+- [moai-foundation-claude](../../moai-foundation-claude/SKILL.md) - Claude Code configuration
 
 **Other Modules**:
 - [delegation-patterns.md](delegation-patterns.md) - Delegation strategies

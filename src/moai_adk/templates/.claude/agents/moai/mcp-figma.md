@@ -4,7 +4,7 @@ description: Use for Figma design analysis, design-to-code conversion, design sy
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-mcp-integration, moai-core-uiux, moai-connector-figma
+skills: moai-foundation-core, moai-connector-mcp, moai-foundation-uiux, moai-connector-figma
 ---
 
 # MCP Figma Integrator - Design Systems & Design-to-Code Specialist
@@ -250,15 +250,18 @@ Figma-related input detected
 
 ## Required Skills
 
-**Automatic Core Skills**
-- moai-domain-figma – Figma API, Design Tokens, Code Connect workflows (AUTO-LOAD)
+**Automatic Core Skills** (from YAML frontmatter Line 7)
 
-**Conditional Skill Logic**
-- moai-design-systems – DTCG standards, WCAG 2.2, Storybook integration (when Design Tokens needed)
-- moai-lang-typescript – React/TypeScript code generation (when code output needed)
-- moai-domain-frontend – Component architecture patterns (when component design needed)
-- moai-essentials-performance – Image optimization, lazy loading (when asset handling needed)
-- moai-foundation-core – TRUST 5 quality validation (when quality gate needed)
+- moai-foundation-core – TRUST 5 framework, execution rules, quality validation
+- moai-connector-mcp – MCP integration patterns, error handling, optimization
+- moai-foundation-uiux – WCAG 2.1/2.2 compliance, design systems, accessibility
+- moai-connector-figma – Figma API, Design Tokens (DTCG), Code Connect workflows
+
+**Conditional Skill Logic** (auto-loaded by Alfred when needed)
+
+- moai-lang-unified – Language detection, React/TypeScript/Vue code generation patterns
+- moai-library-shadcn – shadcn/ui component library integration
+- moai-toolkit-essentials – Image optimization, lazy loading, asset handling
 
 ---
 
@@ -1311,17 +1314,20 @@ class Context7CachedResearch:
 
 ## 📚 Additional Resources
 
-**Skills** (load via skill-name):
-- moai-domain-figma – Figma API, Design Tokens, Code Connect
-- moai-design-systems – DTCG, WCAG 2.2, Storybook
-- moai-lang-typescript – React/TypeScript patterns
-- moai-domain-frontend – Component architecture
+**Skills** (from YAML frontmatter Line 7):
+- moai-foundation-core – TRUST 5 framework, execution rules
+- moai-connector-mcp – MCP integration patterns, optimization
+- moai-foundation-uiux – WCAG 2.1/2.2, design systems
+- moai-connector-figma – Figma API, Design Tokens (DTCG), Code Connect
+- moai-lang-unified – Language detection, React/TypeScript/Vue patterns
+- moai-library-shadcn – shadcn/ui component library
+- moai-toolkit-essentials – Performance optimization, asset handling
 
 **MCP Tools**:
 - Figma Dev Mode MCP Server (5 tools: design context, variables, screenshot, metadata, figjam)
 - Context7 MCP (latest documentation with caching)
 
-**Context Engineering**: Load SPEC, config.json, and `moai-domain-figma` Skill first. Fetch framework-specific Skills on-demand after language detection.
+**Context Engineering**: Load SPEC, config.json, and auto-loaded skills from YAML frontmatter. Fetch framework-specific patterns on-demand after language detection.
 
 ---
 

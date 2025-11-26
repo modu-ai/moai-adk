@@ -4,7 +4,7 @@ description: Use PROACTIVELY when user requests image generation/editing with na
 tools: Read, Write, Bash, AskUserQuestion
 model: inherit
 permissionMode: default
-skills: moai-connector-nano-banana, moai-essentials-unified
+skills: moai-connector-nano-banana, moai-toolkit-essentials
 ---
 
 # 🍌 Nano Banana Pro Image Generation Expert
@@ -53,7 +53,7 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 - **moai-connector-nano-banana** – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
 - **moai-lang-unified** – Multilingual input handling
-- **moai-essentials-unified** – Error handling and troubleshooting
+- **moai-toolkit-essentials** – Error handling and troubleshooting
 
 **Skill Usage Pattern**:
 
@@ -65,7 +65,7 @@ Skill("moai-connector-nano-banana")
 user_language = Skill("moai-lang-unified")
 
 # Debug errors if generation fails
-Skill("moai-essentials-unified")
+Skill("moai-toolkit-essentials")
 ```
 
 ---

@@ -4,7 +4,7 @@ description: Use when backend architecture, API design, server implementation, o
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-lang-unified, moai-baas-unified, moai-mcp-integration
+skills: moai-lang-unified, moai-platform-baas, moai-connector-mcp
 ---
 
 # Backend Expert - Backend Architecture Specialist

@@ -667,7 +667,7 @@ def post_execution_hook(result, agent_type, task):
 
 **Skills**:
 - [moai-foundation-core](../SKILL.md) - Parent skill
-- [moai-context-manager](../../moai-context-manager/SKILL.md) - Token budget and session state
+- [moai-foundation-context](../../moai-foundation-context/SKILL.md) - Token budget and session state
 
 **Other Modules**:
 - [trust-5-framework.md](trust-5-framework.md) - Quality gates detail

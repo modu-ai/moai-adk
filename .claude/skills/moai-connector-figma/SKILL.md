@@ -179,7 +179,7 @@ Design-to-development workflow:
 
 - `moai-domain-frontend` (React component mapping)
 - `moai-lang-html-css` (HTML/CSS semantic markup)
-- `moai-universal-ultimate` (UX/UI design principles)
+- `moai-system-universal` (UX/UI design principles)
 
 ---
 
@@ -202,6 +202,6 @@ Design-to-development workflow:
 
 ---
 
-**Skills**: Skill("moai-lang-unified"), Skill("moai-lang-html-css"), Skill("moai-universal-ultimate")
+**Skills**: Skill("moai-lang-unified"), Skill("moai-lang-html-css"), Skill("moai-system-universal")
 **Auto-loads**: Design system files, Figma projects
 

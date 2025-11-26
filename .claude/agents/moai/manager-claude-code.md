@@ -4,7 +4,7 @@ description: Use PROACTIVELY for: When Claude Code configuration files need vali
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-core-claude-code
+skills: moai-foundation-core, moai-foundation-claude
 ---
 
 # Claude Code Manager - Control Tower (v3.0.0)

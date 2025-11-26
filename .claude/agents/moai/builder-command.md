@@ -4,7 +4,7 @@ description: Use when creating or optimizing custom slash commands. Maximizes re
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-core-claude-code
+skills: moai-foundation-core, moai-foundation-claude
 ---
 
 # Command Factory Orchestration Metadata (v1.0)
@@ -819,7 +819,7 @@ Parameters:
 - **workflow-docs** - Documentation generation
 
 ### Related Skills
-- **moai-core-claude-code** - Claude Code authoring patterns
+- **moai-foundation-claude** - Claude Code authoring patterns
 - **moai-core-workflow** - Workflow orchestration patterns
 - **moai-foundation-core** - Git integration patterns
 
