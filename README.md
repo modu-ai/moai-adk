@@ -60,6 +60,119 @@ moai-adk update
 claude
 ```
 
+#### moai-adk update - Custom Files Backup & Restore
+
+The `moai-adk update` command provides intelligent backup and selective restoration of custom files during project updates. When you update MoAI-ADK, any custom commands, agents, or hooks you've created are safely detected and can be restored with a single command.
+
+**Key Features:**
+- **Automatic Detection**: Detects custom commands (`.md` files in `.claude/commands/moai/`), agents (files in `.claude/agents/`), and hooks (`.py` files in `.claude/hooks/moai/`)
+- **Selective Restoration**: Interactive questionary UI lets you choose exactly which custom files to restore
+- **Safe Mode**: The `--yes` flag skips restoration by default, ensuring you review changes first
+- **Grouped Organization**: Custom files are grouped by type for easier selection and review
+- **Zero Data Loss**: All custom files are backed up before any update operations
+
+**Use Cases:**
+
+1. **Interactive Restoration (Recommended)**
+   ```bash
+   # Review and select custom files to restore
+   moai-adk update
+   # → Displays checklist of detected custom files
+   # → Select which files to restore interactively
+   # → Safe and transparent process
+   ```
+
+2. **Skip Restoration (CI/CD Mode)**
+   ```bash
+   # Update without prompting for custom file restoration
+   moai-adk update --yes
+   # → Detects custom files but skips restoration
+   # → Useful for automated pipelines and CI/CD
+   # → You can restore manually later if needed
+   ```
+
+3. **Team Workflow**
+   ```bash
+   # Developer A: Creates custom command
+   .claude/commands/moai/my-custom-command.md
+
+   # Developer B: Runs update
+   moai-adk update
+   # → Detects Developer A's custom command
+   # → Prompts to restore it
+   # → Entire team stays in sync
+   ```
+
+4. **Troubleshooting**
+   ```bash
+   # If files don't restore properly
+   moai-adk update --verbose
+   # → Shows detailed logs of detection and restoration
+   # → Helps diagnose issues
+   ```
+
+5. **Multiple Custom Files**
+   ```bash
+   # Project with many customizations
+   moai-adk update
+   # → Detects all 3 types: commands (5), agents (2), hooks (3)
+   # → Shows organized checklist
+   # → Select subset to restore or all at once
+   ```
+
+**Command Syntax:**
+```bash
+moai-adk update [OPTIONS]
+
+Options:
+  --yes                Skip restoration prompts (CI/CD mode)
+  --verbose            Show detailed logs during update
+  --help               Display help information
+```
+
+**Example Output:**
+```
+MoAI-ADK Update Process
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Syncing package files...
+✓ Backing up custom files...
+✓ Detecting custom files...
+
+Found 10 custom files to restore:
+
+  Custom Commands (5 files)
+    ☐ my-custom-command.md
+    ☐ team-helper.md
+    ☐ project-specific.md
+    ☐ local-utility.md
+    ☐ automation-task.md
+
+  Custom Agents (2 files)
+    ☐ specialist-agent.py
+    ☐ domain-expert.py
+
+  Custom Hooks (3 files)
+    ☐ pre-commit-validator.py
+    ☐ code-formatter.py
+    ☐ security-checker.py
+
+Select files to restore (use SPACE to toggle, ENTER to confirm):
+  [✓] my-custom-command.md
+  [✓] specialist-agent.py
+  [ ] pre-commit-validator.py
+
+✓ Restoring 2 selected files...
+✓ Update complete! Your custom files are restored.
+```
+
+**For Detailed Information:**
+See [moai-adk update Guide](./.moai/docs/update-guide.md) for comprehensive documentation including:
+- Architecture overview of the backup/restore system
+- Integration with CI/CD pipelines
+- Troubleshooting common issues
+- API reference for developers extending the update system
+
 ---
 
 ## ⚙️ Configuration

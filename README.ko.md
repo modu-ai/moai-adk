@@ -41,11 +41,13 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### ⚙️ 고급
 
-| 섹션                           | 목적                  |
-| ------------------------------ | --------------------- |
-| [11. 설정](#11-설정)           | 프로젝트 커스터마이징 |
-| [12. MCP 서버](#12-mcp-서버)   | 외부 도구 통합        |
-| [13. 문제 해결](#15-문제-해결) | 오류 해결 가이드      |
+| 섹션                                               | 목적                  |
+| -------------------------------------------------- | --------------------- |
+| [11. 설정](#11-설정)                               | 프로젝트 커스터마이징 |
+| [12. MCP 서버](#12-mcp-서버)                       | 외부 도구 통합        |
+| [13. 고급 기능](#13-고급-기능)                     | 추가 기능 활용        |
+| [14. 버전 히스토리](#14-버전-히스토리-및-업데이트) | 버전별 변경 사항      |
+| [15. 문제 해결](#15-문제-해결)                     | 오류 해결 가이드      |
 
 ---
 
@@ -56,6 +58,8 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 **MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **24개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
+
+![Traditional vs MoAI-ADK](./assets/images/readme/before-after-comparison.png)
 
 전통적인 개발 방식의 한계:
 
@@ -71,193 +75,75 @@ MoAI-ADK의 해결책:
 - ✅ **TDD 강제**로 85% 이상 테스트 커버리지 보장
 - ✅ **AI 에이전트**가 반복 작업을 자동화
 
-![Traditional vs MoAI-ADK](./assets/images/readme/before-after-comparison.png)
-
 ### 🎯 핵심 특징
-
-| 특징                  | 설명                                           | 정량적 효과                                                                                                                                                                                      |
-| --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **SPEC-First**        | 모든 개발은 명확한 명세서로 시작               | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
-| **TDD 강제**          | Red-Green-Refactor 사이클 자동화               | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
-| **AI 오케스트레이션** | Mr.Alfred가 24개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
-| **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`/moai:3-sync`) | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
-| **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable    | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소**                                                                                                                                      |
 
 ![5 Core Features](./assets/images/readme/feature-overview-grid.png)
 
+| 특징                  | 설명                                                   | 정량적 효과                                                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **SPEC-First**        | 모든 개발은 명확한 명세서로 시작                       | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
+| **TDD 강제**          | Red-Green-Refactor 사이클 자동화                       | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
+| **AI 오케스트레이션** | Mr.Alfred가 24개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`/moai:3-sync`)         | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
+| **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable            | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소**                                                                                                                                      |
+
 ---
 
-## 2. 빠른 시작 (5분)
+## 2. 빠른 시작 (3분)
 
-### 🎯 목표: 첫 번째 기능을 5분 안에 완성하기
+### 🎯 목표: 첫 번째 기능을 3분 안에 완성하기
 
 ![Quick Start Journey](./assets/images/readme/quickstart-journey-map.png)
 
 ---
 
-### **Step 1/3: 설치** ⏱️ 1분
-
-**1.1 `uv` 설치** (Python 패키지 관리자)
+### **Step 1: 설치** ⏱️ 1분
 
 ```bash
-# macOS / Linux
+# uv 설치 (Python 패키지 관리자)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-**1.2 MoAI-ADK 설치**
-
-```bash
-# 글로벌 설치
+# MoAI-ADK 설치 및 프로젝트 생성
 uv tool install moai-adk
-```
-
-✅ **확인**: 다음 명령을 실행하여 버전이 표시되는지 확인
-
-```bash
-moai-adk --version
+moai-adk init my-project
+cd my-project
 ```
 
 ---
 
-### **Step 2/3: 프로젝트 초기화** ⏱️ 2분
+### **Step 2: Claude Code 실행 및 프로젝트 설정** ⏱️ 1분
 
 ```bash
-# 프로젝트 생성
-moai-adk init my-first-project
-cd my-first-project
-
-# Claude Code 실행
-claude
+claude  # Claude Code 실행
 ```
 
-✅ **확인**: Claude Code 창이 열리고 프롬프트가 보이는지 확인
+Claude Code 내에서:
 
-**기존 프로젝트에 적용:**
-
-```bash
-cd existing-project
-moai-adk init .
-claude
 ```
-
-**Claude Code 설치 이후 프로젝트 초기화:**
-
-Claude Code가 실행되면 다음 명령을 실행하여 프로젝트를 초기화합니다:
-
-> `/moai:0-project`
-
-이 명령은 MoAI-ADK 프로젝트 메타데이터와 문서 구조를 초기화합니다.
-
-#### `/moai:0-project` 상세 사용법
-
-**기본 초기화:**
-
-```bash
 > /moai:0-project
 ```
 
-- 처음 설치를 했을 때 필수로 실행하는 명령입니다
-- 프로젝트 메타데이터 초기화 (`.moai/config/config.json`)
-- 기본 문서 구조 생성 (`README.md`, SPEC 디렉토리 등)
-- Git 전략 설정 (Manual/Personal/Team)
-
-**설정 관리:**
-
-```bash
-> /moai:0-project setting
-```
-
-- 현재 프로젝트 설정 확인
-- 언어, Git 전략, TDD 정책 등 모든 구성 표시
-- config.json 파일 경로 안내
-
-**프로젝트 업데이트:**
-
-```bash
-> /moai:0-project update
-```
-
-- MoAI-ADK 템플릿 최신 버전으로 업데이트
-- 기존 설정 보존하면서 새 기능 병합
-- 백업 자동 생성 (`.moai/backups/`)
-
-**GLM (Git LFS Manager) 토글:**
-
-```bash
-> /moai:0-project --glm-on <token>
-```
-
-- z.ai사의 glm 4.5-air, glm 4.6 모델 사용
-- `<token>`: z.ai API Token, .env.glm 사용가능
-- settings.local.json에 glm 모델 사용 설정
-- **gitignore에 .env.glm, settings.local.json 추가 필수**
-
-```bash
-> /moai:0-project --glm-off
-```
-
-- glm 모델 사용 비활성화
-- settings.local.json에 glm 모델 설정 제거
-
-**사용 예시:**
-
-```bash
-# 1. 기본 초기화
-> /moai:0-project
-
-# 2. 설정 확인
-> /moai:0-project setting
-
-# 3. 나중에 템플릿 업데이트
-> /moai:0-project update
-
-# 4. GLM 활성화 (대용량 파일 프로젝트)
-> /moai:0-project --glm-on <token>
-
-# 5. GLM 비활성화
-> /moai:0-project --glm-off
-```
-
-**참고사항:**
-
-- 초기화는 프로젝트당 한 번만 실행하면 됩니다
-- `setting`과 `update`는 필요시 언제든 실행 가능
+프로젝트 메타데이터와 문서 구조가 자동 생성됩니다.
 
 ---
 
-### **Step 3/3: 첫 기능 구현** ⏱️ 2분
+### **Step 3: 첫 기능 구현** ⏱️ 1분
 
-Claude Code에서 다음을 실행하세요:
-
-```bash
-# 1️⃣ 기능 명세 작성
-/moai:1-plan "사용자 로그인 기능 구현"
-
-# 💡 TIP: /clear는 컨텍스트 메모리를 초기화하여 다음 단계를 빠르게 시작합니다.
-# 각 major 커맨드 후에 한 번씩 실행하면, AI 에이전트가 더 효율적으로 작동합니다.
-/clear
-
-# 2️⃣ TDD로 구현 (테스트 먼저 작성 → 코드 → 리팩토링)
-/moai:2-run SPEC-001
-/clear
-
-# 3️⃣ 문서 자동 생성
-/moai:3-sync SPEC-001
+```
+> /moai:1-plan "사용자 로그인 기능"
+> /clear
+> /moai:2-run SPEC-001
 ```
 
-🎉 **성공!** `.moai/specs/SPEC-001/` 폴더를 확인하면 생성된 파일들을 볼 수 있습니다.
+🎉 **완료!** 첫 기능이 TDD 방식으로 구현되었습니다.
 
 ---
 
-### 📁 다음 단계
+### 📁 더 자세한 내용
 
-**더 배우고 싶으신가요?**
-
-- 👉 [**핵심 개념**](#3-핵심-개념)으로 이동 (개념 이해: 30분)
-- 👉 [**실용 예제**](#9-실용-예제)로 이동 (실습 예제: 15분)
+- **설치 옵션 및 환경 설정**: [4. 설치 및 설정](#4-설치-및-설정)
+- **명령어 상세 사용법**: [6. 핵심 커맨드](#6-핵심-커맨드)
+- **개발 워크플로우**: [5. 개발 워크플로우](#5-개발-워크플로우)
 
 ---
 
@@ -447,7 +333,7 @@ sequenceDiagram
 | 에이전트          | 전문 분야     | 주요 스킬                                                      |
 | ----------------- | ------------- | -------------------------------------------------------------- |
 | `manager-spec`    | 요구사항 분석 | `moai-foundation-ears`, `moai-foundation-specs`                |
-| `manager-tdd` | TDD 구현      | `moai-foundation-trust`, `moai-essentials-testing-integration` |
+| `manager-tdd`     | TDD 구현      | `moai-foundation-trust`, `moai-essentials-testing-integration` |
 | `expert-security` | 보안 검증     | `moai-domain-security`, `moai-security-auth`                   |
 
 ### 🏆 TRUST 5 프레임워크
@@ -758,159 +644,162 @@ def test_calculate_discount_no_discount_for_cheap_items():
 
 ---
 
-### 🚀 v0.28.0 주요 업데이트
-
-**2025년 11월 업데이트**: MoAI-ADK v0.28.0은 토큰 효율성, 스킬 통합, 그리고 에이전트 최적화를 중심으로 대폭 개선되었습니다.
-
-#### 1️⃣ Conditional Auto-load (토큰 최적화)
-
-**문제**: 모든 작업에서 전체 Foundation 스킬을 로드하여 불필요한 토큰 소비
-
-**해결책**: 작업 복잡도에 따라 자동 선택
-
-- **Simple 작업** (파일 읽기, 간단한 수정): 0 토큰 (Quick Reference만 사용)
-- **Complex 작업** (아키텍처 변경, SPEC 생성): 8,470 토큰 (전체 스킬 자동 로드)
-- **평균 절감**: 세션당 약 5,000 토큰
-
-#### 2️⃣ Skill 통합 및 표준화
-
-**통합 전** (v0.27.x):
-
-- 5개 분산된 `moai-foundation-*` 스킬
-- 11개 분산된 `moai-manager-*` 스킬
-- 91개 스킬에서 표준화 문제 발견
-
-**통합 후** (v0.28.0):
-
-- `moai-foundation-core`: 9개 모듈 통합 (TRUST 5, SPEC-First TDD, Delegation Patterns 등)
-- `moai-core-claude-code`: 7개 레퍼런스 통합 (Skills, Sub-agents, Commands 등)
-- **91개 스킬 표준화 완료**: 일관된 YAML 헤더, Progressive Disclosure 구조
-
-#### 3️⃣ 에이전트 최적화 (35 → 26)
-
-**변경사항**:
-
-- **역할 명확화**: 중복된 에이전트 통합 및 재분류
-- **7-Tier 계층**: `{domain}-{role}` 명명 규칙 엄격 적용
-- **MCP Resume Pattern**: Context 연속성으로 40-60% 토큰 절감
-
-**7-Tier 구조**:
-
-```
-Tier 1: manager-* (Command Processors)      - Always Active
-Tier 2: manager-* (Orchestration & Quality)     - Auto-triggered
-Tier 3: {domain}-* (Domain Experts)          - Lazy-loaded
-Tier 4: mcp-* (MCP Integrators)              - Resume-enabled
-Tier 5: builder-* (Factory Agents)           - Meta-development
-Tier 6: helper-* (Support Services)         - On-demand
-Tier 4: mcp-* (AI & Specialized)              - Specialized tasks
-```
-
-#### 4️⃣ 백업 및 복구 전략
-
-**기능**:
-
-- **Backup-and-replace**: 업데이트 전 자동 백업
-- **Interactive Skills 복구**: 사용자가 선택적으로 스킬 복원
-- **충돌 방지**: 템플릿과 로컬 변경사항 안전하게 병합
-
-#### 5️⃣ 다국어 지원 강화
-
-**완료**:
-
-- 63개 파일 Korean → English 완전 번역
-- **Rule 10**: AskUserQuestion 언어 규칙 추가
-- 모든 사용자 인터페이스 다국어 지원
-
----
-
 ## 4. 설치 및 설정
 
-### 📋 전제조건
+### 4.1 사전 요구사항
 
 | 요구사항    | 최소 버전 | 권장 버전 | 확인 방법           |
 | ----------- | --------- | --------- | ------------------- |
-| Python      | 3.11+     | 3.13+     | `python --version`  |
-| Node.js     | 18+       | 20+       | `node --version`    |
-| Git         | 2.30+     | 최신      | `git --version`     |
+| Python      | 3.10+     | 3.13+     | `python --version`  |
 | Claude Code | 2.0.46+   | 최신      | Claude Code 앱 정보 |
+| Git         | 2.30+     | 최신      | `git --version`     |
 
-### 🔧 설치 방법
+### 4.2 uv 설치 (패키지 관리자)
 
-**`uv` 사용 (권장)**
+**macOS / Linux:**
 
 ```bash
-# uv 설치
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# MoAI-ADK 설치
-uv tool install moai-adk
-
-# 버전 확인
-moai-adk --version
 ```
 
-### 🎯 프로젝트 초기화
+**Windows (PowerShell):**
 
-**신규 프로젝트:**
+```powershell
+irm https://astral.sh/uv/install.ps1 | iex
+```
+
+**설치 확인:**
 
 ```bash
-# 프로젝트 생성
-moai-adk init my-awesome-project
-
-# 디렉토리 구조
-my-awesome-project/
-├── .claude/
-│   ├── agents/              # 에이전트 정의
-│   ├── commands/            # 커맨드 정의
-│   ├── skills/              # 스킬 라이브러리
-│   └── settings.json        # Claude Code 설정
-├── .moai/
-│   ├── memory/
-│   │   ├── agents.md        # 에이전트 참조
-│   │   ├── commands.md      # 커맨드 참조
-│   │   └── ...
-│   └── config/              # 설정 파일
-└── src/                     # 소스 코드
+uv --version  # uv 0.5.11 이상 권장
 ```
 
-**기존 프로젝트:**
+### 4.3 MoAI-ADK 설치
+
+**기본 설치:**
+
+```bash
+uv tool install moai-adk
+```
+
+**특정 버전 설치:**
+
+```bash
+uv tool install moai-adk==0.30.2
+```
+
+**업그레이드:**
+
+```bash
+uv tool upgrade moai-adk
+```
+
+**설치 확인:**
+
+```bash
+moai-adk --version
+moai-adk --help
+```
+
+### 4.4 프로젝트 초기화
+
+**새 프로젝트 생성:**
+
+```bash
+moai-adk init my-project
+cd my-project
+```
+
+**생성된 디렉토리 구조:**
+
+```
+my-project/
+├── .claude/
+│   ├── commands/moai/    # MoAI 명령어
+│   ├── skills/           # 기술 모듈
+│   └── settings.json     # Claude Code 설정
+├── .moai/
+│   ├── config/
+│   │   └── config.json   # 프로젝트 설정
+│   ├── specs/            # SPEC 문서
+│   └── docs/             # 문서
+├── CLAUDE.md             # Alfred 실행 지침
+└── README.md             # 프로젝트 README
+```
+
+**기존 프로젝트에 적용:**
 
 ```bash
 cd existing-project
 moai-adk init .
-
-# Git 저장소와 함께 초기화
-moai-adk init . --with-git
 ```
 
-### ⚙️ .claude/settings.json 설정
+### 4.5 프로젝트 설정 (`/moai:0-project`)
 
-MoAI-ADK는 `.claude/settings.json` 파일을 사용하여 Claude Code 동작을 제어합니다.
-
-프로젝트 설정을 커스터마이즈하는 두 가지 방법:
-
-**방법 1: 명령어 사용 (권장)**:
+**기본 사용법:**
 
 ```bash
-> /moai:0-project setting
+claude  # Claude Code 실행
+> /moai:0-project
 ```
 
-- 대화형 설정 관리
-- 안전한 설정 변경
-- 자동 유효성 검사
+**대화형 메뉴:**
 
-**방법 2: 직접 편집**:
+1. **Initialize Project Metadata**: 프로젝트 정보 입력
 
-- `.claude/settings.json` 파일을 직접 편집
-- `.moai/config/config.json` 파일을 직접 편집
-- JSON 문법 주의 필요
-- 변경 후 `/moai:0-project setting`으로 검증 권장
+   - 프로젝트 이름
+   - 설명
+   - 소유자
+   - 언어 설정
 
-**설정 예시**:
+2. **Update Setting**: 기존 설정 수정
+3. **Update Documentation**: 문서 재생성
+
+**상세 사용법:**
+
+```bash
+# 기본 초기화
+> /moai:0-project
+
+# 설정 확인
+> /moai:0-project setting
+
+# 템플릿 업데이트
+> /moai:0-project update
+
+# GLM 모델 활성화 (z.ai)
+> /moai:0-project --glm-on <token>
+
+# GLM 모델 비활성화
+> /moai:0-project --glm-off
+```
+
+**GLM Model 토글:**
+
+- `--glm-on <token>`: z.ai 사의 glm 4.5-air, glm 4.6 모델 사용
+- `<token>`: z.ai API Token (`.env.glm` 파일 사용 가능)
+- settings.local.json에 glm 모델 설정 추가
+- **중요**: `.gitignore`에 `.env.glm`, `settings.local.json` 추가 필수
+
+**참고사항:**
+
+- 초기화는 프로젝트당 한 번만 실행
+- `setting`과 `update`는 필요시 언제든 실행 가능
+
+### 4.6 수동 설정 (`config.json` 편집)
+
+**파일 위치:** `.moai/config/config.json`
+
+**전체 구조 예시:**
 
 ```json
 {
+  "project": {
+    "name": "my-awesome-app",
+    "description": "혁신적인 웹 애플리케이션",
+    "owner": "GOOS",
+    "created_at": "2025-01-15"
+  },
   "user": {
     "name": "개발자이름"
   },
@@ -925,9 +814,6 @@ MoAI-ADK는 `.claude/settings.json` 파일을 사용하여 Claude Code 동작을
   "git_strategy": {
     "mode": "personal"
   },
-  "github": {
-    "spec_git_workflow": "develop_direct"
-  },
   "statusline": {
     "enabled": true,
     "format": "compact",
@@ -940,11 +826,169 @@ MoAI-ADK는 `.claude/settings.json` 파일을 사용하여 Claude Code 동작을
 
 - `user.name`: Alfred가 당신을 부르는 이름
 - `conversation_language`: 대화 및 문서 언어 (ko/en/ja/zh)
-- `agent_prompt_language`: 에이전트 내부 추론 언어 (**항상 "en" 사용**)
+- `agent_prompt_language`: 에이전트 내부 추론 언어 (항상 "en" 사용)
 - `enforce_tdd`: TDD 강제 여부 (true 권장)
 - `test_coverage_target`: 테스트 커버리지 목표 (기본 85%)
 - `git_strategy.mode`: Git 전략 (personal/team/hybrid)
-- `statusline`: Claude Code 상태 표시줄 설정
+
+### 4.7 Claude Code 설정 (`.claude/settings.json`)
+
+**권한 설정:**
+
+```json
+{
+  "allowed_glob_patterns": [".moai/specs/**/*.md", ".moai/docs/**/*.md"],
+  "model_defaults": {
+    "default_model": "sonnet"
+  }
+}
+```
+
+**GLM 모드 활성화** (Git + 로컬 메모리):
+
+```bash
+> /moai:0-project --glm-on <github-token>
+```
+
+### 4.8 트러블슈팅
+
+**`moai-adk: command not found`**
+
+- PATH 확인 또는 터미널 재시작
+- uv 재설치: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+**`uv tool install` 실패**
+
+- Python 3.10+ 설치 확인
+- 관리자 권한으로 실행
+
+**Claude Code 인식 안 됨**
+
+- `.claude/` 디렉토리 존재 확인
+- `moai-adk init .` 재실행
+
+### 4.8 프로젝트 업데이트
+
+기존 프로젝트의 설정을 최신 버전으로 업데이트하려면 프로젝트 루트에서 다음 명령을 실행하세요:
+
+```bash
+cd my-project
+moai-adk update
+claude
+```
+
+#### moai-adk update - 커스텀 파일 백업 및 복원
+
+`moai-adk update` 명령은 프로젝트 업데이트 중 커스텀 파일의 지능형 백업 및 선택적 복원을 제공합니다. MoAI-ADK를 업데이트할 때, 생성한 모든 커스텀 명령어, 에이전트 또는 훅이 안전하게 감지되고 한 번의 명령으로 복원될 수 있습니다.
+
+**주요 기능:**
+- **자동 감지**: 커스텀 명령어 (`.claude/commands/moai/`의 `.md` 파일), 에이전트 (`.claude/agents/`의 파일), 훅 (`.claude/hooks/moai/`의 `.py` 파일) 감지
+- **선택적 복원**: 대화형 questionary UI로 복원할 커스텀 파일 정확히 선택
+- **안전 모드**: `--yes` 플래그는 기본적으로 복원을 건너뛰어 변경 사항을 먼저 검토 가능
+- **그룹화된 조직**: 커스텀 파일을 유형별로 그룹화하여 선택 및 검토 용이
+- **데이터 손실 없음**: 모든 커스텀 파일은 업데이트 작업 전에 백업됨
+
+**사용 사례:**
+
+1. **대화형 복원 (권장)**
+   ```bash
+   # 커스텀 파일을 검토하고 선택적으로 복원
+   moai-adk update
+   # → 감지된 커스텀 파일 체크리스트 표시
+   # → 어떤 파일을 복원할지 대화형으로 선택
+   # → 안전하고 투명한 프로세스
+   ```
+
+2. **복원 건너뛰기 (CI/CD 모드)**
+   ```bash
+   # 커스텀 파일 복원 프롬프트 없이 업데이트
+   moai-adk update --yes
+   # → 커스텀 파일 감지하지만 복원 건너뜀
+   # → 자동화된 파이프라인 및 CI/CD에 유용
+   # → 필요하면 나중에 수동으로 복원 가능
+   ```
+
+3. **팀 워크플로우**
+   ```bash
+   # 개발자 A: 커스텀 명령어 생성
+   .claude/commands/moai/my-custom-command.md
+
+   # 개발자 B: 업데이트 실행
+   moai-adk update
+   # → 개발자 A의 커스텀 명령어 감지
+   # → 복원 여부 프롬프트
+   # → 전체 팀이 동기화 유지
+   ```
+
+4. **문제 해결**
+   ```bash
+   # 파일이 제대로 복원되지 않으면
+   moai-adk update --verbose
+   # → 감지 및 복원의 상세 로그 표시
+   # → 문제 진단에 도움
+   ```
+
+5. **여러 커스텀 파일**
+   ```bash
+   # 많은 커스터마이제이션이 있는 프로젝트
+   moai-adk update
+   # → 3가지 유형 모두 감지: 명령어 (5), 에이전트 (2), 훅 (3)
+   # → 조직화된 체크리스트 표시
+   # → 부분 또는 전체 복원 선택
+   ```
+
+**명령 구문:**
+```bash
+moai-adk update [OPTIONS]
+
+옵션:
+  --yes                복원 프롬프트 건너뛰기 (CI/CD 모드)
+  --verbose            업데이트 중 상세 로그 표시
+  --help               도움말 정보 표시
+```
+
+**출력 예시:**
+```
+MoAI-ADK 업데이트 프로세스
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ 패키지 파일 동기화 중...
+✓ 커스텀 파일 백업 중...
+✓ 커스텀 파일 감지 중...
+
+복원할 커스텀 파일 10개 발견:
+
+  커스텀 명령어 (5개 파일)
+    ☐ my-custom-command.md
+    ☐ team-helper.md
+    ☐ project-specific.md
+    ☐ local-utility.md
+    ☐ automation-task.md
+
+  커스텀 에이전트 (2개 파일)
+    ☐ specialist-agent.py
+    ☐ domain-expert.py
+
+  커스텀 훅 (3개 파일)
+    ☐ pre-commit-validator.py
+    ☐ code-formatter.py
+    ☐ security-checker.py
+
+복원할 파일 선택 (SPACE로 토글, ENTER로 확인):
+  [✓] my-custom-command.md
+  [✓] specialist-agent.py
+  [ ] pre-commit-validator.py
+
+✓ 선택된 파일 2개 복원 중...
+✓ 업데이트 완료! 커스텀 파일이 복원되었습니다.
+```
+
+**자세한 정보:**
+[moai-adk 업데이트 가이드](./.moai/docs/update-guide.md)를 참고하세요. 다음 내용을 포함합니다:
+- 백업/복원 시스템의 아키텍처 개요
+- CI/CD 파이프라인과의 통합
+- 일반적인 문제 해결
+- 업데이트 시스템 확장을 위한 API 참고
 
 ---
 
@@ -1251,15 +1295,15 @@ graph TB
 
 특정 도메인의 전문 지식을 제공하는 에이전트입니다. 필요시에만 로드됩니다.
 
-| 에이전트            | 전문 분야         | 설명                              | 주요 스킬                            |
-| ------------------- | ----------------- | --------------------------------- | ------------------------------------ |
-| **expert-backend**  | 백엔드 아키텍처   | API, 서버, 데이터베이스 통합      | moai-lang-unified, moai-baas-unified |
-| **expert-frontend** | 프론트엔드 개발   | React, Vue, UI 컴포넌트           | moai-lang-unified, moai-core-uiux    |
-| **expert-database** | 데이터베이스 설계 | 스키마 최적화, 쿼리 성능          | moai-lang-unified                    |
-| **expert-devops**   | 인프라/배포       | CI/CD, 컨테이너, 클라우드         | moai-lang-unified                    |
-| **expert-security** | 보안 분석         | 취약점 진단, OWASP 준수           | moai-lang-unified                    |
-| **expert-uiux**     | UI/UX 디자인      | 디자인 시스템, 접근성, Figma 연동 | moai-core-uiux, moai-lib-shadcn-ui   |
-| **expert-debug**    | 디버깅 및 오류분석 | 런타임 에러 분석 및 해결         | moai-essentials-unified              |
+| 에이전트            | 전문 분야          | 설명                              | 주요 스킬                            |
+| ------------------- | ------------------ | --------------------------------- | ------------------------------------ |
+| **expert-backend**  | 백엔드 아키텍처    | API, 서버, 데이터베이스 통합      | moai-lang-unified, moai-baas-unified |
+| **expert-frontend** | 프론트엔드 개발    | React, Vue, UI 컴포넌트           | moai-lang-unified, moai-core-uiux    |
+| **expert-database** | 데이터베이스 설계  | 스키마 최적화, 쿼리 성능          | moai-lang-unified                    |
+| **expert-devops**   | 인프라/배포        | CI/CD, 컨테이너, 클라우드         | moai-lang-unified                    |
+| **expert-security** | 보안 분석          | 취약점 진단, OWASP 준수           | moai-lang-unified                    |
+| **expert-uiux**     | UI/UX 디자인       | 디자인 시스템, 접근성, Figma 연동 | moai-core-uiux, moai-lib-shadcn-ui   |
+| **expert-debug**    | 디버깅 및 오류분석 | 런타임 에러 분석 및 해결          | moai-essentials-unified              |
 
 **사용 시나리오**:
 
@@ -1313,9 +1357,9 @@ MoAI-ADK 자체를 확장하는 메타 에이전트입니다.
 
 | 에이전트            | 생성 대상     | 설명                      | 주요 스킬                                   |
 | ------------------- | ------------- | ------------------------- | ------------------------------------------- |
+| **builder-command** | 명령어 생성   | 커스텀 슬래시 명령 생성   | moai-foundation-core, moai-core-claude-code |
 | **builder-agent**   | 에이전트 생성 | 새로운 전문 에이전트 생성 | moai-foundation-core, moai-core-claude-code |
 | **builder-skill**   | 스킬 생성     | 새로운 지식 스킬 생성     | moai-foundation-core, moai-core-claude-code |
-| **builder-command** | 명령어 생성   | 커스텀 슬래시 명령 생성   | moai-foundation-core, moai-core-claude-code |
 
 **사용 예시**:
 
@@ -3717,6 +3761,82 @@ MoAI-ADK는 외부 AI 모델과의 **선택적** 통합을 지원합니다. Clau
 - 🎨 React/Next.js 컴포넌트 생성
 - 🎨 UI/UX 설계
 - 🎨 Tailwind CSS 스타일링
+
+---
+
+## 14. 버전 히스토리 및 업데이트
+
+### v0.30.2 (최신)
+
+[![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
+
+현재 최신 버전은 문서 상단 배지를 참조하세요.
+
+---
+
+### v0.28.0 (주요 업데이트)
+
+**2025년 11월 업데이트**: MoAI-ADK v0.28.0은 토큰 효율성, 스킬 통합, 그리고 에이전트 최적화를 중심으로 대폭 개선되었습니다.
+
+#### 1️⃣ Conditional Auto-load (토큰 최적화)
+
+**문제**: 모든 작업에서 전체 Foundation 스킬을 로드하여 불필요한 토큰 소비
+
+**해결책**: 작업 복잡도에 따라 자동 선택
+
+- **Simple 작업** (파일 읽기, 간단한 수정): 0 토큰 (Quick Reference만 사용)
+- **Complex 작업** (아키텍처 변경, SPEC 생성): 8,470 토큰 (전체 스킬 자동 로드)
+- **평균 절감**: 세션당 약 5,000 토큰
+
+#### 2️⃣ Skill 통합 및 표준화
+
+**통합 전** (v0.27.x):
+
+- 5개 분산된 `moai-foundation-*` 스킬
+- 11개 분산된 `moai-manager-*` 스킬
+- 91개 스킬에서 표준화 문제 발견
+
+**통합 후** (v0.28.0):
+
+- `moai-foundation-core`: 9개 모듈 통합 (TRUST 5, SPEC-First TDD, Delegation Patterns 등)
+- `moai-core-claude-code`: 7개 레퍼런스 통합 (Skills, Sub-agents, Commands 등)
+- **91개 스킬 표준화 완료**: 일관된 YAML 헤더, Progressive Disclosure 구조
+
+#### 3️⃣ 에이전트 최적화 (35 → 26)
+
+**변경사항**:
+
+- **역할 명확화**: 중복된 에이전트 통합 및 재분류
+- **7-Tier 계층**: `{domain}-{role}` 명명 규칙 엄격 적용
+- **MCP Resume Pattern**: Context 연속성으로 40-60% 토큰 절감
+
+**7-Tier 구조**:
+
+```
+Tier 1: manager-* (Command Processors)      - Always Active
+Tier 2: manager-* (Orchestration & Quality)     - Auto-triggered
+Tier 3: {domain}-* (Domain Experts)          - Lazy-loaded
+Tier 4: mcp-* (MCP Integrators)              - Resume-enabled
+Tier 5: builder-* (Factory Agents)           - Meta-development
+Tier 6: helper-* (Support Services)         - On-demand
+Tier 7: ai-* (AI & Specialized)              - Specialized tasks
+```
+
+#### 4️⃣ 백업 및 복구 전략
+
+**기능**:
+
+- **Backup-and-replace**: 업데이트 전 자동 백업
+- **Interactive Skills 복구**: 사용자가 선택적으로 스킬 복원
+- **충돌 방지**: 템플릿과 로컬 변경사항 안전하게 병합
+
+#### 5️⃣ 다국어 지원 강화
+
+**완료**:
+
+- 63개 파일 Korean → English 완전 번역
+- **Rule 10**: AskUserQuestion 언어 규칙 추가
+- 모든 사용자 인터페이스 다국어 지원
 
 ---
 

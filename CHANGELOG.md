@@ -1,3 +1,58 @@
+# v0.31.0 - Custom Files Backup & Restore in moai-adk update (2025-11-27)
+
+## Added
+
+- Custom files backup/restore in `moai-adk update` command:
+  - Automatic detection of custom commands (.md files in `.claude/commands/moai/`)
+  - Automatic detection of custom agents (files in `.claude/agents/`)
+  - Automatic detection of custom hooks (.py files in `.claude/hooks/moai/`)
+  - Unified questionary multi-select UI for selective restoration
+  - Safe `--yes` mode (skips restoration prompts by default)
+  - Comprehensive backup before any update operations
+  - Detailed detection and restoration logging
+
+- 9 new internal functions for backup/restore operations:
+  - `_detect_custom_commands()` - Detect custom command files
+  - `_detect_custom_agents()` - Detect custom agent files
+  - `_detect_custom_hooks()` - Detect custom hook files
+  - `_get_template_command_names()` - Get template command references
+  - `_get_template_agent_names()` - Get template agent references
+  - `_get_template_hook_names()` - Get template hook references
+  - `_group_custom_files_by_type()` - Organize files for UI presentation
+  - `_prompt_custom_files_restore()` - Interactive restoration UI
+  - `_restore_custom_files()` - Execute selective file restoration
+
+- 26 comprehensive tests covering all functions:
+  - 100% passing rate (26/26 tests)
+  - >85% code coverage
+  - Tests for detection, filtering, grouping, and restoration
+  - Tests for edge cases and error handling
+  - Tests for questionary UI integration
+
+## Changed
+
+- Enhanced `moai-adk update` workflow to include custom files detection
+- Improved update process with safe-by-default restoration behavior
+- Updated documentation with update-guide.md and API reference
+
+## Technical Details
+
+- **TRUST 5 Compliance**: Testable, Readable, Unified, Secured, Traceable
+- **Tests**: 26/26 passing (100%)
+- **Code Coverage**: >85% (comprehensive test coverage)
+- **Security**: Validated (no path traversal, safe file operations, proper error handling)
+- **Location**: `src/moai_adk/cli/commands/update.py` (+370 lines)
+- **Dependencies**: questionary for interactive UI, existing MoAI-ADK modules
+
+## Documentation
+
+- **README.md**: Updated with detailed moai-adk update section
+- **README.ko.md**: Korean translation of update documentation
+- **.moai/docs/update-guide.md**: Comprehensive usage guide (NEW)
+- **.moai/docs/API-UPDATE-FUNCTIONS.md**: API reference for developers (NEW)
+
+---
+
 # v0.28.2 - Naming Consistency: /alfred: → /moai: (2025-11-24)
 
 ## 🔄 Refactoring
