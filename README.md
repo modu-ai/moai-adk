@@ -112,6 +112,9 @@ uv --version
 # Install latest version
 uv tool install moai-adk
 
+# Update to latest version (if already installed)
+uv tool update moai-adk
+
 # Verify installation
 moai-adk --version
 ```
