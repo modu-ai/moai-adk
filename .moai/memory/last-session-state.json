@@ -1,7 +1,7 @@
 {
-  "last_updated": "2025-11-27T07:10:17.833471",
-  "current_branch": "release/v0.30.0",
-  "uncommitted_changes": null,
-  "uncommitted_files": 0,
+  "last_updated": "2025-11-28T02:12:10.760695",
+  "current_branch": "release-0.31.0",
+  "uncommitted_changes": "⚠️  2 uncommitted files detected - Consider committing or stashing changes",
+  "uncommitted_files": 2,
   "specs_in_progress": []
 }
