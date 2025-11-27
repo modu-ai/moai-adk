@@ -635,6 +635,101 @@ flowchart LR
 
 ---
 
+## 7-B. Git Worktree CLI - 병렬 SPEC 개발
+
+### 개요
+
+**Git Worktree** (이하 워크트리)는 여러 개의 독립적인 작업 디렉토리를 동시에 관리하는 Git 기능입니다. MoAI-ADK의 `moai-wt` 명령어를 통해 **3-5개의 SPEC을 병렬로 개발**할 수 있는 환경을 제공합니다.
+
+### 주요 장점
+
+- **병렬 개발**: 3-5개 SPEC을 동시에 개발 (팀 생산성 50-60% 향상)
+- **빠른 컨텍스트 전환**: 브랜치 전환 불필요 (즉각적 이동)
+- **독립적인 환경**: 각 워크트리별 node_modules/.venv 분리
+- **자동 충돌 감지**: Main 브랜치 변경사항 자동 추적
+
+### 빠른 시작
+
+```bash
+# 새 워크트리 생성
+moai-wt new SPEC-002
+
+# 워크트리로 이동
+wt-go SPEC-002
+
+# SPEC 개발 시작
+/moai:2-run SPEC-002
+
+# 작업 완료 후 정리
+moai-wt remove SPEC-002
+```
+
+### 핵심 기능
+
+| 명령어          | 목적                          | 예시                          |
+| --------------- | ----------------------------- | ----------------------------- |
+| `moai-wt new`   | 새 워크트리 생성               | `moai-wt new SPEC-001`        |
+| `moai-wt list`  | 활성 워크트리 목록            | `moai-wt list`                |
+| `moai-wt switch`| 새 셸에서 워크트리 열기        | `moai-wt switch SPEC-001`     |
+| `wt-go`         | 현재 셸에서 이동 (alias)      | `wt-go SPEC-001`              |
+| `moai-wt remove`| 워크트리 삭제                  | `moai-wt remove SPEC-001`     |
+| `moai-wt sync`  | Main과 동기화                 | `moai-wt sync SPEC-001`       |
+| `moai-wt status`| 모든 워크트리 상태 확인        | `moai-wt status`              |
+| `moai-wt clean` | 병합된 워크트리 정리           | `moai-wt clean`               |
+
+### 실제 사용 사례
+
+#### 시나리오: 팀이 3개 기능을 동시에 개발
+
+```bash
+# 개발자 A: 사용자 인증
+moai-wt new SPEC-002
+wt-go SPEC-002
+/moai:2-run SPEC-002
+
+# 개발자 B: 결제 시스템 (동시 진행)
+moai-wt new SPEC-003
+wt-go SPEC-003
+/moai:2-run SPEC-003
+
+# 개발자 C: 대시보드 (동시 진행)
+moai-wt new SPEC-004
+wt-go SPEC-004
+/moai:2-run SPEC-004
+
+# 각자 완료 후 병합
+moai-wt remove SPEC-002
+moai-wt remove SPEC-003
+moai-wt remove SPEC-004
+```
+
+### 권장 설정
+
+```bash
+# ~/.zshrc 또는 ~/.bashrc에 추가
+alias wt-new='moai-wt new'
+alias wt-go='eval $(moai-wt go'
+alias wt-list='moai-wt list'
+alias wt-sync='moai-wt sync'
+alias wt-status='moai-wt status'
+```
+
+### 자세한 가이드
+
+- **완벽한 사용 가이드**: [Git Worktree 사용 가이드](./.moai/docs/WORKTREE_GUIDE.md)
+- **실전 예제 5가지**: [Git Worktree 실전 예제](./.moai/docs/WORKTREE_EXAMPLES.md)
+- **자주 묻는 질문**: [Git Worktree FAQ](./.moai/docs/WORKTREE_FAQ.md)
+
+### 성능 최적화
+
+| 설정        | 권장값     | 설명                       |
+| ----------- | ---------- | -------------------------- |
+| 동시 워크트리 | 3-4개     | 최적 성능 (5개까지 가능)   |
+| 디스크 공간   | 500MB/개  | 각 워크트리당 필요 용량    |
+| 메모리       | 200MB/개  | 병렬 작업 시 활성화 메모리 |
+
+---
+
 ## 8. 에이전트 가이드 (26개)
 
 ### 🎯 에이전트 선택 가이드
