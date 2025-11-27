@@ -1,3 +1,157 @@
+# v0.30.2 - Major Infrastructure Modernization & CI/CD Improvements (2025-11-27)
+
+## Summary
+
+**158 commits** since v0.27.2. Major maintenance release with comprehensive infrastructure improvements, skill system overhaul, and production-ready CI/CD pipeline. Includes complete English translation of documentation, 5-tier agent hierarchy migration, and consolidation of 16 foundation skills into unified modules.
+
+## Highlights
+
+### CI/CD & Release Pipeline
+- Fixed critical release workflow: Replaced `sed` with Python for safe changelog generation
+- Resolved workflow syntax errors (invalid `if` conditions and `environments` sections)
+- Added `workflow_dispatch` support for flexible release management
+- Prevents special character failures in commit messages (/, |, ', \)
+
+### Project Structure Integrity
+- Removed 874MB misplaced `.claude/.venv` directory (99% file reduction: 28,725 → 291 files)
+- Enhanced `.gitignore` rules to prevent future directory pollution
+- Synchronized 24 Python skill files with template definitions
+- Unified import order across all skill modules
+
+### Skills Architecture Overhaul
+- Migrated to 5-tier agent hierarchy: `expert-*`, `manager-*`, `builder-*`, `mcp-*`, `ai-*`
+- Consolidated 16 foundation skills into unified modules
+  - 5 `moai-foundation-*` → `moai-foundation-core`
+  - 11 `moai-core-*` → `moai-core-claude-code`
+- Optimized 22 skills for Claude Code official standards compliance
+- Standardized 91+ skill metadata issues across the ecosystem
+
+### Internationalization (i18n)
+- Complete English translation of 63+ Korean documentation files
+- Translated commands and agent descriptions for global accessibility
+- Added AskUserQuestion Rule 10 with multilingual support
+
+## Added
+
+### Agent & Skill Ecosystem
+- Agent-skill ecosystem visualization for architecture overview
+- Command factory agent for standardized command generation
+- Tab schema for `/moai:0-project` with interactive SETTINGS mode
+
+### Domain Skills (TDD Implementation)
+- Backend Architecture (7 core classes, 21 tests)
+- Database Architecture (7 core classes, 17 tests)
+- MLOps Architecture (7 core classes, 22 tests)
+- DevOps Architecture (7 core classes, 21 tests)
+- Testing Automation (17 RED phase tests)
+
+### Foundation Skills
+- Git Workflow Management (17 TDD tests for Conventional Commits)
+- Language Ecosystem Analysis (24 tests for pattern detection)
+- EARS Pattern Parsing (17 tests for requirements validation)
+
+## Fixed
+
+### Critical Issues
+- CI/CD changelog generation (sed → Python migration)
+- Template variable substitution bugs in config.json
+- Merge analysis errors during project updates
+- Branch creation issues (Git configuration priority)
+- Nested git repositories cleanup
+
+### Code Quality
+- 91+ skill standardization issues resolved
+- Missing decorators in CLI init command wrapper
+- Agent name formatting and command delegations
+- Comprehensive pre-release validation system
+
+## Changed
+
+### Infrastructure
+- Cleaned up and modernized MoAI-ADK infrastructure
+- Renamed `/alfred:` commands to `/moai:` throughout codebase
+- Reorganized `.moai/` directory (track only config, memory, scripts)
+- Optimized settings and .gitignore for package distribution
+
+### Skills & Agents
+- Aligned with Claude Code official standards (`tools` → `allowed-tools`)
+- 5-tier agent hierarchy redesign for clarity and scalability
+- Comprehensive skill reorganization with MoAI-ADK standards compliance
+- Archived 3 incomplete skills to meet quality standards
+
+### Documentation
+- Conditional auto-load for `moai-foundation-core` (token optimization)
+- Added CLAUDE.local.md for local development guide
+- Synchronized Skills and Agents between Local and Template
+- Removed development hooks from package template
+
+## Breaking Changes
+
+### Agent Naming Convention
+- **Old**: Inconsistent naming patterns
+- **New**: 5-tier hierarchy (`{role}-{domain}` format)
+  - `expert-*`: Domain experts (frontend, backend, database, devops, security, uiux, debug)
+  - `manager-*`: Workflow managers (project, spec, tdd, docs, strategy, quality, git, claude-code)
+  - `builder-*`: Meta-generators (agent, skill, command)
+  - `mcp-*`: MCP integrators (context7, figma, notion, playwright, sequential-thinking)
+  - `ai-*`: AI integrations (nano-banana)
+
+### Skill Consolidation
+- **Removed**: 16 fragmented foundation skills
+- **Added**: 2 unified core skills
+  - `moai-foundation-core`: TRUST 5, SPEC-First TDD, delegation patterns
+  - `moai-core-claude-code`: Agent Skills, sub-agents, slash commands
+
+## Technical Details
+
+- **TRUST 5 Compliance**: ✅ Testable, Readable, Unified, Secured, Traceable
+- **Tests**: 2255/2256 passing (99.96%)
+- **Code Quality**: mypy ✅, bandit ✅, ruff ✅
+- **Security**: All pre-commit security checks passed
+- **Disk Space Saved**: 870MB
+- **Files Synchronized**: 24 Python skill modules
+- **CI/CD**: All workflow syntax errors resolved
+- **Git Commits**: 158 commits (399f959f...5c26c0b3)
+
+## Statistics
+
+- **158 commits** merged since v0.27.2
+- **24 skills** synchronized with templates
+- **91+ metadata issues** resolved
+- **63+ files** translated to English
+- **870MB** disk space recovered
+- **99%** file reduction (28,725 → 291 files)
+
+## Security
+
+- No new vulnerabilities detected
+- Bandit security scan: Clean
+- pip-audit dependency check: Clean
+- Enhanced pre-commit security scanning
+
+## Migration Guide
+
+### For Users
+No migration needed. This is primarily a maintenance release.
+
+```bash
+# Upgrade to latest version
+pip install --upgrade moai-adk
+
+# Or install specific version
+pip install moai-adk==0.30.2
+```
+
+### For Contributors
+If you have local development setups:
+
+1. Update agent references: Old agent names → New 5-tier hierarchy
+2. Remove old skills: `moai-foundation-*`, `moai-core-*` → Use consolidated skills
+3. Update commands: `/alfred:*` → `/moai:*`
+4. Clean `.claude/.venv`: Ensure no misplaced virtual environments
+
+---
+
 # v0.30.0 - Skill Synchronization & Project Structure Cleanup (2025-11-27)
 
 ## Summary
