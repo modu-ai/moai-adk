@@ -106,53 +106,61 @@ result = sequential_workflow("Create user authentication system")
 **Implementation**:
 ```python
 # Parallel delegation example
-import asyncio
+def parallel_workflow(project_requirements):
+    """Execute parallel sub-agent workflow.
 
-async def parallel_workflow(project_requirements):
-    """Execute parallel sub-agent workflow."""
+    Note: In Claude Code, calling multiple Task() in a single response
+    will automatically execute them in parallel (up to 10 concurrent).
+    No need for asyncio.gather or Promise.all.
+    """
 
-    # Define parallel tasks
-    tasks = [
-        Task(
-            subagent_type="code-frontend",
-            prompt="Design frontend architecture",
-            context={"requirements": project_requirements}
-        ),
-        Task(
-            subagent_type="code-backend",
-            prompt="Design backend architecture",
-            context={"requirements": project_requirements}
-        ),
-        Task(
-            subagent_type="data-database",
-            prompt="Design database schema",
-            context={"requirements": project_requirements}
-        ),
-        Task(
-            subagent_type="security-expert",
-            prompt="Security threat modeling",
-            context={"requirements": project_requirements}
-        )
-    ]
+    # Call multiple Task() for automatic parallel execution
+    # Claude Code executes up to 10 Tasks concurrently
+    frontend_design = Task(
+        subagent_type="code-frontend",
+        prompt="Design frontend architecture",
+        context={"requirements": project_requirements}
+    )
 
-    # Execute all tasks in parallel
-    results = await asyncio.gather(*tasks)
+    backend_design = Task(
+        subagent_type="code-backend",
+        prompt="Design backend architecture",
+        context={"requirements": project_requirements}
+    )
 
-    # Integration phase
+    database_design = Task(
+        subagent_type="data-database",
+        prompt="Design database schema",
+        context={"requirements": project_requirements}
+    )
+
+    security_analysis = Task(
+        subagent_type="security-expert",
+        prompt="Security threat modeling",
+        context={"requirements": project_requirements}
+    )
+
+    # All 4 Tasks above execute in parallel automatically
+    # Results are available when all complete
+
+    # Integration phase (runs after parallel tasks complete)
     integration_result = Task(
         subagent_type="integration-specialist",
         prompt="Integrate component designs",
         context={
-            "frontend_design": results[0],
-            "backend_design": results[1],
-            "database_design": results[2],
-            "security_analysis": results[3],
+            "frontend_design": frontend_design,
+            "backend_design": backend_design,
+            "database_design": database_design,
+            "security_analysis": security_analysis,
             "requirements": project_requirements
         }
     )
 
     return {
-        "parallel_results": results,
+        "frontend": frontend_design,
+        "backend": backend_design,
+        "database": database_design,
+        "security": security_analysis,
         "integration": integration_result
     }
 
