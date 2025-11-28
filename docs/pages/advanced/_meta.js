@@ -1,17 +1,32 @@
 export default {
+  architecture: {
+    title: "System Architecture"
+  },
   "agents-guide": {
-    title: "에이전트 완벽 가이드"
+    title: "Agent Guide (26 Agents)"
   },
   "skills-library": {
-    title: "스킬 라이브러리"
+    title: "Skills Library (22 Skills)"
   },
   patterns: {
-    title: "조합 패턴"
+    title: "Composition Patterns"
   },
   "trust5-quality": {
-    title: "TRUST 5 품질보증"
+    title: "TRUST 5 Quality Assurance"
   },
   "performance-optimization": {
-    title: "성능 최적화"
+    title: "Performance Optimization"
+  },
+  "context7-integration": {
+    title: "Context7 Integration"
+  },
+  "builder-agents": {
+    title: "Builder Agents"
+  },
+  "mcp-servers": {
+    title: "MCP Servers"
+  },
+  "advanced-configuration": {
+    title: "Advanced Configuration"
   }
 }
