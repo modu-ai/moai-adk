@@ -395,7 +395,7 @@ questions:
   multiSelect: false
   options:
   - label: "Proceed with SPEC Creation"
-    description: "Create SPEC files in .moai/specs/SPEC-{ID}/ based on approved plan"
+    description: "Create SPEC files in .moai/specs/SPEC-\{ID\}/ based on approved plan"
   - label: "Request Plan Modification"
     description: "Modify plan content before SPEC creation"
   - label: "Save as Draft"
@@ -422,7 +422,7 @@ Display detailed progress report to user and get final approval:
 
 📋 **Plan Summary:**
 - Selected SPEC: {SPEC ID} - {SPEC Title}
-- Priority: {Priority}
+- Priority: \{Priority\}
 - Estimated time: {Time Estimation}
 - Main technology stack: {Technology Stack}
 
@@ -430,11 +430,11 @@ Display detailed progress report to user and get final approval:
 - spec.md creation: Core specifications with EARS structure
 - plan.md creation: Detailed implementation plan
 - acceptance.md creation: Acceptance criteria and scenarios
-- Directory: .moai/specs/SPEC-{ID}/
+- Directory: .moai/specs/SPEC-\{ID\}/
 
 ⚠️ **Important Notes:**
 - Existing files may be overwritten
-- Dependencies: {Dependencies}
+- Dependencies: \{Dependencies\}
 - Resource requirements: {Resource Requirements}
 ```
 
@@ -442,7 +442,7 @@ Tool: AskUserQuestion
 Parameters:
 questions:
 
-- question: "Plan completion and progress report\n\n**Analysis results:**\n- SPEC candidates found: [Number]\n- Priority: [Priority]\n- Estimated work time: [Time Estimation]\n\n**Next steps:**\n1. PHASE 2: SPEC file creation\n - .moai/specs/SPEC-{ID}/\n - spec.md, plan.md, acceptance.md creation\n\nProceed with the plan?"
+- question: "Plan completion and progress report\n\n**Analysis results:**\n- SPEC candidates found: [Number]\n- Priority: [Priority]\n- Estimated work time: [Time Estimation]\n\n**Next steps:**\n1. PHASE 2: SPEC file creation\n - .moai/specs/SPEC-\{ID\}/\n - spec.md, plan.md, acceptance.md creation\n\nProceed with the plan?"
   header: "Plan Confirmation"
   multiSelect: false
   options:
@@ -477,10 +477,10 @@ Based on the user's choice:
 
 **IF user selected "Save as Draft"**:
 
-1. Create directory: `.moai/specs/SPEC-{ID}/`
-2. Save plan to `.moai/specs/SPEC-{ID}/plan.md` with status: draft
-3. Create commit: `draft(spec): WIP SPEC-{ID} - {title}`
-4. Print to user: "Draft saved. Resume with: `/moai:1-plan resume SPEC-{ID}`"
+1. Create directory: `.moai/specs/SPEC-\{ID\}/`
+2. Save plan to `.moai/specs/SPEC-\{ID\}/plan.md` with status: draft
+3. Create commit: `draft(spec): WIP SPEC-\{ID\} - \{title\}`
+4. Print to user: "Draft saved. Resume with: `/moai:1-plan resume SPEC-\{ID\}`"
 5. End command execution (stop here)
 
 **IF user selected "Cancel"**:
@@ -498,7 +498,7 @@ Your task is to create the SPEC document files in the correct directory structur
 
 ### ⚠️ Critical Rule: Directory Naming Convention
 
-**Format that MUST be followed**: `.moai/specs/SPEC-{ID}/`
+**Format that MUST be followed**: `.moai/specs/SPEC-\{ID\}/`
 
 **Correct Examples**:
 
@@ -574,7 +574,7 @@ All MoAI-ADK supported languages including: en, ko, ja, es, fr, de, zh, ru, pt, 
 Use conversation_language value directly without hardcoded language checks.
 
 TASK:
-Create SPEC-{SPEC_ID} with the following requirements:
+Create SPEC-\{SPEC_ID\} with the following requirements:
 
 ### CRITICAL: SPEC File Generation Rules (MANDATORY)
 
@@ -582,13 +582,13 @@ Create SPEC-{SPEC_ID} with the following requirements:
 
 1. **NEVER create single .md file**: ❌ WRONG: .moai/specs/SPEC-AUTH-001.md
 2. **ALWAYS create folder structure**: ✅ CORRECT: .moai/specs/SPEC-AUTH-001/ (directory)
-3. **ALWAYS use Bash + MultiEdit combo**: ❌ WRONG: Write to .moai/specs/SPEC-{ID}/spec.md separately
+3. **ALWAYS use Bash + MultiEdit combo**: ❌ WRONG: Write to .moai/specs/SPEC-\{ID\}/spec.md separately
 4. **ALWAYS verify before creation**: Check directory name format and ID duplicates
 
 ### SPEC Document Creation (Step-by-Step)
 
 **Step 1: Verify SPEC ID Format**
-- Format: SPEC-{DOMAIN}-{NUMBER}
+- Format: SPEC-\{DOMAIN\}-\{NUMBER\}
 - Examples: ✅ SPEC-AUTH-001, SPEC-REFACTOR-001, SPEC-UPDATE-REFACTOR-001
 - Wrong: ❌ AUTH-001, SPEC-001-auth, SPEC-AUTH-001-jwt
 
@@ -598,7 +598,7 @@ Create SPEC-{SPEC_ID} with the following requirements:
 - If ID is unique → Proceed to Step 3
 
 **Step 3: Create Directory Structure**
-- Use Bash tool: mkdir -p /Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-{SPEC_ID}/
+- Use Bash tool: mkdir -p /Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-\{SPEC_ID\}/
 - Wait for directory creation to complete
 - Proceed to Step 4 ONLY AFTER directory exists
 
@@ -606,13 +606,13 @@ Create SPEC-{SPEC_ID} with the following requirements:
 - Use MultiEdit tool to create all 3 files at once
 - DO NOT use Write tool for individual files
 - Create files:
-  * .moai/specs/SPEC-{SPEC_ID}/spec.md
-  * .moai/specs/SPEC-{SPEC_ID}/plan.md
-  * .moai/specs/SPEC-{SPEC_ID}/acceptance.md
+  * .moai/specs/SPEC-\{SPEC_ID\}/spec.md
+  * .moai/specs/SPEC-\{SPEC_ID\}/plan.md
+  * .moai/specs/SPEC-\{SPEC_ID\}/acceptance.md
 
 ### spec.md Requirements:
 - YAML frontmatter with all 7 required fields:
-  * id: SPEC-{SPEC_ID}
+  * id: SPEC-\{SPEC_ID\}
   * version: "1.0.0"
   * status: "draft"
   * created: "{{YYYY-MM-DD}}"
@@ -772,7 +772,7 @@ AskUserQuestion({
             },
             {
                 "label": "Create Branch",
-                "description": "Create feature/SPEC-{SPEC_ID} branch (traditional workflow)"
+                "description": "Create feature/SPEC-\{SPEC_ID\} branch (traditional workflow)"
             },
             {
                 "label": "Use current branch",
@@ -814,14 +814,14 @@ MODE: {git_mode} (manual/personal/team)
 BRANCH_CREATION: prompt_always = {prompt_always}
 
 TASKS:
-1. Create branch: `feature/SPEC-{SPEC_ID}-{description}`
+1. Create branch: `feature/SPEC-\{SPEC_ID\}-{description}`
 2. Set tracking upstream if remote exists
 3. Switch to new branch
 4. Create initial commit (if appropriate for mode)
 
 VALIDATION:
 - Verify branch was created and checked out
-- Verify current branch is feature/SPEC-{SPEC_ID}
+- Verify current branch is feature/SPEC-\{SPEC_ID\}
 - Return branch creation status
 
 NOTE: PR creation is handled separately in /moai:2-run or /moai:3-sync (Team mode only)
@@ -831,7 +831,7 @@ NOTE: PR creation is handled separately in /moai:2-run or /moai:3-sync (Team mod
 
 **Expected Outcome**:
 ```
-✅ Feature branch created: feature/SPEC-{SPEC_ID}-description
+✅ Feature branch created: feature/SPEC-\{SPEC_ID\}-description
 ✅ Current branch switched to feature branch
 ✅ Ready for implementation in /moai:2-run
 ```
@@ -889,25 +889,25 @@ if has_worktree_flag:
 
         # Create worktree for the SPEC
         worktree_info = worktree_manager.create(
-            spec_id="SPEC-{SPEC_ID}",
-            branch_name=f"feature/SPEC-{SPEC_ID}",
+            spec_id="SPEC-\{SPEC_ID\}",
+            branch_name=f"feature/SPEC-\{SPEC_ID\}",
             base_branch="main"
         )
 
         # Display success messages
-        print(f"\n✅ SPEC created: SPEC-{SPEC_ID}")
+        print(f"\n✅ SPEC created: SPEC-\{SPEC_ID\}")
         print(f"✅ Worktree created: {worktree_info.path}")
         print(f"\n🎯 Next steps:")
-        print(f"  1. Switch to worktree: moai-worktree switch SPEC-{SPEC_ID}")
-        print(f"  2. Or use shell eval: eval $(moai-worktree go SPEC-{SPEC_ID})")
-        print(f"  3. Then run: /moai:2-run SPEC-{SPEC_ID}")
+        print(f"  1. Switch to worktree: moai-worktree switch SPEC-\{SPEC_ID\}")
+        print(f"  2. Or use shell eval: eval $(moai-worktree go SPEC-\{SPEC_ID\})")
+        print(f"  3. Then run: /moai:2-run SPEC-\{SPEC_ID\}")
 
     except Exception as e:
         # Handle worktree creation errors gracefully
         print(f"\n❌ Worktree creation failed: {e}")
-        print(f"✅ SPEC created: SPEC-{SPEC_ID}")
+        print(f"✅ SPEC created: SPEC-\{SPEC_ID\}")
         print(f"💡 You can manually create worktree later with:")
-        print(f"   moai-worktree new SPEC-{SPEC_ID}")
+        print(f"   moai-worktree new SPEC-\{SPEC_ID\}")
 ```
 
 **Expected Success Outcome**:
@@ -947,8 +947,8 @@ CRITICAL CONFIG: git_strategy.mode == "team"
 → Team mode REQUIRES draft PRs for review coordination
 
 TASKS:
-1. Create draft PR: feature/SPEC-{SPEC_ID} → main/develop branch
-2. PR title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+1. Create draft PR: feature/SPEC-\{SPEC_ID\} → main/develop branch
+2. PR title: "feat(spec): Add SPEC-\{SPEC_ID\} [DRAFT]"
 3. PR body: Include SPEC ID, description, and checklist
 4. Add appropriate labels (spec, draft, etc.)
 5. Assign reviewers from team config (if configured)
@@ -963,7 +963,7 @@ VALIDATION:
 
 **Expected Outcome**:
 ```
-✅ Feature branch: feature/SPEC-{SPEC_ID}
+✅ Feature branch: feature/SPEC-\{SPEC_ID\}
 ✅ Draft PR created for team review
 ✅ Ready for /moai:2-run implementation
 ```
@@ -983,20 +983,20 @@ Display status based on configuration and execution result:
 ✅ **Branch Creation**: prompt_always = true → User chose "Auto create"
 
 ✅ **Feature Branch Created**:
-- Branch: `feature/SPEC-{SPEC_ID}`
+- Branch: `feature/SPEC-\{SPEC_ID\}`
 - Current branch switched to feature branch
 - Ready for implementation on isolated branch
 
 {IF TEAM MODE:
 ✅ **Draft PR Created** (Team Mode):
-- PR Title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+- PR Title: "feat(spec): Add SPEC-\{SPEC_ID\} [DRAFT]"
 - Target Branch: develop/main
 - Status: DRAFT (awaiting review)
 }
 
 🎯 **Next Steps:**
-1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
-2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+1. 📝 Review SPEC in `.moai/specs/SPEC-\{SPEC_ID\}/`
+2. 🔧 Execute `/moai:2-run SPEC-\{SPEC_ID\}` to begin implementation
 3. 🌿 All commits will be made to feature branch
 {IF TEAM MODE:
 4. 👥 Share draft PR with team for early review (already created)
@@ -1023,8 +1023,8 @@ Display status based on configuration and execution result:
 - Commits will be made directly to current branch
 
 🎯 **Next Steps:**
-1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
-2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+1. 📝 Review SPEC in `.moai/specs/SPEC-\{SPEC_ID\}/`
+2. 🔧 Execute `/moai:2-run SPEC-\{SPEC_ID\}` to begin implementation
 3. 💾 All commits will be made directly to current branch
 4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
 ```
@@ -1046,8 +1046,8 @@ Display status based on configuration and execution result:
 - Commits will be made directly to current branch
 
 🎯 **Next Steps:**
-1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
-2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+1. 📝 Review SPEC in `.moai/specs/SPEC-\{SPEC_ID\}/`
+2. 🔧 Execute `/moai:2-run SPEC-\{SPEC_ID\}` to begin implementation
 3. 💾 Make commits directly to current branch
 4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
 ```
@@ -1081,8 +1081,8 @@ Would you like to enable automatic branch creation for future SPEC creations?
 ─────────────────────────────────────────
 
 🎯 **Next Steps:**
-1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
-2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+1. 📝 Review SPEC in `.moai/specs/SPEC-\{SPEC_ID\}/`
+2. 🔧 Execute `/moai:2-run SPEC-\{SPEC_ID\}` to begin implementation
 3. 💾 Make commits directly to current branch
 4. 🧪 Follow TDD: RED → GREEN → REFACTOR cycles
 5. 🔄 Create PR in `/moai:3-sync` when implementation complete
@@ -1099,20 +1099,20 @@ Would you like to enable automatic branch creation for future SPEC creations?
 ✅ **Branch Creation**: prompt_always = false, auto_enabled = true → Auto-enabled
 
 ✅ **Feature Branch Created**:
-- Branch: `feature/SPEC-{SPEC_ID}`
+- Branch: `feature/SPEC-\{SPEC_ID\}`
 - Current branch switched to feature branch
 - Ready for implementation on isolated branch
 
 {IF TEAM MODE:
 ✅ **Draft PR Created** (Team Mode):
-- PR Title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
+- PR Title: "feat(spec): Add SPEC-\{SPEC_ID\} [DRAFT]"
 - Target Branch: develop/main
 - Status: DRAFT (awaiting review)
 }
 
 🎯 **Next Steps:**
-1. 📝 Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
-2. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
+1. 📝 Review SPEC in `.moai/specs/SPEC-\{SPEC_ID\}/`
+2. 🔧 Execute `/moai:2-run SPEC-\{SPEC_ID\}` to begin implementation
 3. 🌿 All commits will be made to feature branch
 {IF TEAM MODE:
 4. 👥 Share draft PR with team for early review
@@ -1131,18 +1131,18 @@ Would you like to enable automatic branch creation for future SPEC creations?
 📊 Phase 3 Status: Worktree Created (Isolated Development Environment)
 
 ✅ **Worktree Creation**: --worktree flag provided OR user chose "Create Worktree"
-✅ **SPEC Created**: SPEC-{SPEC_ID} documents generated successfully
+✅ **SPEC Created**: SPEC-\{SPEC_ID\} documents generated successfully
 
 ✅ **Isolated Worktree Created**:
-- Path: ~/worktrees/MoAI-ADK/SPEC-{SPEC_ID}/
-- Branch: feature/SPEC-{SPEC_ID}
+- Path: ~/worktrees/MoAI-ADK/SPEC-\{SPEC_ID\}/
+- Branch: feature/SPEC-\{SPEC_ID\}
 - Status: Ready for parallel development
 
 🎯 **Next Steps:**
-1. 🔄 Switch to worktree: `moai-worktree switch SPEC-{SPEC_ID}`
-2. 🚀 Or use shell eval: `eval $(moai-worktree go SPEC-{SPEC_ID})`
-3. 📝 Review SPEC documents in worktree: `.moai/specs/SPEC-{SPEC_ID}/`
-4. 🔧 Execute `/moai:2-run SPEC-{SPEC_ID}` to begin TDD implementation
+1. 🔄 Switch to worktree: `moai-worktree switch SPEC-\{SPEC_ID\}`
+2. 🚀 Or use shell eval: `eval $(moai-worktree go SPEC-\{SPEC_ID\})`
+3. 📝 Review SPEC documents in worktree: `.moai/specs/SPEC-\{SPEC_ID\}/`
+4. 🔧 Execute `/moai:2-run SPEC-\{SPEC_ID\}` to begin TDD implementation
 5. ⚡ Work on isolated environment without affecting other SPECs
 
 💡 **Benefits of Worktree Development**:
@@ -1162,7 +1162,7 @@ Before you consider this command complete, verify:
 - [ ] **Progress report displayed**: User shown detailed progress report with analysis results
 - [ ] **User approval obtained**: User explicitly approved SPEC creation (via enhanced AskUserQuestion)
 - [ ] **PHASE 2 executed**: manager-spec created all 3 SPEC files (spec.md, plan.md, acceptance.md)
-- [ ] **Directory naming correct**: `.moai/specs/SPEC-{ID}/` format followed
+- [ ] **Directory naming correct**: `.moai/specs/SPEC-\{ID\}/` format followed
 - [ ] **YAML frontmatter valid**: All 7 required fields present
 - [ ] **HISTORY section present**: Immediately after YAML frontmatter
 - [ ] **EARS structure complete**: All 5 requirement types included
@@ -1171,7 +1171,7 @@ Before you consider this command complete, verify:
   - [ ] **If --branch**: manager-git created feature branch
   - [ ] **If prompt**: User choice implemented (worktree/branch/current)
   - [ ] **If Team mode**: Draft PR created (when branch created, not worktree)
-- [ ] **Branch/Worktree naming correct**: `feature/SPEC-{ID}` format for branches, `SPEC-{ID}` for worktrees
+- [ ] **Branch/Worktree naming correct**: `feature/SPEC-\{ID\}` format for branches, `SPEC-\{ID\}` for worktrees
 - [ ] **Next steps presented**: User shown appropriate guidance for worktree navigation or branch development
 - [ ] **Worktree guidance displayed**: Worktree switch/eval instructions shown (when applicable)
 
@@ -1226,12 +1226,12 @@ IF any checkbox is unchecked → Identify missing step and complete it before en
 
 - **WorktreeManager Import**: `from moai_adk.cli.worktree.manager import WorktreeManager`
 - **Worktree Registry**: Automatic registration in `~/worktrees/MoAI-ADK/.moai-worktree-registry.json`
-- **Git Integration**: Creates feature branch `feature/SPEC-{ID}` and associated worktree
+- **Git Integration**: Creates feature branch `feature/SPEC-\{ID\}` and associated worktree
 - **Error Handling**: Graceful fallback if worktree creation fails
 
 **SPEC Documents Directory**:
 
-- **Location**: `.moai/specs/SPEC-{ID}/` (directory format, NOT single .md file)
+- **Location**: `.moai/specs/SPEC-\{ID\}/` (directory format, NOT single .md file)
 - **Files**: `spec.md`, `plan.md`, `acceptance.md` (created simultaneously via MultiEdit)
 - **Format**: EARS structure with YAML frontmatter + HISTORY section
 - **Language**: All content in user's conversation_language
@@ -1275,7 +1275,7 @@ IF any checkbox is unchecked → Identify missing step and complete it before en
 
 - **Import**: `from moai_adk.cli.worktree.manager import WorktreeManager`
 - **Worktree Registry**: Automatic registration in `~/worktrees/MoAI-ADK/.moai-worktree-registry.json`
-- **Branch Creation**: Creates feature branch `feature/SPEC-{SPEC_ID}` automatically
+- **Branch Creation**: Creates feature branch `feature/SPEC-\{SPEC_ID\}` automatically
 - **Documentation**: Updated all examples, checklists, and status reports
 
 ### Completion Criteria (All Met)
