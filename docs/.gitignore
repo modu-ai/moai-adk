@@ -1,0 +1,54 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Next.js
+.next
+out
+dist
+
+# Build
+*.tsbuildinfo
+*.generated.*
+
+# Tests
+coverage
+.nyc_output
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache
+.cache
+.eslintcache
+
+# Development
+debug.log
+lerna-debug.log
+
+# User
+.env.local

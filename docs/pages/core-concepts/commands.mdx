@@ -1,0 +1,46 @@
+# 핵심 명령어
+
+MoAI-ADK의 4가지 핵심 명령어를 소개합니다.
+
+## 명령어 개요
+
+| 명령어 | 목적 | 사용 시기 |
+|--------|------|---------|
+| `/moai:0-project` | 프로젝트 초기화 | 프로젝트 시작 |
+| `/moai:1-plan` | SPEC 생성 | 기능 구현 전 |
+| `/moai:2-run` | TDD 구현 | SPEC 작성 후 |
+| `/moai:3-sync` | 문서화 | 구현 완료 후 |
+
+## /moai:0-project
+
+프로젝트 초기화 및 설정 관리
+
+```bash
+moai init
+```
+
+## /moai:1-plan
+
+SPEC 기반 구현 계획 수립
+
+```bash
+/moai:1-plan "기능 설명"
+```
+
+## /moai:2-run
+
+TDD 프로세스로 구현 자동 실행
+
+```bash
+/moai:2-run SPEC-001
+```
+
+## /moai:3-sync
+
+구현 결과를 문서와 동기화
+
+```bash
+/moai:3-sync SPEC-001
+```
+
+자세한 정보는 [API 레퍼런스](/reference/commands)를 참고하세요.

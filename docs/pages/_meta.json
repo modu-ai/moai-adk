@@ -1,0 +1,20 @@
+{
+  "index": {
+    "title": "홈"
+  },
+  "getting-started": {
+    "title": "시작하기"
+  },
+  "core-concepts": {
+    "title": "핵심 개념"
+  },
+  "advanced": {
+    "title": "심화 학습"
+  },
+  "worktree": {
+    "title": "Git Worktree"
+  },
+  "reference": {
+    "title": "API 레퍼런스"
+  }
+}

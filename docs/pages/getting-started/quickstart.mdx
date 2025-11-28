@@ -1,0 +1,227 @@
+# 빠른 시작
+
+5분 안에 첫 번째 MoAI-ADK 프로젝트를 완성하세요.
+
+## 0단계: 설치 확인 (1분)
+
+```bash
+# 설치 확인
+moai --version
+
+# 진단 실행
+moai doctor
+```
+
+## 1단계: 프로젝트 생성 (1분)
+
+```bash
+# 프로젝트 디렉토리 생성
+mkdir hello-moai
+cd hello-moai
+
+# MoAI 초기화
+moai init
+```
+
+## 2단계: SPEC 작성 (1분)
+
+```bash
+# 첫 SPEC 생성
+/moai:1-plan "간단한 계산기 구현"
+```
+
+명령어를 실행하면 MoAI가 대화를 통해 요구사항을 정리하고 SPEC을 자동으로 생성합니다.
+
+## 3단계: 구현 실행 (1분)
+
+```bash
+# TDD 기반 자동 구현
+/moai:2-run SPEC-001
+```
+
+MoAI가 다음 과정을 자동으로 수행합니다:
+- 테스트 작성 (RED)
+- 코드 구현 (GREEN)
+- 코드 개선 (REFACTOR)
+
+## 4단계: 문서 생성 (1분)
+
+```bash
+# 문서 자동 동기화
+/moai:3-sync SPEC-001
+```
+
+구현 결과가 자동으로 문서화됩니다.
+
+## 완료!
+
+축하합니다! 첫 번째 MoAI-ADK 프로젝트가 완성되었습니다.
+
+### 생성된 결과물
+
+```
+hello-moai/
+├── src/calculator.py          # 구현된 계산기 코드
+├── tests/test_calculator.py   # 자동 생성된 테스트
+├── README.md                  # 자동 생성된 문서
+└── .moai/specs/SPEC-001/      # SPEC 파일
+```
+
+## 다음 할 일
+
+### 옵션 1: 추가 학습
+
+- [핵심 개념](/core-concepts) 학습
+- [심화 학습](/advanced) 진행
+- [SPEC 포맷](/core-concepts/spec-format) 이해
+
+### 옵션 2: 실제 프로젝트 시작
+
+```bash
+# 더 복잡한 SPEC 작성
+/moai:1-plan "REST API 백엔드 구현"
+
+# 구현 실행
+/moai:2-run SPEC-002
+
+# 문서화
+/moai:3-sync SPEC-002
+```
+
+### 옵션 3: Git Worktree 활용
+
+```bash
+# 새 워크트리 생성
+moai-worktree create SPEC-002
+
+# 워크트리 목록 확인
+moai-worktree list
+
+# 워크트리 전환
+moai-worktree switch feature/SPEC-002
+```
+
+## 일반적인 명령어
+
+### 상태 확인
+
+```bash
+# 프로젝트 상태
+moai status
+
+# 완료된 SPEC 목록
+moai status list
+
+# SPEC 상세 정보
+moai status show SPEC-001
+```
+
+### 테스트 실행
+
+```bash
+# 테스트 실행
+npm test
+# 또는
+pytest tests/
+
+# 커버리지 확인
+npm run test:coverage
+```
+
+### 빌드 및 배포
+
+```bash
+# 프로덕션 빌드
+npm run build
+
+# 로컬 서버 실행
+npm start
+
+# Vercel에 배포
+vercel deploy
+```
+
+## 팁과 트릭
+
+### 1. 대화형 SPEC 작성
+
+SPEC 작성할 때 구체적으로 설명할수록 더 정확한 구현이 이루어집니다:
+
+```bash
+# 좋은 예
+/moai:1-plan "REST API 구현:
+- Node.js + Express
+- MongoDB 연동
+- JWT 인증
+- 로깅 기능"
+
+# 덜 구체적인 예
+/moai:1-plan "API 만들기"
+```
+
+### 2. 이전 SPEC 참고
+
+```bash
+# 기존 SPEC 복사
+cp .moai/specs/SPEC-001 .moai/specs/SPEC-002
+
+# 수정 후 실행
+/moai:2-run SPEC-002
+```
+
+### 3. 테스트 작성 가이드
+
+MoAI는 자동으로 테스트를 작성하지만, 추가 테스트를 작성할 수 있습니다:
+
+```python
+# tests/test_custom.py
+def test_custom_requirement():
+    """내가 원하는 추가 테스트"""
+    assert True
+```
+
+## 문제 해결
+
+### "SPEC not found" 오류
+
+```bash
+# SPEC 목록 확인
+ls .moai/specs/
+
+# 올바른 SPEC 이름으로 재실행
+/moai:2-run SPEC-001
+```
+
+### 테스트 실패
+
+```bash
+# 상세 테스트 로그 확인
+npm test -- --verbose
+
+# 특정 테스트만 실행
+npm test -- test_calculator.py -v
+```
+
+### Git 문제
+
+```bash
+# 상태 확인
+git status
+
+# 변경사항 커밋
+git add .
+git commit -m "feat: implement calculator"
+
+# 푸시
+git push origin main
+```
+
+## 다음 단계
+
+축하합니다! 이제 다음을 배울 준비가 되었습니다:
+
+1. **[SPEC 포맷](/core-concepts/spec-format)** - SPEC을 더 효과적으로 작성하기
+2. **[에이전트](/core-concepts/agents)** - 26개의 전문 에이전트 활용
+3. **[워크트리](/worktree)** - Git Worktree로 작업 관리하기
+
+happy coding! 🚀

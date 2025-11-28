@@ -1,0 +1,45 @@
+{
+  "name": "moai-adk-docs",
+  "version": "1.0.0",
+  "description": "MoAI-ADK Online Documentation Site built with Nextra",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx}\"",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "lighthouse": "lhci autorun",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "nextra": "^3.0.0",
+    "nextra-theme-docs": "^3.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.3.0",
+    "eslint": "^8.55.0",
+    "eslint-config-next": "^15.0.0",
+    "prettier": "^3.1.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "jest": "^29.7.0",
+    "@testing-library/react": "^14.1.0",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@playwright/test": "^1.40.1",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
