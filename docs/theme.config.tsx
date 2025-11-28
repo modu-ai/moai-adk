@@ -15,7 +15,7 @@ const config: DocsThemeConfig = {
   },
   docsRepositoryBase: 'https://github.com/moai-ai/moai-adk/tree/main/docs',
   footer: {
-    text: 'MIT License © 2025 MoAI-ADK Contributors',
+    content: 'MIT License © 2025 MoAI-ADK Contributors',
   },
   toc: {
     backToTop: true,
@@ -42,24 +42,22 @@ const config: DocsThemeConfig = {
     placeholder: '검색...',
   },
   editLink: {
-    text: '이 페이지 수정 →',
+    content: '이 페이지 수정 →',
   },
   feedback: {
     content: '질문이 있으신가요? 피드백을 남겨주세요!',
     useLink: () => 'https://github.com/moai-ai/moai-adk/issues/new',
   },
-  useNextSeoProps() {
-    return {
-      titleTemplate: '%s | MoAI-ADK',
-      description: 'MoAI-ADK 온라인 문서 - 온라인 제작 인공지능 개발 도구',
-      openGraph: {
-        type: 'website',
-        locale: 'ko_KR',
-        url: 'https://docs.moai-ai.dev',
-        siteName: 'MoAI-ADK Documentation',
-      },
-    }
-  },
+  head: (
+    <>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="description" content="MoAI-ADK 온라인 문서 - 온라인 제작 인공지능 개발 도구" />
+      <meta property="og:type" content="website" />
+      <meta property="og:locale" content="ko_KR" />
+      <meta property="og:url" content="https://docs.moai-ai.dev" />
+      <meta property="og:site_name" content="MoAI-ADK Documentation" />
+    </>
+  ),
 }
 
 export default config

@@ -1,0 +1,223 @@
+{
+  "file": "/Users/goos/worktrees/MoAI-ADK/SPEC-NEXTRA-001/README.ko.md",
+  "total_lines": 1865,
+  "total_headers": 23,
+  "statistics": {
+    "code_blocks": 158,
+    "tables": 136,
+    "images": 11,
+    "links": 36,
+    "headers_by_level": {
+      "h2": 23
+    }
+  },
+  "parts": {
+    "PART_A_GETTING_STARTED": {
+      "count": 3,
+      "headers": [
+        {
+          "title": "1. 소개",
+          "line_num": 53,
+          "raw": "## 1. 소개"
+        },
+        {
+          "title": "2. 설치 및 설정",
+          "line_num": 91,
+          "raw": "## 2. 설치 및 설정"
+        },
+        {
+          "title": "3. 빠른 시작",
+          "line_num": 156,
+          "raw": "## 3. 빠른 시작"
+        }
+      ]
+    },
+    "PART_B_CORE_CONCEPTS": {
+      "count": 6,
+      "headers": [
+        {
+          "title": "4. SPEC과 EARS 포맷",
+          "line_num": 230,
+          "raw": "## 4. SPEC과 EARS 포맷"
+        },
+        {
+          "title": "5. Mr.Alfred와 에이전트",
+          "line_num": 299,
+          "raw": "## 5. Mr.Alfred와 에이전트"
+        },
+        {
+          "title": "7. 핵심 커맨드",
+          "line_num": 512,
+          "raw": "## 7. 핵심 커맨드"
+        },
+        {
+          "title": "7-B. Git Worktree CLI - 병렬 SPEC 개발",
+          "line_num": 637,
+          "raw": "## 7-B. Git Worktree CLI - 병렬 SPEC 개발"
+        },
+        {
+          "title": "8. 에이전트 가이드 (26개)",
+          "line_num": 732,
+          "raw": "## 8. 에이전트 가이드 (26개)"
+        },
+        {
+          "title": "15. 📸 ai-nano-banana 에이전트 사용법 가이드",
+          "line_num": 1659,
+          "raw": "## 15. 📸 ai-nano-banana 에이전트 사용법 가이드"
+        }
+      ]
+    },
+    "PART_C_ADVANCED_LEARNING": {
+      "count": 2,
+      "headers": [
+        {
+          "title": "9. 스킬 라이브러리 (22개)",
+          "line_num": 1014,
+          "raw": "## 9. 스킬 라이브러리 (22개)"
+        },
+        {
+          "title": "10. 조합 패턴과 예제",
+          "line_num": 1074,
+          "raw": "## 10. 조합 패턴과 예제"
+        }
+      ]
+    },
+    "PART_D_ADVANCED_REFERENCE": {
+      "count": 12,
+      "headers": [
+        {
+          "title": "📑 목차 (빠른 네비게이션)",
+          "line_num": 14,
+          "raw": "## 📑 목차 (빠른 네비게이션)"
+        },
+        {
+          "title": "요구사항 (Requirements)",
+          "line_num": 250,
+          "raw": "## 요구사항 (Requirements)"
+        },
+        {
+          "title": "제약사항 (Constraints)",
+          "line_num": 256,
+          "raw": "## 제약사항 (Constraints)"
+        },
+        {
+          "title": "성공 기준 (Success Criteria)",
+          "line_num": 262,
+          "raw": "## 성공 기준 (Success Criteria)"
+        },
+        {
+          "title": "테스트 시나리오 (Test Cases)",
+          "line_num": 269,
+          "raw": "## 테스트 시나리오 (Test Cases)"
+        },
+        {
+          "title": "6. 개발 워크플로우",
+          "line_num": 372,
+          "raw": "## 6. 개발 워크플로우"
+        },
+        {
+          "title": "11. TRUST 5 품질보증",
+          "line_num": 1189,
+          "raw": "## 11. TRUST 5 품질보증"
+        },
+        {
+          "title": "12. 고급 설정",
+          "line_num": 1287,
+          "raw": "## 12. 고급 설정"
+        },
+        {
+          "title": "13. MCP 서버",
+          "line_num": 1414,
+          "raw": "## 13. MCP 서버"
+        },
+        {
+          "title": "14. FAQ & 빠른 참조",
+          "line_num": 1460,
+          "raw": "## 14. FAQ & 빠른 참조"
+        },
+        {
+          "title": "15. 추가 자료",
+          "line_num": 1814,
+          "raw": "## 15. 추가 자료"
+        },
+        {
+          "title": "📝 License",
+          "line_num": 1828,
+          "raw": "## 📝 License"
+        }
+      ]
+    }
+  },
+  "pages_mapping": {
+    "getting-started": [
+      {
+        "page": "overview.mdx",
+        "title": "MoAI-ADK 개요",
+        "source": "1. 소개"
+      },
+      {
+        "page": "installation.mdx",
+        "title": "설치 및 설정",
+        "source": "2. 설치 및 설정"
+      },
+      {
+        "page": "quickstart.mdx",
+        "title": "5분 빠른 시작",
+        "source": "3. 빠른 시작"
+      }
+    ],
+    "core-concepts": [
+      {
+        "page": "spec-format.mdx",
+        "title": "SPEC과 EARS 포맷",
+        "source": "4. SPEC과 EARS 포맷"
+      },
+      {
+        "page": "agents.mdx",
+        "title": "Mr.Alfred와 에이전트",
+        "source": "5. Mr.Alfred와 에이전트"
+      },
+      {
+        "page": "commands.mdx",
+        "title": "/moai:0-3 핵심 커맨드",
+        "source": "7. 핵심 커맨드"
+      },
+      {
+        "page": "agents.mdx",
+        "title": "Mr.Alfred와 에이전트",
+        "source": "8. 에이전트 가이드 (26개)"
+      },
+      {
+        "page": "agents.mdx",
+        "title": "Mr.Alfred와 에이전트",
+        "source": "15. 📸 ai-nano-banana 에이전트 사용법 가이드"
+      }
+    ],
+    "workflows": [],
+    "advanced": [
+      {
+        "page": "skills-library.mdx",
+        "title": "22개 스킬 라이브러리",
+        "source": "9. 스킬 라이브러리 (22개)"
+      },
+      {
+        "page": "patterns.mdx",
+        "title": "고급 조합 패턴",
+        "source": "10. 조합 패턴과 예제"
+      }
+    ],
+    "reference": [
+      {
+        "page": "trust5-quality.mdx",
+        "title": "TRUST 5 품질 보증",
+        "source": "11. TRUST 5 품질보증"
+      },
+      {
+        "page": "advanced-config.mdx",
+        "title": "고급 설정",
+        "source": "12. 고급 설정"
+      }
+    ]
+  },
+  "estimated_mdx_pages": 12
+}

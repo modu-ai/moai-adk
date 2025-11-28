@@ -1,6 +1,6 @@
 ---
 id: SPEC-NEXTRA-001
-version: "1.0.0"
+version: "1.1.0"
 status: "draft"
 created: "2025-11-28"
 updated: "2025-11-28"
@@ -200,59 +200,348 @@ def generate_skill_pages():
 
 ---
 
-## Phase 4: 워크트리 CLI 통합 (Worktree Integration)
+## Phase 4: 전체 콘텐츠 마이그레이션 (Complete Content Migration) - 확장
 
-**기간**: 2-3일
+**목표**: README.ko.md 1,773줄, 22개 Skills, Advanced 섹션 완전 마이그레이션
+
+> **Note**: 본 Phase는 기존 워크트리 통합을 포함하여 전체 콘텐츠 마이그레이션으로 확장되었습니다.
+
+### Step 4.1: README.ko.md 완전 분석 및 파싱
+
 **담당**: manager-docs
-**목표**: SPEC-WORKTREE-001 결과물을 문서 사이트에 통합
+**선행 조건**: Phase 2 완료 (기본 콘텐츠 마이그레이션)
 
-### 4.1 기존 워크트리 문서 마이그레이션
-- **WORKTREE_GUIDE.md** → worktree/guide.mdx
-- **WORKTREE_FAQ.md** → worktree/faq.mdx
-- **WORKTREE_EXAMPLES.md** → worktree/examples.mdx
+**작업 내용**:
+1. README.ko.md 1,773줄 전체 파싱
+   - 섹션 헤더 추출 (## 기준)
+   - PART A-D 분류 및 매핑
+   - 코드 블록, 표, 링크 추출
 
-### 4.2 워크트리 섹션 구조
+2. 구조화 스크립트 작성
+   ```python
+   # scripts/parse_readme.py
+   def parse_readme_sections(file_path: str) -> dict:
+       """README.ko.md를 PART별로 파싱"""
+       sections = {
+           "PART_A": [],  # 시작하기
+           "PART_B": [],  # 핵심 개념
+           "PART_C": [],  # 워크플로우
+           "PART_D": []   # 고급 기능
+       }
+       # 파싱 로직 구현
+       return sections
+   ```
+
+3. MDX 변환 규칙 정의
+   - Markdown → MDX 자동 변환
+   - Mermaid 다이어그램 → React 컴포넌트
+   - 내부 링크 자동 생성
+
+**산출물**:
+- [ ] README 파싱 스크립트
+- [ ] 섹션별 분류 데이터 (JSON)
+- [ ] MDX 변환 규칙 문서
+
+**예상 시간**: 3-4시간
+
+### Step 4.2: 핵심 콘텐츠 페이지 생성 (30-35개 페이지)
+
+**담당**: manager-docs + moai-library-nextra
+
+**PART A: Getting Started (5-7 페이지)**:
+- [ ] `overview.mdx`: MoAI-ADK 개요
+- [ ] `installation.mdx`: 설치 가이드 (pip, uv)
+- [ ] `quickstart.mdx`: 5분 빠른 시작
+- [ ] `first-spec.mdx`: 첫 SPEC 생성
+- [ ] `configuration.mdx`: config.json 설정
+
+**PART B: Core Concepts (8-10 페이지)**:
+- [ ] `spec-format.mdx`: SPEC과 EARS 포맷
+- [ ] `agents.mdx`: Mr.Alfred와 26개 에이전트
+- [ ] `workflow.mdx`: SPEC-First TDD
+- [ ] `commands.mdx`: /moai:0-3 커맨드
+- [ ] `trust5.mdx`: TRUST 5 원칙
+
+**PART C: Workflows (6-8 페이지)**:
+- [ ] `tdd-cycle.mdx`: RED-GREEN-REFACTOR
+- [ ] `git-integration.mdx`: 3-Mode Git 전략
+- [ ] `spec-to-code.mdx`: SPEC → 코드 흐름
+- [ ] `multi-agent.mdx`: 다중 에이전트 조합
+
+**PART D: Advanced (10-12 페이지)**:
+- [ ] `agents-guide.mdx`: 26개 에이전트 상세
+- [ ] `skills-library.mdx`: 22개 스킬 카드
+- [ ] `patterns.mdx`: 고급 조합 패턴
+- [ ] `trust5-quality.mdx`: 품질 보증 상세
+- [ ] `performance-optimization.mdx`: 성능 최적화
+
+**자동화 스크립트**:
+```python
+# scripts/generate_pages.py
+def generate_page_from_section(section_data: dict, template: str) -> str:
+    """섹션 데이터를 MDX 페이지로 변환"""
+    mdx_content = apply_template(section_data, template)
+    return mdx_content
 ```
-worktree/
-├── _meta.js                 # 섹션 네비게이션
-├── index.mdx                # 워크트리 개요
-├── guide.mdx                # 상세 사용 가이드
-├── examples.mdx             # 실제 사용 예제
-└── faq.mdx                  # 자주 묻는 질문
-```
 
-### 4.3 시각적 자료 통합
-- **명령어 실행 예제**: 터미널 캡처 이미지
-- **디렉토리 구조 다이어그램**: Mermaid → React 컴포넌트
-- **워크플로우 차트**: 단계별 프로세스 시각화
+**산출물**:
+- [ ] 30-35개 MDX 페이지
+- [ ] 각 섹션별 _meta.js
+- [ ] 내부 링크 자동 생성
 
-### 4.4 워크트리 CLI 레퍼런스
+**예상 시간**: 8-10시간
+
+### Step 4.3: 22개 Skills 상세 문서화
+
+**담당**: manager-docs
+
+**스킬 카테고리별 문서 생성**:
+
+**Connector Skills (4개)**: 각 1시간 = 4시간
+- [ ] moai-connector-figma.mdx
+- [ ] moai-connector-mcp.mdx
+- [ ] moai-connector-nano-banana.mdx
+- [ ] moai-connector-notion.mdx
+
+**Foundation Skills (4개)**: 각 1시간 = 4시간
+- [ ] moai-foundation-claude.mdx
+- [ ] moai-foundation-context.mdx
+- [ ] moai-foundation-quality.mdx
+- [ ] moai-foundation-uiux.mdx
+
+**Library Skills (5개)**: 각 1시간 = 5시간
+- [ ] moai-lang-unified.mdx
+- [ ] moai-library-mermaid.mdx
+- [ ] moai-library-nextra.mdx
+- [ ] moai-library-shadcn.mdx
+- [ ] moai-library-toon.mdx
+
+**Platform & Workflow Skills (9개)**: 각 30분 = 4.5시간
+- [ ] moai-platform-baas.mdx
+- [ ] moai-system-universal.mdx
+- [ ] moai-toolkit-essentials.mdx
+- [ ] moai-workflow-docs.mdx
+- [ ] moai-workflow-jit-docs.mdx
+- [ ] moai-workflow-project.mdx
+- [ ] moai-workflow-templates.mdx
+- [ ] moai-workflow-testing.mdx
+- [ ] (기타)
+
+**각 스킬 문서 템플릿**:
 ```mdx
-## 명령어 레퍼런스
+---
+title: "{Skill Name}"
+description: "{One-line description}"
+---
 
-### `moai-worktree create`
-SPEC 기반 새 워크트리 생성
+# {Skill Name}
 
+## Quick Reference (30초)
+- 핵심 기능 요약
+- Auto-trigger 조건
+- 주요 패턴
+
+## Implementation Guide (5분)
+- 사용 시기
+- 핵심 패턴 3개
+- 코드 예제
+
+## 5 Core Patterns
+- Pattern 1-5 상세 설명
+
+## Works Well With
+- 연관 스킬/에이전트
+
+## Best Practices
+- DO / DON'T
+```
+
+**산출물**:
+- [ ] 22개 스킬 상세 페이지
+- [ ] reference/skills/ 디렉토리 구조
+- [ ] 스킬 검색 인덱스
+
+**예상 시간**: 17-18시간 (단, 병렬 작업 가능)
+
+### Step 4.4: 명령어 레퍼런스 완전 작성 (6개 명령어)
+
+**담당**: manager-docs
+
+**각 명령어별 상세 페이지**: 각 1시간 = 6시간
+
+**1. /moai:0-project**:
+```mdx
+# /moai:0-project - 프로젝트 초기화
+
+## 개요
+MoAI-ADK 프로젝트 구조 생성
+
+## 사용법
 ```bash
-moai-worktree create SPEC-AUTH-001
+/moai:0-project
 ```
 
-**옵션**:
-- `--base <branch>`: 기준 브랜치 (default: main)
-- `--force`: 기존 워크트리 덮어쓰기
+## 옵션
+- 언어 선택
+- Git 전략 설정
+- 모드 선택
+
+## 예제
+[5-7가지 시나리오별 예제]
 ```
 
-### 산출물
-- [ ] 워크트리 전용 섹션
-- [ ] 마이그레이션된 3개 문서
-- [ ] 명령어 레퍼런스
-- [ ] 시각적 자료 통합
+**명령어 문서 구조**:
+- [ ] /moai:0-project.mdx (프로젝트 초기화)
+- [ ] /moai:1-plan.mdx (SPEC 생성)
+- [ ] /moai:2-run.mdx (TDD 구현)
+- [ ] /moai:3-sync.mdx (문서 동기화)
+- [ ] /moai:9-feedback.mdx (피드백 제출)
+- [ ] /clear.mdx (컨텍스트 초기화)
 
-### 성공 기준
-- [ ] 모든 워크트리 문서가 통합됨
-- [ ] 명령어 레퍼런스가 완전함
-- [ ] 다른 문서와 일관된 스타일
-- [ ] 네비게이션에서 쉽게 접근 가능
+**산출물**:
+- [ ] 6개 명령어 레퍼런스
+- [ ] reference/commands/ 디렉토리
+- [ ] 명령어 간 링크 및 추천
+
+**예상 시간**: 6시간
+
+### Step 4.5: Advanced 섹션 완전 작성 (5개 핵심 페이지)
+
+**담당**: manager-docs + manager-quality
+
+**1. agents-guide.mdx (26개 에이전트)**: 4시간
+- 5-Tier 계층 구조
+- 각 에이전트 역할 및 사용 시기
+- Task() 호출 패턴
+- Handoff 프로토콜
+
+**2. skills-library.mdx (스킬 카드 그리드)**: 3시간
+- 22개 스킬 카드 레이아웃
+- 카테고리별 필터링
+- 스킬 검색 기능
+- 관련 스킬 추천
+
+**3. patterns.mdx (고급 조합 패턴)**: 2시간
+- Sequential vs Parallel
+- Conditional Delegation
+- MCP Resume 패턴
+- Multi-Agent Coordination
+
+**4. trust5-quality.mdx (TRUST 5 원칙)**: 2시간
+- Testable, Reproducible, Understandable, Secure, Trackable
+- 각 원칙별 상세 가이드
+- 실전 적용 예제
+
+**5. performance-optimization.mdx (성능 가이드)**: 2시간
+- 200K 토큰 버짓 관리
+- Context Engineering
+- Aggressive /clear 전략
+- MCP 서버 최적화
+
+**산출물**:
+- [ ] 5개 Advanced 핵심 페이지
+- [ ] 3,000+줄 콘텐츠 (현재 65바이트에서 확장)
+- [ ] 실전 예제 및 다이어그램
+
+**예상 시간**: 13시간
+
+### Step 4.6: API 레퍼런스 생성 (50+ 모듈)
+
+**담당**: manager-docs
+
+**API 문서 자동 생성**:
+```python
+# scripts/generate_api_docs.py
+def extract_api_signatures(module_path: str) -> list:
+    """모듈에서 함수 시그니처 추출"""
+    # AST 파싱으로 함수/클래스 추출
+    return signatures
+
+def generate_api_page(signatures: list, template: str) -> str:
+    """API 레퍼런스 페이지 생성"""
+    return mdx_content
+```
+
+**API 레퍼런스 구조**:
+- [ ] reference/api/cli.mdx (CLI 명령어 API)
+- [ ] reference/api/config.mdx (설정 API)
+- [ ] reference/api/agents.mdx (에이전트 API)
+- [ ] reference/api/skills.mdx (스킬 API)
+- [ ] reference/api/utils.mdx (유틸리티 API)
+
+**각 API 문서 포함 내용**:
+- 함수 시그니처
+- 매개변수 설명
+- 반환값 설명
+- 사용 예제
+- 관련 함수 링크
+
+**산출물**:
+- [ ] 5개 API 카테고리 페이지
+- [ ] 50+ 모듈 레퍼런스
+- [ ] 타입 정의 및 예제
+
+**예상 시간**: 8-10시간
+
+### Step 4.7: 워크트리 CLI 통합 및 최종 검증
+
+**담당**: manager-docs + manager-quality
+
+**워크트리 문서 마이그레이션**:
+- [ ] WORKTREE_GUIDE.md → worktree/guide.mdx
+- [ ] WORKTREE_FAQ.md → worktree/faq.mdx
+- [ ] WORKTREE_EXAMPLES.md → worktree/examples.mdx
+
+**링크 검증 및 최종 통합**:
+1. 내부 링크 검증 (100% 유효)
+2. 검색 기능 테스트 (300ms 이내)
+3. 성능 검증 (Lighthouse 90+)
+4. 접근성 검증 (WCAG 2.1 AA)
+
+**최종 체크리스트**:
+- [ ] README.ko.md 1,773줄 100% 마이그레이션
+- [ ] 22개 Skills 각각 상세 페이지
+- [ ] 6개 명령어 레퍼런스 완성
+- [ ] Advanced 섹션 3,000+줄 확장
+- [ ] API 레퍼런스 50+ 모듈 완성
+- [ ] 모든 내부 링크 정상 작동
+- [ ] 검색 기능 완전 동작
+- [ ] Lighthouse 90+ 점수
+- [ ] 모바일 반응형 지원
+- [ ] 접근성 기준 준수
+
+**산출물**:
+- [ ] 워크트리 통합 완료
+- [ ] 링크 검증 리포트
+- [ ] 성능 테스트 리포트
+- [ ] 최종 통합 문서
+
+**예상 시간**: 4-5시간
+
+---
+
+### Phase 4 전체 요약
+
+**총 예상 시간**: 50-60시간 (병렬 작업 시 30-40시간)
+
+**7단계 실행 순서**:
+```
+Step 4.1 (3-4h) → Step 4.2 (8-10h) → Step 4.3 (17-18h)
+                                      ↓
+Step 4.4 (6h) → Step 4.5 (13h) → Step 4.6 (8-10h) → Step 4.7 (4-5h)
+```
+
+**병렬 작업 전략**:
+- Step 4.3 (스킬 문서화)와 Step 4.4 (명령어 레퍼런스)는 동시 진행 가능
+- Step 4.5 (Advanced)와 Step 4.6 (API)도 일부 병렬 가능
+- manager-docs + moai-library-nextra 2개 에이전트 동시 작업 시 30% 시간 단축
+
+**Phase 4 완료 시 달성**:
+- ✅ 전체 콘텐츠 마이그레이션 100%
+- ✅ 모든 스킬 및 명령어 문서화
+- ✅ Advanced 섹션 65바이트 → 3,000+줄
+- ✅ API 레퍼런스 완성
+- ✅ 성능 및 접근성 기준 달성
 
 ---
 

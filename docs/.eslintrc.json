@@ -1,16 +1,38 @@
 {
   "extends": [
-    "next/core-web-vitals"
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "plugins": [
+    "@typescript-eslint"
+  ],
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "coverage/",
+    "*.config.js",
+    "*.config.mjs",
+    "jest.config.js",
+    "next-env.d.ts"
   ],
   "rules": {
     "@typescript-eslint/no-unused-vars": [
       "error",
       {
-        "argsIgnorePattern": "^_"
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
       }
     ],
+    "@typescript-eslint/triple-slash-reference": "off",
     "react-hooks/exhaustive-deps": "warn",
     "react/no-unescaped-entities": "warn",
+    "import/no-anonymous-default-export": "off",
     "prefer-const": "error",
     "no-var": "error"
   }

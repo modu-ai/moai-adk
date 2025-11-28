@@ -1,6 +1,6 @@
 ---
 id: SPEC-NEXTRA-001
-version: "1.0.0"
+version: "1.1.0"
 status: "draft"
 created: "2025-11-28"
 updated: "2025-11-28"
@@ -108,17 +108,20 @@ npm run analyze-bundle
 
 ### 콘텐츠 품질
 
-**문서 완성도**:
-- [ ] README.ko.md 내용 100% 마이그레이션
-- [ ] 22개 스킬 전체 문서화 완료
-- [ ] 6개 코어 커맨드 상세 레퍼런스
-- [ ] 워크트리 CLI 문서 완전 통합
+**문서 완성도 (Phase 4 확장 반영)**:
+- [ ] README.ko.md 1,773줄 100% 마이그레이션
+- [ ] 22개 스킬 각각 상세 페이지 생성 (Quick Reference, 5 Core Patterns, Best Practices 포함)
+- [ ] 6개 코어 커맨드 상세 레퍼런스 (각 1,000+줄 수준)
+- [ ] 워크트리 CLI 문서 완전 통합 (guide, examples, faq)
+- [ ] Advanced 섹션 65바이트 → 3,000+줄 확장
+- [ ] API 레퍼런스 50+ 모듈 완성
 
 **정확성**:
 - [ ] 모든 코드 예제 실제 실행 가능
 - [ ] API 레퍼런스와 실제 구현 일치
 - [ ] 링크 깨짐 없음 (100% 유효)
 - [ ] 최신 버전 기준으로 콘텐츠 유지
+- [ ] 스킬 문서 구조 통일성 (모든 스킬이 동일한 템플릿 사용)
 
 ### 기술 품질
 
@@ -390,11 +393,92 @@ npm run test:keyboard
 - [ ] 유지보수 계획 수립 완료
 - [ ] 프로덕션 배포 성공
 
+### Phase 4 확장 완료 조건 (추가)
+
+**콘텐츠 마이그레이션 완료**:
+- [ ] README.ko.md 1,773줄 → Nextra 페이지 100% 변환 완료
+- [ ] 30-35개 핵심 콘텐츠 페이지 생성 완료 (Getting Started, Core Concepts, Workflows, Advanced)
+- [ ] 각 섹션별 _meta.js 네비게이션 메타데이터 정의
+
+**스킬 문서화 완료**:
+- [ ] 22개 스킬 각각 개별 페이지 생성 (Connector 4개, Foundation 4개, Library 5개, Platform/Workflow 9개)
+- [ ] 각 스킬 문서가 표준 템플릿 구조 준수 (Quick Reference, Implementation Guide, 5 Core Patterns, Works Well With, Best Practices)
+- [ ] 스킬 라이브러리 메인 페이지 (skills-library.mdx) 22개 스킬 카드 그리드 완성
+- [ ] 스킬 검색 및 필터링 기능 정상 작동
+
+**명령어 레퍼런스 완료**:
+- [ ] 6개 명령어 각각 상세 페이지 완성 (/moai:0-project, 1-plan, 2-run, 3-sync, 9-feedback, /clear)
+- [ ] 각 명령어별 사용법, 옵션, 5-7가지 시나리오별 예제 포함
+- [ ] 명령어 간 관련성 링크 및 추천 시스템 구현
+
+**Advanced 섹션 확장 완료**:
+- [ ] agents-guide.mdx: 26개 에이전트 상세 설명 완성 (5-Tier 계층, Task() 호출, Handoff 프로토콜)
+- [ ] skills-library.mdx: 22개 스킬 카드 레이아웃 및 필터링 완성
+- [ ] patterns.mdx: 고급 조합 패턴 (Sequential, Parallel, Conditional, MCP Resume) 완성
+- [ ] trust5-quality.mdx: TRUST 5 원칙 상세 가이드 완성
+- [ ] performance-optimization.mdx: 200K 토큰 버짓, Context Engineering, /clear 전략 완성
+- [ ] Advanced 섹션 총 3,000+줄 콘텐츠 달성 (현재 65바이트에서 확장)
+
+**API 레퍼런스 완료**:
+- [ ] 5개 API 카테고리 페이지 생성 (cli, config, agents, skills, utils)
+- [ ] src/moai_adk/ 50+ 모듈 함수 시그니처, 매개변수, 반환값, 예제 포함
+- [ ] API 자동 생성 스크립트 (generate_api_docs.py) 정상 작동
+- [ ] 타입 정의 및 관련 함수 링크 완성
+
+**워크트리 통합 및 검증 완료**:
+- [ ] WORKTREE_GUIDE.md, WORKTREE_FAQ.md, WORKTREE_EXAMPLES.md → worktree/*.mdx 마이그레이션 완료
+- [ ] 모든 내부 링크 검증 (100% 유효, 깨진 링크 0개)
+- [ ] 검색 기능 테스트 (300ms 이내 응답, 정확도 85%+)
+- [ ] 성능 검증 (Lighthouse 90+ 점수 달성)
+- [ ] 접근성 검증 (WCAG 2.1 AA 준수, axe-core 테스트 통과)
+- [ ] 모바일 반응형 테스트 (375x667 최소 해상도에서 가독성 확보)
+
+### 정량적 성공 지표 (Phase 4 확장 반영)
+
+**콘텐츠 규모**:
+- [ ] 총 페이지 수: 60-70개 (기존 15-20개에서 확장)
+- [ ] 총 콘텐츠 줄 수: 10,000+줄 (README 1,773줄 + 스킬 22개 + Advanced 3,000+줄 + API 레퍼런스)
+- [ ] 코드 예제 수: 200+ 개 (모든 예제 실행 가능)
+- [ ] 다이어그램 수: 50+ 개 (Mermaid → React 컴포넌트 변환)
+
+**검색 및 네비게이션**:
+- [ ] 검색 인덱스 크기: 모든 페이지 포함
+- [ ] 검색 응답 시간: 평균 200ms 이하 (목표 300ms)
+- [ ] 검색 정확도: 상위 5개 결과 중 3개 이상 관련성 85%+
+- [ ] 페이지 간 링크: 500+ 개 (모두 유효)
+
+**성능 및 사용성**:
+- [ ] 페이지 로딩 속도: 95% 사용자가 2.5초 이내 경험
+- [ ] 첫 페이지 로딩 시간: 2초 이내 (Core Web Vitals 기준)
+- [ ] 번들 크기: 초기 로드 500KB 이하
+- [ ] 이미지 최적화: 모든 이미지 WebP 형식, 적절한 크기
+
 ### 프로젝트 완료 조건
-모든 기술적, 비즈니스적 승인 조건이 충족되고, 최종 사용자 테스트에서 목표한 만족도가 확인되면 프로젝트가 완료된 것으로 간주합니다.
+
+**MVP 완료 기준 (Phase 1-2)**:
+- [ ] 기본 Nextra 사이트 작동
+- [ ] README.ko.md 핵심 내용 마이그레이션
+- [ ] 라이트/다크 테마 지원
+- [ ] 기본 검색 기능
+
+**전체 기능 완료 기준 (Phase 1-6 포함 Phase 4 확장)**:
+- [ ] 모든 콘텐츠 마이그레이션 100% 완료
+- [ ] 22개 스킬 및 6개 명령어 상세 문서화
+- [ ] Advanced 섹션 3,000+줄 확장
+- [ ] API 레퍼런스 50+ 모듈 완성
+- [ ] 성능 기준 달성 (Lighthouse 90+)
+- [ ] 접근성 준수 (WCAG 2.1 AA)
+- [ ] 사용자 테스트 통과 (만족도 4.5/5.0)
+- [ ] CI/CD 파이프라인 자동화
+
+모든 기술적, 비즈니스적 승인 조건이 충족되고, Phase 4 확장 완료 조건이 모두 달성되며, 최종 사용자 테스트에서 목표한 만족도가 확인되면 프로젝트가 완료된 것으로 간주합니다.
 
 ---
 
-**검증 일정**: 각 Phase 완료 시점마다 중간 검증, 최종 Phase 완료 후 종합 검증
+**검증 일정**:
+- Phase 1-3: 중간 검증 (기본 기능 및 초기 콘텐츠)
+- Phase 4: 상세 검증 (7단계 각 완료 시 체크리스트 검토)
+- Phase 5-6: 최종 검증 (성능, 배포, 종합 테스트)
+
 **주관 검증자**: manager-docs, manager-quality
 **최종 승인자**: 프로젝트 오너 (GOOS)

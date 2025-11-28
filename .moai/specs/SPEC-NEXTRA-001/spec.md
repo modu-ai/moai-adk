@@ -1,6 +1,6 @@
 ---
 id: SPEC-NEXTRA-001
-version: "1.0.0"
+version: "1.1.0"
 status: "draft"
 created: "2025-11-28"
 updated: "2025-11-28"
@@ -12,6 +12,7 @@ priority: "HIGH"
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1.0 | 2025-11-28 | GOOS | Phase 4 확장: 전체 콘텐츠 마이그레이션 계획 추가 (README 1,773줄, 22개 Skills, Advanced 섹션) |
 | 1.0.0 | 2025-11-28 | GOOS | Nextra 기반 온라인 문서 사이트 초기 SPEC - 6단계 구현 계획 |
 
 # SPEC-NEXTRA-001: MoAI-ADK 온라인 문서 사이트 구축 (Nextra 기반)
@@ -362,3 +363,277 @@ export default {
 - **HIGH**: 대용량 콘텐츠 마이그레이션 → 자동화 스크립트 개발
 - **MEDIUM**: 성능 최적화 → 사전 프로파일링 및 테스트
 - **LOW**: 브라우저 호환성 → 모던 브라우저만 지원으로 범위 축소
+
+---
+
+## Phase 4 확장: 전체 콘텐츠 마이그레이션 상세 계획 (업데이트)
+
+> **Note**: 본 섹션은 Phase 4의 구체적인 확장 계획입니다. 기존 6단계 구조에서 Phase 4를 세분화하여 완전한 콘텐츠 마이그레이션을 달성합니다.
+
+### 4.1 README.ko.md 완전 분석 및 구조화
+
+**목표**: 1,773줄 전체 내용 분석 및 Nextra 구조에 맞게 재구성
+
+**작업 내용**:
+- README.ko.md 전체 파싱 및 섹션 분류
+- PART A-D 섹션별 매핑 및 재구성
+- MDX 변환 규칙 적용 및 검증
+
+**섹션별 마이그레이션 계획**:
+
+| README 원본 섹션 | 대상 Nextra 페이지 | 우선순위 | 예상 페이지 수 |
+|------------------|-------------------|----------|---------------|
+| PART A: 시작하기 | getting-started/* | HIGH | 5-7 페이지 |
+| PART B: 핵심 개념 | core-concepts/* | HIGH | 8-10 페이지 |
+| PART C: 워크플로우 | workflows/* | MEDIUM | 6-8 페이지 |
+| PART D: 고급 기능 | advanced/* | MEDIUM | 10-12 페이지 |
+
+### 4.2 핵심 콘텐츠 마이그레이션
+
+**PART A: 시작하기 → Getting Started**
+- overview.mdx: MoAI-ADK 개요 및 핵심 가치
+- installation.mdx: 설치 가이드 (pip, uv, 환경 설정)
+- quickstart.mdx: 5분 빠른 시작 튜토리얼
+- first-spec.mdx: 첫 번째 SPEC 생성 예제
+- configuration.mdx: config.json 설정 가이드
+
+**PART B: 핵심 개념 → Core Concepts**
+- spec-format.mdx: SPEC과 EARS 포맷 상세 설명
+- agents.mdx: Mr.Alfred와 26개 전문 에이전트 개요
+- workflow.mdx: SPEC-First TDD 워크플로우
+- commands.mdx: /moai:0-3 핵심 커맨드
+- trust5.mdx: TRUST 5 품질 보증 원칙
+
+**PART C: 워크플로우 → Workflows**
+- tdd-cycle.mdx: RED-GREEN-REFACTOR 사이클
+- git-integration.mdx: 3-Mode Git 전략 (Manual/Personal/Team)
+- spec-to-code.mdx: SPEC → 구현 → 문서화 흐름
+- multi-agent.mdx: 다중 에이전트 조합 패턴
+
+**PART D: 고급 기능 → Advanced**
+- agents-guide.mdx: 26개 에이전트 상세 가이드
+- skills-library.mdx: 22개 스킬 카드 및 레퍼런스
+- patterns.mdx: 고급 조합 패턴 및 실전 예제
+- trust5-quality.mdx: 품질 보증 상세 가이드
+- performance-optimization.mdx: 성능 최적화 가이드
+
+### 4.3 22개 Skills 상세 문서화
+
+**Connector Skills (4개)**:
+- moai-connector-figma: Figma 디자인 시스템 연동
+- moai-connector-mcp: MCP 서버 통합 (Context7, Sequential Thinking)
+- moai-connector-nano-banana: AI 모델 연결 및 활용
+- moai-connector-notion: Notion 워크스페이스 통합
+
+**Foundation Skills (4개)**:
+- moai-foundation-claude: Claude Code 최적화 및 설정
+- moai-foundation-context: 컨텍스트 및 세션 관리
+- moai-foundation-quality: 품질 게이트 및 테스트
+- moai-foundation-uiux: UI/UX 디자인 가이드
+
+**Library Skills (5개)**:
+- moai-lang-unified: 25개 프로그래밍 언어 통합 전문가
+- moai-library-mermaid: Mermaid 다이어그램 생성
+- moai-library-nextra: Nextra 문서 사이트 구축
+- moai-library-shadcn: shadcn/ui 컴포넌트 활용
+- moai-library-toon: 툰 스타일 디자인 시스템
+
+**Platform & Workflow Skills (9개)**:
+- moai-platform-baas: BaaS 플랫폼 연동 (Supabase, Firebase)
+- moai-system-universal: 범용 시스템 통합
+- moai-toolkit-essentials: 필수 도구 및 유틸리티
+- moai-workflow-docs: 문서 생성 자동화
+- moai-workflow-jit-docs: JIT 문서 생성
+- moai-workflow-project: 프로젝트 초기화
+- moai-workflow-templates: 템플릿 관리
+- moai-workflow-testing: 테스트 자동화
+- (기타 추가 스킬)
+
+**각 스킬별 문서 구조**:
+```mdx
+# {Skill Name}
+
+## 개요
+- 목적 및 사용 사례
+- 핵심 기능 요약
+
+## Quick Reference (30초)
+- 주요 기능 요약
+- Auto-trigger 조건
+- 핵심 패턴
+
+## Implementation Guide (5분)
+- 기능 설명
+- 사용 시기
+- 핵심 패턴 예제
+
+## 5 Core Patterns
+- Pattern 1-5 상세 설명
+- 코드 예제 및 사용 사례
+
+## Advanced Documentation
+- 관련 모듈 링크
+- API 레퍼런스
+
+## Works Well With
+- 연관 스킬 및 에이전트
+
+## Best Practices
+- DO / DON'T 가이드
+```
+
+### 4.4 명령어 레퍼런스 완전 작성
+
+**각 명령어별 상세 문서**:
+
+**1. /moai:0-project (프로젝트 초기화)**
+- 기능: MoAI-ADK 프로젝트 구조 생성
+- 옵션: 언어, 모드, Git 전략
+- 예제: 다양한 프로젝트 타입별 초기화
+
+**2. /moai:1-plan (SPEC 생성)**
+- 기능: EARS 기반 SPEC 문서 생성
+- 자동 제안 vs 수동 지정
+- SPEC 템플릿 및 검증
+
+**3. /moai:2-run (TDD 구현)**
+- 기능: SPEC 기반 TDD 사이클 실행
+- RED-GREEN-REFACTOR 자동화
+- 다중 에이전트 조합
+
+**4. /moai:3-sync (문서 동기화)**
+- 기능: SPEC → 문서 자동 생성
+- Draft PR 생성 및 Git 통합
+- 검증 및 품질 게이트
+
+**5. /moai:9-feedback (피드백 제출)**
+- 기능: 개선 제안 및 버그 리포트
+- 자동 이슈 생성
+- 피드백 루프 통합
+
+**6. /clear (컨텍스트 초기화)**
+- 기능: 200K 토큰 버짓 관리
+- 세션 상태 보존
+- 최적화 전략
+
+### 4.5 Advanced 섹션 완전 작성
+
+**agents-guide.mdx (26개 에이전트 상세 가이드)**
+- 5-Tier 계층 구조 설명
+- 각 에이전트별 역할 및 사용 시기
+- 에이전트 조합 패턴 및 예제
+- Task() 호출 및 Handoff 프로토콜
+
+**skills-library.mdx (22개 스킬 카드 및 레퍼런스)**
+- 스킬 카테고리별 분류
+- 각 스킬 카드 (이름, 아이콘, 설명, 링크)
+- 스킬 검색 및 필터링 기능
+- 관련 스킬 추천 시스템
+
+**patterns.mdx (고급 조합 패턴)**
+- Sequential vs Parallel 실행
+- Conditional Delegation 패턴
+- MCP Resume 패턴
+- Multi-Agent Coordination
+
+**trust5-quality.mdx (TRUST 5 원칙 상세)**
+- Testable: 테스트 가능성 확보
+- Reproducible: 재현 가능성 보장
+- Understandable: 이해 가능성 향상
+- Secure: 보안 및 권한 관리
+- Trackable: 추적 가능성 유지
+
+**performance-optimization.mdx (성능 최적화 가이드)**
+- 토큰 버짓 관리 (200K 최적화)
+- Context Engineering 전략
+- Aggressive /clear 전략
+- MCP 서버 최적화
+- Memory 파일 최적화 (<500줄)
+
+### 4.6 API 레퍼런스 완전 생성
+
+**src/moai_adk/ 모듈 구조 분석**:
+```
+src/moai_adk/
+├── __init__.py           # 패키지 진입점
+├── cli/                  # CLI 명령어
+│   ├── project.py
+│   ├── spec.py
+│   └── worktree.py
+├── core/                 # 핵심 로직
+│   ├── agents/
+│   ├── skills/
+│   └── config/
+├── templates/            # 프로젝트 템플릿
+└── utils/                # 유틸리티 함수
+```
+
+**API 레퍼런스 페이지 구조**:
+- **reference/api/cli.mdx**: CLI 명령어 API
+- **reference/api/config.mdx**: 설정 파일 API
+- **reference/api/agents.mdx**: 에이전트 API
+- **reference/api/skills.mdx**: 스킬 API
+- **reference/api/utils.mdx**: 유틸리티 함수 API
+
+**각 API 문서 형식**:
+```mdx
+## 함수명
+
+**시그니처**: `function_name(param1: Type, param2: Type) -> ReturnType`
+
+**설명**: 함수의 역할 및 목적
+
+**매개변수**:
+- `param1` (Type): 설명
+- `param2` (Type): 설명
+
+**반환값**: ReturnType - 설명
+
+**예제**:
+```python
+result = function_name("value1", "value2")
+print(result)
+```
+
+**관련 함수**: 연관 API 링크
+```
+
+### 4.7 링크 검증 및 최종 통합
+
+**내부 링크 검증**:
+- 모든 페이지 간 링크 자동 생성
+- 깨진 링크 감지 및 수정
+- 앵커 링크 (#) 정상 작동 확인
+- Table of Contents 자동 생성
+
+**검색 기능 테스트**:
+- 전체 텍스트 검색 정확도
+- 섹션별 검색 결과
+- 검색 성능 (300ms 이내)
+- 키보드 단축키 (Cmd/Ctrl + K)
+
+**성능 검증 (Lighthouse 90+)**:
+- Performance: 90+ 점수
+- Accessibility: 90+ 점수
+- Best Practices: 90+ 점수
+- SEO: 90+ 점수
+
+**최종 통합 체크리스트**:
+- [ ] README.ko.md 1,773줄 100% 마이그레이션
+- [ ] 22개 Skills 각각 상세 페이지 생성
+- [ ] 6개 명령어 레퍼런스 완성
+- [ ] Advanced 섹션 65바이트 → 3,000+줄 확장
+- [ ] API 레퍼런스 완성 (50+ 모듈)
+- [ ] 모든 내부 링크 정상 작동
+- [ ] 검색 기능 완전 동작
+- [ ] Lighthouse 90+ 점수 달성
+- [ ] 모바일 반응형 완벽 지원
+- [ ] 접근성 WCAG 2.1 AA 준수
+
+---
+
+**Phase 4 확장 완료 기준**:
+- 전체 콘텐츠 마이그레이션 100% 완료
+- 모든 스킬 및 명령어 문서화
+- 성능 및 접근성 기준 달성
+- 사용자 테스트 통과 (만족도 4.5/5.0)
