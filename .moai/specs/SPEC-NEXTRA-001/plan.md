@@ -1,14 +1,15 @@
 ---
 id: SPEC-NEXTRA-001
-version: "1.1.0"
-status: "draft"
+version: "1.2.0"
+status: "completed"
 created: "2025-11-28"
-updated: "2025-11-28"
+updated: "2025-11-29"
 author: "GOOS"
 priority: "HIGH"
+current_phase: "Complete"
 ---
 
-# SPEC-NEXTRA-001 구현 계획
+# SPEC-NEXTRA-001 구현 계획 (Completed)
 
 ## 개요
 

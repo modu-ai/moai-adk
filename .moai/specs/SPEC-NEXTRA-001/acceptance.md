@@ -1,14 +1,15 @@
 ---
 id: SPEC-NEXTRA-001
-version: "1.1.0"
-status: "draft"
+version: "1.2.0"
+status: "ACCEPTED"
 created: "2025-11-28"
-updated: "2025-11-28"
+updated: "2025-11-29"
 author: "GOOS"
 priority: "HIGH"
+verification_date: "2025-11-29"
 ---
 
-# SPEC-NEXTRA-001 수용 기준 (Acceptance Criteria)
+# SPEC-NEXTRA-001 수용 기준 (Acceptance Criteria) - ACCEPTED
 
 ## 개요
 
