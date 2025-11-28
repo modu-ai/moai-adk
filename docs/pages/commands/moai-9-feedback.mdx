@@ -1,19 +1,18 @@
 ---
-title: 🗣️ MoAI-ADK Step 9: Feedback Loop
-description: /moai:9-feedback - MoAI-ADK Core Command
+title: "MoAI-ADK Step 9: Feedback Loop"
+description: "/moai:9-feedback - MoAI-ADK Core Command"
 ---
 
----
-name: moai:9-feedback
-description: "Submit feedback or report issues"
-argument-hint: "[issue|suggestion|question]"
-allowed-tools:
-  - Task
-  - AskUserQuestion
-  - TodoWrite
-model: haiku
-skills: moai-manager-quality
----
+
+
+# /moai:9-feedback
+
+**Command**: moai:9-feedback
+**Description**: Submit feedback or report issues
+**Argument Hint**: `[issue|suggestion|question]`
+**Allowed Tools**: Task, AskUserQuestion, TodoWrite
+**Model**: haiku
+**Skills**: moai-manager-quality
 
 ## 📋 Pre-execution Context
 
@@ -88,7 +87,7 @@ Tool: Task
 Parameters:
 - subagent_type: "manager-quality"
 - description: "Collect and submit user feedback"
-- prompt: """You are the manager-quality agent acting as the feedback manager.
+- prompt: ""You are the manager-quality agent acting as the feedback manager.
 
 **Task**: Collect user feedback and create a GitHub issue.
 
@@ -122,7 +121,7 @@ Parameters:
 **Important**:
 - Use conversation_language for all user interactions.
 - NO EMOJIS in AskUserQuestion options.
-"""
+""
 ```
 
 ---

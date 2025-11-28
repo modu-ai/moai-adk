@@ -1,19 +1,18 @@
 ---
-title: ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
-description: /moai:2-run - MoAI-ADK Core Command
+title: "MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation"
+description: "/moai:2-run - MoAI-ADK Core Command"
 ---
 
----
-name: moai:2-run
-description: "Execute TDD implementation cycle"
-argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
-allowed-tools:
-  - Task
-  - AskUserQuestion
-  - TodoWrite
-model: sonnet
-skills: moai-toolkit-essentials, moai-foundation-quality, moai-lang-unified
----
+
+
+# /moai:2-run
+
+**Command**: moai:2-run
+**Description**: Execute TDD implementation cycle
+**Argument Hint**: `SPEC-ID` - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"
+**Allowed Tools**: Task, AskUserQuestion, TodoWrite
+**Model**: sonnet
+**Skills**: moai-toolkit-essentials, moai-foundation-quality, moai-lang-unified
 
 ## 📋 Pre-execution Context
 
@@ -194,7 +193,7 @@ Output: "Implementation complete. Next step: /moai:3-sync"
 plan_result = Task(
   subagent_type="manager-strategy",
   description="Analyze SPEC-$ARGUMENTS and create execution plan",
-  prompt="""
+  prompt=""
 SPEC ID: $ARGUMENTS
 
 Analyze this SPEC and create detailed execution plan:
@@ -204,7 +203,7 @@ Analyze this SPEC and create detailed execution plan:
 4. Estimate complexity and effort
 5. Create step-by-step execution strategy
 6. Present plan for user approval
-"""
+""
 )
 
 # Store agent ID for resume chain
@@ -235,7 +234,7 @@ if approval == "Proceed with plan":
         subagent_type="manager-tdd",
         resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Inherit planning context
         description="Implement SPEC-$ARGUMENTS using TDD cycle",
-        prompt="""
+        prompt=""
 SPEC ID: $ARGUMENTS
 
 You are the manager-tdd agent. You are continuing from the implementation plan created in Phase 1.
@@ -250,7 +249,7 @@ Execute complete TDD implementation:
 4. Ensure test coverage >= 85%
 5. Verify all tests passing
 6. Return implementation summary
-"""
+""
     )
 
     # Store agent ID for next phase
@@ -269,7 +268,7 @@ Execute complete TDD implementation:
         subagent_type="manager-quality",
         resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Keep full context chain
         description="Validate TRUST 5 compliance for SPEC-$ARGUMENTS",
-        prompt="""
+        prompt=""
 SPEC ID: $ARGUMENTS
 
 You are the manager-quality agent. You are continuing from the implementation context.
@@ -285,7 +284,7 @@ Validate implementation against TRUST 5 principles:
 - T: Trackable (changes are logged and traceable)
 
 Return quality assessment with specific findings.
-"""
+""
     )
 
     # Store agent ID for next phase
@@ -305,7 +304,7 @@ Return quality assessment with specific findings.
             subagent_type="manager-git",
             resume="$PLANNER_AGENT_ID",  # ⭐ Resume: Maintain full feature context
             description="Create commits for SPEC-$ARGUMENTS implementation",
-            prompt="""
+            prompt=""
 SPEC ID: $ARGUMENTS
 
 You are the manager-git agent. You are continuing from the full implementation context.
@@ -319,7 +318,7 @@ Create git commits for implementation:
 3. Create meaningful commits (follow conventional commits, use context for descriptions)
 4. Verify commits created successfully
 5. Return commit summary with SHA references
-"""
+""
         )
 
         # Store agent ID for reference
