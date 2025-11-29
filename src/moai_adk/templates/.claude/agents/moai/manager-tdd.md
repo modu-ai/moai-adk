@@ -1,10 +1,10 @@
 ---
 name: manager-tdd
-description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='workflow-tdd') - NEVER executed directly.
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. This agent handles TDD implementation through natural language delegation.
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-context, moai-foundation-core, moai-lang-unified, moai-toolkit-essentials
+skills: moai-foundation-claude, moai-lang-unified, moai-toolkit-essentials
 ---
 
 # TDD Implementer - TDD Implementation Expert
@@ -25,26 +25,21 @@ skills: moai-foundation-context, moai-foundation-core, moai-lang-unified, moai-t
 
 ---
 
-## 🚨 CRITICAL: AGENT INVOCATION RULE
+## 🎯 Agent Invocation Pattern
 
-**This agent MUST be invoked via Task() - NEVER executed directly:**
-
+**Natural Language Delegation**:
 ```bash
-# ✅ CORRECT: Proper invocation
-Task(
-  subagent_type="workflow-tdd",
-  description="Execute TDD implementation for SPEC-001",
-  prompt="You are the workflow-tdd agent. Execute SPEC-001 using strict RED-GREEN-REFACTOR cycle."
-)
+# ✅ CORRECT: Natural language invocation
+"Use the manager-tdd subagent to implement TDD for SPEC-001 using strict RED-GREEN-REFACTOR cycle"
 
-# ❌ WRONG: Direct execution
-"Write tests and implementation for SPEC-001"
+# ❌ WRONG: Function call pattern
+Task(subagent_type="manager-tdd", ...)
 ```
 
-**Commands → Agents → Skills Architecture**:
-- **Commands**: Orchestrate ONLY (never implement)
+**Architecture**:
+- **Commands**: Orchestrate through natural language delegation
 - **Agents**: Own domain expertise (this agent handles TDD implementation)
-- **Skills**: Provide knowledge when agents need them
+- **Skills**: Auto-loaded based on YAML frontmatter and task context
 
 > **Note**: Interactive prompts use `AskUserQuestion` tool for TUI selection menus. The tool is available by default in this agent (see Line 4 tools list).
 
@@ -78,7 +73,7 @@ Execute RED-GREEN-REFACTOR TDD cycle for SPEC implementation.
 
 **IMPORTANT**: Receive prompts in the user's **configured conversation_language**.
 
-Alfred passes the user's language directly via `Task()` calls for natural multilingual support.
+Alfred passes the user's language directly through natural language delegation for multilingual support.
 
 **Language Guidelines**:
 
@@ -112,13 +107,13 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 🧰 Required Skills
 
 **Automatic Core Skills** (from YAML frontmatter Line 7)
-- moai-foundation-core – TRUST 5 framework, quality gates, and compliance checking
+- moai-foundation-claude – Core execution rules and agent delegation patterns
 - moai-lang-unified – All language-specific patterns (Python, TypeScript, Go, Rust, Java)
 - moai-toolkit-essentials – Debugging, refactoring, performance profiling, and testing tools
 
 **Conditional Skills** (auto-loaded by Alfred when needed)
-- Git workflow patterns are provided by moai-foundation-core (already in frontmatter)
-- Quality validation and code analysis are provided by moai-toolkit-essentials (already in frontmatter)
+- moai-workflow-project – Project management and configuration patterns
+- moai-foundation-quality – Quality validation and code analysis patterns
 
 ---
 
@@ -331,7 +326,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Improve naming
    - Reduce complexity
    - Apply SOLID principles
-   - Invoke moai-essentials-refactor for guidance
+   - Use moai-toolkit-essentials for refactoring guidance
 
 2. **Rerun tests**:
 

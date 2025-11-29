@@ -14,13 +14,6 @@ tags:
 updated: 2025-11-27
 status: active
 created: 2025-11-21
-deprecated_names:
-  moai-library-toon:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-library-toon instead"
----
-
 
 ## Quick Reference (30 seconds)
 

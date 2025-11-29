@@ -192,7 +192,7 @@ class WorktreeManager:
         """
         return self.registry.list_all()
 
-    def sync(self, spec_id: str, base_branch: str = "main") -> None:
+    def sync(self, spec_id: str, base_branch: str = "main", rebase: bool = False, ff_only: bool = False) -> None:
         """Sync worktree with base branch.
 
         Fetches latest changes from base branch and merges them.
@@ -200,6 +200,8 @@ class WorktreeManager:
         Args:
             spec_id: SPEC ID of worktree to sync.
             base_branch: Branch to sync from (defaults to 'main').
+            rebase: Use rebase instead of merge.
+            ff_only: Only sync if fast-forward is possible.
 
         Raises:
             WorktreeNotFoundError: If worktree doesn't exist.
@@ -220,25 +222,69 @@ class WorktreeManager:
             except Exception:
                 pass
 
-            # Merge base branch
+            # Sync with preferred strategy
             try:
-                worktree_repo.git.merge(f"origin/{base_branch}")
+                # Determine target branch (try remote first, then local)
+                target_branch = None
+                for candidate in [f"origin/{base_branch}", base_branch]:
+                    try:
+                        worktree_repo.git.rev_parse(candidate)
+                        target_branch = candidate
+                        break
+                    except Exception:
+                        continue
+
+                if not target_branch:
+                    raise GitOperationError(f"Base branch '{base_branch}' not found (tried origin/{base_branch}, {base_branch})")
+
+                if ff_only:
+                    # Fast-forward only
+                    worktree_repo.git.merge(target_branch, "--ff-only")
+                elif rebase:
+                    # Rebase strategy
+                    worktree_repo.git.rebase(target_branch)
+                else:
+                    # Default merge strategy with conflict handling
+                    worktree_repo.git.merge(target_branch)
             except Exception as e:
-                # Check for merge conflicts
+                # Handle merge conflicts and provide auto-abort
                 try:
                     status = worktree_repo.git.status("--porcelain")
                     conflicted = [
                         line.split()[-1]
                         for line in status.split("\n")
-                        if line.startswith("UU") or line.startswith("DD")
+                        if line.startswith("UU") or line.startswith("DD") or line.startswith("AA") or line.startswith("DU")
                     ]
+
                     if conflicted:
+                        # Auto-abort merge/rebase on conflicts
+                        try:
+                            worktree_repo.git.merge("--abort")
+                        except Exception:
+                            pass
+                        try:
+                            worktree_repo.git.rebase("--abort")
+                        except Exception:
+                            pass
+
                         raise MergeConflictError(spec_id, conflicted)
+
+                    # If no conflicts but sync failed, raise general error
+                    raise GitOperationError(f"Failed to sync worktree: {e}")
+
                 except MergeConflictError:
                     raise
                 except Exception:
-                    pass
-                raise GitOperationError(f"Failed to sync worktree: {e}")
+                    # If conflict detection fails, still try to clean up
+                    try:
+                        worktree_repo.git.merge("--abort")
+                    except Exception:
+                        pass
+                    try:
+                        worktree_repo.git.rebase("--abort")
+                    except Exception:
+                        pass
+                    raise GitOperationError(f"Failed to sync worktree: {e}")
 
             # Update last accessed time
             info.last_accessed = datetime.now().isoformat() + "Z"

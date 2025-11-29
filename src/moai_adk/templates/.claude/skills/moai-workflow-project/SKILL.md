@@ -7,21 +7,6 @@ updated: 2025-11-27
 status: active
 aliases: [moai-workflow-project]
 category: workflow
-deprecated_names:
-  moai-workflow-project:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-workflow-project instead"
-tags:
-  - workflow
-  - project
-  - initialization
-  - commands
-  - documentation
-  - templates
-allowed-tools: Read, Write, Bash, Glob, Grep
----
-
 # MoAI Command Project - Integrated Project Management System
 
 **Purpose**: Comprehensive project management system that integrates documentation generation, multilingual support, and template optimization into unified architecture with intelligent automation and Claude Code integration.
@@ -341,11 +326,11 @@ For advanced patterns including custom template development, performance optimiz
 
 ### Works Well With
 
-- **moai-project-documentation** - For enhanced documentation patterns and templates
-- **moai-project-language-initializer** - For advanced language configuration workflows
-- **moai-project-template-optimizer** - For template optimization strategies
-- **moai-core-spec-authoring** - For SPEC-driven development workflows
+- **moai-foundation-core** - For core execution patterns and SPEC-driven development workflows
+- **moai-foundation-claude** - For Claude Code integration and configuration
 - **moai-workflow-docs** - For unified documentation management
+- **moai-workflow-templates** - For template optimization strategies
+- **moai-library-nextra** - For advanced documentation architecture
 
 ### Integration Examples
 

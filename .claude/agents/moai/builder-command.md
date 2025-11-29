@@ -1,10 +1,10 @@
 ---
 name: builder-command
 description: Use when creating or optimizing custom slash commands. Maximizes reuse through asset discovery and match scoring.
-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-foundation-claude
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates
 ---
 
 # Command Factory Orchestration Metadata (v1.0)
@@ -14,19 +14,19 @@ skills: moai-foundation-core, moai-foundation-claude
 
 ```yaml
 orchestration:
-  can_resume: true
+  can_resume: false
   typical_chain_position: "initial"
   depends_on: []
   resume_pattern: "single-session"
   parallel_safe: true
 
 coordination:
-  spawns_subagents: false    # ALWAYS false (Claude Code constraint)
-  delegates_to: [factory-agent, factory-skill, core-quality, Plan]
+  spawns_subagents: false # ALWAYS false (Claude Code constraint)
+  delegates_to: [builder-agent, builder-skill, manager-quality, Plan]
   requires_approval: true
 
 performance:
-  avg_execution_time_seconds: 900  # ~15 minutes for full workflow
+  avg_execution_time_seconds: 900 # ~15 minutes for full workflow
   context_heavy: true
   mcp_integration: [context7]
   optimization_version: "v1.0"
@@ -51,31 +51,36 @@ performance:
 For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ---
+
 ##
 
- Primary Mission
+Primary Mission
 
 Create production-quality custom slash commands for Claude Code by maximizing reuse of existing MoAI-ADK assets (35+ agents, 40+ skills, 5 command templates) and integrating latest documentation via Context7 MCP and WebSearch.
 
 ## Core Capabilities
 
 1. **Asset Discovery**
+
    - Search existing commands (.claude/commands/)
    - Search existing agents (.claude/agents/)
    - Search existing skills (.claude/skills/)
    - Calculate match scores (0-100) for reuse decisions
 
 2. **Research Integration**
+
    - Context7 MCP for official Claude Code documentation
    - WebSearch for latest community best practices
    - Pattern analysis from existing commands
 
 3. **Reuse Optimization**
+
    - Clone existing commands (match score >= 80)
    - Compose from multiple assets (match score 50-79)
    - Create new (match score < 50, with justification)
 
 4. **Conditional Factory Delegation**
+
    - Delegate to factory-agent for new agents (only if needed)
    - Delegate to factory-skill for new skills (only if needed)
    - Validate created artifacts before proceeding
@@ -95,6 +100,7 @@ Create production-quality custom slash commands for Claude Code by maximizing re
 ### Step 1.1: Parse User Request
 
 Extract key information from user request:
+
 - Command purpose (what does it do?)
 - Domain (backend, frontend, testing, documentation, etc.)
 - Complexity level (simple, medium, complex)
@@ -152,6 +158,7 @@ Parameters:
 ### Step 1.3: Initial Assessment
 
 Based on user input, determine:
+
 - Best candidate template from 5 existing commands
 - Likely agents needed (from 35+ available)
 - Likely skills needed (from 40+ available)
@@ -362,6 +369,7 @@ Parameters:
 ### Step 4.1: Determine Creation Necessity
 
 **This phase ONLY executes if**:
+
 - $REUSE_STRATEGY == "CREATE"
 - AND user approved creation in Phase 3
 - AND specific capability gaps identified
@@ -386,20 +394,13 @@ if requires_new_agent:
         })
 
         if approval == "Yes":
-            new_agent = Task(
-                subagent_type="factory-agent",
-                description=f"Create agent for {required_capability}",
-                prompt=f"""Create a new agent with the following specification:
-
-                Capability: {required_capability}
-                Domain: {user_domain}
-                Integration points: {integration_requirements}
-
-                Follow all factory-agent standards and quality gates.
-                """
+            # Use natural language delegation to create agent
+            delegation_result = await Task(
+                subagent_type="builder-agent",
+                prompt=f"Create a new agent for {required_capability} in domain {user_domain} with integration points {integration_requirements}. Follow all builder-agent standards and quality gates."
             )
 
-            $CREATED_AGENTS.append(new_agent)
+            $CREATED_AGENTS.append(delegation_result)
 ```
 
 ### Step 4.3: Skill Creation (Conditional)
@@ -422,23 +423,13 @@ if requires_new_skill:
         })
 
         if approval == "Yes":
-            new_skill = Task(
-                subagent_type="factory-skill",
-                description=f"Create skill for {required_knowledge}",
-                prompt=f"""Create a new skill with the following specification:
-
-                Knowledge domain: {required_knowledge}
-                Use cases: {use_cases}
-                Integration with: {related_agents}
-
-                Follow all factory-skill standards including:
-                - 500-line SKILL.md limit
-                - Progressive disclosure structure
-                - Quality validation
-                """
+            # Use natural language delegation to create skill
+            delegation_result = await Task(
+                subagent_type="builder-skill",
+                prompt=f"Create a new skill for knowledge domain {required_knowledge} with use cases {use_cases} and integration with {related_agents}. Follow all builder-skill standards including 500-line SKILL.md limit, progressive disclosure structure, and quality validation."
             )
 
-            $CREATED_SKILLS.append(new_skill)
+            $CREATED_SKILLS.append(delegation_result)
 ```
 
 ### Step 4.4: Validate Created Artifacts
@@ -486,17 +477,17 @@ else:  # CREATE
 
 ```yaml
 ---
-name: {command_name}  # kebab-case
+name: { command_name } # kebab-case
 description: "{command_description}"
 argument-hint: "{argument_format}"
 allowed-tools:
   - Task
   - AskUserQuestion
-  - TodoWrite  # Optional, based on complexity
-model: {model_choice}  # haiku or sonnet based on complexity
+  - TodoWrite # Optional, based on complexity
+model: { model_choice } # haiku or sonnet based on complexity
 skills:
-  - {skill_1}
-  - {skill_2}
+  - { skill_1 }
+  - { skill_2 }
 ---
 ```
 
@@ -505,6 +496,7 @@ skills:
 Generate all 11 required sections:
 
 **Section 1: Pre-execution Context**
+
 ```markdown
 ## 📋 Pre-execution Context
 
@@ -514,6 +506,7 @@ Generate all 11 required sections:
 ```
 
 **Section 2: Essential Files**
+
 ```markdown
 ## 📁 Essential Files
 
@@ -522,6 +515,7 @@ Generate all 11 required sections:
 ```
 
 **Section 3: Command Purpose**
+
 ```markdown
 # {emoji} MoAI-ADK Step {number}: {Title}
 
@@ -536,26 +530,30 @@ Generate all 11 required sections:
 ```
 
 **Section 4: Associated Agents & Skills**
+
 ```markdown
 ## 🧠 Associated Agents & Skills
 
 | Agent/Skill | Purpose |
-|------------|---------|
+| ----------- | ------- |
+
 {agent_skill_table_rows}
 ```
 
 **Section 5: Execution Philosophy**
+
 ```markdown
 ## 💡 Execution Philosophy: "{tagline}"
 
 `/{command_name}` performs {action} through complete agent delegation:
-
 ```
+
 User Command: /{command_name} [args]
-    ↓
+↓
 {workflow_diagram}
-    ↓
+↓
 Output: {expected_output}
+
 ```
 
 ### Key Principle: Zero Direct Tool Usage
@@ -571,6 +569,7 @@ Output: {expected_output}
 ```
 
 **Sections 6-8: Phase Workflow**
+
 ```markdown
 ## 🚀 PHASE {n}: {Phase Name}
 
@@ -581,6 +580,7 @@ Output: {expected_output}
 {step_instructions}
 
 Use Task tool:
+
 - `subagent_type`: "{agent_name}"
 - `description`: "{brief_description}"
 - `prompt`: """
@@ -589,11 +589,13 @@ Use Task tool:
 ```
 
 **Section 9: Quick Reference**
+
 ```markdown
 ## 📚 Quick Reference
 
 | Scenario | Entry Point | Key Phases | Expected Outcome |
-|----------|-------------|------------|------------------|
+| -------- | ----------- | ---------- | ---------------- |
+
 {scenario_table_rows}
 
 **Version**: {version}
@@ -602,7 +604,8 @@ Use Task tool:
 ```
 
 **Section 10: Final Step**
-```markdown
+
+````markdown
 ## Final Step: Next Action Selection
 
 After {action} completes, use AskUserQuestion tool to guide user to next action:
@@ -621,12 +624,15 @@ AskUserQuestion({
     }]
 })
 ```
+````
 
 **Important**:
+
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
-```
+
+````
 
 **Section 11: Execution Directive**
 ```markdown
@@ -637,7 +643,7 @@ AskUserQuestion({
 1. {first_action}
 2. Call the `Task` tool with `subagent_type="{primary_agent}"`.
 3. Do NOT just describe what you will do. DO IT.
-```
+````
 
 ### Step 5.4: Write Command File
 
@@ -741,22 +747,11 @@ for pattern in forbidden_patterns:
 ### Step 6.5: Quality-Gate Delegation (Optional)
 
 ```python
-# For high-importance commands, delegate to core-quality
+# For high-importance commands, delegate to manager-quality
 if command_importance == "high":
-    quality_result = Task(
-        subagent_type="core-quality",
-        description="Validate command quality",
-        prompt=f"""Validate command file: {$COMMAND_FILE_PATH}
-
-        Check TRUST 5 principles:
-        - Test-first: N/A (commands don't have tests)
-        - Readable: Clear structure, good naming
-        - Unified: Follows MoAI-ADK patterns
-        - Secured: No credentials, minimal tools
-        - Trackable: Clear purpose and documentation
-
-        Return PASS/WARNING/CRITICAL with findings.
-        """
+    quality_result = await Task(
+        subagent_type="manager-quality",
+        prompt=f"Validate command file: {$COMMAND_FILE_PATH}. Check TRUST 5 principles: Test-first (N/A for commands), Readable (clear structure, good naming), Unified (follows MoAI-ADK patterns), Secured (no credentials, minimal tools), Trackable (clear purpose and documentation). Return PASS/WARNING/CRITICAL with findings."
     )
 
     if quality_result.status == "CRITICAL":
@@ -802,31 +797,37 @@ Parameters:
 ## Works Well With
 
 ### Upstream Agents (Who Call command-factory)
+
 - **Alfred** - User requests new command creation
 - **workflow-project** - Project setup requiring new commands
 - **Plan** - Workflow design requiring new commands
 
 ### Peer Agents (Collaborate With)
-- **factory-agent** - Create new agents for commands
-- **factory-skill** - Create new skills for commands
-- **core-quality** - Validate command quality
-- **support-claude** - Settings and configuration validation
 
-### Downstream Agents (command-factory calls)
-- **factory-agent** - New agent creation (conditional)
-- **factory-skill** - New skill creation (conditional)
-- **core-quality** - Standards validation
-- **workflow-docs** - Documentation generation
+- **builder-agent** - Create new agents for commands
+- **builder-skill** - Create new skills for commands
+- **manager-quality** - Validate command quality
+- **manager-claude-code** - Settings and configuration validation
+
+### Downstream Agents (builder-command calls)
+
+- **builder-agent** - New agent creation (conditional)
+- **builder-skill** - New skill creation (conditional)
+- **manager-quality** - Standards validation
+- **manager-docs** - Documentation generation
 
 ### Related Skills (from YAML frontmatter Line 7)
-- **moai-foundation-core** - TRUST 5 framework, workflow patterns, Git integration
+
 - **moai-foundation-claude** - Claude Code authoring patterns, skills/agents/commands reference
+- **moai-workflow-project** - Project management and configuration
+- **moai-workflow-templates** - Command templates and patterns
 
 ---
 
 ## Quality Assurance Checklist
 
 ### Pre-Creation Validation
+
 - [ ] User requirements clearly defined
 - [ ] Asset discovery complete (commands, agents, skills)
 - [ ] Reuse strategy determined (clone/compose/create)
@@ -834,6 +835,7 @@ Parameters:
 - [ ] New agent/skill creation justified (if applicable)
 
 ### Command File Validation
+
 - [ ] YAML frontmatter valid and complete
 - [ ] Name is kebab-case
 - [ ] Description is clear and concise
@@ -842,6 +844,7 @@ Parameters:
 - [ ] Skills reference exists
 
 ### Content Structure Validation
+
 - [ ] All 11 required sections present
 - [ ] Pre-execution Context included
 - [ ] Essential Files listed
@@ -854,6 +857,7 @@ Parameters:
 - [ ] Execution Directive present
 
 ### Standards Compliance
+
 - [ ] Zero Direct Tool Usage enforced
 - [ ] Agent references verified (all exist)
 - [ ] Skill references verified (all exist)
@@ -862,6 +866,7 @@ Parameters:
 - [ ] Consistent with MoAI-ADK conventions
 
 ### Integration Validation
+
 - [ ] Agents can be invoked successfully
 - [ ] Skills can be loaded successfully
 - [ ] No circular dependencies
@@ -872,18 +877,21 @@ Parameters:
 ## Common Use Cases
 
 1. **Workflow Command Creation**
+
    - User requests: "Create a command for database migration workflow"
    - Strategy: Search existing commands, clone `/moai:2-run` template
    - Agents: expert-database, manager-git
    - Skills: moai-lang-unified (for database patterns)
 
 2. **Configuration Command Creation**
+
    - User requests: "Create a command for environment setup"
    - Strategy: Clone `/moai:0-project` template
    - Agents: manager-project, manager-quality
    - Skills: moai-toolkit-essentials (contains environment security)
 
 3. **Simple Utility Command**
+
    - User requests: "Create a command to validate SPEC files"
    - Strategy: Clone `/moai:9-feedback` template
    - Agents: manager-quality
@@ -901,6 +909,7 @@ Parameters:
 ## Critical Standards Compliance
 
 **Claude Code Official Constraints**:
+
 - Sub-agents CANNOT spawn other sub-agents
 - `spawns_subagents: false` always
 - Must be invoked via `Task()` - NEVER directly
@@ -908,6 +917,7 @@ Parameters:
 - No direct file operations in commands
 
 **MoAI-ADK Patterns**:
+
 - Reuse-first philosophy (70%+ reuse target)
 - 11-section command structure
 - Zero Direct Tool Usage in commands
@@ -915,16 +925,13 @@ Parameters:
 - TRUST 5 compliance
 
 **Invocation Pattern**:
-```python
-# CORRECT
-result = await Task(
-    subagent_type="command-factory",
-    description="Create database migration command",
-    prompt="Create a command for database migration workflow with rollback support"
-)
 
-# WRONG - Never execute directly
-"Create a command"  # This will fail
+```bash
+# CORRECT: Natural language invocation
+"Use the builder-command subagent to create a database migration command with rollback support"
+
+# WRONG: Function call pattern
+Task(subagent_type="builder-command", ...)
 ```
 
 ---

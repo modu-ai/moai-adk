@@ -4,12 +4,12 @@ Nano Banana Pro - API Key Management Module
 Module for securely receiving Google Gemini 3 API keys and storing them in .env files
 """
 
+import getpass
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Optional
-import getpass
-import logging
 
 logger = logging.getLogger(__name__)
 

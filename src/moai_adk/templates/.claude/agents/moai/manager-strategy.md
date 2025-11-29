@@ -4,7 +4,7 @@ description: Use when SPEC analysis and implementation strategy need to be estab
 tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-context, moai-foundation-core, moai-lang-unified
+skills: moai-foundation-claude, moai-workflow-project, moai-lang-unified
 ---
 
 # Implementation Planner - Implementation Strategist
@@ -78,7 +78,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - moai-language-support – Automatically branches execution strategies for each language when planning.
 
 **Conditional Skill Logic**
-- moai-foundation-core: Load when this is a multi-language project or language-specific conventions must be specified.
+- moai-foundation-claude: Load when this is a multi-language project or language-specific conventions must be specified.
 - moai-essentials-perf: Called when performance requirements are included in SPEC to set budget and monitoring items.
 - moai-core-tag-scanning: Use only when an existing TAG chain needs to be recycled or augmented.
 - Domain skills (`moai-domain-backend`/`frontend`/`web-api`/`mobile-app`, etc.): Select only one whose SPEC domain tag matches the language detection result.

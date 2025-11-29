@@ -111,11 +111,11 @@ class WorktreeRegistry:
             actual_paths = set()
 
             for line in worktrees:
-                if line.strip():
-                    # Parse worktree list output
-                    parts = line.split()
-                    if parts:
-                        actual_paths.add(parts[0])
+                if line.strip() and line.startswith("worktree "):
+                    # Parse worktree list output - lines start with "worktree "
+                    path = line[9:].strip()  # Remove "worktree " prefix
+                    if path:
+                        actual_paths.add(path)
 
             # Remove registry entries for non-existent worktrees
             spec_ids_to_remove = []

@@ -17,15 +17,6 @@ tags:
   - settings
   - iam
   - best-practices
-deprecated_names:
-  moai-foundation-claude:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-foundation-claude instead"
-updated: 2025-11-27
-status: active
----
-
 # Claude Code Authoring Kit
 
 Comprehensive reference for Claude Code Skills, sub-agents, custom slash commands, hooks, memory, settings, and IAM permissions with official standards compliance.

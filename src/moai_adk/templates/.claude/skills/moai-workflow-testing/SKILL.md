@@ -1,370 +1,708 @@
 ---
 name: moai-workflow-testing
-aliases: [moai-workflow-testing]
-description: AI-powered enterprise web application testing orchestrator with Context7 integration, intelligent test generation, visual regression testing, cross-browser coordination, and automated QA workflows for modern web applications
-version: 2.0.0
+description: Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, and quality assurance into unified development workflows
+version: 1.0.0
 category: workflow
-modularized: false
 tags:
   - workflow
-  - enterprise
   - testing
-  - webapp
-  - development
-updated: 2025-11-27
+  - debugging
+  - performance
+  - quality
+  - tdd
+  - review
+updated: 2025-11-30
 status: active
-deprecated_names:
-  moai-workflow-testing:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-workflow-testing instead"
+author: MoAI-ADK Team
 ---
+
+# Development Workflow Specialist
 
 ## Quick Reference (30 seconds)
 
-# Web Application Testing with Playwright
+**Unified Development Workflow** - Comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
 
-## 🚀 Two Approaches
+**Core Capabilities**:
+- 🧪 **Test-Driven Development**: RED-GREEN-REFACTOR cycle with Context7 patterns
+- 🔍 **AI-Powered Debugging**: Intelligent error analysis and Context7 best practices
+- ⚡ **Performance Optimization**: Real-time profiling and bottleneck detection
+- 🔬 **Automated Code Review**: TRUST 5 validation with AI quality analysis
+- 📊 **Quality Assurance**: Comprehensive testing and CI/CD integration
+- 🎯 **Workflow Orchestration**: End-to-end development process automation
 
-### **Level 1: Basic Playwright Testing** (when you don't need AI)
-
-To test local web applications, write native Python Playwright scripts.
-
-**Helper Scripts Available**:
-- `scripts/with_server.py` - Manages server lifecycle (supports multiple servers)
-
-**Always run scripts with `--help` first** to see usage. **DO NOT read the source until you try running the script first.** These scripts can be very large and thus pollute your context window. They exist to be called directly as black-box scripts.
-
-### **Level 2: AI-Enhanced Testing** (AI-Enhanced methodology below)
-
----
-
-## 🧠 AI-Enhanced Testing Methodology (AI-TEST Framework)
-
-### **A** - **AI Test Pattern Recognition**
-```python
-class AITestPatternRecognizer:
-    """AI-powered test pattern detection and classification."""
-    
-    async def analyze_webapp_with_context7(self, webapp_url: str, context: dict) -> TestAnalysis:
-        """Analyze webapp using Context7 documentation and AI pattern matching."""
-        
-        # Get latest testing patterns from Context7
-        playwright_docs = await self.context7.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="AI testing patterns automated test generation visual regression 2025",
-            tokens=5000
-        )
-        
-        # AI pattern classification
-        app_type = self.classify_application_type(webapp_url, context)
-        test_patterns = self.match_known_test_patterns(app_type, context)
-        
-        # Context7-enhanced analysis
-        context7_insights = self.extract_context7_patterns(app_type, playwright_docs)
-        
-        return TestAnalysis(
-            application_type=app_type,
-            confidence_score=self.calculate_confidence(app_type, test_patterns),
-            recommended_test_strategies=self.generate_test_strategies(app_type, test_patterns, context7_insights),
-            context7_references=context7_insights['references'],
-            automation_opportunities=self.identify_automation_opportunities(app_type, test_patterns)
-        )
+**Unified Development Workflow**:
+```
+Debug → Refactor → Optimize → Review → Test → Profile
+   ↓        ↓         ↓        ↓      ↓       ↓
+AI-     AI-       AI-      AI-    AI-     AI-
+Powered Powered  Powered  Powered Powered Powered
 ```
 
+**When to Use**:
+- Complete development lifecycle management
+- Enterprise-grade quality assurance
+- Multi-language development projects
+- Performance-critical applications
+- Technical debt reduction initiatives
+- Automated testing and CI/CD integration
 
+---
 
 ## Implementation Guide
 
-## 📋 Basic Level: Decision Tree (Without AI)
+### AI-Powered Debugging Integration
 
-### Choose Your Approach
-
-```
-User task → Is it static HTML?
-    ├─ Yes → Read HTML file directly to identify selectors
-    │         ├─ Success → Write Playwright script using selectors
-    │         └─ Fails/Incomplete → Treat as dynamic (below)
-    │
-    └─ No (dynamic webapp) → Is the server already running?
-        ├─ No → Run: python scripts/with_server.py --help
-        │        Then use the helper + write simplified Playwright script
-        │
-        └─ Yes → Reconnaissance-then-action:
-            1. Navigate and wait for networkidle
-            2. Take screenshot or inspect DOM
-            3. Identify selectors from rendered state
-            4. Execute actions with discovered selectors
-```
-
-### Example: Using with_server.py
-
-**Single server:**
-```bash
-python scripts/with_server.py --server "npm run dev" --port 5173 -- python your_automation.py
-```
-
-**Multiple servers (backend + frontend):**
-```bash
-python scripts/with_server.py \
-  --server "cd backend && python server.py" --port 3000 \
-  --server "cd frontend && npm run dev" --port 5173 \
-  -- python your_automation.py
-```
-
-### Automation Script Template
-
+**Intelligent Debugging with Context7**:
 ```python
-from playwright.sync_api import sync_playwright
+class AIDebugger:
+    """AI-powered debugging with Context7 integration."""
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
-    page = browser.new_page()
-    page.goto('http://localhost:5173')
-    page.wait_for_load_state('networkidle')  # CRITICAL: Wait for JS
-    # ... your automation logic
-    browser.close()
+    def __init__(self, context7_client=None):
+        self.context7 = context7_client
+        self.error_patterns = self.load_error_patterns()
+
+    async def debug_with_context7_patterns(
+        self, error: Exception, context: Dict, codebase_path: str
+    ) -> DebugAnalysis:
+        """Debug using AI pattern recognition and Context7 best practices."""
+
+        # Get latest debugging patterns from Context7
+        debugpy_patterns = await self.context7.get_library_docs(
+            context7_library_id="/microsoft/debugpy",
+            topic="AI debugging patterns error analysis 2025",
+            tokens=5000
+        )
+
+        # AI pattern classification
+        error_analysis = self.classify_error(error, context)
+        pattern_match = self.match_context7_patterns(error, debugpy_patterns)
+
+        # Generate solutions using AI + Context7
+        solutions = await self.generate_solutions(
+            error_analysis, pattern_match, debugpy_patterns, context
+        )
+
+        return DebugAnalysis(
+            error_type=error_analysis.type,
+            confidence=error_analysis.confidence,
+            context7_patterns=pattern_match,
+            solutions=solutions,
+            prevention_strategies=self.suggest_prevention(error_analysis)
+        )
+
+    def classify_error(self, error: Exception, context: Dict) -> ErrorAnalysis:
+        """Classify error using AI pattern recognition."""
+
+        error_info = {
+            'type': type(error).__name__,
+            'message': str(error),
+            'traceback': traceback.format_exc(),
+            'context': context,
+            'frequency': self.get_error_frequency(error)
+        }
+
+        # AI classification logic
+        patterns = {
+            'ImportError': self.handle_import_errors,
+            'AttributeError': self.handle_attribute_errors,
+            'TypeError': self.handle_type_errors,
+            'ValueError': self.handle_value_errors,
+            'KeyError': self.handle_key_errors,
+        }
+
+        handler = patterns.get(type(error).__name__, self.handle_generic_errors)
+        return handler(error_info)
+
+    async def generate_solutions(
+        self, error_analysis: ErrorAnalysis,
+        pattern_match: Dict, context7_patterns: Dict,
+        context: Dict
+    ) -> List[Solution]:
+        """Generate solutions using AI and Context7 patterns."""
+
+        solutions = []
+
+        # Context7-based solutions
+        for pattern in pattern_match.get('matched_patterns', []):
+            solution = Solution(
+                type='context7_pattern',
+                description=pattern['description'],
+                code_example=pattern['example'],
+                confidence=pattern['confidence']
+            )
+            solutions.append(solution)
+
+        # AI-generated solutions
+        if self.context7:
+            ai_solution = await self.context7.get_library_docs(
+                context7_library_id="/openai/chatgpt",
+                topic=f"solve {error_analysis.type} in {context.get('language', 'python')}",
+                tokens=3000
+            )
+
+            solution = Solution(
+                type='ai_generated',
+                description=ai_solution['description'],
+                code_example=ai_solution['code_example'],
+                confidence=0.8
+            )
+            solutions.append(solution)
+
+        return solutions
+
+# Usage example
+debugger = AIDebugger(context7_client=context7)
+try:
+    # Code that might fail
+    result = some_function()
+except Exception as e:
+    analysis = await debugger.debug_with_context7_patterns(
+        e, {'file': __file__, 'function': 'some_function'}, '/project/src'
+    )
+    for solution in analysis.solutions:
+        print(f"Solution: {solution.description}")
 ```
 
-### Reconnaissance-Then-Action Pattern
+### Smart Refactoring with Technical Debt Management
 
-1. **Inspect rendered DOM**:
-   ```python
-   page.screenshot(path='/tmp/inspect.png', full_page=True)
-   content = page.content()
-   page.locator('button').all()
-   ```
+**AI-Driven Code Transformation**:
+```python
+class AIRefactorer:
+    """AI-powered refactoring with technical debt management."""
 
-2. **Identify selectors** from inspection results
+    def __init__(self, context7_client=None):
+        self.context7 = context7_client
+        self.technical_debt_analyzer = TechnicalDebtAnalyzer()
 
-3. **Execute actions** using discovered selectors
+    async def refactor_with_intelligence(
+        self, codebase_path: str, refactor_options: Dict = None
+    ) -> RefactorPlan:
+        """AI-driven code transformation with technical debt quantification."""
 
-### ✅ Basic Level Best Practices
+        # Get Context7 refactoring patterns
+        rope_patterns = await self.context7.get_library_docs(
+            context7_library_id="/python-rope/rope",
+            topic="safe refactoring patterns technical debt 2025",
+            tokens=4000
+        )
 
-- **Use scripts as black boxes** - Call `with_server.py` directly, don't read source
-- Use `sync_playwright()` for synchronous scripts
-- Always close the browser when done
-- Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
-- **Always wait for `networkidle` on dynamic apps** before inspection
-- Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
+        # Analyze technical debt
+        debt_analysis = await self.technical_debt_analyzer.analyze(codebase_path)
+
+        # AI analysis of refactoring opportunities
+        refactor_opportunities = await self.identify_refactor_opportunities(
+            codebase_path, debt_analysis
+        )
+
+        # Generate safe refactor plan using Rope + AI
+        refactor_plan = self.create_safe_refactor_plan(
+            refactor_opportunities, rope_patterns
+        )
+
+        return RefactorPlan(
+            opportunities=refactor_opportunities,
+            transformations=refactor_plan.transformations,
+            risk_assessment=self.assess_refactor_risks(refactor_plan),
+            estimated_impact=self.calculate_impact(refactor_plan),
+            context7_validated=True
+        )
+
+    async def identify_refactor_opportunities(
+        self, codebase_path: str, debt_analysis: TechnicalDebtAnalysis
+    ) -> List[RefactorOpportunity]:
+        """Identify refactoring opportunities using AI analysis."""
+
+        opportunities = []
+
+        # Code smell detection
+        code_smells = await self.detect_code_smells(codebase_path)
+        for smell in code_smells:
+            if smell.severity >= 7:  # High severity
+                opportunity = RefactorOpportunity(
+                    type='code_smell',
+                    description=smell.description,
+                    location=smell.location,
+                    impact=smell.impact,
+                    difficulty=smell.difficulty
+                )
+                opportunities.append(opportunity)
+
+        # Duplication detection
+        duplications = await self.detect_code_duplication(codebase_path)
+        for dup in duplications:
+            if dup.similarity >= 0.8:  # 80% similarity
+                opportunity = RefactorOpportunity(
+                    type='duplication',
+                    description=f"Duplicate code in {dup.files}",
+                    location=dup.locations,
+                    impact='high',
+                    difficulty='medium'
+                )
+                opportunities.append(opportunity)
+
+        return opportunities
+
+    def create_safe_refactor_plan(
+        self, opportunities: List[RefactorOpportunity],
+        rope_patterns: Dict
+    ) -> RefactorPlan:
+        """Create safe refactor plan using Rope patterns."""
+
+        transformations = []
+
+        for opportunity in opportunities:
+            if opportunity.type == 'code_smell':
+                transformation = self.create_code_smell_transformation(
+                    opportunity, rope_patterns
+                )
+            elif opportunity.type == 'duplication':
+                transformation = self.create_duplication_transformation(
+                    opportunity, rope_patterns
+                )
+
+            if transformation:
+                transformations.append(transformation)
+
+        # Order transformations by risk and dependencies
+        transformations = self.order_transformations(transformations)
+
+        return RefactorPlan(
+            transformations=transformations,
+            estimated_time=self.calculate_total_time(transformations),
+            risk_score=self.calculate_overall_risk(transformations)
+        )
+```
+
+### Performance Optimization with Real-time Profiling
+
+**AI-Enhanced Performance Analysis**:
+```python
+class AIPerformanceOptimizer:
+    """AI-powered performance optimization with real-time profiling."""
+
+    def __init__(self, context7_client=None):
+        self.context7 = context7_client
+        self.profiler = None
+
+    async def optimize_performance(
+        self, codebase_path: str, performance_targets: Dict
+    ) -> OptimizationPlan:
+        """Optimize performance using AI and Context7 patterns."""
+
+        # Get Context7 optimization patterns
+        perf_patterns = await self.context7.get_library_docs(
+            context7_library_id="/emeryberger/scalene",
+            topic="performance profiling optimization GPU 2025",
+            tokens=5000
+        )
+
+        # Scalene profiling with AI analysis
+        scalene_profile = await self.profile_with_ai(codebase_path)
+
+        # AI bottleneck detection
+        bottlenecks = await self.detect_bottlenecks(scalene_profile, perf_patterns)
+
+        # Generate optimization plan
+        optimization_plan = self.create_optimization_plan(
+            bottlenecks, scalene_profile, perf_patterns
+        )
+
+        return OptimizationPlan(
+            bottlenecks=bottlenecks,
+            optimizations=optimization_plan.optimizations,
+            expected_improvement=self.calculate_improvement(optimization_plan),
+            implementation_priority=self.prioritize_optimizations(bottlenecks)
+        )
+
+    async def profile_with_ai(self, codebase_path: str) -> ScaleneProfile:
+        """Profile with Scalene and AI analysis."""
+
+        # Initialize Scalene profiler
+        import scalene
+        self.profiler = scalene.Scalene()
+
+        # Profile the application
+        profile_data = self.profiler.profile(
+            f"python -m pytest {codebase_path}/tests/",
+            memory=True,
+            cpu=True,
+            gpu=True
+        )
+
+        # AI analysis of profile data
+        ai_analysis = await self.analyze_profile_data(profile_data)
+
+        return ScaleneProfile(
+            raw_data=profile_data,
+            ai_analysis=ai_analysis,
+            hotspots=self.identify_hotspots(profile_data),
+            memory_usage=self.analyze_memory_usage(profile_data),
+            cpu_usage=self.analyze_cpu_usage(profile_data)
+        )
+
+    async def detect_bottlenecks(
+        self, profile: ScaleneProfile, perf_patterns: Dict
+    ) -> List[Bottleneck]:
+        """AI-powered bottleneck detection."""
+
+        bottlenecks = []
+
+        # CPU bottlenecks
+        for hotspot in profile.hotspots:
+            if hotspot.cpu_percentage > 80:  # High CPU usage
+                bottleneck = Bottleneck(
+                    type='cpu',
+                    location=hotspot.function,
+                    description=f"High CPU usage in {hotspot.function}",
+                    severity=hotspot.cpu_percentage / 100,
+                    suggestions=self.get_cpu_optimization_suggestions(hotspot, perf_patterns)
+                )
+                bottlenecks.append(bottleneck)
+
+        # Memory bottlenecks
+        for memory_leak in profile.memory_leaks:
+            bottleneck = Bottleneck(
+                type='memory',
+                location=memory_leak.function,
+                description=f"Memory leak in {memory_leak.function}",
+                severity=memory_leak.leak_size / 1000000,  # Convert to MB
+                suggestions=self.get_memory_optimization_suggestions(memory_leak, perf_patterns)
+            )
+            bottlenecks.append(bottleneck)
+
+        return bottlenecks
+```
+
+### Test-Driven Development with Context7 Integration
+
+**Enhanced TDD Implementation**:
+```python
+class TDDOrchestrator:
+    """TDD orchestrator with Context7 best practices and AI assistance."""
+
+    def __init__(self, context7_client=None):
+        self.context7 = context7_client
+        self.test_generator = AITestGenerator()
+
+    async def execute_tdd_cycle(
+        self, requirement: str, codebase_path: str
+    ) -> TDDResult:
+        """Execute complete RED-GREEN-REFACTOR TDD cycle."""
+
+        # RED Phase: Write failing test
+        red_result = await self.red_phase(requirement, codebase_path)
+
+        # GREEN Phase: Make test pass
+        green_result = await self.green_phase(red_result.test, codebase_path)
+
+        # REFACTOR Phase: Improve code quality
+        refactor_result = await self.refactor_phase(
+            green_result.code, red_result.test, codebase_path
+        )
+
+        return TDDResult(
+            requirement=requirement,
+            test=red_result.test,
+            implementation=refactor_result.code,
+            coverage=refactor_result.coverage,
+            quality_score=refactor_result.quality_score
+        )
+
+    async def red_phase(self, requirement: str, codebase_path: str) -> RedResult:
+        """RED phase: Generate failing test based on requirement."""
+
+        # Get Context7 testing patterns
+        test_patterns = await self.context7.get_library_docs(
+            context7_library_id="/pytest-dev/pytest",
+            topic="testing strategies TDD automation 2025",
+            tokens=4000
+        )
+
+        # Generate test using AI
+        test_code = await self.test_generator.generate_test(
+            requirement, test_patterns
+        )
+
+        # Write test file
+        test_file_path = self.write_test_file(test_code, requirement)
+
+        # Run test to ensure it fails
+        test_result = self.run_test(test_file_path)
+
+        return RedResult(
+            test=test_code,
+            test_file_path=test_file_path,
+            test_result=test_result,
+            expected_to_fail=True
+        )
+
+    async def green_phase(self, test_code: str, codebase_path: str) -> GreenResult:
+        """GREEN phase: Implement code to make test pass."""
+
+        # Analyze test requirements
+        test_analysis = self.analyze_test_requirements(test_code)
+
+        # Generate minimal implementation
+        implementation = await self.generate_minimal_implementation(test_analysis)
+
+        # Write implementation
+        impl_file_path = self.write_implementation_file(implementation, test_analysis)
+
+        # Run tests to verify passing
+        test_result = self.run_test_suite(codebase_path)
+
+        return GreenResult(
+            code=implementation,
+            impl_file_path=impl_file_path,
+            test_result=test_result,
+            all_tests_passing=test_result.passed
+        )
+```
+
+### Automated Code Review with TRUST 5 Validation
+
+**AI-Powered Quality Assurance**:
+```python
+class AICodeReviewer:
+    """AI-powered code review with TRUST 5 validation."""
+
+    def __init__(self, context7_client=None):
+        self.context7 = context7_client
+        self.trust5_validator = TRUST5Validator()
+
+    async def comprehensive_review(
+        self, codebase_path: str, changes: List[FileChange]
+    ) -> ReviewResult:
+        """Comprehensive code review with AI and TRUST 5 validation."""
+
+        # Get Context7 security and quality patterns
+        security_patterns = await self.context7.get_library_docs(
+            context7_library_id="/owasp/top-ten",
+            topic="security vulnerability patterns 2025",
+            tokens=3000
+        )
+
+        quality_patterns = await self.context7.get_library_docs(
+            context7_library_id="/pylint-dev/pylint",
+            topic="code quality best practices 2025",
+            tokens=3000
+        )
+
+        # TRUST 5 validation
+        trust5_analysis = await self.trust5_validator.validate(codebase_path, changes)
+
+        # AI quality analysis
+        quality_analysis = await self.analyze_code_quality(codebase_path, changes)
+
+        # Security vulnerability detection
+        security_analysis = await self.detect_security_vulnerabilities(
+            changes, security_patterns
+        )
+
+        return ReviewResult(
+            trust5_validation=trust5_analysis,
+            quality_analysis=quality_analysis,
+            security_analysis=security_analysis,
+            recommendations=self.generate_recommendations(
+                trust5_analysis, quality_analysis, security_analysis
+            ),
+            approval_status=self.determine_approval_status(trust5_analysis)
+        )
+
+    async def analyze_code_quality(
+        self, codebase_path: str, changes: List[FileChange]
+    ) -> QualityAnalysis:
+        """AI-powered code quality analysis."""
+
+        quality_metrics = {}
+
+        for change in changes:
+            # Analyze each changed file
+            file_metrics = await self.analyze_file_quality(change)
+            quality_metrics[change.file_path] = file_metrics
+
+        # Calculate overall quality score
+        overall_score = self.calculate_overall_quality_score(quality_metrics)
+
+        return QualityAnalysis(
+            file_metrics=quality_metrics,
+            overall_score=overall_score,
+            issues=self.identify_quality_issues(quality_metrics),
+            suggestions=self.generate_quality_suggestions(quality_metrics)
+        )
+
+class TRUST5Validator:
+    """TRUST 5 framework validation."""
+
+    def __init__(self):
+        self.trust_principles = {
+            'Transparency': self.validate_transparency,
+            'Reliability': self.validate_reliability,
+            'Usability': self.validate_usability,
+            'Security': self.validate_security,
+            'Testability': self.validate_testability
+        }
+
+    async def validate(
+        self, codebase_path: str, changes: List[FileChange]
+    ) -> TRUST5Analysis:
+        """Validate changes against TRUST 5 principles."""
+
+        validation_results = {}
+
+        for principle, validator in self.trust_principles.items():
+            result = await validator(changes)
+            validation_results[principle] = result
+
+        return TRUST5Analysis(
+            principles_validation=validation_results,
+            overall_compliance=self.calculate_compliance(validation_results),
+            critical_issues=self.identify_critical_issues(validation_results)
+        )
+```
 
 ---
 
-## 🚀 Revolutionary AI Testing Capabilities
+## Advanced Patterns
 
-### **AI-Powered Test Generation with Context7**
-- 🧠 **Intelligent Test Pattern Recognition** with ML-based classification
-- 🎯 **AI-Enhanced Test Generation** using Context7 latest documentation
-- 🔍 **Visual Regression Testing** with AI-powered diff analysis
-- ⚡ **Real-Time Cross-Browser Coordination** across Chrome, Firefox, Safari
-- 🤖 **Automated QA Workflows** with Context7 best practices
-- 📊 **Performance Test Integration** with AI profiling
-- 🔮 **Predictive Test Maintenance** using ML pattern analysis
+### Integrated Workflow Orchestration
 
-### **Context7 Integration Features**
-- **Live Documentation Fetching**: Get latest Playwright patterns from `/microsoft/playwright`
-- **AI Pattern Matching**: Match test scenarios against Context7 knowledge base
-- **Best Practice Integration**: Apply latest testing techniques from official docs
-- **Version-Aware Testing**: Context7 provides version-specific patterns
-- **Community Knowledge Integration**: Leverage collective testing wisdom
-
-
-## 🎯 When to Use
-
-**Basic Level Triggers** (without AI):
-- Simple browser automation for static HTML
-- Testing with already-running servers
-- Quick UI interactions (click, type, wait)
-- Selector discovery and validation
-- Context budget constraints (avoid AI overhead)
-
-**AI Automatic Triggers**:
-- Web application deployment verification
-- UI/UX regression detection requirements
-- Cross-browser compatibility testing
-- Performance degradation detection
-- Complex user workflow automation
-- API integration testing scenarios
-
-**Manual AI Invocation**:
-- "Generate comprehensive tests for this webapp"
-- "Create visual regression tests with AI"
-- "Automate cross-browser testing workflows"
-- "Generate performance tests with Context7"
-- "Create intelligent QA test suites"
-
-
-## 🤖 Context7-Enhanced Testing Patterns
-
-### AI-Enhanced Visual Regression Testing
+**Complete Development Pipeline**:
 ```python
-class AIVisualRegressionTester:
-    """AI-powered visual regression testing with Context7 pattern matching."""
-    
-    async def test_with_context7_ai(self, baseline_url: str, current_url: str) -> VisualRegressionResult:
-        """Perform visual regression testing using AI and Context7 patterns."""
-        
-        # Get Context7 visual testing patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="visual regression testing screenshot comparison patterns",
-            tokens=3000
+class DevelopmentWorkflowOrchestrator:
+    """Orchestrates complete development workflow with all components."""
+
+    def __init__(self, project_config: Dict):
+        self.config = project_config
+        self.debugger = AIDebugger()
+        self.refactorer = AIRefactorer()
+        self.optimizer = AIPerformanceOptimizer()
+        self.reviewer = AICodeReviewer()
+        self.tdd = TDDOrchestrator()
+
+    async def orchestrate_complete_workflow(
+        self, task: DevelopmentTask
+    ) -> WorkflowResult:
+        """Orchestrate complete development workflow."""
+
+        workflow_steps = []
+
+        # Step 1: Requirements analysis and test generation
+        if task.type == 'feature':
+            tdd_result = await self.tdd.execute_tdd_cycle(
+                task.requirement, task.codebase_path
+            )
+            workflow_steps.append(('tdd', tdd_result))
+
+        # Step 2: Debug any issues found
+        if task.has_errors:
+            debug_result = await self.debugger.debug_with_context7_patterns(
+                task.errors, task.context, task.codebase_path
+            )
+            workflow_steps.append(('debug', debug_result))
+
+        # Step 3: Performance optimization
+        if task.requires_optimization:
+            perf_result = await self.optimizer.optimize_performance(
+                task.codebase_path, task.performance_targets
+            )
+            workflow_steps.append(('optimize', perf_result))
+
+        # Step 4: Code review and quality assurance
+        review_result = await self.reviewer.comprehensive_review(
+            task.codebase_path, task.changes
         )
-        
-        # AI-powered visual analysis
-        visual_analysis = await self.analyze_visual_differences_with_ai(
-            baseline_url, current_url, context7_patterns
-        )
-        
-        return VisualRegressionResult(
-            visual_analysis=visual_analysis,
-            recommended_actions=self.generate_regression_fixes(visual_analysis)
-        )
-```
+        workflow_steps.append(('review', review_result))
 
+        # Step 5: Refactoring if needed
+        if review_result.quality_score < 0.8:
+            refactor_result = await self.refactorer.refactor_with_intelligence(
+                task.codebase_path
+            )
+            workflow_steps.append(('refactor', refactor_result))
 
-## 🎯 AI Testing Best Practices
-
-### ✅ **DO** - AI-Enhanced Testing
-- Use Context7 integration for latest testing patterns
-- Apply AI pattern recognition for comprehensive test coverage
-- Leverage visual regression testing with AI analysis
-- Use AI-coordinated cross-browser testing with Context7 workflows
-- Apply Context7-validated testing solutions
-
-### ❌ **DON'T** - Common AI Testing Mistakes
-- Ignore Context7 best practices and testing patterns
-- Apply AI-generated tests without validation
-- Skip AI confidence threshold checks for test reliability
-
-
-## 🤖 Context7 Integration Examples
-
-### Context7-Enhanced AI Testing
-```python
-class Context7AITester:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.ai_engine = AIEngine()
-    
-    async def test_with_context7_ai(self, webapp_url: str) -> Context7AITestResult:
-        # Get latest testing patterns from Context7
-        playwright_patterns = await self.context7_client.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="AI testing patterns automated test generation visual regression 2025",
-            tokens=5000
-        )
-        
-        # AI-enhanced test generation
-        ai_tests = self.ai_engine.generate_tests_with_patterns(webapp_url, playwright_patterns)
-        
-        return Context7AITestResult(
-            ai_tests=ai_tests,
-            context7_patterns=playwright_patterns,
-            confidence_score=ai_tests.confidence
+        return WorkflowResult(
+            steps=workflow_steps,
+            final_quality_score=self.calculate_final_quality(workflow_steps),
+            recommendations=self.generate_workflow_recommendations(workflow_steps),
+            deployment_ready=self.is_deployment_ready(workflow_steps)
         )
 ```
 
-
-## 🔗 Enterprise Integration
-
-### CI/CD Pipeline Integration
-```yaml
-# AI testing integration in CI/CD
-ai_testing_stage:
-  - name: AI Test Generation
-    uses: moai-workflow-testing
-    with:
-      context7_integration: true
-      ai_pattern_recognition: true
-      visual_regression: true
-      cross_browser_testing: true
-      
-  - name: Context7 Validation
-    uses: moai-context7-integration
-    with:
-      validate_tests: true
-      apply_best_practices: true
-```
-
-
-## 📊 Success Metrics & KPIs
-
-### AI Testing Effectiveness
-- **Test Coverage**: 95% coverage with AI-enhanced test generation
-- **Bug Detection Accuracy**: 90% accuracy with AI pattern recognition
-- **Visual Regression**: 85% success rate for AI-detected UI issues
-- **Cross-Browser Compatibility**: 80% faster compatibility testing
-
-
-## Alfred 에이전트와의 완벽한 연동
-
-### 4-Step 워크플로우 통합
-- **Step 1**: 사용자 요청 분석 및 AI 테스트 전략 수립
-- **Step 2**: Context7 기반 AI 테스트 생성 및 최적화
-- **Step 3**: 자동화된 테스트 실행 및 결과 분석
-- **Step 4**: 품질 보증 및 개선 제안 생성
-
-### 다른 에이전트들과의 협업
-- `moai-essentials-debug`: 테스트 실패 시 AI 디버깅 연동
-- `moai-essentials-perf`: 성능 테스트 통합
-- `moai-essentials-review`: 코드 리뷰와 테스트 커버리지 연동
-- `moai-foundation-trust`: 품질 보증 및 TRUST 5 원칙 적용
-
-
-## 한국어 지원 및 UX 최적화
-
-### Perfect Gentleman 스타일 통합
-- 사용자 인터페이스 한국어 완벽 지원
-- `.moai/config/config.json` conversation_language 자동 적용
-- AI 테스트 결과 한국어 상세 리포트
-- 개발자 친화적인 한국어 가이드 및 예제
-
-
-**End of AI-Powered Enterprise Web Application Testing Skill **  
-*Enhanced with Context7 MCP integration and revolutionary AI capabilities*
-
+---
 
 ## Works Well With
 
-- `moai-essentials-debug` (AI-powered debugging integration)
-- `moai-essentials-perf` (AI performance testing optimization)
-- `moai-essentials-refactor` (AI test code refactoring)
-- `moai-essentials-review` (AI test code review)
-- `moai-foundation-trust` (AI quality assurance)
-- `moai-context7-integration` (latest Playwright patterns and best practices)
-- Context7 MCP (latest testing patterns and documentation)
+- **moai-domain-backend** - Backend development and testing
+- **moai-domain-frontend** - Frontend component testing and optimization
+- **moai-domain-database** - Database testing and performance optimization
+- **moai-docs-generation** - Test documentation and API docs
+- **moai-integration-mcp** - MCP service testing and validation
 
+---
 
-## Advanced Patterns
+## Usage Examples
 
-## 🎯 Advanced Examples
+### CLI Integration
+```bash
+# Execute TDD cycle
+moai-workflow tdd --requirement "User authentication" --src ./src
 
-### AI-Powered E2E Testing
-```python
-async def test_e2e_with_ai_context7():
-    """Test complete user journey using Context7 patterns."""
-    
-    # Get Context7 E2E testing patterns
-    workflow = await context7.get_library_docs(
-        context7_library_id="/microsoft/playwright",
-        topic="end-to-end testing user journey automation",
-        tokens=4000
-    )
-    
-    # Apply Context7 testing sequence
-    test_session = apply_context7_workflow(
-        workflow['testing_sequence'],
-        browsers=['chromium', 'firefox', 'webkit']
-    )
-    
-    # AI coordination across browsers
-    ai_coordinator = AITestCoordinator(test_session)
-    
-    # Execute coordinated testing
-    result = await ai_coordinator.coordinate_cross_browser_testing()
-    
-    return result
+# Debug with AI assistance
+moai-workflow debug --error-file error.log --context development
+
+# Optimize performance
+moai-workflow optimize --target-dir ./src --performance-targets config/perf.json
+
+# Review code changes
+moai-workflow review --changes changes.json --codebase ./src
+
+# Run complete workflow
+moai-workflow execute --task config/task.json
 ```
 
+### Python API
+```python
+from moai_workflow_testing import DevelopmentWorkflowOrchestrator
 
+# Initialize orchestrator
+orchestrator = DevelopmentWorkflowOrchestrator(project_config)
+
+# Execute complete workflow
+task = DevelopmentTask(
+    type='feature',
+    requirement='Implement user authentication',
+    codebase_path='./src',
+    performance_targets={'response_time': 200}
+)
+
+result = await orchestrator.orchestrate_complete_workflow(task)
+```
+
+---
+
+## Technology Stack
+
+**Core Libraries**:
+- **pytest**: Testing framework with plugins
+- **scalene**: High-performance CPU/GPU/memory profiler
+- **rope**: Python refactoring library
+- **pylint**: Code quality analysis
+- **coverage.py**: Test coverage measurement
+
+**AI Integration**:
+- **Context7**: Latest documentation and best practices
+- **OpenAI API**: Code generation and analysis
+- **Custom ML models**: Pattern recognition and optimization
+
+**Development Tools**:
+- **debugpy**: Python debugging
+- **black**: Code formatting
+- **mypy**: Type checking
+- **bandit**: Security linting
+
+---
+
+**Status**: Production Ready
+**Last Updated**: 2025-11-30
+**Maintained by**: MoAI-ADK Workflow Team

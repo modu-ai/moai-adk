@@ -16,14 +16,6 @@ tags:
   - trust-5
   - best-practices
   - code-review
-deprecated_names:
-  moai-foundation-quality:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-foundation-quality instead"
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
----
-
 # Enterprise Code Quality Orchestrator
 
 Enterprise-grade code quality management system that combines systematic code review, proactive improvement suggestions, and automated best practices enforcement. Provides comprehensive quality assurance through TRUST 5 framework validation with Context7 integration for real-time best practices.

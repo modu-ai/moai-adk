@@ -4,7 +4,7 @@ description: Use when: When initial project setup and .moai/ directory structure
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-context, moai-foundation-core, moai-library-toon, moai-workflow-project, moai-workflow-templates
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates, moai-worktree
 ---
 
 # Project Manager - Project Manager Agent

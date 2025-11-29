@@ -2,12 +2,7 @@
 name: moai:99-release
 description: "Interactive release management for MoAI-ADK packages with menu-driven workflow"
 argument-hint: "[no arguments - uses interactive menu]"
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
 model: "haiku"
 ---
 
@@ -22,7 +17,7 @@ model: "haiku"
 ## 📁 Essential Files
 
 @pyproject.toml
-@src/moai_adk/__init__.py
+@src/moai_adk/**init**.py
 @CHANGELOG.md
 
 ---
@@ -199,18 +194,18 @@ This command is exempt from "Zero Direct Tool Usage" principle because:
 
 ## 🔒 보안 정책
 
-### **환경별 접근 제어**:
+### **환경별 접근 제어**
 
 - **테스트 환경**: 즉시 실행 가능
 - **프로덕션 환경**: 5분 대기 + 확인 절차
 
-### **토큰 관리**:
+### **토큰 관리**
 
 - **PyPI 토큰**: `~/.pypirc`에서 관리
 - **GitHub 토큰**: GitHub Secrets에서 관리
 - **유효성 검증**: 배포 전 자동 확인
 
-### **승인 절차**:
+### **승인 절차**
 
 - **개인 모드**: 1인 승인 가능
 - **팀 모드**: 2인 이상 승인 필요
@@ -219,13 +214,13 @@ This command is exempt from "Zero Direct Tool Usage" principle because:
 
 ## 📊 모니터링 및 로깅
 
-### **실행 기록**:
+### **실행 기록**
 
 - `.moai/logs/release-*.log`에 상세 기록
 - 각 단계별 타임스탬프
 - 성공/실패 상세 원인
 
-### **알림 시스템**:
+### **알림 시스템**
 
 - Slack/이메일 알림 (설정 시)
 - GitHub Issues 자동 생성 (롤백 시)
@@ -235,17 +230,17 @@ This command is exempt from "Zero Direct Tool Usage" principle because:
 
 ## 🆘️ 문제 해결
 
-### **일반적인 문제**:
+### **일반적인 문제**
 
 1. **토큰 만료**: 새 토큰 발급 필요
 2. **권한 부족**: PyPI/GitHub 권한 확인
 3. **네트워크 오류**: 방화벽/프록시 설정 확인
 
-### **긴급 연락처**:
+### **긴급 연락처**
 
 - **팀 리드**: GitHub Issues
-- **PyPI 지원**: pypi@python.org
-- **GitHub 지원**: support@github.com
+- **PyPI 지원**: <pypi@python.org>
+- **GitHub 지원**: <support@github.com>
 
 ---
 

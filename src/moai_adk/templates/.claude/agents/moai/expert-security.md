@@ -3,7 +3,8 @@ name: expert-security
 description: Use for security analysis, vulnerability assessment, secure code reviews, and security best practices.
 model: inherit
 permissionMode: default
-skills: moai-system-universal
+skills: moai-foundation-claude, moai-domain-security
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Security Expert 🔒

@@ -1,10 +1,10 @@
 ---
 name: builder-agent
 description: Use when creating new sub-agents or generating agent blueprints from requirements. Follows Claude Code official sub-agent standards.
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-foundation-claude
+skills: moai-foundation-claude, moai-workflow-project
 ---
 
 # Agent Orchestration Metadata (v1.0)
@@ -13,7 +13,7 @@ skills: moai-foundation-core, moai-foundation-claude
 **Last Updated**: 2025-11-25
 
 orchestration:
-can_resume: true # Can continue agent refinement through iterations
+can_resume: false # Can continue agent refinement through iterations
 typical_chain_position: "initial" # First in agent creation workflow
 depends_on: [] # No dependencies (generates new agents)
 resume_pattern: "multi-day" # Supports iterative agent refinement
@@ -47,6 +47,7 @@ skill_count: 17 # Reduced from 25 for 20% performance gain
 For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ---
+
 ## Agent Creation Specialist
 
 Creates and optimizes specialized Claude Code sub-agents with official standards compliance and intelligent delegation patterns.
@@ -210,28 +211,23 @@ Clear, specific mission statement (15 words max)
 
 **Sub-agents CANNOT spawn other sub-agents.** This is a fundamental Claude Code limitation.
 
-### Required Invocation Pattern
+### Natural Language Delegation Pattern
 
-**This agent MUST be invoked via Task() - NEVER executed directly:**
+**Use natural language delegation for agent creation:**
 
-```python
-# ✅ CORRECT: Proper invocation
-result = await Task(
-    subagent_type="factory-agent",
-    description="Generate backend API designer agent",
-    prompt="Create an agent for designing REST/GraphQL APIs with performance optimization"
-)
+```bash
+# ✅ CORRECT: Natural language invocation
+"Use the builder-agent subagent to create a specialized backend API designer agent"
 
-# ❌ WRONG: Direct execution
-"Create a backend agent"
+# ❌ WRONG: Function call pattern
+Task(subagent_type="builder-agent", ...)
 ```
 
 **Architecture Pattern**:
 
-- **Commands**: Orchestrate agent creation only
-- **Agents**: Own domain-specific expertise
-- **Skills**: Provide knowledge when needed
-- **Templates**: Ensure consistency and quality
+- **Commands**: Orchestrate through natural language delegation
+- **Agents**: Own domain-specific expertise (this agent handles agent creation)
+- **Skills**: Auto-loaded based on YAML frontmatter and task context
 
 ## Best Practices
 
@@ -282,47 +278,28 @@ result = await Task(
 
 **Agent Factory Invoke Pattern**:
 
-```python
-result = await Task(
-    subagent_type="factory-agent",
-    prompt="Create specialized agent for [domain] with [specific requirements]",
-    context={
-        "domain": "specific domain area",
-        "requirements": ["req1", "req2", "req3"],
-        "integration_points": ["agent1", "agent2"],
-        "quality_standards": "TRUST 5 compliance"
-    }
-)
+```bash
+# Use natural language delegation
+"Use the builder-agent to create a specialized agent for [domain] with [specific requirements]"
 ```
 
 ### Integration Examples
 
 **Sequential Delegation**:
 
-```python
+```bash
 # Phase 1: Requirements analysis
-requirements = await Task(
-    subagent_type="workflow-spec",
-    prompt="Analyze requirements for new agent",
-    context={"domain": "security-analysis"}
-)
+"Use the manager-spec subagent to analyze requirements for new security analysis agent"
 
-# Phase 2: Agent creation (pass requirements)
-agent = await Task(
-    subagent_type="factory-agent",
-    prompt="Create security analysis agent",
-    context={"requirements": requirements}
-)
+# Phase 2: Agent creation (using requirements)
+"Use the builder-agent to create security analysis agent based on analyzed requirements"
 ```
 
 **Parallel Agent Creation**:
 
-```python
-agents = await Promise.all([
-    Task(subagent_type="factory-agent", prompt="Create frontend agent"),
-    Task(subagent_type="factory-agent", prompt="Create backend agent"),
-    Task(subagent_type="factory-agent", prompt="Create database agent")
-])
+```bash
+# Create multiple agents in parallel through natural language delegation
+"Use the builder-agent to create frontend, backend, and database agents for the project"
 ```
 
 ## Works Well With

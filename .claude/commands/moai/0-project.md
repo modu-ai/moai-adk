@@ -2,7 +2,7 @@
 name: moai:0-project
 description: "Initialize project metadata and documentation"
 argument-hint: "[<empty>|setting|update|--glm-on <token>]"
-allowed-tools: Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
 model: inherit
 skills: moai-workflow-project, moai-workflow-templates
 ---
@@ -47,11 +47,11 @@ Initialize or update project metadata with **language-first architecture**. Supp
 
 ## 🧠 Associated Agents & Skills
 
-| Agent/Skill          | Purpose                                                                  |
-| -------------------- | ------------------------------------------------------------------------ |
-| manager-project     | Orchestrates language-first initialization and configuration             |
-| moai-workflow-project | Unified project management (language init, config, templates, batch Q&A) |
-| moai-workflow-templates       | Template management and generation                                       |
+| Agent/Skill             | Purpose                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| manager-project         | Orchestrates language-first initialization and configuration             |
+| moai-workflow-project   | Unified project management (language init, config, templates, batch Q&A) |
+| moai-workflow-templates | Template management and generation                                       |
 
 ---
 
@@ -136,76 +136,68 @@ Analyze the command user provided:
 
 ### Step 2: Delegate to Project Manager Agent
 
-Use Task tool:
+Use the manager-project subagent to:
 
-- `subagent_type`: "manager-project"
-- `description`: "Route and analyze project setup request"
-- `prompt`:
+**Analyze project context and route to appropriate mode:**
 
-  ```
-  You are the manager-project agent.
+- **Detected Mode**: $MODE (INITIALIZATION/AUTO-DETECT/SETTINGS/UPDATE/GLM_CONFIGURATION)
+- **Language Context**: Read from .moai/config.json if exists
+- **GLM Token** (if GLM mode): $GLM_TOKEN
 
-  **Task**: Analyze project context and route to appropriate mode.
+**For INITIALIZATION**:
 
-  **Detected Mode**: $MODE (INITIALIZATION/AUTO-DETECT/SETTINGS/UPDATE/GLM_CONFIGURATION)
-  **Language Context**: Read from .moai/config.json if exists
-  **GLM Token** (if GLM mode): $GLM_TOKEN
+- Check .moai/config.json for language setting
+- If missing: Use moai-workflow-project skill for language detection
+- If present: Use existing language, skip language selection
+- Conduct language-aware user interview
+- Generate project documentation
+- Use moai-workflow-project skill for config creation
 
-  **For INITIALIZATION**:
-  - Check .moai/config.json for language setting
-  - If missing: Use LanguageInitializer from moai-workflow-project for language detection
-  - If present: Use existing language, skip language selection
-  - Conduct language-aware user interview
-  - Generate project documentation
-  - Use UnifiedConfigManager from moai-workflow-project for config creation
+**For AUTO-DETECT**:
 
-  **For AUTO-DETECT**:
-  - Read current language from .moai/config.json
-  - Check if project documentation exists (.moai/project/product.md, structure.md, tech.md)
-  - If docs missing → PARTIAL INITIALIZATION state detected
-    - Use AskUserQuestion to ask user: "Your configuration exists but project documentation is missing. Would you like to complete the initialization now?"
-    - Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
-    - If user selects "Yes" → Switch to INITIALIZATION workflow
-    - Otherwise → Continue with regular AUTO-DETECT options
-  - Display current configuration (including language)
-  - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
-  - If "Change Language Only" → Go to Tab 1 in SETTINGS mode
-  - Otherwise route to selected sub-action
+- Read current language from .moai/config.json
+- Check if project documentation exists (.moai/project/product.md, structure.md, tech.md)
+- If docs missing → PARTIAL INITIALIZATION state detected
+  - Use AskUserQuestion to ask user: "Your configuration exists but project documentation is missing. Would you like to complete the initialization now?"
+  - Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+  - If user selects "Yes" → Switch to INITIALIZATION workflow
+  - Otherwise → Continue with regular AUTO-DETECT options
+- Display current configuration (including language)
+- Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
+- If "Change Language Only" → Go to Tab 1 in SETTINGS mode
+- Otherwise route to selected sub-action
 
-  **For SETTINGS**:
-  - Load current language from .moai/config.json
-  - Load tab schema from .claude/skills/moai-workflow-project/schemas/tab_schema.json
-  - Execute batch questions via BatchQuestionsManager from moai-workflow-project
-  - Process responses and update config.json atomically via UnifiedConfigManager from moai-workflow-project
-  - Report changes and validation results
+**For SETTINGS**:
 
-  **For UPDATE**:
-  - Read language from config backup (preserve existing setting)
-  - Use TemplateOptimizer from moai-workflow-project for smart merging
-  - Update templates and configuration
-  - Auto-translate announcements to current language if needed
+- Load current language from .moai/config.json
+- Load tab schema from appropriate skill schema
+- Execute batch questions via moai-workflow-project skill
+- Process responses and update config.json atomically via moai-workflow-project skill
+- Report changes and validation results
 
-  **For GLM_CONFIGURATION**:
-  - Receive GLM API token from parameter (or detect from environment)
-  - Check token resolution sequence:
-    1. Use provided token from `--glm-on <token>` argument (if not empty)
-    2. Auto-load from existing `.env.glm` file (if exists and token missing)
-    3. Auto-load from `ANTHROPIC_AUTH_TOKEN` environment variable (if set)
-    4. Request from user via AskUserQuestion (if all above missing)
-  - Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <GLM_TOKEN>`
-  - Verify configuration in .claude/settings.local.json:
-    * ANTHROPIC_AUTH_TOKEN: <api_token> (stored in "env" section)
-    * ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
-    * ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air
-    * ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6
-    * ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6
-  - Verify .env.glm created with secure permissions (0o600)
-  - Verify .gitignore includes .env.glm entry
-  - Report GLM configuration success to user with all configured keys
-  - Remind user: "Restart Claude Code to automatically load the new settings"
+**For UPDATE**:
 
-  **Output**: Mode-specific completion report with next steps
-  ```
+- Read language from config backup (preserve existing setting)
+- Use moai-workflow-project skill for smart merging
+- Update templates and configuration
+- Auto-translate announcements to current language if needed
+
+**For GLM_CONFIGURATION**:
+
+- Receive GLM API token from parameter (or detect from environment)
+- Check token resolution sequence:
+  1. Use provided token from `--glm-on <token>` argument (if not empty)
+  2. Auto-load from existing `.env.glm` file (if exists and token missing)
+  3. Auto-load from `ANTHROPIC_AUTH_TOKEN` environment variable (if set)
+  4. Request from user via AskUserQuestion (if all above missing)
+- Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <GLM_TOKEN>`
+- Verify configuration in .claude/settings.local.json with proper keys
+- Verify .env.glm created with secure permissions (0o600)
+- Verify .gitignore includes .env.glm entry
+- Report GLM configuration success to user with all configured keys
+- Remind user: "Restart Claude Code to automatically load the new settings"
+
+**Output**: Mode-specific completion report with next steps
 
 **Store**: Response in `$MODE_EXECUTION_RESULT`
 
@@ -801,11 +793,11 @@ Use AskUserQuestion in user's language:
 
 **Associated Skills**:
 
-- `moai-workflow-project` - Unified project management skill providing:
-  - LanguageInitializer - Language selection/change
-  - UnifiedConfigManager - Config operations (atomic updates, backup/rollback)
-  - TemplateOptimizer - Template merging
-  - BatchQuestionsManager - Tab-based batch questions
+- moai-workflow-project - Unified project management skill providing:
+  - Language selection/change
+  - Config operations (atomic updates, backup/rollback)
+  - Template merging
+  - Tab-based batch questions
 
 **Project Documentation Directory**:
 
@@ -816,7 +808,7 @@ Use AskUserQuestion in user's language:
 **Version**: 2.0.0 (Tab-based Configuration with Conditional Batches & Fixed Field Alignment)
 **Last Updated**: 2025-11-19
 **Architecture**: Commands → Agents → Skills (Complete delegation, no direct backup in command)
-**Tab Schema**: `.claude/skills/moai-workflow-project/schemas/tab_schema.json` (v2.0.0)
+**Tab Schema**: Available in moai-workflow-project skill (v2.0.0)
 **Improvements in v2.0.0**:
 
 - Removed `[tab_ID]` argument → Always use interactive tab selection
@@ -867,5 +859,5 @@ AskUserQuestion({
 **You must NOW execute the command following the "Execution Philosophy" described above.**
 
 1. Analyze the subcommand/context.
-2. Call the `Task` tool with `subagent_type="manager-project"` immediately.
+2. Use the manager-project subagent to handle project setup.
 3. Do NOT just describe what you will do. DO IT.

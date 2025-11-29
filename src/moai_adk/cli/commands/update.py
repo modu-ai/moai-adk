@@ -59,6 +59,11 @@ from moai_adk.core.migration import VersionMigrator
 from moai_adk.core.migration.alfred_to_moai_migrator import AlfredToMoaiMigrator
 from moai_adk.core.template.processor import TemplateProcessor
 
+# Import new custom element restoration modules
+from moai_adk.core.migration.custom_element_scanner import create_custom_element_scanner
+from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
+from moai_adk.core.migration.selective_restorer import create_selective_restorer
+
 console = Console()
 logger = logging.getLogger(__name__)
 
@@ -1324,23 +1329,8 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
         except Exception as e:
             console.print(f"[yellow]⚠️  Announcement module not available: {e}[/yellow]")
 
-        # NEW: Interactive skill restore if custom skills found
-        if custom_skills and backup_path:
-            skills_to_restore = _prompt_skill_restore(custom_skills, yes)
-            if skills_to_restore:
-                _restore_selected_skills(skills_to_restore, backup_path, project_path)
-
-        # NEW: Interactive custom files restore if custom files found
-        if (custom_commands or custom_agents or custom_hooks) and backup_path:
-            files_to_restore = _prompt_custom_files_restore(custom_commands, custom_agents, custom_hooks, yes)
-            if any([files_to_restore.get("commands"), files_to_restore.get("agents"), files_to_restore.get("hooks")]):
-                _restore_custom_files(
-                    project_path=project_path,
-                    backup_path=backup_path,
-                    selected_commands=files_to_restore.get("commands", []),
-                    selected_agents=files_to_restore.get("agents", []),
-                    selected_hooks=files_to_restore.get("hooks", []),
-                )
+        # NEW: Interactive custom element restore using new system
+        _handle_custom_element_restoration(project_path, backup_path, yes)
 
         # NEW: Show post-update guidance
         if backup_path:
@@ -2117,3 +2107,79 @@ def update(
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")
         raise click.ClickException(str(e)) from e
+
+
+def _handle_custom_element_restoration(project_path: Path, backup_path: Path | None, yes: bool = False) -> None:
+    """Handle custom element restoration using the new system.
+
+    This function provides a unified interface for restoring user-created custom elements
+    (agents, commands, skills, hooks) from backup during MoAI-ADK updates.
+
+    Args:
+        project_path: Path to the MoAI-ADK project directory
+        backup_path: Path to the backup directory (None if no backup)
+        yes: Whether to automatically accept defaults (non-interactive mode)
+    """
+    if not backup_path:
+        # No backup available, cannot restore
+        return
+
+    try:
+        # Create scanner to find custom elements
+        scanner = create_custom_element_scanner(project_path)
+
+        # Get count of custom elements
+        custom_element_count = scanner.get_element_count()
+
+        if custom_element_count == 0:
+            # No custom elements found
+            console.print("[green]✓ No custom elements to restore[/green]")
+            return
+
+        # Create user selection UI
+        ui = create_user_selection_ui(project_path)
+
+        # If yes mode is enabled, restore all elements automatically
+        if yes:
+            console.print(f"[cyan]🔄 Auto-restoring {custom_element_count} custom elements...[/cyan]")
+            custom_elements = scanner.scan_custom_elements()
+            selected_elements = []
+
+            # Collect all element paths
+            for element_type, elements in custom_elements.items():
+                if element_type == "skills":
+                    for skill in elements:
+                        selected_elements.append(str(skill.path))
+                else:
+                    for element_path in elements:
+                        selected_elements.append(str(element_path))
+        else:
+            # Interactive mode - prompt user for selection
+            selected_elements = ui.prompt_user_selection(backup_available=True)
+
+            if not selected_elements:
+                console.print("[yellow]⚠ No elements selected for restoration[/yellow]")
+                return
+
+            # Confirm selection
+            if not ui.confirm_selection(selected_elements):
+                console.print("[yellow]⚠ Restoration cancelled by user[/yellow]")
+                return
+
+        # Perform restoration
+        if selected_elements:
+            restorer = create_selective_restorer(project_path, backup_path)
+            success, stats = restorer.restore_elements(selected_elements)
+
+            if success:
+                console.print(f"[green]✅ Successfully restored {stats['success']} custom elements[/green]")
+            else:
+                console.print(f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]")
+                if stats['failed'] > 0:
+                    console.print(f"[red]❌ Failed to restore {stats['failed']} elements[/red]")
+
+    except Exception as e:
+        console.print(f"[yellow]⚠️ Custom element restoration failed: {e}[/yellow]")
+        logger.warning(f"Custom element restoration error: {e}")
+        # Don't fail the entire update process, just log the error
+        pass

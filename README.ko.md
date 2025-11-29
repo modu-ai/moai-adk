@@ -116,7 +116,7 @@ uv tool install moai-adk
 moai-adk --version
 ```
 
-#### Step 3: 프로젝트 초기화 (3분)
+#### Step 3A: 새 프로젝트 초기화 (3분)
 
 ```bash
 # 새 프로젝트 생성
@@ -140,17 +140,74 @@ my-project/
 └── pyproject.toml
 ```
 
-#### Step 4: Claude Code 실행 (4분)
+---
+
+#### Step 3B: 기존 프로젝트 설정 (5분)
+
+**기존 프로젝트에 3단계로 MoAI-ADK를 통합하세요:**
 
 ```bash
-# Claude Code 실행
+# 기존 프로젝트로 이동
+cd your-existing-project
+
+# 현재 디렉토리에 MoAI-ADK 초기화
+moai-adk init .
+
+# MoAI-ADK 통합 확인
+ls -la .claude/ .moai/
+```
+
+**프로젝트에 추가되는 파일:**
+
+```
+your-existing-project/
+├── .claude/              # Claude Code 설정 (추가됨)
+│   ├── agents/           # MoAI-ADK 에이전트
+│   ├── commands/         # 커스텀 명령어
+│   ├── hooks/             # 자동화 워크플로우
+│   └── settings.json     # 프로젝트 설정
+├── .moai/                # MoAI-ADK 설정 (추가됨)
+│   ├── config/           # 프로젝트 설정
+│   ├── memory/           # 세션 메모리
+│   ├── specs/            # SPEC 문서
+│   └── docs/             # 자동 생성 문서
+├── src/                  # 기존 소스 코드 (변경 없음)
+├── tests/                # 기존 테스트 (변경 없음)
+└── README.md             # 기존 README (변경 없음)
+```
+
+**중요:** 기존 파일은 전혀 수정되지 않습니다. MoAI-ADK는 설정 파일만 추가합니다.
+
+---
+
+#### Step 4: Claude Code 실행 및 프로젝트 메타데이터 초기화
+
+```bash
+# 프로젝트 디렉토리에서 Claude Code 실행
 claude
 
-# Claude Code 내에서
+# Claude Code 내에서 프로젝트 메타데이터 초기화
 > /moai:0-project
 ```
 
-프로젝트 메타데이터가 자동으로 생성됩니다.
+**`/moai:0-project`가 하는 일:**
+- ✅ 프로젝트 구조 분석
+- ✅ 프로그래밍 언어 및 프레임워크 감지
+- ✅ `.moai/config/config.json`에 프로젝트 메타데이터 생성
+- ✅ 기본 Git 워크플로우 설정
+- ✅ 세션 메모리 시스템 생성
+- ✅ 품질 보증 기준 설정
+
+**기대 결과:**
+```
+✓ 프로젝트 분석 완료: Python 프로젝트 감지됨
+✓ 메타데이터 생성 완료: .moai/config/config.json
+✓ Git 전략: Manual 모드 설정 완료
+✓ 품질 게이트: 85% 테스트 커버리지 목표
+✓ 프로젝트 초기화 완료
+```
+
+이제 SPEC-First TDD 개발을 위한 프로젝트 메타데이터와 환경이 준비되었습니다!
 
 ---
 
@@ -625,6 +682,185 @@ flowchart LR
 
 ---
 
+### 🌳 **moai-worktree** - 병렬 SPEC 개발을 위한 Git 워크트리 관리
+
+#### moai-worktree가 필요한 이유: 해결하는 문제
+
+현대 소프트웨어 개발, 특히 SPEC-First TDD 방법론을 따를 때 개발자들은 동시에 여러 기능을 작업하는 문제에 자주 직면합니다. 전통적인 Git 워크플로우는 개발자에게 다음을 강요합니다:
+
+- **컨텍스트 스위칭 지옥**: 동일 워크스페이스에서 계속 브랜치를 전환하여 컨텍스트를 잃고 미완성 작업의 위험을 감수
+- **순차적 개발**: 한 번에 하나의 SPEC만 작업하여 생산성 저하
+- **환경 충돌**: 다른 SPEC는 다른 종속성, 데이터베이스 상태 또는 구성이 필요할 수 있음
+
+**moai-worktree는 이 문제들을 해결**하여 각 SPEC에 대해 격리된 워크스페이스를 제공하며, 컨텍스트 스위칭 오버헤드 없이 진정한 병렬 개발을 가능하게 합니다.
+
+#### 핵심 개념: SPEC 기반 병렬 개발
+
+**Git 워크트리란?**
+
+Git 워크트리는 동일한 Git 저장소에 연결된 별도의 작업 디렉토리로, 다른 브랜치를 동시에 다른 작업 디렉토리로 체크아웃할 수 있게 합니다. 각 워크트리는 다음을 가집니다:
+- 독립적인 파일 시스템
+- 별도의 작업 디렉토리 상태
+- 격리된 빌드 아티팩트 및 종속성
+- 자체 스테이징 영역 및 스테이징되지 않은 변경사항
+
+**moai-worktree 아키텍처:**
+
+```
+메인 저장소/
+├── .git/                    # 공유 Git 저장소
+├── src/                     # 메인 브랜치 파일
+└── worktrees/               # 자동 생성 워크트리
+    ├── SPEC-001/
+    │   ├── .git             # 워크트리별 git 파일
+    │   ├── src/             # SPEC-001 구현
+    │   └── tests/           # SPEC-001 테스트
+    ├── SPEC-002/
+    │   ├── .git             # 워크트리별 git 파일
+    │   ├── src/             # SPEC-002 구현
+    │   └── tests/           # SPEC-002 테스트
+    └── SPEC-003/
+        ├── .git             # 워크트리별 git 파일
+        ├── src/             # SPEC-003 구현
+        └── tests/           # SPEC-003 테스트
+```
+
+#### SPEC-First 개발을 위한 핵심 이점
+
+**1. 제로 컨텍스트 스위칭**
+- 각 SPEC는 자체 전용 워크스페이스를 가짐
+- SPEC 간에 전환할 때 작업 컨텍스트를 절대 잃지 않음
+- 특정 요구사항에 대한 정신적 집중 유지
+
+**2. 진정한 병렬 개발**
+- SPEC-002 테스트가 실행되는 동안 SPEC-001 구현 작업
+- SPEC-004 문서 동기화되는 동안 SPEC-003 디버깅
+- 다른 프로세스가 완료될 때까지 기다릴 필요 없음
+
+**3. 격리된 환경**
+- 다른 SPEC는 다른 종속성 버전을 사용할 수 있음
+- 분리된 데이터베이스 상태 및 구성
+- SPEC 간 오염 없음
+
+**4. SPEC 완료 추적**
+- 활성 SPEC 목록에 대한 명확한 시각적 표시
+- 중단되거나 미완성된 SPEC 쉽게 식별
+- 완료된 작업의 체계적 정리
+
+#### 고급 기능
+
+**스마트 동기화**
+```bash
+# 모든 워크트리를 최신 메인 브랜치와 동기화
+moai-worktree sync --all
+
+# 충돌 해결로 특정 워크트리 동기화
+moai-worktree sync SPEC-001 --auto-resolve
+```
+
+**지능형 정리**
+```bash
+# 병합된 브랜치 워크트리 자동 제거
+moai-worktree clean --merged-only
+
+# 확인 프롬프트가 포함된 안전 정리
+moai-worktree clean --interactive
+```
+
+**성능 최적화**
+- **동시 작업**: 여러 워크트리를 동시에 수정할 수 있음
+- **공유 기록**: 모든 워크트리는 동일한 Git 객체 데이터베이스 공유
+- **선택적 동기화**: 필요할 때만 변경 사항을 동기화, 전체 저장소는 안 함
+
+#### moai-worktree 사용 시기
+
+**이상적인 시나리오:**
+- **다중 활성 SPEC**: 3개 이상의 SPEC를 동시에 작업
+- **장기 실행 작업**: SPEC 구현에 수일 또는 수주가 소요
+- **팀 협업**: 다른 개발자가 다른 SPEC 작업
+- **기능 브랜칭**: 각 SPEC가 자체 기능 브랜치가 됨
+- **환경 격리**: 다른 SPEC가 다른 구성이 필요
+
+**실제 예시 워크플로우:**
+
+```bash
+# 아침: 새 SPEC 시작
+moai-worktree new SPEC-005 "사용자 프로필 향상"
+cd $(moai-worktree go SPEC-005)
+
+# 다른 SPEC들이 완료되는 동안 SPEC-005 구현
+/moai:2-run SPEC-005
+
+# 오후: 모든 SPEC 상태 확인
+moai-worktree status
+# 출력:
+# ✓ SPEC-001: 완료 (병합 준비)
+# ✓ SPEC-002: 테스트 진행 중
+# ⏳ SPEC-003: 구현 단계
+# 🔄 SPEC-005: 활성 개발
+
+# 저녁: 완료된 SPEC 정리
+moai-worktree clean --merged-only
+```
+
+#### 기술적 이점
+
+**메모리 효율성**: 공유 Git 객체 데이터베이스는 여러 전체 저장소와 비교하여 최소한의 메모리 오버헤드를 의미
+
+**디스크 공간 최적화**: 워크트리는 저장소 기록을 공유하며, 작업 파일에만 추가적인 공간을 사용
+
+**원자적 작업**: 각 워크트리 작업은 원자적이며, 저장소 손상을 방지
+
+**Git 네이티브**: 표준 Git 워크트리 기능을 사용하며 모든 Git 도구와 호환성 보장
+
+#### MoAI-ADK 워크플로우와 통합
+
+moai-worktree는 MoAI-ADK Plan-Run-Sync 사이클과 원활하게 통합됩니다:
+
+1. **Plan 단계**: `moai-worktree new SPEC-XXX`가 전용 워크스페이스 생성
+2. **Run 단계**: 다른 SPEC에 영향을 주지 않고 격리된 환경에서 작업
+3. **Sync 단계**: `moai-worktree sync SPEC-XXX`가 깨끗한 통합 보장
+4. **Cleanup 단계**: `moai-worktree clean`이 완료된 워크트리 제거
+
+이 통합은 SPEC-First TDD 방법론 원칙을 유지하면서 동시에 여러 SPEC를 관리하기 위한 완전하고 체계적인 접근 방식을 제공합니다.
+
+**명령어 개요:**
+
+```bash
+# 사용 가능한 명령어 목록
+moai-worktree --help
+
+# SPEC 개발을 위한 새 워크트리 생성
+moai-worktree new SPEC-001
+
+# 모든 활성 워크트리 목록
+moai-worktree list
+
+# 특정 워크트리로 이동
+moai-worktree go SPEC-001
+
+# 워크트리로 전환 (새 셸 열기)
+moai-worktree switch SPEC-001
+
+# 워크트리를 기본 브랜치와 동기화
+moai-worktree sync SPEC-001
+
+# 특정 워크트리 제거
+moai-worktree remove SPEC-001
+
+# 병합된 브랜치 워크트리 정리
+moai-worktree clean
+
+# 워크트리 상태 및 구성 표시
+moai-worktree status
+
+# 워크트리 설정
+moai-worktree config get
+moai-worktree config set <key> <value>
+```
+
+---
+
 ### 📊 기타 유용한 커맨드
 
 | 명령어             | 목적                | 사용 시기          |
@@ -727,6 +963,183 @@ alias wt-status='moai-wt status'
 | 동시 워크트리 | 3-4개     | 최적 성능 (5개까지 가능)   |
 | 디스크 공간   | 500MB/개  | 각 워크트리당 필요 용량    |
 | 메모리       | 200MB/개  | 병렬 작업 시 활성화 메모리 |
+
+### 🌳 **moai-worktree** - 병렬 SPEC 개발을 위한 Git Worktree 관리
+
+#### 왜 moai-worktree인가? 해결하는 문제
+
+현대 소프트웨어 개발, 특히 SPEC-First TDD 방법론을 따를 때 개발자들은 여러 기능을 동시에 작업해야 하는 도전에 직면합니다. 전통적인 Git 워크플로우는 개발자를 강제로 다음 중 하나를 선택하게 만듭니다:
+
+- **컨텍스트 스위칭 지옥**: 동일한 작업공간에서 계속 브랜치를 전환하며 컨텍스트를 잃고 미완성 작업의 위험 감수
+- **순차적 개발**: 한 번에 하나의 SPEC만 작업하여 생산성 저하
+- **환경 충돌**: 다른 SPEC들은 다른 의존성, 데이터베이스 상태, 설정을 필요로 함
+
+**moai-worktree는 이 문제들을 해결**합니다. 각 SPEC에 대해 분리된 작업공간을 제공하여 컨텍스트 스위칭 오버헤드 없이 진정한 병렬 개발을 가능하게 합니다.
+
+#### 핵심 개념: SPEC 기반 병렬 개발
+
+**Git Worktree란?**
+
+Git worktree는 동일한 Git 리포지토리에 연결된 별도의 작업 디렉토리로, 여러 작업 디렉토리에 다른 브랜치들을 동시에 체크아웃할 수 있게 합니다. 각 worktree는 다음을 가집니다:
+- 독립적인 파일 시스템
+- 분리된 작업 디렉토리 상태
+- 분리된 빌드 아티팩트 및 의존성
+- 자체 스테이징 영역 및 unstaged 변경사항
+
+**moai-worktree 아키텍처:**
+
+```
+메인 리포지토리/
+├── .git/                    # 공유 Git 리포지토리
+├── src/                     # 메인 브랜치 파일
+└── worktrees/               # 자동 생성된 worktree들
+    ├── SPEC-001/
+    │   ├── .git             # Worktree별 git 파일
+    │   ├── src/             # SPEC-001 구현
+    │   └── tests/           # SPEC-001 테스트
+    ├── SPEC-002/
+    │   ├── .git             # Worktree별 git 파일
+    │   ├── src/             # SPEC-002 구현
+    │   └── tests/           # SPEC-002 테스트
+    └── SPEC-003/
+        ├── .git             # Worktree별 git 파일
+        ├── src/             # SPEC-003 구현
+        └── tests/           # SPEC-003 테스트
+```
+
+#### SPEC-First 개발을 위한 핵심 이점
+
+**1. 제로 컨텍스트 스위칭**
+- 각 SPEC은 전용 작업공간을 가짐
+- SPEC 간 전환 시 작업 컨텍스트를 절대 잃지 않음
+- 특정 요구사항에 대한 정신적 집중 유지
+
+**2. 진정한 병렬 개발**
+- SPEC-002 테스트 실행 중 SPEC-001 구현 작업
+- SPEC-004 문서 동기화 중 SPEC-003 디버깅
+- 다른 프로세스 완료를 기다릴 필요 없음
+
+**3. 분리된 환경**
+- 다른 SPEC들은 다른 의존성 버전 사용 가능
+- 분리된 데이터베이스 상태 및 설정
+- SPEC 간 오염 없음
+
+**4. SPEC 완료 추적**
+- 활성 SPEC들을 명확하게 시각적으로 표시
+- 중단되거나 미완성된 SPEC 쉽게 식별
+- 완료된 작업의 체계적 정리
+
+#### 고급 기능
+
+**스마트 동기화**
+```bash
+# 모든 worktree를 최신 메인 브랜치와 동기화
+moai-worktree sync --all
+
+# 충돌 해결로 특정 worktree 동기화
+moai-worktree sync SPEC-001 --auto-resolve
+```
+
+**지능형 정리**
+```bash
+# 병합된 브랜치의 worktree 자동 제거
+moai-worktree clean --merged-only
+
+# 확인 프롬프트와 안전한 정리
+moai-worktree clean --interactive
+```
+
+**성능 최적화**
+- **동시 작업**: 여러 worktree 동시에 수정 가능
+- **공유 히스토리**: 모든 worktree가 동일한 Git 객체 데이터베이스 공유
+- **선택적 동기화**: 전체 리포지토리가 아닌 필요한 변경사항만 동기화
+
+#### moai-worktree 사용 시기
+
+**이상적인 시나리오:**
+- **여러 활성 SPEC**: 3개 이상의 SPEC을 동시에 작업
+- **장기 실행 작업**: SPEC 구현에 수일 또는 수주 소요
+- **팀 협업**: 여러 개발자가 다른 SPEC 작업
+- **기능 브랜칭**: 각 SPEC이 자체 기능 브랜치가 됨
+- **환경 분리**: 다른 SPEC들이 다른 설정 필요
+
+**실제 예제 워크플로우:**
+
+```bash
+# 오전: 새 SPEC 시작
+moai-worktree new SPEC-005 "사용자 프로필 개선"
+cd $(moai-worktree go SPEC-005)
+
+# 다른 SPEC들이 완료되는 동안 SPEC-005 구현
+/moai:2-run SPEC-005
+
+# 오후: 모든 SPEC 상태 확인
+moai-worktree status
+# 출력:
+# ✓ SPEC-001: 완료 (머지 준비)
+# ✓ SPEC-002: 테스트 진행 중
+# ⏳ SPEC-003: 구현 단계
+# 🔄 SPEC-005: 활성 개발
+
+# 저녁: 완료된 SPEC 정리
+moai-worktree clean --merged-only
+```
+
+#### 기술적 이점
+
+**메모리 효율성**: 여러 전체 리포지토리와 비교하여 최소 메모리 오버헤드로 공유 Git 객체 데이터베이스 사용
+
+**디스크 공간 최적화**: Worktree들이 리포지토리 히스토리를 공유하여 작업 파일을 위한 추가 공간만 사용
+
+**원자적 작업**: 각 worktree 작업은 원자적이어서 리포지토리 손상 방지
+
+**Git 네이티브**: 표준 Git worktree 기능 사용으로 모든 Git 도구와 호환성 보장
+
+#### MoAI-ADK 워크플로우와의 통합
+
+moai-worktree는 MoAI-ADK Plan-Run-Sync 주기와 완벽하게 통합됩니다:
+
+1. **Plan 단계**: `moai-worktree new SPEC-XXX`가 전용 작업공간 생성
+2. **Run 단계**: 다른 SPEC에 영향 주지 않고 분리된 환경에서 작업
+3. **Sync 단계**: `moai-worktree sync SPEC-XXX`가 깨끗한 통합 보장
+4. **Cleanup 단계**: `moai-worktree clean`이 완료된 worktree 제거
+
+이 통합은 SPEC-First TDD 방법론 원칙을 유지하면서 여러 SPEC을 동시에 관리하기 위한 완전하고 체계적인 접근 방식을 제공합니다.
+
+**명령어 개요:**
+
+```bash
+# 사용 가능한 명령어 목록
+moai-worktree --help
+
+# SPEC 개발을 위한 새 worktree 생성
+moai-worktree new SPEC-001
+
+# 모든 활성 worktree 목록
+moai-worktree list
+
+# 특정 worktree로 이동
+moai-worktree go SPEC-001
+
+# worktree로 전환 (새 셸 열기)
+moai-worktree switch SPEC-001
+
+# worktree를 베이스 브랜치와 동기화
+moai-worktree sync SPEC-001
+
+# 특정 worktree 제거
+moai-worktree remove SPEC-001
+
+# 병합된 브랜치 worktree 정리
+moai-worktree clean
+
+# worktree 상태 및 설정 표시
+moai-worktree status
+
+# worktree 설정 구성
+moai-worktree config get
+moai-worktree config set <key> <value>
+```
 
 ---
 

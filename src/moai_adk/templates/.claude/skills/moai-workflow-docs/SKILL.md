@@ -12,13 +12,6 @@ tags:
   - development
 updated: 2025-11-27
 status: active
-deprecated_names:
-  moai-workflow-docs:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-workflow-docs instead"
----
-
 ## Quick Reference (30 seconds)
 
 **Purpose**: Comprehensive documentation validation framework with 5 specialized phases.

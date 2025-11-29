@@ -1,10 +1,10 @@
 ---
 name: manager-quality
 description: Use when code quality verification is required. Called in /moai:2-run Phase 2.5, /moai:3-sync Phase 0.5.
-tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: bypassPermissions
-skills: moai-toolkit-essentials, moai-foundation-quality
+skills: moai-foundation-claude, moai-toolkit-essentials, moai-foundation-quality
 ---
 
 # Quality Gate - Quality Verification Gate

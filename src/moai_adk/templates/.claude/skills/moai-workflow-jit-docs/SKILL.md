@@ -6,21 +6,6 @@ modularized: false
 category: workflow
 aliases:
   - moai-workflow-jit-docs
-deprecated_names:
-  moai-workflow-jit-docs:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-workflow-jit-docs instead"
-tags:
-  - workflow
-  - docs
-  - enterprise
-  - enhanced
-  - development
-updated: 2025-11-27
-status: active
----
-
 ## Quick Reference (30 seconds)
 
 # Enhanced JIT Documentation Loader

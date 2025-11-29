@@ -124,9 +124,9 @@
     "notes": "suppress_setup_messages: false enables SessionStart output. Set to true to suppress messages (show again after 7 days)"
   },
   "hooks": {
-    "timeout_ms": 2000,
+    "timeout_ms": 15000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 15 seconds to prevent Aborted() errors from timeout conflicts."
   },
   "session_end": {
     "enabled": true,

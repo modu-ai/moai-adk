@@ -119,7 +119,7 @@ uv tool update moai-adk
 moai-adk --version
 ```
 
-#### Step 3: Initialize Project (3 minutes)
+#### Step 3A: Initialize New Project (3 minutes)
 
 ```bash
 # Create new project
@@ -143,17 +143,74 @@ my-project/
 └── pyproject.toml
 ```
 
-#### Step 4: Run Claude Code (4 minutes)
+---
+
+#### Step 3B: Setup Existing Project (5 minutes)
+
+**For existing projects, integrate MoAI-ADK in 3 simple steps:**
 
 ```bash
-# Run Claude Code
+# Navigate to your existing project
+cd your-existing-project
+
+# Initialize MoAI-ADK in current directory
+moai-adk init .
+
+# Verify MoAI-ADK integration
+ls -la .claude/ .moai/
+```
+
+**What gets added to your project:**
+
+```
+your-existing-project/
+├── .claude/              # Claude Code configuration (added)
+│   ├── agents/           # MoAI-ADK agents
+│   ├── commands/         # Custom commands
+│   ├── hooks/             # Automated workflows
+│   └── settings.json     # Project settings
+├── .moai/                # MoAI-ADK configuration (added)
+│   ├── config/           # Project configuration
+│   ├── memory/           # Session memory
+│   ├── specs/            # SPEC documents
+│   └── docs/             # Auto-generated docs
+├── src/                  # Your existing source code (unchanged)
+├── tests/                # Your existing tests (unchanged)
+└── README.md             # Your existing README (unchanged)
+```
+
+**Important:** Your existing files remain untouched. MoAI-ADK only adds configuration files.
+
+---
+
+#### Step 4: Run Claude Code & Initialize Project Metadata
+
+```bash
+# Run Claude Code in your project directory
 claude
 
-# Inside Claude Code
+# Inside Claude Code, initialize project metadata
 > /moai:0-project
 ```
 
-Project metadata is automatically generated.
+**What `/moai:0-project` does:**
+- ✅ Analyzes your project structure
+- ✅ Detects programming language and framework
+- ✅ Generates project metadata in `.moai/config/config.json`
+- ✅ Sets up default Git workflow configuration
+- ✅ Creates session memory system
+- ✅ Configures quality assurance standards
+
+**Expected output:**
+```
+✓ Project analyzed: Python project detected
+✓ Metadata generated: .moai/config/config.json
+✓ Git strategy: Manual mode configured
+✓ Quality gates: 85% test coverage target
+✓ Project initialized successfully
+```
+
+Project metadata and environment are now ready for SPEC-First TDD development!
 
 ---
 
@@ -635,6 +692,185 @@ flowchart LR
 | `/moai:0-git`       | Git workflow setup    | Project initialization|
 | `/moai:9-feedback`  | Submit improvement feedback | When issues found |
 | `/clear`            | Context initialization| Token savings after phase |
+
+---
+
+### 🌳 **moai-worktree** - Git Worktree Management for Parallel SPEC Development
+
+#### Why moai-worktree? The Problem It Solves
+
+In modern software development, especially when following SPEC-First TDD methodology, developers frequently face the challenge of working on multiple features simultaneously. Traditional Git workflow forces developers to either:
+
+- **Context Switch Hell**: Constantly switch branches in the same workspace, losing context and risking incomplete work
+- **Sequential Development**: Work on one SPEC at a time, reducing productivity
+- **Environment Conflicts**: Different SPECs may require different dependencies, database states, or configurations
+
+**moai-worktree solves these problems** by providing isolated workspaces for each SPEC, enabling true parallel development without context switching overhead.
+
+#### Core Concept: SPEC-Based Parallel Development
+
+**What is a Git Worktree?**
+
+A Git worktree is a separate working directory linked to the same Git repository, allowing you to check out different branches into different working directories simultaneously. Each worktree has its own:
+- Independent file system
+- Separate working directory state
+- Isolated build artifacts and dependencies
+- Own staging area and unstaged changes
+
+**moai-worktree Architecture:**
+
+```
+Main Repository/
+├── .git/                    # Shared Git repository
+├── src/                     # Main branch files
+└── worktrees/               # Auto-created worktrees
+    ├── SPEC-001/
+    │   ├── .git             # Worktree-specific git file
+    │   ├── src/             # SPEC-001 implementation
+    │   └── tests/           # SPEC-001 tests
+    ├── SPEC-002/
+    │   ├── .git             # Worktree-specific git file
+    │   ├── src/             # SPEC-002 implementation
+    │   └── tests/           # SPEC-002 tests
+    └── SPEC-003/
+        ├── .git             # Worktree-specific git file
+        ├── src/             # SPEC-003 implementation
+        └── tests/           # SPEC-003 tests
+```
+
+#### Key Benefits for SPEC-First Development
+
+**1. Zero Context Switching**
+- Each SPEC has its own dedicated workspace
+- Never lose work context when switching between SPECs
+- Maintain mental focus on specific requirements
+
+**2. True Parallel Development**
+- Work on SPEC-001 implementation while SPEC-002 tests run
+- Debug SPEC-003 while SPEC-004 documentation syncs
+- No waiting for other processes to complete
+
+**3. Isolated Environments**
+- Different SPECs can use different dependency versions
+- Separate database states and configurations
+- No cross-SPEC contamination
+
+**4. SPEC Completion Tracking**
+- Clear visual indication of which SPECs are active
+- Easy to identify abandoned or incomplete SPECs
+- Systematic cleanup of completed work
+
+#### Advanced Features
+
+**Smart Synchronization**
+```bash
+# Sync all worktrees with latest main branch
+moai-worktree sync --all
+
+# Sync specific worktree with conflict resolution
+moai-worktree sync SPEC-001 --auto-resolve
+```
+
+**Intelligent Cleanup**
+```bash
+# Auto-remove worktrees for merged branches
+moai-worktree clean --merged-only
+
+# Safe cleanup with confirmation prompts
+moai-worktree clean --interactive
+```
+
+**Performance Optimization**
+- **Concurrent Operations**: Multiple worktrees can be modified simultaneously
+- **Shared History**: All worktrees share the same Git object database
+- **Selective Sync**: Only sync changes when needed, not entire repositories
+
+#### When to Use moai-worktree
+
+**Ideal Scenarios:**
+- **Multiple Active SPECs**: Working on 3+ SPECs simultaneously
+- **Long-running Tasks**: SPEC implementation takes days or weeks
+- **Team Collaboration**: Multiple developers working on different SPECs
+- **Feature Branching**: Each SPEC becomes its own feature branch
+- **Environment Isolation**: Different SPECs require different configurations
+
+**Real-world Example Workflow:**
+
+```bash
+# Morning: Start new SPEC
+moai-worktree new SPEC-005 "User Profile Enhancement"
+cd $(moai-worktree go SPEC-005)
+
+# Implement SPEC-005 while other SPECs complete
+/moai:2-run SPEC-005
+
+# Afternoon: Check status of all SPECs
+moai-worktree status
+# Output:
+# ✓ SPEC-001: Complete (ready for merge)
+# ✓ SPEC-002: Testing in progress
+# ⏳ SPEC-003: Implementation phase
+# 🔄 SPEC-005: Active development
+
+# Evening: Clean up completed SPECs
+moai-worktree clean --merged-only
+```
+
+#### Technical Advantages
+
+**Memory Efficiency**: Shared Git object database means minimal memory overhead compared to multiple full repositories
+
+**Disk Space Optimization**: Worktrees share repository history, using only additional space for working files
+
+**Atomic Operations**: Each worktree operation is atomic, preventing repository corruption
+
+**Git Native**: Uses standard Git worktree functionality, ensuring compatibility with all Git tools
+
+#### Integration with MoAI-ADK Workflow
+
+moai-worktree seamlessly integrates with the MoAI-ADK Plan-Run-Sync cycle:
+
+1. **Plan Phase**: `moai-worktree new SPEC-XXX` creates dedicated workspace
+2. **Run Phase**: Work in isolation without affecting other SPECs
+3. **Sync Phase**: `moai-worktree sync SPEC-XXX` ensures clean integration
+4. **Cleanup Phase**: `moai-worktree clean` removes completed worktrees
+
+This integration provides a complete, systematic approach to managing multiple SPECs simultaneously while maintaining the SPEC-First TDD methodology principles.
+
+**Commands Overview:**
+
+```bash
+# List available commands
+moai-worktree --help
+
+# Create new worktree for SPEC development
+moai-worktree new SPEC-001
+
+# List all active worktrees
+moai-worktree list
+
+# Navigate to specific worktree
+moai-worktree go SPEC-001
+
+# Switch to worktree (opens new shell)
+moai-worktree switch SPEC-001
+
+# Sync worktree with base branch
+moai-worktree sync SPEC-001
+
+# Remove specific worktree
+moai-worktree remove SPEC-001
+
+# Clean up merged branch worktrees
+moai-worktree clean
+
+# Show worktree status and configuration
+moai-worktree status
+
+# Configure worktree settings
+moai-worktree config get
+moai-worktree config set <key> <value>
+```
 
 ---
 

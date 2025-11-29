@@ -6,23 +6,6 @@ version: 3.0.0
 modularized: false
 category: foundation
 replaces: moai-core-context-budget, moai-core-session-state
-deprecated_names:
-  moai-foundation-context:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-foundation-context instead"
-tags:
-  - foundation
-  - enterprise
-  - framework
-  - context
-  - session
-  - budget
-  - architecture
-updated: 2025-11-27
-status: active
----
-
 ## Quick Reference (30 seconds)
 
 # Enterprise Context & Session Management
@@ -96,7 +79,7 @@ Tier 4: Reference documentation (on-demand)
 # Preserve MCP agent context across /clear
 agent_id = mcp_agent.get_id()
 # After /clear:
-resume_mcp_agent(agent_id)  # Restores full context
+# Context restored through fresh MCP agent initialization
 ```
 
 ## 5 Core Patterns (5-10 minutes each)

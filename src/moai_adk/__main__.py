@@ -153,41 +153,6 @@ def update(ctx: click.Context, **kwargs) -> None:
     ctx.invoke(_update, **kwargs)
 
 
-# worktree command (Git worktree management for parallel SPEC development)
-@cli.group(name="worktree")
-def worktree_group() -> None:
-    """Manage Git worktrees for parallel SPEC development"""
-    pass
-
-
-# Register worktree subcommands
-def _register_worktree_commands() -> None:
-    """Register all worktree subcommands."""
-    from moai_adk.cli.worktree.cli import (
-        new_worktree,
-        list_worktrees,
-        switch_worktree,
-        remove_worktree,
-        status_worktrees,
-        go_worktree,
-        sync_worktree,
-        clean_worktrees,
-        config_worktree,
-    )
-
-    worktree_group.add_command(new_worktree, name="new")
-    worktree_group.add_command(list_worktrees, name="list")
-    worktree_group.add_command(switch_worktree, name="switch")
-    worktree_group.add_command(remove_worktree, name="remove")
-    worktree_group.add_command(status_worktrees, name="status")
-    worktree_group.add_command(go_worktree, name="go")
-    worktree_group.add_command(sync_worktree, name="sync")
-    worktree_group.add_command(clean_worktrees, name="clean")
-    worktree_group.add_command(config_worktree, name="config")
-
-
-_register_worktree_commands()
-cli.add_command(worktree_group)
 
 
 # statusline command (for Claude Code statusline rendering)

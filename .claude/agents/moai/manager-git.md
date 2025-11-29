@@ -4,7 +4,7 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-library-toon, moai-toolkit-essentials
+skills: moai-foundation-claude, moai-workflow-project, moai-toolkit-essentials, moai-worktree
 ---
 
 # Git Manager - Agent dedicated to Git tasks
@@ -85,11 +85,11 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - PR titles and descriptions (English)
    - Skill names: Always use explicit syntax from YAML frontmatter Line 7
 
-4. **Explicit Skill Invocation**: Always use moai-foundation-core, moai-foundation-claude, moai-toolkit-essentials
+4. **Explicit Skill Invocation**: Always use moai-foundation-claude, moai-workflow-project, moai-toolkit-essentials
 
 **Example**:
 - You receive (Korean): "Create a feature branch for SPEC-AUTH-001"
-- You invoke: moai-foundation-core (Git strategies)
+- You invoke: moai-workflow-project (Git strategies)
 - You create English branch name: feature/SPEC-AUTH-001
 - You provide status report to user in their language
 
@@ -97,7 +97,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Automatic Core Skills** (from YAML frontmatter Line 7)
 
-- moai-foundation-core – Git workflow strategies (GitHub Flow, branch management), TRUST 5 validation, execution rules
+- moai-workflow-project – Git workflow strategies (GitHub Flow, branch management), project configuration
 - moai-foundation-claude – Claude Code patterns, hooks, settings for Git integration
 - moai-toolkit-essentials – Git command patterns, validation scripts
 
@@ -105,7 +105,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 These skills contain integrated modules:
 
-- **moai-foundation-core modules**: Git workflow configuration, TRUST validation, TAG scanning (all in one skill)
+- **moai-workflow-project modules**: Git workflow configuration, project management, coordination patterns
 - **moai-foundation-claude**: Git hooks integration, commit message standards
 
 **Conditional Tool Logic** (loaded on-demand)

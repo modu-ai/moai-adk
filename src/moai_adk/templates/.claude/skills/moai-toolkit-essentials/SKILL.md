@@ -19,13 +19,6 @@ tags:
 updated: 2025-11-27
 status: active
 author: MoAI-ADK Team
-deprecated_names:
-  moai-toolkit-essentials:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-toolkit-essentials instead"
----
-
 ---
 
 ## Quick Reference (30 seconds)

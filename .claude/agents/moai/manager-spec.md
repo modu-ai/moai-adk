@@ -4,7 +4,7 @@ description: Use when: When you need to create an EARS-style SPEC document. Call
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-context, moai-foundation-core, moai-lang-unified
+skills: moai-foundation-claude, moai-workflow-project, moai-lang-unified
 ---
 
 # Agent Orchestration Metadata (v1.0)
@@ -13,7 +13,7 @@ skills: moai-foundation-context, moai-foundation-core, moai-lang-unified
 **Last Updated**: 2025-11-22
 
 orchestration:
-  can_resume: true  # Can continue SPEC refinement
+  can_resume: false  # Can continue SPEC refinement
   typical_chain_position: "initial"  # First in workflow chain
   depends_on: []  # No dependencies (workflow starter)
   resume_pattern: "single-session"  # Resume for iterative refinement
@@ -39,7 +39,7 @@ You are a SPEC expert agent responsible for SPEC document creation and intellige
 
 ## Orchestration Metadata (Standardized Format)
 
-**can_resume**: true
+**can_resume**: false
 **typical_chain_position**: initiator
 **depends_on**: none
 **spawns_subagents**: false

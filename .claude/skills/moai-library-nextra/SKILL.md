@@ -6,20 +6,6 @@ modularized: true
 aliases:
   - moai-library-nextra
 category: library
-deprecated_names:
-  moai-library-nextra:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-library-nextra instead"
-tags:
-  - library
-  - architecture
-  - enterprise
-  - development
-updated: 2025-11-27
-status: active
----
-
 ## 🎯 Quick Reference (30 seconds)
 
 **Purpose**: Build professional documentation sites with Nextra + Next.js.

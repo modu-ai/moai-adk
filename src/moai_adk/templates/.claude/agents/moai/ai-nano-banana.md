@@ -1,10 +1,10 @@
 ---
 name: ai-nano-banana
-description: Use PROACTIVELY when user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. CRITICAL - This agent MUST be invoked via Task(subagent_type='ai-nano-banana') - NEVER executed directly.
-tools: Read, Write, Bash, AskUserQuestion
+description: Use PROACTIVELY when user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows.
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
 model: inherit
 permissionMode: default
-skills: moai-connector-nano-banana, moai-toolkit-essentials
+skills: moai-connector-nano-banana, moai-lang-unified, moai-toolkit-essentials
 ---
 
 # 🍌 Nano Banana Pro Image Generation Expert
@@ -49,24 +49,11 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**:
+**Automatic Core Skills** (from YAML frontmatter):
 
 - **moai-connector-nano-banana** – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
-- **moai-lang-unified** – Multilingual input handling
+- **moai-lang-unified** – Multilingual input handling and language detection
 - **moai-toolkit-essentials** – Error handling and troubleshooting
-
-**Skill Usage Pattern**:
-
-```python
-# Load nano-banana domain expertise
-Skill("moai-connector-nano-banana")
-
-# Detect user language
-user_language = Skill("moai-lang-unified")
-
-# Debug errors if generation fails
-Skill("moai-toolkit-essentials")
-```
 
 ---
 
@@ -491,9 +478,9 @@ if not api_key:
 
 **Model Selection Guide**:
 
-| Model                          | Use Case                              | Processing Time | Token Cost | Output Quality |
-| ------------------------------ | ------------------------------------- | --------------- | ---------- | -------------- |
-| **gemini-3-pro-image-preview** | High-quality 4K images for all uses   | 20-40s          | ~2-4K      | Studio-grade   |
+| Model                          | Use Case                            | Processing Time | Token Cost | Output Quality |
+| ------------------------------ | ----------------------------------- | --------------- | ---------- | -------------- |
+| **gemini-3-pro-image-preview** | High-quality 4K images for all uses | 20-40s          | ~2-4K      | Studio-grade   |
 
 **Note**: Currently only gemini-3-pro-image-preview is supported (Nano Banana Pro)
 
@@ -517,13 +504,13 @@ if not api_key:
 
 **Common Errors & Solutions**:
 
-| Error                | Cause                   | Solution                                        |
-| -------------------- | ----------------------- | ----------------------------------------------- |
-| `RESOURCE_EXHAUSTED` | Quota exceeded          | Wait for quota reset or request quota increase  |
-| `PERMISSION_DENIED`  | Invalid API key         | Verify .env file and key from AI Studio         |
-| `DEADLINE_EXCEEDED`  | Timeout (>60s)          | Simplify prompt, reduce detail complexity       |
-| `INVALID_ARGUMENT`   | Invalid parameter       | Check aspect ratio (must be from supported list)|
-| `API_KEY_INVALID`    | Wrong API key           | Verify .env file and key from AI Studio         |
+| Error                | Cause             | Solution                                         |
+| -------------------- | ----------------- | ------------------------------------------------ |
+| `RESOURCE_EXHAUSTED` | Quota exceeded    | Wait for quota reset or request quota increase   |
+| `PERMISSION_DENIED`  | Invalid API key   | Verify .env file and key from AI Studio          |
+| `DEADLINE_EXCEEDED`  | Timeout (>60s)    | Simplify prompt, reduce detail complexity        |
+| `INVALID_ARGUMENT`   | Invalid parameter | Check aspect ratio (must be from supported list) |
+| `API_KEY_INVALID`    | Wrong API key     | Verify .env file and key from AI Studio          |
 
 **Retry Strategy**:
 

@@ -1,10 +1,10 @@
 ---
 name: mcp-playwright
 description: Use for browser automation, web scraping, end-to-end testing, and web interaction. Integrates Playwright MCP server.
-tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: inherit
 permissionMode: default
-skills: moai-foundation-core, moai-connector-mcp, moai-workflow-testing
+skills: moai-foundation-claude, moai-connector-mcp, moai-workflow-testing
 ---
 
 # MCP Playwright Integrator - Web Automation Specialist (v1.0.0)

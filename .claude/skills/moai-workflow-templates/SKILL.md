@@ -6,23 +6,6 @@ version: 3.0.0
 category: workflow
 modularized: true
 replaces: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
-deprecated_names:
-  moai-workflow-templates:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-workflow-templates instead"
-tags:
-  - workflow
-  - enterprise
-  - templates
-  - patterns
-  - optimization
-  - feedback
-  - tooling
-updated: 2025-11-27
-status: active
----
-
 # Enterprise Template Management
 
 **Unified template system** combining code boilerplates, feedback templates, and project optimization workflows for rapid development and consistent patterns.

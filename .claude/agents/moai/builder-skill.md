@@ -1,10 +1,10 @@
 ---
 name: builder-skill
 description: Creates modular Skills for Claude Code extensions with official standards compliance and progressive disclosure patterns.
-tools: Read, Write, Edit, Glob, Bash, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-core, moai-foundation-claude
+skills: moai-foundation-claude, moai-workflow-project
 ---
 
 # Skill Orchestration Metadata (v1.0)
@@ -13,7 +13,7 @@ skills: moai-foundation-core, moai-foundation-claude
 **Last Updated**: 2025-11-25
 
 orchestration:
-  can_resume: true  # Can continue skill refinement through iterations
+  can_resume: false  # Can continue skill refinement through iterations
   typical_chain_position: "initial"  # First in skill creation workflow
   depends_on: []  # No dependencies (generates new skills)
   resume_pattern: "multi-day"  # Supports iterative skill refinement
@@ -21,7 +21,7 @@ orchestration:
 
 coordination:
   spawns_subagents: false  # Claude Code constraint
-  delegates_to: ["mcp-context7", "core-quality"]  # Research and validation delegation
+  delegates_to: ["mcp-context7", "manager-quality"]  # Research and validation delegation
   requires_approval: true  # User approval before skill finalization
 
 performance:

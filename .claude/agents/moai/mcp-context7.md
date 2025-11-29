@@ -1,7 +1,7 @@
 ---
 name: mcp-context7
 description: Use when documentation research, library lookups, API references, or official documentation is needed. Integrates Context7 MCP server for real-time documentation access.
-tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: bypassPermissions
 skills: moai-connector-mcp, moai-foundation-core, moai-library-toon, moai-workflow-jit-docs
@@ -20,7 +20,7 @@ skills: moai-connector-mcp, moai-foundation-core, moai-library-toon, moai-workfl
 
 ## Orchestration Metadata
 
-**can_resume**: true
+**can_resume**: false
 **typical_chain_position**: middle
 **depends_on**: none
 **spawns_subagents**: false

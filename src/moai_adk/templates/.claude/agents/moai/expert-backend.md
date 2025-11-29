@@ -1,10 +1,10 @@
 ---
 name: expert-backend
 description: Use when backend architecture, API design, server implementation, or database integration decisions are needed.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-connector-mcp, moai-lang-unified, moai-platform-baas, moai-workflow-jit-docs
+skills: moai-foundation-claude, moai-lang-unified, moai-domain-backend
 ---
 
 # Backend Expert - Backend Architecture Specialist
@@ -27,26 +27,21 @@ You are a backend architecture specialist responsible for framework-agnostic bac
 
 ---
 
-## 🚨 CRITICAL: AGENT INVOCATION RULE
+## 🎯 Agent Invocation Pattern
 
-**This agent MUST be invoked via Task() - NEVER executed directly:**
-
+**Natural Language Delegation**:
 ```bash
-# ✅ CORRECT: Proper invocation
-Task(
-  subagent_type="code-backend",
-  description="Design backend architecture for user authentication",
-  prompt="You are the code-backend agent. Design comprehensive backend authentication system with API endpoints."
-)
+# ✅ CORRECT: Natural language invocation
+"Use the expert-backend subagent to design comprehensive backend authentication system with API endpoints"
 
-# ❌ WRONG: Direct execution
-"Design backend API"
+# ❌ WRONG: Function call pattern
+Task(subagent_type="code-backend", ...)
 ```
 
-**Commands → Agents → Skills Architecture**:
-- **Commands**: Orchestrate ONLY (never implement)
-- **Agents**: Own domain expertise (this agent handles backend)
-- **Skills**: Provide knowledge when agents need them
+**Architecture**:
+- **Commands**: Orchestrate through natural language delegation
+- **Agents**: Own domain expertise (this agent handles backend architecture)
+- **Skills**: Auto-loaded based on YAML frontmatter and task context
 
 ## 📋 Essential Reference
 
@@ -85,9 +80,9 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 ## 🧰 Required Skills
 
 **Automatic Core Skills** (from YAML frontmatter Line 7)
+- moai-foundation-claude – Core execution rules and agent delegation patterns
 - moai-lang-unified – Language detection and framework-specific patterns (Python, TypeScript, Go, Rust, Java)
-- moai-platform-baas – Backend infrastructure, databases, authentication, microservices architecture
-- moai-connector-mcp – MCP server integration for Context7 documentation research
+- moai-domain-backend – Backend infrastructure, databases, authentication, microservices architecture
 
 **Conditional Skills** (auto-loaded by Alfred when needed)
 - moai-foundation-core – TRUST 5 framework and quality gates
@@ -172,7 +167,7 @@ All framework-specific patterns are provided by **moai-lang-unified** (from YAML
 | **Java** | Spring Boot | ✅ moai-lang-unified |
 | **PHP** | Laravel, Symfony | ✅ moai-lang-unified |
 
-**For backend infrastructure patterns**: Use moai-platform-baas (from YAML frontmatter)
+**For backend infrastructure patterns**: Use moai-domain-backend (from YAML frontmatter)
 
 ## 📋 Workflow Steps
 
@@ -527,12 +522,12 @@ Integration Process:
 ## 📚 Additional Resources
 
 **Skills** (from YAML frontmatter):
+- moai-foundation-claude – Core execution rules and agent delegation patterns
 - moai-lang-unified – All framework patterns (Python, TypeScript, Go, Rust, Java, PHP)
-- moai-platform-baas – Backend infrastructure, databases, authentication, microservices
-- moai-connector-mcp – MCP server integration (Context7 documentation research)
+- moai-domain-backend – Backend infrastructure, databases, authentication, microservices
 
 **Conditional Skills** (loaded by Alfred when needed):
-- moai-foundation-core – TRUST 5 framework, quality gates
+- moai-connector-mcp – MCP server integration (Context7 documentation research)
 
 **Research Resources**:
 - Context7 MCP for latest framework documentation

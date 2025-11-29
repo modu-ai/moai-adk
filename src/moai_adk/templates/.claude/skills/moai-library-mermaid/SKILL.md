@@ -5,20 +5,6 @@ description: Enterprise Mermaid diagramming skill for Claude Code using MCP Play
 version: 7.0.0
 modularized: true
 category: library
-deprecated_names:
-  moai-library-mermaid:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-library-mermaid instead"
-tags:
-  - library
-  - enterprise
-  - diagram
-  - development
-updated: 2025-11-27
-status: active
----
-
 ## Quick Reference (30 seconds)
 
 # Skill: Mermaid Diagram Expert v6.0.0-skill-edition

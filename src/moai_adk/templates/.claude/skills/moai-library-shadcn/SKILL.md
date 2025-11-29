@@ -13,13 +13,6 @@ tags:
   - ui
 updated: 2025-11-27
 status: active
-deprecated_names:
-  moai-library-shadcn:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-library-shadcn instead"
----
-
 ## Quick Reference (30 seconds)
 
 # Enterprise shadcn/ui Component Library Expert
@@ -325,7 +318,7 @@ export function LoginForm() {
 
 - [shadcn Components](modules/shadcn-components.md) - Advanced component patterns and implementation
 - [shadcn Theming](modules/shadcn-theming.md) - Theme system and customization strategies
-- `moai-foundation-uiux` - Design system architecture and foundations
+- `moai-domain-uiux` - Design system architecture and principles
 - `moai-lang-unified` - TypeScript best practices
 - `code-frontend` - Frontend development patterns
 

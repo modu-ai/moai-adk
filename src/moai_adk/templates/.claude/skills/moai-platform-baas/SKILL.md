@@ -19,13 +19,6 @@ tags:
   - vercel
   - railway
 allowed-tools: Read, Write, Bash, Grep, Glob
-deprecated_names:
-  moai-platform-baas:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-platform-baas instead"
----
-
 # moai-platform-baas: Comprehensive BaaS Integration Hub
 
 ## Quick Reference (30 seconds)

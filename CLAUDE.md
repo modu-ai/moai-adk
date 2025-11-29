@@ -18,6 +18,50 @@ Alfred manages all commands, agents, and skills to support users in achieving th
 
 ---
 
+## 🚀 Dynamic Skills Loading System
+
+### Core Skills (Always Loaded)
+- **`moai-foundation-claude`** - Core execution rules and agent delegation patterns
+- **`moai-workflow-project`** - Project management and configuration
+- **`moai-workflow-docs`** - Documentation workflows and validation
+
+### Dynamic Skills (Context-Aware Loading)
+Alfred automatically loads specialized skills based on current context and task complexity:
+
+**Instruction Pattern: Subagent Delegation**
+- For TDD coordination: "Use the manager-tdd subagent to implement test-driven development"
+- For backend development: "Use the expert-backend subagent to develop API endpoints"
+- For documentation research: "Use the mcp-context7 subagent to research latest APIs"
+
+**Note**: Subagents are invoked via natural language instructions, not function calls.
+
+### Skill Loading Triggers
+- **Multi-agent workflows**: Automatically loads agent coordination skills
+- **Error conditions**: Loads error recovery and troubleshooting skills
+- **Complex decisions**: Loads workflow decision trees and optimization skills
+- **Configuration tasks**: Loads configuration management and validation skills
+
+### Skill Reference Guidelines
+**Available Skills**: Skills are automatically detected from `.claude/skills/` directories based on YAML frontmatter:
+- **moai-foundation-claude**: Core execution rules and agent delegation patterns
+- **moai-workflow-project**: Project management and configuration patterns
+- **moai-workflow-docs**: Documentation workflows and validation
+
+**Loading**: Skills are model-invoked (Claude decides when to use them) based on task context, not user-invoked.
+
+### Effort Parameter Guidelines
+- **effort=1**: Quick reference (≤5 minutes, 1-2 files)
+- **effort=3**: Standard functionality (1-2 hours, 3-5 files)
+- **effort=5**: Comprehensive with advanced patterns (3-5 hours, 10+ files)
+
+### Automatic Skill Detection
+Alfred automatically detects and loads required skills based on context:
+- **Agent Type**: Different agents load specialized skills
+- **Task Complexity**: Complex tasks load comprehensive skill sets
+- **Error Conditions**: Troubleshooting skills loaded automatically
+
+---
+
 ## Essential Rules
 
 ### Rule 1: User Request Analysis Process (8 Steps)
@@ -26,7 +70,7 @@ Alfred MUST execute the following 8 steps in order when receiving a user request
 
 **Step 1**: Receive the user request accurately and identify the core requirement.
 
-**Step 2**: Evaluate request clarity and determine if a SPEC is required. Refer to Skill("moai-foundation-core") modules/execution-rules.md for SPEC decision criteria.
+**Step 2**: Evaluate request clarity and determine if a SPEC is required. Load `Skill("moai-foundation-core")` and reference modules/execution-rules.md for SPEC decision criteria.
 
 **Step 3**: If the request is ambiguous or incomplete, use AskUserQuestion to clarify essential information. Repeat until clarity is achieved.
 
@@ -71,6 +115,8 @@ MUST NOT ignore SPEC requirements and implement directly. MUST follow Plan agent
 
 MUST NOT start work without user approval from Step 6.
 
+**Simplicity Enforcement (Opus 4.5 Principle)**: Alfred MUST implement only what is explicitly requested. Avoid over-engineering, premature optimization, or adding "nice-to-have" features without explicit user requirement.
+
 ### Rule 4: Token Management
 
 Alfred strictly manages tokens in every task:
@@ -81,185 +127,135 @@ Load only files necessary for current work. MUST NOT load entire codebase.
 
 ### Rule 5: Agent Delegation Guide
 
-Alfred references Skill("moai-foundation-core") modules/agents-reference.md to select appropriate agents.
+Alfred uses the 5-Tier Agent Hierarchy with skills-based delegation:
 
-Analyze request complexity and dependencies:
+**Subagent Selection Priority**:
+1. **Built-in Subagents** (Explore, general-purpose, Plan) for basic tasks
+2. **Custom Domain Subagents** (expert-*) for specialized implementation
+3. **Workflow Subagents** (manager-*) for process orchestration
+4. **MCP Subagents** (mcp-*) for external service integration
+5. **AI Service Subagents** (ai-*) for model-specific capabilities
 
-- Simple tasks (1 file, existing logic modification): 1-2 agents sequential execution
-- Medium tasks (3-5 files, new features): 2-3 agents sequential execution
-- Complex tasks (10+ files, architecture changes): 5+ agents parallel/sequential mixed execution
+**Delegation Guidelines**:
+- Simple tasks: Use built-in subagents directly
+- Domain-specific: Invoke appropriate custom subagents by name
+- Complex workflows: Combine multiple subagents sequentially
 
-Use sequential when dependencies exist between agents, parallel for independent tasks.
+**Skill References**: Use moai-foundation-claude and moai-workflow-project skills for detailed patterns.
 
 **Naming Convention**: All agents follow `{role}-{domain}` naming pattern:
 
 - `expert-*` (Domain Experts) - Implementation specialists (expert-backend, expert-frontend, expert-database, expert-devops, expert-security, expert-uiux, expert-debug)
 - `manager-*` (Workflow Managers) - Workflow orchestration (manager-project, manager-spec, manager-tdd, manager-docs, manager-strategy, manager-quality, manager-git, manager-claude-code)
 - `builder-*` (Meta-generators) - Agent and skill creation (builder-agent, builder-skill, builder-command)
-- `mcp-*` (MCP Integrators) - External service integration with resume pattern (mcp-context7, mcp-figma, mcp-notion, mcp-playwright, mcp-sequential-thinking)
+- `mcp-*` (MCP Integrators) - External service integration (mcp-context7, mcp-figma, mcp-notion, mcp-playwright, mcp-sequential-thinking)
 - `ai-*` (AI Integrations) - AI model connections (ai-nano-banana)
 
-**5-Tier Agent Hierarchy** (24 active agents):
+**Subagent Categories**:
 
-```
-Tier 1: expert-*   (Domain Experts)      - 7 agents  - Lazy-loaded
-Tier 2: manager-*  (Workflow Managers)   - 8 agents  - Auto-triggered
-Tier 3: builder-*  (Meta-creation)       - 3 agents  - On-demand
-Tier 4: mcp-*      (MCP Integrations)    - 5 agents  - Resume-enabled
-Tier 5: ai-*       (AI Services)         - 1 agent   - On-demand
-```
+**Built-in Subagents** (Always Available):
+- **general-purpose**: Complex tasks with all tools
+- **Explore**: Fast, read-only codebase analysis
+- **Plan**: Codebase research during planning
 
-**MCP Resume Pattern**: All MCP integrators support context continuity via resume parameter:
+**Custom Subagents** (Project-Specific):
+- **Domain Specialists** (expert-*): Implementation by domain
+- **Workflow Managers** (manager-*): Process orchestration
+- **Meta-creators** (builder-*): Agent and skill creation
+- **Service Integrators** (mcp-*): External service connections
+- **AI Services** (ai-*): Model-specific capabilities
 
-```python
-# Initial MCP call
-result = Task(subagent_type="mcp-context7", prompt="Research React 19 APIs")
-agent_id = result.agent_id
+**MCP Integration Pattern**: Use appropriate MCP integrators for external services:
 
-# Resume with full context
-result2 = Task(subagent_type="mcp-context7", prompt="Compare with React 18", resume=agent_id)
-```
+**Instruction Pattern: MCP Subagent Usage**
+- For documentation: "Use the mcp-context7 subagent to research React 19 APIs"
+- For design work: "Use the mcp-figma subagent to analyze design components"
+- For web testing: "Use the mcp-playwright subagent to test user flows"
 
-Benefits: 40-60% token savings, 95%+ context accuracy, multi-day analysis support.
+**Benefits**: Access to external services and real-time data integration.
 
-### Rule 6: Foundation Knowledge Access (Conditional Auto-Load)
+### Rule 6: Foundation Knowledge Access (Context-Aware Loading)
 
-Alfred accesses foundational knowledge via `Skill("moai-foundation-core")` **automatically** when triggered by specific conditions.
+Alfred uses a context-aware skill loading system based on task requirements and complexity:
 
-**Auto-Load Triggers** (Load skill automatically):
+## Skill Loading Guidelines
 
-Alfred MUST automatically load `Skill("moai-foundation-core")` when:
+**Automatic Loading**: Skills are loaded automatically when:
+- Alfred executes any `/moai:*` command
+- Task complexity requires specialized knowledge
+- Error conditions demand troubleshooting expertise
+- Configuration needs management patterns
 
-1. **Command Execution**: Any `/moai:*` command is executed
+**Skill Reference Patterns**:
+- `Skill("moai-foundation-claude")` - Core execution rules and agent delegation
+- `Skill("moai-workflow-project")` - Project management and configuration
+- `Skill("moai-workflow-docs")` - Documentation workflows
 
-   - `/moai:0-project` - Project initialization
-   - `/moai:1-plan` - SPEC generation
-   - `/moai:2-run` - TDD implementation
-   - `/moai:3-sync` - Documentation
-   - `/moai:9-feedback` - Feedback submission
+**Context-Based Selection**:
+- **Simple tasks**: Use inlined Quick Reference (0 tokens)
+- **Standard tasks**: Auto-load relevant skills based on domain
+- **Complex tasks**: Load comprehensive skill sets with advanced patterns
 
-2. **Agent Delegation**: Calling `Task()` to delegate to specialized agents
+**Note**: These are instructional references. Skills are contextually loaded, not explicitly called as functions.
 
-   - Any subagent_type invocation
-   - Especially for complex workflows requiring agent coordination
+## Essential Skills by Category
 
-3. **SPEC Analysis**: Analyzing or creating SPEC documents
+**Foundation Skills** (Available in `.claude/skills/`):
+- **moai-foundation-claude** - Core execution rules and agent delegation patterns
+- **moai-workflow-project** - Project management and configuration patterns
+- **moai-workflow-docs** - Documentation workflows and validation
 
-   - SPEC decision-making (Step 2 of Rule 1)
-   - SPEC generation workflow
-   - SPEC validation and review
+**Language Skills** (Auto-Detected):
+- **moai-lang-unified** - 25+ languages with latest features
+- Automatically invoked when code implementation tasks are detected
 
-4. **Architectural Decisions**: Making design or architecture choices
+**Domain Skills** (Context-Loaded):
+- **moai-domain-backend** - Backend architecture and API development
+- **moai-domain-frontend** - Frontend UI implementation patterns
+- **moai-quality-security** - Security analysis and validation
 
-   - System design
-   - API design
-   - Database schema
-   - Security architecture
+**System Skills** (Performance/Auto-Loaded):
+- **moai-system-universal** - System optimization and performance
+- **moai-essentials-debug** - AI-powered debugging and troubleshooting
+- **moai-connector-mcp** - MCP integration patterns
 
-5. **Complexity >= Medium**: Request meets 3+ of these criteria:
-   - Files to modify: 3+ files
-   - Architecture impact: Medium or High
-   - Implementation time: 1+ hours
-   - Feature integration: Multiple layers
-   - Maintenance need: Ongoing
+## Auto-Loading Triggers
 
-**Loading Strategy**:
+**Conditional Auto-Load** (Zero tokens when not needed):
+- **Command Execution**: Any `/moai:*` command triggers foundation skills
+- **Agent Delegation**: `Task()` calls auto-load relevant domain skills
+- **Architecture Decisions**: Complex design work loads analysis skills
+- **Error Conditions**: Failures auto-load troubleshooting skills
+- **Performance Issues**: Slow operations load optimization skills
 
-Alfred automatically loads `Skill("moai-foundation-core")` when **any** of these conditions apply:
+**Dynamic Skill Loading Benefits**:
+- 40-60% token savings through context-aware loading
+- 95%+ context accuracy with validation and caching
+- Multi-day analysis support with specialized skill loading
+- Automatic dependency resolution and compatibility checking
 
-**Trigger Checklist** (Check all that apply):
-
-- [ ] **Command Execution**: User executes any `/moai:*` command
-
-  - `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:9-feedback`
-
-- [ ] **Agent Delegation**: Alfred invokes `Task()` for specialized agent delegation
-
-  - Any `subagent_type` call (expert-_, manager-_, builder-_, mcp-_, ai-\*)
-
-- [ ] **SPEC Involvement**: Request involves SPEC analysis, creation, or validation
-
-  - SPEC generation workflow
-  - SPEC decision-making
-
-- [ ] **Architecture Decision**: Request requires design or architecture choices
-
-  - System design decisions
-  - API/Database schema design
-  - Security architecture choices
-
-- [ ] **Medium+ Complexity**: Request meets 3 or more of these criteria:
-  - Files to modify: 3+ files
-  - Architecture impact: Medium or High
-  - Implementation time: 1+ hours
-  - Feature integration: Multiple layers
-  - Maintenance need: Ongoing requirement
-
-**Decision Rule**:
-
-If **1 or more** triggers above apply → **Load skill automatically**
-If **zero triggers** apply → **Use Quick Reference** (zero token cost)
-
-**Decision Table**:
-
-| Trigger Count | Action                            | Cost          |
-| ------------- | --------------------------------- | ------------- |
-| 0             | Use Quick Reference (below)       | 0 tokens      |
-| 1+            | Load `moai-foundation-core` skill | ~8,470 tokens |
-
-**Core Modules** (Available after auto-load):
-
-| Module                           | Content                                    |
-| -------------------------------- | ------------------------------------------ |
-| `modules/agents-reference.md`    | 24-agent catalog, 5-Tier hierarchy         |
-| `modules/commands-reference.md`  | /moai:0-3, 9 command patterns              |
-| `modules/delegation-patterns.md` | Sequential, Parallel, Conditional patterns |
-| `modules/token-optimization.md`  | 200K budget, /clear strategies             |
-| `modules/execution-rules.md`     | Security, permissions, Git 3-Mode strategy |
-
-**How Skills Are Actually Loaded**:
-
-**Method 1: Auto-load via Agent YAML Frontmatter** (Primary)
-
-```yaml
 ---
-name: expert-backend
-skills: moai-lang-unified, moai-platform-baas, moai-connector-mcp
----
-```
 
-- Skills are declared in the `skills:` field (Line 7) of agent YAML frontmatter
-- Alfred automatically loads these skills when calling the agent via Task()
-- This is the **actual mechanism** for skill loading
+## 🚀 Quick Reference (Zero-Dependency)
 
-**Method 2: Conditional Loading by Alfred** (Secondary)
+**Built-in Subagents** (Always Available):
+- **general-purpose**: Handles complex tasks with all tools
+- **Explore**: Fast, read-only codebase analysis
+- **Plan**: Researches codebase during plan mode
 
-- Alfred loads additional skills based on context (defined in Rule 6 triggers)
-- Example: `moai-foundation-core` auto-loaded when complexity >= medium
-- Alfred adds these to the agent's skill set dynamically
+**Custom Subagents** (Available in `.claude/subagents/`):
+- **expert-***: Domain specialists (backend, frontend, database, etc.)
+- **manager-***: Workflow orchestration (tdd, quality, git, docs)
+- **mcp-***: External service integrators (context7, figma, notion)
 
-**Method 3: References in CLAUDE.md** (Documentation Only)
+**Token Management**:
+- Context > 150K → Execute `/clear`
+- Load only files necessary for current work
 
-- References like `Skill("moai-foundation-core")` in CLAUDE.md are **descriptive only**
-- They indicate which skill contains the information, not how to invoke it
-- Do NOT interpret these as function calls or commands
-
-**Quick Reference** (Zero-Dependency, always available):
-
-For simple tasks (file reading, basic questions, simple modifications), Alfred uses the inlined Quick Reference without loading the skill:
-
-- **Agent naming**: `{role}-{domain}` pattern
-- **5-Tier hierarchy**: expert → manager → builder → mcp → ai
-- **Token threshold**: 150K context → execute `/clear`
-- **SPEC decision**: 3+ criteria met → SPEC recommended
-- **Delegation principle**: NEVER execute directly, ALWAYS delegate via Task()
-- **MCP Resume**: Store `agent_id` for context continuity
-
-**Token Efficiency**:
-
-- Simple tasks (60%): 0 tokens (Quick Reference only)
-- Complex tasks (40%): 8,470 tokens (auto-load skill)
-- Average savings: ~5,000 tokens per session
+**Error Recovery Guidelines**:
+- Agent errors → Use moai-workflow-docs skill for troubleshooting
+- Performance issues → Use moai-system-universal skill for optimization
+- Configuration problems → Use moai-workflow-project skill for management
 
 ### Rule 7: Feedback Loop
 
@@ -335,6 +331,12 @@ Alfred MUST use the following MCP servers. All permissions MUST be granted:
 2. Always reference latest API documentation via Context7
 3. No MCP permission conflicts (always include in allow list)
 4. Report MCP errors via `/moai:9-feedback`
+
+**Tool Usage Optimization (Opus 4.5 Principle)**:
+- Use gentle suggestions instead of forceful commands
+- Frame prompts as "consider using..." or "you might want to..." rather than "MUST use"
+- Allow agents to choose optimal approaches based on context
+- Provide flexibility in tool selection and methodology
 
 ### Rule 9B: Built-in Subagent Usage (Claude Code Default Agents)
 
@@ -548,6 +550,143 @@ AskUserQuestion({
 
 ---
 
+## Rule 11: Claude Opus 4.5 Optimization Principles
+
+Alfred MUST integrate these five core optimization principles to achieve better results with Claude 4.5:
+
+### 1. Effort Parameter Control (Master Dial)
+
+The effort parameter controls Claude's thinking depth and tool usage:
+
+**Application Guidelines**:
+```python
+# Minimal effort (effort=1) - Simple tasks
+Task(subagent_type="expert-backend", prompt="Fix typo in README", effort=1)
+
+# Standard effort (effort=3) - Moderate complexity
+Task(subagent_type="manager-tdd", prompt="Implement user authentication", effort=3)
+
+# Deep effort (effort=5) - Complex architecture
+Task(subagent_type="expert-backend", prompt="Design microservices architecture", effort=5)
+```
+
+**Impact**:
+- Effort=1: Fast execution, surface-level analysis
+- Effort=3: Balanced approach, moderate reasoning
+- Effort=5: Deep analysis, comprehensive solutions, thorough validation
+
+### 2. Tool Usage Optimization (Gentle Guidance)
+
+Use suggestions instead of commands to enable agent autonomy:
+
+**Before (Forceful)**:
+```python
+"MUST use Read() to examine all files before implementation"
+"ALWAYS use Bash() for validation"
+"NEVER use Edit() directly"
+```
+
+**After (Gentle)**:
+```python
+"Consider using Read() to understand the existing codebase structure"
+"You might want to validate with Bash() before finalizing"
+"Feel free to choose the most appropriate editing approach"
+```
+
+**Benefits**:
+- Higher agent engagement and ownership
+- Better adaptation to context-specific needs
+- Improved creative problem-solving
+- Reduced resistance and better collaboration
+
+### 3. Simplicity Enforcement (Focus on Requirements)
+
+Implement only what is explicitly requested:
+
+**Implementation Template**:
+```python
+# User request: "Add user login"
+Task(subagent_type="expert-backend", prompt="""
+Add user login functionality to the authentication module.
+
+Requirements:
+- Email/password authentication
+- Session management
+- Basic validation
+
+Constraints:
+- Only implement requested features
+- No social login (not requested)
+- No password reset (not requested)
+- Keep it simple and focused
+""")
+```
+
+**Anti-Patterns to Avoid**:
+- Adding "nice-to-have" features without explicit request
+- Premature optimization of non-critical paths
+- Over-engineering simple requirements
+- Implementing comprehensive solutions for narrow problems
+
+### 4. Code-First Methodology (Understand Before Suggest)
+
+Read and understand existing code before proposing solutions:
+
+**Analysis Framework**:
+```python
+Task(subagent_type="expert-backend", prompt="""
+Code-First Analysis Required:
+
+1. First, read and understand:
+   - Current authentication implementation in auth/
+   - Database schema in models/
+   - API patterns in routes/
+
+2. Then identify:
+   - Existing patterns to follow
+   - Integration points needed
+   - Potential conflicts
+
+3. Finally, propose solution that:
+   - Respects existing architecture
+   - Builds on current patterns
+   - Minimizes disruption
+""")
+```
+
+**Benefits**:
+- Solutions that fit existing architecture
+- Reduced integration friction
+- Better maintainability
+- Respect for established patterns
+
+### 5. Visual Enhancement (Zoom-In on Information)
+
+Use cropping for information-dense images to focus attention:
+
+**Visual Processing Template**:
+```python
+# When analyzing complex diagrams
+Task(subagent_type="mcp-playwright", prompt="""
+Analyze the architecture diagram.
+
+Focus areas:
+1. Authentication flow (crop to auth components)
+2. Data flow between services (crop to arrows)
+3. Error handling paths (crop to exception boxes)
+
+For each area: zoom in, analyze, then integrate findings
+""")
+```
+
+**Application Scenarios**:
+- Architecture diagrams with multiple subsystems
+- Code flowcharts with complex paths
+- Error handling documentation
+- API documentation with many endpoints
+
+---
+
 ## Alfred Quick Reference (Zero-Dependency)
 
 **Behavioral Constraints**:
@@ -568,7 +707,7 @@ AskUserQuestion({
 | 1    | expert-\*  | Lazy-loaded    |
 | 2    | manager-\* | Auto-triggered |
 | 3    | builder-\* | On-demand      |
-| 4    | mcp-\*     | Resume-enabled |
+| 4    | mcp-\*     | On-demand     |
 | 5    | ai-\*      | On-demand      |
 
 **SPEC Decision**:
@@ -577,7 +716,7 @@ AskUserQuestion({
 - 3-5 files → Pattern 2 (SPEC recommended)
 - 10+ files → Pattern 3 (SPEC required)
 
-**Detailed Information**: Skill("moai-foundation-core")
+**Detailed Information**: Load `Skill("moai-foundation-core")` for comprehensive execution rules
 
 ---
 
@@ -599,31 +738,37 @@ If 3 or more criteria match pattern 2-3, proceed to Step 3 for AskUserQuestion r
 
 ---
 
-## Error and Exception Handling
+## Error Handling
 
-When Alfred encounters the following errors:
+**Quick Error Resolution**:
+- **Agent errors**: Check `{role}-{domain}` format → Load relevant skills
+- **Token limit**: Execute `/clear` → Optimize loading strategy
+- **Permissions**: Verify `.claude/settings.json` → Check MCP permissions
 
-"Agent not found" → Verify agent name format: `{role}-{domain}` (lowercase, hyphenated)
-Detailed agent catalog: Skill("moai-foundation-core") → modules/agents-reference.md
+**Advanced Error Recovery**:
+- Load `Skill("moai-workflow-docs")` for systematic troubleshooting
+- Load `Skill("moai-system-universal")` for performance recovery
+- Load `Skill("moai-workflow-project")` for configuration issues
 
-"Token limit exceeded" → Immediately execute `/clear` then restrict file loading selectively
-
-"Coverage < 85%" → Call manager-quality agent to auto-generate tests
-
-"Permission denied" → Check permissions in `.claude/settings.json`
-Detailed permission guide: Skill("moai-foundation-core") → modules/execution-rules.md
-
-Uncontrollable errors MUST be reported via `/moai:9-feedback "error: [details]"`.
+**Critical Errors**: Report via `/moai:9-feedback "error: [details]"`
 
 ---
 
-## Conclusion
+## 🎯 Alfred Success Metrics
 
-Alfred MUST remember and automatically apply these 10 rules (Rules 1-10) in all user requests. While following these rules, support users' final goal achievement without hesitation. When improvement opportunities arise, propose via `/moai:9-feedback` to continuously advance MoAI-ADK.
+**Performance Goals**:
+- **85%+** auto-recovery rate for common errors
+- **60%** reduction in documentation maintenance time
+- **15-minute** onboarding for new users
+- **200K** token budget with 95%+ utilization
 
-**Version**: 2.2.1 (Loading Strategy converted to markdown, documentation updated)
-**Language**: English 100%
-**Target**: Mr.Alfred (NOT for end users)
-**Last Updated**: 2025-11-27
+**Quality Standards**:
+- All complex tasks delegated via `Task()` with proper skills
+- Zero direct tool usage (Read, Write, Edit, Bash)
+- Continuous improvement via `/moai:9-feedback`
+
+**Version**: 3.0.0 (Skills-Based Modular Architecture)
+**Last Updated**: 2025-11-29
+**Language**: Korean (configurable) + English technical terms
 
 ---

@@ -2,12 +2,9 @@
 name: moai:9-feedback
 description: "Submit feedback or report issues"
 argument-hint: "[issue|suggestion|question]"
-allowed-tools:
-  - Task
-  - AskUserQuestion
-  - TodoWrite
+allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
 model: haiku
-skills: moai-foundation-quality
+skills: moai-manager-quality
 ---
 
 ## 📋 Pre-execution Context
@@ -66,8 +63,8 @@ Output: Issue created with link
 
 ## 🧠 Associated Agents & Skills
 
-| Agent/Skill | Purpose |
-|------------|---------|
+| Agent/Skill     | Purpose                                       |
+| --------------- | --------------------------------------------- |
 | manager-quality | Feedback collection and GitHub issue creation |
 
 ---
@@ -76,24 +73,19 @@ Output: Issue created with link
 
 ### Step 1: Delegate to Quality Gate Agent
 
-Use Task tool to call the `manager-quality` agent (which has access to issue creation skills):
-
-```yaml
-Tool: Task
-Parameters:
-- subagent_type: "manager-quality"
-- description: "Collect and submit user feedback"
-- prompt: """You are the manager-quality agent acting as the feedback manager.
+Use the manager-quality subagent to collect and submit user feedback:
 
 **Task**: Collect user feedback and create a GitHub issue.
 
 **Context**:
+
 - Feedback Type: $ARGUMENTS (default to 'issue' if empty)
 - Conversation Language: {{CONVERSATION_LANGUAGE}}
 
 **Instructions**:
 
 1. **Determine Feedback Type**:
+
    - If $ARGUMENTS is provided, use it.
    - If not, ask user to select type:
      - Bug Report
@@ -101,12 +93,14 @@ Parameters:
      - Question/Other
 
 2. **Collect Details**:
+
    - Ask for 'Title' (short summary)
    - Ask for 'Description' (detailed explanation)
    - Ask for 'Priority' (Low/Medium/High)
 
 3. **Create GitHub Issue**:
-   - Use `Bash` with GitHub CLI (`gh issue create`) to submit.
+
+   - Use appropriate tools with GitHub CLI (`gh issue create`) to submit.
    - Add appropriate labels (bug, enhancement, question) via `--label` flag.
    - Format the body with standard templates.
 
@@ -115,10 +109,9 @@ Parameters:
    - Confirm success to the user.
 
 **Important**:
+
 - Use conversation_language for all user interactions.
 - NO EMOJIS in AskUserQuestion options.
-"""
-```
 
 ---
 
@@ -135,12 +128,12 @@ Before you consider this command complete, verify:
 
 ## 📚 Quick Reference
 
-| Scenario | Entry Point | Expected Outcome |
-|----------|-------------|------------------|
-| Report bug | `/moai:9-feedback issue` | GitHub issue created with bug label |
-| Request feature | `/moai:9-feedback suggestion` | GitHub issue created with enhancement label |
-| Ask question | `/moai:9-feedback question` | GitHub issue created with question label |
-| General feedback | `/moai:9-feedback` | Interactive feedback collection |
+| Scenario         | Entry Point                   | Expected Outcome                            |
+| ---------------- | ----------------------------- | ------------------------------------------- |
+| Report bug       | `/moai:9-feedback issue`      | GitHub issue created with bug label         |
+| Request feature  | `/moai:9-feedback suggestion` | GitHub issue created with enhancement label |
+| Ask question     | `/moai:9-feedback question`   | GitHub issue created with question label    |
+| General feedback | `/moai:9-feedback`            | Interactive feedback collection             |
 
 **Associated Agent**:
 
@@ -199,5 +192,5 @@ AskUserQuestion({
 
 **You must NOW execute the command following the "Execution Process" described above.**
 
-1. Call the `Task` tool with `subagent_type="manager-quality"`.
+1. Use the manager-quality subagent.
 2. Do NOT just describe what you will do. DO IT.

@@ -6,26 +6,6 @@ modularized: true
 category: system
 aliases:
   - moai-system-universal
-deprecated_names:
-  moai-system-universal:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-system-universal instead"
-tags:
-  - system
-  - universal
-  - development
-  - languages
-  - baas
-  - security
-  - enterprise
-  - ai-powered
-  - orchestration
-updated: 2025-11-27
-status: active
-author: MoAI-ADK Team
----
-
 # 🚀 MoAI Universal Ultimate: The Complete Development Intelligence Platform
 
 ---

@@ -25,7 +25,7 @@ def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None
 
     Args:
         repo_path: Path to Git repository. Defaults to current directory.
-        worktree_root: Root directory for worktrees. Defaults to ~/worktrees/{project_name}/.
+        worktree_root: Root directory for worktrees. Defaults to ~/moai/worktrees/{project_name}/.
 
     Returns:
         WorktreeManager instance.
@@ -34,9 +34,9 @@ def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None
         repo_path = Path.cwd()
 
     if worktree_root is None:
-        # Default to ~/worktrees/{project_name}/
+        # Default to ~/moai/worktrees/{project_name}/
         project_name = repo_path.name
-        worktree_root = Path.home() / "worktrees" / project_name
+        worktree_root = Path.home() / "moai" / "worktrees" / project_name
 
     return WorktreeManager(repo_path=repo_path, worktree_root=worktree_root)
 
@@ -53,12 +53,14 @@ def worktree() -> None:
 @click.option("--base", default="main", help="Base branch to create from")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
 @click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+@click.option("--force", "-f", is_flag=True, help="Force creation even if worktree exists")
 def new_worktree(
     spec_id: str,
     branch: str | None,
     base: str,
     repo: str | None,
     worktree_root: str | None,
+    force: bool,
 ) -> None:
     """Create a new worktree for a SPEC.
 
@@ -78,6 +80,7 @@ def new_worktree(
             spec_id=spec_id,
             branch_name=branch,
             base_branch=base,
+            force=force,
         )
 
         console.print("[green]✓[/green] Worktree created successfully")
@@ -295,14 +298,18 @@ def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> No
 @worktree.command(name="sync")
 @click.argument("spec_id")
 @click.option("--base", default="main", help="Base branch to sync from")
+@click.option("--rebase", is_flag=True, help="Use rebase instead of merge")
+@click.option("--ff-only", is_flag=True, help="Only sync if fast-forward is possible")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
 @click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def sync_worktree(spec_id: str, base: str, repo: str | None, worktree_root: str | None) -> None:
+def sync_worktree(spec_id: str, base: str, rebase: bool, ff_only: bool, repo: str | None, worktree_root: str | None) -> None:
     """Sync worktree with base branch.
 
     Args:
         spec_id: SPEC ID to sync
         base: Base branch to sync from (default: main)
+        rebase: Use rebase instead of merge
+        ff_only: Only sync if fast-forward is possible
         repo: Repository path (optional)
         worktree_root: Worktree root directory (optional)
     """
@@ -311,9 +318,10 @@ def sync_worktree(spec_id: str, base: str, repo: str | None, worktree_root: str 
         wt_root = Path(worktree_root) if worktree_root else None
 
         manager = get_manager(repo_path, wt_root)
-        manager.sync(spec_id=spec_id, base_branch=base)
+        manager.sync(spec_id=spec_id, base_branch=base, rebase=rebase, ff_only=ff_only)
 
-        console.print(f"[green]✓[/green] Worktree synced: {spec_id}")
+        sync_method = "rebase" if rebase else ("fast-forward" if ff_only else "merge")
+        console.print(f"[green]✓[/green] Worktree synced: {spec_id} ({sync_method})")
 
     except WorktreeNotFoundError as e:
         console.print(f"[red]✗[/red] {e}")
@@ -357,11 +365,11 @@ def clean_worktrees(repo: str | None, worktree_root: str | None) -> None:
 
 
 @worktree.command(name="config")
-@click.argument("key")
+@click.argument("key", required=False)
 @click.argument("value", required=False)
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
 @click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def config_worktree(key: str, value: str | None, repo: str | None, worktree_root: str | None) -> None:
+def config_worktree(key: str | None, value: str | None, repo: str | None, worktree_root: str | None) -> None:
     """Get or set worktree configuration.
 
     Supported configuration keys:
@@ -380,7 +388,17 @@ def config_worktree(key: str, value: str | None, repo: str | None, worktree_root
 
         manager = get_manager(repo_path, wt_root)
 
-        if value is None:
+        if key is None:
+            # No arguments - show all configuration
+            console.print("[cyan]Configuration:[/cyan]")
+            console.print(f"  root:      {manager.worktree_root}")
+            console.print(f"  registry:  {manager.registry.registry_path}")
+            console.print()
+            console.print("[yellow]Available commands:[/yellow]")
+            console.print("  moai-worktree config all           # Show all config")
+            console.print("  moai-worktree config root         # Show worktree root")
+            console.print("  moai-worktree config registry     # Show registry path")
+        elif value is None:
             # Get configuration
             if key == "root":
                 console.print(f"[cyan]Worktree root:[/cyan] {manager.worktree_root}")
