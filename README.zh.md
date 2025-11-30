@@ -780,6 +780,8 @@ moai-worktree与MoAI-ADK Plan-Run-Sync周期无缝集成：
 
 这种集成为同时管理多个SPEC提供了完整且系统化的方法，同时保持SPEC-First TDD方法论的原则。
 
+**重要提醒**: 从Git中排除的本地文件（如.CLAUDE.local.md、.env、.claude/settings.local.json等）不会在工作树之间自动同步。为确保一致的开发环境配置，这些文件必须在创建工作树后手动复制到各个目录中。
+
 **命令概览**:
 
 ```bash

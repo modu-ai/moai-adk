@@ -178,5 +178,16 @@
   "spinnerTipsEnabled": false,
   "outputStyle": "R2-D2",
   "includeCoAuthoredBy": false,
-  "cleanupPeriodDays": 30
+  "cleanupPeriodDays": 30,
+  "env": {
+    "MOAI_CONVERSATION_LANG": "ko",
+    "MOAI_AGENT_PROMPT_LANG": "ko",
+    "MOAI_CONVERSATION_LANG_NAME": "Korean",
+    "MOAI_USER_NAME": "GOOS행",
+    "MOAI_CONFIG_SOURCE": "config",
+    "MOAI_GIT_COMMIT_MESSAGES_LANG": "en",
+    "MOAI_CODE_COMMENTS_LANG": "en",
+    "MOAI_DOCUMENTATION_LANG": "ko",
+    "MOAI_ERROR_MESSAGES_LANG": "en"
+  }
 }

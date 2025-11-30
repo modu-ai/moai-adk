@@ -4,13 +4,13 @@ description: Comprehensive development workflow specialist combining TDD, debugg
 version: 1.0.0
 category: workflow
 tags:
-  - workflow
-  - testing
-  - debugging
-  - performance
-  - quality
-  - tdd
-  - review
+ - workflow
+ - testing
+ - debugging
+ - performance
+ - quality
+ - tdd
+ - review
 updated: 2025-11-30
 status: active
 author: MoAI-ADK Team
@@ -20,25 +20,25 @@ author: MoAI-ADK Team
 
 ## Quick Reference (30 seconds)
 
-**Unified Development Workflow** - Comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
+Unified Development Workflow - Comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
 
-**Core Capabilities**:
-- 🧪 **Test-Driven Development**: RED-GREEN-REFACTOR cycle with Context7 patterns
-- 🔍 **AI-Powered Debugging**: Intelligent error analysis and Context7 best practices
-- ⚡ **Performance Optimization**: Real-time profiling and bottleneck detection
-- 🔬 **Automated Code Review**: TRUST 5 validation with AI quality analysis
-- 📊 **Quality Assurance**: Comprehensive testing and CI/CD integration
-- 🎯 **Workflow Orchestration**: End-to-end development process automation
+Core Capabilities:
+- Test-Driven Development: RED-GREEN-REFACTOR cycle with Context7 patterns
+- AI-Powered Debugging: Intelligent error analysis and Context7 best practices
+- Performance Optimization: Real-time profiling and bottleneck detection
+- Automated Code Review: TRUST 5 validation with AI quality analysis
+- Quality Assurance: Comprehensive testing and CI/CD integration
+- Workflow Orchestration: End-to-end development process automation
 
-**Unified Development Workflow**:
+Unified Development Workflow:
 ```
 Debug → Refactor → Optimize → Review → Test → Profile
-   ↓        ↓         ↓        ↓      ↓       ↓
-AI-     AI-       AI-      AI-    AI-     AI-
-Powered Powered  Powered  Powered Powered Powered
+ ↓ ↓ ↓ ↓ ↓ ↓
+AI- AI- AI- AI- AI- AI-
+Powered Powered Powered Powered Powered Powered
 ```
 
-**When to Use**:
+When to Use:
 - Complete development lifecycle management
 - Enterprise-grade quality assurance
 - Multi-language development projects
@@ -46,598 +46,275 @@ Powered Powered  Powered  Powered Powered Powered
 - Technical debt reduction initiatives
 - Automated testing and CI/CD integration
 
+Quick Start:
+```python
+# Initialize comprehensive workflow
+from moai_workflow_testing import (
+ AIProfiler, TDDManager, AutomatedCodeReviewer
+)
+
+# Start complete development workflow
+workflow = DevelopmentWorkflow(
+ project_path="/project/src",
+ context7_client=context7
+)
+
+# Run full workflow cycle
+results = await workflow.execute_complete_cycle()
+```
+
 ---
 
-## Implementation Guide
+## Implementation Guide (5 minutes)
 
-### AI-Powered Debugging Integration
+### Core Concepts
 
-**Intelligent Debugging with Context7**:
+Unified Development Philosophy:
+- Integrates all aspects of development into cohesive workflow
+- AI-powered assistance for complex decision-making
+- Context7 integration for industry best practices
+- Continuous feedback loops between workflow stages
+- Automated quality gates and validation
+
+Workflow Components:
+1. AI-Powered Debugging: Intelligent error classification and Context7-based solutions
+2. Smart Refactoring: Technical debt analysis with safe automated transformations
+3. Performance Optimization: Real-time monitoring with bottleneck detection
+4. TDD with Context7: Enhanced test generation and RED-GREEN-REFACTOR cycles
+5. Automated Code Review: TRUST 5 framework validation with AI analysis
+
+### Basic Implementation
+
 ```python
-class AIDebugger:
-    """AI-powered debugging with Context7 integration."""
+from moai_workflow_testing import (
+ AIDebugger, AIRefactorer, PerformanceProfiler,
+ TDDManager, AutomatedCodeReviewer
+)
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.error_patterns = self.load_error_patterns()
-
-    async def debug_with_context7_patterns(
-        self, error: Exception, context: Dict, codebase_path: str
-    ) -> DebugAnalysis:
-        """Debug using AI pattern recognition and Context7 best practices."""
-
-        # Get latest debugging patterns from Context7
-        debugpy_patterns = await self.context7.get_library_docs(
-            context7_library_id="/microsoft/debugpy",
-            topic="AI debugging patterns error analysis 2025",
-            tokens=5000
-        )
-
-        # AI pattern classification
-        error_analysis = self.classify_error(error, context)
-        pattern_match = self.match_context7_patterns(error, debugpy_patterns)
-
-        # Generate solutions using AI + Context7
-        solutions = await self.generate_solutions(
-            error_analysis, pattern_match, debugpy_patterns, context
-        )
-
-        return DebugAnalysis(
-            error_type=error_analysis.type,
-            confidence=error_analysis.confidence,
-            context7_patterns=pattern_match,
-            solutions=solutions,
-            prevention_strategies=self.suggest_prevention(error_analysis)
-        )
-
-    def classify_error(self, error: Exception, context: Dict) -> ErrorAnalysis:
-        """Classify error using AI pattern recognition."""
-
-        error_info = {
-            'type': type(error).__name__,
-            'message': str(error),
-            'traceback': traceback.format_exc(),
-            'context': context,
-            'frequency': self.get_error_frequency(error)
-        }
-
-        # AI classification logic
-        patterns = {
-            'ImportError': self.handle_import_errors,
-            'AttributeError': self.handle_attribute_errors,
-            'TypeError': self.handle_type_errors,
-            'ValueError': self.handle_value_errors,
-            'KeyError': self.handle_key_errors,
-        }
-
-        handler = patterns.get(type(error).__name__, self.handle_generic_errors)
-        return handler(error_info)
-
-    async def generate_solutions(
-        self, error_analysis: ErrorAnalysis,
-        pattern_match: Dict, context7_patterns: Dict,
-        context: Dict
-    ) -> List[Solution]:
-        """Generate solutions using AI and Context7 patterns."""
-
-        solutions = []
-
-        # Context7-based solutions
-        for pattern in pattern_match.get('matched_patterns', []):
-            solution = Solution(
-                type='context7_pattern',
-                description=pattern['description'],
-                code_example=pattern['example'],
-                confidence=pattern['confidence']
-            )
-            solutions.append(solution)
-
-        # AI-generated solutions
-        if self.context7:
-            ai_solution = await self.context7.get_library_docs(
-                context7_library_id="/openai/chatgpt",
-                topic=f"solve {error_analysis.type} in {context.get('language', 'python')}",
-                tokens=3000
-            )
-
-            solution = Solution(
-                type='ai_generated',
-                description=ai_solution['description'],
-                code_example=ai_solution['code_example'],
-                confidence=0.8
-            )
-            solutions.append(solution)
-
-        return solutions
-
-# Usage example
+# 1. AI-Powered Debugging
 debugger = AIDebugger(context7_client=context7)
+
 try:
-    # Code that might fail
-    result = some_function()
+ result = some_risky_operation()
 except Exception as e:
-    analysis = await debugger.debug_with_context7_patterns(
-        e, {'file': __file__, 'function': 'some_function'}, '/project/src'
-    )
-    for solution in analysis.solutions:
-        print(f"Solution: {solution.description}")
+ analysis = await debugger.debug_with_context7_patterns(
+ e, {'file': __file__, 'function': 'main'}, '/project/src'
+ )
+ print(f"Found {len(analysis.solutions)} solutions")
+
+# 2. Smart Refactoring
+refactorer = AIRefactorer(context7_client=context7)
+refactor_plan = await refactorer.refactor_with_intelligence('/project/src')
+print(f"Found {len(refactor_plan.opportunities)} refactoring opportunities")
+
+# 3. Performance Optimization
+profiler = PerformanceProfiler(context7_client=context7)
+profiler.start_profiling(['cpu', 'memory', 'line'])
+
+# Run code to profile
+result = expensive_function()
+
+profile_results = profiler.stop_profiling()
+bottlenecks = await profiler.detect_bottlenecks(profile_results)
+
+# 4. TDD with Context7
+tdd_manager = TDDManager('/project/src', context7_client=context7)
+
+test_spec = TestSpecification(
+ name="test_user_authentication",
+ description="Test user authentication with valid credentials",
+ test_type=TestType.UNIT,
+ requirements=["Valid email and password required"],
+ acceptance_criteria=["Valid credentials return token"]
+)
+
+cycle_results = await tdd_manager.run_full_tdd_cycle(
+ specification=test_spec,
+ target_function="authenticate_user"
+)
+
+# 5. Automated Code Review
+reviewer = AutomatedCodeReviewer(context7_client=context7)
+review_report = await reviewer.review_codebase('/project/src')
+
+print(f"Overall TRUST Score: {review_report.overall_trust_score:.2f}")
+print(f"Critical Issues: {len(review_report.critical_issues)}")
 ```
 
-### Smart Refactoring with Technical Debt Management
+### Common Use Cases
 
-**AI-Driven Code Transformation**:
+Enterprise Development Workflow:
 ```python
-class AIRefactorer:
-    """AI-powered refactoring with technical debt management."""
+# Complete enterprise workflow integration
+workflow = EnterpriseWorkflow(
+ project_path="/enterprise/app",
+ context7_client=context7,
+ quality_gates={
+ 'min_trust_score': 0.85,
+ 'max_critical_issues': 0,
+ 'required_coverage': 0.80
+ }
+)
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.technical_debt_analyzer = TechnicalDebtAnalyzer()
-
-    async def refactor_with_intelligence(
-        self, codebase_path: str, refactor_options: Dict = None
-    ) -> RefactorPlan:
-        """AI-driven code transformation with technical debt quantification."""
-
-        # Get Context7 refactoring patterns
-        rope_patterns = await self.context7.get_library_docs(
-            context7_library_id="/python-rope/rope",
-            topic="safe refactoring patterns technical debt 2025",
-            tokens=4000
-        )
-
-        # Analyze technical debt
-        debt_analysis = await self.technical_debt_analyzer.analyze(codebase_path)
-
-        # AI analysis of refactoring opportunities
-        refactor_opportunities = await self.identify_refactor_opportunities(
-            codebase_path, debt_analysis
-        )
-
-        # Generate safe refactor plan using Rope + AI
-        refactor_plan = self.create_safe_refactor_plan(
-            refactor_opportunities, rope_patterns
-        )
-
-        return RefactorPlan(
-            opportunities=refactor_opportunities,
-            transformations=refactor_plan.transformations,
-            risk_assessment=self.assess_refactor_risks(refactor_plan),
-            estimated_impact=self.calculate_impact(refactor_plan),
-            context7_validated=True
-        )
-
-    async def identify_refactor_opportunities(
-        self, codebase_path: str, debt_analysis: TechnicalDebtAnalysis
-    ) -> List[RefactorOpportunity]:
-        """Identify refactoring opportunities using AI analysis."""
-
-        opportunities = []
-
-        # Code smell detection
-        code_smells = await self.detect_code_smells(codebase_path)
-        for smell in code_smells:
-            if smell.severity >= 7:  # High severity
-                opportunity = RefactorOpportunity(
-                    type='code_smell',
-                    description=smell.description,
-                    location=smell.location,
-                    impact=smell.impact,
-                    difficulty=smell.difficulty
-                )
-                opportunities.append(opportunity)
-
-        # Duplication detection
-        duplications = await self.detect_code_duplication(codebase_path)
-        for dup in duplications:
-            if dup.similarity >= 0.8:  # 80% similarity
-                opportunity = RefactorOpportunity(
-                    type='duplication',
-                    description=f"Duplicate code in {dup.files}",
-                    location=dup.locations,
-                    impact='high',
-                    difficulty='medium'
-                )
-                opportunities.append(opportunity)
-
-        return opportunities
-
-    def create_safe_refactor_plan(
-        self, opportunities: List[RefactorOpportunity],
-        rope_patterns: Dict
-    ) -> RefactorPlan:
-        """Create safe refactor plan using Rope patterns."""
-
-        transformations = []
-
-        for opportunity in opportunities:
-            if opportunity.type == 'code_smell':
-                transformation = self.create_code_smell_transformation(
-                    opportunity, rope_patterns
-                )
-            elif opportunity.type == 'duplication':
-                transformation = self.create_duplication_transformation(
-                    opportunity, rope_patterns
-                )
-
-            if transformation:
-                transformations.append(transformation)
-
-        # Order transformations by risk and dependencies
-        transformations = self.order_transformations(transformations)
-
-        return RefactorPlan(
-            transformations=transformations,
-            estimated_time=self.calculate_total_time(transformations),
-            risk_score=self.calculate_overall_risk(transformations)
-        )
+# Execute workflow with quality validation
+results = await workflow.execute_with_validation()
+if results.quality_passed:
+ print(" Ready for deployment")
+else:
+ print(" Quality gates not met")
+ workflow.show_quality_issues()
 ```
 
-### Performance Optimization with Real-time Profiling
-
-**AI-Enhanced Performance Analysis**:
+Performance-Critical Applications:
 ```python
-class AIPerformanceOptimizer:
-    """AI-powered performance optimization with real-time profiling."""
+# Performance-focused workflow
+perf_workflow = PerformanceWorkflow(
+ project_path="/performance_app",
+ context7_client=context7,
+ performance_thresholds={
+ 'max_response_time': 100, # ms
+ 'max_memory_usage': 512, # MB
+ 'min_throughput': 1000 # requests/second
+ }
+)
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.profiler = None
-
-    async def optimize_performance(
-        self, codebase_path: str, performance_targets: Dict
-    ) -> OptimizationPlan:
-        """Optimize performance using AI and Context7 patterns."""
-
-        # Get Context7 optimization patterns
-        perf_patterns = await self.context7.get_library_docs(
-            context7_library_id="/emeryberger/scalene",
-            topic="performance profiling optimization GPU 2025",
-            tokens=5000
-        )
-
-        # Scalene profiling with AI analysis
-        scalene_profile = await self.profile_with_ai(codebase_path)
-
-        # AI bottleneck detection
-        bottlenecks = await self.detect_bottlenecks(scalene_profile, perf_patterns)
-
-        # Generate optimization plan
-        optimization_plan = self.create_optimization_plan(
-            bottlenecks, scalene_profile, perf_patterns
-        )
-
-        return OptimizationPlan(
-            bottlenecks=bottlenecks,
-            optimizations=optimization_plan.optimizations,
-            expected_improvement=self.calculate_improvement(optimization_plan),
-            implementation_priority=self.prioritize_optimizations(bottlenecks)
-        )
-
-    async def profile_with_ai(self, codebase_path: str) -> ScaleneProfile:
-        """Profile with Scalene and AI analysis."""
-
-        # Initialize Scalene profiler
-        import scalene
-        self.profiler = scalene.Scalene()
-
-        # Profile the application
-        profile_data = self.profiler.profile(
-            f"python -m pytest {codebase_path}/tests/",
-            memory=True,
-            cpu=True,
-            gpu=True
-        )
-
-        # AI analysis of profile data
-        ai_analysis = await self.analyze_profile_data(profile_data)
-
-        return ScaleneProfile(
-            raw_data=profile_data,
-            ai_analysis=ai_analysis,
-            hotspots=self.identify_hotspots(profile_data),
-            memory_usage=self.analyze_memory_usage(profile_data),
-            cpu_usage=self.analyze_cpu_usage(profile_data)
-        )
-
-    async def detect_bottlenecks(
-        self, profile: ScaleneProfile, perf_patterns: Dict
-    ) -> List[Bottleneck]:
-        """AI-powered bottleneck detection."""
-
-        bottlenecks = []
-
-        # CPU bottlenecks
-        for hotspot in profile.hotspots:
-            if hotspot.cpu_percentage > 80:  # High CPU usage
-                bottleneck = Bottleneck(
-                    type='cpu',
-                    location=hotspot.function,
-                    description=f"High CPU usage in {hotspot.function}",
-                    severity=hotspot.cpu_percentage / 100,
-                    suggestions=self.get_cpu_optimization_suggestions(hotspot, perf_patterns)
-                )
-                bottlenecks.append(bottleneck)
-
-        # Memory bottlenecks
-        for memory_leak in profile.memory_leaks:
-            bottleneck = Bottleneck(
-                type='memory',
-                location=memory_leak.function,
-                description=f"Memory leak in {memory_leak.function}",
-                severity=memory_leak.leak_size / 1000000,  # Convert to MB
-                suggestions=self.get_memory_optimization_suggestions(memory_leak, perf_patterns)
-            )
-            bottlenecks.append(bottleneck)
-
-        return bottlenecks
-```
-
-### Test-Driven Development with Context7 Integration
-
-**Enhanced TDD Implementation**:
-```python
-class TDDOrchestrator:
-    """TDD orchestrator with Context7 best practices and AI assistance."""
-
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.test_generator = AITestGenerator()
-
-    async def execute_tdd_cycle(
-        self, requirement: str, codebase_path: str
-    ) -> TDDResult:
-        """Execute complete RED-GREEN-REFACTOR TDD cycle."""
-
-        # RED Phase: Write failing test
-        red_result = await self.red_phase(requirement, codebase_path)
-
-        # GREEN Phase: Make test pass
-        green_result = await self.green_phase(red_result.test, codebase_path)
-
-        # REFACTOR Phase: Improve code quality
-        refactor_result = await self.refactor_phase(
-            green_result.code, red_result.test, codebase_path
-        )
-
-        return TDDResult(
-            requirement=requirement,
-            test=red_result.test,
-            implementation=refactor_result.code,
-            coverage=refactor_result.coverage,
-            quality_score=refactor_result.quality_score
-        )
-
-    async def red_phase(self, requirement: str, codebase_path: str) -> RedResult:
-        """RED phase: Generate failing test based on requirement."""
-
-        # Get Context7 testing patterns
-        test_patterns = await self.context7.get_library_docs(
-            context7_library_id="/pytest-dev/pytest",
-            topic="testing strategies TDD automation 2025",
-            tokens=4000
-        )
-
-        # Generate test using AI
-        test_code = await self.test_generator.generate_test(
-            requirement, test_patterns
-        )
-
-        # Write test file
-        test_file_path = self.write_test_file(test_code, requirement)
-
-        # Run test to ensure it fails
-        test_result = self.run_test(test_file_path)
-
-        return RedResult(
-            test=test_code,
-            test_file_path=test_file_path,
-            test_result=test_result,
-            expected_to_fail=True
-        )
-
-    async def green_phase(self, test_code: str, codebase_path: str) -> GreenResult:
-        """GREEN phase: Implement code to make test pass."""
-
-        # Analyze test requirements
-        test_analysis = self.analyze_test_requirements(test_code)
-
-        # Generate minimal implementation
-        implementation = await self.generate_minimal_implementation(test_analysis)
-
-        # Write implementation
-        impl_file_path = self.write_implementation_file(implementation, test_analysis)
-
-        # Run tests to verify passing
-        test_result = self.run_test_suite(codebase_path)
-
-        return GreenResult(
-            code=implementation,
-            impl_file_path=impl_file_path,
-            test_result=test_result,
-            all_tests_passing=test_result.passed
-        )
-```
-
-### Automated Code Review with TRUST 5 Validation
-
-**AI-Powered Quality Assurance**:
-```python
-class AICodeReviewer:
-    """AI-powered code review with TRUST 5 validation."""
-
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.trust5_validator = TRUST5Validator()
-
-    async def comprehensive_review(
-        self, codebase_path: str, changes: List[FileChange]
-    ) -> ReviewResult:
-        """Comprehensive code review with AI and TRUST 5 validation."""
-
-        # Get Context7 security and quality patterns
-        security_patterns = await self.context7.get_library_docs(
-            context7_library_id="/owasp/top-ten",
-            topic="security vulnerability patterns 2025",
-            tokens=3000
-        )
-
-        quality_patterns = await self.context7.get_library_docs(
-            context7_library_id="/pylint-dev/pylint",
-            topic="code quality best practices 2025",
-            tokens=3000
-        )
-
-        # TRUST 5 validation
-        trust5_analysis = await self.trust5_validator.validate(codebase_path, changes)
-
-        # AI quality analysis
-        quality_analysis = await self.analyze_code_quality(codebase_path, changes)
-
-        # Security vulnerability detection
-        security_analysis = await self.detect_security_vulnerabilities(
-            changes, security_patterns
-        )
-
-        return ReviewResult(
-            trust5_validation=trust5_analysis,
-            quality_analysis=quality_analysis,
-            security_analysis=security_analysis,
-            recommendations=self.generate_recommendations(
-                trust5_analysis, quality_analysis, security_analysis
-            ),
-            approval_status=self.determine_approval_status(trust5_analysis)
-        )
-
-    async def analyze_code_quality(
-        self, codebase_path: str, changes: List[FileChange]
-    ) -> QualityAnalysis:
-        """AI-powered code quality analysis."""
-
-        quality_metrics = {}
-
-        for change in changes:
-            # Analyze each changed file
-            file_metrics = await self.analyze_file_quality(change)
-            quality_metrics[change.file_path] = file_metrics
-
-        # Calculate overall quality score
-        overall_score = self.calculate_overall_quality_score(quality_metrics)
-
-        return QualityAnalysis(
-            file_metrics=quality_metrics,
-            overall_score=overall_score,
-            issues=self.identify_quality_issues(quality_metrics),
-            suggestions=self.generate_quality_suggestions(quality_metrics)
-        )
-
-class TRUST5Validator:
-    """TRUST 5 framework validation."""
-
-    def __init__(self):
-        self.trust_principles = {
-            'Transparency': self.validate_transparency,
-            'Reliability': self.validate_reliability,
-            'Usability': self.validate_usability,
-            'Security': self.validate_security,
-            'Testability': self.validate_testability
-        }
-
-    async def validate(
-        self, codebase_path: str, changes: List[FileChange]
-    ) -> TRUST5Analysis:
-        """Validate changes against TRUST 5 principles."""
-
-        validation_results = {}
-
-        for principle, validator in self.trust_principles.items():
-            result = await validator(changes)
-            validation_results[principle] = result
-
-        return TRUST5Analysis(
-            principles_validation=validation_results,
-            overall_compliance=self.calculate_compliance(validation_results),
-            critical_issues=self.identify_critical_issues(validation_results)
-        )
+# Profile and optimize
+optimization_results = await perf_workflow.optimize_performance()
+print(f"Performance improvement: {optimization_results.improvement_percentage:.1f}%")
 ```
 
 ---
 
-## Advanced Patterns
+## Advanced Features (10+ minutes)
 
-### Integrated Workflow Orchestration
+### Workflow Integration Patterns
 
-**Complete Development Pipeline**:
+Continuous Integration Integration:
 ```python
-class DevelopmentWorkflowOrchestrator:
-    """Orchestrates complete development workflow with all components."""
+# CI/CD pipeline integration
+class CIWorkflowIntegrator:
+ def __init__(self, workflow_system, ci_config):
+ self.workflow = workflow_system
+ self.config = ci_config
 
-    def __init__(self, project_config: Dict):
-        self.config = project_config
-        self.debugger = AIDebugger()
-        self.refactorer = AIRefactorer()
-        self.optimizer = AIPerformanceOptimizer()
-        self.reviewer = AICodeReviewer()
-        self.tdd = TDDOrchestrator()
+ async def run_ci_pipeline(self, commit_hash: str):
+ """Run complete CI pipeline with workflow validation."""
 
-    async def orchestrate_complete_workflow(
-        self, task: DevelopmentTask
-    ) -> WorkflowResult:
-        """Orchestrate complete development workflow."""
+ # 1. Code quality validation
+ review_results = await self.workflow.run_code_review()
+ if not self._meets_quality_standards(review_results):
+ return self._create_failure_report("Code quality check failed")
 
-        workflow_steps = []
+ # 2. Testing validation
+ test_results = await self.workflow.run_full_test_suite()
+ if not test_results.all_tests_passed:
+ return self._create_failure_report("Tests failed")
 
-        # Step 1: Requirements analysis and test generation
-        if task.type == 'feature':
-            tdd_result = await self.tdd.execute_tdd_cycle(
-                task.requirement, task.codebase_path
-            )
-            workflow_steps.append(('tdd', tdd_result))
+ # 3. Performance validation
+ perf_results = await self.workflow.run_performance_tests()
+ if not self._meets_performance_standards(perf_results):
+ return self._create_failure_report("Performance standards not met")
 
-        # Step 2: Debug any issues found
-        if task.has_errors:
-            debug_result = await self.debugger.debug_with_context7_patterns(
-                task.errors, task.context, task.codebase_path
-            )
-            workflow_steps.append(('debug', debug_result))
+ # 4. Security validation
+ security_results = await self.workflow.run_security_analysis()
+ if security_results.critical_vulnerabilities:
+ return self._create_failure_report("Security issues found")
 
-        # Step 3: Performance optimization
-        if task.requires_optimization:
-            perf_result = await self.optimizer.optimize_performance(
-                task.codebase_path, task.performance_targets
-            )
-            workflow_steps.append(('optimize', perf_result))
+ return self._create_success_report(commit_hash)
+```
 
-        # Step 4: Code review and quality assurance
-        review_result = await self.reviewer.comprehensive_review(
-            task.codebase_path, task.changes
-        )
-        workflow_steps.append(('review', review_result))
+### AI-Enhanced Decision Making
 
-        # Step 5: Refactoring if needed
-        if review_result.quality_score < 0.8:
-            refactor_result = await self.refactorer.refactor_with_intelligence(
-                task.codebase_path
-            )
-            workflow_steps.append(('refactor', refactor_result))
+Context7-Powered Workflow Optimization:
+```python
+class AIWorkflowOptimizer:
+ """AI-powered workflow optimization using Context7 patterns."""
 
-        return WorkflowResult(
-            steps=workflow_steps,
-            final_quality_score=self.calculate_final_quality(workflow_steps),
-            recommendations=self.generate_workflow_recommendations(workflow_steps),
-            deployment_ready=self.is_deployment_ready(workflow_steps)
-        )
+ def __init__(self, context7_client):
+ self.context7 = context7_client
+
+ async def optimize_workflow_execution(
+ self, project_context: Dict
+ ) -> Dict[str, Any]:
+ """Optimize workflow execution based on project characteristics."""
+
+ # Get Context7 workflow patterns
+ patterns = await self.context7.get_library_docs(
+ context7_library_id="/workflow/devops",
+ topic="optimal development workflow patterns 2025",
+ tokens=4000
+ )
+
+ # Analyze project characteristics
+ project_analysis = self._analyze_project_context(project_context)
+
+ # Generate optimized workflow plan
+ optimized_plan = await self._generate_optimized_workflow(
+ project_analysis, patterns
+ )
+
+ return optimized_plan
+```
+
+### Advanced Quality Assurance
+
+Comprehensive Quality Gates:
+```python
+class QualityGateManager:
+ """Manages comprehensive quality gates across workflow stages."""
+
+ def __init__(self, quality_config: Dict[str, Any]):
+ self.gates = self._initialize_quality_gates(quality_config)
+
+ async def validate_workflow_stage(
+ self, stage: str, artifacts: Dict[str, Any]
+ ) -> Dict[str, Any]:
+ """Validate quality gates for specific workflow stage."""
+
+ gate_config = self.gates.get(stage, {})
+ validation_results = {}
+
+ # Run stage-specific validations
+ for gate_name, gate_config in gate_config.items():
+ result = await self._run_quality_gate(
+ gate_name, artifacts, gate_config
+ )
+ validation_results[gate_name] = result
+
+ # Calculate overall gate status
+ gate_passed = all(
+ result['status'] == 'passed'
+ for result in validation_results.values()
+ )
+
+ return {
+ 'stage': stage,
+ 'passed': gate_passed,
+ 'validations': validation_results,
+ 'recommendations': self._generate_recommendations(validation_results)
+ }
 ```
 
 ---
 
 ## Works Well With
 
-- **moai-domain-backend** - Backend development and testing
-- **moai-domain-frontend** - Frontend component testing and optimization
-- **moai-domain-database** - Database testing and performance optimization
-- **moai-docs-generation** - Test documentation and API docs
-- **moai-integration-mcp** - MCP service testing and validation
+- moai-domain-backend - Backend development workflows and API testing
+- moai-domain-frontend - Frontend development workflows and UI testing
+- moai-foundation-core - Core SPEC system and workflow management
+- moai-platform-baas - Backend-as-a-Service integration patterns
+- moai-workflow-project - Project management and documentation workflows
+
+---
+
+## Module References
+
+Core Implementation Modules:
+- [`modules/ai-debugging.md`](./modules/ai-debugging.md) - AI-powered debugging with Context7 integration
+- [`modules/smart-refactoring.md`](./modules/smart-refactoring.md) - Technical debt analysis and safe refactoring
+- [`modules/performance-optimization.md`](./modules/performance-optimization.md) - Real-time profiling and bottleneck detection
+- [`modules/tdd-context7.md`](./modules/tdd-context7.md) - TDD cycles with Context7-enhanced test generation
+- [`modules/automated-code-review.md`](./modules/automated-code-review.md) - TRUST 5 validation with AI code review
 
 ---
 
@@ -645,64 +322,132 @@ class DevelopmentWorkflowOrchestrator:
 
 ### CLI Integration
 ```bash
-# Execute TDD cycle
-moai-workflow tdd --requirement "User authentication" --src ./src
+# Run complete development workflow
+moai-workflow execute --project /project/src --mode full
 
-# Debug with AI assistance
-moai-workflow debug --error-file error.log --context development
+# Run specific workflow components
+moai-workflow debug --file app.py --error "AttributeError"
+moai-workflow refactor --directory src/ --max-risk medium
+moai-workflow profile --target function_name --types cpu,memory
+moai-workflow test --spec user_auth.spec --mode tdd
+moai-workflow review --project /project/src --trust-score-min 0.8
 
-# Optimize performance
-moai-workflow optimize --target-dir ./src --performance-targets config/perf.json
-
-# Review code changes
-moai-workflow review --changes changes.json --codebase ./src
-
-# Run complete workflow
-moai-workflow execute --task config/task.json
+# Continuous integration
+moai-workflow ci --commit abc123 --quality-gates strict
 ```
 
 ### Python API
 ```python
-from moai_workflow_testing import DevelopmentWorkflowOrchestrator
-
-# Initialize orchestrator
-orchestrator = DevelopmentWorkflowOrchestrator(project_config)
-
-# Execute complete workflow
-task = DevelopmentTask(
-    type='feature',
-    requirement='Implement user authentication',
-    codebase_path='./src',
-    performance_targets={'response_time': 200}
+from moai_workflow_testing import (
+ DevelopmentWorkflow, WorkflowConfig
 )
 
-result = await orchestrator.orchestrate_complete_workflow(task)
+# Configure workflow
+config = WorkflowConfig(
+ enable_debugging=True,
+ enable_refactoring=True,
+ enable_profiling=True,
+ enable_tdd=True,
+ enable_code_review=True,
+ context7_client=context7
+)
+
+# Initialize and run workflow
+workflow = DevelopmentWorkflow(
+ project_path="/project/src",
+ config=config
+)
+
+# Execute complete workflow
+results = await workflow.execute_complete_workflow()
+
+# Access results by stage
+print(f"Debugging solutions found: {len(results.debugging.solutions)}")
+print(f"Refactoring opportunities: {len(results.refactoring.opportunities)}")
+print(f"Performance bottlenecks: {len(results.profiling.bottlenecks)}")
+print(f"Test coverage: {results.tdd.coverage_percentage:.1f}%")
+print(f"Code review score: {results.code_review.trust_score:.2f}")
 ```
 
 ---
 
 ## Technology Stack
 
-**Core Libraries**:
-- **pytest**: Testing framework with plugins
-- **scalene**: High-performance CPU/GPU/memory profiler
-- **rope**: Python refactoring library
-- **pylint**: Code quality analysis
-- **coverage.py**: Test coverage measurement
+Core Analysis Libraries:
+- cProfile: Python profiling and performance analysis
+- memory_profiler: Memory usage analysis and optimization
+- psutil: System resource monitoring
+- line_profiler: Line-by-line performance profiling
 
-**AI Integration**:
-- **Context7**: Latest documentation and best practices
-- **OpenAI API**: Code generation and analysis
-- **Custom ML models**: Pattern recognition and optimization
+Static Analysis Tools:
+- pylint: Comprehensive code analysis and quality checks
+- flake8: Style guide enforcement and error detection
+- bandit: Security vulnerability scanning
+- mypy: Static type checking and validation
 
-**Development Tools**:
-- **debugpy**: Python debugging
-- **black**: Code formatting
-- **mypy**: Type checking
-- **bandit**: Security linting
+Testing Frameworks:
+- pytest: Advanced testing framework with fixtures and plugins
+- unittest: Standard library testing framework
+- coverage: Code coverage measurement and analysis
+
+Context7 Integration:
+- MCP Protocol: Context7 message passing and communication
+- Dynamic Documentation: Real-time access to latest patterns and practices
+- AI-Powered Analysis: Enhanced error analysis and solution generation
 
 ---
 
-**Status**: Production Ready
-**Last Updated**: 2025-11-30
-**Maintained by**: MoAI-ADK Workflow Team
+## Integration Examples
+
+### GitHub Actions Integration
+```yaml
+# .github/workflows/development-workflow.yml
+name: Development Workflow
+
+on: [push, pull_request]
+
+jobs:
+ workflow:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v3
+ - name: Setup Python
+ uses: actions/setup-python@v4
+ with:
+ python-version: '3.11'
+
+ - name: Run Development Workflow
+ run: |
+ moai-workflow execute \
+ --project . \
+ --mode ci \
+ --quality-gates strict \
+ --output workflow-results.json
+
+ - name: Upload Results
+ uses: actions/upload-artifact@v3
+ with:
+ name: workflow-results
+ path: workflow-results.json
+```
+
+### Docker Integration
+```dockerfile
+# Dockerfile for workflow execution
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+# Run complete workflow on container start
+CMD ["moai-workflow", "execute", "--project", "/app", "--mode", "full"]
+```
+
+---
+
+Status: Production Ready
+Last Updated: 2025-11-30
+Maintained by: MoAI-ADK Development Workflow Team

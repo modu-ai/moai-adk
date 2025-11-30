@@ -1,22 +1,22 @@
 # Worktree Commands Module
 
-**Purpose**: Complete CLI command reference for Git worktree management with detailed usage examples and advanced options.
+Purpose: Complete CLI command reference for Git worktree management with detailed usage examples and advanced options.
 
-**Version**: 1.0.0
-**Last Updated**: 2025-11-29
+Version: 1.0.0
+Last Updated: 2025-11-29
 
 ---
 
 ## Quick Reference (30 seconds)
 
-**Command Categories**:
-- **Creation**: `new` - Create isolated worktree
-- **Navigation**: `list`, `switch`, `go` - Browse and navigate
-- **Management**: `sync`, `remove`, `clean` - Maintain worktrees
-- **Status**: `status` - Check worktree state
-- **Configuration**: `config` - Manage settings
+Command Categories:
+- Creation: `new` - Create isolated worktree
+- Navigation: `list`, `switch`, `go` - Browse and navigate
+- Management: `sync`, `remove`, `clean` - Maintain worktrees
+- Status: `status` - Check worktree state
+- Configuration: `config` - Manage settings
 
-**Quick Start**:
+Quick Start:
 ```bash
 moai-worktree new SPEC-001 "User Authentication"
 moai-worktree switch SPEC-001
@@ -31,16 +31,16 @@ moai-worktree switch SPEC-001
 
 Create a new isolated Git worktree for SPEC development.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree new <spec-id> [description] [options]
 ```
 
-**Arguments**:
+Arguments:
 - `<spec-id>`: SPEC identifier (e.g., SPEC-001, SPEC-AUTH-001)
 - `[description]`: Optional description for the worktree
 
-**Options**:
+Options:
 - `--branch <branch-name>`: Create specific branch instead of auto-generated
 - `--base <branch>`: Base branch for new worktree (default: main)
 - `--template <template>`: Use predefined template
@@ -48,7 +48,7 @@ moai-worktree new <spec-id> [description] [options]
 - `--depth <number>`: Clone depth for shallow clone
 - `--force`: Force creation even if worktree exists
 
-**Examples**:
+Examples:
 ```bash
 # Basic worktree creation
 moai-worktree new SPEC-001 "User Authentication System"
@@ -66,16 +66,16 @@ moai-worktree new SPEC-004 "Frontend Overhaul" --template frontend
 moai-worktree new SPEC-005 "Bug Fixes" --shallow --depth 1
 ```
 
-**Auto-Generated Branch Pattern**:
+Auto-Generated Branch Pattern:
 - Default: `feature/SPEC-{ID}-{description-kebab-case}`
 - Example: `SPEC-001` → `feature/SPEC-001-user-authentication`
 
-**Output**:
+Output:
 ```bash
-✓ Created worktree: SPEC-001
-✓ Branch: feature/SPEC-001-user-authentication
-✓ Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
-✓ Registered in: /Users/goos/worktrees/MoAI-ADK/.moai-worktree-registry.json
+ Created worktree: SPEC-001
+ Branch: feature/SPEC-001-user-authentication
+ Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
+ Registered in: /Users/goos/worktrees/MoAI-ADK/.moai-worktree-registry.json
 
 Next steps:
 1. Switch to worktree: moai-worktree switch SPEC-001
@@ -88,19 +88,19 @@ Next steps:
 
 Display all registered worktrees with their status and metadata.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree list [options]
 ```
 
-**Options**:
+Options:
 - `--format <format>`: Output format (table, json, csv)
 - `--status <status>`: Filter by status (active, merged, stale)
 - `--sort <field>`: Sort by field (name, created, modified, status)
 - `--reverse`: Reverse sort order
 - `--verbose`: Show detailed information
 
-**Examples**:
+Examples:
 ```bash
 # Table format (default)
 moai-worktree list
@@ -118,36 +118,36 @@ moai-worktree list --sort created
 moai-worktree list --verbose
 ```
 
-**Table Output**:
+Table Output:
 ```bash
-┌───────────┬─────────────────────────────────┬─────────────────────┬──────────┬─────────────┐
-│ ID        │ Description                     │ Path                 │ Status   │ Last Sync   │
-├───────────┼─────────────────────────────────┼─────────────────────┼──────────┼─────────────┤
-│ SPEC-001  │ User Authentication System      │ /worktrees/MoAI-ADK/  │ active   │ 2h ago      │
-│ SPEC-002  │ Payment Integration            │ /worktrees/MoAI-ADK/  │ active   │ 1d ago      │
-│ SPEC-003  │ API Refactoring                 │ /worktrees/MoAI-ADK/  │ merged   │ 3d ago      │
-└───────────┴─────────────────────────────────┴─────────────────────┴──────────┴─────────────┘
+
+ ID Description Path Status Last Sync 
+
+ SPEC-001 User Authentication System /worktrees/MoAI-ADK/ active 2h ago 
+ SPEC-002 Payment Integration /worktrees/MoAI-ADK/ active 1d ago 
+ SPEC-003 API Refactoring /worktrees/MoAI-ADK/ merged 3d ago 
+
 ```
 
-**JSON Output**:
+JSON Output:
 ```json
 {
-  "worktrees": [
-    {
-      "id": "SPEC-001",
-      "description": "User Authentication System",
-      "path": "/Users/goos/worktrees/MoAI-ADK/SPEC-001",
-      "branch": "feature/SPEC-001-user-auth",
-      "status": "active",
-      "created_at": "2025-11-29T20:00:00Z",
-      "last_sync": "2025-11-29T22:00:00Z",
-      "base_branch": "main",
-      "commits_ahead": 5,
-      "commits_behind": 0
-    }
-  ],
-  "total_count": 1,
-  "active_count": 1
+ "worktrees": [
+ {
+ "id": "SPEC-001",
+ "description": "User Authentication System",
+ "path": "/Users/goos/worktrees/MoAI-ADK/SPEC-001",
+ "branch": "feature/SPEC-001-user-auth",
+ "status": "active",
+ "created_at": "2025-11-29T20:00:00Z",
+ "last_sync": "2025-11-29T22:00:00Z",
+ "base_branch": "main",
+ "commits_ahead": 5,
+ "commits_behind": 0
+ }
+ ],
+ "total_count": 1,
+ "active_count": 1
 }
 ```
 
@@ -157,20 +157,20 @@ moai-worktree list --verbose
 
 Change current working directory to the specified worktree.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree switch <spec-id> [options]
 ```
 
-**Arguments**:
+Arguments:
 - `<spec-id>`: Target worktree identifier
 
-**Options**:
+Options:
 - `--auto-sync`: Automatically sync before switching
 - `--force`: Force switch even with uncommitted changes
 - `--new-terminal`: Open in new terminal window
 
-**Examples**:
+Examples:
 ```bash
 # Basic switch
 moai-worktree switch SPEC-001
@@ -182,12 +182,12 @@ moai-worktree switch SPEC-002 --auto-sync
 moai-worktree switch SPEC-003 --force
 ```
 
-**Output**:
+Output:
 ```bash
-✓ Switched to worktree: SPEC-001
-✓ Current directory: /Users/goos/worktrees/MoAI-ADK/SPEC-001
-✓ Branch: feature/SPEC-001-user-auth
-✓ Status: 5 commits ahead of main
+ Switched to worktree: SPEC-001
+ Current directory: /Users/goos/worktrees/MoAI-ADK/SPEC-001
+ Branch: feature/SPEC-001-user-auth
+ Status: 5 commits ahead of main
 ```
 
 ---
@@ -196,20 +196,20 @@ moai-worktree switch SPEC-003 --force
 
 Output the `cd` command for shell integration.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree go <spec-id> [options]
 ```
 
-**Arguments**:
+Arguments:
 - `<spec-id>`: Target worktree identifier
 
-**Options**:
+Options:
 - `--absolute`: Show absolute path
 - `--relative`: Show relative path from current directory
 - `--export`: Export as environment variable
 
-**Examples**:
+Examples:
 ```bash
 # Standard usage (shell eval)
 eval $(moai-worktree go SPEC-001)
@@ -224,7 +224,7 @@ moai-worktree go SPEC-001 --relative
 moai-worktree go SPEC-001 --export
 ```
 
-**Shell Integration**:
+Shell Integration:
 ```bash
 # Method 1: eval (recommended)
 eval $(moai-worktree go SPEC-001)
@@ -236,7 +236,7 @@ moai-worktree go SPEC-001 | source
 cd $(moai-worktree go SPEC-001 --absolute)
 ```
 
-**Output**:
+Output:
 ```bash
 # Standard output
 cd /Users/goos/worktrees/MoAI-ADK/SPEC-001
@@ -254,15 +254,15 @@ cd "$WORKTREE_PATH"
 
 Synchronize worktree with its base branch.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree sync <spec-id> [options]
 ```
 
-**Arguments**:
+Arguments:
 - `<spec-id>`: Worktree identifier (or `--all` for all worktrees)
 
-**Options**:
+Options:
 - `--auto-resolve`: Automatically resolve simple conflicts
 - `--interactive`: Interactive conflict resolution
 - `--dry-run`: Show what would be synced without doing it
@@ -270,7 +270,7 @@ moai-worktree sync <spec-id> [options]
 - `--include <pattern>`: Include only specific files
 - `--exclude <pattern>`: Exclude specific files
 
-**Examples**:
+Examples:
 ```bash
 # Sync specific worktree
 moai-worktree sync SPEC-001
@@ -285,13 +285,13 @@ moai-worktree sync SPEC-001 --interactive
 moai-worktree sync SPEC-001 --dry-run
 
 # Include only source files
-moai-worktree sync SPEC-001 --include "src/**"
+moai-worktree sync SPEC-001 --include "src/"
 
 # Exclude build artifacts
-moai-worktree sync SPEC-001 --exclude "node_modules/**" --exclude "dist/**"
+moai-worktree sync SPEC-001 --exclude "node_modules/" --exclude "dist/"
 ```
 
-**Conflict Resolution Options**:
+Conflict Resolution Options:
 
 When conflicts are detected:
 ```bash
@@ -306,14 +306,14 @@ Choose resolution:
 Choice [1-5]:
 ```
 
-**Output**:
+Output:
 ```bash
-✓ Syncing SPEC-001 with main branch
-✓ Fetching latest changes...
-✓ 5 new commits in main branch
-✓ Merging changes into feature/SPEC-001-user-auth
-✓ Sync completed successfully
-✓ Worktree is now up-to-date
+ Syncing SPEC-001 with main branch
+ Fetching latest changes...
+ 5 new commits in main branch
+ Merging changes into feature/SPEC-001-user-auth
+ Sync completed successfully
+ Worktree is now up-to-date
 ```
 
 ---
@@ -322,21 +322,21 @@ Choice [1-5]:
 
 Remove a worktree and clean up its registration.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree remove <spec-id> [options]
 ```
 
-**Arguments**:
+Arguments:
 - `<spec-id>`: Worktree identifier to remove
 
-**Options**:
+Options:
 - `--force`: Force removal without confirmation
 - `--keep-branch`: Keep the branch after removing worktree
 - `--backup`: Create backup before removal
 - `--dry-run`: Show what would be removed without doing it
 
-**Examples**:
+Examples:
 ```bash
 # Interactive removal
 moai-worktree remove SPEC-001
@@ -354,7 +354,7 @@ moai-worktree remove SPEC-001 --backup
 moai-worktree remove SPEC-001 --dry-run
 ```
 
-**Interactive Confirmation**:
+Interactive Confirmation:
 ```bash
 Are you sure you want to remove worktree SPEC-001?
 Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
@@ -369,14 +369,14 @@ Options:
 Choice [1-4]:
 ```
 
-**Output**:
+Output:
 ```bash
-✓ Removing worktree: SPEC-001
-✓ Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
-✓ Branch: feature/SPEC-001-user-auth (merged)
-✓ Backup created: /Users/goos/worktrees/MoAI-ADK/.backups/SPEC-001-20251129.tar.gz
-✓ Registration removed
-✓ Worktree removed successfully
+ Removing worktree: SPEC-001
+ Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
+ Branch: feature/SPEC-001-user-auth (merged)
+ Backup created: /Users/goos/worktrees/MoAI-ADK/.backups/SPEC-001-20251129.tar.gz
+ Registration removed
+ Worktree removed successfully
 ```
 
 ---
@@ -385,12 +385,12 @@ Choice [1-4]:
 
 Remove worktrees for merged branches or stale worktrees.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree clean [options]
 ```
 
-**Options**:
+Options:
 - `--merged-only`: Only remove worktrees with merged branches
 - `--stale`: Remove worktrees not updated in specified days
 - `--days <number>`: Stale threshold in days (default: 30)
@@ -398,7 +398,7 @@ moai-worktree clean [options]
 - `--dry-run`: Show what would be cleaned without doing it
 - `--force`: Skip confirmation prompts
 
-**Examples**:
+Examples:
 ```bash
 # Clean merged worktrees
 moai-worktree clean --merged-only
@@ -419,34 +419,34 @@ moai-worktree clean --dry-run
 moai-worktree clean --force
 ```
 
-**Interactive Selection**:
+Interactive Selection:
 ```bash
 Found 3 worktrees eligible for cleanup:
 
 1. SPEC-003 (merged) - API Refactoring
-   Path: /worktrees/MoAI-ADK/SPEC-003
-   Last updated: 2025-11-15
+ Path: /worktrees/MoAI-ADK/SPEC-003
+ Last updated: 2025-11-15
 
 2. SPEC-005 (stale) - Bug Fixes
-   Path: /worktrees/MoAI-ADK/SPEC-005
-   Last updated: 2025-10-20 (40 days ago)
+ Path: /worktrees/MoAI-ADK/SPEC-005
+ Last updated: 2025-10-20 (40 days ago)
 
 3. SPEC-007 (merged) - Performance Updates
-   Path: /worktrees/MoAI-ADK/SPEC-007
-   Last updated: 2025-11-10
+ Path: /worktrees/MoAI-ADK/SPEC-007
+ Last updated: 2025-11-10
 
 Select worktrees to remove (space-separated numbers): 1 3
 ```
 
-**Output**:
+Output:
 ```bash
-✓ Scanning for cleanup candidates...
-✓ Found 3 worktrees to clean
-✓ Removing SPEC-003 (merged)
-✓ Removing SPEC-007 (merged)
-✓ 2 worktrees removed
-✓ 1 worktree kept (SPEC-005 - stale but protected)
-✓ Cleanup completed
+ Scanning for cleanup candidates...
+ Found 3 worktrees to clean
+ Removing SPEC-003 (merged)
+ Removing SPEC-007 (merged)
+ 2 worktrees removed
+ 1 worktree kept (SPEC-005 - stale but protected)
+ Cleanup completed
 ```
 
 ---
@@ -457,21 +457,21 @@ Select worktrees to remove (space-separated numbers): 1 3
 
 Display detailed status information about worktrees.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree status [spec-id] [options]
 ```
 
-**Arguments**:
+Arguments:
 - `[spec-id]`: Specific worktree (optional, shows current if not specified)
 
-**Options**:
+Options:
 - `--all`: Show status of all worktrees
 - `--sync-check`: Check if worktrees need sync
 - `--detailed`: Show detailed Git status
 - `--format <format>`: Output format (table, json)
 
-**Examples**:
+Examples:
 ```bash
 # Current worktree status
 moai-worktree status
@@ -489,7 +489,7 @@ moai-worktree status SPEC-001 --detailed
 moai-worktree status --all --format json
 ```
 
-**Current Worktree Status**:
+Current Worktree Status:
 ```bash
 Worktree: SPEC-001 (current)
 Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
@@ -502,19 +502,19 @@ Git Status:
 - 3 modified files
 - 2 untracked files
 
-Sync Status: ✓ Up to date
+Sync Status: Up to date
 Last Sync: 2 hours ago
 ```
 
-**All Worktrees Status**:
+All Worktrees Status:
 ```bash
-┌───────────┬─────────────┬─────────────┬─────────┬─────────────┬────────────┐
-│ ID        │ Branch      │ Status      │ Ahead   │ Behind      │ Sync Need  │
-├───────────┼─────────────┼─────────────┼─────────┼─────────────┼────────────┤
-│ SPEC-001  │ *user-auth  │ active      │ 5       │ 0           │ No         │
-│ SPEC-002  │ payment     │ active      │ 2       │ 1           │ Yes        │
-│ SPEC-003  │ refactor    │ merged      │ 0       │ 0           │ No         │
-└───────────┴─────────────┴─────────────┴─────────┴─────────────┴────────────┘
+
+ ID Branch Status Ahead Behind Sync Need 
+
+ SPEC-001 *user-auth active 5 0 No 
+ SPEC-002 payment active 2 1 Yes 
+ SPEC-003 refactor merged 0 0 No 
+
 ```
 
 ---
@@ -523,19 +523,19 @@ Last Sync: 2 hours ago
 
 Manage moai-worktree configuration settings.
 
-**Syntax**:
+Syntax:
 ```bash
 moai-worktree config <action> [key] [value]
 ```
 
-**Actions**:
+Actions:
 - `get [key]`: Get configuration value
 - `set <key> <value>`: Set configuration value
 - `list`: List all configuration
 - `reset [key]`: Reset to default value
 - `edit`: Open configuration in editor
 
-**Configuration Keys**:
+Configuration Keys:
 - `worktree_root`: Root directory for worktrees
 - `auto_sync`: Enable automatic sync (true/false)
 - `cleanup_merged`: Auto-cleanup merged worktrees (true/false)
@@ -543,7 +543,7 @@ moai-worktree config <action> [key] [value]
 - `template_dir`: Directory for worktree templates
 - `sync_strategy`: Sync strategy (merge, rebase, squash)
 
-**Examples**:
+Examples:
 ```bash
 # Show all configuration
 moai-worktree config list
@@ -563,7 +563,7 @@ moai-worktree config reset worktree_root
 moai-worktree config edit
 ```
 
-**Configuration Output**:
+Configuration Output:
 ```bash
 Current Configuration:
 worktree_root: /Users/goos/worktrees/MoAI-ADK
@@ -584,7 +584,7 @@ registry_type: local
 ```bash
 # Sync all active worktrees
 for spec in $(moai-worktree list --status active --format json | jq -r '.worktrees[].id'); do
-    moai-worktree sync "$spec"
+ moai-worktree sync "$spec"
 done
 
 # Clean all merged worktrees
@@ -605,19 +605,19 @@ alias mwg='eval $(moai-worktree go'
 
 # Function for quick SPEC worktree creation
 mwnew() {
-    local spec_id="$1"
-    local description="$2"
-    moai-worktree new "$spec_id" "$description"
-    moai-worktree switch "$spec_id"
+ local spec_id="$1"
+ local description="$2"
+ moai-worktree new "$spec_id" "$description"
+ moai-worktree switch "$spec_id"
 }
 
 # Function for worktree status overview
 mwstatus() {
-    echo "=== Worktree Overview ==="
-    moai-worktree status --all
-    echo ""
-    echo "=== Current Worktree ==="
-    moai-worktree status
+ echo "=== Worktree Overview ==="
+ moai-worktree status --all
+ echo ""
+ echo "=== Current Worktree ==="
+ moai-worktree status
 }
 ```
 
@@ -627,20 +627,20 @@ mwstatus() {
 # .git/hooks/post-checkout
 #!/bin/bash
 if [ -f "../.moai-worktree-registry.json" ]; then
-    SPEC_ID=$(basename $(pwd))
-    moai-worktree status "$SPEC_ID" --sync-check
+ SPEC_ID=$(basename $(pwd))
+ moai-worktree status "$SPEC_ID" --sync-check
 fi
 
 # .git/hooks/pre-push
 #!/bin/bash
 if [ -f "../.moai-worktree-registry.json" ]; then
-    SPEC_ID=$(basename $(pwd))
-    echo "Pushing from worktree: $SPEC_ID"
+ SPEC_ID=$(basename $(pwd))
+ echo "Pushing from worktree: $SPEC_ID"
 fi
 ```
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-11-29
-**Module**: Complete CLI command reference with advanced usage patterns
+Version: 1.0.0
+Last Updated: 2025-11-29
+Module: Complete CLI command reference with advanced usage patterns

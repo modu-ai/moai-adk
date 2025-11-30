@@ -131,15 +131,15 @@
 
 ### Common Issues
 
-**Rendering Issues**
+Rendering Issues
 - [Mermaid Rendering Troubleshooting](https://mermaid.js.org/ecosystem/integrations.html#troubleshooting)
 - [Security Level Configuration](https://mermaid.js.org/config/configuration.html#security-level)
 
-**Performance**
+Performance
 - [Large Diagram Optimization](https://mermaid.js.org/config/configuration.html#performance)
 - [Lazy Loading](https://mermaid.js.org/config/configuration.html#lazy-load-example)
 
-**Browser Compatibility**
+Browser Compatibility
 - [Supported Browsers](https://mermaid.js.org/intro/index.html#browser-support)
 - [IE11 Polyfills](https://mermaid.js.org/ecosystem/integrations.html)
 
@@ -181,10 +181,10 @@
 ## Best Practices
 
 ### Design Principles
-- **Clarity**: Keep diagrams simple and focused
-- **Hierarchy**: Use subgraphs to organize complex flows
-- **Consistency**: Use same styling and notation throughout
-- **Documentation**: Add notes and comments for clarity
+- Clarity: Keep diagrams simple and focused
+- Hierarchy: Use subgraphs to organize complex flows
+- Consistency: Use same styling and notation throughout
+- Documentation: Add notes and comments for clarity
 
 ### Performance Tips
 1. Limit diagram complexity (max 100 nodes for flowcharts)
@@ -218,11 +218,11 @@
 
 ## Support & Community
 
-- **GitHub Issues**: [mermaid-js/mermaid/issues](https://github.com/mermaid-js/mermaid/issues)
-- **Discussions**: [mermaid-js/mermaid/discussions](https://github.com/mermaid-js/mermaid/discussions)
-- **Community Chat**: [Mermaid Discord](https://discord.gg/mermaid)
-- **Stack Overflow**: [mermaid tag](https://stackoverflow.com/questions/tagged/mermaid)
+- GitHub Issues: [mermaid-js/mermaid/issues](https://github.com/mermaid-js/mermaid/issues)
+- Discussions: [mermaid-js/mermaid/discussions](https://github.com/mermaid-js/mermaid/discussions)
+- Community Chat: [Mermaid Discord](https://discord.gg/mermaid)
+- Stack Overflow: [mermaid tag](https://stackoverflow.com/questions/tagged/mermaid)
 
 ---
 
-**Last Updated**: 2025-11-20
+Last Updated: 2025-11-20

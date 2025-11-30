@@ -6,12 +6,12 @@ modularized: true
 updated: 2025-11-29
 status: active
 tags:
-  - git
-  - worktree
-  - parallel
-  - development
-  - spec
-  - isolation
+ - git
+ - worktree
+ - parallel
+ - development
+ - spec
+ - isolation
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -19,34 +19,34 @@ allowed-tools: Read, Grep, Glob
 
 Git worktree management system for parallel SPEC development with isolated workspaces, automatic registration, and seamless MoAI-ADK integration.
 
-**Core Philosophy**: Each SPEC deserves its own isolated workspace to enable true parallel development without context switching overhead.
+Core Philosophy: Each SPEC deserves its own isolated workspace to enable true parallel development without context switching overhead.
 
 ## Quick Reference (30 seconds)
 
-**What is MoAI Worktree Management?**
+What is MoAI Worktree Management?
 A specialized Git worktree system that creates isolated development environments for each SPEC, enabling parallel development without conflicts.
 
-**Key Features**:
-- **Isolated Workspaces**: Each SPEC gets its own worktree with independent Git state
-- **Automatic Registration**: Worktree registry tracks all active workspaces
-- **Parallel Development**: Multiple SPECs can be developed simultaneously
-- **Seamless Integration**: Works with `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync` workflow
-- **Smart Synchronization**: Automatic sync with base branch when needed
-- **Cleanup Automation**: Automatic cleanup of merged worktrees
+Key Features:
+- Isolated Workspaces: Each SPEC gets its own worktree with independent Git state
+- Automatic Registration: Worktree registry tracks all active workspaces
+- Parallel Development: Multiple SPECs can be developed simultaneously
+- Seamless Integration: Works with `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync` workflow
+- Smart Synchronization: Automatic sync with base branch when needed
+- Cleanup Automation: Automatic cleanup of merged worktrees
 
-**Quick Access**:
+Quick Access:
 - CLI commands → [Worktree Commands Module](modules/worktree-commands.md)
 - Management patterns → [Worktree Management Module](modules/worktree-management.md)
 - Parallel workflow → [Parallel Development Module](modules/parallel-development.md)
 - Integration guide → [Integration Patterns Module](modules/integration-patterns.md)
 - Troubleshooting → [Troubleshooting Module](modules/troubleshooting.md)
 
-**Use Cases**:
-- ✅ Multiple SPECs development in parallel
-- ✅ Isolated testing environments
-- ✅ Feature branch isolation
-- ✅ Code review workflows
-- ✅ Experimental feature development
+Use Cases:
+- Multiple SPECs development in parallel
+- Isolated testing environments
+- Feature branch isolation
+- Code review workflows
+- Experimental feature development
 
 ---
 
@@ -54,59 +54,59 @@ A specialized Git worktree system that creates isolated development environments
 
 ### 1. Core Architecture - Worktree Management System
 
-**Purpose**: Create isolated Git worktrees for parallel SPEC development.
+Purpose: Create isolated Git worktrees for parallel SPEC development.
 
-**Key Components**:
+Key Components:
 
-1. **Worktree Registry** - Central registry tracking all worktrees
-2. **Manager Layer** - Core worktree operations (create, switch, remove, sync)
-3. **CLI Interface** - User-friendly command interface
-4. **Models** - Data structures for worktree metadata
-5. **Integration Layer** - MoAI-ADK workflow integration
+1. Worktree Registry - Central registry tracking all worktrees
+2. Manager Layer - Core worktree operations (create, switch, remove, sync)
+3. CLI Interface - User-friendly command interface
+4. Models - Data structures for worktree metadata
+5. Integration Layer - MoAI-ADK workflow integration
 
-**Registry Structure**:
+Registry Structure:
 ```json
 {
-  "worktrees": {
-    "SPEC-001": {
-      "id": "SPEC-001",
-      "path": "/Users/goos/worktrees/MoAI-ADK/SPEC-001",
-      "branch": "feature/SPEC-001-user-auth",
-      "created_at": "2025-11-29T22:00:00Z",
-      "last_sync": "2025-11-29T22:30:00Z",
-      "status": "active",
-      "base_branch": "main"
-    }
-  },
-  "config": {
-    "worktree_root": "/Users/goos/worktrees/MoAI-ADK",
-    "auto_sync": true,
-    "cleanup_merged": true
-  }
+ "worktrees": {
+ "SPEC-001": {
+ "id": "SPEC-001",
+ "path": "/Users/goos/worktrees/MoAI-ADK/SPEC-001",
+ "branch": "feature/SPEC-001-user-auth",
+ "created_at": "2025-11-29T22:00:00Z",
+ "last_sync": "2025-11-29T22:30:00Z",
+ "status": "active",
+ "base_branch": "main"
+ }
+ },
+ "config": {
+ "worktree_root": "/Users/goos/worktrees/MoAI-ADK",
+ "auto_sync": true,
+ "cleanup_merged": true
+ }
 }
 ```
 
-**File Structure**:
+File Structure:
 ```
 ~/worktrees/MoAI-ADK/
-├── .moai-worktree-registry.json    # Central registry
-├── SPEC-001/                        # Worktree directory
-│   ├── .git                         # Git worktree metadata
-│   └── (project files)             # Complete project copy
-└── SPEC-002/                        # Another worktree
-    ├── .git
-    └── (project files)
+ .moai-worktree-registry.json # Central registry
+ SPEC-001/ # Worktree directory
+ .git # Git worktree metadata
+ (project files) # Complete project copy
+ SPEC-002/ # Another worktree
+ .git
+ (project files)
 ```
 
-**Detailed Reference**: [Worktree Management Module](modules/worktree-management.md)
+Detailed Reference: [Worktree Management Module](modules/worktree-management.md)
 
 ---
 
 ### 2. CLI Commands - Complete Command Interface
 
-**Purpose**: Provide intuitive CLI commands for worktree management.
+Purpose: Provide intuitive CLI commands for worktree management.
 
-**Core Commands**:
+Core Commands:
 
 ```bash
 # Create new worktree for SPEC
@@ -138,15 +138,15 @@ moai-worktree config get
 moai-worktree config set worktree_root ~/my-worktrees
 ```
 
-**Command Categories**:
+Command Categories:
 
-1. **Creation**: `new` - Create isolated worktree
-2. **Navigation**: `list`, `switch`, `go` - Browse and navigate
-3. **Management**: `sync`, `remove`, `clean` - Maintain worktrees
-4. **Status**: `status` - Check worktree state
-5. **Configuration**: `config` - Manage settings
+1. Creation: `new` - Create isolated worktree
+2. Navigation: `list`, `switch`, `go` - Browse and navigate
+3. Management: `sync`, `remove`, `clean` - Maintain worktrees
+4. Status: `status` - Check worktree state
+5. Configuration: `config` - Manage settings
 
-**Shell Integration**:
+Shell Integration:
 ```bash
 # Direct switching
 moai-worktree switch SPEC-001
@@ -158,47 +158,47 @@ eval $(moai-worktree go SPEC-001)
 # cd /Users/goos/worktrees/MoAI-ADK/SPEC-001
 ```
 
-**Detailed Reference**: [Worktree Commands Module](modules/worktree-commands.md)
+Detailed Reference: [Worktree Commands Module](modules/worktree-commands.md)
 
 ---
 
 ### 3. Parallel Development Workflow - Isolated SPEC Development
 
-**Purpose**: Enable true parallel development without context switching.
+Purpose: Enable true parallel development without context switching.
 
-**Workflow Integration**:
+Workflow Integration:
 
 ```
 1. Plan Phase (/moai:1-plan):
-   ├── SPEC creation
-   ├── moai-worktree new SPEC-XXX
-   └── Automatic worktree setup
+ SPEC creation
+ moai-worktree new SPEC-XXX
+ Automatic worktree setup
 
 2. Development Phase:
-   ├── Isolated worktree environment
-   ├── Independent Git state
-   └── Zero context switching
+ Isolated worktree environment
+ Independent Git state
+ Zero context switching
 
 3. Sync Phase (/moai:3-sync):
-   ├── moai-worktree sync SPEC-XXX
-   ├── Clean integration
-   └── Conflict resolution
+ moai-worktree sync SPEC-XXX
+ Clean integration
+ Conflict resolution
 
 4. Cleanup Phase:
-   ├── moai-worktree clean
-   ├── Automatic cleanup
-   └── Registry maintenance
+ moai-worktree clean
+ Automatic cleanup
+ Registry maintenance
 ```
 
-**Parallel Development Benefits**:
+Parallel Development Benefits:
 
-1. **Context Isolation**: Each SPEC has its own Git state, files, and environment
-2. **Zero Switching Cost**: Instant switching between worktrees
-3. **Independent Development**: Work on multiple SPECs simultaneously
-4. **Safe Experimentation**: Isolated environment for experimental features
-5. **Clean Integration**: Automatic sync and conflict resolution
+1. Context Isolation: Each SPEC has its own Git state, files, and environment
+2. Zero Switching Cost: Instant switching between worktrees
+3. Independent Development: Work on multiple SPECs simultaneously
+4. Safe Experimentation: Isolated environment for experimental features
+5. Clean Integration: Automatic sync and conflict resolution
 
-**Example Workflow**:
+Example Workflow:
 ```bash
 # Create SPEC-001 worktree
 moai-worktree new SPEC-001 "User Authentication"
@@ -224,47 +224,47 @@ moai-worktree sync SPEC-001
 moai-worktree sync SPEC-002
 ```
 
-**Detailed Reference**: [Parallel Development Module](modules/parallel-development.md)
+Detailed Reference: [Parallel Development Module](modules/parallel-development.md)
 
 ---
 
 ### 4. Integration Patterns - MoAI-ADK Workflow Integration
 
-**Purpose**: Seamless integration with MoAI-ADK Plan-Run-Sync workflow.
+Purpose: Seamless integration with MoAI-ADK Plan-Run-Sync workflow.
 
-**Integration Points**:
+Integration Points:
 
-1. **Plan Phase Integration** (`/moai:1-plan`):
-   ```bash
-   # After SPEC creation
-   moai-worktree new SPEC-{SPEC_ID}
+1. Plan Phase Integration (`/moai:1-plan`):
+ ```bash
+ # After SPEC creation
+ moai-worktree new SPEC-{SPEC_ID}
 
-   # Output guidance
-   echo "1. Switch to worktree: moai-worktree switch SPEC-{SPEC_ID}"
-   echo "2. Or use shell eval: eval $(moai-worktree go SPEC-{SPEC_ID})"
-   ```
+ # Output guidance
+ echo "1. Switch to worktree: moai-worktree switch SPEC-{SPEC_ID}"
+ echo "2. Or use shell eval: eval $(moai-worktree go SPEC-{SPEC_ID})"
+ ```
 
-2. **Development Phase** (`/moai:2-run`):
-   - Worktree isolation provides clean development environment
-   - Independent Git state prevents conflicts
-   - Automatic registry tracking
+2. Development Phase (`/moai:2-run`):
+ - Worktree isolation provides clean development environment
+ - Independent Git state prevents conflicts
+ - Automatic registry tracking
 
-3. **Sync Phase** (`/moai:3-sync`):
-   ```bash
-   # Before PR creation
-   moai-worktree sync SPEC-{SPEC_ID}
+3. Sync Phase (`/moai:3-sync`):
+ ```bash
+ # Before PR creation
+ moai-worktree sync SPEC-{SPEC_ID}
 
-   # After PR merge
-   moai-worktree clean --merged-only
-   ```
+ # After PR merge
+ moai-worktree clean --merged-only
+ ```
 
-**Auto-Detection Patterns**:
+Auto-Detection Patterns:
 
 ```bash
 # Check if worktree environment
 if [ -f "../.moai-worktree-registry.json" ]; then
-    SPEC_ID=$(basename $(pwd))
-    echo "Detected worktree environment: $SPEC_ID"
+ SPEC_ID=$(basename $(pwd))
+ echo "Detected worktree environment: $SPEC_ID"
 fi
 
 # Auto-sync on status check
@@ -272,21 +272,21 @@ moai-worktree status
 # Automatically syncs if out of date
 ```
 
-**Configuration Integration**:
+Configuration Integration:
 ```json
 {
-  "moai": {
-    "worktree": {
-      "auto_create": true,
-      "auto_sync": true,
-      "cleanup_merged": true,
-      "worktree_root": "~/worktrees/{PROJECT_NAME}"
-    }
-  }
+ "moai": {
+ "worktree": {
+ "auto_create": true,
+ "auto_sync": true,
+ "cleanup_merged": true,
+ "worktree_root": "~/worktrees/{PROJECT_NAME}"
+ }
+ }
 }
 ```
 
-**Detailed Reference**: [Integration Patterns Module](modules/integration-patterns.md)
+Detailed Reference: [Integration Patterns Module](modules/integration-patterns.md)
 
 ---
 
@@ -294,7 +294,7 @@ moai-worktree status
 
 ### Multi-Developer Worktree Coordination
 
-**Shared Worktree Registry**:
+Shared Worktree Registry:
 ```bash
 # Team worktree configuration
 moai-worktree config set registry_type team
@@ -311,13 +311,13 @@ moai-worktree status --team-overview
 
 ### Advanced Synchronization Strategies
 
-**Selective Sync Patterns**:
+Selective Sync Patterns:
 ```bash
 # Sync only specific files
-moai-worktree sync SPEC-001 --include "src/**"
+moai-worktree sync SPEC-001 --include "src/"
 
 # Exclude specific patterns
-moai-worktree sync SPEC-001 --exclude "node_modules/**"
+moai-worktree sync SPEC-001 --exclude "node_modules/"
 
 # Auto-resolve conflicts
 moai-worktree sync SPEC-001 --auto-resolve
@@ -328,7 +328,7 @@ moai-worktree sync SPEC-001 --resolve-interactive
 
 ### Worktree Templates and Presets
 
-**Custom Worktree Templates**:
+Custom Worktree Templates:
 ```bash
 # Create worktree with specific setup
 moai-worktree new SPEC-001 --template frontend
@@ -344,7 +344,7 @@ moai-worktree config set templates.backend.setup "python -m venv venv && source 
 
 ### Performance Optimization
 
-**Optimized Worktree Operations**:
+Optimized Worktree Operations:
 ```bash
 # Fast worktree creation (shallow clone)
 moai-worktree new SPEC-001 --shallow --depth 1
@@ -364,22 +364,22 @@ moai-worktree config set cache_ttl 3600
 
 ## Works Well With
 
-**Commands**:
-- **moai:1-plan** - SPEC creation with automatic worktree setup
-- **moai:2-run** - Development in isolated worktree environment
-- **moai:3-sync** - Integration with automatic worktree sync
-- **moai:9-feedback** - Worktree workflow improvements
+Commands:
+- moai:1-plan - SPEC creation with automatic worktree setup
+- moai:2-run - Development in isolated worktree environment
+- moai:3-sync - Integration with automatic worktree sync
+- moai:9-feedback - Worktree workflow improvements
 
-**Skills**:
-- **moai-foundation-core** - Parallel development patterns
-- **moai-workflow-project** - Project management integration
-- **moai-workflow-spec** - SPEC-driven development
-- **moai-git-strategy** - Git workflow optimization
+Skills:
+- moai-foundation-core - Parallel development patterns
+- moai-workflow-project - Project management integration
+- moai-workflow-spec - SPEC-driven development
+- moai-git-strategy - Git workflow optimization
 
-**Tools**:
-- **Git worktree** - Native Git worktree functionality
-- **Rich CLI** - Formatted terminal output
-- **Click framework** - Command-line interface framework
+Tools:
+- Git worktree - Native Git worktree functionality
+- Rich CLI - Formatted terminal output
+- Click framework - Command-line interface framework
 
 ---
 
@@ -393,18 +393,18 @@ moai-worktree config set cache_ttl 3600
 | Code review | Isolated review worktrees | Clean sync patterns |
 | Experimental features | Temporary worktrees + Auto-cleanup | Safe experimentation |
 
-**Module Deep Dives**:
+Module Deep Dives:
 - [Worktree Commands](modules/worktree-commands.md) - Complete CLI reference
 - [Worktree Management](modules/worktree-management.md) - Core architecture
 - [Parallel Development](modules/parallel-development.md) - Workflow patterns
 - [Integration Patterns](modules/integration-patterns.md) - MoAI-ADK integration
 - [Troubleshooting](modules/troubleshooting.md) - Problem resolution
 
-**Full Examples**: [examples.md](examples.md)
-**External Resources**: [reference.md](reference.md)
+Full Examples: [examples.md](examples.md)
+External Resources: [reference.md](reference.md)
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-11-29
-**Status**: ✅ Active (Complete modular architecture)
+Version: 1.0.0
+Last Updated: 2025-11-29
+Status: Active (Complete modular architecture)

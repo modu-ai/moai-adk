@@ -31,30 +31,52 @@ if str(LIB_DIR) not in sys.path:
 from lib.path_utils import find_project_root
 
 try:
+    from lib.unified_timeout_manager import (
+        get_timeout_manager, hook_timeout_context, HookTimeoutConfig,
+        TimeoutPolicy, HookTimeoutError
+    )
+    from lib.config_validator import get_config_validator, ValidationIssue
     from lib.common import (  # noqa: E402
         get_file_pattern_category,
         is_root_whitelisted,
         suggest_moai_location,
     )
     from lib.config_manager import ConfigManager  # noqa: E402
-    from lib.timeout import CrossPlatformTimeout  # noqa: E402
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
 
-    class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
+    def get_timeout_manager():
+        return None
+
+    def hook_timeout_context(hook_name, config=None):
+        import contextlib
+        @contextlib.contextmanager
+        def dummy_context():
+            yield
+        return dummy_context()
+
+    class HookTimeoutConfig:
+        def __init__(self, **kwargs):
+            pass
+
+    class TimeoutPolicy:
+        FAST = "fast"
+        NORMAL = "normal"
+        SLOW = "slow"
+
+    class HookTimeoutError(Exception):
         pass
 
-    class CrossPlatformTimeout:  # type: ignore[no-redef]
-        def __init__(self, seconds: int) -> None:
-            self.seconds = seconds
+    def get_config_validator():
+        return None
 
-        def start(self) -> None:
-            signal.alarm(int(self.seconds))
+    class ValidationIssue:
+        pass
 
-        def cancel(self) -> None:
-            signal.alarm(0)
+    class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
+        pass
 
     ConfigManager = None  # type: ignore
 
@@ -237,6 +259,24 @@ def handle_pre_tool_use(payload: Dict) -> Dict[str, Any]:
     return response
 
 
+def execute_pre_tool_validation(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute pre-tool validation with performance optimization"""
+    start_time = time.time() if 'time' in globals() else 0
+
+    # Call handler
+    result = handle_pre_tool_use(data)
+
+    # Add performance metrics
+    if 'time' in globals():
+        result["performance"] = {
+            "execution_time_seconds": round(time.time() - start_time, 3),
+            "timeout_manager_used": get_timeout_manager() is not None,
+            "config_validator_used": get_config_validator() is not None
+        }
+
+    return result
+
+
 def main() -> None:
     """Main entry point for PreToolUse hook
 
@@ -247,60 +287,164 @@ def main() -> None:
     4. Suggest correct .moai/ location if violation detected
     5. Warn or block operation based on config
 
+    Features:
+    - Optimized timeout handling with unified manager
+    - Enhanced error handling with graceful degradation
+    - Performance monitoring and validation
+    - Configuration validation
+
     Exit Codes:
         0: Success (validation complete)
         1: Error (timeout, JSON parse failure, handler exception)
     """
-    # Set 2-second timeout (optimized for performance)
-    timeout = CrossPlatformTimeout(2)
-    timeout.start()
+    import time
 
-    try:
+    # Configure timeout for pre_tool hook (fast policy)
+    timeout_config = HookTimeoutConfig(
+        policy=TimeoutPolicy.FAST,
+        custom_timeout_ms=2000,  # 2 seconds for fast validation
+        retry_count=1,
+        retry_delay_ms=100,
+        graceful_degradation=True,
+        memory_limit_mb=50  # Low memory limit for validation
+    )
+
+    def read_input_data() -> Dict[str, Any]:
+        """Read and parse input JSON data"""
         # Read JSON payload from stdin
         # Handle Docker/non-interactive environments by checking TTY
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        data = json.loads(input_data) if input_data.strip() else {}
+        return json.loads(input_data) if input_data.strip() else {}
 
-        # Call handler
-        result = handle_pre_tool_use(data)
+    # Use unified timeout manager if available
+    timeout_manager = get_timeout_manager()
+    if timeout_manager:
+        try:
+            result = timeout_manager.execute_with_timeout(
+                "pre_tool__document_management",
+                lambda: execute_pre_tool_validation(read_input_data()),
+                config=timeout_config
+            )
 
-        # Output result as JSON
-        print(json.dumps(result, ensure_ascii=False))
-        sys.exit(0)
+            # Output result as JSON
+            print(json.dumps(result, ensure_ascii=False))
+            sys.exit(0)
 
-    except PlatformTimeoutError:
-        # Timeout - allow operation to continue
-        timeout_response: Dict[str, Any] = {
-            "continue": True,
-            "systemMessage": "⚠️ Document validation timeout - operation proceeding",
-        }
-        print(json.dumps(timeout_response, ensure_ascii=False))
-        print("PreToolUse document management hook timeout after 2 seconds", file=sys.stderr)
-        sys.exit(1)
+        except HookTimeoutError as e:
+            # Enhanced timeout error handling
+            timeout_response = {
+                "continue": True,
+                "systemMessage": "⚠️ Document validation timeout - operation proceeding",
+                "error_details": {
+                    "hook_id": e.hook_id,
+                    "timeout_seconds": e.timeout_seconds,
+                    "execution_time": e.execution_time,
+                    "will_retry": e.will_retry
+                },
+                "performance": {
+                    "timeout_manager_used": True,
+                    "graceful_degradation": True
+                }
+            }
+            print(json.dumps(timeout_response, ensure_ascii=False))
+            print(f"PreToolUse document management hook timeout: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    except json.JSONDecodeError as e:
-        # JSON parse error - allow operation to continue
-        json_error_response: Dict[str, Any] = {
-            "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
-        }
-        print(json.dumps(json_error_response, ensure_ascii=False))
-        print(f"PreToolUse document management JSON parse error: {e}", file=sys.stderr)
-        sys.exit(1)
+        except Exception as e:
+            # Enhanced error handling with context
+            error_response = {
+                "continue": True,
+                "systemMessage": "⚠️ Document validation encountered an error - operation proceeding",
+                "hookSpecificOutput": {"error": f"Document management error: {e}"},
+                "error_details": {
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "graceful_degradation": True
+                },
+                "performance": {
+                    "timeout_manager_used": True,
+                    "graceful_degradation": True
+                }
+            }
+            print(json.dumps(error_response, ensure_ascii=False))
+            print(f"PreToolUse document management error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    except Exception as e:
-        # Unexpected error - allow operation to continue
-        unexpected_error_response: Dict[str, Any] = {
-            "continue": True,
-            "hookSpecificOutput": {"error": f"Document management error: {e}"},
-        }
-        print(json.dumps(unexpected_error_response, ensure_ascii=False))
-        print(f"PreToolUse document management unexpected error: {e}", file=sys.stderr)
-        sys.exit(1)
+    else:
+        # Fallback to legacy timeout handling
+        try:
+            from lib.timeout import CrossPlatformTimeout
 
-    finally:
-        # Always cancel alarm
-        timeout.cancel()
+            # Set 2-second timeout (optimized for performance)
+            timeout = CrossPlatformTimeout(2)
+            timeout.start()
+
+            try:
+                result = execute_pre_tool_validation(read_input_data())
+
+                # Output result as JSON
+                print(json.dumps(result, ensure_ascii=False))
+                sys.exit(0)
+
+            finally:
+                # Always cancel timeout
+                timeout.cancel()
+
+        except ImportError:
+            # No timeout handling available
+            try:
+                result = execute_pre_tool_validation(read_input_data())
+                print(json.dumps(result, ensure_ascii=False))
+                sys.exit(0)
+            except Exception as e:
+                print(json.dumps({
+                    "continue": True,
+                    "systemMessage": "⚠️ Document validation completed with errors - operation proceeding",
+                    "hookSpecificOutput": {"error": str(e)}
+                }, ensure_ascii=False))
+                sys.exit(0)
+
+        except PlatformTimeoutError:
+            # Timeout - allow operation to continue
+            timeout_response = {
+                "continue": True,
+                "systemMessage": "⚠️ Document validation timeout - operation proceeding",
+                "performance": {
+                    "timeout_manager_used": False,
+                    "graceful_degradation": True
+                }
+            }
+            print(json.dumps(timeout_response, ensure_ascii=False))
+            print("PreToolUse document management hook timeout after 2 seconds", file=sys.stderr)
+            sys.exit(1)
+
+        except json.JSONDecodeError as e:
+            # JSON parse error - allow operation to continue
+            json_error_response = {
+                "continue": True,
+                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
+                "performance": {
+                    "timeout_manager_used": False,
+                    "graceful_degradation": True
+                }
+            }
+            print(json.dumps(json_error_response, ensure_ascii=False))
+            print(f"PreToolUse document management JSON parse error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        except Exception as e:
+            # Unexpected error - allow operation to continue
+            unexpected_error_response = {
+                "continue": True,
+                "hookSpecificOutput": {"error": f"Document management error: {e}"},
+                "performance": {
+                    "timeout_manager_used": False,
+                    "graceful_degradation": True
+                }
+            }
+            print(json.dumps(unexpected_error_response, ensure_ascii=False))
+            print(f"PreToolUse document management unexpected error: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

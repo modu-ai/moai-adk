@@ -6,36 +6,36 @@ Structured GitHub issue templates for consistent feedback submission.
 
 ```
 Feedback Template Types:
-├── 🐛 Bug Report
-│   ├── Description
-│   ├── Reproduction steps
-│   ├── Expected vs Actual behavior
-│   └── Environment info
-├── ✨ Feature Request
-│   ├── Feature description
-│   ├── Usage scenarios
-│   ├── Expected effects
-│   └── Priority
-├── ⚡ Improvement
-│   ├── Current state
-│   ├── Improved state
-│   ├── Performance/Quality impact
-│   └── Implementation complexity
-├── 🔄 Refactor
-│   ├── Refactoring scope
-│   ├── Current vs Improved structure
-│   ├── Improvement reasons
-│   └── Impact analysis
-├── 📚 Documentation
-│   ├── Document content
-│   ├── Target audience
-│   ├── Document structure
-│   └── Related docs
-└── ❓ Question/Discussion
-    ├── Background
-    ├── Question or proposal
-    ├── Options
-    └── Decision criteria
+ Bug Report
+ Description
+ Reproduction steps
+ Expected vs Actual behavior
+ Environment info
+ Feature Request
+ Feature description
+ Usage scenarios
+ Expected effects
+ Priority
+ Improvement
+ Current state
+ Improved state
+ Performance/Quality impact
+ Implementation complexity
+ Refactor
+ Refactoring scope
+ Current vs Improved structure
+ Improvement reasons
+ Impact analysis
+ Documentation
+ Document content
+ Target audience
+ Document structure
+ Related docs
+ Question/Discussion
+ Background
+ Question or proposal
+ Options
+ Decision criteria
 ```
 
 ## Bug Report Template
@@ -88,7 +88,7 @@ Feedback Template Types:
 
 ## Usage Integration
 
-**Auto-triggered by `/moai:9-feedback` command**:
+Auto-triggered by `/moai:9-feedback` command:
 1. User executes `/moai:9-feedback "description"`
 2. Skill selects appropriate template type
 3. Template is populated with user input
@@ -96,5 +96,5 @@ Feedback Template Types:
 
 ## Success Metrics
 
-- **Feedback Completeness**: 95% GitHub issues with complete information
-- **Response Time**: Issues resolved 40% faster with complete templates
+- Feedback Completeness: 95% GitHub issues with complete information
+- Response Time: Issues resolved 40% faster with complete templates

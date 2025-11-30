@@ -837,6 +837,8 @@ moai-worktree seamlessly integrates with the MoAI-ADK Plan-Run-Sync cycle:
 
 This integration provides a complete, systematic approach to managing multiple SPECs simultaneously while maintaining the SPEC-First TDD methodology principles.
 
+**Important Note**: Local files that are excluded from Git (such as `.CLAUDE.local.md`, `.env`, and `.claude/settings.local.json`) are not automatically synchronized between worktrees. These files must be manually copied to each worktree directory after creation to ensure consistent development environment configuration.
+
 **Commands Overview:**
 
 ```bash

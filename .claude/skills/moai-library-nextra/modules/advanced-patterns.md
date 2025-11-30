@@ -15,4 +15,3 @@ Move advanced content here:
 
 Organize advanced patterns in a way that makes sense for this skill's domain.
 Each subsection should be self-contained and referenceable from SKILL.md.
-
