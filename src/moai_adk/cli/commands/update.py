@@ -2319,10 +2319,16 @@ def update(
 
 
 def _handle_custom_element_restoration(project_path: Path, backup_path: Path | None, yes: bool = False) -> None:
-    """Handle custom element restoration using the new system.
+    """Handle custom element restoration using the enhanced system.
 
-    This function provides a unified interface for restoring user-created custom elements
+    This function provides an improved interface for restoring user-created custom elements
     (agents, commands, skills, hooks) from backup during MoAI-ADK updates.
+
+    Key improvements:
+    - Preserves unselected elements (fixes disappearing issue)
+    - Only overwrites/creates selected elements from backup
+    - Interactive checkbox selection with arrow key navigation
+    - Includes all categories (Agents, Commands, Skills, Hooks)
 
     Args:
         project_path: Path to the MoAI-ADK project directory
@@ -2334,28 +2340,30 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
         return
 
     try:
-        # Create scanner to find custom elements
-        scanner = create_custom_element_scanner(project_path)
+        # Create scanner to find custom elements in backup (not current project)
+        backup_scanner = create_custom_element_scanner(backup_path)
 
-        # Get count of custom elements
-        custom_element_count = scanner.get_element_count()
+        # Get count of custom elements in backup
+        backup_element_count = backup_scanner.get_element_count()
 
-        if custom_element_count == 0:
-            # No custom elements found
-            console.print("[green]✓ No custom elements to restore[/green]")
+        if backup_element_count == 0:
+            # No custom elements found in backup
+            console.print("[green]✓ No custom elements found in backup to restore[/green]")
             return
 
-        # Create user selection UI
+        # Create enhanced user selection UI
         ui = create_user_selection_ui(project_path)
+
+        console.print(f"\n[cyan]🔍 Found {backup_element_count} custom elements in backup[/cyan]")
 
         # If yes mode is enabled, restore all elements automatically
         if yes:
-            console.print(f"[cyan]🔄 Auto-restoring {custom_element_count} custom elements...[/cyan]")
-            custom_elements = scanner.scan_custom_elements()
+            console.print(f"[cyan]🔄 Auto-restoring {backup_element_count} custom elements...[/cyan]")
+            backup_custom_elements = backup_scanner.scan_custom_elements()
             selected_elements = []
 
-            # Collect all element paths
-            for element_type, elements in custom_elements.items():
+            # Collect all element paths from backup
+            for element_type, elements in backup_custom_elements.items():
                 if element_type == "skills":
                     for skill in elements:
                         selected_elements.append(str(skill.path))
@@ -2363,33 +2371,41 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
                     for element_path in elements:
                         selected_elements.append(str(element_path))
         else:
-            # Interactive mode - prompt user for selection
+            # Interactive mode - prompt user for selection using enhanced UI
             selected_elements = ui.prompt_user_selection(backup_available=True)
 
             if not selected_elements:
                 console.print("[yellow]⚠ No elements selected for restoration[/yellow]")
+                console.print("[green]✓ All existing custom elements will be preserved[/green]")
                 return
 
             # Confirm selection
             if not ui.confirm_selection(selected_elements):
                 console.print("[yellow]⚠ Restoration cancelled by user[/yellow]")
+                console.print("[green]✓ All existing custom elements will be preserved[/green]")
                 return
 
-        # Perform restoration
+        # Perform selective restoration - ONLY restore selected elements
         if selected_elements:
+            console.print(f"[cyan]🔄 Restoring {len(selected_elements)} selected elements from backup...[/cyan]")
             restorer = create_selective_restorer(project_path, backup_path)
             success, stats = restorer.restore_elements(selected_elements)
 
             if success:
                 console.print(f"[green]✅ Successfully restored {stats['success']} custom elements[/green]")
+                console.print("[green]✓ All unselected elements remain preserved[/green]")
             else:
                 console.print(f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]")
                 if stats['failed'] > 0:
                     console.print(f"[red]❌ Failed to restore {stats['failed']} elements[/red]")
+                console.print("[yellow]⚠️ All other elements remain preserved[/yellow]")
+        else:
+            console.print("[green]✓ No elements selected, all custom elements preserved[/green]")
 
     except Exception as e:
         console.print(f"[yellow]⚠️ Custom element restoration failed: {e}[/yellow]")
         logger.warning(f"Custom element restoration error: {e}")
+        console.print("[yellow]⚠️ All existing custom elements remain as-is[/yellow]")
         # Don't fail the entire update process, just log the error
         pass
 

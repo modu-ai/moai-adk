@@ -20,17 +20,6 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/pre_tool__document_management.py"
-          }
-        ]
-      }
-    ],
     "SessionEnd": [
       {
         "hooks": [

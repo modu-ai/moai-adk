@@ -4,8 +4,15 @@ This module provides functionality to restore selected custom elements from back
 during MoAI-ADK updates. It handles safe file restoration with conflict detection
 and detailed reporting of restoration results.
 
-The restorer works with the existing MoAI-ADK backup system and provides
-rollback capabilities if restoration fails.
+Key Features:
+- Preserves unselected elements (fixes disappearing issue)
+- Only overwrites/creates selected elements from backup
+- Never deletes existing files that aren't being restored
+- Maintains all other custom elements intact
+- Safe restoration with rollback capabilities
+
+The restorer works with the existing MoAI-ADK backup system and ensures that
+only explicitly selected elements are modified, preserving all other files.
 """
 
 import logging
