@@ -33,20 +33,20 @@ netlify deploy --prod
 ```yaml
 name: Deploy
 on:
-  push:
-    branches: [main]
+ push:
+ branches: [main]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npm run build
-      - run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+ deploy:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v3
+ - uses: actions/setup-node@v3
+ - run: npm ci
+ - run: npm run build
+ - run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
 ```
 
 ---
-**Last Updated**: 2025-11-23
-**Status**: Production Ready
+Last Updated: 2025-11-23
+Status: Production Ready

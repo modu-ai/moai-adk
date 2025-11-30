@@ -4,9 +4,9 @@
 {{PROJECT_DESCRIPTION}}
 
 ## Who are our users?
-- **Primary users**: {{PRIMARY_USERS}}
-- **Secondary users**: {{SECONDARY_USERS}}
-- **User personas**: {{USER_PERSONAS}}
+- Primary users: {{PRIMARY_USERS}}
+- Secondary users: {{SECONDARY_USERS}}
+- User personas: {{USER_PERSONAS}}
 
 ## Value proposition
 {{VALUE_PROPOSITION}}

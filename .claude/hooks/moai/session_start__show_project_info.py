@@ -7,19 +7,19 @@ Purpose: Display enhanced project status with Git info, test status, and SPEC pr
 Execution: Triggered automatically when Claude Code session begins
 
 Enhanced Features:
-- Last commit information with relative time
-- Test coverage and status
-- Risk assessment
-- Formatted output with clear sections
+- Optimized timeout handling with unified manager
+- Efficient Git operations with connection pooling and caching
+- Enhanced error handling with graceful degradation
+- Resource monitoring and cleanup
+- Risk assessment with performance metrics
 """
 
 import json
-import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
@@ -30,24 +30,49 @@ if str(LIB_DIR) not in sys.path:
 # Import path utils for project root resolution
 from lib.path_utils import find_project_root
 
-# Try to import existing modules, provide fallbacks if not available
+# Import unified timeout manager and Git operations manager
 try:
-    from lib.timeout import CrossPlatformTimeout
+    from lib.unified_timeout_manager import (
+        get_timeout_manager, hook_timeout_context, HookTimeoutConfig,
+        TimeoutPolicy, HookTimeoutError
+    )
+    from lib.git_operations_manager import get_git_manager, GitOperationType
     from lib.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
-    # Fallback timeout implementation
+    # Fallback implementations if new modules not available
+    import signal
 
-    class CrossPlatformTimeout:  # type: ignore[no-redef]
-        def __init__(self, seconds):
-            self.seconds = seconds
+    def get_timeout_manager():
+        return None
 
-        def start(self):
+    def hook_timeout_context(hook_name, config=None):
+        import contextlib
+        @contextlib.contextmanager
+        def dummy_context():
+            yield
+        return dummy_context()
+
+    class HookTimeoutConfig:
+        def __init__(self, **kwargs):
             pass
 
-        def cancel(self):
-            pass
+    class TimeoutPolicy:
+        FAST = "fast"
+        NORMAL = "normal"
+        SLOW = "slow"
 
-    class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
+    class HookTimeoutError(Exception):
+        pass
+
+    def get_git_manager():
+        return None
+
+    class GitOperationType:
+        BRANCH = "branch"
+        LOG = "log"
+        STATUS = "status"
+
+    class PlatformTimeoutError(Exception):
         pass
 
 
@@ -137,78 +162,32 @@ def should_show_setup_messages() -> bool:
         return True
 
 
-def _run_git_command(cmd: list[str]) -> str:
-    """Run a single git command with timeout"""
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
-        return result.stdout.strip() if result.returncode == 0 else ""
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, OSError):
-        # Git command timeout, subprocess error, or git not found
-        return ""
+def get_git_info() -> Dict[str, Any]:
+    """Get comprehensive git information using optimized Git operations manager
 
-
-def get_git_cache_file() -> Path:
-    """Get path to git info cache file"""
-    cache_dir = find_project_root() / ".moai" / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / "git-info.json"
-
-
-def load_git_cache() -> dict[str, Any] | None:
-    """Load git info cache if valid (< 1 minute old)
-
-    Returns:
-        Cached git data if valid, None otherwise
+    Uses connection pooling, caching, and parallel execution for optimal performance.
+    Falls back to basic implementation if Git manager unavailable.
     """
+    git_manager = get_git_manager()
+    if git_manager:
+        try:
+            # Use optimized Git manager
+            project_info = git_manager.get_project_info(use_cache=True)
+            return {
+                "branch": project_info.get("branch", "unknown"),
+                "last_commit": project_info.get("last_commit", "unknown"),
+                "commit_time": project_info.get("commit_time", "unknown"),
+                "changes": project_info.get("changes", 0),
+                "fetch_time": project_info.get("fetch_time", ""),
+            }
+        except Exception as e:
+            logging.warning(f"Git manager failed, falling back: {e}")
+
+    # Fallback to basic Git operations
     try:
-        cache_file = get_git_cache_file()
-        if not cache_file.exists():
-            return None
+        import subprocess
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        cache_data = json.loads(cache_file.read_text())
-        last_check = cache_data.get("last_check")
-
-        if not last_check:
-            return None
-
-        # Cache is valid for 1 minute (git changes are frequent)
-        last_check_dt = datetime.fromisoformat(last_check)
-        if datetime.now() - last_check_dt < timedelta(minutes=1):
-            return cache_data
-
-        return None
-    except (json.JSONDecodeError, OSError, ValueError, KeyError):
-        # JSON parsing, file read, datetime parsing, or missing key errors
-        return None
-
-
-def save_git_cache(data: dict[str, Any]) -> None:
-    """Save git info cache with timestamp"""
-    try:
-        cache_file = get_git_cache_file()
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-
-        cache_data = {**data, "last_check": datetime.now().isoformat()}
-        cache_file.write_text(json.dumps(cache_data, indent=2))
-    except (OSError, PermissionError, TypeError):
-        # File write, permission, or JSON serialization errors
-        pass  # Silently fail on cache write
-
-
-def get_git_info() -> dict[str, Any]:
-    """Get comprehensive git information with parallel execution and caching
-
-    Uses ThreadPoolExecutor to run git commands in parallel (47ms → ~20ms).
-    Caches results for 1 minute to avoid redundant git queries.
-    """
-    # Try cache first
-    cached = load_git_cache()
-    if cached:
-        # Remove cache metadata before returning
-        result = {k: v for k, v in cached.items() if k != "last_check"}
-        return result
-
-    try:
         # Define git commands to run in parallel
         git_commands = [
             (["git", "branch", "--show-current"], "branch"),
@@ -221,7 +200,7 @@ def get_git_info() -> dict[str, Any]:
         results = {}
         with ThreadPoolExecutor(max_workers=4) as executor:
             # Submit all tasks
-            futures = {executor.submit(_run_git_command, cmd): key for cmd, key in git_commands}
+            futures = {executor.submit(_run_git_command_fallback, cmd): key for cmd, key in git_commands}
 
             # Collect results as they complete
             for future in as_completed(futures):
@@ -233,17 +212,12 @@ def get_git_info() -> dict[str, Any]:
                     results[key] = ""
 
         # Process results
-        git_data = {
+        return {
             "branch": results.get("branch", "unknown"),
             "last_commit": results.get("last_commit", "unknown"),
             "commit_time": results.get("commit_time", "unknown"),
             "changes": (len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0),
         }
-
-        # Cache the results
-        save_git_cache(git_data)
-
-        return git_data
 
     except (RuntimeError, OSError, TimeoutError):
         # ThreadPoolExecutor, git command, or timeout errors
@@ -253,6 +227,17 @@ def get_git_info() -> dict[str, Any]:
             "commit_time": "unknown",
             "changes": 0,
         }
+
+
+def _run_git_command_fallback(cmd: list[str]) -> str:
+    """Fallback git command execution"""
+    try:
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+        return result.stdout.strip() if result.returncode == 0 else ""
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, OSError):
+        # Git command timeout, subprocess error, or git not found
+        return ""
 
 
 def _parse_version(version_str: str) -> tuple[int, ...]:
@@ -413,6 +398,141 @@ def format_project_metadata() -> str:
     return f"📦 Version: {moai_version} {version_status}"
 
 
+def get_language_info(config: dict) -> dict:
+    """Get language configuration information
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        Dictionary with language info including display name and status
+    """
+    if not config:
+        return {"conversation_language": "en", "language_name": "English", "status": "⚠️ No config"}
+
+    lang_config = config.get("language", {})
+    conversation_lang = lang_config.get("conversation_language", "en")
+    lang_name = lang_config.get("conversation_language_name", "Unknown")
+
+    # Language status indicator
+    status = "✅ Active" if conversation_lang != "en" else "🌐 English"
+
+    return {
+        "conversation_language": conversation_lang,
+        "language_name": lang_name,
+        "status": status
+    }
+
+
+def load_user_personalization() -> dict:
+    """Load user personalization settings using centralized language configuration resolver
+
+    Uses the new LanguageConfigResolver which provides:
+    - Environment variable priority handling
+    - Configuration file integration
+    - Consistency validation and auto-correction
+    - Template variable export capabilities
+
+    Returns:
+        Dictionary with user personalization information
+    """
+    try:
+        # Import the centralized language configuration resolver
+        from src.moai_adk.core.language_config_resolver import get_resolver
+
+        # Get resolver instance and resolve configuration
+        resolver = get_resolver(str(find_project_root()))
+        config = resolver.resolve_config()
+
+        # Build personalization info using resolved configuration
+        personalization = {
+            'user_name': config.get('user_name', ''),
+            'conversation_language': config.get('conversation_language', 'en'),
+            'conversation_language_name': config.get('conversation_language_name', 'English'),
+            'agent_prompt_language': config.get('agent_prompt_language', 'en'),
+            'is_korean': config.get('conversation_language') == 'ko',
+            'has_personalization': bool(config.get('user_name', '').strip()),
+            'config_source': config.get('config_source', 'default'),
+            'personalized_greeting': resolver.get_personalized_greeting(config)
+        }
+
+        # Export template variables for other system components
+        template_vars = resolver.export_template_variables(config)
+
+        # Store resolved configuration for session-wide access
+        personalization_cache_file = find_project_root() / ".moai" / "cache" / "personalization.json"
+        try:
+            personalization_cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Store both personalization info and template variables
+            cache_data = {
+                "personalization": personalization,
+                "template_variables": template_vars,
+                "resolved_at": datetime.now().isoformat(),
+                "config_source": config.get('config_source', 'default')
+            }
+            personalization_cache_file.write_text(json.dumps(cache_data, ensure_ascii=False, indent=2))
+
+        except (OSError, PermissionError):
+            # Cache write errors are non-critical
+            pass
+
+        return personalization
+
+    except ImportError:
+        # Fallback to basic implementation if resolver not available
+        import os
+
+        # Load config from cache or direct file
+        config = get_cached_config()
+
+        # Environment variables take priority
+        user_name = os.getenv('MOAI_USER_NAME')
+        conversation_lang = os.getenv('MOAI_CONVERSATION_LANG')
+
+        # Fallback to config file if environment variables not set
+        if user_name is None and config:
+            user_name = config.get('user', {}).get('name', '')
+
+        if conversation_lang is None and config:
+            conversation_lang = config.get('language', {}).get('conversation_language', 'en')
+
+        # Get language name
+        lang_name_map = {
+            'ko': 'Korean',
+            'en': 'English',
+            'ja': 'Japanese',
+            'zh': 'Chinese',
+            'es': 'Spanish',
+            'fr': 'French',
+            'de': 'German',
+            'ru': 'Russian'
+        }
+        lang_name = lang_name_map.get(conversation_lang, 'Unknown')
+
+        # Build personalization info
+        personalization = {
+            'user_name': user_name or '',
+            'conversation_language': conversation_lang or 'en',
+            'conversation_language_name': lang_name,
+            'is_korean': conversation_lang == 'ko',
+            'has_personalization': bool(user_name),
+            'config_source': 'fallback',
+            'personalized_greeting': f"{user_name}님" if user_name and conversation_lang == 'ko' else user_name or ''
+        }
+
+        # Store for session-wide access
+        personalization_cache_file = find_project_root() / ".moai" / "cache" / "personalization.json"
+        try:
+            personalization_cache_file.parent.mkdir(parents=True, exist_ok=True)
+            personalization_cache_file.write_text(json.dumps(personalization, ensure_ascii=False, indent=2))
+        except (OSError, PermissionError):
+            # Cache write errors are non-critical
+            pass
+
+        return personalization
+
+
 def format_session_output() -> str:
     """Format the complete session start output with proper line alignment (optimized).
 
@@ -423,11 +543,19 @@ def format_session_output() -> str:
     git_info = get_git_info()
     spec_progress = get_spec_progress()
 
-    # Get MoAI version from cached config
-    moai_version = "unknown"
+    # Get config for language and version info
     config = get_cached_config()
+
+    # Load user personalization settings
+    personalization = load_user_personalization()
+
+    # Get MoAI version
+    moai_version = "unknown"
     if config:
         moai_version = config.get("moai", {}).get("version", "unknown")
+
+    # Get language info
+    lang_info = get_language_info(config)
 
     # Check for version updates (uses Phase 1 cache)
     version_status, _has_update = check_version_update()
@@ -440,7 +568,20 @@ def format_session_output() -> str:
         f"🔄 Changes: {git_info['changes']}",
         f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
         f"🔨 Last Commit: {git_info['last_commit']}",
+        f"🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']}) {lang_info['status']}",
     ]
+
+    # Add personalization info if available
+    if personalization['has_personalization']:
+        user_greeting = personalization.get('personalized_greeting', '')
+        if user_greeting:
+            greeting = f"👋 Welcome back, {user_greeting}!" if personalization['is_korean'] else f"👋 Welcome back, {user_greeting}!"
+        else:
+            greeting = f"👋 Welcome back, {personalization['user_name']}!" if personalization['is_korean'] else f"👋 Welcome back, {personalization['user_name']}!"
+        output.append(greeting)
+
+    # Configuration source is now handled silently for cleaner output
+    # Users can check configuration using dedicated tools if needed
 
     return "\n".join(output)
 
@@ -455,19 +596,32 @@ def main() -> None:
     - Test coverage and status
     - Risk assessment
 
+    Features:
+    - Optimized timeout handling with unified manager
+    - Enhanced error handling with graceful degradation
+    - Resource monitoring and cleanup
+    - Retry mechanisms for transient failures
+
     Exit Codes:
         0: Success
         1: Error (timeout, JSON parse failure, handler exception)
     """
-    # Set 5-second timeout
-    timeout = CrossPlatformTimeout(5)
-    timeout.start()
+    # Configure timeout for session start hook
+    timeout_config = HookTimeoutConfig(
+        policy=TimeoutPolicy.NORMAL,
+        custom_timeout_ms=5000,  # 5 seconds
+        retry_count=1,
+        retry_delay_ms=200,
+        graceful_degradation=True,
+        memory_limit_mb=100  # Optional memory limit
+    )
 
-    try:
+    def execute_session_start():
+        """Execute session start logic with proper error handling"""
         # Read JSON payload from stdin (for compatibility)
         # Handle Docker/non-interactive environments by checking TTY
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        _data = json.loads(input_data) if input_data.strip() else {}
+        data = json.loads(input_data) if input_data.strip() else {}
 
         # Check if setup messages should be shown
         show_messages = should_show_setup_messages()
@@ -476,44 +630,123 @@ def main() -> None:
         session_output = format_session_output() if show_messages else ""
 
         # Return as system message
-        result: dict[str, Any] = {"continue": True, "systemMessage": session_output}
-
-        print(json.dumps(result))
-        sys.exit(0)
-
-    except PlatformTimeoutError:
-        # Timeout - return minimal valid response
-        timeout_response: dict[str, Any] = {
+        result: Dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Session start timeout - continuing without project info",
+            "systemMessage": session_output,
+            "performance": {
+                "git_manager_used": get_git_manager() is not None,
+                "timeout_manager_used": get_timeout_manager() is not None
+            }
         }
-        print(json.dumps(timeout_response))
-        print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
-        sys.exit(1)
 
-    except json.JSONDecodeError as e:
-        # JSON parse error
-        json_error_response: dict[str, Any] = {
-            "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
-        }
-        print(json.dumps(json_error_response))
-        print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return result
 
-    except Exception as e:
-        # Unexpected error
-        general_error_response: dict[str, Any] = {
-            "continue": True,
-            "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
-        }
-        print(json.dumps(general_error_response))
-        print(f"SessionStart unexpected error: {e}", file=sys.stderr)
-        sys.exit(1)
+    # Use unified timeout manager if available
+    timeout_manager = get_timeout_manager()
+    if timeout_manager:
+        try:
+            result = timeout_manager.execute_with_timeout(
+                "session_start__show_project_info",
+                execute_session_start,
+                config=timeout_config
+            )
 
-    finally:
-        # Always cancel timeout
-        timeout.cancel()
+            print(json.dumps(result, ensure_ascii=False))
+            sys.exit(0)
+
+        except HookTimeoutError as e:
+            # Enhanced timeout error handling
+            timeout_response: Dict[str, Any] = {
+                "continue": True,
+                "systemMessage": "⚠️ Session start timeout - continuing without project info",
+                "error_details": {
+                    "hook_id": e.hook_id,
+                    "timeout_seconds": e.timeout_seconds,
+                    "execution_time": e.execution_time,
+                    "will_retry": e.will_retry
+                }
+            }
+            print(json.dumps(timeout_response, ensure_ascii=False))
+            print(f"SessionStart hook timeout: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        except Exception as e:
+            # Enhanced error handling with context
+            error_response: Dict[str, Any] = {
+                "continue": True,
+                "systemMessage": "⚠️ Session start encountered an error - continuing",
+                "error_details": {
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "graceful_degradation": True
+                }
+            }
+            print(json.dumps(error_response, ensure_ascii=False))
+            print(f"SessionStart error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    else:
+        # Fallback to legacy timeout handling
+        try:
+            from lib.timeout import CrossPlatformTimeout
+            from lib.timeout import TimeoutError as PlatformTimeoutError
+
+            # Set 5-second timeout
+            timeout = CrossPlatformTimeout(5)
+            timeout.start()
+
+            try:
+                result = execute_session_start()
+                print(json.dumps(result))
+                sys.exit(0)
+
+            except PlatformTimeoutError:
+                # Timeout - return minimal valid response
+                timeout_response: Dict[str, Any] = {
+                    "continue": True,
+                    "systemMessage": "⚠️ Session start timeout - continuing without project info",
+                }
+                print(json.dumps(timeout_response))
+                print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
+                sys.exit(1)
+
+            finally:
+                # Always cancel timeout
+                timeout.cancel()
+
+        except ImportError:
+            # No timeout handling available
+            try:
+                result = execute_session_start()
+                print(json.dumps(result))
+                sys.exit(0)
+            except Exception as e:
+                print(json.dumps({
+                    "continue": True,
+                    "systemMessage": "⚠️ Session start completed with errors",
+                    "error": str(e)
+                }))
+                sys.exit(0)
+
+        except json.JSONDecodeError as e:
+            # JSON parse error
+            json_error_response: Dict[str, Any] = {
+                "continue": True,
+                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
+            }
+            print(json.dumps(json_error_response))
+            print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        except Exception as e:
+            # Unexpected error
+            general_error_response: Dict[str, Any] = {
+                "continue": True,
+                "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
+            }
+            print(json.dumps(general_error_response))
+            print(f"SessionStart unexpected error: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

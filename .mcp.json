@@ -2,19 +2,36 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "timeout": 10000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
     },
     "playwright": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "args": ["-y", "@playwright/mcp@latest"],
+      "timeout": 10000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
     },
     "figma-dev-mode-mcp-server": {
       "type": "sse",
-      "url": "http://127.0.0.1:3845/sse"
+      "url": "http://127.0.0.1:3845/sse",
+      "timeout": 10000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
     },
     "sequential-thinking": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"]
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
+      "timeout": 10000,
+      "retryAttempts": 3,
+      "retryDelay": 1000
     }
+  },
+  "staggeredStartup": {
+    "enabled": true,
+    "delayMs": 500,
+    "connectionTimeout": 15000
   }
 }

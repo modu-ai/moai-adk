@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "0.30.2"
+version = "0.31.1"
 description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Unified moai-core-* Skills"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -163,6 +163,7 @@ exclude = [
 
 [project.scripts]
 moai-adk = "moai_adk.__main__:main"
+moai-worktree = "moai_adk.cli.worktree.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/modu-ai/moai-adk"

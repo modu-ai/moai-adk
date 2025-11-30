@@ -11,12 +11,12 @@ Comprehensive configuration options and best practices.
 ```yaml
 # config.yaml
 skill:
-  name: "skill-name"
-  version: "1.0.0"
-  options:
-    mode: "production"
-    timeout: 60
-    retries: 3
+ name: "skill-name"
+ version: "1.0.0"
+ options:
+ mode: "production"
+ timeout: 60
+ retries: 3
 ```
 
 ### Environment Variables
@@ -44,14 +44,14 @@ config.save()
 ```yaml
 # config.yaml
 profiles:
-  development:
-    mode: "debug"
-    timeout: 300
-  production:
-    mode: "strict"
-    timeout: 30
+ development:
+ mode: "debug"
+ timeout: 300
+ production:
+ mode: "strict"
+ timeout: 30
 ```
 
 ---
-**Last Updated**: 2025-11-23
-**Status**: Production Ready
+Last Updated: 2025-11-23
+Status: Production Ready

@@ -1,370 +1,453 @@
 ---
 name: moai-workflow-testing
-aliases: [moai-workflow-testing]
-description: AI-powered enterprise web application testing orchestrator with Context7 integration, intelligent test generation, visual regression testing, cross-browser coordination, and automated QA workflows for modern web applications
-version: 2.0.0
+description: Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, and quality assurance into unified development workflows
+version: 1.0.0
 category: workflow
-modularized: false
 tags:
-  - workflow
-  - enterprise
-  - testing
-  - webapp
-  - development
-updated: 2025-11-27
+ - workflow
+ - testing
+ - debugging
+ - performance
+ - quality
+ - tdd
+ - review
+updated: 2025-11-30
 status: active
-deprecated_names:
-  moai-workflow-testing:
-    deprecated_in: v0.32.0
-    remove_in: v0.35.0
-    message: "Use moai-workflow-testing instead"
+author: MoAI-ADK Team
 ---
+
+# Development Workflow Specialist
 
 ## Quick Reference (30 seconds)
 
-# Web Application Testing with Playwright
+Unified Development Workflow - Comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
 
-## 🚀 Two Approaches
+Core Capabilities:
+- Test-Driven Development: RED-GREEN-REFACTOR cycle with Context7 patterns
+- AI-Powered Debugging: Intelligent error analysis and Context7 best practices
+- Performance Optimization: Real-time profiling and bottleneck detection
+- Automated Code Review: TRUST 5 validation with AI quality analysis
+- Quality Assurance: Comprehensive testing and CI/CD integration
+- Workflow Orchestration: End-to-end development process automation
 
-### **Level 1: Basic Playwright Testing** (when you don't need AI)
+Unified Development Workflow:
+```
+Debug → Refactor → Optimize → Review → Test → Profile
+ ↓ ↓ ↓ ↓ ↓ ↓
+AI- AI- AI- AI- AI- AI-
+Powered Powered Powered Powered Powered Powered
+```
 
-To test local web applications, write native Python Playwright scripts.
+When to Use:
+- Complete development lifecycle management
+- Enterprise-grade quality assurance
+- Multi-language development projects
+- Performance-critical applications
+- Technical debt reduction initiatives
+- Automated testing and CI/CD integration
 
-**Helper Scripts Available**:
-- `scripts/with_server.py` - Manages server lifecycle (supports multiple servers)
+Quick Start:
+```python
+# Initialize comprehensive workflow
+from moai_workflow_testing import (
+ AIProfiler, TDDManager, AutomatedCodeReviewer
+)
 
-**Always run scripts with `--help` first** to see usage. **DO NOT read the source until you try running the script first.** These scripts can be very large and thus pollute your context window. They exist to be called directly as black-box scripts.
+# Start complete development workflow
+workflow = DevelopmentWorkflow(
+ project_path="/project/src",
+ context7_client=context7
+)
 
-### **Level 2: AI-Enhanced Testing** (AI-Enhanced methodology below)
+# Run full workflow cycle
+results = await workflow.execute_complete_cycle()
+```
 
 ---
 
-## 🧠 AI-Enhanced Testing Methodology (AI-TEST Framework)
+## Implementation Guide (5 minutes)
 
-### **A** - **AI Test Pattern Recognition**
-```python
-class AITestPatternRecognizer:
-    """AI-powered test pattern detection and classification."""
-    
-    async def analyze_webapp_with_context7(self, webapp_url: str, context: dict) -> TestAnalysis:
-        """Analyze webapp using Context7 documentation and AI pattern matching."""
-        
-        # Get latest testing patterns from Context7
-        playwright_docs = await self.context7.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="AI testing patterns automated test generation visual regression 2025",
-            tokens=5000
-        )
-        
-        # AI pattern classification
-        app_type = self.classify_application_type(webapp_url, context)
-        test_patterns = self.match_known_test_patterns(app_type, context)
-        
-        # Context7-enhanced analysis
-        context7_insights = self.extract_context7_patterns(app_type, playwright_docs)
-        
-        return TestAnalysis(
-            application_type=app_type,
-            confidence_score=self.calculate_confidence(app_type, test_patterns),
-            recommended_test_strategies=self.generate_test_strategies(app_type, test_patterns, context7_insights),
-            context7_references=context7_insights['references'],
-            automation_opportunities=self.identify_automation_opportunities(app_type, test_patterns)
-        )
-```
+### Core Concepts
 
+Unified Development Philosophy:
+- Integrates all aspects of development into cohesive workflow
+- AI-powered assistance for complex decision-making
+- Context7 integration for industry best practices
+- Continuous feedback loops between workflow stages
+- Automated quality gates and validation
 
+Workflow Components:
+1. AI-Powered Debugging: Intelligent error classification and Context7-based solutions
+2. Smart Refactoring: Technical debt analysis with safe automated transformations
+3. Performance Optimization: Real-time monitoring with bottleneck detection
+4. TDD with Context7: Enhanced test generation and RED-GREEN-REFACTOR cycles
+5. Automated Code Review: TRUST 5 framework validation with AI analysis
 
-## Implementation Guide
-
-## 📋 Basic Level: Decision Tree (Without AI)
-
-### Choose Your Approach
-
-```
-User task → Is it static HTML?
-    ├─ Yes → Read HTML file directly to identify selectors
-    │         ├─ Success → Write Playwright script using selectors
-    │         └─ Fails/Incomplete → Treat as dynamic (below)
-    │
-    └─ No (dynamic webapp) → Is the server already running?
-        ├─ No → Run: python scripts/with_server.py --help
-        │        Then use the helper + write simplified Playwright script
-        │
-        └─ Yes → Reconnaissance-then-action:
-            1. Navigate and wait for networkidle
-            2. Take screenshot or inspect DOM
-            3. Identify selectors from rendered state
-            4. Execute actions with discovered selectors
-```
-
-### Example: Using with_server.py
-
-**Single server:**
-```bash
-python scripts/with_server.py --server "npm run dev" --port 5173 -- python your_automation.py
-```
-
-**Multiple servers (backend + frontend):**
-```bash
-python scripts/with_server.py \
-  --server "cd backend && python server.py" --port 3000 \
-  --server "cd frontend && npm run dev" --port 5173 \
-  -- python your_automation.py
-```
-
-### Automation Script Template
+### Basic Implementation
 
 ```python
-from playwright.sync_api import sync_playwright
+from moai_workflow_testing import (
+ AIDebugger, AIRefactorer, PerformanceProfiler,
+ TDDManager, AutomatedCodeReviewer
+)
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
-    page = browser.new_page()
-    page.goto('http://localhost:5173')
-    page.wait_for_load_state('networkidle')  # CRITICAL: Wait for JS
-    # ... your automation logic
-    browser.close()
+# 1. AI-Powered Debugging
+debugger = AIDebugger(context7_client=context7)
+
+try:
+ result = some_risky_operation()
+except Exception as e:
+ analysis = await debugger.debug_with_context7_patterns(
+ e, {'file': __file__, 'function': 'main'}, '/project/src'
+ )
+ print(f"Found {len(analysis.solutions)} solutions")
+
+# 2. Smart Refactoring
+refactorer = AIRefactorer(context7_client=context7)
+refactor_plan = await refactorer.refactor_with_intelligence('/project/src')
+print(f"Found {len(refactor_plan.opportunities)} refactoring opportunities")
+
+# 3. Performance Optimization
+profiler = PerformanceProfiler(context7_client=context7)
+profiler.start_profiling(['cpu', 'memory', 'line'])
+
+# Run code to profile
+result = expensive_function()
+
+profile_results = profiler.stop_profiling()
+bottlenecks = await profiler.detect_bottlenecks(profile_results)
+
+# 4. TDD with Context7
+tdd_manager = TDDManager('/project/src', context7_client=context7)
+
+test_spec = TestSpecification(
+ name="test_user_authentication",
+ description="Test user authentication with valid credentials",
+ test_type=TestType.UNIT,
+ requirements=["Valid email and password required"],
+ acceptance_criteria=["Valid credentials return token"]
+)
+
+cycle_results = await tdd_manager.run_full_tdd_cycle(
+ specification=test_spec,
+ target_function="authenticate_user"
+)
+
+# 5. Automated Code Review
+reviewer = AutomatedCodeReviewer(context7_client=context7)
+review_report = await reviewer.review_codebase('/project/src')
+
+print(f"Overall TRUST Score: {review_report.overall_trust_score:.2f}")
+print(f"Critical Issues: {len(review_report.critical_issues)}")
 ```
 
-### Reconnaissance-Then-Action Pattern
+### Common Use Cases
 
-1. **Inspect rendered DOM**:
-   ```python
-   page.screenshot(path='/tmp/inspect.png', full_page=True)
-   content = page.content()
-   page.locator('button').all()
-   ```
+Enterprise Development Workflow:
+```python
+# Complete enterprise workflow integration
+workflow = EnterpriseWorkflow(
+ project_path="/enterprise/app",
+ context7_client=context7,
+ quality_gates={
+ 'min_trust_score': 0.85,
+ 'max_critical_issues': 0,
+ 'required_coverage': 0.80
+ }
+)
 
-2. **Identify selectors** from inspection results
+# Execute workflow with quality validation
+results = await workflow.execute_with_validation()
+if results.quality_passed:
+ print(" Ready for deployment")
+else:
+ print(" Quality gates not met")
+ workflow.show_quality_issues()
+```
 
-3. **Execute actions** using discovered selectors
+Performance-Critical Applications:
+```python
+# Performance-focused workflow
+perf_workflow = PerformanceWorkflow(
+ project_path="/performance_app",
+ context7_client=context7,
+ performance_thresholds={
+ 'max_response_time': 100, # ms
+ 'max_memory_usage': 512, # MB
+ 'min_throughput': 1000 # requests/second
+ }
+)
 
-### ✅ Basic Level Best Practices
-
-- **Use scripts as black boxes** - Call `with_server.py` directly, don't read source
-- Use `sync_playwright()` for synchronous scripts
-- Always close the browser when done
-- Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
-- **Always wait for `networkidle` on dynamic apps** before inspection
-- Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
+# Profile and optimize
+optimization_results = await perf_workflow.optimize_performance()
+print(f"Performance improvement: {optimization_results.improvement_percentage:.1f}%")
+```
 
 ---
 
-## 🚀 Revolutionary AI Testing Capabilities
+## Advanced Features (10+ minutes)
 
-### **AI-Powered Test Generation with Context7**
-- 🧠 **Intelligent Test Pattern Recognition** with ML-based classification
-- 🎯 **AI-Enhanced Test Generation** using Context7 latest documentation
-- 🔍 **Visual Regression Testing** with AI-powered diff analysis
-- ⚡ **Real-Time Cross-Browser Coordination** across Chrome, Firefox, Safari
-- 🤖 **Automated QA Workflows** with Context7 best practices
-- 📊 **Performance Test Integration** with AI profiling
-- 🔮 **Predictive Test Maintenance** using ML pattern analysis
+### Workflow Integration Patterns
 
-### **Context7 Integration Features**
-- **Live Documentation Fetching**: Get latest Playwright patterns from `/microsoft/playwright`
-- **AI Pattern Matching**: Match test scenarios against Context7 knowledge base
-- **Best Practice Integration**: Apply latest testing techniques from official docs
-- **Version-Aware Testing**: Context7 provides version-specific patterns
-- **Community Knowledge Integration**: Leverage collective testing wisdom
-
-
-## 🎯 When to Use
-
-**Basic Level Triggers** (without AI):
-- Simple browser automation for static HTML
-- Testing with already-running servers
-- Quick UI interactions (click, type, wait)
-- Selector discovery and validation
-- Context budget constraints (avoid AI overhead)
-
-**AI Automatic Triggers**:
-- Web application deployment verification
-- UI/UX regression detection requirements
-- Cross-browser compatibility testing
-- Performance degradation detection
-- Complex user workflow automation
-- API integration testing scenarios
-
-**Manual AI Invocation**:
-- "Generate comprehensive tests for this webapp"
-- "Create visual regression tests with AI"
-- "Automate cross-browser testing workflows"
-- "Generate performance tests with Context7"
-- "Create intelligent QA test suites"
-
-
-## 🤖 Context7-Enhanced Testing Patterns
-
-### AI-Enhanced Visual Regression Testing
+Continuous Integration Integration:
 ```python
-class AIVisualRegressionTester:
-    """AI-powered visual regression testing with Context7 pattern matching."""
-    
-    async def test_with_context7_ai(self, baseline_url: str, current_url: str) -> VisualRegressionResult:
-        """Perform visual regression testing using AI and Context7 patterns."""
-        
-        # Get Context7 visual testing patterns
-        context7_patterns = await self.context7.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="visual regression testing screenshot comparison patterns",
-            tokens=3000
-        )
-        
-        # AI-powered visual analysis
-        visual_analysis = await self.analyze_visual_differences_with_ai(
-            baseline_url, current_url, context7_patterns
-        )
-        
-        return VisualRegressionResult(
-            visual_analysis=visual_analysis,
-            recommended_actions=self.generate_regression_fixes(visual_analysis)
-        )
+# CI/CD pipeline integration
+class CIWorkflowIntegrator:
+ def __init__(self, workflow_system, ci_config):
+ self.workflow = workflow_system
+ self.config = ci_config
+
+ async def run_ci_pipeline(self, commit_hash: str):
+ """Run complete CI pipeline with workflow validation."""
+
+ # 1. Code quality validation
+ review_results = await self.workflow.run_code_review()
+ if not self._meets_quality_standards(review_results):
+ return self._create_failure_report("Code quality check failed")
+
+ # 2. Testing validation
+ test_results = await self.workflow.run_full_test_suite()
+ if not test_results.all_tests_passed:
+ return self._create_failure_report("Tests failed")
+
+ # 3. Performance validation
+ perf_results = await self.workflow.run_performance_tests()
+ if not self._meets_performance_standards(perf_results):
+ return self._create_failure_report("Performance standards not met")
+
+ # 4. Security validation
+ security_results = await self.workflow.run_security_analysis()
+ if security_results.critical_vulnerabilities:
+ return self._create_failure_report("Security issues found")
+
+ return self._create_success_report(commit_hash)
 ```
 
+### AI-Enhanced Decision Making
 
-## 🎯 AI Testing Best Practices
-
-### ✅ **DO** - AI-Enhanced Testing
-- Use Context7 integration for latest testing patterns
-- Apply AI pattern recognition for comprehensive test coverage
-- Leverage visual regression testing with AI analysis
-- Use AI-coordinated cross-browser testing with Context7 workflows
-- Apply Context7-validated testing solutions
-
-### ❌ **DON'T** - Common AI Testing Mistakes
-- Ignore Context7 best practices and testing patterns
-- Apply AI-generated tests without validation
-- Skip AI confidence threshold checks for test reliability
-
-
-## 🤖 Context7 Integration Examples
-
-### Context7-Enhanced AI Testing
+Context7-Powered Workflow Optimization:
 ```python
-class Context7AITester:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.ai_engine = AIEngine()
-    
-    async def test_with_context7_ai(self, webapp_url: str) -> Context7AITestResult:
-        # Get latest testing patterns from Context7
-        playwright_patterns = await self.context7_client.get_library_docs(
-            context7_library_id="/microsoft/playwright",
-            topic="AI testing patterns automated test generation visual regression 2025",
-            tokens=5000
-        )
-        
-        # AI-enhanced test generation
-        ai_tests = self.ai_engine.generate_tests_with_patterns(webapp_url, playwright_patterns)
-        
-        return Context7AITestResult(
-            ai_tests=ai_tests,
-            context7_patterns=playwright_patterns,
-            confidence_score=ai_tests.confidence
-        )
+class AIWorkflowOptimizer:
+ """AI-powered workflow optimization using Context7 patterns."""
+
+ def __init__(self, context7_client):
+ self.context7 = context7_client
+
+ async def optimize_workflow_execution(
+ self, project_context: Dict
+ ) -> Dict[str, Any]:
+ """Optimize workflow execution based on project characteristics."""
+
+ # Get Context7 workflow patterns
+ patterns = await self.context7.get_library_docs(
+ context7_library_id="/workflow/devops",
+ topic="optimal development workflow patterns 2025",
+ tokens=4000
+ )
+
+ # Analyze project characteristics
+ project_analysis = self._analyze_project_context(project_context)
+
+ # Generate optimized workflow plan
+ optimized_plan = await self._generate_optimized_workflow(
+ project_analysis, patterns
+ )
+
+ return optimized_plan
 ```
 
+### Advanced Quality Assurance
 
-## 🔗 Enterprise Integration
+Comprehensive Quality Gates:
+```python
+class QualityGateManager:
+ """Manages comprehensive quality gates across workflow stages."""
 
-### CI/CD Pipeline Integration
-```yaml
-# AI testing integration in CI/CD
-ai_testing_stage:
-  - name: AI Test Generation
-    uses: moai-workflow-testing
-    with:
-      context7_integration: true
-      ai_pattern_recognition: true
-      visual_regression: true
-      cross_browser_testing: true
-      
-  - name: Context7 Validation
-    uses: moai-context7-integration
-    with:
-      validate_tests: true
-      apply_best_practices: true
+ def __init__(self, quality_config: Dict[str, Any]):
+ self.gates = self._initialize_quality_gates(quality_config)
+
+ async def validate_workflow_stage(
+ self, stage: str, artifacts: Dict[str, Any]
+ ) -> Dict[str, Any]:
+ """Validate quality gates for specific workflow stage."""
+
+ gate_config = self.gates.get(stage, {})
+ validation_results = {}
+
+ # Run stage-specific validations
+ for gate_name, gate_config in gate_config.items():
+ result = await self._run_quality_gate(
+ gate_name, artifacts, gate_config
+ )
+ validation_results[gate_name] = result
+
+ # Calculate overall gate status
+ gate_passed = all(
+ result['status'] == 'passed'
+ for result in validation_results.values()
+ )
+
+ return {
+ 'stage': stage,
+ 'passed': gate_passed,
+ 'validations': validation_results,
+ 'recommendations': self._generate_recommendations(validation_results)
+ }
 ```
 
-
-## 📊 Success Metrics & KPIs
-
-### AI Testing Effectiveness
-- **Test Coverage**: 95% coverage with AI-enhanced test generation
-- **Bug Detection Accuracy**: 90% accuracy with AI pattern recognition
-- **Visual Regression**: 85% success rate for AI-detected UI issues
-- **Cross-Browser Compatibility**: 80% faster compatibility testing
-
-
-## Alfred 에이전트와의 완벽한 연동
-
-### 4-Step 워크플로우 통합
-- **Step 1**: 사용자 요청 분석 및 AI 테스트 전략 수립
-- **Step 2**: Context7 기반 AI 테스트 생성 및 최적화
-- **Step 3**: 자동화된 테스트 실행 및 결과 분석
-- **Step 4**: 품질 보증 및 개선 제안 생성
-
-### 다른 에이전트들과의 협업
-- `moai-essentials-debug`: 테스트 실패 시 AI 디버깅 연동
-- `moai-essentials-perf`: 성능 테스트 통합
-- `moai-essentials-review`: 코드 리뷰와 테스트 커버리지 연동
-- `moai-foundation-trust`: 품질 보증 및 TRUST 5 원칙 적용
-
-
-## 한국어 지원 및 UX 최적화
-
-### Perfect Gentleman 스타일 통합
-- 사용자 인터페이스 한국어 완벽 지원
-- `.moai/config/config.json` conversation_language 자동 적용
-- AI 테스트 결과 한국어 상세 리포트
-- 개발자 친화적인 한국어 가이드 및 예제
-
-
-**End of AI-Powered Enterprise Web Application Testing Skill **  
-*Enhanced with Context7 MCP integration and revolutionary AI capabilities*
-
+---
 
 ## Works Well With
 
-- `moai-essentials-debug` (AI-powered debugging integration)
-- `moai-essentials-perf` (AI performance testing optimization)
-- `moai-essentials-refactor` (AI test code refactoring)
-- `moai-essentials-review` (AI test code review)
-- `moai-foundation-trust` (AI quality assurance)
-- `moai-context7-integration` (latest Playwright patterns and best practices)
-- Context7 MCP (latest testing patterns and documentation)
+- moai-domain-backend - Backend development workflows and API testing
+- moai-domain-frontend - Frontend development workflows and UI testing
+- moai-foundation-core - Core SPEC system and workflow management
+- moai-platform-baas - Backend-as-a-Service integration patterns
+- moai-workflow-project - Project management and documentation workflows
 
+---
 
-## Advanced Patterns
+## Module References
 
-## 🎯 Advanced Examples
+Core Implementation Modules:
+- [`modules/ai-debugging.md`](./modules/ai-debugging.md) - AI-powered debugging with Context7 integration
+- [`modules/smart-refactoring.md`](./modules/smart-refactoring.md) - Technical debt analysis and safe refactoring
+- [`modules/performance-optimization.md`](./modules/performance-optimization.md) - Real-time profiling and bottleneck detection
+- [`modules/tdd-context7.md`](./modules/tdd-context7.md) - TDD cycles with Context7-enhanced test generation
+- [`modules/automated-code-review.md`](./modules/automated-code-review.md) - TRUST 5 validation with AI code review
 
-### AI-Powered E2E Testing
-```python
-async def test_e2e_with_ai_context7():
-    """Test complete user journey using Context7 patterns."""
-    
-    # Get Context7 E2E testing patterns
-    workflow = await context7.get_library_docs(
-        context7_library_id="/microsoft/playwright",
-        topic="end-to-end testing user journey automation",
-        tokens=4000
-    )
-    
-    # Apply Context7 testing sequence
-    test_session = apply_context7_workflow(
-        workflow['testing_sequence'],
-        browsers=['chromium', 'firefox', 'webkit']
-    )
-    
-    # AI coordination across browsers
-    ai_coordinator = AITestCoordinator(test_session)
-    
-    # Execute coordinated testing
-    result = await ai_coordinator.coordinate_cross_browser_testing()
-    
-    return result
+---
+
+## Usage Examples
+
+### CLI Integration
+```bash
+# Run complete development workflow
+moai-workflow execute --project /project/src --mode full
+
+# Run specific workflow components
+moai-workflow debug --file app.py --error "AttributeError"
+moai-workflow refactor --directory src/ --max-risk medium
+moai-workflow profile --target function_name --types cpu,memory
+moai-workflow test --spec user_auth.spec --mode tdd
+moai-workflow review --project /project/src --trust-score-min 0.8
+
+# Continuous integration
+moai-workflow ci --commit abc123 --quality-gates strict
 ```
 
+### Python API
+```python
+from moai_workflow_testing import (
+ DevelopmentWorkflow, WorkflowConfig
+)
 
+# Configure workflow
+config = WorkflowConfig(
+ enable_debugging=True,
+ enable_refactoring=True,
+ enable_profiling=True,
+ enable_tdd=True,
+ enable_code_review=True,
+ context7_client=context7
+)
+
+# Initialize and run workflow
+workflow = DevelopmentWorkflow(
+ project_path="/project/src",
+ config=config
+)
+
+# Execute complete workflow
+results = await workflow.execute_complete_workflow()
+
+# Access results by stage
+print(f"Debugging solutions found: {len(results.debugging.solutions)}")
+print(f"Refactoring opportunities: {len(results.refactoring.opportunities)}")
+print(f"Performance bottlenecks: {len(results.profiling.bottlenecks)}")
+print(f"Test coverage: {results.tdd.coverage_percentage:.1f}%")
+print(f"Code review score: {results.code_review.trust_score:.2f}")
+```
+
+---
+
+## Technology Stack
+
+Core Analysis Libraries:
+- cProfile: Python profiling and performance analysis
+- memory_profiler: Memory usage analysis and optimization
+- psutil: System resource monitoring
+- line_profiler: Line-by-line performance profiling
+
+Static Analysis Tools:
+- pylint: Comprehensive code analysis and quality checks
+- flake8: Style guide enforcement and error detection
+- bandit: Security vulnerability scanning
+- mypy: Static type checking and validation
+
+Testing Frameworks:
+- pytest: Advanced testing framework with fixtures and plugins
+- unittest: Standard library testing framework
+- coverage: Code coverage measurement and analysis
+
+Context7 Integration:
+- MCP Protocol: Context7 message passing and communication
+- Dynamic Documentation: Real-time access to latest patterns and practices
+- AI-Powered Analysis: Enhanced error analysis and solution generation
+
+---
+
+## Integration Examples
+
+### GitHub Actions Integration
+```yaml
+# .github/workflows/development-workflow.yml
+name: Development Workflow
+
+on: [push, pull_request]
+
+jobs:
+ workflow:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v3
+ - name: Setup Python
+ uses: actions/setup-python@v4
+ with:
+ python-version: '3.11'
+
+ - name: Run Development Workflow
+ run: |
+ moai-workflow execute \
+ --project . \
+ --mode ci \
+ --quality-gates strict \
+ --output workflow-results.json
+
+ - name: Upload Results
+ uses: actions/upload-artifact@v3
+ with:
+ name: workflow-results
+ path: workflow-results.json
+```
+
+### Docker Integration
+```dockerfile
+# Dockerfile for workflow execution
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+# Run complete workflow on container start
+CMD ["moai-workflow", "execute", "--project", "/app", "--mode", "full"]
+```
+
+---
+
+Status: Production Ready
+Last Updated: 2025-11-30
+Maintained by: MoAI-ADK Development Workflow Team

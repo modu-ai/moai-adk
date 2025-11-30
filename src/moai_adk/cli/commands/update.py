@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -57,6 +58,11 @@ from moai_adk import __version__
 from moai_adk.core.merge import MergeAnalyzer
 from moai_adk.core.migration import VersionMigrator
 from moai_adk.core.migration.alfred_to_moai_migrator import AlfredToMoaiMigrator
+
+# Import new custom element restoration modules
+from moai_adk.core.migration.custom_element_scanner import create_custom_element_scanner
+from moai_adk.core.migration.selective_restorer import create_selective_restorer
+from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
 from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
@@ -491,6 +497,173 @@ If you encounter merge conflicts or issues:
     guide_path.write_text(guide_content, encoding="utf-8")
     logger.info(f"✅ Merge guide created: {guide_path}")
     return guide_path
+
+
+def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
+    """Migrate legacy log files to unified directory structure.
+
+    Creates new unified directory structure (.moai/docs/, .moai/logs/archive/) and
+    migrates files from legacy locations to new unified structure:
+    - .moai/memory/last-session-state.json → .moai/logs/sessions/
+    - .moai/error_logs/ → .moai/logs/errors/
+    - .moai/reports/ → .moai/docs/reports/
+
+    Args:
+        project_path: Project directory path (absolute)
+        dry_run: If True, only simulate migration without making changes
+
+    Returns:
+        True if migration succeeded or no migration needed, False otherwise
+
+    Raises:
+        Exception: If migration fails during actual execution
+    """
+    try:
+        # Define source and target directories
+        legacy_memory = project_path / ".moai" / "memory"
+        legacy_error_logs = project_path / ".moai" / "error_logs"
+        legacy_reports = project_path / ".moai" / "reports"
+
+        # Create new unified directory structure
+        new_logs_dir = project_path / ".moai" / "logs"
+        new_docs_dir = project_path / ".moai" / "docs"
+        new_sessions_dir = new_logs_dir / "sessions"
+        new_errors_dir = new_logs_dir / "errors"
+        new_archive_dir = new_logs_dir / "archive"
+        new_docs_reports_dir = new_docs_dir / "reports"
+
+        migration_log = []
+        files_migrated = 0
+        files_skipped = 0
+
+        # Check if any legacy directories exist
+        has_legacy_files = (
+            legacy_memory.exists() or
+            legacy_error_logs.exists() or
+            legacy_reports.exists()
+        )
+
+        if not has_legacy_files:
+            if not dry_run:
+                # Create new directory structure anyway for consistency
+                new_logs_dir.mkdir(parents=True, exist_ok=True)
+                new_docs_dir.mkdir(parents=True, exist_ok=True)
+                new_sessions_dir.mkdir(parents=True, exist_ok=True)
+                new_errors_dir.mkdir(parents=True, exist_ok=True)
+                new_archive_dir.mkdir(parents=True, exist_ok=True)
+                new_docs_reports_dir.mkdir(parents=True, exist_ok=True)
+            return True
+
+        if dry_run:
+            console.print("[cyan]🔍 Legacy log migration (dry run):[/cyan]")
+
+        # Create new directories if not dry run
+        if not dry_run:
+            new_logs_dir.mkdir(parents=True, exist_ok=True)
+            new_docs_dir.mkdir(parents=True, exist_ok=True)
+            new_sessions_dir.mkdir(parents=True, exist_ok=True)
+            new_errors_dir.mkdir(parents=True, exist_ok=True)
+            new_archive_dir.mkdir(parents=True, exist_ok=True)
+            new_docs_reports_dir.mkdir(parents=True, exist_ok=True)
+
+        # Migration 1: .moai/memory/last-session-state.json → .moai/logs/sessions/
+        if legacy_memory.exists():
+            session_file = legacy_memory / "last-session-state.json"
+            if session_file.exists():
+                target_file = new_sessions_dir / "last-session-state.json"
+
+                if target_file.exists():
+                    files_skipped += 1
+                    migration_log.append(f"Skipped: {session_file.relative_to(project_path)} (target already exists)")
+                else:
+                    if not dry_run:
+                        shutil.copy2(session_file, target_file)
+                        # Preserve original timestamp
+                        shutil.copystat(session_file, target_file)
+                        migration_log.append(f"Migrated: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                    else:
+                        migration_log.append(f"Would migrate: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                    files_migrated += 1
+
+        # Migration 2: .moai/error_logs/ → .moai/logs/errors/
+        if legacy_error_logs.exists() and legacy_error_logs.is_dir():
+            for error_file in legacy_error_logs.rglob("*"):
+                if error_file.is_file():
+                    relative_path = error_file.relative_to(legacy_error_logs)
+                    target_file = new_errors_dir / relative_path
+
+                    # Ensure target directory exists
+                    if not dry_run:
+                        target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                    if target_file.exists():
+                        files_skipped += 1
+                        migration_log.append(f"Skipped: {error_file.relative_to(project_path)} (target already exists)")
+                    else:
+                        if not dry_run:
+                            shutil.copy2(error_file, target_file)
+                            shutil.copystat(error_file, target_file)
+                            migration_log.append(f"Migrated: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        else:
+                            migration_log.append(f"Would migrate: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        files_migrated += 1
+
+        # Migration 3: .moai/reports/ → .moai/docs/reports/
+        if legacy_reports.exists() and legacy_reports.is_dir():
+            for report_file in legacy_reports.rglob("*"):
+                if report_file.is_file():
+                    relative_path = report_file.relative_to(legacy_reports)
+                    target_file = new_docs_reports_dir / relative_path
+
+                    # Ensure target directory exists
+                    if not dry_run:
+                        target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                    if target_file.exists():
+                        files_skipped += 1
+                        migration_log.append(f"Skipped: {report_file.relative_to(project_path)} (target already exists)")
+                    else:
+                        if not dry_run:
+                            shutil.copy2(report_file, target_file)
+                            shutil.copystat(report_file, target_file)
+                            migration_log.append(f"Migrated: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        else:
+                            migration_log.append(f"Would migrate: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        files_migrated += 1
+
+        # Create migration log
+        migration_log_path = new_logs_dir / "migration-log.json"
+        if not dry_run and files_migrated > 0:
+            migration_data = {
+                "migration_timestamp": datetime.now().isoformat(),
+                "moai_adk_version": __version__,
+                "files_migrated": files_migrated,
+                "files_skipped": files_skipped,
+                "migration_log": migration_log,
+                "legacy_directories_found": [
+                    str(d.relative_to(project_path)) for d in [legacy_memory, legacy_error_logs, legacy_reports] if d.exists()
+                ]
+            }
+            migration_log_path.write_text(json.dumps(migration_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        # Display results
+        if files_migrated > 0 or files_skipped > 0:
+            if dry_run:
+                console.print(f"   [yellow]Would migrate {files_migrated} files, skip {files_skipped} files[/yellow]")
+            else:
+                console.print(f"   [green]✓ Migrated {files_migrated} legacy log files[/green]")
+                if files_skipped > 0:
+                    console.print(f"   [yellow]⚠ Skipped {files_skipped} files (already exist)[/yellow]")
+                console.print(f"   [dim]   Migration log: {migration_log_path.relative_to(project_path)}[/dim]")
+        elif has_legacy_files:
+            console.print("   [dim]   No files to migrate[/dim]")
+
+        return True
+
+    except Exception as e:
+        console.print(f"   [red]✗ Log migration failed: {e}[/red]")
+        logger.error(f"Legacy log migration failed: {e}", exc_info=True)
+        return False
 
 
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
@@ -1324,23 +1497,16 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
         except Exception as e:
             console.print(f"[yellow]⚠️  Announcement module not available: {e}[/yellow]")
 
-        # NEW: Interactive skill restore if custom skills found
-        if custom_skills and backup_path:
-            skills_to_restore = _prompt_skill_restore(custom_skills, yes)
-            if skills_to_restore:
-                _restore_selected_skills(skills_to_restore, backup_path, project_path)
+        # NEW: Interactive custom element restore using new system
+        _handle_custom_element_restoration(project_path, backup_path, yes)
 
-        # NEW: Interactive custom files restore if custom files found
-        if (custom_commands or custom_agents or custom_hooks) and backup_path:
-            files_to_restore = _prompt_custom_files_restore(custom_commands, custom_agents, custom_hooks, yes)
-            if any([files_to_restore.get("commands"), files_to_restore.get("agents"), files_to_restore.get("hooks")]):
-                _restore_custom_files(
-                    project_path=project_path,
-                    backup_path=backup_path,
-                    selected_commands=files_to_restore.get("commands", []),
-                    selected_agents=files_to_restore.get("agents", []),
-                    selected_hooks=files_to_restore.get("hooks", []),
-                )
+        # NEW: Migrate legacy logs to unified structure
+        console.print("\n[cyan]📁 Migrating legacy log files...[/cyan]")
+        if not _migrate_legacy_logs(project_path):
+            console.print("[yellow]⚠️ Legacy log migration failed, but update continuing[/yellow]")
+
+        # Clean up legacy presets directory
+        _cleanup_legacy_presets(project_path)
 
         # NEW: Show post-update guidance
         if backup_path:
@@ -1477,10 +1643,35 @@ def _build_template_context(
     # Detect OS for cross-platform Hook path configuration
     hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
 
-    # Extract language configuration
-    language_config = existing_config.get("language", {})
-    if not isinstance(language_config, dict):
-        language_config = {}
+    # Extract and resolve language configuration using centralized resolver
+    try:
+        from moai_adk.core.language_config_resolver import get_resolver
+
+        # Use language resolver to get complete configuration
+        resolver = get_resolver(str(project_path))
+        resolved_config = resolver.resolve_config()
+
+        # Extract language configuration with environment variable priority
+        language_config = {
+            "conversation_language": resolved_config.get("conversation_language", "en"),
+            "conversation_language_name": resolved_config.get("conversation_language_name", "English"),
+            "agent_prompt_language": resolved_config.get("agent_prompt_language", "en"),
+        }
+
+        # Extract user personalization
+        user_name = resolved_config.get("user_name", "")
+        personalized_greeting = resolver.get_personalized_greeting(resolved_config)
+        config_source = resolved_config.get("config_source", "config_file")
+
+    except ImportError:
+        # Fallback to basic language config extraction if resolver not available
+        language_config = existing_config.get("language", {})
+        if not isinstance(language_config, dict):
+            language_config = {}
+
+        user_name = existing_config.get("user", {}).get("name", "")
+        personalized_greeting = f"{user_name}님" if user_name and language_config.get("conversation_language") == "ko" else user_name
+        config_source = "config_file"
 
     # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
     def format_short_version(v: str) -> str:
@@ -1533,6 +1724,14 @@ def _build_template_context(
         "PROJECT_DIR": hook_project_dir,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
         "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+        "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),
+        "GIT_COMMIT_MESSAGES_LANGUAGE": language_config.get("git_commit_messages", "en"),
+        "CODE_COMMENTS_LANGUAGE": language_config.get("code_comments", "en"),
+        "DOCUMENTATION_LANGUAGE": language_config.get("documentation", language_config.get("conversation_language", "en")),
+        "ERROR_MESSAGES_LANGUAGE": language_config.get("error_messages", language_config.get("conversation_language", "en")),
+        "USER_NAME": user_name,
+        "PERSONALIZED_GREETING": personalized_greeting,
+        "LANGUAGE_CONFIG_SOURCE": config_source,
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
         "PROJECT_OWNER": project_section.get("author", "@user"),
         "AUTHOR": project_section.get("author", "@user"),
@@ -2117,3 +2316,103 @@ def update(
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")
         raise click.ClickException(str(e)) from e
+
+
+def _handle_custom_element_restoration(project_path: Path, backup_path: Path | None, yes: bool = False) -> None:
+    """Handle custom element restoration using the new system.
+
+    This function provides a unified interface for restoring user-created custom elements
+    (agents, commands, skills, hooks) from backup during MoAI-ADK updates.
+
+    Args:
+        project_path: Path to the MoAI-ADK project directory
+        backup_path: Path to the backup directory (None if no backup)
+        yes: Whether to automatically accept defaults (non-interactive mode)
+    """
+    if not backup_path:
+        # No backup available, cannot restore
+        return
+
+    try:
+        # Create scanner to find custom elements
+        scanner = create_custom_element_scanner(project_path)
+
+        # Get count of custom elements
+        custom_element_count = scanner.get_element_count()
+
+        if custom_element_count == 0:
+            # No custom elements found
+            console.print("[green]✓ No custom elements to restore[/green]")
+            return
+
+        # Create user selection UI
+        ui = create_user_selection_ui(project_path)
+
+        # If yes mode is enabled, restore all elements automatically
+        if yes:
+            console.print(f"[cyan]🔄 Auto-restoring {custom_element_count} custom elements...[/cyan]")
+            custom_elements = scanner.scan_custom_elements()
+            selected_elements = []
+
+            # Collect all element paths
+            for element_type, elements in custom_elements.items():
+                if element_type == "skills":
+                    for skill in elements:
+                        selected_elements.append(str(skill.path))
+                else:
+                    for element_path in elements:
+                        selected_elements.append(str(element_path))
+        else:
+            # Interactive mode - prompt user for selection
+            selected_elements = ui.prompt_user_selection(backup_available=True)
+
+            if not selected_elements:
+                console.print("[yellow]⚠ No elements selected for restoration[/yellow]")
+                return
+
+            # Confirm selection
+            if not ui.confirm_selection(selected_elements):
+                console.print("[yellow]⚠ Restoration cancelled by user[/yellow]")
+                return
+
+        # Perform restoration
+        if selected_elements:
+            restorer = create_selective_restorer(project_path, backup_path)
+            success, stats = restorer.restore_elements(selected_elements)
+
+            if success:
+                console.print(f"[green]✅ Successfully restored {stats['success']} custom elements[/green]")
+            else:
+                console.print(f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]")
+                if stats['failed'] > 0:
+                    console.print(f"[red]❌ Failed to restore {stats['failed']} elements[/red]")
+
+    except Exception as e:
+        console.print(f"[yellow]⚠️ Custom element restoration failed: {e}[/yellow]")
+        logger.warning(f"Custom element restoration error: {e}")
+        # Don't fail the entire update process, just log the error
+        pass
+
+
+def _cleanup_legacy_presets(project_path: Path) -> None:
+    """Remove legacy presets directory if it exists.
+
+    This function cleans up the obsolete .moai/config/presets directory
+    that may exist from previous versions of MoAI-ADK.
+
+    Args:
+        project_path: Project directory path (absolute)
+    """
+    import shutil
+
+    presets_dir = project_path / ".moai" / "config" / "presets"
+
+    if presets_dir.exists() and presets_dir.is_dir():
+        try:
+            shutil.rmtree(presets_dir)
+            console.print("   [cyan]🧹 Cleaned up legacy presets directory[/cyan]")
+            logger.info(f"Removed legacy presets directory: {presets_dir}")
+        except Exception as e:
+            console.print(f"   [yellow]⚠️ Failed to remove legacy presets directory: {e}[/yellow]")
+            logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
+            # Don't fail the update process, just log the warning

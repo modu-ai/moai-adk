@@ -1,9 +1,9 @@
 # MoAI Foundation Core - Modules Directory
 
-**Purpose**: Extended documentation modules for moai-foundation-core skill, providing deep dives into each foundational principle.
+Purpose: Extended documentation modules for moai-foundation-core skill, providing deep dives into each foundational principle.
 
-**Version**: 1.0.0
-**Last Updated**: 2025-11-25
+Version: 1.0.0
+Last Updated: 2025-11-25
 
 ---
 
@@ -12,16 +12,16 @@
 This directory contains 9 comprehensive modules covering MoAI-ADK's foundational principles and execution rules:
 
 ### 1. trust-5-framework.md (982 lines)
-**TRUST 5 Quality Framework** - Automated quality gates ensuring code quality, security, maintainability, and traceability.
+TRUST 5 Quality Framework - Automated quality gates ensuring code quality, security, maintainability, and traceability.
 
-**Quick Access**:
+Quick Access:
 - Test-first (≥85% coverage)
 - Readable (≤10 complexity)
 - Unified (consistent patterns)
 - Secured (OWASP compliance)
 - Trackable (clear commits)
 
-**Use Cases**:
+Use Cases:
 - Quality gate configuration
 - CI/CD pipeline integration
 - Pre-commit hook setup
@@ -30,15 +30,15 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 2. spec-first-tdd.md (866 lines)
-**Specification-Driven Development** - EARS format requirements with RED-GREEN-REFACTOR TDD cycles.
+Specification-Driven Development - EARS format requirements with RED-GREEN-REFACTOR TDD cycles.
 
-**Quick Access**:
+Quick Access:
 - SPEC generation (/moai:1-plan)
 - EARS format patterns
 - TDD implementation (/moai:2-run)
 - Documentation sync (/moai:3-sync)
 
-**Use Cases**:
+Use Cases:
 - New feature development
 - Requirement specification
 - Test-driven implementation
@@ -47,15 +47,15 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 3. delegation-patterns.md (757 lines)
-**Agent Orchestration** - Task delegation strategies for specialized agents without direct execution.
+Agent Orchestration - Task delegation strategies for specialized agents without direct execution.
 
-**Quick Access**:
+Quick Access:
 - Sequential delegation (dependencies)
 - Parallel delegation (independent tasks)
 - Conditional delegation (analysis-based routing)
 - Context passing optimization
 
-**Use Cases**:
+Use Cases:
 - Complex workflow orchestration
 - Multi-agent coordination
 - Error handling and recovery
@@ -64,15 +64,15 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 4. token-optimization.md (656 lines)
-**Budget Management** - Efficient 200K token budget through strategic context management.
+Budget Management - Efficient 200K token budget through strategic context management.
 
-**Quick Access**:
+Quick Access:
 - Phase-based allocation (SPEC 30K | TDD 180K | Docs 40K)
 - /clear execution rules
 - Selective file loading
 - Model selection strategy
 
-**Use Cases**:
+Use Cases:
 - Token budget planning
 - Context optimization
 - Cost reduction (60-70% savings)
@@ -81,15 +81,15 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 5. progressive-disclosure.md (576 lines)
-**Content Architecture** - Three-tier knowledge delivery balancing value with depth.
+Content Architecture - Three-tier knowledge delivery balancing value with depth.
 
-**Quick Access**:
+Quick Access:
 - Level 1: Quick Reference (30s, 1K tokens)
 - Level 2: Implementation Guide (5min, 3K tokens)
 - Level 3: Advanced Patterns (10+min, 5K tokens)
 - 500-line SKILL.md limit enforcement
 
-**Use Cases**:
+Use Cases:
 - Skill content structuring
 - Documentation architecture
 - File splitting strategy
@@ -98,15 +98,15 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 6. modular-system.md (588 lines)
-**File Organization** - Scalable file structure for unlimited content depth.
+File Organization - Scalable file structure for unlimited content depth.
 
-**Quick Access**:
+Quick Access:
 - Standard structure (SKILL.md + modules/ + examples.md + reference.md)
 - File splitting strategy
 - Cross-reference patterns
 - Module discovery
 
-**Use Cases**:
+Use Cases:
 - Skill organization
 - File structure validation
 - Automated splitting
@@ -115,15 +115,15 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 7. agents-reference.md (NEW)
-**Agent Catalog** - Complete reference of MoAI-ADK's 26 specialized agents with 7-tier hierarchy.
+Agent Catalog - Complete reference of MoAI-ADK's 26 specialized agents with 7-tier hierarchy.
 
-**Quick Access**:
+Quick Access:
 - `{domain}-{role}` naming convention
 - 7 tiers: workflow, core, domain, mcp, factory, support, ai
 - Agent selection criteria
 - MCP Resume pattern (40-60% token savings)
 
-**Use Cases**:
+Use Cases:
 - Agent selection for Task() delegation
 - Understanding agent hierarchy
 - MCP integrator usage
@@ -132,9 +132,9 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 8. commands-reference.md (NEW)
-**Command Catalog** - Complete reference for MoAI-ADK's 6 core commands in SPEC-First TDD workflow.
+Command Catalog - Complete reference for MoAI-ADK's 6 core commands in SPEC-First TDD workflow.
 
-**Quick Access**:
+Quick Access:
 - /moai:0-project (Project init)
 - /moai:1-plan (SPEC generation)
 - /moai:2-run (TDD implementation)
@@ -142,7 +142,7 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 - /moai:9-feedback (Improvement)
 - /moai:99-release (Deployment)
 
-**Use Cases**:
+Use Cases:
 - Command workflow execution
 - /clear execution rules
 - Token budget by command
@@ -151,9 +151,9 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 ---
 
 ### 9. execution-rules.md (NEW)
-**Security & Constraints** - Security policies, execution constraints, and Git workflow strategies.
+Security & Constraints - Security policies, execution constraints, and Git workflow strategies.
 
-**Quick Access**:
+Quick Access:
 - Agent-First Mandate (Task() only)
 - Security Sandbox (protected paths, forbidden commands)
 - Permission System (RBAC 4 levels)
@@ -161,7 +161,7 @@ This directory contains 9 comprehensive modules covering MoAI-ADK's foundational
 - TRUST 5 Quality Gates
 - Compliance (GDPR, CCPA, OWASP, SOC 2, ISO 27001)
 
-**Use Cases**:
+Use Cases:
 - Security constraint enforcement
 - Git workflow configuration
 - Compliance validation
@@ -181,7 +181,7 @@ skill_path = Path(".claude/skills/moai-foundation-core")
 module_path = skill_path / "modules" / "trust-5-framework.md"
 
 with open(module_path) as f:
-    content = f.read()
+ content = f.read()
 ```
 
 ### Progressive Loading
@@ -189,42 +189,42 @@ with open(module_path) as f:
 ```python
 # Load progressively based on user needs
 class ModuleLoader:
-    def load_quick_reference(self, module_name: str):
-        """Load Quick Reference section only (~1K tokens)."""
-        content = self.load_module(module_name)
-        return self.extract_section(content, "Quick Reference")
-    
-    def load_implementation(self, module_name: str):
-        """Load Implementation Guide (~3K tokens)."""
-        content = self.load_module(module_name)
-        return self.extract_section(content, "Implementation Guide")
-    
-    def load_advanced(self, module_name: str):
-        """Load Advanced Patterns (~5K tokens)."""
-        content = self.load_module(module_name)
-        return self.extract_section(content, "Advanced Implementation")
+ def load_quick_reference(self, module_name: str):
+ """Load Quick Reference section only (~1K tokens)."""
+ content = self.load_module(module_name)
+ return self.extract_section(content, "Quick Reference")
+ 
+ def load_implementation(self, module_name: str):
+ """Load Implementation Guide (~3K tokens)."""
+ content = self.load_module(module_name)
+ return self.extract_section(content, "Implementation Guide")
+ 
+ def load_advanced(self, module_name: str):
+ """Load Advanced Patterns (~5K tokens)."""
+ content = self.load_module(module_name)
+ return self.extract_section(content, "Advanced Implementation")
 ```
 
 ### Searching Across Modules
 
 ```python
 class ModuleSearch:
-    def search_topic(self, query: str) -> list:
-        """Search for topic across all modules."""
-        modules_dir = Path(".claude/skills/moai-foundation-core/modules")
-        results = []
-        
-        for module_file in modules_dir.glob("*.md"):
-            with open(module_file) as f:
-                content = f.read()
-            
-            if query.lower() in content.lower():
-                results.append({
-                    "module": module_file.stem,
-                    "matches": content.lower().count(query.lower())
-                })
-        
-        return sorted(results, key=lambda x: x["matches"], reverse=True)
+ def search_topic(self, query: str) -> list:
+ """Search for topic across all modules."""
+ modules_dir = Path(".claude/skills/moai-foundation-core/modules")
+ results = []
+ 
+ for module_file in modules_dir.glob("*.md"):
+ with open(module_file) as f:
+ content = f.read()
+ 
+ if query.lower() in content.lower():
+ results.append({
+ "module": module_file.stem,
+ "matches": content.lower().count(query.lower())
+ })
+ 
+ return sorted(results, key=lambda x: x["matches"], reverse=True)
 
 # Usage
 searcher = ModuleSearch()
@@ -242,14 +242,14 @@ The main SKILL.md file (409 lines, within 500-line limit) provides:
 - Cross-references for deep dives
 - Works Well With integration
 
-**Cross-Reference Pattern**:
+Cross-Reference Pattern:
 ```markdown
 <!-- In SKILL.md -->
 ### 1. TRUST 5 Framework - Quality Assurance System
 
 Quick overview...
 
-**Detailed Reference**: [TRUST 5 Framework Module](modules/trust-5-framework.md)
+Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 ```
 
 ---
@@ -267,23 +267,23 @@ Quick overview...
 | agents-reference | ~400 | 26 agents, 7 tiers, MCP Resume | 4 |
 | commands-reference | ~300 | 6 commands, workflow, /clear rules | 4 |
 | execution-rules | ~700 | Security, Git, compliance, RBAC | 4 |
-| **Total** | **~6,825** | **36 major topics** | **36 use cases** |
+| Total | ~6,825 | 36 major topics | 36 use cases |
 
 ---
 
 ## Works Well With
 
-**Skills**:
+Skills:
 - moai-foundation-core (parent skill)
 - moai-cc-skill-factory (skill creation)
 - moai-core-agent-factory (agent creation)
 
-**Agents**:
+Agents:
 - skill-factory (module generation)
 - docs-manager (documentation)
 - quality-gate (validation)
 
-**Commands**:
+Commands:
 - /moai:1-plan (SPEC-First TDD)
 - /moai:2-run (TDD implementation)
 - /moai:3-sync (Documentation)
@@ -291,6 +291,6 @@ Quick overview...
 
 ---
 
-**Maintained by**: MoAI-ADK Team
-**Status**: ✅ Production Ready
-**Next Review**: As needed when foundation principles evolve
+Maintained by: MoAI-ADK Team
+Status: Production Ready
+Next Review: As needed when foundation principles evolve

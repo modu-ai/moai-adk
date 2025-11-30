@@ -2,16 +2,16 @@
 
 Comprehensive checklist for creating, validating, and maintaining Claude Code Skills that comply with official standards and deliver maximum value to users.
 
-**Purpose**: Complete validation guide for skill quality and compliance
-**Target**: Skill creators, maintainers, and reviewers
-**Last Updated**: 2025-11-25
-**Version**: 2.0.0
+Purpose: Complete validation guide for skill quality and compliance
+Target: Skill creators, maintainers, and reviewers
+Last Updated: 2025-11-25
+Version: 2.0.0
 
 ---
 
 ## Quick Reference (30 seconds)
 
-**Essential Validation**: Official standards compliance + user value delivery. **Key Areas**: Frontmatter accuracy, content structure, code quality, integration patterns. **Quality Gates**: Technical validation + user experience testing + standards compliance.
+Essential Validation: Official standards compliance + user value delivery. Key Areas: Frontmatter accuracy, content structure, code quality, integration patterns. Quality Gates: Technical validation + user experience testing + standards compliance.
 
 ---
 
@@ -19,19 +19,19 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Planning and Research
 
-**Problem Definition**:
+Problem Definition:
 - [ ] Clearly identified specific problem or need
 - [ ] Defined target user personas and use cases
 - [ ] Researched existing skills to avoid duplication
 - [ ] Scoped functionality to single responsibility
 
-**Requirements Analysis**:
+Requirements Analysis:
 - [ ] Documented all trigger scenarios and use cases
 - [ ] Identified required tools and permissions
 - [ ] Planned integration with existing skills
 - [ ] Defined success metrics and acceptance criteria
 
-**Standards Research**:
+Standards Research:
 - [ ] Reviewed latest Claude Code official documentation
 - [ ] Understood current skill formatting standards
 - [ ] Checked for recent changes in best practices
@@ -39,13 +39,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Technical Planning
 
-**Tool Selection**:
+Tool Selection:
 - [ ] Applied principle of least privilege
 - [ ] Selected minimal necessary tool set
 - [ ] Considered MCP integration requirements
 - [ ] Planned for security constraints
 
-**Architecture Design**:
+Architecture Design:
 - [ ] Designed progressive disclosure structure
 - [ ] Planned supporting file organization
 - [ ] Considered performance and loading speed
@@ -57,58 +57,58 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Required Fields Validation
 
-**name Field**:
+name Field:
 - [ ] Uses kebab-case format (lowercase, hyphens only)
 - [ ] Maximum 64 characters in length
 - [ ] Follows official naming convention (`[prefix]-[domain]-[function]`)
 - [ ] No special characters other than hyphens and numbers
 - [ ] Unique within the project/organization
 
-**description Field**:
+description Field:
 - [ ] Clearly describes what the skill does
 - [ ] Includes specific trigger scenarios
 - [ ] Maximum 1024 characters in length
 - [ ] Avoids vague or generic language
 - [ ] Includes context for when to use the skill
 
-**Optional Fields Validation**:
+Optional Fields Validation:
 
-**allowed-tools** (if present):
+allowed-tools (if present):
 - [ ] Follows comma-separated format (no brackets)
 - [ ] Uses minimal tool set required for functionality
 - [ ] No deprecated or invalid tool names
 - [ ] Considers security implications of each tool
 
-**version** (if present):
+version (if present):
 - [ ] Follows semantic versioning (X.Y.Z)
 - [ ] Incremented appropriately for changes
 - [ ] Documented in changelog for major changes
 
-**tags** (if present):
+tags (if present):
 - [ ] Relevant to skill functionality
 - [ ] Uses consistent categorization
 - [ ] Facilitates skill discovery
 - [ ] Follows organizational tag standards
 
-**updated** (if present):
+updated (if present):
 - [ ] Format: YYYY-MM-DD
 - [ ] Reflects actual last modification date
 - [ ] Updated with each content change
 
-**status** (if present):
+status (if present):
 - [ ] Uses valid values: active, deprecated, experimental
 - [ ] Accurately reflects skill state
 - [ ] Provides migration guidance for deprecated skills
 
 ### YAML Syntax Validation
 
-**Structure Validation**:
+Structure Validation:
 - [ ] Valid YAML syntax (no parsing errors)
 - [ ] Proper indentation (2 spaces standard)
 - [ ] No trailing whitespace or extra spaces
 - [ ] Proper quoting for special characters
 
-**Content Validation**:
+Content Validation:
 - [ ] No forbidden characters or encoding issues
 - [ ] Consistent quoting style
 - [ ] Proper escaping of special characters
@@ -120,28 +120,28 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Required Sections
 
-**Quick Reference Section**:
+Quick Reference Section:
 - [ ] Present and properly formatted (H2 heading)
 - [ ] 2-4 sentences maximum for quick overview
 - [ ] Focuses on core functionality and immediate value
 - [ ] Uses clear, concise language
 - [ ] Avoids technical jargon where possible
 
-**Implementation Guide Section**:
+Implementation Guide Section:
 - [ ] Present and properly formatted (H2 heading)
 - [ ] Contains Core Capabilities subsection (H3)
 - [ ] Contains When to Use subsection (H3)
 - [ ] Contains Essential Patterns subsection (H3)
 - [ ] Logical flow from simple to complex
 
-**Best Practices Section**:
+Best Practices Section:
 - [ ] Present and properly formatted (H2 heading)
-- [ ] Uses ✅ **DO** format for positive recommendations
-- [ ] Uses ❌ **DON'T** format for anti-patterns
+- [ ] Uses DO format for positive recommendations
+- [ ] Uses DON'T format for anti-patterns
 - [ ] Each point includes clear rationale or explanation
 - [ ] Covers security, performance, and maintainability
 
-**Works Well With Section** (Optional but Recommended):
+Works Well With Section (Optional but Recommended):
 - [ ] Present if skill integrates with others
 - [ ] Uses proper markdown link formatting
 - [ ] Includes brief relationship description
@@ -149,19 +149,19 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Content Quality Validation
 
-**Clarity and Specificity**:
+Clarity and Specificity:
 - [ ] Language is clear and unambiguous
 - [ ] Examples are specific and actionable
 - [ ] Technical terms are defined or explained
 - [ ] No vague or generic descriptions
 
-**Technical Accuracy**:
+Technical Accuracy:
 - [ ] Code examples are syntactically correct
 - [ ] Technical details are current and accurate
 - [ ] Examples follow language conventions
 - [ ] Security considerations are appropriate
 
-**User Experience**:
+User Experience:
 - [ ] Progressive disclosure structure (simple to complex)
 - [ ] Examples are immediately usable
 - [ ] Error conditions are documented
@@ -173,25 +173,25 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Code Quality Standards
 
-**Syntax and Style**:
+Syntax and Style:
 - [ ] All code examples are syntactically correct
 - [ ] Follow language-specific conventions and style guides
 - [ ] Proper indentation and formatting
 - [ ] Consistent coding style throughout examples
 
-**Documentation and Comments**:
+Documentation and Comments:
 - [ ] Code includes appropriate comments and documentation
 - [ ] Complex logic is explained
 - [ ] Function and variable names are descriptive
 - [ ] Docstrings follow language conventions
 
-**Error Handling**:
+Error Handling:
 - [ ] Examples include proper error handling where applicable
 - [ ] Edge cases are considered and documented
 - [ ] Exception handling follows best practices
 - [ ] Resource cleanup is demonstrated
 
-**Security Considerations**:
+Security Considerations:
 - [ ] No hardcoded credentials or sensitive data
 - [ ] Examples follow security best practices
 - [ ] Input validation is demonstrated
@@ -199,13 +199,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Multi-language Support
 
-**Language Identification**:
+Language Identification:
 - [ ] All code blocks include language identifiers
 - [ ] Examples cover relevant programming languages
 - [ ] Language-specific conventions are followed
 - [ ] Cross-language compatibility is considered
 
-**Integration Examples**:
+Integration Examples:
 - [ ] Examples show how to integrate with other tools/services
 - [ ] API integration patterns are demonstrated
 - [ ] Configuration examples are provided
@@ -217,19 +217,19 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Skill Integration
 
-**Works Well With Section**:
+Works Well With Section:
 - [ ] Identifies complementary skills
 - [ ] Describes integration patterns
 - [ ] Links are valid and functional
 - [ ] Integration examples are provided
 
-**MCP Integration** (if applicable):
+MCP Integration (if applicable):
 - [ ] MCP tools properly declared in allowed-tools
 - [ ] Two-step Context7 pattern used where appropriate
 - [ ] Proper error handling for MCP calls
 - [ ] Fallback strategies are documented
 
-**Tool Dependencies**:
+Tool Dependencies:
 - [ ] All required tools are properly declared
 - [ ] Optional dependencies are documented
 - [ ] Version requirements are specified
@@ -237,13 +237,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Compatibility Validation
 
-**Claude Code Version**:
+Claude Code Version:
 - [ ] Compatible with current Claude Code version
 - [ ] No deprecated features or APIs used
 - [ ] Future compatibility considered
 - [ ] Migration plans for breaking changes
 
-**Platform Compatibility**:
+Platform Compatibility:
 - [ ] Works across different operating systems
 - [ ] Browser compatibility considered for web-related skills
 - [ ] Cross-platform dependencies handled
@@ -255,19 +255,19 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Performance Considerations
 
-**Token Usage Optimization**:
+Token Usage Optimization:
 - [ ] SKILL.md under 500 lines (strict requirement)
 - [ ] Progressive disclosure implemented effectively
 - [ ] Large content moved to supporting files
 - [ ] Cache-friendly structure implemented
 
-**Loading Speed**:
+Loading Speed:
 - [ ] Supporting files organized for efficient loading
 - [ ] Internal links use relative paths
 - [ ] No circular references or deep nesting
 - [ ] File sizes are reasonable for quick loading
 
-**Resource Management**:
+Resource Management:
 - [ ] Minimal external dependencies
 - [ ] Efficient file organization
 - [ ] Appropriate use of caching strategies
@@ -275,13 +275,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Scalability Design
 
-**Maintainability**:
+Maintainability:
 - [ ] Modular structure for easy updates
 - [ ] Clear separation of concerns
 - [ ] Consistent patterns and conventions
 - [ ] Documentation for future maintainers
 
-**Extensibility**:
+Extensibility:
 - [ ] Extension points identified and documented
 - [ ] Plugin architecture considered if applicable
 - [ ] Version compatibility maintained
@@ -293,19 +293,19 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Security Validation
 
-**Tool Permissions**:
+Tool Permissions:
 - [ ] Principle of least privilege applied
 - [ ] No unnecessary permissions granted
 - [ ] Security implications documented
 - [ ] Safe defaults provided
 
-**Data Handling**:
+Data Handling:
 - [ ] No sensitive data in examples or comments
 - [ ] Proper data sanitization demonstrated
 - [ ] Privacy considerations addressed
 - [ ] Secure data storage patterns shown
 
-**Input Validation**:
+Input Validation:
 - [ ] Input validation demonstrated where applicable
 - [ ] Sanitization patterns are included
 - [ ] Edge cases and boundary conditions considered
@@ -313,13 +313,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Compliance Standards
 
-**OWASP Compliance** (if applicable):
+OWASP Compliance (if applicable):
 - [ ] Security best practices followed
 - [ ] Common vulnerabilities addressed
 - [ ] Security headers and configurations shown
 - [ ] Secure coding practices demonstrated
 
-**Industry Standards**:
+Industry Standards:
 - [ ] Industry-specific regulations considered
 - [ ] Compliance requirements documented
 - [ ] Audit trails demonstrated where applicable
@@ -331,19 +331,19 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Content Organization
 
-**Logical Structure**:
+Logical Structure:
 - [ ] Content flows logically from simple to complex
 - [ ] Sections are clearly defined and labeled
 - [ ] Navigation between sections is intuitive
 - [ ] Information architecture supports different user needs
 
-**Writing Quality**:
+Writing Quality:
 - [ ] Language is clear and concise
 - [ ] Technical writing standards followed
 - [ ] Consistent terminology throughout
 - [ ] Grammar and spelling are correct
 
-**User Experience**:
+User Experience:
 - [ ] Learning curve is appropriate for target audience
 - [ ] Examples are immediately actionable
 - [ ] Troubleshooting information is comprehensive
@@ -351,13 +351,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Visual Formatting
 
-**Markdown Standards**:
+Markdown Standards:
 - [ ] Proper heading hierarchy (H1 → H2 → H3)
 - [ ] Consistent use of emphasis and formatting
 - [ ] Code blocks use proper syntax highlighting
 - [ ] Lists and tables are properly formatted
 
-**Accessibility**:
+Accessibility:
 - [ ] Content is accessible to screen readers
 - [ ] Color contrast meets accessibility standards
 - [ ] Alternative text provided for images
@@ -369,13 +369,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Functional Testing
 
-**Example Validation**:
+Example Validation:
 - [ ] All code examples tested and verified working
 - [ ] Test cases cover main functionality
 - [ ] Edge cases are tested and documented
 - [ ] Integration examples are tested in context
 
-**Cross-platform Testing**:
+Cross-platform Testing:
 - [ ] Examples work on different operating systems
 - [ ] Browser compatibility verified for web-related skills
 - [ ] Version compatibility tested
@@ -383,13 +383,13 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### Quality Assurance
 
-**Automated Validation**:
+Automated Validation:
 - [ ] YAML syntax validation automated
 - [ ] Link checking automated
 - [ ] Code linting and formatting validation
 - [ ] Performance metrics monitored
 
-**Manual Review**:
+Manual Review:
 - [ ] Content reviewed by subject matter experts
 - [ ] User experience tested with target audience
 - [ ] Peer review process completed
@@ -401,25 +401,25 @@ Comprehensive checklist for creating, validating, and maintaining Claude Code Sk
 
 ### File Structure Validation
 
-**Required Structure**:
+Required Structure:
 ```
 skill-name/
-├── SKILL.md (REQUIRED, ≤500 lines)
-├── reference.md (OPTIONAL)
-├── examples.md (OPTIONAL)
-├── scripts/ (OPTIONAL)
-│   └── helper.sh
-└── templates/ (OPTIONAL)
-    └── template.md
+ SKILL.md (REQUIRED, ≤500 lines)
+ reference.md (OPTIONAL)
+ examples.md (OPTIONAL)
+ scripts/ (OPTIONAL)
+ helper.sh
+ templates/ (OPTIONAL)
+ template.md
 ```
 
-**File Naming**:
+File Naming:
 - [ ] Directory name matches skill name (kebab-case)
 - [ ] SKILL.md is uppercase (required)
 - [ ] Supporting files follow naming conventions
 - [ ] No prohibited characters in file names
 
-**Content Distribution**:
+Content Distribution:
 - [ ] Core content in SKILL.md (≤500 lines)
 - [ ] Additional documentation in reference.md
 - [ ] Extended examples in examples.md
@@ -427,19 +427,19 @@ skill-name/
 
 ### Version Control
 
-**Semantic Versioning**:
+Semantic Versioning:
 - [ ] Version follows X.Y.Z format
 - [ ] Major version indicates breaking changes
 - [ ] Minor version indicates new features
 - [ ] Patch version indicates bug fixes
 
-**Change Documentation**:
+Change Documentation:
 - [ ] Changelog maintained with version history
 - [ ] Breaking changes clearly documented
 - [ ] Migration paths provided for major changes
 - [ ] Deprecation notices with timelines
 
-**Release Process**:
+Release Process:
 - [ ] Pre-release validation completed
 - [ ] Release notes prepared
 - [ ] Version tags properly applied
@@ -451,13 +451,13 @@ skill-name/
 
 ### Success Metrics
 
-**Usage Analytics**:
+Usage Analytics:
 - [ ] Skill loading and usage tracked
 - [ ] User feedback collected and analyzed
 - [ ] Performance metrics monitored
 - [ ] Error rates tracked and addressed
 
-**Quality Indicators**:
+Quality Indicators:
 - [ ] User satisfaction measured
 - [ ] Support requests analyzed
 - [ ] Community adoption tracked
@@ -465,13 +465,13 @@ skill-name/
 
 ### Maintenance Planning
 
-**Regular Updates**:
+Regular Updates:
 - [ ] Update schedule established
 - [ ] Deprecation timeline planned
 - [ ] Succession planning for maintainers
 - [ ] Community contribution process defined
 
-**Continuous Improvement**:
+Continuous Improvement:
 - [ ] User feedback incorporation process
 - [ ] Performance optimization ongoing
 - [ ] Standards compliance monitoring
@@ -483,25 +483,25 @@ skill-name/
 
 ### Final Validation Gates
 
-**Technical Compliance**:
+Technical Compliance:
 - [ ] All YAML frontmatter fields are correct and complete
 - [ ] Content structure follows official standards
 - [ ] Code examples are tested and functional
 - [ ] File organization is optimal
 
-**Quality Standards**:
+Quality Standards:
 - [ ] Content is clear, specific, and actionable
 - [ ] Examples demonstrate best practices
 - [ ] Security considerations are addressed
 - [ ] Performance optimization is implemented
 
-**User Experience**:
+User Experience:
 - [ ] Learning curve is appropriate for target audience
 - [ ] Documentation supports different use cases
 - [ ] Troubleshooting information is comprehensive
 - [ ] Integration patterns are clear
 
-**Standards Compliance**:
+Standards Compliance:
 - [ ] Official Claude Code standards followed
 - [ ] Organization guidelines met
 - [ ] Industry best practices implemented
@@ -509,19 +509,19 @@ skill-name/
 
 ### Publication Approval Criteria
 
-**Ready for Publication**:
+Ready for Publication:
 - [ ] All required sections present and complete
 - [ ] Technical validation passed with no critical issues
 - [ ] Quality standards met with high confidence
 - [ ] User testing shows positive results
 
-**Conditional Publication**:
+Conditional Publication:
 - [ ] Minor issues identified but don't block publication
 - [ ] Improvements planned for next version
 - [ ] Monitoring and feedback collection established
 - [ ] Update timeline defined
 
-**Not Ready for Publication**:
+Not Ready for Publication:
 - [ ] Critical issues blocking functionality
 - [ ] Major standards compliance violations
 - [ ] Incomplete or missing required sections
@@ -533,23 +533,23 @@ skill-name/
 
 ### Validation Failures
 
-**YAML Parsing Errors**:
+YAML Parsing Errors:
 ```yaml
 # Common issue: Invalid array format
-# ❌ WRONG
+# WRONG
 allowed-tools: [Read, Write, Bash]
 
-# ✅ CORRECT
+# CORRECT
 allowed-tools: Read, Write, Bash
 ```
 
-**Line Count Exceeded**:
+Line Count Exceeded:
 - Move detailed examples to examples.md
 - Transfer advanced patterns to reference.md
 - Consolidate related content
 - Use progressive disclosure effectively
 
-**Link Validation Failures**:
+Link Validation Failures:
 - Check relative path formats
 - Verify target files exist
 - Update broken external links
@@ -557,13 +557,13 @@ allowed-tools: Read, Write, Bash
 
 ### Quality Improvement
 
-**Content Clarity Issues**:
+Content Clarity Issues:
 - Add specific examples for abstract concepts
 - Define technical terms and jargon
 - Include context and rationale for recommendations
 - Use consistent terminology throughout
 
-**User Experience Problems**:
+User Experience Problems:
 - Simplify complex explanations
 - Add more step-by-step examples
 - Improve navigation and organization
@@ -575,7 +575,7 @@ allowed-tools: Read, Write, Bash
 
 ### Step-by-Step Validation
 
-**1. Automated Checks**:
+1. Automated Checks:
 ```bash
 # YAML syntax validation
 yamllint .claude/skills/skill-name/SKILL.md
@@ -587,19 +587,19 @@ markdown-link-check .claude/skills/skill-name/
 wc -l .claude/skills/skill-name/SKILL.md
 ```
 
-**2. Manual Review**:
+2. Manual Review:
 - Read through entire skill content
 - Test all code examples
 - Verify all links and references
 - Assess user experience and flow
 
-**3. User Testing**:
+3. User Testing:
 - Have target users test the skill
 - Collect feedback on clarity and usefulness
 - Validate examples work in real scenarios
 - Assess learning curve and documentation
 
-**4. Final Validation**:
+4. Final Validation:
 - Complete comprehensive checklist
 - Address any identified issues
 - Document any known limitations
@@ -607,10 +607,10 @@ wc -l .claude/skills/skill-name/SKILL.md
 
 ---
 
-**Version**: 2.0.0
-**Compliance**: Claude Code Official Standards
-**Last Updated**: 2025-11-25
-**Checklist Items**: 200+ validation points
-**Quality Gates**: Technical + User Experience + Standards
+Version: 2.0.0
+Compliance: Claude Code Official Standards
+Last Updated: 2025-11-25
+Checklist Items: 200+ validation points
+Quality Gates: Technical + User Experience + Standards
 
 Generated with Claude Code using official documentation and best practices.

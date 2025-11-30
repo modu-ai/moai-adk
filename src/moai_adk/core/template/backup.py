@@ -6,6 +6,7 @@ Creates and manages backups to protect user data during template updates.
 from __future__ import annotations
 
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 
@@ -44,18 +45,17 @@ class TemplateBackup:
         return any((self.target_path / item).exists() for item in [".moai", ".claude", ".github", "CLAUDE.md"])
 
     def create_backup(self) -> Path:
-        """Create a single backup (always at .moai-backups/backup/).
+        """Create a timestamped backup under .moai-backups/.
 
-        Existing backups are overwritten to maintain only one backup copy.
+        Creates a new timestamped backup directory for each update.
+        Maintains backward compatibility by supporting both new and legacy structures.
 
         Returns:
-            Backup path (always .moai-backups/backup/).
+            Path to timestamped backup directory (e.g., .moai-backups/20241201_143022/).
         """
-        backup_path = self.target_path / ".moai-backups" / "backup"
-
-        # Remove existing backup if present
-        if backup_path.exists():
-            shutil.rmtree(backup_path)
+        # Generate timestamp for backup directory name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = self.target_path / ".moai-backups" / timestamp
 
         backup_path.mkdir(parents=True, exist_ok=True)
 
@@ -76,6 +76,36 @@ class TemplateBackup:
                 shutil.copy2(src, dst)
 
         return backup_path
+
+    def get_latest_backup(self) -> Path | None:
+        """Get the most recent backup, supporting both new and legacy structures.
+
+        Searches for backups in order of preference:
+        1. Latest timestamped backup (new structure)
+        2. Legacy backup/ directory (old structure)
+
+        Returns:
+            Path to the most recent backup directory, or None if no backups exist.
+        """
+        # Check for new timestamped backups first
+        backup_dir = self.target_path / ".moai-backups"
+        if backup_dir.exists():
+            timestamped_backups = [
+                d for d in backup_dir.iterdir()
+                if d.is_dir() and d.name.isdigit() and len(d.name) == 15 and '_' in d.name
+            ]
+
+            if timestamped_backups:
+                # Sort by name (timestamp) and return the latest
+                latest_backup = max(timestamped_backups, key=lambda x: x.name)
+                return latest_backup
+
+        # Fall back to legacy backup/ directory
+        legacy_backup = backup_dir / "backup"
+        if legacy_backup.exists():
+            return legacy_backup
+
+        return None
 
     def _copy_exclude_protected(self, src: Path, dst: Path) -> None:
         """Copy backup content while excluding protected paths.
@@ -106,18 +136,19 @@ class TemplateBackup:
 
         Restores .moai, .claude, .github directories and CLAUDE.md file
         from a backup created by create_backup().
+        Supports both new timestamped and legacy backup structures.
 
         Args:
             backup_path: Backup path to restore from.
-                        Defaults to .moai-backups/backup/
+                        If None, automatically finds the latest backup.
 
         Raises:
-            FileNotFoundError: When backup_path doesn't exist.
+            FileNotFoundError: When no backup is found.
         """
         if backup_path is None:
-            backup_path = self.backup_dir / "backup"
+            backup_path = self.get_latest_backup()
 
-        if not backup_path.exists():
+        if backup_path is None or not backup_path.exists():
             raise FileNotFoundError(f"Backup not found: {backup_path}")
 
         # Restore each item from backup
