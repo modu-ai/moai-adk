@@ -4,6 +4,83 @@
 
 **Patch release** focusing on system stability improvements, configuration optimization, and enhanced user experience. Includes comprehensive cleanup of deprecated configurations, enhanced CLI update process, and improved memory management.
 
+## Highlights
+
+### Configuration Optimization
+- Removed deprecated preset configurations (manual-local, personal-github, team-github)
+- Standardized configuration across all modules for better consistency
+- Enhanced memory session state management with optimized data structures
+- Improved configuration merging with timestamped backup system
+
+### CLI Enhancements
+- Enhanced update process with better error handling and rollback capability
+- Improved worktree skill with enhanced functionality and user feedback
+- Optimized CLI performance with reduced startup time
+- Better integration between core modules and external tools
+
+### Code Quality Improvements
+- Added comprehensive legacy log migration test suite
+- Enhanced type safety across all modules
+- Improved error handling with detailed debugging information
+- Optimized import performance with reduced dependencies
+
+## Fixed
+
+### Configuration Issues
+- Fixed inconsistent configuration between template and local environments
+- Resolved preset configuration conflicts during initialization
+- Fixed configuration merging issues in update process
+- Resolved memory state synchronization problems
+
+### CLI Reliability
+- Fixed update process failure scenarios with automatic recovery
+- Resolved worktree command integration issues
+- Fixed session state persistence problems
+- Improved error messages for better debugging
+
+### Documentation
+- Synchronized documentation across all languages (ko, en, ja, zh)
+- Updated installation guide with uv tool integration
+- Removed outdated release command references from templates
+- Enhanced CLI documentation with practical examples
+
+## Removed
+
+### Deprecated Features
+- Removed manual-local preset configuration (no longer supported)
+- Removed personal-github preset configuration (replaced by new system)
+- Removed team-github preset configuration (integrated into core)
+- Removed outdated release command from template distribution
+
+### Legacy Components
+- Removed legacy configuration presets from template files
+- Cleaned up unused utility scripts and backup files
+- Removed deprecated MoAI-ADK internal workflows from distribution
+
+## Technical Improvements
+
+### Performance Enhancements
+- Reduced CLI startup time by 30% through optimized imports
+- Improved memory usage efficiency with better data structures
+- Enhanced configuration loading speed with caching mechanism
+- Optimized git operations for large repositories
+
+### Security Updates
+- Enhanced security scanning with updated vulnerability checks
+- Improved dependency management with automatic audit
+- Better error handling prevents information leakage
+- Enhanced input validation across all CLI commands
+
+## Dependencies
+
+### Updated
+- Refined dependency versions for better compatibility
+- Removed redundant dependencies to reduce bundle size
+- Updated security-related packages for latest patches
+- Improved test coverage with enhanced testing tools
+
+---
+
 ## 요약
 
 **패치 릴리스**는 시스템 안정성 향상, 구성 최적화 및 향상된 사용자 경험에 중점을 둡니다. 폐기된 구성 정리, 향상된 CLI 업데이트 프로세스 및 개선된 메모리 관리가 포함됩니다.
@@ -78,7 +155,7 @@
 ## 의존성
 
 ### 업데이트됨
-- 더 나운 호환성을 위한 의존성 버전 정제
+- 더 나은 호환성을 위한 의존성 버전 정제
 - 번들 크기 감소를 위한 중복 의존성 제거
 - 최신 패치를 위한 보안 관련 패키지 업데이트
 - 향상된 테스팅 도구를 통한 테스트 커버리지 개선
