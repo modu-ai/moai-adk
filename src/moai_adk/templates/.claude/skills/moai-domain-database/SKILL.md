@@ -4,646 +4,317 @@ description: Database specialist covering PostgreSQL, MongoDB, Redis, and advanc
 version: 1.0.0
 category: domain
 tags:
-  - database
-  - postgresql
-  - mongodb
-  - redis
-  - optimization
-  - architecture
+ - database
+ - postgresql
+ - mongodb
+ - redis
+ - data-patterns
+ - performance
 updated: 2025-11-30
 status: active
 author: MoAI-ADK Team
 ---
 
-# Database Development Specialist
+# Database Domain Specialist
 
 ## Quick Reference (30 seconds)
 
-**Modern Database Architecture** - Comprehensive database patterns covering PostgreSQL, MongoDB, Redis, and advanced data modeling for scalable applications.
+Enterprise Database Expertise - Comprehensive database patterns and implementations covering PostgreSQL, MongoDB, Redis, and advanced data management for scalable modern applications.
 
-**Core Capabilities**:
-- 🐘 **PostgreSQL**: Advanced SQL, optimization, extensions, indexing strategies
-- 🍃 **MongoDB**: Document modeling, aggregation pipelines, sharding
-- ⚡ **Redis**: Caching, pub/sub, data structures, performance optimization
-- 📊 **Data Modeling**: Schema design, migrations, data integrity
-- 🚀 **Performance**: Query optimization, indexing, connection pooling
+Core Capabilities:
+- PostgreSQL: Advanced relational patterns, optimization, and scaling
+- MongoDB: Document modeling, aggregation, and NoSQL performance tuning
+- Redis: In-memory caching, real-time analytics, and distributed systems
+- Multi-Database: Hybrid architectures and data integration patterns
+- Performance: Query optimization, indexing strategies, and scaling
+- Operations: Connection management, migrations, and monitoring
 
-**When to Use**:
-- Database schema design and optimization
-- Complex query implementation and tuning
-- Data migration and transformation
-- Performance optimization for databases
-- Multi-database architecture planning
+When to Use:
+- Designing database schemas and data models
+- Implementing caching strategies and performance optimization
+- Building scalable data architectures
+- Working with multi-database systems
+- Optimizing database queries and performance
 
 ---
 
-## Implementation Guide
+## Implementation Guide (5 minutes)
 
-### PostgreSQL Advanced Patterns
+### Quick Start Workflow
 
-**Advanced Schema Design**:
-```sql
--- User table with proper constraints and indexes
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(50) UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login_at TIMESTAMP WITH TIME ZONE
-);
+Database Stack Initialization:
+```python
+from moai_domain_database import DatabaseManager
 
--- Optimized indexes
-CREATE INDEX idx_users_email ON users (email) WHERE email_verified = TRUE;
-CREATE INDEX idx_users_created_at ON users (created_at DESC);
-CREATE INDEX idx_users_username_trgm ON users USING gin (username gin_trgm_ops);
+# Initialize multi-database stack
+db_manager = DatabaseManager()
 
--- User profiles with JSONB
-CREATE TABLE user_profiles (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    display_name VARCHAR(100),
-    bio TEXT,
-    avatar_url VARCHAR(500),
-    preferences JSONB DEFAULT '{}',
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- GIN index for JSONB queries
-CREATE INDEX idx_user_profiles_preferences ON user_profiles USING gin (preferences);
-```
-
-**Advanced Query Patterns**:
-```sql
--- Efficient pagination with cursor-based approach
-WITH ranked_users AS (
-    SELECT
-        u.id,
-        u.username,
-        u.email,
-        up.display_name,
-        ROW_NUMBER() OVER (ORDER BY u.created_at DESC) as rn
-    FROM users u
-    LEFT JOIN user_profiles up ON u.id = up.user_id
-    WHERE u.created_at < :cursor OR :cursor IS NULL
+# Configure PostgreSQL for relational data
+postgresql = db_manager.setup_postgresql(
+ connection_string="postgresql://...",
+ connection_pool_size=20,
+ enable_query_logging=True
 )
-SELECT * FROM ranked_users
-WHERE rn > :offset
-ORDER BY created_at DESC
-LIMIT :limit;
 
--- Full-text search with trigrams
-SELECT
-    u.id,
-    u.username,
-    up.display_name,
-    similarity(u.username, :query) as username_sim,
-    ts_rank_cd(search_vector, plainto_tsquery('english', :query)) as search_rank
-FROM users u
-LEFT JOIN user_profiles up ON u.id = up.user_id,
-     to_tsvector('english', u.username || ' ' || COALESCE(up.display_name, '')) search_vector
-WHERE u.username % :query
-   OR plainto_tsquery('english', :query) @@ search_vector
-ORDER BY username_sim DESC, search_rank DESC
-LIMIT 20;
+# Configure MongoDB for document storage
+mongodb = db_manager.setup_mongodb(
+ connection_string="mongodb://...",
+ database_name="app_data",
+ enable_sharding=True
+)
 
--- Window functions for analytics
-SELECT
-    DATE_TRUNC('month', created_at) as month,
-    COUNT(*) as new_users,
-    SUM(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', created_at)) as cumulative_users,
-    COUNT(*) - LAG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', created_at)) as month_over_month_change
-FROM users
-WHERE created_at >= NOW() - INTERVAL '1 year'
-GROUP BY DATE_TRUNC('month', created_at)
-ORDER BY month;
+# Configure Redis for caching and real-time features
+redis = db_manager.setup_redis(
+ connection_string="redis://...",
+ max_connections=50,
+ enable_clustering=True
+)
+
+# Use unified database interface
+user_data = db_manager.get_user_with_profile(user_id)
+analytics = db_manager.get_user_analytics(user_id, time_range="30d")
 ```
 
-**Performance Optimization**:
-```sql
--- Partitioning for time-series data
-CREATE TABLE events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    event_type VARCHAR(50) NOT NULL,
-    data JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-) PARTITION BY RANGE (created_at);
+Single Database Operations:
+```bash
+# PostgreSQL schema migration
+moai db:migrate --database postgresql --migration-file schema_v2.sql
 
--- Monthly partitions
-CREATE TABLE events_2024_01 PARTITION OF events
-    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+# MongoDB aggregation pipeline
+moai db:aggregate --collection users --pipeline analytics_pipeline.json
 
-CREATE TABLE events_2024_02 PARTITION OF events
-    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
-
--- Materialized views for analytics
-CREATE MATERIALIZED VIEW user_stats AS
-SELECT
-    u.id,
-    u.email,
-    u.created_at,
-    COUNT(DISTINCT e.id) as event_count,
-    MAX(e.created_at) as last_event_at,
-    COUNT(DISTINCT CASE WHEN e.event_type = 'login' THEN e.id END) as login_count
-FROM users u
-LEFT JOIN events e ON u.id = e.user_id
-GROUP BY u.id, u.email, u.created_at;
-
--- Refresh materialized view
-CREATE OR REPLACE FUNCTION refresh_user_stats()
-RETURNS void AS $$
-BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats;
-END;
-$$ LANGUAGE plpgsql;
+# Redis cache warming
+moai db:cache:warm --pattern "user:*" --ttl 3600
 ```
 
-### MongoDB Advanced Patterns
+### Core Components
 
-**Document Modeling**:
-```javascript
-// User schema with embedded and referenced patterns
-const userSchema = new Schema({
-  _id: ObjectId,
-  username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  profile: {
-    displayName: String,
-    bio: String,
-    avatar: String,
-    preferences: {
-      theme: { type: String, enum: ['light', 'dark'], default: 'light' },
-      language: { type: String, default: 'en' },
-      notifications: {
-        email: { type: Boolean, default: true },
-        push: { type: Boolean, default: false }
-      }
-    }
-  },
-  security: {
-    passwordHash: String,
-    lastLoginAt: Date,
-    failedLoginAttempts: { type: Number, default: 0 },
-    lockedUntil: Date
-  },
-  activity: {
-    lastSeenAt: Date,
-    loginCount: { type: Number, default: 0 }
-  }
-}, {
-  timestamps: true,
-  // Optimized indexes
-  index: [
-    { username: 1 },
-    { email: 1 },
-    { 'security.lastLoginAt': -1 },
-    { 'activity.lastSeenAt': -1 }
-  ]
-});
+1. PostgreSQL (`modules/postgresql.md`)
+- Advanced schema design and constraints
+- Complex query optimization and indexing
+- Window functions and CTEs
+- Partitioning and materialized views
+- Connection pooling and performance tuning
 
-// Post schema with comments embedded for performance
-const postSchema = new Schema({
-  _id: ObjectId,
-  authorId: { type: ObjectId, ref: 'User', required: true },
-  title: { type: String, required: true },
-  content: { type: String, required: true },
-  tags: [String],
-  metadata: {
-    viewCount: { type: Number, default: 0 },
-    likeCount: { type: Number, default: 0 },
-    commentCount: { type: Number, default: 0 }
-  },
-  // Embed recent comments for performance
-  recentComments: [{
-    _id: ObjectId,
-    authorId: ObjectId,
-    authorName: String,
-    content: String,
-    createdAt: { type: Date, default: Date.now }
-  }],
-  status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft' }
-}, {
-  timestamps: true,
-  index: [
-    { authorId: 1, createdAt: -1 },
-    { status: 1, createdAt: -1 },
-    { tags: 1 },
-    { 'metadata.viewCount': -1 }
-  ]
-});
-```
+2. MongoDB (`modules/mongodb.md`)
+- Document modeling and schema design
+- Aggregation pipelines for analytics
+- Indexing strategies and performance
+- Sharding and scaling patterns
+- Data consistency and validation
 
-**Advanced Aggregation Pipelines**:
-```javascript
-// User analytics with complex aggregation
-const getUserAnalytics = async (userId, timeRange) => {
-  return await User.aggregate([
-    // Match specific user
-    { $match: { _id: userId } },
-
-    // Lookup posts and engagement
-    {
-      $lookup: {
-        from: 'posts',
-        localField: '_id',
-        foreignField: 'authorId',
-        as: 'posts'
-      }
-    },
-
-    // Unwind posts for processing
-    { $unwind: '$posts' },
-
-    // Filter by time range
-    {
-      $match: {
-        'posts.createdAt': {
-          $gte: timeRange.start,
-          $lte: timeRange.end
-        }
-      }
-    },
-
-    // Group by user and calculate metrics
-    {
-      $group: {
-        _id: '$_id',
-        username: { $first: '$username' },
-        totalPosts: { $sum: 1 },
-        totalViews: { $sum: '$posts.metadata.viewCount' },
-        totalLikes: { $sum: '$posts.metadata.likeCount' },
-        avgViewsPerPost: { $avg: '$posts.metadata.viewCount' },
-        tags: { $push: '$posts.tags' }
-      }
-    },
-
-    // Flatten and count tags
-    {
-      $addFields: {
-        allTags: { $reduce: {
-          input: '$tags',
-          initialValue: [],
-          in: { $concatArrays: ['$$value', '$$this'] }
-        }}
-      }
-    },
-
-    {
-      $addFields: {
-        uniqueTags: { $setUnion: ['$allTags', []] },
-        topTags: { $slice: [
-          { $sortArray: { input: { $objectToArray: { $size: '$allTags' } }, sortBy: { count: -1 } } },
-          5
-        ]}
-      }
-    }
-  ]);
-};
-
-// Time series aggregation for activity tracking
-const getActivityTrends = async (userId, granularity = 'daily') => {
-  const groupFormat = granularity === 'daily' ?
-    { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } :
-    { $dateToString: { format: '%Y-%U', date: '$createdAt' } };
-
-  return await Activity.aggregate([
-    { $match: { userId } },
-    {
-      $group: {
-        _id: groupFormat,
-        totalEvents: { $sum: 1 },
-        eventTypes: { $addToSet: '$eventType' },
-        uniqueSessions: { $addToSet: '$sessionId' }
-      }
-    },
-    {
-      $addFields: {
-        eventCount: { $size: '$eventTypes' },
-        sessionCount: { $size: '$uniqueSessions' }
-      }
-    },
-    { $sort: { _id: 1 } }
-  ]);
-};
-```
-
-### Redis Advanced Patterns
-
-**Caching Strategies**:
-```javascript
-class CacheManager {
-  constructor(redisClient) {
-    this.redis = redisClient;
-  }
-
-  // Multi-layer caching with fallback
-  async getWithFallback(key, fetchFunction, ttl = 3600) {
-    // Try memory cache first
-    const memoryCache = this.getMemoryCache(key);
-    if (memoryCache) return memoryCache;
-
-    // Try Redis cache
-    const redisCache = await this.redis.get(key);
-    if (redisCache) {
-      const data = JSON.parse(redisCache);
-      this.setMemoryCache(key, data, ttl / 10); // Shorter memory TTL
-      return data;
-    }
-
-    // Fetch from source
-    const data = await fetchFunction();
-
-    // Set both caches
-    await this.redis.setex(key, ttl, JSON.stringify(data));
-    this.setMemoryCache(key, data, ttl / 10);
-
-    return data;
-  }
-
-  // Write-through caching
-  async setWithWriteThrough(key, data, fetchFunction, ttl = 3600) {
-    // Update source first
-    await fetchFunction(data);
-
-    // Update caches
-    const pipeline = this.redis.pipeline();
-    pipeline.setex(key, ttl, JSON.stringify(data));
-
-    // Invalidate related cache keys
-    const relatedKeys = await this.getRelatedKeys(key);
-    relatedKeys.forEach(relatedKey => {
-      pipeline.del(relatedKey);
-    });
-
-    await pipeline.exec();
-    this.setMemoryCache(key, data, ttl / 10);
-  }
-
-  // Rate limiting with sliding window
-  async checkRateLimit(key, limit, windowMs) {
-    const now = Date.now();
-    const pipeline = this.redis.pipeline();
-
-    // Remove old entries
-    pipeline.zremrangebyscore(key, 0, now - windowMs);
-
-    // Add current request
-    pipeline.zadd(key, now, now);
-
-    // Count current window requests
-    pipeline.zcard(key);
-
-    // Set expiration
-    pipeline.expire(key, Math.ceil(windowMs / 1000));
-
-    const results = await pipeline.exec();
-    const currentCount = results[2][1];
-
-    return {
-      allowed: currentCount <= limit,
-      count: currentCount,
-      remaining: Math.max(0, limit - currentCount),
-      resetTime: now + windowMs
-    };
-  }
-}
-```
-
-**Advanced Data Structures**:
-```javascript
-class RedisDataManager {
-  constructor(redisClient) {
-    this.redis = redisClient;
-  }
-
-  // Leaderboard with time decay
-  async addToTimeDecayLeaderboard(key, memberId, score, decayRate = 0.95) {
-    const timestamp = Date.now();
-    const decayedScore = score * Math.pow(decayRate, (Date.now() - timestamp) / (1000 * 60 * 60));
-
-    await this.redis.zadd(key, decayedScore, memberId);
-
-    // Remove old entries
-    const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    await this.redis.zremrangebyscore(key, 0, weekAgo);
-  }
-
-  // Real-time analytics with HyperLogLog
-  async trackUniqueVisitors(pageKey, userId) {
-    // Track unique users with HyperLogLog
-    await this.redis.pfadd(`${pageKey}:unique`, userId);
-
-    // Track total visits with regular counter
-    await this.redis.incr(`${pageKey}:total`);
-
-    // Track user activity set for recent activity
-    const activityKey = `${pageKey}:activity:${Math.floor(Date.now() / (60 * 1000))}`;
-    await this.redis.sadd(activityKey, userId);
-    await this.redis.expire(activityKey, 300); // 5 minutes
-  }
-
-  async getAnalytics(pageKey) {
-    const pipeline = this.redis.pipeline();
-
-    // Unique visitors estimate
-    pipeline.pfcount(`${pageKey}:unique`);
-
-    // Total page views
-    pipeline.get(`${pageKey}:total`);
-
-    // Recent active users (last 5 minutes)
-    const now = Math.floor(Date.now() / (60 * 1000));
-    for (let i = 0; i < 5; i++) {
-      pipeline.scard(`${pageKey}:activity:${now - i}`);
-    }
-
-    const results = await pipeline.exec();
-
-    const uniqueVisitors = results[0][1];
-    const totalViews = parseInt(results[1][1]) || 0;
-    const recentActivity = results.slice(2).map(r => r[1]).reduce((a, b) => a + b, 0);
-
-    return {
-      uniqueVisitors,
-      totalViews,
-      recentActiveUsers: recentActivity
-    };
-  }
-
-  // Distributed locking with timeout and retry
-  async acquireLock(key, ttl = 30000, retryCount = 3, retryDelay = 100) {
-    const lockKey = `lock:${key}`;
-    const lockValue = `${Date.now()}-${Math.random()}`;
-
-    for (let attempt = 0; attempt < retryCount; attempt++) {
-      const result = await this.redis.set(
-        lockKey,
-        lockValue,
-        'PX', ttl,
-        'NX'
-      );
-
-      if (result === 'OK') {
-        return {
-          acquired: true,
-          lockValue,
-          release: async () => await this.releaseLock(lockKey, lockValue)
-        };
-      }
-
-      // Wait before retry
-      if (attempt < retryCount - 1) {
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-      }
-    }
-
-    return { acquired: false };
-  }
-
-  async releaseLock(lockKey, lockValue) {
-    const script = `
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        return redis.call("del", KEYS[1])
-      else
-        return 0
-      end
-    `;
-
-    return await this.redis.eval(script, 1, lockKey, lockValue);
-  }
-}
-```
+3. Redis (`modules/redis.md`)
+- Multi-layer caching strategies
+- Real-time analytics and counting
+- Distributed locking and coordination
+- Pub/sub messaging and streams
+- Advanced data structures (HyperLogLog, Geo)
 
 ---
 
-## Advanced Patterns
+## Advanced Patterns (10+ minutes)
 
-### Database Connection Management
+### Multi-Database Architecture
 
-**PostgreSQL Connection Pooling**:
+Polyglot Persistence Pattern:
 ```python
-import asyncpg
-from asyncpg.pool import Pool
+class DataRouter:
+ def __init__(self):
+ self.postgresql = PostgreSQLConnection()
+ self.mongodb = MongoDBConnection()
+ self.redis = RedisConnection()
 
-class DatabaseManager:
-    def __init__(self, database_url: str):
-        self.database_url = database_url
-        self.pool: Pool = None
+ def get_user_profile(self, user_id):
+ # Get structured user data from PostgreSQL
+ user = self.postgresql.get_user(user_id)
 
-    async def initialize_pool(self):
-        self.pool = await asyncpg.create_pool(
-            self.database_url,
-            min_size=10,
-            max_size=20,
-            command_timeout=60,
-            server_settings={
-                'application_name': 'moai_app',
-                'jit': 'off'  # Disable JIT for better performance on simple queries
-            }
-        )
+ # Get flexible profile data from MongoDB
+ profile = self.mongodb.get_user_profile(user_id)
 
-    async def execute_query(self, query: str, *args):
-        async with self.pool.acquire() as connection:
-            return await connection.fetch(query, *args)
+ # Get real-time status from Redis
+ status = self.redis.get_user_status(user_id)
 
-    async def execute_transaction(self, queries: List[Tuple[str, tuple]]):
-        async with self.pool.acquire() as connection:
-            async with connection.transaction():
-                results = []
-                for query, params in queries:
-                    result = await connection.fetch(query, *params)
-                    results.append(result)
-                return results
+ return self.merge_user_data(user, profile, status)
+
+ def update_user_data(self, user_id, data):
+ # Route different data types to appropriate databases
+ if 'structured_data' in data:
+ self.postgresql.update_user(user_id, data['structured_data'])
+
+ if 'profile_data' in data:
+ self.mongodb.update_user_profile(user_id, data['profile_data'])
+
+ if 'real_time_data' in data:
+ self.redis.set_user_status(user_id, data['real_time_data'])
+
+ # Invalidate cache across databases
+ self.invalidate_user_cache(user_id)
 ```
 
-### Database Migration Management
-
-**Version Controlled Migrations**:
+Data Synchronization:
 ```python
-from pathlib import Path
-import hashlib
+class DataSyncManager:
+ def sync_user_data(self, user_id):
+ # Sync from PostgreSQL to MongoDB for search
+ pg_user = self.postgresql.get_user(user_id)
+ search_document = self.create_search_document(pg_user)
+ self.mongodb.upsert_user_search(user_id, search_document)
 
-class MigrationManager:
-    def __init__(self, pool, migrations_dir: str):
-        self.pool = pool
-        self.migrations_dir = Path(migrations_dir)
+ # Update cache in Redis
+ cache_data = self.create_cache_document(pg_user)
+ self.redis.set_user_cache(user_id, cache_data, ttl=3600)
+```
 
-    async def initialize_migration_table(self):
-        await self.pool.execute("""
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-                version VARCHAR(255) PRIMARY KEY,
-                checksum VARCHAR(64) NOT NULL,
-                executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            )
-        """)
+### Performance Optimization
 
-    async def get_pending_migrations(self):
-        # Get executed migrations
-        executed = await self.pool.fetch(
-            "SELECT version, checksum FROM schema_migrations ORDER BY version"
-        )
-        executed_map = {row['version']: row['checksum'] for row in executed}
+Query Performance Analysis:
+```python
+# PostgreSQL query optimization
+def analyze_query_performance(query):
+ explain_result = postgresql.execute(f"EXPLAIN (ANALYZE, BUFFERS) {query}")
+ return QueryAnalyzer(explain_result).get_optimization_suggestions()
 
-        # Get available migration files
-        migration_files = sorted(self.migrations_dir.glob("*.sql"))
-        pending = []
+# MongoDB aggregation optimization
+def optimize_aggregation_pipeline(pipeline):
+ optimizer = AggregationOptimizer()
+ return optimizer.optimize_pipeline(pipeline)
 
-        for file_path in migration_files:
-            version = file_path.stem
-            content = file_path.read_text()
-            checksum = hashlib.sha256(content.encode()).hexdigest()
+# Redis performance monitoring
+def monitor_redis_performance():
+ metrics = redis.info()
+ return PerformanceAnalyzer(metrics).get_recommendations()
+```
 
-            if version not in executed_map:
-                pending.append((version, content, checksum))
-            elif executed_map[version] != checksum:
-                raise ValueError(f"Migration {version} has been modified after execution")
+Scaling Strategies:
+```python
+# Read replicas for PostgreSQL
+read_replicas = postgresql.setup_read_replicas([
+ "postgresql://replica1...",
+ "postgresql://replica2..."
+])
 
-        return pending
+# Sharding for MongoDB
+mongodb.setup_sharding(
+ shard_key="user_id",
+ num_shards=4
+)
 
-    async def execute_migration(self, version: str, content: str, checksum: str):
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(content)
-                await conn.execute(
-                    "INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)",
-                    version, checksum
-                )
+# Redis clustering
+redis.setup_cluster([
+ "redis://node1:7000",
+ "redis://node2:7000",
+ "redis://node3:7000"
+])
 ```
 
 ---
 
 ## Works Well With
 
-- **moai-domain-backend** - Backend integration patterns
-- **moai-integration-mcp** - MCP server for database operations
-- **moai-quality-security** - Database security and compliance
-- **moai-system-universal** - Performance optimization strategies
-- **moai-foundation-core** - Architectural principles
+Complementary Skills:
+- `moai-domain-backend` - API integration and business logic
+- `moai-foundation-core` - Database migration and schema management
+- `moai-workflow-project` - Database project setup and configuration
+- `moai-platform-baas` - BaaS database integration patterns
+
+Technology Integration:
+- ORMs and ODMs (SQLAlchemy, Mongoose, TypeORM)
+- Connection pooling (PgBouncer, connection pools)
+- Migration tools (Alembic, Flyway)
+- Monitoring (pg_stat_statements, MongoDB Atlas)
+- Cache invalidation and synchronization
+
+---
+
+## Usage Examples
+
+### Database Operations
+```python
+# PostgreSQL advanced queries
+users = postgresql.query(
+ "SELECT * FROM users WHERE created_at > %s ORDER BY activity_score DESC LIMIT 100",
+ [datetime.now() - timedelta(days=30)]
+)
+
+# MongoDB analytics
+analytics = mongodb.aggregate('events', [
+ {"$match": {"timestamp": {"$gte": start_date}}},
+ {"$group": {"_id": "$type", "count": {"$sum": 1}}},
+ {"$sort": {"count": -1}}
+])
+
+# Redis caching operations
+async def get_user_data(user_id):
+ cache_key = f"user:{user_id}"
+ data = await redis.get(cache_key)
+
+ if not data:
+ data = fetch_from_database(user_id)
+ await redis.setex(cache_key, 3600, json.dumps(data))
+
+ return json.loads(data)
+```
+
+### Multi-Database Transactions
+```python
+async def create_user_with_profile(user_data, profile_data):
+ try:
+ # Start transaction across databases
+ async with transaction_manager():
+ # Create user in PostgreSQL
+ user_id = await postgresql.insert_user(user_data)
+
+ # Create profile in MongoDB
+ await mongodb.insert_user_profile(user_id, profile_data)
+
+ # Set initial cache in Redis
+ await redis.set_user_cache(user_id, {
+ "id": user_id,
+ "status": "active",
+ "created_at": datetime.now().isoformat()
+ })
+
+ return user_id
+
+ except Exception as e:
+ # Automatic rollback across databases
+ logger.error(f"User creation failed: {e}")
+ raise
+```
 
 ---
 
 ## Technology Stack
 
-**Primary Technologies**:
-- **PostgreSQL 16+**: Advanced SQL, JSONB, partitioning, extensions
-- **MongoDB 7+**: Document modeling, aggregation, sharding
-- **Redis 7+**: Caching, pub/sub, advanced data structures
-- **Connection Libraries**: asyncpg, motor, redis-py, SQLAlchemy
-- **Migration Tools**: Alembic, custom migration managers
-- **Monitoring**: pgAdmin, MongoDB Compass, Redis Insight
+Relational Database:
+- PostgreSQL 14+ (primary)
+- MySQL 8.0+ (alternative)
+- Connection pooling (PgBouncer, SQLAlchemy)
 
-**Performance Tools**:
-- PostgreSQL EXPLAIN ANALYZE, pg_stat_statements
-- MongoDB Compass performance analyzer
-- Redis slow log and monitoring
-- Connection pooling and query optimization
+NoSQL Database:
+- MongoDB 6.0+ (primary)
+- Document modeling and validation
+- Aggregation framework
+- Sharding and replication
+
+In-Memory Database:
+- Redis 7.0+ (primary)
+- Redis Stack for advanced features
+- Clustering and high availability
+- Advanced data structures
+
+Supporting Tools:
+- Migration tools (Alembic, Flyway)
+- Monitoring (Prometheus, Grafana)
+- ORMs/ODMs (SQLAlchemy, Mongoose)
+- Connection management
+
+Performance Features:
+- Query optimization and analysis
+- Index management and strategies
+- Caching layers and invalidation
+- Load balancing and failover
 
 ---
 
-**Status**: Production Ready
-**Last Updated**: 2025-11-30
-**Maintained by**: MoAI-ADK Database Team
+*For detailed implementation patterns and database-specific optimizations, see the `modules/` directory.*

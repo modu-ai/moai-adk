@@ -100,7 +100,11 @@
     "conversation_language": "ko",
     "conversation_language_name": "Korean",
     "agent_prompt_language": "ko",
-    "notes": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
+    "git_commit_messages": "en",
+    "code_comments": "en",
+    "documentation": "ko",
+    "error_messages": "ko",
+    "notes": "Language settings: conversation_language (user interaction), agent_prompt_language (internal prompts), git_commit_messages (git commits), code_comments (source code), documentation (docs), error_messages (user error messages)"
   },
   "project": {
     "name": "{{PROJECT_NAME}}",

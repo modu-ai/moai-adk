@@ -4,49 +4,48 @@ description: "Execute TDD implementation cycle"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
 model: inherit
-skills: moai-toolkit-essentials, moai-foundation-quality, moai-lang-unified, moai-worktree
 ---
 
-## 📋 Pre-execution Context
+##  Pre-execution Context
 
 !git status --porcelain
 !git branch --show-current
 !git log --oneline -5
 !git diff --name-only HEAD
 
-## 📁 Essential Files
+##  Essential Files
 
 @.moai/config/config.json
 @.moai/specs/
 
 ---
 
-# ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
+#  MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
 
-> **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
+> Architecture: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
 >
-> **Delegation Model**: Phase-based sequential agent delegation. Command orchestrates 4 phases directly.
+> Delegation Model: Phase-based sequential agent delegation. Command orchestrates 4 phases directly.
 
-**Workflow**: Phase 1 → Analysis & Planning → Phase 2 → TDD Implementation → Phase 3 → Git Operations → Phase 4 → Completion & Guidance.
+Workflow: Phase 1 → Analysis & Planning → Phase 2 → TDD Implementation → Phase 3 → Git Operations → Phase 4 → Completion & Guidance.
 
 ---
 
-## 🎯 Command Purpose
+##  Command Purpose
 
 Execute TDD implementation of SPEC requirements through complete agent delegation.
 
 The `/moai:2-run` command orchestrates the complete implementation workflow:
 
-1. **Phase 1**: SPEC analysis and execution plan creation
-2. **Phase 2**: TDD implementation (RED → GREEN → REFACTOR)
-3. **Phase 3**: Git commit management
-4. **Phase 4**: Completion and next steps guidance
+1. Phase 1: SPEC analysis and execution plan creation
+2. Phase 2: TDD implementation (RED → GREEN → REFACTOR)
+3. Phase 3: Git commit management
+4. Phase 4: Completion and next steps guidance
 
-**Run on**: `$ARGUMENTS` (SPEC ID, e.g., SPEC-001)
+Run on: `$ARGUMENTS` (SPEC ID, e.g., SPEC-001)
 
 ---
 
-## 💡 Execution Philosophy: "Plan → Run → Sync"
+##  Execution Philosophy: "Plan → Run → Sync"
 
 `/moai:2-run` performs SPEC implementation through phase-based sequential agent delegation:
 
@@ -73,18 +72,18 @@ Output: Implemented feature with passing tests and commits
 
 ### Key Principle: Zero Direct Tool Usage
 
-**This command uses ONLY these tools:**
+This command uses ONLY these tools:
 
-- ✅ **Task()** for phase agent delegation (manager-strategy → manager-tdd → manager-quality → manager-git)
-- ✅ **AskUserQuestion()** for user approval and next steps
-- ✅ **TodoWrite()** for task tracking
-- ❌ No Read/Write/Edit/Bash (all delegated to agents)
+-  Task() for phase agent delegation (manager-strategy → manager-tdd → manager-quality → manager-git)
+-  AskUserQuestion() for user approval and next steps
+-  TodoWrite() for task tracking
+-  No Read/Write/Edit/Bash (all delegated to agents)
 
 Command orchestrates phases sequentially; agents handle complexity.
 
 ---
 
-## 🧠 Associated Agents & Skills
+##  Associated Agents & Skills
 
 | Agent/Skill                    | Purpose                                                |
 | ------------------------------ | ------------------------------------------------------ |
@@ -99,7 +98,7 @@ Command orchestrates phases sequentially; agents handle complexity.
 
 ---
 
-## 🚀 Phase Execution Details
+##  Phase Execution Details
 
 ### Phase 1: Analysis & Planning
 
@@ -148,26 +147,26 @@ Command calls `AskUserQuestion()`:
 
 ---
 
-## 📋 Execution Flow (High-Level)
+##  Execution Flow (High-Level)
 
 ```
 /moai:2-run SPEC-XXX
     ↓
 Parse SPEC ID from $ARGUMENTS
     ↓
-✅ Phase 1: manager-strategy subagent
+ Phase 1: manager-strategy subagent
     → Analyze SPEC → Create execution plan → Get approval
     ↓
-✅ Phase 2: manager-tdd subagent
+ Phase 2: manager-tdd subagent
     → RED-GREEN-REFACTOR → Tests passing → Coverage verified
     ↓
-✅ Phase 2.5: manager-quality subagent
+ Phase 2.5: manager-quality subagent
     → Validate TRUST 5 principles → Return quality status
     ↓
-✅ Phase 3: manager-git subagent
+ Phase 3: manager-git subagent
     → Create feature branch → Commit changes → Verify commits
     ↓
-✅ Phase 4: AskUserQuestion(...)
+ Phase 4: AskUserQuestion(...)
     → Display summary → Guide next steps → Offer options
     ↓
 Output: "Implementation complete. Next step: /moai:3-sync"
@@ -175,11 +174,11 @@ Output: "Implementation complete. Next step: /moai:3-sync"
 
 ---
 
-## 🎯 Command Implementation
+##  Command Implementation
 
 ### Sequential Phase Execution
 
-**Command implementation flow:**
+Command implementation flow:
 
 ```
 # Phase 1: SPEC Analysis & Planning
@@ -251,7 +250,7 @@ next_steps = AskUserQuestion({
 
 ### Context Flow
 
-**Phase Progression:**
+Phase Progression:
 
 ```
 Phase 1: SPEC Analysis
@@ -270,44 +269,44 @@ Phase 3: Git Operations
   → Creates commits with full understanding
 ```
 
-**Benefits:**
+Benefits:
 
-- ✅ **Context Continuity**: Full knowledge chain across all phases
-- ✅ **Unified Coding**: Phase 1 architectural decisions naturally propagate
-- ✅ **Better Commits**: manager-git understands full context for meaningful messages
+-  Context Continuity: Full knowledge chain across all phases
+-  Unified Coding: Phase 1 architectural decisions naturally propagate
+-  Better Commits: manager-git understands full context for meaningful messages
 
 ---
 
-## 📊 Design Improvements (vs Previous Version)
+##  Design Improvements (vs Previous Version)
 
 | Metric                 | Before           | After          | Improvement            |
 | ---------------------- | ---------------- | -------------- | ---------------------- |
-| **Command LOC**        | ~420             | ~120           | **71% reduction**      |
-| **allowed-tools**      | 14 types         | 1 type         | **93% reduction**      |
-| **Direct tool usage**  | Yes (Read/Bash)  | No             | **100% eliminated**    |
-| **Agent count**        | 4 separate calls | 1 orchestrator | **100% simplified**    |
-| **User approval flow** | In command       | In agent       | **Cleaner separation** |
-| **Error handling**     | Dispersed        | Centralized    | **Better structure**   |
+| Command LOC        | ~420             | ~120           | 71% reduction      |
+| allowed-tools      | 14 types         | 1 type         | 93% reduction      |
+| Direct tool usage  | Yes (Read/Bash)  | No             | 100% eliminated    |
+| Agent count        | 4 separate calls | 1 orchestrator | 100% simplified    |
+| User approval flow | In command       | In agent       | Cleaner separation |
+| Error handling     | Dispersed        | Centralized    | Better structure   |
 
 ---
 
-## 🔍 Verification Checklist
+##  Verification Checklist
 
 After implementation, verify:
 
-- [ ] ✅ Command has ONLY `Task`, `AskUserQuestion`, `TodoWrite` in allowed-tools
-- [ ] ✅ Command contains NO `Read`, `Write`, `Edit`, `Bash` usage
-- [ ] ✅ Command delegates execution to phase agents sequentially
-- [ ] ✅ Phase 1: manager-strategy executes successfully
-- [ ] ✅ Phase 2: manager-tdd executes successfully
-- [ ] ✅ Phase 2.5: manager-quality validates TRUST 5
-- [ ] ✅ Phase 3: manager-git creates commits
-- [ ] ✅ Phase 4: User guided to next steps
-- [ ] ✅ User approval checkpoints working
+- [ ]  Command has ONLY `Task`, `AskUserQuestion`, `TodoWrite` in allowed-tools
+- [ ]  Command contains NO `Read`, `Write`, `Edit`, `Bash` usage
+- [ ]  Command delegates execution to phase agents sequentially
+- [ ]  Phase 1: manager-strategy executes successfully
+- [ ]  Phase 2: manager-tdd executes successfully
+- [ ]  Phase 2.5: manager-quality validates TRUST 5
+- [ ]  Phase 3: manager-git creates commits
+- [ ]  Phase 4: User guided to next steps
+- [ ]  User approval checkpoints working
 
 ---
 
-## 📚 Quick Reference
+##  Quick Reference
 
 | Scenario                     | Entry Point                                | Key Phases                                                               | Expected Outcome                            |
 | ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------- |
@@ -315,25 +314,25 @@ After implementation, verify:
 | Resume failed implementation | `/moai:2-run SPEC-XXX` (retry)             | Resume from last successful phase                                        | Completed implementation                    |
 | Implement with modifications | `/moai:2-run SPEC-XXX` (with plan changes) | Modify plan → Execute phases                                             | Modified implementation                     |
 
-**Associated Agents**:
+Associated Agents:
 
 - `manager-strategy` - SPEC analysis and execution strategy
 - `manager-tdd` - TDD implementation (RED-GREEN-REFACTOR)
 - `manager-quality` - TRUST 5 validation
 - `manager-git` - Git operations and commit management
 
-**Implementation Results**:
+Implementation Results:
 
-- **Code**: Implemented feature files
-- **Tests**: Test files with ≥85% coverage
-- **Commits**: Git commits with proper messages
-- **Quality**: PASS/WARNING/CRITICAL status
+- Code: Implemented feature files
+- Tests: Test files with ≥85% coverage
+- Commits: Git commits with proper messages
+- Quality: PASS/WARNING/CRITICAL status
 
-**Version**: 3.1.0 (Command-Level Phase Orchestration)
-**Updated**: 2025-11-25
-**Pattern**: Sequential Phase-Based Agent Delegation
-**Compliance**: Claude Code Best Practices + Zero Direct Tool Usage
-**Architecture**: Commands → Agents → Skills (Complete delegation)
+Version: 3.1.0 (Command-Level Phase Orchestration)
+Updated: 2025-11-25
+Pattern: Sequential Phase-Based Agent Delegation
+Compliance: Claude Code Best Practices + Zero Direct Tool Usage
+Architecture: Commands → Agents → Skills (Complete delegation)
 
 ---
 
@@ -365,15 +364,15 @@ AskUserQuestion({
 })
 ```
 
-**Important**:
+Important:
 
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
 
-## ⚡️ EXECUTION DIRECTIVE
+##  EXECUTION DIRECTIVE
 
-**You must NOW execute the command following the "Execution Philosophy" described above.**
+You must NOW execute the command following the "Execution Philosophy" described above.
 
 1. Start Phase 1: Analysis & Planning immediately.
 2. Use the manager-strategy subagent.

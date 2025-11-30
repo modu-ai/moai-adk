@@ -10,11 +10,11 @@ Reusable MDX components for enhanced documentation.
 
 ```mdx
 <Callout type="info">
-  Important information here
+ Important information here
 </Callout>
 
 <Callout type="warning">
-  Warning message
+ Warning message
 </Callout>
 ```
 
@@ -24,10 +24,10 @@ Reusable MDX components for enhanced documentation.
 <CodeBlock language="python" highlight="2,4-6">
 {`
 def example():
-    # Highlighted line
-    result = process()
-    # More highlighted lines
-    return result
+ # Highlighted line
+ result = process()
+ # More highlighted lines
+ return result
 `}
 </CodeBlock>
 ```
@@ -38,15 +38,15 @@ def example():
 
 ```mdx
 <Tabs>
-  <Tab label="Python">
-    Python code example
-  </Tab>
-  <Tab label="JavaScript">
-    JavaScript code example
-  </Tab>
+ <Tab label="Python">
+ Python code example
+ </Tab>
+ <Tab label="JavaScript">
+ JavaScript code example
+ </Tab>
 </Tabs>
 ```
 
 ---
-**Last Updated**: 2025-11-23
-**Status**: Production Ready
+Last Updated: 2025-11-23
+Status: Production Ready
