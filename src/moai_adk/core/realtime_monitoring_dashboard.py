@@ -18,7 +18,6 @@ Key Features:
 """
 
 import asyncio
-import json
 import logging
 import statistics
 import threading
@@ -28,7 +27,6 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Union
 
 logger = logging.getLogger(__name__)
@@ -1165,8 +1163,8 @@ class RealtimeMonitoringDashboard:
     def _collect_system_metrics(self) -> None:
         """Collect system performance metrics"""
         try:
+
             import psutil
-            import os
 
             # CPU Usage
             cpu_percent = psutil.cpu_percent(interval=1)
@@ -1649,7 +1647,7 @@ if __name__ == "__main__":
 
             # Get system status
             status = dashboard.get_system_status()
-            print(f"\n📊 System Status:")
+            print("\n📊 System Status:")
             print(f"  Status: {status['status']}")
             print(f"  Uptime: {status['uptime_seconds']:.1f}s")
             print(f"  Metrics collected: {status['metrics_collected']}")
@@ -1658,7 +1656,7 @@ if __name__ == "__main__":
 
             # Get dashboard data
             dashboard_data = dashboard.get_dashboard_data("system_overview")
-            print(f"\n📱 Dashboard Data:")
+            print("\n📱 Dashboard Data:")
             print(f"  Dashboard: {dashboard_data['dashboard']['name']}")
             print(f"  Widgets: {len(dashboard_data.get('widgets_data', {}))}")
             print(f"  Generated at: {dashboard_data.get('generated_at')}")
@@ -1666,13 +1664,13 @@ if __name__ == "__main__":
             # Get metrics statistics
             cpu_stats = dashboard.metrics_collector.get_statistics(MetricType.CPU_USAGE, minutes=10)
             memory_stats = dashboard.metrics_collector.get_statistics(MetricType.MEMORY_USAGE, minutes=10)
-            print(f"\n📈 Metrics Statistics (last 10 minutes):")
+            print("\n📈 Metrics Statistics (last 10 minutes):")
             print(f"  CPU Usage - Avg: {cpu_stats.get('average', 0):.1f}%, Max: {cpu_stats.get('max', 0):.1f}%, Count: {cpu_stats.get('count', 0)}")
             print(f"  Memory Usage - Avg: {memory_stats.get('average', 0):.1f}%, Max: {memory_stats.get('max', 0):.1f}%, Count: {memory_stats.get('count', 0)}")
 
             # Get alert statistics
             alert_stats = dashboard.alert_manager.get_alert_statistics(hours=1)
-            print(f"\n🚨 Alert Statistics (last 1 hour):")
+            print("\n🚨 Alert Statistics (last 1 hour):")
             print(f"  Total alerts: {alert_stats['total_alerts']}")
             print(f"  Resolved: {alert_stats['resolved_count']}")
             print(f"  Resolution rate: {alert_stats['resolution_rate']:.1%}")
@@ -1680,7 +1678,7 @@ if __name__ == "__main__":
 
             # List available dashboards
             dashboards = dashboard.dashboard_manager.list_dashboards()
-            print(f"\n📋 Available Dashboards:")
+            print("\n📋 Available Dashboards:")
             for dashboard_info in dashboards:
                 print(f"  - {dashboard_info.name} ({dashboard_info.dashboard_type.value})")
 

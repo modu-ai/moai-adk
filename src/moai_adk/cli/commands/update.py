@@ -57,12 +57,12 @@ from moai_adk import __version__
 from moai_adk.core.merge import MergeAnalyzer
 from moai_adk.core.migration import VersionMigrator
 from moai_adk.core.migration.alfred_to_moai_migrator import AlfredToMoaiMigrator
-from moai_adk.core.template.processor import TemplateProcessor
 
 # Import new custom element restoration modules
 from moai_adk.core.migration.custom_element_scanner import create_custom_element_scanner
-from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
 from moai_adk.core.migration.selective_restorer import create_selective_restorer
+from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
+from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -1467,10 +1467,35 @@ def _build_template_context(
     # Detect OS for cross-platform Hook path configuration
     hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
 
-    # Extract language configuration
-    language_config = existing_config.get("language", {})
-    if not isinstance(language_config, dict):
-        language_config = {}
+    # Extract and resolve language configuration using centralized resolver
+    try:
+        from moai_adk.core.language_config_resolver import get_resolver
+
+        # Use language resolver to get complete configuration
+        resolver = get_resolver(str(project_path))
+        resolved_config = resolver.resolve_config()
+
+        # Extract language configuration with environment variable priority
+        language_config = {
+            "conversation_language": resolved_config.get("conversation_language", "en"),
+            "conversation_language_name": resolved_config.get("conversation_language_name", "English"),
+            "agent_prompt_language": resolved_config.get("agent_prompt_language", "en"),
+        }
+
+        # Extract user personalization
+        user_name = resolved_config.get("user_name", "")
+        personalized_greeting = resolver.get_personalized_greeting(resolved_config)
+        config_source = resolved_config.get("config_source", "config_file")
+
+    except ImportError:
+        # Fallback to basic language config extraction if resolver not available
+        language_config = existing_config.get("language", {})
+        if not isinstance(language_config, dict):
+            language_config = {}
+
+        user_name = existing_config.get("user", {}).get("name", "")
+        personalized_greeting = f"{user_name}님" if user_name and language_config.get("conversation_language") == "ko" else user_name
+        config_source = "config_file"
 
     # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
     def format_short_version(v: str) -> str:
@@ -1523,6 +1548,14 @@ def _build_template_context(
         "PROJECT_DIR": hook_project_dir,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
         "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+        "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),
+        "GIT_COMMIT_MESSAGES_LANGUAGE": language_config.get("git_commit_messages", "en"),
+        "CODE_COMMENTS_LANGUAGE": language_config.get("code_comments", "en"),
+        "DOCUMENTATION_LANGUAGE": language_config.get("documentation", language_config.get("conversation_language", "en")),
+        "ERROR_MESSAGES_LANGUAGE": language_config.get("error_messages", language_config.get("conversation_language", "en")),
+        "USER_NAME": user_name,
+        "PERSONALIZED_GREETING": personalized_greeting,
+        "LANGUAGE_CONFIG_SOURCE": config_source,
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
         "PROJECT_OWNER": project_section.get("author", "@user"),
         "AUTHOR": project_section.get("author", "@user"),

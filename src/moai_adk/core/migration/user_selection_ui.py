@@ -8,9 +8,8 @@ The UI displays a numbered list of custom elements and allows users to select
 multiple elements using comma-separated numbers.
 """
 
-import sys
-from typing import List, Dict, Optional
 from pathlib import Path
+from typing import Dict, List, Optional
 
 from .custom_element_scanner import create_custom_element_scanner
 
@@ -70,10 +69,15 @@ class UserSelectionUI:
             print(f"  {element['index']:2d}. {element['display_name']:<40} {status}")
             print(f"      Path: {relative_path}")
 
-        # Show selection instructions
+        # Show enhanced selection instructions
         print()
         if backup_available:
-            print("💡 Select elements to restore (comma-separated, e.g., 1,3,4 or 'all'):")
+            print("💡 Select elements to restore:")
+            print("   • Enter numbers separated by spaces, commas, semicolons (e.g., 1 3,4 or 1;3\\4)")
+            print("   • Use 'all' to select all elements")
+            print("   • Try partial names for convenience (e.g., 'yoda')")
+            print("   • Press Enter with empty input to cancel")
+            print("   • Use Ctrl+C to interrupt selection")
         else:
             print("⚠️  No backup available. Cannot restore custom elements.")
             print("💡 Run 'moai-adk update' without --force to create a backup first.")
@@ -93,7 +97,12 @@ class UserSelectionUI:
 
         # Check for "all" shortcut
         if user_input.lower() == "all":
-            return [element["path"] for element in custom_elements]
+            all_elements = [element["path"] for element in custom_elements]
+            # Ask for confirmation when selecting all elements
+            if self.confirm_selection(all_elements):
+                return all_elements
+            else:
+                return None
 
         # Parse comma-separated numbers
         selected_elements = self._parse_selection(user_input, custom_elements)
@@ -102,13 +111,17 @@ class UserSelectionUI:
             print("No valid selections made.")
             return None
 
-        return selected_elements
+        # Ask for confirmation when specific elements are selected
+        if self.confirm_selection(selected_elements):
+            return selected_elements
+        else:
+            return None
 
     def _parse_selection(self, user_input: str, custom_elements: List[Dict[str, str]]) -> List[str]:
-        """Parse user selection input.
+        """Parse user selection input with enhanced support for multiple separators.
 
         Args:
-            user_input: User's input string
+            user_input: User's input string (can use commas, spaces, semicolons, etc.)
             custom_elements: List of available custom elements
 
         Returns:
@@ -116,8 +129,11 @@ class UserSelectionUI:
         """
         selected_paths = []
 
-        # Split by comma and clean up
-        selections = [s.strip() for s in user_input.split(",") if s.strip()]
+        # Enhanced parsing: handle multiple separator types (comma, space, semicolon, backslash)
+        import re
+        # Split by common separators and clean up
+        selections = re.split(r'[,\s;\\]+', user_input.strip())
+        selections = [s.strip() for s in selections if s.strip()]
 
         for selection in selections:
             try:
@@ -129,9 +145,18 @@ class UserSelectionUI:
                         selected_paths.append(element["path"])
                         break
                 else:
-                    print(f"⚠️ Invalid selection: {selection} (not in list)")
+                    print(f"⚠️ Invalid selection: {selection} (not in available list)")
             except ValueError:
-                print(f"⚠️ Invalid selection: {selection} (not a number)")
+                # Try to parse as element name (for enhanced UX)
+                found = False
+                for element in custom_elements:
+                    if selection.lower() in element["name"].lower() or selection.lower() in element["display_name"].lower():
+                        selected_paths.append(element["path"])
+                        found = True
+                        break
+
+                if not found:
+                    print(f"⚠️ Invalid selection: {selection} (not a number or matching element name)")
 
         return selected_paths
 
@@ -144,7 +169,7 @@ class UserSelectionUI:
         Returns:
             True if user confirms, False otherwise
         """
-        print(f"\n📋 Selection Summary:")
+        print("\n📋 Selection Summary:")
         print("-" * 40)
         for i, element_path in enumerate(selected_elements, 1):
             element_name = Path(element_path).name
@@ -186,11 +211,12 @@ class UserSelectionUI:
 
 
 def display_selection_instructions():
-    """Display instructions for using the selection interface."""
+    """Display instructions for using the enhanced selection interface."""
     print("""
-📖 Selection Instructions:
-  • Enter numbers separated by commas (e.g., 1,3,4)
+📖 Enhanced Selection Instructions:
+  • Enter numbers separated by spaces, commas, semicolons (e.g., 1 3,4 or 1;3\\4)
   • Use 'all' to select all elements
+  • Try partial names for convenience (e.g., 'yoda' or 'agent')
   • Press Enter with empty input to cancel
   • Use Ctrl+C to interrupt selection
 
@@ -199,6 +225,11 @@ def display_selection_instructions():
   • command: Custom slash command for workflows
   • skill: Custom skill with enhanced capabilities
   • hook: Custom hook for system integration
+
+💡 Pro Tips:
+  • Mixed separators work: "1,3;5\\7"
+  • Partial name matching: "my-agen" matches "my-agent"
+  • Case insensitive: "YODA" matches "yoda"
     """)
 
 

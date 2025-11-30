@@ -9,19 +9,20 @@ The scanner is used during updates to provide users with a list of their custom
 elements that can be selectively restored from backup.
 """
 
+import logging
 from pathlib import Path
 from typing import Dict, List, Set
-import logging
+
 
 # Forward declaration for type hints
 class TemplateSkill:
     pass
 
 from moai_adk.core.migration.template_utils import (
-    _get_template_skill_names,
-    _get_template_command_names,
     _get_template_agent_names,
+    _get_template_command_names,
     _get_template_hook_names,
+    _get_template_skill_names,
 )
 
 logger = logging.getLogger(__name__)

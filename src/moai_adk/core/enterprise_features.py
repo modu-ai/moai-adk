@@ -19,19 +19,15 @@ Key Features:
 """
 
 import asyncio
-import hashlib
-import json
 import logging
 import threading
 import time
 import uuid
-from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -643,7 +639,7 @@ class DeploymentManager:
         # Step 4: Make promotion decision
         steps.append({
             "step": "decision",
-            "description": f"Making deployment decision based on canary analysis",
+            "description": "Making deployment decision based on canary analysis",
             "status": "in_progress",
             "started_at": datetime.now().isoformat(),
         })
@@ -1346,7 +1342,7 @@ if __name__ == "__main__":
 
             # Get system status
             status = enterprise.get_system_status()
-            print(f"\n📊 Enterprise System Status:")
+            print("\n📊 Enterprise System Status:")
             print(f"  Status: {status['status']}")
             print(f"  Uptime: {status['uptime_seconds']:.1f}s")
             print(f"  Load Balancer: {status['load_balancer']['total_backends']} backends")

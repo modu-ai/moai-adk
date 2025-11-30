@@ -19,13 +19,12 @@ import json
 import logging
 import threading
 import time
-import weakref
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 # Import JIT Context Loading System from Phase 2
 try:
@@ -402,8 +401,9 @@ class ResourceMonitor:
 
     def get_current_metrics(self) -> ResourceUsageMetrics:
         """Get current resource usage metrics"""
-        import psutil
         import os
+
+        import psutil
 
         try:
             process = psutil.Process(os.getpid())

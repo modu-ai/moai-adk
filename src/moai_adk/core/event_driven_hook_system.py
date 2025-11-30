@@ -17,7 +17,6 @@ Key Features:
 import asyncio
 import json
 import logging
-import threading
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -26,17 +25,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Union
-import weakref
+from typing import Any, Callable, Dict, List, Optional, Set
 
 # Import existing systems
 from .jit_enhanced_hook_manager import (
     HookEvent,
-    HookPriority,
-    HookExecutionResult,
-    HookMetadata,
-    CircuitBreaker,
-    RetryPolicy,
 )
 
 logger = logging.getLogger(__name__)
@@ -1354,7 +1347,7 @@ if __name__ == "__main__":
 
             # Get system status
             status = await event_system.get_system_status()
-            print(f"\n📊 System Status:")
+            print("\n📊 System Status:")
             print(f"  Status: {status['status']}")
             print(f"  Uptime: {status['uptime_seconds']:.1f}s")
             print(f"  Events Published: {status['system_metrics']['events_published']}")
@@ -1364,19 +1357,19 @@ if __name__ == "__main__":
 
             # Get message broker stats
             broker_stats = status['message_broker_stats']
-            print(f"\n📨 Message Broker Stats:")
+            print("\n📨 Message Broker Stats:")
             print(f"  Messages Published: {broker_stats.get('messages_published', 0)}")
             print(f"  Messages Delivered: {broker_stats.get('messages_delivered', 0)}")
 
             # Get resource pool stats
             pool_stats = status['resource_pool_stats']
-            print(f"\n🏊 Resource Pool Stats:")
+            print("\n🏊 Resource Pool Stats:")
             print(f"  Total Executions: {pool_stats.get('total_executions', 0)}")
             print(f"  Active Executions: {pool_stats.get('active_executions', 0)}")
 
             # Get event flow diagram
             flow_diagram = event_system.get_event_flow_diagram()
-            print(f"\n🌊 Event Flow Diagram:")
+            print("\n🌊 Event Flow Diagram:")
             print(f"  Event Types: {len(flow_diagram['event_types'])}")
             print(f"  Isolation Levels: {flow_diagram['isolation_levels']}")
             print(f"  Message Broker: {flow_diagram['message_broker_type']}")

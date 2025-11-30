@@ -5,6 +5,8 @@ for intelligent backup vs new template comparison and recommendations.
 """
 
 import json
+import logging
+import re
 import subprocess
 from difflib import unified_diff
 from pathlib import Path
@@ -17,6 +19,7 @@ from rich.spinner import Spinner
 from rich.table import Table
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 class MergeAnalyzer:
@@ -78,15 +81,18 @@ class MergeAnalyzer:
                 )
 
             if result.returncode == 0:
-                try:
-                    analysis = json.loads(result.stdout)
+                # Use new response parsing method
+                analysis = self._parse_claude_response(result.stdout)
+                if "error" not in analysis:
                     console.print("[green]✅ Analysis complete[/green]")
                     return analysis
-                except json.JSONDecodeError as e:
-                    console.print(f"[yellow]⚠️  Failed to parse Claude response: {e}[/yellow]")
+                else:
+                    console.print(f"[yellow]⚠️  Analysis failed: {analysis.get('summary', 'Unknown error')}[/yellow]")
                     return self._fallback_analysis(backup_path, template_path, diff_files)
             else:
-                console.print(f"[yellow]⚠️  Claude execution error: {result.stderr[:200]}[/yellow]")
+                # Use improved error detection
+                error_msg = self._detect_claude_errors(result.stderr)
+                console.print(f"[yellow]⚠️  Claude execution error: {error_msg}[/yellow]")
                 return self._fallback_analysis(backup_path, template_path, diff_files)
 
         except subprocess.TimeoutExpired:
@@ -284,6 +290,103 @@ Analyze the following items and provide a JSON response:
                         f"\n💡 {file_info['filename']}: {file_info['note']}",
                         style="dim",
                     )
+
+    def _parse_claude_response(self, response_text: str) -> dict[str, Any]:
+        """Parse Claude Code response supporting both v1.x and v2.0+ formats.
+
+        Args:
+            response_text: Raw response text from Claude Code
+
+        Returns:
+            Parsed analysis dictionary
+        """
+        try:
+            # First try direct JSON parsing (v1.x format)
+            return json.loads(response_text)
+        except json.JSONDecodeError:
+            # Try v2.0+ wrapped format
+            try:
+                # Look for JSON in the response
+                if '"type":' in response_text and '"result":' in response_text:
+                    # Parse the wrapped v2.0+ format
+                    response_obj = json.loads(response_text)
+                    if "result" in response_obj:
+                        result_text = response_obj["result"]
+
+                        # Try to extract JSON from the result field
+                        if isinstance(result_text, str):
+                            # Look for JSON blocks in the result
+                            if "```json" in result_text:
+                                # Extract JSON from code block
+                                start = result_text.find("```json") + 7
+                                end = result_text.find("```", start)
+                                if end != -1:
+                                    json_text = result_text[start:end].strip()
+                                    return json.loads(json_text)
+                            elif result_text.strip().startswith("{"):
+                                # Try direct JSON parsing
+                                return json.loads(result_text)
+                            else:
+                                # Try to find JSON pattern in text
+                                json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', result_text)
+                                if json_match:
+                                    try:
+                                        return json.loads(json_match.group(0))
+                                    except json.JSONDecodeError:
+                                        pass
+
+                # Fallback: try to find any JSON in the text
+                json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_text)
+                if json_match:
+                    return json.loads(json_match.group(0))
+
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
+                console.print(f"[yellow]⚠️  Failed to parse Claude v2.0+ response: {e}[/yellow]")
+                logger.warning(f"Claude response parsing failed: {e}")
+
+        # If all parsing attempts fail, return error structure
+        logger.error(f"Could not parse Claude response. Raw response: {response_text[:500]}...")
+        return {
+            "files": [],
+            "safe_to_auto_merge": False,
+            "user_action_required": True,
+            "summary": "Failed to parse Claude response",
+            "risk_assessment": "High - Response parsing failed",
+            "error": "response_parse_failed",
+            "raw_response": response_text[:500] if response_text else ""
+        }
+
+    def _detect_claude_errors(self, stderr: str) -> str:
+        """Detect and interpret Claude Code specific errors.
+
+        Args:
+            stderr: Standard error output from Claude Code
+
+        Returns:
+            User-friendly error message
+        """
+        if not stderr:
+            return ""
+
+        error_lower = stderr.lower()
+
+        if "model not found" in error_lower or "unknown model" in error_lower:
+            return f"Claude model '{self.CLAUDE_MODEL}' not found. Please check available models with 'claude --models'"
+
+        if "permission denied" in error_lower:
+            return "Permission denied. Check file permissions and Claude Code access rights."
+
+        if "timeout" in error_lower:
+            return f"Claude analysis timed out after {self.CLAUDE_TIMEOUT} seconds. Consider increasing timeout."
+
+        if "file not found" in error_lower:
+            return "Required files not found. Check project structure and file paths."
+
+        if "invalid argument" in error_lower or "unknown option" in error_lower:
+            return "Invalid Claude Code arguments. This might be a version compatibility issue."
+
+        # Return generic error if no specific pattern matches
+        return f"Claude Code error: {stderr[:200]}"
 
     def _build_claude_command(self) -> list[str]:
         """Build Claude Code headless command (based on official v4.0+)

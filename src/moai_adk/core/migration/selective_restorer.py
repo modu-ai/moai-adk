@@ -8,10 +8,10 @@ The restorer works with the existing MoAI-ADK backup system and provides
 rollback capabilities if restoration fails.
 """
 
-import shutil
 import logging
+import shutil
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -177,18 +177,104 @@ class SelectiveRestorer:
 
         return stats
 
+    def _normalize_element_path(self, element_path: Path) -> Optional[Path]:
+        """Normalize element path to be relative to project structure.
+
+        Handles both absolute and relative paths correctly:
+        - Absolute paths: extracts the relevant portion (.claude/ or .moai/)
+        - Relative paths: validates and returns as-is
+
+        Args:
+            element_path: Path to normalize (can be absolute or relative)
+
+        Returns:
+            Normalized relative path, or None if normalization fails
+        """
+        element_str = str(element_path)
+
+        # Handle absolute paths
+        if element_path.is_absolute():
+            # Extract .claude/ or .moai/ portion from absolute paths
+            for safe_prefix in [".claude/", ".moai/"]:
+                if safe_prefix in element_str:
+                    try:
+                        # Split on the safe prefix and take the portion after it
+                        _, relative_part = element_str.split(safe_prefix, 1)
+                        # Reconstruct the relative path
+                        normalized_path = Path(safe_prefix.rstrip("/")) / relative_part
+                        logger.debug(f"Normalized absolute path {element_path} -> {normalized_path}")
+                        return normalized_path
+                    except (ValueError, IndexError):
+                        logger.warning(f"Failed to extract relative path from {element_path}")
+                        continue
+
+            # If no safe prefix found in absolute path, this is suspicious
+            logger.error(f"Absolute path {element_path} doesn't contain .claude/ or .moai/ prefixes")
+            return None
+
+        # Handle relative paths
+        else:
+            # Ensure relative path starts with .claude or .moai
+            if not (element_str.startswith(".claude/") or element_str.startswith(".moai/")):
+                logger.error(f"Relative path {element_path} must start with .claude/ or .moai/")
+                return None
+
+            logger.debug(f"Relative path already normalized: {element_path}")
+            return element_path
+
+    def _validate_element_path(self, relative_path: Path) -> bool:
+        """Validate an element path for security and correctness.
+
+        Args:
+            relative_path: Relative path to validate
+
+        Returns:
+            True if path is valid and safe, False otherwise
+        """
+        path_str = str(relative_path)
+
+        # Security check: prevent path traversal attacks
+        if ".." in path_str:
+            logger.error(f"Path traversal attempt detected in: {path_str}")
+            return False
+
+        # Ensure path starts with allowed prefixes
+        allowed_prefixes = [".claude/", ".moai/"]
+        if not any(path_str.startswith(prefix) for prefix in allowed_prefixes):
+            logger.error(f"Path {path_str} doesn't start with allowed prefix: {allowed_prefixes}")
+            return False
+
+        # Additional validation: check for suspicious patterns
+        suspicious_patterns = ["//", "~", "$"]
+        for pattern in suspicious_patterns:
+            if pattern in path_str:
+                logger.warning(f"Suspicious pattern '{pattern}' found in path: {path_str}")
+
+        return True
+
     def _restore_single_element(self, element_path: Path, element_type: str) -> bool:
         """Restore a single element from backup.
 
         Args:
-            element_path: Path to restore the element to
+            element_path: Path to restore the element to (can be absolute or relative)
             element_type: Type of element (for target directory creation)
 
         Returns:
             True if restoration succeeded, False otherwise
         """
-        # Determine backup source path
-        relative_path = element_path.relative_to(self.project_path)
+        # Normalize element path to get relative path within project structure
+        relative_path = self._normalize_element_path(element_path)
+        if relative_path is None:
+            logger.error(f"Failed to normalize element path: {element_path}")
+            return False
+
+        # Validate the normalized path for security
+        if not self._validate_element_path(relative_path):
+            logger.error(f"Invalid element path: {relative_path}")
+            return False
+
+        # Create absolute target path
+        target_path = self.project_path / relative_path
         backup_source = self.backup_path / relative_path
 
         # Ensure backup source exists
@@ -197,23 +283,23 @@ class SelectiveRestorer:
             return False
 
         # Create target directory if needed
-        target_dir = element_path.parent
+        target_dir = target_path.parent
         target_dir.mkdir(parents=True, exist_ok=True)
 
         # Handle conflicts
-        if element_path.exists():
-            if not self._handle_file_conflict(element_path, backup_source):
+        if target_path.exists():
+            if not self._handle_file_conflict(target_path, backup_source):
                 logger.warning(f"Conflict handling failed for: {relative_path}")
                 return False
 
         # Perform the restoration
         try:
-            if element_path.is_dir():
+            if backup_source.is_dir():
                 # For directories (skills)
-                shutil.copytree(backup_source, element_path, dirs_exist_ok=True)
+                shutil.copytree(backup_source, target_path, dirs_exist_ok=True)
             else:
                 # For files
-                shutil.copy2(backup_source, element_path)
+                shutil.copy2(backup_source, target_path)
 
             # Record successful restoration
             self.restoration_log.append({
@@ -252,7 +338,7 @@ class SelectiveRestorer:
 
             # Files differ, prompt for action
             print(f"\n⚠️ Conflict detected for: {target_path.name}")
-            print(f"   Target file exists and differs from backup")
+            print("   Target file exists and differs from backup")
 
             # For now, we'll backup the target and restore the backup
             backup_target = target_path.with_suffix(".backup")
