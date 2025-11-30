@@ -21,15 +21,6 @@ const config: DocsThemeConfig = {
     backToTop: true,
     float: true,
     title: '이 페이지에서',
-    extraContent: (
-      <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #ddd' }}>
-        <p style={{ fontSize: '0.875rem', color: '#666' }}>
-          📚 <a href="/worktree" style={{ color: '#0070f3', textDecoration: 'none' }}>
-            Git Worktree CLI 문서 →
-          </a>
-        </p>
-      </div>
-    ),
   },
   sidebar: {
     defaultMenuCollapseLevel: 1,

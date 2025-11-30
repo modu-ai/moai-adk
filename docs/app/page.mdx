@@ -1,0 +1,112 @@
+---
+title: "MoAI-ADK Documentation"
+---
+
+# MoAI-ADK 온라인 문서
+
+**MoAI-ADK**는 온라인 제작 인공지능(Mr. Online-based Artificial Intelligence for Development)을 통해 엔터프라이즈급 개발 자동화를 제공합니다.
+
+## 핵심 기능
+
+- **🚀 완전 자동화**: SPEC 작성부터 배포까지 엔드-투-엔드 자동화
+- **🧠 지능형 에이전트**: 26개의 전문화된 AI 에이전트
+- **📚 종합 라이브러리**: 22개의 엔터프라이즈 스킬
+- **🎯 TDD 중심**: 엄격한 테스트 주도 개발 프로세스
+- **🛠️ 확장 가능**: 새로운 에이전트와 스킬 쉽게 추가
+
+## 빠른 시작
+
+### 1단계: 프로젝트 초기화
+
+```bash
+moai init my-project
+cd my-project
+```
+
+### 2단계: SPEC 생성
+
+```bash
+/moai:1-plan "사용자 인증 시스템 구현"
+```
+
+### 3단계: TDD 구현 실행
+
+```bash
+/moai:2-run SPEC-001
+```
+
+### 4단계: 문서 동기화
+
+```bash
+/moai:3-sync SPEC-001
+```
+
+## 문서 구조
+
+| 섹션 | 설명 |
+|------|------|
+| **[시작하기](/getting-started)** | 설치, 기본 설정, 빠른 시작 |
+| **[핵심 개념](/core-concepts)** | SPEC 포맷, 에이전트, 워크플로우 |
+| **[심화 학습](/advanced)** | 고급 패턴, 스킬 활용, 성능 최적화 |
+| **[Git Worktree](/worktree)** | 워크트리 CLI 완벽 가이드 |
+| **[API 레퍼런스](/reference)** | 스킬, 명령어 상세 문서 |
+
+## 주요 에이전트
+
+```
+expert-*          → 도메인 전문가 (백엔드, 프론트엔드, 데이터베이스, 보안 등)
+manager-*         → 워크플로우 관리자 (TDD, 문서화, 품질, Git 등)
+builder-*         → 메타 생성기 (에이전트, 스킬 자동 생성)
+mcp-*             → MCP 통합 (Context7, Sequential Thinking 등)
+ai-*              → AI 모델 통합 (다양한 LLM 지원)
+```
+
+## 핵심 명령어
+
+### /moai:0-project
+프로젝트 초기화 및 설정 관리
+
+```bash
+/moai:0-project "초기화"
+```
+
+### /moai:1-plan
+SPEC 기반 구현 계획 수립
+
+```bash
+/moai:1-plan "기능 설명"
+```
+
+### /moai:2-run
+TDD 프로세스로 완벽한 구현 실행
+
+```bash
+/moai:2-run SPEC-001
+```
+
+### /moai:3-sync
+구현 결과를 문서와 동기화
+
+```bash
+/moai:3-sync SPEC-001
+```
+
+## TRUST 5 품질 원칙
+
+MoAI-ADK는 5가지 핵심 품질 원칙을 따릅니다:
+
+1. **Test-driven**: 모든 코드는 테스트 주도로 개발
+2. **Readable**: 깨끗하고 이해하기 쉬운 코드
+3. **Understandable**: 명확한 문서와 주석
+4. **Safe**: 타입 안전성과 에러 처리 강화
+5. **Tested**: 최소 85% 테스트 커버리지
+
+## 커뮤니티
+
+- **GitHub**: [github.com/moai-ai/moai-adk](https://github.com/moai-ai/moai-adk)
+- **Discord**: [Join our community](https://discord.gg/moai-adk)
+- **Issues**: [Report bugs and request features](https://github.com/moai-ai/moai-adk/issues)
+
+## 라이선스
+
+MIT © 2025 MoAI-ADK Contributors
