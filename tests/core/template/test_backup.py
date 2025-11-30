@@ -9,7 +9,9 @@ Achieves 90%+ coverage by testing all paths including:
 """
 
 import shutil
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -100,14 +102,18 @@ class TestHasExistingFiles:
 class TestCreateBackup:
     """Test backup creation"""
 
-    def test_create_backup_creates_directory(self, tmp_project: Path) -> None:
-        """Should create backup directory"""
+    def test_create_backup_creates_timestamped_directory(self, tmp_project: Path) -> None:
+        """Should create timestamped backup directory"""
         backup = TemplateBackup(tmp_project)
-        backup_path = backup.create_backup()
+
+        # Mock datetime to get predictable timestamp
+        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
+            backup_path = backup.create_backup()
 
         assert backup_path.exists()
         assert backup_path.is_dir()
-        assert backup_path == tmp_project / ".moai-backups" / "backup"
+        assert backup_path == tmp_project / ".moai-backups" / "20241201_143022"
 
     def test_create_backup_copies_moai_directory(self, tmp_project: Path) -> None:
         """Should copy .moai directory"""
@@ -156,22 +162,29 @@ class TestCreateBackup:
         # reports should not be backed up
         assert not (backup_path / ".moai" / "reports").exists()
 
-    def test_create_backup_overwrites_existing_backup(self, tmp_project: Path) -> None:
-        """Should overwrite existing backup"""
+    def test_create_backup_creates_unique_timestamps(self, tmp_project: Path) -> None:
+        """Should create unique timestamped directories"""
         backup = TemplateBackup(tmp_project)
 
-        # Create first backup
-        backup_path = backup.create_backup()
-        (backup_path / "marker.txt").write_text("first backup")
+        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+            # First backup
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
+            backup_path1 = backup.create_backup()
+            (backup_path1 / "marker1.txt").write_text("first backup")
 
-        # Create second backup
-        backup_path2 = backup.create_backup()
+            # Second backup
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143023"
+            backup_path2 = backup.create_backup()
+            (backup_path2 / "marker2.txt").write_text("second backup")
 
-        # Should be same path
-        assert backup_path == backup_path2
+        # Should be different paths
+        assert backup_path1 != backup_path2
+        assert backup_path1.name == "20241201_143022"
+        assert backup_path2.name == "20241201_143023"
 
-        # Old marker should not exist
-        assert not (backup_path2 / "marker.txt").exists()
+        # Both should exist (not overwritten)
+        assert (backup_path1 / "marker1.txt").exists()
+        assert (backup_path2 / "marker2.txt").exists()
 
     def test_create_backup_skips_nonexistent_items(self, tmp_path: Path) -> None:
         """Should skip items that don't exist"""
@@ -376,6 +389,62 @@ class TestRestoreBackup:
         # Other items should remain unchanged
         assert (tmp_project / ".claude").exists()
         assert (tmp_project / ".github").exists()
+
+
+class TestGetLatestBackup:
+    """Test get_latest_backup method"""
+
+    def test_get_latest_backup_with_timestamped(self, tmp_project: Path) -> None:
+        """Should return latest timestamped backup"""
+        backup = TemplateBackup(tmp_project)
+
+        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+            # Create multiple backups
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
+            backup.create_backup()
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143025"
+            backup.create_backup()
+
+        latest = backup.get_latest_backup()
+        assert latest is not None
+        assert latest.name == "20241201_143025"
+
+    def test_get_latest_backup_with_legacy(self, tmp_project: Path) -> None:
+        """Should return legacy backup when no timestamped backups exist"""
+        backup = TemplateBackup(tmp_project)
+
+        # Create legacy backup directory
+        legacy_path = tmp_project / ".moai-backups" / "backup"
+        legacy_path.mkdir(parents=True)
+        (legacy_path / ".moai").mkdir()
+
+        latest = backup.get_latest_backup()
+        assert latest is not None
+        assert latest.name == "backup"
+
+    def test_get_latest_backup_prefers_timestamped(self, tmp_project: Path) -> None:
+        """Should prefer timestamped backups over legacy"""
+        backup = TemplateBackup(tmp_project)
+
+        # Create legacy backup
+        legacy_path = tmp_project / ".moai-backups" / "backup"
+        legacy_path.mkdir(parents=True)
+        (legacy_path / ".moai").mkdir()
+
+        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+            # Create timestamped backup
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
+            backup.create_backup()
+
+        latest = backup.get_latest_backup()
+        assert latest is not None
+        assert latest.name == "20241201_143022"  # Should prefer timestamped
+
+    def test_get_latest_backup_returns_none_when_no_backups(self, tmp_project: Path) -> None:
+        """Should return None when no backups exist"""
+        backup = TemplateBackup(tmp_project)
+        latest = backup.get_latest_backup()
+        assert latest is None
 
 
 class TestBackupIntegration:

@@ -847,7 +847,7 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{rel_subdir}/ copied")
 
-        # 2. Copy other files/folders individually (smart merge for settings.json)
+        # 2. Copy other files/folders individually (smart merge for settings.json and config.json)
         all_warnings = []
         for item in src.iterdir():
             rel_path = item.relative_to(src)
@@ -874,6 +874,11 @@ class TemplateProcessor:
                         all_warnings.extend(file_warnings)
                     if not silent:
                         console.print("   🔄 settings.json merged (Hook paths configured for your OS)")
+                # Smart merge for config.json
+                elif item.name == "config.json":
+                    self._merge_config_json(item, dst_item)
+                    if not silent:
+                        console.print("   🔄 config.json merged (user preferences preserved)")
                 else:
                     # FORCE OVERWRITE: Always copy other files (no skip)
                     warnings = self._copy_file_with_substitution(item, dst_item)
@@ -1001,14 +1006,110 @@ class TemplateProcessor:
         """
         # Find the latest backup for user settings extraction
         backup_path = None
-        if self.backup.backup_dir.exists():
-            backups = sorted(self.backup.backup_dir.iterdir(), reverse=True)
-            if backups:
-                backup_settings = backups[0] / ".claude" / "settings.json"
-                if backup_settings.exists():
-                    backup_path = backup_settings
+        latest_backup = self.backup.get_latest_backup()
+        if latest_backup:
+            backup_settings = latest_backup / ".claude" / "settings.json"
+            if backup_settings.exists():
+                backup_path = backup_settings
 
         self.merger.merge_settings_json(src, dst, backup_path)
+
+    def _merge_config_json(self, src: Path, dst: Path) -> None:
+        """Smart merge for config.json using LanguageConfigResolver priority system.
+
+        Args:
+            src: Template config.json.
+            dst: Project config.json.
+        """
+        import json
+        from pathlib import Path
+
+        # Load template config
+        try:
+            template_config = json.loads(src.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            console.print(f"⚠️ Warning: Could not read template config.json: {e}")
+            return
+
+        # Find latest backup config.json
+        backup_config = {}
+        latest_backup = self.backup.get_latest_backup()
+        if latest_backup:
+            backup_config_path = latest_backup / ".moai" / "config" / "config.json"
+            if backup_config_path.exists():
+                try:
+                    backup_config = json.loads(backup_config_path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError as e:
+                    console.print(f"⚠️ Warning: Could not read backup config.json: {e}")
+
+        # Load existing project config.json
+        existing_config = {}
+        if dst.exists():
+            try:
+                existing_config = json.loads(dst.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                console.print(f"⚠️ Warning: Could not read existing config.json: {e}")
+
+        # Merge with priority system: Environment > Existing User > Template
+        # We'll use LanguageConfigResolver to handle this properly
+        try:
+            # Import LanguageConfigResolver for priority-based merging
+            from moai_adk.core.language_config_resolver import LanguageConfigResolver
+
+            # Create temporary resolver to handle merging
+            temp_project_path = self.target_path / ".moai" / "config"
+            temp_project_path.mkdir(parents=True, exist_ok=True)
+
+            # Start with template config as base
+            merged_config = template_config.copy()
+
+            # Apply existing user config (higher priority than template)
+            for key, value in existing_config.items():
+                if key not in ["config_source"]:  # Skip metadata
+                    if key in merged_config and isinstance(merged_config[key], dict) and isinstance(value, dict):
+                        # Deep merge for nested objects
+                        merged_config[key].update(value)
+                    else:
+                        merged_config[key] = value
+
+            # Apply environment variables (highest priority)
+            import os
+            env_mappings = {
+                "MOAI_USER_NAME": ("user", "name"),
+                "MOAI_CONVERSATION_LANG": ("language", "conversation_language"),
+                "MOAI_AGENT_PROMPT_LANG": ("language", "agent_prompt_language"),
+                "MOAI_CONVERSATION_LANG_NAME": ("language", "conversation_language_name"),
+                "MOAI_GIT_COMMIT_MESSAGES_LANG": ("language", "git_commit_messages"),
+                "MOAI_CODE_COMMENTS_LANG": ("language", "code_comments"),
+                "MOAI_DOCUMENTATION_LANG": ("language", "documentation"),
+                "MOAI_ERROR_MESSAGES_LANG": ("language", "error_messages"),
+            }
+
+            for env_var, (section, key) in env_mappings.items():
+                env_value = os.getenv(env_var)
+                if env_value:
+                    if section not in merged_config:
+                        merged_config[section] = {}
+                    merged_config[section][key] = env_value
+
+            # Ensure consistency
+            resolver = LanguageConfigResolver(str(self.target_path))
+            merged_config = resolver._ensure_consistency(merged_config)
+
+            # Write merged config
+            dst.write_text(json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        except ImportError:
+            # Fallback: simple merge without LanguageConfigResolver
+            merged_config = template_config.copy()
+
+            # Apply existing config
+            for key, value in existing_config.items():
+                if key not in ["config_source"]:
+                    merged_config[key] = value
+
+            dst.write_text(json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            console.print("   ⚠️ Warning: Using simple merge (LanguageConfigResolver not available)")
 
     def _copy_gitignore(self, silent: bool = False) -> None:
         """.gitignore copy (optional)."""
