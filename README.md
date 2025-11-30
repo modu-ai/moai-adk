@@ -16,38 +16,39 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### PART A: Getting Started (30 minutes)
 
-| Section                                           | Time | Goal                           |
-| ------------------------------------------------- | ---- | ------------------------------ |
-| [1. Introduction](#1-introduction)                | 2min | Understand what MoAI-ADK is    |
-| [2. Installation & Setup](#2-installation--setup) | 10min | Configure basic environment    |
-| [3. Quick Start](#3-quick-start)                  | 5min | Complete your first feature    |
+| Section                                           | Time  | Goal                        |
+| ------------------------------------------------- | ----- | --------------------------- |
+| [1. Introduction](#1-introduction)                | 2min  | Understand what MoAI-ADK is |
+| [2. Installation & Setup](#2-installation--setup) | 10min | Configure basic environment |
+| [3. Quick Start](#3-quick-start)                  | 5min  | Complete your first feature |
 
 ### PART B: Core Concepts (45 minutes)
 
-| Section                                              | Time | Goal                      |
-| ---------------------------------------------------- | ---- | ------------------------- |
-| [4. SPEC and EARS Format](#4-spec-and-ears-format)   | 10min | Understand specifications |
-| [5. Mr.Alfred & Agents](#5-mralfred--agents)         | 12min | Understand agent system   |
-| [6. Development Workflow](#6-development-workflow)   | 15min | Plan → Run → Sync         |
-| [7. Core Commands](#7-core-commands)                 | 8min | `/moai:0-3` commands      |
+| Section                                            | Time  | Goal                      |
+| -------------------------------------------------- | ----- | ------------------------- |
+| [4. SPEC and EARS Format](#4-spec-and-ears-format) | 10min | Understand specifications |
+| [5. Mr.Alfred & Agents](#5-mralfred--agents)       | 12min | Understand agent system   |
+| [6. Development Workflow](#6-development-workflow) | 15min | Plan → Run → Sync         |
+| [7. Core Commands](#7-core-commands)               | 8min  | `> /moai:0-3` commands    |
 
 ### PART C: Advanced Learning (2-3 hours)
 
-| Section                                             | Goal                         |
-| --------------------------------------------------- | ---------------------------- |
-| [8. Agent Guide](#8-agent-guide-26-agents)          | Utilize specialized agents   |
-| [9. Skill Library](#9-skill-library-22-skills)      | Explore 22 skills            |
-| [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples |
-| [11. TRUST 5 Quality](#11-trust-5-quality-assurance)| Quality assurance system     |
+| Section                                                           | Goal                       |
+| ----------------------------------------------------------------- | -------------------------- |
+| [8. Agent Guide](#8-agent-guide-24-agents)                        | Utilize specialized agents |
+| [9. Skill Library](#9-skill-library-24-skills)                    | Explore 24 skills          |
+| [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
+| [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
+| [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
 
 ### PART D: Advanced & Reference (As Needed)
 
-| Section                                       | Purpose                      |
-| --------------------------------------------- | ---------------------------- |
-| [12. Advanced Configuration](#12-advanced-configuration) | Project customization |
-| [13. MCP Servers](#13-mcp-servers)            | External tool integration    |
-| [14. FAQ & Quick Reference](#14-faq--quick-reference) | Common questions      |
-| [15. Additional Resources](#15-additional-resources) | ai-nano-banana guide   |
+| Section                                                                                    | Purpose                   |
+| ------------------------------------------------------------------------------------------- | ------------------------- |
+| [13. Advanced Configuration](#13-advanced-configuration)                                  | Project customization     |
+| [14. FAQ & Quick Reference](#14-faq--quick-reference)                                      | Common questions          |
+| [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-banana-agent-usage-guide)          | Image generation guide    |
+| [16. Additional Resources](#16-additional-resources)                                        | Support & information     |
 
 ---
 
@@ -55,7 +56,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### 🗿 What is MoAI-ADK?
 
-**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **26 specialized AI agents** to deliver a complete and transparent development lifecycle.
+**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **24 specialized AI agents** to deliver a complete and transparent development lifecycle.
 
 ### ✨ Why Use MoAI-ADK?
 
@@ -79,13 +80,13 @@ MoAI-ADK solutions:
 
 ![5 Core Features](./assets/images/readme/feature-overview-grid.png)
 
-| Feature                  | Description                                           | Quantitative Impact                                                                                                                                                                              |
-| ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **SPEC-First**           | All development starts with clear specifications      | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                |
-| **TDD Enforcement**      | Automated Red-Green-Refactor cycle                    | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                 |
-| **AI Orchestration**     | Mr.Alfred commands 26 specialized AI agents (7-Tier)  | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
-| **Auto Documentation**   | Automatic doc sync on code changes (`/moai:3-sync`)   | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                               |
-| **TRUST 5 Quality**      | Test, Readable, Unified, Secured, Trackable           | Enterprise-grade quality assurance<br/>**99% reduction** in post-deployment emergency patches                                                                                                    |
+| Feature                | Description                                          | Quantitative Impact                                                                                                                                                                                                      |
+| ---------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **SPEC-First**         | All development starts with clear specifications     | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                                       |
+| **TDD Enforcement**    | Automated Red-Green-Refactor cycle                   | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
+| **AI Orchestration**   | Mr.Alfred commands 24 specialized AI agents (7-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
+| **Auto Documentation** | Automatic doc sync on code changes (`> /moai:3-sync`) | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
+| **TRUST 5 Quality**    | Test, Readable, Unified, Secured, Trackable          | Enterprise-grade quality assurance<br/>**99% reduction** in post-deployment emergency patches                                                                                                                            |
 
 ---
 
@@ -112,9 +113,6 @@ uv --version
 # Install latest version
 uv tool install moai-adk
 
-# Update to latest version (if already installed)
-uv tool update moai-adk
-
 # Verify installation
 moai-adk --version
 ```
@@ -132,7 +130,7 @@ ls -la
 
 Generated file structure:
 
-```
+```text
 my-project/
 ├── .claude/              # Claude Code configuration
 ├── .moai/                # MoAI-ADK configuration
@@ -162,7 +160,7 @@ ls -la .claude/ .moai/
 
 **What gets added to your project:**
 
-```
+```text
 your-existing-project/
 ├── .claude/              # Claude Code configuration (added)
 │   ├── agents/           # MoAI-ADK agents
@@ -193,7 +191,8 @@ claude
 > /moai:0-project
 ```
 
-**What `/moai:0-project` does:**
+**What `> /moai:0-project` does:**
+
 - ✅ Analyzes your project structure
 - ✅ Detects programming language and framework
 - ✅ Generates project metadata in `.moai/config/config.json`
@@ -202,6 +201,7 @@ claude
 - ✅ Configures quality assurance standards
 
 **Expected output:**
+
 ```
 ✓ Project analyzed: Python project detected
 ✓ Metadata generated: .moai/config/config.json
@@ -282,7 +282,7 @@ Automatically:
 
 ### 📁 More Details
 
-- **Advanced installation options**: [12. Advanced Configuration](#12-advanced-configuration)
+- **Advanced installation options**: [13. Advanced Configuration](#13-advanced-configuration)
 - **Detailed command usage**: [7. Core Commands](#7-core-commands)
 - **Development workflow**: [6. Development Workflow](#6-development-workflow)
 
@@ -347,13 +347,13 @@ All development starts with **clear specifications**. SPECs follow the **EARS (E
 
 ### 💡 5 Types of EARS Format
 
-| Type              | Syntax         | Example                                        |
-| ----------------- | -------------- | ---------------------------------------------- |
-| **Ubiquitous**    | Always perform | "System shall always log activities"           |
-| **Event-driven**  | WHEN...THEN    | "When user logs in, issue token"               |
-| **State-driven**  | IF...THEN      | "If account is active, allow login"            |
-| **Unwanted**      | shall not      | "System shall not store passwords in plaintext"|
-| **Optional**      | where possible | "Provide OAuth login where possible"           |
+| Type             | Syntax         | Example                                         |
+| ---------------- | -------------- | ----------------------------------------------- |
+| **Ubiquitous**   | Always perform | "System shall always log activities"            |
+| **Event-driven** | WHEN...THEN    | "When user logs in, issue token"                |
+| **State-driven** | IF...THEN      | "If account is active, allow login"             |
+| **Unwanted**     | shall not      | "System shall not store passwords in plaintext" |
+| **Optional**     | where possible | "Provide OAuth login where possible"            |
 
 ---
 
@@ -387,7 +387,7 @@ flowchart TD
 
 ### 🔧 Agent System (5-Tier Hierarchy)
 
-MoAI-ADK organizes **26 specialized agents** into **5 tiers** for optimal performance.
+MoAI-ADK organizes **24 specialized agents** into **5 tiers** for optimal performance.
 
 **Tier 1: Domain Experts** (7 agents)
 
@@ -448,7 +448,7 @@ sequenceDiagram
 
     rect rgb(245, 245, 245)
         Note right of U: Phase 1: Plan
-        U->>A: /moai:1-plan "login feature"
+        U->>A: > /moai:1-plan "login feature"
         A->>S: Request SPEC writing
         S-->>A: SPEC-001 draft
         A-->>U: Request review
@@ -458,7 +458,7 @@ sequenceDiagram
 
     rect rgb(250, 250, 250)
         Note right of U: Phase 2: Run
-        U->>A: /moai:2-run SPEC-001
+        U->>A: > /moai:2-run SPEC-001
         A->>T: Request TDD implementation
         T->>T: 🔴 Write tests (fail)
         T->>T: 🟢 Implement code (pass)
@@ -468,13 +468,16 @@ sequenceDiagram
     end
 
     rect rgb(240, 250, 240)
-        Note right of U: Phase 3: Sync
-        U->>A: /moai:3-sync SPEC-001
+        Note right of U: Phase 3: Sync (Automation)
+        U->>A: > /moai:3-sync SPEC-001
         A->>D: Request documentation
-        D->>D: Generate API docs
-        D->>D: Generate diagrams
-        D-->>A: Documentation ready
-        A-->>U: Ready for deployment
+        D->>D: 🔴 Final testing
+        D->>D: 📊 Coverage verification
+        D->>D: 🔍 Code quality check
+        D->>D: 📝 Auto commit generation
+        D->>D: 📚 Documentation update
+        D-->>A: All complete (automation)
+        A-->>U: Ready for merge
     end
 ```
 
@@ -485,7 +488,7 @@ sequenceDiagram
 **Goal**: What to build?
 
 ```bash
-/moai:1-plan "user login feature"
+> /moai:1-plan "user login feature"
 ```
 
 In this phase:
@@ -504,8 +507,8 @@ In this phase:
 **Goal**: How to build it?
 
 ```bash
-/clear
-/moai:2-run SPEC-001
+> /clear
+> /moai:2-run SPEC-001
 ```
 
 In this phase:
@@ -525,23 +528,25 @@ In this phase:
 
 ---
 
-#### Phase 3: Sync (Documentation, 10-15min)
+#### Phase 3: Sync (Automation, 5-10min)
 
-**Goal**: Is it complete?
+**Goal**: Is it complete? (Automation)
 
 ```bash
-/clear
-/moai:3-sync SPEC-001
+> /clear
+> /moai:3-sync SPEC-001
 ```
 
-In this phase:
+This phase automatically executes:
 
-- 📚 Auto-generate API documentation
-- 📊 Generate architecture diagrams
-- 🚀 Write deployment guide
-- ✅ Reflect all changes
+- 🔴 **Final test execution**: Auto-run all tests
+- 📊 **Coverage verification**: Auto-guarantee 95%+ coverage
+- 🔍 **Code quality check**: Auto-run ruff, mypy
+- 📝 **Auto commit generation**: Auto-create "Ready for merge" commit
+- 📚 **Documentation update**: Auto-update API docs, README
+- 🚀 **Merge readiness**: Claude Code auto-completes merge preparation
 
-**Output**: Up-to-date documentation + ready for deployment
+**Output**: Tests pass + documentation complete + merge ready
 
 ---
 
@@ -553,13 +558,13 @@ flowchart LR
 
     Plan -->|"<br/>SPEC-001<br/>ready<br/>"| Run["<b>💻 RUN</b><br/>(Implementation)<br/>━━━━━━<br/>🔴 Write tests<br/>🟢 Implement code<br/>🔵 Refactor<br/>⏱️ 20min"]
 
-    Run -->|"<br/>Tests pass<br/>Code complete<br/>"| Sync["<b>📚 SYNC</b><br/>(Documentation)<br/>━━━━━━<br/>🔗 Generate API docs<br/>📊 Diagrams<br/>🚀 Deploy ready<br/>⏱️ 10min"]
+    Run -->|"<br/>Tests pass<br/>Code complete<br/>"| Sync["<b>📚 SYNC</b><br/>(Automation)<br/>━━━━━━<br/>🔴 Final testing<br/>📊 Coverage verification<br/>🔍 Code quality check<br/>📝 Auto commit generation<br/>🚀 Merge ready<br/>⏱️ 5min"]
 
-    Sync -->|"<br/>Fully automated!<br/>"| End([✅ Feature Deployed])
+    Sync -->|"<br/>Fully automated complete!<br/>🚀 Merge ready<br/>| End([✅ Feature Deployed])
 
     classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
     classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
-    classDef syncStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#000
+    classDef syncStyle fill:#fff8e1,stroke:#ff9800,stroke-width:3px,color:#000
     classDef normalStyle fill:#fafafa,stroke:#666,stroke-width:2px
 
     class Plan planStyle
@@ -572,14 +577,14 @@ flowchart LR
 
 ## 7. Core Commands
 
-### 🎯 `/moai:0-project` - Project Initialization
+### 🎯 `> /moai:0-project` - Project Initialization
 
 **Purpose**: Generate project metadata
 
 **When to use**: When starting a new project
 
 ```bash
-/moai:0-project
+> /moai:0-project
 ```
 
 **Generated files**:
@@ -590,23 +595,23 @@ flowchart LR
 
 ---
 
-### 📋 `/moai:1-plan` - SPEC Writing
+### 📋 `> /moai:1-plan` - SPEC Writing
 
 **Purpose**: Generate SPEC document in EARS format
 
 **When to use**: Before starting new feature development
 
 ```bash
-/moai:1-plan "add login feature"
+> /moai:1-plan "add login feature"
 ```
 
 **Example**:
 
 ```bash
-/moai:1-plan "implement user profile page"
+> /moai:1-plan "implement user profile page"
 # → Creates SPEC-002 (.moai/specs/SPEC-002/spec.md)
 
-/moai:1-plan "develop payment API"
+> /moai:1-plan "develop payment API"
 # → Creates SPEC-003
 ```
 
@@ -617,30 +622,30 @@ flowchart LR
 - Success Criteria
 - Test Scenarios
 
-**Important**: Must execute `/clear` next
+**Important**: Must execute `> /clear` next
 
 ```bash
-/moai:1-plan "feature name"
+> /moai:1-plan "feature name"
 # After completion
-/clear
+> /clear
 ```
 
 ---
 
-### 💻 `/moai:2-run` - TDD Implementation
+### 💻 `> /moai:2-run` - TDD Implementation
 
 **Purpose**: Implement code with RED-GREEN-REFACTOR cycle
 
 **When to use**: After SPEC writing for implementation
 
 ```bash
-/moai:2-run SPEC-001
+> /moai:2-run SPEC-001
 ```
 
 **Example**:
 
 ```bash
-/moai:2-run SPEC-001  # Basic implementation
+> /moai:2-run SPEC-001  # Basic implementation
 ```
 
 **Automatic execution**:
@@ -659,20 +664,20 @@ flowchart LR
 
 ---
 
-### 📚 `/moai:3-sync` - Documentation Sync
+### 📚 `> /moai:3-sync` - Documentation Sync
 
 **Purpose**: Reflect code changes in documentation
 
 **When to use**: After implementation completion
 
 ```bash
-/moai:3-sync SPEC-001
+> /moai:3-sync SPEC-001
 ```
 
 **Example**:
 
 ```bash
-/moai:3-sync SPEC-001  # All documentation
+> /moai:3-sync SPEC-001  # All documentation
 ```
 
 **Auto-generated documentation**:
@@ -685,21 +690,11 @@ flowchart LR
 
 ---
 
-### 📊 Other Useful Commands
-
-| Command             | Purpose               | When to use           |
-| ------------------- | --------------------- | --------------------- |
-| `/moai:0-git`       | Git workflow setup    | Project initialization|
-| `/moai:9-feedback`  | Submit improvement feedback | When issues found |
-| `/clear`            | Context initialization| Token savings after phase |
-
----
-
 ### 🌳 **moai-worktree** - Git Worktree Management for Parallel SPEC Development
 
 #### Why moai-worktree? The Problem It Solves
 
-In modern software development, especially when following SPEC-First TDD methodology, developers frequently face the challenge of working on multiple features simultaneously. Traditional Git workflow forces developers to either:
+In modern software development, especially when following SPEC-First TDD methodology, developers frequently face the challenge of working on multiple features simultaneously. Traditional Git workflow forces developers to:
 
 - **Context Switch Hell**: Constantly switch branches in the same workspace, losing context and risking incomplete work
 - **Sequential Development**: Work on one SPEC at a time, reducing productivity
@@ -712,6 +707,7 @@ In modern software development, especially when following SPEC-First TDD methodo
 **What is a Git Worktree?**
 
 A Git worktree is a separate working directory linked to the same Git repository, allowing you to check out different branches into different working directories simultaneously. Each worktree has its own:
+
 - Independent file system
 - Separate working directory state
 - Isolated build artifacts and dependencies
@@ -741,21 +737,25 @@ Main Repository/
 #### Key Benefits for SPEC-First Development
 
 **1. Zero Context Switching**
+
 - Each SPEC has its own dedicated workspace
 - Never lose work context when switching between SPECs
 - Maintain mental focus on specific requirements
 
 **2. True Parallel Development**
+
 - Work on SPEC-001 implementation while SPEC-002 tests run
 - Debug SPEC-003 while SPEC-004 documentation syncs
 - No waiting for other processes to complete
 
 **3. Isolated Environments**
+
 - Different SPECs can use different dependency versions
 - Separate database states and configurations
 - No cross-SPEC contamination
 
 **4. SPEC Completion Tracking**
+
 - Clear visual indication of which SPECs are active
 - Easy to identify abandoned or incomplete SPECs
 - Systematic cleanup of completed work
@@ -763,6 +763,7 @@ Main Repository/
 #### Advanced Features
 
 **Smart Synchronization**
+
 ```bash
 # Sync all worktrees with latest main branch
 moai-worktree sync --all
@@ -772,6 +773,7 @@ moai-worktree sync SPEC-001 --auto-resolve
 ```
 
 **Intelligent Cleanup**
+
 ```bash
 # Auto-remove worktrees for merged branches
 moai-worktree clean --merged-only
@@ -781,6 +783,7 @@ moai-worktree clean --interactive
 ```
 
 **Performance Optimization**
+
 - **Concurrent Operations**: Multiple worktrees can be modified simultaneously
 - **Shared History**: All worktrees share the same Git object database
 - **Selective Sync**: Only sync changes when needed, not entire repositories
@@ -788,23 +791,540 @@ moai-worktree clean --interactive
 #### When to Use moai-worktree
 
 **Ideal Scenarios:**
+
 - **Multiple Active SPECs**: Working on 3+ SPECs simultaneously
 - **Long-running Tasks**: SPEC implementation takes days or weeks
 - **Team Collaboration**: Multiple developers working on different SPECs
 - **Feature Branching**: Each SPEC becomes its own feature branch
 - **Environment Isolation**: Different SPECs require different configurations
 
-**Real-world Example Workflow:**
+#### Complete Development Workflow (Start to Merge)
+
+**Step 1: SPEC Creation and Worktree Setup**
+
+```bash
+# Method 1: Automatic worktree creation with SPEC creation
+> /moai:1-plan 'Implement user authentication system' --worktree
+# → Auto-create SPEC-AUTH-001 and setup worktree
+
+# Method 2: Manual worktree creation
+> /moai:1-plan 'Implement user authentication system'
+# SPEC-AUTH-001 created
+moai-worktree new SPEC-AUTH-001
+# → Create isolated worktree environment
+```
+
+**Step 2: Navigate to Worktree and Start Development**
+
+```bash
+# Navigate to worktree (recommended method)
+moai-worktree go SPEC-AUTH-001
+# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
+
+# Or navigate directly in new shell
+moai-worktree switch SPEC-AUTH-001
+# → Navigate to worktree in new terminal
+```
+
+**Step 3: Develop in Isolated Environment**
+
+```bash
+# TDD development within worktree
+> /moai:2-run SPEC-AUTH-001
+# → Execute RED → GREEN → REFACTOR cycle
+
+# Check status during development
+moai-worktree status
+git status
+git log --oneline -5
+
+# Intermediate save
+git add .
+git commit -m "Auth: Implement user login endpoint"
+```
+
+**Step 4: Synchronization and Conflict Resolution**
+
+```bash
+# Get main branch changes
+moai-worktree sync SPEC-AUTH-001
+
+# Sync with automatic conflict resolution
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
+
+# Sync all worktrees
+moai-worktree sync --all --auto-resolve
+```
+
+**Step 5: Development Completion and Testing (Automation)**
+
+```bash
+# MoAI workflow sync - automatically run tests, quality checks, commits
+> /moai:3-sync SPEC-AUTH-001
+# → Auto final testing, coverage verification, code quality checks, final commit complete
+```
+
+**Step 6: Merge Preparation (Automation + Direct Commands)**
+
+**Option A: Claude Code Automation (Beginner Friendly)**
+
+```bash
+# Claude Code automatically handles merge preparation
+# User just needs to request:
+> Prepare SPEC-AUTH-001 for merge to main branch
+
+# Claude Code automatically executes:
+# - Fetch worktree branch
+# - Local merge testing
+# - Conflict check and resolution suggestions
+# - Merge preparation complete report
+```
+
+**Option B: Direct Git Commands (Advanced Users)**
+
+```bash
+# 1. Navigate from worktree to main
+moai-worktree go SPEC-AUTH-001  # or cd /path/to/main/repo
+
+# 2. Fetch worktree branch
+git fetch origin feature/SPEC-AUTH-001
+git checkout -b merge/SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
+
+# 3. Local merge testing
+git merge main --no-ff  # Merge changes from main
+
+# 4. Manual resolution if conflicts exist
+git status  # Check conflict files
+# After editing conflict files:
+git add .
+git commit -m "Resolve: Merge conflicts in SPEC-AUTH-001"
+
+# 5. Confirm merge preparation complete
+git log --oneline -5
+git status  # Confirm clean working directory
+```
+
+**Direct Command Collection for Conflict Resolution:**
+
+```bash
+# Strategic approach when conflicts occur
+git checkout --ours conflicted_file.py    # Prioritize main branch
+git checkout --theirs conflicted_file.py  # Prioritize worktree changes
+
+# Cancel merge and retry
+git merge --abort
+git merge main --no-ff
+
+# Change overall merge strategy
+git rebase main  # Use rebase instead
+```
+
+**Step 7: Completion and Cleanup (Automation + Direct Commands)**
+
+**Option A: Claude Code Automation (Beginner Friendly)**
+
+```bash
+# Worktree cleanup (request Claude Code auto-processing)
+> Clean up SPEC-AUTH-001 worktree
+
+# README.ko.md update (request Claude Code auto-processing)
+> Add completed SPEC-AUTH-001 feature to README.ko.md
+
+# Claude Code automatically executes:
+# - Check worktree status
+# - Document completed features
+# - README update
+# - Cleanup complete report
+```
+
+**Option B: Direct moai-worktree Commands (Advanced Users)**
+
+```bash
+# 1. Final worktree status check
+moai-worktree status
+# Output example:
+# SPEC-AUTH-001
+#   Branch: feature/SPEC-AUTH-001
+#   Status: completed
+#   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
+
+# 2. Worktree cleanup (safe method)
+moai-worktree clean --merged-only
+# → Auto-remove worktrees for merged branches only
+
+# 3. Or interactive cleanup (optional removal)
+moai-worktree clean --interactive
+# → Select worktrees to remove
+
+# 4. Direct removal of specific worktree (force)
+moai-worktree remove SPEC-AUTH-001 --force
+
+# 5. Overall worktree status check
+moai-worktree list
+# or
+moai-worktree status
+```
+
+**Practical Worktree Management Command Collection:**
+
+```bash
+# Daily worktree management
+moai-worktree list                    # List all worktrees
+moai-worktree status                  # Detailed status check
+moai-worktree sync SPEC-AUTH-001      # Sync specific worktree
+moai-worktree sync --all              # Sync all worktrees
+
+# Worktree navigation and work
+moai-worktree go SPEC-001     # Navigate in current shell
+moai-worktree switch SPEC-001         # Open worktree in new shell
+
+# Automatic conflict resolution
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
+
+# Settings check
+moai-worktree config get              # View current settings
+moai-worktree config root             # Check worktree root path
+```
+
+**Mixed Workflow Recommended Pattern:**
+
+```bash
+# Steps 1-5: Claude Code automation (fast development)
+> /moai:1-plan "feature name"
+> /moai:2-run SPEC-XXX
+> /moai:3-sync SPEC-XXX
+
+# Steps 6-7: Direct commands (precise control)
+moai-worktree sync SPEC-XXX --auto-resolve  # Auto conflict resolution
+moai-worktree clean --merged-only           # Cleanup completed worktrees
+```
+
+---
+
+### 🔧 Manual Command Reference (Manual Command Reference)
+
+This section details direct commands that can be used alongside Claude Code automation.
+
+#### **Basic moai-worktree Commands**
+
+| Command                 | Purpose                    | Usage Example                       | Description                                 |
+| ---------------------- | --------------------------- | ----------------------------------- | -------------------------------------------- |
+| `moai-worktree new`    | Create new worktree         | `moai-worktree new SPEC-001`    | Create isolated workspace for SPEC-001       |
+| `moai-worktree list`   | List worktrees              | `moai-worktree list`            | Display all active worktrees                  |
+| `moai-worktree go`     | Navigate to worktree        | `moai-worktree go SPEC-001`     | Navigate to worktree in current shell        |
+| `moai-worktree switch` | Open worktree in new shell  | `moai-worktree switch SPEC-001` | Navigate to worktree in new terminal        |
+| `moai-worktree remove` | Remove worktree             | `moai-worktree remove SPEC-001` | Delete specific worktree                     |
+| `moai-worktree status` | Check status                | `moai-worktree status`          | Display all worktree statuses                |
+
+#### **Synchronization Commands**
+
+| Command                              | Purpose                 | Usage Example                                    | Description                          |
+| ----------------------------------- | ----------------------- | ----------------------------------------------- | ------------------------------------- |
+| `moai-worktree sync`                | Sync specific worktree | `moai-worktree sync SPEC-001`                | Sync changes with main branch          |
+| `moai-worktree sync --all`          | Sync all worktrees      | `moai-worktree sync --all`                   | Sync all worktrees at once            |
+| `moai-worktree sync --auto-resolve` | Auto conflict resolution| `moai-worktree sync SPEC-001 --auto-resolve` | Auto-attempt conflict resolution       |
+| `moai-worktree sync --rebase`       | Rebase-based sync       | `moai-worktree sync SPEC-001 --rebase`       | Use rebase instead of merge           |
+
+#### **Cleanup Commands**
+
+| Command                              | Purpose                   | Usage Example                           | Description                        |
+| ----------------------------------- | ------------------------- | ------------------------------------- | ---------------------------------- |
+| `moai-worktree clean`               | Clean worktrees           | `moai-worktree clean`               | Clean all worktrees               |
+| `moai-worktree clean --merged-only` | Clean merged worktrees    | `moai-worktree clean --merged-only` | Remove worktrees for merged branches |
+| `moai-worktree clean --interactive` | Interactive cleanup       | `moai-worktree clean --interactive` | Select worktrees to remove        |
+
+#### **Settings Commands**
+
+| Command                      | Purpose           | Usage Example               | Description                             |
+| --------------------------- | ----------------- | --------------------------- | -------------------------------------- |
+| `moai-worktree config`      | View settings     | `moai-worktree config`      | Display current worktree settings     |
+| `moai-worktree config root` | Check root path   | `moai-worktree config root` | Check worktree root directory path    |
+
+#### **Advanced Usage Patterns**
+
+**1. Multi-SPEC Parallel Development**
+
+```bash
+# Create multiple SPECs simultaneously
+moai-worktree new SPEC-AUTH-001    # User authentication
+moai-worktree new SPEC-PAY-002     # Payment system
+moai-worktree new SPEC-UI-003      # UI improvement
+
+# Check each worktree status
+moai-worktree status
+
+# Sync all worktrees
+moai-worktree sync --all --auto-resolve
+```
+
+**2. Auto Conflict Resolution Workflow**
+
+```bash
+# Step 1: Attempt auto sync
+moai-worktree sync SPEC-001 --auto-resolve
+
+# Step 2: Manual intervention if auto resolution fails
+moai-worktree go SPEC-001
+git status  # Check conflict files
+
+# Step 3: Select conflict resolution strategy
+git checkout --ours conflicted_file.py    # Prioritize main branch
+# or
+git checkout --theirs conflicted_file.py  # Prioritize worktree changes
+
+# Step 4: Complete resolution and commit
+git add conflicted_file.py
+git commit -m "Resolve: Auto-resolved conflicts in SPEC-001"
+```
+
+**3. Regular Worktree Maintenance**
+
+```bash
+# Recommended to run daily
+moai-worktree status                      # Check current status
+moai-worktree sync --all                  # Sync all worktrees
+
+# Recommended to run weekly
+moai-worktree clean --merged-only         # Clean completed worktrees
+
+# Recommended to run monthly
+moai-worktree clean --interactive         # Interactive cleanup of unnecessary worktrees
+```
+
+#### **Claude Code and Command Combination Guide**
+
+**Beginner Users:**
+
+```bash
+# Steps 1-3: Claude Code automation for quick start
+/moai:1-plan "user login feature"
+/moai:2-run SPEC-001
+/moai:3-sync SPEC-001
+
+# Steps 4-5: Direct commands for basic management
+moai-worktree status                      # Check status
+moai-worktree sync SPEC-001               # Sync
+moai-worktree clean --merged-only         # Cleanup
+```
+
+**Intermediate Users:**
+
+```bash
+# Steps 1-2: Claude Code automation
+> /moai:1-plan "payment system development"
+> /moai:2-run SPEC-PAY-001
+
+# Step 3: Direct commands for precise control
+moai-worktree go SPEC-PAY-001
+# Direct development and testing
+git add .
+git commit -m "Pay: Implement core payment processing"
+
+# Steps 4-5: Mixed approach
+> /moai:3-sync SPEC-PAY-001                 # Automation for quality verification
+moai-worktree sync SPEC-PAY-001 --auto-resolve  # Direct sync
+```
+
+**Advanced Users:**
+
+```bash
+# Control entire process with direct commands
+moai-worktree new SPEC-ADV-001
+moai-worktree go SPEC-ADV-001
+# Complete manual development process
+git add .
+git commit -m "Adv: Complex feature implementation"
+moai-worktree sync SPEC-ADV-001 --rebase
+moai-worktree clean --interactive
+```
+
+**Productivity Tips:**
+
+1. **Alias Setup** (add to ~/.zshrc or ~/.bashrc):
+
+```bash
+alias wt-new='moai-worktree new'
+alias wt-go='moai-worktree go'
+alias wt-list='moai-worktree list'
+alias wt-status='moai-worktree status'
+alias wt-sync='moai-worktree sync'
+alias wt-clean='moai-worktree clean'
+```
+
+2. **Quick Workflow Functions**:
+
+```bash
+# Quick worktree creation and navigation
+wt-dev() {
+    moai-worktree new "SPEC-$1"
+    moai-worktree go "SPEC-$1"
+}
+
+# Usage: wt-dev AUTH-001
+```
+
+---
+
+### 🎯 **Perfect Combination of Automation and Direct Control**
+
+MoAI-ADK is designed to leverage the benefits of both **Claude Code automation** and **direct command control**.
+
+#### **When to Use What**
+
+| Situation                 | Recommended Approach     | Reason                         |
+| ------------------------- | ------------------------ | ------------------------------ |
+| **Start new feature**     | Claude Code automation  | Fast SPEC creation and initial setup  |
+| **Complex algorithms**    | Direct control           | Step-by-step debugging and optimization needed |
+| **Daily synchronization** | Direct commands          | Fast execution and precise control     |
+| **Quality verification**  | Claude Code automation  | Automated testing and verification      |
+| **Conflict resolution**   | Mixed approach           | Auto detection + manual resolution        |
+| **Cleanup & maintenance** | Direct commands          | Optional control and safe cleanup   |
+
+#### **Recommended Combination Workflows**
+
+##### Beginners: Automation-focused (70% automation + 30% direct control)
+
+```bash
+# Step 1: Quick start with automation
+> /moai:1-plan "feature development"
+> /moai:2-run SPEC-001
+
+# Step 2: Basic management with direct commands
+moai-worktree status
+moai-worktree sync SPEC-001
+moai-worktree clean --merged-only
+
+# Step 3: Complete with automation
+> /moai:3-sync SPEC-001
+```
+
+##### Intermediate: Balanced approach (50% automation + 50% direct control)
+
+```bash
+# Step 1: Plan with automation
+> /moai:1-plan "complex feature"
+
+# Step 2: Detailed implementation with direct control
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
+# Detailed development work
+
+# Step 3: Quality assurance with automation
+> /moai:3-sync SPEC-001
+```
+
+##### Advanced: Direct control-focused (30% automation + 70% direct control)
+
+```bash
+# Control entire process with direct commands but use automation when needed
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
+# Complete manual development
+# Use > /moai:3-sync for quality verification when needed
+```
+
+#### Merge Conflict Resolution Strategies
+
+##### 1. Auto Resolution (Recommended)
+
+```bash
+# Auto resolution trying all strategies
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
+```
+
+##### 2. Manual Resolution
+
+```bash
+# Navigate to worktree
+moai-worktree go SPEC-AUTH-001
+
+# Check conflict status
+git status
+
+# Edit conflict files
+# <<<<<<< HEAD
+# Main branch content
+# =======
+# Worktree branch content
+# >>>>>>> feature/SPEC-AUTH-001
+
+# Mark as resolved after editing
+git add conflict_file.py
+git commit -m "Resolve: Merge conflicts in auth system"
+```
+
+##### 3. Strategic Approach
+
+```bash
+# Prioritize main branch when conflicts occur
+git checkout --ours conflict_file.py
+git add conflict_file.py
+git commit
+
+# Or prioritize worktree changes
+git checkout --theirs conflict_file.py
+git add conflict_file.py
+git commit
+```
+
+#### Completion Checklist
+
+##### Before Development Completion
+
+- [ ] All tests pass (>= 95% coverage)
+- [ ] Pass code quality checks (ruff, mypy)
+- [ ] Security review complete
+- [ ] Documentation updated
+- [ ] Local merge testing
+
+##### After Merge Completion
+
+- [ ] Push to remote repository
+- [ ] Create and approve Pull Request
+- [ ] Merge to main branch
+- [ ] Worktree cleanup complete
+- [ ] Run > /moai:3-sync
+- [ ] Deployment testing
+
+#### Parallel Development Tips
+
+##### Multiple SPECs Simultaneous Work
+
+```bash
+# Work on first SPEC
+moai-worktree go SPEC-AUTH-001
+> /moai:2-run SPEC-AUTH-001
+
+# Work on second SPEC in different terminal
+moai-worktree go SPEC-PAY-002
+> /moai:2-run SPEC-PAY-002
+
+# Work on third SPEC
+moai-worktree go SPEC-UI-003
+> /moai:2-run SPEC-UI-003
+
+# Regularly sync all worktrees
+moai-worktree sync --all --auto-resolve
+```
+
+##### Work Without Context Switching
+
+- Each worktree is completely isolated environment
+- Independent Git state
+- Allow different dependency versions
+- Enable simultaneous development of multiple features
+
+##### Real Example Workflow
 
 ```bash
 # Morning: Start new SPEC
 moai-worktree new SPEC-005 "User Profile Enhancement"
-cd $(moai-worktree go SPEC-005)
+moai-worktree go SPEC-005
 
 # Implement SPEC-005 while other SPECs complete
-/moai:2-run SPEC-005
+> /moai:2-run SPEC-005
 
-# Afternoon: Check status of all SPECs
+# Afternoon: Check all SPEC statuses
 moai-worktree status
 # Output:
 # ✓ SPEC-001: Complete (ready for merge)
@@ -812,19 +1332,19 @@ moai-worktree status
 # ⏳ SPEC-003: Implementation phase
 # 🔄 SPEC-005: Active development
 
-# Evening: Clean up completed SPECs
+# Evening: Clean completed SPECs
 moai-worktree clean --merged-only
 ```
 
-#### Technical Advantages
+#### Technical Benefits
 
-**Memory Efficiency**: Shared Git object database means minimal memory overhead compared to multiple full repositories
+##### Memory Efficiency: Shared Git object database means minimal memory overhead compared to multiple full repositories
 
-**Disk Space Optimization**: Worktrees share repository history, using only additional space for working files
+##### Disk Space Optimization: Worktrees share repository history, using only additional space for working files
 
-**Atomic Operations**: Each worktree operation is atomic, preventing repository corruption
+##### Atomic Operations: Each worktree operation is atomic, preventing repository corruption
 
-**Git Native**: Uses standard Git worktree functionality, ensuring compatibility with all Git tools
+##### Git Native: Uses standard Git worktree functionality, ensuring compatibility with all Git tools
 
 #### Integration with MoAI-ADK Workflow
 
@@ -837,9 +1357,9 @@ moai-worktree seamlessly integrates with the MoAI-ADK Plan-Run-Sync cycle:
 
 This integration provides a complete, systematic approach to managing multiple SPECs simultaneously while maintaining the SPEC-First TDD methodology principles.
 
-**Important Note**: Local files that are excluded from Git (such as `.CLAUDE.local.md`, `.env`, and `.claude/settings.local.json`) are not automatically synchronized between worktrees. These files must be manually copied to each worktree directory after creation to ensure consistent development environment configuration.
+##### Important Note: Local files excluded from Git (such as .CLAUDE.local.md, .env, .claude/settings.local.json, etc.) are not automatically synchronized between worktrees. These files must be manually copied to each worktree directory after creation to ensure consistent development environment configuration
 
-**Commands Overview:**
+##### Command Overview
 
 ```bash
 # List available commands
@@ -854,7 +1374,7 @@ moai-worktree list
 # Navigate to specific worktree
 moai-worktree go SPEC-001
 
-# Switch to worktree (opens new shell)
+# Switch to worktree (open new shell)
 moai-worktree switch SPEC-001
 
 # Sync worktree with base branch
@@ -863,7 +1383,7 @@ moai-worktree sync SPEC-001
 # Remove specific worktree
 moai-worktree remove SPEC-001
 
-# Clean up merged branch worktrees
+# Clean merged branch worktrees
 moai-worktree clean
 
 # Show worktree status and configuration
@@ -876,13 +1396,13 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. Agent Guide (26 Agents)
+## 8. Agent Guide (24 Agents)
 
 ### 🎯 Agent Selection Guide
 
 Each agent has specific domain expertise. Select the right agent for your task.
 
-### Tier 1: Domain Experts
+### Tier 1: Domain Experts (Domain Experts)
 
 #### expert-backend (Backend Development)
 
@@ -895,7 +1415,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Server performance optimization
 
 ```bash
-@agent-expert-backend "Develop user authentication API with FastAPI"
+> @agent-expert-backend "Develop user authentication API with FastAPI"
 ```
 
 ---
@@ -911,7 +1431,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Responsive design
 
 ```bash
-@agent-expert-frontend "Implement dashboard UI with React"
+> @agent-expert-frontend "Implement dashboard UI with React"
 ```
 
 ---
@@ -927,7 +1447,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Performance tuning
 
 ```bash
-@agent-expert-database "Optimize large PostgreSQL tables"
+> @agent-expert-database "Optimize large PostgreSQL tables"
 ```
 
 ---
@@ -943,7 +1463,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Data encryption
 
 ```bash
-@agent-expert-security "Security audit for login feature"
+> @agent-expert-security "Security audit for login feature"
 ```
 
 ---
@@ -959,7 +1479,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Infrastructure automation
 
 ```bash
-@agent-expert-devops "Setup Docker deployment for Next.js app"
+> @agent-expert-devops "Setup Docker deployment for Next.js app"
 ```
 
 ---
@@ -975,7 +1495,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - User experience optimization
 
 ```bash
-@agent-expert-uiux "Build design system based on shadcn/ui"
+> @agent-expert-uiux "Build design system based on shadcn/ui"
 ```
 
 ---
@@ -991,20 +1511,20 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Memory leak detection
 
 ```bash
-@agent-expert-debug "Analyze slow API response time"
+> @agent-expert-debug "Analyze slow API response time"
 ```
 
 ---
 
-### Tier 2: Workflow Managers
+### Tier 2: Workflow Managers (Workflow Managers)
 
 #### manager-spec (SPEC Writing)
 
 **Purpose**: Generate SPEC documents in EARS format
-**Auto-invoked**: When executing `/moai:1-plan`
+**Auto-invoked**: When executing `> /moai:1-plan`
 
 ```bash
-@agent-manager-spec "Write SPEC for user profile API"
+> @agent-manager-spec "Write SPEC for user profile API"
 ```
 
 ---
@@ -1012,10 +1532,10 @@ Each agent has specific domain expertise. Select the right agent for your task.
 #### manager-tdd (TDD Implementation)
 
 **Purpose**: Auto-execute RED-GREEN-REFACTOR
-**Auto-invoked**: When executing `/moai:2-run`
+**Auto-invoked**: When executing `> /moai:2-run`
 
 ```bash
-@agent-manager-tdd "Implement SPEC-001"
+> @agent-manager-tdd "Implement SPEC-001"
 ```
 
 ---
@@ -1023,10 +1543,10 @@ Each agent has specific domain expertise. Select the right agent for your task.
 #### manager-docs (Documentation Automation)
 
 **Purpose**: Auto-generate API docs, diagrams, guides
-**Auto-invoked**: When executing `/moai:3-sync`
+**Auto-invoked**: When executing `> /moai:3-sync`
 
 ```bash
-@agent-manager-docs "Generate documentation for login feature"
+> @agent-manager-docs "Generate documentation for login feature"
 ```
 
 ---
@@ -1034,10 +1554,10 @@ Each agent has specific domain expertise. Select the right agent for your task.
 #### manager-quality (Quality Verification)
 
 **Purpose**: TRUST 5 verification (Test, Readable, Unified, Secured, Trackable)
-**Auto-invoked**: After `/moai:2-run` completion
+**Auto-invoked**: After `> /moai:2-run` completion
 
 ```bash
-@agent-manager-quality "Verify code quality"
+> @agent-manager-quality "Verify code quality"
 ```
 
 ---
@@ -1052,14 +1572,14 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Performance optimization strategy
 
 ```bash
-@agent-manager-strategy "Plan monolith to microservices migration"
+> @agent-manager-strategy "Plan monolith to microservices migration"
 # Or use Built-in agent
-@agent-Plan "Plan monolith to microservices migration"
+> @agent-Plan "Plan monolith to microservices migration"
 ```
 
 ---
 
-### Tier 3: Meta-generators
+### Tier 3: Meta-generators (Meta-generators)
 
 #### builder-agent
 
@@ -1067,7 +1587,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Create organization-specific agents
 
 ```bash
-@agent-builder-agent "Create data analysis specialist agent"
+> @agent-builder-agent "Create data analysis specialist agent"
 ```
 
 ---
@@ -1078,7 +1598,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Develop team-specific skills
 
 ```bash
-@agent-builder-skill "Create GraphQL API development skill module"
+> @agent-builder-skill "Create GraphQL API development skill module"
 ```
 
 ---
@@ -1089,12 +1609,12 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Custom workflow automation
 
 ```bash
-@agent-builder-command "Create /moai:deploy command (auto-deployment workflow)"
+> @agent-builder-command "Create > /moai:deploy command (auto-deployment workflow)"
 ```
 
 ---
 
-### Tier 4: MCP Integrators
+### Tier 4: MCP Integrators (MCP Integrators)
 
 #### mcp-context7 (Documentation Lookup)
 
@@ -1106,7 +1626,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Verify library compatibility
 
 ```bash
-@agent-mcp-context7 "Lookup React 19 latest Hooks API"
+> @agent-mcp-context7 "Lookup React 19 latest Hooks API"
 ```
 
 ---
@@ -1122,7 +1642,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - SPEC analysis
 
 ```bash
-@agent-mcp-sequential-thinking "Analyze microservices architecture design"
+> @agent-mcp-sequential-thinking "Analyze microservices architecture design"
 ```
 
 ---
@@ -1137,12 +1657,12 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Cross-browser verification
 
 ```bash
-@agent-mcp-playwright "Create E2E tests for login feature"
+> @agent-mcp-playwright "Create E2E tests for login feature"
 ```
 
 ---
 
-### Tier 5: AI Services
+### Tier 5: AI Services (AI Services)
 
 #### ai-nano-banana (Image Generation)
 
@@ -1154,42 +1674,40 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Marketing materials
 - Logo/icon generation
 
-See [15. Additional Resources](#15-additional-resources) for more details
+For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-banana-agent-usage-guide)
 
 ---
 
-## 9. Skill Library (22 Skills)
+## 9. Skill Library (24 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **22 specialized skills** in 6 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **24 specialized skills** in 6 categories. Each skill can be used independently or in combination.
 
 ### 📊 Complete Skill List
 
-| Category       | Skill Name                 | Description                                           | Version |
-| -------------- | -------------------------- | ----------------------------------------------------- | ------- |
-| **Foundation** | moai-foundation-core       | TRUST 5, SPEC-First TDD, agent delegation, token opt  | 2.2.0   |
-|                | moai-foundation-uiux       | Design systems, components, accessibility, icons      | 2.0.0   |
-|                | moai-foundation-quality    | Proactive quality verification, auto-testing          | 2.0.0   |
-|                | moai-foundation-claude     | Agents, slash commands, MCP, hooks, memory, IAM       | 2.0.0   |
-|                | moai-foundation-context    | 200K token optimization, session persistence          | 3.0.0   |
-| **Platform**   | moai-lang-unified          | 25+ languages (Python, TS, Go, Rust, Java, C++, etc)  | 2.0.0   |
-|                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase, etc)       | 2.0.0   |
-| **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React components          | 2.0.0   |
-|                | moai-library-toon          | TOON format, token-efficient encoding (40-60% savings)| 3.0.0   |
-|                | moai-library-mermaid       | 21 diagram types, Playwright MCP rendering            | 7.0.0   |
-|                | moai-library-nextra        | Next.js documentation, MDX, themes, SSG               | 2.0.0   |
-| **Connector**  | moai-connector-mcp         | 10+ MCP server integration guide                      | 2.0.0   |
-|                | moai-connector-figma       | Design systems, UI kits, design tokens                | 1.0.0   |
-|                | moai-connector-notion      | Workspace, databases, content management              | 1.0.0   |
-|                | moai-connector-nano-banana | Gemini 3 Pro image generation (Text/Image-to-Image)   | 1.0.1   |
-| **Workflow**   | moai-workflow-project      | Project management, language init, template opt       | 2.0.0   |
-|                | moai-workflow-docs         | Markdown/Mermaid/Korean validation, reporting         | 2.0.0   |
-|                | moai-workflow-templates    | Code boilerplates, feedback templates                 | 3.0.0   |
-|                | moai-workflow-testing      | Playwright E2E, visual regression, cross-browser      | 2.0.0   |
-|                | moai-workflow-jit-docs     | Intent-based doc auto-search & caching                | 2.0.0   |
-|                | moai-toolkit-essentials    | Debugging, refactoring, optimization, review          | 2.0.0   |
-| **System**     | moai-system-universal      | 25+ languages + 9+ BaaS + security + compliance       | 2.0.0   |
+| Category       | Skill Name                 | Description                                            | Version |
+| -------------- | -------------------------- | ------------------------------------------------------ | ------- |
+| **Foundation** | moai-foundation-core       | TRUST 5, SPEC-First TDD, agent delegation, token opt   | 2.2.0   |
+|                | moai-foundation-uiux       | Design systems, components, accessibility, icons       | 2.0.0   |
+|                | moai-foundation-quality    | Proactive quality verification, auto-testing           | 2.0.0   |
+|                | moai-foundation-claude     | Agents, slash commands, MCP, hooks, memory, IAM        | 2.0.0   |
+| **Platform**   | moai-lang-unified          | 25+ languages (Python, TS, Go, Rust, Java, C++, etc)   | 2.0.0   |
+|                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase, etc)        | 2.0.0   |
+| **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React components           | 2.0.0   |
+|                | moai-library-toon          | TOON format, token-efficient encoding (40-60% savings) | 3.0.0   |
+|                | moai-library-mermaid       | 21 diagram types, Playwright MCP rendering             | 7.0.0   |
+| **Connector**  | moai-connector-mcp         | 10+ MCP server integration guide                       | 2.0.0   |
+|                | moai-connector-figma       | Design systems, UI kits, design tokens                 | 1.0.0   |
+|                | moai-connector-notion      | Workspace, databases, content management               | 1.0.0   |
+|                | moai-connector-nano-banana | Gemini 3 Pro image generation (Text/Image-to-Image)    | 1.0.1   |
+| **Workflow**   | moai-workflow-project      | Project management, language init, template opt        | 2.0.0   |
+|                | moai-workflow-docs         | Markdown/Mermaid/Korean validation, reporting          | 2.0.0   |
+|                | moai-workflow-templates    | Code boilerplates, feedback templates                  | 3.0.0   |
+|                | moai-workflow-testing      | Playwright E2E, visual regression, cross-browser       | 2.0.0   |
+|                | moai-workflow-jit-docs     | Intent-based doc auto-search & caching                 | 2.0.0   |
+|                | moai-toolkit-essentials    | Debugging, refactoring, optimization, review           | 2.0.0   |
+| **System**     | moai-system-universal      | 25+ languages + 9+ BaaS + security + compliance        | 2.0.0   |
 
 **Usage frequency**: Foundation (90%+), Platform (80%+), Workflow (85%), Connector (70%), Library (60%), System (40%)
 
@@ -1222,7 +1740,7 @@ Skill("moai-lang-unified")
 
 ### 🎭 Agent Composition Patterns
 
-MoAI-ADK's 26 agents execute in optimal combinations based on task type.
+MoAI-ADK's 24 agents execute in optimal combinations based on task type.
 
 ### Pattern 1: New Feature Development
 
@@ -1236,14 +1754,14 @@ manager-tdd (TDD implementation)
 manager-docs (Documentation sync)
 ```
 
-**Example:**
+**Example**:
 
 ```bash
-/moai:1-plan "user login feature"   # manager-spec
-/clear
-/moai:2-run SPEC-001               # manager-strategy → manager-tdd
-/clear
-/moai:3-sync SPEC-001              # manager-docs
+> /moai:1-plan "user login feature"   # manager-spec
+> /clear
+> /moai:2-run SPEC-001               # manager-strategy → manager-tdd
+> /clear
+> /moai:3-sync SPEC-001              # manager-docs
 ```
 
 ---
@@ -1260,19 +1778,19 @@ expert-backend (Optimization implementation)
 manager-quality (Verification)
 ```
 
-**Example:**
+**Example**:
 
 ```bash
-@agent-expert-debug "Analyze slow API response"
+> @agent-expert-debug "Analyze slow API response"
 # → Finds bottleneck (DB query N+1 problem)
 
-@agent-mcp-sequential-thinking "Plan N+1 problem optimization strategy"
+> @agent-mcp-sequential-thinking "Plan N+1 problem optimization strategy"
 # → Suggests ORM query optimization
 
-@agent-expert-backend "Implement ORM query optimization"
+> @agent-expert-backend "Implement ORM query optimization"
 # → Applies select_related(), prefetch_related()
 
-@agent-manager-quality "Performance test and verification"
+> @agent-manager-quality "Performance test and verification"
 # → Response time 500ms → 50ms (90% improvement)
 ```
 
@@ -1288,16 +1806,16 @@ expert-frontend (Component implementation)
 mcp-playwright (E2E testing)
 ```
 
-**Example:**
+**Example**:
 
 ```bash
-@agent-expert-uiux "Login page design based on shadcn/ui"
+> @agent-expert-uiux "Login page design based on shadcn/ui"
 # → Combination of Button, Input, Card components
 
-@agent-expert-frontend "Implement React login form"
+> @agent-expert-frontend "Implement React login form"
 # → Implementation using shadcn/ui components
 
-@agent-mcp-playwright "E2E test for login scenario"
+> @agent-mcp-playwright "E2E test for login scenario"
 # → Auto-test success/failure cases
 ```
 
@@ -1318,16 +1836,16 @@ manager-quality (Re-verification)
 ### Pattern 5: Microservices Architecture Design
 
 ```bash
-@agent-mcp-sequential-thinking "Monolith to microservices migration strategy"
+> @agent-mcp-sequential-thinking "Monolith to microservices migration strategy"
 # → Service decomposition strategy, API gateway design
 
-@agent-expert-backend "Develop user service & order service"
+> @agent-expert-backend "Develop user service & order service"
 # → Service-specific API implementation
 
-@agent-expert-devops "Kubernetes deployment configuration"
+> @agent-expert-devops "Kubernetes deployment configuration"
 # → Auto-generate Docker, K8s manifests
 
-@agent-manager-docs "Service example documentation"
+> @agent-manager-docs "Service example documentation"
 # → Service map, API docs, deployment guide
 ```
 
@@ -1431,7 +1949,79 @@ flowchart TD
 
 ---
 
-## 12. Advanced Configuration
+## 12. Advanced Features
+
+### 🌳 Git Worktree CLI (Parallel Development)
+
+**Overview**: Manage multiple Git worktrees for parallel SPEC development without context switching.
+
+#### Quick Start
+
+```bash
+# Create a new worktree for a SPEC
+moai worktree create SPEC-001 feature/user-auth
+
+# List all worktrees
+moai worktree list
+
+# Switch between worktrees
+moai worktree switch SPEC-001
+
+# Remove completed worktree
+moai worktree remove SPEC-001
+```
+
+#### Key Benefits
+
+- **Parallel Development**: Work on multiple SPECs simultaneously
+- **Context Isolation**: Each worktree has its own git state
+- **Fast Switching**: Instant context change between features
+- **Clean Main**: Keep main branch always stable
+
+#### Workflow Example
+
+```bash
+# Main development worktree (main branch)
+cd ~/project-main
+> /moai:1-plan "user authentication"  # Creates SPEC-001
+
+# Create parallel worktree for SPEC-001
+moai worktree create SPEC-001 feature/auth
+cd ~/project-worktrees/SPEC-001
+
+# Work on authentication without affecting main
+> /moai:2-run SPEC-001
+# ... implement authentication ...
+
+# Switch back to main for new feature
+moai worktree switch main
+> /moai:1-plan "user dashboard"     # Creates SPEC-002
+```
+
+---
+
+### 🔧 Enhanced Log Management
+
+**New unified log structure**:
+
+```
+.moai/
+├── logs/              # JSON logs only (runtime data)
+│   ├── sessions/     # Session execution logs
+│   ├── errors/       # Error logs
+│   ├── execution/    # Command execution logs
+│   └── archive/      # Historical logs
+└── docs/              # Documentation only (user-facing)
+    ├── reports/       # Analysis reports
+    ├── analytics/     # Analytics results
+    └── sync/          # Synchronization records
+```
+
+**Automatic migration**: Existing logs automatically reorganized on `moai-adk update`.
+
+---
+
+## 13. Advanced Configuration
 
 ### 🔧 Configuration File Location
 
@@ -1499,20 +2089,20 @@ flowchart TD
     class Q1,Q2 question
 ```
 
-#### Mode Comparison
+#### 3 Modes Comparison
 
-| Aspect          | Manual      | Personal     | Team         |
-| --------------- | ----------- | ------------ | ------------ |
-| **Use Case**    | Personal learning | Personal GitHub | Team projects |
-| **GitHub**      | ❌          | ✅           | ✅           |
-| **Branches**    | Optional    | Auto feature | Auto feature |
-| **Push**        | Manual      | Auto         | Auto         |
-| **PR**          | None        | Suggested    | Auto-created |
-| **Code Review** | None        | Optional     | **Required** |
-| **Deployment**  | Manual      | Manual       | CI/CD auto   |
-| **Setup Time**  | **5min**    | 15min        | 25min        |
+| Aspect          | Manual            | Personal                       | Team         |
+| --------------- | ----------------- | ------------------------------ | ------------ |
+| **Use Case**    | Personal learning | Personal GitHub                | Team projects |
+| **GitHub**      | ❌                | ✅                             | ✅           |
+| **Branches**    | Optional          | Optional creation or<br>Feature auto | Feature auto |
+| **Push**        | Manual            | Auto                           | Auto         |
+| **PR**          | None              | Suggested                       | Auto-created |
+| **Code Review** | None              | Optional                       | **Required** |
+| **Deployment**  | Manual            | Manual                         | CI/CD auto   |
+| **Setup Time**  | **5min**         | 15min                          | 25min        |
 
-#### Quick Setup
+#### Quick Setup (.moai/config/config.json)
 
 **Manual** (Local only):
 
@@ -1558,134 +2148,38 @@ flowchart TD
 
 ---
 
-## 13. MCP Servers
-
-MoAI-ADK integrates with external tools through **MCP (Model Context Protocol)** servers.
-
-### 📡 Supported MCP Servers
-
-| MCP Server                    | Purpose                     | Required    | Usage                                    |
-| ----------------------------- | --------------------------- | ----------- | ---------------------------------------- |
-| **Context7**                  | Latest library docs lookup  | ✅ **Required** | API reference, framework documentation |
-| **Sequential-Thinking**       | Complex multi-step reasoning| ✅ **Recommended** | Architecture design, algorithm opt, SPEC |
-| **Playwright**                | Browser automation          | Optional    | E2E testing, UI verification             |
-| **figma-dev-mode-mcp-server** | Design system integration   | Optional    | Design-to-code conversion                |
-
-### 🧮 Sequential-Thinking MCP (Recommended)
-
-**Purpose**: Accurate analysis through multi-step reasoning of complex problems
-
-**Auto-activation conditions**:
-
-- Complexity > medium (10+ files, architecture changes)
-- Dependencies > 3 or more
-- SPEC generation or Plan agent invocation
-- Keywords like "complex", "design", "optimize", "analyze" in request
-
-**Use scenarios**:
-
-- 🏗️ Microservices architecture design
-- 🧩 Complex data structure and algorithm optimization
-- 🔄 System integration and migration planning
-- 📋 SPEC analysis and requirement definition
-- ⚙️ Performance bottleneck analysis
-
-### 🔌 Context7 MCP (Required)
-
-**Purpose**: Real-time lookup of latest library documentation and API references
-
-**Activation method**: Auto-activated during MoAI-ADK installation
-
-**Supported libraries** (examples):
-
-- `/vercel/next.js` - Next.js latest docs
-- `/facebook/react` - React latest docs
-- `/tiangolo/fastapi` - FastAPI latest docs
-
----
-
 ## 14. FAQ & Quick Reference
 
-### Q1: What's the difference between Skills and Agents?
-
-**Skill:**
-
-- Knowledge module (Knowledge base)
-- Patterns, best practices, references for specific domains
-- Stored as Markdown files in `.claude/skills/` directory
-- Examples: `moai-lang-unified`, `moai-foundation-core`
-
-**Agent:**
-
-- Executor
-- Performs tasks utilizing skills
-- Invoked with `@agent-agent-name`
-- Examples: `@agent-manager-spec`, `@agent-expert-backend`, `@agent-expert-security`
-
-**Relationship:**
-
-```
-Agent (expert-backend) + Skill (moai-lang-unified) = FastAPI implementation
-```
-
----
-
-### Q2: Is SPEC always required?
+### Q1: Is SPEC always required?
 
 **SPEC generation recommendation criteria:**
 
-| Condition              | SPEC Requirement                          |
-| ---------------------- | ----------------------------------------- |
-| 1-2 files modified     | Optional (can skip for simple cases)      |
-| 3-5 files modified     | Recommended (clarify requirements)        |
-| 10+ files modified     | Required (high complexity)                |
-| New feature addition   | Recommended                               |
-| Bug fix                | Optional                                  |
+| Condition            | SPEC Requirement                     |
+| -------------------- | ------------------------------------ |
+| 1-2 files modified   | Optional (can skip for simple cases) |
+| 3-5 files modified   | Recommended (clarify requirements)   |
+| 10+ files modified   | Required (high complexity)           |
+| New feature addition | Recommended                          |
+| Bug fix              | Optional                             |
 
 **Proceed without SPEC:**
 
 ```bash
 # Skip SPEC and implement directly
-@agent-expert-backend "simple bug fix"
+> @agent-expert-backend "simple bug fix"
 ```
 
 **Proceed with SPEC:**
 
 ```bash
-/moai:1-plan "complex feature specification"
-/clear
-/moai:2-run SPEC-001
+> /moai:1-plan "complex feature specification"
+> /clear
+> /moai:2-run SPEC-001
 ```
 
 ---
 
-### Q3: Which skill should I learn first?
-
-**Learning sequence (recommended):**
-
-**Level 1: Foundation Principles (30min)**
-
-- `moai-foundation-core`: TRUST 5, SPEC-First TDD, agent orchestration
-
-**Level 2: Languages & Domains (1 hour)**
-
-- `moai-lang-unified`: 25 languages including Python, TypeScript
-- `moai-platform-baas`: Supabase, Firebase backend integration
-
-**Level 3: Specialized Tools (2 hours)**
-
-- `moai-foundation-uiux`: UI/UX design systems
-- `moai-workflow-testing`: E2E testing
-- `moai-workflow-docs`: Documentation validation
-
-**Level 4: Advanced Integration (3+ hours)**
-
-- `moai-connector-mcp`: MCP server utilization
-- `moai-library-nextra`: Documentation site generation
-
----
-
-### Q4: Is MCP server installation required?
+### Q2: Is MCP server installation required?
 
 **Required MCP servers (2):**
 
@@ -1723,86 +2217,6 @@ cat .mcp.json
 
 ---
 
-### Q5: What's the difference between MoAI-ADK and vanilla Claude Code?
-
-| Aspect        | Vanilla Claude Code    | MoAI-ADK                         |
-| ------------- | ---------------------- | -------------------------------- |
-| Methodology   | Impromptu conversational coding | SPEC-First TDD systematic approach |
-| Agents        | General purpose        | 26 specialized agents (7-Tier)   |
-| Skills        | None provided          | 22 domain-specific skills        |
-| Quality       | Manual testing         | TRUST 5 automated quality gates  |
-| Documentation | Manual writing         | Auto-sync (`/moai:3-sync`)       |
-
-**Conclusion**: MoAI-ADK is an enhanced version of Claude Code, providing enterprise-grade quality and efficiency.
-
----
-
-### 💡 Core Skills Quick Reference
-
-**Most frequently used skills:**
-
-```python
-# 1. Core principles
-Skill("moai-foundation-core")
-
-# 2. Language-specific implementation
-Skill("moai-lang-unified")
-
-# 3. Quality verification
-Skill("moai-foundation-quality")
-
-# 4. UI/UX implementation
-Skill("moai-foundation-uiux")
-
-# 5. Documentation
-Skill("moai-workflow-docs")
-```
-
----
-
-### 🎯 Core Agents Quick Reference
-
-**Most frequently used agents:**
-
-```bash
-# 1. SPEC writing
-/moai:1-plan "feature specification"
-
-# 2. TDD implementation
-/moai:2-run SPEC-001
-
-# 3. Documentation
-/moai:3-sync SPEC-001
-
-# 4. Performance analysis
-@agent-expert-debug "Find and fix code bottlenecks"
-
-# 5. Security audit
-@agent-expert-security "Security check and fix issues"
-```
-
----
-
-### 📂 Main File Paths
-
-```
-my-project/
-├── .claude/
-│   ├── settings.json          # Project settings
-│   ├── skills/                # Skill library
-│   └── commands/              # Custom commands
-├── .moai/
-│   ├── config/config.json     # MoAI configuration
-│   ├── specs/                 # SPEC documents
-│   ├── memory/                # Project memory
-│   └── docs/                  # Auto-generated docs
-├── src/                       # Source code
-├── tests/                     # Tests
-└── README.md
-```
-
----
-
 ## 15. 📸 ai-nano-banana Agent Usage Guide
 
 **Purpose**: Professional image generation using Google Gemini 3 Nano Banana Pro
@@ -1827,10 +2241,10 @@ my-project/
 
 ```bash
 # In Claude Code
-@agent-ai-nano-banana "Generate professional login page UI mockup"
+> @agent-ai-nano-banana "Generate professional login page UI mockup"
 ```
 
-#### Prompt Engineering
+#### Image Generation Prompts
 
 **Effective Prompt Patterns:**
 
@@ -1943,12 +2357,12 @@ White background, consistent style"
 
 #### Troubleshooting
 
-| Problem         | Cause           | Solution              |
-| --------------- | --------------- | --------------------- |
-| Generation fails| API error       | Simplify prompt       |
-| Low quality     | Unclear prompt  | Add specific details  |
-| Style mismatch  | Style not specified | Specify "realistic" etc. |
-| Timeout         | Complex request | Start with smaller requests |
+| Problem          | Cause               | Solution                    |
+| ---------------- | ------------------- | --------------------------- |
+| Generation fails | API error           | Simplify prompt             |
+| Low quality      | Unclear prompt      | Add specific details        |
+| Style mismatch   | Style not specified | Specify "realistic" etc.    |
+| Timeout          | Complex request     | Start with smaller requests |
 
 #### References
 
@@ -1959,9 +2373,9 @@ White background, consistent style"
 
 ---
 
-## 15. Additional Resources
+## 16. Additional Resources
 
-### 🆘 Support
+### 🆘 Support (Support)
 
 **Email Support:**
 
@@ -2005,7 +2419,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.30.2
-**Last Updated:** 2025-11-27
+**Version:** 0.31.0
+**Last Updated:** 2025-12-01
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

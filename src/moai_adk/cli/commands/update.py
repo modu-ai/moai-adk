@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -496,6 +497,173 @@ If you encounter merge conflicts or issues:
     guide_path.write_text(guide_content, encoding="utf-8")
     logger.info(f"✅ Merge guide created: {guide_path}")
     return guide_path
+
+
+def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
+    """Migrate legacy log files to unified directory structure.
+
+    Creates new unified directory structure (.moai/docs/, .moai/logs/archive/) and
+    migrates files from legacy locations to new unified structure:
+    - .moai/memory/last-session-state.json → .moai/logs/sessions/
+    - .moai/error_logs/ → .moai/logs/errors/
+    - .moai/reports/ → .moai/docs/reports/
+
+    Args:
+        project_path: Project directory path (absolute)
+        dry_run: If True, only simulate migration without making changes
+
+    Returns:
+        True if migration succeeded or no migration needed, False otherwise
+
+    Raises:
+        Exception: If migration fails during actual execution
+    """
+    try:
+        # Define source and target directories
+        legacy_memory = project_path / ".moai" / "memory"
+        legacy_error_logs = project_path / ".moai" / "error_logs"
+        legacy_reports = project_path / ".moai" / "reports"
+
+        # Create new unified directory structure
+        new_logs_dir = project_path / ".moai" / "logs"
+        new_docs_dir = project_path / ".moai" / "docs"
+        new_sessions_dir = new_logs_dir / "sessions"
+        new_errors_dir = new_logs_dir / "errors"
+        new_archive_dir = new_logs_dir / "archive"
+        new_docs_reports_dir = new_docs_dir / "reports"
+
+        migration_log = []
+        files_migrated = 0
+        files_skipped = 0
+
+        # Check if any legacy directories exist
+        has_legacy_files = (
+            legacy_memory.exists() or
+            legacy_error_logs.exists() or
+            legacy_reports.exists()
+        )
+
+        if not has_legacy_files:
+            if not dry_run:
+                # Create new directory structure anyway for consistency
+                new_logs_dir.mkdir(parents=True, exist_ok=True)
+                new_docs_dir.mkdir(parents=True, exist_ok=True)
+                new_sessions_dir.mkdir(parents=True, exist_ok=True)
+                new_errors_dir.mkdir(parents=True, exist_ok=True)
+                new_archive_dir.mkdir(parents=True, exist_ok=True)
+                new_docs_reports_dir.mkdir(parents=True, exist_ok=True)
+            return True
+
+        if dry_run:
+            console.print("[cyan]🔍 Legacy log migration (dry run):[/cyan]")
+
+        # Create new directories if not dry run
+        if not dry_run:
+            new_logs_dir.mkdir(parents=True, exist_ok=True)
+            new_docs_dir.mkdir(parents=True, exist_ok=True)
+            new_sessions_dir.mkdir(parents=True, exist_ok=True)
+            new_errors_dir.mkdir(parents=True, exist_ok=True)
+            new_archive_dir.mkdir(parents=True, exist_ok=True)
+            new_docs_reports_dir.mkdir(parents=True, exist_ok=True)
+
+        # Migration 1: .moai/memory/last-session-state.json → .moai/logs/sessions/
+        if legacy_memory.exists():
+            session_file = legacy_memory / "last-session-state.json"
+            if session_file.exists():
+                target_file = new_sessions_dir / "last-session-state.json"
+
+                if target_file.exists():
+                    files_skipped += 1
+                    migration_log.append(f"Skipped: {session_file.relative_to(project_path)} (target already exists)")
+                else:
+                    if not dry_run:
+                        shutil.copy2(session_file, target_file)
+                        # Preserve original timestamp
+                        shutil.copystat(session_file, target_file)
+                        migration_log.append(f"Migrated: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                    else:
+                        migration_log.append(f"Would migrate: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                    files_migrated += 1
+
+        # Migration 2: .moai/error_logs/ → .moai/logs/errors/
+        if legacy_error_logs.exists() and legacy_error_logs.is_dir():
+            for error_file in legacy_error_logs.rglob("*"):
+                if error_file.is_file():
+                    relative_path = error_file.relative_to(legacy_error_logs)
+                    target_file = new_errors_dir / relative_path
+
+                    # Ensure target directory exists
+                    if not dry_run:
+                        target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                    if target_file.exists():
+                        files_skipped += 1
+                        migration_log.append(f"Skipped: {error_file.relative_to(project_path)} (target already exists)")
+                    else:
+                        if not dry_run:
+                            shutil.copy2(error_file, target_file)
+                            shutil.copystat(error_file, target_file)
+                            migration_log.append(f"Migrated: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        else:
+                            migration_log.append(f"Would migrate: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        files_migrated += 1
+
+        # Migration 3: .moai/reports/ → .moai/docs/reports/
+        if legacy_reports.exists() and legacy_reports.is_dir():
+            for report_file in legacy_reports.rglob("*"):
+                if report_file.is_file():
+                    relative_path = report_file.relative_to(legacy_reports)
+                    target_file = new_docs_reports_dir / relative_path
+
+                    # Ensure target directory exists
+                    if not dry_run:
+                        target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                    if target_file.exists():
+                        files_skipped += 1
+                        migration_log.append(f"Skipped: {report_file.relative_to(project_path)} (target already exists)")
+                    else:
+                        if not dry_run:
+                            shutil.copy2(report_file, target_file)
+                            shutil.copystat(report_file, target_file)
+                            migration_log.append(f"Migrated: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        else:
+                            migration_log.append(f"Would migrate: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        files_migrated += 1
+
+        # Create migration log
+        migration_log_path = new_logs_dir / "migration-log.json"
+        if not dry_run and files_migrated > 0:
+            migration_data = {
+                "migration_timestamp": datetime.now().isoformat(),
+                "moai_adk_version": __version__,
+                "files_migrated": files_migrated,
+                "files_skipped": files_skipped,
+                "migration_log": migration_log,
+                "legacy_directories_found": [
+                    str(d.relative_to(project_path)) for d in [legacy_memory, legacy_error_logs, legacy_reports] if d.exists()
+                ]
+            }
+            migration_log_path.write_text(json.dumps(migration_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        # Display results
+        if files_migrated > 0 or files_skipped > 0:
+            if dry_run:
+                console.print(f"   [yellow]Would migrate {files_migrated} files, skip {files_skipped} files[/yellow]")
+            else:
+                console.print(f"   [green]✓ Migrated {files_migrated} legacy log files[/green]")
+                if files_skipped > 0:
+                    console.print(f"   [yellow]⚠ Skipped {files_skipped} files (already exist)[/yellow]")
+                console.print(f"   [dim]   Migration log: {migration_log_path.relative_to(project_path)}[/dim]")
+        elif has_legacy_files:
+            console.print("   [dim]   No files to migrate[/dim]")
+
+        return True
+
+    except Exception as e:
+        console.print(f"   [red]✗ Log migration failed: {e}[/red]")
+        logger.error(f"Legacy log migration failed: {e}", exc_info=True)
+        return False
 
 
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
@@ -1331,6 +1499,14 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
 
         # NEW: Interactive custom element restore using new system
         _handle_custom_element_restoration(project_path, backup_path, yes)
+
+        # NEW: Migrate legacy logs to unified structure
+        console.print("\n[cyan]📁 Migrating legacy log files...[/cyan]")
+        if not _migrate_legacy_logs(project_path):
+            console.print("[yellow]⚠️ Legacy log migration failed, but update continuing[/yellow]")
+
+        # Clean up legacy presets directory
+        _cleanup_legacy_presets(project_path)
 
         # NEW: Show post-update guidance
         if backup_path:
@@ -2216,3 +2392,27 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
         logger.warning(f"Custom element restoration error: {e}")
         # Don't fail the entire update process, just log the error
         pass
+
+
+def _cleanup_legacy_presets(project_path: Path) -> None:
+    """Remove legacy presets directory if it exists.
+
+    This function cleans up the obsolete .moai/config/presets directory
+    that may exist from previous versions of MoAI-ADK.
+
+    Args:
+        project_path: Project directory path (absolute)
+    """
+    import shutil
+
+    presets_dir = project_path / ".moai" / "config" / "presets"
+
+    if presets_dir.exists() and presets_dir.is_dir():
+        try:
+            shutil.rmtree(presets_dir)
+            console.print("   [cyan]🧹 Cleaned up legacy presets directory[/cyan]")
+            logger.info(f"Removed legacy presets directory: {presets_dir}")
+        except Exception as e:
+            console.print(f"   [yellow]⚠️ Failed to remove legacy presets directory: {e}[/yellow]")
+            logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
+            # Don't fail the update process, just log the warning

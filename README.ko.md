@@ -29,25 +29,26 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | [4. SPEC과 EARS 포맷](#4-spec과-ears-포맷)        | 10분 | 명세서 작성 이해     |
 | [5. Mr.Alfred와 에이전트](#5-mralferd와-에이전트) | 12분 | 에이전트 시스템 이해 |
 | [6. 개발 워크플로우](#6-개발-워크플로우)          | 15분 | Plan → Run → Sync    |
-| [7. 핵심 커맨드](#7-핵심-커맨드)                  | 8분  | `/moai:0-3` 명령어   |
+| [7. 핵심 커맨드](#7-핵심-커맨드)                  | 8분  | `> /moai:0-3` 명령어 |
 
 ### PART C: 심화 학습 (2-3시간)
 
-| 섹션                                          | 목표               |
-| --------------------------------------------- | ------------------ |
-| [8. 에이전트 가이드](#8-에이전트-가이드-26개) | 전문 에이전트 활용 |
-| [9. 스킬 라이브러리](#9-스킬-라이브러리-22개) | 22개 스킬 탐색     |
-| [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제 |
-| [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계     |
+| 섹션                                          | 목표                            |
+| --------------------------------------------- | ------------------------------- |
+| [8. 에이전트 가이드](#8-에이전트-가이드-24개) | 전문 에이전트 활용              |
+| [9. 스킬 라이브러리](#9-스킬-라이브러리-24개) | 24개 스킬 탐색                  |
+| [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
+| [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
+| [12. 고급 기능](#12-고급-기능)                | Git Worktree & 향상된 로그 관리 |
 
 ### PART D: 고급 & 참고 (필요시)
 
-| 섹션                                      | 목적                  |
-| ----------------------------------------- | --------------------- |
-| [12. 고급 설정](#12-고급-설정)            | 프로젝트 커스터마이징 |
-| [13. MCP 서버](#13-mcp-서버)              | 외부 도구 통합        |
-| [14. FAQ & 빠른 참조](#14-faq--빠른-참조) | 자주 묻는 질문        |
-| [15. 추가 자료](#15-추가-자료)            | ai-nano-banana 가이드 |
+| 섹션                                                                                        | 목적                  |
+| ------------------------------------------------------------------------------------------- | --------------------- |
+| [13. 고급 설정](#13-고급-설정)                                                              | 프로젝트 커스터마이징 |
+| [14. FAQ & 빠른 참조](#14-faq--빠른-참조)                                                   | 자주 묻는 질문        |
+| [15. 📸 ai-nano-banana 에이전트 사용법 가이드](#15---ai-nano-banana-에이전트-사용법-가이드) | 이미지 생성 가이드    |
+| [16. 추가 자료](#16-추가-자료)                                                              | 지원 및 정보          |
 
 ---
 
@@ -55,7 +56,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **26개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **24개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -83,8 +84,8 @@ MoAI-ADK의 해결책:
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**        | 모든 개발은 명확한 명세서로 시작                       | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화                       | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
-| **AI 오케스트레이션** | Mr.Alfred가 26개의 전문 AI 에이전트 지휘 (7-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
-| **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`/moai:3-sync`)         | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
+| **AI 오케스트레이션** | Mr.Alfred가 24개의 전문 AI 에이전트 지휘 (7-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`> /moai:3-sync`)       | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
 | **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable            | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소**                                                                                                                                      |
 
 ---
@@ -129,7 +130,7 @@ ls -la
 
 생성되는 파일 구조:
 
-```
+```text
 my-project/
 ├── .claude/              # Claude Code 설정
 ├── .moai/                # MoAI-ADK 설정
@@ -159,7 +160,7 @@ ls -la .claude/ .moai/
 
 **프로젝트에 추가되는 파일:**
 
-```
+```text
 your-existing-project/
 ├── .claude/              # Claude Code 설정 (추가됨)
 │   ├── agents/           # MoAI-ADK 에이전트
@@ -190,7 +191,8 @@ claude
 > /moai:0-project
 ```
 
-**`/moai:0-project`가 하는 일:**
+**`> /moai:0-project`가 하는 일:**
+
 - ✅ 프로젝트 구조 분석
 - ✅ 프로그래밍 언어 및 프레임워크 감지
 - ✅ `.moai/config/config.json`에 프로젝트 메타데이터 생성
@@ -199,6 +201,7 @@ claude
 - ✅ 품질 보증 기준 설정
 
 **기대 결과:**
+
 ```
 ✓ 프로젝트 분석 완료: Python 프로젝트 감지됨
 ✓ 메타데이터 생성 완료: .moai/config/config.json
@@ -279,7 +282,7 @@ Claude Code에서:
 
 ### 📁 더 자세한 내용
 
-- **설치 고급 옵션**: [12. 고급 설정](#12-고급-설정)
+- **설치 고급 옵션**: [13. 고급 설정](#13-고급-설정)
 - **명령어 상세 사용법**: [7. 핵심 커맨드](#7-핵심-커맨드)
 - **개발 워크플로우**: [6. 개발 워크플로우](#6-개발-워크플로우)
 
@@ -384,7 +387,7 @@ flowchart TD
 
 ### 🔧 에이전트 시스템 (5-Tier 계층)
 
-MoAI-ADK는 **26개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
+MoAI-ADK는 **24개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
 
 **Tier 1: Domain Experts** (도메인 전문가, 7개)
 
@@ -445,7 +448,7 @@ sequenceDiagram
 
     rect rgb(245, 245, 245)
         Note right of U: Phase 1: Plan
-        U->>A: /moai:1-plan "로그인 기능"
+        U->>A: > /moai:1-plan "로그인 기능"
         A->>S: SPEC 작성 요청
         S-->>A: SPEC-001 초안
         A-->>U: 검토 요청
@@ -455,7 +458,7 @@ sequenceDiagram
 
     rect rgb(250, 250, 250)
         Note right of U: Phase 2: Run
-        U->>A: /moai:2-run SPEC-001
+        U->>A: > /moai:2-run SPEC-001
         A->>T: TDD 구현 요청
         T->>T: 🔴 테스트 작성 (실패)
         T->>T: 🟢 코드 구현 (성공)
@@ -465,13 +468,16 @@ sequenceDiagram
     end
 
     rect rgb(240, 250, 240)
-        Note right of U: Phase 3: Sync
-        U->>A: /moai:3-sync SPEC-001
-        A->>D: 문서 생성 요청
-        D->>D: API 문서 생성
-        D->>D: 다이어그램 생성
-        D-->>A: 문서 준비 완료
-        A-->>U: 배포 준비 완료
+        Note right of U: Phase 3: Sync (자동화)
+        U->>A: > /moai:3-sync SPEC-001
+        A->>D: 자동 테스트 실행
+        D->>D: 🔴 최종 테스트
+        D->>D: 📊 커버리지 확인
+        D->>D: 🔍 코드 품질 검사
+        D->>D: 📝 자동 커밋 생성
+        D->>D: 📚 문서 업데이트
+        D-->>A: 모두 완료 (자동화)
+        A-->>U: 병합 준비 완료
     end
 ```
 
@@ -482,7 +488,7 @@ sequenceDiagram
 **목표**: 무엇을 만들 것인가?
 
 ```bash
-/moai:1-plan "사용자 로그인 기능"
+> /moai:1-plan "사용자 로그인 기능"
 ```
 
 이 단계에서:
@@ -501,8 +507,8 @@ sequenceDiagram
 **목표**: 어떻게 만들 것인가?
 
 ```bash
-/clear
-/moai:2-run SPEC-001
+> /clear
+> /moai:2-run SPEC-001
 ```
 
 이 단계에서:
@@ -522,23 +528,25 @@ sequenceDiagram
 
 ---
 
-#### Phase 3: Sync (문서화, 10-15분)
+#### Phase 3: Sync (자동화, 5-10분)
 
-**목표**: 완성했는가?
+**목표**: 완성했는가? (자동화)
 
 ```bash
-/clear
-/moai:3-sync SPEC-001
+> /clear
+> /moai:3-sync SPEC-001
 ```
 
-이 단계에서:
+이 단계에서 자동으로 수행됩니다:
 
-- 📚 API 문서 자동 생성
-- 📊 아키텍처 다이어그램 생성
-- 🚀 배포 가이드 작성
-- ✅ 모든 변경사항 반영
+- 🔴 **최종 테스트 실행**: 모든 테스트 자동 실행
+- 📊 **커버리지 확인**: 95% 이상 커버리지 자동 보장
+- 🔍 **코드 품질 검사**: ruff, mypy 자동 실행
+- 📝 **자동 커밋 생성**: "Ready for merge" 커밋 자동 생성
+- 📚 **문서 업데이트**: API 문서, README 자동 업데이트
+- 🚀 **병합 준비**: Claude Code가 병합 준비 자동 완료
 
-**산출물**: 최신 문서 + 배포 준비 완료
+**산출물**: 테스트 통과 + 문서 완성 + 병합 준비 완료
 
 ---
 
@@ -550,13 +558,13 @@ flowchart LR
 
     Plan -->|"<br/>SPEC-001<br/>준비 완료<br/>"| Run["<b>💻 RUN</b><br/>(구현)<br/>━━━━━━<br/>🔴 테스트 작성<br/>🟢 코드 구현<br/>🔵 리팩토링<br/>⏱️ 20분"]
 
-    Run -->|"<br/>테스트 통과<br/>코드 완성<br/>"| Sync["<b>📚 SYNC</b><br/>(문서화)<br/>━━━━━━<br/>🔗 API 문서 생성<br/>📊 다이어그램<br/>🚀 배포 준비<br/>⏱️ 10분"]
+    Run -->|"<br/>테스트 통과<br/>코드 완성<br/>"| Sync["<b>📚 SYNC</b><br/>(자동화)<br/>━━━━━━<br/>🔴 최종 테스트<br/>📊 커버리지 확인<br/>🔍 코드 품질 검사<br/>📝 자동 커밋 생성<br/>🚀 병합 준비<br/>⏱️ 5분"]
 
-    Sync -->|"<br/>완전 자동화!<br/>"| End([✅ 기능 배포 완료])
+    Sync -->|"<br/>완전 자동화 완료!<br/>🚀 병합 준비 완료<br/>| End([✅ 기능 배포 완료])
 
     classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
     classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
-    classDef syncStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#000
+    classDef syncStyle fill:#fff8e1,stroke:#ff9800,stroke-width:3px,color:#000
     classDef normalStyle fill:#fafafa,stroke:#666,stroke-width:2px
 
     class Plan planStyle
@@ -569,14 +577,14 @@ flowchart LR
 
 ## 7. 핵심 커맨드
 
-### 🎯 `/moai:0-project` - 프로젝트 초기화
+### 🎯 `> /moai:0-project` - 프로젝트 초기화
 
 **목적**: 프로젝트 메타데이터 생성
 
 **사용 시기**: 프로젝트 첫 시작 시
 
 ```bash
-/moai:0-project
+> /moai:0-project
 ```
 
 **생성되는 파일**:
@@ -587,23 +595,23 @@ flowchart LR
 
 ---
 
-### 📋 `/moai:1-plan` - SPEC 작성
+### 📋 `> /moai:1-plan` - SPEC 작성
 
 **목적**: EARS 포맷 SPEC 문서 생성
 
 **사용 시기**: 새로운 기능 개발 시작 전
 
 ```bash
-/moai:1-plan "로그인 기능 추가"
+> /moai:1-plan "로그인 기능 추가"
 ```
 
 **예시**:
 
 ```bash
-/moai:1-plan "사용자 프로필 페이지 구현"
+> /moai:1-plan "사용자 프로필 페이지 구현"
 # → SPEC-002 생성 (.moai/specs/SPEC-002/spec.md)
 
-/moai:1-plan "결제 기능 API 개발"
+> /moai:1-plan "결제 기능 API 개발"
 # → SPEC-003 생성
 ```
 
@@ -614,30 +622,30 @@ flowchart LR
 - 성공 기준 (Success Criteria)
 - 테스트 시나리오 (Test Cases)
 
-**중요**: 다음은 반드시 `/clear` 실행
+**중요**: 다음은 반드시 `> /clear` 실행
 
 ```bash
-/moai:1-plan "기능명"
+> /moai:1-plan "기능명"
 # 작업 완료 후
-/clear
+> /clear
 ```
 
 ---
 
-### 💻 `/moai:2-run` - TDD 구현
+### 💻 `> /moai:2-run` - TDD 구현
 
 **목적**: RED-GREEN-REFACTOR 사이클로 코드 구현
 
 **사용 시기**: SPEC 작성 후 구현
 
 ```bash
-/moai:2-run SPEC-001
+> /moai:2-run SPEC-001
 ```
 
 **예시**:
 
 ```bash
-/moai:2-run SPEC-001  # 기본 구현
+> /moai:2-run SPEC-001  # 기본 구현
 ```
 
 **자동 수행 사항**:
@@ -656,20 +664,20 @@ flowchart LR
 
 ---
 
-### 📚 `/moai:3-sync` - 문서 동기화
+### 📚 `> /moai:3-sync` - 문서 동기화
 
 **목적**: 코드 변경사항을 문서에 반영
 
 **사용 시기**: 구현 완료 후
 
 ```bash
-/moai:3-sync SPEC-001
+> /moai:3-sync SPEC-001
 ```
 
 **예시**:
 
 ```bash
-/moai:3-sync SPEC-001  # 전체 문서
+> /moai:3-sync SPEC-001  # 전체 문서
 ```
 
 **자동 생성 문서**:
@@ -699,6 +707,7 @@ flowchart LR
 **Git 워크트리란?**
 
 Git 워크트리는 동일한 Git 저장소에 연결된 별도의 작업 디렉토리로, 다른 브랜치를 동시에 다른 작업 디렉토리로 체크아웃할 수 있게 합니다. 각 워크트리는 다음을 가집니다:
+
 - 독립적인 파일 시스템
 - 별도의 작업 디렉토리 상태
 - 격리된 빌드 아티팩트 및 종속성
@@ -728,21 +737,25 @@ Git 워크트리는 동일한 Git 저장소에 연결된 별도의 작업 디렉
 #### SPEC-First 개발을 위한 핵심 이점
 
 **1. 제로 컨텍스트 스위칭**
+
 - 각 SPEC는 자체 전용 워크스페이스를 가짐
 - SPEC 간에 전환할 때 작업 컨텍스트를 절대 잃지 않음
 - 특정 요구사항에 대한 정신적 집중 유지
 
 **2. 진정한 병렬 개발**
+
 - SPEC-002 테스트가 실행되는 동안 SPEC-001 구현 작업
 - SPEC-004 문서 동기화되는 동안 SPEC-003 디버깅
 - 다른 프로세스가 완료될 때까지 기다릴 필요 없음
 
 **3. 격리된 환경**
+
 - 다른 SPEC는 다른 종속성 버전을 사용할 수 있음
 - 분리된 데이터베이스 상태 및 구성
 - SPEC 간 오염 없음
 
 **4. SPEC 완료 추적**
+
 - 활성 SPEC 목록에 대한 명확한 시각적 표시
 - 중단되거나 미완성된 SPEC 쉽게 식별
 - 완료된 작업의 체계적 정리
@@ -750,6 +763,7 @@ Git 워크트리는 동일한 Git 저장소에 연결된 별도의 작업 디렉
 #### 고급 기능
 
 **스마트 동기화**
+
 ```bash
 # 모든 워크트리를 최신 메인 브랜치와 동기화
 moai-worktree sync --all
@@ -759,6 +773,7 @@ moai-worktree sync SPEC-001 --auto-resolve
 ```
 
 **지능형 정리**
+
 ```bash
 # 병합된 브랜치 워크트리 자동 제거
 moai-worktree clean --merged-only
@@ -768,6 +783,7 @@ moai-worktree clean --interactive
 ```
 
 **성능 최적화**
+
 - **동시 작업**: 여러 워크트리를 동시에 수정할 수 있음
 - **공유 기록**: 모든 워크트리는 동일한 Git 객체 데이터베이스 공유
 - **선택적 동기화**: 필요할 때만 변경 사항을 동기화, 전체 저장소는 안 함
@@ -775,21 +791,538 @@ moai-worktree clean --interactive
 #### moai-worktree 사용 시기
 
 **이상적인 시나리오:**
+
 - **다중 활성 SPEC**: 3개 이상의 SPEC를 동시에 작업
 - **장기 실행 작업**: SPEC 구현에 수일 또는 수주가 소요
 - **팀 협업**: 다른 개발자가 다른 SPEC 작업
 - **기능 브랜칭**: 각 SPEC가 자체 기능 브랜치가 됨
 - **환경 격리**: 다른 SPEC가 다른 구성이 필요
 
-**실제 예시 워크플로우:**
+#### 완전한 개발 워크플로우 (시작부터 병합까지)
+
+**1단계: SPEC 생성 및 워크트리 설정**
+
+```bash
+# 방법 1: 자동 워크트리 생성으로 SPEC 생성
+> /moai:1-plan '사용자 인증 시스템 구현' --worktree
+# → 자동으로 SPEC-AUTH-001 생성 및 워크트리 설정
+
+# 방법 2: 수동 워크트리 생성
+> /moai:1-plan '사용자 인증 시스템 구현'
+# SPEC-AUTH-001 생성됨
+moai-worktree new SPEC-AUTH-001
+# → 격리된 워크트리 환경 생성
+```
+
+**2단계: 워크트리로 이동하여 개발 시작**
+
+```bash
+# 워크트리로 이동 (추천 방식)
+moai-worktree go SPEC-AUTH-001
+# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
+
+# 또는 새 쉘에서 직접 이동
+moai-worktree switch SPEC-AUTH-001
+# → 새 터미널 창에서 워크트리로 이동
+```
+
+**3단계: 격리된 환경에서 개발**
+
+```bash
+# 워크트리 내에서 TDD 개발
+> /moai:2-run SPEC-AUTH-001
+# → RED → GREEN → REFACTOR 사이클 실행
+
+# 개발 중 상태 확인
+moai-worktree status
+git status
+git log --oneline -5
+
+# 중간 저장
+git add .
+git commit -m "Auth: Implement user login endpoint"
+```
+
+**4단계: 동기화 및 충돌 해결**
+
+```bash
+# 메인 브랜치 변경 사항 가져오기
+moai-worktree sync SPEC-AUTH-001
+
+# 자동 충돌 해결로 동기화
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
+
+# 모든 워크트리 동기화
+moai-worktree sync --all --auto-resolve
+```
+
+**5단계: 개발 완료 및 테스트 (자동화)**
+
+```bash
+# MoAI 워크플로우 동기화 - 자동으로 테스트, 품질 검사, 커밋 수행
+> /moai:3-sync SPEC-AUTH-001
+# → 자동으로 최종 테스트, 커버리지 확인, 코드 품질 검사, 최종 커밋 완료
+```
+
+**6단계: 메인 브랜치로 병합 준비 (자동화 + 직접 명령어)**
+
+**옵션 A: Claude Code 자동화 (초보자용)**
+
+```bash
+# Claude Code가 자동으로 병합 준비를 수행합니다.
+# 사용자는 다음을 요청하기만 하면 됩니다:
+> SPEC-AUTH-001을 메인 브랜치로 병합 준비해줘
+
+# Claude Code가 자동으로 수행:
+# - 워크트리 브랜치 가져오기
+# - 로컬 병합 테스트
+# - 충돌 확인 및 해결 제안
+# - 병합 준비 완료 보고
+```
+
+**옵션 B: 직접 Git 명령어 (고급 사용자용)**
+
+```bash
+# 1. 워크트리에서 메인으로 이동
+moai-worktree go SPEC-AUTH-001  # 또는 cd /path/to/main/repo
+
+# 2. 워크트리 브랜치 가져오기
+git fetch origin feature/SPEC-AUTH-001
+git checkout -b merge/SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
+
+# 3. 로컬 병합 테스트
+git merge main --no-ff  # main으로부터의 변경사항 병합
+
+# 4. 충돌이 있는 경우 수동 해결
+git status  # 충돌 파일 확인
+# 충돌 파일 수정 후:
+git add .
+git commit -m "Resolve: Merge conflicts in SPEC-AUTH-001"
+
+# 5. 병합 준비 완료 확인
+git log --oneline -5
+git status  # Clean working directory 확인
+```
+
+**충돌 해결 직접 명령어 모음:**
+
+```bash
+# 충돌 발생 시 전략적 접근
+git checkout --ours conflicted_file.py    # 메인 브랜치 우선
+git checkout --theirs conflicted_file.py  # 워크트리 변경사항 우선
+
+# 병합 취소 및 다시 시도
+git merge --abort
+git merge main --no-ff
+
+# 전체 병합 전략 변경
+git rebase main  # 대신 rebase 사용
+```
+
+**7단계: 완료 및 정리 (자동화 + 직접 명령어)**
+
+**옵션 A: Claude Code 자동화 (초보자용)**
+
+```bash
+# 워크트리 정리 (Claude Code 자동 처리 요청)
+> SPEC-AUTH-001 워크트리 정리해줘
+
+# README.ko.md 업데이트 (Claude Code 자동 처리)
+> 완료된 SPEC-AUTH-001 기능을 README.ko.md에 추가해줘
+
+# Claude Code가 자동으로 수행:
+# - 워크트리 상태 확인
+# - 완료된 기능 문서화
+# - README 업데이트
+# - 정리 완료 보고
+```
+
+**옵션 B: 직접 moai-worktree 명령어 (고급 사용자용)**
+
+```bash
+# 1. 워크트리 상태 최종 확인
+moai-worktree status
+# 출력 예시:
+# SPEC-AUTH-001
+#   Branch: feature/SPEC-AUTH-001
+#   Status: completed
+#   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
+
+# 2. 워크트리 정리 (안전한 방법)
+moai-worktree clean --merged-only
+# → 병합된 브랜치의 워크트리만 자동 제거
+
+# 3. 또는 대화형 정리 (선택적 제거)
+moai-worktree clean --interactive
+# → 제거할 워크트리 선택 가능
+
+# 4. 특정 워크트리 직접 제거 (강제)
+moai-worktree remove SPEC-AUTH-001 --force
+
+# 5. 전체 워크트리 상태 확인
+moai-worktree list
+# 또는
+moai-worktree status
+```
+
+**실용적인 워크트리 관리 명령어 모음:**
+
+```bash
+# 일상적인 워크트리 관리
+moai-worktree list                    # 모든 워크트리 목록
+moai-worktree status                  # 상세 상태 확인
+moai-worktree sync SPEC-AUTH-001      # 특정 워크트리 동기화
+moai-worktree sync --all              # 모든 워크트리 동기화
+
+# 워크트리 이동 및 작업
+moai-worktree go SPEC-001     # 현재 셸에서 이동
+moai-worktree switch SPEC-001         # 새 셸에서 워크트리 열기
+
+# 충돌 자동 해결
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
+
+# 설정 확인
+moai-worktree config get              # 현재 설정 보기
+moai-worktree config root             # 워크트리 루트 경로 확인
+```
+
+**혼합 워크플로우 추천 패턴:**
+
+```bash
+# 단계 1-5: Claude Code 자동화 (빠른 개발)
+> /moai:1-plan "기능명"
+> /moai:2-run SPEC-XXX
+> /moai:3-sync SPEC-XXX
+
+# 단계 6-7: 직접 명령어 (정밀 제어)
+moai-worktree sync SPEC-XXX --auto-resolve  # 충돌 자동 해결
+moai-worktree clean --merged-only           # 완료된 워크트리 정리
+```
+
+---
+
+### 🔧 수동 명령어 참조 (Manual Command Reference)
+
+이 섹션에서는 Claude Code 자동화와 병행하여 사용할 수 있는 직접 명령어들을 상세히 설명합니다.
+
+#### **기본 moai-worktree 명령어**
+
+| 명령어                 | 목적                    | 사용 예시                       | 설명                                 |
+| ---------------------- | ----------------------- | ------------------------------- | ------------------------------------ |
+| `moai-worktree new`    | 새 워크트리 생성        | `moai-worktree new SPEC-001`    | SPEC-001을 위한 격리된 작업공간 생성 |
+| `moai-worktree list`   | 워크트리 목록           | `moai-worktree list`            | 모든 활성 워크트리 표시              |
+| `moai-worktree go`     | 워크트리 이동           | `moai-worktree go SPEC-001`     | 현재 셸에서 워크트리로 이동          |
+| `moai-worktree switch` | 새 셸에서 워크트리 열기 | `moai-worktree switch SPEC-001` | 새 터미널에서 워크트리로 이동        |
+| `moai-worktree remove` | 워크트리 제거           | `moai-worktree remove SPEC-001` | 특정 워크트리 삭제                   |
+| `moai-worktree status` | 상태 확인               | `moai-worktree status`          | 모든 워크트리 상태 표시              |
+
+#### **동기화 명령어**
+
+| 명령어                              | 목적                 | 사용 예시                                    | 설명                          |
+| ----------------------------------- | -------------------- | -------------------------------------------- | ----------------------------- |
+| `moai-worktree sync`                | 특정 워크트리 동기화 | `moai-worktree sync SPEC-001`                | 메인 브랜치와 변경사항 동기화 |
+| `moai-worktree sync --all`          | 모든 워크트리 동기화 | `moai-worktree sync --all`                   | 모든 워크트리를 한번에 동기화 |
+| `moai-worktree sync --auto-resolve` | 자동 충돌 해결       | `moai-worktree sync SPEC-001 --auto-resolve` | 충돌 발생 시 자동 해결 시도   |
+| `moai-worktree sync --rebase`       | Rebase 기반 동기화   | `moai-worktree sync SPEC-001 --rebase`       | 병합 대신 rebase 사용         |
+
+#### **정리 명령어**
+
+| 명령어                              | 목적                   | 사용 예시                           | 설명                            |
+| ----------------------------------- | ---------------------- | ----------------------------------- | ------------------------------- |
+| `moai-worktree clean`               | 워크트리 정리          | `moai-worktree clean`               | 모든 워크트리 정리              |
+| `moai-worktree clean --merged-only` | 병합된 워크트리만 정리 | `moai-worktree clean --merged-only` | 병합된 브랜치의 워크트리만 제거 |
+| `moai-worktree clean --interactive` | 대화형 정리            | `moai-worktree clean --interactive` | 제거할 워크트리 선택 가능       |
+
+#### **설정 명령어**
+
+| 명령어                      | 목적           | 사용 예시                   | 설명                             |
+| --------------------------- | -------------- | --------------------------- | -------------------------------- |
+| `moai-worktree config`      | 설정 보기      | `moai-worktree config`      | 현재 워크트리 설정 표시          |
+| `moai-worktree config root` | 루트 경로 확인 | `moai-worktree config root` | 워크트리 루트 디렉토리 경로 확인 |
+
+#### **고급 사용 패턴**
+
+**1. 다중 SPEC 병렬 개발**
+
+```bash
+# 여러 SPEC 동시에 생성
+moai-worktree new SPEC-AUTH-001    # 사용자 인증
+moai-worktree new SPEC-PAY-002     # 결제 시스템
+moai-worktree new SPEC-UI-003      # UI 개선
+
+# 각 워크트리 상태 확인
+moai-worktree status
+
+# 모든 워크트리 동기화
+moai-worktree sync --all --auto-resolve
+```
+
+**2. 충돌 자동 해결 워크플로우**
+
+```bash
+# 1단계: 자동 동기화 시도
+moai-worktree sync SPEC-001 --auto-resolve
+
+# 2단계: 자동 해결 실패 시 수동 개입
+moai-worktree go SPEC-001
+git status  # 충돌 파일 확인
+
+# 3단계: 충돌 해결 전략 선택
+git checkout --ours conflicted_file.py    # 메인 브랜치 우선
+# 또는
+git checkout --theirs conflicted_file.py  # 워크트리 변경사항 우선
+
+# 4단계: 해결 완료 후 커밋
+git add conflicted_file.py
+git commit -m "Resolve: Auto-resolved conflicts in SPEC-001"
+```
+
+**3. 정기적인 워크트리 유지보수**
+
+```bash
+# 매일 아침 실행 권장
+moai-worktree status                      # 현재 상태 확인
+moai-worktree sync --all                  # 모든 워크트리 동기화
+
+# 매주 실행 권장
+moai-worktree clean --merged-only         # 완료된 워크트리 정리
+
+# 매월 실행 권장
+moai-worktree clean --interactive         # 대화형 정리로 불필요한 워크트리 제거
+```
+
+#### **Claude Code와 명령어 조합 가이드**
+
+**초보자 사용자:**
+
+```bash
+# 단계 1-3: Claude Code 자동화로 빠른 시작
+/moai:1-plan "사용자 로그인 기능"
+/moai:2-run SPEC-001
+/moai:3-sync SPEC-001
+
+# 단계 4-5: 직접 명령어로 기본 관리
+moai-worktree status                      # 상태 확인
+moai-worktree sync SPEC-001               # 동기화
+moai-worktree clean --merged-only         # 정리
+```
+
+**중급 사용자:**
+
+```bash
+# 단계 1-2: Claude Code 자동화
+> /moai:1-plan "결제 시스템 개발"
+> /moai:2-run SPEC-PAY-001
+
+# 단계 3: 직접 명령어로 정밀 제어
+moai-worktree go SPEC-PAY-001
+# 직접 개발 및 테스트
+git add .
+git commit -m "Pay: Implement core payment processing"
+
+# 단계 4-5: 혼합 접근
+> /moai:3-sync SPEC-PAY-001                 # 자동화로 품질 검증
+moai-worktree sync SPEC-PAY-001 --auto-resolve  # 직접 동기화
+```
+
+**고급 사용자:**
+
+```bash
+# 전체 과정을 직접 명령어로 제어
+moai-worktree new SPEC-ADV-001
+moai-worktree go SPEC-ADV-001
+# 완전한 수동 개발 프로세스
+git add .
+git commit -m "Adv: Complex feature implementation"
+moai-worktree sync SPEC-ADV-001 --rebase
+moai-worktree clean --interactive
+```
+
+**생산성 팁:**
+
+1. **별칭 설정** ( ~/.zshrc 또는 ~/.bashrc 에 추가):
+
+```bash
+alias wt-new='moai-worktree new'
+alias wt-go='moai-worktree go'
+alias wt-list='moai-worktree list'
+alias wt-status='moai-worktree status'
+alias wt-sync='moai-worktree sync'
+alias wt-clean='moai-worktree clean'
+```
+
+2. **빠른 워크플로우 함수**:
+
+```bash
+# 워크트리 빠른 생성 및 이동
+wt-dev() {
+    moai-worktree new "SPEC-$1"
+    moai-worktree go "SPEC-$1"
+}
+
+# 사용법: wt-dev AUTH-001
+```
+
+---
+
+### 🎯 **자동화와 직접 제어의 완벽한 조합**
+
+MoAI-ADK는 **Claude Code 자동화**와 **직접 명령어 제어**의 장점을 모두 활용할 수 있도록 설계되었습니다.
+
+#### **언제 무엇을 사용할까?**
+
+| 상황                 | 추천 접근 방식     | 이유                         |
+| -------------------- | ------------------ | ---------------------------- |
+| **새 기능 시작**     | Claude Code 자동화 | 빠른 SPEC 생성 및 초기 구성  |
+| **복잡한 알고리즘**  | 직접 제어          | 단계별 디버깅 및 최적화 필요 |
+| **일상적인 동기화**  | 직접 명령어        | 빠른 실행 및 정밀한 제어     |
+| **품질 검증**        | Claude Code 자동화 | 자동화된 테스트 및 검증      |
+| **충돌 해결**        | 혼합 접근          | 자동 감지 + 수동 해결        |
+| **정리 및 유지보수** | 직접 명령어        | 선택적 제어 및 안전한 정리   |
+
+#### **추천 조합 워크플로우**
+
+##### 초보자: 자동화 중심 (70% 자동화 + 30% 직접 제어)
+
+```bash
+# 1단계: 자동화로 빠른 시작
+> /moai:1-plan "기능 개발"
+> /moai:2-run SPEC-001
+
+# 2단계: 직접 명령어로 기본 관리
+moai-worktree status
+moai-worktree sync SPEC-001
+moai-worktree clean --merged-only
+
+# 3단계: 자동화로 마무리
+> /moai:3-sync SPEC-001
+```
+
+##### 중급: 균형 접근 (50% 자동화 + 50% 직접 제어)
+
+```bash
+# 1단계: 자동화로 계획
+> /moai:1-plan "복잡한 기능"
+
+# 2단계: 직접 제어로 세부 구현
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
+# 상세한 개발 작업
+
+# 3단계: 자동화로 품질 보증
+> /moai:3-sync SPEC-001
+```
+
+##### 고급: 직접 제어 중심 (30% 자동화 + 70% 직접 제어)
+
+```bash
+# 전체 과정을 직접 제어하되, 필요시 자동화 활용
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
+# 완전한 수동 개발
+# 필요시 > /moai:3-sync로 품질 검증
+```
+
+#### 병합 충돌 해결 전략
+
+##### 1. 자동 해결 (권장)
+
+```bash
+# 모든 전략을 시도하는 자동 해결
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
+```
+
+##### 2. 수동 해결
+
+```bash
+# 워크트리로 이동
+moai-worktree go SPEC-AUTH-001
+
+# 충돌 상태 확인
+git status
+
+# 충돌 파일 편집
+# <<<<<<< HEAD
+# 메인 브랜치 내용
+# =======
+# 워크트리 브랜치 내용
+# >>>>>>> feature/SPEC-AUTH-001
+
+# 해결 후 마킹
+git add conflict_file.py
+git commit -m "Resolve: Merge conflicts in auth system"
+```
+
+##### 3. 전략적 접근
+
+```bash
+# 충돌 발생 시 메인 브랜치 우선시
+git checkout --ours conflict_file.py
+git add conflict_file.py
+git commit
+
+# 또는 워크트리 변경사항 우선시
+git checkout --theirs conflict_file.py
+git add conflict_file.py
+git commit
+```
+
+#### 완료 체크리스트
+
+##### 개발 완료 전
+
+- [ ] 모든 테스트 통과 (>= 95% 커버리지)
+- [ ] 코드 품질 검사 통과 (ruff, mypy)
+- [ ] 보안 검토 완료
+- [ ] 문서화 업데이트
+- [ ] 로컬에서 병합 테스트
+
+##### 병합 완료 후
+
+- [ ] 원격 저장소에 푸시
+- [ ] Pull Request 생성 및 승인
+- [ ] 메인 브랜치에 병합
+- [ ] 워크트리 정리 완료
+- [ ] > /moai:3-sync 실행
+- [ ] 배포 테스트
+
+#### 병렬 개발 팁
+
+##### 여러 SPEC 동시 작업
+
+```bash
+# 첫 번째 SPEC으로 이동하여 작업
+moai-worktree go SPEC-AUTH-001
+> /moai:2-run SPEC-AUTH-001
+
+# 다른 터미널에서 두 번째 SPEC으로 이동
+moai-worktree go SPEC-PAY-002
+> /moai:2-run SPEC-PAY-002
+
+# 세 번째 SPEC에서 작업
+moai-worktree go SPEC-UI-003
+> /moai:2-run SPEC-UI-003
+
+# 정기적으로 모든 워크트리 동기화
+moai-worktree sync --all --auto-resolve
+```
+
+##### 컨텍스트 전환 없이 작업
+
+- 각 워크트리는 완전히 격리된 환경
+- 독립적인 Git 상태
+- 서로 다른 종속성 버전 허용
+- 동시에 여러 기능 개발 가능
+
+##### 실제 예시 워크플로우
 
 ```bash
 # 아침: 새 SPEC 시작
 moai-worktree new SPEC-005 "사용자 프로필 향상"
-cd $(moai-worktree go SPEC-005)
+moai-worktree go SPEC-005
 
 # 다른 SPEC들이 완료되는 동안 SPEC-005 구현
-/moai:2-run SPEC-005
+> /moai:2-run SPEC-005
 
 # 오후: 모든 SPEC 상태 확인
 moai-worktree status
@@ -805,13 +1338,13 @@ moai-worktree clean --merged-only
 
 #### 기술적 이점
 
-**메모리 효율성**: 공유 Git 객체 데이터베이스는 여러 전체 저장소와 비교하여 최소한의 메모리 오버헤드를 의미
+##### 메모리 효율성: 공유 Git 객체 데이터베이스는 여러 전체 저장소와 비교하여 최소한의 메모리 오버헤드를 의미
 
-**디스크 공간 최적화**: 워크트리는 저장소 기록을 공유하며, 작업 파일에만 추가적인 공간을 사용
+##### 디스크 공간 최적화: 워크트리는 저장소 기록을 공유하며, 작업 파일에만 추가적인 공간을 사용
 
-**원자적 작업**: 각 워크트리 작업은 원자적이며, 저장소 손상을 방지
+##### 원자적 작업: 각 워크트리 작업은 원자적이며, 저장소 손상을 방지
 
-**Git 네이티브**: 표준 Git 워크트리 기능을 사용하며 모든 Git 도구와 호환성 보장
+##### Git 네이티브: 표준 Git 워크트리 기능을 사용하며 모든 Git 도구와 호환성 보장
 
 #### MoAI-ADK 워크플로우와 통합
 
@@ -824,9 +1357,9 @@ moai-worktree는 MoAI-ADK Plan-Run-Sync 사이클과 원활하게 통합됩니�
 
 이 통합은 SPEC-First TDD 방법론 원칙을 유지하면서 동시에 여러 SPEC를 관리하기 위한 완전하고 체계적인 접근 방식을 제공합니다.
 
-**중요 참고사항**: Git에서 제외되는 로컬 파일(.CLAUDE.local.md, .env, .claude/settings.local.json 등)은 worktree 간에 자동으로 동기화되지 않습니다. 일관된 개발 환경 구성을 위해 이 파일들은 worktree 생성 후 각 디렉토리에 수동으로 복사해야 합니다.
+##### 중요 참고사항: Git에서 제외되는 로컬 파일(.CLAUDE.local.md, .env, .claude/settings.local.json 등)은 worktree 간에 자동으로 동기화되지 않습니다. 일관된 개발 환경 구성을 위해 이 파일들은 worktree 생성 후 각 디렉토리에 수동으로 복사해야 합니다
 
-**명령어 개요:**
+##### 명령어 개요
 
 ```bash
 # 사용 가능한 명령어 목록
@@ -863,289 +1396,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-### 📊 기타 유용한 커맨드
-
-| 명령어             | 목적                | 사용 시기          |
-| ------------------ | ------------------- | ------------------ |
-| `/moai:0-git`      | Git 워크플로우 설정 | 프로젝트 초기화 시 |
-| `/moai:9-feedback` | 개선 피드백 제출    | 문제 발견 시       |
-| `/clear`           | 컨텍스트 초기화     | Phase 후 토큰 절감 |
-
----
-
-## 7-B. Git Worktree CLI - 병렬 SPEC 개발
-
-### 개요
-
-**Git Worktree** (이하 워크트리)는 여러 개의 독립적인 작업 디렉토리를 동시에 관리하는 Git 기능입니다. MoAI-ADK의 `moai-wt` 명령어를 통해 **3-5개의 SPEC을 병렬로 개발**할 수 있는 환경을 제공합니다.
-
-### 주요 장점
-
-- **병렬 개발**: 3-5개 SPEC을 동시에 개발 (팀 생산성 50-60% 향상)
-- **빠른 컨텍스트 전환**: 브랜치 전환 불필요 (즉각적 이동)
-- **독립적인 환경**: 각 워크트리별 node_modules/.venv 분리
-- **자동 충돌 감지**: Main 브랜치 변경사항 자동 추적
-
-### 빠른 시작
-
-```bash
-# 새 워크트리 생성
-moai-wt new SPEC-002
-
-# 워크트리로 이동
-wt-go SPEC-002
-
-# SPEC 개발 시작
-/moai:2-run SPEC-002
-
-# 작업 완료 후 정리
-moai-wt remove SPEC-002
-```
-
-### 핵심 기능
-
-| 명령어          | 목적                          | 예시                          |
-| --------------- | ----------------------------- | ----------------------------- |
-| `moai-wt new`   | 새 워크트리 생성               | `moai-wt new SPEC-001`        |
-| `moai-wt list`  | 활성 워크트리 목록            | `moai-wt list`                |
-| `moai-wt switch`| 새 셸에서 워크트리 열기        | `moai-wt switch SPEC-001`     |
-| `wt-go`         | 현재 셸에서 이동 (alias)      | `wt-go SPEC-001`              |
-| `moai-wt remove`| 워크트리 삭제                  | `moai-wt remove SPEC-001`     |
-| `moai-wt sync`  | Main과 동기화                 | `moai-wt sync SPEC-001`       |
-| `moai-wt status`| 모든 워크트리 상태 확인        | `moai-wt status`              |
-| `moai-wt clean` | 병합된 워크트리 정리           | `moai-wt clean`               |
-
-### 실제 사용 사례
-
-#### 시나리오: 팀이 3개 기능을 동시에 개발
-
-```bash
-# 개발자 A: 사용자 인증
-moai-wt new SPEC-002
-wt-go SPEC-002
-/moai:2-run SPEC-002
-
-# 개발자 B: 결제 시스템 (동시 진행)
-moai-wt new SPEC-003
-wt-go SPEC-003
-/moai:2-run SPEC-003
-
-# 개발자 C: 대시보드 (동시 진행)
-moai-wt new SPEC-004
-wt-go SPEC-004
-/moai:2-run SPEC-004
-
-# 각자 완료 후 병합
-moai-wt remove SPEC-002
-moai-wt remove SPEC-003
-moai-wt remove SPEC-004
-```
-
-### 권장 설정
-
-```bash
-# ~/.zshrc 또는 ~/.bashrc에 추가
-alias wt-new='moai-wt new'
-alias wt-go='eval $(moai-wt go'
-alias wt-list='moai-wt list'
-alias wt-sync='moai-wt sync'
-alias wt-status='moai-wt status'
-```
-
-### 자세한 가이드
-
-- **완벽한 사용 가이드**: [Git Worktree 사용 가이드](./.moai/docs/WORKTREE_GUIDE.md)
-- **실전 예제 5가지**: [Git Worktree 실전 예제](./.moai/docs/WORKTREE_EXAMPLES.md)
-- **자주 묻는 질문**: [Git Worktree FAQ](./.moai/docs/WORKTREE_FAQ.md)
-
-### 성능 최적화
-
-| 설정        | 권장값     | 설명                       |
-| ----------- | ---------- | -------------------------- |
-| 동시 워크트리 | 3-4개     | 최적 성능 (5개까지 가능)   |
-| 디스크 공간   | 500MB/개  | 각 워크트리당 필요 용량    |
-| 메모리       | 200MB/개  | 병렬 작업 시 활성화 메모리 |
-
-### 🌳 **moai-worktree** - 병렬 SPEC 개발을 위한 Git Worktree 관리
-
-#### 왜 moai-worktree인가? 해결하는 문제
-
-현대 소프트웨어 개발, 특히 SPEC-First TDD 방법론을 따를 때 개발자들은 여러 기능을 동시에 작업해야 하는 도전에 직면합니다. 전통적인 Git 워크플로우는 개발자를 강제로 다음 중 하나를 선택하게 만듭니다:
-
-- **컨텍스트 스위칭 지옥**: 동일한 작업공간에서 계속 브랜치를 전환하며 컨텍스트를 잃고 미완성 작업의 위험 감수
-- **순차적 개발**: 한 번에 하나의 SPEC만 작업하여 생산성 저하
-- **환경 충돌**: 다른 SPEC들은 다른 의존성, 데이터베이스 상태, 설정을 필요로 함
-
-**moai-worktree는 이 문제들을 해결**합니다. 각 SPEC에 대해 분리된 작업공간을 제공하여 컨텍스트 스위칭 오버헤드 없이 진정한 병렬 개발을 가능하게 합니다.
-
-#### 핵심 개념: SPEC 기반 병렬 개발
-
-**Git Worktree란?**
-
-Git worktree는 동일한 Git 리포지토리에 연결된 별도의 작업 디렉토리로, 여러 작업 디렉토리에 다른 브랜치들을 동시에 체크아웃할 수 있게 합니다. 각 worktree는 다음을 가집니다:
-- 독립적인 파일 시스템
-- 분리된 작업 디렉토리 상태
-- 분리된 빌드 아티팩트 및 의존성
-- 자체 스테이징 영역 및 unstaged 변경사항
-
-**moai-worktree 아키텍처:**
-
-```
-메인 리포지토리/
-├── .git/                    # 공유 Git 리포지토리
-├── src/                     # 메인 브랜치 파일
-└── worktrees/               # 자동 생성된 worktree들
-    ├── SPEC-001/
-    │   ├── .git             # Worktree별 git 파일
-    │   ├── src/             # SPEC-001 구현
-    │   └── tests/           # SPEC-001 테스트
-    ├── SPEC-002/
-    │   ├── .git             # Worktree별 git 파일
-    │   ├── src/             # SPEC-002 구현
-    │   └── tests/           # SPEC-002 테스트
-    └── SPEC-003/
-        ├── .git             # Worktree별 git 파일
-        ├── src/             # SPEC-003 구현
-        └── tests/           # SPEC-003 테스트
-```
-
-#### SPEC-First 개발을 위한 핵심 이점
-
-**1. 제로 컨텍스트 스위칭**
-- 각 SPEC은 전용 작업공간을 가짐
-- SPEC 간 전환 시 작업 컨텍스트를 절대 잃지 않음
-- 특정 요구사항에 대한 정신적 집중 유지
-
-**2. 진정한 병렬 개발**
-- SPEC-002 테스트 실행 중 SPEC-001 구현 작업
-- SPEC-004 문서 동기화 중 SPEC-003 디버깅
-- 다른 프로세스 완료를 기다릴 필요 없음
-
-**3. 분리된 환경**
-- 다른 SPEC들은 다른 의존성 버전 사용 가능
-- 분리된 데이터베이스 상태 및 설정
-- SPEC 간 오염 없음
-
-**4. SPEC 완료 추적**
-- 활성 SPEC들을 명확하게 시각적으로 표시
-- 중단되거나 미완성된 SPEC 쉽게 식별
-- 완료된 작업의 체계적 정리
-
-#### 고급 기능
-
-**스마트 동기화**
-```bash
-# 모든 worktree를 최신 메인 브랜치와 동기화
-moai-worktree sync --all
-
-# 충돌 해결로 특정 worktree 동기화
-moai-worktree sync SPEC-001 --auto-resolve
-```
-
-**지능형 정리**
-```bash
-# 병합된 브랜치의 worktree 자동 제거
-moai-worktree clean --merged-only
-
-# 확인 프롬프트와 안전한 정리
-moai-worktree clean --interactive
-```
-
-**성능 최적화**
-- **동시 작업**: 여러 worktree 동시에 수정 가능
-- **공유 히스토리**: 모든 worktree가 동일한 Git 객체 데이터베이스 공유
-- **선택적 동기화**: 전체 리포지토리가 아닌 필요한 변경사항만 동기화
-
-#### moai-worktree 사용 시기
-
-**이상적인 시나리오:**
-- **여러 활성 SPEC**: 3개 이상의 SPEC을 동시에 작업
-- **장기 실행 작업**: SPEC 구현에 수일 또는 수주 소요
-- **팀 협업**: 여러 개발자가 다른 SPEC 작업
-- **기능 브랜칭**: 각 SPEC이 자체 기능 브랜치가 됨
-- **환경 분리**: 다른 SPEC들이 다른 설정 필요
-
-**실제 예제 워크플로우:**
-
-```bash
-# 오전: 새 SPEC 시작
-moai-worktree new SPEC-005 "사용자 프로필 개선"
-cd $(moai-worktree go SPEC-005)
-
-# 다른 SPEC들이 완료되는 동안 SPEC-005 구현
-/moai:2-run SPEC-005
-
-# 오후: 모든 SPEC 상태 확인
-moai-worktree status
-# 출력:
-# ✓ SPEC-001: 완료 (머지 준비)
-# ✓ SPEC-002: 테스트 진행 중
-# ⏳ SPEC-003: 구현 단계
-# 🔄 SPEC-005: 활성 개발
-
-# 저녁: 완료된 SPEC 정리
-moai-worktree clean --merged-only
-```
-
-#### 기술적 이점
-
-**메모리 효율성**: 여러 전체 리포지토리와 비교하여 최소 메모리 오버헤드로 공유 Git 객체 데이터베이스 사용
-
-**디스크 공간 최적화**: Worktree들이 리포지토리 히스토리를 공유하여 작업 파일을 위한 추가 공간만 사용
-
-**원자적 작업**: 각 worktree 작업은 원자적이어서 리포지토리 손상 방지
-
-**Git 네이티브**: 표준 Git worktree 기능 사용으로 모든 Git 도구와 호환성 보장
-
-#### MoAI-ADK 워크플로우와의 통합
-
-moai-worktree는 MoAI-ADK Plan-Run-Sync 주기와 완벽하게 통합됩니다:
-
-1. **Plan 단계**: `moai-worktree new SPEC-XXX`가 전용 작업공간 생성
-2. **Run 단계**: 다른 SPEC에 영향 주지 않고 분리된 환경에서 작업
-3. **Sync 단계**: `moai-worktree sync SPEC-XXX`가 깨끗한 통합 보장
-4. **Cleanup 단계**: `moai-worktree clean`이 완료된 worktree 제거
-
-이 통합은 SPEC-First TDD 방법론 원칙을 유지하면서 여러 SPEC을 동시에 관리하기 위한 완전하고 체계적인 접근 방식을 제공합니다.
-
-**명령어 개요:**
-
-```bash
-# 사용 가능한 명령어 목록
-moai-worktree --help
-
-# SPEC 개발을 위한 새 worktree 생성
-moai-worktree new SPEC-001
-
-# 모든 활성 worktree 목록
-moai-worktree list
-
-# 특정 worktree로 이동
-moai-worktree go SPEC-001
-
-# worktree로 전환 (새 셸 열기)
-moai-worktree switch SPEC-001
-
-# worktree를 베이스 브랜치와 동기화
-moai-worktree sync SPEC-001
-
-# 특정 worktree 제거
-moai-worktree remove SPEC-001
-
-# 병합된 브랜치 worktree 정리
-moai-worktree clean
-
-# worktree 상태 및 설정 표시
-moai-worktree status
-
-# worktree 설정 구성
-moai-worktree config get
-moai-worktree config set <key> <value>
-```
-
----
-
-## 8. 에이전트 가이드 (26개)
+## 8. 에이전트 가이드 (24개)
 
 ### 🎯 에이전트 선택 가이드
 
@@ -1164,7 +1415,7 @@ moai-worktree config set <key> <value>
 - 서버 성능 최적화
 
 ```bash
-@agent-expert-backend "FastAPI로 사용자 인증 API 개발"
+> @agent-expert-backend "FastAPI로 사용자 인증 API 개발"
 ```
 
 ---
@@ -1180,7 +1431,7 @@ moai-worktree config set <key> <value>
 - 반응형 디자인
 
 ```bash
-@agent-expert-frontend "React로 대시보드 UI 구현"
+> @agent-expert-frontend "React로 대시보드 UI 구현"
 ```
 
 ---
@@ -1196,7 +1447,7 @@ moai-worktree config set <key> <value>
 - 성능 튜닝
 
 ```bash
-@agent-expert-database "PostgreSQL 대규모 테이블 최적화"
+> @agent-expert-database "PostgreSQL 대규모 테이블 최적화"
 ```
 
 ---
@@ -1212,7 +1463,7 @@ moai-worktree config set <key> <value>
 - 데이터 암호화
 
 ```bash
-@agent-expert-security "로그인 기능 보안 감사"
+> @agent-expert-security "로그인 기능 보안 감사"
 ```
 
 ---
@@ -1228,7 +1479,7 @@ moai-worktree config set <key> <value>
 - 인프라 자동화
 
 ```bash
-@agent-expert-devops "Next.js 앱 Docker 배포 설정"
+> @agent-expert-devops "Next.js 앱 Docker 배포 설정"
 ```
 
 ---
@@ -1244,7 +1495,7 @@ moai-worktree config set <key> <value>
 - 사용자 경험 최적화
 
 ```bash
-@agent-expert-uiux "shadcn/ui 기반 디자인 시스템 구축"
+> @agent-expert-uiux "shadcn/ui 기반 디자인 시스템 구축"
 ```
 
 ---
@@ -1260,7 +1511,7 @@ moai-worktree config set <key> <value>
 - 메모리 누수 감지
 
 ```bash
-@agent-expert-debug "API 응답 시간이 느린 원인 분석"
+> @agent-expert-debug "API 응답 시간이 느린 원인 분석"
 ```
 
 ---
@@ -1270,10 +1521,10 @@ moai-worktree config set <key> <value>
 #### manager-spec (SPEC 작성)
 
 **목적**: EARS 포맷 SPEC 문서 생성
-**자동 호출**: `/moai:1-plan` 실행 시
+**자동 호출**: `> /moai:1-plan` 실행 시
 
 ```bash
-@agent-manager-spec "사용자 프로필 API SPEC 작성"
+> @agent-manager-spec "사용자 프로필 API SPEC 작성"
 ```
 
 ---
@@ -1281,10 +1532,10 @@ moai-worktree config set <key> <value>
 #### manager-tdd (TDD 구현)
 
 **목적**: RED-GREEN-REFACTOR 자동 실행
-**자동 호출**: `/moai:2-run` 실행 시
+**자동 호출**: `> /moai:2-run` 실행 시
 
 ```bash
-@agent-manager-tdd "SPEC-001 구현"
+> @agent-manager-tdd "SPEC-001 구현"
 ```
 
 ---
@@ -1292,10 +1543,10 @@ moai-worktree config set <key> <value>
 #### manager-docs (문서 자동화)
 
 **목적**: API 문서, 다이어그램, 가이드 자동 생성
-**자동 호출**: `/moai:3-sync` 실행 시
+**자동 호출**: `> /moai:3-sync` 실행 시
 
 ```bash
-@agent-manager-docs "로그인 기능 문서 생성"
+> @agent-manager-docs "로그인 기능 문서 생성"
 ```
 
 ---
@@ -1303,10 +1554,10 @@ moai-worktree config set <key> <value>
 #### manager-quality (품질 검증)
 
 **목적**: TRUST 5 검증 (Test, Readable, Unified, Secured, Trackable)
-**자동 호출**: `/moai:2-run` 완료 후
+**자동 호출**: `> /moai:2-run` 완료 후
 
 ```bash
-@agent-manager-quality "코드 품질 검증"
+> @agent-manager-quality "코드 품질 검증"
 ```
 
 ---
@@ -1321,9 +1572,9 @@ moai-worktree config set <key> <value>
 - 성능 최적화 전략
 
 ```bash
-@agent-manager-strategy "모놀리식에서 마이크로서비스로 마이그레이션 계획"
+> @agent-manager-strategy "모놀리식에서 마이크로서비스로 마이그레이션 계획"
 # 또는 Built-in agent 사용
-@agent-Plan "모놀리식에서 마이크로서비스로 마이그레이션 계획"
+> @agent-Plan "모놀리식에서 마이크로서비스로 마이그레이션 계획"
 ```
 
 ---
@@ -1336,7 +1587,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 조직 특화 에이전트 생성
 
 ```bash
-@agent-builder-agent "데이터 분석 전문 에이전트 생성"
+> @agent-builder-agent "데이터 분석 전문 에이전트 생성"
 ```
 
 ---
@@ -1347,7 +1598,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 팀 특화 스킬 개발
 
 ```bash
-@agent-builder-skill "GraphQL API 개발 스킬 모듈 작성"
+> @agent-builder-skill "GraphQL API 개발 스킬 모듈 작성"
 ```
 
 ---
@@ -1358,7 +1609,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 커스텀 워크플로우 자동화
 
 ```bash
-@agent-builder-command "/moai:deploy 커맨드 생성 (자동 배포 워크플로우)"
+> @agent-builder-command "> /moai:deploy 커맨드 생성 (자동 배포 워크플로우)"
 ```
 
 ---
@@ -1375,7 +1626,7 @@ moai-worktree config set <key> <value>
 - 라이브러리 호환성 검증
 
 ```bash
-@agent-mcp-context7 "React 19의 최신 Hooks API 조회"
+> @agent-mcp-context7 "React 19의 최신 Hooks API 조회"
 ```
 
 ---
@@ -1391,7 +1642,7 @@ moai-worktree config set <key> <value>
 - SPEC 분석
 
 ```bash
-@agent-mcp-sequential-thinking "마이크로서비스 아키텍처 설계 분석"
+> @agent-mcp-sequential-thinking "마이크로서비스 아키텍처 설계 분석"
 ```
 
 ---
@@ -1406,7 +1657,7 @@ moai-worktree config set <key> <value>
 - 크로스 브라우저 검증
 
 ```bash
-@agent-mcp-playwright "로그인 기능 E2E 테스트 작성"
+> @agent-mcp-playwright "로그인 기능 E2E 테스트 작성"
 ```
 
 ---
@@ -1423,15 +1674,15 @@ moai-worktree config set <key> <value>
 - 마케팅 자료 생성
 - 로고/아이콘 생성
 
-더 자세한 사항은 [15. 추가 자료](#15-추가-자료) 참조
+더 자세한 사항은 [15. 📸 ai-nano-banana 에이전트 사용법 가이드](#15---ai-nano-banana-에이전트-사용법-가이드) 참조
 
 ---
 
-## 9. 스킬 라이브러리 (22개)
+## 9. 스킬 라이브러리 (24개)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK는 **22개의 전문 스킬**을 6개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
+MoAI-ADK는 **24개의 전문 스킬**을 6개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
 
 ### 📊 전체 스킬 목록
 
@@ -1441,13 +1692,11 @@ MoAI-ADK는 **22개의 전문 스킬**을 6개 카테고리로 제공합니다. 
 |                | moai-foundation-uiux       | 디자인 시스템, 컴포넌트, 접근성, 아이콘, 테마       | 2.0.0 |
 |                | moai-foundation-quality    | 프로액티브 품질 검증, 자동 테스트, 커버리지         | 2.0.0 |
 |                | moai-foundation-claude     | 에이전트, 슬래시 명령, MCP, 훅, 메모리, IAM         | 2.0.0 |
-|                | moai-foundation-context    | 200K 토큰 최적화, 세션 지속성, 멀티 에이전트        | 3.0.0 |
 | **Platform**   | moai-lang-unified          | 25+ 언어 (Python, TS, Go, Rust, Java, C++ 등)       | 2.0.0 |
 |                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase 등)       | 2.0.0 |
 | **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React 컴포넌트          | 2.0.0 |
 |                | moai-library-toon          | TOON 포맷, 토큰 효율 인코딩 (40-60% 절감)           | 3.0.0 |
 |                | moai-library-mermaid       | 21종 다이어그램, Playwright MCP 렌더링              | 7.0.0 |
-|                | moai-library-nextra        | Next.js 문서화, MDX, 테마, SSG                      | 2.0.0 |
 | **Connector**  | moai-connector-mcp         | 10+ MCP 서버 통합 가이드                            | 2.0.0 |
 |                | moai-connector-figma       | 디자인 시스템, UI 키트, 디자인 토큰                 | 1.0.0 |
 |                | moai-connector-notion      | 워크스페이스, 데이터베이스, 콘텐츠 관리             | 1.0.0 |
@@ -1491,7 +1740,7 @@ Skill("moai-lang-unified")
 
 ### 🎭 에이전트 조합 패턴
 
-MoAI-ADK의 26개 에이전트는 작업 유형에 따라 최적의 조합으로 실행됩니다.
+MoAI-ADK의 24개 에이전트는 작업 유형에 따라 최적의 조합으로 실행됩니다.
 
 ### 패턴 1: 신규 기능 개발
 
@@ -1508,11 +1757,11 @@ manager-docs (문서 동기화)
 **예시:**
 
 ```bash
-/moai:1-plan "사용자 로그인 기능"   # manager-spec
-/clear
-/moai:2-run SPEC-001               # manager-strategy → manager-tdd
-/clear
-/moai:3-sync SPEC-001              # manager-docs
+> /moai:1-plan "사용자 로그인 기능"   # manager-spec
+> /clear
+> /moai:2-run SPEC-001               # manager-strategy → manager-tdd
+> /clear
+> /moai:3-sync SPEC-001              # manager-docs
 ```
 
 ---
@@ -1532,16 +1781,16 @@ manager-quality (검증)
 **예시:**
 
 ```bash
-@agent-expert-debug "API 응답 느림 분석"
+> @agent-expert-debug "API 응답 느림 분석"
 # → 병목 지점 발견 (DB 쿼리 N+1 문제)
 
-@agent-mcp-sequential-thinking "N+1 문제 최적화 전략 수립"
+> @agent-mcp-sequential-thinking "N+1 문제 최적화 전략 수립"
 # → ORM 쿼리 최적화 전략 제시
 
-@agent-expert-backend "ORM 쿼리 최적화 구현"
+> @agent-expert-backend "ORM 쿼리 최적화 구현"
 # → select_related(), prefetch_related() 적용
 
-@agent-manager-quality "성능 테스트 및 검증"
+> @agent-manager-quality "성능 테스트 및 검증"
 # → 응답 시간 500ms → 50ms (90% 개선)
 ```
 
@@ -1560,13 +1809,13 @@ mcp-playwright (E2E 테스트)
 **예시:**
 
 ```bash
-@agent-expert-uiux "로그인 페이지 디자인 shadcn/ui 기반"
+> @agent-expert-uiux "로그인 페이지 디자인 shadcn/ui 기반"
 # → Button, Input, Card 컴포넌트 조합
 
-@agent-expert-frontend "React 로그인 폼 구현"
+> @agent-expert-frontend "React 로그인 폼 구현"
 # → shadcn/ui 컴포넌트 사용한 구현
 
-@agent-mcp-playwright "로그인 시나리오 E2E 테스트"
+> @agent-mcp-playwright "로그인 시나리오 E2E 테스트"
 # → 성공/실패 케이스 자동 테스트
 ```
 
@@ -1587,16 +1836,16 @@ manager-quality (재검증)
 ### 패턴 5: 마이크로서비스 아키텍처 설계
 
 ```bash
-@agent-mcp-sequential-thinking "모놀리식에서 마이크로서비스 마이그레이션 전략"
+> @agent-mcp-sequential-thinking "모놀리식에서 마이크로서비스 마이그레이션 전략"
 # → 서비스 분해 전략, API 게이트웨이 설계
 
-@agent-expert-backend "사용자 서비스 & 주문 서비스 개발"
+> @agent-expert-backend "사용자 서비스 & 주문 서비스 개발"
 # → 서비스별 API 구현
 
-@agent-expert-devops "Kubernetes 배포 설정"
+> @agent-expert-devops "Kubernetes 배포 설정"
 # → Docker, K8s manifest 자동 생성
 
-@agent-manager-docs "서비스 예시 문서화"
+> @agent-manager-docs "서비스 예시 문서화"
 # → 서비스맵, API 문서, 배포 가이드
 ```
 
@@ -1700,7 +1949,79 @@ flowchart TD
 
 ---
 
-## 12. 고급 설정
+## 12. 고급 기능
+
+### 🌳 Git Worktree CLI (병렬 개발)
+
+**개요**: 컨텍스트 전환 없이 병렬 SPEC 개발을 위한 여러 Git 워크트리 관리
+
+#### 빠른 시작
+
+```bash
+# SPEC를 위한 새 워크트리 생성
+moai worktree create SPEC-001 feature/user-auth
+
+# 모든 워크트리 목록
+moai worktree list
+
+# 워크트리 간 전환
+moai worktree switch SPEC-001
+
+# 완료된 워크트리 제거
+moai worktree remove SPEC-001
+```
+
+#### 핵심 이점
+
+- **병렬 개발**: 여러 SPEC를 동시에 작업
+- **컨텍스트 격리**: 각 워크트리는 자체 git 상태를 가짐
+- **빠른 전환**: 기능 간 즉각적인 컨텍스트 변경
+- **깨끗한 메인**: 메인 브랜치를 항상 안정적으로 유지
+
+#### 워크플로우 예시
+
+```bash
+# 메인 개발 워크트리 (메인 브랜치)
+cd ~/project-main
+> /moai:1-plan "사용자 인증"  # SPEC-001 생성
+
+# SPEC-001을 위한 병렬 워크트리 생성
+moai worktree create SPEC-001 feature/auth
+cd ~/project-worktrees/SPEC-001
+
+# 메인에 영향을 주지 않고 인증 작업
+> /moai:2-run SPEC-001
+# ... 인증 구현 ...
+
+# 새 기능을 위해 메인으로 전환
+moai worktree switch main
+> /moai:1-plan "사용자 대시보드"     # SPEC-002 생성
+```
+
+---
+
+### 🔧 향상된 로그 관리
+
+**새로운 통합 로그 구조**:
+
+```
+.moai/
+├── logs/              # JSON 로그만 (런타임 데이터)
+│   ├── sessions/     # 세션 실행 로그
+│   ├── errors/       # 에러 로그
+│   ├── execution/    # 명령어 실행 로그
+│   └── archive/      # 과거 로그
+└── docs/              # 문서화만 (사용자용)
+    ├── reports/       # 분석 보고서
+    ├── analytics/     # 분석 결과
+    └── sync/          # 동기화 기록
+```
+
+**자동 마이그레이션**: 기존 로그는 `moai-adk update` 시 자동으로 재구성됩니다.
+
+---
+
+## 13. 고급 설정
 
 ### 🔧 Configuration 파일 위치
 
@@ -1770,18 +2091,18 @@ flowchart TD
 
 #### 3가지 모드 비교
 
-| 구분          | Manual      | Personal     | Team         |
-| ------------- | ----------- | ------------ | ------------ |
-| **사용처**    | 개인 학습   | 개인 GitHub  | 팀 프로젝트  |
-| **GitHub**    | ❌          | ✅           | ✅           |
-| **브랜치**    | 선택적 생성 | Feature 자동 | Feature 자동 |
-| **Push**      | 수동        | 자동         | 자동         |
-| **PR**        | 없음        | 제안         | 자동 생성    |
-| **코드 리뷰** | 없음        | 선택         | **필수**     |
-| **배포**      | 수동        | 수동         | CI/CD 자동   |
-| **설정**      | **5분**     | 15분         | 25분         |
+| 구분          | Manual      | Personal                       | Team         |
+| ------------- | ----------- | ------------------------------ | ------------ |
+| **사용처**    | 개인 학습   | 개인 GitHub                    | 팀 프로젝트  |
+| **GitHub**    | ❌          | ✅                             | ✅           |
+| **브랜치**    | 선택적 생성 | 선택적 생성 or<br>Feature 자동 | Feature 자동 |
+| **Push**      | 수동        | 자동                           | 자동         |
+| **PR**        | 없음        | 제안                           | 자동 생성    |
+| **코드 리뷰** | 없음        | 선택                           | **필수**     |
+| **배포**      | 수동        | 수동                           | CI/CD 자동   |
+| **설정**      | **5분**     | 15분                           | 25분         |
 
-#### 빠른 설정
+#### 빠른 설정 (.moai/config/config.json)
 
 **Manual** (로컬만 사용):
 
@@ -1827,79 +2148,9 @@ flowchart TD
 
 ---
 
-## 13. MCP 서버
-
-MoAI-ADK는 **MCP(Model Context Protocol)** 서버를 통해 외부 도구와 통합됩니다.
-
-### 📡 지원 MCP 서버
-
-| MCP 서버                      | 목적                      | 필수 여부   | 용도                                      |
-| ----------------------------- | ------------------------- | ----------- | ----------------------------------------- |
-| **Context7**                  | 최신 라이브러리 문서 조회 | ✅ **필수** | API 레퍼런스, 프레임워크 문서             |
-| **Sequential-Thinking**       | 복잡한 문제 다단계 추론   | ✅ **권장** | 아키텍처 설계, 알고리즘 최적화, SPEC 분석 |
-| **Playwright**                | 브라우저 자동화           | 선택        | E2E 테스트, UI 검증                       |
-| **figma-dev-mode-mcp-server** | 디자인 시스템 연동        | 선택        | 디자인-코드 변환                          |
-
-### 🧮 Sequential-Thinking MCP (권장)
-
-**목적**: 복잡한 문제의 다단계 추론을 통한 정확한 분석
-
-**자동 활성화 조건**:
-
-- 복잡도 > 중간 (10+ 파일, 아키텍처 변경)
-- 의존성 > 3개 이상
-- SPEC 생성 또는 Plan 에이전트 호출 시
-- 요청에서 "복잡한", "설계", "최적화", "분석" 키워드 포함
-
-**활용 시나리오**:
-
-- 🏗️ 마이크로서비스 아키텍처 설계
-- 🧩 복잡한 데이터 구조 및 알고리즘 최적화
-- 🔄 시스템 통합 및 마이그레이션 계획
-- 📋 SPEC 분석 및 요구사항 정의
-- ⚙️ 성능 병목 분석
-
-### 🔌 Context7 MCP (필수)
-
-**목적**: 최신 라이브러리 문서 및 API 레퍼런스 실시간 조회
-
-**활성화 방법**: MoAI-ADK 설치 시 자동 활성화
-
-**지원 라이브러리**(예시):
-
-- `/vercel/next.js` - Next.js 최신 문서
-- `/facebook/react` - React 최신 문서
-- `/tiangolo/fastapi` - FastAPI 최신 문서
-
----
-
 ## 14. FAQ & 빠른 참조
 
-### Q1: 스킬(Skill)과 에이전트(Agent)의 차이는 무엇인가요?
-
-**스킬(Skill):**
-
-- 지식 모듈 (Knowledge base)
-- 특정 도메인의 패턴, 베스트 프랙티스, 레퍼런스
-- `.claude/skills/` 디렉토리에 Markdown 파일로 저장
-- 예: `moai-lang-unified`, `moai-foundation-core`
-
-**에이전트(Agent):**
-
-- 실행 주체 (Executor)
-- 스킬을 활용하여 작업 수행
-- `@agent-agent-name`으로 호출
-- 예: `@agent-manager-spec`, `@agent-expert-backend`, `@agent-expert-security`
-
-**관계:**
-
-```
-에이전트(expert-backend) + 스킬(moai-lang-unified) = FastAPI 구현
-```
-
----
-
-### Q2: SPEC이 항상 필요한가요?
+### Q1: SPEC이 항상 필요한가요?
 
 **SPEC 생성 권장 기준:**
 
@@ -1915,46 +2166,20 @@ MoAI-ADK는 **MCP(Model Context Protocol)** 서버를 통해 외부 도구와 �
 
 ```bash
 # SPEC 생략하고 바로 구현
-@agent-expert-backend "간단한 버그 수정"
+> @agent-expert-backend "간단한 버그 수정"
 ```
 
 **SPEC 생성 후 진행:**
 
 ```bash
-/moai:1-plan "복잡한 기능 명세"
-/clear
-/moai:2-run SPEC-001
+> /moai:1-plan "복잡한 기능 명세"
+> /clear
+> /moai:2-run SPEC-001
 ```
 
 ---
 
-### Q3: 어떤 스킬부터 배워야 하나요?
-
-**학습 순서 (추천):**
-
-**1단계: 기초 원칙 (30분)**
-
-- `moai-foundation-core`: TRUST 5, SPEC-First TDD, 에이전트 조율
-
-**2단계: 언어 및 도메인 (1시간)**
-
-- `moai-lang-unified`: Python, TypeScript 등 25개 언어
-- `moai-platform-baas`: Supabase, Firebase 백엔드 연동
-
-**3단계: 전문 도구 (2시간)**
-
-- `moai-foundation-uiux`: UI/UX 디자인 시스템
-- `moai-workflow-testing`: E2E 테스트
-- `moai-workflow-docs`: 문서 검증
-
-**4단계: 고급 통합 (3시간 이상)**
-
-- `moai-connector-mcp`: MCP 서버 활용
-- `moai-library-nextra`: 문서 사이트 생성
-
----
-
-### Q4: MCP 서버 설치가 필수인가요?
+### Q2: MCP 서버 설치가 필수인가요?
 
 **필수 MCP 서버 (2개):**
 
@@ -1992,86 +2217,6 @@ cat .mcp.json
 
 ---
 
-### Q5: MoAI-ADK와 기존 Claude Code의 차이는?
-
-| 항목        | 기존 Claude Code   | MoAI-ADK                     |
-| ----------- | ------------------ | ---------------------------- |
-| 개발 방법론 | 즉흥적 대화형 코딩 | SPEC-First TDD 체계적 접근   |
-| 에이전트    | 일반 purpose       | 26개 전문 에이전트 (7-Tier)  |
-| 스킬        | 기본 제공 없음     | 22개 도메인 특화 스킬        |
-| 품질 보증   | 수동 테스트        | TRUST 5 자동 품질 게이트     |
-| 문서화      | 수동 작성          | 자동 동기화 (`/moai:3-sync`) |
-
-**결론**: MoAI-ADK는 Claude Code의 확장판으로, 엔터프라이즈급 품질과 효율성을 제공합니다.
-
----
-
-### 💡 핵심 스킬 빠른 참조
-
-**가장 자주 사용하는 스킬:**
-
-```python
-# 1. 핵심 원칙
-Skill("moai-foundation-core")
-
-# 2. 언어별 구현
-Skill("moai-lang-unified")
-
-# 3. 품질 검증
-Skill("moai-foundation-quality")
-
-# 4. UI/UX 구현
-Skill("moai-foundation-uiux")
-
-# 5. 문서화
-Skill("moai-workflow-docs")
-```
-
----
-
-### 🎯 핵심 에이전트 빠른 참조
-
-**가장 자주 사용하는 에이전트:**
-
-```bash
-# 1. SPEC 작성
-/moai:1-plan "기능 명세"
-
-# 2. TDD 구현
-/moai:2-run SPEC-001
-
-# 3. 문서화
-/moai:3-sync SPEC-001
-
-# 4. 성능 분석
-@agent-expert-debug "코드 병목을 찾아서 문제 해결을 해줘."
-
-# 5. 보안 감사
-@agent-expert-security "코드 보안 검사를 해서 문제 해결을 해줘."
-```
-
----
-
-### 📂 주요 파일 경로
-
-```
-my-project/
-├── .claude/
-│   ├── settings.json          # 프로젝트 설정
-│   ├── skills/                # 스킬 라이브러리
-│   └── commands/              # 커스텀 커맨드
-├── .moai/
-│   ├── config/config.json     # MoAI 설정
-│   ├── specs/                 # SPEC 문서
-│   ├── memory/                # 프로젝트 메모리
-│   └── docs/                  # 자동 생성 문서
-├── src/                       # 소스 코드
-├── tests/                     # 테스트
-└── README.md
-```
-
----
-
 ## 15. 📸 ai-nano-banana 에이전트 사용법 가이드
 
 **목적**: Google Gemini 3 Nano Banana Pro를 사용한 전문적인 이미지 생성
@@ -2096,10 +2241,10 @@ my-project/
 
 ```bash
 # Claude Code에서
-@agent-ai-nano-banana "전문적인 로그인 페이지 UI 목업 생성"
+> @agent-ai-nano-banana "전문적인 로그인 페이지 UI 목업 생성"
 ```
 
-#### 프롬프트 엔지니어링
+#### 이미지 생성 프롬프트
 
 **효과적인 프롬프트 패턴:**
 
@@ -2227,7 +2372,7 @@ iOS 스타일, 모던 디자인, 깔끔한 UI"
 
 ---
 
-## 15. 추가 자료
+## 16. 추가 자료
 
 ### 🆘 지원 (Support)
 
@@ -2273,7 +2418,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.30.2
+**Version:** 0.30.0
 **Last Updated:** 2025-11-27
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.
