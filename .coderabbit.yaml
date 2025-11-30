@@ -91,7 +91,7 @@ coderabbit:
     - "COMMAND_DOCUMENTATION_STANDARDS.md"
     - "COMMAND_EXAMPLES.md"
     - "DOCUMENTATION_INDEX.md"
-      - "package-lock.json"
+    - "package-lock.json"
     - "uv.lock"
 
   # Review instructions
