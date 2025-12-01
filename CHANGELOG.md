@@ -188,7 +188,7 @@
 - **Test coverage**: Maintained at 85%+
 
 ## Contributors
-- @GOOS (MoAI Team) - Git Worktree CLI & System Optimization
+- @GoosLab (MoAI Team) - Git Worktree CLI & System Optimization
 
 ---
 
@@ -380,4 +380,4 @@
 - **테스트 커버리지**: 85%+ 유지
 
 ## 기여자
-- @GOOS (MoAI Team) - Git Worktree CLI 및 시스템 최적화
+- @GoosLab (MoAI Team) - Git Worktree CLI 및 시스템 최적화
