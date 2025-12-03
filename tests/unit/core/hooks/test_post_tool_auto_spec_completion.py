@@ -3,16 +3,18 @@
 import os
 import tempfile
 import unittest
-
-import pytest
-
-# Skip all tests in this module - implementation has changed significantly
-pytestmark = pytest.mark.skip(reason="PostToolAutoSpecCompletion API changed - tests need update")
 from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
+import pytest
+
 # Import the hook to test
 from moai_adk.core.hooks.post_tool_auto_spec_completion import PostToolAutoSpecCompletion
+
+# Skip all tests in this module - implementation has changed significantly
+pytestmark = pytest.mark.skip(
+    reason="PostToolAutoSpecCompletion API changed - tests need update"
+)
 
 
 # Mock functions for testing (these are now methods of the class)
@@ -268,8 +270,14 @@ class UserAuth:
 
     def test_validate_generated_spec_high_quality(self):
         """Test validation of high-quality generated spec."""
+        spec_content = (
+            "# Test SPEC\n\n## Overview\nGood description.\n\n"
+            "## Environment\n- Python 3.10\n\n"
+            "## Requirements\n- REQ-001: Test requirement\n\n"
+            "## Specifications\n- SPEC-001: Test specification"
+        )
         high_quality_spec = {
-            "spec_md": "# Test SPEC\n\n## Overview\nGood description.\n\n## Environment\n- Python 3.10\n\n## Requirements\n- REQ-001: Test requirement\n\n## Specifications\n- SPEC-001: Test specification",
+            "spec_md": spec_content,
             "plan_md": "# Implementation Plan\n## Steps\n1. Step 1",
             "acceptance_md": "# Acceptance Criteria\n## Test Cases\n- Test 1",
         }

@@ -33,7 +33,6 @@ try:
         copy_settings_to_local,
         get_language_from_config,
         translate_announcements,
-        translate_with_haiku,
     )
 except ImportError as e:
     # Fallback if module not found (for testing environments)
@@ -101,7 +100,7 @@ class TestDynamicTranslationWithHaiku:
 17. Sichere Updates: moai-adk update fügt neue Funktionen hinzu, während bestehende Einstellungen erhalten bleiben
 18. Automatische Bereinigung: Sitzungsende bereinigt automatisch .moai/temp/ Cache und Protokolle
 19. Fehlerwiederherstellung: Fehlgeschlagene Commits und Merge-Konflikte werden automatisch analysiert
-20. Sicherheit an erster Stelle: Umgebungsvariablen, API-Schlüssel, Anmeldedaten werden automatisch in .gitignore hinzugefügt
+20. Sicherheit zuerst: Env-Variablen, API-Schlüssel werden automatisch in .gitignore eingefügt
 21. Kontextoptimierung: Effiziente Nutzung des 200K-Token-Fensters ermöglicht die Verarbeitung großer Projekte
 22. Schnelles Feedback: Fragen? Fragen Sie sofort - moai interpretiert Absichten und klärt automatisch
 23. Sauberer Ausstieg: Beenden Sie Sitzungen mit /clear, um den Kontext zurückzusetzen"""

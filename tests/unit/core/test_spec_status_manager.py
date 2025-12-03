@@ -49,10 +49,12 @@ class TestSpecStatusManager:
         }
 
         spec_file = spec_dir / "spec.md"
+        spec_body = (
+            "\n\n# Test SPEC\n\n## Implementation\n\n"
+            "# REMOVED_ORPHAN_CODE:TEST-001\n# REMOVED_ORPHAN_TEST:TEST-001\n"
+        )
         with open(spec_file, "w") as f:
-            f.write(
-                f"---\n{yaml.dump(spec_content)}---\n\n# Test SPEC\n\n## Implementation\n\n# REMOVED_ORPHAN_CODE:TEST-001\n# REMOVED_ORPHAN_TEST:TEST-001\n"
-            )
+            f.write(f"---\n{yaml.dump(spec_content)}---{spec_body}")
 
         return spec_file
 
@@ -73,10 +75,12 @@ class TestSpecStatusManager:
         }
 
         spec_file = spec_dir / "spec.md"
+        spec_body = (
+            "\n\n# Completed SPEC\n\n## Implementation\n\n"
+            "# REMOVED_ORPHAN_CODE:COMPLETE-001\n# REMOVED_ORPHAN_TEST:COMPLETE-001\n"
+        )
         with open(spec_file, "w") as f:
-            f.write(
-                f"---\n{yaml.dump(spec_content)}---\n\n# Completed SPEC\n\n## Implementation\n\n# REMOVED_ORPHAN_CODE:COMPLETE-001\n# REMOVED_ORPHAN_TEST:COMPLETE-001\n"
-            )
+            f.write(f"---\n{yaml.dump(spec_content)}---{spec_body}")
 
         return spec_file
 

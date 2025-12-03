@@ -1,11 +1,7 @@
 """Tests for legacy log migration functionality."""
 
 import json
-import shutil
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from moai_adk.cli.commands.update import _migrate_legacy_logs
 
@@ -30,8 +26,7 @@ class TestLegacyLogMigration:
         session_file = legacy_memory / "last-session-state.json"
         session_file.write_text('{"test": "data"}')
 
-        # Set a specific timestamp
-        old_time = (2023, 1, 1, 12, 0, 0)
+        # Touch the file to set access time
         session_file.touch()
 
         # Run migration

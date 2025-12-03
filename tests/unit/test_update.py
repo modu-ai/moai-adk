@@ -90,7 +90,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
             ):
-
                 mock_instance = Mock()
                 # Return absolute path instead of relative
                 mock_instance.create_backup.return_value = Path.cwd() / ".moai-backups/backup-2025-10-15"
@@ -131,7 +130,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
             ):
-
                 mock_instance = Mock()
                 mock_instance.copy_templates.return_value = None  # Mock copy_templates
                 mock_processor.return_value = mock_instance
@@ -172,7 +170,6 @@ class TestUpdateCommand:
             patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
             patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
         ):
-
             mock_instance = Mock()
             mock_instance.create_backup.return_value = project_dir / ".moai-backups/backup"
             mock_processor.return_value = mock_instance
@@ -221,7 +218,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
             ):
-
                 mock_instance = Mock()
                 mock_instance.create_backup.return_value = Path.cwd() / ".moai-backups/backup"
                 mock_instance.copy_templates.return_value = None  # Mock copy_templates
@@ -279,7 +275,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
             ):
-
                 mock_instance = Mock()
                 mock_instance.create_backup.return_value = Path.cwd() / ".moai-backups/backup"
                 mock_instance.copy_templates.return_value = None  # Mock copy_templates
@@ -325,7 +320,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.1"
                 mock_pkg_ver.return_value = "0.6.1"
@@ -368,7 +362,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.3.2"
                 mock_latest.return_value = "0.3.2"
                 mock_pkg_ver.return_value = "0.3.2"
@@ -398,7 +391,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.3.2"
                 mock_latest.return_value = "0.3.2"
                 mock_pkg_ver.return_value = "0.3.2"
@@ -423,7 +415,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             ):
-
                 mock_current.return_value = "0.4.0"
                 mock_latest.return_value = "0.3.3"  # Older version on PyPI
 
@@ -456,7 +447,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.4.0"
                 mock_latest.return_value = "0.3.3"  # Older version on PyPI
                 mock_pkg_ver.return_value = "0.4.0"
@@ -482,7 +472,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.side_effect = RuntimeError("Failed to fetch latest version from PyPI")
 
@@ -512,7 +501,6 @@ class TestUpdateCommand:
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.side_effect = RuntimeError("Failed to fetch latest version from PyPI")
                 mock_pkg_ver.return_value = "0.6.1"
@@ -627,7 +615,6 @@ class TestUpdateThreeStageWorkflow:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.1"
                 mock_pkg_ver.return_value = "0.6.1"
@@ -665,7 +652,6 @@ class TestUpdateThreeStageWorkflow:
                 patch("moai_adk.cli.commands.update._get_project_config_version") as mock_proj_ver,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.1"
                 mock_pkg_ver.return_value = "0.6.1"
@@ -703,7 +689,6 @@ class TestUpdateThreeStageWorkflow:
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
                 patch("moai_adk.cli.commands.update.__version__", "0.6.1"),
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.1"
                 # Simulate version detection error
@@ -833,7 +818,6 @@ class TestUpdateThreeStageWorkflow:
                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver,
                 patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_installer,
             ):
-
                 mock_instance = Mock()
                 mock_instance.copy_templates.return_value = None
                 mock_processor.return_value = mock_instance

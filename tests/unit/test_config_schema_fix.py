@@ -134,9 +134,11 @@ class TestVersionComparison:
             is_matched = installed_ver == latest_ver
             is_newer = installed_ver > latest_ver
 
-            assert (
-                is_matched == expected_matched
-            ), f"Version comparison failed for {installed} vs {latest}: expected matched={expected_matched}, got {is_matched}"
+            err_msg = (
+                f"Version comparison failed for {installed} vs {latest}: "
+                f"expected matched={expected_matched}, got {is_matched}"
+            )
+            assert is_matched == expected_matched, err_msg
             assert (
                 is_newer == expected_newer
             ), f"Version comparison failed for {installed} vs {latest}: expected newer={expected_newer}, got {is_newer}"
@@ -160,7 +162,9 @@ class TestVersionComparison:
         assert latest2 < installed2, "0.3.0 should be less than 0.25.7 with semantic versioning"
 
 
-@pytest.mark.skip(reason="Hook file session_start__config_health_check.py migrated to moai/session_start__show_project_info.py")
+@pytest.mark.skip(
+    reason="Hook file migrated to moai/session_start__show_project_info.py"
+)
 class TestSuppressSetupMessagesWithNewFields:
     """Test that suppress_setup_messages feature works with new config fields"""
 
@@ -258,7 +262,7 @@ class TestConfigHealthCheckValidation:
 class TestClaudeMdReduction:
     """Test that CLAUDE.md is optimized"""
 
-    def test_CLAUDE_md_under_40KB(self):
+    def test_claude_md_under_40kb(self):
         """Test that CLAUDE.md file size is optimized (under 40KB)"""
         claude_md_path = Path(__file__).parent.parent.parent / "CLAUDE.md"
 

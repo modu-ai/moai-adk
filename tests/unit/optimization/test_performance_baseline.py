@@ -82,7 +82,7 @@ class TestPerformanceBaseline:
         assert "operation_2" in analysis
         assert "mean" in analysis["operation_1"]
         assert "stddev" in analysis["operation_1"]
-        assert percentiles in analysis["operation_1"]
+        assert "percentiles" in analysis["operation_1"]
 
     def test_performance_threshold_validation(self):
         """Test that performance thresholds are validated correctly."""
