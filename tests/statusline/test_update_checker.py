@@ -96,9 +96,9 @@ class TestUpdateChecker:
             call_count_after_second = mock_urlopen.call_count
 
             # API should only be called once (cache works)
-            assert call_count_after_first == call_count_after_second, (
-                f"API called {call_count_after_second - call_count_after_first} more times (cache not working)"
-            )
+            assert (
+                call_count_after_first == call_count_after_second
+            ), f"API called {call_count_after_second - call_count_after_first} more times (cache not working)"
 
 
 if __name__ == "__main__":

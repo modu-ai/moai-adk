@@ -143,28 +143,28 @@ class TestTemplateVariableSubstitution:
         config = json.loads(rendered)
 
         # RED: These assertions will fail because substitution is not working correctly
-        assert config["moai"]["version"] == "0.22.4", (
-            f"moai.version should be '0.22.4', got '{config['moai']['version']}'"
-        )
-        assert config["project"]["name"] == "TestProject", (
-            f"project.name should be 'TestProject', got '{config['project']['name']}'"
-        )
+        assert (
+            config["moai"]["version"] == "0.22.4"
+        ), f"moai.version should be '0.22.4', got '{config['moai']['version']}'"
+        assert (
+            config["project"]["name"] == "TestProject"
+        ), f"project.name should be 'TestProject', got '{config['project']['name']}'"
         assert config["project"]["mode"] == "team", f"project.mode should be 'team', got '{config['project']['mode']}'"
-        assert config["project"]["version"] == "1.0.0", (
-            f"project.version should be '1.0.0', got '{config['project']['version']}'"
-        )
-        assert config["language"]["conversation_language"] == "en", (
-            f"language.conversation_language should be 'en', got '{config['language']['conversation_language']}'"
-        )
+        assert (
+            config["project"]["version"] == "1.0.0"
+        ), f"project.version should be '1.0.0', got '{config['project']['version']}'"
+        assert (
+            config["language"]["conversation_language"] == "en"
+        ), f"language.conversation_language should be 'en', got '{config['language']['conversation_language']}'"
 
         # Verify no placeholders remain
         rendered_without_placeholders = template_engine.render_string(template_content, variables)
-        assert "{{MOAI_VERSION}}" not in rendered_without_placeholders, (
-            "Template should not contain MOAI_VERSION placeholder"
-        )
-        assert "{{PROJECT_NAME}}" not in rendered_without_placeholders, (
-            "Template should not contain PROJECT_NAME placeholder"
-        )
+        assert (
+            "{{MOAI_VERSION}}" not in rendered_without_placeholders
+        ), "Template should not contain MOAI_VERSION placeholder"
+        assert (
+            "{{PROJECT_NAME}}" not in rendered_without_placeholders
+        ), "Template should not contain PROJECT_NAME placeholder"
 
     def test_version_substitution_in_file_based_templates(self, tmp_path: Path) -> None:
         """
@@ -207,12 +207,12 @@ class TestTemplateVariableSubstitution:
         config = json.loads(rendered)
 
         # RED: These assertions will fail because substitution is not working correctly
-        assert config["moai"]["version"] == "0.22.4", (
-            f"moai.version should be '0.22.4', got '{config['moai']['version']}'"
-        )
-        assert config["project"]["name"] == "TestProject", (
-            f"project.name should be 'TestProject', got '{config['project']['name']}'"
-        )
+        assert (
+            config["moai"]["version"] == "0.22.4"
+        ), f"moai.version should be '0.22.4', got '{config['moai']['version']}'"
+        assert (
+            config["project"]["name"] == "TestProject"
+        ), f"project.name should be 'TestProject', got '{config['project']['name']}'"
 
         # Verify file was written
         output_file = output_dir / "config.json"
@@ -270,12 +270,12 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # Check config.json
         config_content = json.loads(results["config.json"])
-        assert config_content["moai"]["version"] == "0.22.4", (
-            f"moai.version should be '0.22.4', got '{config_content['moai']['version']}'"
-        )
-        assert config_content["project"]["name"] == "TestProject", (
-            f"project.name should be 'TestProject', got '{config_content['project']['name']}'"
-        )
+        assert (
+            config_content["moai"]["version"] == "0.22.4"
+        ), f"moai.version should be '0.22.4', got '{config_content['moai']['version']}'"
+        assert (
+            config_content["project"]["name"] == "TestProject"
+        ), f"project.name should be 'TestProject', got '{config_content['project']['name']}'"
 
         # Check CLAUDE.md
         claude_content = results["CLAUDE.md"]
@@ -304,9 +304,9 @@ This is a test project with version {{MOAI_VERSION}}.
         # RED: This assertion will fail because the current implementation has a bug
         # It's using a hardcoded default version instead of extracting from config
         assert "MOAI_VERSION" in variables, "MOAI_VERSION should be in variables"
-        assert variables["MOAI_VERSION"] == "1.5.0", (
-            f"MOAI_VERSION should be '1.5.0', got '{variables['MOAI_VERSION']}'"
-        )
+        assert (
+            variables["MOAI_VERSION"] == "1.5.0"
+        ), f"MOAI_VERSION should be '1.5.0', got '{variables['MOAI_VERSION']}'"
 
         # Test config without version field (should return default)
         config_without_version = {"moai": {"update_check_frequency": "daily"}, "project": {"name": "TestProject"}}
@@ -315,9 +315,9 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # RED: This assertion will fail because the current implementation incorrectly extracts from config
         # When no version is present, it should return the default "0.7.0"
-        assert variables["MOAI_VERSION"] == "0.7.0", (
-            f"MOAI_VERSION should be default '0.7.0', got '{variables['MOAI_VERSION']}'"
-        )
+        assert (
+            variables["MOAI_VERSION"] == "0.7.0"
+        ), f"MOAI_VERSION should be default '0.7.0', got '{variables['MOAI_VERSION']}'"
 
     def test_version_substitution_preserves_existing_values(self) -> None:
         """
@@ -354,9 +354,9 @@ This is a test project with version {{MOAI_VERSION}}.
         # The existing values should be preserved
         assert config["moai"]["version"] == "0.22.4", "moai.version should be substituted"
         assert config["moai"]["update_check_frequency"] == "daily", "moai.update_check_frequency should be preserved"
-        assert config["constitution"]["test_coverage_target"] == 85, (
-            "constitution.test_coverage_target should be preserved"
-        )
+        assert (
+            config["constitution"]["test_coverage_target"] == 85
+        ), "constitution.test_coverage_target should be preserved"
         assert config["constitution"]["enforce_tdd"] is True, "constitution.enforce_tdd should be preserved"
 
     def test_version_substitution_error_handling(self) -> None:
@@ -412,9 +412,9 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # RED: This assertion will fail because the current implementation doesn't handle strict mode correctly
         # In non-strict mode, undefined variables should be empty strings
-        assert config["moai"]["version"] == "", (
-            f"moai.version should be empty string, got '{config['moai']['version']}'"
-        )
+        assert (
+            config["moai"]["version"] == ""
+        ), f"moai.version should be empty string, got '{config['moai']['version']}'"
 
     def test_user_name_variable_with_user_config(self) -> None:
         """
@@ -435,9 +435,9 @@ This is a test project with version {{MOAI_VERSION}}.
         assert variables["USER_NAME"] == "철수", f"USER_NAME should be '철수', got '{variables['USER_NAME']}'"
 
         # Verify PROJECT_OWNER is separate from USER_NAME
-        assert variables["PROJECT_OWNER"] == "GoosLab", (
-            f"PROJECT_OWNER should be 'GoosLab', got '{variables['PROJECT_OWNER']}'"
-        )
+        assert (
+            variables["PROJECT_OWNER"] == "GoosLab"
+        ), f"PROJECT_OWNER should be 'GoosLab', got '{variables['PROJECT_OWNER']}'"
 
     def test_user_name_variable_empty_fallback(self) -> None:
         """
@@ -499,9 +499,9 @@ This is a test project with version {{MOAI_VERSION}}.
 
             variables = template_engine.get_default_variables(config)
 
-            assert variables["USER_NAME"] == expected_name, (
-                f"USER_NAME should be '{expected_name}', got '{variables['USER_NAME']}'"
-            )
+            assert (
+                variables["USER_NAME"] == expected_name
+            ), f"USER_NAME should be '{expected_name}', got '{variables['USER_NAME']}'"
 
     def test_user_name_substitution_in_config_template(self) -> None:
         """
@@ -531,9 +531,9 @@ This is a test project with version {{MOAI_VERSION}}.
         config = json.loads(rendered)
 
         assert config["user"]["name"] == "철수", f"user.name should be '철수', got '{config['user']['name']}'"
-        assert config["project"]["owner"] == "GoosLab", (
-            f"project.owner should be 'GoosLab', got '{config['project']['owner']}'"
-        )
+        assert (
+            config["project"]["owner"] == "GoosLab"
+        ), f"project.owner should be 'GoosLab', got '{config['project']['owner']}'"
 
     def test_user_name_variable_not_confused_with_project_owner(self) -> None:
         """

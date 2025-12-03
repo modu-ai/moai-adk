@@ -634,11 +634,11 @@ def load_user_personalization() -> dict:
             "is_korean": conversation_lang == "ko",
             "has_personalization": has_valid_name,
             "config_source": "fallback",
-            "personalized_greeting": f"{user_name}님"
-            if has_valid_name and conversation_lang == "ko"
-            else user_name
-            if has_valid_name
-            else "",
+            "personalized_greeting": (
+                f"{user_name}님"
+                if has_valid_name and conversation_lang == "ko"
+                else user_name if has_valid_name else ""
+            ),
             "needs_setup": not has_valid_name,  # FIX #5: Flag for setup guidance
         }
 

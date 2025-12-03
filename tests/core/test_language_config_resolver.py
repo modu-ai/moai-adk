@@ -169,11 +169,7 @@ class TestLanguageConfigResolver(unittest.TestCase):
 
     def test_truly_unknown_language_code(self):
         """Test that truly unknown 2-char codes get title-cased name."""
-        config_data = {
-            "language": {
-                "conversation_language": "zz"  # Not a known language code
-            }
-        }
+        config_data = {"language": {"conversation_language": "zz"}}  # Not a known language code
         self._write_config(config_data)
 
         resolver = LanguageConfigResolver(str(self.test_dir))

@@ -40,9 +40,9 @@ class TestCommandCompletionPatterns:
         """
         for cmd_name, cmd_path in command_files.items():
             content = cmd_path.read_text()
-            assert "## Final Step" in content or "Final Step:" in content, (
-                f"Command {cmd_name} missing 'Final Step' section"
-            )
+            assert (
+                "## Final Step" in content or "Final Step:" in content
+            ), f"Command {cmd_name} missing 'Final Step' section"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_all_commands_have_askmserquestion_call(self, command_files):
@@ -76,9 +76,9 @@ class TestCommandCompletionPatterns:
                 ask_count = section.count("AskUserQuestion(")
 
                 # Should have exactly 1 call (batched design)
-                assert ask_count <= 1, (
-                    f"Command {cmd_name} has {ask_count} AskUserQuestion calls (expected 1 for batched design)"
-                )
+                assert (
+                    ask_count <= 1
+                ), f"Command {cmd_name} has {ask_count} AskUserQuestion calls (expected 1 for batched design)"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_commands_provide_3_to_4_options(self, command_files):

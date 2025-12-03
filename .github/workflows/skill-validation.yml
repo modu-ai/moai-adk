@@ -36,7 +36,7 @@ jobs:
         python .claude/tools/skill-validator.py --skills-dir .claude/skills --output compliance-report.md
 
     - name: Upload validation artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: validation-reports
@@ -96,7 +96,7 @@ jobs:
         pip install pyyaml
 
     - name: Download validation artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: validation-reports
 

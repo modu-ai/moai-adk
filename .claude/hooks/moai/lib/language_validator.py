@@ -73,21 +73,13 @@ def validate_language_config(config: Dict[str, Any]) -> Dict[str, Any]:
         result["valid"] = False
         errors.append("conversation_language_name is empty or missing")
     elif conversation_lang == "ko" and lang_name != "Korean":
-        warnings.append(
-            f"conversation_language_name '{lang_name}' doesn't match 'Korean' for Korean language"
-        )
+        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'Korean' for Korean language")
     elif conversation_lang == "en" and lang_name != "English":
-        warnings.append(
-            f"conversation_language_name '{lang_name}' doesn't match 'English' for English language"
-        )
+        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'English' for English language")
     elif conversation_lang == "ja" and lang_name != "Japanese":
-        warnings.append(
-            f"conversation_language_name '{lang_name}' doesn't match 'Japanese' for Japanese language"
-        )
+        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'Japanese' for Japanese language")
     elif conversation_lang == "zh" and lang_name != "Chinese":
-        warnings.append(
-            f"conversation_language_name '{lang_name}' doesn't match 'Chinese' for Chinese language"
-        )
+        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'Chinese' for Chinese language")
 
     # Validate agent_prompt_language
     agent_lang = lang_config.get("agent_prompt_language", conversation_lang)

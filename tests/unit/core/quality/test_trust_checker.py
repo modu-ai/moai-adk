@@ -138,7 +138,9 @@ class TestTrustChecker:
         code = """
 def small_function():
     # 30 LOC function
-""" + "\n".join([f"    pass  # Line {i}" for i in range(30)])
+""" + "\n".join(
+            [f"    pass  # Line {i}" for i in range(30)]
+        )
         (sample_project_path / "src" / "functions.py").write_text(code)
 
         # Act
@@ -159,7 +161,9 @@ def small_function():
         code = """
 def large_function():
     # 58 LOC function
-""" + "\n".join([f"    pass  # Line {i}" for i in range(58)])
+""" + "\n".join(
+            [f"    pass  # Line {i}" for i in range(58)]
+        )
         (sample_project_path / "src" / "functions.py").write_text(code)
 
         # Act

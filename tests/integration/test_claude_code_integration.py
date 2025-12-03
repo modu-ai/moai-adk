@@ -391,9 +391,9 @@ class TestSkillsFrontmatter:
                     # Skills should exist in frontmatter (before closing ---)
                     # Just verify skills field is present and not empty
                     remaining_content = "\n".join(lines[skills_idx : skills_idx + 5])
-                    assert "moai-" in remaining_content or "skill" in remaining_content.lower(), (
-                        f"{agent_file.name}: Skills should reference moai-* skills"
-                    )
+                    assert (
+                        "moai-" in remaining_content or "skill" in remaining_content.lower()
+                    ), f"{agent_file.name}: Skills should reference moai-* skills"
 
     def test_moai_skills_are_used(self):
         """Verify agents reference moai-* skills"""
@@ -522,9 +522,9 @@ class TestGracefulDegradation:
             content = hook_file.read_text()
 
             # Verify error message format
-            assert '"continue": True' in content or '"continue": true' in content, (
-                f"{hook_file.name}: Should return continue: true on error"
-            )
+            assert (
+                '"continue": True' in content or '"continue": true' in content
+            ), f"{hook_file.name}: Should return continue: true on error"
 
             # Verify warning emoji for degradation
             if "⚠️" in content or "⚠" in content:
@@ -655,18 +655,18 @@ class TestIntegration:
         assert len(subagent_start) > 0, "SubagentStart hook not configured"
 
         start_hook_def = subagent_start[0].get("hooks", [])[0]
-        assert "subagent_start__context_optimizer.py" in start_hook_def.get("command", ""), (
-            "SubagentStart hook command not correct"
-        )
+        assert "subagent_start__context_optimizer.py" in start_hook_def.get(
+            "command", ""
+        ), "SubagentStart hook command not correct"
 
         # Verify SubagentStop hook is configured
         subagent_stop = settings.get("hooks", {}).get("SubagentStop", [])
         assert len(subagent_stop) > 0, "SubagentStop hook not configured"
 
         stop_hook_def = subagent_stop[0].get("hooks", [])[0]
-        assert "subagent_stop__lifecycle_tracker.py" in stop_hook_def.get("command", ""), (
-            "SubagentStop hook command not correct"
-        )
+        assert "subagent_stop__lifecycle_tracker.py" in stop_hook_def.get(
+            "command", ""
+        ), "SubagentStop hook command not correct"
 
 
 if __name__ == "__main__":

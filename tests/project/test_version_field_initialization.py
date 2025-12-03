@@ -82,9 +82,9 @@ class TestVersionFieldInitialization:
         # RED: This assertion will fail because reinitialization doesn't preserve the version field
         assert "moai" in final_config, "Config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert final_config["moai"]["version"] == custom_version, (
-            f"Version should be preserved during reinitialization, expected {custom_version}, got {final_config['moai']['version']}"
-        )
+        assert (
+            final_config["moai"]["version"] == custom_version
+        ), f"Version should be preserved during reinitialization, expected {custom_version}, got {final_config['moai']['version']}"
 
     def test_version_field_correct_in_personal_mode(self, tmp_path: Path) -> None:
         """
@@ -180,9 +180,9 @@ class TestVersionFieldInitialization:
         assert "version" in config["moai"], "moai section should have 'version' field"
 
         config_version = config["moai"]["version"]
-        assert config_version == package_version, (
-            f"Config version {config_version} should match package version {package_version}"
-        )
+        assert (
+            config_version == package_version
+        ), f"Config version {config_version} should match package version {package_version}"
 
 
 class TestVersionFieldIntegration:
@@ -257,6 +257,6 @@ class TestVersionFieldIntegration:
             final_config = json.load(f)
 
         # RED: This assertion will fail because reinitialization overwrites the version field
-        assert final_config["moai"]["version"] == "2.0.0-custom", (
-            f"Custom version should be preserved, got {final_config['moai']['version']}"
-        )
+        assert (
+            final_config["moai"]["version"] == "2.0.0-custom"
+        ), f"Custom version should be preserved, got {final_config['moai']['version']}"

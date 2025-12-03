@@ -292,7 +292,8 @@ class UserSelectionUI:
 
 def display_selection_instructions():
     """Display instructions for using the enhanced selection interface."""
-    print("""
+    print(
+        """
 📖 Enhanced Selection Instructions:
   • Enter numbers separated by spaces, commas, semicolons (e.g., 1 3,4 or 1;3\\4)
   • Use 'all' to select all elements
@@ -310,7 +311,8 @@ def display_selection_instructions():
   • Mixed separators work: "1,3;5\\7"
   • Partial name matching: "my-agen" matches "my-agent"
   • Case insensitive: "YODA" matches "yoda"
-    """)
+    """
+    )
 
 
 def create_user_selection_ui(project_path: str | Path) -> UserSelectionUI:

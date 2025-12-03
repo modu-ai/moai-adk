@@ -82,9 +82,9 @@ class TestPortalLinkValidation:
             doc_links = re.findall(r"\[.*?문서.*?\]\(.*?\)", readme_content, re.IGNORECASE)
             if len(doc_links) == 0:
                 # 기본적인 문서 �션 존재 검증
-                assert "문서" in readme_content or "documentation" in readme_content.lower(), (
-                    "문서 관련 내용이 없습니다"
-                )
+                assert (
+                    "문서" in readme_content or "documentation" in readme_content.lower()
+                ), "문서 관련 내용이 없습니다"
 
         # 가이드 문서 링크 (여러 형식 허용)
         guide_patterns = [
@@ -117,16 +117,16 @@ class TestPortalLinkValidation:
             if "온라인 문서" in link_text or "adk.mo.ai.kr" in link_url:
                 main_portal_found = True
                 # 기본 포털 URL만 확인, 세부 경로는 유연하게 허용
-                assert link_url.startswith("https://adk.mo.ai.kr"), (
-                    f"메인 포털 링크 도메인이 올바르지 않습니다: {link_url}"
-                )
+                assert link_url.startswith(
+                    "https://adk.mo.ai.kr"
+                ), f"메인 포털 링크 도메인이 올바르지 않습니다: {link_url}"
 
             # API 문서 링크 검증
             if any(keyword in link_text.lower() for keyword in ["api", "api", "인터페이스", "문서"]):
                 api_docs_found = True
-                assert "api" in link_url.lower() or "adk.mo.ai.kr" in link_url, (
-                    f"API 문서 링크가 올바르지 않습니다: {link_url}"
-                )
+                assert (
+                    "api" in link_url.lower() or "adk.mo.ai.kr" in link_url
+                ), f"API 문서 링크가 올바르지 않습니다: {link_url}"
 
             # 시작 가이드 링크 검증
             if any(
