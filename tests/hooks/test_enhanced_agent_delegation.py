@@ -14,13 +14,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 # Hook 디렉토리를 sys.path에 추가
-HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
-SHARED_DIR = HOOKS_DIR / "shared"
-UTILS_DIR = HOOKS_DIR / "utils"
+# NOTE: Old path was .claude/hooks/alfred, now migrated to .claude/hooks/moai
+HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "moai"
+LIB_DIR = HOOKS_DIR / "lib"
 SRC_DIR = Path(__file__).parent.parent.parent / "src"
 
 # sys.path에 추가 (중복 방지)
-for path in [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR), str(SRC_DIR)]:
+for path in [str(LIB_DIR), str(HOOKS_DIR), str(SRC_DIR)]:
     if path not in sys.path:
         sys.path.insert(0, path)
 

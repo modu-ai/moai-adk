@@ -22,8 +22,11 @@ from pathlib import Path
 import pytest
 
 # Setup sys.path for hook imports
-HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
+# NOTE: Old path was .claude/hooks/alfred, now migrated to .claude/hooks/moai
+HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "moai"
+LIB_DIR = HOOKS_DIR / "lib"
 sys.path.insert(0, str(HOOKS_DIR))
+sys.path.insert(0, str(LIB_DIR))
 
 
 @pytest.fixture
