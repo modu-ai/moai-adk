@@ -1,7 +1,7 @@
 ---
 name: manager-tdd
 description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. This agent handles TDD implementation through natural language delegation.
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: haiku
 permissionMode: default
 skills: moai-foundation-claude, moai-lang-unified, moai-toolkit-essentials

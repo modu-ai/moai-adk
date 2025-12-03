@@ -24,11 +24,13 @@ model: inherit
 
 # MoAI-ADK Step 0: Initialize/Update Project (Project Setup)
 
-Interactive Prompts: Use AskUserQuestion tool for TUI-based user interaction.
+User Interaction Architecture: AskUserQuestion tool must be used at COMMAND level only, not within subagents. Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users directly.
+
+Correct Pattern: Command collects user input via AskUserQuestion BEFORE delegating to agents. Pass collected choices as parameters to Task() calls.
 
 Architecture: Commands delegate to Agents, which coordinate Skills. This command orchestrates exclusively through Task() tool.
 
-Delegation Model: Complete agent-first pattern. All execution delegated to manager-project agent.
+Delegation Model: Complete agent-first pattern. All execution delegated to manager-project agent. Agents receive pre-collected user choices and execute without further user interaction.
 
 Workflow Integration: This command implements Step 0 of Alfred's three-step execution model (Understand-Plan-Execute). See CLAUDE.md for complete workflow details.
 
@@ -832,17 +834,35 @@ IMPACT: Wrong routing causes unexpected behavior.
 
 ### User Interaction
 
-[HARD] Use AskUserQuestion for ALL user interaction.
+[HARD] Use AskUserQuestion for ALL user interaction at COMMAND level only.
 
-WHY: Unified interaction enables consistent TUI experience.
+WHY: Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users. AskUserQuestion requires real-time user response which subagents cannot receive.
 
-IMPACT: Direct prompting bypasses UI consistency layer.
+IMPACT: Attempting AskUserQuestion in subagents causes workflow failures or silent failures.
+
+[HARD] Collect all user choices via AskUserQuestion BEFORE delegating to agents.
+
+WHY: Subagents need pre-collected user decisions to execute without interaction.
+
+IMPACT: Missing parameters force subagents to make assumptions or fail.
+
+[HARD] Pass user choices as parameters when invoking Task().
+
+WHY: Agents must receive all necessary context at invocation time since they cannot request more.
+
+IMPACT: Incomplete context causes agents to fail or produce incorrect results.
 
 [HARD] Never include EMOJI characters in AskUserQuestion fields.
 
 WHY: Emoji parsing varies across platforms and may cause display issues.
 
 IMPACT: Platform inconsistencies create confusing user experience.
+
+[HARD] Maximum 4 options per AskUserQuestion question.
+
+WHY: Tool constraint limits options to 4 per question.
+
+IMPACT: Exceeding 4 options causes tool execution failure. Use multi-step questions for more choices.
 
 ### Tool Usage Constraints
 

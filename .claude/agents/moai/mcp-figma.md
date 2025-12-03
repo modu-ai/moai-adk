@@ -1,7 +1,7 @@
 ---
 name: mcp-figma
 description: Use for Figma design analysis, design-to-code conversion, design system management, and component extraction. Integrates Figma MCP server.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpfigma-dev-mode-mcp-serverget_design_context, mcpfigma-dev-mode-mcp-serverget_variable_defs, mcpfigma-dev-mode-mcp-serverget_screenshot, mcpfigma-dev-mode-mcp-serverget_metadata, mcpfigma-dev-mode-mcp-serverget_figjam
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpfigma-dev-mode-mcp-serverget_design_context, mcpfigma-dev-mode-mcp-serverget_variable_defs, mcpfigma-dev-mode-mcp-serverget_screenshot, mcpfigma-dev-mode-mcp-serverget_metadata, mcpfigma-dev-mode-mcp-serverget_figjam
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-connector-mcp, moai-foundation-uiux, moai-connector-figma

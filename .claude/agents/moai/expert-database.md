@@ -1,7 +1,7 @@
 ---
 name: expert-database
 description: Use for database design, schema optimization, query performance, and data modeling decisions.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-lang-unified, moai-domain-backend

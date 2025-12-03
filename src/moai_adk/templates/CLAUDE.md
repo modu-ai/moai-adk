@@ -126,8 +126,9 @@ WHY: Resumable agents preserve context and progress, eliminating redundant work.
 ### Step 1: Understand
 
 - Analyze user request complexity and scope
-- Clarify ambiguous requirements using AskUserQuestion
+- Clarify ambiguous requirements using AskUserQuestion at command level (not in subagents)
 - Dynamically load required Skills for knowledge acquisition
+- Collect all necessary user preferences before delegating to agents
 
 Core Execution Skills:
 - Skill("moai-foundation-claude") - Alfred orchestration rules
@@ -230,6 +231,51 @@ Tool Access Levels:
 - Full-Access Agents (implementation experts): Full access to Read, Write, Edit, Bash tools as needed
 
 WHY: Least-privilege access prevents accidental modifications and enforces role boundaries.
+
+### User Interaction Architecture
+
+Critical Constraint: Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users directly.
+
+Subagent Limitations:
+- Subagents receive input once from the main thread at invocation
+- Subagents return output once as a final report when execution completes
+- Subagents cannot pause execution to wait for user responses
+- Subagents cannot use AskUserQuestion tool effectively
+
+WHY: Task() creates isolated execution contexts for parallelization and context management. This architectural design prevents real-time user interaction within subagents.
+
+IMPACT: Attempting to use AskUserQuestion in a subagent will fail silently or produce unexpected behavior because the subagent cannot receive user responses.
+
+Correct User Interaction Pattern:
+
+- [HARD] Commands must handle all user interaction via AskUserQuestion before delegating to agents
+  WHY: Commands run in the main thread where user interaction is possible
+  IMPACT: Delegating user interaction to subagents causes workflow failures
+
+- [HARD] Pass user choices as parameters when invoking Task()
+  WHY: Subagents need pre-collected user decisions to execute without interaction
+  IMPACT: Missing parameters force subagents to make assumptions or fail
+
+- [HARD] Agents must return structured responses for follow-up decisions
+  WHY: Commands can use agent responses to determine next user questions
+  IMPACT: Unstructured responses prevent proper workflow continuation
+
+Correct Workflow Pattern:
+Step 1: Command uses AskUserQuestion to collect user preferences
+Step 2: Command invokes Task() with user choices in the prompt
+Step 3: Subagent executes based on provided parameters without user interaction
+Step 4: Subagent returns structured response with results and any needed follow-up info
+Step 5: Command uses AskUserQuestion for next decision based on agent response
+
+Incorrect Workflow Pattern (Will Fail):
+Step 1: Command invokes Task() and expects subagent to use AskUserQuestion
+Result: Subagent cannot interact with user, workflow fails or produces incorrect results
+
+AskUserQuestion Tool Constraints:
+- Maximum 4 options per question (use multi-step questions for more choices)
+- No emoji characters in question text, headers, or option labels
+- Questions must be in user's conversation_language
+- multiSelect parameter enables multiple choice selection when needed
 
 ---
 
@@ -550,8 +596,8 @@ WHY: XML sections provide clear structure and enable parsing for automated workf
 
 ---
 
-Version: 8.0.0 (Claude 4 Best Practices Integration)
-Last Updated: 2025-12-03
+Version: 8.1.0 (User Interaction Architecture Fix)
+Last Updated: 2025-12-04
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 Language: Dynamic setting (language.conversation_language)
 Optimization: 100% explicit agent invocation, Claude 4 best practices compliance

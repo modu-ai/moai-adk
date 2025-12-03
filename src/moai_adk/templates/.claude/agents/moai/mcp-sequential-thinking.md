@@ -1,7 +1,7 @@
 ---
 name: mcp-sequential-thinking
 description: Use for complex reasoning, architecture design, multi-step problem analysis, and strategic decision-making. Integrates Sequential-Thinking MCP server.
-tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcpsequential-thinkingcreate_thought, mcpsequential-thinkingcontinue_thought, mcpsequential-thinkingget_thought, mcpsequential-thinkinglist_thoughts, mcpsequential-thinkingdelete_thought, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Glob, Bash, WebFetch, mcpsequential-thinkingcreate_thought, mcpsequential-thinkingcontinue_thought, mcpsequential-thinkingget_thought, mcpsequential-thinkinglist_thoughts, mcpsequential-thinkingdelete_thought, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: dontAsk
 skills: moai-connector-mcp, moai-foundation-claude, moai-library-toon

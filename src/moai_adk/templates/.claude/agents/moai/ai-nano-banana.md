@@ -1,7 +1,7 @@
 ---
 name: ai-nano-banana
 description: Use PROACTIVELY when user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill
 model: inherit
 permissionMode: default
 skills: moai-connector-nano-banana, moai-lang-unified, moai-toolkit-essentials

@@ -1,7 +1,7 @@
 ---
 name: expert-devops
 description: Use when deployment configuration, CI/CD pipelines, containerization, or cloud infrastructure setup is needed.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcpgithubcreate-or-update-file, mcpgithubpush-files, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcpgithubcreate-or-update-file, mcpgithubpush-files, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-domain-devops, moai-workflow-jit-docs

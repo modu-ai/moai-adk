@@ -22,6 +22,8 @@ model: inherit
 
 #  MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
 
+**User Interaction Architecture**: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all approvals BEFORE delegating phase execution.
+
 **Execution Model**: Commands orchestrate through `Task()` tool only. No direct tool usage.
 
 **Delegation Pattern**: Sequential phase-based agent delegation with 4 phases:
@@ -90,9 +92,10 @@ This command **MUST** only use these three tool categories:
   - WHY: Maintains architectural clarity and separation of concerns
   - IMPACT: Ensures each phase remains focused and reusable
 
-- **AskUserQuestion()**: Obtains user approval and next steps guidance
-  - WHY: Creates explicit decision checkpoints for user control
-  - IMPACT: Prevents automatic execution without user verification
+- **AskUserQuestion()**: Obtains user approval and next steps guidance AT COMMAND LEVEL ONLY
+  - WHY: Subagents via Task() are stateless and cannot interact with users
+  - IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
+  - CORRECT: Command collects approvals, passes decisions to agents as parameters
 
 - **TodoWrite()**: Tracks task progress across phases
   - WHY: Maintains visibility into long-running implementation workflows

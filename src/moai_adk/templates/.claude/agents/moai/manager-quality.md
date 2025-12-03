@@ -1,7 +1,7 @@
 ---
 name: manager-quality
 description: Use when code quality verification is required. Called in /moai:2-run Phase 2.5, /moai:3-sync Phase 0.5.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: haiku
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-toolkit-essentials, moai-foundation-quality

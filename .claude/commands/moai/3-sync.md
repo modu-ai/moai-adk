@@ -25,7 +25,9 @@ model: inherit
 
 #  MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
-> Batched Design: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
+User Interaction Architecture: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all approvals BEFORE delegating to agents.
+
+Batched Design: All AskUserQuestion calls follow batched design principles (1-4 questions per call, max 4 options per question). See CLAUDE.md section "User Interaction Architecture" for details.
 
 4-Step Workflow Integration: This command implements Step 4 of Alfred's workflow (Report & Commit with conditional report generation). See CLAUDE.md for full workflow details.
 
@@ -115,7 +117,9 @@ User Command: /moai:3-sync [mode] [path]
 
 Permitted Tools:
 - Task() for orchestration [HARD]
-- AskUserQuestion() for user interaction [HARD]
+- AskUserQuestion() for user interaction AT COMMAND LEVEL ONLY [HARD]
+  - WHY: Subagents via Task() are stateless and cannot interact with users
+  - CORRECT: Collect approvals before Task() calls, pass choices as parameters
 - TodoWrite() for progress tracking [HARD]
 
 Forbidden Tools (All delegated to agents):

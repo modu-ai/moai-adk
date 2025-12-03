@@ -1,7 +1,7 @@
 ---
 name: manager-strategy
 description: Use when SPEC analysis and implementation strategy need to be established. Called from /moai:2-run Phase 1.
-tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Grep, Glob, WebFetch, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-project, moai-lang-unified

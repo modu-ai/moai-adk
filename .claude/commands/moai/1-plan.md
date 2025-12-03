@@ -26,7 +26,9 @@ model: inherit
 
 #  MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed
 
-> Batched Design: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
+User Interaction Architecture: AskUserQuestion must be used at COMMAND level only. Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users. Collect all user input BEFORE delegating to agents.
+
+Batched Design: All AskUserQuestion calls follow batched design principles (1-4 questions per call, max 4 options per question) to minimize user interaction turns. See CLAUDE.md section "User Interaction Architecture" for details.
 
 4-Step Workflow Integration: This command implements Steps 1-2 of Alfred's workflow (Intent Understanding → Plan Creation). See CLAUDE.md for full workflow details.
 
@@ -152,6 +154,11 @@ User Command: /moai:1-plan "description"
 This command uses ONLY Task() and AskUserQuestion():
 WHY: Specialized agents encapsulate domain logic and ensure quality control
 IMPACT: Direct tool usage bypasses expert review and quality gates
+
+[HARD] AskUserQuestion at Command Level Only:
+WHY: Subagents via Task() are stateless and cannot interact with users
+IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
+Correct Pattern: Command collects user input, passes choices to Task() as parameters
 
 Requirement: All file operations delegated to agents
 - No Read (file operations delegated)

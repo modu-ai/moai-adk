@@ -4,7 +4,7 @@ description: Use for security analysis, vulnerability assessment, secure code re
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-domain-security
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 ---
 
 # Security Expert 

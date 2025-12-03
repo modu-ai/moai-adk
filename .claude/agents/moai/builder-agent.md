@@ -1,7 +1,7 @@
 ---
 name: builder-agent
 description: Use when creating new sub-agents or generating agent blueprints from requirements. Follows Claude Code official sub-agent standards.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project

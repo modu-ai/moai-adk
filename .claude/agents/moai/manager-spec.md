@@ -1,7 +1,7 @@
 ---
 name: manager-spec
 description: Use when: When you need to create an EARS-style SPEC document. Called from the /moai:1-plan command.
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-project, moai-lang-unified

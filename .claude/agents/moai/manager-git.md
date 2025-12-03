@@ -1,7 +1,7 @@
 ---
 name: manager-git
 description: Specialized agent for Git operations including branch management, PR handling, commit generation, and release automation
-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Bash, Read, Write, Edit, Glob, Grep, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-project, moai-toolkit-essentials, moai-worktree

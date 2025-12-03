@@ -1,7 +1,7 @@
 ---
 name: expert-debug
 description: Use when: When a runtime error occurs and it is necessary to analyze the cause and suggest a solution.
-tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Grep, Glob, Bash, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-toolkit-essentials

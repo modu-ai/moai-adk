@@ -1,7 +1,7 @@
 ---
 name: expert-frontend
 description: Use when frontend architecture, component design, state management, or UI implementation is needed.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightcreate-context, mcpplaywrightgoto, mcpplaywrightevaluate, mcpplaywrightget-page-state, mcpplaywrightscreenshot, mcpplaywrightfill, mcpplaywrightclick, mcpplaywrightpress, mcpplaywrighttype, mcpplaywrightwait-for-selector
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightcreate-context, mcpplaywrightgoto, mcpplaywrightevaluate, mcpplaywrightget-page-state, mcpplaywrightscreenshot, mcpplaywrightfill, mcpplaywrightclick, mcpplaywrightpress, mcpplaywrighttype, mcpplaywrightwait-for-selector
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-lang-unified, moai-domain-frontend

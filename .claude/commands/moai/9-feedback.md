@@ -58,9 +58,10 @@ This command exclusively uses these tools:
   WHY: Task orchestration ensures feedback collection responsibility lies with specialized agents
   IMPACT: Direct tool usage bypasses quality assurance and agent expertise
 
-- [HARD] AskUserQuestion() for user interaction (delegated to agent context)
-  WHY: User prompts must come through agent control for consistent language and tone
-  IMPACT: Skipping agent delegation creates inconsistent user experiences
+- [HARD] AskUserQuestion() for user interaction AT COMMAND LEVEL ONLY
+  WHY: Subagents via Task() are stateless and cannot interact with users directly
+  IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
+  CORRECT: Command collects feedback type and details, passes to agent as parameters
 
 - [HARD] Delegate all Bash operations to manager-quality agent
   WHY: Agent context ensures proper error handling and feedback capture

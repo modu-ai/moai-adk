@@ -1,7 +1,7 @@
 ---
 name: builder-command
 description: Use when creating or optimizing custom slash commands. Maximizes reuse through asset discovery and match scoring.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates
