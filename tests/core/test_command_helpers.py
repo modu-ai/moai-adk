@@ -230,7 +230,6 @@ class TestPreviousPhaseLoading:
 
 
 class TestEdgeCases:
-
     def test_extract_metadata_missing_keys(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)

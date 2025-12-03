@@ -519,7 +519,6 @@ class TestDocumentationGeneration:
         generator = DocumentationGenerator()
 
         with patch("pathlib.Path.mkdir"), patch("pathlib.Path.write_text") as mock_write:
-
             generator.save_all_documents(
                 {
                     "product": "Test product",
@@ -593,7 +592,6 @@ class TestAtomicSaving:
         manager = ConfigurationManager()
 
         with patch.object(manager, "_create_backup") as mock_backup, patch.object(manager, "_write_config"):
-
             manager.save(self._create_complete_config())
             mock_backup.assert_called_once()
 
@@ -885,7 +883,6 @@ class TestIntegration:
         }
 
         with patch("pathlib.Path.write_text"), patch("pathlib.Path.mkdir"):
-
             docs = generator.generate_all_documents(brainstorm)
 
             assert "product" in docs

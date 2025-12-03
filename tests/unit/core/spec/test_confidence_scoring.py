@@ -10,9 +10,7 @@ import pytest
 from moai_adk.core.spec.confidence_scoring import ConfidenceScoringSystem
 
 # Skip all tests - module structure changed (moai_adk.core.tags.spec_generator removed)
-pytestmark = pytest.mark.skip(
-    reason="Module structure changed - moai_adk.core.tags.spec_generator removed"
-)
+pytestmark = pytest.mark.skip(reason="Module structure changed - moai_adk.core.tags.spec_generator removed")
 
 
 class TestConfidenceScoringSystem(unittest.TestCase):

@@ -623,11 +623,7 @@ class EventProcessor:
         events_failed: int = self._processing_stats["events_failed"]
         return {
             **self._processing_stats,
-            "success_rate": (
-                (events_processed - events_failed)
-                / max(events_processed, 1)
-            )
-            * 100,
+            "success_rate": ((events_processed - events_failed) / max(events_processed, 1)) * 100,
             "handlers_registered": {event_type.value: len(handlers) for event_type, handlers in self._handlers.items()},
         }
 

@@ -183,9 +183,7 @@ class CircuitBreaker:
         """Check if circuit breaker should attempt reset"""
         if self.state.last_failure_time is None:
             return False
-        return datetime.now() - self.state.last_failure_time > timedelta(
-            seconds=self.timeout_seconds
-        )
+        return datetime.now() - self.state.last_failure_time > timedelta(seconds=self.timeout_seconds)
 
     def _on_success(self) -> None:
         """Handle successful call"""

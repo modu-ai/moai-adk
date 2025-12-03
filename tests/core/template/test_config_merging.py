@@ -54,15 +54,10 @@ def tmp_project_with_config(tmp_path: Path) -> Path:
     # Create existing user config
     user_config = {
         "user": {"name": "ExistingUser"},
-        "language": {
-            "conversation_language": "ja",
-            "custom_setting": "user_value"
-        },
-        "project": {"name": "UserProject"}
+        "language": {"conversation_language": "ja", "custom_setting": "user_value"},
+        "project": {"name": "UserProject"},
     }
-    (tmp_path / ".moai" / "config" / "config.json").write_text(
-        json.dumps(user_config, indent=2)
-    )
+    (tmp_path / ".moai" / "config" / "config.json").write_text(json.dumps(user_config, indent=2))
 
     return tmp_path
 
@@ -81,13 +76,11 @@ def template_with_config(tmp_path: Path) -> Path:
             "conversation_language": "en",
             "conversation_language_name": "English",
             "git_commit_messages": "en",
-            "code_comments": "en"
+            "code_comments": "en",
         },
-        "project": {"mode": "team", "new_setting": "template_value"}
+        "project": {"mode": "team", "new_setting": "template_value"},
     }
-    (template_root / ".claude" / "config.json").write_text(
-        json.dumps(template_config, indent=2)
-    )
+    (template_root / ".claude" / "config.json").write_text(json.dumps(template_config, indent=2))
 
     return template_root
 
@@ -120,16 +113,15 @@ class TestMergeConfigJson:
         assert merged_config["language"]["conversation_language_name"] == "English"  # Template
         assert merged_config["language"]["custom_setting"] == "user_value"  # User only
 
-    def test_merge_config_json_with_environment_override(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_with_environment_override(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test environment variable override: Environment > User > Template"""
         processor = TemplateProcessor(tmp_project_with_config)
         processor.template_root = template_with_config  # Override for testing
 
         # Set environment variables
-        with patch.dict(os.environ, {
-            'MOAI_USER_NAME': 'EnvUser',
-            'MOAI_CONVERSATION_LANG': 'ko'
-        }):
+        with patch.dict(os.environ, {"MOAI_USER_NAME": "EnvUser", "MOAI_CONVERSATION_LANG": "ko"}):
             src = template_with_config / ".claude" / "config.json"
             dst = tmp_project_with_config / ".moai" / "config" / "config.json"
 
@@ -159,7 +151,9 @@ class TestMergeConfigJson:
         assert merged_config["user"]["name"] == "TemplateUser"
         assert merged_config["project"]["mode"] == "team"
 
-    def test_merge_config_json_with_backup_extraction(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_with_backup_extraction(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test merging when existing config is removed.
 
         Note: The current implementation reads backup config for reference but doesn't
@@ -169,7 +163,7 @@ class TestMergeConfigJson:
         processor.template_root = template_with_config  # Override for testing
 
         # Create backup with different config (for reference, not used in merge)
-        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
             mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
             processor.backup.create_backup()
 
@@ -187,7 +181,9 @@ class TestMergeConfigJson:
         assert merged_config["user"]["name"] == "TemplateUser"
         assert merged_config["project"]["mode"] == "team"
 
-    def test_merge_config_json_corrupted_template(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_corrupted_template(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test handling of corrupted template config"""
         processor = TemplateProcessor(tmp_project_with_config)
         processor.template_root = template_with_config  # Override for testing
@@ -205,10 +201,13 @@ class TestMergeConfigJson:
         original_config = json.loads(dst.read_text())
         assert original_config["user"]["name"] == "ExistingUser"
 
-    def test_merge_config_json_without_resolver(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_without_resolver(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test fallback merging when LanguageConfigResolver is unavailable"""
         # Simulate import failure by patching the import in the function
         import builtins
+
         real_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -231,7 +230,9 @@ class TestMergeConfigJson:
         assert "language" in merged_config
         assert "project" in merged_config
 
-    def test_merge_config_json_deep_merge_objects(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_deep_merge_objects(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test deep merging of nested objects"""
         processor = TemplateProcessor(tmp_project_with_config)
         processor.template_root = template_with_config  # Override for testing
@@ -250,7 +251,9 @@ class TestMergeConfigJson:
         assert language_config["custom_setting"] == "user_value"  # User preserved
         assert language_config["git_commit_messages"] == "en"  # Template added
 
-    def test_merge_config_json_excludes_metadata(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_excludes_metadata(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test that metadata fields like config_source are excluded from merging"""
         processor = TemplateProcessor(tmp_project_with_config)
         processor.template_root = template_with_config  # Override for testing
@@ -259,9 +262,7 @@ class TestMergeConfigJson:
         existing_config = json.loads((tmp_project_with_config / ".moai" / "config" / "config.json").read_text())
         existing_config["config_source"] = "environment"
         existing_config["last_updated"] = "2024-01-01"
-        (tmp_project_with_config / ".moai" / "config" / "config.json").write_text(
-            json.dumps(existing_config, indent=2)
-        )
+        (tmp_project_with_config / ".moai" / "config" / "config.json").write_text(json.dumps(existing_config, indent=2))
 
         src = template_with_config / ".claude" / "config.json"
         dst = tmp_project_with_config / ".moai" / "config" / "config.json"

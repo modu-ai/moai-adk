@@ -347,9 +347,9 @@ class TestHookPerformanceAndScalability:
         memory_increase = final_memory - initial_memory
 
         # Memory increase should be reasonable (less than 50MB)
-        assert (
-            memory_increase < 50 * 1024 * 1024
-        ), f"Memory usage increased too much: {memory_increase / (1024*1024):.2f} MB"
+        assert memory_increase < 50 * 1024 * 1024, (
+            f"Memory usage increased too much: {memory_increase / (1024 * 1024):.2f} MB"
+        )
         assert result.returncode == 0
 
 

@@ -14,6 +14,7 @@ from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
 @dataclass
 class MockSkillElement:
     """Mock skill element for testing."""
+
     name: str
     path: str
 
@@ -50,7 +51,7 @@ class TestUserSelectionUIEnhancement:
         Returns:
             Configured UserSelectionUI instance
         """
-        with patch('moai_adk.core.migration.user_selection_ui.create_custom_element_scanner') as mock_scanner:
+        with patch("moai_adk.core.migration.user_selection_ui.create_custom_element_scanner") as mock_scanner:
             mock_scanner_instance = MagicMock()
             mock_scanner.return_value = mock_scanner_instance
             mock_scanner_instance.scan_custom_elements.return_value = scan_result
@@ -81,7 +82,7 @@ class TestUserSelectionUIEnhancement:
 
         # Capture output to verify instructions
         # First input is element selection, second input is confirmation
-        with patch('builtins.input', side_effect=['1', 'y']):
+        with patch("builtins.input", side_effect=["1", "y"]):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should return selected element
@@ -106,8 +107,8 @@ class TestUserSelectionUIEnhancement:
         ui = self._create_ui_with_mock_scanner(project_path, scan_result)
 
         # Test 'all' selection
-        with patch('builtins.input', return_value='all'):
-            with patch.object(ui, 'confirm_selection', return_value=True) as mock_confirm:
+        with patch("builtins.input", return_value="all"):
+            with patch.object(ui, "confirm_selection", return_value=True) as mock_confirm:
                 result = ui.prompt_user_selection(backup_available=True)
 
         # Should select all elements
@@ -116,8 +117,12 @@ class TestUserSelectionUIEnhancement:
 
         # Should call confirmation with all elements
         mock_confirm.assert_called_once()
-        all_paths = [".claude/agents/agent1.md", ".claude/commands/moai/cmd1.md",
-                    ".claude/skills/skill1", ".claude/hooks/moai/hook1.py"]
+        all_paths = [
+            ".claude/agents/agent1.md",
+            ".claude/commands/moai/cmd1.md",
+            ".claude/skills/skill1",
+            ".claude/hooks/moai/hook1.py",
+        ]
         assert set(result) == set(all_paths)
 
     def test_ui_space_selection_enhanced(self, tmp_path):
@@ -138,7 +143,7 @@ class TestUserSelectionUIEnhancement:
 
         # Test comma-separated selection (1,3,4 = agent1, skill1, hook1)
         # First input is element selection, second input is confirmation
-        with patch('builtins.input', side_effect=['1,3,4', 'y']):
+        with patch("builtins.input", side_effect=["1,3,4", "y"]):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should select elements 1, 3, and 4
@@ -160,7 +165,7 @@ class TestUserSelectionUIEnhancement:
         ui = self._create_ui_with_mock_scanner(project_path, scan_result)
 
         # Test with invalid selection (number 5 doesn't exist)
-        with patch('builtins.input', return_value='5'):
+        with patch("builtins.input", return_value="5"):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should return None or empty list for invalid selection
@@ -180,14 +185,14 @@ class TestUserSelectionUIEnhancement:
         ui = self._create_ui_with_mock_scanner(project_path, scan_result)
 
         # Test cancellation with KeyboardInterrupt
-        with patch('builtins.input', side_effect=KeyboardInterrupt):
+        with patch("builtins.input", side_effect=KeyboardInterrupt):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should return None for cancellation
         assert result is None
 
         # Test cancellation with EOFError
-        with patch('builtins.input', side_effect=EOFError):
+        with patch("builtins.input", side_effect=EOFError):
             result = ui.prompt_user_selection(backup_available=True)
 
         assert result is None
@@ -225,7 +230,7 @@ class TestUserSelectionUIEnhancement:
 
         # Test comma-separated input (basic mode uses commas)
         # First input is element selection, second input is confirmation
-        with patch('builtins.input', side_effect=['1,3', 'y']):
+        with patch("builtins.input", side_effect=["1,3", "y"]):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should handle gracefully and select elements 1 and 3
@@ -250,7 +255,7 @@ class TestUserSelectionUIEnhancement:
 
         # Test comma-separated with spaces
         # First input is element selection, second input is confirmation
-        with patch('builtins.input', side_effect=['1, 3, 4', 'y']):
+        with patch("builtins.input", side_effect=["1, 3, 4", "y"]):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should select elements 1, 3, and 4
@@ -274,7 +279,7 @@ class TestUserSelectionUIEnhancement:
         selected_elements = [".claude/agents/agent1.md", ".claude/commands/moai/cmd1.md"]
 
         # Test enhanced confirmation display
-        with patch('builtins.input', return_value='y'):
+        with patch("builtins.input", return_value="y"):
             result = ui.confirm_selection(selected_elements)
 
         # Should return True for confirmation
@@ -294,7 +299,7 @@ class TestUserSelectionUIEnhancement:
         ui = self._create_ui_with_mock_scanner(project_path, scan_result)
 
         # Test empty input (just pressing Enter)
-        with patch('builtins.input', return_value=''):
+        with patch("builtins.input", return_value=""):
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should return None for empty input

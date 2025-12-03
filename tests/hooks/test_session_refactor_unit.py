@@ -418,7 +418,6 @@ class TestOrchestrator:
     def test_execute_cleanup_sequence_calls_all_handlers(self):
         """Should call cleanup, analysis, and stats functions"""
         with tempfile.TemporaryDirectory():
-
             # Expected: all functions called in sequence
             assert True  # Placeholder
 

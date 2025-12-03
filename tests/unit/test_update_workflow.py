@@ -119,9 +119,7 @@ class TestUpgradeExecution:
             result = _execute_upgrade(["uv", "tool", "upgrade", "moai-adk"])
             assert result is False
 
-    @pytest.mark.skip(
-        reason="CLI requires interactive input - ClickException in non-interactive env"
-    )
+    @pytest.mark.skip(reason="CLI requires interactive input - ClickException in non-interactive env")
     def test_execute_upgrade_timeout(self):
         """Test upgrade timeout handling."""
         with patch("subprocess.run") as mock_run:
@@ -208,7 +206,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
@@ -235,7 +232,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.6.2"
                 mock_latest.return_value = "0.6.2"
                 mock_sync.return_value = True
@@ -259,7 +255,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
                 patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = None  # No installer found
@@ -283,7 +278,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
                 patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
@@ -306,7 +300,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.6.2"
                 mock_latest.return_value = "0.6.2"
                 mock_sync.return_value = False  # Sync failed
@@ -344,7 +337,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
                 patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
                 mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
@@ -368,7 +360,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             ):
-
                 mock_current.return_value = "0.6.1"
                 mock_latest.return_value = "0.6.2"
 
@@ -393,7 +384,6 @@ class TestTwoStageWorkflow:
                 patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
                 patch("moai_adk.cli.commands.update._sync_templates"),
             ):
-
                 mock_current.return_value = "0.7.0"
                 mock_latest.return_value = "0.6.2"
 

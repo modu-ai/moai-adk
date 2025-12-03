@@ -673,6 +673,7 @@ def format_session_output() -> str:
     # Get MoAI version from installed package (not config.json)
     try:
         from moai_adk import __version__ as installed_version
+
         moai_version = installed_version
     except ImportError:
         # Fallback to config version if package import fails

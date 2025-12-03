@@ -277,7 +277,6 @@ class TestEnhancedUserHandler:
             patch("builtins.open", create=True),
             patch("pathlib.Path.mkdir"),
         ):
-
             # Mock enhanced context with agent delegation
             mock_context.return_value = (
                 [".claude/skills/moai-core-spec-authoring/reference.md"],

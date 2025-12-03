@@ -1149,14 +1149,10 @@ def _prompt_custom_files_restore(
             ]
 
         if custom_agents:
-            groups["Agents (.claude/agents/)"] = [
-                {"name": agent, "value": f"agent:{agent}"} for agent in custom_agents
-            ]
+            groups["Agents (.claude/agents/)"] = [{"name": agent, "value": f"agent:{agent}"} for agent in custom_agents]
 
         if custom_hooks:
-            groups["Hooks (.claude/hooks/moai/)"] = [
-                {"name": hook, "value": f"hook:{hook}"} for hook in custom_hooks
-            ]
+            groups["Hooks (.claude/hooks/moai/)"] = [{"name": hook, "value": f"hook:{hook}"} for hook in custom_hooks]
 
         choices = create_grouped_choices(groups)
 

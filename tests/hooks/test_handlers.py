@@ -8,6 +8,7 @@ TDD History:
     - GREEN: 핸들러 구현 (Claude Code 표준 스키마 준수)
     - REFACTOR: 테스트 케이스 확장, 엣지 케이스 처리
 """
+
 import sys
 from pathlib import Path
 from unittest.mock import patch

@@ -124,7 +124,7 @@ class TestDynamicTranslationWithHaiku:
         mock_response = MagicMock()
         mock_response.returncode = 0
         # Create 23 numbered translations
-        french_items = [f"{i+1}. Traduction française {i+1}" for i in range(23)]
+        french_items = [f"{i + 1}. Traduction française {i + 1}" for i in range(23)]
         mock_response.stdout = "\n".join(french_items)
         mock_run.return_value = mock_response
 
@@ -185,7 +185,7 @@ class TestTranslationFailures:
         mock_response = MagicMock()
         mock_response.returncode = 0
         # Only 10 items instead of 23
-        mock_response.stdout = "\n".join([f"{i+1}. Traduction {i+1}" for i in range(10)])
+        mock_response.stdout = "\n".join([f"{i + 1}. Traduction {i + 1}" for i in range(10)])
         mock_run.return_value = mock_response
 
         result = translate_announcements("de")
@@ -290,7 +290,7 @@ class TestIntegration:
         # Mock Haiku response
         mock_response = MagicMock()
         mock_response.returncode = 0
-        mock_response.stdout = "\n".join([f"{i+1}. Deutsch {i+1}" for i in range(23)])
+        mock_response.stdout = "\n".join([f"{i + 1}. Deutsch {i + 1}" for i in range(23)])
         mock_run.return_value = mock_response
 
         # Run auto update

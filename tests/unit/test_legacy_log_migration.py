@@ -128,7 +128,7 @@ class TestLegacyLogMigration:
         session_file.write_text('{"test": "data"}')
 
         # Run dry run
-        with patch('moai_adk.cli.commands.update.console') as mock_console:
+        with patch("moai_adk.cli.commands.update.console") as mock_console:
             result = _migrate_legacy_logs(tmp_path, dry_run=True)
 
         assert result is True
@@ -147,8 +147,8 @@ class TestLegacyLogMigration:
         session_file.write_text('{"test": "data"}')
 
         # Mock shutil.copy2 to raise an exception
-        with patch('shutil.copy2', side_effect=Exception("Simulated error")):
-            with patch('moai_adk.cli.commands.update.console') as mock_console:
+        with patch("shutil.copy2", side_effect=Exception("Simulated error")):
+            with patch("moai_adk.cli.commands.update.console") as mock_console:
                 result = _migrate_legacy_logs(tmp_path)
 
         assert result is False

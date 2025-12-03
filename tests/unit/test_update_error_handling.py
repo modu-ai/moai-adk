@@ -39,7 +39,6 @@ class TestInstallerDetectionError:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
         ):
-
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
             mock_detect.return_value = None  # No installer found
@@ -62,7 +61,6 @@ class TestInstallerDetectionError:
             patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.1"),
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.6.2"),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--yes"])
 
             assert "--templates-only" in result.output
@@ -77,7 +75,6 @@ class TestInstallerDetectionError:
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.6.2"),
             patch("moai_adk.cli.commands.update._detect_tool_installer", return_value=None),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--yes"])
 
             # Should fail with installer detection message
@@ -97,7 +94,6 @@ class TestNetworkFailure:
             patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
         ):
-
             mock_current.return_value = "0.6.1"
             mock_latest.side_effect = RuntimeError("Failed to fetch latest version from PyPI: Network error")
 
@@ -115,7 +111,6 @@ class TestNetworkFailure:
             "moai_adk.cli.commands.update._get_latest_version",
             side_effect=RuntimeError("Failed to fetch from PyPI: Network error"),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path)])
 
             # Should suggest --force or describe the situation
@@ -132,7 +127,6 @@ class TestNetworkFailure:
             patch("moai_adk.cli.commands.update._get_latest_version", side_effect=RuntimeError("Network error")),
             patch("moai_adk.cli.commands.update._sync_templates", return_value=True),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--force"])
 
             # Should proceed with sync
@@ -148,7 +142,6 @@ class TestNetworkFailure:
             patch("moai_adk.cli.commands.update._get_latest_version", side_effect=RuntimeError("Network error")),
             patch("moai_adk.cli.commands.update._sync_templates", return_value=True),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--templates-only"])
 
             # Should skip version check and sync templates
@@ -170,7 +163,6 @@ class TestUpgradeFailure:
             patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
         ):
-
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
@@ -192,7 +184,6 @@ class TestUpgradeFailure:
             patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
         ):
-
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
@@ -217,7 +208,6 @@ class TestUpgradeFailure:
             ),
             patch("moai_adk.cli.commands.update._execute_upgrade", return_value=False),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--yes"])
 
             assert result.exit_code != 0
@@ -236,7 +226,6 @@ class TestTemplateSyncError:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
             mock_sync.return_value = False  # Sync failed
@@ -252,7 +241,6 @@ class TestTemplateSyncError:
         moai_dir.mkdir()
 
         with patch("moai_adk.cli.commands.update._sync_templates", return_value=False):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--templates-only"])
 
             assert result.exit_code != 0
@@ -268,7 +256,6 @@ class TestTemplateSyncError:
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.6.2"),
             patch("moai_adk.cli.commands.update._sync_templates", side_effect=Exception("Template error")),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path)])
 
             # Should catch exception and show error
@@ -289,7 +276,6 @@ class TestTimeoutError:
             patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_upgrade,
         ):
-
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
@@ -324,7 +310,6 @@ class TestExitCodes:
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
             mock_sync.return_value = True
@@ -344,7 +329,6 @@ class TestExitCodes:
             patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.1"),
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.6.2"),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path)])
 
             assert result.exit_code != 0
@@ -358,7 +342,6 @@ class TestExitCodes:
             patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
 
@@ -375,7 +358,6 @@ class TestExitCodes:
             patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.1"),
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.6.2"),
         ):
-
             result = runner.invoke(update, ["--path", str(tmp_path), "--check"])
 
             assert result.exit_code == 0

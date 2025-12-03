@@ -32,9 +32,7 @@ HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "moai"
 LIB_DIR = HOOKS_DIR / "lib"
 
 # sys.path에 추가 (최상단에 추가하여 우선순위 높임)
-sys.path = [str(LIB_DIR), str(HOOKS_DIR)] + [
-    p for p in sys.path if p not in [str(LIB_DIR), str(HOOKS_DIR)]
-]
+sys.path = [str(LIB_DIR), str(HOOKS_DIR)] + [p for p in sys.path if p not in [str(LIB_DIR), str(HOOKS_DIR)]]
 
 # Import modules (these don't exist yet - tests will fail)
 try:

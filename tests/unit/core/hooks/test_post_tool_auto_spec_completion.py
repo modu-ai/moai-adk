@@ -12,9 +12,7 @@ import pytest
 from moai_adk.core.hooks.post_tool_auto_spec_completion import PostToolAutoSpecCompletion
 
 # Skip all tests in this module - implementation has changed significantly
-pytestmark = pytest.mark.skip(
-    reason="PostToolAutoSpecCompletion API changed - tests need update"
-)
+pytestmark = pytest.mark.skip(reason="PostToolAutoSpecCompletion API changed - tests need update")
 
 
 # Mock functions for testing (these are now methods of the class)
@@ -316,7 +314,6 @@ class UserAuth:
             patch.object(self.hook, "create_spec_files") as mock_create,
             patch.object(self.hook, "validate_generated_spec") as mock_validate,
         ):
-
             # Configure mocks
             mock_trigger.return_value = True
             mock_detect.return_value = [self.test_code_file]

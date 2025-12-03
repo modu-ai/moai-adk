@@ -286,7 +286,7 @@ def init(
             language_display = "Auto-detect (use /moai:0-project)" if result.language == "generic" else result.language
             console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             # Show Git Strategy (default: manual = local-only, no auto-branch)
-            console.print(f"  [dim]🔀 Git:[/dim]       manual (github-flow, branch: manual)")
+            console.print("  [dim]🔀 Git:[/dim]       manual (github-flow, branch: manual)")
             console.print(f"  [dim]🌍 Locale:[/dim]    {result.locale}")
             console.print(f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created")
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")

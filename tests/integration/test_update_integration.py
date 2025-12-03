@@ -67,7 +67,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_exec,
         ):
-
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
@@ -90,7 +89,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
             mock_sync.return_value = True
@@ -110,7 +108,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
             patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
             mock_sync.return_value = True
@@ -130,7 +127,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_detect,
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
         ):
-
             mock_sync.return_value = True
 
             result = runner.invoke(update, ["--path", str(temp_project), "--templates-only"])
@@ -149,7 +145,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
         ):
-
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
 
@@ -170,7 +165,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_exec,
         ):
-
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
@@ -190,7 +184,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
             mock_sync.return_value = True
@@ -212,7 +205,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest1,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_exec,
         ):
-
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
             mock_current1.return_value = "0.6.1"
             mock_latest1.return_value = "0.6.2"
@@ -228,7 +220,6 @@ class TestIntegration2StageWorkflow:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest2,
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
         ):
-
             mock_current2.return_value = "0.6.2"
             mock_latest2.return_value = "0.6.2"
             mock_sync.return_value = True
@@ -273,7 +264,6 @@ class TestErrorRecoveryIntegration:
             patch("moai_adk.cli.commands.update._get_current_version") as mock_current,
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
         ):
-
             mock_detect.return_value = None
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
@@ -292,7 +282,6 @@ class TestErrorRecoveryIntegration:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._execute_upgrade") as mock_exec,
         ):
-
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
@@ -355,7 +344,6 @@ class TestConfigMergeIntegrity:
             patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest,
             patch("moai_adk.cli.commands.update._sync_templates") as mock_sync,
         ):
-
             mock_current.return_value = "0.6.2"
             mock_latest.return_value = "0.6.2"
 

@@ -238,10 +238,7 @@ class TestWorktreeManager:
 
     def test_create_worktree_with_custom_branch(self, worktree_manager: WorktreeManager):
         """Test creating a worktree with custom branch name."""
-        info = worktree_manager.create(
-            spec_id="SPEC-PAY-002",
-            branch_name="custom-payment-branch"
-        )
+        info = worktree_manager.create(spec_id="SPEC-PAY-002", branch_name="custom-payment-branch")
 
         assert info.spec_id == "SPEC-PAY-002"
         assert "custom-payment-branch" in info.branch

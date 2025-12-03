@@ -92,12 +92,8 @@ class TemplateBackup:
         backup_dir = self.target_path / ".moai-backups"
         if backup_dir.exists():
             # Match pattern: YYYYMMDD_HHMMSS (8 digits + underscore + 6 digits)
-            timestamp_pattern = re.compile(r'^\d{8}_\d{6}$')
-            timestamped_backups = [
-                d
-                for d in backup_dir.iterdir()
-                if d.is_dir() and timestamp_pattern.match(d.name)
-            ]
+            timestamp_pattern = re.compile(r"^\d{8}_\d{6}$")
+            timestamped_backups = [d for d in backup_dir.iterdir() if d.is_dir() and timestamp_pattern.match(d.name)]
 
             if timestamped_backups:
                 # Sort by name (timestamp) and return the latest

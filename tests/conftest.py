@@ -139,9 +139,7 @@ def tmp_git_repo(tmp_path: Path) -> Path:
 
     # Configure Git user (required for commits)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=git_repo, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@example.com"], cwd=git_repo, check=True, capture_output=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=git_repo, check=True, capture_output=True)
 
     return git_repo
 

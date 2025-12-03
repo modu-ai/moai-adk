@@ -221,9 +221,7 @@ class TestUncommittedChangesDetection:
 
             if result.stdout.strip():
                 uncommitted_count = len(result.stdout.strip().split("\n"))
-                warning = (
-                    f"⚠️  {uncommitted_count} uncommitted files detected - " "Consider committing or stashing changes"
-                )
+                warning = f"⚠️  {uncommitted_count} uncommitted files detected - Consider committing or stashing changes"
 
                 assert "uncommitted files" in warning.lower()
                 assert str(uncommitted_count) in warning

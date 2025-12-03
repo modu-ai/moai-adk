@@ -139,9 +139,9 @@ class TestVersionComparison:
                 f"expected matched={expected_matched}, got {is_matched}"
             )
             assert is_matched == expected_matched, err_msg
-            assert (
-                is_newer == expected_newer
-            ), f"Version comparison failed for {installed} vs {latest}: expected newer={expected_newer}, got {is_newer}"
+            assert is_newer == expected_newer, (
+                f"Version comparison failed for {installed} vs {latest}: expected newer={expected_newer}, got {is_newer}"
+            )
 
     def test_version_comparison_prevents_downgrade_advice(self):
         """Test that semantic versioning prevents suggesting downgrade (0.25.7 -> 1.0.0 confusion)"""
@@ -162,9 +162,7 @@ class TestVersionComparison:
         assert latest2 < installed2, "0.3.0 should be less than 0.25.7 with semantic versioning"
 
 
-@pytest.mark.skip(
-    reason="Hook file migrated to moai/session_start__show_project_info.py"
-)
+@pytest.mark.skip(reason="Hook file migrated to moai/session_start__show_project_info.py")
 class TestSuppressSetupMessagesWithNewFields:
     """Test that suppress_setup_messages feature works with new config fields"""
 

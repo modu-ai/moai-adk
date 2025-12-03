@@ -8,6 +8,7 @@ TDD History:
     - GREEN: HookResult.to_dict() 메서드 구현 (표준 스키마 준수)
     - REFACTOR: 실제 HookResult API에 맞게 테스트 수정
 """
+
 import json
 import sys
 from pathlib import Path

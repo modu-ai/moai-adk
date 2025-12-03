@@ -95,9 +95,9 @@ class TestStatuslineVersionDisplay:
                 statusline = renderer.render(data)
 
                 # Statusline shows "unknown" for missing version - this is current behavior
-                assert (
-                    "unknown" in statusline.lower()
-                ), f"Statusline should contain 'unknown' for missing version, got {statusline}"
+                assert "unknown" in statusline.lower(), (
+                    f"Statusline should contain 'unknown' for missing version, got {statusline}"
+                )
 
     def test_statusline_reads_version_from_config_correctly(self) -> None:
         """
@@ -141,9 +141,9 @@ class TestStatuslineVersionDisplay:
 
                 # RED: This assertion will fail because VersionReader is not reading
                 # from the correct config path
-                assert (
-                    "1.2.3-custom" in statusline
-                ), f"Statusline should show custom version '1.2.3-custom', got {statusline}"
+                assert "1.2.3-custom" in statusline, (
+                    f"Statusline should show custom version '1.2.3-custom', got {statusline}"
+                )
 
                 # Verify VersionReader was called with correct path
                 mock_get_version.assert_called_once()
@@ -240,9 +240,9 @@ class TestStatuslineVersionDisplay:
 
                     # RED: These assertions will fail because the current implementation
                     # doesn't handle version formatting consistently
-                    assert (
-                        version in statusline or version[1:] in statusline
-                    ), f"Statusline should contain version '{version}', got {statusline}"
+                    assert version in statusline or version[1:] in statusline, (
+                        f"Statusline should contain version '{version}', got {statusline}"
+                    )
                     assert "unknown" not in statusline, f"Statusline should not show 'unknown', got {statusline}"
 
     def test_statusline_integration_with_version_reader(self) -> None:
@@ -325,9 +325,9 @@ class TestStatuslineVersionDisplay:
 
         # RED: This assertion will fail because the current implementation
         # doesn't have fallback logic to package version
-        assert (
-            package_version in statusline
-        ), f"Statusline should contain package version '{package_version}', got {statusline}"
+        assert package_version in statusline, (
+            f"Statusline should contain package version '{package_version}', got {statusline}"
+        )
 
     def test_statusline_version_error_handling(self) -> None:
         """
@@ -444,6 +444,6 @@ class TestStatuslineVersionDisplay:
 
             # RED: This assertion will fail because the current implementation
             # doesn't apply consistent formatting to versions
-            assert (
-                expected_format in statusline
-            ), f"Statusline should contain formatted version '{expected_format}', got {statusline}"
+            assert expected_format in statusline, (
+                f"Statusline should contain formatted version '{expected_format}', got {statusline}"
+            )

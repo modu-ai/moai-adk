@@ -431,7 +431,6 @@ class TestUpgradeExecution:
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
             patch("moai_adk.cli.commands.update._clear_uv_package_cache", return_value=True),
         ):
-
             # First call: stale cache
             # Second call: successful upgrade
             mock_run.side_effect = [
@@ -451,7 +450,6 @@ class TestUpgradeExecution:
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
             patch("moai_adk.cli.commands.update._clear_uv_package_cache", return_value=False),
         ):
-
             mock_run.return_value = MagicMock(returncode=0, stdout="Nothing to upgrade", stderr="")
 
             result = _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
@@ -471,7 +469,6 @@ class TestUpgradeExecution:
             patch("subprocess.run") as mock_run,
             patch("moai_adk.cli.commands.update._get_current_version", side_effect=RuntimeError("Error")),
         ):
-
             mock_run.return_value = MagicMock(returncode=0, stdout="Nothing to upgrade", stderr="")
 
             result = _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
@@ -485,7 +482,6 @@ class TestUpgradeExecution:
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
             patch("moai_adk.cli.commands.update._clear_uv_package_cache", return_value=True),
         ):
-
             # Both attempts return error
             mock_run.side_effect = [
                 MagicMock(returncode=0, stdout="Nothing to upgrade", stderr=""),
@@ -780,6 +776,7 @@ class TestTemplateContext:
     def clear_moai_env_vars(self):
         """Clear MOAI environment variables for test isolation."""
         import os
+
         moai_env_vars = [
             "MOAI_USER_NAME",
             "MOAI_CONVERSATION_LANG",
@@ -1262,7 +1259,6 @@ class TestSyncTemplates:
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
         ):
-
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -1289,7 +1285,6 @@ class TestSyncTemplates:
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
         ):
-
             mock_proc_instance = Mock()
             mock_proc_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_proc_instance
@@ -1325,7 +1320,6 @@ class TestSyncTemplates:
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.TemplateProcessor"),
         ):
-
             mock_backup_instance = Mock()
             mock_backup_instance.has_existing_files.return_value = True
             mock_backup_instance.create_backup.return_value = tmp_path / "backup"
@@ -1352,7 +1346,6 @@ class TestSyncTemplates:
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
             patch("moai_adk.core.template.backup.TemplateBackup") as mock_backup,
         ):
-
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -1384,7 +1377,6 @@ class TestSyncTemplates:
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
             patch("moai_adk.core.template.backup.TemplateBackup") as mock_backup,
         ):
-
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -1417,7 +1409,6 @@ class TestUpdateCommandIntegration:
                 patch("moai_adk.cli.commands.update._preserve_user_settings", return_value={}),
                 patch("moai_adk.cli.commands.update._restore_user_settings", return_value=True),
             ):
-
                 result = runner.invoke(update, ["--templates-only"])
                 assert result.exit_code == 0
                 assert "Syncing templates only" in result.output
@@ -1441,7 +1432,6 @@ class TestUpdateCommandIntegration:
                 patch("moai_adk.core.migration.backup_manager.BackupManager") as mock_backup,
                 patch("moai_adk.cli.commands.update._generate_manual_merge_guide") as mock_guide,
             ):
-
                 mock_backup_instance = Mock()
                 mock_backup_instance.create_full_project_backup.return_value = Path.cwd() / "backup"
                 mock_backup.return_value = mock_backup_instance
@@ -1470,7 +1460,6 @@ class TestUpdateCommandIntegration:
                 patch("moai_adk.cli.commands.update._execute_upgrade", return_value=True),
                 patch("click.confirm", return_value=True),
             ):
-
                 result = runner.invoke(update)
                 assert result.exit_code == 0
                 assert "Upgrading" in result.output
@@ -1490,7 +1479,6 @@ class TestUpdateCommandIntegration:
                 patch("moai_adk.cli.commands.update._detect_tool_installer", return_value=None),
                 patch("click.confirm", return_value=True),
             ):
-
                 result = runner.invoke(update)
                 assert result.exit_code != 0
                 assert "Cannot detect package installer" in result.output
@@ -1516,7 +1504,6 @@ class TestUpdateCommandIntegration:
                 ),
                 patch("click.confirm", return_value=True),
             ):
-
                 result = runner.invoke(update)
                 assert result.exit_code != 0
                 assert "timed out" in result.output

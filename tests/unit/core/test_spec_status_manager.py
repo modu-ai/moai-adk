@@ -50,8 +50,7 @@ class TestSpecStatusManager:
 
         spec_file = spec_dir / "spec.md"
         spec_body = (
-            "\n\n# Test SPEC\n\n## Implementation\n\n"
-            "# REMOVED_ORPHAN_CODE:TEST-001\n# REMOVED_ORPHAN_TEST:TEST-001\n"
+            "\n\n# Test SPEC\n\n## Implementation\n\n# REMOVED_ORPHAN_CODE:TEST-001\n# REMOVED_ORPHAN_TEST:TEST-001\n"
         )
         with open(spec_file, "w") as f:
             f.write(f"---\n{yaml.dump(spec_content)}---{spec_body}")

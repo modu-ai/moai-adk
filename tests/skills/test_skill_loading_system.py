@@ -13,13 +13,22 @@ from datetime import datetime, timedelta
 
 # Import the skill loading system
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from moai_adk.core.skill_loading_system import (
-    SkillLoader, SkillValidator, SkillRegistry, SkillData,
-    load_skill, get_skill_cache_stats, clear_skill_cache,
-    SkillLoadingError, SkillNotFoundError, SkillValidationError, DependencyError,
-    LRUCache
+    SkillLoader,
+    SkillValidator,
+    SkillRegistry,
+    SkillData,
+    load_skill,
+    get_skill_cache_stats,
+    clear_skill_cache,
+    SkillLoadingError,
+    SkillNotFoundError,
+    SkillValidationError,
+    DependencyError,
+    LRUCache,
 )
 
 
@@ -47,6 +56,7 @@ class TestLRUCache(unittest.TestCase):
 
         # Wait for expiration
         import time
+
         time.sleep(0.01)
 
         retrieved = cache.get("test-skill")
@@ -135,17 +145,17 @@ Advanced details
         skill_data = SkillData("test-skill", {}, content, datetime.now())
 
         # Test basic filter
-        skill_data.apply_filter('basic')
+        skill_data.apply_filter("basic")
         filtered_content = skill_data.content
-        self.assertIn('Quick Reference', filtered_content)
-        self.assertNotIn('Advanced Implementation', filtered_content)
+        self.assertIn("Quick Reference", filtered_content)
+        self.assertNotIn("Advanced Implementation", filtered_content)
 
     def test_empty_skill_creation(self):
         """Test fallback skill creation"""
         fallback = SkillData.get_empty_skill("missing-skill")
 
         self.assertEqual(fallback.name, "missing-skill")
-        self.assertEqual(fallback.frontmatter['status'], 'fallback')
+        self.assertEqual(fallback.frontmatter["status"], "fallback")
         self.assertIn("failed to load", fallback.content)
 
 
@@ -201,17 +211,13 @@ class TestSkillValidator(unittest.TestCase):
         self.validator = SkillValidator(self.registry)
 
         # Register test skills
-        self.registry.register_skill("moai-test-skill", {
-            "name": "moai-test-skill",
-            "supported_efforts": [1, 3, 5],
-            "requires": []
-        })
+        self.registry.register_skill(
+            "moai-test-skill", {"name": "moai-test-skill", "supported_efforts": [1, 3, 5], "requires": []}
+        )
 
-        self.registry.register_skill("skill-with-deps", {
-            "name": "skill-with-deps",
-            "supported_efforts": [3, 5],
-            "requires": ["moai-test-skill"]
-        })
+        self.registry.register_skill(
+            "skill-with-deps", {"name": "skill-with-deps", "supported_efforts": [3, 5], "requires": ["moai-test-skill"]}
+        )
 
     def test_skill_name_validation(self):
         """Test skill name format validation"""
@@ -289,6 +295,7 @@ Detailed guide
     def tearDown(self):
         """Clean up temporary files"""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_skill_loading_success(self):
@@ -334,7 +341,7 @@ Detailed guide
         fallback_skill = self.loader.load_skill("moai-nonexistent")
 
         self.assertEqual(fallback_skill.name, "moai-nonexistent")
-        self.assertEqual(fallback_skill.frontmatter['status'], 'fallback')
+        self.assertEqual(fallback_skill.frontmatter["status"], "fallback")
 
     def test_circular_dependency_detection(self):
         """Test circular dependency detection"""
@@ -349,7 +356,7 @@ Detailed guide
 class TestPublicAPI(unittest.TestCase):
     """Test public API functions"""
 
-    @patch('moai_adk.core.skill_loading_system.SKILL_LOADER')
+    @patch("moai_adk.core.skill_loading_system.SKILL_LOADER")
     def test_load_skill_function(self, mock_loader):
         """Test public load_skill function"""
         mock_skill_data = MagicMock()
@@ -360,7 +367,7 @@ class TestPublicAPI(unittest.TestCase):
         mock_loader.load_skill.assert_called_once_with("test-skill", effort=3, force_reload=False)
         self.assertEqual(result, mock_skill_data)
 
-    @patch('moai_adk.core.skill_loading_system.SKILL_LOADER')
+    @patch("moai_adk.core.skill_loading_system.SKILL_LOADER")
     def test_get_skill_cache_stats(self, mock_loader):
         """Test get_skill_cache_stats function"""
         mock_stats = {"cached_skills": ["skill1"], "cache_size": 1}
@@ -370,7 +377,7 @@ class TestPublicAPI(unittest.TestCase):
 
         self.assertEqual(result, mock_stats)
 
-    @patch('moai_adk.core.skill_loading_system.SKILL_LOADER')
+    @patch("moai_adk.core.skill_loading_system.SKILL_LOADER")
     def test_clear_skill_cache(self, mock_loader):
         """Test clear_skill_cache function"""
         clear_skill_cache()

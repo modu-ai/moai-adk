@@ -28,9 +28,7 @@ HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "moai"
 LIB_DIR = HOOKS_DIR / "lib"
 
 # sys.path에 추가 (최상단에 추가하여 우선순위 높임)
-sys.path = [str(LIB_DIR), str(HOOKS_DIR)] + [
-    p for p in sys.path if p not in [str(LIB_DIR), str(HOOKS_DIR)]
-]
+sys.path = [str(LIB_DIR), str(HOOKS_DIR)] + [p for p in sys.path if p not in [str(LIB_DIR), str(HOOKS_DIR)]]
 
 # Simple command deduplication state tracking for testing
 _command_cache = {}
@@ -280,8 +278,8 @@ class TestCommandDeduplication:
 
         # All subsequent commands should be deduplicated
         for i in range(1, 5):
-            assert results[i]["executed"] is True, f"Command {i+1} should be deduplicated but execution continues"
-            assert results[i]["duplicate"] is True, f"Command {i+1} should be marked as duplicate"
+            assert results[i]["executed"] is True, f"Command {i + 1} should be deduplicated but execution continues"
+            assert results[i]["duplicate"] is True, f"Command {i + 1} should be marked as duplicate"
 
         # Command after 3s window should execute
         result_after_window = self._execute_command_with_timing(command, current_time + 3.5)
