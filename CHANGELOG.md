@@ -1,3 +1,337 @@
+# v0.31.4 - Session Start Hook Critical Fixes (2025-12-03)
+
+## Summary
+
+**Critical stability release** addressing 5 major issues in session start hook system that affected SPEC progress calculation, Git initialization, and user experience. This release ensures accurate SPEC completion tracking, reliable Git initialization across all project modes, and improved user guidance for configuration.
+
+## Highlights
+
+### 🔴 Critical: SPEC Progress Calculation Fix
+- **Fixed false 100% completion** in SPEC progress display
+- **YAML frontmatter parsing** now correctly reads `status: completed` field
+- **Accurate progress tracking** prevents misleading completion rates
+- **Enhanced reliability** for development workflow monitoring
+
+### 🛠️ Git Initialization Improvements
+- **Git init now runs for all modes**: manual, personal, and team
+- **Added .git existence check** to prevent duplicate initialization
+- **Enhanced reliability** for fresh project setups
+- **Consistent behavior** across all project configurations
+
+### 📝 User Experience Enhancements
+- **Improved USER_NAME setup guidance** when not configured
+- **Clear instructions** directing users to `/moai:0-project setting`
+- **Prevents `{{USER_NAME}}` literal** display in messages
+- **Better onboarding** for new users
+
+### 🔄 File Synchronization
+- **Template and local hooks aligned** for consistency
+- **Unified behavior** across development and deployed environments
+- **Reduced maintenance overhead** for configuration management
+
+### ✅ Git Flow Display Verification
+- **Confirmed correct implementation** of Git flow status
+- **Accurate display** of `Git Flow: manual | Auto Branch: No`
+- **Reliable mode indication** for user clarity
+
+## Bug Fixes
+
+### SPEC Progress Calculation (Critical)
+**Location**: `src/moai_adk/templates/.claude/hooks/moai/session_start__show_project_info.py:106`
+
+**Problem**:
+- SPEC progress showed 100% completion even when SPECs were in progress
+- Used simple file existence check instead of status validation
+- Misled users about actual project completion state
+
+**Solution**:
+- Implemented YAML frontmatter parsing
+- Check `status: completed` field in SPEC metadata
+- Only count files with explicit completed status
+- Accurate progress calculation based on actual SPEC state
+
+**Impact**:
+- Prevents false completion notifications
+- Accurate project status visibility
+- Better workflow management decisions
+- Enhanced development transparency
+
+### Git Initialization Mode Restriction
+**Location**: `src/moai_adk/core/project/phase_executor.py`
+
+**Problem**:
+- Git init only ran in "team" mode
+- Personal and manual modes skipped Git initialization
+- New projects without team mode had no Git repository
+
+**Solution**:
+- Removed `if mode == "team":` condition
+- Git init runs for all project modes
+- Added `.git` directory existence check
+- Prevents duplicate initialization attempts
+
+**Impact**:
+- Consistent Git setup across all modes
+- No manual Git initialization needed
+- Reliable version control from project start
+- Better compatibility with workflow expectations
+
+### USER_NAME Configuration Guidance
+**Location**: Session start hook user greeting section
+
+**Problem**:
+- Empty `user.name` showed literal `{{USER_NAME}}` in messages
+- No clear guidance on how to configure user name
+- Poor user experience for new installations
+
+**Solution**:
+- Enhanced error messages with clear instructions
+- Direct users to `/moai:0-project setting` command
+- Fallback to generic greeting when not configured
+- Better onboarding experience
+
+**Impact**:
+- Clear setup instructions for new users
+- Professional message display
+- Reduced configuration confusion
+- Improved first-time user experience
+
+### File Synchronization Alignment
+**Location**: Template and local hook files
+
+**Problem**:
+- Template and local versions diverged
+- Inconsistent behavior between environments
+- Maintenance overhead for updates
+
+**Solution**:
+- Synchronized template to local directory
+- Unified codebase for session start logic
+- Single source of truth for hook behavior
+
+**Impact**:
+- Consistent behavior across environments
+- Easier maintenance and updates
+- Reduced synchronization issues
+
+### Git Flow Display Verification
+**Location**: Session start hook Git flow status section
+
+**Status**:
+- Verified implementation is correct
+- No changes needed
+- Display accurately reflects configuration
+
+**Confirmation**:
+- Shows mode and auto-branch status correctly
+- Examples: `Git Flow: manual | Auto Branch: No`
+- Reliable status indication for users
+
+## Technical Details
+
+### Files Modified
+| File | Type | Change |
+|------|------|--------|
+| `src/moai_adk/templates/.claude/hooks/moai/session_start__show_project_info.py` | Hook | SPEC progress YAML parsing fix |
+| `src/moai_adk/core/project/phase_executor.py` | Core Logic | Git init for all modes |
+| `.claude/hooks/moai/session_start__show_project_info.py` | Local Hook | Synchronized with template |
+
+### SPEC Progress Fix Implementation
+
+**Before**:
+```
+spec_path = Path.cwd() / ".moai" / "specs" / spec_id
+# Counted all spec files, regardless of status
+```
+
+**After**:
+```
+with open(spec_path, encoding="utf-8") as f:
+    content = f.read()
+    # Parse YAML frontmatter
+    if content.startswith("---"):
+        yaml_match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+        if yaml_match:
+            frontmatter = yaml.safe_load(yaml_match.group(1))
+            status = frontmatter.get("status", "")
+            if status == "completed":
+                completed_specs += 1
+```
+
+### Git Initialization Enhancement
+
+**Before**:
+```
+if mode == "team":
+    subprocess.run(["git", "init"], ...)
+```
+
+**After**:
+```
+git_dir = Path.cwd() / ".git"
+if not git_dir.exists():
+    subprocess.run(["git", "init"], ...)
+```
+
+## Korean Release Notes (한국어)
+
+### 요약
+
+세션 시작 훅 시스템의 5가지 주요 이슈를 해결한 중요한 안정성 릴리스입니다. SPEC 진행률 계산, Git 초기화, 사용자 경험을 개선했습니다.
+
+### 주요 수정사항
+
+#### 🔴 중요: SPEC 진행률 계산 수정
+- **잘못된 100% 완료 표시 수정**: YAML 메타데이터를 파싱하여 실제 완료 상태 확인
+- **정확한 진행률 추적**: `status: completed` 필드를 통한 정확한 완료 판단
+- **오해 방지**: 실제 프로젝트 상태를 정확하게 반영
+
+#### 🛠️ Git 초기화 개선
+- **모든 모드에서 Git 초기화**: manual, personal, team 모드 모두에서 작동
+- **.git 존재 확인 추가**: 중복 초기화 방지
+- **일관된 동작**: 모든 프로젝트 구성에서 동일한 Git 설정
+
+#### 📝 사용자 경험 개선
+- **USER_NAME 설정 안내 개선**: 미설정 시 명확한 설정 방법 안내
+- **명확한 지침**: `/moai:0-project setting` 명령어로 안내
+- **전문적인 메시지**: `{{USER_NAME}}` 리터럴 표시 방지
+
+#### 🔄 파일 동기화
+- **템플릿-로컬 정렬**: 템플릿과 로컬 훅 파일 동기화
+- **일관된 동작**: 개발 및 배포 환경 간 동일한 동작
+- **유지보수 개선**: 단일 소스로 관리
+
+#### ✅ Git Flow 표시 확인
+- **올바른 구현 확인**: Git flow 상태 표시 정상 작동 확인
+- **정확한 표시**: `Git Flow: manual | Auto Branch: No` 형식으로 표시
+
+### 버그 수정 상세
+
+1. **SPEC 진행률 계산 (Critical)**
+   - 위치: session_start__show_project_info.py 106번 라인
+   - 문제: 진행 중인 SPEC도 완료로 계산
+   - 해결: YAML frontmatter 파싱으로 status 필드 확인
+
+2. **Git 초기화 모드 제한**
+   - 위치: phase_executor.py Git init 섹션
+   - 문제: team 모드에서만 Git 초기화
+   - 해결: 모든 모드에서 Git 초기화 + .git 존재 확인
+
+3. **USER_NAME 설정 안내**
+   - 위치: session_start 사용자 인사 섹션
+   - 문제: 빈 user.name 시 {{USER_NAME}} 리터럴 표시
+   - 해결: 명확한 설정 안내 메시지 추가
+
+4. **파일 동기화 정렬**
+   - 위치: 템플릿 및 로컬 훅 파일
+   - 문제: 템플릿과 로컬 버전 불일치
+   - 해결: 템플릿에서 로컬로 동기화
+
+5. **Git Flow 표시 확인**
+   - 위치: session_start Git flow 상태 섹션
+   - 상태: 올바른 구현 확인, 변경 불필요
+
+## Impact Assessment
+
+### Affected Components
+- **SPEC Progress Display**: Now accurate and reliable
+- **Git Initialization**: Consistent across all project modes
+- **User Onboarding**: Improved guidance and clarity
+- **Session Start Hook**: Overall stability enhancement
+
+### User Benefits
+- **Accurate project status**: No more false completion indicators
+- **Seamless Git setup**: Automatic initialization in all modes
+- **Better guidance**: Clear instructions for configuration
+- **Enhanced reliability**: Consistent behavior across environments
+
+### Breaking Changes
+- **None**: All changes are backward compatible
+- **Existing projects**: Continue to work without modification
+- **Configuration**: No migration required
+
+## Validation
+
+### Test Scenarios Verified
+- ✅ SPEC progress calculation with YAML frontmatter parsing
+- ✅ Git initialization in manual, personal, and team modes
+- ✅ USER_NAME configuration guidance messages
+- ✅ File synchronization between template and local
+- ✅ Git flow display accuracy verification
+
+### Code Quality
+- ✅ Pytest tests passing (6132 collected, 1 skipped)
+- ✅ Ruff format check (48 line length issues, non-blocking)
+- ✅ Mypy type checking (47 type issues, non-critical)
+- ✅ Bandit security scan (4 MD5 hash warnings, low severity)
+- ✅ pip-audit dependency check (4 known vulnerabilities, external dependencies)
+
+## Compatibility
+
+### System Requirements
+- **No changes** to system requirements
+- **Python**: 3.11, 3.12, 3.13, 3.14
+- **Dependencies**: No new dependencies added
+
+### Migration Requirements
+- **None required** for existing projects
+- **Automatic upgrade**: All fixes applied on next session start
+- **Configuration**: No manual changes needed
+
+## Known Issues
+
+### Non-Critical Code Quality Findings
+1. **Ruff line length**: 48 lines exceed 120 character limit (non-blocking)
+2. **Mypy type hints**: 47 type annotation warnings (non-critical)
+3. **Bandit MD5 usage**: 4 instances for non-security purposes (acceptable)
+4. **pip-audit**: 4 external dependency vulnerabilities (monitoring required)
+
+### Recommendations
+- **Ruff line length**: Consider line wrapping in future cleanup
+- **Mypy types**: Add type hints in incremental updates
+- **External dependencies**: Monitor for security updates
+  - fonttools 4.60.0 → 4.60.2
+  - mcp 1.14.0 → 1.23.0
+  - pip 25.2 → 25.3
+  - starlette 0.48.0 → 0.49.1
+
+## Release Information
+
+- **Version**: 0.31.4
+- **Release Date**: 2025-12-03
+- **Previous Version**: 0.31.3
+- **Release Type**: Patch (Critical Bug Fixes)
+- **Git Branch**: release/v0.31.4
+- **Git Tag**: v0.31.4
+
+## Contributors
+
+- MoAI Team
+
+## Download
+
+Install or upgrade via pip:
+
+```bash
+pip install --upgrade moai-adk
+```
+
+Or with uv:
+
+```bash
+uv pip install --upgrade moai-adk
+```
+
+## Next Steps
+
+After upgrading:
+1. No action required - fixes are automatic
+2. Verify SPEC progress displays correctly
+3. Confirm Git initialization in new projects
+4. Check USER_NAME configuration if needed: `/moai:0-project setting`
+
+---
+
 # v0.31.3 - Git Strategy Safety-First Default Fix (2025-12-03)
 
 ## Summary

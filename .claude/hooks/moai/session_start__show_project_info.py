@@ -92,13 +92,41 @@ except ImportError:
         return None
 
     def get_cached_spec_progress():
-        specs_dir = find_project_root() / ".moai" / "specs"
+        """Get SPEC progress information - FIXED to use YAML frontmatter parsing"""
+        # FIX #3: Use absolute path from find_project_root() to ensure current project only
+        project_root = find_project_root()
+        specs_dir = project_root / ".moai" / "specs"
+
         if not specs_dir.exists():
             return {"completed": 0, "total": 0, "percentage": 0}
         try:
+            # Only scan SPEC folders in THIS project's .moai/specs/ directory
             spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
             total = len(spec_folders)
-            completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
+
+            # FIX: Parse YAML frontmatter to check for status: completed
+            completed = 0
+            for folder in spec_folders:
+                spec_file = folder / "spec.md"
+                if not spec_file.exists():
+                    continue
+
+                try:
+                    # Read spec.md content
+                    content = spec_file.read_text(encoding="utf-8")
+
+                    # Parse YAML frontmatter (between --- delimiters)
+                    if content.startswith("---"):
+                        yaml_end = content.find("---", 3)
+                        if yaml_end > 0:
+                            yaml_content = content[3:yaml_end]
+                            # Check for status: completed (with or without quotes)
+                            if "status: completed" in yaml_content or 'status: "completed"' in yaml_content:
+                                completed += 1
+                except (OSError, UnicodeDecodeError):
+                    # File read failure or encoding error - considered incomplete
+                    pass
+
             percentage = (completed / total * 100) if total > 0 else 0
             return {
                 "completed": completed,
@@ -162,23 +190,63 @@ def should_show_setup_messages() -> bool:
         return True
 
 
+def check_git_initialized() -> bool:
+    """Check if git repository is initialized
+    
+    Returns:
+        bool: True if .git directory exists, False otherwise
+    """
+    try:
+        project_root = find_project_root()
+        git_dir = project_root / ".git"
+        return git_dir.exists() and git_dir.is_dir()
+    except Exception:
+        return False
+
+
 def get_git_info() -> Dict[str, Any]:
     """Get comprehensive git information using optimized Git operations manager
+    
+    FIXED: Handles git not initialized state properly
+    - Branch: Shows helpful message if git not initialized
+    - Last Commit: Shows helpful message if git not initialized or no commits
 
     Uses connection pooling, caching, and parallel execution for optimal performance.
     Falls back to basic implementation if Git manager unavailable.
     """
+    # FIX #1 and #4: Check if git is initialized first
+    if not check_git_initialized():
+        return {
+            "branch": "Git not initialized → Run 'moai-adk init' to set up Git repository",
+            "last_commit": "Git not initialized → Run 'moai-adk init' to set up Git repository",
+            "commit_time": "",
+            "changes": 0,
+            "git_initialized": False
+        }
+    
     git_manager = get_git_manager()
     if git_manager:
         try:
             # Use optimized Git manager
             project_info = git_manager.get_project_info(use_cache=True)
+            branch = project_info.get("branch", "unknown")
+            last_commit = project_info.get("last_commit", "unknown")
+            
+            # FIX #1: Handle empty branch (no commits yet)
+            if not branch or branch == "unknown":
+                branch = "No commits yet → Make your first commit"
+                
+            # FIX #4: Handle no commits case
+            if not last_commit or last_commit == "unknown":
+                last_commit = "No commits yet"
+            
             return {
-                "branch": project_info.get("branch", "unknown"),
-                "last_commit": project_info.get("last_commit", "unknown"),
+                "branch": branch,
+                "last_commit": last_commit,
                 "commit_time": project_info.get("commit_time", "unknown"),
                 "changes": project_info.get("changes", 0),
                 "fetch_time": project_info.get("fetch_time", ""),
+                "git_initialized": True
             }
         except Exception as e:
             logging.warning(f"Git manager failed, falling back: {e}")
@@ -211,21 +279,34 @@ def get_git_info() -> Dict[str, Any]:
                     # Future execution timeout or runtime errors
                     results[key] = ""
 
-        # Process results
+        # Process results with proper handling for empty values
+        branch = results.get("branch", "")
+        last_commit = results.get("last_commit", "")
+        
+        # FIX #1: Handle empty branch (no commits yet)
+        if not branch:
+            branch = "No commits yet → Make your first commit"
+            
+        # FIX #4: Handle no commits case
+        if not last_commit:
+            last_commit = "No commits yet"
+
         return {
-            "branch": results.get("branch", "unknown"),
-            "last_commit": results.get("last_commit", "unknown"),
-            "commit_time": results.get("commit_time", "unknown"),
+            "branch": branch,
+            "last_commit": last_commit,
+            "commit_time": results.get("commit_time", ""),
             "changes": (len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0),
+            "git_initialized": True
         }
 
     except (RuntimeError, OSError, TimeoutError):
         # ThreadPoolExecutor, git command, or timeout errors
         return {
-            "branch": "unknown",
-            "last_commit": "unknown",
-            "commit_time": "unknown",
+            "branch": "Error reading git info",
+            "last_commit": "Error reading git info",
+            "commit_time": "",
             "changes": 0,
+            "git_initialized": True
         }
 
 
@@ -238,6 +319,36 @@ def _run_git_command_fallback(cmd: list[str]) -> str:
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, OSError):
         # Git command timeout, subprocess error, or git not found
         return ""
+
+
+def get_git_strategy_info(config: dict) -> dict:
+    """Get git strategy information from config
+    
+    FIX #2: NEW FEATURE - Display git strategy information
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        Dictionary with git_flow and auto_branch information
+    """
+    if not config:
+        return {"git_flow": "unknown", "auto_branch": "unknown"}
+    
+    git_strategy = config.get("git_strategy", {})
+    mode = git_strategy.get("mode", "manual")
+    
+    # Get auto_branch setting from branch_creation config
+    branch_creation = git_strategy.get("branch_creation", {})
+    auto_enabled = branch_creation.get("auto_enabled", False)
+    
+    # Determine auto_branch display
+    auto_branch_display = "Yes" if auto_enabled else "No"
+    
+    return {
+        "git_flow": mode,
+        "auto_branch": auto_branch_display
+    }
 
 
 def _parse_version(version_str: str) -> tuple[int, ...]:
@@ -427,6 +538,8 @@ def get_language_info(config: dict) -> dict:
 def load_user_personalization() -> dict:
     """Load user personalization settings using centralized language configuration resolver
 
+    FIX #5: Check for template variables and provide setup guidance
+    
     Uses the new LanguageConfigResolver which provides:
     - Environment variable priority handling
     - Configuration file integration
@@ -444,16 +557,21 @@ def load_user_personalization() -> dict:
         resolver = get_resolver(str(find_project_root()))
         config = resolver.resolve_config()
 
+        # FIX #5: Check if USER_NAME is a template variable or empty
+        user_name = config.get('user_name', '')
+        has_valid_name = user_name and not user_name.startswith('{{') and not user_name.endswith('}}')
+        
         # Build personalization info using resolved configuration
         personalization = {
-            'user_name': config.get('user_name', ''),
+            'user_name': user_name if has_valid_name else '',
             'conversation_language': config.get('conversation_language', 'en'),
             'conversation_language_name': config.get('conversation_language_name', 'English'),
             'agent_prompt_language': config.get('agent_prompt_language', 'en'),
             'is_korean': config.get('conversation_language') == 'ko',
-            'has_personalization': bool(config.get('user_name', '').strip()),
+            'has_personalization': has_valid_name,
             'config_source': config.get('config_source', 'default'),
-            'personalized_greeting': resolver.get_personalized_greeting(config)
+            'personalized_greeting': resolver.get_personalized_greeting(config) if has_valid_name else '',
+            'needs_setup': not has_valid_name  # FIX #5: Flag for setup guidance
         }
 
         # Export template variables for other system components
@@ -497,6 +615,9 @@ def load_user_personalization() -> dict:
         if conversation_lang is None and config:
             conversation_lang = config.get('language', {}).get('conversation_language', 'en')
 
+        # FIX #5: Check if USER_NAME is a template variable or empty
+        has_valid_name = user_name and not user_name.startswith('{{') and not user_name.endswith('}}')
+
         # Get language name
         lang_name_map = {
             'ko': 'Korean',
@@ -512,13 +633,14 @@ def load_user_personalization() -> dict:
 
         # Build personalization info
         personalization = {
-            'user_name': user_name or '',
+            'user_name': user_name if has_valid_name else '',
             'conversation_language': conversation_lang or 'en',
             'conversation_language_name': lang_name,
             'is_korean': conversation_lang == 'ko',
-            'has_personalization': bool(user_name),
+            'has_personalization': has_valid_name,
             'config_source': 'fallback',
-            'personalized_greeting': f"{user_name}님" if user_name and conversation_lang == 'ko' else user_name or ''
+            'personalized_greeting': f"{user_name}님" if has_valid_name and conversation_lang == 'ko' else user_name if has_valid_name else '',
+            'needs_setup': not has_valid_name  # FIX #5: Flag for setup guidance
         }
 
         # Store for session-wide access
@@ -556,6 +678,9 @@ def format_session_output() -> str:
 
     # Get language info
     lang_info = get_language_info(config)
+    
+    # FIX #2: Get git strategy info
+    git_strategy = get_git_strategy_info(config)
 
     # Check for version updates (uses Phase 1 cache)
     version_status, _has_update = check_version_update()
@@ -563,21 +688,35 @@ def format_session_output() -> str:
     # Format output with each item on separate line
     output = [
         "🚀 MoAI-ADK Session Started",
-        f"📦 Version: {moai_version} {version_status}",
-        f"🌿 Branch: {git_info['branch']}",
-        f"🔄 Changes: {git_info['changes']}",
-        f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
-        f"🔨 Last Commit: {git_info['last_commit']}",
-        f"🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']}) {lang_info['status']}",
+        f"   📦 Version: {moai_version} {version_status}",
+        f"   🌿 Branch: {git_info['branch']}",
+        # FIX #2: Add Git Strategy information
+        f"   🔧 Git Flow: {git_strategy['git_flow']} | Auto Branch: {git_strategy['auto_branch']}",
+        f"   🔄 Changes: {git_info['changes']}",
+        f"   🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
+        f"   🔨 Last Commit: {git_info['last_commit']}",
+        f"   🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']}) {lang_info['status']}",
     ]
 
-    # Add personalization info if available
-    if personalization['has_personalization']:
+    # FIX #5: Add personalization or setup guidance (never show template variables)
+    if personalization.get('needs_setup', False):
+        # Show setup guidance (based on conversation_language)
+        if personalization['is_korean']:
+            output.append("   👋 환영합니다! 프로젝트를 시작하기 전에 '/moai:0-project setting' 명령어로 사용자 이름과 프로젝트 설정을 구성해주세요")
+        else:
+            output.append("   👋 Welcome! Before starting, please run '/moai:0-project setting' to configure your name and project settings")
+    elif personalization['has_personalization']:
         user_greeting = personalization.get('personalized_greeting', '')
         if user_greeting:
-            greeting = f"👋 Welcome back, {user_greeting}!" if personalization['is_korean'] else f"👋 Welcome back, {user_greeting}!"
+            if personalization['is_korean']:
+                greeting = f"   👋 다시 오신 것을 환영합니다, {user_greeting}!"
+            else:
+                greeting = f"   👋 Welcome back, {user_greeting}!"
         else:
-            greeting = f"👋 Welcome back, {personalization['user_name']}!" if personalization['is_korean'] else f"👋 Welcome back, {personalization['user_name']}!"
+            if personalization['is_korean']:
+                greeting = f"   👋 다시 오신 것을 환영합니다, {personalization['user_name']}님!"
+            else:
+                greeting = f"   👋 Welcome back, {personalization['user_name']}!"
         output.append(greeting)
 
     # Configuration source is now handled silently for cleaner output
@@ -592,6 +731,7 @@ def main() -> None:
     Displays enhanced project information including:
     - Programming language and version
     - Git branch, changes, and last commit with time
+    - Git strategy (mode and auto_branch setting)
     - SPEC progress (completed/total)
     - Test coverage and status
     - Risk assessment
