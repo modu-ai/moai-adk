@@ -16,6 +16,11 @@ from moai_adk.cli.worktree.exceptions import (
 )
 from moai_adk.cli.worktree.manager import WorktreeManager
 
+try:
+    from git import Repo
+except ImportError:
+    Repo = None
+
 # Initialize Rich console for formatted output
 console = Console()
 
@@ -566,7 +571,7 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
                         except Exception as e:
                             console.print(f"[red]✗[/red] Failed to remove {spec_id}: {e}")
 
-                console.print(f"[green]✓[/green] Interactive cleanup completed")
+                console.print("[green]✓[/green] Interactive cleanup completed")
 
             except (ValueError, KeyboardInterrupt):
                 console.print("[yellow]Interactive cleanup cancelled[/yellow]")
@@ -579,7 +584,7 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
                 return
 
             cleaned = [info.spec_id for info in worktrees]
-            console.print(f"[yellow]Removing all worktrees. Use --merged-only for merged branches only or --interactive for selective cleanup.[/yellow]")
+            console.print("[yellow]Removing all worktrees. Use --merged-only for merged branches only or --interactive for selective cleanup.[/yellow]")
 
             for spec_id in cleaned:
                 try:

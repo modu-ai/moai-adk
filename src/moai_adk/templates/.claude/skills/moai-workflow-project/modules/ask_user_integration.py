@@ -10,7 +10,7 @@ Version: 1.0.0
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 from .batch_questions import BatchQuestionsManager, Question, QuestionType, UserResponse

@@ -19,6 +19,7 @@ Validation Rules:
 import json
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -31,21 +32,23 @@ if str(LIB_DIR) not in sys.path:
 from lib.path_utils import find_project_root
 
 try:
-    from lib.unified_timeout_manager import (
-        get_timeout_manager, hook_timeout_context, HookTimeoutConfig,
-        TimeoutPolicy, HookTimeoutError
-    )
-    from lib.config_validator import get_config_validator, ValidationIssue
     from lib.common import (  # noqa: E402
         get_file_pattern_category,
         is_root_whitelisted,
         suggest_moai_location,
     )
     from lib.config_manager import ConfigManager  # noqa: E402
+    from lib.config_validator import ValidationIssue, get_config_validator
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+    from lib.unified_timeout_manager import (
+        HookTimeoutConfig,
+        HookTimeoutError,
+        TimeoutPolicy,
+        get_timeout_manager,
+        hook_timeout_context,
+    )
 except ImportError:
     # Fallback for timeout if shared module unavailable
-    import signal
 
     def get_timeout_manager():
         return None
@@ -297,7 +300,6 @@ def main() -> None:
         0: Success (validation complete)
         1: Error (timeout, JSON parse failure, handler exception)
     """
-    import time
 
     # Configure timeout for pre_tool hook (fast policy)
     timeout_config = HookTimeoutConfig(
