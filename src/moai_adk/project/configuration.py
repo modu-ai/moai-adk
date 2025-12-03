@@ -186,7 +186,8 @@ class ConfigurationManager:
 class SmartDefaultsEngine:
     """Applies intelligent default values based on configuration.
 
-    Provides 16 smart defaults for configuration fields:
+    Provides 16+ smart defaults for configuration fields with safety-first approach:
+    - git_strategy mode (1) - defaults to 'manual' for safety
     - git_strategy workflows (2)
     - git_strategy checkpoints and push behavior (2)
     - git_strategy team PR settings (2)
@@ -195,6 +196,9 @@ class SmartDefaultsEngine:
     - project description (1)
     - auto-detect placeholders (5)
     - additional settings (1)
+
+    Safety Note: Git strategy defaults to 'manual' to ensure users must explicitly
+    choose GitHub automation features for their safety.
     """
 
     def __init__(self):
@@ -215,7 +219,7 @@ class SmartDefaultsEngine:
             "moai.version": "",  # Will be detected
             "project.language": "",  # Will be detected
             "project.locale": "",  # Will be detected
-            "git_strategy.mode": "personal",  # 16th default
+            "git_strategy.mode": "manual",  # 16th default (safety-first approach)
         }
 
     def get_all_defaults(self) -> Dict[str, Any]:

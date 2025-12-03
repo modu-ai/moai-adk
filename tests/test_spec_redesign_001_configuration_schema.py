@@ -301,6 +301,26 @@ class TestSmartDefaults:
         assert config_complete["constitution"]["test_coverage_target"] == 90
         assert config_complete["constitution"]["enforce_tdd"] is True
 
+    def test_git_strategy_defaults_to_manual_for_safety(self):
+        """Git strategy mode should default to 'manual' for safety-first approach"""
+        engine = SmartDefaultsEngine()
+        default_mode = engine.get_default("git_strategy.mode")
+
+        assert default_mode == "manual", f"Expected 'manual', got '{default_mode}'"
+
+    def test_safety_first_git_default(self):
+        """Safety-first: new projects should get manual mode unless explicitly chosen"""
+        config_partial = {
+            "user": {"name": "TestUser"},
+            "project": {"name": "TestProject"},
+        }
+
+        engine = SmartDefaultsEngine()
+        config_complete = engine.apply_defaults(config_partial)
+
+        # Git strategy should default to manual mode
+        assert config_complete["git_strategy"]["mode"] == "manual"
+
 
 class TestAutoDetection:
     """AC-007: Auto-detect 5 fields automatically"""
@@ -822,7 +842,7 @@ class TestIntegration:
             "project_name": "MyApp",
             "project_owner": "TestOwner",
             "project_description": "",
-            "git_strategy_mode": "personal",
+            "git_strategy_mode": "manual",
             "git_strategy_workflow": "github-flow",
             "test_coverage_target": 90,
             "enforce_tdd": True,

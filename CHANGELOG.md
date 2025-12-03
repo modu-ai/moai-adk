@@ -1,3 +1,118 @@
+# v0.31.3 - Git Strategy Safety-First Default Fix (2025-12-03)
+
+## Summary
+
+**Critical safety fix** release addressing Git strategy configuration issue where new projects were incorrectly defaulting to "personal" mode instead of "manual" mode. This ensures safety-first approach by requiring users to explicitly choose GitHub automation features rather than enabling them by default. Includes essential configuration fix with enhanced test coverage and improved documentation clarity.
+
+## Highlights
+
+### 🛡️ Safety-First Git Strategy Default Fix
+- **Fixed Git strategy default** from "personal" to "manual" for new projects
+- **Safety-first principle**: Users must explicitly opt-in to GitHub automation
+- **Prevents unexpected GitHub integration** for users skipping Git configuration
+- **Maintains full functionality** for users who explicitly choose automation
+
+### 🔧 Configuration System Enhancement
+- **Updated SmartDefaultsEngine** with safety-first Git strategy logic
+- **Enhanced class documentation** explaining safety reasoning
+- **Improved default value comments** with clear safety annotations
+- **Consistent template configuration** already using "manual" mode
+
+### 🧪 Enhanced Test Coverage
+- **Updated existing tests** expecting "personal" default to expect "manual"
+- **Added new test cases** for safety-first default behavior
+- **Enhanced test validation** for Git strategy configuration
+- **Maintained backward compatibility** for existing projects
+
+## Bug Fixes
+
+### Git Strategy Configuration (Critical)
+- **Fixed root cause**: Line 218 in `src/moai_adk/project/configuration.py`
+- **Changed hardcoded default**: `"git_strategy.mode": "personal"` → `"manual"`
+- **Updated documentation**: Added safety-first explanation to SmartDefaultsEngine
+- **Enhanced comments**: Clear safety annotations for Git strategy defaults
+
+### Test Updates
+- **Updated integration tests**: Changed expected default from "personal" to "manual"
+- **Added safety-first tests**: New test cases validating manual default behavior
+- **Enhanced test coverage**: Comprehensive Git strategy configuration validation
+- **Maintained compatibility**: All existing functionality preserved
+
+### Documentation Improvements
+- **Enhanced code documentation**: Updated SmartDefaultsEngine class docstring
+- **Improved inline comments**: Added safety-first reasoning explanations
+- **Verified consistency**: Template and local configuration alignment confirmed
+- **User experience**: Clearer default behavior documentation
+
+## Technical Details
+
+### Files Modified
+| File | Type | Change |
+|------|------|--------|
+| `src/moai_adk/project/configuration.py` | Core Logic | Changed Git strategy default to "manual" |
+| `tests/test_spec_redesign_001_configuration_schema.py` | Tests | Updated test expectations and added new tests |
+
+### Configuration Impact
+- **New Projects**: Will default to "manual" mode (safer)
+- **Existing Projects**: Unchanged, preserve current configuration
+- **User Choice**: All explicit selections continue to work normally
+- **Backward Compatibility**: Fully maintained
+
+### Safety Rationale
+- **Manual Mode Benefits**:
+  - No unexpected GitHub integration
+  - Local Git workflow only
+  - Requires explicit opt-in for automation
+  - Safer for new users unfamiliar with GitHub automation
+
+## Impact Assessment
+
+### Affected Users
+- **New Projects**: Benefit from safer defaults
+- **Existing Projects**: No impact (configuration preserved)
+- **Team Workflows**: No changes to existing automation
+- **GitHub Integration**: Available when explicitly chosen
+
+### Migration Requirements
+- **None required** for existing projects
+- **New installations** automatically get safer defaults
+- **Documentation updates** reflect safety-first approach
+- **Test suite** validates safety-first behavior
+
+## Validation
+
+### Test Scenarios Verified
+- ✅ New project creation defaults to "manual" mode
+- ✅ Explicit "personal" mode selection works correctly
+- ✅ Existing project configurations remain unchanged
+- ✅ Complete `/moai:0-project` workflow functions properly
+- ✅ All conditional Git batch rendering works correctly
+
+### Code Quality
+- ✅ All existing tests pass
+- ✅ New safety-first tests added and passing
+- ✅ Documentation updated and consistent
+- ✅ No breaking changes introduced
+
+## Compatibility
+
+### System Requirements
+- **No changes** to system requirements
+- **All OS supported**: macOS, Linux, Windows WSL2
+- **Python >= 3.11** maintained
+- **All dependencies unchanged**
+
+### Known Limitations
+- **None introduced** by this release
+- **All existing functionality preserved**
+- **Performance impact**: None
+- **Memory impact**: None
+
+## Contributors
+- @GoosLab (MoAI Team) - Git Strategy Safety-First Default Fix
+
+---
+
 # v0.31.2 - Git Worktree CLI & System Optimization Mega Release (2025-12-01)
 
 ## Summary
