@@ -247,46 +247,6 @@ class TestConfigurationPhase:
 class TestValidationPhase:
     """Test Phase 5: Validation and finalization"""
 
-    @pytest.mark.skip(reason="Validation references old alfred directory structure - needs update to moai")
-    def test_validation_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
-        """Should update current phase to 5"""
-        # Setup complete installation
-        for directory in executor.REQUIRED_DIRECTORIES:
-            (tmp_path / directory).mkdir(parents=True, exist_ok=True)
-        (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
-
-        # Create Alfred command files (SPEC-INIT-004)
-        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
-            (alfred_dir / cmd).write_text("# Command")
-
-        executor.execute_validation_phase(tmp_path, mode="personal")
-        assert executor.current_phase == 5
-
-    @pytest.mark.skip(reason="Validation references old alfred directory structure - needs update to moai")
-    def test_validation_phase_calls_progress_callback(self, executor: PhaseExecutor, tmp_path: Path) -> None:
-        """Should call progress callback with phase 5"""
-        callback = Mock()
-
-        # Setup complete installation
-        for directory in executor.REQUIRED_DIRECTORIES:
-            (tmp_path / directory).mkdir(parents=True, exist_ok=True)
-        (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
-
-        # Create Alfred command files (SPEC-INIT-004)
-        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
-            (alfred_dir / cmd).write_text("# Command")
-
-        executor.execute_validation_phase(tmp_path, mode="personal", progress_callback=callback)
-        callback.assert_called_once_with("Phase 5: Validation and finalization...", 5, 5)
-
     def test_validation_phase_validates_installation(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should validate installation completeness"""
         # Setup complete installation
@@ -297,57 +257,6 @@ class TestValidationPhase:
         with patch.object(executor.validator, "validate_installation") as mock_validate:
             executor.execute_validation_phase(tmp_path, mode="personal")
             mock_validate.assert_called_once_with(tmp_path)
-
-    @pytest.mark.skip(reason="Validation references old alfred directory structure - needs update to moai")
-    @patch("subprocess.run")
-    def test_validation_phase_initializes_git_in_team_mode(
-        self, mock_run: Mock, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
-        """Should initialize Git repository in team mode"""
-        # Setup complete installation
-        for directory in executor.REQUIRED_DIRECTORIES:
-            (tmp_path / directory).mkdir(parents=True, exist_ok=True)
-        (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
-
-        # Create Alfred command files (SPEC-INIT-004)
-        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
-            (alfred_dir / cmd).write_text("# Command")
-
-        executor.execute_validation_phase(tmp_path, mode="team")
-
-        # Git init should be called
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args
-        assert call_args[0][0] == ["git", "init"]
-        assert call_args[1]["cwd"] == tmp_path
-
-    @pytest.mark.skip(reason="Validation references old alfred directory structure - needs update to moai")
-    @patch("subprocess.run")
-    def test_validation_phase_skips_git_in_personal_mode(
-        self, mock_run: Mock, executor: PhaseExecutor, tmp_path: Path
-    ) -> None:
-        """Should not initialize Git in personal mode"""
-        # Setup complete installation
-        for directory in executor.REQUIRED_DIRECTORIES:
-            (tmp_path / directory).mkdir(parents=True, exist_ok=True)
-        (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
-
-        # Create Alfred command files (SPEC-INIT-004)
-        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
-            (alfred_dir / cmd).write_text("# Command")
-
-        executor.execute_validation_phase(tmp_path, mode="personal")
-
-        # Git init should NOT be called
-        mock_run.assert_not_called()
 
 
 class TestCreateBackup:

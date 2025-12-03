@@ -3,16 +3,12 @@
 Tests for GitManager class using temporary Git repositories.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
 from git import InvalidGitRepositoryError
 
 from moai_adk.core.git.manager import GitManager
-
-# Skip all tests in this file on Windows due to file locking issues
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="Windows file locking issues with Git repos")
 
 
 class TestGitManagerInit:

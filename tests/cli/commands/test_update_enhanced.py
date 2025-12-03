@@ -651,16 +651,6 @@ class TestSkillManagement:
         result = _prompt_skill_restore([], yes=False)
         assert result == []
 
-    @pytest.mark.skip(reason="Questionary interactive prompts require TTY - not available in CI")
-    def test_prompt_skill_restore_user_selection(self):
-        """Test prompting skill restore with user selection."""
-        custom_skills = ["custom-skill-1", "custom-skill-2"]
-
-        with patch("questionary.checkbox") as mock_checkbox:
-            mock_checkbox.return_value.ask.return_value = ["custom-skill-1"]
-            result = _prompt_skill_restore(custom_skills, yes=False)
-            assert result == ["custom-skill-1"]
-
     def test_restore_selected_skills_success(self, tmp_path):
         """Test restoring selected skills successfully."""
         backup_path = tmp_path / "backup"

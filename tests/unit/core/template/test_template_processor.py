@@ -357,24 +357,6 @@ Content here
             result = processor._has_existing_files()
             assert result is True
 
-    @pytest.mark.skip(reason="Backup naming convention changed to timestamp format")
-    def test_create_backup(self):
-        """Test backup creation."""
-        # This test should fail initially
-        from moai_adk.core.template.processor import TemplateProcessor
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            target_path = Path(temp_dir)
-            processor = TemplateProcessor(target_path)
-
-            # Create some files to backup
-            (target_path / "existing.txt").write_text("content")
-
-            backup_path = processor.create_backup()
-
-            assert backup_path.exists()
-            assert "backup" in backup_path.name.lower()
-
     def test_is_text_file_unsupported_extension(self):
         """Test text file detection with unsupported extension."""
         # This test should fail initially

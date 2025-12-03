@@ -89,17 +89,6 @@ class TestCLIErrorHandling:
             result = runner.invoke(cli, ["status"])
             assert result.exit_code != 0 or "not found" in result.output.lower()
 
-    @pytest.mark.skip(
-        reason="Restore command not implemented - functionality replaced by Git checkpoint system (.moai/checkpoints/) in v0.25+"
-    )
-    def test_restore_without_backups(self, tmp_path):
-        """Test restore without backups"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            result = runner.invoke(cli, ["restore"])
-            assert result.exit_code != 0 or "backup" in result.output.lower()
-
     def test_update_without_init(self, tmp_path):
         """Test update without initialization"""
         runner = CliRunner()

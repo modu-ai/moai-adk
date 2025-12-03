@@ -1,177 +1,155 @@
-# CodeRabbit Configuration File
-# https://docs.coderabbit.ai/guides/configure-coderabbit
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit Configuration - MoAI-ADK
+# Docs: https://docs.coderabbit.ai/reference/configuration
 
-coderabbit:
-  language: python
-  framework: general
+# General Settings
+language: en-US
+tone_instructions: "Be constructive and specific. Focus on actionable improvements."
+early_access: true
 
-  # Enable reviews on all branches including develop
-  rules:
-    - name: "Enable reviews on all branches"
-      type: "config"
+# Review Configuration
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    drafts: true
+    base_branches:
+      - main
+      - develop
+      - "release/**"
+  high_level_summary: true
+  high_level_summary_instructions: |
+    Summarize the PR in 2-3 sentences focusing on:
+    1. Main purpose and scope of changes
+    2. Key files or components affected
+    3. Potential impact on existing functionality
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  changed_files_summary: true
+  sequence_diagrams: true
+
+  # Path filters (include/exclude patterns)
+  path_filters:
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/uv.lock"
+    - "!**/__pycache__/**"
+    - "!**/*.pyc"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/.git/**"
+    - "!.moai/tmp/**"
+    - "!.moai/cache/**"
+    - "!.moai/logs/**"
+    - "!.moai/reports/**"
+    - "!assets/images/**"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.gif"
+    - "!**/*.ico"
+
+  # Path-based review instructions
+  path_instructions:
+    - path: "src/moai_adk/**/*.py"
+      instructions: |
+        Review Python code for:
+        - Type hints on all function parameters and returns
+        - Comprehensive docstrings (Google style)
+        - PEP-8 compliance
+        - Error handling with specific exceptions
+        - No hardcoded values (use config)
+    - path: "tests/**/*.py"
+      instructions: |
+        Review test code for:
+        - Descriptive test names (test_<function>_<scenario>_<expected>)
+        - Proper use of fixtures and mocks
+        - Edge case coverage
+        - Assert messages for debugging
+    - path: ".claude/agents/**/*.md"
+      instructions: |
+        Review agent definitions for:
+        - Clear description and purpose
+        - Proper tool restrictions (disallowedTools if needed)
+        - Consistent formatting (no tables, no emojis in instructions)
+        - Language-aware response instructions
+        - Single responsibility principle
+    - path: ".claude/commands/**/*.md"
+      instructions: |
+        Review slash command definitions for:
+        - Clear command purpose and description
+        - Valid YAML frontmatter (description, argument-hint if needed)
+        - Proper argument handling patterns
+        - No hardcoded paths (use $ARGUMENTS)
+        - Consistent naming convention (kebab-case)
+        - Language-aware user responses
+    - path: ".claude/skills/**/*.md"
+      instructions: |
+        Review skill definitions for:
+        - Valid YAML frontmatter (name, version, description, triggers)
+        - Clear trigger patterns
+        - Proper module structure
+        - Version compatibility
+        - Progressive disclosure pattern
+    - path: ".moai/specs/**/*.md"
+      instructions: |
+        Review SPEC documents for:
+        - All 7 required YAML fields (id, version, status, created, updated, author, priority)
+        - EARS format requirements (WHEN/IF/THEN)
+        - At least 2-3 test scenarios (Given-When-Then)
+        - Clear acceptance criteria
+        - Traceability links
+    - path: "CLAUDE.md"
+      instructions: |
+        Review CLAUDE.md for:
+        - Clear Alfred execution directives
+        - Proper agent delegation patterns
+        - Documentation standards compliance (no code examples, no tables, no emojis)
+        - Language-aware response rules
+        - Consistent formatting (list format, narrative style)
+        - Version and last updated date
+    - path: ".claude/hooks/**/*.py"
+      instructions: |
+        Review hook scripts for:
+        - Proper error handling with try/except
+        - JSON input/output format compliance
+        - Performance (should complete quickly)
+        - No blocking operations
+        - Clear logging for debugging
+
+  # Tool configuration
+  tools:
+    ruff:
+      enabled: true
+    gitleaks:
+      enabled: true
+    yamllint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
+    checkov:
+      enabled: false
+    actionlint:
       enabled: true
 
-  # Review settings
-  reviews:
-    review_status: true
-    review_on_draft: true
-    review_comment_lgtm: true
-
-  # Auto-approval settings (Pro feature)
-  auto_approve:
+# Knowledge Base
+knowledge_base:
+  opt_out: false
+  web_search:
     enabled: true
-    min_score: 0.75  # Approve if 75%+ quality (optimized for rate limit)
-
-  # Python-specific rules - Optimized for rate limit
-  python:
-    - check_type_hints: true
-    - check_docstrings: true
-    - check_pep8: true
-    - check_test_coverage: false  # Disable to reduce load
-
-  # SPEC document review rules
-  spec_review:
+  code_guidelines:
     enabled: true
-    files: ".moai/specs/**/spec.md"
-    instructions: |
-      SPEC Document Review Checklist:
+    filePatterns:
+      - "CLAUDE.md"
+      - ".claude/**/*.md"
+      - ".moai/docs/**/*.md"
+  learnings:
+    scope: local
+  issues:
+    scope: local
 
-      ## Metadata Validation (YAML Frontmatter)
-      - ✅ All 7 required fields present: id, version, status, created, updated, author, priority
-      - ✅ ID format correct: DOMAIN-### (e.g., AUTH-001)
-      - ✅ Version format: v0.0.1 (initial) or higher
-      - ✅ Status valid: draft, in-review, in-progress, completed, stable
-      - ✅ Author includes @ prefix (e.g., @username)
-      - ✅ Priority valid: critical, high, medium, low
-
-      ## Document Structure
-      - ✅ HISTORY section exists immediately after frontmatter
-      - ✅ HISTORY entries in reverse chronological order (latest first)
-      - ✅ Version history properly documented
-
-      ## EARS Requirements
-      - ✅ Ubiquitous requirements defined
-      - ✅ Event-driven (WHEN) requirements specified
-      - ✅ State-driven (WHILE) requirements included
-      - ✅ Constraints (IF) properly defined
-      - ✅ Optional features (WHERE) noted if applicable
-
-      ## Acceptance Criteria
-      - ✅ At least 2-3 test scenarios (Given-When-Then format)
-      - ✅ Clear test preconditions (Given)
-      - ✅ Specific actions (When)
-      - ✅ Expected outcomes (Then)
-
-      ## Traceability (Quality Tracking)
-      - ✅ Related test coverage documented
-      - ✅ Related code implementation documented
-      - ✅ Related documentation synchronized
-
-      ## Best Practices
-      - ✅ Clear and unambiguous language
-      - ✅ No spelling or grammar errors
-      - ✅ Proper Markdown formatting
-      - ✅ Links to related SPECs/issues
-      - ✅ Dependencies clearly documented
-
-  # Ignore patterns - Optimize for rate limit
-  ignore:
-    - "*.md"
-    - "*.txt"
-    - "docs/"
-    - "build/"
-    - "dist/"
-    - ".git/"
-    - "__pycache__/"
-    - "*.pyc"
-    # Additional ignore patterns to reduce review load
-    - ".moai/tmp/"
-    - ".moai/reports/"
-    - "ANALYSIS_SUMMARY.md"
-    - "COMMAND_DOCUMENTATION_STANDARDS.md"
-    - "COMMAND_EXAMPLES.md"
-    - "DOCUMENTATION_INDEX.md"
-    - "package-lock.json"
-    - "uv.lock"
-
-  # Review instructions
-  instructions: |
-    Review this pull request focusing on:
-
-    ## Code Quality
-    - Type hints presence and correctness
-    - Docstring completeness
-    - PEP-8 compliance
-    - Code readability and maintainability
-    - Design patterns and SOLID principles
-
-    ## Security
-    - Vulnerability detection
-    - Sensitive data handling
-    - Input validation
-    - Error handling
-
-    ## Testing
-    - Test coverage
-    - Edge case handling
-    - Test quality and assertions
-
-    ## Performance
-    - Algorithm efficiency
-    - Resource usage
-    - Potential bottlenecks
-
-    ## Documentation
-    - Comment clarity
-    - README updates
-    - Changelog entries
-
-  # Languages to review
-  languages:
-    - python
-    - yaml
-    - json
-    - markdown
-
-  # Disable review_skip_pattern to enable reviews on all branches
-  skip_review_on_forbidden_base_branch: false
-
-  # Changelog generation rules (Automated Release Pipeline)
-  changelog:
-    enabled: true
-    auto_generate_on_release: true
-    bilingual_support: true
-    languages:
-      - ko  # Korean
-      - en  # English
-    commit_analysis:
-      enabled: true
-      conventional_commits: true
-      scope_mapping:
-        feat: "✨ Features"
-        fix: "🐛 Bug Fixes"
-        docs: "📚 Documentation"
-        refactor: "♻️ Refactoring"
-        perf: "⚡ Performance"
-        test: "🧪 Testing"
-        chore: "🔧 Chore"
-        ci: "👷 CI/CD"
-    template: |
-      ## {VERSION} - {RELEASE_DATE}
-
-      ### 🇰🇷 한국어
-      {COMMITS_KO}
-
-      ### 🇺🇸 English
-      {COMMITS_EN}
-
-  # Auto-merge rules for automated version/changelog updates
-  auto_merge:
-    enabled: true
-    conditions:
-      - "title_contains: 'chore: Auto-update version'"
-      - "title_contains: 'docs: Auto-generated Changelog'"
-      - "coderabbit_score >= 0.75"
-      - "ci_passing: true"
-    delete_branch_on_merge: true
-    merge_method: squash  # Squash commits for cleaner history
+# Chat Settings
+chat:
+  auto_reply: true

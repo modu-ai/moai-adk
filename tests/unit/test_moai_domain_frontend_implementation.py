@@ -49,34 +49,6 @@ class TestComponentArchitecture:
             components["atoms"] + components["molecules"] + components["organisms"] + components["pages"]
         )
 
-    @pytest.mark.skip(reason="RED phase TDD - ComponentArchitect.analyze_reusability not implemented yet")
-    def test_component_reusability_analysis(self):
-        """Test analysis of component reusability and composition patterns."""
-        from src.moai_adk.foundation.frontend import ComponentArchitect
-
-        architect = ComponentArchitect()
-
-        # Define component props and composition
-        button_props = {
-            "variant": ["primary", "secondary", "ghost"],
-            "size": ["sm", "md", "lg"],
-            "disabled": bool,
-            "onClick": callable,
-        }
-
-        # Analyze reusability
-        result = architect.analyze_reusability(
-            {
-                "Button": button_props,
-                "Card": {"children": Any, "className": str},
-                "Input": {"type": str, "value": str, "onChange": callable},
-            }
-        )
-
-        assert result["reusable_count"] >= 3
-        assert result["composition_score"] > 0.7
-        assert "Button" in result["recommendations"]
-
     def test_component_composition_patterns(self):
         """Test common composition patterns (render props, compound components, hooks)."""
         from src.moai_adk.foundation.frontend import ComponentArchitect

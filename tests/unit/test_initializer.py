@@ -210,20 +210,6 @@ class TestInitialize:
         assert (tmp_path / "CLAUDE.md").exists()
         assert (tmp_path / ".moai" / "config" / "config.json").exists()
 
-    @pytest.mark.skip(reason="Template content changed - 'You are the SuperAgent' no longer in template")
-    def test_initialize_creates_english_claude_template(self, tmp_path: Path) -> None:
-        """Should copy English CLAUDE.md template by default with variable substitution"""
-        initializer = ProjectInitializer(tmp_path)
-        result = initializer.initialize()
-
-        assert result.success is True
-        claude_content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-        # Check that template variables are substituted (not literal {{VARIABLE}} placeholders)
-        assert "You are the SuperAgent" in claude_content  # Updated to match current template
-        assert "SuperAgent" in claude_content
-        assert "{{PROJECT_NAME}}" not in claude_content  # Ensure variables are substituted
-        assert "페르소나" not in claude_content
-
     def test_initialize_measures_duration(self, tmp_path: Path) -> None:
         """Should measure initialization duration"""
         initializer = ProjectInitializer(tmp_path)
