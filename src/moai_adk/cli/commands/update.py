@@ -580,9 +580,13 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                         shutil.copy2(session_file, target_file)
                         # Preserve original timestamp
                         shutil.copystat(session_file, target_file)
-                        migration_log.append(f"Migrated: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        src_path = session_file.relative_to(project_path)
+                        dst_path = target_file.relative_to(project_path)
+                        migration_log.append(f"Migrated: {src_path} → {dst_path}")
                     else:
-                        migration_log.append(f"Would migrate: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        src_path = session_file.relative_to(project_path)
+                        dst_path = target_file.relative_to(project_path)
+                        migration_log.append(f"Would migrate: {src_path} → {dst_path}")
                     files_migrated += 1
 
         # Migration 2: .moai/error_logs/ → .moai/logs/errors/
@@ -598,14 +602,19 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
 
                     if target_file.exists():
                         files_skipped += 1
-                        migration_log.append(f"Skipped: {error_file.relative_to(project_path)} (target already exists)")
+                        error_path = error_file.relative_to(project_path)
+                        migration_log.append(f"Skipped: {error_path} (target already exists)")
                     else:
                         if not dry_run:
                             shutil.copy2(error_file, target_file)
                             shutil.copystat(error_file, target_file)
-                            migration_log.append(f"Migrated: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            error_path = error_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Migrated: {error_path} → {target_path}")
                         else:
-                            migration_log.append(f"Would migrate: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            error_path = error_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Would migrate: {error_path} → {target_path}")
                         files_migrated += 1
 
         # Migration 3: .moai/reports/ → .moai/docs/reports/
@@ -621,14 +630,19 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
 
                     if target_file.exists():
                         files_skipped += 1
-                        migration_log.append(f"Skipped: {report_file.relative_to(project_path)} (target already exists)")
+                        report_path = report_file.relative_to(project_path)
+                        migration_log.append(f"Skipped: {report_path} (target already exists)")
                     else:
                         if not dry_run:
                             shutil.copy2(report_file, target_file)
                             shutil.copystat(report_file, target_file)
-                            migration_log.append(f"Migrated: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            report_path = report_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Migrated: {report_path} → {target_path}")
                         else:
-                            migration_log.append(f"Would migrate: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            report_path = report_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Would migrate: {report_path} → {target_path}")
                         files_migrated += 1
 
         # Create migration log
@@ -641,10 +655,13 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                 "files_skipped": files_skipped,
                 "migration_log": migration_log,
                 "legacy_directories_found": [
-                    str(d.relative_to(project_path)) for d in [legacy_memory, legacy_error_logs, legacy_reports] if d.exists()
+                    str(d.relative_to(project_path))
+                    for d in [legacy_memory, legacy_error_logs, legacy_reports]
+                    if d.exists()
                 ]
             }
-            migration_log_path.write_text(json.dumps(migration_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            json_content = json.dumps(migration_data, indent=2, ensure_ascii=False)
+            migration_log_path.write_text(json_content + "\n", encoding="utf-8")
 
         # Display results
         if files_migrated > 0 or files_skipped > 0:
@@ -1386,17 +1403,17 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
     try:
         # NEW: Detect custom files and skills BEFORE backup/sync
         template_skills = _get_template_skill_names()
-        custom_skills = _detect_custom_skills(project_path, template_skills)
+        _detect_custom_skills(project_path, template_skills)
 
         # Detect custom commands, agents, and hooks
         template_commands = _get_template_command_names()
-        custom_commands = _detect_custom_commands(project_path, template_commands)
+        _detect_custom_commands(project_path, template_commands)
 
         template_agents = _get_template_agent_names()
-        custom_agents = _detect_custom_agents(project_path, template_agents)
+        _detect_custom_agents(project_path, template_agents)
 
         template_hooks = _get_template_hook_names()
-        custom_hooks = _detect_custom_hooks(project_path, template_hooks)
+        _detect_custom_hooks(project_path, template_hooks)
 
         processor = TemplateProcessor(project_path)
 
@@ -1670,7 +1687,8 @@ def _build_template_context(
             language_config = {}
 
         user_name = existing_config.get("user", {}).get("name", "")
-        personalized_greeting = f"{user_name}님" if user_name and language_config.get("conversation_language") == "ko" else user_name
+        conv_lang = language_config.get("conversation_language")
+        personalized_greeting = f"{user_name}님" if user_name and conv_lang == "ko" else user_name
         config_source = "config_file"
 
     # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
