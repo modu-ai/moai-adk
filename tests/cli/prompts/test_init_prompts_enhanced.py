@@ -17,9 +17,7 @@ import pytest
 from moai_adk.cli.prompts.init_prompts import prompt_project_setup
 
 # Skip all tests - questionary interactive prompts don't work in CI environment
-pytestmark = pytest.mark.skip(
-    reason="Questionary interactive prompts require TTY - not available in CI"
-)
+pytestmark = pytest.mark.skip(reason="Questionary interactive prompts require TTY - not available in CI")
 
 
 class TestProjectNameHandling:
