@@ -9,10 +9,9 @@ documentation generation, multilingual support, and template optimization.
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 # Import module components
 from .modules.documentation_manager import DocumentationManager

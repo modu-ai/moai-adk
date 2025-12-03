@@ -10,7 +10,7 @@ to restore from backup during MoAI-ADK updates. It features:
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .custom_element_scanner import create_custom_element_scanner
 
@@ -35,6 +35,7 @@ class UserSelectionUI:
         # Try to import interactive UI, fall back to basic UI if not available
         try:
             from .interactive_checkbox_ui import create_interactive_checkbox_ui
+
             self.interactive_ui = create_interactive_checkbox_ui(self.project_path)
             self.use_interactive = True
         except Exception:
@@ -86,9 +87,9 @@ class UserSelectionUI:
             return None
 
         # Display elements by category
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔍 Custom Elements Detected (Basic Mode)")
-        print("="*60)
+        print("=" * 60)
         print("These elements are not part of the official MoAI-ADK template:")
         print()
 
@@ -169,21 +170,12 @@ class UserSelectionUI:
             Dictionary mapping category names to lists of elements
         """
         custom_elements = self.scanner.scan_custom_elements()
-        organized = {
-            "Agents": [],
-            "Commands": [],
-            "Skills": [],
-            "Hooks": []
-        }
+        organized: Dict[str, List[Dict[str, Any]]] = {"Agents": [], "Commands": [], "Skills": [], "Hooks": []}
 
         # Add skills (which are directories)
         if "skills" in custom_elements:
             for skill in custom_elements["skills"]:
-                organized["Skills"].append({
-                    "name": skill.name,
-                    "path": str(skill.path),
-                    "type": "skill"
-                })
+                organized["Skills"].append({"name": skill.name, "path": str(skill.path), "type": "skill"})
 
         # Add file-based elements
         for element_type in ["agents", "commands", "hooks"]:
@@ -191,11 +183,13 @@ class UserSelectionUI:
                 category_name = element_type.capitalize()
                 for element_path in custom_elements[element_type]:
                     element_name = Path(element_path).name
-                    organized[category_name].append({
-                        "name": element_name,
-                        "path": str(element_path),
-                        "type": element_type.rstrip("s")  # Remove plural 's'
-                    })
+                    organized[category_name].append(
+                        {
+                            "name": element_name,
+                            "path": str(element_path),
+                            "type": element_type.rstrip("s"),  # Remove plural 's'
+                        }
+                    )
 
         return organized
 
@@ -213,8 +207,9 @@ class UserSelectionUI:
 
         # Enhanced parsing: handle multiple separator types (comma, space, semicolon, backslash)
         import re
+
         # Split by common separators and clean up
-        selections = re.split(r'[,\s;\\]+', user_input.strip())
+        selections = re.split(r"[,\s;\\]+", user_input.strip())
         selections = [s.strip() for s in selections if s.strip()]
 
         for selection in selections:
@@ -232,7 +227,10 @@ class UserSelectionUI:
                 # Try to parse as element name (for enhanced UX)
                 found = False
                 for element in custom_elements:
-                    if selection.lower() in element["name"].lower() or selection.lower() in element["display_name"].lower():
+                    if (
+                        selection.lower() in element["name"].lower()
+                        or selection.lower() in element["display_name"].lower()
+                    ):
                         selected_paths.append(element["path"])
                         found = True
                         break

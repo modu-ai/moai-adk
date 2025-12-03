@@ -90,13 +90,27 @@ Scope:
 
 ##  Associated Agents & Skills
 
-| Agent/Skill                    | Purpose                                       |
-| ------------------------------ | --------------------------------------------- |
-| Explore                        | Codebase exploration and file system analysis |
-| manager-spec                   | SPEC generation in EARS format and planning   |
-| manager-git                    | Git workflow and branch management            |
-| moai-spec-intelligent-workflow | SPEC workflow orchestration                   |
-| moai-alfred-ask-user-questions | User interaction patterns                     |
+Associated Agents for SPEC Planning and Creation:
+
+- Explore: Codebase exploration and file system analysis
+  WHY: Fast, focused discovery without blocking agent
+  IMPACT: Reduces manual project discovery time
+
+- manager-spec: SPEC generation in EARS format and planning
+  WHY: Specialized domain knowledge for structured requirements
+  IMPACT: Ensures consistent SPEC document quality
+
+- manager-git: Git workflow and branch management
+  WHY: Encapsulates git operations with proper error handling
+  IMPACT: Prevents manual git errors and ensures consistency
+
+- moai-spec-intelligent-workflow: SPEC workflow orchestration
+  WHY: Cross-phase workflow coordination
+  IMPACT: Ensures sequential phase execution and context continuity
+
+- moai-alfred-ask-user-questions: User interaction patterns
+  WHY: Centralized user interaction management
+  IMPACT: Consistent question formatting and response handling
 
 ### Agent Delegation Strategy
 
@@ -133,16 +147,39 @@ User Command: /moai:1-plan "description"
 
 ### Key Principle: Zero Direct Tool Usage
 
+[HARD] Complete Delegation Model:
+
 This command uses ONLY Task() and AskUserQuestion():
+WHY: Specialized agents encapsulate domain logic and ensure quality control
+IMPACT: Direct tool usage bypasses expert review and quality gates
 
--  No Read (file operations delegated)
--  No Write (file operations delegated)
--  No Edit (file operations delegated)
--  No Bash (all bash commands delegated)
--  Task() for orchestration
--  AskUserQuestion() for user interaction
+Requirement: All file operations delegated to agents
+- No Read (file operations delegated)
+  WHY: Agents handle context-aware file discovery
+  IMPACT: Direct read loses architectural context
 
-All complexity is handled by specialized agents.
+- No Write (file operations delegated)
+  WHY: Agents implement validation before file creation
+  IMPACT: Direct write skips quality checks
+
+- No Edit (file operations delegated)
+  WHY: Agents coordinate multi-file updates atomically
+  IMPACT: Direct edit risks partial updates
+
+- No Bash (all bash commands delegated)
+  WHY: Agents handle error recovery and state consistency
+  IMPACT: Direct bash loses error handling context
+
+Required Tool Usage:
+- Task() for agent orchestration
+  WHY: Task ensures structured agent coordination
+  IMPACT: Uncoordinated agent calls produce inconsistent results
+
+- AskUserQuestion() for user interaction
+  WHY: Structured questions ensure consistent user experience
+  IMPACT: Informal interaction produces ambiguous responses
+
+All complexity is handled by specialized agents, not by direct command execution.
 
 ---
 
@@ -219,9 +256,19 @@ Key Points:
 
 #### When to run Phase A
 
-- User provides only vague/unstructured request
-- Need to find existing files and patterns
-- Unclear about current project state
+This phase executes conditionally based on request clarity:
+
+- [SOFT] User provides only vague/unstructured request
+  WHY: Vague requests require exploration to identify relevant context
+  IMPACT: Skipping exploration for vague requests produces unfocused SPECs
+
+- [SOFT] Need to find existing files and patterns
+  WHY: Discovery prevents duplicate work and informs architecture decisions
+  IMPACT: Missing patterns leads to inconsistent implementation approaches
+
+- [SOFT] Unclear about current project state
+  WHY: Project context shapes technical constraints and dependencies
+  IMPACT: Uninformed SPECs fail to account for existing architecture
 
 #### Step 1A.1: Invoke Explore Agent (Optional)
 
@@ -456,36 +503,45 @@ Your task is to create the SPEC document files in the correct directory structur
 
 ###  Critical Rule: Directory Naming Convention
 
-Format that MUST be followed: `.moai/specs/SPEC-{ID}/`
+[HARD] SPEC Directory Structure Requirement:
 
-Correct Examples:
+Format requirement: `.moai/specs/SPEC-{ID}/`
+WHY: Standardized directory structure enables automated discovery and tooling
+IMPACT: Non-standard naming breaks automation and causes deployment failures
 
--  `SPEC-AUTH-001/`
--  `SPEC-REFACTOR-001/`
--  `SPEC-UPDATE-REFACTOR-001/`
+Correct Examples of Required Format:
 
-Incorrect examples:
+- `SPEC-AUTH-001/` - Domain single, properly formatted
+- `SPEC-REFACTOR-001/` - Domain single, properly formatted
+- `SPEC-UPDATE-REFACTOR-001/` - Composite domains (2), properly formatted
 
--  `AUTH-001/` (missing SPEC- prefix)
--  `SPEC-001-auth/` (additional text after ID)
--  `SPEC-AUTH-001-jwt/` (additional text after ID)
+Examples of Incorrect Formats to Avoid:
 
-Duplicate check required: Verify SPEC ID uniqueness before creation
+- `AUTH-001/` - Missing SPEC- prefix breaks automation
+- `SPEC-001-auth/` - Additional text after ID violates convention
+- `SPEC-AUTH-001-jwt/` - Additional text after ID violates convention
 
-Search scope:
+[HARD] ID Uniqueness Verification Requirement:
 
-- Primary: .moai/specs/ directory
+Verification scope: Search entire .moai/specs/ directory before creation
+WHY: Duplicate IDs cause merge conflicts and implementation uncertainty
+IMPACT: Duplicate IDs create version ambiguity and maintenance chaos
 
-Return:
+Verification output must include:
 
-- exists: true/false
-- locations: [] (if exists, list all conflicting file paths)
-- recommendation: "safe to create" or "duplicate found - suggest different ID"
+- exists: Boolean indicating whether ID already exists
+- locations: Array of all conflicting file paths (empty if no conflicts)
+- recommendation: Text assessment ("safe to create" or "duplicate found - use ID-XXX instead")
 
-Composite Domain Rules:
+[SOFT] Composite Domain Naming Guidance:
 
--  Allow: `UPDATE-REFACTOR-001` (2 domains)
--  Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
+- Allow: `UPDATE-REFACTOR-001` (2 domains maximum)
+  WHY: Two domains indicate coordinated work without excessive complexity
+  IMPACT: Two-domain SPECs maintain focus and scope
+
+- Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains not recommended)
+  WHY: Three or more domains indicate scope creep and mixed concerns
+  IMPACT: Complex domain names signal SPECs that should be split
 
 ### Step 1: Invoke manager-spec for SPEC creation
 
@@ -512,11 +568,26 @@ Critical Language Rules:
 
 SPEC File Generation Rules (MANDATORY):
 
- YOU MUST FOLLOW THESE RULES EXACTLY OR QUALITY GATE WILL FAIL:
+[HARD] Create Directory Structure, Not Single Files:
 
-1. NEVER create single .md file:  WRONG: .moai/specs/SPEC-AUTH-001.md
-2. ALWAYS create folder structure:  CORRECT: .moai/specs/SPEC-AUTH-001/ (directory)
-3. ALWAYS verify before creation: Check directory name format and ID duplicates
+Requirement: Always create folder structure for SPEC documents
+WHY: Directory structure enables multi-file organization and metadata storage
+IMPACT: Single .md files prevent future tool integration and violate structure assumptions
+
+Correct approach: Create `.moai/specs/SPEC-AUTH-001/` as directory
+Incorrect approach: Create `.moai/specs/SPEC-AUTH-001.md` as single file
+
+[HARD] Verify Before Creation:
+
+Requirement: Check directory name format and ID duplicates before writing files
+WHY: Pre-flight verification prevents invalid states and merge conflicts
+IMPACT: Writing invalid files creates cleanup burden and workflow disruption
+
+[HARD] Quality Gate Compliance:
+
+Requirement: Follow these rules exactly for quality gate to pass
+WHY: Quality gates ensure system reliability and consistency
+IMPACT: Non-compliance causes pipeline failures and deployment blocks
 
 SPEC Document Creation (Step-by-Step):
 
@@ -1083,6 +1154,39 @@ Would you like to enable automatic branch creation for future SPEC creations?
 - 🧹 Automatic cleanup when SPEC is completed
 -  Lower memory usage than full repository clones
 ```
+
+---
+
+## Output Format
+
+All command execution phases must produce structured output with semantic XML sections:
+
+Analysis Output Format:
+
+Project analysis results structured as:
+- Context: Current project state and relevant files discovered
+- Findings: SPEC candidates identified with rationale
+- Assessment: Technical constraints and implementation feasibility
+- Recommendations: Next steps and decision options
+
+Plan Output Format:
+
+SPEC planning results structured as:
+- Requirements: Approved SPEC title, ID, priority, and scope
+- Architecture: Technical stack, dependencies, and integration points
+- Decomposition: Task breakdown and implementation sequence
+- Validation: Quality criteria and acceptance conditions
+
+Implementation Output Format:
+
+SPEC creation results structured as:
+- Status: Phase completion status and artifacts created
+- Artifacts: Location and format of created SPEC files
+- Validation: Quality gate results and compliance verification
+- NextSteps: User guidance for proceeding to implementation phase
+
+WHY: Structured output enables parsing for automated workflows and tool integration
+IMPACT: Unstructured output prevents downstream automation and creates manual overhead
 
 ---
 

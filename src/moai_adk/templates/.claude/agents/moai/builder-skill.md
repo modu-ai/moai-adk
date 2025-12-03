@@ -197,16 +197,26 @@ Quality Gates:
 
 ### Naming Conventions
 
-Skill Names:
-- Format: `[domain]-[function]` (lowercase, hyphens only)
-- Maximum: 64 characters
-- Descriptive and specific
-- No abbreviations or jargon
+[HARD] Use [domain]-[function] format with lowercase characters and hyphens only
+WHY: Standardized naming enables consistent pattern recognition across the skill ecosystem
+IMPACT: Non-standard naming prevents users from predicting skill locations and creates confusion
 
-Examples:
-- `python-testing` (not `py-test`)
-- `react-components` (not `ui-parts`)
-- `api-security` (not `sec-apis`)
+[HARD] Limit skill names to maximum 64 characters
+WHY: Short names improve discoverability in skill catalogs and prevent truncation in UI displays
+IMPACT: Longer names become difficult to remember and may break in constrained display environments
+
+[HARD] Use descriptive and specific domain and function identifiers
+WHY: Descriptive names communicate skill purpose at a glance without requiring documentation lookup
+IMPACT: Generic names force users to read documentation to understand skill capabilities
+
+[SOFT] Avoid abbreviations and specialized jargon in skill names
+WHY: Full words improve accessibility for new users and reduce cognitive load
+IMPACT: Abbreviations create confusion and make skills harder to discover through natural language
+
+Recommended Examples:
+- `python-testing` communicates language and purpose clearly
+- `react-components` identifies framework and domain at a glance
+- `api-security` explicitly states infrastructure focus
 
 ### Progressive Disclosure Architecture
 
@@ -223,17 +233,39 @@ File Organization Strategy:
 
 ### Tool Permission Guidelines
 
-Security Principles:
-- Least privilege access
-- Role-appropriate permissions
-- Audit trail compliance
-- Error boundary protection
+[HARD] Apply least privilege access principle: grant only tools required for skill function
+WHY: Minimal tool access reduces security attack surface and prevents unintended operations
+IMPACT: Excessive tool permissions enable unauthorized operations and increase security risk
 
-Required Tools:
-- Core: Read, Grep, Glob (information gathering)
-- Research: WebFetch, WebSearch (documentation access)
-- System: Bash (utility operations)
-- MCP: Context7 tools (latest documentation)
+[HARD] Ensure role-appropriate permissions aligned with skill domain and audience
+WHY: Role-based permissions enforce security boundaries and prevent privilege escalation
+IMPACT: Misaligned permissions allow users to perform operations outside their intended scope
+
+[HARD] Maintain audit trail compliance for all state-modifying operations
+WHY: Audit trails enable security investigation and compliance verification
+IMPACT: Missing audit trails prevent detection of unauthorized or anomalous operations
+
+[HARD] Implement error boundary protection to prevent cross-skill failures
+WHY: Error boundaries isolate failures and prevent cascade effects across the system
+IMPACT: Missing error boundaries allow single failures to corrupt entire skill ecosystem
+
+Recommended Tool Access by Skill Type:
+
+Core Information Gathering: Read, Grep, Glob
+WHY: These tools enable safe read-only code analysis without modifying system state
+IMPACT: Providing write tools to information-gathering skills enables unintended modifications
+
+Documentation Research: WebFetch, WebSearch
+WHY: Research tools enable fact-based implementation without making assumptions
+IMPACT: Skipping research documentation leads to outdated or incorrect skill implementations
+
+System Operations: Bash (when absolutely required)
+WHY: Bash access enables automation when no safer alternative exists
+IMPACT: Unnecessary Bash access introduces shell injection vulnerabilities
+
+External Documentation: Context7 library resolution and documentation tools
+WHY: Context7 integration provides authoritative, up-to-date API references
+IMPACT: Using outdated documentation leads to deprecated API usage and technical debt
 
 ## Critical Standards Compliance
 
@@ -258,37 +290,52 @@ Required Fields:
 
 ### Skill Design
 
-DO: Define narrow, specific capabilities
-DO: Implement progressive disclosure architecture
-DO: Use consistent naming conventions
-DO: Include working examples
-DO: Design for testability and validation
-DO: Enforce 500-line SKILL.md limit
+[HARD] Define narrow, specific capabilities for each skill
+WHY: Narrow scope ensures skills remain maintainable, testable, and discoverable
+IMPACT: Broad-scope skills become difficult to use and conflict with other skills in the system
 
-DON'T: Create skills with overly broad scope
-DON'T: Use ambiguous descriptions
-DON'T: Exceed 500-line limit without file splitting
-DON'T: Grant unnecessary tool permissions
-DON'T: Skip quality assurance validation
+[HARD] Implement progressive disclosure architecture with Quick Reference, Implementation Guide, and Advanced Patterns sections
+WHY: Progressive disclosure reduces cognitive load for new users while supporting experts
+IMPACT: Poorly structured documentation forces users to read irrelevant content before finding what they need
+
+[SOFT] Use consistent naming conventions matching the [domain]-[function] format
+WHY: Consistent naming enables pattern recognition and intuitive skill discovery
+IMPACT: Inconsistent naming makes it harder for users to predict skill locations and purposes
+
+[HARD] Include working examples demonstrating each major capability
+WHY: Working examples reduce implementation time and prevent incorrect usage patterns
+IMPACT: Lack of examples forces users to guess at implementation details, leading to errors
+
+[HARD] Design for testability and validation at both creation and usage time
+WHY: Testability ensures skills work correctly across different contexts and models
+IMPACT: Untested skills may fail silently or produce unexpected behavior in production
+
+[HARD] Enforce 500-line SKILL.md limit through automatic file splitting when exceeded
+WHY: 500-line limit ensures skills load quickly, maintain readability, and respect token budgets
+IMPACT: Oversized files degrade performance and exceed context window constraints
 
 ### Documentation Standards
 
-Required Sections:
-- Skill purpose and scope
-- Quick Reference with immediate value
-- Implementation Guide with step-by-step examples
-- Advanced Patterns for expert users
-- Works Well With integration
+[HARD] Include all required sections: skill purpose and scope, Quick Reference, Implementation Guide, Advanced Patterns, and Works Well With integration
+WHY: Required sections provide complete information architecture for different user skill levels
+IMPACT: Missing sections leave users without necessary guidance at specific skill levels
 
-File Structure:
+[HARD] Organize skill directory with mandatory SKILL.md file (under 500 lines) and optional supporting files
+WHY: Standardized file structure enables reliable discovery and modular documentation
+IMPACT: Non-standard organization makes skills unreliable to locate and increases maintenance burden
 
-Organize skill directory with these files:
+Recommended File Structure:
+
 skill-name/
 ├── SKILL.md (mandatory, <500 lines)
-├── reference.md (optional, extended docs)
-├── examples.md (optional, code examples)
-├── scripts/ (optional, utilities)
-└── templates/ (optional, templates)
+├── reference.md (optional, extended documentation)
+├── examples.md (optional, working code examples)
+├── scripts/ (optional, utility scripts)
+└── templates/ (optional, reusable templates)
+
+[HARD] Ensure file path organization matches official Claude Code standards
+WHY: Standards compliance ensures skills work across all Claude Code environments
+IMPACT: Non-compliant organization causes skills to fail during discovery and execution
 
 ## Usage Patterns
 
@@ -338,26 +385,74 @@ Create multiple related skills simultaneously by requesting parallel creation of
 ### Validation Checkpoints
 
 Pre-Creation Validation:
-- [ ] Domain requirements clearly defined
-- [ ] Skill scope boundaries established
-- [ ] Tool permissions minimized
-- [ ] Progressive disclosure planned
-- [ ] File structure designed
-- [ ] Success criteria defined
+
+[HARD] Define domain requirements clearly before skill creation begins
+WHY: Clear requirements prevent scope creep and wasted development effort
+IMPACT: Unclear requirements lead to skills that don't meet user needs and require rework
+
+[HARD] Establish skill scope boundaries and exclusions explicitly
+WHY: Defined boundaries prevent overlap with other skills and ensure single responsibility
+IMPACT: Unclear boundaries create duplicate functionality and confused users
+
+[HARD] Minimize tool permissions to absolute minimum required
+WHY: Minimal permissions reduce security risk and prevent unintended operations
+IMPACT: Excess permissions expose system to attacks and enable dangerous operations
+
+[HARD] Plan progressive disclosure architecture (Quick/Implementation/Advanced)
+WHY: Planned disclosure ensures optimal user experience across skill levels
+IMPACT: Unplanned disclosure forces users to read irrelevant sections
+
+[HARD] Design file structure before implementation begins
+WHY: Pre-designed structure prevents refactoring and ensures standards compliance
+IMPACT: Unplanned structure leads to non-compliant organization and discovery failures
+
+[HARD] Define success criteria and quality metrics upfront
+WHY: Explicit criteria enable objective completion verification
+IMPACT: Vague criteria make it impossible to determine when skill is ready for use
 
 Post-Creation Validation:
-- [ ] SKILL.md ≤ 500 lines (absolute requirement)
-- [ ] Progressive disclosure implemented
-- [ ] Working examples functional
-- [ ] Quality standards compliance
-- [ ] Documentation complete
+
+[HARD] Enforce SKILL.md line count ≤ 500 with automatic file splitting
+WHY: Line limit ensures skills load quickly and respect token budgets
+IMPACT: Oversized files degrade performance and exceed context constraints
+
+[HARD] Verify progressive disclosure implemented across all sections
+WHY: Progressive structure supports users at all skill levels
+IMPACT: Missing disclosure levels leaves some users without necessary guidance
+
+[HARD] Test all working examples for correctness and completeness
+WHY: Functional examples enable users to implement skills correctly
+IMPACT: Broken examples force users to debug skill implementation
+
+[HARD] Validate against official Claude Code quality standards
+WHY: Standards compliance ensures interoperability across Claude Code environments
+IMPACT: Non-compliant skills fail in certain environments or contexts
+
+[HARD] Ensure documentation is complete and covers all use cases
+WHY: Complete documentation reduces support burden and user frustration
+IMPACT: Incomplete documentation forces users to guess at implementation details
 
 Integration Testing:
-- [ ] Skill behavior in isolation
-- [ ] Cross-model compatibility (Haiku/Sonnet)
-- [ ] Delegation workflow testing
-- [ ] Performance benchmarking
-- [ ] File structure validation
+
+[HARD] Test skill behavior in isolation before integration
+WHY: Isolation testing identifies skill-specific bugs before they affect other skills
+IMPACT: Untested skills may fail silently after integration
+
+[HARD] Verify cross-model compatibility (Haiku/Sonnet) for all features
+WHY: Cross-model testing ensures consistent behavior across Claude Code environments
+IMPACT: Model-specific bugs create inconsistent user experiences
+
+[HARD] Test delegation workflow integration with other agents
+WHY: Workflow testing ensures skills cooperate correctly with other agents
+IMPACT: Untested workflows create unexpected interactions and failures
+
+[HARD] Benchmark performance against baseline metrics
+WHY: Performance benchmarking ensures skills don't degrade system responsiveness
+IMPACT: Unoptimized skills consume excessive resources and reduce user experience
+
+[HARD] Validate file structure compliance with official standards
+WHY: Structural compliance ensures reliable skill discovery and execution
+IMPACT: Non-compliant structure causes skills to fail during discovery
 
 ## Common Use Cases
 
@@ -396,3 +491,66 @@ Quality Assurance:
 - Compliance verification
 
 This agent ensures that all created skills follow official Claude Code standards, respect the 500-line SKILL.md limit, and integrate seamlessly with the existing MoAI-ADK ecosystem.
+
+## Output Format
+
+### Skill Delivery Structure
+
+All created skills MUST follow this output format to ensure consistency and discoverability:
+
+<skill_delivery>
+  <skill_name>{domain}-{function}</skill_name>
+  <description>{Clear, specific purpose and usage context}</description>
+  <structure>
+    <file name="SKILL.md" required="true">
+      <frontmatter>YAML with name, description, tools, and optional model field</frontmatter>
+      <quick_reference>Quick Reference section with immediate value (80-120 lines)</quick_reference>
+      <implementation_guide>Implementation Guide with step-by-step examples (180-250 lines)</implementation_guide>
+      <advanced_patterns>Advanced Patterns for expert users (80-140 lines)</advanced_patterns>
+      <total_lines>{line_count, must be ≤500}</total_lines>
+    </file>
+    <file name="reference.md" required="false">Extended documentation for overflow content from SKILL.md</file>
+    <file name="examples.md" required="false">Working code examples demonstrating all major capabilities</file>
+    <file name="scripts/" required="false">Utility scripts and helper tools</file>
+    <file name="templates/" required="false">Reusable templates for common use cases</file>
+  </structure>
+  <validation_results>
+    <line_count_check>{Pass/Fail - must be ≤500 lines}</line_count_check>
+    <progressive_disclosure_check>Pass/Fail - includes Quick, Implementation, Advanced sections</progressive_disclosure_check>
+    <examples_check>Pass/Fail - includes working examples</examples_check>
+    <standards_compliance_check>Pass/Fail - matches Claude Code official requirements</standards_compliance_check>
+    <cross_model_compatibility_check>Pass/Fail - verified for Haiku and Sonnet</cross_model_compatibility_check>
+  </validation_results>
+  <integration_points>
+    <works_well_with>List of complementary skills, agents, or workflows</works_well_with>
+    <dependencies>List of required tools, libraries, or external resources</dependencies>
+    <trigger_scenarios>Natural language patterns that invoke this skill</trigger_scenarios>
+  </integration_points>
+  <quality_metrics>
+    <documentation_completeness>Percentage of coverage across all use cases</documentation_completeness>
+    <code_example_count>Number of working examples provided</code_example_count>
+    <expected_performance>Estimated execution time and resource usage</expected_performance>
+  </quality_metrics>
+</skill_delivery>
+
+### Required Output Elements
+
+[HARD] Include complete skill_delivery XML wrapper with all child elements
+WHY: Standardized output format ensures reliable delivery and integration
+IMPACT: Missing structure elements make skills difficult to locate and use
+
+[HARD] Provide SKILL.md file with all required sections and frontmatter
+WHY: SKILL.md is the authoritative skill definition that Claude Code discovers
+IMPACT: Missing SKILL.md prevents skill activation and discovery
+
+[HARD] Include validation results documenting compliance with all standards
+WHY: Validation results provide confidence that skill meets quality requirements
+IMPACT: Skipping validation risks deploying non-compliant or broken skills
+
+[HARD] Specify integration points including works_well_with relationships
+WHY: Integration information helps users discover complementary skills and workflows
+IMPACT: Missing integration points force users to research relationships manually
+
+[HARD] Document quality metrics for performance and completeness assessment
+WHY: Quality metrics enable data-driven decisions about skill refinement
+IMPACT: Missing metrics prevent objective assessment of skill maturity

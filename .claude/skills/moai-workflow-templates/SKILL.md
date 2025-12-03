@@ -255,7 +255,7 @@ For detailed patterns and implementation strategies:
 
 ## Best Practices
 
-### DO
+### Core Requirements
 
 - Use templates for consistent project structure
 - Preserve user customizations during updates
@@ -266,16 +266,39 @@ For detailed patterns and implementation strategies:
 - Track template versions in config
 - Test templates before production use
 
-### DON'T
+### Quality Standards
 
-- Modify template defaults without documentation
-- Skip backup before template optimization
-- Ignore merge conflicts during updates
-- Mix multiple template patterns inconsistently
-- Lose customization history
-- Apply template updates without testing
-- Exceed template complexity limits
-- Bypass version tracking
+[HARD] Document all template default modifications before applying changes.
+WHY: Template defaults serve as the baseline for all projects and undocumented changes create confusion and inconsistency across teams.
+IMPACT: Without documentation, teams cannot understand why defaults deviate from standards, leading to maintenance issues and conflicting implementations.
+
+[HARD] Create backups before executing template optimization workflows.
+WHY: Template optimization involves structural changes that may be difficult to reverse without a clean restoration point.
+IMPACT: Missing backups can result in permanent loss of user customizations, requiring manual reconstruction of project-specific configurations.
+
+[HARD] Resolve all merge conflicts during template update workflows.
+WHY: Unresolved conflicts create broken configurations that prevent proper template functionality.
+IMPACT: Ignored conflicts lead to runtime errors, inconsistent behavior, and project instability requiring emergency fixes.
+
+[SOFT] Maintain consistent template pattern usage throughout the project.
+WHY: Mixing different template patterns creates cognitive overhead and makes the codebase harder to understand and maintain.
+IMPACT: Inconsistent patterns reduce code predictability and increase onboarding time for new team members.
+
+[HARD] Preserve complete customization history across all template updates.
+WHY: Customization history provides an audit trail of project-specific decisions and enables rollback to previous states.
+IMPACT: Lost history makes it impossible to understand why changes were made, preventing informed decisions about future modifications.
+
+[HARD] Validate template functionality through testing before production deployment.
+WHY: Untested templates may contain errors that only surface in production environments, causing system failures.
+IMPACT: Production failures from untested templates result in downtime, data issues, and emergency rollbacks affecting users.
+
+[SOFT] Design templates within reasonable complexity limits for maintainability.
+WHY: Excessive template complexity makes them difficult to understand, modify, and debug when issues arise.
+IMPACT: Overly complex templates slow down development velocity and increase the likelihood of errors during customization.
+
+[HARD] Track template versions using the built-in version management system.
+WHY: Version tracking enables understanding of template evolution, compatibility checking, and coordinated updates.
+IMPACT: Without version tracking, teams cannot determine which template features are available or coordinate updates across projects safely.
 
 ## Works Well With
 

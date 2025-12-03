@@ -289,7 +289,8 @@ class ProjectInitializer:
                     "principles": {
                         "simplicity": {
                             "max_projects": 5,
-                            "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size.",
+                            "notes": "Default recommendation. Adjust in .moai/config.json "
+                            "or via SPEC/ADR with documented rationale based on project size.",
                         }
                     },
                     "test_coverage_target": 90,
@@ -328,7 +329,8 @@ class ProjectInitializer:
                 },
                 "session": {
                     "suppress_setup_messages": False,
-                    "notes": "suppress_setup_messages: false enables SessionStart output. Set to true to suppress messages (show again after 7 days)",
+                    "notes": "suppress_setup_messages: false enables SessionStart output. "
+                    "Set to true to suppress messages (show again after 7 days)",
                 },
             }
             config_files = self.executor.execute_configuration_phase(self.path, config_data, progress_callback)

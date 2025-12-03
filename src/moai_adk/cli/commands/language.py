@@ -229,8 +229,7 @@ def validate_config(config_file, validate_languages):
                         console.print("[green]✓ conversation_language_name matches[/green]")
                     else:
                         warning_msg = (
-                            f"⚠ conversation_language_name '{conv_lang_name}' "
-                            f"doesn't match expected '{expected_name}'"
+                            f"⚠ conversation_language_name '{conv_lang_name}' doesn't match expected '{expected_name}'"
                         )
                         console.print(f"[yellow]{warning_msg}[/yellow]")
 

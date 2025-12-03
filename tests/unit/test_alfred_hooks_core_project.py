@@ -1,8 +1,8 @@
-"""Tests for .claude/hooks/alfred/core/project.py module
+"""Tests for .claude/hooks/moai/lib/project.py module
 
 프로젝트 언어 감지, Git 정보, SPEC 카운팅 테스트
 
-NOTE: These tests require fixing the relative import structure in .claude/hooks/alfred/
+NOTE: These tests require fixing the relative import structure in .claude/hooks/moai/
 Currently skipped due to import path issues - requires refactoring the shared/handlers modules
 """
 
@@ -16,18 +16,18 @@ import pytest
 
 
 def _load_project_module(module_name: str = "project_module"):
-    """Dynamically load core/project.py as a fresh module."""
+    """Dynamically load lib/project.py as a fresh module."""
     repo_root = Path(__file__).resolve().parents[2]
 
-    # Add hooks directory and shared directory to sys.path for relative imports
-    hooks_dir = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
-    shared_dir = hooks_dir / "shared"
+    # Add hooks directory and lib directory to sys.path for relative imports
+    hooks_dir = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "moai"
+    lib_dir = hooks_dir / "lib"
 
-    for path_entry in [str(hooks_dir), str(shared_dir), str(hooks_dir.parent)]:
+    for path_entry in [str(hooks_dir), str(lib_dir), str(hooks_dir.parent)]:
         if path_entry not in sys.path:
             sys.path.insert(0, path_entry)
 
-    module_path = hooks_dir / "core" / "project.py"
+    module_path = hooks_dir / "lib" / "project.py"
 
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     if spec is None or spec.loader is None:

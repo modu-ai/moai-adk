@@ -5,6 +5,7 @@ Creates and manages backups to protect user data during template updates.
 
 from __future__ import annotations
 
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -90,9 +91,12 @@ class TemplateBackup:
         # Check for new timestamped backups first
         backup_dir = self.target_path / ".moai-backups"
         if backup_dir.exists():
+            # Match pattern: YYYYMMDD_HHMMSS (8 digits + underscore + 6 digits)
+            timestamp_pattern = re.compile(r'^\d{8}_\d{6}$')
             timestamped_backups = [
-                d for d in backup_dir.iterdir()
-                if d.is_dir() and d.name.isdigit() and len(d.name) == 15 and '_' in d.name
+                d
+                for d in backup_dir.iterdir()
+                if d.is_dir() and timestamp_pattern.match(d.name)
             ]
 
             if timestamped_backups:

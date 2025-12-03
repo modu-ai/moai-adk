@@ -10,7 +10,6 @@ Test suite for the integrated project management system covering:
 - System workflows and performance
 """
 
-import os
 import sys
 from pathlib import Path
 

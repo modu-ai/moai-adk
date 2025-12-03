@@ -11,12 +11,7 @@ elements that can be selectively restored from backup.
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Set
-
-
-# Forward declaration for type hints
-class TemplateSkill:
-    pass
+from typing import Any, Dict, List, Set
 
 from moai_adk.core.migration.template_utils import (
     _get_template_agent_names,
@@ -26,6 +21,24 @@ from moai_adk.core.migration.template_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TemplateSkill:
+    """Represents a template skill directory."""
+
+    def __init__(self, name: str, path: Path, has_skill_md: bool, is_template: bool = False):
+        """Initialize a TemplateSkill.
+
+        Args:
+            name: Name of the skill directory
+            path: Path to the skill directory
+            has_skill_md: Whether the skill has a SKILL.md file
+            is_template: Whether this skill is part of the MoAI-ADK template
+        """
+        self.name = name
+        self.path = path
+        self.has_skill_md = has_skill_md
+        self.is_template = is_template
 
 
 class CustomElementScanner:
@@ -58,7 +71,7 @@ class CustomElementScanner:
             "hooks": _get_template_hook_names(),
         }
 
-    def scan_custom_elements(self) -> Dict[str, List[Path]]:
+    def scan_custom_elements(self) -> Dict[str, Any]:
         """Scan for user-created custom elements.
 
         Scans the project directory for agents, commands, skills, and hooks that are
@@ -75,7 +88,7 @@ class CustomElementScanner:
                 "hooks": [Path("/project/.claude/hooks/moai/my-hook.py")]
             }
         """
-        custom_elements = {}
+        custom_elements: Dict[str, Any] = {}
 
         # Scan agents (all files in .claude/agents/, excluding template files)
         custom_elements["agents"] = self._scan_custom_agents()
@@ -175,7 +188,7 @@ class CustomElementScanner:
                         name=skill_dir.name,
                         path=relative_path,
                         has_skill_md=(skill_dir / "SKILL.md").exists(),
-                        is_template=is_template_skill
+                        is_template=is_template_skill,
                     )
                 )
 
@@ -213,7 +226,7 @@ class CustomElementScanner:
 
         return custom_hooks
 
-    def get_custom_elements_display_list(self) -> List[Dict[str, str]]:
+    def get_custom_elements_display_list(self) -> List[Dict[str, Any]]:
         """Get formatted list of custom elements for display.
 
         Returns:
@@ -225,53 +238,62 @@ class CustomElementScanner:
 
         # Add agents
         for agent_path in custom_elements["agents"]:
-            display_list.append({
-                "index": index,
-                "type": "agent",
-                "name": agent_path.stem,
-                "path": str(agent_path),
-                "display_name": f"{agent_path.stem} (agent)"
-            })
+            display_list.append(
+                {
+                    "index": index,
+                    "type": "agent",
+                    "name": agent_path.stem,
+                    "path": str(agent_path),
+                    "display_name": f"{agent_path.stem} (agent)",
+                }
+            )
             index += 1
 
         # Add commands
         for command_path in custom_elements["commands"]:
-            display_list.append({
-                "index": index,
-                "type": "command",
-                "name": command_path.stem,
-                "path": str(command_path),
-                "display_name": f"{command_path.stem} (command)"
-            })
+            display_list.append(
+                {
+                    "index": index,
+                    "type": "command",
+                    "name": command_path.stem,
+                    "path": str(command_path),
+                    "display_name": f"{command_path.stem} (command)",
+                }
+            )
             index += 1
 
         # Add skills
-        for skill in custom_elements["skills"]:
+        skills_list: List[TemplateSkill] = custom_elements["skills"]
+        for skill in skills_list:
             skill_display_name = skill.name
             # Add indicator for template vs custom skills
-            if hasattr(skill, 'is_template') and skill.is_template:
+            if hasattr(skill, "is_template") and skill.is_template:
                 skill_display_name = f"{skill.name} (template)"
             else:
                 skill_display_name = f"{skill.name} (custom)"
 
-            display_list.append({
-                "index": index,
-                "type": "skill",
-                "name": skill.name,
-                "path": str(skill.path),
-                "display_name": skill_display_name
-            })
+            display_list.append(
+                {
+                    "index": index,
+                    "type": "skill",
+                    "name": skill.name,
+                    "path": str(skill.path),
+                    "display_name": skill_display_name,
+                }
+            )
             index += 1
 
         # Add hooks
         for hook_path in custom_elements["hooks"]:
-            display_list.append({
-                "index": index,
-                "type": "hook",
-                "name": hook_path.stem,
-                "path": str(hook_path),
-                "display_name": f"{hook_path.stem} (hook)"
-            })
+            display_list.append(
+                {
+                    "index": index,
+                    "type": "hook",
+                    "name": hook_path.stem,
+                    "path": str(hook_path),
+                    "display_name": f"{hook_path.stem} (hook)",
+                }
+            )
             index += 1
 
         return display_list
@@ -284,29 +306,11 @@ class CustomElementScanner:
         """
         custom_elements = self.scan_custom_elements()
         return (
-            len(custom_elements["agents"]) +
-            len(custom_elements["commands"]) +
-            len(custom_elements["skills"]) +
-            len(custom_elements["hooks"])
+            len(custom_elements["agents"])
+            + len(custom_elements["commands"])
+            + len(custom_elements["skills"])
+            + len(custom_elements["hooks"])
         )
-
-
-class TemplateSkill:
-    """Represents a template skill directory."""
-
-    def __init__(self, name: str, path: Path, has_skill_md: bool, is_template: bool = False):
-        """Initialize a TemplateSkill.
-
-        Args:
-            name: Name of the skill directory
-            path: Path to the skill directory
-            has_skill_md: Whether the skill has a SKILL.md file
-            is_template: Whether this skill is part of the MoAI-ADK template
-        """
-        self.name = name
-        self.path = path
-        self.has_skill_md = has_skill_md
-        self.is_template = is_template
 
 
 def create_custom_element_scanner(project_path: str | Path) -> CustomElementScanner:

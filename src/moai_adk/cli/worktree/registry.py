@@ -92,10 +92,7 @@ class WorktreeRegistry:
         Returns:
             List of WorktreeInfo instances.
         """
-        return [
-            WorktreeInfo.from_dict(data)
-            for data in self._data.values()
-        ]
+        return [WorktreeInfo.from_dict(data) for data in self._data.values()]
 
     def sync_with_git(self, repo) -> None:
         """Synchronize registry with actual Git worktree state.

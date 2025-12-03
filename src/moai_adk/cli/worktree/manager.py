@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 from git import Repo
 
@@ -171,6 +172,7 @@ class WorktreeManager:
             except Exception:
                 # Try to remove directory manually if git command fails
                 import shutil
+
                 if info.path.exists():
                     shutil.rmtree(info.path)
 
@@ -192,7 +194,14 @@ class WorktreeManager:
         """
         return self.registry.list_all()
 
-    def sync(self, spec_id: str, base_branch: str = "main", rebase: bool = False, ff_only: bool = False, auto_resolve: bool = False) -> None:
+    def sync(
+        self,
+        spec_id: str,
+        base_branch: str = "main",
+        rebase: bool = False,
+        ff_only: bool = False,
+        auto_resolve: bool = False,
+    ) -> None:
         """Sync worktree with base branch.
 
         Fetches latest changes from base branch and merges them.
@@ -236,7 +245,9 @@ class WorktreeManager:
                         continue
 
                 if not target_branch:
-                    raise GitOperationError(f"Base branch '{base_branch}' not found (tried origin/{base_branch}, {base_branch})")
+                    raise GitOperationError(
+                        f"Base branch '{base_branch}' not found (tried origin/{base_branch}, {base_branch})"
+                    )
 
                 if ff_only:
                     # Fast-forward only
@@ -254,7 +265,10 @@ class WorktreeManager:
                     conflicted = [
                         line.split()[-1]
                         for line in status.split("\n")
-                        if line.startswith("UU") or line.startswith("DD") or line.startswith("AA") or line.startswith("DU")
+                        if line.startswith("UU")
+                        or line.startswith("DD")
+                        or line.startswith("AA")
+                        or line.startswith("DU")
                     ]
 
                     if conflicted:
@@ -278,20 +292,20 @@ class WorktreeManager:
                                                 # Simple conflict marker removal - keep both versions
                                                 file_full_path = info.path / file_path
                                                 if file_full_path.exists():
-                                                    with open(file_full_path, 'r') as f:
+                                                    with open(file_full_path, "r") as f:
                                                         content = f.read()
 
                                                     # Remove conflict markers and keep both versions
-                                                    lines = content.split('\n')
+                                                    lines = content.split("\n")
                                                     cleaned_lines = []
                                                     skip_next = False
                                                     in_conflict = False
 
                                                     for line in lines:
-                                                        if '<<<<<<<' in line or '>>>>>>>' in line:
+                                                        if "<<<<<<<" in line or ">>>>>>>" in line:
                                                             in_conflict = True
                                                             continue
-                                                        elif '======' in line:
+                                                        elif "======" in line:
                                                             skip_next = True
                                                             in_conflict = False
                                                             continue
@@ -301,8 +315,8 @@ class WorktreeManager:
                                                         elif not in_conflict:
                                                             cleaned_lines.append(line)
 
-                                                    with open(file_full_path, 'w') as f:
-                                                        f.write('\n'.join(cleaned_lines))
+                                                    with open(file_full_path, "w") as f:
+                                                        f.write("\n".join(cleaned_lines))
 
                                                     worktree_repo.git.add(file_path)
                                             except Exception:
@@ -324,7 +338,9 @@ class WorktreeManager:
                                     worktree_repo.git.rebase("--abort")
                                 except Exception:
                                     pass
-                                raise MergeConflictError(spec_id, conflicted + f" (auto-resolve failed: {resolve_error})")
+                                conflict_list = conflicted if isinstance(conflicted, list) else [str(conflicted)]
+                                error_msg = f"auto-resolve failed: {resolve_error}"
+                                raise MergeConflictError(spec_id, conflict_list + [error_msg])
                         else:
                             # Auto-abort merge/rebase on conflicts
                             try:
@@ -366,7 +382,7 @@ class WorktreeManager:
         except Exception as e:
             raise GitOperationError(f"Failed to sync worktree: {e}")
 
-    def clean_merged(self) -> list[str]:
+    def clean_merged(self) -> List[str]:
         """Clean up worktrees for merged branches.
 
         Removes worktrees whose branches have been merged to main.
@@ -379,9 +395,7 @@ class WorktreeManager:
         try:
             # Get list of merged branches
             try:
-                merged_branches = self.repo.git.branch(
-                    "--merged", "main"
-                ).split("\n")
+                merged_branches = self.repo.git.branch("--merged", "main").split("\n")
                 merged_branches = [b.strip().lstrip("*").strip() for b in merged_branches]
             except Exception:
                 merged_branches = []
@@ -400,7 +414,7 @@ class WorktreeManager:
 
         return cleaned
 
-    def auto_resolve_conflicts(self, worktree_repo: Repo, spec_id: str, conflicted_files: list[str]) -> None:
+    def auto_resolve_conflicts(self, worktree_repo: Repo, spec_id: str, conflicted_files: List[str]) -> None:
         """Automatically resolve conflicts in worktree.
 
         Args:
@@ -427,25 +441,25 @@ class WorktreeManager:
                         # Strategy 3: Remove conflict markers and keep both
                         try:
                             # Simple conflict marker removal - keep both versions
-                            from pathlib import Path
+
                             worktree_path = Path(worktree_repo.working_dir)
                             file_full_path = worktree_path / file_path
 
                             if file_full_path.exists():
-                                with open(file_full_path, 'r') as f:
+                                with open(file_full_path, "r") as f:
                                     content = f.read()
 
                                 # Remove conflict markers and keep both versions
-                                lines = content.split('\n')
+                                lines = content.split("\n")
                                 cleaned_lines = []
                                 skip_next = False
                                 in_conflict = False
 
                                 for line in lines:
-                                    if '<<<<<<<' in line or '>>>>>>>' in line:
+                                    if "<<<<<<<" in line or ">>>>>>>" in line:
                                         in_conflict = True
                                         continue
-                                    elif '======' in line:
+                                    elif "======" in line:
                                         skip_next = True
                                         in_conflict = False
                                         continue
@@ -455,8 +469,8 @@ class WorktreeManager:
                                     elif not in_conflict:
                                         cleaned_lines.append(line)
 
-                                with open(file_full_path, 'w') as f:
-                                    f.write('\n'.join(cleaned_lines))
+                                with open(file_full_path, "w") as f:
+                                    f.write("\n".join(cleaned_lines))
 
                                 worktree_repo.git.add(file_path)
                         except Exception:

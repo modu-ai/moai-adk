@@ -123,9 +123,9 @@ class TemplateProcessor:
         self.context: dict[str, str] = {}  # Template variable substitution context
         self._version_reader: VersionReader | None = None
         self.config = config or TemplateProcessorConfig()
-        self._substitution_cache: Dict[int, tuple[str, list[str]]] = (
-            {}
-        )  # Cache for substitution results (key: hash, value: (content, warnings))
+        self._substitution_cache: Dict[
+            int, tuple[str, list[str]]
+        ] = {}  # Cache for substitution results (key: hash, value: (content, warnings))
         self._variable_validation_cache: Dict[str, bool] = {}  # Cache for variable validation
         self.logger = logging.getLogger(__name__)
 
@@ -1022,7 +1022,6 @@ class TemplateProcessor:
             dst: Project config.json.
         """
         import json
-        from pathlib import Path
 
         # Load template config
         try:
@@ -1032,13 +1031,12 @@ class TemplateProcessor:
             return
 
         # Find latest backup config.json
-        backup_config = {}
         latest_backup = self.backup.get_latest_backup()
         if latest_backup:
             backup_config_path = latest_backup / ".moai" / "config" / "config.json"
             if backup_config_path.exists():
                 try:
-                    backup_config = json.loads(backup_config_path.read_text(encoding="utf-8"))
+                    json.loads(backup_config_path.read_text(encoding="utf-8"))
                 except json.JSONDecodeError as e:
                     console.print(f"⚠️ Warning: Could not read backup config.json: {e}")
 
@@ -1074,6 +1072,7 @@ class TemplateProcessor:
 
             # Apply environment variables (highest priority)
             import os
+
             env_mappings = {
                 "MOAI_USER_NAME": ("user", "name"),
                 "MOAI_CONVERSATION_LANG": ("language", "conversation_language"),

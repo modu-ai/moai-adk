@@ -228,9 +228,7 @@ def _get_latest_version() -> str:
         import urllib.request
 
         url = "https://pypi.org/pypi/moai-adk/json"
-        with urllib.request.urlopen(
-            url, timeout=5
-        ) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
+        with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
             data = json.loads(response.read().decode("utf-8"))
             return cast(str, data["info"]["version"])
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError) as e:
@@ -537,11 +535,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
         files_skipped = 0
 
         # Check if any legacy directories exist
-        has_legacy_files = (
-            legacy_memory.exists() or
-            legacy_error_logs.exists() or
-            legacy_reports.exists()
-        )
+        has_legacy_files = legacy_memory.exists() or legacy_error_logs.exists() or legacy_reports.exists()
 
         if not has_legacy_files:
             if not dry_run:
@@ -658,7 +652,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                     str(d.relative_to(project_path))
                     for d in [legacy_memory, legacy_error_logs, legacy_reports]
                     if d.exists()
-                ]
+                ],
             }
             json_content = json.dumps(migration_data, indent=2, ensure_ascii=False)
             migration_log_path.write_text(json_content + "\n", encoding="utf-8")
@@ -1745,8 +1739,12 @@ def _build_template_context(
         "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),
         "GIT_COMMIT_MESSAGES_LANGUAGE": language_config.get("git_commit_messages", "en"),
         "CODE_COMMENTS_LANGUAGE": language_config.get("code_comments", "en"),
-        "DOCUMENTATION_LANGUAGE": language_config.get("documentation", language_config.get("conversation_language", "en")),
-        "ERROR_MESSAGES_LANGUAGE": language_config.get("error_messages", language_config.get("conversation_language", "en")),
+        "DOCUMENTATION_LANGUAGE": language_config.get(
+            "documentation", language_config.get("conversation_language", "en")
+        ),
+        "ERROR_MESSAGES_LANGUAGE": language_config.get(
+            "error_messages", language_config.get("conversation_language", "en")
+        ),
         "USER_NAME": user_name,
         "PERSONALIZED_GREETING": personalized_greeting,
         "LANGUAGE_CONFIG_SOURCE": config_source,
@@ -2414,7 +2412,7 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
                 console.print("[green]✓ All unselected elements remain preserved[/green]")
             else:
                 console.print(f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]")
-                if stats['failed'] > 0:
+                if stats["failed"] > 0:
                     console.print(f"[red]❌ Failed to restore {stats['failed']} elements[/red]")
                 console.print("[yellow]⚠️ All other elements remain preserved[/yellow]")
         else:

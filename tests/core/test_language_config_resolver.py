@@ -30,6 +30,21 @@ class TestLanguageConfigResolver(unittest.TestCase):
         self.moai_dir.mkdir(parents=True)
         self.config_file = self.moai_dir / "config.json"
 
+        # Clear all MOAI environment variables to ensure test isolation
+        self._env_vars_to_clear = [
+            "MOAI_USER_NAME",
+            "MOAI_CONVERSATION_LANG",
+            "MOAI_AGENT_PROMPT_LANG",
+            "MOAI_GIT_COMMIT_LANG",
+            "MOAI_CODE_COMMENTS_LANG",
+            "MOAI_DOCUMENTATION_LANG",
+            "MOAI_ERROR_MESSAGES_LANG",
+        ]
+        self._saved_env = {}
+        for key in self._env_vars_to_clear:
+            if key in os.environ:
+                self._saved_env[key] = os.environ.pop(key)
+
         # Reset global resolver instance for each test
         import moai_adk.core.language_config_resolver
         moai_adk.core.language_config_resolver._resolver_instance = None
@@ -38,6 +53,10 @@ class TestLanguageConfigResolver(unittest.TestCase):
         """Clean up test environment."""
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
+
+        # Restore saved environment variables
+        for key, value in self._saved_env.items():
+            os.environ[key] = value
 
     def _write_config(self, config_data):
         """Write configuration data to test config file."""
@@ -97,26 +116,26 @@ class TestLanguageConfigResolver(unittest.TestCase):
         }
         self._write_config(config_data)
 
+        # Use direct os.environ manipulation for better pytest compatibility
         env_vars = {
             'MOAI_USER_NAME': 'EnvUser',
             'MOAI_CONVERSATION_LANG': 'ja',
-            'MOAI_CONVERSATION_LANG_NAME': 'Japanese'
         }
         self._set_env_vars(env_vars)
-
         try:
             resolver = LanguageConfigResolver(str(self.test_dir))
             config = resolver.resolve_config()
 
             # Environment variables should override config file
             self.assertEqual(config['conversation_language'], 'ja')
+            # Language name is auto-generated from conversation_language
             self.assertEqual(config['conversation_language_name'], 'Japanese')
             self.assertEqual(config['user_name'], 'EnvUser')
             self.assertEqual(config['config_source'], 'environment')
 
-            # Agent prompt language should default to conversation language
-            self.assertEqual(config['agent_prompt_language'], 'ja')
-
+            # Agent prompt language from config file is preserved (not auto-updated)
+            # It only defaults to conversation_language if not explicitly set
+            self.assertEqual(config['agent_prompt_language'], 'en')
         finally:
             self._clear_env_vars(env_vars)
 
@@ -136,8 +155,8 @@ class TestLanguageConfigResolver(unittest.TestCase):
         self.assertEqual(config['conversation_language'], 'ko')
         self.assertEqual(config['conversation_language_name'], 'Korean')
 
-    def test_invalid_language_code_fallback(self):
-        """Test fallback to English for invalid language codes."""
+    def test_invalid_language_code_uses_first_two_chars(self):
+        """Test that unknown codes use first 2 chars for language lookup."""
         config_data = {
             "language": {
                 "conversation_language": "invalid_code"
@@ -148,8 +167,27 @@ class TestLanguageConfigResolver(unittest.TestCase):
         resolver = LanguageConfigResolver(str(self.test_dir))
         config = resolver.resolve_config()
 
-        self.assertEqual(config['conversation_language'], 'en')
-        self.assertEqual(config['conversation_language_name'], 'English')
+        # All language codes are accepted but standardized to first 2 chars
+        self.assertEqual(config['conversation_language'], 'invalid_code')
+        # First 2 chars "in" is not a known language code (Indonesian is "id")
+        # So it gets title-cased to "In"
+        self.assertEqual(config['conversation_language_name'], 'In')
+
+    def test_truly_unknown_language_code(self):
+        """Test that truly unknown 2-char codes get title-cased name."""
+        config_data = {
+            "language": {
+                "conversation_language": "zz"  # Not a known language code
+            }
+        }
+        self._write_config(config_data)
+
+        resolver = LanguageConfigResolver(str(self.test_dir))
+        config = resolver.resolve_config()
+
+        self.assertEqual(config['conversation_language'], 'zz')
+        # Unknown codes get title-cased
+        self.assertEqual(config['conversation_language_name'], 'Zz')
 
     def test_project_owner_fallback(self):
         """Test fallback to project.owner when user.name is not available."""
@@ -184,6 +222,10 @@ class TestLanguageConfigResolver(unittest.TestCase):
             'CONVERSATION_LANGUAGE': 'ko',
             'CONVERSATION_LANGUAGE_NAME': 'Korean',
             'AGENT_PROMPT_LANGUAGE': 'ko',
+            'GIT_COMMIT_MESSAGES_LANGUAGE': 'en',
+            'CODE_COMMENTS_LANGUAGE': 'en',
+            'DOCUMENTATION_LANGUAGE': 'en',
+            'ERROR_MESSAGES_LANGUAGE': 'en',
             'USER_NAME': 'TestUser',
             'PERSONALIZED_GREETING': 'TestUser님',
             'CONFIG_SOURCE': 'config_file'
@@ -340,13 +382,9 @@ class TestLanguageConfigResolver(unittest.TestCase):
         }
         self._write_config(config_data)
 
-        # Override only conversation language
-        env_vars = {
-            'MOAI_CONVERSATION_LANG': 'ko'
-            # Don't set MOAI_CONVERSATION_LANG_NAME
-        }
+        # Use direct os.environ manipulation for better pytest compatibility
+        env_vars = {'MOAI_CONVERSATION_LANG': 'ko'}
         self._set_env_vars(env_vars)
-
         try:
             resolver = LanguageConfigResolver(str(self.test_dir))
             config = resolver.resolve_config()
@@ -357,12 +395,12 @@ class TestLanguageConfigResolver(unittest.TestCase):
             # Language name should be auto-generated based on new language
             self.assertEqual(config['conversation_language_name'], 'Korean')
 
-            # Agent prompt language should default to conversation language
-            self.assertEqual(config['agent_prompt_language'], 'ko')
+            # Agent prompt language from config file is preserved (not auto-updated)
+            # It only defaults to conversation_language if not explicitly set
+            self.assertEqual(config['agent_prompt_language'], 'en')
 
             # User name should come from config
             self.assertEqual(config['user_name'], 'ConfigUser')
-
         finally:
             self._clear_env_vars(env_vars)
 

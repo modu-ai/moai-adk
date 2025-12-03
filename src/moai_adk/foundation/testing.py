@@ -810,7 +810,8 @@ class TestDataManager:
                     "cleanup": "TRUNCATE TABLE users",
                 },
                 "products_table": {
-                    "setup": "INSERT INTO products (id, name, price, category) VALUES (1, 'Product A', 19.99, 'electronics')",
+                    "setup": "INSERT INTO products (id, name, price, category) "
+                    "VALUES (1, 'Product A', 19.99, 'electronics')",
                     "teardown": "DELETE FROM products WHERE id = 1",
                     "cleanup": "TRUNCATE TABLE products",
                 },

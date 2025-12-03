@@ -33,7 +33,7 @@ def get_language_by_file_extension(extension: str) -> Optional[str]:
             else:
                 ext = ""
 
-    EXTENSION_MAP = {
+    EXTENSION_MAP = {  # noqa: N806 - intentional constant naming
         ".py": "python",
         ".js": "javascript",
         ".ts": "typescript",

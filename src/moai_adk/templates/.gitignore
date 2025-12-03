@@ -111,15 +111,34 @@ htmlcov/
 .env
 .env.*
 !.env.example
-*.key
+
+# Certificate files
 *.pem
 *.p12
 *.pfx
 *.jks
+
+# Private keys and certificates (specific patterns to avoid false positives)
+# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
+# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
+*-key.*
+*_key.*
+*.key.*
+*-secret-key.*
+*-api-key.*
+api-key-*
+secret-key-*
+private-key*
+*-secret.*
+*_secret.*
+*.secret.*
+secret-*.*
+
+# API credentials patterns
 *_secret=*
 *_token=*
-*secret*
-*key*
+
+# Cloud provider credentials
 .aws/config
 .aws/credentials
 .vercel/

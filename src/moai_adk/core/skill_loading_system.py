@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -22,21 +23,25 @@ logger = logging.getLogger(__name__)
 
 class SkillLoadingError(Exception):
     """Base exception for skill loading errors"""
+
     pass
 
 
 class SkillNotFoundError(SkillLoadingError):
     """Raised when skill file is not found"""
+
     pass
 
 
 class SkillValidationError(SkillLoadingError):
     """Raised when skill validation fails"""
+
     pass
 
 
 class DependencyError(SkillLoadingError):
     """Raised when skill dependencies cannot be resolved"""
+
     pass
 
 
@@ -52,11 +57,11 @@ class SkillData:
 
     def get_capability(self, capability_name: str) -> Any:
         """Get specific capability from skill content"""
-        return self.frontmatter.get('capabilities', {}).get(capability_name)
+        return self.frontmatter.get("capabilities", {}).get(capability_name)
 
     def supports_effort(self, effort: int) -> bool:
         """Check if skill supports specific effort level"""
-        supported_efforts = self.frontmatter.get('supported_efforts', [1, 3, 5])
+        supported_efforts = self.frontmatter.get("supported_efforts", [1, 3, 5])
         return effort in supported_efforts
 
     def apply_filter(self, filter_type: str) -> None:
@@ -67,52 +72,52 @@ class SkillData:
 
     def _filter_content(self, content: str, filter_type: str) -> str:
         """Filter content based on effort level"""
-        if filter_type == 'basic':
+        if filter_type == "basic":
             # Keep only quick reference and basic patterns
-            lines = content.split('\n')
+            lines = content.split("\n")
             filtered_lines = []
             in_basic_section = False
 
             for line in lines:
-                if line.startswith('## Quick Reference') or line.startswith('### Core Patterns'):
+                if line.startswith("## Quick Reference") or line.startswith("### Core Patterns"):
                     in_basic_section = True
-                elif line.startswith('## ') and not line.startswith('## Quick Reference'):
+                elif line.startswith("## ") and not line.startswith("## Quick Reference"):
                     in_basic_section = False
 
-                if in_basic_section or line.startswith('#'):
+                if in_basic_section or line.startswith("#"):
                     filtered_lines.append(line)
 
-            return '\n'.join(filtered_lines)
+            return "\n".join(filtered_lines)
 
-        elif filter_type == 'comprehensive':
+        elif filter_type == "comprehensive":
             # Return full content
             return content
 
         else:  # standard
             # Filter out advanced sections
-            lines = content.split('\n')
+            lines = content.split("\n")
             filtered_lines = []
             skip_section = False
 
             for line in lines:
-                if line.startswith('## Advanced') or line.startswith('## Implementation Details'):
+                if line.startswith("## Advanced") or line.startswith("## Implementation Details"):
                     skip_section = True
-                elif line.startswith('## ') and not line.startswith('## Advanced'):
+                elif line.startswith("## ") and not line.startswith("## Advanced"):
                     skip_section = False
 
                 if not skip_section:
                     filtered_lines.append(line)
 
-            return '\n'.join(filtered_lines)
+            return "\n".join(filtered_lines)
 
     @classmethod
-    def get_empty_skill(cls, skill_name: str) -> 'SkillData':
+    def get_empty_skill(cls, skill_name: str) -> "SkillData":
         """Create empty fallback skill"""
         return cls(
             name=skill_name,
-            frontmatter={'name': skill_name, 'status': 'fallback'},
+            frontmatter={"name": skill_name, "status": "fallback"},
             content=f"# Fallback Skill: {skill_name}\n\nThis skill failed to load. Using fallback mode.",
-            loaded_at=datetime.now()
+            loaded_at=datetime.now(),
         )
 
 
@@ -122,7 +127,7 @@ class LRUCache:
     def __init__(self, maxsize: int = 100, ttl: int = 3600):
         self.maxsize = maxsize
         self.ttl = ttl  # Time to live in seconds
-        self.cache: Dict[str, tuple] = {}  # value -> (data, timestamp)
+        self.cache: OrderedDict[str, tuple[SkillData, datetime]] = OrderedDict()  # key -> (data, timestamp)
         self.lock = threading.Lock()
 
     def get(self, key: str) -> Optional[SkillData]:
@@ -167,8 +172,8 @@ class SkillValidator:
     def __init__(self, registry):
         self.registry = registry
         self.valid_skill_patterns = [
-            r'^moai-[a-z]+-[a-z-]+$',  # Standard MoAI skills
-            r'^[a-z]+-[a-z-]+$',       # Generic skills
+            r"^moai-[a-z]+-[a-z-]+$",  # Standard MoAI skills
+            r"^[a-z]+-[a-z-]+$",  # Generic skills
         ]
 
     def validate_skill_name(self, skill_name: str) -> bool:
@@ -200,11 +205,10 @@ class SkillValidator:
             raise SkillValidationError(f"Invalid effort level: {effort}. Must be 1, 3, or 5")
 
         # Check if skill supports the requested effort level
-        supported_efforts = metadata.get('supported_efforts', [1, 3, 5])
+        supported_efforts = metadata.get("supported_efforts", [1, 3, 5])
         if effort not in supported_efforts:
             raise SkillValidationError(
-                f"Effort {effort} not supported by skill {skill_name}. "
-                f"Supported efforts: {supported_efforts}"
+                f"Effort {effort} not supported by skill {skill_name}. Supported efforts: {supported_efforts}"
             )
 
         return True
@@ -215,13 +219,11 @@ class SkillValidator:
         if not metadata:
             return False
 
-        required_skills = metadata.get('requires', [])
+        required_skills = metadata.get("requires", [])
         missing_skills = [skill for skill in required_skills if skill not in loaded_skills]
 
         if missing_skills:
-            raise DependencyError(
-                f"Skill {skill_name} requires missing dependencies: {missing_skills}"
-            )
+            raise DependencyError(f"Skill {skill_name} requires missing dependencies: {missing_skills}")
 
         return True
 
@@ -251,7 +253,7 @@ class SkillRegistry:
         """Scan directory for skill files"""
         for root, dirs, files in os.walk(directory):
             for file in files:
-                if file == 'SKILL.md':
+                if file == "SKILL.md":
                     skill_path = os.path.join(root, file)
                     skill_name = self._extract_skill_name(skill_path)
                     if skill_name:
@@ -265,21 +267,21 @@ class SkillRegistry:
         """Extract skill name from file path"""
         # Extract from path like: .claude/skills/moai-foundation-claude/SKILL.md
         parts = skill_path.split(os.sep)
-        if 'skills' in parts:
-            skills_idx = parts.index('skills')
+        if "skills" in parts:
+            skills_idx = parts.index("skills")
             if skills_idx + 1 < len(parts):
                 return parts[skills_idx + 1]
         return None
 
     def _parse_skill_metadata(self, skill_path: str) -> Dict[str, Any]:
         """Parse skill metadata from SKILL.md file"""
-        with open(skill_path, 'r', encoding='utf-8') as f:
+        with open(skill_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         # Parse YAML frontmatter
-        if content.startswith('---'):
+        if content.startswith("---"):
             try:
-                _, frontmatter, content = content.split('---', 2)
+                _, frontmatter, content = content.split("---", 2)
                 metadata = yaml.safe_load(frontmatter.strip())
                 return metadata or {}
             except Exception as e:
@@ -292,7 +294,7 @@ class SkillRegistry:
         self.skills[skill_name] = metadata
 
         # Extract dependencies
-        self.dependencies[skill_name] = metadata.get('requires', [])
+        self.dependencies[skill_name] = metadata.get("requires", [])
 
         # Initialize compatibility matrix
         if skill_name not in self.compatibility_matrix:
@@ -323,11 +325,7 @@ class SkillLoader:
         self.loading_stack: List[str] = []  # Track loading order to prevent circular dependencies
 
         # Initialize registry
-        default_paths = [
-            '.claude/skills',
-            'src/moai_adk/.claude/skills',
-            os.path.expanduser('~/.claude/skills')
-        ]
+        default_paths = [".claude/skills", "src/moai_adk/.claude/skills", os.path.expanduser("~/.claude/skills")]
         self.registry.initialize_from_filesystem(skill_paths or default_paths)
 
     def load_skill(self, skill_name: str, effort: Optional[int] = None, force_reload: bool = False) -> SkillData:
@@ -393,18 +391,13 @@ class SkillLoader:
             raise SkillNotFoundError(f"Skill file not found: {skill_path}")
 
         try:
-            with open(skill_path, 'r', encoding='utf-8') as f:
+            with open(skill_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Parse frontmatter and content
             frontmatter, content = self._parse_skill_file(content)
 
-            return SkillData(
-                name=skill_name,
-                frontmatter=frontmatter,
-                content=content,
-                loaded_at=datetime.now()
-            )
+            return SkillData(name=skill_name, frontmatter=frontmatter, content=content, loaded_at=datetime.now())
 
         except Exception as e:
             raise SkillLoadingError(f"Failed to parse skill file {skill_path}: {e}")
@@ -412,9 +405,9 @@ class SkillLoader:
     def _get_skill_path(self, skill_name: str) -> str:
         """Get the file system path for a skill"""
         possible_paths = [
-            f'.claude/skills/{skill_name}/SKILL.md',
-            f'src/moai_adk/.claude/skills/{skill_name}/SKILL.md',
-            f'{os.path.expanduser("~")}/.claude/skills/{skill_name}/SKILL.md'
+            f".claude/skills/{skill_name}/SKILL.md",
+            f"src/moai_adk/.claude/skills/{skill_name}/SKILL.md",
+            f"{os.path.expanduser('~')}/.claude/skills/{skill_name}/SKILL.md",
         ]
 
         for path in possible_paths:
@@ -426,9 +419,9 @@ class SkillLoader:
 
     def _parse_skill_file(self, content: str) -> tuple[Dict[str, Any], str]:
         """Parse skill file into frontmatter and content"""
-        if content.startswith('---'):
+        if content.startswith("---"):
             try:
-                _, frontmatter, content = content.split('---', 2)
+                _, frontmatter, content = content.split("---", 2)
                 frontmatter_data = yaml.safe_load(frontmatter.strip())
                 return frontmatter_data or {}, content.strip()
             except Exception as e:
@@ -441,26 +434,26 @@ class SkillLoader:
         # Customize skill behavior based on effort level
         if effort == 1:
             # Minimal effort: basic functionality only
-            skill_data.apply_filter('basic')
+            skill_data.apply_filter("basic")
         elif effort == 3:
             # Standard effort: full functionality with moderate depth
-            skill_data.apply_filter('standard')
+            skill_data.apply_filter("standard")
         elif effort == 5:
             # Deep effort: comprehensive functionality with maximum depth
-            skill_data.apply_filter('comprehensive')
+            skill_data.apply_filter("comprehensive")
 
         return skill_data
 
     def _get_fallback_skill(self, skill_name: str, effort: Optional[int] = None) -> SkillData:
         """Get fallback skill when loading fails"""
         fallback_map = {
-            'moai-foundation-core': 'moai-toolkit-essentials',
-            'moai-lang-unified': 'moai-lang-python',
-            'moai-domain-backend': 'expert-backend',
-            'moai-domain-frontend': 'expert-frontend',
+            "moai-foundation-core": "moai-toolkit-essentials",
+            "moai-lang-unified": "moai-lang-python",
+            "moai-domain-backend": "expert-backend",
+            "moai-domain-frontend": "expert-frontend",
         }
 
-        fallback_name = fallback_map.get(skill_name, 'moai-toolkit-essentials')
+        fallback_name = fallback_map.get(skill_name, "moai-toolkit-essentials")
 
         logger.warning(f"Using fallback skill {fallback_name} for {skill_name}")
 
@@ -473,9 +466,9 @@ class SkillLoader:
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache statistics for debugging"""
         return {
-            'cached_skills': list(self.cache.keys()),
-            'cache_size': len(self.cache.keys()),
-            'registry_skills': len(self.registry.skills)
+            "cached_skills": list(self.cache.keys()),
+            "cache_size": len(self.cache.keys()),
+            "registry_skills": len(self.registry.skills),
         }
 
 
@@ -503,20 +496,20 @@ def clear_skill_cache() -> None:
 def detect_required_skills(subagent_type: str, prompt: str) -> List[str]:
     """Auto-detect required skills based on task parameters"""
     skill_mapping = {
-        'expert-backend': ['moai-lang-unified', 'moai-domain-backend'],
-        'expert-frontend': ['moai-lang-unified', 'moai-domain-frontend'],
-        'manager-tdd': ['moai-workflow-testing', 'moai-foundation-quality'],
-        'manager-spec': ['moai-foundation-claude', 'moai-workflow-docs'],
-        'security-expert': ['moai-quality-security', 'moai-foundation-context'],
-        'expert-devops': ['moai-system-universal', 'moai-platform-baas'],
-        'builder-agent': ['moai-foundation-claude'],
-        'builder-skill': ['moai-foundation-claude'],
-        'mcp-context7': ['moai-connector-mcp'],
-        'mcp-sequential-thinking': ['moai-connector-mcp'],
+        "expert-backend": ["moai-lang-unified", "moai-domain-backend"],
+        "expert-frontend": ["moai-lang-unified", "moai-domain-frontend"],
+        "manager-tdd": ["moai-workflow-testing", "moai-foundation-quality"],
+        "manager-spec": ["moai-foundation-claude", "moai-workflow-docs"],
+        "security-expert": ["moai-quality-security", "moai-foundation-context"],
+        "expert-devops": ["moai-system-universal", "moai-platform-baas"],
+        "builder-agent": ["moai-foundation-claude"],
+        "builder-skill": ["moai-foundation-claude"],
+        "mcp-context7": ["moai-connector-mcp"],
+        "mcp-sequential-thinking": ["moai-connector-mcp"],
     }
 
     # Base skills for all tasks
-    base_skills = ['moai-foundation-claude']
+    base_skills = ["moai-foundation-claude"]
 
     # Add specific skills based on subagent_type
     specific_skills = skill_mapping.get(subagent_type, [])
@@ -537,22 +530,22 @@ def _detect_skills_from_prompt(prompt: str) -> List[str]:
     detected_skills = []
 
     # Language detection
-    if any(lang in prompt_lower for lang in ['python', 'fastapi', 'django']):
-        detected_skills.append('moai-lang-unified')
+    if any(lang in prompt_lower for lang in ["python", "fastapi", "django"]):
+        detected_skills.append("moai-lang-unified")
 
-    if any(lang in prompt_lower for lang in ['typescript', 'react', 'next.js', 'frontend']):
-        detected_skills.append('moai-lang-unified')
+    if any(lang in prompt_lower for lang in ["typescript", "react", "next.js", "frontend"]):
+        detected_skills.append("moai-lang-unified")
 
     # Domain detection
-    if any(domain in prompt_lower for domain in ['api', 'backend', 'server']):
-        detected_skills.append('moai-domain-backend')
+    if any(domain in prompt_lower for domain in ["api", "backend", "server"]):
+        detected_skills.append("moai-domain-backend")
 
-    if any(domain in prompt_lower for domain in ['ui', 'frontend', 'component']):
-        detected_skills.append('moai-domain-frontend')
+    if any(domain in prompt_lower for domain in ["ui", "frontend", "component"]):
+        detected_skills.append("moai-domain-frontend")
 
     # Security detection
-    if any(sec in prompt_lower for sec in ['security', 'auth', 'vulnerability']):
-        detected_skills.append('moai-quality-security')
+    if any(sec in prompt_lower for sec in ["security", "auth", "vulnerability"]):
+        detected_skills.append("moai-quality-security")
 
     return detected_skills
 

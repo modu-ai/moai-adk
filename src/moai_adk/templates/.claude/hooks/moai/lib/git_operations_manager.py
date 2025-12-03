@@ -13,25 +13,24 @@ Features:
 - Cross-platform compatibility
 """
 
-import json
+import hashlib
 import logging
 import subprocess
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Callable, Union
-from queue import Queue, Empty
-import hashlib
-import weakref
+from queue import Empty, Queue
+from typing import Any, Callable, Dict, List, Optional, Union
 
 
 class GitOperationType(Enum):
     """Types of Git operations for caching and optimization"""
+
     BRANCH = "branch"
     COMMIT = "commit"
     STATUS = "status"
@@ -44,6 +43,7 @@ class GitOperationType(Enum):
 @dataclass
 class GitCommand:
     """Git command specification"""
+
     operation_type: GitOperationType
     args: List[str]
     cache_ttl_seconds: int = 60
@@ -54,6 +54,7 @@ class GitCommand:
 @dataclass
 class GitResult:
     """Result of Git operation with metadata"""
+
     success: bool
     stdout: str = ""
     stderr: str = ""
@@ -68,6 +69,7 @@ class GitResult:
 @dataclass
 class CacheEntry:
     """Cache entry for Git results"""
+
     result: GitResult
     timestamp: datetime
     ttl: timedelta
@@ -76,8 +78,15 @@ class CacheEntry:
 
 class GitOperationError(Exception):
     """Enhanced Git operation error with context"""
-    def __init__(self, message: str, command: List[str] = None, return_code: int = -1,
-                 stderr: str = "", execution_time: float = 0.0):
+
+    def __init__(
+        self,
+        message: str,
+        command: List[str] = None,
+        return_code: int = -1,
+        stderr: str = "",
+        execution_time: float = 0.0,
+    ):
         super().__init__(message)
         self.command = command or []
         self.return_code = return_code
@@ -114,7 +123,7 @@ class GitOperationsManager:
             "cache_hits": 0,
             "cache_misses": 0,
             "errors": 0,
-            "total_time": 0.0
+            "total_time": 0.0,
         }
         self._stats_lock = threading.Lock()
 
@@ -130,6 +139,7 @@ class GitOperationsManager:
 
     def _start_queue_processor(self) -> None:
         """Start background thread to process queued commands"""
+
         def process_queue():
             while self._queue_active:
                 try:
@@ -163,8 +173,7 @@ class GitOperationsManager:
             if operation_type in [GitOperationType.STATUS, GitOperationType.DIFF]:
                 try:
                     result = subprocess.run(
-                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                        capture_output=True, text=True, timeout=2
+                        ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=2
                     )
                     if result.returncode == 0:
                         branch_info = result.stdout.strip()
@@ -186,20 +195,14 @@ class GitOperationsManager:
         """Clean up expired cache entries and enforce size limit"""
         with self._cache_lock:
             # Remove expired entries
-            expired_keys = [
-                key for key, entry in self._cache.items()
-                if not self._is_cache_valid(entry)
-            ]
+            expired_keys = [key for key, entry in self._cache.items() if not self._is_cache_valid(entry)]
             for key in expired_keys:
                 del self._cache[key]
 
             # Enforce size limit (remove least recently used)
             if len(self._cache) > self._cache_size_limit:
                 # Sort by last access time (hit count as proxy)
-                sorted_items = sorted(
-                    self._cache.items(),
-                    key=lambda x: (x[1].hit_count, x[1].timestamp)
-                )
+                sorted_items = sorted(self._cache.items(), key=lambda x: (x[1].hit_count, x[1].timestamp))
                 items_to_remove = len(self._cache) - self._cache_size_limit
                 for key, _ in sorted_items[:items_to_remove]:
                     del self._cache[key]
@@ -223,7 +226,7 @@ class GitOperationsManager:
                         cached=True,
                         cache_hit=True,
                         operation_type=entry.result.operation_type,
-                        command=entry.result.command.copy()
+                        command=entry.result.command.copy(),
                     )
                     return result
                 else:
@@ -235,11 +238,7 @@ class GitOperationsManager:
     def _store_in_cache(self, cache_key: str, result: GitResult, ttl: int) -> None:
         """Store result in cache with TTL"""
         with self._cache_lock:
-            self._cache[cache_key] = CacheEntry(
-                result=result,
-                timestamp=datetime.now(),
-                ttl=timedelta(seconds=ttl)
-            )
+            self._cache[cache_key] = CacheEntry(result=result, timestamp=datetime.now(), ttl=timedelta(seconds=ttl))
 
         # Cleanup if cache is getting large
         if len(self._cache) > self._cache_size_limit * 0.8:
@@ -253,11 +252,7 @@ class GitOperationsManager:
         try:
             # Execute Git command
             result = subprocess.run(
-                full_command,
-                capture_output=True,
-                text=True,
-                timeout=command.timeout_seconds,
-                cwd=Path.cwd()
+                full_command, capture_output=True, text=True, timeout=command.timeout_seconds, cwd=Path.cwd()
             )
 
             execution_time = time.time() - start_time
@@ -271,7 +266,7 @@ class GitOperationsManager:
                 cached=False,
                 cache_hit=False,
                 operation_type=command.operation_type,
-                command=full_command.copy()
+                command=full_command.copy(),
             )
 
             # Update statistics
@@ -298,7 +293,7 @@ class GitOperationsManager:
                 stderr=error_msg,
                 execution_time=execution_time,
                 operation_type=command.operation_type,
-                command=full_command.copy()
+                command=full_command.copy(),
             )
 
         except Exception as e:
@@ -315,7 +310,7 @@ class GitOperationsManager:
                 stderr=error_msg,
                 execution_time=execution_time,
                 operation_type=command.operation_type,
-                command=full_command.copy()
+                command=full_command.copy(),
             )
 
     def execute_git_command(self, command: Union[GitCommand, str], *args) -> GitResult:
@@ -324,7 +319,7 @@ class GitOperationsManager:
         if isinstance(command, str):
             command = GitCommand(
                 operation_type=GitOperationType.CONFIG,  # Default
-                args=[command] + list(args)
+                args=[command] + list(args),
             )
 
         # Check cache first
@@ -352,7 +347,9 @@ class GitOperationsManager:
                     else:
                         last_result = result
                         if attempt < command.retry_count:
-                            self._logger.warning(f"Git command failed, retrying ({attempt + 1}/{command.retry_count}): {result.stderr}")
+                            self._logger.warning(
+                                f"Git command failed, retrying ({attempt + 1}/{command.retry_count}): {result.stderr}"
+                            )
                             time.sleep(0.1 * (attempt + 1))  # Exponential backoff
                         else:
                             self._logger.error(f"Git command failed after retries: {result.stderr}")
@@ -364,7 +361,7 @@ class GitOperationsManager:
                         success=False,
                         stderr=str(e),
                         operation_type=command.operation_type,
-                        command=["git"] + command.args
+                        command=["git"] + command.args,
                     )
                 time.sleep(0.1 * (attempt + 1))
 
@@ -387,12 +384,14 @@ class GitOperationsManager:
                 results.append(result)
             except Exception as e:
                 self._logger.error(f"Parallel Git command failed: {e}")
-                results.append(GitResult(
-                    success=False,
-                    stderr=str(e),
-                    operation_type=command.operation_type,
-                    command=["git"] + command.args
-                ))
+                results.append(
+                    GitResult(
+                        success=False,
+                        stderr=str(e),
+                        operation_type=command.operation_type,
+                        command=["git"] + command.args,
+                    )
+                )
 
         return results
 
@@ -403,26 +402,26 @@ class GitOperationsManager:
                 operation_type=GitOperationType.BRANCH,
                 args=["branch", "--show-current"],
                 cache_ttl_seconds=30,
-                timeout_seconds=5
+                timeout_seconds=5,
             ),
             GitCommand(
                 operation_type=GitOperationType.LOG,
                 args=["log", "--pretty=format:%h %s", "-1"],
                 cache_ttl_seconds=10,
-                timeout_seconds=5
+                timeout_seconds=5,
             ),
             GitCommand(
                 operation_type=GitOperationType.LOG,
                 args=["log", "--pretty=format:%ar", "-1"],
                 cache_ttl_seconds=10,
-                timeout_seconds=5
+                timeout_seconds=5,
             ),
             GitCommand(
                 operation_type=GitOperationType.STATUS,
                 args=["status", "--porcelain"],
                 cache_ttl_seconds=5,  # Short TTL for status
-                timeout_seconds=5
-            )
+                timeout_seconds=5,
+            ),
         ]
 
         # If cache disabled, clear relevant entries
@@ -441,7 +440,7 @@ class GitOperationsManager:
             "last_commit": "unknown",
             "commit_time": "unknown",
             "changes": 0,
-            "fetch_time": datetime.now().isoformat()
+            "fetch_time": datetime.now().isoformat(),
         }
 
         if len(results) >= 4:
@@ -474,8 +473,8 @@ class GitOperationsManager:
                     "cache_hits": self._operation_stats["cache_hits"],
                     "cache_misses": self._operation_stats["cache_misses"],
                     "cache_hit_rate": (
-                        self._operation_stats["cache_hits"] /
-                        (self._operation_stats["cache_hits"] + self._operation_stats["cache_misses"])
+                        self._operation_stats["cache_hits"]
+                        / (self._operation_stats["cache_hits"] + self._operation_stats["cache_misses"])
                         if (self._operation_stats["cache_hits"] + self._operation_stats["cache_misses"]) > 0
                         else 0
                     ),
@@ -484,16 +483,14 @@ class GitOperationsManager:
                         self._operation_stats["total_time"] / self._operation_stats["total_operations"]
                         if self._operation_stats["total_operations"] > 0
                         else 0
-                    )
+                    ),
                 },
                 "cache": {
                     "size": len(self._cache),
                     "size_limit": self._cache_size_limit,
-                    "utilization": len(self._cache) / self._cache_size_limit
+                    "utilization": len(self._cache) / self._cache_size_limit,
                 },
-                "queue": {
-                    "pending": self._command_queue.qsize()
-                }
+                "queue": {"pending": self._command_queue.qsize()},
             }
 
     def clear_cache(self, operation_type: Optional[GitOperationType] = None) -> int:
@@ -506,8 +503,7 @@ class GitOperationsManager:
             else:
                 # Clear specific operation type
                 keys_to_remove = [
-                    key for key, entry in self._cache.items()
-                    if entry.result.operation_type == operation_type
+                    key for key, entry in self._cache.items() if entry.result.operation_type == operation_type
                 ]
                 for key in keys_to_remove:
                     del self._cache[key]
@@ -566,14 +562,10 @@ def get_git_info(use_cache: bool = True) -> Dict[str, Any]:
     return manager.get_project_info(use_cache=use_cache)
 
 
-def run_git_command(operation_type: GitOperationType, args: List[str],
-                   cache_ttl: int = 60, timeout: int = 10) -> GitResult:
+def run_git_command(
+    operation_type: GitOperationType, args: List[str], cache_ttl: int = 60, timeout: int = 10
+) -> GitResult:
     """Convenience function to run a single Git command"""
-    command = GitCommand(
-        operation_type=operation_type,
-        args=args,
-        cache_ttl_seconds=cache_ttl,
-        timeout_seconds=timeout
-    )
+    command = GitCommand(operation_type=operation_type, args=args, cache_ttl_seconds=cache_ttl, timeout_seconds=timeout)
     manager = get_git_manager()
     return manager.execute_git_command(command)

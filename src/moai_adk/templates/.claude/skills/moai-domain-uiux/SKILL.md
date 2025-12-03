@@ -348,15 +348,39 @@ DO:
 - Document all props with TypeScript types
 - Test components with jest-axe for accessibility
 
-DON'T:
-- Hardcode colors (use design tokens)
-- Skip ARIA labels on icon-only buttons
-- Import entire icon libraries (`import * from 'lucide-react'`)
-- Forget to test dark mode
-- Ignore keyboard navigation
-- Skip focus indicators
-- Use inline styles (use Tailwind classes)
-- Forget loading states
+Required Practices:
+
+[HARD] Use design tokens exclusively for all color, spacing, and typography values
+WHY: Design tokens provide a single source of truth, enabling consistent theming, multi-platform support, and scalable design systems
+IMPACT: Hardcoded values create maintenance debt, break theme switching, and violate design system principles
+
+[HARD] Include ARIA labels on all icon-only interactive elements
+WHY: Screen readers cannot interpret visual icons without text alternatives, making content inaccessible to users with visual impairments
+IMPACT: Missing ARIA labels violate WCAG 2.2 AA compliance and exclude users who depend on assistive technologies
+
+[HARD] Import icons individually rather than using namespace imports
+WHY: Namespace imports (`import * from 'lucide-react'`) bundle entire libraries, defeating tree-shaking optimization
+IMPACT: Bundle sizes increase by 500KB-2MB per icon library, degrading load performance and user experience
+
+[HARD] Test all components in both light and dark modes
+WHY: Theme switching affects color contrast, readability, and accessibility compliance across all UI states
+IMPACT: Untested dark mode implementations may fail WCAG contrast requirements and create unusable interfaces
+
+[HARD] Implement keyboard navigation for all interactive components
+WHY: Keyboard-only users and assistive technology users require Tab, Enter, Escape, and Arrow key support
+IMPACT: Missing keyboard support violates WCAG 2.2 AA and excludes users who cannot use pointing devices
+
+[HARD] Provide visible focus indicators for all focusable elements
+WHY: Focus indicators communicate current keyboard position, essential for navigation and accessibility
+IMPACT: Invisible focus states create confusion, violate WCAG 2.2 AA, and make keyboard navigation unusable
+
+[SOFT] Use Tailwind utility classes instead of inline styles
+WHY: Tailwind provides consistent spacing scale, responsive design, and automatic purging for optimal bundle sizes
+IMPACT: Inline styles bypass design system constraints, create inconsistent spacing, and increase CSS bundle size
+
+[SOFT] Include loading states for all asynchronous operations
+WHY: Loading states provide feedback during data fetching, preventing user uncertainty and duplicate actions
+IMPACT: Missing loading states create poor user experience with unclear interface states and potential duplicate submissions
 
 ---
 

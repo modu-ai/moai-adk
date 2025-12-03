@@ -7,7 +7,7 @@ import asyncio
 import json
 from typing import Dict, List, Optional
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, expect, sync_playwright
 
 
 class AITestGenerator:
@@ -214,7 +214,7 @@ class CrossBrowserOrchestrator:
         try:
             expect(page.locator("h1")).to_be_visible()
             assertions_passed += 1
-        except:
+        except Exception:
             pass
 
         execution_time = time.time() - start_time

@@ -10,7 +10,7 @@ Version: 1.0.0
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 from .batch_questions import BatchQuestionsManager, Question, QuestionType, UserResponse
@@ -50,7 +50,7 @@ class AskUserQuestionIntegrator:
         # For now, we'll create a mock implementation
         try:
             # In actual Claude Code environment, this would be available
-            from claude_code import ask_user_question as AskUserQuestion
+            from claude_code import ask_user_question as AskUserQuestion  # noqa: N812
 
             self.AskUserQuestion = AskUserQuestion
         except ImportError:

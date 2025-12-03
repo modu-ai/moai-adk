@@ -13,9 +13,8 @@ Key Features:
 """
 
 import curses
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from .custom_element_scanner import create_custom_element_scanner
 
@@ -101,28 +100,19 @@ class InteractiveCheckboxUI:
             Dictionary mapping category names to lists of elements
         """
         custom_elements = self.scanner.scan_custom_elements()
-        organized = {
-            "Agents": [],
-            "Commands": [],
-            "Skills": [],
-            "Hooks": []
-        }
+        organized: Dict[str, List[Dict[str, Any]]] = {"Agents": [], "Commands": [], "Skills": [], "Hooks": []}
 
         # Add skills (which are directories)
         if "skills" in custom_elements:
             for skill in custom_elements["skills"]:
                 skill_name = skill.name
                 # Add indicator for template vs custom skills
-                if hasattr(skill, 'is_template') and skill.is_template:
+                if hasattr(skill, "is_template") and skill.is_template:
                     skill_name = f"{skill.name} (template)"
                 else:
                     skill_name = f"{skill.name} (custom)"
 
-                organized["Skills"].append({
-                    "name": skill_name,
-                    "path": str(skill.path),
-                    "type": "skill"
-                })
+                organized["Skills"].append({"name": skill_name, "path": str(skill.path), "type": "skill"})
 
         # Add file-based elements
         for element_type in ["agents", "commands", "hooks"]:
@@ -130,11 +120,13 @@ class InteractiveCheckboxUI:
                 category_name = element_type.capitalize()
                 for element_path in custom_elements[element_type]:
                     element_name = Path(element_path).name
-                    organized[category_name].append({
-                        "name": element_name,
-                        "path": str(element_path),
-                        "type": element_type.rstrip("s")  # Remove plural 's'
-                    })
+                    organized[category_name].append(
+                        {
+                            "name": element_name,
+                            "path": str(element_path),
+                            "type": element_type.rstrip("s"),  # Remove plural 's'
+                        }
+                    )
 
         # Remove empty categories
         return {k: v for k, v in organized.items() if v}
@@ -151,19 +143,12 @@ class InteractiveCheckboxUI:
         flattened = []
         for category, elements in elements_by_category.items():
             # Add category header
-            flattened.append({
-                "type": "header",
-                "text": f"{category} ({len(elements)})",
-                "category": category
-            })
+            flattened.append({"type": "header", "text": f"{category} ({len(elements)})", "category": category})
             # Add elements
             for element in elements:
-                flattened.append({
-                    "type": "element",
-                    "name": element["name"],
-                    "path": element["path"],
-                    "category": element["type"]
-                })
+                flattened.append(
+                    {"type": "element", "name": element["name"], "path": element["path"], "category": element["type"]}
+                )
 
         return flattened
 
@@ -177,13 +162,14 @@ class InteractiveCheckboxUI:
         Returns:
             Set of selected indices, or None if cancelled
         """
+
         def interface(stdscr):
             # Initialize curses
             curses.curs_set(0)  # Hide cursor
             curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Selected
-            curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLUE)   # Header
+            curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLUE)  # Header
             curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Success
-            curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK) # Warning
+            curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # Warning
 
             stdscr.clear()
             stdscr.refresh()
@@ -197,17 +183,17 @@ class InteractiveCheckboxUI:
                     self._navigate_up(elements)
                 elif key == curses.KEY_DOWN:
                     self._navigate_down(elements)
-                elif key == ord(' '):
+                elif key == ord(" "):
                     self._toggle_selection(elements)
-                elif key == ord('a') or key == ord('A'):
+                elif key == ord("a") or key == ord("A"):
                     self._select_all(elements)
-                elif key == ord('n') or key == ord('N'):
+                elif key == ord("n") or key == ord("N"):
                     self._select_none(elements)
-                elif key == ord('\n') or key == ord('\r'):
+                elif key == ord("\n") or key == ord("\r"):
                     # Confirm selection
                     if self._confirm_selection(stdscr, elements):
                         return self.selected_indices
-                elif key == ord('q') or key == ord('Q') or key == 27:  # 27 = ESC
+                elif key == ord("q") or key == ord("Q") or key == 27:  # 27 = ESC
                     # Quit
                     return None
 
@@ -230,9 +216,7 @@ class InteractiveCheckboxUI:
         stdscr.addstr(1, (w - len(title)) // 2, title, curses.A_BOLD)
 
         # Instructions
-        instructions = [
-            "↑↓ Navigate | Space Toggle | A:All N:None | Enter:Confirm | Q/ESC:Cancel"
-        ]
+        instructions = ["↑↓ Navigate | Space Toggle | A:All N:None | Enter:Confirm | Q/ESC:Cancel"]
         for i, instruction in enumerate(instructions):
             stdscr.addstr(3, 2, instruction)
 
@@ -268,7 +252,9 @@ class InteractiveCheckboxUI:
                 y_offset += 1
 
         # Status bar
-        selected_count = len([i for i, el in enumerate(elements) if el["type"] == "element" and i in self.selected_indices])
+        selected_count = len(
+            [i for i, el in enumerate(elements) if el["type"] == "element" and i in self.selected_indices]
+        )
         total_count = len([el for el in elements if el["type"] == "element"])
         status = f"Selected: {selected_count}/{total_count} | Use Space to toggle, Enter to confirm"
         stdscr.addstr(h - 2, 2, status, curses.A_REVERSE)
@@ -370,7 +356,7 @@ class InteractiveCheckboxUI:
         stdscr.refresh()
 
         key = stdscr.getch()
-        return key in [ord('y'), ord('Y'), ord('\n'), ord('\r')]
+        return key in [ord("y"), ord("Y"), ord("\n"), ord("\r")]
 
     def _fallback_selection(self, flattened_elements: List[Dict]) -> Optional[List[str]]:
         """Fallback selection method when curses is not available.
@@ -381,9 +367,9 @@ class InteractiveCheckboxUI:
         Returns:
             List of selected paths or None if cancelled
         """
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔍 Custom Elements Detected (Simple Mode)")
-        print("="*60)
+        print("=" * 60)
         print("These elements are not part of the official MoAI-ADK template:")
         print()
 

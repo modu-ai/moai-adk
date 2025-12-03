@@ -56,21 +56,21 @@ class ScalingPolicy(Enum):
 class TenantType(Enum):
     """Tenant types"""
 
-    SHARED = "shared"           # Shared resources
-    DEDICATED = "dedicated"       # Dedicated resources
-    ISOLATED = "isolated"         # Completely isolated
-    HYBRID = "hybrid"            # Mix of shared and dedicated
+    SHARED = "shared"  # Shared resources
+    DEDICATED = "dedicated"  # Dedicated resources
+    ISOLATED = "isolated"  # Completely isolated
+    HYBRID = "hybrid"  # Mix of shared and dedicated
 
 
 class ComplianceStandard(Enum):
     """Compliance standards"""
 
-    GDPR = "gdpr"                 # General Data Protection Regulation
-    HIPAA = "hipaa"               # Health Insurance Portability
-    SOC2 = "soc2"                 # Service Organization Control 2
-    ISO27001 = "iso27001"         # ISO 27001 Information Security
-    PCI_DSS = "pci_dss"           # Payment Card Industry Data Security
-    SOX = "sox"                   # Sarbanes-Oxley Act
+    GDPR = "gdpr"  # General Data Protection Regulation
+    HIPAA = "hipaa"  # Health Insurance Portability
+    SOC2 = "soc2"  # Service Organization Control 2
+    ISO27001 = "iso27001"  # ISO 27001 Information Security
+    PCI_DSS = "pci_dss"  # Payment Card Industry Data Security
+    SOX = "sox"  # Sarbanes-Oxley Act
 
 
 @dataclass
@@ -233,7 +233,9 @@ class LoadBalancer:
                 return None
 
             # Filter healthy backends
-            healthy_backends = [b for b in self.backends if b["is_healthy"] and b["current_connections"] < b["max_connections"]]
+            healthy_backends = [
+                b for b in self.backends if b["is_healthy"] and b["current_connections"] < b["max_connections"]
+            ]
             if not healthy_backends:
                 return None
 
@@ -257,6 +259,7 @@ class LoadBalancer:
                     backend = healthy_backends[0]
                 else:
                     import random
+
                     r = random.randint(1, total_weight)
                     current_weight = 0
                     for b in healthy_backends:
@@ -296,6 +299,7 @@ class LoadBalancer:
         try:
             # Simulate health check - in real implementation, make HTTP request
             import random
+
             is_healthy = random.random() > 0.1  # 90% success rate
 
             with self._lock:
@@ -349,13 +353,15 @@ class AutoScaler:
 
     def update_metrics(self, cpu_usage: float, memory_usage: float, request_rate: float) -> None:
         """Update metrics for scaling decisions"""
-        self.metrics_history.append({
-            "timestamp": datetime.now(),
-            "cpu_usage": cpu_usage,
-            "memory_usage": memory_usage,
-            "request_rate": request_rate,
-            "instances": self.current_instances,
-        })
+        self.metrics_history.append(
+            {
+                "timestamp": datetime.now(),
+                "cpu_usage": cpu_usage,
+                "memory_usage": memory_usage,
+                "request_rate": request_rate,
+                "instances": self.current_instances,
+            }
+        )
 
     def should_scale_up(self) -> bool:
         """Determine if scaling up is needed"""
@@ -441,7 +447,7 @@ class DeploymentManager:
 
     async def deploy(self, config: DeploymentConfig) -> Dict[str, Any]:
         """Execute deployment with specified strategy"""
-        deployment_result = {
+        deployment_result: Dict[str, Any] = {
             "deployment_id": config.deployment_id,
             "status": "in_progress",
             "started_at": datetime.now().isoformat(),
@@ -464,10 +470,12 @@ class DeploymentManager:
             # Store deployment
             with self._lock:
                 self.active_deployments[config.deployment_id] = config
-                self.deployment_history.append({
-                    **deployment_result,
-                    "completed_at": datetime.now().isoformat(),
-                })
+                self.deployment_history.append(
+                    {
+                        **deployment_result,
+                        "completed_at": datetime.now().isoformat(),
+                    }
+                )
 
             return deployment_result
 
@@ -482,12 +490,14 @@ class DeploymentManager:
         steps = []
 
         # Step 1: Create green environment
-        steps.append({
-            "step": "create_green",
-            "description": "Creating green environment",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "create_green",
+                "description": "Creating green environment",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         green_backend_id = f"green-{config.deployment_id}"
         self.load_balancer.add_backend(
@@ -497,30 +507,34 @@ class DeploymentManager:
                 "path": config.health_check_url,
                 "interval": 30,
                 "timeout": 10,
-            }
+            },
         )
 
         steps[-1]["status"] = "completed"
 
         # Step 2: Deploy to green
-        steps.append({
-            "step": "deploy_green",
-            "description": f"Deploying version {config.version} to green environment",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "deploy_green",
+                "description": f"Deploying version {config.version} to green environment",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         # Simulate deployment time
         await asyncio.sleep(2)
         steps[-1]["status"] = "completed"
 
         # Step 3: Health check green
-        steps.append({
-            "step": "health_check",
-            "description": "Performing health check on green environment",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "health_check",
+                "description": "Performing health check on green environment",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         is_healthy = self.load_balancer.perform_health_check(green_backend_id)
         steps[-1]["status"] = "completed" if is_healthy else "failed"
@@ -531,12 +545,14 @@ class DeploymentManager:
             return {"success": False, "steps": steps, "error": "Health check failed"}
 
         # Step 4: Switch traffic to green
-        steps.append({
-            "step": "switch_traffic",
-            "description": "Switching traffic to green environment",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "switch_traffic",
+                "description": "Switching traffic to green environment",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         # Remove blue backends
         blue_backends = [b for b in self.load_balancer.backends if b["backend_id"].startswith("blue-")]
@@ -546,12 +562,14 @@ class DeploymentManager:
         steps[-1]["status"] = "completed"
 
         # Step 5: Rename green to blue
-        steps.append({
-            "step": "promote_green",
-            "description": "Promoting green environment to production",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "promote_green",
+                "description": "Promoting green environment to production",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         # Remove green prefix (in real implementation, this would rename services)
         self.load_balancer.remove_backend(green_backend_id)
@@ -562,7 +580,7 @@ class DeploymentManager:
                 "path": config.health_check_url,
                 "interval": 30,
                 "timeout": 10,
-            }
+            },
         )
 
         steps[-1]["status"] = "completed"
@@ -578,15 +596,17 @@ class DeploymentManager:
 
     async def _deploy_canary(self, config: DeploymentConfig) -> Dict[str, Any]:
         """Canary deployment strategy"""
-        steps = []
+        steps: List[Dict[str, Any]] = []
 
         # Step 1: Create canary environment
-        steps.append({
-            "step": "create_canary",
-            "description": f"Creating canary environment with {config.traffic_percentage}% traffic",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "create_canary",
+                "description": f"Creating canary environment with {config.traffic_percentage}% traffic",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         canary_backend_id = f"canary-{config.deployment_id}"
         self.load_balancer.add_backend(
@@ -597,32 +617,36 @@ class DeploymentManager:
                 "path": config.health_check_url,
                 "interval": 30,
                 "timeout": 10,
-            }
+            },
         )
 
         steps[-1]["status"] = "completed"
 
         # Step 2: Deploy to canary
-        steps.append({
-            "step": "deploy_canary",
-            "description": f"Deploying version {config.version} to canary environment",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "deploy_canary",
+                "description": f"Deploying version {config.version} to canary environment",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         await asyncio.sleep(1)
         steps[-1]["status"] = "completed"
 
         # Step 3: Monitor canary performance
-        steps.append({
-            "step": "monitor_canary",
-            "description": "Monitoring canary performance metrics",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "monitor_canary",
+                "description": "Monitoring canary performance metrics",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         # Simulate canary analysis
-        analysis_period = config.canary_analysis.get("period", 300)  # 5 minutes
+        config.canary_analysis.get("period", 300)  # 5 minutes
         await asyncio.sleep(1)  # Simulate monitoring
 
         # Simulate canary analysis results
@@ -633,27 +657,31 @@ class DeploymentManager:
         steps[-1]["analysis"] = {
             "success_rate": canary_success_rate,
             "performance_score": performance_score,
-            "recommendation": "promote" if canary_success_rate > 90 else "rollback"
+            "recommendation": "promote" if canary_success_rate > 90 else "rollback",
         }
 
         # Step 4: Make promotion decision
-        steps.append({
-            "step": "decision",
-            "description": "Making deployment decision based on canary analysis",
-            "status": "in_progress",
-            "started_at": datetime.now().isoformat(),
-        })
+        steps.append(
+            {
+                "step": "decision",
+                "description": "Making deployment decision based on canary analysis",
+                "status": "in_progress",
+                "started_at": datetime.now().isoformat(),
+            }
+        )
 
         should_promote = canary_success_rate > 90 and performance_score > 80
 
         if should_promote and config.auto_promote:
             # Promote canary to full deployment
-            steps.append({
-                "step": "promote_canary",
-                "description": "Promoting canary to full deployment",
-                "status": "in_progress",
-                "started_at": datetime.now().isoformat(),
-            })
+            steps.append(
+                {
+                    "step": "promote_canary",
+                    "description": "Promoting canary to full deployment",
+                    "status": "in_progress",
+                    "started_at": datetime.now().isoformat(),
+                }
+            )
 
             # Update weights to route all traffic to canary
             self.load_balancer.remove_backend(canary_backend_id)
@@ -666,12 +694,14 @@ class DeploymentManager:
             steps[-1]["status"] = "completed"
         else:
             # Rollback canary
-            steps.append({
-                "step": "rollback_canary",
-                "description": "Rolling back canary deployment",
-                "status": "in_progress",
-                "started_at": datetime.now().isoformat(),
-            })
+            steps.append(
+                {
+                    "step": "rollback_canary",
+                    "description": "Rolling back canary deployment",
+                    "status": "in_progress",
+                    "started_at": datetime.now().isoformat(),
+                }
+            )
 
             self.load_balancer.remove_backend(canary_backend_id)
 
@@ -689,13 +719,15 @@ class DeploymentManager:
         # Simulate rolling update through all instances
         total_instances = self.auto_scaler.current_instances
         for i in range(total_instances):
-            step_name = f"update_instance_{i+1}"
-            steps.append({
-                "step": step_name,
-                "description": f"Updating instance {i+1}/{total_instances}",
-                "status": "in_progress",
-                "started_at": datetime.now().isoformat(),
-            })
+            step_name = f"update_instance_{i + 1}"
+            steps.append(
+                {
+                    "step": step_name,
+                    "description": f"Updating instance {i + 1}/{total_instances}",
+                    "status": "in_progress",
+                    "started_at": datetime.now().isoformat(),
+                }
+            )
 
             # Simulate instance update
             await asyncio.sleep(0.5)
@@ -883,7 +915,7 @@ class TenantManager:
             return {"error": "Tenant not found or compliance standard not required"}
 
         report_id = str(uuid.uuid4())
-        report = {
+        report: Dict[str, Any] = {
             "report_id": report_id,
             "tenant_id": tenant_id,
             "standard": standard.value,
@@ -1009,21 +1041,24 @@ class AuditLogger:
             end_time=end_time,
         )
 
-        report = {
+        logs_by_severity: Dict[str, int] = defaultdict(int)
+        logs_by_action: Dict[str, int] = defaultdict(int)
+
+        for log in logs:
+            logs_by_severity[log.severity] += 1
+            logs_by_action[log.action] += 1
+
+        report: Dict[str, Any] = {
             "standard": standard.value,
             "period": f"{days} days",
             "total_logs": len(logs),
             "generated_at": end_time.isoformat(),
             "tenant_id": tenant_id,
-            "logs_by_severity": defaultdict(int),
-            "logs_by_action": defaultdict(int),
+            "logs_by_severity": dict(logs_by_severity),
+            "logs_by_action": dict(logs_by_action),
             "unique_users": len(set(log.user_id for log in logs)),
             "unique_resources": len(set(log.resource for log in logs)),
         }
-
-        for log in logs:
-            report["logs_by_severity"][log.severity] += 1
-            report["logs_by_action"][log.action] += 1
 
         return dict(report)
 
@@ -1099,6 +1134,7 @@ class EnterpriseFeatures:
 
     def _start_background_tasks(self) -> None:
         """Start background monitoring and scaling tasks"""
+
         def monitor_loop():
             while self._running:
                 try:
@@ -1114,7 +1150,7 @@ class EnterpriseFeatures:
                         self.auto_scaler.scale_up()
                         self.deployment_manager.load_balancer.add_backend(
                             f"instance-{self.auto_scaler.current_instances}-{uuid.uuid4().hex[:8]}",
-                            f"http://instance-{self.auto_scaler.current_instances}.example.com"
+                            f"http://instance-{self.auto_scaler.current_instances}.example.com",
                         )
                     elif self.auto_scaler.should_scale_down():
                         self.auto_scaler.scale_down()
@@ -1140,7 +1176,7 @@ class EnterpriseFeatures:
         strategy: DeploymentStrategy = DeploymentStrategy.BLUE_GREEN,
         environment: str = "production",
         tenant_id: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """Deploy application with enterprise-grade strategy"""
         deployment_config = DeploymentConfig(
@@ -1149,7 +1185,7 @@ class EnterpriseFeatures:
             version=version,
             environment=environment,
             tenant_id=tenant_id,
-            **kwargs
+            **kwargs,
         )
 
         return await self.deployment_manager.deploy(deployment_config)
@@ -1158,25 +1194,14 @@ class EnterpriseFeatures:
         """Rollback deployment"""
         return self.deployment_manager.rollback(deployment_id)
 
-    def create_tenant(
-        self,
-        tenant_name: str,
-        tenant_type: TenantType = TenantType.SHARED,
-        **kwargs
-    ) -> str:
+    def create_tenant(self, tenant_name: str, tenant_type: TenantType = TenantType.SHARED, **kwargs) -> str:
         """Create new tenant"""
         if not self.enable_multi_tenant:
             raise RuntimeError("Multi-tenant support is not enabled")
 
         return self.tenant_manager.create_tenant(tenant_name, tenant_type, **kwargs)
 
-    def log_audit_event(
-        self,
-        action: str,
-        resource: str,
-        user_id: str,
-        **kwargs
-    ) -> str:
+    def log_audit_event(self, action: str, resource: str, user_id: str, **kwargs) -> str:
         """Log audit event"""
         if not self.enable_audit_logging:
             return ""
@@ -1262,10 +1287,8 @@ def stop_enterprise_features() -> None:
     enterprise.stop()
 
 
-def deploy_application(
-    version: str,
-    strategy: DeploymentStrategy = DeploymentStrategy.BLUE_GREEN,
-    **kwargs
+async def deploy_application(
+    version: str, strategy: DeploymentStrategy = DeploymentStrategy.BLUE_GREEN, **kwargs: Any
 ) -> Dict[str, Any]:
     """Deploy application with enterprise features"""
     enterprise = get_enterprise_features()
@@ -1301,7 +1324,7 @@ if __name__ == "__main__":
                     "storage_gb": 200,
                 },
                 compliance_requirements=[ComplianceStandard.GDPR, ComplianceStandard.SOC2],
-                billing_plan="enterprise"
+                billing_plan="enterprise",
             )
             print(f"Created tenant: {tenant_id}")
 
@@ -1313,7 +1336,7 @@ if __name__ == "__main__":
                 user_id="admin",
                 tenant_id=tenant_id,
                 compliance_standards=[ComplianceStandard.GDPR],
-                details={"plan": "enterprise"}
+                details={"plan": "enterprise"},
             )
 
             enterprise.log_audit_event(
@@ -1321,7 +1344,7 @@ if __name__ == "__main__":
                 resource="application",
                 user_id="admin",
                 tenant_id=tenant_id,
-                details={"version": "1.0.0"}
+                details={"version": "1.0.0"},
             )
 
             # Perform blue-green deployment
@@ -1331,7 +1354,7 @@ if __name__ == "__main__":
                 strategy=DeploymentStrategy.BLUE_GREEN,
                 tenant_id=tenant_id,
                 health_check_url="/api/health",
-                auto_promote=True
+                auto_promote=True,
             )
 
             print(f"Deployment result: {deployment_result['status']}")
@@ -1346,20 +1369,24 @@ if __name__ == "__main__":
             print(f"  Status: {status['status']}")
             print(f"  Uptime: {status['uptime_seconds']:.1f}s")
             print(f"  Load Balancer: {status['load_balancer']['total_backends']} backends")
-            print(f"  Auto Scaler: {status['auto_scaler']['current_instances']}/{status['auto_scaler']['max_instances']} instances")
+            auto_current = status["auto_scaler"]["current_instances"]
+            auto_max = status["auto_scaler"]["max_instances"]
+            print(f"  Auto Scaler: {auto_current}/{auto_max} instances")
             print(f"  Multi-tenant: {status['features']['multi_tenant']}")
             print(f"  Audit Logging: {status['features']['audit_logging']}")
 
             # Get tenant status
             tenant_status = enterprise.get_system_status()
             if "tenant_manager" in tenant_status:
-                print(f"  Tenants: {tenant_status['tenant_manager']['total_tenants']} total, {tenant_status['tenant_manager']['active_tenants']} active")
+                tm = tenant_status["tenant_manager"]
+                print(f"  Tenants: {tm['total_tenants']} total, {tm['active_tenants']} active")
 
             print("\n✅ Enterprise Features demo completed successfully!")
 
         except Exception as e:
             print(f"\n❌ Demo failed: {str(e)}")
             import traceback
+
             traceback.print_exc()
 
         finally:

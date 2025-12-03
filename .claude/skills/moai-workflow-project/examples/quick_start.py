@@ -12,13 +12,13 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Import modules directly
-from datetime import datetime
-from typing import Any, Dict
+# Import modules directly  # noqa: E402 - imports after path setup
+from datetime import datetime  # noqa: E402
+from typing import Any, Dict  # noqa: E402
 
-from modules.documentation_manager import DocumentationManager
-from modules.language_initializer import LanguageInitializer
-from modules.template_optimizer import TemplateOptimizer
+from modules.documentation_manager import DocumentationManager  # noqa: E402
+from modules.language_initializer import LanguageInitializer  # noqa: E402
+from modules.template_optimizer import TemplateOptimizer  # noqa: E402
 
 
 class MoaiMenuProject:
@@ -182,7 +182,7 @@ def quick_start():
 if __name__ == "__main__":
     try:
         result = quick_start()
-        print(f"\n{'='*40}")
+        print(f"\n{'=' * 40}")
         print("Quick start completed successfully! 🚀")
     except Exception as e:
         print(f"\n❌ Error during quick start: {e}")

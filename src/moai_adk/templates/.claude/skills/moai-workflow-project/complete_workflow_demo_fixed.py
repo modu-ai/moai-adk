@@ -215,7 +215,7 @@ class DemoRunner:
                 cost_analysis = self.lang_init.get_token_cost_analysis(lang)
                 cost_impact = cost_analysis.get("cost_impact", 0)
                 print(f"  💰 Token cost impact: +{cost_impact}%")
-            except:
+            except Exception:
                 print("  💰 Token cost analysis: N/A")
 
         print("\\n🌍 Multilingual Support Summary:")
@@ -225,7 +225,7 @@ class DemoRunner:
             supported_langs = lang_status.get("supported_languages", [])
             print(f"  - Current language: {current_lang}")
             print(f"  - Supported languages: {', '.join(supported_langs) if supported_langs else 'N/A'}")
-        except:
+        except Exception:
             print("  - Language status: Available")
 
         print("\\n" + "=" * 50 + "\\n")

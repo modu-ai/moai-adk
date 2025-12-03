@@ -33,25 +33,25 @@ model: inherit
 
 ##  Command Purpose
 
-CRITICAL: This command orchestrates ONLY - delegates all sync work to manager-docs agent
+[HARD] This command orchestrates ONLY - delegates all sync work to manager-docs agent
 
-Document sync to: $ARGUMENTS
+Document sync target: $ARGUMENTS
 
 Agent Delegation Pattern:
 
-```bash
-#  CORRECT: Delegate to manager-docs agent
-Task(
-  subagent_type="manager-docs",
-  description="Synchronize documentation for $ARGUMENTS",
-  prompt="You are the manager-docs agent. Analyze changes and synchronize all relevant documentation."
-)
+Correct Approach [HARD]:
+- Invoke Task() with subagent_type="manager-docs"
+- Pass complete context including changed files and verification results
+- Let manager-docs agent determine implementation strategy
+- WHY: Specialized agent has domain expertise and handles all complexity
 
-#  WRONG: Direct document manipulation
-Edit file.md "update documentation"
-```
+Forbidden Approach:
+- Direct file manipulation using Edit, Write, Read tools
+- Direct bash execution of document updates
+- WHY: Bypasses quality controls and loses context-specific error handling
 
-> Standard workflow: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync via Agent) → STEP 3 (Git Commit & PR)
+Standard Workflow Sequence:
+Step 1 (Analysis & Planning) leads to Step 2 (Document Sync via Agent) leads to Step 3 (Git Commit & PR)
 
 ---
 
@@ -111,17 +111,52 @@ User Command: /moai:3-sync [mode] [path]
 
 ### Key Principle: Zero Direct Tool Usage
 
-This command uses ONLY Task(), AskUserQuestion(), and TodoWrite():
+[HARD] This command uses ONLY Task(), AskUserQuestion(), and TodoWrite():
 
--  No Read (file operations delegated)
--  No Write (file operations delegated)
--  No Edit (file operations delegated)
--  No Bash (all bash commands delegated)
--  Task() for orchestration
--  AskUserQuestion() for user interaction
--  TodoWrite() for progress tracking
+Permitted Tools:
+- Task() for orchestration [HARD]
+- AskUserQuestion() for user interaction [HARD]
+- TodoWrite() for progress tracking [HARD]
+
+Forbidden Tools (All delegated to agents):
+- Read (delegated) - All file reading operations must be performed by specialized agents
+- Write (delegated) - All file writing operations must be performed by specialized agents
+- Edit (delegated) - All file editing operations must be performed by specialized agents
+- Bash (delegated) - All bash execution must be performed by specialized agents
+
+WHY: Zero direct tool usage maintains clean separation of concerns. Each tool type has a specialized agent that understands context-specific requirements.
+
+IMPACT: Direct tool usage would bypass quality controls, specialized agent expertise, and error recovery mechanisms. Delegation ensures consistent execution patterns.
 
 All complexity is handled by specialized agents (manager-docs, manager-quality, manager-git).
+
+---
+
+---
+
+##  Output Format
+
+All command execution outputs must use semantic XML sections for clarity and consistency:
+
+XML Structure Format:
+```
+<analysis>Detailed assessment of project state, identified changes, and validation results</analysis>
+<plan>Synchronization strategy including scope, affected documents, and approach rationale</plan>
+<execution>Concrete actions taken: files updated, reports generated, status changes recorded</execution>
+<verification>Quality validation results: TRUST 5 compliance, link integrity, consistency checks</verification>
+<completion>Summary of outcomes, generated reports locations, and next steps for user</completion>
+```
+
+Required Elements:
+- Analysis must detail all findings from project validation and Git analysis
+- Plan must explain strategy choice including WHY and IMPACT of decisions
+- Execution must track all agent actions and file modifications
+- Verification must report all quality gates and their outcomes
+- Completion must guide user toward next meaningful action
+
+WHY: XML sections provide machine-parseable structure and enable audit trails. Clear sections ensure user can understand command progress at any point.
+
+IMPACT: Unstructured output reduces comprehension and prevents automated processing of results.
 
 ---
 
@@ -168,26 +203,37 @@ Goal: Gather project context, verify project status, and get user approval.
 
 Execute these verification steps:
 
-1. TUI System Ready:
+1. [HARD] TUI System Must Be Ready:
 
-   - Interactive menus are available for all user interactions
+   Requirement: Interactive menus must be available for all user interactions
+   WHY: User interaction requires responsive feedback mechanism
+   IMPACT: Missing TUI will cause command to fail during user approval phase
 
-2. Verify MoAI-ADK structure:
+2. [HARD] MoAI-ADK Structure Must Exist:
 
-   - Check: `.moai/` directory exists
-   - Check: `.claude/` directory exists
-   - IF missing → Print error and exit
+   Requirement: `.moai/` directory must exist in project root
+   Requirement: `.claude/` directory must exist in project root
+   Failure Action: Print error message with missing directory details and exit immediately
+   WHY: These directories contain essential project metadata and configuration
+   IMPACT: Missing directories indicates incomplete project initialization
 
-3. Verify Git repository:
+3. [HARD] Git Repository Must Be Initialized:
 
-   - Execute: `git rev-parse --is-inside-work-tree`
-   - IF not a Git repo → Print error and exit
+   Requirement: Project must be inside a Git repository
+   Verification: Execute `git rev-parse --is-inside-work-tree` and verify output is "true"
+   Failure Action: Print error message and exit immediately
+   WHY: Document synchronization requires Git history and commit operations
+   IMPACT: Non-Git projects cannot track documentation changes or create commits
 
-4. Verify Python environment (optional, non-fatal):
-   - Execute: `which python3`
-   - IF not found → Print warning but continue
+4. [SOFT] Python Environment Should Be Available:
 
-Result: Prerequisites verified. TUI system ready.
+   Requirement: Python 3 should be installed and accessible
+   Verification: Execute `which python3` and verify command succeeds
+   Failure Action: Print warning message but continue with reduced functionality
+   WHY: Python environment enables advanced automation and validation
+   IMPACT: Missing Python limits automation but does not prevent basic sync operations
+
+Result: All hard prerequisites verified. All soft requirements checked. Command may proceed to next step.
 
 ---
 
@@ -195,72 +241,98 @@ Result: Prerequisites verified. TUI system ready.
 
 Gather context for synchronization planning:
 
-1. Analyze Git changes:
+1. [HARD] Analyze Git Changes:
 
-   - Execute: `git status --porcelain`
-   - Execute: `git diff --name-only HEAD`
-   - Count: Python files, test files, documents, SPEC files
+   Requirement: Determine all files that have changed since last commit
+   Actions:
+   - Execute: `git status --porcelain` to identify modified files
+   - Execute: `git diff --name-only HEAD` to list changed file paths
+   - Categorize: Count Python files, test files, documents, SPEC files separately
+   WHY: Git state determines synchronization scope and impact analysis
+   IMPACT: Incomplete Git analysis leads to partial synchronization
 
-2. Read project configuration:
+2. [HARD] Read Project Configuration:
 
-   - Read: `.moai/config.json`
-   - Extract: `git_strategy.mode` (Personal/Team)
-   - Extract: `language.conversation_language` (for document updates)
-   - Extract: `git_strategy.spec_git_workflow`
+   Requirement: Load essential project settings from configuration file
+   Actions:
+   - Read: `.moai/config.json` file
+   - Extract: `git_strategy.mode` value (must be Personal or Team)
+   - Extract: `language.conversation_language` value (determines document language)
+   - Extract: `git_strategy.spec_git_workflow` value
+   WHY: Configuration drives workflow behavior and language output
+   IMPACT: Missing configuration values cause workflow misalignment and language errors
 
-3. Determine synchronization mode:
+3. [HARD] Determine Synchronization Mode:
 
-   - Parse $ARGUMENTS for mode: `auto`, `force`, `status`, `project`
-   - IF empty → Default to `auto`
-   - Parse flags: `--auto-merge`, `--skip-pre-check`, `--skip-quality-check`
-   - Parse special flags: `--worktree`, `--branch`
+   Requirement: Parse arguments to establish execution mode
+   Actions:
+   - Parse $ARGUMENTS for mode value: must be one of auto, force, status, or project
+   - If empty: Default to auto mode
+   - Parse optional flags: --auto-merge, --skip-pre-check, --skip-quality-check
+   - Parse special flags: --worktree, --branch
+   WHY: Mode determines scope and processing strategy
+   IMPACT: Invalid mode selection produces incorrect synchronization behavior
 
-4. Handle worktree detection:
+4. [SOFT] Handle Worktree Detection:
 
-   - Check if current directory is inside a worktree:
-     - Execute: `git rev-parse --git-dir` to find git directory
-     - IF git directory path contains `worktrees/` → We're in a worktree
-   - Detect current worktree SPEC ID:
-     - Extract SPEC ID from current path (last path component should match SPEC-{DOMAIN}-{NUMBER})
-     - OR check worktree registry: `~/worktrees/{PROJECT_NAME}/.moai-worktree-registry.json`
-     - Store `$WORKTREE_MODE=true` and `$CURRENT_SPEC_ID`
-     - Set up worktree-specific workflow options
+   Requirement: Identify if execution occurs within a Git worktree
+   Actions:
+   - Execute: `git rev-parse --git-dir` to locate git directory
+   - Analyze: Check if git directory path contains `worktrees/` component
+   - If in worktree: Extract SPEC ID from current path (format: SPEC-{DOMAIN}-{NUMBER})
+   - Alternative: Check worktree registry at `~/worktrees/{PROJECT_NAME}/.moai-worktree-registry.json`
+   - Store: `$WORKTREE_MODE=true` and `$CURRENT_SPEC_ID` for later use
+   WHY: Worktree context enables specialized cleanup and workflow options
+   IMPACT: Missing worktree detection prevents proper exit handling but does not block sync
 
-5. Handle branch detection:
+5. [SOFT] Handle Branch Detection:
 
-   - IF `--branch` flag present OR not on main branch:
-     - Detect current branch name: `git branch --show-current`
-     - Store `$BRANCH_MODE=true` and `$CURRENT_BRANCH`
-     - Set up branch-specific workflow options
+   Requirement: Identify if execution occurs on feature branch
+   Actions:
+   - Check: Is --branch flag present in arguments OR is current branch not main
+   - Execute: `git branch --show-current` to get current branch name
+   - Store: `$BRANCH_MODE=true` and `$CURRENT_BRANCH` for later use
+   WHY: Branch context enables proper merge and cleanup operations
+   IMPACT: Missing branch detection reduces workflow automation but does not prevent sync
 
-6. Handle status mode early exit:
-   - IF mode is `status` → Execute quick check only:
-     - Print current project health
-     - Print changed files count
-     - Print recommendation
-     - EXIT command (no further processing)
+6. [HARD] Handle Status Mode Early Exit:
 
-Result: Project status analyzed and mode determined.
+   Requirement: For status mode, provide quick health report and exit
+   Actions:
+   - Check: If mode is status value
+   - Report: Current project health assessment
+   - Report: Count of changed files
+   - Report: Synchronization recommendation
+   - Exit: Command completes with success code (no further phases)
+   WHY: Status mode serves quick health check without making changes
+   IMPACT: Skipping status check causes unnecessary sync execution
+
+Result: Project context gathered. Synchronization mode established. Ready for next step.
 
 ---
 
 ### Step 1.3: Project Status Verification
 
-Your task: Verify project status across entire project.
+[HARD] Your task: Verify project status across entire project.
 
-Required Scope: Scan ALL source files, not just changed files.
+[HARD] Required Scope: Scan ALL source files, not just changed files.
+WHY: Partial scans miss issues in unmodified sections. Comprehensive scanning ensures quality gates pass.
 
-Verification Items:
+Verification Requirements:
+- Project integrity assessment (identify broken references, inconsistencies)
+- Complete issues detection with precise locations
+- Resolution recommendations for discovered issues
 
-- Project integrity assessment
-- Issues detection and resolution
+Output Requirements:
+- Complete issue list with file locations and line numbers
+- Project integrity status: Healthy or Issues Detected
+- Severity classification for each issue: Critical, High, Medium, Low
 
-Output Format:
+Storage:
+- Store complete response in `$PROJECT_VALIDATION_RESULTS`
+- Format must be machine-parseable for downstream agent processing
 
-- Complete list of issues with locations
-- Project integrity assessment (Healthy / Issues Detected)
-
-Store: Response in `$PROJECT_VALIDATION_RESULTS`
+WHY: Complete validation prevents synchronization of broken states. Detailed results enable targeted fixes.
 
 ---
 
@@ -355,29 +427,45 @@ Goal: Synchronize documents with code changes, update SPECs, verify quality.
 
 ### Step 2.1: Create Safety Backup
 
-Before making any changes:
+[HARD] Create safety backup before any modifications begin:
 
-1. Generate timestamp:
+[HARD] Backup Creation Must Complete Successfully:
+WHY: Backups enable rollback if synchronization fails or produces unexpected results
+IMPACT: Missing backup eliminates recovery option if sync produces errors
 
-   - Execute: `date +%Y-%m-%d-%H%M%S` → Store as `$TIMESTAMP`
+1. [HARD] Generate Timestamp for Backup Identity:
 
-2. Create backup directory:
+   Requirement: Create unique timestamp identifier for backup
+   Action: Execute `date +%Y-%m-%d-%H%M%S` and store result in `$TIMESTAMP`
+   WHY: Timestamp enables multiple backups without overwriting previous ones
 
-   - Execute: `mkdir -p .moai-backups/sync-$TIMESTAMP/`
+2. [HARD] Create Backup Directory:
 
-3. Backup critical files:
+   Requirement: Establish isolated directory for backup files
+   Action: Execute `mkdir -p .moai-backups/sync-$TIMESTAMP/`
+   WHY: Isolated directory prevents mixing backup versions
 
-   - Copy: `README.md` (if exists)
-   - Copy: `docs/` directory (if exists)
-   - Copy: `.moai/specs/` directory
-   - Copy: `.moai/indexes/` directory (if exists)
+3. [HARD] Backup All Critical Project Files:
 
-4. Verify backup:
+   Requirement: Copy all essential project files to backup
+   Files to backup:
+   - README.md (if exists) - Project documentation
+   - docs/ directory (if exists) - Additional documentation
+   - .moai/specs/ directory - SPEC definitions
+   - .moai/indexes/ directory (if exists) - Project indexes
+   WHY: Backing up all critical files enables complete state restoration
+
+4. [HARD] Verify Backup Integrity:
+
+   Requirement: Confirm backup was created successfully
+   Actions:
    - Execute: `ls -la .moai-backups/sync-$TIMESTAMP/`
-   - IF empty → Print error and exit
-   - ELSE → Print success message
+   - Verify: Backup directory is not empty
+   - If empty: Print error message and exit with failure code
+   - If complete: Print success message and continue
+   WHY: Verification confirms backup is usable for recovery
 
-Result: Safety backup created.
+Result: Safety backup created and verified. Ready for synchronization phase.
 
 ---
 

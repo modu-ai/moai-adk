@@ -780,7 +780,7 @@ Authorization: Bearer <your-jwt-token>
 ### 2. 프로젝트 클론
 ```bash
 git clone <repository-url>
-cd {self.config.get('project', {}).get('name', 'my-project')}
+cd {self.config.get("project", {}).get("name", "my-project")}
 ```
 
 ### 3. 환경 설정
@@ -833,7 +833,7 @@ npm run dev
 ### 2. Clone Project
 ```bash
 git clone <repository-url>
-cd {self.config.get('project', {}).get('name', 'my-project')}
+cd {self.config.get("project", {}).get("name", "my-project")}
 ```
 
 ### 3. Environment Setup
@@ -1058,8 +1058,8 @@ npm run dev
         doc_content += f"""
 ## Implementation Details
 - **SPEC ID**: {spec_id}
-- **Status**: {spec_data.get('status', 'Planned')}
-- **Priority**: {spec_data.get('priority', 'Medium')}
+- **Status**: {spec_data.get("status", "Planned")}
+- **Priority**: {spec_data.get("priority", "Medium")}
 
 ## Usage Examples
 [Add usage examples here]
@@ -1205,7 +1205,7 @@ npm run dev
 
         # Check for markdown to HTML converter
         try:
-            import jinja2
+            import jinja2  # noqa: F401 - availability check
             import markdown
         except ImportError:
             return {"format": "html", "error": "Required packages not found: markdown, jinja2", "success": False}

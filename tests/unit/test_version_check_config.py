@@ -20,15 +20,17 @@ import pytest
 
 
 def _load_project_module(module_name: str = "project_module"):
-    """Dynamically load core/project.py as a fresh module."""
+    """Dynamically load lib/project.py as a fresh module."""
     repo_root = Path(__file__).resolve().parents[2]
 
     # Add hooks directory to sys.path
-    hooks_dir = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
-    if str(hooks_dir) not in sys.path:
-        sys.path.insert(0, str(hooks_dir))
+    hooks_dir = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "moai"
+    lib_dir = hooks_dir / "lib"
+    for path_entry in [str(hooks_dir), str(lib_dir)]:
+        if path_entry not in sys.path:
+            sys.path.insert(0, path_entry)
 
-    module_path = hooks_dir / "core" / "project.py"
+    module_path = hooks_dir / "lib" / "project.py"
 
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)

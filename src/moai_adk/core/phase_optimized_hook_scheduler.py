@@ -779,9 +779,8 @@ class PhaseOptimizedHookScheduler:
 
         if best_strategy:
             insights["recommended_strategy"] = best_strategy[0]
-            insights["strategy_rationale"] = (
-                f"Best performance with {best_strategy[0]} strategy (score: {best_strategy[1]['recommendation_score']:.2f})"
-            )
+            score = best_strategy[1]["recommendation_score"]
+            insights["strategy_rationale"] = f"Best performance with {best_strategy[0]} strategy (score: {score:.2f})"
 
         return insights
 

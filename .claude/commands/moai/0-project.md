@@ -24,124 +24,157 @@ model: inherit
 
 # MoAI-ADK Step 0: Initialize/Update Project (Project Setup)
 
-> Interactive Prompts: Use `AskUserQuestion` tool for TUI-based user interaction.
-> Architecture: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
-> Delegation Model: Complete agent-first pattern. All execution delegated to manager-project.
+Interactive Prompts: Use AskUserQuestion tool for TUI-based user interaction.
 
-4-Step Workflow Integration: This command implements Step 0 of Alfred's workflow (Project Bootstrap). See CLAUDE.md for full workflow details.
+Architecture: Commands delegate to Agents, which coordinate Skills. This command orchestrates exclusively through Task() tool.
+
+Delegation Model: Complete agent-first pattern. All execution delegated to manager-project agent.
+
+Workflow Integration: This command implements Step 0 of Alfred's three-step execution model (Understand-Plan-Execute). See CLAUDE.md for complete workflow details.
 
 ---
 
 ##  Command Purpose
 
-Initialize or update project metadata with language-first architecture. Supports five execution modes:
+Initialize or update project metadata using language-first architecture. The system supports five execution modes:
 
-- INITIALIZATION: First-time project setup
-- AUTO-DETECT: Already initialized projects (modify settings or re-initialize)
-- SETTINGS: Tab-based configuration management
-- UPDATE: Template optimization after moai-adk package update
-- GLM Configuration (`--glm-on <token>`): Configure GLM API integration
+INITIALIZATION Mode: First-time project setup and configuration
+AUTO-DETECT Mode: Existing projects with optional modification or re-initialization
+SETTINGS Mode: Interactive tab-based configuration management with validation
+UPDATE Mode: Template optimization after moai-adk package update
+GLM Configuration Mode: GLM API integration setup via --glm-on parameter
 
----
+WHY: Multi-mode design accommodates diverse user scenarios from fresh installs to updates.
 
-##  Associated Agents & Skills
-
-| Agent/Skill             | Purpose                                                                  |
-| ----------------------- | ------------------------------------------------------------------------ |
-| manager-project         | Orchestrates language-first initialization and configuration             |
-| moai-workflow-project   | Unified project management (language init, config, templates, batch Q&A) |
-| moai-workflow-templates | Template management and generation                                       |
+IMPACT: Users can navigate project lifecycle without manual intervention.
 
 ---
 
-##  Language Configuration (Pre-set by moai-adk CLI)
+##  Associated Agents and Skills
 
-Core Principle: Language is already configured by `moai-adk init` or `moai-adk update` CLI commands.
+The following agents and skills support this command:
 
-- `/moai:0-project` reads language from `.moai/config/config.json`
-- Language change only when explicitly requested (SETTINGS mode, Tab 1)
+manager-project agent orchestrates language-first initialization and configuration workflows.
 
-- Initialization: Read language from config → Project interview → Documentation
-- Auto-Detect: Display current language → Settings options (with language change shortcut)
-- Settings: Display current language in Tab 1 → Optional language change
-- Update: Preserve language from config → Template optimization
+moai-workflow-project skill provides unified project management including language initialization, atomic config operations, template merging, and tab-based batch question execution.
 
----
+moai-workflow-templates skill manages template generation and customization.
 
-##  Execution Philosophy: "Plan → Configure → Complete"
+WHY: Distributed responsibility enables specialized expertise and focused tool access.
 
-`/moai:0-project` performs project setup through complete agent delegation:
-
-```
-User Command: /moai:0-project [setting]
-    ↓
-/moai:0-project Command
-    └─ Task(subagent_type="manager-project")
-        ├─ Phase 1: Route and analyze
-        ├─ Phase 2: Execute mode (INIT/AUTO-DETECT/SETTINGS/UPDATE)
-        ├─ Phase 2.5: Save phase context
-        └─ Phase 3: Completion and next steps
-            ↓
-        Output: Project configured with language-first principles
-```
-
-### Key Principle: Zero Direct Tool Usage
-
-This command uses ONLY Task() and AskUserQuestion():
-
--  No Read (file operations delegated)
--  No Write (file operations delegated)
--  No Edit (file operations delegated)
--  No Bash (all bash commands delegated)
--  No TodoWrite (delegated to manager-project)
--  Task() for orchestration
--  AskUserQuestion() for user interaction
-
-All complexity is handled by the manager-project agent.
+IMPACT: Each agent optimizes its domain while maintaining system coherence.
 
 ---
 
-##  PHASE 1: Command Routing & Analysis
+##  Language Configuration
 
-Goal: Detect subcommand and prepare execution context.
+Core Principle: Language configuration originates from moai-adk CLI initialization or update commands.
 
-### Step 1: Route Based on Subcommand
+[HARD] Read language from .moai/config/config.json before starting any mode.
 
-Analyze the command user provided:
+WHY: Preserving existing language settings prevents disruption to user experience.
 
-1. `/moai:0-project --glm-on [api-token]` → GLM CONFIGURATION MODE
+IMPACT: Missing language context causes mode selection ambiguity.
 
-   - Detect if token provided in argument
-   - If token missing: Check `.env.glm` (auto-load if exists)
-   - If token missing: Check `ANTHROPIC_AUTH_TOKEN` environment variable
-   - If all missing: Request token from user
-   - Delegate to manager-project with GLM context
-   - Call setup-glm.py script to configure GLM
+Language is preserved across modes except when:
 
-2. `/moai:0-project setting` → SETTINGS MODE
+- [SOFT] User explicitly requests language change via SETTINGS mode, Tab 1
+- [SOFT] Update mode detects language-compatible improvements
 
-   - Always uses interactive tab selection via AskUserQuestion
-   - User selects specific tab or "Modify All Tabs" option
+Execution sequence varies by mode:
 
-3. `/moai:0-project update` → UPDATE MODE
+Initialization mode: Read language from config if present, conduct project interview, generate documentation.
 
-4. `/moai:0-project` (no args):
+Auto-Detect mode: Display current language, offer settings modification with language change shortcut.
 
-   - Check if `.moai/config/config.json` exists
-   - Exists → AUTO-DETECT MODE
-   - Missing → INITIALIZATION MODE
+Settings mode: Display current language in Tab 1, allow optional language modification.
 
-5. Invalid subcommand → Show error and exit
+Update mode: Preserve language from backup, perform template optimization.
 
-### Step 2: Delegate to Project Manager Agent
+WHY: Mode-specific language handling respects existing configuration while enabling user choice.
 
-Use the manager-project subagent to:
+---
 
-Analyze project context and route to appropriate mode:
+##  Execution Philosophy
 
-- Detected Mode: $MODE (INITIALIZATION/AUTO-DETECT/SETTINGS/UPDATE/GLM_CONFIGURATION)
-- Language Context: Read from .moai/config.json if exists
-- GLM Token (if GLM mode): $GLM_TOKEN
+The project setup follows explicit delegation pattern: Understand the user intent, Plan the execution, Execute through specialized agents.
+
+The command delegates all functional work to manager-project agent through Task() invocation.
+
+The command maintains zero direct tool usage except for Task() orchestration and AskUserQuestion() user interaction.
+
+[HARD] Tool Usage Restrictions:
+
+- DO NOT use Read for file operations (delegated to manager-project)
+- DO NOT use Write for file operations (delegated to manager-project)
+- DO NOT use Edit for file modifications (delegated to manager-project)
+- DO NOT use Bash for command execution (delegated to manager-project)
+- DO NOT use TodoWrite for task management (delegated to manager-project)
+- DO use Task() for agent orchestration
+- DO use AskUserQuestion() for user interaction
+
+WHY: Delegation enables specialized agent tool access and consistent execution context.
+
+IMPACT: Direct tool usage would bypass agent expertise and validation layers.
+
+Manager-project agent handles all implementation complexity including file operations, configuration management, and validation logic.
+
+---
+
+##  PHASE 1: Command Routing and Analysis
+
+Goal: Detect subcommand intent and prepare execution context for delegation.
+
+### Step 1: Analyze User Command Arguments
+
+[HARD] Parse user command to determine execution mode.
+
+WHY: Correct mode detection ensures appropriate workflow execution.
+
+IMPACT: Incorrect routing causes wrong execution flow.
+
+The system routes based on provided arguments:
+
+GLM Configuration: Command includes --glm-on with optional API token
+- Detect token in --glm-on parameter
+- If token missing: Attempt auto-load from .env.glm file
+- If token missing: Attempt auto-load from ANTHROPIC_AUTH_TOKEN environment variable
+- If all sources missing: Request token from user via AskUserQuestion
+
+SETTINGS Mode: Command includes setting argument
+- Always use interactive tab selection via AskUserQuestion
+- User selects specific tab or "Modify All Tabs" option
+
+UPDATE Mode: Command includes update argument
+- No additional argument parsing required
+
+INITIALIZATION or AUTO-DETECT: Command has no arguments
+- [HARD] Check if .moai/config/config.json exists
+- File exists: Route to AUTO-DETECT MODE
+- File missing: Route to INITIALIZATION MODE
+
+Invalid Arguments: Unrecognized command format
+- Display error message explaining valid command syntax
+- Exit with error state
+
+WHY: Argument-driven routing prevents mode confusion.
+
+IMPACT: Ambiguous routing leads to wrong workflow execution.
+
+### Step 2: Delegate to Manager-Project Agent
+
+[HARD] Invoke manager-project subagent with detected mode and context.
+
+WHY: Specialized agent handles mode-specific complexity.
+
+IMPACT: Direct execution would bypass validation and expertise layers.
+
+Pass the following context to manager-project agent:
+
+- Detected Mode value (INITIALIZATION, AUTO-DETECT, SETTINGS, UPDATE, or GLM_CONFIGURATION)
+- Language Context read from .moai/config/config.json if present
+- GLM Token value if GLM_CONFIGURATION mode selected
+- User command arguments for reference
 
 For INITIALIZATION:
 
@@ -755,31 +788,134 @@ Critical: NO EMOJIS in AskUserQuestion fields. Use clear text only.
 
 ##  Critical Rules
 
-MANDATORY:
+### Mode Execution
 
-- Execute ONLY ONE mode per invocation
-- Never skip language confirmation/selection
-- Always use user's `conversation_language` for all output
-- Auto-translate announcements after language changes
-- Route to correct mode based on command analysis
-- Delegate ALL execution to manager-project agent
-- Use AskUserQuestion for ALL user interaction
-- NO EMOJIS in AskUserQuestion fields
+[HARD] Execute exactly ONE mode per command invocation.
 
-No Direct Tool Usage:
+WHY: Multi-mode execution causes state inconsistency.
 
--  NO Read (file operations)
--  NO Write (file operations)
--  NO Edit (file operations)
--  NO Bash (delegated to agents)
--  NO TodoWrite (delegated to agents)
--  ONLY Task() and AskUserQuestion()
+IMPACT: Executing multiple modes corrupts configuration state.
 
-Configuration Priority:
+Exception: [SOFT] Allow mode switching only when user explicitly selects different mode in SETTINGS tab selection screen.
 
-- `.moai/config/config.json` settings ALWAYS take priority
-- Existing language settings respected unless user requests change
-- Fresh installs: Language selection FIRST, then all other config
+### Language Handling
+
+[HARD] Always use user's conversation_language for all output and prompts.
+
+WHY: User comprehension requires language consistency.
+
+IMPACT: Using wrong language reduces accessibility.
+
+[HARD] Never skip language confirmation in INITIALIZATION mode.
+
+WHY: Language choice determines all subsequent output.
+
+IMPACT: Missing language selection blocks localized experience.
+
+[SOFT] Auto-translate announcements after language changes using announcement_translator.py.
+
+WHY: Announcements should reflect user's selected language.
+
+### Agent Delegation
+
+[HARD] Delegate ALL execution to manager-project agent.
+
+WHY: Agent provides specialized expertise and validation.
+
+IMPACT: Direct execution bypasses error recovery and consistency checks.
+
+[HARD] Route to correct mode based on command argument analysis.
+
+WHY: Correct routing enables appropriate workflow.
+
+IMPACT: Wrong routing causes unexpected behavior.
+
+### User Interaction
+
+[HARD] Use AskUserQuestion for ALL user interaction.
+
+WHY: Unified interaction enables consistent TUI experience.
+
+IMPACT: Direct prompting bypasses UI consistency layer.
+
+[HARD] Never include EMOJI characters in AskUserQuestion fields.
+
+WHY: Emoji parsing varies across platforms and may cause display issues.
+
+IMPACT: Platform inconsistencies create confusing user experience.
+
+### Tool Usage Constraints
+
+[HARD] Use ONLY Task() for agent orchestration and AskUserQuestion() for interaction.
+
+WHY: Direct tool usage bypasses agent expertise.
+
+IMPACT: Tool misuse causes validation and consistency failures.
+
+Prohibited Direct Tools:
+
+- NO Read for file operations
+- NO Write for file creation or modification
+- NO Edit for configuration changes
+- NO Bash for command execution
+- NO TodoWrite for task management
+
+All tool-based operations delegate to manager-project agent.
+
+### Configuration Management
+
+[HARD] .moai/config/config.json settings ALWAYS take priority over defaults.
+
+WHY: Existing configuration represents user intent.
+
+IMPACT: Ignoring existing config causes destructive overwrites.
+
+[SOFT] Respect existing language settings unless user explicitly requests change via SETTINGS Tab 1.
+
+WHY: Unexpected language changes disrupt user workflow.
+
+IMPACT: Automatic changes without user consent reduce trust.
+
+[SOFT] For fresh installs: language selection occurs FIRST before other configuration.
+
+WHY: Language choice affects all subsequent interactions.
+
+IMPACT: Deferred language selection complicates initial setup.
+
+---
+
+##  Output Format
+
+Responses and status reports must follow structured XML format for clarity and automated processing:
+
+<analysis>
+Context assessment including detected mode, language context, and user command arguments.
+Example: "Detected AUTO-DETECT mode, user language is Korean (ko), existing config found at .moai/config/config.json"
+</analysis>
+
+<approach>
+Execution strategy selected based on analysis, including manager-project agent invocation parameters.
+Example: "Delegating to manager-project agent with AUTO-DETECT mode context, language: ko, requesting settings review"
+</approach>
+
+<phase>
+Current execution phase (Phase 1, Phase 2, Phase 2.5, or Phase 3) with step-by-step progress.
+Example: "Phase 2: Execute AUTO-DETECT Mode - Displaying current configuration and offering modification options"
+</phase>
+
+<verification>
+Quality checks and validation results at checkpoints, including language validation and configuration consistency checks.
+Example: "Language validation passed (ko is valid), configuration loaded successfully, ready for user interaction"
+</verification>
+
+<completion>
+Mode-specific completion summary with files created, settings modified, and next recommended action.
+Example: "Settings updated successfully. Modified 4 fields: user.name, conversation_language, language_name [auto], agent_prompt_language. Recommend next step: /moai:1-plan"
+</completion>
+
+WHY: Structured output enables automated parsing and consistent status tracking across command executions.
+
+IMPACT: Unstructured output reduces ability to track execution state and causes user confusion about command progress.
 
 ---
 

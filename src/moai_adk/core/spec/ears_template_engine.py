@@ -523,8 +523,10 @@ class EARSTemplateEngine:
         """Generate technical specifications."""
         technical_specs = [
             "#### Core Implementation",
-            f"- **SPEC-001**: {extraction['classes'][0] if extraction['classes'] else 'Main'} class SHALL be implemented",
-            f"- **SPEC-002**: {extraction['functions'][0] if extraction['functions'] else 'Core'} function SHALL be implemented",
+            f"- **SPEC-001**: {extraction['classes'][0] if extraction['classes'] else 'Main'} "
+            "class SHALL be implemented",
+            f"- **SPEC-002**: {extraction['functions'][0] if extraction['functions'] else 'Core'} "
+            "function SHALL be implemented",
             "- **SPEC-003**: Input validation SHALL be implemented",
             "- **SPEC-004**: Error handling mechanism SHALL be implemented",
             "- **SPEC-005**: Logging system SHALL be implemented",

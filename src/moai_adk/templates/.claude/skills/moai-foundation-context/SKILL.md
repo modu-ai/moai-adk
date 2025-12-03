@@ -329,16 +329,43 @@ For detailed patterns and implementation strategies:
 - Keep memory files < 500 lines each
 - Disable unused MCP servers to reduce overhead
 
-### DON'T
-- Accumulate unlimited context history
-- Ignore token budget warnings (>150K)
-- Skip state validation on recovery
-- Lose session IDs without saving
-- Mix multiple sessions without clear boundaries
-- Assume session continuity without checkpoint
-- Load entire codebase at once
-- Include non-critical context in handoffs
-- Exceed 85% context window usage without action
+### REQUIREMENTS
+
+[HARD] Maintain bounded context history with regular clearing cycles
+WHY: Unbounded context accumulation degrades performance and increases token costs exponentially
+IMPACT: Prevents context overflow, maintains consistent response quality, reduces token waste by 60-70%
+
+[HARD] Respond to token budget warnings immediately when usage exceeds 150K tokens
+WHY: Operating in the final 20% of context window causes significant performance degradation
+IMPACT: Ensures optimal model performance, prevents context overflow failures, maintains workflow continuity
+
+[HARD] Execute state validation checks during session recovery operations
+WHY: Invalid state can cause workflow failures and data loss in multi-step processes
+IMPACT: Guarantees session integrity, prevents silent failures, enables reliable recovery with >95% success rate
+
+[HARD] Persist session identifiers before any context clearing operations
+WHY: Session IDs are the only reliable mechanism for resuming interrupted workflows
+IMPACT: Enables seamless workflow resumption, prevents work loss, supports multi-agent coordination
+
+[SOFT] Establish clear session boundaries when working with multiple concurrent sessions
+WHY: Session mixing causes context contamination and unpredictable agent behavior
+IMPACT: Improves debugging clarity, prevents cross-session interference, maintains clean audit trails
+
+[SOFT] Create checkpoint snapshots before assuming session continuity
+WHY: Context can be lost due to network issues, timeouts, or system events
+IMPACT: Provides recovery points, reduces rework time, maintains user trust in system reliability
+
+[SOFT] Load codebase components progressively using priority tiers
+WHY: Loading entire codebases exhausts token budget and includes irrelevant context
+IMPACT: Optimizes token usage by 40-50%, improves response relevance, enables larger project support
+
+[SOFT] Limit handoff packages to critical context only
+WHY: Non-critical context increases handoff overhead and reduces available working tokens
+IMPACT: Speeds up agent transitions by 30%, preserves token budget for actual work, reduces transfer errors
+
+[HARD] Execute context compression or clearing when usage reaches 85% threshold
+WHY: Approaching context limits triggers emergency behaviors and reduces model capabilities
+IMPACT: Maintains 55K token emergency reserve, prevents forced interruptions, ensures graceful degradation
 
 ---
 

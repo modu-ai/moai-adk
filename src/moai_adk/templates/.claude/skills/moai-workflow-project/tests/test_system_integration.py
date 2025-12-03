@@ -209,7 +209,6 @@ class TestSystemIntegration(unittest.TestCase):
         with patch.object(
             self.project.template_optimizer, "analyze_project_templates", side_effect=Exception("Module error")
         ):
-
             # Should still complete initialization with optimization disabled
             result = self.project.initialize_complete_project(optimization_enabled=False)  # Disable to avoid the error
 

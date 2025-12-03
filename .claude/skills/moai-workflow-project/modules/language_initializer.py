@@ -457,12 +457,18 @@ class LanguageInitializer:
 
         if language == "ko":
             # Add Korean-specific instructions
-            korean_additions = "\n\nIMPORTANT: Please respond in Korean (한국어) when interacting with the user. Use formal polite form (합니다/입니다 style)."
+            korean_additions = (
+                "\n\nIMPORTANT: Please respond in Korean (한국어) "
+                "when interacting with the user. Use formal polite form (합니다/입니다 style)."
+            )
             localized_prompt += korean_additions
 
         elif language == "ja":
             # Add Japanese-specific instructions
-            japanese_additions = "\n\nIMPORTANT: Please respond in Japanese (日本語) when interacting with the user. Use polite form (です/ます style)."
+            japanese_additions = (
+                "\n\nIMPORTANT: Please respond in Japanese (日本語) "
+                "when interacting with the user. Use polite form (です/ます style)."
+            )
             localized_prompt += japanese_additions
 
         elif language == "zh":

@@ -86,6 +86,7 @@ class ErrorCategory(Enum):
 
 # Phase 3: Advanced Error Recovery Enums
 
+
 class FailureMode(Enum):
     """Types of failure modes in the system"""
 
@@ -129,10 +130,10 @@ class RecoveryStrategy(Enum):
 class ConsistencyLevel(Enum):
     """Data consistency levels"""
 
-    STRONG = "strong"           # Immediate consistency
-    EVENTUAL = "eventual"       # Eventually consistent
-    WEAK = "weak"              # Weak consistency
-    CUSTOM = "custom"          # Custom consistency rules
+    STRONG = "strong"  # Immediate consistency
+    EVENTUAL = "eventual"  # Eventually consistent
+    WEAK = "weak"  # Weak consistency
+    CUSTOM = "custom"  # Custom consistency rules
 
 
 class RecoveryStatus(Enum):
@@ -191,6 +192,7 @@ class RecoveryResult:
 
 
 # Phase 3: Advanced Error Recovery Dataclasses
+
 
 @dataclass
 class FailureEvent:
@@ -957,9 +959,7 @@ class ErrorRecoverySystem:
                         issues_found.append(f"Invalid command file: {command_file}")
 
             logger.info(
-                f"Research integrity validation completed. Issues: "
-                f"{len(issues_found)}, "
-                f"Repairs: {len(repairs_made)}"
+                f"Research integrity validation completed. Issues: {len(issues_found)}, Repairs: {len(repairs_made)}"
             )
 
         except Exception as e:
@@ -1411,14 +1411,16 @@ class ErrorRecoverySystem:
         }
 
         # Circuit breaker states for components
-        self.circuit_breaker_states: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
-            "state": "CLOSED",
-            "failure_count": 0,
-            "last_failure_time": None,
-            "success_threshold": 5,
-            "failure_threshold": 3,
-            "timeout_seconds": 60
-        })
+        self.circuit_breaker_states: Dict[str, Dict[str, Any]] = defaultdict(
+            lambda: {
+                "state": "CLOSED",
+                "failure_count": 0,
+                "last_failure_time": None,
+                "success_threshold": 5,
+                "failure_threshold": 3,
+                "timeout_seconds": 60,
+            }
+        )
 
         # Failure mode analyzers
         self.failure_analyzers = {
@@ -1502,12 +1504,14 @@ class ErrorRecoverySystem:
                 logger.info(f"Advanced recovery successful for failure {failure.failure_id}")
             else:
                 # Add to dead letter queue for manual intervention
-                self.dead_letter_queue.append({
-                    "failure_id": failure.failure_id,
-                    "action_id": action.action_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "reason": "Advanced recovery failed"
-                })
+                self.dead_letter_queue.append(
+                    {
+                        "failure_id": failure.failure_id,
+                        "action_id": action.action_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "reason": "Advanced recovery failed",
+                    }
+                )
                 self.advanced_recovery_stats["dead_letter_messages"] += 1
 
         except Exception as e:
@@ -1556,7 +1560,7 @@ class ErrorRecoverySystem:
 
     async def _execute_retry_with_backoff(self, action: AdvancedRecoveryAction) -> bool:
         """Execute retry with exponential backoff"""
-        failure = self.advanced_failures[action.failure_id]
+        self.advanced_failures[action.failure_id]
         base_delay = 1.0
         max_delay = 60.0
         backoff_factor = 2.0
@@ -1575,7 +1579,7 @@ class ErrorRecoverySystem:
 
                 # Wait with exponential backoff
                 if attempt < action.max_retries:
-                    delay = min(base_delay * (backoff_factor ** attempt), max_delay)
+                    delay = min(base_delay * (backoff_factor**attempt), max_delay)
                     await asyncio.sleep(delay)
 
             except Exception as e:
@@ -1709,14 +1713,16 @@ class ErrorRecoverySystem:
         """Check for cascade failure patterns"""
         # Check if this failure is related to other recent failures
         recent_failures = [
-            f for f in self.advanced_failures.values()
+            f
+            for f in self.advanced_failures.values()
             if (datetime.now(timezone.utc) - f.timestamp).total_seconds() < 300  # Last 5 minutes
             and f.failure_id != failure.failure_id
         ]
 
         # Simple cascade detection: same component or related components
         related_failures = [
-            f for f in recent_failures
+            f
+            for f in recent_failures
             if f.component == failure.component or f.component in failure.context.get("related_components", [])
         ]
 
@@ -1802,10 +1808,13 @@ class ErrorRecoverySystem:
             "phase3_features": "enabled",
             "advanced_recovery_statistics": self.advanced_recovery_stats,
             "active_advanced_failures": len(self.advanced_failures),
-            "pending_advanced_actions": len([
-                a for a in self.advanced_recovery_actions.values()
-                if a.status in [RecoveryStatus.PENDING, RecoveryStatus.IN_PROGRESS]
-            ]),
+            "pending_advanced_actions": len(
+                [
+                    a
+                    for a in self.advanced_recovery_actions.values()
+                    if a.status in [RecoveryStatus.PENDING, RecoveryStatus.IN_PROGRESS]
+                ]
+            ),
             "circuit_breaker_states": dict(self.circuit_breaker_states),
             "system_snapshots": len(self.system_snapshots),
             "dead_letter_queue_size": len(self.dead_letter_queue),

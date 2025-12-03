@@ -84,7 +84,7 @@ target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N"]
-ignore = []
+ignore = ["N999"]  # Allow hyphenated module names for skills (moai-workflow-project)
 
 [tool.mypy]
 python_version = "3.14"

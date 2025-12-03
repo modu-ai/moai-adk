@@ -365,7 +365,8 @@ class DatabaseSelector:
             return {
                 "database": "PostgreSQL",
                 "version": "17",
-                "reasoning": "PostgreSQL 17+ provides full ACID compliance, advanced transaction support, and strong consistency guarantees",
+                "reasoning": "PostgreSQL 17+ provides full ACID compliance, "
+                "advanced transaction support, and strong consistency guarantees",
                 "alternatives": ["MySQL 8.4+ for legacy compatibility"],
             }
 
@@ -374,7 +375,8 @@ class DatabaseSelector:
             return {
                 "database": "MongoDB",
                 "version": "8.0",
-                "reasoning": "MongoDB 8.0+ offers flexible schema design, horizontal scalability, and document-based data model",
+                "reasoning": "MongoDB 8.0+ offers flexible schema design, "
+                "horizontal scalability, and document-based data model",
                 "alternatives": ["PostgreSQL with JSONB for hybrid approach"],
             }
 
@@ -383,7 +385,8 @@ class DatabaseSelector:
             return {
                 "database": "Redis",
                 "version": "7.4",
-                "reasoning": "Redis 7.4+ provides in-memory cache, TTL support, and high-performance key-value operations",
+                "reasoning": "Redis 7.4+ provides in-memory cache, TTL support, "
+                "and high-performance key-value operations",
                 "alternatives": ["Memcached for simpler caching needs"],
             }
 
@@ -392,7 +395,8 @@ class DatabaseSelector:
             return {
                 "database": "MySQL",
                 "version": "8.4",
-                "reasoning": "MySQL 8.4 LTS offers legacy compatibility, mature ecosystem, and reliable relational database features",
+                "reasoning": "MySQL 8.4 LTS offers legacy compatibility, "
+                "mature ecosystem, and reliable relational database features",
                 "alternatives": ["MariaDB for open-source alternative"],
             }
 

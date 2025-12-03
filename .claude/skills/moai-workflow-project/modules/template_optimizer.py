@@ -474,7 +474,7 @@ class TemplateOptimizer:
                 {
                     "type": "size_optimization",
                     "priority": "high",
-                    "description": f"Large total template size ({total_size/1024:.1f}KB)",
+                    "description": f"Large total template size ({total_size / 1024:.1f}KB)",
                     "recommendation": "Consider consolidating shared templates and removing unused content",
                     "estimated_impact": "15-25% reduction in load time",
                 }

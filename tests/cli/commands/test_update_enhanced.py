@@ -776,6 +776,29 @@ class TestMergeStrategies:
 class TestTemplateContext:
     """Test template context building"""
 
+    @pytest.fixture(autouse=True)
+    def clear_moai_env_vars(self):
+        """Clear MOAI environment variables for test isolation."""
+        import os
+        moai_env_vars = [
+            "MOAI_USER_NAME",
+            "MOAI_CONVERSATION_LANG",
+            "MOAI_AGENT_PROMPT_LANG",
+            "MOAI_CONVERSATION_LANG_NAME",
+            "MOAI_GIT_COMMIT_MESSAGES_LANG",
+            "MOAI_CODE_COMMENTS_LANG",
+            "MOAI_DOCUMENTATION_LANG",
+            "MOAI_ERROR_MESSAGES_LANG",
+        ]
+        saved_env = {}
+        for key in moai_env_vars:
+            if key in os.environ:
+                saved_env[key] = os.environ.pop(key)
+        yield
+        # Restore saved environment variables
+        for key, value in saved_env.items():
+            os.environ[key] = value
+
     def test_is_placeholder_true(self):
         """Test placeholder detection for valid placeholders."""
         assert _is_placeholder("{{PROJECT_NAME}}") is True

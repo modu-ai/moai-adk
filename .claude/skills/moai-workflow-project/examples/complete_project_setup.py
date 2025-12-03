@@ -286,13 +286,13 @@ def main():
 
     for name, example_func in examples:
         try:
-            print(f"\n{'='*20} {name} {'='*20}")
+            print(f"\n{'=' * 20} {name} {'=' * 20}")
             results[name] = example_func()
         except Exception as e:
             print(f"Error in {name}: {e}")
             results[name] = {"error": str(e)}
 
-    print(f"\n{'='*20} Summary {'='*20}")
+    print(f"\n{'=' * 20} Summary {'=' * 20}")
 
     for name, result in results.items():
         if "error" in result:

@@ -274,7 +274,9 @@ async def main():
     if len(sys.argv) < 2:
         print("Usage: python provider-selector.py <json_requirements>")
         print(
-            'Example: python provider-selector.py \'{"requirements": ["scalable", "real-time"], "tech_stack": "Next.js", "team_size": 5, "budget": "$500/month"}\''
+            "Example: python provider-selector.py "
+            '\'{"requirements": ["scalable", "real-time"], '
+            '"tech_stack": "Next.js", "team_size": 5, "budget": "$500/month"}\''
         )
         sys.exit(1)
 

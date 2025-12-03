@@ -11,7 +11,7 @@ variables in the system are properly updated to reflect the new configuration.
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from .language_config_resolver import get_resolver
 
@@ -29,25 +29,25 @@ class TemplateVariableSynchronizer:
 
     # Template variable patterns to track and synchronize
     TEMPLATE_PATTERNS = {
-        r'\{\{CONVERSATION_LANGUAGE\}\}',
-        r'\{\{CONVERSATION_LANGUAGE_NAME\}\}',
-        r'\{\{AGENT_PROMPT_LANGUAGE\}\}',
-        r'\{\{USER_NAME\}\}',
-        r'\{\{PERSONALIZED_GREETING\}\}',
-        r'\{\{LANGUAGE_CONFIG_SOURCE\}\}',
+        r"\{\{CONVERSATION_LANGUAGE\}\}",
+        r"\{\{CONVERSATION_LANGUAGE_NAME\}\}",
+        r"\{\{AGENT_PROMPT_LANGUAGE\}\}",
+        r"\{\{USER_NAME\}\}",
+        r"\{\{PERSONALIZED_GREETING\}\}",
+        r"\{\{LANGUAGE_CONFIG_SOURCE\}\}",
     }
 
     # Files that typically contain template variables
     TEMPLATE_TRACKING_PATTERNS = [
-        '.claude/settings.json',
-        '.claude/settings.local.json',
-        '.moai/config/config.json',
-        '.claude/output-styles/**/*.md',
-        '.claude/hooks/**/*.py',
-        '.claude/commands/**/*.md',
-        '.claude/skills/**/*.md',
-        'CLAUDE.md',
-        'README.md'
+        ".claude/settings.json",
+        ".claude/settings.local.json",
+        ".moai/config/config.json",
+        ".claude/output-styles/**/*.md",
+        ".claude/hooks/**/*.py",
+        ".claude/commands/**/*.md",
+        ".claude/skills/**/*.md",
+        "CLAUDE.md",
+        "README.md",
     ]
 
     def __init__(self, project_root: str):
@@ -71,11 +71,11 @@ class TemplateVariableSynchronizer:
         Returns:
             Dictionary containing synchronization results
         """
-        results = {
-            'files_updated': 0,
-            'variables_updated': [],
-            'errors': [],
-            'sync_status': 'completed'
+        results: Dict[str, Any] = {
+            "files_updated": 0,
+            "variables_updated": [],
+            "errors": [],
+            "sync_status": "completed",
         }
 
         try:
@@ -91,19 +91,23 @@ class TemplateVariableSynchronizer:
                 try:
                     updated_vars = self._update_file_template_variables(file_path, template_vars)
                     if updated_vars:
-                        results['files_updated'] += 1
-                        results['variables_updated'].extend(updated_vars)
+                        files_updated: int = results["files_updated"]  # type: ignore[assignment]
+                        results["files_updated"] = files_updated + 1
+                        variables_updated: List[str] = results["variables_updated"]  # type: ignore[assignment]
+                        variables_updated.extend(updated_vars)
 
                 except Exception as e:
                     error_msg = f"Failed to update {file_path}: {str(e)}"
-                    results['errors'].append(error_msg)
+                    errors: List[str] = results["errors"]  # type: ignore[assignment]
+                    errors.append(error_msg)
 
             # Special handling for certain file types
             self._handle_special_file_updates(template_vars, results)
 
         except Exception as e:
-            results['sync_status'] = 'failed'
-            results['errors'].append(f"Synchronization failed: {str(e)}")
+            results["sync_status"] = "failed"
+            errors_list: List[str] = results["errors"]  # type: ignore[assignment]
+            errors_list.append(f"Synchronization failed: {str(e)}")
 
         return results
 
@@ -122,11 +126,11 @@ class TemplateVariableSynchronizer:
         # If a specific config file changed, prioritize files that depend on it
         if changed_config_path:
             dependency_map = {
-                '.moai/config/config.json': [
-                    '.claude/settings.json',
-                    '.claude/settings.local.json',
-                    '.claude/output-styles',
-                    '.claude/hooks',
+                ".moai/config/config.json": [
+                    ".claude/settings.json",
+                    ".claude/settings.local.json",
+                    ".claude/output-styles",
+                    ".claude/hooks",
                 ]
             }
 
@@ -137,10 +141,10 @@ class TemplateVariableSynchronizer:
 
         # Always check common template files
         common_patterns = [
-            '.claude/settings.json',
-            '.claude/settings.local.json',
-            '.claude/output-styles/**/*.md',
-            'CLAUDE.md'
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/output-styles/**/*.md",
+            "CLAUDE.md",
         ]
 
         for pattern in common_patterns:
@@ -182,7 +186,7 @@ class TemplateVariableSynchronizer:
             return []
 
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             original_content = content
 
             # Track which variables were updated
@@ -191,7 +195,7 @@ class TemplateVariableSynchronizer:
             # Apply each template variable substitution
             for var_name, var_value in template_vars.items():
                 # Look for {{VARIABLE_NAME}} pattern
-                pattern = re.compile(r'\{\{' + re.escape(var_name) + r'\}\}')
+                pattern = re.compile(r"\{\{" + re.escape(var_name) + r"\}\}")
 
                 if pattern.search(content):
                     content = pattern.sub(var_value, content)
@@ -199,7 +203,7 @@ class TemplateVariableSynchronizer:
 
             # Only write if content changed
             if content != original_content:
-                file_path.write_text(content, encoding='utf-8')
+                file_path.write_text(content, encoding="utf-8")
 
             return updated_vars
 
@@ -216,14 +220,16 @@ class TemplateVariableSynchronizer:
             results: Results dictionary to update
         """
         # Handle settings.json environment variables section
-        settings_file = self.project_root / '.claude' / 'settings.json'
+        settings_file = self.project_root / ".claude" / "settings.json"
         if settings_file.exists():
             try:
                 self._update_settings_env_vars(settings_file, template_vars, results)
             except Exception as e:
-                results['errors'].append(f"Failed to update settings.json env vars: {str(e)}")
+                results["errors"].append(f"Failed to update settings.json env vars: {str(e)}")
 
-    def _update_settings_env_vars(self, settings_file: Path, template_vars: Dict[str, str], results: Dict[str, Any]) -> None:
+    def _update_settings_env_vars(
+        self, settings_file: Path, template_vars: Dict[str, str], results: Dict[str, Any]
+    ) -> None:
         """
         Update the environment variables section in settings.json.
 
@@ -233,36 +239,38 @@ class TemplateVariableSynchronizer:
             results: Results dictionary to update
         """
         try:
-            settings_data = json.loads(settings_file.read_text(encoding='utf-8'))
+            settings_data = json.loads(settings_file.read_text(encoding="utf-8"))
 
             # Define environment variable mappings
             env_mappings = {
-                'CONVERSATION_LANGUAGE': 'MOAI_CONVERSATION_LANG',
-                'AGENT_PROMPT_LANGUAGE': 'MOAI_AGENT_PROMPT_LANG',
-                'CONVERSATION_LANGUAGE_NAME': 'MOAI_CONVERSATION_LANG_NAME',
-                'USER_NAME': 'MOAI_USER_NAME',
-                'LANGUAGE_CONFIG_SOURCE': 'MOAI_CONFIG_SOURCE'
+                "CONVERSATION_LANGUAGE": "MOAI_CONVERSATION_LANG",
+                "AGENT_PROMPT_LANGUAGE": "MOAI_AGENT_PROMPT_LANG",
+                "CONVERSATION_LANGUAGE_NAME": "MOAI_CONVERSATION_LANG_NAME",
+                "USER_NAME": "MOAI_USER_NAME",
+                "LANGUAGE_CONFIG_SOURCE": "MOAI_CONFIG_SOURCE",
             }
 
             # Update or create env section
-            if 'env' not in settings_data:
-                settings_data['env'] = {}
+            if "env" not in settings_data:
+                settings_data["env"] = {}
 
             updated_vars = []
             for template_var, env_var in env_mappings.items():
                 if template_var in template_vars:
-                    old_value = settings_data['env'].get(env_var)
+                    old_value = settings_data["env"].get(env_var)
                     new_value = template_vars[template_var]
 
                     if old_value != new_value:
-                        settings_data['env'][env_var] = new_value
+                        settings_data["env"][env_var] = new_value
                         updated_vars.append(f"{env_var}: {old_value} → {new_value}")
 
             # Write back if changed
             if updated_vars:
-                settings_file.write_text(json.dumps(settings_data, indent=2, ensure_ascii=False) + "\n", encoding='utf-8')
-                results['files_updated'] += 1
-                results['variables_updated'].extend(updated_vars)
+                settings_file.write_text(
+                    json.dumps(settings_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+                )
+                results["files_updated"] += 1
+                results["variables_updated"].extend(updated_vars)
 
         except (json.JSONDecodeError, OSError, UnicodeDecodeError, UnicodeEncodeError):
             # Skip if settings.json is malformed or can't be accessed
@@ -276,10 +284,10 @@ class TemplateVariableSynchronizer:
             Dictionary containing validation results
         """
         validation_results = {
-            'status': 'passed',
-            'inconsistencies': [],
-            'total_files_checked': 0,
-            'files_with_variables': 0
+            "status": "passed",
+            "inconsistencies": [],
+            "total_files_checked": 0,
+            "files_with_variables": 0,
         }
 
         try:
@@ -289,39 +297,40 @@ class TemplateVariableSynchronizer:
 
             # Check files for template variable consistency
             files_with_variables = self._find_files_with_template_variables(None)
-            validation_results['total_files_checked'] = len(files_with_variables)
+            validation_results["total_files_checked"] = len(files_with_variables)
 
             for file_path in files_with_variables:
                 try:
-                    content = file_path.read_text(encoding='utf-8')
-                    file_inconsistencies = []
+                    content = file_path.read_text(encoding="utf-8")
+                    file_inconsistencies: List[str] = []
 
                     # Check each template variable
                     for var_name, expected_value in current_vars.items():
-                        pattern = re.compile(r'\{\{' + re.escape(var_name) + r'\}\}')
+                        pattern = re.compile(r"\{\{" + re.escape(var_name) + r"\}\}")
 
                         if pattern.search(content):
-                            validation_results['files_with_variables'] += 1
+                            files_with_vars: int = validation_results["files_with_variables"]  # type: ignore[assignment]
+                            validation_results["files_with_variables"] = files_with_vars + 1
                             # Variable found but not substituted - this might be expected
                             # Only report as inconsistency if we expect it to be substituted
                             pass
 
                     if file_inconsistencies:
-                        validation_results['inconsistencies'].append({
-                            'file': str(file_path.relative_to(self.project_root)),
-                            'issues': file_inconsistencies
-                        })
+                        inconsistencies: List[Dict[str, Any]] = validation_results["inconsistencies"]  # type: ignore[assignment]
+                        inconsistencies.append(
+                            {"file": str(file_path.relative_to(self.project_root)), "issues": file_inconsistencies}
+                        )
 
                 except (OSError, UnicodeDecodeError):
                     # Skip files that can't be read
                     continue
 
-            if validation_results['inconsistencies']:
-                validation_results['status'] = 'warning'
+            if validation_results["inconsistencies"]:
+                validation_results["status"] = "warning"
 
         except Exception as e:
-            validation_results['status'] = 'failed'
-            validation_results['error'] = str(e)
+            validation_results["status"] = "failed"
+            validation_results["error"] = str(e)
 
         return validation_results
 
@@ -333,19 +342,19 @@ class TemplateVariableSynchronizer:
             Dictionary containing template variable usage statistics
         """
         usage_report = {
-            'total_files_with_variables': 0,
-            'variable_usage': {},
-            'files_by_variable': {},
-            'unsubstituted_variables': []
+            "total_files_with_variables": 0,
+            "variable_usage": {},
+            "files_by_variable": {},
+            "unsubstituted_variables": [],
         }
 
         try:
             files_with_variables = self._find_files_with_template_variables(None)
-            usage_report['total_files_with_variables'] = len(files_with_variables)
+            usage_report["total_files_with_variables"] = len(files_with_variables)
 
             for file_path in files_with_variables:
                 try:
-                    content = file_path.read_text(encoding='utf-8')
+                    content = file_path.read_text(encoding="utf-8")
                     relative_path = str(file_path.relative_to(self.project_root))
 
                     # Check for each template variable pattern
@@ -354,26 +363,28 @@ class TemplateVariableSynchronizer:
                         matches = pattern.findall(content)
 
                         if matches:
-                            var_name = pattern_str.strip(r'{}')
-                            if var_name not in usage_report['variable_usage']:
-                                usage_report['variable_usage'][var_name] = 0
-                                usage_report['files_by_variable'][var_name] = []
+                            var_name = pattern_str.strip(r"{}")
+                            variable_usage: Dict[str, int] = usage_report["variable_usage"]  # type: ignore[assignment]
+                            files_by_variable: Dict[str, List[str]] = usage_report["files_by_variable"]  # type: ignore[assignment]
+                            unsubstituted_variables: List[Dict[str, Any]] = usage_report["unsubstituted_variables"]  # type: ignore[assignment]
 
-                            usage_report['variable_usage'][var_name] += len(matches)
-                            usage_report['files_by_variable'][var_name].append(relative_path)
+                            if var_name not in variable_usage:
+                                variable_usage[var_name] = 0
+                                files_by_variable[var_name] = []
+
+                            variable_usage[var_name] += len(matches)
+                            files_by_variable[var_name].append(relative_path)
 
                             # Track unsubstituted variables
-                            usage_report['unsubstituted_variables'].append({
-                                'file': relative_path,
-                                'variable': var_name,
-                                'count': len(matches)
-                            })
+                            unsubstituted_variables.append(
+                                {"file": relative_path, "variable": var_name, "count": len(matches)}
+                            )
 
                 except (OSError, UnicodeDecodeError):
                     continue
 
         except Exception as e:
-            usage_report['error'] = str(e)
+            usage_report["error"] = str(e)
 
         return usage_report
 

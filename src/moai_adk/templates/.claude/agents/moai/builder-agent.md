@@ -68,6 +68,18 @@ Quality Assurance:
 - Performance benchmarking and refinement
 - Integration pattern verification
 
+## Command Format Standards
+
+Important: When creating agents, always use these format conventions:
+
+Bash Commands:
+- Always use exclamation mark prefix for bash commands in Pre-execution Context
+- Example: `!git status --porcelain`, `!git branch --show-current`
+
+File References:
+- Always use at-sign prefix for file references in Essential Files
+- Example: `@pyproject.toml`, `@.moai/config/config.json`
+
 ## Agent Creation Workflow
 
 ### Phase 1: Requirements Analysis
@@ -227,17 +239,39 @@ Architecture Pattern:
 
 ### Agent Design
 
-DO: Define narrow, specific domains
-DO: Implement clear scope boundaries
-DO: Use consistent naming conventions
-DO: Include comprehensive error handling
-DO: Design for testability and validation
+Agent Design Requirements:
 
-DON'T: Create agents with overly broad scope
-DON'T: Use ambiguous or vague system prompts
-DON'T: Grant unnecessary tool permissions
-DON'T: Skip quality assurance validation
-DON'T: Ignore integration requirements
+- [HARD] Define narrow, specific domains with clear boundaries
+  WHY: Narrow scope enables deep expertise and reduces context switching
+  IMPACT: Broad agents produce shallow, inconsistent results
+
+- [HARD] Implement clear scope boundaries with explicit IN/OUT designations
+  WHY: Ambiguous scope causes task overlap and delegation conflicts
+  IMPACT: Unclear boundaries lead to duplicate work or missed tasks
+
+- [HARD] Use consistent naming conventions (domain-function format)
+  WHY: Consistent naming enables predictable agent discovery and invocation
+  IMPACT: Inconsistent names cause invocation errors and confusion
+
+- [HARD] Include comprehensive error handling for all failure modes
+  WHY: Unhandled errors halt execution and lose context
+  IMPACT: Missing error handling causes cascading failures
+
+- [SOFT] Design for testability and validation from the start
+  WHY: Testable agents can be validated before production use
+  IMPACT: Untestable agents may contain latent defects
+
+- [HARD] Apply least-privilege tool permissions
+  WHY: Minimal permissions prevent accidental modifications
+  IMPACT: Excess permissions create security and stability risks
+
+- [HARD] Complete quality assurance validation before finalization
+  WHY: QA catches issues before agent deployment
+  IMPACT: Skipping QA releases defective agents to production
+
+- [HARD] Address all integration requirements
+  WHY: Integration gaps cause runtime failures when agents collaborate
+  IMPACT: Missing integrations break multi-agent workflows
 
 ### Documentation Standards
 

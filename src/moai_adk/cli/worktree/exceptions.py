@@ -21,9 +21,7 @@ class WorktreeExistsError(WorktreeError):
         """
         self.spec_id = spec_id
         self.path = path
-        super().__init__(
-            f"Worktree for '{spec_id}' already exists at {path}"
-        )
+        super().__init__(f"Worktree for '{spec_id}' already exists at {path}")
 
 
 class WorktreeNotFoundError(WorktreeError):
@@ -49,10 +47,7 @@ class UncommittedChangesError(WorktreeError):
             spec_id: The SPEC ID with uncommitted changes.
         """
         self.spec_id = spec_id
-        super().__init__(
-            f"Worktree for '{spec_id}' has uncommitted changes. "
-            f"Use --force to remove anyway."
-        )
+        super().__init__(f"Worktree for '{spec_id}' has uncommitted changes. Use --force to remove anyway.")
 
 
 class GitOperationError(WorktreeError):
@@ -79,10 +74,7 @@ class MergeConflictError(WorktreeError):
         """
         self.spec_id = spec_id
         self.conflicted_files = conflicted_files
-        super().__init__(
-            f"Merge conflict in worktree '{spec_id}'. "
-            f"Conflicted files: {', '.join(conflicted_files)}"
-        )
+        super().__init__(f"Merge conflict in worktree '{spec_id}'. Conflicted files: {', '.join(conflicted_files)}")
 
 
 class RegistryInconsistencyError(WorktreeError):

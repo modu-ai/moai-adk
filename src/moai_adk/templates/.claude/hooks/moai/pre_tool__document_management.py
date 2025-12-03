@@ -29,7 +29,7 @@ LIB_DIR = HOOKS_DIR / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
-from lib.path_utils import find_project_root
+from lib.path_utils import find_project_root  # noqa: E402 - import after path setup
 
 try:
     from lib.common import (  # noqa: E402
@@ -55,27 +55,29 @@ except ImportError:
 
     def hook_timeout_context(hook_name, config=None):
         import contextlib
+
         @contextlib.contextmanager
         def dummy_context():
             yield
+
         return dummy_context()
 
-    class HookTimeoutConfig:
+    class HookTimeoutConfig:  # type: ignore[no-redef]
         def __init__(self, **kwargs):
             pass
 
-    class TimeoutPolicy:
+    class TimeoutPolicy:  # type: ignore[no-redef]
         FAST = "fast"
         NORMAL = "normal"
         SLOW = "slow"
 
-    class HookTimeoutError(Exception):
+    class HookTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
-    def get_config_validator():
+    def get_config_validator():  # type: ignore[no-redef]
         return None
 
-    class ValidationIssue:
+    class ValidationIssue:  # type: ignore[no-redef]
         pass
 
     class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
@@ -264,17 +266,17 @@ def handle_pre_tool_use(payload: Dict) -> Dict[str, Any]:
 
 def execute_pre_tool_validation(data: Dict[str, Any]) -> Dict[str, Any]:
     """Execute pre-tool validation with performance optimization"""
-    start_time = time.time() if 'time' in globals() else 0
+    start_time = time.time() if "time" in globals() else 0
 
     # Call handler
     result = handle_pre_tool_use(data)
 
     # Add performance metrics
-    if 'time' in globals():
+    if "time" in globals():
         result["performance"] = {
             "execution_time_seconds": round(time.time() - start_time, 3),
             "timeout_manager_used": get_timeout_manager() is not None,
-            "config_validator_used": get_config_validator() is not None
+            "config_validator_used": get_config_validator() is not None,
         }
 
     return result
@@ -308,7 +310,7 @@ def main() -> None:
         retry_count=1,
         retry_delay_ms=100,
         graceful_degradation=True,
-        memory_limit_mb=50  # Low memory limit for validation
+        memory_limit_mb=50,  # Low memory limit for validation
     )
 
     def read_input_data() -> Dict[str, Any]:
@@ -325,7 +327,7 @@ def main() -> None:
             result = timeout_manager.execute_with_timeout(
                 "pre_tool__document_management",
                 lambda: execute_pre_tool_validation(read_input_data()),
-                config=timeout_config
+                config=timeout_config,
             )
 
             # Output result as JSON
@@ -341,12 +343,9 @@ def main() -> None:
                     "hook_id": e.hook_id,
                     "timeout_seconds": e.timeout_seconds,
                     "execution_time": e.execution_time,
-                    "will_retry": e.will_retry
+                    "will_retry": e.will_retry,
                 },
-                "performance": {
-                    "timeout_manager_used": True,
-                    "graceful_degradation": True
-                }
+                "performance": {"timeout_manager_used": True, "graceful_degradation": True},
             }
             print(json.dumps(timeout_response, ensure_ascii=False))
             print(f"PreToolUse document management hook timeout: {e}", file=sys.stderr)
@@ -358,15 +357,8 @@ def main() -> None:
                 "continue": True,
                 "systemMessage": "⚠️ Document validation encountered an error - operation proceeding",
                 "hookSpecificOutput": {"error": f"Document management error: {e}"},
-                "error_details": {
-                    "error_type": type(e).__name__,
-                    "message": str(e),
-                    "graceful_degradation": True
-                },
-                "performance": {
-                    "timeout_manager_used": True,
-                    "graceful_degradation": True
-                }
+                "error_details": {"error_type": type(e).__name__, "message": str(e), "graceful_degradation": True},
+                "performance": {"timeout_manager_used": True, "graceful_degradation": True},
             }
             print(json.dumps(error_response, ensure_ascii=False))
             print(f"PreToolUse document management error: {e}", file=sys.stderr)
@@ -399,11 +391,16 @@ def main() -> None:
                 print(json.dumps(result, ensure_ascii=False))
                 sys.exit(0)
             except Exception as e:
-                print(json.dumps({
-                    "continue": True,
-                    "systemMessage": "⚠️ Document validation completed with errors - operation proceeding",
-                    "hookSpecificOutput": {"error": str(e)}
-                }, ensure_ascii=False))
+                print(
+                    json.dumps(
+                        {
+                            "continue": True,
+                            "systemMessage": "⚠️ Document validation completed with errors - operation proceeding",
+                            "hookSpecificOutput": {"error": str(e)},
+                        },
+                        ensure_ascii=False,
+                    )
+                )
                 sys.exit(0)
 
         except PlatformTimeoutError:
@@ -411,10 +408,7 @@ def main() -> None:
             timeout_response = {
                 "continue": True,
                 "systemMessage": "⚠️ Document validation timeout - operation proceeding",
-                "performance": {
-                    "timeout_manager_used": False,
-                    "graceful_degradation": True
-                }
+                "performance": {"timeout_manager_used": False, "graceful_degradation": True},
             }
             print(json.dumps(timeout_response, ensure_ascii=False))
             print("PreToolUse document management hook timeout after 2 seconds", file=sys.stderr)
@@ -425,10 +419,7 @@ def main() -> None:
             json_error_response = {
                 "continue": True,
                 "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
-                "performance": {
-                    "timeout_manager_used": False,
-                    "graceful_degradation": True
-                }
+                "performance": {"timeout_manager_used": False, "graceful_degradation": True},
             }
             print(json.dumps(json_error_response, ensure_ascii=False))
             print(f"PreToolUse document management JSON parse error: {e}", file=sys.stderr)
@@ -439,10 +430,7 @@ def main() -> None:
             unexpected_error_response = {
                 "continue": True,
                 "hookSpecificOutput": {"error": f"Document management error: {e}"},
-                "performance": {
-                    "timeout_manager_used": False,
-                    "graceful_degradation": True
-                }
+                "performance": {"timeout_manager_used": False, "graceful_degradation": True},
             }
             print(json.dumps(unexpected_error_response, ensure_ascii=False))
             print(f"PreToolUse document management unexpected error: {e}", file=sys.stderr)

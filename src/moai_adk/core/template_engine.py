@@ -295,7 +295,11 @@ class TemplateVariableValidator:
             if var_name in variables:
                 if not isinstance(variables[var_name], var_type):
                     if isinstance(var_type, tuple):
-                        type_names = " or ".join(getattr(t, "__name__", str(t)) for t in var_type) if var_type is not None else "unknown"  # type: ignore[union-attr]
+                        type_names = (
+                            " or ".join(getattr(t, "__name__", str(t)) for t in var_type)
+                            if var_type is not None
+                            else "unknown"
+                        )  # type: ignore[union-attr]
                     else:
                         type_names = getattr(var_type, "__name__", str(var_type))
                     actual_type = type(variables[var_name]).__name__

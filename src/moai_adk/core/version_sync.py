@@ -16,16 +16,17 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
 class VersionSource(Enum):
     """Enum for version source tracking"""
+
     PYPROJECT_TOML = "pyproject_toml"
     CONFIG_JSON = "config_json"
     PACKAGE_METADATA = "package_metadata"
@@ -35,6 +36,7 @@ class VersionSource(Enum):
 @dataclass
 class VersionInfo:
     """Version information with metadata"""
+
     version: str
     source: VersionSource
     file_path: Path
@@ -48,7 +50,7 @@ class VersionInfo:
 
     def _is_valid_version(self, version: str) -> bool:
         """Check if version follows semantic versioning"""
-        pattern = r'^\d+\.\d+\.\d+(?:-[a-zA-Z0-9]+)?$'
+        pattern = r"^\d+\.\d+\.\d+(?:-[a-zA-Z0-9]+)?$"
         return bool(re.match(pattern, version))
 
 
@@ -193,7 +195,7 @@ class VersionSynchronizer:
             return None
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             if source == VersionSource.PYPROJECT_TOML:
@@ -206,12 +208,7 @@ class VersionSynchronizer:
                 return None
 
             if version:
-                return VersionInfo(
-                    version=version,
-                    source=source,
-                    file_path=file_path,
-                    raw_content=content
-                )
+                return VersionInfo(version=version, source=source, file_path=file_path, raw_content=content)
 
         except Exception as e:
             logger.error(f"Error reading {file_path}: {e}")
@@ -228,8 +225,8 @@ class VersionSynchronizer:
         """Extract version from .moai/config/config.json"""
         try:
             config_data = json.loads(content)
-            moai_config = config_data.get('moai', {})
-            return moai_config.get('version')
+            moai_config = config_data.get("moai", {})
+            return moai_config.get("version")
         except json.JSONDecodeError:
             logger.error("Invalid JSON in config.json")
             return None
@@ -255,13 +252,9 @@ class VersionSynchronizer:
             return True
 
         try:
-            new_content = self._update_version_in_content(
-                current_info.raw_content,
-                source,
-                target_version
-            )
+            new_content = self._update_version_in_content(current_info.raw_content, source, target_version)
 
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(new_content)
 
             return True
@@ -276,19 +269,19 @@ class VersionSynchronizer:
             # Update moai.version in JSON
             try:
                 config_data = json.loads(content)
-                if 'moai' not in config_data:
-                    config_data['moai'] = {}
-                config_data['moai']['version'] = target_version
+                if "moai" not in config_data:
+                    config_data["moai"] = {}
+                config_data["moai"]["version"] = target_version
                 return json.dumps(config_data, indent=2)
             except json.JSONDecodeError:
                 # Fallback: regex replacement
                 pattern = r'("moai"\s*:\s*\{[^}]*"version"\s*:\s*")[^"\']+(")'
-                return re.sub(pattern, f'\\1{target_version}\\2', content, flags=re.DOTALL)
+                return re.sub(pattern, f"\\1{target_version}\\2", content, flags=re.DOTALL)
 
         elif source == VersionSource.PACKAGE_METADATA:
             # Update __version__ in Python (fallback version)
             pattern = r'(__version__\s*=\s*["\'])([^"\']+)(["\'])'
-            return re.sub(pattern, f'\\1{target_version}\\3', content)
+            return re.sub(pattern, f"\\1{target_version}\\3", content)
 
         return content
 
@@ -300,7 +293,8 @@ class VersionSynchronizer:
             if cache_dir.exists():
                 try:
                     import shutil
-                    cache_size = sum(1 for _ in cache_dir.rglob('*') if _.is_file())
+
+                    cache_size = sum(1 for _ in cache_dir.rglob("*") if _.is_file())
                     shutil.rmtree(cache_dir)
                     cache_dir.mkdir(exist_ok=True)
                     cleared_count += cache_size
@@ -311,6 +305,7 @@ class VersionSynchronizer:
         # Clear version reader cache if available
         try:
             from ..statusline.version_reader import VersionReader
+
             reader = VersionReader(working_dir=self.working_dir)
             reader.clear_cache()
             logger.info("Cleared VersionReader cache")
@@ -336,10 +331,10 @@ class VersionSynchronizer:
             return False, None
 
         # Remove 'v' prefix if present
-        normalized = version[1:] if version.startswith('v') else version
+        normalized = version[1:] if version.startswith("v") else version
 
         # Validate semantic versioning
-        pattern = r'^(\d+)\.(\d+)\.(\d+)(?:[-.]([a-zA-Z0-9]+))?$'
+        pattern = r"^(\d+)\.(\d+)\.(\d+)(?:[-.]([a-zA-Z0-9]+))?$"
         match = re.match(pattern, normalized)
 
         if match:
@@ -356,39 +351,45 @@ class VersionSynchronizer:
         """
         is_consistent, version_infos = self.check_consistency()
 
-        report = {
+        report: Dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "working_directory": str(self.working_dir),
             "is_consistent": is_consistent,
             "version_count": len(version_infos),
             "versions": [],
             "issues": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Add version information
+        versions_list: List[Dict[str, Any]] = report["versions"]  # type: ignore[assignment]
         for info in version_infos:
-            report["versions"].append({
-                "version": info.version,
-                "source": info.source.value,
-                "file": str(info.file_path),
-                "is_valid": info.is_valid,
-                "last_modified": info.timestamp.isoformat()
-            })
+            versions_list.append(
+                {
+                    "version": info.version,
+                    "source": info.source.value,
+                    "file": str(info.file_path),
+                    "is_valid": info.is_valid,
+                    "last_modified": info.timestamp.isoformat(),
+                }
+            )
 
         # Add issues and recommendations
+        issues_list: List[str] = report["issues"]  # type: ignore[assignment]
+        recommendations_list: List[str] = report["recommendations"]  # type: ignore[assignment]
+
         if not version_infos:
-            report["issues"].append("No version information found in any file")
-            report["recommendations"].append("Initialize version in pyproject.toml")
+            issues_list.append("No version information found in any file")
+            recommendations_list.append("Initialize version in pyproject.toml")
 
         if not is_consistent:
-            report["issues"].append("Version inconsistency detected across files")
-            report["recommendations"].append("Run synchronize_all() to fix inconsistencies")
+            issues_list.append("Version inconsistency detected across files")
+            recommendations_list.append("Run synchronize_all() to fix inconsistencies")
 
         invalid_versions = [info for info in version_infos if not info.is_valid]
         if invalid_versions:
-            report["issues"].append(f"Invalid version format in {len(invalid_versions)} files")
-            report["recommendations"].append("Fix version format to follow semantic versioning")
+            issues_list.append(f"Invalid version format in {len(invalid_versions)} files")
+            recommendations_list.append("Fix version format to follow semantic versioning")
 
         return report
 

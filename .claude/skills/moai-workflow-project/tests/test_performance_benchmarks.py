@@ -217,7 +217,7 @@ Complex logic:
         """Test memory usage during operations."""
 
         try:
-            import gc
+            import gc  # noqa: F401 - memory profiling availability check
 
             import psutil
 
@@ -238,7 +238,7 @@ Complex logic:
                     {
                         "path": f"/api/endpoint/{i}",
                         "method": "POST",
-                        "description": f"Test endpoint {i} with large content {"x" * 100}",
+                        "description": f"Test endpoint {i} with large content {'x' * 100}",
                     }
                     for i in range(100)
                 ],

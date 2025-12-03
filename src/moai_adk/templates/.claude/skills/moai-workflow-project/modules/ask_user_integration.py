@@ -50,7 +50,7 @@ class AskUserQuestionIntegrator:
         # For now, we'll create a mock implementation
         try:
             # In actual Claude Code environment, this would be available
-            from claude_code import ask_user_question as AskUserQuestion
+            from claude_code import ask_user_question as AskUserQuestion  # noqa: N812
 
             self.AskUserQuestion = AskUserQuestion
         except ImportError:

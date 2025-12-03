@@ -104,6 +104,21 @@ def load_all_skills() -> List[SkillMetadata]:
 
 
 # ===== FIXTURES =====
+@pytest.fixture
+def tmp_project_dir(tmp_path: Path) -> Path:
+    """Create a temporary project directory for testing.
+
+    This fixture provides a temporary directory that can be used
+    as a mock project directory in tests.
+
+    Returns:
+        Path to the temporary project directory
+    """
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    return project_dir
+
+
 @pytest.fixture(scope="session")
 def all_skills() -> List[SkillMetadata]:
     """Load all skills once per test session."""

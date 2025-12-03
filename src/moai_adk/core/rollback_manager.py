@@ -265,7 +265,8 @@ class RollbackManager:
             return RollbackResult(
                 success=success,
                 rollback_point_id=latest_rollback["id"],
-                message=f"Research integration rollback {'completed successfully' if success else 'completed with errors'}",
+                message=f"Research integration rollback "
+                f"{'completed successfully' if success else 'completed with errors'}",
                 restored_files=restored_files,
                 failed_files=failed_files or [],
                 validation_results=validation_results,
