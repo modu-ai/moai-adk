@@ -170,11 +170,11 @@ class TestValidateInstallation:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text("# Test")
 
-        # Create all Alfred command files (SPEC-INIT-004)
-        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
+        # Create all MoAI command files (SPEC-INIT-004)
+        moai_dir = tmp_project_dir / ".claude" / "commands" / "moai"
+        moai_dir.mkdir(parents=True, exist_ok=True)
         for cmd in ProjectValidator.REQUIRED_ALFRED_COMMANDS:
-            (alfred_dir / cmd).write_text("# Alfred Command")
+            (moai_dir / cmd).write_text("# MoAI Command")
 
         # Should not raise
         try:
@@ -209,16 +209,16 @@ class TestValidateAlfredCommands:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text("# Test")
 
-        # Create .claude/commands/alfred directory
-        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
+        # Create .claude/commands/moai directory
+        moai_dir = tmp_project_dir / ".claude" / "commands" / "moai"
+        moai_dir.mkdir(parents=True, exist_ok=True)
 
-        # Missing Alfred command files
+        # Missing MoAI command files
         with pytest.raises(ValidationError, match="Alfred command"):
             validator.validate_installation(tmp_project_dir)
 
     def test_validate_installation_succeeds_with_all_alfred_commands(self, tmp_project_dir: Path):
-        """Should pass when all Alfred command files exist"""
+        """Should pass when all MoAI command files exist"""
         validator = ProjectValidator()
 
         # Create all required directories
@@ -231,13 +231,13 @@ class TestValidateAlfredCommands:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text("# Test")
 
-        # Create all Alfred command files
-        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
+        # Create all MoAI command files
+        moai_dir = tmp_project_dir / ".claude" / "commands" / "moai"
+        moai_dir.mkdir(parents=True, exist_ok=True)
 
         required_commands = ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]
         for cmd in required_commands:
-            (alfred_dir / cmd).write_text("# Alfred Command")
+            (moai_dir / cmd).write_text("# MoAI Command")
 
         # Should not raise
         try:
@@ -259,11 +259,11 @@ class TestValidateAlfredCommands:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text("# Test")
 
-        # Create Alfred directory but only some files
-        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
-        alfred_dir.mkdir(parents=True, exist_ok=True)
-        (alfred_dir / "0-project.md").write_text("# Command")
-        (alfred_dir / "1-plan.md").write_text("# Command")
+        # Create MoAI directory but only some files
+        moai_dir = tmp_project_dir / ".claude" / "commands" / "moai"
+        moai_dir.mkdir(parents=True, exist_ok=True)
+        (moai_dir / "0-project.md").write_text("# Command")
+        (moai_dir / "1-plan.md").write_text("# Command")
         # Missing: 2-run.md, 3-sync.md
 
         with pytest.raises(ValidationError) as exc_info:

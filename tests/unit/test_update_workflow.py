@@ -119,7 +119,7 @@ class TestUpgradeExecution:
             result = _execute_upgrade(["uv", "tool", "upgrade", "moai-adk"])
             assert result is False
 
-    @pytest.mark.skip(reason="CLI confirm input requires interactive input - ClickException from confirm()")
+    @pytest.mark.skip(reason="CLI requires interactive input - Click's confirm() raises ClickException in non-interactive test environment")
     def test_execute_upgrade_timeout(self):
         """Test upgrade timeout handling."""
         with patch("subprocess.run") as mock_run:

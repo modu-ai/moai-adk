@@ -119,6 +119,33 @@ def tmp_project_dir(tmp_path: Path) -> Path:
     return project_dir
 
 
+@pytest.fixture
+def tmp_git_repo(tmp_path: Path) -> Path:
+    """Create a temporary Git repository for testing.
+
+    This fixture provides a temporary directory initialized as a Git repository
+    that can be used to test Git-related functionality.
+
+    Returns:
+        Path to the temporary Git repository
+    """
+    import subprocess
+
+    git_repo = tmp_path / "test_git_repo"
+    git_repo.mkdir(parents=True, exist_ok=True)
+
+    # Initialize Git repository
+    subprocess.run(["git", "init"], cwd=git_repo, check=True, capture_output=True)
+
+    # Configure Git user (required for commits)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=git_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"], cwd=git_repo, check=True, capture_output=True
+    )
+
+    return git_repo
+
+
 @pytest.fixture(scope="session")
 def all_skills() -> List[SkillMetadata]:
     """Load all skills once per test session."""

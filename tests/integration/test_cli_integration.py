@@ -115,7 +115,7 @@ class TestInitCommand:
             # Should create .moai directory (check exit code or directory)
             assert result.exit_code == 0 or Path(".moai").exists()
 
-    @pytest.mark.skip(reason="Init command no longer has interactive prompts to interrupt")
+    @pytest.mark.skip(reason="Test obsolete - init command refactored to remove interactive prompts, making Ctrl+C abort testing no longer relevant")
     def test_init_interactive_abort(self, tmp_path):
         """Test init interactive mode with abort"""
         runner = CliRunner()
