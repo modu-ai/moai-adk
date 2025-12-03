@@ -46,15 +46,39 @@ Production commands must strictly adhere to agent delegation principle.
 
 ## Command Purpose
 
-Execute automated release management workflow with quality gates and interactive menu:
+Execute automated release management workflow following GitHub Flow:
 
 1. PHASE 1: Automatic Quality Gates (pytest, ruff, mypy)
 2. PHASE 2: Auto-fix and Commit (if fixes needed)
 3. PHASE 3: Interactive Menu Selection
 4. PHASE 4: Execute Selected Operation
-5. PHASE 5: Completion and Next Steps
+5. PHASE 5: PR Creation and Merge (GitHub Flow)
+6. PHASE 6: Completion and Next Steps
 
 Run on: Interactive menu (no arguments required)
+
+---
+
+## CRITICAL: GitHub Flow Compliance
+
+This command MUST follow GitHub Flow. Direct commits/pushes to main are PROHIBITED.
+
+### Required Workflow
+
+1. Create or use existing release branch: `release/vX.Y.Z`
+2. All changes committed to release branch
+3. Push release branch to origin
+4. Create PR from release branch to main
+5. Wait for CI checks to pass
+6. Merge PR (via GitHub UI or gh CLI)
+7. Tag the merged commit on main
+
+### Prohibited Actions
+
+- NEVER commit directly to main
+- NEVER push directly to main
+- NEVER create tags before PR merge
+- NEVER use `git merge` locally to main
 
 ---
 
@@ -317,7 +341,7 @@ Report validation results with PASS/FAIL for each item.
 
 ### Operation: version
 
-Version management workflow:
+Version management workflow (GitHub Flow compliant):
 
 Sub-options (via AskUserQuestion):
 
@@ -330,16 +354,19 @@ Sub-options (via AskUserQuestion):
 
 Execution steps:
 
-1. Read current version from pyproject.toml
-2. Calculate new version based on selection
-3. Update files:
+1. Verify current branch is release/vX.Y.Z (NOT main)
+2. Read current version from pyproject.toml
+3. Calculate new version based on selection
+4. Update files on release branch:
    - pyproject.toml (master source)
    - .moai/config/config.json
    - src/moai_adk/__init__.py (if applicable)
+5. Create Git commit: "chore: Bump version to X.Y.Z"
+6. Push release branch to origin
+7. IMPORTANT: Tags are created AFTER PR merge (see Phase 5)
+8. Report all changes made
 
-4. Create Git commit: "chore: Bump version to X.Y.Z"
-5. Create Git tag: "vX.Y.Z"
-6. Report all changes made
+NOTE: Do NOT create tags on release branch. Tags are created on main after PR merge.
 
 ### Operation: changelog
 
@@ -400,37 +427,59 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 
 ### Operation: prepare
 
-CI/CD deployment preparation:
+CI/CD deployment preparation (GitHub Flow compliant):
 
 Sub-options (via AskUserQuestion):
 
-- test: TestPyPI deployment
-- production: PyPI deployment
-- review: Generate review bundle
+- pr-create: Create PR from release branch to main
+- pr-merge: Merge approved PR and create tag
+- test-deploy: TestPyPI deployment (after PR merge)
+- prod-deploy: PyPI deployment (after PR merge)
 
 Execution steps:
 
-1. Verify all quality gates passed
-2. Verify version consistency
-3. Build package:
+1. Verify current branch is release/vX.Y.Z
+2. Verify all quality gates passed
+3. Verify version consistency
+4. Push release branch if needed:
+
+```bash
+git push origin release/vX.Y.Z
+```
+
+5. Create or update PR:
+
+```bash
+gh pr create --base main --head release/vX.Y.Z --title "Release vX.Y.Z" --body "..."
+# OR if PR exists:
+gh pr view release/vX.Y.Z --json url
+```
+
+6. Wait for CI checks to pass
+7. After PR approval, merge via:
+
+```bash
+gh pr merge --squash --delete-branch
+```
+
+8. After merge, checkout main and create tag:
+
+```bash
+git checkout main
+git pull origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+9. Build and deploy package:
 
 ```bash
 uv run python -m build
-```
-
-4. Verify package:
-
-```bash
 uv run twine check dist/*
+uv run twine upload dist/*  # or --repository testpypi
 ```
 
-5. For test deployment:
-
-```bash
-uv run twine upload --repository testpypi dist/*
-```
-
-6. Report deployment status and next steps
+10. Report deployment status
 
 ### Operation: rollback
 
@@ -455,24 +504,97 @@ Execution steps:
 
 ---
 
-## PHASE 5: Completion and Next Steps
+## PHASE 5: PR Creation and Merge (GitHub Flow)
+
+Goal: Create PR from release branch to main and manage merge process
+
+### Step 5.1: Verify Branch State
+
+```bash
+git branch --show-current  # Must be release/vX.Y.Z
+git status --porcelain     # Must be clean
+```
+
+### Step 5.2: Push Release Branch
+
+```bash
+git push origin release/vX.Y.Z
+```
+
+### Step 5.3: Create or Check PR
+
+Check if PR exists:
+
+```bash
+gh pr list --head release/vX.Y.Z --json number,state
+```
+
+If no PR exists, create one:
+
+```bash
+gh pr create --base main --head release/vX.Y.Z \
+  --title "Release vX.Y.Z: [Brief Description]" \
+  --body "[PR body with summary and test plan]"
+```
+
+### Step 5.4: Wait for CI
+
+```bash
+gh pr checks release/vX.Y.Z --watch
+```
+
+### Step 5.5: Merge PR (After Approval)
+
+Use AskUserQuestion to confirm merge:
+
+```yaml
+question: "PR checks passed. Ready to merge to main?"
+options:
+  - label: "Merge PR"
+    description: "Merge release branch to main via squash merge"
+  - label: "Wait"
+    description: "Wait for more review or changes"
+```
+
+If merge selected:
+
+```bash
+gh pr merge --squash --delete-branch
+```
+
+### Step 5.6: Create Tag on Main
+
+After merge:
+
+```bash
+git checkout main
+git pull origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+---
+
+## PHASE 6: Completion and Next Steps
 
 Goal: Guide user to next action after operation completes
 
-### Step 5.1: Report Operation Results
+### Step 6.1: Report Operation Results
 
 Display summary of completed operation:
 - Operation type
 - Actions performed
 - Files modified
 - Git commits created
+- PR URL (if created)
+- Tag created (if applicable)
 - Current status
 
-### Step 5.2: Present Next Steps
+### Step 6.2: Present Next Steps
 
 Use AskUserQuestion:
 
-```
+```yaml
 question: "[Operation] completed successfully. What would you like to do next?"
 header: "Next Steps"
 multiSelect: false
@@ -481,11 +603,13 @@ options:
     description: "Return to main menu"
   - label: "View current status"
     description: "Show project and release status"
+  - label: "Deploy to PyPI"
+    description: "Build and upload package"
   - label: "Exit"
     description: "Complete release management session"
 ```
 
-### Step 5.3: Loop or Exit
+### Step 6.3: Loop or Exit
 
 If user selects "Continue", return to Phase 3 (Main Menu).
 If user selects "Exit", display final summary and end session.
@@ -555,10 +679,10 @@ Log format:
 | prepare | Build & deploy | 10 min | Build, verify, upload |
 | rollback | Emergency revert | 5 min | Yank, delete, log |
 
-Status: Enhanced with Automatic Quality Gates and Auto-progression
+Status: Enhanced with GitHub Flow Compliance and PR-based Workflow
 Python Version: 3.14
-MoAI-ADK Version: 0.31.3+
-Last Updated: 2025-12-03
+MoAI-ADK Version: 0.32.0+
+Last Updated: 2025-12-04
 
 ---
 
@@ -566,13 +690,19 @@ Last Updated: 2025-12-03
 
 You must NOW execute the command following the "Execution Philosophy" described above.
 
-1. IMMEDIATELY run Phase 1 quality gates (pytest, ruff, mypy)
-2. Display quality gate results to user
-3. If fixes needed, apply auto-fixes and commit (Phase 2)
-4. Present interactive main menu via AskUserQuestion (Phase 3)
-5. Execute selected operation (Phase 4)
-6. Guide to next steps (Phase 5)
+1. IMMEDIATELY verify current branch (must be release/vX.Y.Z, NOT main)
+2. Run Phase 1 quality gates (pytest, ruff, mypy)
+3. Display quality gate results to user
+4. If fixes needed, apply auto-fixes and commit on release branch (Phase 2)
+5. Present interactive main menu via AskUserQuestion (Phase 3)
+6. Execute selected operation (Phase 4)
+7. Create/update PR for release (Phase 5)
+8. Guide to next steps (Phase 6)
 
-CRITICAL: Do NOT just describe what you will do. START PHASE 1 NOW.
+CRITICAL RULES:
+- NEVER commit or push directly to main
+- ALWAYS work on release/vX.Y.Z branch
+- ALWAYS create PR for main merge
+- ONLY create tags AFTER PR is merged to main
 
-Begin with TodoWrite to track progress, then execute pytest immediately.
+Begin with TodoWrite to track progress, then verify branch and execute pytest immediately.
