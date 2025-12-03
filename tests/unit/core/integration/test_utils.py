@@ -143,8 +143,8 @@ class TestResultAnalyzer:
         assert stats["avg_time"] == 2.0
 
 
-class TestEnvironment:
-    """Test TestEnvironment class"""
+class TestTestEnvironmentUtil:
+    """Test TestEnvironment class from utils module"""
 
     def test_environment_with_auto_temp_dir(self):
         """Test environment with auto-created temp directory"""

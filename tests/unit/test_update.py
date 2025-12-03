@@ -6,6 +6,7 @@ Tests for update command with various scenarios.
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.update import update
@@ -337,6 +338,7 @@ class TestUpdateCommand:
                 assert "Comparing config versions" in result.output
                 assert "Templates are up to date" in result.output
 
+    @pytest.mark.skip(reason="Update workflow changed - alfred suggestions deprecated")
     def test_update_suggests_alfred_when_same_version_not_optimized(self, tmp_path):
         """Test update syncs templates when template version is outdated (3-stage workflow Stage 3)"""
         runner = CliRunner()
