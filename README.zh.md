@@ -416,13 +416,13 @@ MoAI-ADK 将**24 个专业智能体**组织成**5 个层级**以提供最佳性�
 - `builder-skill`: 创建新技能
 - `builder-command`: 创建新命令
 
-**Tier 4: MCP Integrators**（MCP 集成，5个）
+**Tier 4: MCP Integrators**（MCP 集成，6个）
 
 - `mcp-context7`: 最新库文档实时查询
 - `mcp-sequential-thinking`: 复杂推理分析
 - `mcp-playwright`: Web 自动化测试
-- `mcp-design`: Figma 设计系统
-- `mcp-browser`: Web 测试自动化
+- `mcp-figma`: Figma 设计系统
+- `mcp-notion`: Notion 工作空间管理
 
 **Tier 5: AI Services**（AI 服务，1个）
 
@@ -560,7 +560,7 @@ flowchart LR
 
     Run -->|"<br/>测试通过<br/>代码完成<br/>"| Sync["<b>📚 SYNC</b><br/>（自动化）<br/>━━━━━━<br/>🔴 最终测试<br/>📊 覆盖率确认<br/>🔍 代码质量检查<br/>📝 自动提交生成<br/>🚀 合并准备<br/>⏱️ 5分钟"]
 
-    Sync -->|"<br/>完全自动化完成！<br/>🚀 合并准备完成<br/>| End([✅ 功能部署完成])
+    Sync -->|"<br/>完全自动化完成！<br/>🚀 合并准备完成<br/>"| End([✅ 功能部署完成])
 
     classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
     classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000

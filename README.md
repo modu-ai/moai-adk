@@ -416,13 +416,13 @@ MoAI-ADK organizes **24 specialized agents** into **5 tiers** for optimal perfor
 - `builder-skill`: Create new skills
 - `builder-command`: Create new commands
 
-**Tier 4: MCP Integrators** (5 agents)
+**Tier 4: MCP Integrators** (6 agents)
 
 - `mcp-context7`: Real-time library documentation lookup
 - `mcp-sequential-thinking`: Complex reasoning analysis
 - `mcp-playwright`: Web automation testing
-- `mcp-design`: Figma design system
-- `mcp-browser`: Web test automation
+- `mcp-figma`: Figma design system
+- `mcp-notion`: Notion workspace management
 
 **Tier 5: AI Services** (1 agent)
 
@@ -560,7 +560,7 @@ flowchart LR
 
     Run -->|"<br/>Tests pass<br/>Code complete<br/>"| Sync["<b>📚 SYNC</b><br/>(Automation)<br/>━━━━━━<br/>🔴 Final testing<br/>📊 Coverage verification<br/>🔍 Code quality check<br/>📝 Auto commit generation<br/>🚀 Merge ready<br/>⏱️ 5min"]
 
-    Sync -->|"<br/>Fully automated complete!<br/>🚀 Merge ready<br/>| End([✅ Feature Deployed])
+    Sync -->|"<br/>Fully automated complete!<br/>🚀 Merge ready<br/>"| End([✅ Feature Deployed])
 
     classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
     classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
