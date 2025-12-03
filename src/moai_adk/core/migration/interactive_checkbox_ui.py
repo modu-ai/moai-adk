@@ -111,8 +111,15 @@ class InteractiveCheckboxUI:
         # Add skills (which are directories)
         if "skills" in custom_elements:
             for skill in custom_elements["skills"]:
+                skill_name = skill.name
+                # Add indicator for template vs custom skills
+                if hasattr(skill, 'is_template') and skill.is_template:
+                    skill_name = f"{skill.name} (template)"
+                else:
+                    skill_name = f"{skill.name} (custom)"
+
                 organized["Skills"].append({
-                    "name": skill.name,
+                    "name": skill_name,
                     "path": str(skill.path),
                     "type": "skill"
                 })

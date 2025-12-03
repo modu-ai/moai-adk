@@ -175,9 +175,12 @@ class VersionReader:
         if self.config.debug_mode:
             self._logger.info(f"VersionReader initialized with config: {self.config}")
 
-    def get_version(self) -> str:
+    def get_version(self, force_refresh: bool = False) -> str:
         """
         Get MoAI-ADK version from config with enhanced caching.
+
+        Args:
+            force_refresh: If True, bypass cache and force fresh read
 
         Returns:
             Version string (e.g., "0.20.1" or "v0.20.1")
@@ -185,6 +188,10 @@ class VersionReader:
         Raises:
             VersionReadError: If version cannot be determined after fallbacks
         """
+        # Check if we need to force refresh
+        if force_refresh:
+            self.clear_cache()
+
         if self.config.enable_async:
             return asyncio.run(self.get_version_async())
         else:

@@ -79,7 +79,7 @@ Production commands (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-
 
 ###  validate - 사전 릴리즈 품질 검증
 
-목적: 릴리즈 전 코드 품질과 보안 검증
+목적: 릴리즈 전 코드 품질, 보안, 버전 일관성 검증
 
 세부 옵션:
 
@@ -87,39 +87,54 @@ Production commands (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-
   - pytest 실행
   - ruff 코드 포맷 검사
   - mypy 타입 검사
+  - 버전 일관성 검사
 -  Full 검증 (15분): 전체 품질 게이트 + 보안 스캔
   - Quick 검증 모든 항목
   - bandit 보안 스캔
   - pip-audit 의존성 취약점 검사
+  - 버전 동기화 검증
 -  사용자 정의: 특정 검증 항목 선택
 
 실행 결과:
 
 - 검증 통과/실패 보고
 - 문제점 상세 분석
+- 버전 동기화 상태
 - 수정 권장 사항
 
-###  version - 버전 관리
+###  version - 버전 관리 및 동기화
 
-목적: 시맨틱 버전 관리 (major/minor/patch)
+목적: 시맨틱 버전 관리와 자동 동기화
 
 세부 옵션:
 
 -  patch: 버그 수정 (0.27.2 → 0.27.3)
 -  minor: 기능 추가 (0.27.2 → 0.28.0)
 -  major: 호환성 변경 (0.27.2 → 1.0.0)
+-  custom: 사용자 지정 버전
+-  check: 현재 버전 일관성 검사
+-  sync: 버전 파일 자동 동기화
 
 업데이트 파일:
 
-- `pyproject.toml` - 패키지 버전
-- `src/moai_adk/__init__.py` - Python 버전
-- `.moai/config/config.json` - 설정 버전
+- `pyproject.toml` - 패키지 버전 (마스터)
+- `.moai/config/config.json` - 프로젝트 설정 버전
+- `CHANGELOG.md` - 변경 로그 자동 업데이트
+- Git 태그 자동 생성
+
+자동 기능:
+
+- 버전 불일치 시 자동 동기화
+- Pre-commit 훅으로 버전 관리
+- Statusline 캐시 자동 클리어
+- 버전 형식 검증
 
 실행 결과:
 
 - 모든 파일 버전 동기화 완료
+- 버전 일관성 검증 통과
 - Git 커밋 생성 제안
-- 다음 단계 안내
+- Statusline 업데이트 준비
 
 ###  changelog - 이중언어 변경로그 생성
 
@@ -250,10 +265,67 @@ Production commands (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-
 - 보안 정책: `.moai/security/` 디렉토리
 - 모니터링: `.moai/monitoring/` 디렉토리
 - 응급 절차: `.moai/emergency/` 디렉토리
+- 버전 관리: `.moai/docs/version-management-guide.md`
+- 코어 모듈: `src/moai_adk/core/version_sync.py`
 
 ---
 
-Status: Local-Only Development Tool
+## 통합 기능 설명
+
+### 버전 관리 시스템 통합
+
+본 릴리즈 관리 도구는 다음과 같은 버전 관리 기능을 통합했습니다:
+
+#### 1. 자동 버전 동기화
+- `pyproject.toml` → `.moai/config/config.json` 자동 동기화
+- Pre-commit 훅으로 커밋 전 자동 검사 및 동기화
+- 버전 불일치 시 자동 복구 기능
+
+#### 2. 버전 형식 검증
+- 시맨틱 버전닝 (X.Y.Z) 형식 자동 검증
+- 잘못된 형식 시 자동 수정 기능
+- 버전 우선순위 관리 시스템
+
+#### 3. 캐시 관리
+- Statusline 버전 캐시 자동 클리어
+- 다중 캐시 소스 통합 관리
+- 성능 최적화를 위한 지능형 캐시
+
+#### 4. 품질 검증 강화
+- 기존 품질 검사에 버전 일관성 검사 추가
+- 릴리즈 전 버전 상태 자동 검증
+- 버전 동기화 실패 시 자동 복구
+
+### 통합 워크플로우
+
+```
+[릴리즈 시작] → 버전 관리 메뉴 선택
+        ↓
+[버전 타입 선택] → patch/minor/major/custom
+        ↓
+[버전 동기화] → 자동 파일 업데이트
+        ↓
+[품질 검증] → 코드+버전 일관성 검사
+        ↓
+[Git 커밋] → 자동 커밋 메시지 생성
+        ↓
+[Git 태그] → 자동 태그 생성
+        ↓
+[배포 준비] → PyPI 릴리즈 준비
+```
+
+### API 통합
+
+본 명령어는 다음 내부 API를 통합했습니다:
+
+- `moai_adk.core.version_sync.VersionSynchronizer`
+- `moai_adk.statusline.version_reader.VersionReader`
+- Pre-commit 훅 시스템
+- Git 태그 자동화
+
+---
+
+Status: Enhanced with Version Management Integration
 Python Version: 3.14
-MoAI-ADK Version: 0.27.2+
-Last Updated: 2025-11-21
+MoAI-ADK Version: 0.31.3+
+Last Updated: 2025-12-03

@@ -146,37 +146,40 @@ class CustomElementScanner:
         return custom_commands
 
     def _scan_custom_skills(self) -> List[TemplateSkill]:
-        """Scan for custom skills.
+        """Scan for all skills (template + custom).
+
+        Unlike other element types, ALL skills (including moai-* template skills)
+        should be available for restoration since users may have modified them
+        and want to preserve their customizations during updates.
 
         Returns:
-            List of TemplateSkill objects representing custom skill directories
+            List of TemplateSkill objects representing all skill directories
         """
         skills_dir = self.project_path / ".claude" / "skills"
 
         if not skills_dir.exists():
             return []
 
-        custom_skills = []
+        all_skills = []
         template_skills = self.template_elements["skills"]
 
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
-                # Skip if this is a template skill (moai-* pattern)
-                if skill_dir.name.startswith("moai-"):
-                    continue
+                # Include ALL skills (both template moai-* and custom skills)
+                # since users may have modified template skills and want to preserve them
+                relative_path = skill_dir.relative_to(self.project_path)
+                is_template_skill = skill_dir.name in template_skills
 
-                # Check if this is in template skills
-                if skill_dir.name not in template_skills:
-                    relative_path = skill_dir.relative_to(self.project_path)
-                    custom_skills.append(
-                        TemplateSkill(
-                            name=skill_dir.name,
-                            path=relative_path,
-                            has_skill_md=(skill_dir / "SKILL.md").exists()
-                        )
+                all_skills.append(
+                    TemplateSkill(
+                        name=skill_dir.name,
+                        path=relative_path,
+                        has_skill_md=(skill_dir / "SKILL.md").exists(),
+                        is_template=is_template_skill
                     )
+                )
 
-        return custom_skills
+        return all_skills
 
     def _scan_custom_hooks(self) -> List[Path]:
         """Scan for custom hooks.
@@ -244,12 +247,19 @@ class CustomElementScanner:
 
         # Add skills
         for skill in custom_elements["skills"]:
+            skill_display_name = skill.name
+            # Add indicator for template vs custom skills
+            if hasattr(skill, 'is_template') and skill.is_template:
+                skill_display_name = f"{skill.name} (template)"
+            else:
+                skill_display_name = f"{skill.name} (custom)"
+
             display_list.append({
                 "index": index,
                 "type": "skill",
                 "name": skill.name,
                 "path": str(skill.path),
-                "display_name": f"{skill.name} (skill)"
+                "display_name": skill_display_name
             })
             index += 1
 
@@ -284,17 +294,19 @@ class CustomElementScanner:
 class TemplateSkill:
     """Represents a template skill directory."""
 
-    def __init__(self, name: str, path: Path, has_skill_md: bool):
+    def __init__(self, name: str, path: Path, has_skill_md: bool, is_template: bool = False):
         """Initialize a TemplateSkill.
 
         Args:
             name: Name of the skill directory
             path: Path to the skill directory
             has_skill_md: Whether the skill has a SKILL.md file
+            is_template: Whether this skill is part of the MoAI-ADK template
         """
         self.name = name
         self.path = path
         self.has_skill_md = has_skill_md
+        self.is_template = is_template
 
 
 def create_custom_element_scanner(project_path: str | Path) -> CustomElementScanner:
