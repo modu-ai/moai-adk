@@ -128,8 +128,8 @@ class GitOperationsManager:
         self._stats_lock = threading.Lock()
 
         # Git command queue for sequential operations when needed
-        self._command_queue = Queue()
-        self._queue_processor_thread = None
+        self._command_queue: "Queue[Any]" = Queue()
+        self._queue_processor_thread: Optional[threading.Thread] = None
         self._queue_active = True
 
         # Start queue processor thread

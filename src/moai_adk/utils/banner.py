@@ -7,6 +7,9 @@ from rich.console import Console
 
 console = Console()
 
+# Claude Code official terra cotta color
+CLAUDE_TERRA_COTTA = "#DA7756"
+
 MOAI_BANNER = """
 ███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
 ████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
@@ -23,7 +26,7 @@ def print_banner(version: str = "0.3.0") -> None:
     Args:
         version: MoAI-ADK version
     """
-    console.print(f"[cyan]{MOAI_BANNER}[/cyan]")
+    console.print(f"[{CLAUDE_TERRA_COTTA}]{MOAI_BANNER}[/{CLAUDE_TERRA_COTTA}]")
     console.print("[dim]  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred[/dim]\n")
     console.print(f"[dim]  Version: {version}[/dim]\n")
 

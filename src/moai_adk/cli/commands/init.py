@@ -155,7 +155,7 @@ def init(
             console.print(f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n")
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
-            # Language detection happens in /moai:project, so default to None here
+            # Language detection happens in /moai:0-project, so default to None here
             # This will become "generic" internally, but Summary will show more helpful message
             if not language:
                 language = None
@@ -283,9 +283,10 @@ def init(
             console.print("\n[cyan]📊 Summary:[/cyan]")
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
             # Show language more clearly - "generic" means auto-detect
-            language_display = "Auto-detect (use /moai:project)" if result.language == "generic" else result.language
+            language_display = "Auto-detect (use /moai:0-project)" if result.language == "generic" else result.language
             console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
-            console.print(f"  [dim]🔧 Mode:[/dim]      {result.mode}")
+            # Show Git Strategy (default: manual = local-only, no auto-branch)
+            console.print(f"  [dim]🔀 Git:[/dim]       manual (github-flow, branch: manual)")
             console.print(f"  [dim]🌍 Locale:[/dim]    {result.locale}")
             console.print(f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created")
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
@@ -311,10 +312,10 @@ def init(
                 console.print("[cyan]What is optimized=false?[/cyan]")
                 console.print("  • Template version changed (you get new features)")
                 console.print("  • Your previous settings are safe (backed up)")
-                console.print("  • Next: Run /moai:project to merge")
+                console.print("  • Next: Run /moai:0-project to merge")
                 console.print()
                 console.print("[cyan]What Happens Next:[/cyan]")
-                console.print("  1. Run [bold]/moai:project[/bold] in Claude Code")
+                console.print("  1. Run [bold]/moai:0-project[/bold] in Claude Code")
                 console.print("  2. System intelligently merges old settings + new template")
                 console.print("  3. After successful merge → optimized becomes true")
                 console.print("  4. You're ready to continue developing\n")
@@ -322,10 +323,10 @@ def init(
             console.print("\n[cyan]🚀 Next Steps:[/cyan]")
             if not is_current_dir:
                 console.print(f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project")
-                console.print("  [blue]2.[/blue] Run [bold]/moai:project[/bold] in Claude Code for full setup")
+                console.print("  [blue]2.[/blue] Run [bold]/moai:0-project[/bold] in Claude Code for full setup")
                 console.print("     (Configure: mode, language, report generation, etc.)")
             else:
-                console.print("  [blue]1.[/blue] Run [bold]/moai:project[/bold] in Claude Code for full setup")
+                console.print("  [blue]1.[/blue] Run [bold]/moai:0-project[/bold] in Claude Code for full setup")
                 console.print("     (Configure: mode, language, report generation, etc.)")
 
             if not is_current_dir:

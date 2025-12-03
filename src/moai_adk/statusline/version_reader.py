@@ -201,6 +201,8 @@ class VersionReader:
         """
         Synchronous version getter for performance-critical paths.
 
+        Priority: installed package version > config file version > fallback
+
         Returns:
             Version string
         """
@@ -214,7 +216,14 @@ class VersionReader:
                 self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
                 return version
 
-            # Read from config file
+            # Priority 1: Try installed package version first (most accurate)
+            version = self._get_package_version()
+            if version:
+                self._update_cache(version, VersionSource.CONFIG_FILE)
+                self._cache_stats["misses"] += 1
+                return version
+
+            # Priority 2: Read from config file
             version = self._read_version_from_config_sync()
             if not version:
                 version = self._get_fallback_version()
@@ -233,6 +242,8 @@ class VersionReader:
         """
         Async version getter for better performance.
 
+        Priority: installed package version > config file version > fallback
+
         Returns:
             Version string
         """
@@ -246,7 +257,14 @@ class VersionReader:
                 self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
                 return version
 
-            # Read from config file asynchronously
+            # Priority 1: Try installed package version first (most accurate)
+            version = self._get_package_version()
+            if version:
+                self._update_cache(version, VersionSource.CONFIG_FILE)
+                self._cache_stats["misses"] += 1
+                return version
+
+            # Priority 2: Read from config file asynchronously
             version = await self._read_version_from_config_async()
             if not version:
                 version = self._get_fallback_version()

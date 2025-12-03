@@ -121,7 +121,7 @@ class UnifiedTimeoutManager:
         self._signal_lock = threading.Lock()
 
         # Resource monitoring
-        self._memory_tracker = {}
+        self._memory_tracker: Dict[str, Any] = {}
         self._cleanup_registry: Set[str] = set()
 
         # Default timeout configurations
@@ -264,7 +264,9 @@ class UnifiedTimeoutManager:
         with self._signal_lock:
             # Register our signal handler if not already done
             if self._original_signal_handler is None:
-                self._original_signal_handler = signal.signal(signal.SIGALRM, self._unix_signal_handler)
+                self._original_signal_handler = signal.signal(  # type: ignore[assignment]
+                    signal.SIGALRM, self._unix_signal_handler
+                )
 
             # Set alarm for this session
             signal.alarm(int(session.timeout_seconds))
@@ -333,7 +335,7 @@ class UnifiedTimeoutManager:
         if not config:
             config = self.get_timeout_config(hook_name)
 
-        last_exception = None
+        last_exception: Optional[Exception] = None
 
         for attempt in range(config.retry_count + 1):
             session = self.create_timeout_session(hook_name, config)

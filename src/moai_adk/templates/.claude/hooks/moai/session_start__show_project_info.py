@@ -526,10 +526,8 @@ def get_language_info(config: dict) -> dict:
     conversation_lang = lang_config.get("conversation_language", "en")
     lang_name = lang_config.get("conversation_language_name", "Unknown")
 
-    # Language status indicator
-    status = "✅ Active" if conversation_lang != "en" else "🌐 English"
-
-    return {"conversation_language": conversation_lang, "language_name": lang_name, "status": status}
+    # Language status indicator (removed Active indicator for cleaner output)
+    return {"conversation_language": conversation_lang, "language_name": lang_name}
 
 
 def load_user_personalization() -> dict:
@@ -672,10 +670,15 @@ def format_session_output() -> str:
     # Load user personalization settings
     personalization = load_user_personalization()
 
-    # Get MoAI version
-    moai_version = "unknown"
-    if config:
-        moai_version = config.get("moai", {}).get("version", "unknown")
+    # Get MoAI version from installed package (not config.json)
+    try:
+        from moai_adk import __version__ as installed_version
+        moai_version = installed_version
+    except ImportError:
+        # Fallback to config version if package import fails
+        moai_version = "unknown"
+        if config:
+            moai_version = config.get("moai", {}).get("version", "unknown")
 
     # Get language info
     lang_info = get_language_info(config)
@@ -686,17 +689,17 @@ def format_session_output() -> str:
     # Check for version updates (uses Phase 1 cache)
     version_status, _has_update = check_version_update()
 
-    # Format output with each item on separate line
+    # Format output with each item on separate line (reordered per user request)
     output = [
         "🚀 MoAI-ADK Session Started",
         f"   📦 Version: {moai_version} {version_status}",
-        f"   🌿 Branch: {git_info['branch']}",
-        # FIX #2: Add Git Strategy information
-        f"   🔧 Git Flow: {git_strategy['git_flow']} | Auto Branch: {git_strategy['auto_branch']}",
         f"   🔄 Changes: {git_info['changes']}",
         f"   🎯 SPEC: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']:.0f}%)",
+        f"   🌿 Branch: {git_info['branch']}",
+        # FIX #2: Add Git Strategy information
+        f"   🔧 Github-Flow: {git_strategy['git_flow']} | Auto Branch: {git_strategy['auto_branch']}",
         f"   🔨 Last Commit: {git_info['last_commit']}",
-        f"   🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']}) {lang_info['status']}",
+        f"   🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']})",
     ]
 
     # FIX #5: Add personalization or setup guidance (never show template variables)

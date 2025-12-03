@@ -1108,7 +1108,7 @@ def _prompt_custom_files_restore(
     custom_hooks: list[str],
     yes: bool = False,
 ) -> dict[str, list[str]]:
-    """Interactive questionary multi-select for custom files restore (opt-in default).
+    """Interactive fuzzy checkbox for custom files restore with search support.
 
     Args:
         custom_commands: List of custom command file names
@@ -1119,8 +1119,6 @@ def _prompt_custom_files_restore(
     Returns:
         Dictionary with selected files grouped by type.
     """
-    import questionary
-
     # If no custom files, skip UI
     if not (custom_commands or custom_agents or custom_hooks):
         return {
@@ -1138,33 +1136,68 @@ def _prompt_custom_files_restore(
             "hooks": [],
         }
 
-    # Build checkbox choices grouped by type
-    from questionary import Choice, Separator
+    # Try to use new UI, fallback to questionary if import fails
+    try:
+        from moai_adk.cli.ui.prompts import create_grouped_choices, fuzzy_checkbox
 
-    choices: list[Union[Separator, Choice]] = []
+        # Build grouped choices for fuzzy checkbox
+        groups: dict[str, list[dict[str, str]]] = {}
 
-    if custom_commands:
-        choices.append(Separator("Commands (.claude/commands/moai/)"))
-        for cmd in custom_commands:
-            choices.append(Choice(title=cmd, value=f"cmd:{cmd}"))
+        if custom_commands:
+            groups["Commands (.claude/commands/moai/)"] = [
+                {"name": cmd, "value": f"cmd:{cmd}"} for cmd in custom_commands
+            ]
 
-    if custom_agents:
-        choices.append(Separator("Agents (.claude/agents/)"))
-        for agent in custom_agents:
-            choices.append(Choice(title=agent, value=f"agent:{agent}"))
+        if custom_agents:
+            groups["Agents (.claude/agents/)"] = [
+                {"name": agent, "value": f"agent:{agent}"} for agent in custom_agents
+            ]
 
-    if custom_hooks:
-        choices.append(Separator("Hooks (.claude/hooks/moai/)"))
-        for hook in custom_hooks:
-            choices.append(Choice(title=hook, value=f"hook:{hook}"))
+        if custom_hooks:
+            groups["Hooks (.claude/hooks/moai/)"] = [
+                {"name": hook, "value": f"hook:{hook}"} for hook in custom_hooks
+            ]
 
-    console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
-    console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
+        choices = create_grouped_choices(groups)
 
-    selected = questionary.checkbox(
-        "Select custom files to restore:",
-        choices=choices,
-    ).ask()
+        console.print("\n[#DA7756]📦 Custom files detected in backup:[/#DA7756]")
+        console.print("[dim]   Use fuzzy search to find files quickly[/dim]\n")
+
+        selected = fuzzy_checkbox(
+            "Select custom files to restore:",
+            choices=choices,
+            instruction="[Space] Toggle  [Tab] All  [Enter] Confirm  [Type to search]",
+        )
+
+    except ImportError:
+        # Fallback to questionary if new UI not available
+        import questionary
+        from questionary import Choice, Separator
+
+        choices_legacy: list[Union[Separator, Choice]] = []
+
+        if custom_commands:
+            choices_legacy.append(Separator("Commands (.claude/commands/moai/)"))
+            for cmd in custom_commands:
+                choices_legacy.append(Choice(title=cmd, value=f"cmd:{cmd}"))
+
+        if custom_agents:
+            choices_legacy.append(Separator("Agents (.claude/agents/)"))
+            for agent in custom_agents:
+                choices_legacy.append(Choice(title=agent, value=f"agent:{agent}"))
+
+        if custom_hooks:
+            choices_legacy.append(Separator("Hooks (.claude/hooks/moai/)"))
+            for hook in custom_hooks:
+                choices_legacy.append(Choice(title=hook, value=f"hook:{hook}"))
+
+        console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
+        console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
+
+        selected = questionary.checkbox(
+            "Select custom files to restore:",
+            choices=choices_legacy,
+        ).ask()
 
     # Parse results
     result_commands = []
@@ -1292,7 +1325,7 @@ def _detect_custom_skills(project_path: Path, template_skills: set[str]) -> list
 
 
 def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[str]:
-    """Interactive questionary multi-select for skill restore (opt-in default).
+    """Interactive fuzzy checkbox for skill restore with search support.
 
     Args:
         custom_skills: List of custom skill names
@@ -1301,12 +1334,10 @@ def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[s
     Returns:
         List of skills user selected to restore.
     """
-    import questionary
-
     if not custom_skills:
         return []
 
-    console.print("\n[cyan]📦 Custom skills detected in backup:[/cyan]")
+    console.print("\n[#DA7756]📦 Custom skills detected in backup:[/#DA7756]")
     for skill in custom_skills:
         console.print(f"   • {skill}")
     console.print()
@@ -1315,10 +1346,25 @@ def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[s
         console.print("[dim]   Skipping restoration (--yes mode)[/dim]\n")
         return []
 
-    selected = questionary.checkbox(
-        "Select skills to restore (none selected by default):",
-        choices=[questionary.Choice(title=skill, checked=False) for skill in custom_skills],
-    ).ask()
+    # Try new UI, fallback to questionary
+    try:
+        from moai_adk.cli.ui.prompts import fuzzy_checkbox
+
+        choices = [{"name": skill, "value": skill} for skill in custom_skills]
+
+        selected = fuzzy_checkbox(
+            "Select skills to restore (type to search):",
+            choices=choices,
+            instruction="[Space] Toggle  [Tab] All  [Enter] Confirm  [Type to search]",
+        )
+
+    except ImportError:
+        import questionary
+
+        selected = questionary.checkbox(
+            "Select skills to restore (none selected by default):",
+            choices=[questionary.Choice(title=skill, checked=False) for skill in custom_skills],
+        ).ask()
 
     return selected if selected else []
 
@@ -1853,7 +1899,7 @@ def _validate_template_substitution(project_path: Path) -> None:
         console.print("[red]✗ Template substitution validation failed:[/red]")
         for issue in issues_found:
             console.print(f"   {issue}")
-        console.print("[yellow]💡 Run '/moai:project' to fix template variables[/yellow]")
+        console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
 
@@ -1896,7 +1942,7 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
         if backup_path:
             console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
         else:
-            console.print("[yellow]💡 Run '/moai:project' to fix template variables[/yellow]")
+            console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
         return False
@@ -2110,8 +2156,20 @@ def update(
         # Note: If --check is used, always fetch versions even if --templates-only is also present
         if check or not templates_only:
             try:
-                current = _get_current_version()
-                latest = _get_latest_version()
+                # Try to use new spinner UI
+                try:
+                    from moai_adk.cli.ui.progress import SpinnerContext
+
+                    with SpinnerContext("Checking for updates...") as spinner:
+                        current = _get_current_version()
+                        spinner.update("Fetching latest version from PyPI...")
+                        latest = _get_latest_version()
+                        spinner.success("Version check complete")
+                except ImportError:
+                    # Fallback to simple console output
+                    console.print("[dim]Checking for updates...[/dim]")
+                    current = _get_current_version()
+                    latest = _get_latest_version()
             except RuntimeError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 if not force:
@@ -2304,10 +2362,25 @@ def update(
         else:
             console.print("   [yellow]⚠ Skipping backup (--force)[/yellow]")
 
-        # Sync templates
+        # Sync templates with progress indicator
         try:
-            if not _sync_templates(project_path, force, yes):
-                raise TemplateSyncError("Template sync returned False")
+            # Try to use spinner for visual feedback
+            try:
+                from moai_adk.cli.ui.progress import SpinnerContext
+
+                with SpinnerContext("Syncing templates...") as spinner:
+                    spinner.update("Copying .claude/ templates...")
+                    if not _sync_templates(project_path, force, yes):
+                        raise TemplateSyncError("Template sync returned False")
+                    spinner.update("Restoring user settings...")
+                    _restore_user_settings(project_path, preserved_settings)
+                    spinner.success("Template sync complete")
+            except ImportError:
+                # Fallback without spinner
+                console.print("   [cyan]Syncing templates...[/cyan]")
+                if not _sync_templates(project_path, force, yes):
+                    raise TemplateSyncError("Template sync returned False")
+                _restore_user_settings(project_path, preserved_settings)
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")
             _show_template_sync_failure_help()
@@ -2317,9 +2390,6 @@ def update(
             _show_template_sync_failure_help()
             raise click.Abort()
 
-        # Restore user-specific settings after sync
-        _restore_user_settings(project_path, preserved_settings)
-
         console.print("   [green]✅ .claude/ update complete[/green]")
         console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
@@ -2327,7 +2397,7 @@ def update(
         console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
 
         console.print("\n[green]✓ Update complete![/green]")
-        console.print("[cyan]ℹ️  Next step: Run /moai:project update to optimize template changes[/cyan]")
+        console.print("[cyan]ℹ️  Next step: Run /moai:0-project update to optimize template changes[/cyan]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")

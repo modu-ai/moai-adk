@@ -537,7 +537,7 @@ class ConfigurationValidator:
         lines = ["📋 Configuration Validation Report", ""]
 
         # Group issues by severity
-        by_level = {}
+        by_level: Dict[ValidationLevel, List[ValidationIssue]] = {}
         for issue in issues:
             if issue.level not in by_level:
                 by_level[issue.level] = []
