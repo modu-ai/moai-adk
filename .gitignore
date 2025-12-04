@@ -1,80 +1,134 @@
-# Build artifacts
+# ============================================
+# MoAI-ADK Package Distribution .gitignore
+# Version: 0.32.3
+# ============================================
+
+# ===========================================
+# Build Artifacts & Distribution
+# ===========================================
 build/
 dist/
 *.egg-info/
 *.egg
+*.eggs
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+MANIFEST
+*.pyd
 
-# Cache
+# ===========================================
+# Python Cache & Bytecode
+# ===========================================
 __pycache__/
-.pytest_cache/
 *.pyc
 *.pyo
-node_modules/
-*.tsbuildinfo
-.tscache/
+*.pot
+*.po
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
 
-# Backups
-.moai-backups/
-/backups/
-*.backup/
-*-backup/
-*_backup_*/
-hooks_backup_*/
-docs_backup_*/
-
-# Virtual environment
+# ===========================================
+# Virtual Environments
+# ===========================================
 venv/
 .venv/
 env/
 .env/
 
-# IDE
+# ===========================================
+# Test Coverage
+# ===========================================
+.coverage
+coverage.json
+htmlcov/
+htmlcov_spec/
+
+# ===========================================
+# IDE & Editors
+# ===========================================
 .vscode/
 .idea/
+.idea_modules/
 *.swp
 *.swo
+*.sw?
 *~
+.#*
 *.sublime-workspace
 *.sublime-project
-.vscode/settings.json
-.vscode/launch.json
-.idea/workspace.xml
-.idea/misc.xml
+.project
+.pydevproject
+.settings/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.cursor/
 
-# OS
+# ===========================================
+# OS Files
+# ===========================================
 .DS_Store
-Thumbs.db
-desktop.ini
 .AppleDouble
 .LSOverride
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 ._*
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+[Ss]ystem32/
+.directory
 
-# Logs
+# ===========================================
+# Logs & Temporary Files
+# ===========================================
 *.log
-logs/
 *.log.*
-
-# Documentation
-docs/
-
-# Temporary files
+logs/
 *.tmp
 *.temp
 *.bak
 *.backup
-*~
-.#*
-
-# Database files
 *.db
 *.sqlite
 *.sqlite3
 *.dbm
 *.rdb
 
-# Secrets and credentials (CRITICAL)
+# ===========================================
+# Backups (All backup directories)
+# ===========================================
+/backups/
+.moai-backups/
+*.backup/
+*-backup/
+*_backup_*/
+hooks_backup_*/
+docs_backup_*/
+
+# ===========================================
+# Secrets and Credentials (CRITICAL)
+# ===========================================
 .env
 .env.*
+!.env.example
 .env.local
 .env.*.local
 .env.production.local
@@ -89,9 +143,8 @@ credentials/
 *.p12
 *.jks
 
-# Private keys and certificates (specific patterns to avoid false positives)
+# Private keys (specific patterns to avoid false positives)
 # FIXED: Issue #237 - Replaced overly broad *.key pattern
-# Old pattern caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
 *-key.*
 *_key.*
 *.key.*
@@ -112,153 +165,44 @@ secret-*.*
 google-credentials.json
 firebase-key.json
 
-# API Keys and Tokens (CRITICAL - SECURITY)
-# Google APIs
-GEMINI_API_KEY=*
-AIzaSy*
-gsk_*
-sk_*
-# OpenAI
-sk-*
-# Anthropic
-sk-ant-*
-# AWS
-AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=*
-# Azure
-azure_credentials*
-# JWT & Bearer tokens
-*_token=*
-*_secret=*
-bearer_token*
-access_token*
-refresh_token*
+# API Keys and Tokens (file patterns only)
+# Note: Actual key patterns are checked by pre-commit hooks
+*_api_key.txt
+*_api_key.json
+*.credentials
+*.tokens
 
-# Skill-specific credentials (CRITICAL)
+# Test credentials
+test_*_credentials.json
+test_*_keys.json
+mock_api_response_*.json
+
+# ===========================================
+# Claude Code Configuration
+# ===========================================
+.claude/local/
+.claude/settings.local.json
+.claude/settings.local.*.json
+.claude/.venv/
+.claude/.pytest_cache/
+.claude/.env.local*
+
+# Skill-specific credentials
 .claude/skills/*/.env*
 .claude/skills/*/secrets/
 .claude/skills/*/*/*secret*
 .claude/skills/*/*/*key*
 .claude/skills/*/*/*token*
 
-# Test credentials and mock data with real keys
-test_*_credentials.json
-test_*_keys.json
-mock_api_response_*.json
-
-# Test coverage
-.coverage
-coverage.json
-htmlcov/
-htmlcov_spec/
-
-
-# Environment variables and deployment secrets
-.vercel/
-.vercel/project.json
-.netlify/
-.netlify/state.json
-.firebase/
-.mypy_cache
-.mypy_cache/
-.playwright-mcp
-.ruff_cache
-.uv_cache
-.uv-cache
-.venv_issue43_py313
-
-# Python specific
-*.egg
-*.eggs
-*.pot
-*.po
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Node specific
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
-
-# Build tools
-.turbo/
-.next/
-out/
-.nuxt/
-dist-ssr/
-*.local
-
-# Editor directories and files
-.DS_Store
-.idea/
-.idea_modules/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.project
-.pydevproject
-.settings/
-
-# Mac
-.AppleDouble
-.LSOverride
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Windows
-[Dd]esktop.ini
-[Ss]ystem32/
-Thumbs.db
-ehthumbs.db
-
-# Linux
-.directory
-
-# CI/CD
-.github/workflows/*.yml.bak
-.gitlab-ci.yml.bak
-
-# Package lock files (uv.lock excluded for package distribution)
-uv.lock
-
-# Local configuration files
-.claude/local/
-.claude/settings.local.json
-
-# Prevent .venv and cache in .claude directory
-.claude/.venv/
-.claude/.pytest_cache/
-
-# .moai/ directory management (ROOT ONLY - leading slash)
-# Tracked in git: config/, memory/, scripts/, specs/
-# User-generated content: logs/, cache/, reports/, etc.
+# ===========================================
+# .moai/ Directory Management (ROOT ONLY)
 # Template .moai (src/moai_adk/templates/.moai/) is fully tracked
+# ===========================================
+
+# Exclude all .moai/* by default
 /.moai/*
+
+# Include tracked directories
 !/.moai/config/
 !/.moai/config/**
 !/.moai/memory/
@@ -268,7 +212,7 @@ uv.lock
 !/.moai/specs/
 !/.moai/specs/**
 
-# .moai local-only directories (explicitly excluded - ROOT ONLY)
+# Exclude local-only directories (explicitly)
 /.moai/cache/
 /.moai/logs/
 /.moai/docs/
@@ -276,14 +220,6 @@ uv.lock
 /.moai/analytics/
 /.moai/archive/
 /.moai/archived-skills/
-
-# .moai/scripts local development scripts (not in package - ROOT ONLY)
-/.moai/scripts/phase*.py
-/.moai/scripts/phase*.sh
-/.moai/scripts/sync-*.sh
-/.moai/scripts/sync-*.py
-/.moai/scripts/*sync*.sh
-/.moai/scripts/__pycache__/
 /.moai/backups/
 /.moai/error_logs/
 /.moai/indexes/
@@ -292,45 +228,63 @@ uv.lock
 /.moai/release/
 /.moai/research/
 /.moai/templates/
+/.moai/rollbacks/
+/.moai/work/
+/.moai/temp/
 
-# @CLAUDE.local.md is tracked (local development guide)
-!@CLAUDE.local.md
+# Exclude local development scripts
+/.moai/scripts/phase*.py
+/.moai/scripts/phase*.sh
+/.moai/scripts/sync-*.sh
+/.moai/scripts/sync-*.py
+/.moai/scripts/*sync*.sh
+/.moai/scripts/__pycache__/
 
-# Documentation site files (not related to package distribution)
-theme.config.tsx
-.cursor/
-# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
-# .moai local-only directories (user projects only)
-.claude/settings.local.*.json
-# Environment Variables & Secrets
-!.env.example
-# OS Files
-# Version: 0.28.0
-# .moai local development scripts (not distributed)
-.moai/work/
-.moai/temp/
-.claude/.env.local*
+# ===========================================
 # Node.js (for docs/Nextra)
-.ruff_cache/
-# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
-# Claude Code Skills Secrets
-# Claude Code Local Configuration
-# ============================================
-# IDE & Editors
-# uv.lock is intentionally included for reproducible builds
-# ---------------------------------------------
-# API credentials patterns
-# Package Distribution
-# MoAI-ADK Package Distribution .gitignore
-# uv.lock
-.uv-cache/
-# Logs & Temporary Files
-# Add to .gitignore if needed per project
-# MoAI Directory Management
-# Python Cache & Database
+# ===========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+.tscache/
+
+# ===========================================
+# Build Tools & Frameworks
+# ===========================================
+.turbo/
+.next/
+out/
+.nuxt/
+dist-ssr/
+*.local
+
+# ===========================================
+# Deployment & CI/CD
+# ===========================================
+.vercel/
+.netlify/
+.firebase/
+.github/workflows/*.yml.bak
+.gitlab-ci.yml.bak
+
+# ===========================================
+# Package Manager
+# ===========================================
+uv.lock
 .uv_cache/
-*.pyd
-# Purpose: Essential patterns for user projects
-# Virtual Environments
-# Build Artifacts
-# Test Coverage
+.uv-cache/
+
+# ===========================================
+# Miscellaneous
+# ===========================================
+.playwright-mcp
+.venv_issue43_py313
+theme.config.tsx
+docs/
+
+# Keep local development guide tracked
+!CLAUDE.local.md
