@@ -2365,25 +2365,14 @@ def update(
         else:
             console.print("   [yellow]⚠ Skipping backup (--force)[/yellow]")
 
-        # Sync templates with progress indicator
+        # Sync templates (NO spinner - user interaction may be required)
+        # SpinnerContext blocks stdin, causing hang when click.confirm() is called
         try:
-            # Try to use spinner for visual feedback
-            try:
-                from moai_adk.cli.ui.progress import SpinnerContext
-
-                with SpinnerContext("Syncing templates...") as spinner:
-                    spinner.update("Copying .claude/ templates...")
-                    if not _sync_templates(project_path, force, yes):
-                        raise TemplateSyncError("Template sync returned False")
-                    spinner.update("Restoring user settings...")
-                    _restore_user_settings(project_path, preserved_settings)
-                    spinner.success("Template sync complete")
-            except ImportError:
-                # Fallback without spinner
-                console.print("   [cyan]Syncing templates...[/cyan]")
-                if not _sync_templates(project_path, force, yes):
-                    raise TemplateSyncError("Template sync returned False")
-                _restore_user_settings(project_path, preserved_settings)
+            console.print("   [cyan]Syncing templates...[/cyan]")
+            if not _sync_templates(project_path, force, yes):
+                raise TemplateSyncError("Template sync returned False")
+            _restore_user_settings(project_path, preserved_settings)
+            console.print("   [green]✓ Template sync complete[/green]")
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")
             _show_template_sync_failure_help()
