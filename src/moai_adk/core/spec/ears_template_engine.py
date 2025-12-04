@@ -372,7 +372,7 @@ class EARSTemplateEngine:
         # Generate hash for uniqueness
         import hashlib
 
-        file_hash = hashlib.md5(f"{file_name}{domain}{time.time()}".encode()).hexdigest()[:4]
+        file_hash = hashlib.md5(f"{file_name}{domain}{time.time()}".encode(), usedforsecurity=False).hexdigest()[:4]
 
         return f"{domain_upper}-{clean_name[:8]}-{file_hash}"
 
