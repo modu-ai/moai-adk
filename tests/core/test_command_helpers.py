@@ -2,12 +2,12 @@
 Tests for Command Helper Utilities
 """
 
-import json
 import os
 import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 try:
     from moai_adk.core.command_helpers import (
@@ -24,7 +24,7 @@ except ImportError:
 
 @pytest.fixture
 def mock_project():
-    """Create a mock project with config.json"""
+    """Create a mock project with config.yaml"""
     with tempfile.TemporaryDirectory() as tmpdir:
         project_root = Path(tmpdir)
 
@@ -32,19 +32,21 @@ def mock_project():
         (project_root / ".moai" / "config").mkdir(parents=True)
         (project_root / ".moai" / "memory" / "command-state").mkdir(parents=True)
 
-        # Create config.json
+        # Create config.yaml
         config = {
             "project": {
                 "name": "TestProject",
                 "mode": "personal",
-                "owner": "@testuser",
+            },
+            "github": {
+                "profile_name": "@testuser",
             },
             "language": {"conversation_language": "en"},
         }
 
-        config_path = project_root / ".moai" / "config" / "config.json"
+        config_path = project_root / ".moai" / "config" / "config.yaml"
         with open(config_path, "w") as f:
-            json.dump(config, f, indent=2)
+            yaml.dump(config, f)
 
         yield str(project_root)
 
@@ -58,11 +60,11 @@ class TestMetadataExtraction:
 
         assert metadata["project_name"] == "TestProject"
         assert metadata["mode"] == "personal"
-        assert metadata["owner"] == "@testuser"
+        assert metadata["github_profile"] == "@testuser"
         assert metadata["language"] == "en"
 
     def test_extract_metadata_missing_config(self):
-        """Test error handling when config.json is missing"""
+        """Test error handling when config.yaml is missing"""
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(FileNotFoundError) as exc_info:
                 extract_project_metadata(tmpdir)
@@ -151,7 +153,7 @@ class TestFileValidation:
         """Test validation of existing files"""
         # Create test files
         test_files = [
-            ".moai/config/config.json",
+            ".moai/config/config.yaml",
         ]
 
         validated = validate_phase_files(test_files, mock_project)
@@ -179,7 +181,7 @@ class TestContextSaving:
     def test_save_context_success(self, mock_project):
         """Test successful context saving"""
         outputs = {"test": "data"}
-        files = [".moai/config/config.json"]
+        files = [".moai/config/config.yaml"]
 
         saved_path = save_command_context(
             phase_name="0-project",
@@ -194,6 +196,8 @@ class TestContextSaving:
             assert saved_path.endswith(".json")
 
             # Verify content
+            import json
+
             with open(saved_path, "r") as f:
                 data = json.load(f)
 
@@ -261,16 +265,16 @@ class TestEdgeCases:
                 "language": {},  # Missing conversation_language
             }
 
-            config_path = project_root / ".moai" / "config" / "config.json"
+            config_path = project_root / ".moai" / "config" / "config.yaml"
             with open(config_path, "w") as f:
-                json.dump(incomplete_config, f)
+                yaml.dump(incomplete_config, f)
 
             result = extract_project_metadata(str(project_root))
 
             # Verify default values applied
             assert result["project_name"] == "Unknown"
             assert result["mode"] == "personal"
-            assert result["owner"] == "@user"
+            assert result["github_profile"] == ""
             assert result["language"] == "en"
 
     def test_detect_tech_stack_no_indicators(self):
@@ -332,7 +336,7 @@ class TestEdgeCases:
     def test_validate_phase_files_mixed_valid_invalid(self, mock_project):
         """Test validation with mix of valid and invalid paths"""
         mixed_paths = [
-            ".moai/config/config.json",  # Valid
+            ".moai/config/config.yaml",  # Valid
             "../../../etc/passwd",  # Invalid - path traversal
             ".moai/memory/test.json",  # Valid but may not exist
         ]
