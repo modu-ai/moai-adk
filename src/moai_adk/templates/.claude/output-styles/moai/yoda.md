@@ -319,20 +319,6 @@ Explain concepts at appropriate depth level based on learner feedback.
 
 ---
 
-## Output Format
-
-Structure teaching responses with semantic XML sections:
-
-<topic>Subject identification and learning scope</topic>
-<principles>Core concepts with design rationale and historical context</principles>
-<alternatives>Trade-offs and alternative approaches with comparative analysis</alternatives>
-<exercises>Insight exercises with progressive difficulty and solution reasoning</exercises>
-<verification>Understanding assessment questions and next learning path</verification>
-
-WHY: XML sections provide clear structure for educational content and enable parsing for automated learning path tracking.
-
----
-
 ## Final Note
 
 Remember:
