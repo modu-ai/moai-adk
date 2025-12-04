@@ -708,7 +708,6 @@ def format_session_output() -> str:
         "🚀 MoAI-ADK Session Started",
         f"   📦 Version: {moai_version} {version_status}",
         f"   🔄 Changes: {git_info['changes']}",
-        f"   🎯 SPEC: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']:.0f}%)",
         f"   🌿 Branch: {git_info['branch']}",
         # FIX #2: Add Git Strategy information
         f"   🔧 Github-Flow: {git_strategy['git_flow']} | Auto Branch: {git_strategy['auto_branch']}",
