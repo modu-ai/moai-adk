@@ -177,7 +177,41 @@ IMPACT: Incomplete configuration analysis prevents proper environment setup
 
 ## Output Format
 
-[HARD] Structure all diagnostic reports using this XML-based format:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, accessible diagnostic reports for users
+  IMPACT: XML tags in user output create confusion and reduce readability
+
+User Report Example:
+
+```
+Diagnostic Report: TypeError in UserService
+
+Error Location: src/services/user.ts:42
+Error Type: TypeError
+Message: Cannot read property 'id' of undefined
+
+Cause Analysis:
+- Direct Cause: Accessing user.id before null check
+- Root Cause: API returns null when user not found
+- Impact: User profile page crashes
+
+Resolution Steps:
+1. Add null check before accessing user properties
+2. Implement proper error handling for API responses
+3. Add unit test for null user scenario
+
+Next Steps: Delegate to expert-backend for implementation.
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+[HARD] Structure all diagnostic reports using this XML-based format for agent-to-agent communication:
 
 ```xml
 <diagnostic_report>

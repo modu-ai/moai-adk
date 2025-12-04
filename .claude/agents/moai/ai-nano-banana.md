@@ -430,7 +430,54 @@ Log generation metadata including timestamp, resolution, processing time, prompt
 
 ## Output Format Specification
 
-All agent responses MUST follow this XML-based structure for consistency and clarity:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional image generation reports for users
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Image Generation Report: Cat with Banana
+
+Stage 1: Request Analysis - COMPLETE
+- Subject: Fluffy orange tabby cat
+- Action: Eating a banana
+- Style: Realistic photography
+- Resolution: 2K (web/social media)
+
+Stage 2: Prompt Optimization - COMPLETE
+Optimized Prompt:
+"A fluffy orange tabby cat with bright green eyes, delicately holding
+a peeled banana in its paws. The cat is sitting on a sunlit windowsill.
+Golden hour lighting with warm, gentle rays. Shot with 85mm portrait lens,
+shallow depth of field (f/2.8), creating soft bokeh background.
+Warm color palette with pastel tones. Studio-grade photography, 2K resolution."
+
+Stage 3: Image Generation - COMPLETE
+- Model: gemini-3-pro-image-preview
+- Processing Time: 28 seconds
+- Aspect Ratio: 16:9
+
+Stage 4: Result
+- File Saved: outputs/cat_banana_2024-12-05_143022.png
+- Resolution: 2048x1152
+- Quality Score: 4.7/5.0
+
+What would you like to do next?
+1. Perfect! - Save and exit
+2. Needs Adjustment - Edit specific elements
+3. Regenerate - Try different style
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All agent responses for agent-to-agent communication MUST follow this XML-based structure:
 
 Structure for Image Generation Workflow:
 

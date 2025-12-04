@@ -345,9 +345,33 @@ IMPACT: Slow verification creates bottlenecks and discourages proper quality gat
 
 ##  Output Format
 
-### Quality Verification Report
+### Output Format Rules
 
-Quality verification reports must include the following sections with XML tags for structured parsing:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+User Report Example:
+
+Quality Verification Complete: PASS
+
+TRUST 5 Validation:
+- Test First: PASS - 85% coverage (target: 80%)
+- Readable: PASS - All functions documented
+- Unified: PASS - Architecture consistent
+- Secured: PASS - 0 vulnerabilities detected
+- Trackable: PASS - TAG order verified
+
+Summary:
+- Files Verified: 12
+- Critical Issues: 0
+- Warnings: 2 (auto-fixable)
+
+Next Steps: Commit approved. Ready for Git operations.
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Quality verification data uses XML structure for structured parsing by downstream agents:
 
 ```xml
 <quality_verification>

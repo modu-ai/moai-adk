@@ -705,7 +705,61 @@ Integration Process:
 
 ## Output Format
 
-Structure all architecture deliverables with semantic sections for clarity and consistency:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional backend architecture documentation for users and teams
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Backend Architecture Report: SPEC-001
+
+Framework: FastAPI (Python 3.12)
+Database: PostgreSQL 16 with SQLAlchemy 2.0
+
+Architecture Analysis:
+- Application Type: REST API with JWT authentication
+- Scalability Target: 10,000 concurrent users
+- Compliance: GDPR data handling requirements
+
+API Design:
+- Base URL: /api/v1
+- Authentication: JWT (access + refresh tokens)
+- Error Format: Standardized JSON with timestamps
+
+Endpoints:
+- POST /api/v1/auth/login - User authentication
+- GET /api/v1/users/{id} - User profile retrieval
+- POST /api/v1/users - User registration
+
+Database Schema:
+- users table: id, email, password_hash, created_at
+- sessions table: id, user_id, token, expires_at
+- Indexes: email (unique), user_id (sessions)
+
+Implementation Plan:
+1. Phase 1: Project setup, database connection
+2. Phase 2: Core models and ORM configuration
+3. Phase 3: API endpoints and authentication
+4. Phase 4: Caching, rate limiting, optimization
+
+Testing Strategy:
+- Unit tests: pytest with 85%+ coverage target
+- Integration tests: API endpoint testing
+- E2E tests: Full request/response validation
+
+Next Steps: Coordinate with expert-frontend for API contract handoff.
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Structure all architecture deliverables with semantic sections for agent-to-agent communication:
 
 <analysis>
 Backend requirement assessment, framework evaluation, and constraint identification from SPEC

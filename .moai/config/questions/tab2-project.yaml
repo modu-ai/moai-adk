@@ -1,0 +1,122 @@
+# Tab 2: Project & GitHub Settings
+# Priority: RECOMMENDED
+# Questions: 4 + auto-processing
+
+metadata:
+  id: tab_2_project_info
+  label: "Tab 2: Project Basic Information"
+  description: "Configure project name, description, owner, mode"
+  priority: RECOMMENDED
+  order: 2
+  setting_count: 4
+
+target_sections:
+  - sections/project.yaml
+
+batches:
+  - batch_id: "2.1"
+    label: "Project Metadata"
+    conditional: false
+    questions:
+      # Q1: Project Name
+      - id: project_name
+        question: "What is the project name?"
+        header: "Project Name"
+        field: "project.name"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current name"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Select Other to enter new name"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/project.yaml"
+          path: "project.name"
+
+      # Q2: Project Description
+      - id: project_description
+        question: "What is the project description?"
+        header: "Description"
+        field: "project.description"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current description"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Select Other to enter new description"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/project.yaml"
+          path: "project.description"
+
+      # Q3: GitHub Profile Name
+      - id: github_profile_name
+        question: "What is your GitHub profile name?"
+        header: "GitHub Profile"
+        field: "github.profile_name"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current profile"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Select Other to enter GitHub username (e.g., @GoosLab)"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/project.yaml"
+          path: "github.profile_name"
+
+      # Q4: Project Mode
+      - id: project_mode
+        question: "What is the project mode?"
+        header: "Mode"
+        field: "project.mode"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Development"
+            description: "Active development phase"
+            value: "development"
+          - label: "Production"
+            description: "Stable production phase"
+            value: "production"
+          - label: "Maintenance"
+            description: "Maintenance/bug fix phase"
+            value: "maintenance"
+        target:
+          file: "sections/project.yaml"
+          path: "project.mode"
+
+  - batch_id: "2.2"
+    label: "Auto-processed Locale Settings"
+    conditional: false
+    questions: []
+    auto_processing:
+      enabled: true
+      description: "Automatically derived from language.conversation_language"
+      fields:
+        - field: "project.locale"
+          derivation: "auto-map from conversation_language"
+          mapping:
+            ko: "ko_KR"
+            en: "en_US"
+            ja: "ja_JP"
+            es: "es_ES"
+
+validation:
+  checkpoint: "after_tab_2"
+  rules:
+    - name: "validate_project_name"
+      description: "Project name must not be empty"
+      field: "project.name"
+      validation: "required"

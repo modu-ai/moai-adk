@@ -13,7 +13,6 @@ Architecture:
 """
 
 import contextlib
-import json
 import logging
 import platform
 import signal
@@ -23,6 +22,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+import yaml
 from typing import Any, Callable, Dict, Optional, Set
 
 
@@ -151,10 +152,10 @@ class UnifiedTimeoutManager:
     def load_config(self) -> Dict[str, Any]:
         """Load timeout configuration from project config"""
         try:
-            config_file = Path(".moai/config/config.json")
+            config_file = Path(".moai/config/config.yaml")
             if config_file.exists():
                 with open(config_file, "r", encoding="utf-8") as f:
-                    config = json.load(f)
+                    config = yaml.safe_load(f) or {}
                     return config.get("hooks", {}).get("timeout_manager", {})
         except Exception as e:
             self._logger.warning(f"Failed to load timeout config: {e}")

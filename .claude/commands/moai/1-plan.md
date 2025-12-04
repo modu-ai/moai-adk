@@ -16,7 +16,7 @@ model: inherit
 
 ##  Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 @.moai/project/product.md
 @.moai/project/structure.md
 @.moai/project/tech.md
@@ -752,8 +752,8 @@ MANDATORY: Read configuration BEFORE any git operations
 Execute the following config validation (this is pseudo-code representing the actual decision logic):
 
 ```python
-# Step 1A: Read configuration from .moai/config/config.json
-config = read_json(".moai/config/config.json")
+# Step 1A: Read configuration from .moai/config/config.yaml
+config = read_json(".moai/config/config.yaml")
 git_mode = config.get("git_strategy", {}).get("mode")  # "personal" or "team"
 spec_workflow = config.get("github", {}).get("spec_git_workflow")  # Required
 
@@ -1130,7 +1130,7 @@ Display status based on configuration and execution result:
  Automation Approval Offered:
 ─────────────────────────────────────────
 Would you like to enable automatic branch creation for future SPEC creations?
-(This will update your config.json)
+(This will update your config.yaml)
 
  Yes  → Set branch_creation.auto_enabled = true
         → Next SPEC will auto-create feature/SPEC-XXX branch

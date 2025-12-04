@@ -1,0 +1,542 @@
+# Tab 3: Git Strategy & Workflow
+# Priority: RECOMMENDED
+# Questions: 25 (conditional based on mode)
+
+metadata:
+  id: tab_3_git_strategy
+  label: "Tab 3: Git Strategy & Workflow"
+  description: "Configure Personal/Team Git settings, commit/branch strategy"
+  priority: RECOMMENDED
+  order: 3
+  setting_count: 25
+
+target_sections:
+  - sections/git-strategy.yaml
+
+batches:
+  # Batch 3.0: Mode Selection (always shown)
+  - batch_id: "3.0"
+    label: "Workflow Mode Selection"
+    conditional: false
+    questions:
+      - id: git_mode
+        question: "Which Git workflow mode would you like to use?"
+        header: "Git Mode"
+        field: "git_strategy.mode"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Manual (Local)"
+            description: "Local Git only, no GitHub integration"
+            value: "manual"
+          - label: "Personal (GitHub)"
+            description: "GitHub individual project with automation"
+            value: "personal"
+          - label: "Team (GitHub)"
+            description: "GitHub team project with code review"
+            value: "team"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.mode"
+
+  # Batch 3.1: Manual Core Settings
+  - batch_id: "3.1"
+    label: "Manual Core Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "manual"
+    questions:
+      - id: manual_workflow
+        question: "Workflow style for Manual mode?"
+        header: "Workflow"
+        field: "git_strategy.manual.workflow"
+        type: select_single
+        options:
+          - label: "GitHub Flow"
+            description: "Simple branch-based workflow (recommended)"
+            value: "github-flow"
+          - label: "Git Flow"
+            description: "Multi-branch workflow"
+            value: "git-flow"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.manual.workflow"
+
+      - id: manual_environment
+        question: "Environment for Manual mode?"
+        header: "Environment"
+        field: "git_strategy.manual.environment"
+        type: select_single
+        options:
+          - label: "Local"
+            description: "Local Git only, no remote"
+            value: "local"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.manual.environment"
+
+      - id: manual_github_integration
+        question: "Enable GitHub integration for Manual mode?"
+        header: "GitHub"
+        field: "git_strategy.manual.github_integration"
+        type: select_single
+        options:
+          - label: "Disabled"
+            description: "No GitHub features (recommended)"
+            value: false
+          - label: "Enabled"
+            description: "Enable GitHub features"
+            value: true
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.manual.github_integration"
+
+      - id: manual_auto_checkpoint
+        question: "Auto-checkpoint for Manual mode?"
+        header: "Checkpoint"
+        field: "git_strategy.manual.auto_checkpoint"
+        type: select_single
+        options:
+          - label: "Disabled"
+            description: "No automatic checkpoints (recommended)"
+            value: "disabled"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.manual.auto_checkpoint"
+
+  # Batch 3.2: Manual Push Settings
+  - batch_id: "3.2"
+    label: "Manual Push Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "manual"
+    questions:
+      - id: manual_push_to_remote
+        question: "Push to remote for Manual mode?"
+        header: "Push Remote"
+        field: "git_strategy.manual.push_to_remote"
+        type: select_single
+        options:
+          - label: "Disabled"
+            description: "No automatic push (recommended)"
+            value: false
+          - label: "Enabled"
+            description: "Enable automatic push"
+            value: true
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.manual.push_to_remote"
+
+  # Batch 3.3: Personal Core Settings
+  - batch_id: "3.3"
+    label: "Personal Core Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "personal"
+    questions:
+      - id: personal_workflow
+        question: "Workflow style for Personal mode?"
+        header: "Workflow"
+        field: "git_strategy.personal.workflow"
+        type: select_single
+        options:
+          - label: "GitHub Flow"
+            description: "Simple branch-based workflow (recommended)"
+            value: "github-flow"
+          - label: "Git Flow"
+            description: "Multi-branch workflow"
+            value: "git-flow"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.workflow"
+
+      - id: personal_environment
+        question: "Environment for Personal mode?"
+        header: "Environment"
+        field: "git_strategy.personal.environment"
+        type: select_single
+        options:
+          - label: "GitHub"
+            description: "GitHub repository with automation"
+            value: "github"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.environment"
+
+      - id: personal_github_integration
+        question: "Enable GitHub integration for Personal mode?"
+        header: "GitHub"
+        field: "git_strategy.personal.github_integration"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Full GitHub features (recommended)"
+            value: true
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.github_integration"
+
+      - id: personal_auto_branch
+        question: "Auto-create branches for Personal mode?"
+        header: "Auto Branch"
+        field: "git_strategy.personal.auto_branch"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically create feature branches"
+            value: true
+          - label: "Disabled"
+            description: "Manual branch creation"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.auto_branch"
+
+  # Batch 3.4: Personal Commit & Push Settings
+  - batch_id: "3.4"
+    label: "Personal Commit & Push Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "personal"
+    questions:
+      - id: personal_auto_commit
+        question: "Auto-commit for Personal mode?"
+        header: "Auto Commit"
+        field: "git_strategy.personal.auto_commit"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically commit after phase completion"
+            value: true
+          - label: "Disabled"
+            description: "Manual commit"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.auto_commit"
+
+      - id: personal_auto_pr
+        question: "Auto-PR for Personal mode?"
+        header: "Auto PR"
+        field: "git_strategy.personal.auto_pr"
+        type: select_single
+        options:
+          - label: "Disabled"
+            description: "No automatic PR (recommended)"
+            value: false
+          - label: "Enabled"
+            description: "Automatically create PRs"
+            value: true
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.auto_pr"
+
+      - id: personal_auto_push
+        question: "Auto-push for Personal mode?"
+        header: "Auto Push"
+        field: "git_strategy.personal.auto_push"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically push to remote"
+            value: true
+          - label: "Disabled"
+            description: "Manual push"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.auto_push"
+
+  # Batch 3.5: Personal Branch Settings
+  - batch_id: "3.5"
+    label: "Personal Branch Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "personal"
+    questions:
+      - id: personal_branch_prefix
+        question: "Branch prefix for Personal mode?"
+        header: "Prefix"
+        field: "git_strategy.personal.branch_prefix"
+        type: text_input
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current prefix"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Enter new prefix (e.g., feature/SPEC-)"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.branch_prefix"
+
+      - id: personal_main_branch
+        question: "Main branch for Personal mode?"
+        header: "Main Branch"
+        field: "git_strategy.personal.main_branch"
+        type: select_single
+        options:
+          - label: "main"
+            description: "Use 'main' as primary branch (recommended)"
+            value: "main"
+          - label: "master"
+            description: "Use 'master' as primary branch"
+            value: "master"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.personal.main_branch"
+
+  # Batch 3.6: Team Core Settings
+  - batch_id: "3.6"
+    label: "Team Core Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "team"
+    questions:
+      - id: team_workflow
+        question: "Workflow style for Team mode?"
+        header: "Workflow"
+        field: "git_strategy.team.workflow"
+        type: select_single
+        options:
+          - label: "GitHub Flow"
+            description: "Simple branch-based workflow (recommended)"
+            value: "github-flow"
+          - label: "Git Flow"
+            description: "Multi-branch workflow"
+            value: "git-flow"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.workflow"
+
+      - id: team_environment
+        question: "Environment for Team mode?"
+        header: "Environment"
+        field: "git_strategy.team.environment"
+        type: select_single
+        options:
+          - label: "GitHub"
+            description: "GitHub repository with team features"
+            value: "github"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.environment"
+
+      - id: team_github_integration
+        question: "Enable GitHub integration for Team mode?"
+        header: "GitHub"
+        field: "git_strategy.team.github_integration"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Full GitHub team features (required)"
+            value: true
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.github_integration"
+
+      - id: team_auto_branch
+        question: "Auto-create branches for Team mode?"
+        header: "Auto Branch"
+        field: "git_strategy.team.auto_branch"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically create feature branches"
+            value: true
+          - label: "Disabled"
+            description: "Manual branch creation"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.auto_branch"
+
+  # Batch 3.7: Team Commit & PR Settings
+  - batch_id: "3.7"
+    label: "Team Commit & PR Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "team"
+    questions:
+      - id: team_auto_commit
+        question: "Auto-commit for Team mode?"
+        header: "Auto Commit"
+        field: "git_strategy.team.auto_commit"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically commit after phase completion"
+            value: true
+          - label: "Disabled"
+            description: "Manual commit"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.auto_commit"
+
+      - id: team_auto_pr
+        question: "Auto-PR for Team mode?"
+        header: "Auto PR"
+        field: "git_strategy.team.auto_pr"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically create PRs (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Manual PR creation"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.auto_pr"
+
+      - id: team_auto_push
+        question: "Auto-push for Team mode?"
+        header: "Auto Push"
+        field: "git_strategy.team.auto_push"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Automatically push to remote"
+            value: true
+          - label: "Disabled"
+            description: "Manual push"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.auto_push"
+
+  # Batch 3.8: Team Branch & Protection Settings
+  - batch_id: "3.8"
+    label: "Team Branch & Protection Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "team"
+    questions:
+      - id: team_draft_pr
+        question: "Create draft PRs for Team mode?"
+        header: "Draft PR"
+        field: "git_strategy.team.draft_pr"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Create PRs as draft (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Create PRs as ready for review"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.draft_pr"
+
+      - id: team_required_reviews
+        question: "Required reviews for Team mode?"
+        header: "Reviews"
+        field: "git_strategy.team.required_reviews"
+        type: number_input
+        options:
+          - label: "1 reviewer"
+            description: "Minimum 1 approval (recommended)"
+            value: 1
+          - label: "2 reviewers"
+            description: "Minimum 2 approvals"
+            value: 2
+          - label: "Other"
+            description: "Enter custom number"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.required_reviews"
+
+      - id: team_branch_protection
+        question: "Enable branch protection for Team mode?"
+        header: "Protection"
+        field: "git_strategy.team.branch_protection"
+        type: select_single
+        options:
+          - label: "Enabled"
+            description: "Protect main branch (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "No branch protection"
+            value: false
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.branch_protection"
+
+  # Batch 3.9: Team Branch Naming Settings
+  - batch_id: "3.9"
+    label: "Team Branch Naming Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: equals
+      value: "team"
+    questions:
+      - id: team_feature_prefix
+        question: "Feature branch prefix for Team mode?"
+        header: "Prefix"
+        field: "git_strategy.team.feature_prefix"
+        type: text_input
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current prefix"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Enter new prefix (e.g., feature/SPEC-)"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.feature_prefix"
+
+      - id: team_main_branch
+        question: "Main branch for Team mode?"
+        header: "Main Branch"
+        field: "git_strategy.team.main_branch"
+        type: select_single
+        options:
+          - label: "main"
+            description: "Use 'main' as primary branch (recommended)"
+            value: "main"
+          - label: "master"
+            description: "Use 'master' as primary branch"
+            value: "master"
+        target:
+          file: "sections/git-strategy.yaml"
+          path: "git_strategy.team.main_branch"
+
+validation:
+  checkpoint: "after_tab_3"
+  rules:
+    - name: "validate_git_mode_consistency"
+      description: "Validate Personal/Team mode conflicts"
+      conditions:
+        - if: "git_strategy.mode == 'personal'"
+          then: "git_strategy.personal.main_branch != 'develop'"
+          error: "Personal mode should not use 'develop' as main branch"
+        - if: "git_strategy.mode == 'team'"
+          then: "git_strategy.team.branch_protection == true"
+          error: "Team mode should enable branch protection"
+    - name: "validate_branch_naming"
+      description: "Check branch naming consistency"
+      validation: "pattern"
+      fields:
+        - "git_strategy.personal.branch_prefix"
+        - "git_strategy.team.feature_prefix"

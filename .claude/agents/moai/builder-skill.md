@@ -494,9 +494,54 @@ This agent ensures that all created skills follow official Claude Code standards
 
 ## Output Format
 
-### Skill Delivery Structure
+### Output Format Rules
 
-All created skills MUST follow this output format to ensure consistency and discoverability:
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional skill creation reports for users
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Skill Creation Report: python-testing
+
+Skill Structure:
+- SKILL.md: 487 lines (within 500-line limit)
+- reference.md: Extended documentation
+- examples.md: 8 working code examples
+
+Validation Results:
+- Line Count: PASS (487/500)
+- Progressive Disclosure: PASS (Quick, Implementation, Advanced sections)
+- Working Examples: PASS (8 examples verified)
+- Standards Compliance: PASS (Claude Code official requirements)
+- Cross-Model Compatibility: PASS (Haiku and Sonnet verified)
+
+Integration Points:
+- Works Well With: moai-lang-python, moai-workflow-tdd, pytest-patterns
+- Dependencies: pytest, pytest-cov, pytest-asyncio
+- Trigger Scenarios: "testing", "pytest", "unit test", "test coverage"
+
+Quality Metrics:
+- Documentation Completeness: 95%
+- Code Example Count: 8
+- Expected Performance: Fast load time, minimal token usage
+
+File Location: .claude/skills/python-testing/SKILL.md
+
+Next Steps:
+1. Test skill activation with sample prompts
+2. Verify integration with related skills
+3. Add to skill catalog documentation
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All created skills for agent-to-agent communication MUST follow this output format:
 
 <skill_delivery>
   <skill_name>{domain}-{function}</skill_name>

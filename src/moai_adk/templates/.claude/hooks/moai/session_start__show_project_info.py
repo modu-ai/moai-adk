@@ -88,7 +88,9 @@ except ImportError:
     import yaml as yaml_fallback
 
     def get_cached_config():
-        config_path = Path(".moai/config/config.yaml")
+        # FIX: Use absolute path from find_project_root() to ensure correct directory
+        project_root = find_project_root()
+        config_path = project_root / ".moai" / "config" / "config.yaml"
         if config_path.exists():
             try:
                 return yaml_fallback.safe_load(config_path.read_text()) or {}

@@ -821,9 +821,50 @@ Confidence: 95% based on complexity analysis
 
 ## Output Format
 
-### Standard Analysis Output Structure [HARD]
+### Output Format Rules
 
-All reasoning outputs SHALL follow this XML-based structure to ensure consistency and traceability:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+User Report Example:
+
+Architecture Analysis Complete: Microservices Migration
+
+Analysis Type: Architecture
+Confidence: 85%
+Status: Validated
+
+Problem Statement:
+Evaluate migration from monolith to microservices architecture.
+
+Reasoning Chain:
+1. Current State Analysis
+   - Monolithic application with 150K LOC
+   - 12 tightly coupled modules identified
+
+2. Migration Assessment
+   - Identified 5 bounded contexts suitable for extraction
+   - Database coupling requires careful handling
+
+3. Risk Evaluation
+   - Data consistency challenges in distributed system
+   - Operational complexity increase
+
+Key Findings:
+1. Domain-driven design boundaries align with business capabilities
+2. Event sourcing recommended for data consistency
+
+Recommendations:
+1. PRIMARY (95% confidence): Start with Customer Service extraction
+   - Rationale: Lowest coupling, highest business value
+   - Implementation: Strangler fig pattern over 3 sprints
+
+Next Steps: Delegate to expert-backend for implementation planning.
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All reasoning outputs use this XML-based structure for consistency and traceability:
 
 ```xml
 <analysis>

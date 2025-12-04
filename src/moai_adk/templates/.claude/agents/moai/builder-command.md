@@ -118,7 +118,51 @@ Create production-quality custom slash commands for Claude Code by maximizing re
 
 ## Output Format
 
-All command generation outputs follow this standardized XML structure for consistency and machine-readability:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional command creation reports for users
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Command Creation Report: database-migrate
+
+Reuse Strategy: COMPOSE (Match Score: 72/100)
+Template Used: 2-run.md
+
+Validation Results:
+- Frontmatter: PASS
+- Structure: PASS (11/11 sections)
+- Agent References: PASS (3 agents verified)
+- Skill References: PASS (2 skills verified)
+- Zero Direct Tool Usage: PASS
+- Quality Gate: PASS
+
+Created Artifacts:
+- Command: .claude/commands/moai/database-migrate.md
+- Agents Referenced: expert-database, manager-git, manager-quality
+- Skills Referenced: moai-domain-database, moai-foundation-core
+
+Summary:
+Status: READY
+The database-migrate command has been successfully created and validated.
+All quality gates passed.
+
+Next Steps:
+1. Approve and finalize - Command is ready to use
+2. Test command - Try executing the command
+3. Modify command - Make changes to the command
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All command generation outputs for agent-to-agent communication follow this standardized XML structure:
 
 ```xml
 <command-generation>

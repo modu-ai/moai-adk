@@ -392,9 +392,45 @@ All output plans MUST satisfy these criteria:
 
 ## Output Format
 
-### Output Delivery Mechanism
+### Output Format Rules
 
-All implementation plans MUST be delivered using the following XML-tagged structure for clarity and machine-parsability:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+User Report Example:
+
+Implementation Plan: SPEC-001 User Authentication
+
+Created: 2025-12-05
+SPEC Version: 1.0.0
+Status: READY FOR APPROVAL
+
+Overview:
+- Implement JWT-based authentication system
+- Scope: Login, logout, token refresh endpoints
+- Exclusions: Social auth (future SPEC)
+
+Technology Stack:
+- FastAPI: 0.118.3 (async support, OpenAPI)
+- PyJWT: 2.9.0 (token handling)
+- SQLAlchemy: 2.0.35 (ORM)
+
+TAG Chain:
+1. TAG-001: Database models
+2. TAG-002: Auth service layer
+3. TAG-003: API endpoints
+4. TAG-004: Integration tests
+
+Risks:
+- Token expiration edge cases (Medium)
+- Concurrent session handling (Low)
+
+Approval Required: Proceed with implementation?
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Implementation plans use XML structure for handover to downstream agents:
 
 ```xml
 <implementation_plan>

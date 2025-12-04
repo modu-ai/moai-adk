@@ -97,6 +97,66 @@ WHY: Mode-specific language handling respects existing configuration while enabl
 
 ---
 
+## YAML-Based Question System
+
+### Question Definition Files
+
+All configuration questions are defined in YAML files under .moai/config/questions/:
+
+- _schema.yaml: Schema definition and constraints
+- tab1-user.yaml: User and language settings (3 questions)
+- tab2-project.yaml: Project metadata (4 questions)
+- tab3-git.yaml: Git strategy and workflow (25 conditional questions)
+- tab4-quality.yaml: Quality principles and reports (7 questions)
+- tab5-system.yaml: System and GitHub integration (7 questions)
+
+WHY: YAML-based questions enable consistent structure and easy maintenance.
+
+IMPACT: Question changes require only YAML updates, not code modifications.
+
+### Language-Aware Question Execution
+
+[HARD] When executing questions from .moai/config/questions/*.yaml, translate to user's conversation_language at runtime.
+
+Question files are written in English (source of truth). At execution time:
+- Read user's conversation_language from sections/language.yaml
+- Translate question text, options, and descriptions to user's language
+- Present AskUserQuestion in user's language
+- Store answer values in English (field values remain English)
+
+Example Translation Flow:
+- Question YAML (English): "What is your name?"
+- User Language: Korean (ko)
+- AskUserQuestion presented: Korean translation of question
+- Answer stored: user.name = "GOOS" (value unchanged)
+
+WHY: Single-source English questions with runtime translation reduces maintenance burden.
+
+IMPACT: Adding new languages requires only translation logic, not question file duplication.
+
+### Question Loading Priority
+
+1. Load question definitions from .moai/config/questions/tab*.yaml
+2. Read current values from .moai/config/sections/*.yaml
+3. Present questions with current values as defaults
+4. Store updated values back to sections/*.yaml
+
+### Section File Updates
+
+Configuration values are stored in modular section files:
+- sections/user.yaml: User name (loaded by CLAUDE.md)
+- sections/language.yaml: All language settings (loaded by CLAUDE.md)
+- sections/project.yaml: Project metadata
+- sections/git-strategy.yaml: Git workflow configuration
+- sections/quality.yaml: TDD and quality settings
+- sections/system.yaml: MoAI system settings
+
+WHY: Modular sections enable token-efficient CLAUDE.md loading.
+
+IMPACT: CLAUDE.md loads only user.yaml and language.yaml (~17 lines vs 400+ full config).
+
+---
+
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).

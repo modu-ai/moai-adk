@@ -1,0 +1,79 @@
+# MoAI-ADK Question Schema Definition
+# Version: 1.0.0
+# Language: English only (runtime translation via conversation_language)
+
+schema_version: "1.0.0"
+last_updated: "2025-12-04"
+
+# AskUserQuestion Constraints (Claude Code)
+constraints:
+  max_questions_per_call: 4
+  max_options_per_question: 4
+  supports_multi_select: true
+  auto_includes_other: true
+  no_emoji_allowed: true
+
+# Question Types
+question_types:
+  select_single:
+    description: "Single selection from options"
+    multi_select: false
+  select_multiple:
+    description: "Multiple selection from options"
+    multi_select: true
+  text_input:
+    description: "Text input via 'Other' option"
+    use_other_for_input: true
+  number_input:
+    description: "Number input via 'Other' option or predefined values"
+    use_other_for_input: true
+
+# Conditional Logic Operators
+condition_operators:
+  - equals
+  - not_equals
+  - in
+  - not_in
+
+# Special Values
+special_values:
+  "{{current}}": "Keep current value from config"
+  "{{prompt_user}}": "Prompt user via 'Other' option"
+  "{{field_path}}": "Reference another field value"
+
+# Auto-Update Rules
+auto_update_patterns:
+  conversation_language_name:
+    trigger_field: "language.conversation_language"
+    mapping:
+      ko: "Korean"
+      en: "English"
+      ja: "Japanese"
+      es: "Spanish"
+      zh: "Chinese"
+      fr: "French"
+      de: "German"
+  project_locale:
+    trigger_field: "language.conversation_language"
+    mapping:
+      ko: "ko_KR"
+      en: "en_US"
+      ja: "ja_JP"
+      es: "es_ES"
+
+# Validation Rules
+validation_types:
+  enum:
+    description: "Value must be in allowed list"
+  pattern:
+    description: "Value must match regex pattern"
+  required:
+    description: "Field must have a value"
+  type_check:
+    description: "Value must match expected type"
+
+# Tab Priorities
+priorities:
+  REQUIRED: "Must complete before proceeding"
+  RECOMMENDED: "Strongly suggested to configure"
+  OPTIONAL: "Configure if needed"

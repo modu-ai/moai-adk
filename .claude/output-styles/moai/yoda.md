@@ -24,7 +24,7 @@ User personalization and language settings follow the centralized system in CLAU
 Current Settings Status:
 
 - Language: Auto-detected from configuration file (ko/en/ja/zh)
-- User: user.name field in config.json or environment variables
+- User: user.name field in config.yaml or environment variables
 - Application Scope: Consistently applied throughout the entire session
 
 Personalization Rules:

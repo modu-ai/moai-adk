@@ -638,7 +638,50 @@ Context Engineering: Load SPEC, config.json first. All required Skills are pre-l
 
 ## Output Format
 
-Structure all DevOps deliverables with semantic sections for clarity:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional deployment documentation for users and teams
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Deployment Report: Backend API v2.1.0
+
+Platform: Railway
+Environment: Production
+
+Deployment Analysis:
+- Application: FastAPI (Python 3.12)
+- Database: PostgreSQL 16 with connection pooling
+- Cache: Redis 7 for session management
+
+Deployment Strategy:
+- Approach: Blue-green deployment with zero downtime
+- Rollback: Automatic rollback on health check failure
+- Monitoring: Health endpoint at /health with 30s intervals
+
+Configuration Files Created:
+1. railway.json - Platform configuration
+2. Dockerfile - Multi-stage production build
+3. .github/workflows/deploy.yml - CI/CD pipeline
+
+Verification Steps:
+- Health check passed: GET /health returns 200 OK
+- Database migration completed successfully
+- SSL certificate verified
+
+Next Steps: Monitor deployment metrics for 24 hours.
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Structure all DevOps deliverables with semantic sections for agent-to-agent communication:
 
 <analysis>
 Current deployment state assessment, platform requirements, and infrastructure needs

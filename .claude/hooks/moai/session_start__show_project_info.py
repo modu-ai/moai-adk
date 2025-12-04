@@ -85,13 +85,17 @@ try:
     from core.config_cache import get_cached_config, get_cached_spec_progress
 except ImportError:
     # Fallback to direct functions if cache not available
+    import yaml as yaml_fallback
+
     def get_cached_config():
-        config_path = Path(".moai/config/config.json")
+        # FIX: Use absolute path from find_project_root() to ensure correct directory
+        project_root = find_project_root()
+        config_path = project_root / ".moai" / "config" / "config.yaml"
         if config_path.exists():
             try:
-                return json.loads(config_path.read_text())
-            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
-                # JSON parsing, file read, or encoding errors
+                return yaml_fallback.safe_load(config_path.read_text()) or {}
+            except (yaml_fallback.YAMLError, OSError, UnicodeDecodeError):
+                # YAML parsing, file read, or encoding errors
                 return None
         return None
 

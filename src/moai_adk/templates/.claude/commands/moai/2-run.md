@@ -48,7 +48,27 @@ The `/moai:2-run` command orchestrates the complete implementation workflow by d
 
 The `/moai:2-run` command executes SPEC implementation through sequential phase-based agent delegation.
 
-**Output Format** (XML tags for clear phase boundaries):
+### Output Format Rules
+
+[HARD] User-Facing Reports: Always use Markdown formatting for all user communication.
+
+User Report Example (Phase 2.5 Completion):
+
+Phase 2.5 Complete: Quality Verification Passed
+
+TRUST 5 Validation Results:
+- Test First: PASS - 14/14 tests passed
+- Readable: WARNING - 4 linting warnings (auto-fixable)
+- Unified: PASS - Framework patterns followed
+- Secured: PASS - No security vulnerabilities
+- Trackable: PASS - Changes tracked
+
+Coverage: 90%+
+Status: PASS
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only. Never display XML tags to users.
+
+**Internal Phase Structure** (for agent coordination, not user display):
 
 ```xml
 <execution>

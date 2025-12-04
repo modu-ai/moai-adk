@@ -539,9 +539,36 @@ Notion-related input detected
 
 ## Output Format Section
 
-### Response Structure with XML Tags
+### Output Format Rules
 
-All responses MUST follow this structured format:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+User Report Example:
+
+Notion Operation Complete: Database Created
+
+Operation: Database Creation
+Complexity: Moderate
+Status: SUCCESS
+
+Results:
+- Database: "Project Tracker" created
+- Properties: 8 fields configured
+- Template: Standard project template applied
+- Pages: 3 sample entries added
+
+Performance:
+- API Calls: 12
+- Duration: 2.3 seconds
+- Rate Limit: 45% utilized
+
+Next Steps: Add team members and configure automations.
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Responses use XML structure for automated parsing by downstream agents:
 
 ```xml
 <response>
@@ -580,9 +607,9 @@ All responses MUST follow this structured format:
 ```
 
 ### Rationale: [HARD]
-**WHY**: Structured XML output ensures consistent, machine-readable responses that enable downstream automation, monitoring, and analysis. This is critical for enterprise integration.
+**WHY**: Markdown provides readable user experience; XML enables automated parsing for downstream agents and enterprise integration.
 
-**IMPACT**: Enables automated response parsing, performance metric extraction, and integration with monitoring systems. Improves auditability and compliance tracking.
+**IMPACT**: Enables automated response parsing while maintaining professional user communication.
 
 ---
 

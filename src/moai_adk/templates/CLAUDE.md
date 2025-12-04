@@ -413,24 +413,25 @@ WHY: Session boundaries prevent context overflow and enable parallel processing.
 
 ## User Personalization and Language Settings
 
-### Dynamic Configuration Loading
+User and language configuration is automatically loaded from section files below.
 
-Alfred automatically reads user settings from .moai/config/config.yaml at session start:
+@.moai/config/sections/user.yaml
+@.moai/config/sections/language.yaml
 
-Configuration File Structure:
-- user.name: User name (use default greeting if empty)
-- language.conversation_language: ko, en, ja, zh, ar, vi, nl, etc.
-- language.conversation_language_name: Language display name (auto-generated)
-- language.agent_prompt_language: Internal agent language
-- language.git_commit_messages: Git commit message language
-- language.code_comments: Code comment language
-- language.documentation: Documentation language
-- language.error_messages: Error message language
+### Configuration Structure
+
+Configuration is split into modular section files for token efficiency:
+- sections/user.yaml: User name for personalized greetings
+- sections/language.yaml: All language preferences (conversation, code, docs)
+- sections/project.yaml: Project metadata
+- sections/git-strategy.yaml: Git workflow configuration
+- sections/quality.yaml: TDD and quality settings
+- sections/system.yaml: MoAI system settings
 
 ### Configuration Priority
 
 1. Environment Variables (highest priority): MOAI_USER_NAME, MOAI_CONVERSATION_LANG
-2. Configuration File: .moai/config/config.yaml
+2. Section Files: .moai/config/sections/*.yaml
 3. Default Values: English, default greeting
 
 WHY: Priority hierarchy enables environment-specific overrides while maintaining defaults.
@@ -450,33 +451,6 @@ WHY: Personalization context ensures consistent user experience across agent bou
 - Korean (ko): Formal style, Korean technical terms, full Korean responses
 - English (en): Professional English, clear technical terms, English responses
 - Other Languages: Default to English with target language support when available
-
-### Personalization Implementation Process
-
-Configuration Loading:
-- System automatically reads .moai/config/config.yaml configuration file
-- Parses JSON format data into structured information
-
-Environment Variable Priority:
-- User name: MOAI_USER_NAME environment variable then config file then default
-- Conversation language: MOAI_CONVERSATION_LANG environment variable then config file then default
-- Agent prompt language: MOAI_AGENT_PROMPT_LANG environment variable then config file then default
-
-Configuration Integration:
-- All language settings centrally managed through LanguageConfigResolver
-- Missing values automatically replaced with safe defaults
-- Language display names dynamically generated from language codes
-
-### Configuration System Documentation
-
-Comprehensive implementation guide available in Centralized User Configuration Guide (.moai/docs/centralized-user-configuration-guide.md).
-
-This guide covers:
-- Technical implementation details
-- Migration instructions for output styles
-- Configuration priority system
-- Agent delegation patterns with user context
-- Testing and troubleshooting procedures
 
 ---
 
@@ -542,6 +516,13 @@ WHY: Specialized error handling agents have domain knowledge for efficient resol
 - Error Messages: Per error_messages setting (default: user language)
 - Success Messages: In user language
 
+### Output Format Rules (All Agents)
+
+- [HARD] User-Facing: Always use Markdown for all user communication
+- [HARD] Internal Data: XML tags reserved for agent-to-agent data transfer only
+- [HARD] Never display XML tags in user-facing responses
+- Report results with headers, lists, and clear status indicators
+
 ### Documentation Standards Rules
 
 - [HARD] Use detailed markdown formatting for explanations
@@ -585,14 +566,40 @@ Resume agent abc123 and continue the security implementation from where it left 
 
 ## Output Format
 
-Structure responses with semantic XML sections for clarity:
+### User-Facing Communication (Markdown)
 
-<analysis>Context assessment and requirement understanding</analysis>
-<approach>Selected strategy with rationale</approach>
-<implementation>Concrete actions and deliverables</implementation>
-<verification>Quality checks and validation results</verification>
+All responses to users must use Markdown formatting:
+- Headers for section organization
+- Lists for itemized information
+- Bold and italic for emphasis
+- Code blocks for technical content
 
-WHY: XML sections provide clear structure and enable parsing for automated workflows.
+User Report Example:
+Phase 2.5 Complete: Quality Verification Passed
+
+TRUST 5 Validation Results:
+- Test First: PASS - 14/14 tests passed
+- Readable: WARNING - 4 linting warnings (auto-fixable)
+- Unified: PASS - Next.js 16 patterns followed
+- Secured: PASS - No security vulnerabilities
+- Trackable: PASS - Changes tracked
+
+Coverage: 90%+
+Status: PASS
+
+### Internal Agent Communication (XML)
+
+XML tags are reserved for internal agent-to-agent data transfer only:
+- Phase outputs between workflow stages
+- Structured data for automated parsing
+- Agent response schemas
+
+Internal Data Example (not shown to users):
+phase_output, trust_validation, status tags for inter-agent data transfer
+
+[HARD] Never display XML tags in user-facing responses.
+
+WHY: Markdown provides readable user experience; XML enables structured agent communication.
 
 ---
 

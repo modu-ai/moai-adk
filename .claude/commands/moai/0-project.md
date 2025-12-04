@@ -15,7 +15,7 @@ model: inherit
 
 ## Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 @.moai/project/product.md
 @.moai/project/structure.md
 @.moai/project/tech.md
@@ -72,7 +72,7 @@ IMPACT: Each agent optimizes its domain while maintaining system coherence.
 
 Core Principle: Language configuration originates from moai-adk CLI initialization or update commands.
 
-[HARD] Read language from .moai/config/config.json before starting any mode.
+[HARD] Read language from .moai/config/config.yaml before starting any mode.
 
 WHY: Preserving existing language settings prevents disruption to user experience.
 
@@ -94,6 +94,66 @@ Settings mode: Display current language in Tab 1, allow optional language modifi
 Update mode: Preserve language from backup, perform template optimization.
 
 WHY: Mode-specific language handling respects existing configuration while enabling user choice.
+
+---
+
+## YAML-Based Question System
+
+### Question Definition Files
+
+All configuration questions are defined in YAML files under .moai/config/questions/:
+
+- _schema.yaml: Schema definition and constraints
+- tab1-user.yaml: User and language settings (3 questions)
+- tab2-project.yaml: Project metadata (4 questions)
+- tab3-git.yaml: Git strategy and workflow (25 conditional questions)
+- tab4-quality.yaml: Quality principles and reports (7 questions)
+- tab5-system.yaml: System and GitHub integration (7 questions)
+
+WHY: YAML-based questions enable consistent structure and easy maintenance.
+
+IMPACT: Question changes require only YAML updates, not code modifications.
+
+### Language-Aware Question Execution
+
+[HARD] When executing questions from .moai/config/questions/*.yaml, translate to user's conversation_language at runtime.
+
+Question files are written in English (source of truth). At execution time:
+- Read user's conversation_language from sections/language.yaml
+- Translate question text, options, and descriptions to user's language
+- Present AskUserQuestion in user's language
+- Store answer values in English (field values remain English)
+
+Example Translation Flow:
+- Question YAML (English): "What is your name?"
+- User Language: Korean (ko)
+- AskUserQuestion presented: Korean translation of question
+- Answer stored: user.name = "GOOS" (value unchanged)
+
+WHY: Single-source English questions with runtime translation reduces maintenance burden.
+
+IMPACT: Adding new languages requires only translation logic, not question file duplication.
+
+### Question Loading Priority
+
+1. Load question definitions from .moai/config/questions/tab*.yaml
+2. Read current values from .moai/config/sections/*.yaml
+3. Present questions with current values as defaults
+4. Store updated values back to sections/*.yaml
+
+### Section File Updates
+
+Configuration values are stored in modular section files:
+- sections/user.yaml: User name (loaded by CLAUDE.md)
+- sections/language.yaml: All language settings (loaded by CLAUDE.md)
+- sections/project.yaml: Project metadata
+- sections/git-strategy.yaml: Git workflow configuration
+- sections/quality.yaml: TDD and quality settings
+- sections/system.yaml: MoAI system settings
+
+WHY: Modular sections enable token-efficient CLAUDE.md loading.
+
+IMPACT: CLAUDE.md loads only user.yaml and language.yaml (~17 lines vs 400+ full config).
 
 ---
 
@@ -201,7 +261,7 @@ UPDATE Mode: Command includes update argument
 - No additional argument parsing required
 
 INITIALIZATION or AUTO-DETECT: Command has no arguments
-- [HARD] Check if .moai/config/config.json exists
+- [HARD] Check if .moai/config/config.yaml exists
 - File exists: Route to AUTO-DETECT MODE
 - File missing: Route to INITIALIZATION MODE
 
@@ -224,13 +284,13 @@ IMPACT: Direct execution would bypass validation and expertise layers.
 Pass the following context to manager-project agent:
 
 - Detected Mode value (INITIALIZATION, AUTO-DETECT, SETTINGS, UPDATE, or GLM_CONFIGURATION)
-- Language Context read from .moai/config/config.json if present
+- Language Context read from .moai/config/config.yaml if present
 - GLM Token value if GLM_CONFIGURATION mode selected
 - User command arguments for reference
 
 For INITIALIZATION:
 
-- Check .moai/config.json for language setting
+- Check .moai/config.yaml for language setting
 - If missing: Use moai-workflow-project skill for language detection
 - If present: Use existing language, skip language selection
 - Conduct language-aware user interview
@@ -239,7 +299,7 @@ For INITIALIZATION:
 
 For AUTO-DETECT:
 
-- Read current language from .moai/config.json
+- Read current language from .moai/config.yaml
 - Check if project documentation exists (.moai/project/product.md, structure.md, tech.md)
 - If docs missing → PARTIAL INITIALIZATION state detected
   - Use AskUserQuestion to ask user: "Your configuration exists but project documentation is missing. Would you like to complete the initialization now?"
@@ -253,10 +313,10 @@ For AUTO-DETECT:
 
 For SETTINGS:
 
-- Load current language from .moai/config.json
+- Load current language from .moai/config.yaml
 - Load tab schema from appropriate skill schema
 - Execute batch questions via moai-workflow-project skill
-- Process responses and update config.json atomically via moai-workflow-project skill
+- Process responses and update config.yaml atomically via moai-workflow-project skill
 - Report changes and validation results
 
 For UPDATE:
@@ -297,7 +357,7 @@ The manager-project agent handles all mode-specific workflows:
 
 INITIALIZATION MODE:
 
-- Read language from config.json (or use CLI default if missing)
+- Read language from config.yaml (or use CLI default if missing)
 - Conduct language-aware user interview (via Skill)
 - Project type detection and configuration
 - Documentation generation
@@ -305,7 +365,7 @@ INITIALIZATION MODE:
 
 AUTO-DETECT MODE:
 
-- Read current language from config.json
+- Read current language from config.yaml
 - CRITICAL CHECK: Detect partial initialization state
   - Check if project documentation exists in `.moai/project/`:
     - product.md, structure.md, tech.md
@@ -321,7 +381,7 @@ AUTO-DETECT MODE:
 
 SETTINGS MODE (NEW):
 
-- Read current language from config.json
+- Read current language from config.yaml
 - Load tab schema for batch-based questions
 - Execute batch questions with AskUserQuestion
 - Process user responses
@@ -333,7 +393,7 @@ UPDATE MODE:
 
 - Preserve language from config backup
 - **Config Format Migration (v0.32.0+):**
-  - Check if `.moai/config/config.json` exists (legacy format)
+  - Check if `.moai/config/config.yaml` exists (legacy format)
   - If exists: Convert to `config.yaml` with intelligent optimization:
     - Preserve all user settings and customizations
     - Add meaningful comments explaining each section
@@ -372,7 +432,7 @@ The SETTINGS MODE uses a tab-based batch question system to provide organized, u
 
 - 5 tabs: Organized by configuration domain
 - 17 batches: Grouped questions within tabs (added 5 batches: Batch 3.0, 3.3, 3.5, 3.6, improved organization)
-- 57 settings: Complete config.json v0.28.0 coverage (+39% from v1.0.0)
+- 57 settings: Complete config.yaml v0.28.0 coverage (+39% from v1.0.0)
 - 54 questions: User-facing questions (+14 from v1.0.0)
 - Conditional batches: Tab 3 shows Personal/Team/Hybrid batches based on mode selection
 - Atomic updates: Safe deep merge with backup/rollback
@@ -390,9 +450,9 @@ Options:
 
    - Configure user name, conversation language, agent prompt language
 
-2. Tab 2: Project Basic Information
+2. Tab 2: Project & GitHub Settings
 
-   - Configure project name, description, owner, mode
+   - Configure project name, description, mode, GitHub Profile Name
 
 3. Tab 3: Git Strategy & Workflow
 
@@ -430,10 +490,10 @@ Tab 1: User & Language (Required Foundation)
   - NOTE: conversation_language_name is auto-updated when conversation_language changes
 - Setting count: 3 | Critical checkpoint
 
-Tab 2: Project Basic Information (Recommended)
+Tab 2: Project & GitHub Settings (Recommended)
 
 - Batch 2.1: Project metadata (4 questions)
-  - Project name, description, owner, mode
+  - Project name, description, mode, GitHub Profile Name (e.g., @GoosLab)
 - Batch 2.2: Auto-processed locale settings (0 questions - UPDATED: internal analysis only)
   - project.locale, default_language, optimized_for_language (auto-determined from conversation_language)
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
@@ -459,7 +519,7 @@ Tab 4: Quality Principles & Reports (Optional - UPDATED v2.0.0)
 
 Tab 5: System & GitHub Integration (Optional - UPDATED v2.0.0)
 
-- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.json v0.28.0)
+- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.yaml v0.28.0)
 - Batch 5.2: GitHub automation settings (5 questions - expanded from 3, added templates & spec_workflow fields)
 - Setting count: 11 (+3 from v1.0.0)
 
@@ -473,7 +533,7 @@ Extract:
 
 - Tab definition (label, batches)
 - Batch questions (max 4 per batch)
-- Field mappings to config.json paths
+- Field mappings to config.yaml paths
 - Current values from existing config
 - Validation rules
 ```
@@ -537,7 +597,7 @@ For each question in batch:
 
 1. Get field path from schema (e.g., "user.name")
 2. Get user's response (selected option or custom input)
-3. Convert to config.json value:
+3. Convert to config.yaml value:
    - "Other" option → Use custom input from user
    - Selected option → Use option's mapped value
    - "Keep current" → Use existing value
@@ -578,7 +638,7 @@ Delegate ALL config update operations to UnifiedConfigManager from moai-workflow
 
 - Manager handles backup/rollback logic internally
 - Manager performs deep merge with validation
-- Manager writes atomically to config.json
+- Manager writes atomically to config.yaml
 - Manager reports success/failure
 
 Agent responsibilities:
@@ -606,7 +666,7 @@ User runs: `/moai:0-project setting tab_1_user_language`
 Step 1: Project-manager loads tab schema
 Step 2: Extracts Tab 1 (tab_1_user_language)
 Step 3: Gets Batch 1.1 (基本設定)
-Step 4: Loads current values from config.json including extended language settings:
+Step 4: Loads current values from config.yaml including extended language settings:
   - User configuration: user.name value
   - Conversation language: language.conversation_language (ko, en, ja, zh, etc.)
   - Agent prompt language: language.agent_prompt_language
@@ -758,7 +818,7 @@ Tab completion order (recommended):
 MANDATORY:
 
 - Execute ONLY ONE tab per command invocation (unless user specifies "all tabs")
-- READ language context from config.json before starting SETTINGS MODE
+- READ language context from config.yaml before starting SETTINGS MODE
 - Run validation at Tab 1, Tab 3, and before final update
 - Delegate config update to UnifiedConfigManager from moai-workflow-project (no direct backup in command)
 - Report all changes made
@@ -766,7 +826,7 @@ MANDATORY:
 
 Configuration Priority:
 
-- `.moai/config/config.json` settings ALWAYS take priority
+- `.moai/config/config.yaml` settings ALWAYS take priority
 - Existing language settings respected unless user explicitly requests change in Tab 1
 - Fresh installs: Language already set by moai-adk CLI, skip language selection
 
@@ -786,7 +846,7 @@ Goal: Persist phase execution results for explicit context passing to subsequent
 
 After manager-project agent completes, extract the following information:
 
-- Project metadata: name, mode, owner, language
+- Project metadata: name, mode, language, GitHub Profile Name
 - Files created: List of generated files with absolute paths
 - Tech stack: Primary codebase language
 - Next phase: Recommended next command (1-plan)
@@ -947,7 +1007,7 @@ All tool-based operations delegate to manager-project agent.
 
 ### Configuration Management
 
-[HARD] .moai/config/config.json settings ALWAYS take priority over defaults.
+[HARD] .moai/config/config.yaml settings ALWAYS take priority over defaults.
 
 WHY: Existing configuration represents user intent.
 
@@ -973,7 +1033,7 @@ Responses and status reports must follow structured XML format for clarity and a
 
 <analysis>
 Context assessment including detected mode, language context, and user command arguments.
-Example: "Detected AUTO-DETECT mode, user language is Korean (ko), existing config found at .moai/config/config.json"
+Example: "Detected AUTO-DETECT mode, user language is Korean (ko), existing config found at .moai/config/config.yaml"
 </analysis>
 
 <approach>
