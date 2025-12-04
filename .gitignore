@@ -205,8 +205,6 @@ mock_api_response_*.json
 # Include tracked directories
 !/.moai/config/
 !/.moai/config/**
-!/.moai/memory/
-!/.moai/memory/**
 !/.moai/scripts/
 !/.moai/scripts/**
 !/.moai/specs/
@@ -231,7 +229,8 @@ mock_api_response_*.json
 /.moai/rollbacks/
 /.moai/work/
 /.moai/temp/
-
+/.moai/memory/
+/.moai/memory/**
 # Exclude local development scripts
 /.moai/scripts/phase*.py
 /.moai/scripts/phase*.sh
