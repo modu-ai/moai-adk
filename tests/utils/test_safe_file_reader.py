@@ -244,10 +244,11 @@ class TestSafeFileReaderReadText:
         """Test permission error handling returns None gracefully."""
         reader = SafeFileReader()
 
-        # Use non-existent path that triggers permission-like behavior
-        result = reader.read_text("/root/privileged/file.txt")
+        # Mock open to raise permission error
+        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            result = reader.read_text("/some/path/file.txt")
 
-        # Should eventually return None after trying all encodings or failing
+        # Should return None when permission error occurs
         assert result is None
 
     def test_read_file_with_custom_error_strategy_strict(self):

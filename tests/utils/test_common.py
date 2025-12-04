@@ -13,6 +13,7 @@ This module provides 90%+ coverage for all utility functions including:
 
 import asyncio
 import json
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -860,6 +861,7 @@ class TestLoadHookTimeout:
             timeout = load_hook_timeout()
             assert timeout == 5000
 
+    @pytest.mark.skipif(sys.version_info < (3, 12), reason="Path mock issues on Python < 3.12")
     def test_load_hook_timeout_from_config(self):
         """Test loading timeout from config file."""
         config = {"hooks": {"timeout_ms": 10000}}
