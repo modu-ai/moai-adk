@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - name: 📥 Checkout code
@@ -220,6 +220,6 @@ jobs:
 
           ### Details
           - **Code Quality**: ruff format, ruff lint, mypy, bandit
-          - **Tests**: Python 3.12, 3.13 with coverage (10 min timeout)
+          - **Tests**: Python 3.11, 3.12, 3.13, 3.14 with coverage (15 min timeout)
           - **Build**: Package build and verification
           SUMMARY
