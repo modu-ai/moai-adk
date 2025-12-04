@@ -62,13 +62,23 @@ class TemplateProcessorConfig:
         return cls(
             version_cache_ttl_seconds=config_dict.get("version_cache_ttl_seconds", 120),
             version_fallback=config_dict.get("version_fallback", "unknown"),
-            version_format_regex=config_dict.get("version_format_regex", r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"),
-            enable_version_validation=config_dict.get("enable_version_validation", True),
+            version_format_regex=config_dict.get(
+                "version_format_regex", r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"
+            ),
+            enable_version_validation=config_dict.get(
+                "enable_version_validation", True
+            ),
             preserve_user_version=config_dict.get("preserve_user_version", True),
-            validate_template_variables=config_dict.get("validate_template_variables", True),
+            validate_template_variables=config_dict.get(
+                "validate_template_variables", True
+            ),
             max_variable_length=config_dict.get("max_variable_length", 50),
-            allowed_variable_pattern=config_dict.get("allowed_variable_pattern", r"^[A-Z_]+$"),
-            enable_substitution_warnings=config_dict.get("enable_substitution_warnings", True),
+            allowed_variable_pattern=config_dict.get(
+                "allowed_variable_pattern", r"^[A-Z_]+$"
+            ),
+            enable_substitution_warnings=config_dict.get(
+                "enable_substitution_warnings", True
+            ),
             enable_caching=config_dict.get("enable_caching", True),
             cache_size=config_dict.get("cache_size", 100),
             async_operations=config_dict.get("async_operations", False),
@@ -109,7 +119,9 @@ class TemplateProcessor:
         "CREATION_TIMESTAMP": "Project creation timestamp",
     }
 
-    def __init__(self, target_path: Path, config: Optional[TemplateProcessorConfig] = None) -> None:
+    def __init__(
+        self, target_path: Path, config: Optional[TemplateProcessorConfig] = None
+    ) -> None:
         """Initialize the processor with enhanced configuration.
 
         Args:
@@ -123,14 +135,18 @@ class TemplateProcessor:
         self.context: dict[str, str] = {}  # Template variable substitution context
         self._version_reader: VersionReader | None = None
         self.config = config or TemplateProcessorConfig()
-        self._substitution_cache: Dict[
-            int, tuple[str, list[str]]
-        ] = {}  # Cache for substitution results (key: hash, value: (content, warnings))
-        self._variable_validation_cache: Dict[str, bool] = {}  # Cache for variable validation
+        self._substitution_cache: Dict[int, tuple[str, list[str]]] = (
+            {}
+        )  # Cache for substitution results (key: hash, value: (content, warnings))
+        self._variable_validation_cache: Dict[str, bool] = (
+            {}
+        )  # Cache for variable validation
         self.logger = logging.getLogger(__name__)
 
         if self.config.verbose_logging:
-            self.logger.info(f"TemplateProcessor initialized with config: {self.config}")
+            self.logger.info(
+                f"TemplateProcessor initialized with config: {self.config}"
+            )
 
     def set_context(self, context: dict[str, str]) -> None:
         """Set variable substitution context with enhanced validation.
@@ -199,15 +215,21 @@ class TemplateProcessor:
 
             # Check variable length
             if len(var_name) > self.config.max_variable_length:
-                warning_messages.append(f"Variable name '{var_name}' exceeds maximum length")
+                warning_messages.append(
+                    f"Variable name '{var_name}' exceeds maximum length"
+                )
 
             # Check variable value length
             if len(var_value) > self.config.max_variable_length * 2:
-                warning_messages.append(f"Variable value '{var_value[:20]}...' is very long")
+                warning_messages.append(
+                    f"Variable value '{var_value[:20]}...' is very long"
+                )
 
             # Check for potentially dangerous values
             if "{{" in var_value or "}}" in var_value:
-                warning_messages.append(f"Variable '{var_name}' contains placeholder patterns")
+                warning_messages.append(
+                    f"Variable '{var_name}' contains placeholder patterns"
+                )
 
         # Check for common variables that should be present
         missing_common_vars = []
@@ -216,20 +238,28 @@ class TemplateProcessor:
                 missing_common_vars.append(common_var)
 
         if missing_common_vars and self.config.enable_substitution_warnings:
-            warning_messages.append(f"Common variables missing: {', '.join(missing_common_vars[:3])}")
+            warning_messages.append(
+                f"Common variables missing: {', '.join(missing_common_vars[:3])}"
+            )
 
         # Report validation results
         if validation_errors and not self.config.graceful_degradation:
-            raise ValueError(f"Template variable validation failed: {validation_errors}")
+            raise ValueError(
+                f"Template variable validation failed: {validation_errors}"
+            )
 
         if validation_errors and self.config.graceful_degradation:
-            self.logger.warning(f"Template variable validation warnings: {validation_errors}")
+            self.logger.warning(
+                f"Template variable validation warnings: {validation_errors}"
+            )
 
         if warning_messages and self.config.enable_substitution_warnings:
             self.logger.warning(f"Template variable warnings: {warning_messages}")
 
         if self.config.verbose_logging:
-            self.logger.debug(f"Template variables validated: {len(context)} variables checked")
+            self.logger.debug(
+                f"Template variables validated: {len(context)} variables checked"
+            )
 
     def get_enhanced_version_context(self) -> dict[str, str]:
         """
@@ -250,16 +280,28 @@ class TemplateProcessor:
 
             # Basic version information
             version_context["MOAI_VERSION"] = moai_version
-            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
-            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(
+                moai_version
+            )
 
             # Enhanced formatting options
-            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(moai_version, max_length=10)
-            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(moai_version)
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(
+                moai_version, max_length=10
+            )
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(
+                moai_version
+            )
 
             # Validation and source information
-            version_context["MOAI_VERSION_VALID"] = "true" if moai_version != "unknown" else "false"
-            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(version_reader)
+            version_context["MOAI_VERSION_VALID"] = (
+                "true" if moai_version != "unknown" else "false"
+            )
+            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(
+                version_reader
+            )
 
             # Performance metrics
             cache_age = version_reader.get_cache_age_seconds()
@@ -271,7 +313,9 @@ class TemplateProcessor:
             # Additional metadata
             if self.config.enable_version_validation:
                 is_valid = self._is_valid_version_format(moai_version)
-                version_context["MOAI_VERSION_FORMAT_VALID"] = "true" if is_valid else "false"
+                version_context["MOAI_VERSION_FORMAT_VALID"] = (
+                    "true" if is_valid else "false"
+                )
 
             if self.config.verbose_logging:
                 logger.debug(f"Enhanced version context generated: {version_context}")
@@ -281,11 +325,21 @@ class TemplateProcessor:
             # Use fallback version with comprehensive formatting
             fallback_version = self.config.version_fallback
             version_context["MOAI_VERSION"] = fallback_version
-            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(fallback_version)
-            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(fallback_version)
-            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(fallback_version, max_length=10)
-            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(fallback_version)
-            version_context["MOAI_VERSION_VALID"] = "false" if fallback_version == "unknown" else "true"
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(
+                fallback_version, max_length=10
+            )
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_VALID"] = (
+                "false" if fallback_version == "unknown" else "true"
+            )
             version_context["MOAI_VERSION_SOURCE"] = "fallback_config"
             version_context["MOAI_VERSION_CACHE_AGE"] = "unavailable"
             version_context["MOAI_VERSION_FORMAT_VALID"] = "false"
@@ -443,7 +497,9 @@ class TemplateProcessor:
                 if self.config.validate_template_variables:
                     # Validate variable before substitution
                     if not self._is_valid_template_variable(key, value):
-                        warnings.append(f"Invalid variable {key} - skipped substitution")
+                        warnings.append(
+                            f"Invalid variable {key} - skipped substitution"
+                        )
                         continue
 
                 safe_value = self._sanitize_value(value)
@@ -465,13 +521,17 @@ class TemplateProcessor:
                     suggestion = self.COMMON_TEMPLATE_VARIABLES[var]
                     warning_parts.append(f"{{{{{var}}}}} → {suggestion}")
                 else:
-                    warning_parts.append(f"{{{{{var}}}}} → Unknown variable (check template)")
+                    warning_parts.append(
+                        f"{{{{{var}}}}} → Unknown variable (check template)"
+                    )
 
             warnings.append("Template variables not substituted:")
             warnings.extend(f"  • {part}" for part in warning_parts)
 
             if self.config.enable_substitution_warnings:
-                warnings.append("💡 Run 'uv run moai-adk update' to fix template variables")
+                warnings.append(
+                    "💡 Run 'uv run moai-adk update' to fix template variables"
+                )
 
         # Add performance information if verbose logging is enabled
         if self.config.verbose_logging:
@@ -657,7 +717,9 @@ class TemplateProcessor:
                 content, file_warnings = self._substitute_variables(content)
 
                 # Apply description localization for command/output-style files
-                if src.suffix == ".md" and ("commands/alfred" in str(src) or "output-styles/alfred" in str(src)):
+                if src.suffix == ".md" and (
+                    "commands/alfred" in str(src) or "output-styles/alfred" in str(src)
+                ):
                     lang = self.context.get("CONVERSATION_LANGUAGE", "en")
                     content = self._localize_yaml_description(content, lang)
 
@@ -873,12 +935,16 @@ class TemplateProcessor:
                         dst_item.write_text(content, encoding="utf-8")
                         all_warnings.extend(file_warnings)
                     if not silent:
-                        console.print("   🔄 settings.json merged (Hook paths configured for your OS)")
+                        console.print(
+                            "   🔄 settings.json merged (Hook paths configured for your OS)"
+                        )
                 # Smart merge for config.json
                 elif item.name == "config.json":
                     self._merge_config_json(item, dst_item)
                     if not silent:
-                        console.print("   🔄 config.json merged (user preferences preserved)")
+                        console.print(
+                            "   🔄 config.json merged (user preferences preserved)"
+                        )
                 else:
                     # FORCE OVERWRITE: Always copy other files (no skip)
                     warnings = self._copy_file_with_substitution(item, dst_item)
@@ -961,7 +1027,9 @@ class TemplateProcessor:
             self._copy_dir_with_substitution(src, dst)
 
         if not silent:
-            console.print("   🔄 .github/ merged (user workflows preserved, variables substituted)")
+            console.print(
+                "   🔄 .github/ merged (user workflows preserved, variables substituted)"
+            )
 
     def _copy_claude_md(self, silent: bool = False) -> None:
         """Copy CLAUDE.md with complete replacement (no merge)."""
@@ -977,7 +1045,9 @@ class TemplateProcessor:
         self._copy_file_with_substitution(src, dst)
 
         if not silent:
-            console.print("   ✅ CLAUDE.md replaced (use CLAUDE.local.md for personal instructions)")
+            console.print(
+                "   ✅ CLAUDE.md replaced (use CLAUDE.local.md for personal instructions)"
+            )
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for CLAUDE.md.
@@ -1064,7 +1134,11 @@ class TemplateProcessor:
             # Apply existing user config (higher priority than template)
             for key, value in existing_config.items():
                 if key not in ["config_source"]:  # Skip metadata
-                    if key in merged_config and isinstance(merged_config[key], dict) and isinstance(value, dict):
+                    if (
+                        key in merged_config
+                        and isinstance(merged_config[key], dict)
+                        and isinstance(value, dict)
+                    ):
                         # Deep merge for nested objects
                         merged_config[key].update(value)
                     else:
@@ -1117,7 +1191,9 @@ class TemplateProcessor:
                 json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
-            console.print("   ⚠️ Warning: Using simple merge (LanguageConfigResolver not available)")
+            console.print(
+                "   ⚠️ Warning: Using simple merge (LanguageConfigResolver not available)"
+            )
 
     def _copy_gitignore(self, silent: bool = False) -> None:
         """.gitignore copy (optional)."""
@@ -1183,7 +1259,9 @@ class TemplateProcessor:
                 dst_data["mcpServers"].update(src_data["mcpServers"])
 
             # Write merged result back
-            dst.write_text(json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            dst.write_text(
+                json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
         except json.JSONDecodeError as e:
             console.print(f"[yellow]⚠️ Failed to merge .mcp.json: {e}[/yellow]")
 
