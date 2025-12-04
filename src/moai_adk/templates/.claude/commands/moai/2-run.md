@@ -15,7 +15,7 @@ model: inherit
 
 ##  Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 @.moai/specs/
 
 ---
@@ -810,7 +810,7 @@ After Phase 4 completes, the user is guided to their next action through AskUser
 
 **User Interface Standards**:
 
-- Use conversation language from `.moai/config/config.json`
+- Use conversation language from `.moai/config/config.yaml`
   - WHY: Respects user language preferences
   - IMPACT: Improves user experience for international teams
 

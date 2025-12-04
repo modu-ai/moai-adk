@@ -1,5 +1,5 @@
 """
-Enhanced Version reader for MoAI-ADK from config.json with performance optimizations
+Enhanced Version reader for MoAI-ADK from config.yaml with performance optimizations
 
 Refactored for improved performance, error handling, configurability, and caching strategies
 """
@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +134,7 @@ class VersionReader:
         else:
             base_dir = Path.cwd()
 
-        self._config_path = base_dir / ".moai" / "config" / "config.json"
+        self._config_path = base_dir / ".moai" / "config" / "config.yaml"
 
         # Enhanced caching with LRU support
         self._cache: Dict[str, CacheEntry] = {}
@@ -439,7 +441,7 @@ class VersionReader:
 
     def _read_version_from_config_sync(self) -> str:
         """
-        Synchronous version of reading from .moai/config/config.json.
+        Synchronous version of reading from .moai/config/config.yaml.
 
         Returns:
             Version string or empty string if not found
@@ -450,11 +452,11 @@ class VersionReader:
                 return ""
 
             try:
-                config_data = self._read_json_sync(self._config_path)
+                config_data = self._read_config_sync(self._config_path)
                 version = self._extract_version_from_config(config_data)
                 return version if version else ""
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in config {self._config_path}: {e}")
+            except (json.JSONDecodeError, yaml.YAMLError) as e:
+                logger.error(f"Invalid config in {self._config_path}: {e}")
                 return ""
 
         except Exception as e:
@@ -463,7 +465,7 @@ class VersionReader:
 
     async def _read_version_from_config_async(self) -> str:
         """
-        Read version from .moai/config/config.json asynchronously.
+        Read version from .moai/config/config.yaml asynchronously.
 
         Returns:
             Version string or empty string if not found
@@ -474,10 +476,10 @@ class VersionReader:
                 return ""
 
             try:
-                config_data = await self._read_json_async(self._config_path)
+                config_data = await self._read_config_async(self._config_path)
                 return self._extract_version_from_config(config_data)
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in config {self._config_path}: {e}")
+            except (json.JSONDecodeError, yaml.YAMLError) as e:
+                logger.error(f"Invalid config in {self._config_path}: {e}")
                 return ""
 
         except Exception as e:
@@ -629,6 +631,19 @@ class VersionReader:
         """Synchronous JSON file reading"""
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
+
+    async def _read_config_async(self, path: Path) -> Dict[str, Any]:
+        """Async config file reading (supports YAML and JSON)"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._read_config_sync, path)
+
+    def _read_config_sync(self, path: Path) -> Dict[str, Any]:
+        """Synchronous config file reading (supports YAML and JSON)"""
+        with open(path, "r", encoding="utf-8") as f:
+            if path.suffix in (".yaml", ".yml"):
+                return yaml.safe_load(f) or {}
+            else:
+                return json.load(f)
 
     # Backwards compatibility cache methods
     def clear_cache(self) -> None:

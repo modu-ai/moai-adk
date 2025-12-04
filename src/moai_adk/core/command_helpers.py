@@ -5,10 +5,11 @@ Provides helper functions for commands to interact with ContextManager
 and perform common operations like context extraction and validation.
 """
 
-import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+import yaml
 
 # Conditional import of ContextManager
 try:
@@ -25,7 +26,7 @@ except ImportError:
 
 def extract_project_metadata(project_root: str) -> Dict[str, Any]:
     """
-    Extract project metadata from config.json.
+    Extract project metadata from config.yaml.
 
     Args:
         project_root: Root directory of the project
@@ -34,16 +35,16 @@ def extract_project_metadata(project_root: str) -> Dict[str, Any]:
         Dictionary containing project metadata
 
     Raises:
-        FileNotFoundError: If config.json doesn't exist
-        json.JSONDecodeError: If config.json is invalid
+        FileNotFoundError: If config.yaml doesn't exist
+        yaml.YAMLError: If config.yaml is invalid
     """
-    config_path = os.path.join(project_root, ".moai", "config", "config.json")
+    config_path = os.path.join(project_root, ".moai", "config", "config.yaml")
 
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+        config = yaml.safe_load(f) or {}
 
     # Extract key metadata
     metadata = {

@@ -16,7 +16,7 @@ model: inherit
 
 ##  Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 @.moai/specs/
 @.moai/indexes/tags.db
 @README.md
@@ -308,7 +308,7 @@ Gather context for synchronization planning:
 
    Requirement: Load essential project settings from configuration file
    Actions:
-   - Read: `.moai/config.json` file
+   - Read: `.moai/config.yaml` file
    - Extract: `git_strategy.mode` value (must be Personal or Team)
    - Extract: `language.conversation_language` value (determines document language)
    - Extract: `git_strategy.spec_git_workflow` value

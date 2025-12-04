@@ -14,7 +14,7 @@ model: haiku
 
 ##  Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 
 ---
 

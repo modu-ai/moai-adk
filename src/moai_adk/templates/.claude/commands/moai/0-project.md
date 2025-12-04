@@ -15,7 +15,7 @@ model: inherit
 
 ## Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 @.moai/project/product.md
 @.moai/project/structure.md
 @.moai/project/tech.md
@@ -72,7 +72,7 @@ IMPACT: Each agent optimizes its domain while maintaining system coherence.
 
 Core Principle: Language configuration originates from moai-adk CLI initialization or update commands.
 
-[HARD] Read language from .moai/config/config.json before starting any mode.
+[HARD] Read language from .moai/config/config.yaml before starting any mode.
 
 WHY: Preserving existing language settings prevents disruption to user experience.
 
@@ -201,7 +201,7 @@ UPDATE Mode: Command includes update argument
 - No additional argument parsing required
 
 INITIALIZATION or AUTO-DETECT: Command has no arguments
-- [HARD] Check if .moai/config/config.json exists
+- [HARD] Check if .moai/config/config.yaml exists
 - File exists: Route to AUTO-DETECT MODE
 - File missing: Route to INITIALIZATION MODE
 
@@ -224,13 +224,13 @@ IMPACT: Direct execution would bypass validation and expertise layers.
 Pass the following context to manager-project agent:
 
 - Detected Mode value (INITIALIZATION, AUTO-DETECT, SETTINGS, UPDATE, or GLM_CONFIGURATION)
-- Language Context read from .moai/config/config.json if present
+- Language Context read from .moai/config/config.yaml if present
 - GLM Token value if GLM_CONFIGURATION mode selected
 - User command arguments for reference
 
 For INITIALIZATION:
 
-- Check .moai/config.json for language setting
+- Check .moai/config.yaml for language setting
 - If missing: Use moai-workflow-project skill for language detection
 - If present: Use existing language, skip language selection
 - Conduct language-aware user interview
@@ -239,7 +239,7 @@ For INITIALIZATION:
 
 For AUTO-DETECT:
 
-- Read current language from .moai/config.json
+- Read current language from .moai/config.yaml
 - Check if project documentation exists (.moai/project/product.md, structure.md, tech.md)
 - If docs missing → PARTIAL INITIALIZATION state detected
   - Use AskUserQuestion to ask user: "Your configuration exists but project documentation is missing. Would you like to complete the initialization now?"
@@ -253,10 +253,10 @@ For AUTO-DETECT:
 
 For SETTINGS:
 
-- Load current language from .moai/config.json
+- Load current language from .moai/config.yaml
 - Load tab schema from appropriate skill schema
 - Execute batch questions via moai-workflow-project skill
-- Process responses and update config.json atomically via moai-workflow-project skill
+- Process responses and update config.yaml atomically via moai-workflow-project skill
 - Report changes and validation results
 
 For UPDATE:
@@ -297,7 +297,7 @@ The manager-project agent handles all mode-specific workflows:
 
 INITIALIZATION MODE:
 
-- Read language from config.json (or use CLI default if missing)
+- Read language from config.yaml (or use CLI default if missing)
 - Conduct language-aware user interview (via Skill)
 - Project type detection and configuration
 - Documentation generation
@@ -305,7 +305,7 @@ INITIALIZATION MODE:
 
 AUTO-DETECT MODE:
 
-- Read current language from config.json
+- Read current language from config.yaml
 - CRITICAL CHECK: Detect partial initialization state
   - Check if project documentation exists in `.moai/project/`:
     - product.md, structure.md, tech.md
@@ -321,7 +321,7 @@ AUTO-DETECT MODE:
 
 SETTINGS MODE (NEW):
 
-- Read current language from config.json
+- Read current language from config.yaml
 - Load tab schema for batch-based questions
 - Execute batch questions with AskUserQuestion
 - Process user responses
@@ -333,7 +333,7 @@ UPDATE MODE:
 
 - Preserve language from config backup
 - **Config Format Migration (v0.32.0+):**
-  - Check if `.moai/config/config.json` exists (legacy format)
+  - Check if `.moai/config/config.yaml` exists (legacy format)
   - If exists: Convert to `config.yaml` with intelligent optimization:
     - Preserve all user settings and customizations
     - Add meaningful comments explaining each section
@@ -372,7 +372,7 @@ The SETTINGS MODE uses a tab-based batch question system to provide organized, u
 
 - 5 tabs: Organized by configuration domain
 - 17 batches: Grouped questions within tabs (added 5 batches: Batch 3.0, 3.3, 3.5, 3.6, improved organization)
-- 57 settings: Complete config.json v0.28.0 coverage (+39% from v1.0.0)
+- 57 settings: Complete config.yaml v0.28.0 coverage (+39% from v1.0.0)
 - 54 questions: User-facing questions (+14 from v1.0.0)
 - Conditional batches: Tab 3 shows Personal/Team/Hybrid batches based on mode selection
 - Atomic updates: Safe deep merge with backup/rollback
@@ -459,7 +459,7 @@ Tab 4: Quality Principles & Reports (Optional - UPDATED v2.0.0)
 
 Tab 5: System & GitHub Integration (Optional - UPDATED v2.0.0)
 
-- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.json v0.28.0)
+- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.yaml v0.28.0)
 - Batch 5.2: GitHub automation settings (5 questions - expanded from 3, added templates & spec_workflow fields)
 - Setting count: 11 (+3 from v1.0.0)
 
@@ -473,7 +473,7 @@ Extract:
 
 - Tab definition (label, batches)
 - Batch questions (max 4 per batch)
-- Field mappings to config.json paths
+- Field mappings to config.yaml paths
 - Current values from existing config
 - Validation rules
 ```
@@ -537,7 +537,7 @@ For each question in batch:
 
 1. Get field path from schema (e.g., "user.name")
 2. Get user's response (selected option or custom input)
-3. Convert to config.json value:
+3. Convert to config.yaml value:
    - "Other" option → Use custom input from user
    - Selected option → Use option's mapped value
    - "Keep current" → Use existing value
@@ -578,7 +578,7 @@ Delegate ALL config update operations to UnifiedConfigManager from moai-workflow
 
 - Manager handles backup/rollback logic internally
 - Manager performs deep merge with validation
-- Manager writes atomically to config.json
+- Manager writes atomically to config.yaml
 - Manager reports success/failure
 
 Agent responsibilities:
@@ -606,7 +606,7 @@ User runs: `/moai:0-project setting tab_1_user_language`
 Step 1: Project-manager loads tab schema
 Step 2: Extracts Tab 1 (tab_1_user_language)
 Step 3: Gets Batch 1.1 (基本設定)
-Step 4: Loads current values from config.json including extended language settings:
+Step 4: Loads current values from config.yaml including extended language settings:
   - User configuration: user.name value
   - Conversation language: language.conversation_language (ko, en, ja, zh, etc.)
   - Agent prompt language: language.agent_prompt_language
@@ -758,7 +758,7 @@ Tab completion order (recommended):
 MANDATORY:
 
 - Execute ONLY ONE tab per command invocation (unless user specifies "all tabs")
-- READ language context from config.json before starting SETTINGS MODE
+- READ language context from config.yaml before starting SETTINGS MODE
 - Run validation at Tab 1, Tab 3, and before final update
 - Delegate config update to UnifiedConfigManager from moai-workflow-project (no direct backup in command)
 - Report all changes made
@@ -766,7 +766,7 @@ MANDATORY:
 
 Configuration Priority:
 
-- `.moai/config/config.json` settings ALWAYS take priority
+- `.moai/config/config.yaml` settings ALWAYS take priority
 - Existing language settings respected unless user explicitly requests change in Tab 1
 - Fresh installs: Language already set by moai-adk CLI, skip language selection
 
@@ -947,7 +947,7 @@ All tool-based operations delegate to manager-project agent.
 
 ### Configuration Management
 
-[HARD] .moai/config/config.json settings ALWAYS take priority over defaults.
+[HARD] .moai/config/config.yaml settings ALWAYS take priority over defaults.
 
 WHY: Existing configuration represents user intent.
 
@@ -973,7 +973,7 @@ Responses and status reports must follow structured XML format for clarity and a
 
 <analysis>
 Context assessment including detected mode, language context, and user command arguments.
-Example: "Detected AUTO-DETECT mode, user language is Korean (ko), existing config found at .moai/config/config.json"
+Example: "Detected AUTO-DETECT mode, user language is Korean (ko), existing config found at .moai/config/config.yaml"
 </analysis>
 
 <approach>

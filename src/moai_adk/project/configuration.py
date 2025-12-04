@@ -14,20 +14,25 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import yaml
+
 
 class ConfigurationManager:
     """Manages project configuration with 31 settings coverage"""
 
     def __init__(self, config_path: Optional[Path] = None):
-        self.config_path = config_path or Path(".moai/config/config.json")
+        self.config_path = config_path or Path(".moai/config/config.yaml")
         self.schema = None
         self._config_cache: Optional[Dict[str, Any]] = None
 
     def load(self) -> Dict[str, Any]:
-        """Load configuration from file"""
+        """Load configuration from file (supports YAML and JSON)"""
         if self.config_path.exists():
-            with open(self.config_path, "r") as f:
-                self._config_cache = json.load(f)
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                if self.config_path.suffix in (".yaml", ".yml"):
+                    self._config_cache = yaml.safe_load(f) or {}
+                else:
+                    self._config_cache = json.load(f)
                 return self._config_cache
         return {}
 
@@ -58,11 +63,14 @@ class ConfigurationManager:
         # Ensure directory exists
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write atomically
+        # Write atomically (supports YAML and JSON based on file extension)
         temp_path = self.config_path.with_suffix(".tmp")
         try:
-            with open(temp_path, "w") as f:
-                json.dump(config, f, indent=2)
+            with open(temp_path, "w", encoding="utf-8") as f:
+                if self.config_path.suffix in (".yaml", ".yml"):
+                    yaml.safe_dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+                else:
+                    json.dump(config, f, indent=2)
 
             # Atomic rename
             temp_path.replace(self.config_path)

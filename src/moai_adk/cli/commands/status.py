@@ -1,7 +1,7 @@
 """MoAI-ADK status command
 
 Project status display:
-- Read project information from config.json
+- Read project information from config.yaml
 - Show the number of SPEC documents
 - Summarize the Git status
 
@@ -30,10 +30,10 @@ Project status display:
    - When SPEC count grows, verify with `Skill("moai-foundation-trust")`
 """
 
-import json
 from pathlib import Path
 
 import click
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -52,15 +52,15 @@ def status() -> None:
     - Git branch and status
     """
     try:
-        # Read config.json
-        config_path = Path.cwd() / ".moai" / "config" / "config.json"
+        # Read config.yaml
+        config_path = Path.cwd() / ".moai" / "config" / "config.yaml"
         if not config_path.exists():
-            console.print("[yellow]⚠ No .moai/config/config.json found[/yellow]")
+            console.print("[yellow]⚠ No .moai/config/config.yaml found[/yellow]")
             console.print("[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]")
             raise click.Abort()
 
         with open(config_path) as f:
-            config = json.load(f)
+            config = yaml.safe_load(f) or {}
 
         # Count SPEC documents
         specs_dir = Path.cwd() / ".moai" / "specs"

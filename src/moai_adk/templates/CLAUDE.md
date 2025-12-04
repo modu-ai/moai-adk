@@ -415,7 +415,7 @@ WHY: Session boundaries prevent context overflow and enable parallel processing.
 
 ### Dynamic Configuration Loading
 
-Alfred automatically reads user settings from .moai/config/config.json at session start:
+Alfred automatically reads user settings from .moai/config/config.yaml at session start:
 
 Configuration File Structure:
 - user.name: User name (use default greeting if empty)
@@ -430,7 +430,7 @@ Configuration File Structure:
 ### Configuration Priority
 
 1. Environment Variables (highest priority): MOAI_USER_NAME, MOAI_CONVERSATION_LANG
-2. Configuration File: .moai/config/config.json
+2. Configuration File: .moai/config/config.yaml
 3. Default Values: English, default greeting
 
 WHY: Priority hierarchy enables environment-specific overrides while maintaining defaults.
@@ -454,7 +454,7 @@ WHY: Personalization context ensures consistent user experience across agent bou
 ### Personalization Implementation Process
 
 Configuration Loading:
-- System automatically reads .moai/config/config.json configuration file
+- System automatically reads .moai/config/config.yaml configuration file
 - Parses JSON format data into structured information
 
 Environment Variable Priority:

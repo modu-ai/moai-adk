@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import aiohttp
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -248,47 +249,47 @@ class RateLimitError(Exception):
 
 def load_hook_timeout() -> int:
     """
-    Load Hook timeout setting from .moai/config/config.json
+    Load Hook timeout setting from .moai/config/config.yaml
 
     Returns:
         int: timeout value (milliseconds), returns default 5000 if not configured
     """
     try:
-        config_path = Path(".moai/config/config.json")
+        config_path = Path(".moai/config/config.yaml")
         if not config_path.exists():
             return 5000  # Default value
 
         with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
+            config = yaml.safe_load(f) or {}
 
         # Get timeout_ms value from hooks section
         hooks_config = config.get("hooks", {})
         timeout_ms = hooks_config.get("timeout_ms", 5000)
 
         return int(timeout_ms)
-    except (json.JSONDecodeError, FileNotFoundError, KeyError, ValueError):
+    except (yaml.YAMLError, FileNotFoundError, KeyError, ValueError):
         logger.warning("Failed to load hook timeout from config, using default 5000ms")
         return 5000
 
 
 def get_graceful_degradation() -> bool:
     """
-    Load graceful_degradation setting from .moai/config/config.json
+    Load graceful_degradation setting from .moai/config/config.yaml
 
     Returns:
         bool: graceful_degradation setting value, returns default True if not configured
     """
     try:
-        config_path = Path(".moai/config/config.json")
+        config_path = Path(".moai/config/config.yaml")
         if not config_path.exists():
             return True  # Default value
 
         with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
+            config = yaml.safe_load(f) or {}
 
         # Get graceful_degradation value from hooks section
         hooks_config = config.get("hooks", {})
         return hooks_config.get("graceful_degradation", True)
-    except (json.JSONDecodeError, FileNotFoundError, KeyError):
+    except (yaml.YAMLError, FileNotFoundError, KeyError):
         logger.warning("Failed to load graceful_degradation from config, using default True")
         return True

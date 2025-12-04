@@ -33,7 +33,7 @@ class ProjectValidator:
 
     # Required files
     REQUIRED_FILES = [
-        ".moai/config/config.json",
+        ".moai/config/config.yaml",
         "CLAUDE.md",
     ]
 
