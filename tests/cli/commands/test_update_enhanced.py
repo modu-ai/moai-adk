@@ -23,6 +23,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.update import (
@@ -352,12 +353,12 @@ class TestVersionFunctions:
         assert result == "0.0.0"
 
     def test_get_project_config_version_invalid_json(self, tmp_path):
-        """Test project config version with invalid JSON."""
+        """Test project config version with invalid YAML."""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        (config_dir / "config.json").write_text("invalid json {")
+        (config_dir / "config.yaml").write_text("invalid: yaml: {")
 
-        with pytest.raises(ValueError, match="Failed to parse project config.json"):
+        with pytest.raises(ValueError, match="Failed to parse project config"):
             _get_project_config_version(tmp_path)
 
     def test_get_latest_version_deprecated(self):

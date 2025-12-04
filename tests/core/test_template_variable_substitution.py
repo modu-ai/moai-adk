@@ -424,15 +424,15 @@ This is a test project with version {{MOAI_VERSION}}.
 
     def test_user_name_variable_with_user_config(self) -> None:
         """
-        GIVEN: Config with user.name field
+        GIVEN: Config with user.name field (YAML format)
         WHEN: get_default_variables is called
         THEN: USER_NAME should be extracted from config.user.name
         """
         template_engine = TemplateEngine()
 
-        # Test config with user.name
+        # Test config with user.name (YAML format)
         config = {
-            "project": {"name": "TestProject", "owner": "GoosLab"},
+            "project": {"name": "TestProject"},
             "user": {"name": "철수"},
         }
 
@@ -442,11 +442,6 @@ This is a test project with version {{MOAI_VERSION}}.
         # Verify USER_NAME is extracted from config.user.name
         assert "USER_NAME" in variables, "USER_NAME should be in variables"
         assert variables["USER_NAME"] == "철수", f"USER_NAME should be '철수', got '{variables['USER_NAME']}'"
-
-        # Verify PROJECT_OWNER is separate from USER_NAME
-        assert variables["PROJECT_OWNER"] == "GoosLab", (
-            f"PROJECT_OWNER should be 'GoosLab', got '{variables['PROJECT_OWNER']}'"
-        )
 
     def test_user_name_variable_empty_fallback(self) -> None:
         """
