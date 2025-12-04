@@ -2,7 +2,7 @@
 
 ## Summary
 
-**Major cleanup release** focusing on comprehensive test suite reorganization, Alfred to MoAI naming migration, and Claude 4.5 best practices alignment. This release includes 25 commits since v0.31.3, cleaning up 50+ obsolete test files, implementing version management automation, and improving subagent architecture.
+**Major cleanup release** focusing on comprehensive test suite reorganization, Alfred to MoAI naming migration, and Claude 4.5 best practices alignment. This release includes 29 commits since v0.31.3, featuring complete JSON to YAML configuration migration, cleaning up 50+ obsolete test files, implementing version management automation, and improving subagent architecture.
 
 ## Highlights
 
@@ -67,10 +67,11 @@
 
 Projects using direct Alfred hook references should update to new MoAI paths.
 
-## All Commits (25 commits since v0.31.3)
+## All Commits (29 commits since v0.31.3)
 
-### Features (4)
+### Features (5)
 
+- `feat(config): Migrate configuration format from JSON to YAML (v0.32.0)` (`8fde41c3`)
 - `feat: Implement comprehensive version management system with release automation`
 - `feat: Enhanced CLI UI and hook cleanup`
 - `feat(prompts): Apply Claude 4 best practices to all prompt engineering artifacts`
@@ -103,9 +104,23 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 
 - `refactor(tests): Comprehensive test suite reorganization and cleanup`
 
-### Testing (1)
+### Testing (2)
 
+- `test: Clean up obsolete test files and reorganize test suite` (`8897e2de`)
+  - Removed 29 obsolete *_extra.py test files
+  - Added new targeted test files (*_core.py, *_exec.py)
+  - Added TARGETED_TESTS_README.md documentation
 - `test: Clean up obsolete and skipped tests (v0.32.0)`
+
+### Chore (2)
+
+- `chore: Update command and skill files, remove backups` (`121b2510`)
+  - Updated /moai:0-project, 1-plan, 2-run, 3-sync, 9-feedback commands
+  - Updated moai-library-shadcn, moai-workflow-project, moai-worktree skills
+- `chore: Remove backup files and update MCP configuration` (`eed8a338`)
+  - Removed 14 .claude/settings.json.backup.* files
+  - Removed test.json and legacy config.json
+  - Updated .mcp.json configuration
 
 ### Documentation (1)
 
