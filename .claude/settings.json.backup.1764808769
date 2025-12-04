@@ -1,0 +1,182 @@
+{
+  "companyAnnouncements": [
+    "🗿 MoAI-ADK: SPEC-First TDD with 135+ Skills and Context7 integration",
+    "📋 Commands: /moai:0-project (Setup) → /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "🤖 Agents: 7-Tier hierarchy (workflow → core → domain → mcp → factory → support → ai)",
+    "🔄 Workflow: RED-GREEN-REFACTOR cycle with Git 3-Mode strategy (Manual/Personal/Team)",
+    "✅ Quality: TRUST 5 principles with ≥90% test coverage enforced",
+    "📚 Context7: Real-time library docs for hallucination-free code generation",
+    "🎯 Core Commands: /moai:1-plan generates SPEC → /moai:2-run implements TDD → /moai:3-sync creates docs",
+    "⚡ Agent Examples: workflow-tdd (TDD cycle), code-backend (API), mcp-context7 (docs), factory-skill (Skills)"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/session_start__show_project_info.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/session_end__auto_cleanup.py"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Task",
+      "AskUserQuestion",
+      "Skill",
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "NotebookEdit",
+      "Grep",
+      "Glob",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "BashOutput",
+      "KillShell",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "mcp__sequential-thinking__*",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git remote:*)",
+      "Bash(git tag:*)",
+      "Bash(git config:*)",
+      "Bash(rg:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(which:*)",
+      "Bash(make:*)",
+      "Bash(python:*)",
+      "Bash(uv:*)",
+      "Bash(pytest:*)",
+      "Bash(mypy:*)",
+      "Bash(ruff:*)",
+      "Bash(black:*)",
+      "Bash(coverage:*)",
+      "Bash(moai-adk:*)",
+      "Bash(moai:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh issue:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(tree:*)",
+      "Bash(diff:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(xargs:*)",
+      "Bash(comm:*)",
+      "Bash(lsof:*)",
+      "Bash(time:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(sed:*)",
+      "Bash(python3:*)"
+    ],
+    "ask": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git stash:*)",
+      "Bash(git revert:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(uv add:*)",
+      "Bash(uv remove:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf:*)"
+    ],
+    "deny": [
+      "Read(./secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Write(./secrets/**)",
+      "Write(~/.ssh/**)",
+      "Write(~/.aws/**)",
+      "Write(~/.config/gcloud/**)",
+      "Edit(./secrets/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Edit(~/.config/gcloud/**)",
+      "Grep(./secrets/**)",
+      "Grep(~/.ssh/**)",
+      "Grep(~/.aws/**)",
+      "Grep(~/.config/gcloud/**)",
+      "Glob(./secrets/**)",
+      "Glob(~/.ssh/**)",
+      "Glob(~/.aws/**)",
+      "Glob(~/.config/gcloud/**)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf C\\:/:*)",
+      "Bash(rm -rf C\\:/*:*)",
+      "Bash(del /S /Q C\\:/:*)",
+      "Bash(rmdir /S /Q C\\:/:*)",
+      "Bash(format:*)",
+      "Bash(chmod -R 777:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)",
+      "Bash(reboot:*)",
+      "Bash(shutdown:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase -i:*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "uv run moai-adk statusline",
+    "padding": 0,
+    "refreshInterval": 300
+  },
+  "spinnerTipsEnabled": false,
+  "outputStyle": "R2-D2",
+  "includeCoAuthoredBy": false,
+  "cleanupPeriodDays": 30,
+  "env": {
+    "MOAI_CONVERSATION_LANG": "ko",
+    "MOAI_AGENT_PROMPT_LANG": "ko",
+    "MOAI_CONVERSATION_LANG_NAME": "Korean",
+    "MOAI_USER_NAME": "GOOS행",
+    "MOAI_CONFIG_SOURCE": "config",
+    "MOAI_GIT_COMMIT_MESSAGES_LANG": "en",
+    "MOAI_CODE_COMMENTS_LANG": "en",
+    "MOAI_DOCUMENTATION_LANG": "ko",
+    "MOAI_ERROR_MESSAGES_LANG": "en"
+  }
+}

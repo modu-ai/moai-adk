@@ -2,7 +2,7 @@
 
 ## Summary
 
-**Major cleanup release** focusing on comprehensive test suite reorganization, Alfred to MoAI naming migration, and Claude 4 best practices alignment. This release includes 25 commits since v0.31.3, cleaning up 50+ obsolete test files, implementing version management automation, and improving subagent architecture.
+**Major cleanup release** focusing on comprehensive test suite reorganization, Alfred to MoAI naming migration, and Claude 4.5 best practices alignment. This release includes 25 commits since v0.31.3, cleaning up 50+ obsolete test files, implementing version management automation, and improving subagent architecture.
 
 ## Highlights
 
@@ -10,7 +10,7 @@
 
 - **Comprehensive Version Management System**: Implemented release automation with version synchronization across all configuration files (`3b15de80`)
 - **Enhanced CLI UI**: Improved user interface aesthetics and cleaned up hook implementations (`199b6555`)
-- **Claude 4 Best Practices**: Applied latest prompt engineering patterns to all prompt artifacts (`482cad9d`)
+- **Claude 4.5 Best Practices**: Applied latest prompt engineering patterns to all prompt artifacts (`482cad9d`)
 
 ### Bug Fixes
 
@@ -33,6 +33,7 @@
 ## Breaking Changes
 
 ### Path Migration
+
 - **Old path**: `.claude/hooks/alfred/`
 - **New path**: `.claude/hooks/moai/`
 
@@ -41,12 +42,14 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 ## All Commits (25 commits since v0.31.3)
 
 ### Features (4)
+
 - `feat: Implement comprehensive version management system with release automation`
 - `feat: Enhanced CLI UI and hook cleanup`
 - `feat(prompts): Apply Claude 4 best practices to all prompt engineering artifacts`
 - `feat(release): Release v0.31.4 with 5 session start hook fixes`
 
 ### Bug Fixes (13)
+
 - `fix: Remove AskUserQuestion from subagents (stateless context limitation)`
 - `fix: Update test file paths from alfred to moai hooks directory`
 - `fix: Resolve undefined name errors (F821) in critical modules`
@@ -62,29 +65,33 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 - `fix(ci): Skip skill-validation when tools not present`
 
 ### Code Style (4)
+
 - `style: Apply ruff formatting and fix F541 f-string error`
 - `style: Apply black formatting and fix deprecated actions`
 - `style: Format test_init_prompts_enhanced.py with black`
 - `fix(tests): Fix ruff linting errors for CI compliance`
 
 ### Refactoring (1)
+
 - `refactor(tests): Comprehensive test suite reorganization and cleanup`
 
 ### Testing (1)
+
 - `test: Clean up obsolete and skipped tests (v0.32.0)`
 
 ### Documentation (1)
+
 - `docs(readme): Fix agent information and Mermaid diagram syntax`
 
 ## Test Suite Metrics
 
-| Metric | Before (v0.31.3) | After (v0.32.0) |
-|--------|------------------|-----------------|
-| Passed | ~2,500 | 3,751 |
-| Skipped | 1,052 | 1 |
-| Failed | 452 | 0 |
-| Errors | 107 | 0 |
-| Deleted Files | 0 | 50+ |
+| Metric        | Before (v0.31.3) | After (v0.32.0) |
+| ------------- | ---------------- | --------------- |
+| Passed        | ~2,500           | 3,751           |
+| Skipped       | 1,052            | 1               |
+| Failed        | 452              | 0               |
+| Errors        | 107              | 0               |
+| Deleted Files | 0                | 50+             |
 
 ## Deleted Test Files (Partial List)
 
@@ -102,7 +109,7 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 
 ## 요약
 
-테스트 스위트 전면 재구성, Alfred에서 MoAI로의 네이밍 마이그레이션, Claude 4 모범 사례 적용에 초점을 맞춘 **주요 정리 릴리즈**입니다. v0.31.3 이후 25개 커밋이 포함되어 있으며, 50개 이상의 불필요한 테스트 파일 삭제, 버전 관리 자동화 구현, 서브에이전트 아키텍처 개선이 이루어졌습니다.
+테스트 스위트 전면 재구성, Alfred에서 MoAI로의 네이밍 마이그레이션, Claude 4.5 모범 프롬프트 사례 적용에 초점을 맞춘 **주요 정리 릴리즈**입니다. v0.31.3 이후 25개 커밋이 포함되어 있으며, 50개 이상의 불필요한 테스트 파일 삭제, 버전 관리 자동화 구현, 서브에이전트 아키텍처 개선이 이루어졌습니다.
 
 ## 주요 변경 사항
 
@@ -110,7 +117,7 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 
 - **종합 버전 관리 시스템**: 모든 설정 파일에 대한 버전 동기화를 포함한 릴리즈 자동화 구현 (`3b15de80`)
 - **향상된 CLI UI**: 사용자 인터페이스 미학 개선 및 훅 구현 정리 (`199b6555`)
-- **Claude 4 모범 사례**: 모든 프롬프트 아티팩트에 최신 프롬프트 엔지니어링 패턴 적용 (`482cad9d`)
+- **Claude 4.5 모범 프롬프트 사례**: 모든 프롬프트 아티팩트에 최신 프롬프트 엔지니어링 패턴 적용 (`482cad9d`)
 
 ### 버그 수정
 
@@ -133,6 +140,7 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 ## 호환성 변경
 
 ### 경로 마이그레이션
+
 - **이전 경로**: `.claude/hooks/alfred/`
 - **새 경로**: `.claude/hooks/moai/`
 
@@ -140,13 +148,13 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 
 ## 테스트 스위트 지표
 
-| 지표 | 이전 (v0.31.3) | 이후 (v0.32.0) |
-|------|----------------|----------------|
-| 통과 | ~2,500 | 3,751 |
-| 스킵 | 1,052 | 1 |
-| 실패 | 452 | 0 |
-| 오류 | 107 | 0 |
-| 삭제된 파일 | 0 | 50+ |
+| 지표        | 이전 (v0.31.3) | 이후 (v0.32.0) |
+| ----------- | -------------- | -------------- |
+| 통과        | ~2,500         | 3,751          |
+| 스킵        | 1,052          | 1              |
+| 실패        | 452            | 0              |
+| 오류        | 107            | 0              |
+| 삭제된 파일 | 0              | 50+            |
 
 ---
 
@@ -159,11 +167,13 @@ Projects using direct Alfred hook references should update to new MoAI paths.
 ## Highlights
 
 ### Critical: SPEC Progress Calculation Fix
+
 - **Fixed false 100% completion** in SPEC progress display
 - **YAML frontmatter parsing** now correctly reads `status: completed` field
 - **Accurate progress tracking** prevents misleading completion rates
 
 ### Git Initialization Improvements
+
 - **Git init now runs for all modes**: manual, personal, and team
 - **Added .git existence check** to prevent duplicate initialization
 - **Enhanced reliability** for fresh project setups
@@ -179,11 +189,13 @@ SPEC 진행률 계산, Git 초기화 및 사용자 경험에 영향을 미치는
 ## 주요 변경 사항
 
 ### 중요: SPEC 진행률 계산 수정
+
 - SPEC 진행률 표시에서 **잘못된 100% 완료** 수정
 - **YAML 프론트매터 파싱**이 이제 `status: completed` 필드를 올바르게 읽음
 - **정확한 진행률 추적**으로 오해의 소지가 있는 완료율 방지
 
 ### Git 초기화 개선
+
 - **모든 모드에서 Git init 실행**: manual, personal, team
 - 중복 초기화 방지를 위한 **.git 존재 확인** 추가
 - 새 프로젝트 설정에 대한 **향상된 안정성**
