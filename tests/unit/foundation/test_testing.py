@@ -551,3 +551,104 @@ class TestUtilityFunctions:
 
         assert result["is_valid"] is False
         assert any("coverage" in err.lower() for err in result["errors"])
+
+    def test_validate_test_configuration_max_duration(self):
+        """Test validating configuration with invalid max_duration."""
+        config = {
+            "frameworks": ["pytest"],
+            "test_paths": ["."],
+            "thresholds": {"max_duration": -5},
+        }
+        result = validate_test_configuration(config)
+
+        assert result["is_valid"] is False
+        assert any("duration" in err.lower() for err in result["errors"])
+
+    def test_validate_test_configuration_nonexistent_path(self):
+        """Test validating configuration with nonexistent test paths."""
+        config = {
+            "frameworks": ["pytest"],
+            "test_paths": ["/nonexistent/path/to/tests"],
+            "thresholds": {"min_coverage": 85},
+        }
+        result = validate_test_configuration(config)
+
+        assert "warnings" in result
+        assert any("does not exist" in w.lower() for w in result.get("warnings", []))
+
+    def test_validate_test_configuration_valid_with_recommendations(self):
+        """Test validating valid configuration generates recommendations."""
+        config = {
+            "frameworks": ["pytest"],
+            "test_paths": ["."],
+            "thresholds": {"min_coverage": 85, "max_duration": 300},
+        }
+        result = validate_test_configuration(config)
+
+        assert result["is_valid"] is True
+        assert "recommendations" in result
+        assert len(result["recommendations"]) > 0
+
+
+class TestMainFunction:
+    """Test the main demonstration function."""
+
+    @mock.patch("moai_adk.foundation.testing.TestingFrameworkManager")
+    @mock.patch("moai_adk.foundation.testing.QualityGateEngine")
+    @mock.patch("moai_adk.foundation.testing.CoverageAnalyzer")
+    @mock.patch("moai_adk.foundation.testing.TestAutomationOrchestrator")
+    @mock.patch("moai_adk.foundation.testing.TestReportingSpecialist")
+    @mock.patch("moai_adk.foundation.testing.TestDataManager")
+    @mock.patch("moai_adk.foundation.testing.TestingMetricsCollector")
+    @mock.patch("builtins.print")
+    def test_main_function(
+        self,
+        mock_print,
+        mock_metrics,
+        mock_data,
+        mock_reporting,
+        mock_automation,
+        mock_coverage,
+        mock_quality,
+        mock_framework,
+    ):
+        """Test the main function runs without errors."""
+        from moai_adk.foundation.testing import main
+
+        # Setup mocks
+        mock_framework_instance = mock.MagicMock()
+        mock_framework.return_value = mock_framework_instance
+        mock_framework_instance.configure_pytest_environment.return_value = {"pytest": {}}
+
+        mock_quality_instance = mock.MagicMock()
+        mock_quality.return_value = mock_quality_instance
+        mock_quality_instance.setup_code_quality_checks.return_value = {"linters": []}
+
+        mock_coverage_instance = mock.MagicMock()
+        mock_coverage.return_value = mock_coverage_instance
+        mock_coverage_instance.analyze_code_coverage.return_value = {"summary": {"percentage": 85}}
+
+        mock_automation_instance = mock.MagicMock()
+        mock_automation.return_value = mock_automation_instance
+        mock_automation_instance.setup_ci_pipeline.return_value = {"stages": []}
+
+        mock_reporting_instance = mock.MagicMock()
+        mock_reporting.return_value = mock_reporting_instance
+        mock_reporting_instance.generate_test_reports.return_value = {"summary": {"total_tests": 10}}
+
+        mock_data_instance = mock.MagicMock()
+        mock_data.return_value = mock_data_instance
+        mock_data_instance.create_test_datasets.return_value = {"test_datasets": []}
+
+        mock_metrics_instance = mock.MagicMock()
+        mock_metrics.return_value = mock_metrics_instance
+        mock_metrics_instance.collect_test_metrics.return_value = {}
+        mock_metrics_instance.calculate_quality_scores.return_value = {"grade": "A"}
+
+        # Run main
+        result = main()
+
+        # Assert
+        assert result is True
+        mock_print.assert_called()
+        assert mock_print.call_count >= 10  # Should print demo output
