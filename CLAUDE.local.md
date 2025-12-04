@@ -155,7 +155,6 @@ MoAI-ADK/
 ## Important Notes
 
 - `/Users/goos/MoAI/MoAI-ADK/.claude/settings.json` uses substituted variables
-- Never commit time estimates ("4-6 hours") - avoid unverified timeframes
 - Template changes trigger auto-sync via hooks
 - Local config is never synced to package (user-specific)
 - Output styles allow visual emphasis emoji (🤖 R2-D2 ★) per CLAUDE.md Documentation Standards
