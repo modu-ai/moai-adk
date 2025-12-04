@@ -1,0 +1,393 @@
+name: 🚀 Unified Release Pipeline
+
+# 트리거: Tag push 또는 Manual dispatch
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'  # v0.31.0 형태
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.31.0)'
+        required: true
+        type: string
+      target_environment:
+        description: 'Target deployment environment'
+        required: true
+        type: choice
+        default: 'test'
+        options:
+        - test
+        - production
+      create_release:
+        description: 'Create GitHub Release'
+        required: true
+        type: boolean
+        default: true
+
+# 권한 설정
+permissions:
+  contents: write
+  packages: write
+  actions: read
+  pull-requests: write
+
+# 동시성 제어: 릴리스는 순차 실행
+concurrency:
+  group: release-unified-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 1️⃣ 버전 추출 및 환경 결정
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  extract-metadata:
+    name: 📋 Extract Metadata & Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
+      environment: ${{ steps.metadata.outputs.environment }}
+      create_release: ${{ steps.metadata.outputs.create_release }}
+      trigger_type: ${{ steps.metadata.outputs.trigger_type }}
+      pyproject_version: ${{ steps.extract_pyproject.outputs.version }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Determine trigger type and extract metadata
+        id: metadata
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="v$VERSION"
+            ENVIRONMENT="${{ github.event.inputs.target_environment }}"
+            CREATE_RELEASE="${{ github.event.inputs.create_release }}"
+            TRIGGER_TYPE="manual"
+          else
+            # Tag push trigger
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"  # Remove 'v' prefix
+            ENVIRONMENT="test"  # Tag push always goes to test first
+            CREATE_RELEASE="true"
+            TRIGGER_TYPE="tag"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "environment=$ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "create_release=$CREATE_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "trigger_type=$TRIGGER_TYPE" >> "$GITHUB_OUTPUT"
+
+          echo "📦 Release Metadata:"
+          echo "  Trigger: $TRIGGER_TYPE"
+          echo "  Version: $VERSION"
+          echo "  Tag: $TAG"
+          echo "  Environment: $ENVIRONMENT"
+          echo "  Create Release: $CREATE_RELEASE"
+
+      - name: 🔍 Extract version from pyproject.toml
+        id: extract_pyproject
+        run: |
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "version=$PYPROJECT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "📦 pyproject.toml version: $PYPROJECT_VERSION"
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 2️⃣ 통합 사전 검증
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  unified-validation:
+    name: 🔍 Unified Pre-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: extract-metadata
+    outputs:
+      is_safe: ${{ steps.safety.outputs.safe }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ✅ Validate version format
+        run: |
+          VERSION="${{ needs.extract-metadata.outputs.version }}"
+
+          echo "🔍 Validating version format: $VERSION"
+
+          # Version format check (MAJOR.MINOR.PATCH)
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "   Must be: MAJOR.MINOR.PATCH (e.g., 0.31.0)"
+            exit 1
+          fi
+
+          echo "✅ Version format is valid"
+
+      - name: 🔒 Version consistency check
+        run: |
+          TAG_VERSION="${{ needs.extract-metadata.outputs.version }}"
+          PYPROJECT_VERSION="${{ needs.extract-metadata.outputs.pyproject_version }}"
+
+          echo "🔍 Checking version consistency:"
+          echo "  Tag/Input version: $TAG_VERSION"
+          echo "  pyproject.toml:    $PYPROJECT_VERSION"
+
+          if [ "$TAG_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "❌ VERSION MISMATCH!"
+            echo "   Tag/Input: $TAG_VERSION"
+            echo "   pyproject.toml: $PYPROJECT_VERSION"
+            echo "   Please sync versions before release"
+            exit 1
+          fi
+
+          echo "✅ Version consistency verified"
+
+      - name: 🛡️ Safety validation
+        id: safety
+        run: |
+          VERSION="${{ needs.extract-metadata.outputs.version }}"
+          ENVIRONMENT="${{ needs.extract-metadata.outputs.environment }}"
+
+          echo "🔍 Safety Check:"
+          echo "  Version: $VERSION"
+          echo "  Target Environment: $ENVIRONMENT"
+
+          # Production-specific checks
+          if [ "$ENVIRONMENT" = "production" ]; then
+            if [[ "$VERSION" =~ (test|alpha|beta|rc|dev) ]]; then
+              echo "❌ PRODUCTION SAFETY VIOLATION!"
+              echo "   Version '$VERSION' contains test/unstable indicators"
+              echo "safe=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            echo "✅ Production deployment approved (stable version)"
+          else
+            echo "✅ Test deployment approved"
+          fi
+
+          echo "safe=true" >> "$GITHUB_OUTPUT"
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 3️⃣ 빌드 및 검증
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  build-and-verify:
+    name: 🏗️ Build & Verify Package
+    runs-on: ubuntu-latest
+    needs: [extract-metadata, unified-validation]
+    if: needs.unified-validation.outputs.is_safe == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 🔨 Build package
+        run: |
+          echo "🏗️ Building package for version ${{ needs.extract-metadata.outputs.version }}..."
+          uv build
+          echo "✅ Package built successfully"
+          ls -lh dist/
+
+      - name: 🧪 Run quick tests
+        run: |
+          echo "🧪 Running quick pre-deployment tests..."
+          uv sync
+          uv run pytest tests/ -x --tb=short -q --maxfail=5
+          echo "✅ Quick tests passed"
+
+      - name: 📦 Package integrity verification
+        run: |
+          echo "📦 Verifying package integrity..."
+          python -m zipfile -l dist/moai_adk-*.whl | wc -l
+          tar -tzf dist/moai_adk-*.tar.gz | wc -l
+          echo "✅ Package verified"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ needs.extract-metadata.outputs.version }}
+          path: dist/
+          retention-days: 7
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 4️⃣ GitHub Release 생성 (선택적)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  create-github-release:
+    name: 📝 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [extract-metadata, build-and-verify]
+    if: |
+      needs.extract-metadata.outputs.create_release == 'true' &&
+      needs.build-and-verify.result == 'success'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.extract-metadata.outputs.version }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --format="- %s (%h)" --reverse | head -10)
+          else
+            COMMITS=$(git log $PREVIOUS_TAG...HEAD --format="- %s (%h)" --reverse | head -10)
+          fi
+
+          cat > release_notes.md << 'EOF'
+          ## 🚀 MoAI-ADK Release VERSION_PLACEHOLDER
+
+          ### Key Changes
+          COMMITS_PLACEHOLDER
+
+          ### Installation
+          ```bash
+          # UV (Recommended)
+          uv add moai-adk==VERSION_PLACEHOLDER
+
+          # pip
+          pip install moai-adk==VERSION_PLACEHOLDER
+          ```
+
+          ---
+          🤖 Unified Release Pipeline
+          EOF
+
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" release_notes.md
+          echo "$COMMITS" | sed 's/^//' > commits.txt
+          python3 << 'PYTHON'
+          with open('commits.txt', 'r') as f:
+              commits = f.read()
+          with open('release_notes.md', 'r') as f:
+              content = f.read()
+          content = content.replace('COMMITS_PLACEHOLDER', commits)
+          with open('release_notes.md', 'w') as f:
+              f.write(content)
+          PYTHON
+
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          cat release_notes.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: 📤 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ needs.extract-metadata.outputs.version }}
+          path: dist/
+
+      - name: 📤 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ needs.extract-metadata.outputs.tag }}"
+          name: "Release ${{ needs.extract-metadata.outputs.tag }}"
+          body: ${{ steps.release_notes.outputs.body }}
+          draft: false
+          prerelease: ${{ needs.extract-metadata.outputs.environment == 'test' }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 5️⃣ PyPI 배포 (환경 기반 분기)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  deploy-to-pypi:
+    name: 🚀 Deploy to ${{ needs.extract-metadata.outputs.environment == 'production' && 'PyPI' || 'TestPyPI' }}
+    runs-on: ubuntu-latest
+    needs: [extract-metadata, build-and-verify]
+    if: needs.build-and-verify.result == 'success'
+    environment: ${{ needs.extract-metadata.outputs.environment }}
+
+    steps:
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ needs.extract-metadata.outputs.version }}
+          path: dist/
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: 🚀 Deploy to PyPI/TestPyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ needs.extract-metadata.outputs.environment == 'production' && secrets.PYPI_API_TOKEN || secrets.TESTPYPI_API_TOKEN }}
+        run: |
+          VERSION="${{ needs.extract-metadata.outputs.version }}"
+          ENVIRONMENT="${{ needs.extract-metadata.outputs.environment }}"
+
+          if [ "$ENVIRONMENT" = "test" ]; then
+            echo "🧪 Deploying to TestPyPI..."
+            uv publish --publish-url https://test.pypi.org/legacy/
+            echo "✅ Deployed to TestPyPI"
+          else
+            echo "🚀 Deploying to Production PyPI..."
+            uv publish --publish-url https://upload.pypi.org/legacy/
+            echo "✅ Deployed to PyPI"
+          fi
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 6️⃣ 배포 요약
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  deployment-summary:
+    name: 📊 Deployment Summary
+    runs-on: ubuntu-latest
+    needs:
+      - extract-metadata
+      - unified-validation
+      - build-and-verify
+      - create-github-release
+      - deploy-to-pypi
+    if: always()
+
+    steps:
+      - name: 📋 Generate summary
+        run: |
+          VERSION="${{ needs.extract-metadata.outputs.version }}"
+          ENVIRONMENT="${{ needs.extract-metadata.outputs.environment }}"
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🚀 Unified Release Pipeline Summary
+
+          ### 📦 Release Information
+          | Item | Value |
+          |------|-------|
+          | **Version** | VERSION_PLACEHOLDER |
+          | **Environment** | ENVIRONMENT_PLACEHOLDER |
+
+          ### 📊 Pipeline Status
+          | Phase | Status |
+          |-------|--------|
+          | **Validation** | ${{ needs.unified-validation.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |
+          | **Build** | ${{ needs.build-and-verify.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |
+          | **GitHub Release** | ${{ needs.create-github-release.result == 'success' && '✅ CREATED' || '⏭️ SKIPPED' }} |
+          | **PyPI** | ${{ needs.deploy-to-pypi.result == 'success' && '✅ DEPLOYED' || '❌ FAILED' }} |
+
+          ---
+          🤖 Unified Release Pipeline
+          EOF
+
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" $GITHUB_STEP_SUMMARY
+          sed -i "s/ENVIRONMENT_PLACEHOLDER/$ENVIRONMENT/g" $GITHUB_STEP_SUMMARY
