@@ -1,0 +1,63 @@
+# Pre-commit hooks for MoAI-ADK
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.1
+    hooks:
+      # Run linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+      # Run formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # Basic file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+      # Check YAML syntax
+      - id: check-yaml
+        exclude: ^src/moai_adk/templates/
+
+      # Check for merge conflicts
+      - id: check-merge-conflict
+
+      # Check for files that would conflict on case-insensitive filesystems
+      - id: check-case-conflict
+
+      # Fix end of files
+      - id: end-of-file-fixer
+        exclude: \.md$
+
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+        exclude: \.md$
+
+  # Security checks
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+# CI configuration
+ci:
+  autofix_commit_msg: |
+    chore: auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: 'chore: pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
