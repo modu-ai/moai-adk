@@ -826,44 +826,58 @@ CONDITION: `branch_creation.prompt_always == true`
 ACTION: Ask user for branch/worktree creation preference
 
 ```python
-AskUserQuestion({
-    "questions": [{
-        "question": "Create a development environment for this SPEC?",
-        "header": "Development Environment",
-        "multiSelect": false,
-        "options": [
-            {
-                "label": "Create Worktree",
-                "description": "Create isolated worktree environment (recommended for parallel SPEC development)"
-            },
-            {
-                "label": "Create Branch",
-                "description": "Create feature/SPEC-{SPEC_ID} branch (traditional workflow)"
-            },
-            {
-                "label": "Use current branch",
-                "description": "Work directly on current branch"
-            }
-        ]
-    }]
-})
+# Early exit if auto_branch is disabled
+auto_branch = config.get("git_strategy", {}).get("automation", {}).get("auto_branch", True)
 
-# Based on user choice:
-if user_choice == "Create Worktree":
-    ROUTE = "CREATE_WORKTREE"
-elif user_choice == "Create Branch":
-    ROUTE = "CREATE_BRANCH"
-else:
+if auto_branch == False:
     ROUTE = "USE_CURRENT_BRANCH"
+    # Skip to Step 2.4 - do not ask user
+
+else:
+    # Ask user for branch/worktree creation preference
+    AskUserQuestion({
+        "questions": [{
+            "question": "Create a development environment for this SPEC?",
+            "header": "Development Environment",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "Create Worktree",
+                    "description": "Create isolated worktree environment (recommended for parallel SPEC development)"
+                },
+                {
+                    "label": "Create Branch",
+                    "description": "Create feature/SPEC-{SPEC_ID} branch (traditional workflow)"
+                },
+                {
+                    "label": "Use current branch",
+                    "description": "Work directly on current branch"
+                }
+            ]
+        }]
+    })
+
+    # Based on user choice:
+    if user_choice == "Create Worktree":
+        ROUTE = "CREATE_WORKTREE"
+    elif user_choice == "Create Branch":
+        ROUTE = "CREATE_BRANCH"
+    else:
+        ROUTE = "USE_CURRENT_BRANCH"
 ```
 
-Next Step: Go to Step 2.5 (worktree), 2.3 (branch), or 2.4 (current) based on user choice
+Next Step: Go to Step 2.5 (worktree), 2.3 (branch), or 2.4 (current) based on route
 
 ---
 
 #### Step 2.3: Create Feature Branch (After User Choice OR Auto-Creation)
 
-CONDITION: User selected "Auto create" OR (`prompt_always: false` AND git_mode in [personal, team])
+CONDITION:
+- User selected "Create Branch"
+- OR (`prompt_always: false` AND git_mode in [personal, team])
+- AND `git_strategy.automation.auto_branch == true`
+
+If `auto_branch: false`: Skip to Step 2.4 (Use current branch)
 
 ACTION: Invoke manager-git to create feature branch
 

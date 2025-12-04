@@ -330,15 +330,24 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 
 **Agent**: manager-git
 
-**Condition** [HARD]: Only execute if `quality_status == PASS` or `quality_status == WARNING`
-  - WHY: Ensures only validated code reaches version control
-  - IMPACT: Prevents broken code from blocking other developers
+**Condition** [HARD]: Only execute if:
+1. `quality_status == PASS` or `quality_status == WARNING`
+2. AND config.yaml `git_strategy.automation.auto_branch == true`
+
+If `git_strategy.automation.auto_branch == false`:
+- Skip branch creation entirely
+- Commit directly to current branch
+- Use current branch name in all outputs and commits
+
+  - WHY: Ensures only validated code reaches version control; respects user's branch configuration
+  - IMPACT: Prevents broken code from blocking other developers; allows manual Git workflow
 
 **Requirements** [HARD]:
 
-- Create feature branch using naming convention: `feature/SPEC-{ID}`
-  - WHY: Enables clear association with SPEC requirements
-  - IMPACT: Simplifies PR reviews and change tracking
+- If `auto_branch == true`: Create feature branch using naming convention: `feature/SPEC-{ID}`
+- If `auto_branch == false`: Use current branch (skip branch creation)
+  - WHY: Enables clear association with SPEC requirements when branching enabled; respects manual workflow preference
+  - IMPACT: Simplifies PR reviews and change tracking; allows direct commits to main/current branch
 
 - Stage all relevant implementation and test files
   - WHY: Ensures complete feature change set is captured
