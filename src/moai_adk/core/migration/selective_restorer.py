@@ -331,16 +331,36 @@ class SelectiveRestorer:
             return False
 
     def _handle_file_conflict(self, target_path: Path, backup_source: Path) -> bool:
-        """Handle file conflict during restoration.
+        """Handle file or directory conflict during restoration.
 
         Args:
-            target_path: Path to target file (existing)
-            backup_source: Path to backup source file
+            target_path: Path to target file/directory (existing)
+            backup_source: Path to backup source file/directory
 
         Returns:
             True if conflict handled successfully, False otherwise
         """
         try:
+            # Handle directory conflicts (skills are directories)
+            if target_path.is_dir() and backup_source.is_dir():
+                # Directories - backup target directory and return True
+                backup_target = target_path.parent / f"{target_path.name}.backup_dir"
+                try:
+                    if backup_target.exists():
+                        shutil.rmtree(backup_target)
+                    shutil.copytree(target_path, backup_target, dirs_exist_ok=True)
+                    logger.debug(f"Backed up directory: {target_path} -> {backup_target}")
+                    return True
+                except Exception as e:
+                    logger.error(f"Failed to backup directory {target_path}: {e}")
+                    return False
+
+            # Handle file conflicts
+            if not target_path.is_file() or not backup_source.is_file():
+                # Mixed types or non-existent, skip comparison
+                logger.debug(f"Skipping conflict check for non-file: {target_path}")
+                return True
+
             # Compare file contents
             target_content = target_path.read_text(encoding="utf-8", errors="ignore")
             backup_content = backup_source.read_text(encoding="utf-8", errors="ignore")

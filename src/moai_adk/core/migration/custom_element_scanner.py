@@ -72,20 +72,28 @@ class CustomElementScanner:
         }
 
     def scan_custom_elements(self) -> Dict[str, Any]:
-        """Scan for user-created custom elements.
+        """Scan for user-created custom elements only.
 
         Scans the project directory for agents, commands, skills, and hooks that are
-        not part of the official MoAI-ADK template installation.
+        NOT part of the official MoAI-ADK template installation. Template elements
+        in moai/ subdirectories and moai-* prefixed skills are excluded because
+        they are automatically overwritten during updates.
+
+        Exclusions:
+            - agents/moai/* - Template agents (overwritten during update)
+            - commands/moai/* - Template commands (overwritten during update)
+            - skills/moai-* - Template skills (overwritten during update)
+            - hooks/moai/* - Template hooks (overwritten during update)
 
         Returns:
             Dictionary with element types as keys and lists of custom element paths as values
 
         Example:
             {
-                "agents": [Path("/project/.claude/agents/my-agent.md")],
-                "commands": [Path("/project/.claude/commands/my-command.md")],
-                "skills": [Path("/project/.claude/skills/my-skill/")],
-                "hooks": [Path("/project/.claude/hooks/moai/my-hook.py")]
+                "agents": [Path(".claude/agents/custom/my-agent.md")],
+                "commands": [Path(".claude/commands/custom/my-command.md")],
+                "skills": [Path(".claude/skills/my-custom-skill/")],
+                "hooks": [Path(".claude/hooks/custom/my-hook.py")]
             }
         """
         custom_elements: Dict[str, Any] = {}
@@ -105,10 +113,14 @@ class CustomElementScanner:
         return custom_elements
 
     def _scan_custom_agents(self) -> List[Path]:
-        """Scan for custom agents.
+        """Scan for custom agents only (excluding agents/moai/* template agents).
+
+        Template agents in the moai/ subdirectory are automatically overwritten
+        during updates. Only user-created custom agents should be available
+        for restoration.
 
         Returns:
-            List of paths to custom agent files
+            List of paths to custom agent files (excluding moai/ subdirectory)
         """
         agents_dir = self.project_path / ".claude" / "agents"
 
@@ -116,21 +128,33 @@ class CustomElementScanner:
             return []
 
         custom_agents = []
-        template_agents = self.template_elements["agents"]
 
-        for file_path in agents_dir.rglob("*.md"):
-            # Check if this is a template file
-            if file_path.name not in template_agents:
-                relative_path = file_path.relative_to(self.project_path)
+        # Scan all subdirectories under agents EXCEPT moai/
+        for item in agents_dir.iterdir():
+            if item.is_dir():
+                # Skip moai/ subdirectory - template agents should be overwritten
+                if item.name == "moai":
+                    continue
+                # Scan custom subdirectories
+                for file_path in item.rglob("*.md"):
+                    relative_path = file_path.relative_to(self.project_path)
+                    custom_agents.append(relative_path)
+            elif item.is_file() and item.suffix == ".md":
+                # Include root-level agent files (not in any subdirectory)
+                relative_path = item.relative_to(self.project_path)
                 custom_agents.append(relative_path)
 
         return custom_agents
 
     def _scan_custom_commands(self) -> List[Path]:
-        """Scan for custom commands.
+        """Scan for custom commands only (excluding commands/moai/* template commands).
+
+        Template commands in the moai/ subdirectory are automatically overwritten
+        during updates. Only user-created custom commands should be available
+        for restoration.
 
         Returns:
-            List of paths to custom command files
+            List of paths to custom command files (excluding moai/ subdirectory)
         """
         commands_dir = self.project_path / ".claude" / "commands"
 
@@ -138,52 +162,53 @@ class CustomElementScanner:
             return []
 
         custom_commands = []
-        template_commands = self.template_elements["commands"]
 
-        # Scan moai subdirectory specifically
-        moai_commands_dir = commands_dir / "moai"
-        if moai_commands_dir.exists():
-            for file_path in moai_commands_dir.glob("*.md"):
-                # Check if this is a template file
-                if file_path.name not in template_commands:
-                    relative_path = file_path.relative_to(self.project_path)
-                    custom_commands.append(relative_path)
-
-        # Also scan other subdirectories under commands
+        # Scan all subdirectories under commands EXCEPT moai/
+        # moai/ subdirectory contains template commands that should be overwritten
         for subdir in commands_dir.iterdir():
-            if subdir.is_dir() and subdir.name != "moai":
+            if subdir.is_dir():
+                # Skip moai/ subdirectory - template commands should be overwritten
+                if subdir.name == "moai":
+                    continue
+                # Scan custom subdirectories
                 for file_path in subdir.rglob("*.md"):
                     relative_path = file_path.relative_to(self.project_path)
                     custom_commands.append(relative_path)
+            elif subdir.is_file() and subdir.suffix == ".md":
+                # Include root-level command files (not in any subdirectory)
+                relative_path = subdir.relative_to(self.project_path)
+                custom_commands.append(relative_path)
 
         return custom_commands
 
     def _scan_custom_skills(self) -> List[TemplateSkill]:
-        """Scan for all skills (template + custom).
+        """Scan for custom skills only (excluding moai-* template skills).
 
-        Unlike other element types, ALL skills (including moai-* template skills)
-        should be available for restoration since users may have modified them
-        and want to preserve their customizations during updates.
+        Template skills (moai-* prefix) are automatically overwritten during updates.
+        Only user-created custom skills should be available for restoration.
 
         Returns:
-            List of TemplateSkill objects representing all skill directories
+            List of TemplateSkill objects representing custom skill directories only
         """
         skills_dir = self.project_path / ".claude" / "skills"
 
         if not skills_dir.exists():
             return []
 
-        all_skills = []
+        custom_skills = []
         template_skills = self.template_elements["skills"]
 
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
-                # Include ALL skills (both template moai-* and custom skills)
-                # since users may have modified template skills and want to preserve them
+                # Skip moai-* template skills - they should be overwritten, not restored
+                # Only include user-created custom skills (non-moai-* prefix)
+                if skill_dir.name.startswith("moai-"):
+                    continue
+
                 relative_path = skill_dir.relative_to(self.project_path)
                 is_template_skill = skill_dir.name in template_skills
 
-                all_skills.append(
+                custom_skills.append(
                     TemplateSkill(
                         name=skill_dir.name,
                         path=relative_path,
@@ -192,13 +217,17 @@ class CustomElementScanner:
                     )
                 )
 
-        return all_skills
+        return custom_skills
 
     def _scan_custom_hooks(self) -> List[Path]:
-        """Scan for custom hooks.
+        """Scan for custom hooks only (excluding hooks/moai/* template hooks).
+
+        Template hooks in the moai/ subdirectory are automatically overwritten
+        during updates. Only user-created custom hooks should be available
+        for restoration.
 
         Returns:
-            List of paths to custom hook files
+            List of paths to custom hook files (excluding moai/ subdirectory)
         """
         hooks_dir = self.project_path / ".claude" / "hooks"
 
@@ -206,23 +235,22 @@ class CustomElementScanner:
             return []
 
         custom_hooks = []
-        template_hooks = self.template_elements["hooks"]
 
-        # Scan moai subdirectory specifically
-        moai_hooks_dir = hooks_dir / "moai"
-        if moai_hooks_dir.exists():
-            for file_path in moai_hooks_dir.rglob("*.py"):
-                # Check if this is a template file
-                if file_path.name not in template_hooks:
-                    relative_path = file_path.relative_to(self.project_path)
-                    custom_hooks.append(relative_path)
-
-        # Also scan other subdirectories under hooks
+        # Scan all subdirectories under hooks EXCEPT moai/
+        # moai/ subdirectory contains template hooks that should be overwritten
         for subdir in hooks_dir.iterdir():
-            if subdir.is_dir() and subdir.name != "moai":
+            if subdir.is_dir():
+                # Skip moai/ subdirectory - template hooks should be overwritten
+                if subdir.name == "moai":
+                    continue
+                # Scan custom subdirectories
                 for file_path in subdir.rglob("*.py"):
                     relative_path = file_path.relative_to(self.project_path)
                     custom_hooks.append(relative_path)
+            elif subdir.is_file() and subdir.suffix == ".py":
+                # Include root-level hook files (not in any subdirectory)
+                relative_path = subdir.relative_to(self.project_path)
+                custom_hooks.append(relative_path)
 
         return custom_hooks
 
