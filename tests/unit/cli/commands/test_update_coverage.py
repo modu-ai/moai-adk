@@ -250,6 +250,7 @@ class TestVersionFunctions:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         import json
+
         mock_response.read.return_value = json.dumps({"info": {"version": "0.9.0"}}).encode("utf-8")
         mock_urlopen.return_value = mock_response
 
