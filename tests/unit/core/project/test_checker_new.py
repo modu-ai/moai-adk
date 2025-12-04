@@ -430,13 +430,13 @@ class TestHelperFunctions:
         assert isinstance(result["Project structure (.moai/)"], bool)
 
     def test_check_environment_checks_config_file(self):
-        """Test check_environment includes config.json check."""
+        """Test check_environment includes config.yaml check."""
         # Arrange & Act
         result = check_environment()
 
         # Assert
-        assert "Config file (.moai/config/config.json)" in result
-        assert isinstance(result["Config file (.moai/config/config.json)"], bool)
+        assert "Config file (.moai/config/config.yaml)" in result
+        assert isinstance(result["Config file (.moai/config/config.yaml)"], bool)
 
     def test_get_platform_specific_message_returns_unix_on_unix(self):
         """Test get_platform_specific_message returns Unix message on Unix."""

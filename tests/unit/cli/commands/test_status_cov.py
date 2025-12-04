@@ -4,13 +4,13 @@ Focus on uncovered code paths with mocked dependencies.
 Tests actual code paths without side effects.
 """
 
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock
 
 import pytest
 import click
+import yaml
 from click.testing import CliRunner
 from git import Repo
 
@@ -36,7 +36,7 @@ class TestStatusCommand:
 
                 # Assert
                 assert result.exit_code != 0
-                assert "No .moai/config/config.json found" in result.output
+                assert "No .moai/config/config.yaml found" in result.output
 
             finally:
                 os.chdir(original_cwd)
@@ -48,7 +48,7 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {
                 "project": {
                     "mode": "personal",
@@ -56,7 +56,7 @@ class TestStatusCommand:
                 }
             }
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -83,14 +83,14 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             # Legacy format with mode/locale at top level
             config_data = {
                 "mode": "team",
                 "locale": "ko",
             }
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -117,10 +117,10 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {"project": {"mode": "personal", "locale": "en"}}
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             # Create SPEC files
             specs_dir = project_path / ".moai" / "specs"
@@ -154,10 +154,10 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {"project": {"mode": "personal", "locale": "en"}}
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -184,10 +184,10 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {"project": {"mode": "team", "locale": "ko"}}
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             # Create multiple SPEC files
             specs_dir = project_path / ".moai" / "specs"
@@ -229,11 +229,11 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             # Config with missing values
             config_data = {"project": {}}
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -260,7 +260,7 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {
                 "project": {
                     "mode": "personal",
@@ -268,7 +268,7 @@ class TestStatusCommand:
                 }
             }
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -297,7 +297,7 @@ class TestStatusCommand:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {
                 "project": {
                     "mode": "team",
@@ -305,7 +305,7 @@ class TestStatusCommand:
                 }
             }
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -324,17 +324,17 @@ class TestStatusCommand:
             finally:
                 os.chdir(original_cwd)
 
-    def test_status_invalid_json_config(self):
-        """Test status with invalid JSON config file."""
+    def test_status_invalid_yaml_config(self):
+        """Test status with invalid YAML config file."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
-            # Write invalid JSON
+            config_path = config_dir / "config.yaml"
+            # Write invalid YAML
             with open(config_path, "w") as f:
-                f.write("{invalid json")
+                f.write("invalid: yaml: content:")
 
             original_cwd = Path.cwd()
             try:
@@ -363,7 +363,7 @@ class TestStatusEdgeCases:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {
                 "project": {
                     "mode": "personal",
@@ -371,7 +371,7 @@ class TestStatusEdgeCases:
                 }
             }
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             original_cwd = Path.cwd()
             try:
@@ -397,10 +397,10 @@ class TestStatusEdgeCases:
             project_path = Path(tmpdir)
             config_dir = project_path / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_path = config_dir / "config.json"
+            config_path = config_dir / "config.yaml"
             config_data = {"project": {"mode": "personal", "locale": "en"}}
             with open(config_path, "w") as f:
-                json.dump(config_data, f)
+                yaml.dump(config_data, f)
 
             # Create SPEC files with nested structure
             specs_dir = project_path / ".moai" / "specs"
