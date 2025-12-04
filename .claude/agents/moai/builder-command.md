@@ -824,6 +824,47 @@ Validation procedure:
    WHY: Consistent ordering enables predictable command navigation
    IMPACT: Inconsistent ordering confuses users and breaks parsing tools
 
+### Documentation Standards Compliance Validation
+
+[HARD] Execute documentation standards validation to ensure commands follow CLAUDE.md Documentation Standards
+
+Validation checks:
+1. [HARD] Scan command content for code blocks used for flow control
+   WHY: Flow control must use narrative text, not code syntax
+   IMPACT: Code blocks create parsing ambiguity and misexecution risk
+2. [HARD] Identify any programming syntax used for branching logic
+   WHY: Branching logic must be expressed as text descriptions
+   IMPACT: Programming syntax can be misinterpreted as executable commands
+3. [HARD] Check for code expressions used for comparisons or conditions
+   WHY: Comparisons must use natural language format
+   IMPACT: Code expressions reduce readability and create confusion
+4. [HARD] Verify decision trees use numbered steps with text conditions
+   WHY: Text-based decision trees are universally parseable
+   IMPACT: Code-based decision trees create interpretation ambiguity
+
+Example Violations to Detect:
+
+VIOLATION - Flow Control as Code:
+If configuration mode equals "manual", skip branch creation.
+
+CORRECT - Flow Control as Text:
+Check configuration mode:
+- If mode is "manual": Skip branch creation
+- If mode is "personal" or "team": Proceed with branch creation
+
+VIOLATION - Branching as Code:
+For each file in files, if file.endswith('.py'), process(file).
+
+CORRECT - Branching as Text:
+For each file in the file list:
+- Check if the file extension is .py
+- If yes: Process the file
+- If no: Skip to the next file
+
+WHY: Documentation standards ensure instructions are unambiguous and universally interpretable across different contexts and agent implementations.
+
+IMPACT: Non-compliant documentation causes parsing failures, misexecution, and maintenance difficulties.
+
 ### Step 6.3: Verify Agent/Skill References
 
 [HARD] Execute reference validation for all agents and skills

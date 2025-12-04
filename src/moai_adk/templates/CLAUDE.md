@@ -40,15 +40,65 @@ Restricted Content:
 - Conceptual explanations expressed as code examples
 - Workflow descriptions presented as code snippets
 - Executable code examples in instructions
+- Programming code used to explain concepts
+- Flow control logic expressed as code (if/else, loops, conditions)
+- Branching logic presented as programming syntax
+- Comparison operations written as code expressions
+- Decision trees shown as code structures
 - Table format in instructions
 - Emoji or emoji characters in instructions
 - Time estimates or duration predictions (e.g., "4-6 hours", "takes 2 days")
 
-WHY: Code examples can be misinterpreted as executable commands. Tables and emojis reduce parsing reliability. Time estimates are unverifiable and create false expectations.
+WHY: Code examples can be misinterpreted as executable commands. Tables and emojis reduce parsing reliability. Time estimates are unverifiable and create false expectations. Flow control and branching logic must use narrative text format (e.g., "If condition A is true, then execute step 1. Otherwise, proceed to step 2.") instead of code syntax (e.g., if A: step1 else: step2).
 
 ### Scope of Application
 
 These standards apply to: CLAUDE.md, agent definitions, slash commands, skill definitions, hook definitions, and configuration files.
+
+### Correct vs Incorrect Examples
+
+Flow Control - INCORRECT (code block):
+
+If auto_branch equals False, set ROUTE to USE_CURRENT_BRANCH. Otherwise, set ROUTE to CREATE_BRANCH.
+
+Flow Control - CORRECT (text instructions):
+
+Check the auto_branch configuration value:
+- If auto_branch equals false: Set ROUTE to USE_CURRENT_BRANCH
+- If auto_branch equals true: Set ROUTE to CREATE_BRANCH
+
+Branching Logic - INCORRECT (code):
+
+Process each file in the list. For files with .py extension, perform processing. For other files, skip to next.
+
+Branching Logic - CORRECT (text):
+
+For each file in the file list:
+- Check if the file extension is .py
+- If yes: Process the file
+- If no: Skip to the next file
+
+Comparison Operations - INCORRECT (code):
+
+Check if the score is greater than or equal to 80, less than 50, or between 50 and 79.
+
+Comparison Operations - CORRECT (text):
+
+Compare the score against thresholds:
+- If score is 80 or higher: Apply high-priority action
+- If score is below 50: Apply low-priority action
+- If score is between 50 and 79: Apply medium-priority action
+
+Decision Trees - INCORRECT (code):
+
+Based on user role, determine access level. For admin role, grant full access. For user role, grant read-only access.
+
+Decision Trees - CORRECT (text):
+
+Determine access level based on user role:
+- Admin role detected: Grant full access to all resources
+- User role detected: Grant read-only access to public resources
+- Guest role detected: Grant limited access to welcome page only
 
 ---
 
