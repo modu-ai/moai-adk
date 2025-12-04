@@ -629,9 +629,9 @@ class TestWorktreeManagerList:
             now = datetime.now().isoformat() + "Z"
             for i in range(3):
                 worktree_info = WorktreeInfo(
-                    spec_id=f"SPEC-00{i+1}",
-                    path=worktree_root / f"SPEC-00{i+1}",
-                    branch=f"feature/SPEC-00{i+1}",
+                    spec_id=f"SPEC-00{i + 1}",
+                    path=worktree_root / f"SPEC-00{i + 1}",
+                    branch=f"feature/SPEC-00{i + 1}",
                     created_at=now,
                     last_accessed=now,
                     status="active",

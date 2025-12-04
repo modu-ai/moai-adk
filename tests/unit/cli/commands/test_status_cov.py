@@ -125,9 +125,9 @@ class TestStatusCommand:
             # Create SPEC files
             specs_dir = project_path / ".moai" / "specs"
             for i in range(3):
-                spec_path = specs_dir / f"SPEC-AUTH-00{i+1}"
+                spec_path = specs_dir / f"SPEC-AUTH-00{i + 1}"
                 spec_path.mkdir(parents=True, exist_ok=True)
-                (spec_path / "spec.md").write_text(f"# SPEC-AUTH-00{i+1}")
+                (spec_path / "spec.md").write_text(f"# SPEC-AUTH-00{i + 1}")
 
             original_cwd = Path.cwd()
             try:

@@ -54,9 +54,9 @@ class TestPhaseExecutorVersion:
         # Verify that the existing version field is preserved
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert (
-            final_config["moai"]["version"] == "1.5.0-custom"
-        ), f"Should preserve custom version '1.5.0-custom', got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] == "1.5.0-custom", (
+            f"Should preserve custom version '1.5.0-custom', got {final_config['moai']['version']}"
+        )
 
     def test_phase_4_merges_new_config_with_existing_version(self, tmp_path: Path) -> None:
         """
@@ -102,15 +102,15 @@ class TestPhaseExecutorVersion:
         # Verify that the existing version field is preserved
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert (
-            final_config["moai"]["version"] == "2.0.0-existing"
-        ), f"Should preserve existing version '2.0.0-existing', got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] == "2.0.0-existing", (
+            f"Should preserve existing version '2.0.0-existing', got {final_config['moai']['version']}"
+        )
 
         # Should have new fields
         assert "project" in final_config, "Should have project section"
-        assert (
-            final_config["project"]["mode"] == "team"
-        ), f"Should have new project mode 'team', got {final_config['project'].get('mode')}"
+        assert final_config["project"]["mode"] == "team", (
+            f"Should have new project mode 'team', got {final_config['project'].get('mode')}"
+        )
         assert "constitution" in final_config, "Should have constitution section"
 
     def test_phase_4_handles_version_field_priority_correctly(self, tmp_path: Path) -> None:
@@ -152,9 +152,9 @@ class TestPhaseExecutorVersion:
 
         # This assertion should pass - Phase 4 should preserve existing version
         # It should keep the user's custom version, not the template version
-        assert (
-            final_config["moai"]["version"] == "3.1.0-user-custom"
-        ), f"Should preserve user's custom version '3.1.0-user-custom', got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] == "3.1.0-user-custom", (
+            f"Should preserve user's custom version '3.1.0-user-custom', got {final_config['moai']['version']}"
+        )
 
     def test_phase_4_preserves_version_during_reinitialization(self, tmp_path: Path) -> None:
         """
@@ -198,14 +198,14 @@ class TestPhaseExecutorVersion:
         # Verify that the custom version is preserved during reinitialization
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert (
-            final_config["moai"]["version"] == custom_version
-        ), f"Should preserve custom version '{custom_version}', got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] == custom_version, (
+            f"Should preserve custom version '{custom_version}', got {final_config['moai']['version']}"
+        )
 
         # Should have new locale field
-        assert (
-            final_config["project"]["locale"] == "en"
-        ), f"Should have new locale field 'en', got {final_config['project'].get('locale')}"
+        assert final_config["project"]["locale"] == "en", (
+            f"Should have new locale field 'en', got {final_config['project'].get('locale')}"
+        )
 
     def test_phase_4_version_field_validation(self, tmp_path: Path) -> None:
         """
@@ -246,9 +246,9 @@ class TestPhaseExecutorVersion:
         # RED: These assertions will fail because Phase 4 doesn't preserve invalid version fields
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert (
-            final_config["moai"]["version"] == "invalid-version-string"
-        ), f"Should preserve invalid version string, got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] == "invalid-version-string", (
+            f"Should preserve invalid version string, got {final_config['moai']['version']}"
+        )
 
     def test_phase_4_with_missing_moai_section(self, tmp_path: Path) -> None:
         """
@@ -284,9 +284,9 @@ class TestPhaseExecutorVersion:
         # Should create moai section with version from template
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert (
-            final_config["moai"]["version"] != "unknown"
-        ), f"Version should not be 'unknown', got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] != "unknown", (
+            f"Version should not be 'unknown', got {final_config['moai']['version']}"
+        )
 
     def test_phase_4_version_field_preservation_with_multiple_changes(self, tmp_path: Path) -> None:
         """
@@ -338,17 +338,17 @@ class TestPhaseExecutorVersion:
         # Verify that the version is preserved during multiple changes
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
-        assert (
-            final_config["moai"]["version"] == "4.2.1-stable"
-        ), f"Should preserve version '4.2.1-stable', got {final_config['moai']['version']}"
+        assert final_config["moai"]["version"] == "4.2.1-stable", (
+            f"Should preserve version '4.2.1-stable', got {final_config['moai']['version']}"
+        )
 
         # Should have new fields updated
-        assert (
-            final_config["project"]["mode"] == "team"
-        ), f"Should have updated mode 'team', got {final_config['project'].get('mode')}"
-        assert (
-            final_config["constitution"]["test_coverage_target"] == 85
-        ), f"Should have updated coverage target 85, got {final_config['constitution'].get('test_coverage_target')}"
+        assert final_config["project"]["mode"] == "team", (
+            f"Should have updated mode 'team', got {final_config['project'].get('mode')}"
+        )
+        assert final_config["constitution"]["test_coverage_target"] == 85, (
+            f"Should have updated coverage target 85, got {final_config['constitution'].get('test_coverage_target')}"
+        )
         assert "language" in final_config, "Should have language section"
 
     def test_phase_4_version_field_case_sensitivity(self, tmp_path: Path) -> None:
@@ -389,9 +389,9 @@ class TestPhaseExecutorVersion:
                 # RED: These assertions will fail because Phase 4 doesn't preserve version
                 assert "moai" in final_config, "Final config should have 'moai' section"
                 assert "version" in final_config["moai"], "moai section should have 'version' field"
-                assert (
-                    final_config["moai"]["version"] == version
-                ), f"Should preserve exact version '{version}', got '{final_config['moai']['version']}'"
+                assert final_config["moai"]["version"] == version, (
+                    f"Should preserve exact version '{version}', got '{final_config['moai']['version']}'"
+                )
 
     def test_phase_4_version_field_with_special_characters(self, tmp_path: Path) -> None:
         """
@@ -436,6 +436,6 @@ class TestPhaseExecutorVersion:
                 # RED: These assertions will fail because Phase 4 doesn't preserve special version formats
                 assert "moai" in final_config, "Final config should have 'moai' section"
                 assert "version" in final_config["moai"], "moai section should have 'version' field"
-                assert (
-                    final_config["moai"]["version"] == version
-                ), f"Should preserve special version '{version}', got '{final_config['moai']['version']}'"
+                assert final_config["moai"]["version"] == version, (
+                    f"Should preserve special version '{version}', got '{final_config['moai']['version']}'"
+                )

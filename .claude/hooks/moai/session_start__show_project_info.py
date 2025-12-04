@@ -650,7 +650,9 @@ def load_user_personalization() -> dict:
             "personalized_greeting": (
                 f"{user_name}님"
                 if has_valid_name and conversation_lang == "ko"
-                else user_name if has_valid_name else ""
+                else user_name
+                if has_valid_name
+                else ""
             ),
             "needs_setup": not has_valid_name,  # FIX #5: Flag for setup guidance
         }
