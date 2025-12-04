@@ -27,7 +27,9 @@ class TestSessionManagerInit:
     def test_init_default_paths(self):
         """Test initialization with default paths."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.session_manager.Path.cwd", return_value=Path(tmpdir)):
+            with patch(
+                "moai_adk.core.session_manager.Path.cwd", return_value=Path(tmpdir)
+            ):
                 manager = SessionManager()
                 assert manager._session_file.parent.exists()
                 assert manager._transcript_dir.exists()

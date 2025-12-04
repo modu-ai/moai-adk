@@ -102,7 +102,9 @@ class TestRollbackManagerInit:
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
-    def test_rollback_manager_init_default(self, mock_load_registry, mock_exists, mock_mkdir):
+    def test_rollback_manager_init_default(
+        self, mock_load_registry, mock_exists, mock_mkdir
+    ):
         """Test RollbackManager initialization with defaults."""
         # Arrange
         mock_load_registry.return_value = {}
@@ -119,7 +121,9 @@ class TestRollbackManagerInit:
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
-    def test_rollback_manager_init_custom_path(self, mock_load_registry, mock_exists, mock_mkdir):
+    def test_rollback_manager_init_custom_path(
+        self, mock_load_registry, mock_exists, mock_mkdir
+    ):
         """Test RollbackManager with custom project root."""
         # Arrange
         custom_root = Path("/custom/project")
@@ -193,7 +197,9 @@ class TestRegistryOperations:
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("builtins.open", new_callable=mock_open)
     @patch("pathlib.Path.mkdir")
-    def test_save_registry_with_special_chars(self, mock_mkdir, mock_file, mock_load_registry):
+    def test_save_registry_with_special_chars(
+        self, mock_mkdir, mock_file, mock_load_registry
+    ):
         """Test registry saving with special characters."""
         # Arrange
         mock_load_registry.return_value = {}
@@ -370,7 +376,9 @@ class TestChecksumCalculation:
         """Test backup checksum calculation."""
         # Arrange
         mock_rglob.return_value = [Path("/mock/file1.txt")]
-        mock_file.return_value.__enter__ = MagicMock(return_value=mock_file.return_value)
+        mock_file.return_value.__enter__ = MagicMock(
+            return_value=mock_file.return_value
+        )
         mock_file.return_value.__exit__ = MagicMock(return_value=False)
 
         manager = RollbackManager()
@@ -389,7 +397,9 @@ class TestChecksumCalculation:
         """Test checksum consistency for same content."""
         # Arrange
         mock_rglob.return_value = [Path("/mock/file.txt")]
-        mock_file.return_value.__enter__ = MagicMock(return_value=mock_file.return_value)
+        mock_file.return_value.__enter__ = MagicMock(
+            return_value=mock_file.return_value
+        )
         mock_file.return_value.__exit__ = MagicMock(return_value=False)
         mock_file.return_value.read.return_value = b"test"
 
@@ -411,7 +421,9 @@ class TestChecksumCalculation:
 class TestRollbackToPoint:
     """Test suite for rollback to point operations."""
 
-    @patch("moai_adk.core.rollback_manager.RollbackManager._validate_system_after_rollback")
+    @patch(
+        "moai_adk.core.rollback_manager.RollbackManager._validate_system_after_rollback"
+    )
     @patch("moai_adk.core.rollback_manager.RollbackManager._perform_rollback")
     @patch("moai_adk.core.rollback_manager.RollbackManager._validate_rollback_point")
     @patch("pathlib.Path.exists")
@@ -515,7 +527,9 @@ class TestValidateRollbackPoint:
     @patch("moai_adk.core.rollback_manager.RollbackManager._calculate_backup_checksum")
     @patch("pathlib.Path.exists")
     @patch("pathlib.Path.mkdir")
-    def test_validate_rollback_point_valid(self, mock_mkdir, mock_exists, mock_checksum):
+    def test_validate_rollback_point_valid(
+        self, mock_mkdir, mock_exists, mock_checksum
+    ):
         """Test validation of valid rollback point."""
         # Arrange
         mock_exists.return_value = True
@@ -648,7 +662,13 @@ class TestPerformRollback:
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("pathlib.Path.mkdir")
     def test_perform_rollback_with_error(
-        self, mock_mkdir, mock_load_registry, mock_exists, mock_is_file, mock_rglob, mock_copy
+        self,
+        mock_mkdir,
+        mock_load_registry,
+        mock_exists,
+        mock_is_file,
+        mock_rglob,
+        mock_copy,
     ):
         """Test rollback with file operation error."""
         # Arrange
@@ -876,7 +896,9 @@ class TestUtilityFunctions:
     @patch("pathlib.Path.is_file")
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
-    def test_get_directory_size(self, mock_exists, mock_mkdir, mock_is_file, mock_rglob):
+    def test_get_directory_size(
+        self, mock_exists, mock_mkdir, mock_is_file, mock_rglob
+    ):
         """Test directory size calculation."""
         # Arrange
         mock_exists.return_value = False

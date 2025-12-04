@@ -176,9 +176,7 @@ class TestGlobalFunctions:
         """Test safe_read_file with custom encodings."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value="content"):
-                result = safe_read_file(
-                    "/tmp/test.txt", encodings=["utf-8", "ascii"]
-                )
+                result = safe_read_file("/tmp/test.txt", encodings=["utf-8", "ascii"])
                 assert result is not None
 
     def test_safe_read_lines(self):
@@ -192,9 +190,7 @@ class TestGlobalFunctions:
         """Test safe_read_lines with custom encodings."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value="line1"):
-                result = safe_read_lines(
-                    "/tmp/test.txt", encodings=["utf-8"]
-                )
+                result = safe_read_lines("/tmp/test.txt", encodings=["utf-8"])
                 assert len(result) >= 1
 
     def test_safe_glob_read_function(self):

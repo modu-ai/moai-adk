@@ -17,7 +17,9 @@ class TestTemplateVariableSynchronizerInit:
 
     def test_synchronizer_instantiation(self, tmp_path):
         """Should instantiate with project root."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
 
@@ -27,13 +29,23 @@ class TestTemplateVariableSynchronizerInit:
 
     def test_synchronizer_constants(self):
         """Should have correct constants defined."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Template patterns are regex patterns, not literal strings
         assert len(TemplateVariableSynchronizer.TEMPLATE_PATTERNS) > 0
-        assert any("CONVERSATION_LANGUAGE" in p for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS)
-        assert any("USER_NAME" in p for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS)
-        assert ".claude/settings.json" in TemplateVariableSynchronizer.TEMPLATE_TRACKING_PATTERNS
+        assert any(
+            "CONVERSATION_LANGUAGE" in p
+            for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS
+        )
+        assert any(
+            "USER_NAME" in p for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS
+        )
+        assert (
+            ".claude/settings.json"
+            in TemplateVariableSynchronizer.TEMPLATE_TRACKING_PATTERNS
+        )
 
 
 class TestFindFilesWithTemplateVariables:
@@ -41,7 +53,9 @@ class TestFindFilesWithTemplateVariables:
 
     def test_find_files_no_changed_config(self, tmp_path):
         """Should find common template files."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Setup
         claude_dir = tmp_path / ".claude"
@@ -56,7 +70,9 @@ class TestFindFilesWithTemplateVariables:
 
     def test_find_files_specific_config_changed(self, tmp_path):
         """Should prioritize dependent files when config changed."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Setup directories
         moai_dir = tmp_path / ".moai" / "config"
@@ -78,7 +94,9 @@ class TestFindFilesWithTemplateVariables:
 
     def test_find_files_removes_duplicates(self, tmp_path):
         """Should remove duplicate file paths."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Create duplicate test files
         claude_dir = tmp_path / ".claude"
@@ -98,7 +116,9 @@ class TestGlobFiles:
 
     def test_glob_files_with_pattern(self, tmp_path):
         """Should glob files matching pattern."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Create test files
         test_dir = tmp_path / ".claude"
@@ -114,7 +134,9 @@ class TestGlobFiles:
 
     def test_glob_files_recursive_pattern(self, tmp_path):
         """Should handle recursive patterns."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Create nested structure
         deep = tmp_path / ".claude" / "hooks" / "moai"
@@ -128,7 +150,9 @@ class TestGlobFiles:
 
     def test_glob_files_no_matches(self, tmp_path):
         """Should return empty list when no matches."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
         files = synchronizer._glob_files(".nonexistent/**/*.json")
@@ -137,7 +161,9 @@ class TestGlobFiles:
 
     def test_glob_files_invalid_pattern(self, tmp_path):
         """Should handle invalid patterns gracefully."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
         files = synchronizer._glob_files("[invalid[pattern")
@@ -150,7 +176,9 @@ class TestUpdateFileTemplateVariables:
 
     def test_update_single_variable(self, tmp_path):
         """Should update single template variable."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         test_file = tmp_path / "test.md"
         test_file.write_text("User: {{USER_NAME}}\nLanguage: {{CONVERSATION_LANGUAGE}}")
@@ -169,7 +197,9 @@ class TestUpdateFileTemplateVariables:
 
     def test_update_no_variables(self, tmp_path):
         """Should return empty list when no variables."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         test_file = tmp_path / "test.md"
         test_file.write_text("No variables here")
@@ -183,19 +213,25 @@ class TestUpdateFileTemplateVariables:
 
     def test_update_nonexistent_file(self, tmp_path):
         """Should handle nonexistent files gracefully."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         nonexistent = tmp_path / "missing.md"
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
         template_vars = {"USER_NAME": "TestUser"}
 
-        updated = synchronizer._update_file_template_variables(nonexistent, template_vars)
+        updated = synchronizer._update_file_template_variables(
+            nonexistent, template_vars
+        )
 
         assert updated == []
 
     def test_update_multiple_same_variable(self, tmp_path):
         """Should update multiple instances of same variable."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         test_file = tmp_path / "test.md"
         test_file.write_text("Name: {{USER_NAME}}\nAlso: {{USER_NAME}}")
@@ -210,7 +246,9 @@ class TestUpdateFileTemplateVariables:
 
     def test_update_preserves_unchanged_content(self, tmp_path):
         """Should preserve non-template content."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         test_file = tmp_path / "test.md"
         original_text = "Important content\nName: {{USER_NAME}}"
@@ -230,7 +268,9 @@ class TestUpdateSettingsEnvVars:
 
     def test_update_settings_creates_env_section(self, tmp_path):
         """Should create env section if missing."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         settings_file = tmp_path / ".claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
@@ -247,7 +287,9 @@ class TestUpdateSettingsEnvVars:
 
     def test_update_settings_updates_existing_env(self, tmp_path):
         """Should update existing env variables."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         settings_file = tmp_path / ".claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
@@ -264,7 +306,9 @@ class TestUpdateSettingsEnvVars:
 
     def test_update_settings_invalid_json(self, tmp_path):
         """Should handle invalid JSON gracefully."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         settings_file = tmp_path / ".claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
@@ -284,7 +328,9 @@ class TestHandleSpecialFileUpdates:
 
     def test_handle_special_updates_with_settings(self, tmp_path):
         """Should handle settings.json updates."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
@@ -302,7 +348,9 @@ class TestHandleSpecialFileUpdates:
 
     def test_handle_special_updates_missing_settings(self, tmp_path):
         """Should handle missing settings gracefully."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
         template_vars = {"CONVERSATION_LANGUAGE": "en"}
@@ -320,7 +368,9 @@ class TestSynchronizeAfterConfigChange:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_synchronize_successful(self, mock_get_resolver, tmp_path):
         """Should synchronize successfully."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Mock resolver
         mock_resolver = MagicMock()
@@ -337,7 +387,9 @@ class TestSynchronizeAfterConfigChange:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_synchronize_with_changed_config(self, mock_get_resolver, tmp_path):
         """Should handle specific config file change."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         mock_resolver = MagicMock()
         mock_resolver.resolve_config.return_value = {"user_name": "test"}
@@ -355,7 +407,9 @@ class TestSynchronizeAfterConfigChange:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_synchronize_handles_errors(self, mock_get_resolver, tmp_path):
         """Should handle errors gracefully."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         mock_resolver = MagicMock()
         mock_resolver.resolve_config.side_effect = Exception("Test error")
@@ -374,7 +428,9 @@ class TestValidateTemplateVariableConsistency:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_validate_consistency_passed(self, mock_get_resolver, tmp_path):
         """Should validate template consistency."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         mock_resolver = MagicMock()
         mock_resolver.resolve_config.return_value = {}
@@ -390,7 +446,9 @@ class TestValidateTemplateVariableConsistency:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_validate_consistency_with_variables(self, mock_get_resolver, tmp_path):
         """Should detect files with variables."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Create test file with template variable
         test_file = tmp_path / "test.md"
@@ -414,7 +472,9 @@ class TestGetTemplateVariableUsageReport:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_usage_report_basic(self, mock_get_resolver, tmp_path):
         """Should generate usage report."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         mock_resolver = MagicMock()
         mock_get_resolver.return_value = mock_resolver
@@ -429,7 +489,9 @@ class TestGetTemplateVariableUsageReport:
     @patch("moai_adk.core.template_variable_synchronizer.get_resolver")
     def test_usage_report_with_variables(self, mock_get_resolver, tmp_path):
         """Should report variable usage."""
-        from moai_adk.core.template_variable_synchronizer import TemplateVariableSynchronizer
+        from moai_adk.core.template_variable_synchronizer import (
+            TemplateVariableSynchronizer,
+        )
 
         # Create test file
         test_file = tmp_path / "test.md"
@@ -451,10 +513,14 @@ class TestSynchronizeTemplateVariablesFunction:
     @patch("moai_adk.core.template_variable_synchronizer.TemplateVariableSynchronizer")
     def test_synchronize_template_variables_function(self, mock_class):
         """Should call synchronizer correctly."""
-        from moai_adk.core.template_variable_synchronizer import synchronize_template_variables
+        from moai_adk.core.template_variable_synchronizer import (
+            synchronize_template_variables,
+        )
 
         mock_instance = MagicMock()
-        mock_instance.synchronize_after_config_change.return_value = {"sync_status": "completed"}
+        mock_instance.synchronize_after_config_change.return_value = {
+            "sync_status": "completed"
+        }
         mock_class.return_value = mock_instance
 
         result = synchronize_template_variables("/test/root", "/test/config.json")
@@ -465,10 +531,14 @@ class TestSynchronizeTemplateVariablesFunction:
     @patch("moai_adk.core.template_variable_synchronizer.TemplateVariableSynchronizer")
     def test_synchronize_template_variables_no_config(self, mock_class):
         """Should handle missing config path."""
-        from moai_adk.core.template_variable_synchronizer import synchronize_template_variables
+        from moai_adk.core.template_variable_synchronizer import (
+            synchronize_template_variables,
+        )
 
         mock_instance = MagicMock()
-        mock_instance.synchronize_after_config_change.return_value = {"sync_status": "completed"}
+        mock_instance.synchronize_after_config_change.return_value = {
+            "sync_status": "completed"
+        }
         mock_class.return_value = mock_instance
 
         result = synchronize_template_variables("/test/root", None)

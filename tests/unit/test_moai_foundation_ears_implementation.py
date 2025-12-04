@@ -64,8 +64,14 @@ class TestEARSEventPatternParsing:
         assert result["pattern_type"] == "event"
         assert "trigger" in result
         assert "result" in result
-        assert "Submit Order" in result["trigger"].lower() or "submit" in result["trigger"].lower()
-        assert "validate" in result["result"].lower() or "confirmation" in result["result"].lower()
+        assert (
+            "Submit Order" in result["trigger"].lower()
+            or "submit" in result["trigger"].lower()
+        )
+        assert (
+            "validate" in result["result"].lower()
+            or "confirmation" in result["result"].lower()
+        )
 
     def test_parse_event_with_agent(self, ears_parser):
         """Parse event pattern that includes agent role.
@@ -105,7 +111,10 @@ class TestEARSEventPatternParsing:
         assert result["pattern_type"] == "event"
         assert "triggers" in result or isinstance(result.get("trigger"), list)
         triggers = result.get("triggers") or [result.get("trigger")]
-        assert len(triggers) >= 2 or ("Submit" in result.get("trigger", "") and "Enter" in result.get("trigger", ""))
+        assert len(triggers) >= 2 or (
+            "Submit" in result.get("trigger", "")
+            and "Enter" in result.get("trigger", "")
+        )
 
 
 # ===== TEST CLASS 2: Agent Pattern Parsing =====
@@ -233,7 +242,10 @@ class TestEARSScenarioPatternParsing:
 
         assert result["pattern_type"] == "scenario"
         assert "scenario" in result
-        assert "monthly" in result["scenario"].lower() or "invoice" in result["scenario"].lower()
+        assert (
+            "monthly" in result["scenario"].lower()
+            or "invoice" in result["scenario"].lower()
+        )
         assert "trigger" in result or "when" in result
         assert "result" in result
 
@@ -318,7 +330,9 @@ class TestEARSTestCaseGeneration:
 class TestEARSCompleteWorkflow:
     """Test complete EARS analysis workflow."""
 
-    def test_end_to_end_requirement_processing(self, ears_parser, ears_validator, ears_analyzer):
+    def test_end_to_end_requirement_processing(
+        self, ears_parser, ears_validator, ears_analyzer
+    ):
         """Test complete workflow: parse → validate → generate tests.
 
         Given: Raw requirement text

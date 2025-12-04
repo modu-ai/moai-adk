@@ -432,9 +432,7 @@ class TestMetricsCollector:
             collector.add_metric(metric)
 
         # Act
-        metrics = collector.get_metrics(
-            metric_type=MetricType.MEMORY_USAGE, limit=5
-        )
+        metrics = collector.get_metrics(metric_type=MetricType.MEMORY_USAGE, limit=5)
 
         # Assert
         assert len(metrics) <= 5
@@ -772,7 +770,8 @@ class TestAlertManager:
 
         # Act
         critical_alerts = [
-            a for a in manager.get_active_alerts()
+            a
+            for a in manager.get_active_alerts()
             if a.severity == AlertSeverity.CRITICAL
         ]
 

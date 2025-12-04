@@ -223,6 +223,7 @@ class TestRollbackManager:
 
             # Remove a directory
             import shutil
+
             shutil.rmtree(manager.config_backup_dir)
 
             validation = manager.validate_rollback_system()

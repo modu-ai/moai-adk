@@ -487,6 +487,7 @@ class TestAlertManager:
         manager = AlertManager(collector)
 
         callback_called = []
+
         def test_callback(alert):
             callback_called.append(alert)
 
@@ -667,7 +668,7 @@ class TestPerformanceMonitor:
         assert "High CPU Usage" in rule_names
         assert "High Memory Usage" in rule_names
 
-    @patch('moai_adk.core.comprehensive_monitoring_system.psutil')
+    @patch("moai_adk.core.comprehensive_monitoring_system.psutil")
     def test_collect_system_metrics(self, mock_psutil):
         """Test collecting system metrics"""
         mock_psutil.cpu_percent.return_value = 45.0
@@ -711,7 +712,9 @@ class TestComprehensiveMonitoringSystem:
         system = ComprehensiveMonitoringSystem()
         system.add_metric(MetricType.CPU_USAGE, 50.0, tags={"zone": "a"})
 
-        metrics = system.performance_monitor.metrics_collector.get_metrics(MetricType.CPU_USAGE)
+        metrics = system.performance_monitor.metrics_collector.get_metrics(
+            MetricType.CPU_USAGE
+        )
         assert len(metrics) == 1
 
     def test_get_system_health_healthy(self):
@@ -726,7 +729,11 @@ class TestComprehensiveMonitoringSystem:
         health = system.performance_monitor.get_system_health()
         assert health.overall_score >= 0
         # When scores are calculated correctly, should be at least warning or better
-        assert health.status in [HealthStatus.HEALTHY, HealthStatus.WARNING, HealthStatus.DEGRADED]
+        assert health.status in [
+            HealthStatus.HEALTHY,
+            HealthStatus.WARNING,
+            HealthStatus.DEGRADED,
+        ]
 
     def test_get_system_health_degraded(self):
         """Test getting system health - degraded"""
@@ -739,7 +746,11 @@ class TestComprehensiveMonitoringSystem:
 
         health = system.performance_monitor.get_system_health()
         # With high metrics, should be degraded, critical, or down
-        assert health.status in [HealthStatus.DEGRADED, HealthStatus.CRITICAL, HealthStatus.DOWN]
+        assert health.status in [
+            HealthStatus.DEGRADED,
+            HealthStatus.CRITICAL,
+            HealthStatus.DOWN,
+        ]
 
     def test_get_dashboard_data(self):
         """Test getting dashboard data"""
@@ -818,7 +829,9 @@ class TestComprehensiveMonitoringSystem:
         for t in threads:
             t.join()
 
-        metrics = system.performance_monitor.metrics_collector.get_metrics(MetricType.CPU_USAGE)
+        metrics = system.performance_monitor.metrics_collector.get_metrics(
+            MetricType.CPU_USAGE
+        )
         assert len(metrics) >= 100
 
 

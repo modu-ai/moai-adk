@@ -114,18 +114,14 @@ class TestConfigUpdate:
     def test_update_deep_merge(self):
         """Test deep merge in update."""
         manager = ConfigManager(Path("/tmp/config.json"))
-        result = manager._deep_merge(
-            {"a": {"b": 1}}, {"a": {"c": 2}}
-        )
+        result = manager._deep_merge({"a": {"b": 1}}, {"a": {"c": 2}})
         assert result["a"]["b"] == 1
         assert result["a"]["c"] == 2
 
     def test_update_overwrites_values(self):
         """Test update overwrites existing values."""
         manager = ConfigManager(Path("/tmp/config.json"))
-        result = manager._deep_merge(
-            {"mode": "personal"}, {"mode": "team"}
-        )
+        result = manager._deep_merge({"mode": "personal"}, {"mode": "team"})
         assert result["mode"] == "team"
 
 
@@ -201,18 +197,14 @@ class TestConfigBackwardCompatibility:
 
     def test_uses_unified_config_when_available(self):
         """Test ConfigManager uses UnifiedConfigManager if available."""
-        with patch(
-            "moai_adk.core.template.config.UNIFIED_AVAILABLE", True
-        ):
+        with patch("moai_adk.core.template.config.UNIFIED_AVAILABLE", True):
             manager = ConfigManager(Path("/tmp/config.json"))
             # Should have _unified_config
             assert hasattr(manager, "_unified_config")
 
     def test_fallback_when_unified_unavailable(self):
         """Test ConfigManager fallback when unified not available."""
-        with patch(
-            "moai_adk.core.template.config.UNIFIED_AVAILABLE", False
-        ):
+        with patch("moai_adk.core.template.config.UNIFIED_AVAILABLE", False):
             manager = ConfigManager(Path("/tmp/config.json"))
             assert manager._unified_config is None
 

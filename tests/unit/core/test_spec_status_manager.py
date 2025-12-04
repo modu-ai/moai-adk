@@ -49,9 +49,7 @@ class TestSpecStatusManager:
         }
 
         spec_file = spec_dir / "spec.md"
-        spec_body = (
-            "\n\n# Test SPEC\n\n## Implementation\n\n# REMOVED_ORPHAN_CODE:TEST-001\n# REMOVED_ORPHAN_TEST:TEST-001\n"
-        )
+        spec_body = "\n\n# Test SPEC\n\n## Implementation\n\n# REMOVED_ORPHAN_CODE:TEST-001\n# REMOVED_ORPHAN_TEST:TEST-001\n"
         with open(spec_file, "w") as f:
             f.write(f"---\n{yaml.dump(spec_content)}---{spec_body}")
 
@@ -88,7 +86,9 @@ class TestSpecStatusManager:
         """Create SpecStatusManager instance"""
         return SpecStatusManager(temp_project_dir)
 
-    def test_detect_draft_specs(self, spec_status_manager, sample_draft_spec, sample_completed_spec):
+    def test_detect_draft_specs(
+        self, spec_status_manager, sample_draft_spec, sample_completed_spec
+    ):
         """Test detection of draft SPEC files"""
         draft_specs = spec_status_manager.detect_draft_specs()
 
@@ -96,13 +96,19 @@ class TestSpecStatusManager:
         assert "SPEC-TEST-001" in draft_specs
         assert "SPEC-COMPLETE-001" not in draft_specs
 
-    def test_is_spec_implementation_completed_missing_codes(self, spec_status_manager, temp_project_dir):
+    def test_is_spec_implementation_completed_missing_codes(
+        self, spec_status_manager, temp_project_dir
+    ):
         """Test completion detection when some codes are missing"""
         # Create SPEC with multiple codes
         spec_dir = temp_project_dir / ".moai" / "specs" / "SPEC-PARTIAL-001"
         spec_dir.mkdir()
 
-        spec_content = {"title": "SPEC-PARTIAL-001: Partial Implementation", "version": "0.1.0", "status": "draft"}
+        spec_content = {
+            "title": "SPEC-PARTIAL-001: Partial Implementation",
+            "version": "0.1.0",
+            "status": "draft",
+        }
 
         spec_file = spec_dir / "spec.md"
         with open(spec_file, "w") as f:
@@ -140,10 +146,14 @@ def test_implemented_function():
         )
 
         # Test completion detection should be False
-        is_completed = spec_status_manager.is_spec_implementation_completed("SPEC-PARTIAL-001")
+        is_completed = spec_status_manager.is_spec_implementation_completed(
+            "SPEC-PARTIAL-001"
+        )
         assert is_completed is False
 
-    def test_update_spec_status_to_completed(self, spec_status_manager, sample_draft_spec):
+    def test_update_spec_status_to_completed(
+        self, spec_status_manager, sample_draft_spec
+    ):
         """Test updating SPEC status from draft to completed"""
         # Read initial content
         with open(sample_draft_spec, "r") as f:
@@ -163,20 +173,28 @@ def test_implemented_function():
         # Version should be bumped to at least 1.0.0
         assert "version:" in updated_content
 
-    def test_update_spec_status_version_bump(self, spec_status_manager, temp_project_dir):
+    def test_update_spec_status_version_bump(
+        self, spec_status_manager, temp_project_dir
+    ):
         """Test version bumping when updating status"""
         # Create SPEC with low version number
         spec_dir = temp_project_dir / ".moai" / "specs" / "SPEC-VERSION-001"
         spec_dir.mkdir()
 
-        spec_content = {"title": "SPEC-VERSION-001: Version Test", "version": "0.0.1", "status": "draft"}
+        spec_content = {
+            "title": "SPEC-VERSION-001: Version Test",
+            "version": "0.0.1",
+            "status": "draft",
+        }
 
         spec_file = spec_dir / "spec.md"
         with open(spec_file, "w") as f:
             f.write(f"---\n{yaml.dump(spec_content)}---\n\n# Version Test\n")
 
         # Update status
-        success = spec_status_manager.update_spec_status("SPEC-VERSION-001", "completed")
+        success = spec_status_manager.update_spec_status(
+            "SPEC-VERSION-001", "completed"
+        )
         assert success is True
 
         # Verify version bump
@@ -193,7 +211,9 @@ def test_implemented_function():
     def test_update_spec_status_error_handling(self, spec_status_manager):
         """Test error handling for invalid SPEC IDs"""
         # Test with non-existent SPEC
-        success = spec_status_manager.update_spec_status("SPEC-NONEXISTENT", "completed")
+        success = spec_status_manager.update_spec_status(
+            "SPEC-NONEXISTENT", "completed"
+        )
         assert success is False
 
     def test_validate_spec_for_completion(self, spec_status_manager, temp_project_dir):
@@ -244,14 +264,18 @@ def test_valid_function():
         )
 
         # Test validation
-        validation_result = spec_status_manager.validate_spec_for_completion("SPEC-VALID-001")
+        validation_result = spec_status_manager.validate_spec_for_completion(
+            "SPEC-VALID-001"
+        )
 
         assert isinstance(validation_result, dict)
         assert "is_ready" in validation_result
         assert "issues" in validation_result
         assert "criteria_met" in validation_result
 
-    def test_integration_with_existing_codes(self, spec_status_manager, temp_project_dir):
+    def test_integration_with_existing_codes(
+        self, spec_status_manager, temp_project_dir
+    ):
         """Test integration with existing code system"""
         # Create SPEC with complex code structure
         spec_dir = temp_project_dir / ".moai" / "specs" / "SPEC-INTEGRATION-001"
@@ -274,5 +298,7 @@ status: draft
         )
 
         # Test code scanning integration
-        completion_result = spec_status_manager.is_spec_implementation_completed("SPEC-INTEGRATION-001")
+        completion_result = spec_status_manager.is_spec_implementation_completed(
+            "SPEC-INTEGRATION-001"
+        )
         assert isinstance(completion_result, bool)

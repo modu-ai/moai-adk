@@ -53,7 +53,9 @@ class TestSchemaNormalization:
         result = normalizer.validate_1nf(schema)
 
         assert result["is_valid"] is False, "Should detect 1NF violation"
-        assert "phone_numbers" in str(result["violations"]), "Should identify violating field"
+        assert "phone_numbers" in str(
+            result["violations"]
+        ), "Should identify violating field"
         assert result["normalization_level"] == "0NF", "Should be unnormalized"
 
     def test_detect_2nf_violations(self):
@@ -76,7 +78,9 @@ class TestSchemaNormalization:
         result = normalizer.validate_2nf(schema)
 
         assert result["is_valid"] is False, "Should detect 2NF violation"
-        assert "product_name" in str(result["violations"]), "Should identify partial dependency"
+        assert "product_name" in str(
+            result["violations"]
+        ), "Should identify partial dependency"
         assert result["normalization_level"] == "1NF", "Should be in 1NF but not 2NF"
 
     def test_detect_3nf_violations(self):
@@ -98,7 +102,9 @@ class TestSchemaNormalization:
         result = normalizer.validate_3nf(schema)
 
         assert result["is_valid"] is False, "Should detect 3NF violation"
-        assert "department_name" in str(result["violations"]), "Should identify transitive dependency"
+        assert "department_name" in str(
+            result["violations"]
+        ), "Should identify transitive dependency"
         assert result["normalization_level"] == "2NF", "Should be in 2NF but not 3NF"
 
     def test_recommend_normalization_strategy(self):
@@ -121,8 +127,12 @@ class TestSchemaNormalization:
         recommendations = normalizer.recommend_normalization(schema)
 
         assert len(recommendations) > 0, "Should generate recommendations"
-        assert any("1NF" in r["description"] for r in recommendations), "Should suggest 1NF fixes"
-        assert "customers" in str(recommendations), "Should suggest customer table extraction"
+        assert any(
+            "1NF" in r["description"] for r in recommendations
+        ), "Should suggest 1NF fixes"
+        assert "customers" in str(
+            recommendations
+        ), "Should suggest customer table extraction"
 
 
 # ============================================================================
@@ -149,7 +159,9 @@ class TestDatabaseSelection:
 
         recommendation = selector.select_database(requirements)
 
-        assert recommendation["database"] == "PostgreSQL", "Should recommend PostgreSQL for ACID"
+        assert (
+            recommendation["database"] == "PostgreSQL"
+        ), "Should recommend PostgreSQL for ACID"
         assert recommendation["version"] >= "17", "Should recommend PostgreSQL 17+"
         assert "ACID" in recommendation["reasoning"], "Should explain ACID compliance"
 
@@ -171,7 +183,9 @@ class TestDatabaseSelection:
 
         assert recommendation["database"] == "MongoDB", "Should recommend MongoDB"
         assert recommendation["version"] >= "8.0", "Should recommend MongoDB 8.0+"
-        assert "flexible schema" in recommendation["reasoning"].lower(), "Should explain schema flexibility"
+        assert (
+            "flexible schema" in recommendation["reasoning"].lower()
+        ), "Should explain schema flexibility"
 
     def test_select_redis_for_caching(self):
         """Test Redis selection for caching use cases."""
@@ -189,9 +203,13 @@ class TestDatabaseSelection:
 
         recommendation = selector.select_database(requirements)
 
-        assert recommendation["database"] == "Redis", "Should recommend Redis for caching"
+        assert (
+            recommendation["database"] == "Redis"
+        ), "Should recommend Redis for caching"
         assert recommendation["version"] >= "7.4", "Should recommend Redis 7.4+"
-        assert "cache" in recommendation["reasoning"].lower(), "Should explain caching use case"
+        assert (
+            "cache" in recommendation["reasoning"].lower()
+        ), "Should explain caching use case"
 
     def test_select_mysql_for_legacy_compatibility(self):
         """Test MySQL selection for legacy compatibility scenarios."""
@@ -209,9 +227,14 @@ class TestDatabaseSelection:
 
         recommendation = selector.select_database(requirements)
 
-        assert recommendation["database"] == "MySQL", "Should recommend MySQL for legacy"
+        assert (
+            recommendation["database"] == "MySQL"
+        ), "Should recommend MySQL for legacy"
         assert recommendation["version"] >= "8.4", "Should recommend MySQL 8.4 LTS"
-        assert "legacy" in recommendation["reasoning"].lower() or "compatibility" in recommendation["reasoning"].lower()
+        assert (
+            "legacy" in recommendation["reasoning"].lower()
+            or "compatibility" in recommendation["reasoning"].lower()
+        )
 
 
 # ============================================================================
@@ -237,9 +260,15 @@ class TestIndexingStrategy:
 
         recommendation = optimizer.recommend_index(query_pattern)
 
-        assert recommendation["index_type"] == "BTREE", "Should recommend B-tree for range queries"
-        assert "created_at" in recommendation["columns"], "Should index created_at column"
-        assert "range" in recommendation["reasoning"].lower(), "Should explain range query optimization"
+        assert (
+            recommendation["index_type"] == "BTREE"
+        ), "Should recommend B-tree for range queries"
+        assert (
+            "created_at" in recommendation["columns"]
+        ), "Should index created_at column"
+        assert (
+            "range" in recommendation["reasoning"].lower()
+        ), "Should explain range query optimization"
 
     def test_recommend_hash_for_equality_queries(self):
         """Test hash index recommendation for equality queries."""
@@ -256,9 +285,14 @@ class TestIndexingStrategy:
 
         recommendation = optimizer.recommend_index(query_pattern)
 
-        assert recommendation["index_type"] == "HASH", "Should recommend hash for equality"
+        assert (
+            recommendation["index_type"] == "HASH"
+        ), "Should recommend hash for equality"
         assert "user_id" in recommendation["columns"], "Should index user_id"
-        assert "equality" in recommendation["reasoning"].lower() or "exact match" in recommendation["reasoning"].lower()
+        assert (
+            "equality" in recommendation["reasoning"].lower()
+            or "exact match" in recommendation["reasoning"].lower()
+        )
 
     def test_recommend_composite_index_for_multi_column_queries(self):
         """Test composite index recommendation for multi-column queries."""
@@ -275,9 +309,13 @@ class TestIndexingStrategy:
 
         recommendation = optimizer.recommend_index(query_pattern)
 
-        assert recommendation["index_type"] == "COMPOSITE", "Should recommend composite index"
+        assert (
+            recommendation["index_type"] == "COMPOSITE"
+        ), "Should recommend composite index"
         assert len(recommendation["columns"]) == 2, "Should include both columns"
-        assert recommendation["columns"][0] == "user_id", "Should place equality column first"
+        assert (
+            recommendation["columns"][0] == "user_id"
+        ), "Should place equality column first"
 
     def test_detect_redundant_indexes(self):
         """Test redundant index detection."""
@@ -287,14 +325,20 @@ class TestIndexingStrategy:
 
         existing_indexes = [
             {"name": "idx_user_id", "columns": ["user_id"], "type": "BTREE"},
-            {"name": "idx_user_created", "columns": ["user_id", "created_at"], "type": "BTREE"},
+            {
+                "name": "idx_user_created",
+                "columns": ["user_id", "created_at"],
+                "type": "BTREE",
+            },
             {"name": "idx_user", "columns": ["user_id"], "type": "HASH"},  # Redundant
         ]
 
         redundant = optimizer.detect_redundant_indexes(existing_indexes)
 
         assert len(redundant) > 0, "Should detect redundant indexes"
-        assert "idx_user" in [idx["name"] for idx in redundant], "Should identify idx_user as redundant"
+        assert "idx_user" in [
+            idx["name"] for idx in redundant
+        ], "Should identify idx_user as redundant"
 
 
 # ============================================================================
@@ -321,8 +365,12 @@ class TestConnectionPooling:
         pool_config = manager.calculate_optimal_pool_size(server_config)
 
         assert pool_config["min_size"] >= 5, "Min pool size should be at least 5"
-        assert pool_config["max_size"] <= 100, "Max pool size should not exceed server limit"
-        assert pool_config["min_size"] < pool_config["max_size"], "Min should be less than max"
+        assert (
+            pool_config["max_size"] <= 100
+        ), "Max pool size should not exceed server limit"
+        assert (
+            pool_config["min_size"] < pool_config["max_size"]
+        ), "Min should be less than max"
 
     def test_monitor_pool_saturation(self):
         """Test connection pool saturation monitoring."""
@@ -363,8 +411,12 @@ class TestConnectionPooling:
 
         recommendations = manager.recommend_adjustments(current_config, metrics)
 
-        assert recommendations["suggested_max_size"] > 20, "Should recommend increasing max size"
-        assert "increase" in recommendations["reasoning"].lower(), "Should explain increase reasoning"
+        assert (
+            recommendations["suggested_max_size"] > 20
+        ), "Should recommend increasing max size"
+        assert (
+            "increase" in recommendations["reasoning"].lower()
+        ), "Should explain increase reasoning"
 
 
 # ============================================================================
@@ -395,7 +447,9 @@ class TestMigrationPatterns:
         plan = planner.generate_migration_plan(change_request)
 
         assert plan["steps"] is not None, "Should generate migration steps"
-        assert len(plan["steps"]) >= 3, "Should include pre-checks, migration, and verification"
+        assert (
+            len(plan["steps"]) >= 3
+        ), "Should include pre-checks, migration, and verification"
         assert plan["reversible"] is True, "Should be reversible migration"
         assert "rollback_steps" in plan, "Should include rollback strategy"
 
@@ -416,7 +470,9 @@ class TestMigrationPatterns:
         safety_check = planner.validate_safety(migration)
 
         assert safety_check["is_safe"] is False, "Should flag as unsafe"
-        assert "data loss" in safety_check["risks"][0].lower(), "Should warn about data loss"
+        assert (
+            "data loss" in safety_check["risks"][0].lower()
+        ), "Should warn about data loss"
         assert safety_check["requires_backup"] is True, "Should require backup"
 
     def test_detect_breaking_changes(self):
@@ -435,7 +491,9 @@ class TestMigrationPatterns:
 
         breaking_analysis = planner.detect_breaking_changes(migration)
 
-        assert breaking_analysis["has_breaking_changes"] is True, "Should detect breaking change"
+        assert (
+            breaking_analysis["has_breaking_changes"] is True
+        ), "Should detect breaking change"
         assert "type conversion" in breaking_analysis["changes"][0].lower()
         assert breaking_analysis["impact_level"] == "high", "Should be high impact"
 
@@ -482,8 +540,12 @@ class TestTransactionHandling:
         deadlock_analysis = manager.detect_deadlock(transactions)
 
         assert deadlock_analysis["deadlock_detected"] is True, "Should detect deadlock"
-        assert len(deadlock_analysis["involved_transactions"]) == 2, "Should identify both transactions"
-        assert deadlock_analysis["resolution_strategy"] is not None, "Should suggest resolution"
+        assert (
+            len(deadlock_analysis["involved_transactions"]) == 2
+        ), "Should identify both transactions"
+        assert (
+            deadlock_analysis["resolution_strategy"] is not None
+        ), "Should suggest resolution"
 
     def test_implement_transaction_retry_logic(self):
         """Test transaction retry logic with exponential backoff."""
@@ -501,7 +563,9 @@ class TestTransactionHandling:
         retry_plan = manager.generate_retry_plan(retry_config)
 
         assert len(retry_plan["retry_delays"]) == 3, "Should plan 3 retries"
-        assert retry_plan["retry_delays"][1] > retry_plan["retry_delays"][0], "Should use exponential backoff"
+        assert (
+            retry_plan["retry_delays"][1] > retry_plan["retry_delays"][0]
+        ), "Should use exponential backoff"
         assert retry_plan["retry_delays"][2] <= 1000, "Should cap at max backoff"
 
 

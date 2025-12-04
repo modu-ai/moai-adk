@@ -92,7 +92,7 @@ class TestParseValidJSON:
         """Test parsing a simple JSON array."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = '[1, 2, 3]'
+        json_str = "[1, 2, 3]"
 
         # Act
         result = parser.parse(json_str)
@@ -173,7 +173,7 @@ class TestParseInvalidJSON:
         # Assert - this case is difficult to recover fully
         # The parser attempts recovery but may not succeed
         assert result.recovery_attempts > 0  # At least tried to recover
-        assert hasattr(result, 'warnings')  # Has recovery warnings
+        assert hasattr(result, "warnings")  # Has recovery warnings
 
     def test_parse_trailing_comma_recovery(self):
         """Test recovery from trailing commas."""
@@ -219,7 +219,7 @@ class TestParseInvalidJSON:
         """Test that completely invalid JSON fails appropriately."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = 'not json at all!!!'
+        json_str = "not json at all!!!"
 
         # Act
         result = parser.parse(json_str)
@@ -250,7 +250,7 @@ class TestParseEdgeCases:
         """Test parsing empty string."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = ''
+        json_str = ""
 
         # Act
         result = parser.parse(json_str)
@@ -262,7 +262,7 @@ class TestParseEdgeCases:
         """Test parsing empty object."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = '{}'
+        json_str = "{}"
 
         # Act
         result = parser.parse(json_str)
@@ -275,7 +275,7 @@ class TestParseEdgeCases:
         """Test parsing empty array."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = '[]'
+        json_str = "[]"
 
         # Act
         result = parser.parse(json_str)
@@ -347,13 +347,13 @@ class TestFixTrailingCommas:
         """Test fixing trailing comma in array."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = '[1, 2, 3,]'
+        json_str = "[1, 2, 3,]"
 
         # Act
         fixed, warnings = parser._fix_trailing_commas(json_str)
 
         # Assert
-        assert fixed == '[1, 2, 3]'
+        assert fixed == "[1, 2, 3]"
 
     def test_fix_trailing_commas_no_change(self):
         """Test that properly formatted JSON is not changed."""
@@ -411,20 +411,20 @@ class TestHandlePartialObjects:
         fixed, warnings = parser._handle_partial_objects(json_str)
 
         # Assert
-        assert fixed.endswith('}')
+        assert fixed.endswith("}")
         assert len(warnings) > 0
 
     def test_handle_partial_array_missing_bracket(self):
         """Test handling array missing closing bracket."""
         # Arrange
         parser = RobustJSONParser()
-        json_str = '[1, 2, 3'
+        json_str = "[1, 2, 3"
 
         # Act
         fixed, warnings = parser._handle_partial_objects(json_str)
 
         # Assert
-        assert fixed.endswith(']')
+        assert fixed.endswith("]")
         assert len(warnings) > 0
 
 
@@ -492,7 +492,9 @@ class TestGetStringContext:
         json_str = '{"key": "value\\"test"}'
 
         # Act
-        result = parser._get_string_context(json_str, 15)  # Inside string with escaped quote
+        result = parser._get_string_context(
+            json_str, 15
+        )  # Inside string with escaped quote
 
         # Assert
         assert result is True

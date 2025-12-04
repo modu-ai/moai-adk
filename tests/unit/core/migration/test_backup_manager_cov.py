@@ -319,6 +319,7 @@ class TestBackupListing:
             # Remove the backup directory
             if manager.backup_base_dir.exists():
                 import shutil
+
                 shutil.rmtree(manager.backup_base_dir)
 
             backups = manager.list_backups()
@@ -624,8 +625,8 @@ class TestBackupIntegration:
 
             # Restore first backup
             manager.restore_backup(backup1)
-            assert '1' in config_file.read_text()
+            assert "1" in config_file.read_text()
 
             # Restore second backup
             manager.restore_backup(backup2)
-            assert '2' in config_file.read_text()
+            assert "2" in config_file.read_text()

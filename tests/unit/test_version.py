@@ -63,6 +63,7 @@ class TestVersionConstants:
     def test_version_import_succeeds(self):
         """Test that version module imports without errors."""
         from moai_adk.version import MOAI_VERSION, TEMPLATE_VERSION
+
         assert MOAI_VERSION is not None
         assert TEMPLATE_VERSION is not None
 
@@ -159,12 +160,17 @@ class TestVersionConstants2:
     def test_version_characters_valid(self):
         """Test that versions contain only valid characters."""
         import re
+
         # Semantic version pattern: X.Y.Z or with pre-release
-        pattern = r'^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$'
+        pattern = r"^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$"
 
         # TEMPLATE_VERSION should match
-        assert re.match(pattern, TEMPLATE_VERSION), f"TEMPLATE_VERSION {TEMPLATE_VERSION} doesn't match pattern"
+        assert re.match(
+            pattern, TEMPLATE_VERSION
+        ), f"TEMPLATE_VERSION {TEMPLATE_VERSION} doesn't match pattern"
 
         # MOAI_VERSION should match or be the fallback
         if MOAI_VERSION != "0.30.0":
-            assert re.match(pattern, MOAI_VERSION), f"MOAI_VERSION {MOAI_VERSION} doesn't match pattern"
+            assert re.match(
+                pattern, MOAI_VERSION
+            ), f"MOAI_VERSION {MOAI_VERSION} doesn't match pattern"

@@ -37,9 +37,7 @@ class TestGitCollectorCollectInfo:
     def test_collect_git_info_cache_hit(self):
         """Test that cached info is returned on valid cache."""
         collector = GitCollector()
-        expected_info = GitInfo(
-            branch="main", staged=0, modified=0, untracked=0
-        )
+        expected_info = GitInfo(branch="main", staged=0, modified=0, untracked=0)
         collector._cache = expected_info
         collector._cache_time = datetime.now()
 
@@ -49,9 +47,7 @@ class TestGitCollectorCollectInfo:
     def test_collect_git_info_cache_miss(self):
         """Test that git command is executed on cache miss."""
         collector = GitCollector()
-        expected_info = GitInfo(
-            branch="feature", staged=1, modified=2, untracked=3
-        )
+        expected_info = GitInfo(branch="feature", staged=1, modified=2, untracked=3)
 
         with patch.object(collector, "_fetch_git_info", return_value=expected_info):
             result = collector.collect_git_info()
@@ -256,15 +252,17 @@ class TestGitCollectorCountChanges:
         """Test counting with mixed file statuses."""
         collector = GitCollector()
         lines = [
-            "A  staged_new.py",       # A: staged=1
+            "A  staged_new.py",  # A: staged=1
             "M  staged_modified.py",  # M: staged=1
             " M working_modified.py",  # space+M: modified=1 (second char M != space)
-            "?? untracked1.py",       # ??: untracked=1, but second char ? != space so modified+=1
-            "?? untracked2.py",       # ??: untracked=1, but second char ? != space so modified+=1
+            "?? untracked1.py",  # ??: untracked=1, but second char ? != space so modified+=1
+            "?? untracked2.py",  # ??: untracked=1, but second char ? != space so modified+=1
         ]
         staged, modified, untracked = collector._count_changes(lines)
         assert staged == 2
-        assert modified == 3  # space+M (1) + ?? (2 more from second char not being space)
+        assert (
+            modified == 3
+        )  # space+M (1) + ?? (2 more from second char not being space)
         assert untracked == 2
 
     def test_count_changes_short_lines(self):
@@ -312,12 +310,16 @@ class TestGitCollectorExtractBranch:
 
     def test_extract_branch_with_dashes(self):
         """Test branch extraction with dashes in name."""
-        branch = GitCollector._extract_branch("## feature-branch...origin/feature-branch")
+        branch = GitCollector._extract_branch(
+            "## feature-branch...origin/feature-branch"
+        )
         assert branch == "feature-branch"
 
     def test_extract_branch_with_slashes(self):
         """Test branch extraction with slashes in name."""
-        branch = GitCollector._extract_branch("## feature/new-feature...origin/feature/new-feature")
+        branch = GitCollector._extract_branch(
+            "## feature/new-feature...origin/feature/new-feature"
+        )
         assert branch == "feature/new-feature"
 
     def test_extract_branch_invalid_format_no_header(self):

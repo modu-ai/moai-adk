@@ -54,7 +54,15 @@ class TestPhaseEnum:
 
     def test_all_phases_have_values(self):
         """Test all phase enum members are defined."""
-        phases = [Phase.SPEC, Phase.RED, Phase.GREEN, Phase.REFACTOR, Phase.SYNC, Phase.DEBUG, Phase.PLANNING]
+        phases = [
+            Phase.SPEC,
+            Phase.RED,
+            Phase.GREEN,
+            Phase.REFACTOR,
+            Phase.SYNC,
+            Phase.DEBUG,
+            Phase.PLANNING,
+        ]
 
         assert len(phases) == 7
 
@@ -188,8 +196,7 @@ class TestPhaseDetector:
         detector = PhaseDetector()
 
         phase = detector.detect_phase(
-            "Start here",
-            ["spec discussion", "requirements", "create SPEC-001"]
+            "Start here", ["spec discussion", "requirements", "create SPEC-001"]
         )
 
         assert phase == Phase.SPEC
@@ -218,7 +225,7 @@ class TestSkillFilterEngine:
 
     def test_skill_filter_initialization(self):
         """Test SkillFilterEngine initializes."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             engine = SkillFilterEngine()
 
             assert engine.skills_dir is not None
@@ -227,7 +234,7 @@ class TestSkillFilterEngine:
 
     def test_load_phase_preferences(self):
         """Test loading phase preferences."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             engine = SkillFilterEngine()
 
             prefs = engine.phase_preferences
@@ -238,7 +245,7 @@ class TestSkillFilterEngine:
 
     def test_filter_skills_returns_list(self):
         """Test filter_skills returns list."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             engine = SkillFilterEngine()
             engine.skill_index = {
                 "moai-foundation-core": SkillInfo(
@@ -257,7 +264,7 @@ class TestSkillFilterEngine:
 
     def test_get_skill_stats(self):
         """Test getting skill statistics."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             engine = SkillFilterEngine()
             engine.skill_index = {
                 "skill1": SkillInfo(
@@ -442,7 +449,7 @@ class TestJITContextLoaderAsync:
 
     def test_loader_initialization(self):
         """Test JITContextLoader initializes."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             assert loader.phase_detector is not None
@@ -452,7 +459,7 @@ class TestJITContextLoaderAsync:
 
     def test_loader_current_phase_defaults_to_spec(self):
         """Test current phase defaults to SPEC."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             assert loader.current_phase == Phase.SPEC
@@ -460,8 +467,8 @@ class TestJITContextLoaderAsync:
     @pytest.mark.asyncio
     async def test_load_context_returns_tuple(self):
         """Test load_context returns context and metrics."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
-            with patch.object(SkillFilterEngine, 'filter_skills', return_value=[]):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
+            with patch.object(SkillFilterEngine, "filter_skills", return_value=[]):
                 loader = JITContextLoader()
 
                 context, metrics = await loader.load_context("test input")
@@ -472,8 +479,8 @@ class TestJITContextLoaderAsync:
     @pytest.mark.asyncio
     async def test_load_context_cache_hit(self):
         """Test cache hit on context load."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
-            with patch.object(SkillFilterEngine, 'filter_skills', return_value=[]):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
+            with patch.object(SkillFilterEngine, "filter_skills", return_value=[]):
                 loader = JITContextLoader()
 
                 # First load
@@ -486,7 +493,7 @@ class TestJITContextLoaderAsync:
 
     def test_generate_cache_key(self):
         """Test cache key generation."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             key1 = loader._generate_cache_key(Phase.SPEC, "test input", {})
@@ -496,7 +503,7 @@ class TestJITContextLoaderAsync:
 
     def test_generate_cache_key_different_inputs(self):
         """Test different inputs produce different cache keys."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             key1 = loader._generate_cache_key(Phase.SPEC, "input1", {})
@@ -506,7 +513,7 @@ class TestJITContextLoaderAsync:
 
     def test_calculate_total_tokens(self):
         """Test calculating total tokens."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             context_data = {
@@ -525,7 +532,7 @@ class TestJITContextLoaderAsync:
 
     def test_compress_text_removes_comments(self):
         """Test text compression removes comments."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             text = """# Comment line
@@ -540,7 +547,7 @@ line 2 with content here"""
 
     def test_record_metrics(self):
         """Test recording metrics."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             metrics = ContextMetrics(
@@ -558,7 +565,7 @@ line 2 with content here"""
 
     def test_get_comprehensive_stats(self):
         """Test getting comprehensive statistics."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             stats = loader.get_comprehensive_stats()
@@ -575,7 +582,7 @@ class TestContextCompressionOptimization:
     @pytest.mark.asyncio
     async def test_optimize_context_aggressively(self):
         """Test aggressive context optimization."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
             loader = JITContextLoader()
 
             context_data = {
@@ -601,8 +608,8 @@ class TestJITIntegration:
     @pytest.mark.asyncio
     async def test_full_context_loading_workflow(self):
         """Test full context loading workflow."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
-            with patch.object(SkillFilterEngine, 'filter_skills', return_value=[]):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
+            with patch.object(SkillFilterEngine, "filter_skills", return_value=[]):
                 loader = JITContextLoader()
 
                 # Load context for SPEC phase
@@ -614,8 +621,8 @@ class TestJITIntegration:
     @pytest.mark.asyncio
     async def test_phase_switching_clears_cache(self):
         """Test cache behavior when switching phases."""
-        with patch.object(SkillFilterEngine, '_build_skill_index'):
-            with patch.object(SkillFilterEngine, 'filter_skills', return_value=[]):
+        with patch.object(SkillFilterEngine, "_build_skill_index"):
+            with patch.object(SkillFilterEngine, "filter_skills", return_value=[]):
                 loader = JITContextLoader()
 
                 # Load SPEC context

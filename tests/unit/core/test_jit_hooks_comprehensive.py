@@ -82,11 +82,11 @@ class TestHookEventEnum:
     def test_hook_event_all_members(self):
         """Test all HookEvent members exist."""
         # Assert
-        assert hasattr(HookEvent, 'SESSION_START')
-        assert hasattr(HookEvent, 'SESSION_END')
-        assert hasattr(HookEvent, 'USER_PROMPT_SUBMIT')
-        assert hasattr(HookEvent, 'PRE_TOOL_USE')
-        assert hasattr(HookEvent, 'POST_TOOL_USE')
+        assert hasattr(HookEvent, "SESSION_START")
+        assert hasattr(HookEvent, "SESSION_END")
+        assert hasattr(HookEvent, "USER_PROMPT_SUBMIT")
+        assert hasattr(HookEvent, "PRE_TOOL_USE")
+        assert hasattr(HookEvent, "POST_TOOL_USE")
 
 
 class TestHookPriority:
@@ -150,9 +150,7 @@ class TestHookMetadata:
         # Arrange & Act
         try:
             metadata = HookMetadata(
-                hook_id="test_456",
-                event_type="hook_exec",
-                tags={'key': 'value'}
+                hook_id="test_456", event_type="hook_exec", tags={"key": "value"}
             )
             # Assert
             assert metadata is not None
@@ -179,7 +177,7 @@ class TestHookPerformanceMetrics:
         try:
             metrics = HookPerformanceMetrics()
             # Simulate recording
-            if hasattr(metrics, 'record_execution'):
+            if hasattr(metrics, "record_execution"):
                 metrics.record_execution(hook_id="test", duration=0.5, success=True)
             # Assert
             assert metrics is not None
@@ -191,7 +189,7 @@ class TestHookPerformanceMetrics:
         # Arrange & Act
         try:
             metrics = HookPerformanceMetrics()
-            if hasattr(metrics, 'get_statistics'):
+            if hasattr(metrics, "get_statistics"):
                 stats = metrics.get_statistics()
                 assert isinstance(stats, (dict, type(None))) or True
         except (TypeError, AttributeError):
@@ -206,9 +204,7 @@ class TestHookExecutionResult:
         # Arrange & Act
         try:
             result = HookExecutionResult(
-                hook_id="test_hook",
-                success=True,
-                duration=0.5
+                hook_id="test_hook", success=True, duration=0.5
             )
             # Assert
             assert result is not None
@@ -223,7 +219,7 @@ class TestHookExecutionResult:
                 hook_id="test_hook",
                 success=True,
                 duration=0.5,
-                output="Hook completed successfully"
+                output="Hook completed successfully",
             )
             # Assert
             assert result is not None
@@ -238,7 +234,7 @@ class TestHookExecutionResult:
                 hook_id="test_hook",
                 success=False,
                 duration=1.0,
-                error="Hook execution failed"
+                error="Hook execution failed",
             )
             # Assert
             assert result is not None
@@ -256,7 +252,7 @@ class TestJITEnhancedHookManager:
 
         # Assert
         assert manager is not None
-        assert hasattr(manager, 'execute_hooks')
+        assert hasattr(manager, "execute_hooks")
 
     def test_register_hook(self):
         """Test registering a hook."""
@@ -269,7 +265,7 @@ class TestJITEnhancedHookManager:
             hook_id = manager.register_hook(
                 event=HookEvent.SESSION_START,
                 callback=mock_hook,
-                priority=HookPriority.NORMAL
+                priority=HookPriority.NORMAL,
             )
         except (AttributeError, TypeError):
             hook_id = None
@@ -286,8 +282,7 @@ class TestJITEnhancedHookManager:
         # Act
         try:
             hook_id = manager.register_hook(
-                event=HookEvent.SESSION_START,
-                callback=mock_hook
+                event=HookEvent.SESSION_START, callback=mock_hook
             )
             if hook_id:
                 manager.unregister_hook(hook_id)
@@ -306,10 +301,7 @@ class TestJITEnhancedHookManager:
 
         # Act
         try:
-            await manager.execute_hooks(
-                event=HookEvent.SESSION_START,
-                context={}
-            )
+            await manager.execute_hooks(event=HookEvent.SESSION_START, context={})
         except (AttributeError, TypeError):
             pass
 
@@ -358,7 +350,7 @@ class TestJITEnhancedHookManager:
         # Assert
         assert isinstance(metrics, (dict, type(None))) or True
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_hook_execution_with_subprocess(self, mock_run):
         """Test hook execution with subprocess."""
         # Arrange
@@ -367,8 +359,8 @@ class TestJITEnhancedHookManager:
 
         # Act
         try:
-            if hasattr(manager, 'execute_hook_command'):
-                result = manager.execute_hook_command(['echo', 'test'])
+            if hasattr(manager, "execute_hook_command"):
+                result = manager.execute_hook_command(["echo", "test"])
             else:
                 result = None
         except (AttributeError, TypeError):
@@ -414,9 +406,9 @@ class TestHookFiltering:
         # Arrange
         manager = JITEnhancedHookManager()
         hooks = [
-            {'priority': HookPriority.LOW},
-            {'priority': HookPriority.CRITICAL},
-            {'priority': HookPriority.NORMAL},
+            {"priority": HookPriority.LOW},
+            {"priority": HookPriority.CRITICAL},
+            {"priority": HookPriority.NORMAL},
         ]
 
         # Act
@@ -439,10 +431,10 @@ class TestHookCaching:
 
         # Act
         try:
-            if hasattr(manager, 'cache_result'):
-                manager.cache_result('test_hook', {'result': 'data'})
-                if hasattr(manager, 'get_cached_result'):
-                    cached = manager.get_cached_result('test_hook')
+            if hasattr(manager, "cache_result"):
+                manager.cache_result("test_hook", {"result": "data"})
+                if hasattr(manager, "get_cached_result"):
+                    cached = manager.get_cached_result("test_hook")
                 else:
                     cached = None
             else:
@@ -460,12 +452,12 @@ class TestHookCaching:
 
         # Act
         try:
-            if hasattr(manager, 'cache_result'):
-                manager.cache_result('test_hook', {'result': 'data'})
-                if hasattr(manager, 'invalidate_cache'):
-                    manager.invalidate_cache('test_hook')
-                if hasattr(manager, 'get_cached_result'):
-                    cached = manager.get_cached_result('test_hook')
+            if hasattr(manager, "cache_result"):
+                manager.cache_result("test_hook", {"result": "data"})
+                if hasattr(manager, "invalidate_cache"):
+                    manager.invalidate_cache("test_hook")
+                if hasattr(manager, "get_cached_result"):
+                    cached = manager.get_cached_result("test_hook")
                 else:
                     cached = None
             else:
@@ -484,9 +476,9 @@ class TestHookCaching:
         # Act
         try:
             # Try to cache some data
-            if hasattr(manager, 'cache_result'):
+            if hasattr(manager, "cache_result"):
                 for i in range(5):
-                    manager.cache_result(f'hook_{i}', {'data': i})
+                    manager.cache_result(f"hook_{i}", {"data": i})
         except (AttributeError, TypeError):
             pass
 
@@ -561,7 +553,7 @@ class TestTokenBudgetManagement:
 class TestHookErrorHandling:
     """Test error handling in hook execution."""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_hook_execution_failure(self, mock_run):
         """Test handling hook execution failure."""
         # Arrange
@@ -570,8 +562,8 @@ class TestHookErrorHandling:
 
         # Act
         try:
-            if hasattr(manager, 'execute_hook_command'):
-                result = manager.execute_hook_command(['failing', 'command'])
+            if hasattr(manager, "execute_hook_command"):
+                result = manager.execute_hook_command(["failing", "command"])
             else:
                 result = None
         except Exception:
@@ -602,8 +594,10 @@ class TestHookErrorHandling:
 
         # Act
         try:
-            if hasattr(manager, 'execute_hook_safe'):
-                manager.execute_hook_safe(MagicMock(side_effect=Exception("Hook failed")))
+            if hasattr(manager, "execute_hook_safe"):
+                manager.execute_hook_safe(
+                    MagicMock(side_effect=Exception("Hook failed"))
+                )
         except Exception:
             pass
 
@@ -631,12 +625,10 @@ class TestHookDependencies:
             manager.register_hook(
                 event=HookEvent.SESSION_START,
                 callback=hook1,
-                priority=HookPriority.HIGH
+                priority=HookPriority.HIGH,
             )
             manager.register_hook(
-                event=HookEvent.SESSION_START,
-                callback=hook2,
-                priority=HookPriority.LOW
+                event=HookEvent.SESSION_START, callback=hook2, priority=HookPriority.LOW
             )
         except (AttributeError, TypeError):
             pass
@@ -651,10 +643,12 @@ class TestHookDependencies:
 
         # Act
         try:
-            manager.chain_hooks([
-                ({'event': HookEvent.SESSION_START}, lambda: None),
-                ({'event': HookEvent.USER_PROMPT_SUBMIT}, lambda: None),
-            ])
+            manager.chain_hooks(
+                [
+                    ({"event": HookEvent.SESSION_START}, lambda: None),
+                    ({"event": HookEvent.USER_PROMPT_SUBMIT}, lambda: None),
+                ]
+            )
         except (AttributeError, TypeError):
             pass
 

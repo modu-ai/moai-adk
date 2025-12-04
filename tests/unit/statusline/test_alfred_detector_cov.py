@@ -61,12 +61,10 @@ class TestActiveTaskDetection:
         # Arrange
         detector = AlfredDetector()
 
-        with patch.object(detector, '_is_cache_valid', return_value=False):
-            with patch.object(detector, '_read_session_state') as mock_read:
+        with patch.object(detector, "_is_cache_valid", return_value=False):
+            with patch.object(detector, "_read_session_state") as mock_read:
                 mock_read.return_value = AlfredTask(
-                    command="test_command",
-                    spec_id="SPEC-001",
-                    stage="RED"
+                    command="test_command", spec_id="SPEC-001", stage="RED"
                 )
 
                 # Act
@@ -83,15 +81,13 @@ class TestActiveTaskDetection:
         # Arrange
         detector = AlfredDetector()
         cached_task = AlfredTask(
-            command="cached_command",
-            spec_id="SPEC-999",
-            stage="REFACTOR"
+            command="cached_command", spec_id="SPEC-999", stage="REFACTOR"
         )
         detector._cache = cached_task
         detector._cache_time = datetime.now()
 
-        with patch.object(detector, '_is_cache_valid', return_value=True):
-            with patch.object(detector, '_read_session_state') as mock_read:
+        with patch.object(detector, "_is_cache_valid", return_value=True):
+            with patch.object(detector, "_read_session_state") as mock_read:
                 # Act
                 result = detector.detect_active_task()
 
@@ -105,13 +101,11 @@ class TestActiveTaskDetection:
         # Arrange
         detector = AlfredDetector()
         fresh_task = AlfredTask(
-            command="fresh_command",
-            spec_id="SPEC-002",
-            stage="GREEN"
+            command="fresh_command", spec_id="SPEC-002", stage="GREEN"
         )
 
-        with patch.object(detector, '_is_cache_valid', return_value=False):
-            with patch.object(detector, '_read_session_state') as mock_read:
+        with patch.object(detector, "_is_cache_valid", return_value=False):
+            with patch.object(detector, "_read_session_state") as mock_read:
                 mock_read.return_value = fresh_task
 
                 # Act
@@ -125,16 +119,12 @@ class TestActiveTaskDetection:
         """Test that cache is updated after reading."""
         # Arrange
         detector = AlfredDetector()
-        fresh_task = AlfredTask(
-            command="fresh",
-            spec_id="SPEC-003",
-            stage="SYNC"
-        )
+        fresh_task = AlfredTask(command="fresh", spec_id="SPEC-003", stage="SYNC")
 
-        with patch.object(detector, '_is_cache_valid', return_value=False):
-            with patch.object(detector, '_read_session_state') as mock_read:
+        with patch.object(detector, "_is_cache_valid", return_value=False):
+            with patch.object(detector, "_read_session_state") as mock_read:
                 mock_read.return_value = fresh_task
-                with patch.object(detector, '_update_cache') as mock_update:
+                with patch.object(detector, "_update_cache") as mock_update:
                     # Act
                     detector.detect_active_task()
 
@@ -153,8 +143,8 @@ class TestSessionStateReading:
     def test_read_session_state_file_not_exists(self, detector):
         """Test reading session state when file doesn't exist."""
         # Arrange
-        with patch('pathlib.Path.exists', return_value=False):
-            with patch.object(detector, '_create_default_task') as mock_default:
+        with patch("pathlib.Path.exists", return_value=False):
+            with patch.object(detector, "_create_default_task") as mock_default:
                 mock_default.return_value = AlfredTask(None, None, None)
 
                 # Act
@@ -171,12 +161,12 @@ class TestSessionStateReading:
             "active_task": {
                 "command": "/moai:2-run",
                 "spec_id": "SPEC-001",
-                "stage": "RED"
+                "stage": "RED",
             }
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
                 # Act
                 result = detector._read_session_state()
 
@@ -190,9 +180,9 @@ class TestSessionStateReading:
         # Arrange
         session_state = {"other_key": "value"}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
-                with patch.object(detector, '_create_default_task') as mock_default:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
+                with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
@@ -206,9 +196,9 @@ class TestSessionStateReading:
         # Arrange
         session_state = {"active_task": None}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
-                with patch.object(detector, '_create_default_task') as mock_default:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
+                with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
@@ -227,8 +217,8 @@ class TestSessionStateReading:
             }
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
                 # Act
                 result = detector._read_session_state()
 
@@ -242,9 +232,9 @@ class TestSessionStateReading:
         # Arrange
         invalid_json = "{ invalid json content"
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=invalid_json)):
-                with patch.object(detector, '_create_default_task') as mock_default:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=invalid_json)):
+                with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
@@ -256,9 +246,9 @@ class TestSessionStateReading:
     def test_read_session_state_file_read_error(self, detector):
         """Test reading session state with file read error."""
         # Arrange
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', side_effect=IOError("Permission denied")):
-                with patch.object(detector, '_create_default_task') as mock_default:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", side_effect=IOError("Permission denied")):
+                with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
@@ -270,11 +260,13 @@ class TestSessionStateReading:
     def test_read_session_state_logs_error(self, detector):
         """Test that errors are logged when reading session state fails."""
         # Arrange
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', side_effect=ValueError("Bad data")):
-                with patch.object(detector, '_create_default_task') as mock_default:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", side_effect=ValueError("Bad data")):
+                with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
-                    with patch('moai_adk.statusline.alfred_detector.logger') as mock_logger:
+                    with patch(
+                        "moai_adk.statusline.alfred_detector.logger"
+                    ) as mock_logger:
                         # Act
                         detector._read_session_state()
 
@@ -289,12 +281,12 @@ class TestSessionStateReading:
                 "command": "/moai:2-run",
                 "spec_id": "SPEC-042",
                 "stage": "GREEN",
-                "extra_field": "should be ignored"
+                "extra_field": "should be ignored",
             }
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
                 # Act
                 result = detector._read_session_state()
 
@@ -340,7 +332,9 @@ class TestCacheValidation:
         """Test cache validation within TTL window."""
         # Arrange
         detector._cache = AlfredTask(command="test", spec_id=None, stage=None)
-        detector._cache_time = datetime.now() - timedelta(milliseconds=500)  # 0.5 seconds ago
+        detector._cache_time = datetime.now() - timedelta(
+            milliseconds=500
+        )  # 0.5 seconds ago
 
         # Act
         result = detector._is_cache_valid()
@@ -376,7 +370,9 @@ class TestCacheValidation:
         """Test cache validation just before expiry."""
         # Arrange
         detector._cache = AlfredTask(command="test", spec_id=None, stage=None)
-        detector._cache_time = datetime.now() - timedelta(milliseconds=999)  # Just under 1 second
+        detector._cache_time = datetime.now() - timedelta(
+            milliseconds=999
+        )  # Just under 1 second
 
         # Act
         result = detector._is_cache_valid()
@@ -396,11 +392,7 @@ class TestCacheUpdating:
     def test_update_cache_stores_task(self, detector):
         """Test that update_cache stores the task."""
         # Arrange
-        task = AlfredTask(
-            command="/moai:3-sync",
-            spec_id="SPEC-010",
-            stage="SYNC"
-        )
+        task = AlfredTask(command="/moai:3-sync", spec_id="SPEC-010", stage="SYNC")
 
         # Act
         detector._update_cache(task)
@@ -479,11 +471,7 @@ class TestAlfredTaskDataclass:
     def test_alfred_task_init_all_fields(self):
         """Test AlfredTask initialization with all fields."""
         # Act
-        task = AlfredTask(
-            command="/moai:2-run",
-            spec_id="SPEC-001",
-            stage="RED"
-        )
+        task = AlfredTask(command="/moai:2-run", spec_id="SPEC-001", stage="RED")
 
         # Assert
         assert task.command == "/moai:2-run"
@@ -493,11 +481,7 @@ class TestAlfredTaskDataclass:
     def test_alfred_task_init_with_none(self):
         """Test AlfredTask initialization with None values."""
         # Act
-        task = AlfredTask(
-            command=None,
-            spec_id=None,
-            stage=None
-        )
+        task = AlfredTask(command=None, spec_id=None, stage=None)
 
         # Assert
         assert task.command is None
@@ -518,11 +502,7 @@ class TestAlfredTaskDataclass:
     def test_alfred_task_partial_none(self):
         """Test AlfredTask with some None fields."""
         # Act
-        task = AlfredTask(
-            command="/moai:2-run",
-            spec_id=None,
-            stage="GREEN"
-        )
+        task = AlfredTask(command="/moai:2-run", spec_id=None, stage="GREEN")
 
         # Assert
         assert task.command == "/moai:2-run"
@@ -564,7 +544,10 @@ class TestEdgeCases:
         result2 = detector.detect_active_task()
 
         # Assert
-        assert result1.spec_id in ["SPEC-001", "SPEC-002"]  # Could be either due to timing
+        assert result1.spec_id in [
+            "SPEC-001",
+            "SPEC-002",
+        ]  # Could be either due to timing
         assert result2.spec_id in ["SPEC-001", "SPEC-002"]
 
     def test_read_session_state_unicode_content(self):
@@ -575,12 +558,12 @@ class TestEdgeCases:
             "active_task": {
                 "command": "/moai:2-run",
                 "spec_id": "SPEC-🚀",
-                "stage": "GREEN"
+                "stage": "GREEN",
             }
         }
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
                 # Act
                 result = detector._read_session_state()
 
@@ -591,16 +574,10 @@ class TestEdgeCases:
         """Test reading session state with empty string values."""
         # Arrange
         detector = AlfredDetector()
-        session_state = {
-            "active_task": {
-                "command": "",
-                "spec_id": "",
-                "stage": ""
-            }
-        }
+        session_state = {"active_task": {"command": "", "spec_id": "", "stage": ""}}
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(session_state))):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(session_state))):
                 # Act
                 result = detector._read_session_state()
 

@@ -316,7 +316,11 @@ class TestIndexingOptimizerAdditional:
         result = optimizer.recommend_index(
             {
                 "columns": ["status", "created_at", "user_id"],
-                "conditions": ["user_id = 1", "status = active", "created_at > 2024-01-01"],
+                "conditions": [
+                    "user_id = 1",
+                    "status = active",
+                    "created_at > 2024-01-01",
+                ],
             }
         )
         assert result["index_type"] == "COMPOSITE"
@@ -522,9 +526,7 @@ class TestMigrationPlannerAdditional:
     def test_validate_safety_drop_without_backup(self):
         """Test safety validation for drop without backup."""
         planner = MigrationPlanner()
-        result = planner.validate_safety(
-            {"operation": "drop_column", "backup": False}
-        )
+        result = planner.validate_safety({"operation": "drop_column", "backup": False})
         assert result["is_safe"] is False
         assert "Data loss" in result["risks"][0]
 
@@ -591,9 +593,7 @@ class TestTransactionManagerAdditional:
     def test_validate_acid_compliance_serializable(self):
         """Test ACID compliance with serializable isolation."""
         manager = TransactionManager()
-        result = manager.validate_acid_compliance(
-            {"isolation_level": "SERIALIZABLE"}
-        )
+        result = manager.validate_acid_compliance({"isolation_level": "SERIALIZABLE"})
         assert result["isolation"] is True
         assert result["atomicity"] is True
         assert result["consistency"] is True
@@ -601,9 +601,7 @@ class TestTransactionManagerAdditional:
     def test_validate_acid_compliance_read_committed(self):
         """Test ACID compliance with read committed."""
         manager = TransactionManager()
-        result = manager.validate_acid_compliance(
-            {"isolation_level": "READ_COMMITTED"}
-        )
+        result = manager.validate_acid_compliance({"isolation_level": "READ_COMMITTED"})
         assert result["isolation"] is True
 
     def test_validate_acid_compliance_invalid_isolation(self):
@@ -724,7 +722,11 @@ class TestPerformanceMonitorAdditional:
         """Test healthy connection usage."""
         monitor = PerformanceMonitor()
         result = monitor.monitor_connection_usage(
-            {"active_connections": 10, "max_connections": 100, "failed_connection_attempts": 0}
+            {
+                "active_connections": 10,
+                "max_connections": 100,
+                "failed_connection_attempts": 0,
+            }
         )
         assert result["health_status"] == "healthy"
         assert len(result["recommendations"]) == 0
@@ -733,7 +735,11 @@ class TestPerformanceMonitorAdditional:
         """Test warning level connection usage."""
         monitor = PerformanceMonitor()
         result = monitor.monitor_connection_usage(
-            {"active_connections": 80, "max_connections": 100, "failed_connection_attempts": 5}
+            {
+                "active_connections": 80,
+                "max_connections": 100,
+                "failed_connection_attempts": 5,
+            }
         )
         # May be warning or critical depending on implementation
         assert result["health_status"] in ("warning", "critical")
@@ -742,7 +748,11 @@ class TestPerformanceMonitorAdditional:
         """Test critical connection usage."""
         monitor = PerformanceMonitor()
         result = monitor.monitor_connection_usage(
-            {"active_connections": 95, "max_connections": 100, "failed_connection_attempts": 10}
+            {
+                "active_connections": 95,
+                "max_connections": 100,
+                "failed_connection_attempts": 10,
+            }
         )
         assert result["health_status"] == "critical"
 

@@ -30,7 +30,9 @@ class TestInteractiveCheckboxUIInitialization:
     def test_init_with_string_path(self):
         """Test initialization with string path."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = InteractiveCheckboxUI(tmpdir)
                 assert ui.project_path == Path(tmpdir).resolve()
 
@@ -38,14 +40,18 @@ class TestInteractiveCheckboxUIInitialization:
         """Test initialization with Path object."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = InteractiveCheckboxUI(path)
                 assert ui.project_path == path.resolve()
 
     def test_init_creates_scanner(self):
         """Test that scanner is created during initialization."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner") as mock_scanner:
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ) as mock_scanner:
                 ui = InteractiveCheckboxUI(tmpdir)
                 assert mock_scanner.called
                 assert ui.scanner is not None
@@ -53,14 +59,18 @@ class TestInteractiveCheckboxUIInitialization:
     def test_init_initializes_selected_indices(self):
         """Test that selected_indices is initialized as empty set."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = InteractiveCheckboxUI(tmpdir)
                 assert ui.selected_indices == set()
 
     def test_init_initializes_current_index(self):
         """Test that current_index is initialized to zero."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = InteractiveCheckboxUI(tmpdir)
                 assert ui.current_index == 0
 
@@ -72,7 +82,9 @@ class TestElementOrganization:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_get_elements_by_category_empty(self, ui):
@@ -92,9 +104,7 @@ class TestElementOrganization:
         mock_skill.is_template = False
 
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "skills": [mock_skill]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"skills": [mock_skill]}
 
         result = ui._get_elements_by_category()
 
@@ -110,9 +120,7 @@ class TestElementOrganization:
         mock_skill.is_template = True
 
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "skills": [mock_skill]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"skills": [mock_skill]}
 
         result = ui._get_elements_by_category()
 
@@ -122,9 +130,7 @@ class TestElementOrganization:
     def test_get_elements_by_category_with_agents(self, ui):
         """Test organizing agents into category."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
         result = ui._get_elements_by_category()
 
@@ -146,9 +152,7 @@ class TestElementOrganization:
     def test_get_elements_by_category_with_hooks(self, ui):
         """Test organizing hooks into category."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "hooks": ["/path/to/hook.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"hooks": ["/path/to/hook.py"]}
 
         result = ui._get_elements_by_category()
 
@@ -158,9 +162,7 @@ class TestElementOrganization:
     def test_get_elements_by_category_removes_empty_categories(self, ui):
         """Test that empty categories are removed."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
         result = ui._get_elements_by_category()
 
@@ -177,7 +179,9 @@ class TestElementFlattening:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_flatten_elements_empty(self, ui):
@@ -188,9 +192,7 @@ class TestElementFlattening:
     def test_flatten_elements_single_category(self, ui):
         """Test flattening single category."""
         elements_by_category = {
-            "Agents": [
-                {"name": "agent1", "path": "/path/agent1", "type": "agent"}
-            ]
+            "Agents": [{"name": "agent1", "path": "/path/agent1", "type": "agent"}]
         }
 
         result = ui._flatten_elements(elements_by_category)
@@ -203,12 +205,8 @@ class TestElementFlattening:
     def test_flatten_elements_multiple_categories(self, ui):
         """Test flattening multiple categories."""
         elements_by_category = {
-            "Agents": [
-                {"name": "agent1", "path": "/path/agent1", "type": "agent"}
-            ],
-            "Commands": [
-                {"name": "cmd1", "path": "/path/cmd1", "type": "command"}
-            ]
+            "Agents": [{"name": "agent1", "path": "/path/agent1", "type": "agent"}],
+            "Commands": [{"name": "cmd1", "path": "/path/cmd1", "type": "command"}],
         }
 
         result = ui._flatten_elements(elements_by_category)
@@ -225,7 +223,7 @@ class TestElementFlattening:
         elements_by_category = {
             "Agents": [
                 {"name": "agent1", "path": "/path/agent1", "type": "agent"},
-                {"name": "agent2", "path": "/path/agent2", "type": "agent"}
+                {"name": "agent2", "path": "/path/agent2", "type": "agent"},
             ]
         }
 
@@ -243,7 +241,9 @@ class TestNavigation:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_navigate_up_from_middle(self, ui):
@@ -252,7 +252,7 @@ class TestNavigation:
             {"type": "header", "text": "Category"},
             {"type": "element", "name": "elem1"},
             {"type": "element", "name": "elem2"},
-            {"type": "element", "name": "elem3"}
+            {"type": "element", "name": "elem3"},
         ]
 
         ui.current_index = 3  # Start at elem3
@@ -266,7 +266,7 @@ class TestNavigation:
         elements = [
             {"type": "header", "text": "Category"},
             {"type": "element", "name": "elem1"},
-            {"type": "element", "name": "elem2"}
+            {"type": "element", "name": "elem2"},
         ]
 
         ui.current_index = 2  # Start at elem2
@@ -279,7 +279,7 @@ class TestNavigation:
         """Test that navigation stops at start of list."""
         elements = [
             {"type": "header", "text": "Category"},
-            {"type": "element", "name": "elem1"}
+            {"type": "element", "name": "elem1"},
         ]
 
         ui.current_index = 1
@@ -294,7 +294,7 @@ class TestNavigation:
             {"type": "header", "text": "Category"},
             {"type": "element", "name": "elem1"},
             {"type": "element", "name": "elem2"},
-            {"type": "element", "name": "elem3"}
+            {"type": "element", "name": "elem3"},
         ]
 
         ui.current_index = 1  # Start at elem1
@@ -308,7 +308,7 @@ class TestNavigation:
         elements = [
             {"type": "element", "name": "elem1"},
             {"type": "header", "text": "Category"},
-            {"type": "element", "name": "elem2"}
+            {"type": "element", "name": "elem2"},
         ]
 
         ui.current_index = 0  # Start at elem1
@@ -321,7 +321,7 @@ class TestNavigation:
         """Test that navigation stops at end of list."""
         elements = [
             {"type": "header", "text": "Category"},
-            {"type": "element", "name": "elem1"}
+            {"type": "element", "name": "elem1"},
         ]
 
         ui.current_index = 1
@@ -338,14 +338,16 @@ class TestSelection:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_toggle_selection_add(self, ui):
         """Test adding element to selection."""
         elements = [
             {"type": "element", "name": "elem1"},
-            {"type": "element", "name": "elem2"}
+            {"type": "element", "name": "elem2"},
         ]
 
         ui.current_index = 0
@@ -357,7 +359,7 @@ class TestSelection:
         """Test removing element from selection."""
         elements = [
             {"type": "element", "name": "elem1"},
-            {"type": "element", "name": "elem2"}
+            {"type": "element", "name": "elem2"},
         ]
 
         ui.selected_indices.add(0)
@@ -368,9 +370,7 @@ class TestSelection:
 
     def test_toggle_selection_on_header(self, ui):
         """Test toggling on header does nothing."""
-        elements = [
-            {"type": "header", "text": "Category"}
-        ]
+        elements = [{"type": "header", "text": "Category"}]
 
         ui.current_index = 0
         ui._toggle_selection(elements)
@@ -384,7 +384,7 @@ class TestSelection:
             {"type": "header", "text": "Category"},
             {"type": "element", "name": "elem1"},
             {"type": "element", "name": "elem2"},
-            {"type": "element", "name": "elem3"}
+            {"type": "element", "name": "elem3"},
         ]
 
         ui._select_all(elements)
@@ -412,15 +412,15 @@ class TestConfirmation:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_confirm_selection_no_elements_selected(self, ui):
         """Test confirmation with no elements selected."""
         mock_stdscr = MagicMock()
-        elements = [
-            {"type": "element", "name": "elem1"}
-        ]
+        elements = [{"type": "element", "name": "elem1"}]
 
         result = ui._confirm_selection(mock_stdscr, elements)
 
@@ -429,12 +429,10 @@ class TestConfirmation:
     def test_confirm_selection_yes_response(self, ui):
         """Test confirmation when user confirms (y)."""
         mock_stdscr = MagicMock()
-        mock_stdscr.getch.return_value = ord('y')
+        mock_stdscr.getch.return_value = ord("y")
         mock_stdscr.getmaxyx.return_value = (24, 80)
 
-        elements = [
-            {"type": "element", "name": "elem1"}
-        ]
+        elements = [{"type": "element", "name": "elem1"}]
 
         ui.selected_indices = {0}
 
@@ -445,12 +443,10 @@ class TestConfirmation:
     def test_confirm_selection_enter_response(self, ui):
         """Test confirmation when user presses Enter."""
         mock_stdscr = MagicMock()
-        mock_stdscr.getch.return_value = ord('\n')
+        mock_stdscr.getch.return_value = ord("\n")
         mock_stdscr.getmaxyx.return_value = (24, 80)
 
-        elements = [
-            {"type": "element", "name": "elem1"}
-        ]
+        elements = [{"type": "element", "name": "elem1"}]
 
         ui.selected_indices = {0}
 
@@ -461,12 +457,10 @@ class TestConfirmation:
     def test_confirm_selection_no_response(self, ui):
         """Test confirmation when user declines (n)."""
         mock_stdscr = MagicMock()
-        mock_stdscr.getch.return_value = ord('n')
+        mock_stdscr.getch.return_value = ord("n")
         mock_stdscr.getmaxyx.return_value = (24, 80)
 
-        elements = [
-            {"type": "element", "name": "elem1"}
-        ]
+        elements = [{"type": "element", "name": "elem1"}]
 
         ui.selected_indices = {0}
 
@@ -482,7 +476,9 @@ class TestFallbackSelection:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_fallback_selection_no_elements(self, ui):
@@ -508,7 +504,12 @@ class TestFallbackSelection:
         """Test fallback selecting all elements."""
         flattened = [
             {"type": "element", "name": "elem1", "path": "/path1", "category": "agent"},
-            {"type": "element", "name": "elem2", "path": "/path2", "category": "command"}
+            {
+                "type": "element",
+                "name": "elem2",
+                "path": "/path2",
+                "category": "command",
+            },
         ]
 
         with patch("builtins.input", return_value="all"):
@@ -522,7 +523,12 @@ class TestFallbackSelection:
         """Test fallback selecting by number."""
         flattened = [
             {"type": "element", "name": "elem1", "path": "/path1", "category": "agent"},
-            {"type": "element", "name": "elem2", "path": "/path2", "category": "command"}
+            {
+                "type": "element",
+                "name": "elem2",
+                "path": "/path2",
+                "category": "command",
+            },
         ]
 
         with patch("builtins.input", return_value="1,2"):
@@ -560,7 +566,9 @@ class TestElementTypeDetection:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_get_element_type_agent(self, ui):
@@ -596,7 +604,9 @@ class TestPromptUserSelection:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_prompt_user_selection_no_elements(self, ui):
@@ -611,9 +621,7 @@ class TestPromptUserSelection:
     def test_prompt_user_selection_no_backup(self, ui):
         """Test prompt when backup is not available."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
         result = ui.prompt_user_selection(backup_available=False)
 
@@ -622,12 +630,14 @@ class TestPromptUserSelection:
     def test_prompt_user_selection_curses_import_error(self, ui):
         """Test prompt with curses import error fallback."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
-        with patch.object(ui, "_run_curses_interface", side_effect=ImportError("No curses")):
-            with patch.object(ui, "_fallback_selection", return_value=["/path/to/agent.py"]):
+        with patch.object(
+            ui, "_run_curses_interface", side_effect=ImportError("No curses")
+        ):
+            with patch.object(
+                ui, "_fallback_selection", return_value=["/path/to/agent.py"]
+            ):
                 result = ui.prompt_user_selection()
 
                 assert result == ["/path/to/agent.py"]
@@ -635,12 +645,14 @@ class TestPromptUserSelection:
     def test_prompt_user_selection_curses_error(self, ui):
         """Test prompt with general curses error fallback."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
-        with patch.object(ui, "_run_curses_interface", side_effect=Exception("Curses error")):
-            with patch.object(ui, "_fallback_selection", return_value=["/path/to/agent.py"]):
+        with patch.object(
+            ui, "_run_curses_interface", side_effect=Exception("Curses error")
+        ):
+            with patch.object(
+                ui, "_fallback_selection", return_value=["/path/to/agent.py"]
+            ):
                 result = ui.prompt_user_selection()
 
                 assert result == ["/path/to/agent.py"]
@@ -648,9 +660,7 @@ class TestPromptUserSelection:
     def test_prompt_user_selection_cancelled(self, ui):
         """Test prompt when user cancels."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
         with patch.object(ui, "_run_curses_interface", return_value=None):
             result = ui.prompt_user_selection()
@@ -660,9 +670,7 @@ class TestPromptUserSelection:
     def test_prompt_user_selection_no_selection_made(self, ui):
         """Test prompt when user doesn't select anything."""
         ui.scanner = MagicMock()
-        ui.scanner.scan_custom_elements.return_value = {
-            "agents": ["/path/to/agent.py"]
-        }
+        ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
         with patch.object(ui, "_run_curses_interface", return_value=set()):
             result = ui.prompt_user_selection()
@@ -677,7 +685,9 @@ class TestConfirmSelection:
     def ui(self):
         """Create UI instance with mocked scanner."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_confirm_selection_user_confirms(self, ui):
@@ -723,7 +733,9 @@ class TestFactoryFunction:
     def test_create_interactive_checkbox_ui_with_string(self):
         """Test creating UI with string path."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = create_interactive_checkbox_ui(tmpdir)
 
                 assert isinstance(ui, InteractiveCheckboxUI)
@@ -733,7 +745,9 @@ class TestFactoryFunction:
         """Test creating UI with Path object."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = create_interactive_checkbox_ui(path)
 
                 assert isinstance(ui, InteractiveCheckboxUI)

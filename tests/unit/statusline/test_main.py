@@ -218,11 +218,25 @@ class TestBuildStatuslineData:
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.return_value.render.return_value = "statusline output"
-            with mock.patch("moai_adk.statusline.main.safe_collect_git_info", return_value=("main", "")):
-                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
-                    with mock.patch("moai_adk.statusline.main.safe_collect_alfred_task", return_value=""):
-                        with mock.patch("moai_adk.statusline.main.safe_collect_version", return_value="0.3.0"):
-                            with mock.patch("moai_adk.statusline.main.safe_check_update", return_value=(False, None)):
+            with mock.patch(
+                "moai_adk.statusline.main.safe_collect_git_info",
+                return_value=("main", ""),
+            ):
+                with mock.patch(
+                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
+                ):
+                    with mock.patch(
+                        "moai_adk.statusline.main.safe_collect_alfred_task",
+                        return_value="",
+                    ):
+                        with mock.patch(
+                            "moai_adk.statusline.main.safe_collect_version",
+                            return_value="0.3.0",
+                        ):
+                            with mock.patch(
+                                "moai_adk.statusline.main.safe_check_update",
+                                return_value=(False, None),
+                            ):
                                 statusline = build_statusline_data(session_context)
 
         assert statusline == "statusline output"
@@ -238,12 +252,28 @@ class TestBuildStatuslineData:
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.return_value.render.return_value = ""
-            with mock.patch("moai_adk.statusline.main.safe_collect_git_info", return_value=("main", "")):
-                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="5m"):
-                    with mock.patch("moai_adk.statusline.main.safe_collect_alfred_task", return_value="[TASK]"):
-                        with mock.patch("moai_adk.statusline.main.safe_collect_version", return_value="0.3.0"):
-                            with mock.patch("moai_adk.statusline.main.safe_check_update", return_value=(False, None)):
-                                statusline = build_statusline_data(session_context, mode="compact")
+            with mock.patch(
+                "moai_adk.statusline.main.safe_collect_git_info",
+                return_value=("main", ""),
+            ):
+                with mock.patch(
+                    "moai_adk.statusline.main.safe_collect_duration", return_value="5m"
+                ):
+                    with mock.patch(
+                        "moai_adk.statusline.main.safe_collect_alfred_task",
+                        return_value="[TASK]",
+                    ):
+                        with mock.patch(
+                            "moai_adk.statusline.main.safe_collect_version",
+                            return_value="0.3.0",
+                        ):
+                            with mock.patch(
+                                "moai_adk.statusline.main.safe_check_update",
+                                return_value=(False, None),
+                            ):
+                                statusline = build_statusline_data(
+                                    session_context, mode="compact"
+                                )
 
         # Should not raise exception
         assert isinstance(statusline, str)
@@ -254,13 +284,29 @@ class TestBuildStatuslineData:
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.return_value.render.return_value = "output"
-            with mock.patch("moai_adk.statusline.main.safe_collect_git_info", return_value=("main", "")):
-                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
-                    with mock.patch("moai_adk.statusline.main.safe_collect_alfred_task", return_value=""):
-                        with mock.patch("moai_adk.statusline.main.safe_collect_version", return_value="0.3.0"):
-                            with mock.patch("moai_adk.statusline.main.safe_check_update", return_value=(False, None)):
+            with mock.patch(
+                "moai_adk.statusline.main.safe_collect_git_info",
+                return_value=("main", ""),
+            ):
+                with mock.patch(
+                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
+                ):
+                    with mock.patch(
+                        "moai_adk.statusline.main.safe_collect_alfred_task",
+                        return_value="",
+                    ):
+                        with mock.patch(
+                            "moai_adk.statusline.main.safe_collect_version",
+                            return_value="0.3.0",
+                        ):
+                            with mock.patch(
+                                "moai_adk.statusline.main.safe_check_update",
+                                return_value=(False, None),
+                            ):
                                 for mode in ["compact", "extended", "minimal"]:
-                                    statusline = build_statusline_data(session_context, mode=mode)
+                                    statusline = build_statusline_data(
+                                        session_context, mode=mode
+                                    )
                                     assert isinstance(statusline, str)
 
     def test_build_statusline_error_handling(self):
@@ -269,11 +315,25 @@ class TestBuildStatuslineData:
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.side_effect = Exception("Rendering error")
-            with mock.patch("moai_adk.statusline.main.safe_collect_git_info", return_value=("main", "")):
-                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
-                    with mock.patch("moai_adk.statusline.main.safe_collect_alfred_task", return_value=""):
-                        with mock.patch("moai_adk.statusline.main.safe_collect_version", return_value="0.3.0"):
-                            with mock.patch("moai_adk.statusline.main.safe_check_update", return_value=(False, None)):
+            with mock.patch(
+                "moai_adk.statusline.main.safe_collect_git_info",
+                return_value=("main", ""),
+            ):
+                with mock.patch(
+                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
+                ):
+                    with mock.patch(
+                        "moai_adk.statusline.main.safe_collect_alfred_task",
+                        return_value="",
+                    ):
+                        with mock.patch(
+                            "moai_adk.statusline.main.safe_collect_version",
+                            return_value="0.3.0",
+                        ):
+                            with mock.patch(
+                                "moai_adk.statusline.main.safe_check_update",
+                                return_value=(False, None),
+                            ):
                                 statusline = build_statusline_data(session_context)
 
         # Should gracefully degrade
@@ -291,11 +351,25 @@ class TestStatuslineExtraction:
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.return_value.render.return_value = ""
-            with mock.patch("moai_adk.statusline.main.safe_collect_git_info", return_value=("main", "")):
-                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
-                    with mock.patch("moai_adk.statusline.main.safe_collect_alfred_task", return_value=""):
-                        with mock.patch("moai_adk.statusline.main.safe_collect_version", return_value="0.3.0"):
-                            with mock.patch("moai_adk.statusline.main.safe_check_update", return_value=(False, None)):
+            with mock.patch(
+                "moai_adk.statusline.main.safe_collect_git_info",
+                return_value=("main", ""),
+            ):
+                with mock.patch(
+                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
+                ):
+                    with mock.patch(
+                        "moai_adk.statusline.main.safe_collect_alfred_task",
+                        return_value="",
+                    ):
+                        with mock.patch(
+                            "moai_adk.statusline.main.safe_collect_version",
+                            return_value="0.3.0",
+                        ):
+                            with mock.patch(
+                                "moai_adk.statusline.main.safe_check_update",
+                                return_value=(False, None),
+                            ):
                                 # Should extract display_name if available
                                 build_statusline_data(session_context)
 
@@ -305,10 +379,24 @@ class TestStatuslineExtraction:
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.return_value.render.return_value = ""
-            with mock.patch("moai_adk.statusline.main.safe_collect_git_info", return_value=("main", "")):
-                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
-                    with mock.patch("moai_adk.statusline.main.safe_collect_alfred_task", return_value=""):
-                        with mock.patch("moai_adk.statusline.main.safe_collect_version", return_value="0.3.0"):
-                            with mock.patch("moai_adk.statusline.main.safe_check_update", return_value=(False, None)):
+            with mock.patch(
+                "moai_adk.statusline.main.safe_collect_git_info",
+                return_value=("main", ""),
+            ):
+                with mock.patch(
+                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
+                ):
+                    with mock.patch(
+                        "moai_adk.statusline.main.safe_collect_alfred_task",
+                        return_value="",
+                    ):
+                        with mock.patch(
+                            "moai_adk.statusline.main.safe_collect_version",
+                            return_value="0.3.0",
+                        ):
+                            with mock.patch(
+                                "moai_adk.statusline.main.safe_check_update",
+                                return_value=(False, None),
+                            ):
                                 # Should extract 'project' as directory
                                 build_statusline_data(session_context)

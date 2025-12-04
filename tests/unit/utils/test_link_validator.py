@@ -140,7 +140,9 @@ class TestLinkValidator:
         content = "[Link](https://example.com) and https://another.com"
         with patch("pathlib.Path.exists", return_value=True):
             with patch.object(
-                validator, "extract_links_from_file", return_value=["https://example.com"]
+                validator,
+                "extract_links_from_file",
+                return_value=["https://example.com"],
             ):
                 result = validator.extract_links_from_file(Path("/tmp/test.md"))
                 assert len(result) >= 0
@@ -158,9 +160,7 @@ class TestLinkValidator:
         """Test validate_link with valid URL format."""
         validator = LinkValidator()
         with patch("moai_adk.utils.link_validator.is_valid_url", return_value=True):
-            with patch.object(
-                validator, "fetch_url"
-            ) as mock_fetch:
+            with patch.object(validator, "fetch_url") as mock_fetch:
                 mock_fetch.return_value = MagicMock(
                     status_code=200,
                     success=True,
@@ -281,9 +281,7 @@ class TestValidatorIntegration:
         """Test complete validation workflow."""
         validator = LinkValidator()
         # Create mock validation
-        with patch.object(
-            validator, "validate_all_links"
-        ) as mock_validate:
+        with patch.object(validator, "validate_all_links") as mock_validate:
             mock_validate.return_value = ValidationResult(
                 total_links=0,
                 valid_links=0,

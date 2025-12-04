@@ -33,10 +33,14 @@ class TestLegacyLogMigration:
         result = _migrate_legacy_logs(tmp_path)
 
         assert result is True
-        assert (tmp_path / ".moai" / "logs" / "sessions" / "last-session-state.json").exists()
+        assert (
+            tmp_path / ".moai" / "logs" / "sessions" / "last-session-state.json"
+        ).exists()
 
         # Verify content is preserved
-        migrated_content = (tmp_path / ".moai" / "logs" / "sessions" / "last-session-state.json").read_text()
+        migrated_content = (
+            tmp_path / ".moai" / "logs" / "sessions" / "last-session-state.json"
+        ).read_text()
         assert '"test": "data"' in migrated_content
 
     def test_legacy_error_logs_migration(self, tmp_path):
@@ -57,7 +61,9 @@ class TestLegacyLogMigration:
 
         assert result is True
         assert (tmp_path / ".moai" / "logs" / "errors" / "error1.log").exists()
-        assert (tmp_path / ".moai" / "logs" / "errors" / "subdir" / "error2.log").exists()
+        assert (
+            tmp_path / ".moai" / "logs" / "errors" / "subdir" / "error2.log"
+        ).exists()
 
     def test_legacy_reports_migration(self, tmp_path):
         """Test migration of reports"""
@@ -133,10 +139,14 @@ class TestLegacyLogMigration:
 
         assert result is True
         # Target file should not exist in dry run
-        assert not (tmp_path / ".moai" / "logs" / "sessions" / "last-session-state.json").exists()
+        assert not (
+            tmp_path / ".moai" / "logs" / "sessions" / "last-session-state.json"
+        ).exists()
 
         # Console should show dry run message
-        mock_console.print.assert_any_call("[cyan]🔍 Legacy log migration (dry run):[/cyan]")
+        mock_console.print.assert_any_call(
+            "[cyan]🔍 Legacy log migration (dry run):[/cyan]"
+        )
 
     def test_error_handling(self, tmp_path):
         """Test graceful error handling"""
@@ -153,7 +163,9 @@ class TestLegacyLogMigration:
 
         assert result is False
         # Should log error message
-        mock_console.print.assert_any_call("   [red]✗ Log migration failed: Simulated error[/red]")
+        mock_console.print.assert_any_call(
+            "   [red]✗ Log migration failed: Simulated error[/red]"
+        )
 
     def test_complex_directory_structure(self, tmp_path):
         """Test migration with nested directories"""
@@ -171,6 +183,8 @@ class TestLegacyLogMigration:
         result = _migrate_legacy_logs(tmp_path)
 
         assert result is True
-        nested_target = tmp_path / ".moai" / "logs" / "errors" / "level1" / "level2" / "error.log"
+        nested_target = (
+            tmp_path / ".moai" / "logs" / "errors" / "level1" / "level2" / "error.log"
+        )
         assert nested_target.exists()
         assert nested_target.read_text() == "Nested error"

@@ -72,7 +72,9 @@ class TestIsPathWithinRoot:
 
     def test_invalid_path_returns_false(self):
         """Test invalid path returns false."""
-        result = _is_path_within_root("/nonexistent/path/to/nowhere", "/nonexistent/root")
+        result = _is_path_within_root(
+            "/nonexistent/path/to/nowhere", "/nonexistent/root"
+        )
 
         assert result is False
 
@@ -201,7 +203,7 @@ class TestSavePhaseResult:
 
             save_phase_result(data, target_path)
 
-            with open(target_path, 'r') as f:
+            with open(target_path, "r") as f:
                 loaded = json.load(f)
 
             assert loaded == data
@@ -229,7 +231,7 @@ class TestSavePhaseResult:
             # Save second version
             save_phase_result({"version": 2}, target_path)
 
-            with open(target_path, 'r') as f:
+            with open(target_path, "r") as f:
                 loaded = json.load(f)
 
             assert loaded["version"] == 2
@@ -245,7 +247,7 @@ class TestLoadPhaseResult:
 
             # Create test file
             data = {"phase": "spec", "status": "ready"}
-            with open(target_path, 'w') as f:
+            with open(target_path, "w") as f:
                 json.dump(data, f)
 
             loaded = load_phase_result(target_path)
@@ -262,7 +264,7 @@ class TestLoadPhaseResult:
         with tempfile.TemporaryDirectory() as tmpdir:
             target_path = os.path.join(tmpdir, "invalid.json")
 
-            with open(target_path, 'w') as f:
+            with open(target_path, "w") as f:
                 f.write("not valid json {]")
 
             with pytest.raises(json.JSONDecodeError):
@@ -447,6 +449,7 @@ class TestContextManagerLoadPhase:
             # Save multiple phases
             manager.save_phase_result({"phase": "spec", "order": 1})
             import time
+
             time.sleep(0.02)  # Ensure different timestamps
             manager.save_phase_result({"phase": "red", "order": 2})
             time.sleep(0.02)
@@ -514,6 +517,7 @@ class TestContextManagerIntegration:
 
             # Save all phases
             import time
+
             for phase_data in phases:
                 manager.save_phase_result(phase_data)
                 time.sleep(0.01)  # Ensure unique timestamps

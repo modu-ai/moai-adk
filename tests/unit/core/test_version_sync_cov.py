@@ -35,7 +35,12 @@ class TestVersionInfoDataclass:
         test_file = tmp_path / "test.toml"
         test_file.write_text('version = "1.0.0"')
 
-        info = VersionInfo(version="1.0.0", source=VersionSource.PYPROJECT_TOML, file_path=test_file, raw_content='version = "1.0.0"')
+        info = VersionInfo(
+            version="1.0.0",
+            source=VersionSource.PYPROJECT_TOML,
+            file_path=test_file,
+            raw_content='version = "1.0.0"',
+        )
 
         assert info.version == "1.0.0"
         assert info.source == VersionSource.PYPROJECT_TOML
@@ -49,11 +54,21 @@ class TestVersionInfoDataclass:
         test_file.write_text("{}")
 
         # Valid version
-        info = VersionInfo(version="1.2.3", source=VersionSource.CONFIG_JSON, file_path=test_file, raw_content="{}")
+        info = VersionInfo(
+            version="1.2.3",
+            source=VersionSource.CONFIG_JSON,
+            file_path=test_file,
+            raw_content="{}",
+        )
         assert info.is_valid is True
 
         # Invalid version
-        info = VersionInfo(version="invalid", source=VersionSource.CONFIG_JSON, file_path=test_file, raw_content="{}")
+        info = VersionInfo(
+            version="invalid",
+            source=VersionSource.CONFIG_JSON,
+            file_path=test_file,
+            raw_content="{}",
+        )
         assert info.is_valid is False
 
     def test_version_info_with_prerelease(self, tmp_path):
@@ -63,7 +78,12 @@ class TestVersionInfoDataclass:
         test_file = tmp_path / "test.json"
         test_file.write_text("{}")
 
-        info = VersionInfo(version="1.0.0-alpha", source=VersionSource.CONFIG_JSON, file_path=test_file, raw_content="{}")
+        info = VersionInfo(
+            version="1.0.0-alpha",
+            source=VersionSource.CONFIG_JSON,
+            file_path=test_file,
+            raw_content="{}",
+        )
         assert info.is_valid is True
 
 
@@ -384,7 +404,9 @@ class TestUpdateVersionInContent:
         sync = VersionSynchronizer(tmp_path)
         content = '{"moai": {"version": "1.0.0"}}'
 
-        updated = sync._update_version_in_content(content, VersionSource.CONFIG_JSON, "2.0.0")
+        updated = sync._update_version_in_content(
+            content, VersionSource.CONFIG_JSON, "2.0.0"
+        )
 
         assert "2.0.0" in updated
         assert '"version": "2.0.0"' in updated
@@ -397,7 +419,9 @@ class TestUpdateVersionInContent:
         content = '__version__ = "1.0.0"'
 
         try:
-            updated = sync._update_version_in_content(content, VersionSource.PACKAGE_METADATA, "2.0.0")
+            updated = sync._update_version_in_content(
+                content, VersionSource.PACKAGE_METADATA, "2.0.0"
+            )
             assert "2.0.0" in updated
         except Exception:
             # The implementation has a known issue with regex backreferences when version has digits
@@ -416,10 +440,12 @@ class TestSynchronizeFile:
         config_file.write_text('{"moai": {"version": "1.0.0"}}')
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync._synchronize_file(config_file, VersionSource.CONFIG_JSON, "1.0.0", False)
+        result = sync._synchronize_file(
+            config_file, VersionSource.CONFIG_JSON, "1.0.0", False
+        )
 
         assert result is True
-        assert '1.0.0' in config_file.read_text()
+        assert "1.0.0" in config_file.read_text()
 
     def test_synchronize_updates_file(self, tmp_path):
         """Should update file to target version."""
@@ -429,10 +455,12 @@ class TestSynchronizeFile:
         config_file.write_text('{"moai": {"version": "1.0.0"}}')
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync._synchronize_file(config_file, VersionSource.CONFIG_JSON, "2.0.0", False)
+        result = sync._synchronize_file(
+            config_file, VersionSource.CONFIG_JSON, "2.0.0", False
+        )
 
         assert result is True
-        assert '2.0.0' in config_file.read_text()
+        assert "2.0.0" in config_file.read_text()
 
     def test_synchronize_dry_run(self, tmp_path):
         """Should not modify on dry run."""
@@ -443,7 +471,9 @@ class TestSynchronizeFile:
         config_file.write_text(original_content)
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync._synchronize_file(config_file, VersionSource.CONFIG_JSON, "2.0.0", True)
+        result = sync._synchronize_file(
+            config_file, VersionSource.CONFIG_JSON, "2.0.0", True
+        )
 
         assert result is True
         assert config_file.read_text() == original_content
@@ -580,7 +610,10 @@ class TestModuleFunctions:
         from moai_adk.core.version_sync import check_project_versions
 
         mock_instance = MagicMock()
-        mock_instance.get_version_report.return_value = {"is_consistent": True, "versions": []}
+        mock_instance.get_version_report.return_value = {
+            "is_consistent": True,
+            "versions": [],
+        }
         mock_class.return_value = mock_instance
 
         report = check_project_versions(tmp_path)

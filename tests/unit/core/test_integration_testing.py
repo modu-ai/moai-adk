@@ -9,7 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from moai_adk.core.integration import IntegrationTester, IntegrationTestResult, TestComponent, TestSuite
+from moai_adk.core.integration import (
+    IntegrationTester,
+    IntegrationTestResult,
+    TestComponent,
+    TestSuite,
+)
 
 
 class TestIntegrationTester:
@@ -76,7 +81,9 @@ class TestIntegrationTester:
 
         # Add test results with different execution times
         tester.add_test_result(IntegrationTestResult("test1", True, execution_time=1.0))
-        tester.add_test_result(IntegrationTestResult("test2", False, execution_time=2.0))
+        tester.add_test_result(
+            IntegrationTestResult("test2", False, execution_time=2.0)
+        )
         tester.add_test_result(IntegrationTestResult("test3", True, execution_time=3.0))
 
         stats = tester.get_test_stats()
@@ -138,7 +145,10 @@ class TestIntegrationTester:
         comp1 = TestComponent("comp1", "type1", "1.0.0")
         comp2 = TestComponent("comp2", "type2", "2.0.0")
         suite = TestSuite(
-            name="test_suite", description="Test suite", components=[comp1, comp2], test_cases=["test1", "test2"]
+            name="test_suite",
+            description="Test suite",
+            components=[comp1, comp2],
+            test_cases=["test1", "test2"],
         )
 
         results = tester.run_test_suite(suite)
@@ -174,7 +184,10 @@ class TestIntegrationTester:
         def test_func(value):
             return value
 
-        tests = [(lambda: test_func("async1"), "async_test1", []), (lambda: test_func("async2"), "async_test2", [])]
+        tests = [
+            (lambda: test_func("async1"), "async_test1", []),
+            (lambda: test_func("async2"), "async_test2", []),
+        ]
 
         results = await tester.run_concurrent_tests_async(tests)
 
@@ -230,7 +243,9 @@ class TestIntegrationTester:
 
         # Add test results
         tester.add_test_result(IntegrationTestResult("test1", True, execution_time=1.0))
-        tester.add_test_result(IntegrationTestResult("test2", False, error_message="Error"))
+        tester.add_test_result(
+            IntegrationTestResult("test2", False, error_message="Error")
+        )
 
         exported = tester.export_results("dict")
 
@@ -246,7 +261,9 @@ class TestIntegrationTester:
 
         # Add test results
         tester.add_test_result(IntegrationTestResult("test1", True))
-        tester.add_test_result(IntegrationTestResult("test2", False, error_message="Error"))
+        tester.add_test_result(
+            IntegrationTestResult("test2", False, error_message="Error")
+        )
 
         exported = tester.export_results("summary")
 
@@ -271,7 +288,9 @@ class TestIntegrationTester:
         # Add failing tests to get low success rate
         tester.add_test_result(IntegrationTestResult("test1", False))
         tester.add_test_result(IntegrationTestResult("test2", False))
-        tester.add_test_result(IntegrationTestResult("test3", True))  # Only 33% success rate
+        tester.add_test_result(
+            IntegrationTestResult("test3", True)
+        )  # Only 33% success rate
 
         warnings = tester.validate_test_environment()
 

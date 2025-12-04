@@ -214,9 +214,7 @@ class TestGenerateMultilingualDescriptions:
         integration = ClaudeCLIIntegration()
         base_descriptions = {"command1": "A test command"}
 
-        with patch.object(
-            integration, "process_template_command"
-        ) as mock_process:
+        with patch.object(integration, "process_template_command") as mock_process:
             mock_process.return_value = {
                 "success": True,
                 "stdout": "테스트 명령",
@@ -237,9 +235,7 @@ class TestGenerateMultilingualDescriptions:
         base_descriptions = {"test": "Test description"}
         target_languages = ["en", "es"]
 
-        with patch.object(
-            integration, "process_template_command"
-        ) as mock_process:
+        with patch.object(integration, "process_template_command") as mock_process:
             mock_process.return_value = {
                 "success": True,
                 "stdout": "Descripción de prueba",
@@ -260,10 +256,11 @@ class TestGenerateMultilingualDescriptions:
         integration = ClaudeCLIIntegration()
         base_descriptions = {"test": "Original"}
 
-        with patch.object(
-            integration, "process_template_command"
-        ) as mock_process:
-            mock_process.return_value = {"success": False, "error": "Translation failed"}
+        with patch.object(integration, "process_template_command") as mock_process:
+            mock_process.return_value = {
+                "success": False,
+                "error": "Translation failed",
+            }
 
             result = integration.generate_multilingual_descriptions(base_descriptions)
 
@@ -458,9 +455,7 @@ class TestProcessJsonStreamInput:
         integration = ClaudeCLIIntegration()
         input_data = {"greeting": "Hello {{NAME}}", "static": "unchanged"}
 
-        with patch.object(
-            integration.template_engine, "render_string"
-        ) as mock_render:
+        with patch.object(integration.template_engine, "render_string") as mock_render:
             mock_render.return_value = "Hello World"
             result = integration.process_json_stream_input(
                 input_data, {"NAME": "World"}
@@ -525,9 +520,7 @@ class TestExecuteHeadlessCommand:
     @patch("moai_adk.core.claude_integration.subprocess.run")
     def test_execute_headless_with_additional_options(self, mock_subprocess_run):
         """Test headless execution with additional CLI options."""
-        mock_subprocess_run.return_value = Mock(
-            returncode=0, stdout="", stderr=""
-        )
+        mock_subprocess_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         integration = ClaudeCLIIntegration()
         with patch.object(

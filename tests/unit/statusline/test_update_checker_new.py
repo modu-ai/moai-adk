@@ -45,9 +45,7 @@ class TestUpdateCheckerCheckForUpdate:
     def test_check_for_update_update_available(self):
         """Test detection of available update."""
         checker = UpdateChecker()
-        json_response = {
-            "info": {"version": "0.21.0"}
-        }
+        json_response = {"info": {"version": "0.21.0"}}
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = MagicMock()
@@ -62,9 +60,7 @@ class TestUpdateCheckerCheckForUpdate:
     def test_check_for_update_no_update(self):
         """Test when no update is available."""
         checker = UpdateChecker()
-        json_response = {
-            "info": {"version": "0.20.0"}
-        }
+        json_response = {"info": {"version": "0.20.0"}}
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = MagicMock()
@@ -157,7 +153,9 @@ class TestUpdateCheckerFetchLatestVersion:
         """Test handling of network errors."""
         checker = UpdateChecker()
 
-        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("Network error")):
+        with patch(
+            "urllib.request.urlopen", side_effect=urllib.error.URLError("Network error")
+        ):
             result = checker._fetch_latest_version("0.20.0")
             assert result.available is False
 
@@ -165,7 +163,10 @@ class TestUpdateCheckerFetchLatestVersion:
         """Test handling of HTTP errors."""
         checker = UpdateChecker()
 
-        with patch("urllib.request.urlopen", side_effect=urllib.error.HTTPError(None, 404, "Not found", {}, None)):
+        with patch(
+            "urllib.request.urlopen",
+            side_effect=urllib.error.HTTPError(None, 404, "Not found", {}, None),
+        ):
             result = checker._fetch_latest_version("0.20.0")
             assert result.available is False
 
@@ -401,7 +402,7 @@ class TestUpdateCheckerEdgeCases:
             "info": {
                 "version": "0.21.0",
                 "author": "Test",
-                "description": "Test package"
+                "description": "Test package",
             }
         }
 
@@ -419,7 +420,7 @@ class TestUpdateCheckerEdgeCases:
         checker = UpdateChecker()
         json_response = {
             "info": {"version": "0.21.0"},
-            "description": "Package with unicode: 日本語"
+            "description": "Package with unicode: 日本語",
         }
 
         with patch("urllib.request.urlopen") as mock_urlopen:

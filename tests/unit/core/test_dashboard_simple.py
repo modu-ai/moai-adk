@@ -497,9 +497,7 @@ class TestRealtimeMonitoringDashboard(unittest.TestCase):
         """Test adding a metric."""
         # Arrange
         # Act
-        self.dashboard.add_metric(
-            MetricType.CPU_USAGE, 45.0, component="test_system"
-        )
+        self.dashboard.add_metric(MetricType.CPU_USAGE, 45.0, component="test_system")
 
         # Assert
         metrics = self.dashboard.metrics_collector.get_metrics(
@@ -583,12 +581,8 @@ class TestRealtimeMonitoringDashboard(unittest.TestCase):
         """Test collecting system metrics."""
         # Arrange
         # Act - Add metrics directly since psutil is optional
-        self.dashboard.add_metric(
-            MetricType.CPU_USAGE, 45.5, component="system"
-        )
-        self.dashboard.add_metric(
-            MetricType.MEMORY_USAGE, 62.0, component="system"
-        )
+        self.dashboard.add_metric(MetricType.CPU_USAGE, 45.5, component="system")
+        self.dashboard.add_metric(MetricType.MEMORY_USAGE, 62.0, component="system")
 
         # Assert
         metrics = self.dashboard.metrics_collector.get_metrics()
@@ -637,13 +631,17 @@ class TestMonitoringDashboardIntegration(unittest.TestCase):
 
         # Add metrics that will trigger alert
         for i in range(3):
-            dashboard.add_metric(
-                MetricType.CPU_USAGE, 95.0, component="test"
-            )
+            dashboard.add_metric(MetricType.CPU_USAGE, 95.0, component="test")
 
         # Assert
-        self.assertEqual(len(dashboard.alert_manager.alert_rules), initial_rule_count + 1)
-        custom_rule = [r for r in dashboard.alert_manager.alert_rules if r["name"] == "High CPU Custom"][0]
+        self.assertEqual(
+            len(dashboard.alert_manager.alert_rules), initial_rule_count + 1
+        )
+        custom_rule = [
+            r
+            for r in dashboard.alert_manager.alert_rules
+            if r["name"] == "High CPU Custom"
+        ][0]
         self.assertEqual(custom_rule["name"], "High CPU Custom")
 
 

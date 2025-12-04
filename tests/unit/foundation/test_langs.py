@@ -29,9 +29,7 @@ class TestLanguageInfo:
     def test_language_info_contains(self):
         """Test LanguageInfo __contains__ method."""
         info = LanguageInfo(
-            name="Python",
-            version="3.13",
-            features=["async", "type_hints"]
+            name="Python", version="3.13", features=["async", "type_hints"]
         )
         assert "async" in info
         assert "missing" not in info
@@ -150,7 +148,9 @@ class TestPatternAnalyzer:
     def test_identify_async_pattern(self):
         """Test identify_pattern with async code."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern("async def my_function(): await something()", "Python")
+        pattern = analyzer.identify_pattern(
+            "async def my_function(): await something()", "Python"
+        )
         assert pattern is not None
         assert pattern.pattern_type == "best_practice"
 
@@ -180,7 +180,9 @@ class TestAntiPatternDetector:
     def test_detect_callback_hell(self):
         """Test detect_anti_pattern with callback hell."""
         detector = AntiPatternDetector()
-        pattern = detector.detect_anti_pattern("callback(() => { function() => {} })", "JavaScript")
+        pattern = detector.detect_anti_pattern(
+            "callback(() => { function() => {} })", "JavaScript"
+        )
         assert pattern is not None
         assert pattern.pattern_type == "anti_pattern"
 
@@ -193,7 +195,9 @@ class TestAntiPatternDetector:
     def test_detect_sql_injection(self):
         """Test detect_anti_pattern with SQL injection."""
         detector = AntiPatternDetector()
-        pattern = detector.detect_anti_pattern("f'SELECT * FROM users WHERE id = {user_id}'", "Python")
+        pattern = detector.detect_anti_pattern(
+            "f'SELECT * FROM users WHERE id = {user_id}'", "Python"
+        )
         assert pattern is not None
         assert pattern.severity == "critical"
 

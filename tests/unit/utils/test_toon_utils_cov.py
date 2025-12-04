@@ -305,15 +305,7 @@ class TestValidateRoundtripEdgeCases:
 
     def test_roundtrip_deeply_nested(self):
         """Test roundtrip with deeply nested structure."""
-        data = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "value": "deep"
-                    }
-                }
-            }
-        }
+        data = {"level1": {"level2": {"level3": {"value": "deep"}}}}
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_large_list(self):
@@ -323,6 +315,7 @@ class TestValidateRoundtripEdgeCases:
 
     def test_roundtrip_non_encodable_returns_false(self):
         """Test roundtrip with non-encodable object."""
+
         class CustomClass:
             pass
 
@@ -331,13 +324,7 @@ class TestValidateRoundtripEdgeCases:
 
     def test_roundtrip_empty_nested_structures(self):
         """Test roundtrip with empty nested structures."""
-        data = {
-            "empty_dict": {},
-            "empty_list": [],
-            "nested": {
-                "also_empty": {}
-            }
-        }
+        data = {"empty_dict": {}, "empty_list": [], "nested": {"also_empty": {}}}
         assert validate_roundtrip(data) is True
 
 
@@ -401,8 +388,7 @@ class TestCompareFormatsMetrics:
         """Test compare with large data."""
         data = {
             "items": [
-                {"id": i, "name": f"Item{i}", "value": i * 10}
-                for i in range(100)
+                {"id": i, "name": f"Item{i}", "value": i * 10} for i in range(100)
             ]
         }
         result = compare_formats(data)
@@ -484,7 +470,7 @@ class TestToonIntegrationComplex:
                     "metadata": {
                         "created": "2023-01-01",
                         "active": True,
-                    }
+                    },
                 },
                 {
                     "id": 2,
@@ -493,11 +479,11 @@ class TestToonIntegrationComplex:
                     "metadata": {
                         "created": "2023-02-01",
                         "active": False,
-                    }
-                }
+                    },
+                },
             ],
             "total": 2,
-            "timestamp": "2023-12-01T12:00:00Z"
+            "timestamp": "2023-12-01T12:00:00Z",
         }
 
         encoded = toon_encode(data)
@@ -514,10 +500,7 @@ class TestToonIntegrationComplex:
             "boolean_false": False,
             "null_value": None,
             "array": [1, "two", 3.0, None, True],
-            "object": {
-                "nested": "value",
-                "number": 100
-            }
+            "object": {"nested": "value", "number": 100},
         }
         assert validate_roundtrip(data) is True
 
@@ -528,7 +511,7 @@ class TestToonIntegrationComplex:
             "chinese": "你好世界",
             "arabic": "مرحبا بالعالم",
             "emoji": "🎉🎊🎈",
-            "mixed": "Hello 世界 🌍"
+            "mixed": "Hello 世界 🌍",
         }
         assert validate_roundtrip(data) is True
 
@@ -538,7 +521,7 @@ class TestToonIntegrationComplex:
             "pi": 3.141592653589793,
             "large_int": 1234567890123456789,
             "small_float": 0.000000001,
-            "scientific": 1.23e-10
+            "scientific": 1.23e-10,
         }
         assert validate_roundtrip(data) is True
 

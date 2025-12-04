@@ -111,14 +111,11 @@ class TestVersionComparison:
 class TestInstallerDetection:
     """Test installer detection functions."""
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_uv_tool_success(self, mock_run):
         """Test detecting uv tool installation."""
         # Arrange
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="moai-adk 0.1.0"
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="moai-adk 0.1.0")
 
         # Act
         result = _is_installed_via_uv_tool()
@@ -129,14 +126,11 @@ class TestInstallerDetection:
         call_args = mock_run.call_args
         assert call_args[0][0] == ["uv", "tool", "list"]
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_uv_tool_not_found(self, mock_run):
         """Test uv tool not installed."""
         # Arrange
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="other-package 1.0.0"
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="other-package 1.0.0")
 
         # Act
         result = _is_installed_via_uv_tool()
@@ -144,7 +138,7 @@ class TestInstallerDetection:
         # Assert
         assert result is False
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_uv_tool_command_fails(self, mock_run):
         """Test uv tool command failure."""
         # Arrange
@@ -156,7 +150,7 @@ class TestInstallerDetection:
         # Assert
         assert result is False
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_uv_tool_timeout(self, mock_run):
         """Test uv tool timeout."""
         # Arrange
@@ -168,14 +162,11 @@ class TestInstallerDetection:
         # Assert
         assert result is False
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_pipx_success(self, mock_run):
         """Test detecting pipx installation."""
         # Arrange
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="moai-adk 0.1.0"
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="moai-adk 0.1.0")
 
         # Act
         result = _is_installed_via_pipx()
@@ -186,14 +177,11 @@ class TestInstallerDetection:
         call_args = mock_run.call_args
         assert call_args[0][0] == ["pipx", "list"]
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_pipx_failure(self, mock_run):
         """Test pipx not installed."""
         # Arrange
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout=""
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
 
         # Act
         result = _is_installed_via_pipx()
@@ -201,7 +189,7 @@ class TestInstallerDetection:
         # Assert
         assert result is False
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_pip_success(self, mock_run):
         """Test detecting pip installation."""
         # Arrange
@@ -216,7 +204,7 @@ class TestInstallerDetection:
         call_args = mock_run.call_args
         assert call_args[0][0] == ["pip", "show", "moai-adk"]
 
-    @patch('moai_adk.cli.commands.update.subprocess.run')
+    @patch("moai_adk.cli.commands.update.subprocess.run")
     def test_is_installed_via_pip_failure(self, mock_run):
         """Test pip package not found."""
         # Arrange
@@ -232,9 +220,9 @@ class TestInstallerDetection:
 class TestToolDetection:
     """Test tool installer detection."""
 
-    @patch('moai_adk.cli.commands.update._is_installed_via_uv_tool')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pipx')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pip')
+    @patch("moai_adk.cli.commands.update._is_installed_via_uv_tool")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pipx")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pip")
     def test_detect_tool_uv_tool_first(self, mock_pip, mock_pipx, mock_uv):
         """Test detection prefers uv tool."""
         # Arrange
@@ -248,9 +236,9 @@ class TestToolDetection:
         # Assert
         assert result == UV_TOOL_COMMAND
 
-    @patch('moai_adk.cli.commands.update._is_installed_via_uv_tool')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pipx')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pip')
+    @patch("moai_adk.cli.commands.update._is_installed_via_uv_tool")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pipx")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pip")
     def test_detect_tool_pipx_second(self, mock_pip, mock_pipx, mock_uv):
         """Test detection falls back to pipx."""
         # Arrange
@@ -264,9 +252,9 @@ class TestToolDetection:
         # Assert
         assert result == PIPX_COMMAND
 
-    @patch('moai_adk.cli.commands.update._is_installed_via_uv_tool')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pipx')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pip')
+    @patch("moai_adk.cli.commands.update._is_installed_via_uv_tool")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pipx")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pip")
     def test_detect_tool_pip_fallback(self, mock_pip, mock_pipx, mock_uv):
         """Test detection falls back to pip."""
         # Arrange
@@ -280,9 +268,9 @@ class TestToolDetection:
         # Assert
         assert result == PIP_COMMAND
 
-    @patch('moai_adk.cli.commands.update._is_installed_via_uv_tool')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pipx')
-    @patch('moai_adk.cli.commands.update._is_installed_via_pip')
+    @patch("moai_adk.cli.commands.update._is_installed_via_uv_tool")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pipx")
+    @patch("moai_adk.cli.commands.update._is_installed_via_pip")
     def test_detect_tool_none_found(self, mock_pip, mock_pipx, mock_uv):
         """Test detection returns None when no tool found."""
         # Arrange
@@ -300,23 +288,23 @@ class TestToolDetection:
 class TestVersionRetrieval:
     """Test version retrieval functions."""
 
-    @patch('moai_adk.cli.commands.update.__version__', '0.1.5')
+    @patch("moai_adk.cli.commands.update.__version__", "0.1.5")
     def test_get_current_version(self):
         """Test getting current version."""
         # Act
         result = _get_current_version()
 
         # Assert
-        assert result == '0.1.5'
+        assert result == "0.1.5"
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_get_latest_version_success(self, mock_urlopen):
         """Test fetching latest version from PyPI."""
         # Arrange
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
-            'info': {'version': '0.2.0'}
-        }).encode('utf-8')
+        mock_response.read.return_value = json.dumps(
+            {"info": {"version": "0.2.0"}}
+        ).encode("utf-8")
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
@@ -324,20 +312,21 @@ class TestVersionRetrieval:
         result = _get_latest_version()
 
         # Assert
-        assert result == '0.2.0'
+        assert result == "0.2.0"
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_get_latest_version_network_error(self, mock_urlopen):
         """Test network error when fetching version."""
         # Arrange
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.URLError("Network error")
 
         # Act & Assert
         with pytest.raises(RuntimeError, match="Failed to fetch latest version"):
             _get_latest_version()
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_get_latest_version_json_error(self, mock_urlopen):
         """Test JSON parsing error."""
         # Arrange
@@ -350,7 +339,7 @@ class TestVersionRetrieval:
         with pytest.raises(RuntimeError, match="Failed to fetch latest version"):
             _get_latest_version()
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_get_latest_version_timeout(self, mock_urlopen):
         """Test timeout when fetching version."""
         # Arrange
@@ -367,9 +356,7 @@ class TestConfigVersionFunctions:
     def test_get_package_config_version_success(self):
         """Test getting package config version."""
         # Arrange
-        config_data = {
-            'template_version': '1.2.3'
-        }
+        config_data = {"template_version": "1.2.3"}
 
         # Act
         try:
@@ -394,13 +381,11 @@ class TestConfigVersionFunctions:
     def test_get_project_config_version_success(self):
         """Test getting project config version."""
         # Arrange
-        config_data = {
-            'moai_config_version': '2.0.0'
-        }
+        config_data = {"moai_config_version": "2.0.0"}
 
         # Act
         try:
-            result = _get_project_config_version(Path('/test/path'))
+            result = _get_project_config_version(Path("/test/path"))
         except (AttributeError, TypeError, FileNotFoundError, NameError):
             result = None
 
@@ -411,7 +396,7 @@ class TestConfigVersionFunctions:
         """Test getting project config when file doesn't exist."""
         # Arrange & Act
         try:
-            result = _get_project_config_version(Path('/test/path'))
+            result = _get_project_config_version(Path("/test/path"))
         except (AttributeError, TypeError, FileNotFoundError, NameError):
             result = None
 
@@ -471,27 +456,27 @@ class TestExceptionClasses:
 class TestBackupOperations:
     """Test backup and restoration operations."""
 
-    @patch('shutil.copytree')
+    @patch("shutil.copytree")
     def test_backup_path_creation(self, mock_copytree):
         """Test backup path creation logic."""
         # Arrange
-        test_path = Path('/test/project')
+        test_path = Path("/test/project")
         mock_copytree.return_value = None
 
         # Act
         # Test that we can create backup paths
-        backup_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_path = test_path / f'.backup_{backup_timestamp}'
+        backup_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = test_path / f".backup_{backup_timestamp}"
 
         # Assert
-        assert str(backup_path).startswith('/test/project/.backup_')
+        assert str(backup_path).startswith("/test/project/.backup_")
 
-    @patch('shutil.rmtree')
+    @patch("shutil.rmtree")
     def test_restore_backup_logic(self, mock_rmtree):
         """Test restore backup logic."""
         # Arrange
-        backup_path = Path('/test/backup')
-        target_path = Path('/test/project')
+        backup_path = Path("/test/backup")
+        target_path = Path("/test/project")
 
         # Act
         # Verify paths are valid Path objects
@@ -499,8 +484,8 @@ class TestBackupOperations:
         assert isinstance(target_path, Path)
 
         # Assert
-        assert backup_path.name == 'backup'
-        assert target_path.name == 'project'
+        assert backup_path.name == "backup"
+        assert target_path.name == "project"
 
 
 class TestCustomFileDetection:
@@ -510,9 +495,9 @@ class TestCustomFileDetection:
         """Test patterns for detecting custom files."""
         # Arrange
         custom_patterns = [
-            '.moai/config/config.json',
-            '.claude/settings.json',
-            '.claude/commands/**/*.md'
+            ".moai/config/config.json",
+            ".claude/settings.json",
+            ".claude/commands/**/*.md",
         ]
 
         # Act & Assert
@@ -523,15 +508,17 @@ class TestCustomFileDetection:
     def test_file_extension_detection(self):
         """Test file extension detection."""
         # Arrange
-        files = ['config.json', 'settings.yaml', 'command.md', 'script.py']
-        custom_extensions = ['.json', '.yaml', '.yml', '.md']
+        files = ["config.json", "settings.yaml", "command.md", "script.py"]
+        custom_extensions = [".json", ".yaml", ".yml", ".md"]
 
         # Act
-        custom_files = [f for f in files if any(f.endswith(ext) for ext in custom_extensions)]
+        custom_files = [
+            f for f in files if any(f.endswith(ext) for ext in custom_extensions)
+        ]
 
         # Assert
         assert len(custom_files) >= 2
-        assert 'config.json' in custom_files
+        assert "config.json" in custom_files
 
 
 class TestMigrationOperations:
@@ -540,11 +527,12 @@ class TestMigrationOperations:
     def test_version_migration_logic(self):
         """Test version migration logic."""
         # Arrange
-        current_version = '0.1.0'
-        target_version = '0.2.0'
+        current_version = "0.1.0"
+        target_version = "0.2.0"
 
         # Act
         from packaging import version
+
         current = version.parse(current_version)
         target = version.parse(target_version)
         needs_migration = current < target
@@ -556,20 +544,19 @@ class TestMigrationOperations:
         """Test that migration steps are ordered correctly."""
         # Arrange
         migration_steps = [
-            {'version': '0.1.0', 'step': 'backup'},
-            {'version': '0.1.5', 'step': 'migrate_config'},
-            {'version': '0.2.0', 'step': 'update_templates'},
+            {"version": "0.1.0", "step": "backup"},
+            {"version": "0.1.5", "step": "migrate_config"},
+            {"version": "0.2.0", "step": "update_templates"},
         ]
 
         # Act
         sorted_steps = sorted(
-            migration_steps,
-            key=lambda x: packaging_version.parse(x['version'])
+            migration_steps, key=lambda x: packaging_version.parse(x["version"])
         )
 
         # Assert
-        assert sorted_steps[0]['version'] == '0.1.0'
-        assert sorted_steps[-1]['version'] == '0.2.0'
+        assert sorted_steps[0]["version"] == "0.1.0"
+        assert sorted_steps[-1]["version"] == "0.2.0"
 
 
 class TestUpdateWorkflow:
@@ -578,8 +565,8 @@ class TestUpdateWorkflow:
     def test_version_comparison_workflow(self):
         """Test version comparison in update workflow."""
         # Arrange
-        current_version = '0.1.0'
-        latest_version = '0.2.0'
+        current_version = "0.1.0"
+        latest_version = "0.2.0"
 
         # Act
         comparison = _compare_versions(current_version, latest_version)
@@ -590,8 +577,8 @@ class TestUpdateWorkflow:
     def test_no_update_needed_workflow(self):
         """Test workflow when no update needed."""
         # Arrange
-        current_version = '0.2.0'
-        latest_version = '0.2.0'
+        current_version = "0.2.0"
+        latest_version = "0.2.0"
 
         # Act
         comparison = _compare_versions(current_version, latest_version)

@@ -46,7 +46,11 @@ class TestEventDetector:
     # TEST-CHECKPOINT-EVENT-003: 중요 파일 수정 감지
     def test_should_detect_critical_file_modification(self, detector):
         """CLAUDE.md, config.json 등 중요 파일 수정 시 위험 작업으로 감지해야 한다."""
-        critical_files = ["CLAUDE.md", ".moai/config.json", ".moai/memory/development-guide.md"]
+        critical_files = [
+            "CLAUDE.md",
+            ".moai/config.json",
+            ".moai/memory/development-guide.md",
+        ]
         for file in critical_files:
             assert detector.is_critical_file(Path(file)) is True
 

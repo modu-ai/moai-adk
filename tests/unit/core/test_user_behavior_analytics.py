@@ -14,6 +14,7 @@ class TestUserBehaviorAnalytics:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             assert UserBehaviorAnalytics is not None
         except ImportError:
             pytest.skip("Module not available")
@@ -24,6 +25,7 @@ class TestUserBehaviorAnalytics:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             analytics = UserBehaviorAnalytics()
             assert analytics is not None
         except (ImportError, Exception):
@@ -39,6 +41,7 @@ class TestBehaviorTracking:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             analytics = UserBehaviorAnalytics()
             assert hasattr(analytics, "track")
         except (ImportError, Exception):
@@ -50,6 +53,7 @@ class TestBehaviorTracking:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             analytics = UserBehaviorAnalytics()
             if hasattr(analytics, "get_analytics"):
                 assert callable(analytics.get_analytics)
@@ -66,6 +70,7 @@ class TestAnalyticsData:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             analytics = UserBehaviorAnalytics()
             if hasattr(analytics, "get_analytics"):
                 result = analytics.get_analytics()
@@ -79,6 +84,7 @@ class TestAnalyticsData:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             analytics = UserBehaviorAnalytics()
             # Should track timestamps for actions
             assert analytics is not None
@@ -95,6 +101,7 @@ class TestEventTracking:
             from moai_adk.core.user_behavior_analytics import (
                 UserBehaviorAnalytics,
             )
+
             analytics = UserBehaviorAnalytics()
             # Should support multiple event types
             assert analytics is not None

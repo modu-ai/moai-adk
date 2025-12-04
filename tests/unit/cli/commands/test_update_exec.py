@@ -166,23 +166,27 @@ class TestUpdateConstants:
     def test_tool_detection_timeout_defined(self):
         """Test tool detection timeout constant."""
         from moai_adk.cli.commands.update import TOOL_DETECTION_TIMEOUT
+
         assert TOOL_DETECTION_TIMEOUT == 5
         assert isinstance(TOOL_DETECTION_TIMEOUT, int)
 
     def test_uv_tool_command_defined(self):
         """Test UV tool command constant."""
         from moai_adk.cli.commands.update import UV_TOOL_COMMAND
+
         assert UV_TOOL_COMMAND == ["uv", "tool", "upgrade", "moai-adk"]
         assert isinstance(UV_TOOL_COMMAND, list)
 
     def test_pipx_command_defined(self):
         """Test pipx command constant."""
         from moai_adk.cli.commands.update import PIPX_COMMAND
+
         assert PIPX_COMMAND == ["pipx", "upgrade", "moai-adk"]
 
     def test_pip_command_defined(self):
         """Test pip command constant."""
         from moai_adk.cli.commands.update import PIP_COMMAND
+
         assert PIP_COMMAND == ["pip", "install", "--upgrade", "moai-adk"]
 
     def test_commands_are_lists(self):
@@ -192,6 +196,7 @@ class TestUpdateConstants:
             PIPX_COMMAND,
             PIP_COMMAND,
         )
+
         assert isinstance(UV_TOOL_COMMAND, list)
         assert isinstance(PIPX_COMMAND, list)
         assert isinstance(PIP_COMMAND, list)
@@ -203,6 +208,7 @@ class TestUpdateConstants:
             PIPX_COMMAND,
             PIP_COMMAND,
         )
+
         assert "moai-adk" in UV_TOOL_COMMAND
         assert "moai-adk" in PIPX_COMMAND
         assert "moai-adk" in PIP_COMMAND
@@ -215,6 +221,7 @@ class TestUpdateCommandStructure:
         """Test update module imports successfully."""
         try:
             from moai_adk.cli.commands import update
+
             assert update is not None
         except ImportError:
             pytest.fail("Failed to import update module")
@@ -222,16 +229,19 @@ class TestUpdateCommandStructure:
     def test_console_initialized(self):
         """Test console is initialized."""
         from moai_adk.cli.commands.update import console
+
         assert console is not None
 
     def test_logger_configured(self):
         """Test logger is configured."""
         from moai_adk.cli.commands.update import logger
+
         assert logger is not None
 
     def test_version_imported(self):
         """Test __version__ is imported."""
         from moai_adk.cli.commands.update import __version__
+
         assert __version__ is not None
         assert isinstance(__version__, str)
 

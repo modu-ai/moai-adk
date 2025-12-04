@@ -145,9 +145,18 @@ class TestCreateAnalysisPrompt:
         backup_path = tmp_path / "backup"
         template_path = tmp_path / "template"
 
-        diff_files = {"CLAUDE.md": {"backup_exists": True, "template_exists": True, "has_diff": True, "diff_lines": 5}}
+        diff_files = {
+            "CLAUDE.md": {
+                "backup_exists": True,
+                "template_exists": True,
+                "has_diff": True,
+                "diff_lines": 5,
+            }
+        }
 
-        prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
+        prompt = analyzer._create_analysis_prompt(
+            backup_path, template_path, diff_files
+        )
 
         assert isinstance(prompt, str)
         assert "MoAI-ADK configuration file merge expert" in prompt
@@ -163,9 +172,18 @@ class TestCreateAnalysisPrompt:
         backup_path = tmp_path / "backup"
         template_path = tmp_path / "template"
 
-        diff_files = {"CLAUDE.md": {"backup_exists": True, "template_exists": True, "has_diff": False, "diff_lines": 0}}
+        diff_files = {
+            "CLAUDE.md": {
+                "backup_exists": True,
+                "template_exists": True,
+                "has_diff": False,
+                "diff_lines": 0,
+            }
+        }
 
-        prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
+        prompt = analyzer._create_analysis_prompt(
+            backup_path, template_path, diff_files
+        )
 
         assert "CLAUDE.md: Preserve Project Information section" in prompt
         assert "settings.json" in prompt
@@ -308,7 +326,12 @@ class TestFormatDiffSummary:
 
         analyzer = MergeAnalyzer(tmp_path)
         diff_files = {
-            "CLAUDE.md": {"backup_exists": True, "template_exists": True, "has_diff": True, "diff_lines": 10}
+            "CLAUDE.md": {
+                "backup_exists": True,
+                "template_exists": True,
+                "has_diff": True,
+                "diff_lines": 10,
+            }
         }
 
         summary = analyzer._format_diff_summary(diff_files)
@@ -321,7 +344,14 @@ class TestFormatDiffSummary:
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
-        diff_files = {"CLAUDE.md": {"backup_exists": True, "template_exists": False, "has_diff": True, "diff_lines": 0}}
+        diff_files = {
+            "CLAUDE.md": {
+                "backup_exists": True,
+                "template_exists": False,
+                "has_diff": True,
+                "diff_lines": 0,
+            }
+        }
 
         summary = analyzer._format_diff_summary(diff_files)
 
@@ -333,7 +363,14 @@ class TestFormatDiffSummary:
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
-        diff_files = {"CLAUDE.md": {"backup_exists": False, "template_exists": True, "has_diff": True, "diff_lines": 5}}
+        diff_files = {
+            "CLAUDE.md": {
+                "backup_exists": False,
+                "template_exists": True,
+                "has_diff": True,
+                "diff_lines": 5,
+            }
+        }
 
         summary = analyzer._format_diff_summary(diff_files)
 
@@ -397,7 +434,9 @@ class TestFallbackAnalysis:
 
         assert "files" in result
         if result["files"]:
-            assert any(f["conflict_severity"] in ["medium", "high"] for f in result["files"])
+            assert any(
+                f["conflict_severity"] in ["medium", "high"] for f in result["files"]
+            )
 
 
 class TestDisplayAnalysis:
@@ -412,7 +451,14 @@ class TestDisplayAnalysis:
         analysis = {
             "summary": "Test summary",
             "risk_assessment": "Low - no critical changes",
-            "files": [{"filename": "CLAUDE.md", "changes": "Minor updates", "recommendation": "use_template", "conflict_severity": "low"}],
+            "files": [
+                {
+                    "filename": "CLAUDE.md",
+                    "changes": "Minor updates",
+                    "recommendation": "use_template",
+                    "conflict_severity": "low",
+                }
+            ],
         }
 
         analyzer._display_analysis(analysis)
@@ -499,12 +545,18 @@ class TestAskUserConfirmation:
 
     @patch("moai_adk.core.merge.analyzer.click.confirm")
     @patch("moai_adk.core.merge.analyzer.console")
-    def test_ask_user_confirmation_safe_merge(self, mock_console, mock_confirm, tmp_path):
+    def test_ask_user_confirmation_safe_merge(
+        self, mock_console, mock_confirm, tmp_path
+    ):
         """Should ask for confirmation on safe merge."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
-        analysis = {"safe_to_auto_merge": True, "user_action_required": False, "files": []}
+        analysis = {
+            "safe_to_auto_merge": True,
+            "user_action_required": False,
+            "files": [],
+        }
 
         mock_confirm.return_value = True
 
@@ -515,7 +567,9 @@ class TestAskUserConfirmation:
 
     @patch("moai_adk.core.merge.analyzer.click.confirm")
     @patch("moai_adk.core.merge.analyzer.console")
-    def test_ask_user_confirmation_requires_intervention(self, mock_console, mock_confirm, tmp_path):
+    def test_ask_user_confirmation_requires_intervention(
+        self, mock_console, mock_confirm, tmp_path
+    ):
         """Should show warnings for conflicts."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
@@ -523,7 +577,13 @@ class TestAskUserConfirmation:
         analysis = {
             "safe_to_auto_merge": False,
             "user_action_required": True,
-            "files": [{"filename": "CLAUDE.md", "conflict_severity": "high", "note": "Critical change"}],
+            "files": [
+                {
+                    "filename": "CLAUDE.md",
+                    "conflict_severity": "high",
+                    "note": "Critical change",
+                }
+            ],
         }
 
         mock_confirm.return_value = False

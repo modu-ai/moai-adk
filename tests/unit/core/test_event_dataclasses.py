@@ -19,9 +19,9 @@ class TestEventEnums:
 
     def test_event_type_values(self):
         """Test event types are defined."""
-        assert hasattr(EventType, 'HOOK_EXECUTION_REQUEST')
-        assert hasattr(EventType, 'HOOK_EXECUTION_COMPLETED')
-        assert hasattr(EventType, 'HOOK_EXECUTION_FAILED')
+        assert hasattr(EventType, "HOOK_EXECUTION_REQUEST")
+        assert hasattr(EventType, "HOOK_EXECUTION_COMPLETED")
+        assert hasattr(EventType, "HOOK_EXECUTION_FAILED")
 
     def test_event_priority_values(self):
         """Test event priorities are defined."""
@@ -33,13 +33,13 @@ class TestEventEnums:
 
     def test_isolation_level_values(self):
         """Test resource isolation levels."""
-        assert hasattr(ResourceIsolationLevel, 'SHARED')
-        assert hasattr(ResourceIsolationLevel, 'TYPE_ISOLATED')
+        assert hasattr(ResourceIsolationLevel, "SHARED")
+        assert hasattr(ResourceIsolationLevel, "TYPE_ISOLATED")
 
     def test_message_broker_types(self):
         """Test message broker types."""
-        assert hasattr(MessageBrokerType, 'MEMORY')
-        assert hasattr(MessageBrokerType, 'REDIS')
+        assert hasattr(MessageBrokerType, "MEMORY")
+        assert hasattr(MessageBrokerType, "REDIS")
 
 
 class TestEventDataclass:
@@ -52,7 +52,7 @@ class TestEventDataclass:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={"hook": "test"}
+            payload={"hook": "test"},
         )
         assert event.event_id == "evt_001"
         assert event.priority == EventPriority.NORMAL
@@ -64,7 +64,7 @@ class TestEventDataclass:
             event_type=EventType.HEALTH_CHECK,
             priority=EventPriority.HIGH,
             timestamp=datetime.now(),
-            payload={}
+            payload={},
         )
         assert event.source == ""
         assert event.correlation_id is None
@@ -80,7 +80,7 @@ class TestEventDataclass:
             timestamp=datetime.now(),
             payload={"workflow": "spec"},
             correlation_id="corr_abc123",
-            causation_id="evt_002"
+            causation_id="evt_002",
         )
         assert event.correlation_id == "corr_abc123"
         assert event.causation_id == "evt_002"
@@ -94,7 +94,7 @@ class TestEventDataclass:
             priority=EventPriority.NORMAL,
             timestamp=timestamp,
             payload={"result": "success"},
-            source="hook_manager"
+            source="hook_manager",
         )
         event_dict = event.to_dict()
         assert event_dict["event_id"] == "evt_004"
@@ -112,7 +112,7 @@ class TestEventDataclass:
             priority=EventPriority.LOW,
             timestamp=datetime.now(),
             payload={},
-            metadata=metadata
+            metadata=metadata,
         )
         assert event.metadata == metadata
 
@@ -125,7 +125,7 @@ class TestEventDataclass:
                 event_type=EventType.HOOK_EXECUTION_REQUEST,
                 priority=EventPriority.NORMAL,
                 timestamp=datetime.now(),
-                payload={"index": i}
+                payload={"index": i},
             )
             events.append(event)
 

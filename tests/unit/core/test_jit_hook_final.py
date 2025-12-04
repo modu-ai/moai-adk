@@ -585,7 +585,7 @@ class TestContextCache:
 
         # Assert - ContextCache returns ContextEntry, not the raw value
         # The important thing is it doesn't crash
-        assert result is None or hasattr(result, 'content') or result == "value1"
+        assert result is None or hasattr(result, "content") or result == "value1"
 
     def test_context_cache_clear(self):
         """Test cache clear."""

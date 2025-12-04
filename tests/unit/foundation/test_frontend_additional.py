@@ -104,9 +104,7 @@ class TestComponentArchitectAdditional:
         components = {
             "Button": {"label": "", "onClick": ""},  # 2 props - good
             "SimpleCard": {"title": "", "content": "", "footer": ""},  # 3 props - good
-            "ComplexForm": {
-                f"field{i}": "" for i in range(10)
-            },  # 10 props - bad
+            "ComplexForm": {f"field{i}": "" for i in range(10)},  # 10 props - bad
         }
         result = architect.analyze_reusability(components)
         assert result["reusable_count"] >= 2
@@ -239,8 +237,14 @@ class TestStateManagementAdvisorAdditional:
         """Test Redux design with multiple slices."""
         advisor = StateManagementAdvisor()
         slices = {
-            "users": {"actions": ["setUser", "clearUser"], "async_thunks": ["fetchUsers"]},
-            "posts": {"actions": ["setPosts"], "async_thunks": ["fetchPosts", "createPost"]},
+            "users": {
+                "actions": ["setUser", "clearUser"],
+                "async_thunks": ["fetchUsers"],
+            },
+            "posts": {
+                "actions": ["setPosts"],
+                "async_thunks": ["fetchPosts", "createPost"],
+            },
         }
         result = advisor.validate_redux_design(slices)
         assert result["valid"] is True

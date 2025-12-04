@@ -204,7 +204,9 @@ class TestProjectInitializer:
             initializer = ProjectInitializer(path)
 
             # Act
-            with patch('moai_adk.core.project.initializer.Path.exists', return_value=False):
+            with patch(
+                "moai_adk.core.project.initializer.Path.exists", return_value=False
+            ):
                 created_files = initializer._create_user_settings()
 
             # Assert
@@ -220,7 +222,9 @@ class TestProjectInitializer:
             initializer = ProjectInitializer(path)
 
             # Act
-            with patch('moai_adk.core.project.initializer.Path.exists', return_value=False):
+            with patch(
+                "moai_adk.core.project.initializer.Path.exists", return_value=False
+            ):
                 initializer._create_user_settings()
 
             # Assert
@@ -245,7 +249,7 @@ class TestProjectInitializer:
             with pytest.raises(FileExistsError):
                 initializer.initialize()
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_reinit_mode_skips_exists_check(self, mock_executor):
         """Test initialize with reinit=True skips existence check."""
         # Arrange
@@ -264,14 +268,14 @@ class TestProjectInitializer:
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
+            with patch.object(initializer, "executor", mock_executor_instance):
                 result = initializer.initialize(reinit=True)
 
             # Assert
             assert result is not None
             assert isinstance(result, InstallationResult)
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_calls_all_phases(self, mock_executor):
         """Test initialize calls all five phases in order."""
         # Arrange
@@ -286,7 +290,7 @@ class TestProjectInitializer:
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
+            with patch.object(initializer, "executor", mock_executor_instance):
                 result = initializer.initialize()
 
             # Assert
@@ -296,7 +300,7 @@ class TestProjectInitializer:
             mock_executor_instance.execute_configuration_phase.assert_called_once()
             mock_executor_instance.execute_validation_phase.assert_called_once()
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_returns_successful_result(self, mock_executor):
         """Test initialize returns successful InstallationResult."""
         # Arrange
@@ -306,14 +310,21 @@ class TestProjectInitializer:
             mock_executor.return_value = mock_executor_instance
             mock_executor_instance.execute_preparation_phase.return_value = None
             mock_executor_instance.execute_directory_phase.return_value = None
-            mock_executor_instance.execute_resource_phase.return_value = [".claude/", ".moai/"]
-            mock_executor_instance.execute_configuration_phase.return_value = ["config.json"]
+            mock_executor_instance.execute_resource_phase.return_value = [
+                ".claude/",
+                ".moai/",
+            ]
+            mock_executor_instance.execute_configuration_phase.return_value = [
+                "config.json"
+            ]
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
-                with patch.object(initializer, '_create_memory_files', return_value=[]):
-                    with patch.object(initializer, '_create_user_settings', return_value=[]):
+            with patch.object(initializer, "executor", mock_executor_instance):
+                with patch.object(initializer, "_create_memory_files", return_value=[]):
+                    with patch.object(
+                        initializer, "_create_user_settings", return_value=[]
+                    ):
                         result = initializer.initialize()
 
             # Assert
@@ -322,7 +333,7 @@ class TestProjectInitializer:
             assert result.mode == "personal"
             assert result.locale == "en"
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_handles_custom_language_config(self, mock_executor):
         """Test initialize handles custom language configuration."""
         # Arrange
@@ -337,18 +348,19 @@ class TestProjectInitializer:
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
-                with patch.object(initializer, '_create_memory_files', return_value=[]):
-                    with patch.object(initializer, '_create_user_settings', return_value=[]):
+            with patch.object(initializer, "executor", mock_executor_instance):
+                with patch.object(initializer, "_create_memory_files", return_value=[]):
+                    with patch.object(
+                        initializer, "_create_user_settings", return_value=[]
+                    ):
                         result = initializer.initialize(
-                            locale="other",
-                            custom_language="Custom Language"
+                            locale="other", custom_language="Custom Language"
                         )
 
             # Assert
             assert result.locale == "other"
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_catches_exceptions_and_returns_failure(self, mock_executor):
         """Test initialize catches exceptions and returns failure result."""
         # Arrange
@@ -356,10 +368,12 @@ class TestProjectInitializer:
             initializer = ProjectInitializer(temp_dir)
             mock_executor_instance = MagicMock()
             mock_executor.return_value = mock_executor_instance
-            mock_executor_instance.execute_preparation_phase.side_effect = RuntimeError("Test error")
+            mock_executor_instance.execute_preparation_phase.side_effect = RuntimeError(
+                "Test error"
+            )
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
+            with patch.object(initializer, "executor", mock_executor_instance):
                 result = initializer.initialize()
 
             # Assert
@@ -373,7 +387,9 @@ class TestProjectInitializer:
             path = Path(temp_dir)
 
             # Act
-            with patch('moai_adk.core.project.initializer.ProjectInitializer') as mock_class:
+            with patch(
+                "moai_adk.core.project.initializer.ProjectInitializer"
+            ) as mock_class:
                 mock_instance = MagicMock()
                 mock_class.return_value = mock_instance
                 mock_instance.initialize.return_value = InstallationResult(
@@ -383,7 +399,7 @@ class TestProjectInitializer:
                     mode="personal",
                     locale="en",
                     duration=1000,
-                    created_files=[]
+                    created_files=[],
                 )
 
                 result = initialize_project(path)
@@ -392,7 +408,7 @@ class TestProjectInitializer:
             assert result.success is True
             mock_instance.initialize.assert_called_once()
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_sets_language_config_for_korean(self, mock_executor):
         """Test initialize sets correct language config for Korean locale."""
         # Arrange
@@ -406,17 +422,22 @@ class TestProjectInitializer:
 
             # Capture the config passed to execute_configuration_phase
             config_arg = None
+
             def capture_config(path, config, callback):
                 nonlocal config_arg
                 config_arg = config
 
-            mock_executor_instance.execute_configuration_phase.side_effect = capture_config
+            mock_executor_instance.execute_configuration_phase.side_effect = (
+                capture_config
+            )
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
-                with patch.object(initializer, '_create_memory_files', return_value=[]):
-                    with patch.object(initializer, '_create_user_settings', return_value=[]):
+            with patch.object(initializer, "executor", mock_executor_instance):
+                with patch.object(initializer, "_create_memory_files", return_value=[]):
+                    with patch.object(
+                        initializer, "_create_user_settings", return_value=[]
+                    ):
                         initializer.initialize(locale="ko")
 
             # Assert
@@ -424,8 +445,8 @@ class TestProjectInitializer:
             assert config_arg["language"]["conversation_language"] == "ko"
             assert config_arg["language"]["conversation_language_name"] == "Korean"
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
-    @patch('moai_adk.core.project.initializer.time.time')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
+    @patch("moai_adk.core.project.initializer.time.time")
     def test_initialize_duration_measurement(self, mock_time, mock_executor):
         """Test initialize correctly measures duration."""
         # Arrange
@@ -443,16 +464,18 @@ class TestProjectInitializer:
             mock_time.side_effect = [0.0, 1.5]  # 1500ms duration
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
-                with patch.object(initializer, '_create_memory_files', return_value=[]):
-                    with patch.object(initializer, '_create_user_settings', return_value=[]):
+            with patch.object(initializer, "executor", mock_executor_instance):
+                with patch.object(initializer, "_create_memory_files", return_value=[]):
+                    with patch.object(
+                        initializer, "_create_user_settings", return_value=[]
+                    ):
                         result = initializer.initialize()
 
             # Assert
             assert result.duration >= 1500
             assert isinstance(result.duration, int)
 
-    @patch('moai_adk.core.project.initializer.PhaseExecutor')
+    @patch("moai_adk.core.project.initializer.PhaseExecutor")
     def test_initialize_sets_enforce_tdd_in_config(self, mock_executor):
         """Test initialize sets enforce_tdd to True in constitution."""
         # Arrange
@@ -466,17 +489,22 @@ class TestProjectInitializer:
 
             # Capture the config passed to execute_configuration_phase
             config_arg = None
+
             def capture_config(path, config, callback):
                 nonlocal config_arg
                 config_arg = config
 
-            mock_executor_instance.execute_configuration_phase.side_effect = capture_config
+            mock_executor_instance.execute_configuration_phase.side_effect = (
+                capture_config
+            )
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
-            with patch.object(initializer, 'executor', mock_executor_instance):
-                with patch.object(initializer, '_create_memory_files', return_value=[]):
-                    with patch.object(initializer, '_create_user_settings', return_value=[]):
+            with patch.object(initializer, "executor", mock_executor_instance):
+                with patch.object(initializer, "_create_memory_files", return_value=[]):
+                    with patch.object(
+                        initializer, "_create_user_settings", return_value=[]
+                    ):
                         initializer.initialize()
 
             # Assert

@@ -70,7 +70,7 @@ class TestContextCacheInstantiation:
         cache = ContextCache(max_size=200, max_memory_mb=100)
         assert cache.max_size == 200
         # max_memory_mb is stored but may be named differently
-        assert hasattr(cache, 'max_size')
+        assert hasattr(cache, "max_size")
 
     def test_context_cache_get_method(self):
         """Test ContextCache.get method exists and is callable."""

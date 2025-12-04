@@ -71,8 +71,15 @@ class TestConfigurationManagerSave:
             config = {
                 "version": "3.0.0",
                 "user": {"name": "TestUser"},
-                "language": {"conversation_language": "en", "agent_prompt_language": "en"},
-                "project": {"name": "Test", "owner": "TestOwner", "documentation_mode": "full"},
+                "language": {
+                    "conversation_language": "en",
+                    "agent_prompt_language": "en",
+                },
+                "project": {
+                    "name": "Test",
+                    "owner": "TestOwner",
+                    "documentation_mode": "full",
+                },
                 "git_strategy": {"mode": "manual"},
                 "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
             }
@@ -97,8 +104,15 @@ class TestConfigurationManagerSave:
             config = {
                 "version": "3.0.0",
                 "user": {"name": "TestUser"},
-                "language": {"conversation_language": "en", "agent_prompt_language": "en"},
-                "project": {"name": "Test", "owner": "TestOwner", "documentation_mode": "full"},
+                "language": {
+                    "conversation_language": "en",
+                    "agent_prompt_language": "en",
+                },
+                "project": {
+                    "name": "Test",
+                    "owner": "TestOwner",
+                    "documentation_mode": "full",
+                },
                 "git_strategy": {"mode": "manual"},
                 "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
             }
@@ -162,8 +176,7 @@ class TestConditionalBatchRendererEvaluation:
 
         # Act
         result = renderer.evaluate_condition(
-            "mode == 'personal' AND documentation_mode == 'full_now'",
-            context
+            "mode == 'personal' AND documentation_mode == 'full_now'", context
         )
 
         # Assert
@@ -177,8 +190,7 @@ class TestConditionalBatchRendererEvaluation:
 
         # Act
         result = renderer.evaluate_condition(
-            "mode == 'personal' OR mode == 'team'",
-            context
+            "mode == 'personal' OR mode == 'team'", context
         )
 
         # Assert
@@ -228,8 +240,7 @@ class TestConditionalBatchRendererEvaluation:
 
         # Act
         result = renderer.evaluate_condition(
-            "mode == 'personal' AND (doc_mode == 'full' OR coverage > 80)",
-            context
+            "mode == 'personal' AND (doc_mode == 'full' OR coverage > 80)", context
         )
 
         # Assert
@@ -243,8 +254,12 @@ class TestConditionalBatchRendererEvaluation:
         context = {"variable": "value"}
 
         # Act & Assert
-        assert ConditionalBatchRenderer._resolve_operand("'string'", context) == "string"
-        assert ConditionalBatchRenderer._resolve_operand('"string"', context) == "string"
+        assert (
+            ConditionalBatchRenderer._resolve_operand("'string'", context) == "string"
+        )
+        assert (
+            ConditionalBatchRenderer._resolve_operand('"string"', context) == "string"
+        )
 
     def test_resolve_operand_with_integers(self):
         """Test resolving integer operands."""
@@ -294,9 +309,14 @@ class TestTemplateVariableInterpolatorAdvanced:
         config = {
             "user": {"name": "TestUser"},
             "project": {"owner": "TestOwner", "name": "TestProject"},
-            "git_strategy": {"mode": "personal", "personal": {"workflow": "github-flow"}},
+            "git_strategy": {
+                "mode": "personal",
+                "personal": {"workflow": "github-flow"},
+            },
         }
-        template = "User {{user.name}} owns {{project.name}} with mode {{git_strategy.mode}}"
+        template = (
+            "User {{user.name}} owns {{project.name}} with mode {{git_strategy.mode}}"
+        )
 
         # Act
         result = TemplateVariableInterpolator.interpolate(template, config)
@@ -307,9 +327,7 @@ class TestTemplateVariableInterpolatorAdvanced:
     def test_interpolate_with_numeric_variables(self):
         """Test interpolating numeric variables."""
         # Arrange
-        config = {
-            "constitution": {"test_coverage_target": 90}
-        }
+        config = {"constitution": {"test_coverage_target": 90}}
         template = "Coverage target: {{constitution.test_coverage_target}}%"
 
         # Act
@@ -442,7 +460,7 @@ class TestTabSchemaValidatorAdvanced:
         question = {
             "header": "This header is too long",
             "question": "What is this?",
-            "options": ["Yes", "No"]
+            "options": ["Yes", "No"],
         }
 
         # Act
@@ -458,12 +476,12 @@ class TestTabSchemaValidatorAdvanced:
         question_single = {
             "header": "Q1",
             "question": "Choose",
-            "options": ["Only one"]
+            "options": ["Only one"],
         }
         question_too_many = {
             "header": "Q2",
             "question": "Choose",
-            "options": ["A", "B", "C", "D", "E"]
+            "options": ["A", "B", "C", "D", "E"],
         }
 
         # Act
@@ -500,10 +518,12 @@ class TestAutoDetectionEngineLanguageDetection:
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
             package_json = Path(tmpdir) / "package.json"
-            package_json.write_text('{}')
+            package_json.write_text("{}")
 
             # Act
-            with patch("moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)):
+            with patch(
+                "moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)
+            ):
                 engine = AutoDetectionEngine()
                 result = engine.detect_language()
 
@@ -518,7 +538,9 @@ class TestAutoDetectionEngineLanguageDetection:
             go_mod.write_text("")
 
             # Act
-            with patch("moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)):
+            with patch(
+                "moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)
+            ):
                 engine = AutoDetectionEngine()
                 result = engine.detect_language()
 
@@ -569,10 +591,8 @@ class TestSmartDefaultsEngineDefaults:
         # Arrange
         engine = SmartDefaultsEngine()
         config = {
-            "git_strategy": {
-                "personal": {"workflow": "custom-flow"}
-            },
-            "constitution": {"test_coverage_target": 95}
+            "git_strategy": {"personal": {"workflow": "custom-flow"}},
+            "constitution": {"test_coverage_target": 95},
         }
 
         # Act
@@ -634,8 +654,15 @@ class TestConfigurationManagerWriteConfig:
             config = {
                 "version": "3.0.0",
                 "user": {"name": "Test"},
-                "language": {"conversation_language": "en", "agent_prompt_language": "en"},
-                "project": {"name": "Test", "owner": "Owner", "documentation_mode": "full"},
+                "language": {
+                    "conversation_language": "en",
+                    "agent_prompt_language": "en",
+                },
+                "project": {
+                    "name": "Test",
+                    "owner": "Owner",
+                    "documentation_mode": "full",
+                },
                 "git_strategy": {"mode": "manual"},
                 "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
             }
@@ -660,22 +687,18 @@ class TestConditionalBatchRendererGetVisibleBatches:
                 {
                     "id": "tab_3_git_automation",
                     "batches": [
-                        {
-                            "id": "batch_3_1_personal",
-                            "show_if": "mode == 'personal'"
-                        },
-                        {
-                            "id": "batch_3_1_team",
-                            "show_if": "mode == 'team'"
-                        }
-                    ]
+                        {"id": "batch_3_1_personal", "show_if": "mode == 'personal'"},
+                        {"id": "batch_3_1_team", "show_if": "mode == 'team'"},
+                    ],
                 }
             ]
         }
         renderer = ConditionalBatchRenderer(schema)
 
         # Act
-        visible = renderer.get_visible_batches("tab_3_git_automation", {"mode": "personal"})
+        visible = renderer.get_visible_batches(
+            "tab_3_git_automation", {"mode": "personal"}
+        )
 
         # Assert
         assert len(visible) == 1
@@ -688,9 +711,7 @@ class TestConditionalBatchRendererGetVisibleBatches:
             "tabs": [
                 {
                     "id": "tab_3_git_automation",
-                    "batches": [
-                        {"id": "batch_1", "show_if": "true"}
-                    ]
+                    "batches": [{"id": "batch_1", "show_if": "true"}],
                 }
             ]
         }

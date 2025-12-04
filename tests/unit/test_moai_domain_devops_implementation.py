@@ -66,7 +66,11 @@ class TestCICDPipelineOrchestration:
         """Test Jenkins pipeline definition."""
         orchestrator = CICDPipelineOrchestrator()
 
-        config = {"agent": "any", "tools": {"maven": "3.8.6", "jdk": "17"}, "stages": ["Build", "Test", "Deploy"]}
+        config = {
+            "agent": "any",
+            "tools": {"maven": "3.8.6", "jdk": "17"},
+            "stages": ["Build", "Test", "Deploy"],
+        }
 
         result = orchestrator.orchestrate_jenkins(config)
 
@@ -134,7 +138,10 @@ class TestInfrastructureAsCode:
             "version": "1.0.0",
             "app_version": "latest",
             "description": "Web API Helm chart",
-            "values": {"image": {"repository": "myapp", "tag": "latest"}, "service": {"port": 80, "targetPort": 8000}},
+            "values": {
+                "image": {"repository": "myapp", "tag": "latest"},
+                "service": {"port": 80, "targetPort": 8000},
+            },
         }
 
         result = infra_manager.create_helm_charts(chart_config)
@@ -207,9 +214,15 @@ class TestContainerOrchestration:
         container_orchestrator = ContainerOrchestrator()
 
         image_name = "myapp:latest"
-        security_config = {"scan_level": "comprehensive", "vulnerability_threshold": "medium", "license_check": True}
+        security_config = {
+            "scan_level": "comprehensive",
+            "vulnerability_threshold": "medium",
+            "license_check": True,
+        }
 
-        result = container_orchestrator.scan_container_security(image_name, security_config)
+        result = container_orchestrator.scan_container_security(
+            image_name, security_config
+        )
 
         # Verify security scan results
         assert "vulnerabilities" in result
@@ -229,7 +242,10 @@ class TestContainerOrchestration:
             "image": "myapp:latest",
             "replicas": 3,
             "namespace": "production",
-            "resources": {"requests": {"cpu": "100m", "memory": "128Mi"}, "limits": {"cpu": "500m", "memory": "512Mi"}},
+            "resources": {
+                "requests": {"cpu": "100m", "memory": "128Mi"},
+                "limits": {"cpu": "500m", "memory": "512Mi"},
+            },
             "environment": "production",
         }
 
@@ -257,7 +273,11 @@ class TestMonitoringAndObservability:
             "app_name": "web-api",
             "metrics_port": 9090,
             "scrape_interval": "30s",
-            "custom_metrics": ["http_requests_total", "request_duration_seconds", "error_rate_percentage"],
+            "custom_metrics": [
+                "http_requests_total",
+                "request_duration_seconds",
+                "error_rate_percentage",
+            ],
         }
 
         result = monitoring_architect.setup_prometheus(metrics_config)
@@ -268,7 +288,10 @@ class TestMonitoringAndObservability:
         assert "recording_rules" in result
         assert "alerting_rules" in result
         assert "custom_metrics" in result
-        assert result["prometheus_config"]["global"]["scrape_interval"] == metrics_config["scrape_interval"]
+        assert (
+            result["prometheus_config"]["global"]["scrape_interval"]
+            == metrics_config["scrape_interval"]
+        )
         assert len(result["prometheus_config"]["scrape_configs"]) > 0
 
     def test_grafana_dashboards(self):
@@ -295,7 +318,9 @@ class TestMonitoringAndObservability:
         assert "templating" in result["dashboard_json"]
         assert "timepicker" in result["dashboard_json"]
         assert result["dashboard_json"]["title"] == dashboard_config["dashboard_name"]
-        assert len(result["dashboard_json"]["panels"]) == len(dashboard_config["panels"])
+        assert len(result["dashboard_json"]["panels"]) == len(
+            dashboard_config["panels"]
+        )
 
     def test_logging_aggregation(self):
         """Test logging aggregation setup."""
@@ -318,7 +343,10 @@ class TestMonitoringAndObservability:
         assert "index_template" in result
         assert "retention_policy" in result
         assert result["retention_policy"]["days"] == logging_config["retention_days"]
-        assert result["elasticsearch_config"]["index_patterns"] == logging_config["index_patterns"]
+        assert (
+            result["elasticsearch_config"]["index_patterns"]
+            == logging_config["index_patterns"]
+        )
 
 
 class TestAutomationStrategies:
@@ -345,7 +373,10 @@ class TestAutomationStrategies:
         assert "environment_configs" in result
         assert "deployment_pipeline" in result
         assert len(result["quality_gates"]) == len(cd_config["gates"])
-        assert result["rollback_strategy"]["trigger_condition"] == cd_config["rollback_threshold"]
+        assert (
+            result["rollback_strategy"]["trigger_condition"]
+            == cd_config["rollback_threshold"]
+        )
 
     def test_canary_deployments(self):
         """Test canary deployment implementation."""
@@ -367,8 +398,13 @@ class TestAutomationStrategies:
         assert "monitoring_rules" in result
         assert "promotion_criteria" in result
         assert "rollback_triggers" in result
-        assert result["canary_config"]["initial_percentage"] == canary_config["canary_percentage"]
-        assert len(result["traffic_splitting"]["steps"]) == len(canary_config["increment_steps"])
+        assert (
+            result["canary_config"]["initial_percentage"]
+            == canary_config["canary_percentage"]
+        )
+        assert len(result["traffic_splitting"]["steps"]) == len(
+            canary_config["increment_steps"]
+        )
 
     def test_blue_green_deployments(self):
         """Test blue-green deployment implementation."""
@@ -415,7 +451,10 @@ class TestAutomationStrategies:
         assert "test_environments" in result
         assert "reporting" in result
         assert len(result["test_matrix"]["tests"]) == len(testing_config["test_types"])
-        assert result["coverage_requirements"]["minimum_coverage"] == testing_config["coverage_threshold"]
+        assert (
+            result["coverage_requirements"]["minimum_coverage"]
+            == testing_config["coverage_threshold"]
+        )
 
 
 class TestDevOpsMetricsCollection:
@@ -463,7 +502,9 @@ class TestDevOpsMetricsCollection:
         assert "bottleneck_analysis" in result
         assert "throughput_metrics" in result
         assert "success_trends" in result
-        assert result["total_execution_time"] == sum(pipeline_data["execution_times"].values())
+        assert result["total_execution_time"] == sum(
+            pipeline_data["execution_times"].values()
+        )
 
     def test_resource_usage(self):
         """Test resource usage monitoring."""

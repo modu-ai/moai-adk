@@ -13,6 +13,7 @@ class TestUnifiedPermissionManager:
             from moai_adk.core.unified_permission_manager import (
                 UnifiedPermissionManager,
             )
+
             assert UnifiedPermissionManager is not None
         except ImportError:
             pytest.skip("Module not available")

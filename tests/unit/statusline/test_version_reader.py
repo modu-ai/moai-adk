@@ -85,9 +85,12 @@ class TestVersionReader:
 
     def test_get_version_async(self):
         """Test get_version_async method."""
+
         async def test_async():
             config = VersionConfig(enable_async=True)
-            with patch.object(VersionReader, "_get_package_version", return_value="0.20.1"):
+            with patch.object(
+                VersionReader, "_get_package_version", return_value="0.20.1"
+            ):
                 reader = VersionReader(config=config)
                 result = await reader.get_version_async()
                 assert result == "0.20.1"

@@ -27,7 +27,9 @@ class TestAutoSpecConfig(unittest.TestCase):
         config = AutoSpecConfig()
 
         # Should have default values
-        self.assertEqual(config.config_path, AutoSpecConfig()._get_default_config_path())
+        self.assertEqual(
+            config.config_path, AutoSpecConfig()._get_default_config_path()
+        )
         self.assertTrue(config.is_enabled())
         self.assertEqual(config.get_confidence_threshold(), 0.7)
         self.assertEqual(config.get_execution_timeout_ms(), 1500)
@@ -43,7 +45,10 @@ class TestAutoSpecConfig(unittest.TestCase):
                 "confidence_threshold": 0.8,
                 "execution_timeout_ms": 2000,
                 "trigger_tools": ["Write", "Edit"],
-                "quality_threshold": {"ears_compliance": 0.9, "min_content_length": 1000},
+                "quality_threshold": {
+                    "ears_compliance": 0.9,
+                    "min_content_length": 1000,
+                },
             }
         }
 
@@ -355,7 +360,9 @@ class TestAutoSpecConfig(unittest.TestCase):
         config = AutoSpecConfig()
 
         # Update some values
-        config.update_config({"confidence_threshold": 0.9, "execution_timeout_ms": 3000})
+        config.update_config(
+            {"confidence_threshold": 0.9, "execution_timeout_ms": 3000}
+        )
 
         # Check updated values
         self.assertEqual(config.get_confidence_threshold(), 0.9)
@@ -364,7 +371,9 @@ class TestAutoSpecConfig(unittest.TestCase):
     def test_save_config(self):
         """Test saving configuration."""
         # Create a test config file first
-        test_config = {"auto_spec_completion": {"enabled": True, "confidence_threshold": 0.5}}
+        test_config = {
+            "auto_spec_completion": {"enabled": True, "confidence_threshold": 0.5}
+        }
 
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(test_config, f, indent=2)
@@ -401,7 +410,9 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_custom_config_path(self):
         """Test using custom configuration path."""
-        custom_config = {"auto_spec_completion": {"enabled": True, "confidence_threshold": 0.75}}
+        custom_config = {
+            "auto_spec_completion": {"enabled": True, "confidence_threshold": 0.75}
+        }
 
         custom_config_file = os.path.join(self.test_dir, "custom_config.json")
         with open(custom_config_file, "w", encoding="utf-8") as f:
@@ -417,7 +428,9 @@ class TestAutoSpecConfig(unittest.TestCase):
     def test_partial_config(self):
         """Test loading partial configuration."""
         # Config with only some fields
-        partial_config = {"auto_spec_completion": {"enabled": False, "confidence_threshold": 0.7}}
+        partial_config = {
+            "auto_spec_completion": {"enabled": False, "confidence_threshold": 0.7}
+        }
 
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(partial_config, f, indent=2)
@@ -478,7 +491,9 @@ class TestAutoSpecConfig(unittest.TestCase):
 
         unicode_config_file = os.path.join(unicode_dir, "配置.json")
 
-        special_config = {"auto_spec_completion": {"enabled": True, "confidence_threshold": 0.8}}
+        special_config = {
+            "auto_spec_completion": {"enabled": True, "confidence_threshold": 0.8}
+        }
 
         with open(unicode_config_file, "w", encoding="utf-8") as f:
             json.dump(special_config, f, indent=2)

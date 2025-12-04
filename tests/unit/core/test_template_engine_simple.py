@@ -121,11 +121,7 @@ class TestRenderString:
         # Arrange
         engine = TemplateEngine()
         template = "{{greeting}} {{name}}, welcome to {{place}}!"
-        variables = {
-            "greeting": "Hello",
-            "name": "Alice",
-            "place": "Python"
-        }
+        variables = {"greeting": "Hello", "name": "Alice", "place": "Python"}
 
         # Act
         result = engine.render_string(template, variables)
@@ -339,9 +335,7 @@ class TestRenderDirectory:
 
             # Act & Assert
             with pytest.raises(FileNotFoundError):
-                engine.render_directory(
-                    template_dir, output_dir, {}
-                )
+                engine.render_directory(template_dir, output_dir, {})
 
     def test_render_directory_with_pattern(self):
         """Test rendering with glob pattern filter."""
@@ -379,13 +373,13 @@ class TestGetDefaultVariables:
                 "description": "Test project",
                 "owner": "test_owner",
                 "mode": "team",
-                "codebase_language": "python"
+                "codebase_language": "python",
             },
             "user": {"name": "Test User"},
             "language": {
                 "conversation_language": "en",
                 "conversation_language_name": "English",
-                "agent_prompt_language": "english"
+                "agent_prompt_language": "english",
             },
             "github": {
                 "templates": {
@@ -393,10 +387,10 @@ class TestGetDefaultVariables:
                     "docs_directory": ".moai/docs",
                     "test_directory": "tests",
                     "enable_trust_5": True,
-                    "enable_alfred_commands": True
+                    "enable_alfred_commands": True,
                 }
             },
-            "moai": {"version": "1.0.0"}
+            "moai": {"version": "1.0.0"},
         }
 
         # Act
@@ -447,7 +441,7 @@ class TestTemplateVariableValidator:
             "SPEC_DIR": ".moai/specs",
             "DOCS_DIR": ".moai/docs",
             "TEST_DIR": "tests",
-            "CONVERSATION_LANGUAGE": "en"
+            "CONVERSATION_LANGUAGE": "en",
         }
 
         # Act
@@ -487,7 +481,7 @@ class TestTemplateVariableValidator:
             "SPEC_DIR": ".moai/specs",
             "DOCS_DIR": ".moai/docs",
             "TEST_DIR": "tests",
-            "CONVERSATION_LANGUAGE": "en"
+            "CONVERSATION_LANGUAGE": "en",
         }
 
         # Act
@@ -509,7 +503,7 @@ class TestTemplateVariableValidator:
             "TEST_DIR": "tests",
             "CONVERSATION_LANGUAGE": "en",
             "PROJECT_DESCRIPTION": "A test project",
-            "PROJECT_MODE": "personal"
+            "PROJECT_MODE": "personal",
         }
 
         # Act
@@ -529,7 +523,7 @@ class TestTemplateVariableValidator:
             "DOCS_DIR": ".moai/docs",
             "TEST_DIR": "tests",
             "CONVERSATION_LANGUAGE": "en",
-            "ENABLE_TRUST_5": "yes"  # Should be boolean
+            "ENABLE_TRUST_5": "yes",  # Should be boolean
         }
 
         # Act
@@ -550,7 +544,7 @@ class TestTemplateVariableValidator:
             "TEST_DIR": "tests",
             "CONVERSATION_LANGUAGE": "en",
             "PROJECT_DESCRIPTION": None,
-            "USER_NAME": None
+            "USER_NAME": None,
         }
 
         # Act

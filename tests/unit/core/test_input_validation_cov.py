@@ -448,7 +448,10 @@ class TestEnhancedInputValidationMiddleware:
         )
 
         # Path should be normalized with forward slashes
-        assert "/" in result.normalized_input["file_path"] or "\\" in result.normalized_input["file_path"]
+        assert (
+            "/" in result.normalized_input["file_path"]
+            or "\\" in result.normalized_input["file_path"]
+        )
 
     def test_normalize_numeric_strings(self):
         """Test normalizing numeric strings"""

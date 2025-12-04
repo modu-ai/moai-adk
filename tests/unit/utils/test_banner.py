@@ -7,7 +7,12 @@ from unittest.mock import patch
 
 import pytest
 
-from moai_adk.utils.banner import CLAUDE_TERRA_COTTA, MOAI_BANNER, print_banner, print_welcome_message
+from moai_adk.utils.banner import (
+    CLAUDE_TERRA_COTTA,
+    MOAI_BANNER,
+    print_banner,
+    print_welcome_message,
+)
 
 
 class TestBannerConstants:

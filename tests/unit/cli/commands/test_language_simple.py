@@ -22,36 +22,36 @@ def test_list_languages_command():
     runner = CliRunner()
     result = runner.invoke(list_cmd, [])
     assert result.exit_code == 0
-    assert 'Supported Languages' in result.output or 'English Name' in result.output
+    assert "Supported Languages" in result.output or "English Name" in result.output
 
 
 def test_list_languages_json_output():
     """Test list command with JSON output."""
     runner = CliRunner()
-    result = runner.invoke(list_cmd, ['--json-output'])
+    result = runner.invoke(list_cmd, ["--json-output"])
     assert result.exit_code == 0
 
 
 def test_info_command_valid_language():
     """Test info command with valid language code."""
     runner = CliRunner()
-    result = runner.invoke(info, ['en'])
+    result = runner.invoke(info, ["en"])
     assert result.exit_code == 0
 
 
 def test_info_command_detail_flag():
     """Test info command with detail flag."""
     runner = CliRunner()
-    result = runner.invoke(info, ['en', '--detail'])
+    result = runner.invoke(info, ["en", "--detail"])
     assert result.exit_code == 0
 
 
 def test_info_command_invalid_language():
     """Test info command rejects invalid language code."""
     runner = CliRunner()
-    result = runner.invoke(info, ['invalid_xyz'])
+    result = runner.invoke(info, ["invalid_xyz"])
     # Should either fail or show error message
-    assert 'not found' in result.output or 'Available codes' in result.output
+    assert "not found" in result.output or "Available codes" in result.output
 
 
 def test_render_template_with_files():
@@ -70,10 +70,7 @@ def test_render_template_with_files():
         vars_file = Path(tmpdir) / "vars.json"
         vars_file.write_text(json.dumps({"name": "World"}))
 
-        result = runner.invoke(render_template, [
-            str(template_file),
-            str(vars_file)
-        ])
+        result = runner.invoke(render_template, [str(template_file), str(vars_file)])
 
         # Should show rendered template
         assert result.exit_code == 0
@@ -89,11 +86,9 @@ def test_validate_config_with_valid_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create config file
         config_file = Path(tmpdir) / "config.json"
-        config_file.write_text(json.dumps({
-            "language": {
-                "conversation_language": "en"
-            }
-        }))
+        config_file.write_text(
+            json.dumps({"language": {"conversation_language": "en"}})
+        )
 
         result = runner.invoke(validate_config, [str(config_file)])
 
@@ -143,17 +138,17 @@ def test_translate_descriptions_mocked():
 
     runner = CliRunner()
 
-    with patch('moai_adk.cli.commands.language.ClaudeCLIIntegration') as mock_integration_class:
+    with patch(
+        "moai_adk.cli.commands.language.ClaudeCLIIntegration"
+    ) as mock_integration_class:
         mock_integration = MagicMock()
         mock_integration_class.return_value = mock_integration
         mock_integration.generate_multilingual_descriptions.return_value = {
-            'en': 'English',
-            'ko': 'Korean',
+            "en": "English",
+            "ko": "Korean",
         }
 
-        result = runner.invoke(translate_descriptions, [
-            'Test description'
-        ])
+        result = runner.invoke(translate_descriptions, ["Test description"])
 
         assert result.exit_code == 0
 
@@ -164,13 +159,10 @@ def test_execute_command_dry_run():
 
     runner = CliRunner()
 
-    result = runner.invoke(execute, [
-        'test prompt',
-        '--dry-run'
-    ])
+    result = runner.invoke(execute, ["test prompt", "--dry-run"])
 
     assert result.exit_code == 0
-    assert 'Dry Run' in result.output
+    assert "Dry Run" in result.output
 
 
 def test_execute_command_with_language():
@@ -179,18 +171,17 @@ def test_execute_command_with_language():
 
     runner = CliRunner()
 
-    with patch('moai_adk.cli.commands.language.ClaudeCLIIntegration') as mock_integration_class:
+    with patch(
+        "moai_adk.cli.commands.language.ClaudeCLIIntegration"
+    ) as mock_integration_class:
         mock_integration = MagicMock()
         mock_integration_class.return_value = mock_integration
         mock_integration.process_template_command.return_value = {
-            'success': True,
-            'stdout': 'result',
-            'stderr': '',
+            "success": True,
+            "stdout": "result",
+            "stderr": "",
         }
 
-        result = runner.invoke(execute, [
-            'test prompt',
-            '--language', 'en'
-        ])
+        result = runner.invoke(execute, ["test prompt", "--language", "en"])
 
         assert result.exit_code == 0

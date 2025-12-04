@@ -91,9 +91,7 @@ class TestSkillDataGetCapability:
 
     def test_get_capability_exists(self):
         """Test getting existing capability."""
-        frontmatter = {
-            "capabilities": {"auth": True, "caching": False}
-        }
+        frontmatter = {"capabilities": {"auth": True, "caching": False}}
         skill = SkillData(
             name="test",
             frontmatter=frontmatter,

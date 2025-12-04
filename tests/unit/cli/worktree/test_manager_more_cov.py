@@ -456,12 +456,16 @@ class TestWorktreeManagerSync:
             mock_worktree_repo = MagicMock()
             mock_worktree_repo.remotes.origin.fetch = MagicMock()
             mock_worktree_repo.git.rev_parse = MagicMock(return_value="abc123")
-            mock_worktree_repo.git.merge = MagicMock(side_effect=Exception("Merge conflict"))
+            mock_worktree_repo.git.merge = MagicMock(
+                side_effect=Exception("Merge conflict")
+            )
             # Conflicted status
             mock_worktree_repo.git.status = MagicMock(
                 return_value="UU file1.py\nUU file2.py"
             )
-            mock_worktree_repo.git.merge = MagicMock(side_effect=Exception("Merge conflict"))
+            mock_worktree_repo.git.merge = MagicMock(
+                side_effect=Exception("Merge conflict")
+            )
 
             def repo_side_effect(path):
                 if str(path) == str(worktree_root / "SPEC-001"):
@@ -503,7 +507,9 @@ class TestWorktreeManagerCleanMerged:
             mock_repo = MagicMock()
             mock_repo_class.return_value = mock_repo
             # Return merged branch names
-            mock_repo.git.branch = MagicMock(return_value="* main\n  feature/SPEC-001\n  feature/SPEC-002")
+            mock_repo.git.branch = MagicMock(
+                return_value="* main\n  feature/SPEC-001\n  feature/SPEC-002"
+            )
             mock_repo.git.worktree = MagicMock()
             mock_repo.git.status = MagicMock(return_value="")
 
@@ -600,7 +606,9 @@ class TestWorktreeManagerAutoResolveConflicts:
 
             mock_worktree_repo = MagicMock()
             mock_worktree_repo.working_dir = str(worktree_path)
-            mock_worktree_repo.git.checkout = MagicMock(side_effect=Exception("File not found"))
+            mock_worktree_repo.git.checkout = MagicMock(
+                side_effect=Exception("File not found")
+            )
             mock_worktree_repo.git.add = MagicMock()
             mock_worktree_repo.git.commit = MagicMock()
 
@@ -608,7 +616,9 @@ class TestWorktreeManagerAutoResolveConflicts:
 
             # Act & Assert - should not raise, just continue
             try:
-                manager.auto_resolve_conflicts(mock_worktree_repo, "SPEC-001", ["nonexistent.py"])
+                manager.auto_resolve_conflicts(
+                    mock_worktree_repo, "SPEC-001", ["nonexistent.py"]
+                )
             except GitOperationError:
                 pass  # Expected if all strategies fail
 
@@ -684,7 +694,9 @@ class TestWorktreeManagerEdgeCases:
             mock_repo_class.return_value = mock_repo
             mock_repo.heads = MagicMock()
             mock_repo.heads.__getitem__ = MagicMock(return_value=MagicMock())
-            mock_repo.remotes.origin.fetch = MagicMock(side_effect=Exception("No remote"))
+            mock_repo.remotes.origin.fetch = MagicMock(
+                side_effect=Exception("No remote")
+            )
             mock_repo.create_head = MagicMock()
             mock_repo.git.worktree = MagicMock()
 
@@ -710,7 +722,9 @@ class TestWorktreeManagerEdgeCases:
             mock_worktree_repo = MagicMock()
             mock_worktree_repo.remotes.origin.fetch = MagicMock()
             # Branch not found
-            mock_worktree_repo.git.rev_parse = MagicMock(side_effect=Exception("Branch not found"))
+            mock_worktree_repo.git.rev_parse = MagicMock(
+                side_effect=Exception("Branch not found")
+            )
 
             def repo_side_effect(path):
                 if str(path) == str(worktree_root / "SPEC-001"):

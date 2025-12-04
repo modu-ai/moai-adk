@@ -32,7 +32,9 @@ class TestBaseHook:
         hook = BaseHook()
 
         assert hook.name == "PostToolAutoSpecCompletion"
-        assert hook.description == "PostToolUse Hook for Automated SPEC Completion System"
+        assert (
+            hook.description == "PostToolUse Hook for Automated SPEC Completion System"
+        )
 
 
 class TestSpecGenerator:
@@ -130,8 +132,7 @@ class TestShouldTriggerSpecCompletion:
         hook = PostToolAutoSpecCompletion()
 
         result = hook.should_trigger_spec_completion(
-            "Write",
-            {"file_path": "/path/to/module.py"}
+            "Write", {"file_path": "/path/to/module.py"}
         )
 
         assert result is True
@@ -141,8 +142,7 @@ class TestShouldTriggerSpecCompletion:
         hook = PostToolAutoSpecCompletion()
 
         result = hook.should_trigger_spec_completion(
-            "Edit",
-            {"file_path": "/path/to/index.ts"}
+            "Edit", {"file_path": "/path/to/index.ts"}
         )
 
         assert result is True
@@ -152,8 +152,7 @@ class TestShouldTriggerSpecCompletion:
         hook = PostToolAutoSpecCompletion()
 
         result = hook.should_trigger_spec_completion(
-            "Write",
-            {"file_path": "/path/to/file.txt"}
+            "Write", {"file_path": "/path/to/file.txt"}
         )
 
         assert result is False
@@ -163,8 +162,7 @@ class TestShouldTriggerSpecCompletion:
         hook = PostToolAutoSpecCompletion()
 
         result = hook.should_trigger_spec_completion(
-            "Write",
-            {"file_path": "/path/to/test_module.py"}
+            "Write", {"file_path": "/path/to/test_module.py"}
         )
 
         assert result is False
@@ -174,8 +172,7 @@ class TestShouldTriggerSpecCompletion:
         hook = PostToolAutoSpecCompletion()
 
         result = hook.should_trigger_spec_completion(
-            "Write",
-            {"file_path": "/path/__tests__/module.py"}
+            "Write", {"file_path": "/path/__tests__/module.py"}
         )
 
         assert result is False
@@ -208,13 +205,15 @@ class TestExtractFilePaths:
         """Test extracting paths from MultiEdit tool args."""
         hook = PostToolAutoSpecCompletion()
 
-        paths = hook._extract_file_paths({
-            "edits": [
-                {"file_path": "file1.py"},
-                {"file_path": "file2.ts"},
-                {"file_path": "file3.py"},
-            ]
-        })
+        paths = hook._extract_file_paths(
+            {
+                "edits": [
+                    {"file_path": "file1.py"},
+                    {"file_path": "file2.ts"},
+                    {"file_path": "file3.py"},
+                ]
+            }
+        )
 
         assert len(paths) == 3
 
@@ -222,13 +221,15 @@ class TestExtractFilePaths:
         """Test extraction handles duplicate edits."""
         hook = PostToolAutoSpecCompletion()
 
-        paths = hook._extract_file_paths({
-            "edits": [
-                {"file_path": "file.py"},
-                {"file_path": "file.py"},
-                {"file_path": "file.py"},
-            ]
-        })
+        paths = hook._extract_file_paths(
+            {
+                "edits": [
+                    {"file_path": "file.py"},
+                    {"file_path": "file.py"},
+                    {"file_path": "file.py"},
+                ]
+            }
+        )
 
         # Deduplication logic checks relative paths but the dedup may not be perfect
         # Just verify we get some paths back
@@ -353,7 +354,7 @@ class TestDetectCodeChanges:
                     {"file_path": "file2.py"},
                 ]
             },
-            None
+            None,
         )
 
         assert len(changed) == 2
@@ -575,8 +576,8 @@ class TestExecuteHook:
 
         assert result["success"] is False
 
-    @patch.object(PostToolAutoSpecCompletion, 'detect_code_changes')
-    @patch.object(PostToolAutoSpecCompletion, 'should_trigger_spec_completion')
+    @patch.object(PostToolAutoSpecCompletion, "detect_code_changes")
+    @patch.object(PostToolAutoSpecCompletion, "should_trigger_spec_completion")
     def test_execute_triggered_creates_results(self, mock_trigger, mock_detect):
         """Test execute creates results when triggered."""
         mock_trigger.return_value = True

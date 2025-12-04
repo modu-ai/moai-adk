@@ -14,6 +14,7 @@ class TestRealtimeMonitoringDashboard:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             assert RealtimeMonitoringDashboard is not None
         except ImportError:
             pytest.skip("Module not available")
@@ -24,6 +25,7 @@ class TestRealtimeMonitoringDashboard:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             assert dashboard is not None
         except (ImportError, Exception):
@@ -39,6 +41,7 @@ class TestDashboardMetrics:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             assert hasattr(dashboard, "collect")
         except (ImportError, Exception):
@@ -50,6 +53,7 @@ class TestDashboardMetrics:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             if hasattr(dashboard, "get_metrics"):
                 assert callable(dashboard.get_metrics)
@@ -66,6 +70,7 @@ class TestDashboardDisplay:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             if hasattr(dashboard, "render"):
                 assert callable(dashboard.render)
@@ -78,6 +83,7 @@ class TestDashboardDisplay:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             if hasattr(dashboard, "update"):
                 assert callable(dashboard.update)
@@ -94,6 +100,7 @@ class TestDashboardMetricsTypes:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             assert dashboard is not None
         except (ImportError, Exception):
@@ -105,6 +112,7 @@ class TestDashboardMetricsTypes:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             assert dashboard is not None
         except (ImportError, Exception):
@@ -116,6 +124,7 @@ class TestDashboardMetricsTypes:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             assert dashboard is not None
         except (ImportError, Exception):
@@ -131,6 +140,7 @@ class TestDashboardStateManagement:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             if hasattr(dashboard, "state"):
                 assert dashboard.state is not None
@@ -143,6 +153,7 @@ class TestDashboardStateManagement:
             from moai_adk.core.realtime_monitoring_dashboard import (
                 RealtimeMonitoringDashboard,
             )
+
             dashboard = RealtimeMonitoringDashboard()
             if hasattr(dashboard, "update_state"):
                 assert callable(dashboard.update_state)

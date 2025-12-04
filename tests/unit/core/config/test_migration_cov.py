@@ -31,7 +31,7 @@ class TestMigrateConfigToNestedStructure:
         config = {
             "language": {
                 "conversation_language": "ko",
-                "conversation_language_name": "한국어"
+                "conversation_language_name": "한국어",
             }
         }
 
@@ -42,15 +42,12 @@ class TestMigrateConfigToNestedStructure:
 
     def test_migrate_legacy_flat_conversation_language(self):
         """Test migrating legacy flat conversation_language field."""
-        config = {
-            "conversation_language": "ko",
-            "locale": "ko"
-        }
+        config = {"conversation_language": "ko", "locale": "ko"}
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
             mock_lang_config.items.return_value = [
                 ("ko", {"native_name": "한국어"}),
-                ("en", {"native_name": "English"})
+                ("en", {"native_name": "English"}),
             ]
 
             result = migrate_config_to_nested_structure(config)
@@ -61,16 +58,10 @@ class TestMigrateConfigToNestedStructure:
 
     def test_migrate_removes_legacy_locale_field(self):
         """Test that legacy locale field is removed."""
-        config = {
-            "conversation_language": "en",
-            "locale": "en",
-            "other_field": "value"
-        }
+        config = {"conversation_language": "en", "locale": "en", "other_field": "value"}
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
-            mock_lang_config.items.return_value = [
-                ("en", {"native_name": "English"})
-            ]
+            mock_lang_config.items.return_value = [("en", {"native_name": "English"})]
 
             result = migrate_config_to_nested_structure(config)
 
@@ -79,9 +70,7 @@ class TestMigrateConfigToNestedStructure:
 
     def test_migrate_string_language_to_nested(self):
         """Test migrating when language is a string (old format)."""
-        config = {
-            "language": "ko"
-        }
+        config = {"language": "ko"}
 
         result = migrate_config_to_nested_structure(config)
 
@@ -95,9 +84,7 @@ class TestMigrateConfigToNestedStructure:
         }
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
-            mock_lang_config.items.return_value = [
-                ("en", {"native_name": "English"})
-            ]
+            mock_lang_config.items.return_value = [("en", {"native_name": "English"})]
 
             result = migrate_config_to_nested_structure(config)
 
@@ -116,13 +103,11 @@ class TestMigrateConfigToNestedStructure:
         config = {
             "conversation_language": "ko",
             "other_setting": "value",
-            "nested_setting": {"key": "value"}
+            "nested_setting": {"key": "value"},
         }
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
-            mock_lang_config.items.return_value = [
-                ("ko", {"native_name": "한국어"})
-            ]
+            mock_lang_config.items.return_value = [("ko", {"native_name": "한국어"})]
 
             result = migrate_config_to_nested_structure(config)
 
@@ -135,11 +120,7 @@ class TestGetConversationLanguage:
 
     def test_get_from_nested_structure(self):
         """Test getting language from nested structure."""
-        config = {
-            "language": {
-                "conversation_language": "ko"
-            }
-        }
+        config = {"language": {"conversation_language": "ko"}}
 
         result = get_conversation_language(config)
 
@@ -147,9 +128,7 @@ class TestGetConversationLanguage:
 
     def test_fallback_to_legacy_flat_structure(self):
         """Test fallback to legacy flat structure."""
-        config = {
-            "conversation_language": "en"
-        }
+        config = {"conversation_language": "en"}
 
         result = get_conversation_language(config)
 
@@ -166,10 +145,8 @@ class TestGetConversationLanguage:
     def test_nested_takes_precedence_over_flat(self):
         """Test that nested structure takes precedence."""
         config = {
-            "language": {
-                "conversation_language": "ko"
-            },
-            "conversation_language": "en"
+            "language": {"conversation_language": "ko"},
+            "conversation_language": "en",
         }
 
         result = get_conversation_language(config)
@@ -180,7 +157,7 @@ class TestGetConversationLanguage:
         """Test handling invalid language structure."""
         config = {
             "language": "invalid_string",  # Should be dict
-            "conversation_language": "en"
+            "conversation_language": "en",
         }
 
         result = get_conversation_language(config)
@@ -189,10 +166,7 @@ class TestGetConversationLanguage:
 
     def test_handles_none_language_field(self):
         """Test handling when language field is None."""
-        config = {
-            "language": None,
-            "conversation_language": "fr"
-        }
+        config = {"language": None, "conversation_language": "fr"}
 
         result = get_conversation_language(config)
 
@@ -204,11 +178,7 @@ class TestGetConversationLanguageName:
 
     def test_get_from_nested_structure(self):
         """Test getting language name from nested structure."""
-        config = {
-            "language": {
-                "conversation_language_name": "한국어"
-            }
-        }
+        config = {"language": {"conversation_language_name": "한국어"}}
 
         result = get_conversation_language_name(config)
 
@@ -216,16 +186,12 @@ class TestGetConversationLanguageName:
 
     def test_map_language_code_from_nested(self):
         """Test mapping language code to name from nested structure."""
-        config = {
-            "language": {
-                "conversation_language": "ko"
-            }
-        }
+        config = {"language": {"conversation_language": "ko"}}
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
             mock_lang_config.items.return_value = [
                 ("ko", {"native_name": "한국어"}),
-                ("en", {"native_name": "English"})
+                ("en", {"native_name": "English"}),
             ]
 
             result = get_conversation_language_name(config)
@@ -234,9 +200,7 @@ class TestGetConversationLanguageName:
 
     def test_fallback_to_hardcoded_mapping(self):
         """Test fallback when language not in LANGUAGE_CONFIG."""
-        config = {
-            "conversation_language": "ja"
-        }
+        config = {"conversation_language": "ja"}
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
             # When LANGUAGE_CONFIG doesn't have the language, it defaults to English
@@ -249,16 +213,10 @@ class TestGetConversationLanguageName:
 
     def test_default_to_english_if_not_found(self):
         """Test defaulting to English if language not mapped."""
-        config = {
-            "language": {
-                "conversation_language": "xx"  # Unknown
-            }
-        }
+        config = {"language": {"conversation_language": "xx"}}  # Unknown
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
-            mock_lang_config.items.return_value = [
-                ("en", {"native_name": "English"})
-            ]
+            mock_lang_config.items.return_value = [("en", {"native_name": "English"})]
 
             result = get_conversation_language_name(config)
 
@@ -302,12 +260,7 @@ class TestMigrateConfigSchemaV0_17_0:
 
     def test_preserves_existing_report_generation(self):
         """Test that existing report_generation is preserved."""
-        config = {
-            "report_generation": {
-                "enabled": False,
-                "custom_field": "value"
-            }
-        }
+        config = {"report_generation": {"enabled": False, "custom_field": "value"}}
 
         result = migrate_config_schema_v0_17_0(config)
 
@@ -339,12 +292,7 @@ class TestMigrateConfigSchemaV0_17_0:
 
     def test_preserves_existing_github_section(self):
         """Test that existing github section is preserved."""
-        config = {
-            "github": {
-                "username": "testuser",
-                "token": "token"
-            }
-        }
+        config = {"github": {"username": "testuser", "token": "token"}}
 
         result = migrate_config_schema_v0_17_0(config)
 
@@ -367,7 +315,7 @@ class TestMigrateConfigSchemaV0_17_0:
         config = {
             "github": {
                 "auto_delete_branches": True,
-                "auto_delete_branches_checked": True
+                "auto_delete_branches_checked": True,
             }
         }
 
@@ -392,7 +340,7 @@ class TestMigrateConfigSchemaV0_17_0:
         config = {
             "github": {
                 "spec_git_workflow": "feature_branch",
-                "spec_git_workflow_configured": True
+                "spec_git_workflow_configured": True,
             }
         }
 
@@ -412,12 +360,7 @@ class TestMigrateConfigSchemaV0_17_0:
 
     def test_preserves_other_config_sections(self):
         """Test that other config sections are preserved."""
-        config = {
-            "user": {
-                "name": "Test User"
-            },
-            "other": "value"
-        }
+        config = {"user": {"name": "Test User"}, "other": "value"}
 
         result = migrate_config_schema_v0_17_0(config)
 
@@ -430,12 +373,7 @@ class TestGetReportGenerationConfig:
 
     def test_get_existing_report_generation(self):
         """Test getting existing report generation config."""
-        config = {
-            "report_generation": {
-                "enabled": False,
-                "auto_create": True
-            }
-        }
+        config = {"report_generation": {"enabled": False, "auto_create": True}}
 
         result = get_report_generation_config(config)
 
@@ -444,11 +382,7 @@ class TestGetReportGenerationConfig:
 
     def test_merge_with_defaults(self):
         """Test that result is merged with defaults."""
-        config = {
-            "report_generation": {
-                "enabled": False
-            }
-        }
+        config = {"report_generation": {"enabled": False}}
 
         result = get_report_generation_config(config)
 
@@ -468,9 +402,7 @@ class TestGetReportGenerationConfig:
 
     def test_non_dict_report_generation_returns_defaults(self):
         """Test that non-dict report_generation returns defaults."""
-        config = {
-            "report_generation": "invalid"
-        }
+        config = {"report_generation": "invalid"}
 
         result = get_report_generation_config(config)
 
@@ -490,7 +422,7 @@ class TestGetReportGenerationConfig:
             "warn_user",
             "user_choice",
             "configured_at",
-            "allowed_locations"
+            "allowed_locations",
         ]
 
         for key in required_keys:
@@ -502,11 +434,7 @@ class TestGetSpecGitWorkflow:
 
     def test_get_per_spec_workflow(self):
         """Test getting per_spec workflow."""
-        config = {
-            "github": {
-                "spec_git_workflow": "per_spec"
-            }
-        }
+        config = {"github": {"spec_git_workflow": "per_spec"}}
 
         result = get_spec_git_workflow(config)
 
@@ -514,11 +442,7 @@ class TestGetSpecGitWorkflow:
 
     def test_get_feature_branch_workflow(self):
         """Test getting feature_branch workflow."""
-        config = {
-            "github": {
-                "spec_git_workflow": "feature_branch"
-            }
-        }
+        config = {"github": {"spec_git_workflow": "feature_branch"}}
 
         result = get_spec_git_workflow(config)
 
@@ -526,11 +450,7 @@ class TestGetSpecGitWorkflow:
 
     def test_get_develop_direct_workflow(self):
         """Test getting develop_direct workflow."""
-        config = {
-            "github": {
-                "spec_git_workflow": "develop_direct"
-            }
-        }
+        config = {"github": {"spec_git_workflow": "develop_direct"}}
 
         result = get_spec_git_workflow(config)
 
@@ -546,11 +466,7 @@ class TestGetSpecGitWorkflow:
 
     def test_invalid_workflow_defaults_to_per_spec(self):
         """Test that invalid workflow defaults to per_spec."""
-        config = {
-            "github": {
-                "spec_git_workflow": "invalid_workflow"
-            }
-        }
+        config = {"github": {"spec_git_workflow": "invalid_workflow"}}
 
         result = get_spec_git_workflow(config)
 
@@ -558,9 +474,7 @@ class TestGetSpecGitWorkflow:
 
     def test_non_dict_github_section_defaults(self):
         """Test that non-dict github section returns default."""
-        config = {
-            "github": "invalid"
-        }
+        config = {"github": "invalid"}
 
         result = get_spec_git_workflow(config)
 
@@ -583,15 +497,13 @@ class TestMigrationIntegration:
         legacy_config = {
             "conversation_language": "ko",
             "locale": "ko",
-            "user": {
-                "name": "Test User"
-            }
+            "user": {"name": "Test User"},
         }
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
             mock_lang_config.items.return_value = [
                 ("ko", {"native_name": "한국어"}),
-                ("en", {"native_name": "English"})
+                ("en", {"native_name": "English"}),
             ]
 
             # Step 1: Migrate to nested structure
@@ -612,14 +524,10 @@ class TestMigrationIntegration:
         current_config = {
             "language": {
                 "conversation_language": "en",
-                "conversation_language_name": "English"
+                "conversation_language_name": "English",
             },
-            "report_generation": {
-                "enabled": True
-            },
-            "github": {
-                "spec_git_workflow": "per_spec"
-            }
+            "report_generation": {"enabled": True},
+            "github": {"spec_git_workflow": "per_spec"},
         }
 
         # Migrate
@@ -633,9 +541,7 @@ class TestMigrationIntegration:
 
     def test_migration_with_missing_language_config(self):
         """Test migration when LANGUAGE_CONFIG is not available."""
-        config = {
-            "conversation_language": "ko"
-        }
+        config = {"conversation_language": "ko"}
 
         with patch("moai_adk.core.language_config.LANGUAGE_CONFIG") as mock_lang_config:
             mock_lang_config.items.return_value = []
@@ -651,9 +557,7 @@ class TestEdgeCases:
 
     def test_empty_language_dict_handling(self):
         """Test handling of empty language dictionary."""
-        config = {
-            "language": {}
-        }
+        config = {"language": {}}
 
         result = get_conversation_language(config)
 
@@ -661,11 +565,7 @@ class TestEdgeCases:
 
     def test_none_values_handling(self):
         """Test handling of None values."""
-        config = {
-            "language": {
-                "conversation_language": None
-            }
-        }
+        config = {"language": {"conversation_language": None}}
 
         result = get_conversation_language(config)
 
@@ -673,15 +573,7 @@ class TestEdgeCases:
 
     def test_very_nested_config_preservation(self):
         """Test that deeply nested structures are preserved."""
-        config = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "data": "value"
-                    }
-                }
-            }
-        }
+        config = {"level1": {"level2": {"level3": {"data": "value"}}}}
 
         result = migrate_config_to_nested_structure(config)
 
@@ -689,11 +581,7 @@ class TestEdgeCases:
 
     def test_special_characters_in_language_code(self):
         """Test handling special characters in language code."""
-        config = {
-            "language": {
-                "conversation_language": "zh-Hans"
-            }
-        }
+        config = {"language": {"conversation_language": "zh-Hans"}}
 
         result = get_conversation_language(config)
 

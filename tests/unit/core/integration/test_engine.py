@@ -129,7 +129,11 @@ class TestEngine:
 
         assert len(results) == 3
         assert all(result.passed for result in results)
-        assert set(result.test_name for result in results) == {"test1", "test2", "test3"}
+        assert set(result.test_name for result in results) == {
+            "test1",
+            "test2",
+            "test3",
+        }
         assert all("comp" in str(result.components_tested) for result in results)
 
     def test_run_concurrent_tests_with_failures(self):
@@ -170,7 +174,9 @@ class TestEngine:
 
         # Should handle timeout gracefully
         try:
-            results = engine.run_concurrent_tests(tests, timeout=0.5)  # Very short batch timeout
+            results = engine.run_concurrent_tests(
+                tests, timeout=0.5
+            )  # Very short batch timeout
             # May get partial results before timeout
             assert len(results) >= 0  # May get partial results before timeout
         except TimeoutError:
@@ -185,7 +191,10 @@ class TestEngine:
         def test_func(value):
             return value
 
-        tests = [(lambda: test_func("async1"), "async_test1", []), (lambda: test_func("async2"), "async_test2", [])]
+        tests = [
+            (lambda: test_func("async1"), "async_test1", []),
+            (lambda: test_func("async2"), "async_test2", []),
+        ]
 
         results = await engine.run_concurrent_tests_async(tests)
 

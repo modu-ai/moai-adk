@@ -106,14 +106,18 @@ class TestLanguageToolsMapping:
         tools = SystemChecker.LANGUAGE_TOOLS
         for lang, config in tools.items():
             assert "required" in config, f"{lang} missing 'required' field"
-            assert isinstance(config["required"], list), f"{lang} 'required' must be list"
+            assert isinstance(
+                config["required"], list
+            ), f"{lang} 'required' must be list"
 
     def test_all_languages_have_recommended_field(self):
         """All languages should have 'recommended' field"""
         tools = SystemChecker.LANGUAGE_TOOLS
         for lang, config in tools.items():
             assert "recommended" in config, f"{lang} missing 'recommended' field"
-            assert isinstance(config["recommended"], list), f"{lang} 'recommended' must be list"
+            assert isinstance(
+                config["recommended"], list
+            ), f"{lang} 'recommended' must be list"
 
 
 class TestCheckLanguageTools:

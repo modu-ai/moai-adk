@@ -258,7 +258,7 @@ class TestEventClass:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={'action': 'execute'}
+            payload={"action": "execute"},
         )
 
         # Assert
@@ -276,7 +276,7 @@ class TestEventClass:
             timestamp=datetime.now(),
             payload={},
             source="test_source",
-            correlation_id="corr_123"
+            correlation_id="corr_123",
         )
 
         # Assert
@@ -291,7 +291,7 @@ class TestEventClass:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={'data': 'test'}
+            payload={"data": "test"},
         )
 
         # Act
@@ -299,8 +299,8 @@ class TestEventClass:
 
         # Assert
         assert isinstance(event_dict, dict)
-        assert event_dict['event_id'] == "test_123"
-        assert event_dict['event_type'] == EventType.HOOK_EXECUTION_REQUEST.value
+        assert event_dict["event_id"] == "test_123"
+        assert event_dict["event_type"] == EventType.HOOK_EXECUTION_REQUEST.value
 
     def test_event_retry_count(self):
         """Test event retry count."""
@@ -312,7 +312,7 @@ class TestEventClass:
             timestamp=datetime.now(),
             payload={},
             retry_count=0,
-            max_retries=3
+            max_retries=3,
         )
 
         # Assert
@@ -328,7 +328,7 @@ class TestEventClass:
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
             payload={},
-            timeout_seconds=30.0
+            timeout_seconds=30.0,
         )
 
         # Assert
@@ -343,11 +343,11 @@ class TestEventClass:
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
             payload={},
-            metadata={'key': 'value'}
+            metadata={"key": "value"},
         )
 
         # Assert
-        assert event.metadata['key'] == 'value'
+        assert event.metadata["key"] == "value"
 
     def test_event_tags(self):
         """Test event tags."""
@@ -358,11 +358,11 @@ class TestEventClass:
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
             payload={},
-            tags={'environment': 'test'}
+            tags={"environment": "test"},
         )
 
         # Assert
-        assert event.tags['environment'] == 'test'
+        assert event.tags["environment"] == "test"
 
 
 class TestEventDrivenHookSystem:
@@ -415,11 +415,11 @@ class TestEventDrivenHookSystem:
                 event_type=EventType.HOOK_EXECUTION_REQUEST,
                 priority=EventPriority.NORMAL,
                 timestamp=datetime.now(),
-                payload={}
+                payload={},
             )
 
             # Act
-            if hasattr(system, 'process_event'):
+            if hasattr(system, "process_event"):
                 await system.process_event(event)
         except (AttributeError, TypeError):
             pass
@@ -437,7 +437,7 @@ class TestEventProcessorClass:
         try:
             processor = EventProcessor(
                 broker_type=MessageBrokerType.MEMORY,
-                isolation_level=ResourceIsolationLevel.SHARED
+                isolation_level=ResourceIsolationLevel.SHARED,
             )
             # Assert
             assert processor is not None
@@ -455,11 +455,11 @@ class TestEventProcessorClass:
                 event_type=EventType.HOOK_EXECUTION_REQUEST,
                 priority=EventPriority.NORMAL,
                 timestamp=datetime.now(),
-                payload={}
+                payload={},
             )
 
             # Act
-            if hasattr(processor, 'process'):
+            if hasattr(processor, "process"):
                 await processor.process(event)
         except (AttributeError, TypeError):
             pass
@@ -492,12 +492,12 @@ class TestEventHandling:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={'hook_id': 'test_hook'}
+            payload={"hook_id": "test_hook"},
         )
 
         # Assert
         assert event.event_type == EventType.HOOK_EXECUTION_REQUEST
-        assert event.payload['hook_id'] == 'test_hook'
+        assert event.payload["hook_id"] == "test_hook"
 
     def test_hook_execution_completed_event(self):
         """Test hook execution completed event."""
@@ -507,12 +507,12 @@ class TestEventHandling:
             event_type=EventType.HOOK_EXECUTION_COMPLETED,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={'hook_id': 'test_hook', 'status': 'success'}
+            payload={"hook_id": "test_hook", "status": "success"},
         )
 
         # Assert
         assert event.event_type == EventType.HOOK_EXECUTION_COMPLETED
-        assert event.payload['status'] == 'success'
+        assert event.payload["status"] == "success"
 
     def test_system_alert_event(self):
         """Test system alert event."""
@@ -522,7 +522,7 @@ class TestEventHandling:
             event_type=EventType.SYSTEM_ALERT,
             priority=EventPriority.CRITICAL,
             timestamp=datetime.now(),
-            payload={'alert': 'System overload'}
+            payload={"alert": "System overload"},
         )
 
         # Assert
@@ -541,7 +541,7 @@ class TestEventPersistence:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={}
+            payload={},
         )
 
         # Act
@@ -549,8 +549,8 @@ class TestEventPersistence:
 
         # Assert
         assert isinstance(event_dict, dict)
-        assert 'event_id' in event_dict
-        assert 'event_type' in event_dict
+        assert "event_id" in event_dict
+        assert "event_type" in event_dict
 
     def test_event_recovery_from_stored_data(self):
         """Test recovering event from stored data."""
@@ -560,19 +560,21 @@ class TestEventPersistence:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
             timestamp=datetime.now(),
-            payload={'data': 'test'}
+            payload={"data": "test"},
         )
 
         # Act
         stored_data = original_event.to_dict()
         # Simulate recovery
-        recovered_event = Event(**{
-            'event_id': stored_data['event_id'],
-            'event_type': EventType(stored_data['event_type']),
-            'priority': EventPriority(stored_data['priority']),
-            'timestamp': datetime.fromisoformat(stored_data['timestamp']),
-            'payload': stored_data['payload']
-        })
+        recovered_event = Event(
+            **{
+                "event_id": stored_data["event_id"],
+                "event_type": EventType(stored_data["event_type"]),
+                "priority": EventPriority(stored_data["priority"]),
+                "timestamp": datetime.fromisoformat(stored_data["timestamp"]),
+                "payload": stored_data["payload"],
+            }
+        )
 
         # Assert
         assert recovered_event.event_id == original_event.event_id
@@ -611,14 +613,19 @@ class TestEventMetrics:
         """Test event priority distribution."""
         # Arrange
         events = [
-            {'type': EventType.HOOK_EXECUTION_REQUEST, 'priority': EventPriority.CRITICAL},
-            {'type': EventType.SYSTEM_ALERT, 'priority': EventPriority.HIGH},
-            {'type': EventType.PERFORMANCE_UPDATE, 'priority': EventPriority.NORMAL},
+            {
+                "type": EventType.HOOK_EXECUTION_REQUEST,
+                "priority": EventPriority.CRITICAL,
+            },
+            {"type": EventType.SYSTEM_ALERT, "priority": EventPriority.HIGH},
+            {"type": EventType.PERFORMANCE_UPDATE, "priority": EventPriority.NORMAL},
         ]
 
         # Act
-        critical_count = sum(1 for e in events if e['priority'] == EventPriority.CRITICAL)
-        high_count = sum(1 for e in events if e['priority'] == EventPriority.HIGH)
+        critical_count = sum(
+            1 for e in events if e["priority"] == EventPriority.CRITICAL
+        )
+        high_count = sum(1 for e in events if e["priority"] == EventPriority.HIGH)
 
         # Assert
         assert critical_count == 1

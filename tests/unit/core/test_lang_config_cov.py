@@ -110,7 +110,9 @@ class TestLoadConfigFile:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_file = config_dir / "config.json"
-        config_file.write_text('{"user": {"name": "TestUser"}, "language": {"conversation_language": "ko"}}')
+        config_file.write_text(
+            '{"user": {"name": "TestUser"}, "language": {"conversation_language": "ko"}}'
+        )
 
         resolver = LanguageConfigResolver(str(tmp_path))
         config = resolver._load_config_file()

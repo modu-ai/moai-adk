@@ -41,9 +41,7 @@ class TestIssueConfig:
     def test_create_minimal_config(self):
         """Test creating minimal config."""
         config = IssueConfig(
-            issue_type=IssueType.BUG,
-            title="Test bug",
-            description="Bug description"
+            issue_type=IssueType.BUG, title="Test bug", description="Bug description"
         )
         assert config.issue_type == IssueType.BUG
         assert config.priority == IssuePriority.MEDIUM
@@ -57,7 +55,7 @@ class TestIssueConfig:
             priority=IssuePriority.HIGH,
             category="Enhancement",
             assignees=["user1"],
-            custom_labels=["label1"]
+            custom_labels=["label1"],
         )
         assert config.priority == IssuePriority.HIGH
         assert config.category == "Enhancement"
@@ -126,7 +124,7 @@ class TestGitHubIssueCreator:
             config = IssueConfig(
                 issue_type=IssueType.BUG,
                 title="Test bug",
-                description="Bug description"
+                description="Bug description",
             )
 
             result = creator.create_issue(config)
@@ -156,7 +154,7 @@ class TestGitHubIssueCreator:
                 title="Test",
                 description="Description",
                 priority=IssuePriority.HIGH,
-                category="Testing"
+                category="Testing",
             )
 
             body = creator._build_body(config)

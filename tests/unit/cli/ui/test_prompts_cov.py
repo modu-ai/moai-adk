@@ -27,7 +27,7 @@ class TestFuzzyCheckbox:
         """Test basic fuzzy checkbox prompt."""
         choices = ["File 1", "File 2", "File 3"]
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = ["File 1", "File 2"]
             mock_fuzzy.return_value = mock_result
@@ -40,21 +40,17 @@ class TestFuzzyCheckbox:
         """Test fuzzy checkbox with default values."""
         choices = ["Option A", "Option B", "Option C"]
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = ["Option B"]
             mock_fuzzy.return_value = mock_result
 
-            result = fuzzy_checkbox(
-                "Select options",
-                choices,
-                default=["Option B"]
-            )
+            result = fuzzy_checkbox("Select options", choices, default=["Option B"])
             assert result == ["Option B"]
 
     def test_fuzzy_checkbox_keyboard_interrupt(self):
         """Test fuzzy checkbox handles KeyboardInterrupt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_fuzzy.return_value = mock_result
@@ -64,57 +60,45 @@ class TestFuzzyCheckbox:
 
     def test_fuzzy_checkbox_custom_instruction(self):
         """Test fuzzy checkbox with custom instruction."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_fuzzy.return_value = mock_result
 
-            fuzzy_checkbox(
-                "Choose",
-                ["A", "B"],
-                instruction="Custom help text"
-            )
+            fuzzy_checkbox("Choose", ["A", "B"], instruction="Custom help text")
 
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['instruction'] == "Custom help text"
+            assert kwargs["instruction"] == "Custom help text"
 
     def test_fuzzy_checkbox_custom_marker(self):
         """Test fuzzy checkbox with custom marker."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_fuzzy.return_value = mock_result
 
-            fuzzy_checkbox(
-                "Choose",
-                ["A", "B"],
-                marker="★"
-            )
+            fuzzy_checkbox("Choose", ["A", "B"], marker="★")
 
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['marker'] == "★"
+            assert kwargs["marker"] == "★"
 
     def test_fuzzy_checkbox_custom_keybindings(self):
         """Test fuzzy checkbox with custom keybindings."""
         custom_keys = {"toggle": [{"key": "space"}]}
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_fuzzy.return_value = mock_result
 
-            fuzzy_checkbox(
-                "Choose",
-                ["A", "B"],
-                keybindings=custom_keys
-            )
+            fuzzy_checkbox("Choose", ["A", "B"], keybindings=custom_keys)
 
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['keybindings'] == custom_keys
+            assert kwargs["keybindings"] == custom_keys
 
     def test_fuzzy_checkbox_default_keybindings(self):
         """Test fuzzy checkbox with default keybindings."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_fuzzy.return_value = mock_result
@@ -122,58 +106,58 @@ class TestFuzzyCheckbox:
             fuzzy_checkbox("Choose", ["A", "B"])
 
             _, kwargs = mock_fuzzy.call_args
-            assert 'keybindings' in kwargs
-            keybindings = kwargs['keybindings']
-            assert 'toggle' in keybindings
-            assert 'toggle-all' in keybindings
+            assert "keybindings" in kwargs
+            keybindings = kwargs["keybindings"]
+            assert "toggle" in keybindings
+            assert "toggle-all" in keybindings
 
     def test_fuzzy_checkbox_with_border(self):
         """Test fuzzy checkbox border configuration."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_fuzzy.return_value = mock_result
 
             fuzzy_checkbox("Choose", ["A"], border=False)
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['border'] is False
+            assert kwargs["border"] is False
 
     def test_fuzzy_checkbox_height_parameters(self):
         """Test fuzzy checkbox with height parameters."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_fuzzy.return_value = mock_result
 
             fuzzy_checkbox("Choose", ["A"], height=20)
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['max_height'] == 20
+            assert kwargs["max_height"] == 20
 
     def test_fuzzy_checkbox_validation(self):
         """Test fuzzy checkbox with validation."""
         validator = lambda x: len(x) > 0
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = ["A"]
             mock_fuzzy.return_value = mock_result
 
             fuzzy_checkbox("Choose", ["A"], validate=validator)
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['validate'] == validator
+            assert kwargs["validate"] == validator
 
     def test_fuzzy_checkbox_transformer(self):
         """Test that fuzzy checkbox has transformer function."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = ["A", "B"]
             mock_fuzzy.return_value = mock_result
 
             result = fuzzy_checkbox("Choose", ["A", "B"])
             _, kwargs = mock_fuzzy.call_args
-            assert 'transformer' in kwargs
+            assert "transformer" in kwargs
             # Test transformer
-            transformer = kwargs['transformer']
+            transformer = kwargs["transformer"]
             assert "2 selected" in transformer(["A", "B"])
 
 
@@ -184,7 +168,7 @@ class TestFuzzySelect:
         """Test basic fuzzy select prompt."""
         choices = ["Option A", "Option B", "Option C"]
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = "Option B"
             mock_fuzzy.return_value = mock_result
@@ -194,7 +178,7 @@ class TestFuzzySelect:
 
     def test_fuzzy_select_with_default(self):
         """Test fuzzy select with default value."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = "B"
             mock_fuzzy.return_value = mock_result
@@ -204,7 +188,7 @@ class TestFuzzySelect:
 
     def test_fuzzy_select_keyboard_interrupt(self):
         """Test fuzzy select handles KeyboardInterrupt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_fuzzy.return_value = mock_result
@@ -214,25 +198,25 @@ class TestFuzzySelect:
 
     def test_fuzzy_select_multiselect_false(self):
         """Test that fuzzy_select has multiselect=False."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = "A"
             mock_fuzzy.return_value = mock_result
 
             fuzzy_select("Select", ["A", "B"])
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['multiselect'] is False
+            assert kwargs["multiselect"] is False
 
     def test_fuzzy_select_instruction(self):
         """Test fuzzy_select custom instruction."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.fuzzy') as mock_fuzzy:
+        with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
             mock_result.execute.return_value = "A"
             mock_fuzzy.return_value = mock_result
 
             fuzzy_select("Select", ["A"], instruction="Custom help")
             _, kwargs = mock_fuzzy.call_args
-            assert kwargs['instruction'] == "Custom help"
+            assert kwargs["instruction"] == "Custom help"
 
 
 class TestStyledCheckbox:
@@ -242,7 +226,7 @@ class TestStyledCheckbox:
         """Test basic styled checkbox prompt."""
         choices = ["Check 1", "Check 2"]
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.checkbox') as mock_checkbox:
+        with patch("moai_adk.cli.ui.prompts.inquirer.checkbox") as mock_checkbox:
             mock_result = MagicMock()
             mock_result.execute.return_value = ["Check 1"]
             mock_checkbox.return_value = mock_result
@@ -252,21 +236,19 @@ class TestStyledCheckbox:
 
     def test_styled_checkbox_with_default(self):
         """Test styled checkbox with default values."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.checkbox') as mock_checkbox:
+        with patch("moai_adk.cli.ui.prompts.inquirer.checkbox") as mock_checkbox:
             mock_result = MagicMock()
             mock_result.execute.return_value = ["Option A"]
             mock_checkbox.return_value = mock_result
 
             result = styled_checkbox(
-                "Choose",
-                ["Option A", "Option B"],
-                default=["Option A"]
+                "Choose", ["Option A", "Option B"], default=["Option A"]
             )
             assert result == ["Option A"]
 
     def test_styled_checkbox_keyboard_interrupt(self):
         """Test styled checkbox handles KeyboardInterrupt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.checkbox') as mock_checkbox:
+        with patch("moai_adk.cli.ui.prompts.inquirer.checkbox") as mock_checkbox:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_checkbox.return_value = mock_result
@@ -276,25 +258,25 @@ class TestStyledCheckbox:
 
     def test_styled_checkbox_cycle(self):
         """Test styled checkbox with cycle parameter."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.checkbox') as mock_checkbox:
+        with patch("moai_adk.cli.ui.prompts.inquirer.checkbox") as mock_checkbox:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_checkbox.return_value = mock_result
 
             styled_checkbox("Choose", ["A"], cycle=False)
             _, kwargs = mock_checkbox.call_args
-            assert kwargs['cycle'] is False
+            assert kwargs["cycle"] is False
 
     def test_styled_checkbox_instruction(self):
         """Test styled checkbox with custom instruction."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.checkbox') as mock_checkbox:
+        with patch("moai_adk.cli.ui.prompts.inquirer.checkbox") as mock_checkbox:
             mock_result = MagicMock()
             mock_result.execute.return_value = []
             mock_checkbox.return_value = mock_result
 
             styled_checkbox("Choose", ["A"], instruction="Help text")
             _, kwargs = mock_checkbox.call_args
-            assert kwargs['instruction'] == "Help text"
+            assert kwargs["instruction"] == "Help text"
 
 
 class TestStyledSelect:
@@ -302,7 +284,7 @@ class TestStyledSelect:
 
     def test_basic_styled_select(self):
         """Test basic styled select prompt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.select') as mock_select:
+        with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
             mock_result = MagicMock()
             mock_result.execute.return_value = "Option A"
             mock_select.return_value = mock_result
@@ -312,7 +294,7 @@ class TestStyledSelect:
 
     def test_styled_select_with_default(self):
         """Test styled select with default value."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.select') as mock_select:
+        with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
             mock_result = MagicMock()
             mock_result.execute.return_value = "B"
             mock_select.return_value = mock_result
@@ -322,7 +304,7 @@ class TestStyledSelect:
 
     def test_styled_select_keyboard_interrupt(self):
         """Test styled select handles KeyboardInterrupt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.select') as mock_select:
+        with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_select.return_value = mock_result
@@ -332,25 +314,25 @@ class TestStyledSelect:
 
     def test_styled_select_cycle(self):
         """Test styled select with cycle parameter."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.select') as mock_select:
+        with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
             mock_result = MagicMock()
             mock_result.execute.return_value = "A"
             mock_select.return_value = mock_result
 
             styled_select("Choose", ["A"], cycle=False)
             _, kwargs = mock_select.call_args
-            assert kwargs['cycle'] is False
+            assert kwargs["cycle"] is False
 
     def test_styled_select_instruction(self):
         """Test styled select with custom instruction."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.select') as mock_select:
+        with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
             mock_result = MagicMock()
             mock_result.execute.return_value = "A"
             mock_select.return_value = mock_result
 
             styled_select("Choose", ["A"], instruction="Navigate")
             _, kwargs = mock_select.call_args
-            assert kwargs['instruction'] == "Navigate"
+            assert kwargs["instruction"] == "Navigate"
 
 
 class TestStyledInput:
@@ -358,7 +340,7 @@ class TestStyledInput:
 
     def test_basic_styled_input(self):
         """Test basic styled input prompt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.return_value = "user input"
             mock_text.return_value = mock_result
@@ -368,7 +350,7 @@ class TestStyledInput:
 
     def test_styled_input_with_default(self):
         """Test styled input with default value."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.return_value = "default value"
             mock_text.return_value = mock_result
@@ -378,7 +360,7 @@ class TestStyledInput:
 
     def test_styled_input_keyboard_interrupt(self):
         """Test styled input handles KeyboardInterrupt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_text.return_value = mock_result
@@ -388,7 +370,7 @@ class TestStyledInput:
 
     def test_styled_input_required(self):
         """Test styled input with required field."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.return_value = "value"
             mock_text.return_value = mock_result
@@ -399,7 +381,7 @@ class TestStyledInput:
 
     def test_styled_input_optional(self):
         """Test styled input with optional field."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.return_value = ""
             mock_text.return_value = mock_result
@@ -412,25 +394,25 @@ class TestStyledInput:
         """Test styled input with custom validation."""
         validator = lambda x: len(x) > 3
 
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.return_value = "valid"
             mock_text.return_value = mock_result
 
             styled_input("Enter", validate=validator)
             _, kwargs = mock_text.call_args
-            assert kwargs['validate'] == validator
+            assert kwargs["validate"] == validator
 
     def test_styled_input_instruction(self):
         """Test styled input with instruction."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.text') as mock_text:
+        with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()
             mock_result.execute.return_value = "text"
             mock_text.return_value = mock_result
 
             styled_input("Enter", instruction="Type something")
             _, kwargs = mock_text.call_args
-            assert kwargs['instruction'] == "Type something"
+            assert kwargs["instruction"] == "Type something"
 
 
 class TestStyledConfirm:
@@ -438,7 +420,7 @@ class TestStyledConfirm:
 
     def test_basic_styled_confirm(self):
         """Test basic styled confirm prompt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.confirm') as mock_confirm:
+        with patch("moai_adk.cli.ui.prompts.inquirer.confirm") as mock_confirm:
             mock_result = MagicMock()
             mock_result.execute.return_value = True
             mock_confirm.return_value = mock_result
@@ -448,7 +430,7 @@ class TestStyledConfirm:
 
     def test_styled_confirm_with_default_false(self):
         """Test styled confirm with default=False."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.confirm') as mock_confirm:
+        with patch("moai_adk.cli.ui.prompts.inquirer.confirm") as mock_confirm:
             mock_result = MagicMock()
             mock_result.execute.return_value = False
             mock_confirm.return_value = mock_result
@@ -456,11 +438,11 @@ class TestStyledConfirm:
             result = styled_confirm("Proceed?", default=False)
             assert result is False
             _, kwargs = mock_confirm.call_args
-            assert kwargs['default'] is False
+            assert kwargs["default"] is False
 
     def test_styled_confirm_keyboard_interrupt(self):
         """Test styled confirm handles KeyboardInterrupt."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.confirm') as mock_confirm:
+        with patch("moai_adk.cli.ui.prompts.inquirer.confirm") as mock_confirm:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_confirm.return_value = mock_result
@@ -470,14 +452,14 @@ class TestStyledConfirm:
 
     def test_styled_confirm_instruction(self):
         """Test styled confirm with instruction."""
-        with patch('moai_adk.cli.ui.prompts.inquirer.confirm') as mock_confirm:
+        with patch("moai_adk.cli.ui.prompts.inquirer.confirm") as mock_confirm:
             mock_result = MagicMock()
             mock_result.execute.return_value = True
             mock_confirm.return_value = mock_result
 
             styled_confirm("Continue?", instruction="y/n")
             _, kwargs = mock_confirm.call_args
-            assert kwargs['instruction'] == "y/n"
+            assert kwargs["instruction"] == "y/n"
 
 
 class TestProcessChoices:
@@ -652,9 +634,7 @@ class TestCreateGroupedChoices:
 
     def test_grouped_choices_indented_names(self):
         """Test that choice names are indented in groups."""
-        groups = {
-            "Category": [{"name": "Item", "value": "item"}]
-        }
+        groups = {"Category": [{"name": "Item", "value": "item"}]}
         result = create_grouped_choices(groups)
 
         choices = [r for r in result if isinstance(r, Choice)]
@@ -680,14 +660,14 @@ class TestPromptsIntegration:
 
     def test_multiple_prompt_types(self):
         """Test using multiple prompt types in sequence."""
-        with patch('moai_adk.cli.ui.prompts.inquirer') as mock_inquirer:
+        with patch("moai_adk.cli.ui.prompts.inquirer") as mock_inquirer:
             mock_fuzzy = MagicMock()
             mock_fuzzy.execute.return_value = ["A"]
             mock_inquirer.fuzzy.return_value = mock_fuzzy
 
             result1 = fuzzy_checkbox("Select", ["A", "B"])
 
-            with patch('moai_adk.cli.ui.prompts.inquirer.select') as mock_select:
+            with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
                 mock_select_result = MagicMock()
                 mock_select_result.execute.return_value = "A"
                 mock_select.return_value = mock_select_result
@@ -713,12 +693,10 @@ class TestPromptsIntegration:
         """Test grouped choices with many items."""
         groups = {
             "Category A": [
-                {"name": f"Item {i}", "value": f"item_{i}"}
-                for i in range(10)
+                {"name": f"Item {i}", "value": f"item_{i}"} for i in range(10)
             ],
             "Category B": [
-                {"name": f"Option {i}", "value": f"option_{i}"}
-                for i in range(5)
+                {"name": f"Option {i}", "value": f"option_{i}"} for i in range(5)
             ],
         }
 

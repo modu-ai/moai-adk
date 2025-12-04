@@ -73,9 +73,7 @@ class TestExtractProjectMetadata:
     def test_extract_missing_config_file(self):
         """Test error when config file doesn't exist."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with pytest.raises(
-                FileNotFoundError, match="Config file not found"
-            ):
+            with pytest.raises(FileNotFoundError, match="Config file not found"):
                 extract_project_metadata(tmpdir)
 
     def test_extract_invalid_json(self):

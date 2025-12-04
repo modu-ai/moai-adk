@@ -96,9 +96,12 @@ class TestFindMainRepository:
     def test_find_main_repository_main_repo(self):
         """Test finding main repository when at main repo."""
         # Arrange
-        with patch("pathlib.Path.parent", new_callable=lambda: property(
-            lambda self: self if self.name == "repo" else Path("/test")
-        )):
+        with patch(
+            "pathlib.Path.parent",
+            new_callable=lambda: property(
+                lambda self: self if self.name == "repo" else Path("/test")
+            ),
+        ):
             test_path = Path("/test/repo")
 
             # Act
@@ -146,13 +149,17 @@ class TestGetManager:
 
         # Assert
         assert result == mock_manager
-        mock_manager_class.assert_called_once_with(repo_path=repo_path, worktree_root=worktree_root)
+        mock_manager_class.assert_called_once_with(
+            repo_path=repo_path, worktree_root=worktree_root
+        )
         mock_detect.assert_not_called()
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
     @patch("moai_adk.cli.worktree.cli.Path.cwd")
-    def test_get_manager_auto_detect_worktree_root(self, mock_cwd, mock_detect, mock_manager_class):
+    def test_get_manager_auto_detect_worktree_root(
+        self, mock_cwd, mock_detect, mock_manager_class
+    ):
         """Test get_manager auto-detects worktree root."""
         # Arrange
         mock_cwd.return_value = Path("/test/repo")
@@ -230,10 +237,14 @@ class TestNewWorktreeCommand:
         mock_get_manager.return_value = mock_manager
 
         # Act
-        result = runner.invoke(new_worktree, [
-            "SPEC-TEST-001",
-            "--branch", "custom-branch",
-        ])
+        result = runner.invoke(
+            new_worktree,
+            [
+                "SPEC-TEST-001",
+                "--branch",
+                "custom-branch",
+            ],
+        )
 
         # Assert
         assert result.exit_code == 0
@@ -255,10 +266,14 @@ class TestNewWorktreeCommand:
         mock_get_manager.return_value = mock_manager
 
         # Act
-        result = runner.invoke(new_worktree, [
-            "SPEC-TEST-001",
-            "--base", "develop",
-        ])
+        result = runner.invoke(
+            new_worktree,
+            [
+                "SPEC-TEST-001",
+                "--base",
+                "develop",
+            ],
+        )
 
         # Assert
         assert result.exit_code == 0
@@ -272,7 +287,9 @@ class TestNewWorktreeCommand:
         runner = CliRunner()
 
         mock_manager = MagicMock()
-        mock_manager.create.side_effect = WorktreeExistsError("Worktree already exists", Path("/test/path"))
+        mock_manager.create.side_effect = WorktreeExistsError(
+            "Worktree already exists", Path("/test/path")
+        )
         mock_get_manager.return_value = mock_manager
 
         # Act
@@ -355,13 +372,15 @@ class TestListWorktreesCommand:
         mock_worktree_info.path = Path("/test/worktrees/SPEC-TEST-001")
         mock_worktree_info.status = "active"
         mock_worktree_info.created_at = datetime.now().isoformat()
-        mock_worktree_info.to_dict = MagicMock(return_value={
-            "spec_id": "SPEC-TEST-001",
-            "branch": "spec-test-001",
-            "path": "/test/worktrees/SPEC-TEST-001",
-            "status": "active",
-            "created_at": datetime.now().isoformat(),
-        })
+        mock_worktree_info.to_dict = MagicMock(
+            return_value={
+                "spec_id": "SPEC-TEST-001",
+                "branch": "spec-test-001",
+                "path": "/test/worktrees/SPEC-TEST-001",
+                "status": "active",
+                "created_at": datetime.now().isoformat(),
+            }
+        )
 
         mock_manager = MagicMock()
         mock_manager.list.return_value = [mock_worktree_info]
@@ -450,10 +469,13 @@ class TestRemoveWorktreeCommand:
         mock_get_manager.return_value = mock_manager
 
         # Act
-        result = runner.invoke(remove_worktree, [
-            "SPEC-TEST-001",
-            "--force",
-        ])
+        result = runner.invoke(
+            remove_worktree,
+            [
+                "SPEC-TEST-001",
+                "--force",
+            ],
+        )
 
         # Assert
         assert result.exit_code == 0
@@ -467,7 +489,9 @@ class TestGetManagerWithPathFinding:
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
     @patch("moai_adk.cli.worktree.cli.Path")
-    def test_get_manager_finds_git_directory(self, mock_path_class, mock_detect, mock_manager_class):
+    def test_get_manager_finds_git_directory(
+        self, mock_path_class, mock_detect, mock_manager_class
+    ):
         """Test get_manager walks up to find .git directory."""
         # Arrange
         git_dir = Path("/test/repo/.git")

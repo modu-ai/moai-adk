@@ -83,7 +83,9 @@ class TestNewWorktreeCommand:
         mock_manager.create.return_value = worktree_info
 
         # Act
-        result = runner.invoke(worktree, ["new", "SPEC-002", "--branch", "custom-branch"])
+        result = runner.invoke(
+            worktree, ["new", "SPEC-002", "--branch", "custom-branch"]
+        )
 
         # Assert
         assert result.exit_code == 0
@@ -98,7 +100,9 @@ class TestNewWorktreeCommand:
         runner = CliRunner()
         mock_manager = MagicMock()
         mock_get_manager.return_value = mock_manager
-        mock_manager.create.side_effect = WorktreeExistsError("SPEC-001", Path("/tmp/SPEC-001"))
+        mock_manager.create.side_effect = WorktreeExistsError(
+            "SPEC-001", Path("/tmp/SPEC-001")
+        )
 
         # Act
         result = runner.invoke(worktree, ["new", "SPEC-001"])
@@ -633,7 +637,9 @@ class TestConfigWorktreeCommand:
         mock_manager = MagicMock()
         mock_get_manager.return_value = mock_manager
         mock_manager.worktree_root = Path("/tmp/worktrees")
-        mock_manager.registry.registry_path = Path("/tmp/worktrees/.moai-worktree-registry.json")
+        mock_manager.registry.registry_path = Path(
+            "/tmp/worktrees/.moai-worktree-registry.json"
+        )
 
         # Act
         result = runner.invoke(worktree, ["config"])
@@ -665,7 +671,9 @@ class TestConfigWorktreeCommand:
         runner = CliRunner()
         mock_manager = MagicMock()
         mock_get_manager.return_value = mock_manager
-        mock_manager.registry.registry_path = Path("/tmp/worktrees/.moai-worktree-registry.json")
+        mock_manager.registry.registry_path = Path(
+            "/tmp/worktrees/.moai-worktree-registry.json"
+        )
 
         # Act
         result = runner.invoke(worktree, ["config", "registry"])

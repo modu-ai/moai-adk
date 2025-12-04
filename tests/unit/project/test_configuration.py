@@ -178,7 +178,9 @@ class TestAutoDetectionEngine:
             mock_path = MagicMock()
             mock_cwd.return_value = mock_path
 
-            mock_path.__truediv__ = lambda self, x: MagicMock(exists=lambda: x == "pyproject.toml")
+            mock_path.__truediv__ = lambda self, x: MagicMock(
+                exists=lambda: x == "pyproject.toml"
+            )
             result = AutoDetectionEngine.detect_language()
             assert result == "python"
 
@@ -188,7 +190,9 @@ class TestAutoDetectionEngine:
             mock_path = MagicMock()
             mock_cwd.return_value = mock_path
 
-            mock_path.__truediv__ = lambda self, x: MagicMock(exists=lambda: x == "tsconfig.json")
+            mock_path.__truediv__ = lambda self, x: MagicMock(
+                exists=lambda: x == "tsconfig.json"
+            )
             result = AutoDetectionEngine.detect_language()
             assert result == "typescript"
 
@@ -279,14 +283,7 @@ class TestConditionalBatchRenderer:
     def test_get_visible_batches_with_true_condition(self):
         """Test get_visible_batches with true condition."""
         schema = {
-            "tabs": [
-                {
-                    "id": "tab_1",
-                    "batches": [
-                        {"id": "batch_1", "show_if": "true"}
-                    ]
-                }
-            ]
+            "tabs": [{"id": "tab_1", "batches": [{"id": "batch_1", "show_if": "true"}]}]
         }
         renderer = ConditionalBatchRenderer(schema)
         result = renderer.get_visible_batches("tab_1", {})
@@ -309,7 +306,7 @@ class TestConditionalBatchRenderer:
         renderer = ConditionalBatchRenderer({})
         result = renderer._safe_evaluate(
             "mode == 'personal' AND documentation_mode == 'full'",
-            {"mode": "personal", "documentation_mode": "full"}
+            {"mode": "personal", "documentation_mode": "full"},
         )
         assert result is True
 
@@ -317,8 +314,7 @@ class TestConditionalBatchRenderer:
         """Test _safe_evaluate with OR operator."""
         renderer = ConditionalBatchRenderer({})
         result = renderer._safe_evaluate(
-            "mode == 'personal' OR mode == 'team'",
-            {"mode": "personal"}
+            "mode == 'personal' OR mode == 'team'", {"mode": "personal"}
         )
         assert result is True
 
@@ -354,10 +350,7 @@ class TestTemplateVariableInterpolator:
     def test_interpolate_multiple_variables(self):
         """Test interpolate with multiple variables."""
         template = "User: {{user.name}}, Project: {{project.name}}"
-        config = {
-            "user": {"name": "GOOS"},
-            "project": {"name": "MoAI"}
-        }
+        config = {"user": {"name": "GOOS"}, "project": {"name": "MoAI"}}
         result = TemplateVariableInterpolator.interpolate(template, config)
         assert result == "User: GOOS, Project: MoAI"
 
@@ -371,7 +364,9 @@ class TestTemplateVariableInterpolator:
     def test_get_nested_value(self):
         """Test _get_nested_value method."""
         config = {"user": {"profile": {"name": "Test"}}}
-        result = TemplateVariableInterpolator._get_nested_value(config, "user.profile.name")
+        result = TemplateVariableInterpolator._get_nested_value(
+            config, "user.profile.name"
+        )
         assert result == "Test"
 
     def test_get_nested_value_missing(self):
@@ -418,18 +413,15 @@ class TestTabSchemaValidator:
             "tabs": [
                 {"id": "tab1", "batches": []},
                 {"id": "tab2", "batches": []},
-                {"id": "tab3", "batches": []}
-            ]
+                {"id": "tab3", "batches": []},
+            ],
         }
         result = TabSchemaValidator.validate(schema)
         assert len(result) == 0
 
     def test_validate_wrong_version(self):
         """Test validate with wrong version."""
-        schema = {
-            "version": "2.0.0",
-            "tabs": []
-        }
+        schema = {"version": "2.0.0", "tabs": []}
         result = TabSchemaValidator.validate(schema)
         assert len(result) > 0
 
@@ -437,10 +429,7 @@ class TestTabSchemaValidator:
         """Test validate with wrong tab count."""
         schema = {
             "version": "3.0.0",
-            "tabs": [
-                {"id": "tab1", "batches": []},
-                {"id": "tab2", "batches": []}
-            ]
+            "tabs": [{"id": "tab1", "batches": []}, {"id": "tab2", "batches": []}],
         }
         result = TabSchemaValidator.validate(schema)
         assert len(result) > 0

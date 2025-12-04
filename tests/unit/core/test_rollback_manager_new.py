@@ -164,7 +164,9 @@ class TestRollbackManagerRollback:
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("moai_adk.core.rollback_manager.RollbackManager._validate_rollback_point")
     @patch("moai_adk.core.rollback_manager.RollbackManager._perform_rollback")
-    @patch("moai_adk.core.rollback_manager.RollbackManager._validate_system_after_rollback")
+    @patch(
+        "moai_adk.core.rollback_manager.RollbackManager._validate_system_after_rollback"
+    )
     @patch("moai_adk.core.rollback_manager.RollbackManager._mark_rollback_as_used")
     def test_rollback_to_point_success(
         self,
@@ -189,9 +191,17 @@ class TestRollbackManagerRollback:
             }
         }
         mock_load.return_value = registry
-        mock_validate_before.return_value = {"valid": True, "message": "OK", "warnings": []}
+        mock_validate_before.return_value = {
+            "valid": True,
+            "message": "OK",
+            "warnings": [],
+        }
         mock_perform.return_value = (["file1.py"], [])
-        mock_validate_after.return_value = {"config_valid": True, "research_valid": True, "issues": []}
+        mock_validate_after.return_value = {
+            "config_valid": True,
+            "research_valid": True,
+            "issues": [],
+        }
 
         manager = RollbackManager(project_root=Path("/test"))
         result = manager.rollback_to_point("test_rollback")
@@ -389,7 +399,11 @@ class TestRollbackManagerBackupMethods:
     def test_backup_configuration(self, mock_copy, mock_exists, mock_load, mock_mkdir):
         """Test _backup_configuration method."""
         mock_load.return_value = {}
-        mock_exists.side_effect = [True, True, False]  # config.json, settings.json, settings.local.json
+        mock_exists.side_effect = [
+            True,
+            True,
+            False,
+        ]  # config.json, settings.json, settings.local.json
 
         manager = RollbackManager(project_root=Path("/test"))
         result = manager._backup_configuration(Path("/backup"))
@@ -400,7 +414,9 @@ class TestRollbackManagerBackupMethods:
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("moai_adk.core.rollback_manager.Path.exists")
     @patch("moai_adk.core.rollback_manager.shutil.copytree")
-    def test_backup_research_components(self, mock_copytree, mock_exists, mock_load, mock_mkdir):
+    def test_backup_research_components(
+        self, mock_copytree, mock_exists, mock_load, mock_mkdir
+    ):
         """Test _backup_research_components method."""
         mock_load.return_value = {}
         mock_exists.return_value = True
@@ -451,8 +467,12 @@ class TestRollbackManagerResearchRollback:
 
     @patch("moai_adk.core.rollback_manager.Path.mkdir")
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
-    @patch("moai_adk.core.rollback_manager.RollbackManager._find_research_rollback_points")
-    def test_rollback_research_integration_no_points(self, mock_find, mock_load, mock_mkdir):
+    @patch(
+        "moai_adk.core.rollback_manager.RollbackManager._find_research_rollback_points"
+    )
+    def test_rollback_research_integration_no_points(
+        self, mock_find, mock_load, mock_mkdir
+    ):
         """Test research rollback when no suitable points found."""
         mock_load.return_value = {}
         mock_find.return_value = []

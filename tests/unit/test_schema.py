@@ -1,7 +1,12 @@
 """Tests for moai_adk.project.schema module."""
 
 import pytest
-from moai_adk.project.schema import load_tab_schema, _create_tab1_quick_start, _create_tab2_documentation, _create_tab3_git_automation
+from moai_adk.project.schema import (
+    load_tab_schema,
+    _create_tab1_quick_start,
+    _create_tab2_documentation,
+    _create_tab3_git_automation,
+)
 
 
 class TestTabSchemaLoading:
@@ -91,7 +96,10 @@ class TestTabSchemaLoading:
         tab = _create_tab3_git_automation()
         personal_batch = tab["batches"][0]
         assert "show_if" in personal_batch
-        assert "git_strategy_mode == 'personal' OR git_strategy_mode == 'hybrid'" in personal_batch["show_if"]
+        assert (
+            "git_strategy_mode == 'personal' OR git_strategy_mode == 'hybrid'"
+            in personal_batch["show_if"]
+        )
 
     def test_tab3_team_batch_conditional(self):
         """Test Tab 3 team batch conditional logic."""

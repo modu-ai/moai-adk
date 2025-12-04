@@ -30,7 +30,7 @@ class TestGitInfo:
             version="2.40.0",
             supports_switch=True,
             supports_worktree=True,
-            modern_features=["switch", "worktree"]
+            modern_features=["switch", "worktree"],
         )
         assert info.supports_switch is True
         assert info.supports_worktree is True
@@ -178,9 +178,7 @@ class TestBranchingStrategySelector:
         """Test select_strategy for team environment."""
         selector = BranchingStrategySelector()
         strategy = selector.select_strategy(
-            team_size=3,
-            risk_level="high",
-            need_review=True
+            team_size=3, risk_level="high", need_review=True
         )
         assert strategy == "feature_branch"
 
@@ -188,9 +186,7 @@ class TestBranchingStrategySelector:
         """Test select_strategy for solo developer."""
         selector = BranchingStrategySelector()
         strategy = selector.select_strategy(
-            team_size=1,
-            risk_level="low",
-            need_review=False
+            team_size=1, risk_level="low", need_review=False
         )
         assert strategy == "direct_commit"
 
@@ -198,9 +194,7 @@ class TestBranchingStrategySelector:
         """Test select_strategy defaults to per_spec."""
         selector = BranchingStrategySelector()
         strategy = selector.select_strategy(
-            team_size=1,
-            risk_level="medium",
-            need_review=False
+            team_size=1, risk_level="medium", need_review=False
         )
         assert strategy in ["direct_commit", "per_spec"]
 
@@ -232,18 +226,14 @@ class TestGitWorkflowManager:
     def test_format_tdd_commit_red(self):
         """Test format_tdd_commit for RED phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_tdd_commit(
-            "test", "auth", "add login tests", "RED"
-        )
+        commit = manager.format_tdd_commit("test", "auth", "add login tests", "RED")
         assert "test(auth): add login tests" in commit
         assert "RED phase" in commit
 
     def test_format_tdd_commit_green(self):
         """Test format_tdd_commit for GREEN phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_tdd_commit(
-            "feat", "auth", "implement login", "GREEN"
-        )
+        commit = manager.format_tdd_commit("feat", "auth", "implement login", "GREEN")
         assert "feat(auth): implement login" in commit
         assert "GREEN phase" in commit
 

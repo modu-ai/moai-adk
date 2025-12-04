@@ -44,7 +44,9 @@ class TestInteractiveCheckboxUIInitialization:
     def test_init_scanner_created(self):
         """Test scanner is created during initialization."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
+            with patch(
+                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
+            ):
                 ui = InteractiveCheckboxUI(tmpdir)
                 assert hasattr(ui, "scanner")
 
@@ -82,7 +84,11 @@ class TestInteractiveCheckboxUIGetElementsByCategory:
             mock_skill.path = Path(tmpdir) / "skills" / "test-skill"
             mock_skill.is_template = False
 
-            with patch.object(ui.scanner, "scan_custom_elements", return_value={"skills": [mock_skill]}):
+            with patch.object(
+                ui.scanner,
+                "scan_custom_elements",
+                return_value={"skills": [mock_skill]},
+            ):
                 result = ui._get_elements_by_category()
                 assert "Skills" in result
 
@@ -94,7 +100,9 @@ class TestInteractiveCheckboxUIGetElementsByCategory:
             with patch.object(
                 ui.scanner,
                 "scan_custom_elements",
-                return_value={"agents": [str(Path(tmpdir) / "agents" / "test-agent.md")]}
+                return_value={
+                    "agents": [str(Path(tmpdir) / "agents" / "test-agent.md")]
+                },
             ):
                 result = ui._get_elements_by_category()
                 assert "Agents" in result
@@ -107,7 +115,9 @@ class TestInteractiveCheckboxUIGetElementsByCategory:
             with patch.object(
                 ui.scanner,
                 "scan_custom_elements",
-                return_value={"commands": [str(Path(tmpdir) / "commands" / "test-cmd.md")]}
+                return_value={
+                    "commands": [str(Path(tmpdir) / "commands" / "test-cmd.md")]
+                },
             ):
                 result = ui._get_elements_by_category()
                 assert "Commands" in result
@@ -120,7 +130,7 @@ class TestInteractiveCheckboxUIGetElementsByCategory:
             with patch.object(
                 ui.scanner,
                 "scan_custom_elements",
-                return_value={"hooks": [str(Path(tmpdir) / "hooks" / "test-hook.py")]}
+                return_value={"hooks": [str(Path(tmpdir) / "hooks" / "test-hook.py")]},
             ):
                 result = ui._get_elements_by_category()
                 assert "Hooks" in result
@@ -188,7 +198,9 @@ class TestInteractiveCheckboxUIFlattenElements:
             ui = InteractiveCheckboxUI(tmpdir)
 
             elements_by_category = {
-                "Skills": [{"name": "test-skill", "path": "/test/path/skill", "type": "skill"}]
+                "Skills": [
+                    {"name": "test-skill", "path": "/test/path/skill", "type": "skill"}
+                ]
             }
 
             result = ui._flatten_elements(elements_by_category)
@@ -357,8 +369,6 @@ class TestInteractiveCheckboxUISelection:
             assert len(ui.selected_indices) == 0
 
 
-
-
 class TestInteractiveCheckboxUIGetElementType:
     """Test _get_element_type() method."""
 
@@ -445,7 +455,6 @@ class TestInteractiveCheckboxUIPromptUserSelection:
             with patch.object(ui, "_get_elements_by_category", return_value={}):
                 result = ui.prompt_user_selection()
                 assert result is None
-
 
     def test_prompt_user_selection_curses_unavailable_uses_fallback(self):
         """Test fallback when curses not available."""

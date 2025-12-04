@@ -12,6 +12,7 @@ class TestProjectConfiguration:
         """Test that module can be imported."""
         try:
             from moai_adk.project.configuration import ProjectConfiguration
+
             assert ProjectConfiguration is not None
         except ImportError:
             pytest.skip("Module not available")
@@ -20,6 +21,7 @@ class TestProjectConfiguration:
         """Test configuration can be instantiated."""
         try:
             from moai_adk.project.configuration import ProjectConfiguration
+
             config = ProjectConfiguration()
             assert config is not None
         except (ImportError, Exception):
@@ -29,6 +31,7 @@ class TestProjectConfiguration:
         """Test that load method exists."""
         try:
             from moai_adk.project.configuration import ProjectConfiguration
+
             config = ProjectConfiguration()
             assert hasattr(config, "load")
         except (ImportError, Exception):
@@ -38,6 +41,7 @@ class TestProjectConfiguration:
         """Test that save method exists."""
         try:
             from moai_adk.project.configuration import ProjectConfiguration
+
             config = ProjectConfiguration()
             assert hasattr(config, "save")
         except (ImportError, Exception):
@@ -51,6 +55,7 @@ class TestConfigurationPaths:
         """Test config path property."""
         try:
             from moai_adk.project.configuration import ProjectConfiguration
+
             config = ProjectConfiguration()
             if hasattr(config, "config_path"):
                 assert config.config_path is not None
@@ -65,6 +70,7 @@ class TestConfigurationDefaults:
         """Test that default config has expected structure."""
         try:
             from moai_adk.project.configuration import ProjectConfiguration
+
             config = ProjectConfiguration()
             # Configuration should have some default values
             assert hasattr(config, "config_path") or hasattr(config, "load")

@@ -27,6 +27,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(tmpdir)
 
                 # Act
@@ -60,6 +61,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -93,6 +95,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -129,6 +132,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -158,6 +162,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -171,7 +176,6 @@ class TestStatusCommand:
 
             finally:
                 os.chdir(original_cwd)
-
 
     def test_status_with_multiple_specs(self):
         """Test status command with multiple SPEC documents."""
@@ -187,7 +191,13 @@ class TestStatusCommand:
 
             # Create multiple SPEC files
             specs_dir = project_path / ".moai" / "specs"
-            spec_ids = ["SPEC-AUTH-001", "SPEC-DB-001", "SPEC-API-001", "SPEC-UI-001", "SPEC-TEST-001"]
+            spec_ids = [
+                "SPEC-AUTH-001",
+                "SPEC-DB-001",
+                "SPEC-API-001",
+                "SPEC-UI-001",
+                "SPEC-TEST-001",
+            ]
             for spec_id in spec_ids:
                 spec_path = specs_dir / spec_id
                 spec_path.mkdir(parents=True, exist_ok=True)
@@ -196,6 +206,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -227,6 +238,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -261,6 +273,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -276,7 +289,6 @@ class TestStatusCommand:
 
             finally:
                 os.chdir(original_cwd)
-
 
     def test_status_with_empty_locale(self):
         """Test status with empty locale."""
@@ -298,6 +310,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -326,6 +339,7 @@ class TestStatusCommand:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -362,6 +376,7 @@ class TestStatusEdgeCases:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act
@@ -401,6 +416,7 @@ class TestStatusEdgeCases:
             original_cwd = Path.cwd()
             try:
                 import os
+
                 os.chdir(project_path)
 
                 # Act

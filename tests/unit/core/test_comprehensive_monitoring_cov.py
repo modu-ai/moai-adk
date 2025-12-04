@@ -739,7 +739,9 @@ class TestPerformanceMonitor:
 
         monitor.add_custom_metric(MetricType.CPU_USAGE, 75.5, tags={"host": "server1"})
 
-        metrics = monitor.metrics_collector.get_metrics(metric_type=MetricType.CPU_USAGE)
+        metrics = monitor.metrics_collector.get_metrics(
+            metric_type=MetricType.CPU_USAGE
+        )
         assert len(metrics) > 0
 
     @patch("moai_adk.core.comprehensive_monitoring_system.psutil")
@@ -789,7 +791,9 @@ class TestComprehensiveMonitoringSystem:
     def test_load_config_file_exists(self, mock_exists, mock_open):
         """Test loading config when file exists"""
         mock_exists.return_value = True
-        mock_open.return_value.__enter__.return_value.read.return_value = '{"buffer_size": 5000}'
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            '{"buffer_size": 5000}'
+        )
 
         system = ComprehensiveMonitoringSystem()
         config = system._load_config()

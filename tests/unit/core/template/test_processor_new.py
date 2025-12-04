@@ -230,7 +230,10 @@ class TestTemplateProcessor:
             # Act & Assert
             assert processor._format_display_version("1.2.3") == "MoAI-ADK v1.2.3"
             assert processor._format_display_version("v1.2.3") == "MoAI-ADK v1.2.3"
-            assert processor._format_display_version("unknown") == "MoAI-ADK unknown version"
+            assert (
+                processor._format_display_version("unknown")
+                == "MoAI-ADK unknown version"
+            )
 
     def test_format_trimmed_version_respects_max_length(self):
         """Test _format_trimmed_version respects maximum length."""
@@ -314,7 +317,9 @@ class TestTemplateProcessor:
 
             # Act & Assert
             assert processor._is_valid_template_variable("VALID_NAME", "value") is True
-            assert processor._is_valid_template_variable("invalid-name", "value") is False
+            assert (
+                processor._is_valid_template_variable("invalid-name", "value") is False
+            )
 
     def test_is_valid_template_variable_validates_length(self):
         """Test _is_valid_template_variable validates variable length."""
@@ -372,7 +377,7 @@ class TestTemplateProcessor:
             processor = TemplateProcessor(Path(temp_dir))
 
             # Act
-            with patch.object(processor, '_get_version_reader') as mock_reader:
+            with patch.object(processor, "_get_version_reader") as mock_reader:
                 mock_reader_instance = MagicMock()
                 mock_reader.return_value = mock_reader_instance
                 mock_reader_instance.get_version.return_value = "1.0.0"
@@ -393,7 +398,7 @@ class TestTemplateProcessor:
             processor = TemplateProcessor(Path(temp_dir))
 
             # Act
-            with patch.object(processor, '_get_version_reader') as mock_reader:
+            with patch.object(processor, "_get_version_reader") as mock_reader:
                 mock_reader_instance = MagicMock()
                 mock_reader.return_value = mock_reader_instance
                 mock_reader_instance.get_version.side_effect = Exception("Read error")
@@ -459,6 +464,7 @@ class TestTemplateProcessor:
             # Assert
             assert dst_file.exists()
             import stat
+
             mode = dst_file.stat().st_mode
             assert mode & stat.S_IXUSR
 
@@ -559,7 +565,9 @@ class TestTemplateProcessor:
             processor = TemplateProcessor(Path(temp_dir))
 
             # Act
-            with patch.object(processor.backup, 'has_existing_files', return_value=True):
+            with patch.object(
+                processor.backup, "has_existing_files", return_value=True
+            ):
                 result = processor._has_existing_files()
 
             # Assert
@@ -572,7 +580,9 @@ class TestTemplateProcessor:
             processor = TemplateProcessor(Path(temp_dir))
 
             # Act
-            with patch.object(processor.backup, 'create_backup', return_value=Path("backup")):
+            with patch.object(
+                processor.backup, "create_backup", return_value=Path("backup")
+            ):
                 result = processor.create_backup()
 
             # Assert

@@ -36,7 +36,11 @@ class TestTemplateProcessor:
             target_path = Path(temp_dir)
             processor = TemplateProcessor(target_path)
 
-            context = {"PROJECT_NAME": "test-project", "AUTHOR": "Test Author", "CONVERSATION_LANGUAGE": "ko"}
+            context = {
+                "PROJECT_NAME": "test-project",
+                "AUTHOR": "Test Author",
+                "CONVERSATION_LANGUAGE": "ko",
+            }
             processor.set_context(context)
             assert processor.context == context
 
@@ -80,7 +84,11 @@ class TestTemplateProcessor:
             target_path = Path(temp_dir)
             processor = TemplateProcessor(target_path)
 
-            context = {"PROJECT_NAME": "test-project", "AUTHOR": "Test Author", "VERSION": "1.0.0"}
+            context = {
+                "PROJECT_NAME": "test-project",
+                "AUTHOR": "Test Author",
+                "VERSION": "1.0.0",
+            }
             processor.set_context(context)
 
             content = "{{PROJECT_NAME}} by {{AUTHOR}}, version {{VERSION}}"
@@ -140,8 +148,12 @@ class TestTemplateProcessor:
             value = "test\n\r\tvalue{{placeholder}}"
             sanitized = processor._sanitize_value(value)
 
-            assert "{{placeholder}}" not in sanitized  # Recursive substitution prevented
-            assert "\n" in sanitized and "\r" in sanitized and "\t" in sanitized  # Whitespace preserved
+            assert (
+                "{{placeholder}}" not in sanitized
+            )  # Recursive substitution prevented
+            assert (
+                "\n" in sanitized and "\r" in sanitized and "\t" in sanitized
+            )  # Whitespace preserved
 
     def test_is_text_file(self):
         """Test text file detection."""
@@ -368,8 +380,12 @@ Content here
 
             # Test unsupported extensions
             assert processor._is_text_file(Path("test.unknown")) is False
-            assert processor._is_text_file(Path("test.cpp")) is False  # Not in default list
-            assert processor._is_text_file(Path("test.java")) is False  # Not in default list
+            assert (
+                processor._is_text_file(Path("test.cpp")) is False
+            )  # Not in default list
+            assert (
+                processor._is_text_file(Path("test.java")) is False
+            )  # Not in default list
 
     def test_substitute_variables_empty_context(self):
         """Test variable substitution with empty context."""
@@ -397,7 +413,10 @@ Content here
             processor = TemplateProcessor(target_path)
 
             # Test with value that contains problematic characters
-            context = {"PROJECT_NAME": "test\nproject\r{{BAD}}", "SAFE_VALUE": "normal_value"}
+            context = {
+                "PROJECT_NAME": "test\nproject\r{{BAD}}",
+                "SAFE_VALUE": "normal_value",
+            }
             processor.set_context(context)
 
             content = "{{PROJECT_NAME}} and {{SAFE_VALUE}}"

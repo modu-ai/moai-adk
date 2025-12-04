@@ -223,7 +223,9 @@ class TestCacheSystem:
                 cache.set("   ", "value")
 
             # Test invalid value (non-serializable)
-            with pytest.raises(TypeError, match="Cache value must be JSON serializable"):
+            with pytest.raises(
+                TypeError, match="Cache value must be JSON serializable"
+            ):
                 cache.set("bad_key", lambda x: x)
 
             # Test invalid TTL

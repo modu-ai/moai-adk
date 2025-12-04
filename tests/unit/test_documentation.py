@@ -96,7 +96,11 @@ class TestGenerateProductMd:
 
         content = gen.generate_product_md(responses)
 
-        assert "AI Analysis" in content or "AI analysis" in content or "Insights" in content
+        assert (
+            "AI Analysis" in content
+            or "AI analysis" in content
+            or "Insights" in content
+        )
 
     def test_generate_product_md_partial_responses(self):
         """Test product.md with partial responses."""
@@ -466,7 +470,9 @@ class TestAgentContextInjector:
             base_path = Path(tmpdir)
             (base_path / "product.md").write_text("# Product", encoding="utf-8")
 
-            result = AgentContextInjector.inject_project_manager_context(agent_config, base_path)
+            result = AgentContextInjector.inject_project_manager_context(
+                agent_config, base_path
+            )
 
             # Should contain both existing and new context
             assert "Existing context" in result["system_context"]
@@ -478,7 +484,9 @@ class TestAgentContextInjector:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
-            result = AgentContextInjector.inject_tdd_implementer_context(agent_config, base_path)
+            result = AgentContextInjector.inject_tdd_implementer_context(
+                agent_config, base_path
+            )
 
             assert result is not agent_config
             assert isinstance(result, dict)

@@ -241,7 +241,9 @@ class TestNewWorktreeCommand:
         # Arrange
         runner = CliRunner()
         mock_manager = MagicMock()
-        mock_manager.create.side_effect = WorktreeExistsError("SPEC-001", Path("/mock/worktree"))
+        mock_manager.create.side_effect = WorktreeExistsError(
+            "SPEC-001", Path("/mock/worktree")
+        )
         mock_get_manager.return_value = mock_manager
 
         # Act

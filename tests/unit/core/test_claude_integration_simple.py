@@ -127,9 +127,7 @@ class TestProcessTemplateCommand:
         """Test successful template command processing."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_run.return_value = Mock(
-            returncode=0, stdout="Hello World", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="Hello World", stderr="")
 
         command_template = "Hello {{name}}"
         variables = {"name": "World"}
@@ -149,9 +147,7 @@ class TestProcessTemplateCommand:
         """Test template processing with print mode."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_run.return_value = Mock(
-            returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         command_template = "test"
         variables = {}
@@ -172,9 +168,7 @@ class TestProcessTemplateCommand:
         """Test template processing with different output formats."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_run.return_value = Mock(
-            returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         command_template = "test"
         variables = {}
@@ -194,17 +188,13 @@ class TestProcessTemplateCommand:
         """Test error handling in template processing."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_run.return_value = Mock(
-            returncode=1, stdout="", stderr="Error occurred"
-        )
+        mock_run.return_value = Mock(returncode=1, stdout="", stderr="Error occurred")
 
         command_template = "test"
         variables = {}
 
         # Act
-        result = integration.process_template_command(
-            command_template, variables
-        )
+        result = integration.process_template_command(command_template, variables)
 
         # Assert
         assert result["success"] is False
@@ -221,9 +211,7 @@ class TestProcessTemplateCommand:
         variables = {}
 
         # Act
-        result = integration.process_template_command(
-            command_template, variables
-        )
+        result = integration.process_template_command(command_template, variables)
 
         # Assert
         assert result["success"] is False
@@ -233,7 +221,9 @@ class TestProcessTemplateCommand:
 class TestGenerateMultilingualDescriptions:
     """Test generate_multilingual_descriptions method."""
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command"
+    )
     def test_generate_descriptions_default_languages(self, mock_process):
         """Test generating descriptions with default languages."""
         # Arrange
@@ -243,15 +233,15 @@ class TestGenerateMultilingualDescriptions:
         base_descriptions = {"cmd1": "Test command"}
 
         # Act
-        result = integration.generate_multilingual_descriptions(
-            base_descriptions
-        )
+        result = integration.generate_multilingual_descriptions(base_descriptions)
 
         # Assert
         assert "cmd1" in result
         assert result["cmd1"]["en"] == "Test command"
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command"
+    )
     def test_generate_descriptions_custom_languages(self, mock_process):
         """Test generating descriptions with custom languages."""
         # Arrange
@@ -270,7 +260,9 @@ class TestGenerateMultilingualDescriptions:
         assert "cmd1" in result
         assert result["cmd1"]["en"] == "Test"
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command"
+    )
     def test_generate_descriptions_failed_translation(self, mock_process):
         """Test handling of failed translation."""
         # Arrange
@@ -289,7 +281,9 @@ class TestGenerateMultilingualDescriptions:
         assert "en" in result["cmd1"]
 
     @patch("moai_adk.core.claude_integration.get_language_info")
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.process_template_command"
+    )
     def test_generate_descriptions_skips_unsupported_language(
         self, mock_process, mock_lang_info
     ):
@@ -313,14 +307,14 @@ class TestGenerateMultilingualDescriptions:
 class TestCreateAgentWithMultilingualSupport:
     """Test create_agent_with_multilingual_support method."""
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions"
+    )
     def test_create_agent_basic(self, mock_generate):
         """Test creating agent with basic parameters."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_generate.return_value = {
-            "test-agent": {"en": "Test agent description"}
-        }
+        mock_generate.return_value = {"test-agent": {"en": "Test agent description"}}
 
         # Act
         result = integration.create_agent_with_multilingual_support(
@@ -332,14 +326,14 @@ class TestCreateAgentWithMultilingualSupport:
         assert result["model"] == "sonnet"
         assert "tools" in result
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions"
+    )
     def test_create_agent_custom_model(self, mock_generate):
         """Test creating agent with custom model."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_generate.return_value = {
-            "test-agent": {"en": "Test"}
-        }
+        mock_generate.return_value = {"test-agent": {"en": "Test"}}
 
         # Act
         result = integration.create_agent_with_multilingual_support(
@@ -349,14 +343,14 @@ class TestCreateAgentWithMultilingualSupport:
         # Assert
         assert result["model"] == "opus"
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions"
+    )
     def test_create_agent_custom_languages(self, mock_generate):
         """Test creating agent with custom languages."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_generate.return_value = {
-            "test-agent": {"en": "Test"}
-        }
+        mock_generate.return_value = {"test-agent": {"en": "Test"}}
 
         # Act
         result = integration.create_agent_with_multilingual_support(
@@ -370,14 +364,14 @@ class TestCreateAgentWithMultilingualSupport:
 class TestCreateCommandWithMultilingualSupport:
     """Test create_command_with_multilingual_support method."""
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions"
+    )
     def test_create_command_basic(self, mock_generate):
         """Test creating command with basic parameters."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_generate.return_value = {
-            "test-cmd": {"en": "Test command"}
-        }
+        mock_generate.return_value = {"test-cmd": {"en": "Test command"}}
 
         # Act
         result = integration.create_command_with_multilingual_support(
@@ -389,14 +383,14 @@ class TestCreateCommandWithMultilingualSupport:
         assert result["model"] == "haiku"
         assert result["argument-hint"] == ["arg1"]
 
-    @patch("moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions")
+    @patch(
+        "moai_adk.core.claude_integration.ClaudeCLIIntegration.generate_multilingual_descriptions"
+    )
     def test_create_command_custom_model(self, mock_generate):
         """Test creating command with custom model."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_generate.return_value = {
-            "test-cmd": {"en": "Test"}
-        }
+        mock_generate.return_value = {"test-cmd": {"en": "Test"}}
 
         # Act
         result = integration.create_command_with_multilingual_support(
@@ -502,9 +496,7 @@ class TestExecuteHeadlessCommand:
         """Test executing with additional CLI options."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_run.return_value = Mock(
-            returncode=0, stdout="output", stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="output", stderr="")
 
         prompt_template = "test"
         variables = {}
@@ -525,17 +517,13 @@ class TestExecuteHeadlessCommand:
         """Test error handling in headless command execution."""
         # Arrange
         integration = ClaudeCLIIntegration()
-        mock_run.return_value = Mock(
-            returncode=1, stdout="", stderr="Error message"
-        )
+        mock_run.return_value = Mock(returncode=1, stdout="", stderr="Error message")
 
         prompt_template = "test"
         variables = {}
 
         # Act
-        result = integration.execute_headless_command(
-            prompt_template, variables
-        )
+        result = integration.execute_headless_command(prompt_template, variables)
 
         # Assert
         assert result["success"] is False

@@ -209,9 +209,9 @@ class TestLatestVersionDetection:
         """Test successfully fetching latest version from PyPI."""
         # Arrange
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
-            "info": {"version": "0.7.0"}
-        }).encode("utf-8")
+        mock_response.read.return_value = json.dumps(
+            {"info": {"version": "0.7.0"}}
+        ).encode("utf-8")
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
@@ -239,6 +239,7 @@ class TestLatestVersionDetection:
         """Test handling network error when fetching from PyPI."""
         # Arrange
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.URLError("Network unreachable")
 
         # Act & Assert
@@ -493,7 +494,7 @@ class TestDetectToolInstaller:
         # Arrange
         mock_uv.return_value = True
         mock_pipx.return_value = True  # Also true but should be ignored
-        mock_pip.return_value = True   # Also true but should be ignored
+        mock_pip.return_value = True  # Also true but should be ignored
 
         # Act
         result = _detect_tool_installer()
@@ -553,9 +554,8 @@ class TestProjectConfigVersion:
         """Test reading version from template_version field."""
         # Arrange
         import tempfile
-        config_data = {
-            "project": {"template_version": "0.7.2"}
-        }
+
+        config_data = {"project": {"template_version": "0.7.2"}}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             project_path = Path(tmpdir)
@@ -574,9 +574,8 @@ class TestProjectConfigVersion:
         """Test reading version from moai.version field as fallback."""
         # Arrange
         import tempfile
-        config_data = {
-            "moai": {"version": "0.6.5"}
-        }
+
+        config_data = {"moai": {"version": "0.6.5"}}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             project_path = Path(tmpdir)
@@ -595,9 +594,8 @@ class TestProjectConfigVersion:
         """Test when version field contains unsubstituted placeholder."""
         # Arrange
         import tempfile
-        config_data = {
-            "project": {"template_version": "{{VERSION}}"}
-        }
+
+        config_data = {"project": {"template_version": "{{VERSION}}"}}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             project_path = Path(tmpdir)

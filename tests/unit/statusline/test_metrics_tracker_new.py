@@ -48,11 +48,16 @@ class TestMetricsTrackerGetDuration:
                 datetime(2024, 1, 1, 12, 0, 30),  # cache check
             ]
             mock_datetime.now = mock_now.now
-            mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+            mock_datetime.side_effect = lambda *args, **kwargs: datetime(
+                *args, **kwargs
+            )
 
             tracker = MetricsTracker()
             tracker._session_start = datetime(2024, 1, 1, 12, 0, 0)
-            with patch("moai_adk.statusline.metrics_tracker.datetime.now", return_value=datetime(2024, 1, 1, 12, 0, 30)):
+            with patch(
+                "moai_adk.statusline.metrics_tracker.datetime.now",
+                return_value=datetime(2024, 1, 1, 12, 0, 30),
+            ):
                 result = tracker.get_duration()
                 assert "30s" in result
 
@@ -329,7 +334,9 @@ class TestMetricsTrackerIntegration:
     def test_long_running_session_tracking(self):
         """Test tracking over simulated long session."""
         tracker = MetricsTracker()
-        tracker._session_start = datetime.now() - timedelta(hours=3, minutes=45, seconds=30)
+        tracker._session_start = datetime.now() - timedelta(
+            hours=3, minutes=45, seconds=30
+        )
         result = tracker.get_duration()
         assert "h" in result
         assert "m" in result

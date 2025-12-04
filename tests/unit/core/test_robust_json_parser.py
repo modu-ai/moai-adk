@@ -61,7 +61,7 @@ class TestParseValidJSON:
     def test_parse_simple_array(self):
         """Test parsing a simple JSON array."""
         parser = RobustJSONParser()
-        json_str = '[1, 2, 3]'
+        json_str = "[1, 2, 3]"
 
         result = parser.parse(json_str)
 
@@ -125,7 +125,7 @@ class TestParseInvalidJSON:
     def test_parse_empty_string(self):
         """Test parsing empty string."""
         parser = RobustJSONParser()
-        json_str = ''
+        json_str = ""
 
         result = parser.parse(json_str)
 
@@ -134,7 +134,7 @@ class TestParseInvalidJSON:
     def test_parse_whitespace_only(self):
         """Test parsing whitespace only."""
         parser = RobustJSONParser()
-        json_str = '   \n  \t  '
+        json_str = "   \n  \t  "
 
         result = parser.parse(json_str)
 
@@ -143,7 +143,7 @@ class TestParseInvalidJSON:
     def test_parse_invalid_json_returns_error(self):
         """Test that truly invalid JSON is marked as error."""
         parser = RobustJSONParser()
-        json_str = '{{{invalid'
+        json_str = "{{{invalid"
 
         result = parser.parse(json_str)
 
@@ -298,7 +298,7 @@ class TestParserRecovery:
     def test_recovery_attempts_within_limit(self):
         """Test that recovery stays within max attempts."""
         parser = RobustJSONParser(max_recovery_attempts=2)
-        very_invalid = '{{{{{'
+        very_invalid = "{{{{{"
 
         result = parser.parse(very_invalid)
 

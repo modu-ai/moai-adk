@@ -10,7 +10,11 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from moai_adk.cli.worktree.cli import get_manager, _detect_worktree_root, _find_main_repository
+from moai_adk.cli.worktree.cli import (
+    get_manager,
+    _detect_worktree_root,
+    _find_main_repository,
+)
 
 
 class TestImports:
@@ -143,11 +147,13 @@ class TestCliConsoleImport:
     def test_console_is_available(self):
         """Test that Rich console is available."""
         from moai_adk.cli.worktree.cli import console
+
         assert console is not None
 
     def test_click_is_available(self):
         """Test that Click is available."""
         import click
+
         assert click is not None
 
 
@@ -163,6 +169,7 @@ class TestCliExceptionHandling:
             WorktreeExistsError,
             WorktreeNotFoundError,
         )
+
         # Verify exceptions exist
         assert GitOperationError is not None
         assert MergeConflictError is not None
@@ -177,6 +184,7 @@ class TestCliModelsImport:
     def test_cli_models_available(self):
         """Test that models are available for import."""
         from moai_adk.cli.worktree.models import WorktreeInfo
+
         assert WorktreeInfo is not None
 
 
@@ -186,7 +194,9 @@ class TestGetManagerEdgeCases:
     @patch("moai_adk.cli.worktree.cli.Path.cwd")
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_get_manager_finds_git_in_parent(self, mock_detect, mock_manager_class, mock_cwd):
+    def test_get_manager_finds_git_in_parent(
+        self, mock_detect, mock_manager_class, mock_cwd
+    ):
         """Test get_manager finds .git in parent directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
@@ -203,7 +213,9 @@ class TestGetManagerEdgeCases:
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_get_manager_with_explicit_worktree_root(self, mock_detect, mock_manager_class):
+    def test_get_manager_with_explicit_worktree_root(
+        self, mock_detect, mock_manager_class
+    ):
         """Test get_manager uses explicit worktree_root."""
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_path = Path(tmpdir)

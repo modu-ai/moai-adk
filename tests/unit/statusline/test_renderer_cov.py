@@ -20,7 +20,9 @@ class TestExtendedModeRendering:
     @pytest.fixture
     def renderer(self):
         """Create renderer instance with mocked config."""
-        with patch('moai_adk.statusline.renderer.StatuslineConfig') as mock_config_class:
+        with patch(
+            "moai_adk.statusline.renderer.StatuslineConfig"
+        ) as mock_config_class:
             mock_config = MagicMock()
             mock_format_config = MagicMock()
             mock_display_config = MagicMock()
@@ -208,7 +210,9 @@ class TestMinimalModeRendering:
     @pytest.fixture
     def renderer(self):
         """Create renderer with minimal mode config."""
-        with patch('moai_adk.statusline.renderer.StatuslineConfig') as mock_config_class:
+        with patch(
+            "moai_adk.statusline.renderer.StatuslineConfig"
+        ) as mock_config_class:
             mock_config = MagicMock()
             mock_format_config = MagicMock()
             mock_display_config = MagicMock()
@@ -386,7 +390,7 @@ class TestTruncationFunctions:
     @pytest.fixture
     def renderer(self):
         """Create renderer instance."""
-        with patch('moai_adk.statusline.renderer.StatuslineConfig'):
+        with patch("moai_adk.statusline.renderer.StatuslineConfig"):
             return StatuslineRenderer()
 
     def test_truncate_branch_short_name(self, renderer):
@@ -477,7 +481,9 @@ class TestCompactModeEdgeCases:
     @pytest.fixture
     def renderer(self):
         """Create renderer with compact mode config."""
-        with patch('moai_adk.statusline.renderer.StatuslineConfig') as mock_config_class:
+        with patch(
+            "moai_adk.statusline.renderer.StatuslineConfig"
+        ) as mock_config_class:
             mock_config = MagicMock()
             mock_format_config = MagicMock()
             mock_display_config = MagicMock()

@@ -122,9 +122,13 @@ class TestRollbackPointCreation(unittest.TestCase):
 
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._backup_code_files")
-    @patch("src.moai_adk.core.rollback_manager.RollbackManager._backup_research_components")
+    @patch(
+        "src.moai_adk.core.rollback_manager.RollbackManager._backup_research_components"
+    )
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._backup_configuration")
-    @patch("src.moai_adk.core.rollback_manager.RollbackManager._calculate_backup_checksum")
+    @patch(
+        "src.moai_adk.core.rollback_manager.RollbackManager._calculate_backup_checksum"
+    )
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._save_registry")
     @patch("src.moai_adk.core.rollback_manager.Path.mkdir")
     @patch("src.moai_adk.core.rollback_manager.Path.exists")
@@ -162,9 +166,13 @@ class TestRollbackPointCreation(unittest.TestCase):
 
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._backup_code_files")
-    @patch("src.moai_adk.core.rollback_manager.RollbackManager._backup_research_components")
+    @patch(
+        "src.moai_adk.core.rollback_manager.RollbackManager._backup_research_components"
+    )
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._backup_configuration")
-    @patch("src.moai_adk.core.rollback_manager.RollbackManager._calculate_backup_checksum")
+    @patch(
+        "src.moai_adk.core.rollback_manager.RollbackManager._calculate_backup_checksum"
+    )
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._save_registry")
     @patch("src.moai_adk.core.rollback_manager.Path.mkdir")
     @patch("src.moai_adk.core.rollback_manager.Path.exists")
@@ -380,9 +388,7 @@ class TestCleanupOldRollbacks(unittest.TestCase):
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("src.moai_adk.core.rollback_manager.Path.mkdir")
     @patch("src.moai_adk.core.rollback_manager.Path.exists")
-    def test_cleanup_dry_run(
-        self, mock_exists, mock_mkdir, mock_load_registry
-    ):
+    def test_cleanup_dry_run(self, mock_exists, mock_mkdir, mock_load_registry):
         """Test cleanup in dry run mode."""
         # Arrange
         now = datetime.now(timezone.utc).isoformat()
@@ -466,9 +472,7 @@ class TestRollbackHelper(unittest.TestCase):
     @patch("src.moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("src.moai_adk.core.rollback_manager.Path.mkdir")
     @patch("src.moai_adk.core.rollback_manager.Path.exists")
-    def test_generate_rollback_id(
-        self, mock_exists, mock_mkdir, mock_load_registry
-    ):
+    def test_generate_rollback_id(self, mock_exists, mock_mkdir, mock_load_registry):
         """Test rollback ID generation."""
         # Arrange
         mock_exists.return_value = False

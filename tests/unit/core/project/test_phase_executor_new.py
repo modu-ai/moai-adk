@@ -82,8 +82,11 @@ class TestPhaseExecutor:
             (moai_dir / "config" / "config.json").write_text("{}")
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.has_any_moai_files', return_value=True):
-                with patch.object(executor, '_create_backup') as mock_backup:
+            with patch(
+                "moai_adk.core.project.phase_executor.has_any_moai_files",
+                return_value=True,
+            ):
+                with patch.object(executor, "_create_backup") as mock_backup:
                     executor.execute_preparation_phase(path, backup_enabled=True)
 
             # Assert
@@ -99,8 +102,11 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.has_any_moai_files', return_value=True):
-                with patch.object(executor, '_create_backup') as mock_backup:
+            with patch(
+                "moai_adk.core.project.phase_executor.has_any_moai_files",
+                return_value=True,
+            ):
+                with patch.object(executor, "_create_backup") as mock_backup:
                     executor.execute_preparation_phase(path, backup_enabled=False)
 
             # Assert
@@ -149,7 +155,9 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.TemplateProcessor') as mock_processor:
+            with patch(
+                "moai_adk.core.project.phase_executor.TemplateProcessor"
+            ) as mock_processor:
                 mock_processor_instance = MagicMock()
                 mock_processor.return_value = mock_processor_instance
                 result = executor.execute_resource_phase(path)
@@ -176,7 +184,9 @@ class TestPhaseExecutor:
             }
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.TemplateProcessor') as mock_processor:
+            with patch(
+                "moai_adk.core.project.phase_executor.TemplateProcessor"
+            ) as mock_processor:
                 mock_processor_instance = MagicMock()
                 mock_processor.return_value = mock_processor_instance
                 executor.execute_resource_phase(path, config)
@@ -224,7 +234,10 @@ class TestPhaseExecutor:
             config_dir.mkdir(parents=True)
 
             # Write existing config
-            existing_config = {"moai": {"version": "0.30.0"}, "user": {"nickname": "test-user"}}
+            existing_config = {
+                "moai": {"version": "0.30.0"},
+                "user": {"nickname": "test-user"},
+            }
             config_file = config_dir / "config.json"
             config_file.write_text(json.dumps(existing_config))
 
@@ -278,7 +291,7 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch.object(executor, '_initialize_git'):
+            with patch.object(executor, "_initialize_git"):
                 executor.execute_validation_phase(path)
 
             # Assert
@@ -294,7 +307,7 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch.object(executor, '_initialize_git') as mock_git:
+            with patch.object(executor, "_initialize_git") as mock_git:
                 executor.execute_validation_phase(path)
 
             # Assert
@@ -314,8 +327,14 @@ class TestPhaseExecutor:
             (moai_dir / "config" / "config.json").write_text("{}")
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.get_backup_targets', return_value=[".moai/config"]):
-                with patch('moai_adk.core.project.phase_executor.is_protected_path', return_value=False):
+            with patch(
+                "moai_adk.core.project.phase_executor.get_backup_targets",
+                return_value=[".moai/config"],
+            ):
+                with patch(
+                    "moai_adk.core.project.phase_executor.is_protected_path",
+                    return_value=False,
+                ):
                     executor._create_backup(path)
 
             # Assert
@@ -340,7 +359,10 @@ class TestPhaseExecutor:
             (backup_dir / "old_file.txt").write_text("old")
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.get_backup_targets', return_value=[]):
+            with patch(
+                "moai_adk.core.project.phase_executor.get_backup_targets",
+                return_value=[],
+            ):
                 executor._create_backup(path)
 
             # Assert
@@ -357,7 +379,9 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.subprocess.run') as mock_run:
+            with patch(
+                "moai_adk.core.project.phase_executor.subprocess.run"
+            ) as mock_run:
                 executor._initialize_git(path)
 
             # Assert
@@ -377,7 +401,9 @@ class TestPhaseExecutor:
             (path / ".git").mkdir()
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.subprocess.run') as mock_run:
+            with patch(
+                "moai_adk.core.project.phase_executor.subprocess.run"
+            ) as mock_run:
                 executor._initialize_git(path)
 
             # Assert
@@ -393,7 +419,9 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.subprocess.run') as mock_run:
+            with patch(
+                "moai_adk.core.project.phase_executor.subprocess.run"
+            ) as mock_run:
                 mock_run.side_effect = subprocess.CalledProcessError(1, "git init")
                 # Should not raise
                 executor._initialize_git(path)
@@ -474,7 +502,7 @@ class TestPhaseExecutor:
         executor = PhaseExecutor(validator)
 
         # Act
-        with patch.object(executor, '_get_version_reader') as mock_reader:
+        with patch.object(executor, "_get_version_reader") as mock_reader:
             mock_reader_instance = MagicMock()
             mock_reader.return_value = mock_reader_instance
             mock_reader_instance.get_version.return_value = "1.0.0"
@@ -505,7 +533,10 @@ class TestPhaseExecutor:
             (src_dir / "protected" / "file.txt").write_text("protected content")
 
             # Act
-            with patch('moai_adk.core.project.phase_executor.is_protected_path') as mock_protected:
+            with patch(
+                "moai_adk.core.project.phase_executor.is_protected_path"
+            ) as mock_protected:
+
                 def is_protected(path):
                     return "protected" in str(path)
 
@@ -534,7 +565,7 @@ class TestPhaseExecutor:
             assert executor.current_phase == 2
 
             # Phase 3
-            with patch('moai_adk.core.project.phase_executor.TemplateProcessor'):
+            with patch("moai_adk.core.project.phase_executor.TemplateProcessor"):
                 executor.execute_resource_phase(path)
             assert executor.current_phase == 3
 
@@ -544,6 +575,6 @@ class TestPhaseExecutor:
             assert executor.current_phase == 4
 
             # Phase 5
-            with patch.object(executor, '_initialize_git'):
+            with patch.object(executor, "_initialize_git"):
                 executor.execute_validation_phase(path)
             assert executor.current_phase == 5

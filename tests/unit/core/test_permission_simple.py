@@ -129,7 +129,7 @@ class TestLoadConfiguration:
         """Test loading existing configuration file."""
         # Arrange
         config_data = {"agents": {}}
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump(config_data, f)
             config_path = f.name
 
@@ -155,7 +155,7 @@ class TestLoadConfiguration:
     def test_load_configuration_invalid_json(self):
         """Test handling invalid JSON in configuration."""
         # Arrange
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             f.write("invalid json {{{")
             config_path = f.name
 
@@ -416,14 +416,18 @@ class TestValidateConfiguration:
         """Test validation of valid configuration file."""
         # Arrange
         config_data = {"agents": {}, "permissions": {}}
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump(config_data, f)
             config_path = f.name
 
         try:
-            with patch.object(UnifiedPermissionManager, "_load_configuration") as mock_load:
+            with patch.object(
+                UnifiedPermissionManager, "_load_configuration"
+            ) as mock_load:
                 mock_load.return_value = {}
-                with patch.object(UnifiedPermissionManager, "_validate_all_permissions"):
+                with patch.object(
+                    UnifiedPermissionManager, "_validate_all_permissions"
+                ):
                     manager = UnifiedPermissionManager()
 
             # Act

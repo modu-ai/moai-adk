@@ -38,11 +38,9 @@ class TestExtractProjectMetadata:
                 "project": {
                     "name": "TestProject",
                     "mode": "team",
-                    "owner": "test_owner"
+                    "owner": "test_owner",
                 },
-                "language": {
-                    "conversation_language": "en"
-                }
+                "language": {"conversation_language": "en"},
             }
             config_file.write_text(json.dumps(config_data))
 

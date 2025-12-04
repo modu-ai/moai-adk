@@ -376,6 +376,7 @@ class TestErrorRecoverySystemRecoveryActions:
         actions = []
 
         for i in range(3):
+
             def handler(error_report):
                 return RecoveryResult(
                     success=True,
@@ -573,6 +574,7 @@ class TestRecoveryActionDataclass:
 
     def test_recovery_action_creation(self):
         """Test creating a RecoveryAction."""
+
         # Arrange
         def mock_handler(error):
             return RecoveryResult(

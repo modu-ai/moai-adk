@@ -86,7 +86,9 @@ class TestNeedsMigration:
 
         # Mark as already migrated in config
         config = migrator._load_config()
-        config["migration"] = {"alfred_to_moai": {"migrated": True, "timestamp": "2025-11-18 10:00:00"}}
+        config["migration"] = {
+            "alfred_to_moai": {"migrated": True, "timestamp": "2025-11-18 10:00:00"}
+        }
         migrator._save_config(config)
 
         # Should return False because already migrated

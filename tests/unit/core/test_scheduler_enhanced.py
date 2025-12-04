@@ -63,7 +63,6 @@ class TestHookSchedulingContext:
         assert context.max_execution_time_ms == 5000.0
 
 
-
 class TestSchedulingResult:
     """Test scheduling result dataclass."""
 

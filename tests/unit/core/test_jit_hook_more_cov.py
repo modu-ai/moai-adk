@@ -36,7 +36,7 @@ class TestHookPrioritization:
     @pytest.fixture
     def hook_manager(self):
         """Create hook manager instance."""
-        with patch('moai_adk.core.jit_enhanced_hook_manager.JITContextLoader'):
+        with patch("moai_adk.core.jit_enhanced_hook_manager.JITContextLoader"):
             manager = JITEnhancedHookManager()
             manager._hook_registry = {}
             return manager
@@ -98,10 +98,7 @@ class TestHookPrioritization:
             hook_manager._hook_registry[path] = metadata
 
         # Act
-        result = hook_manager._prioritize_hooks(
-            [h[0] for h in hooks],
-            Phase.RED
-        )
+        result = hook_manager._prioritize_hooks([h[0] for h in hooks], Phase.RED)
 
         # Assert
         assert len(result) == 3
@@ -120,8 +117,8 @@ class TestHookPrioritization:
             estimated_execution_time_ms=100.0,
             success_rate=0.95,
             phase_relevance={
-                Phase.RED: 1.0,      # High relevance to RED
-                Phase.GREEN: 0.2,    # Low relevance to GREEN
+                Phase.RED: 1.0,  # High relevance to RED
+                Phase.GREEN: 0.2,  # Low relevance to GREEN
             },
         )
         hook_manager._hook_registry[hook_path] = metadata
@@ -153,14 +150,13 @@ class TestHookPrioritization:
             event_type=HookEvent.SESSION_START,
             priority=HookPriority.NORMAL,
             estimated_execution_time_ms=100.0,
-            success_rate=0.8,   # Low success rate
+            success_rate=0.8,  # Low success rate
             phase_relevance={Phase.RED: 0.5},
         )
 
         # Act
         results = hook_manager._prioritize_hooks(
-            [reliable_hook, unreliable_hook],
-            Phase.RED
+            [reliable_hook, unreliable_hook], Phase.RED
         )
 
         # Assert - reliable hook should have higher priority
@@ -195,13 +191,15 @@ class TestHookExecution:
     @pytest.fixture
     def hook_manager(self):
         """Create hook manager instance."""
-        with patch('moai_adk.core.jit_enhanced_hook_manager.JITContextLoader'):
+        with patch("moai_adk.core.jit_enhanced_hook_manager.JITContextLoader"):
             manager = JITEnhancedHookManager()
             manager._hooks_by_event = {}
             manager._hook_registry = {}
             manager.jit_loader = MagicMock()
             manager.jit_loader.phase_detector = MagicMock()
-            manager.jit_loader.phase_detector.detect_phase = MagicMock(return_value=Phase.RED)
+            manager.jit_loader.phase_detector.detect_phase = MagicMock(
+                return_value=Phase.RED
+            )
             manager.jit_loader.load_context = AsyncMock(return_value=({}, {}))
             return manager
 
@@ -214,10 +212,7 @@ class TestHookExecution:
         context = {"key": "value"}
 
         # Act
-        results = await hook_manager.execute_hooks(
-            HookEvent.SESSION_START,
-            context
-        )
+        results = await hook_manager.execute_hooks(HookEvent.SESSION_START, context)
 
         # Assert
         assert results == []
@@ -238,7 +233,9 @@ class TestHookExecution:
         )
 
         # Assert
-        hook_manager.jit_loader.phase_detector.detect_phase.assert_called_once_with(user_input)
+        hook_manager.jit_loader.phase_detector.detect_phase.assert_called_once_with(
+            user_input
+        )
 
     @pytest.mark.asyncio
     async def test_execute_hooks_fallback_to_spec_phase(self, hook_manager):
@@ -251,9 +248,7 @@ class TestHookExecution:
 
         # Act
         results = await hook_manager.execute_hooks(
-            HookEvent.USER_PROMPT_SUBMIT,
-            {},
-            user_input="test"
+            HookEvent.USER_PROMPT_SUBMIT, {}, user_input="test"
         )
 
         # Assert
@@ -286,9 +281,7 @@ class TestHookExecution:
 
         # Act
         await hook_manager.execute_hooks(
-            HookEvent.SESSION_START,
-            {},
-            max_total_execution_time_ms=5000.0
+            HookEvent.SESSION_START, {}, max_total_execution_time_ms=5000.0
         )
 
         # Assert - the time constraint should be passed through
@@ -301,7 +294,7 @@ class TestContextLoading:
     @pytest.fixture
     def hook_manager(self):
         """Create hook manager instance."""
-        with patch('moai_adk.core.jit_enhanced_hook_manager.JITContextLoader'):
+        with patch("moai_adk.core.jit_enhanced_hook_manager.JITContextLoader"):
             manager = JITEnhancedHookManager()
             manager.jit_loader = MagicMock()
             return manager
@@ -320,10 +313,7 @@ class TestContextLoading:
 
         # Act
         result = await hook_manager._load_optimized_context(
-            event_type,
-            context,
-            phase,
-            prioritized_hooks
+            event_type, context, phase, prioritized_hooks
         )
 
         # Assert
@@ -344,10 +334,7 @@ class TestContextLoading:
 
         # Act
         result = await hook_manager._load_optimized_context(
-            HookEvent.SESSION_START,
-            context,
-            Phase.RED,
-            []
+            HookEvent.SESSION_START, context, Phase.RED, []
         )
 
         # Assert - should return original context in optimized format
@@ -358,16 +345,11 @@ class TestContextLoading:
     async def test_load_optimized_context_no_phase(self, hook_manager):
         """Test context loading when phase is None."""
         # Arrange
-        hook_manager.jit_loader.load_context = AsyncMock(
-            return_value=({}, {})
-        )
+        hook_manager.jit_loader.load_context = AsyncMock(return_value=({}, {}))
 
         # Act
         result = await hook_manager._load_optimized_context(
-            HookEvent.SESSION_START,
-            {},
-            None,
-            []
+            HookEvent.SESSION_START, {}, None, []
         )
 
         # Assert
@@ -377,23 +359,24 @@ class TestContextLoading:
     async def test_load_optimized_context_top_5_hooks(self, hook_manager):
         """Test that only top 5 hooks are included in context."""
         # Arrange
-        hook_manager.jit_loader.load_context = AsyncMock(
-            return_value=({}, {})
-        )
+        hook_manager.jit_loader.load_context = AsyncMock(return_value=({}, {}))
         # Create 10 prioritized hooks
         prioritized_hooks = [(f"hook{i}.py", float(i)) for i in range(10)]
 
         # Act
         result = await hook_manager._load_optimized_context(
-            HookEvent.SESSION_START,
-            {},
-            Phase.RED,
-            prioritized_hooks
+            HookEvent.SESSION_START, {}, Phase.RED, prioritized_hooks
         )
 
         # Assert
         assert len(result["prioritized_hooks"]) == 5
-        assert result["prioritized_hooks"] == ["hook0.py", "hook1.py", "hook2.py", "hook3.py", "hook4.py"]
+        assert result["prioritized_hooks"] == [
+            "hook0.py",
+            "hook1.py",
+            "hook2.py",
+            "hook3.py",
+            "hook4.py",
+        ]
 
 
 class TestSingleHookExecution:
@@ -402,7 +385,7 @@ class TestSingleHookExecution:
     @pytest.fixture
     def hook_manager(self):
         """Create hook manager instance."""
-        with patch('moai_adk.core.jit_enhanced_hook_manager.JITContextLoader'):
+        with patch("moai_adk.core.jit_enhanced_hook_manager.JITContextLoader"):
             manager = JITEnhancedHookManager()
             manager.hooks_directory = Path("/tmp/hooks")
             manager._hook_registry = {}
@@ -456,7 +439,9 @@ class TestSingleHookExecution:
         )
         hook_manager._hook_registry[hook_path] = metadata
 
-        with patch.object(hook_manager, '_execute_hook_subprocess', new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = HookExecutionResult(
                 hook_path=hook_path,
                 success=True,
@@ -464,8 +449,8 @@ class TestSingleHookExecution:
                 token_usage=0,
                 output="test output",
             )
-            with patch('moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker'):
-                with patch('moai_adk.core.jit_enhanced_hook_manager.RetryPolicy'):
+            with patch("moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker"):
+                with patch("moai_adk.core.jit_enhanced_hook_manager.RetryPolicy"):
                     # Act
                     await hook_manager._execute_single_hook(hook_path, {})
 
@@ -531,10 +516,18 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(return_value=mock_result)
         mock_rp = MagicMock()
 
-        with patch.object(hook_manager, '_execute_hook_subprocess', new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = mock_result
-            with patch('moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker', return_value=mock_cb):
-                with patch('moai_adk.core.jit_enhanced_hook_manager.RetryPolicy', return_value=mock_rp):
+            with patch(
+                "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
+                return_value=mock_cb,
+            ):
+                with patch(
+                    "moai_adk.core.jit_enhanced_hook_manager.RetryPolicy",
+                    return_value=mock_rp,
+                ):
                     # Act
                     await hook_manager._execute_single_hook(hook_path, {})
 
@@ -569,10 +562,18 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(return_value=mock_result)
         mock_rp = MagicMock()
 
-        with patch.object(hook_manager, '_execute_hook_subprocess', new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = mock_result
-            with patch('moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker', return_value=mock_cb):
-                with patch('moai_adk.core.jit_enhanced_hook_manager.RetryPolicy', return_value=mock_rp):
+            with patch(
+                "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
+                return_value=mock_cb,
+            ):
+                with patch(
+                    "moai_adk.core.jit_enhanced_hook_manager.RetryPolicy",
+                    return_value=mock_rp,
+                ):
                     # Act
                     await hook_manager._execute_single_hook(hook_path, {})
 
@@ -593,7 +594,9 @@ class TestSingleHookExecution:
         )
         hook_manager._hook_registry[hook_path] = metadata
         hook_manager._execution_profiles[hook_path] = []
-        hook_manager._anomaly_detector.detect_anomaly = MagicMock(return_value="Execution time doubled")
+        hook_manager._anomaly_detector.detect_anomaly = MagicMock(
+            return_value="Execution time doubled"
+        )
 
         mock_result = HookExecutionResult(
             hook_path=hook_path,
@@ -609,10 +612,18 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(return_value=mock_result)
         mock_rp = MagicMock()
 
-        with patch.object(hook_manager, '_execute_hook_subprocess', new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = mock_result
-            with patch('moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker', return_value=mock_cb):
-                with patch('moai_adk.core.jit_enhanced_hook_manager.RetryPolicy', return_value=mock_rp):
+            with patch(
+                "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
+                return_value=mock_cb,
+            ):
+                with patch(
+                    "moai_adk.core.jit_enhanced_hook_manager.RetryPolicy",
+                    return_value=mock_rp,
+                ):
                     # Act
                     result = await hook_manager._execute_single_hook(hook_path, {})
 
@@ -638,16 +649,27 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(side_effect=RuntimeError("Unexpected execution error"))
         mock_rp = MagicMock()
 
-        with patch.object(hook_manager, '_execute_hook_subprocess', new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.side_effect = RuntimeError("Unexpected execution error")
-            with patch('moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker', return_value=mock_cb):
-                with patch('moai_adk.core.jit_enhanced_hook_manager.RetryPolicy', return_value=mock_rp):
+            with patch(
+                "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
+                return_value=mock_cb,
+            ):
+                with patch(
+                    "moai_adk.core.jit_enhanced_hook_manager.RetryPolicy",
+                    return_value=mock_rp,
+                ):
                     # Act
                     result = await hook_manager._execute_single_hook(hook_path, {})
 
         # Assert
         assert result.success is False
-        assert "Unexpected error" in result.error_message or "error" in result.error_message.lower()
+        assert (
+            "Unexpected error" in result.error_message
+            or "error" in result.error_message.lower()
+        )
 
 
 class TestCacheTTLDetermination:
@@ -656,7 +678,7 @@ class TestCacheTTLDetermination:
     @pytest.fixture
     def hook_manager(self):
         """Create hook manager instance."""
-        with patch('moai_adk.core.jit_enhanced_hook_manager.JITContextLoader'):
+        with patch("moai_adk.core.jit_enhanced_hook_manager.JITContextLoader"):
             return JITEnhancedHookManager()
 
     def test_cache_ttl_api_hooks(self, hook_manager):

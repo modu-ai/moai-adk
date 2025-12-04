@@ -434,7 +434,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.phase_relevance = {Phase.SPEC: 0.1}
         metadata.success_rate = 0.2
 
-        decision = scheduler._make_initial_scheduling_decision(metadata, context, 5000, 200.0)
+        decision = scheduler._make_initial_scheduling_decision(
+            metadata, context, 5000, 200.0
+        )
 
         assert decision == SchedulingDecision.EXECUTE  # Critical always executes
 
@@ -455,7 +457,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.phase_relevance = {Phase.SPEC: 0.5}
         metadata.success_rate = 0.8
 
-        decision = scheduler._make_initial_scheduling_decision(metadata, context, 5000, 50.0)
+        decision = scheduler._make_initial_scheduling_decision(
+            metadata, context, 5000, 50.0
+        )
 
         assert decision == SchedulingDecision.SKIP
 
@@ -476,7 +480,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.phase_relevance = {Phase.SPEC: 0.5}
         metadata.success_rate = 0.8
 
-        decision = scheduler._make_initial_scheduling_decision(metadata, context, 100, 200.0)
+        decision = scheduler._make_initial_scheduling_decision(
+            metadata, context, 100, 200.0
+        )
 
         assert decision == SchedulingDecision.DEFER
 
@@ -497,7 +503,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.phase_relevance = {Phase.SPEC: 0.1}  # Low relevance
         metadata.success_rate = 0.8
 
-        decision = scheduler._make_initial_scheduling_decision(metadata, context, 100, 50.0)
+        decision = scheduler._make_initial_scheduling_decision(
+            metadata, context, 100, 50.0
+        )
 
         assert decision == SchedulingDecision.SKIP
 
@@ -518,7 +526,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.phase_relevance = {Phase.SPEC: 0.5}
         metadata.success_rate = 0.2  # Low success rate
 
-        decision = scheduler._make_initial_scheduling_decision(metadata, context, 100, 50.0)
+        decision = scheduler._make_initial_scheduling_decision(
+            metadata, context, 100, 50.0
+        )
 
         assert decision == SchedulingDecision.DEFER
 
@@ -592,7 +602,9 @@ class TestPhaseOptimizedHookScheduler:
             scheduling_decision=SchedulingDecision.EXECUTE,
         )
 
-        prioritized = scheduler._prioritize_hooks([hook1, hook2], context, SchedulingStrategy.PRIORITY_FIRST)
+        prioritized = scheduler._prioritize_hooks(
+            [hook1, hook2], context, SchedulingStrategy.PRIORITY_FIRST
+        )
 
         assert prioritized[0].priority_score >= prioritized[1].priority_score
 
@@ -661,7 +673,9 @@ class TestPhaseOptimizedHookScheduler:
             scheduling_decision=SchedulingDecision.EXECUTE,
         )
 
-        groups = scheduler._create_execution_groups([hook1, hook2], context, SchedulingStrategy.PHASE_OPTIMIZED)
+        groups = scheduler._create_execution_groups(
+            [hook1, hook2], context, SchedulingStrategy.PHASE_OPTIMIZED
+        )
 
         assert len(groups) > 0
 
@@ -689,7 +703,9 @@ class TestPhaseOptimizedHookScheduler:
             scheduling_decision=SchedulingDecision.EXECUTE,
         )
 
-        groups = scheduler._create_execution_groups([hook1], context, SchedulingStrategy.PHASE_OPTIMIZED)
+        groups = scheduler._create_execution_groups(
+            [hook1], context, SchedulingStrategy.PHASE_OPTIMIZED
+        )
 
         assert len(groups) > 0
 
@@ -751,7 +767,9 @@ class TestPhaseOptimizedHookScheduler:
             scheduling_strategy=SchedulingStrategy.PHASE_OPTIMIZED,
         )
 
-        scheduler._update_strategy_performance(SchedulingStrategy.PHASE_OPTIMIZED, result, context)
+        scheduler._update_strategy_performance(
+            SchedulingStrategy.PHASE_OPTIMIZED, result, context
+        )
 
         perf = scheduler._strategy_performance[SchedulingStrategy.PHASE_OPTIMIZED]
         assert perf["usage_count"] == 1
@@ -791,7 +809,9 @@ class TestPhaseOptimizedHookScheduler:
         )
 
         # Mock the hook manager
-        with patch.object(scheduler.hook_manager, "_hooks_by_event", {HookEvent.SESSION_START: []}):
+        with patch.object(
+            scheduler.hook_manager, "_hooks_by_event", {HookEvent.SESSION_START: []}
+        ):
             result = await scheduler.schedule_hooks(HookEvent.SESSION_START, context)
 
         assert isinstance(result, SchedulingResult)
@@ -813,7 +833,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.estimated_execution_time_ms = 50.0
         metadata.success_rate = 0.95
 
-        score = scheduler._calculate_priority_score(metadata, context, SchedulingStrategy.PERFORMANCE_FIRST)
+        score = scheduler._calculate_priority_score(
+            metadata, context, SchedulingStrategy.PERFORMANCE_FIRST
+        )
 
         assert score > 0
 
@@ -833,7 +855,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.token_cost_estimate = 100
         metadata.success_rate = 0.95
 
-        score = scheduler._calculate_priority_score(metadata, context, SchedulingStrategy.TOKEN_EFFICIENT)
+        score = scheduler._calculate_priority_score(
+            metadata, context, SchedulingStrategy.TOKEN_EFFICIENT
+        )
 
         assert score > 0
 
@@ -856,7 +880,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.token_cost_estimate = 100
         metadata.success_rate = 0.95
 
-        score = scheduler._calculate_priority_score(metadata, context, SchedulingStrategy.BALANCED)
+        score = scheduler._calculate_priority_score(
+            metadata, context, SchedulingStrategy.BALANCED
+        )
 
         assert score > 0
 
@@ -878,7 +904,9 @@ class TestPhaseOptimizedHookScheduler:
         metadata.phase_relevance = {Phase.SPEC: 0.8}
         metadata.success_rate = 0.8
 
-        decision = scheduler._make_initial_scheduling_decision(metadata, context, 100, 50.0)
+        decision = scheduler._make_initial_scheduling_decision(
+            metadata, context, 100, 50.0
+        )
 
         assert decision == SchedulingDecision.DEFER  # Deferred under high load
 
@@ -1002,7 +1030,9 @@ class TestEdgeCases:
             max_execution_time_ms=1000.0,
         )
 
-        groups = scheduler._create_execution_groups([hook], context, SchedulingStrategy.PHASE_OPTIMIZED)
+        groups = scheduler._create_execution_groups(
+            [hook], context, SchedulingStrategy.PHASE_OPTIMIZED
+        )
 
         assert len(groups) == 1
         assert len(groups[0].hooks) == 1

@@ -271,7 +271,10 @@ class TestSkillValidator:
         registry.skills = {"test-skill": {"requires": ["dep1", "dep2"]}}
         validator = SkillValidator(registry)
 
-        assert validator.validate_dependencies("test-skill", ["dep1", "dep2", "dep3"]) is True
+        assert (
+            validator.validate_dependencies("test-skill", ["dep1", "dep2", "dep3"])
+            is True
+        )
 
     def test_validate_dependencies_missing(self):
         """Test validating missing dependencies."""
@@ -349,7 +352,9 @@ class TestSkillRegistry:
 class TestSkillLoader:
     """Test SkillLoader class."""
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_skill_loader_init(self, mock_init):
         """Test SkillLoader initialization."""
         loader = SkillLoader(skill_paths=["/test"])
@@ -358,7 +363,9 @@ class TestSkillLoader:
         assert loader.registry is not None
         assert mock_init.called
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     @patch("moai_adk.core.skill_loading_system.SkillLoader._load_skill_from_filesystem")
     def test_load_skill_success(self, mock_load_fs, mock_init):
         """Test successful skill loading."""
@@ -381,7 +388,9 @@ class TestSkillLoader:
         # Verify it's cached by checking the cache has the key
         assert "test-skill" in loader.cache.keys()
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_load_skill_circular_dependency(self, mock_init):
         """Test loading skill with circular dependency detected."""
         mock_init.return_value = None
@@ -402,7 +411,9 @@ class TestSkillLoader:
             # If it raises, that's also acceptable
             pass
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_load_skill_not_found(self, mock_init):
         """Test loading non-existent skill falls back."""
         mock_init.return_value = None
@@ -414,7 +425,9 @@ class TestSkillLoader:
 
         assert result.frontmatter["status"] == "fallback"
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     @patch("moai_adk.core.skill_loading_system.SkillLoader._load_skill_from_filesystem")
     def test_load_skill_with_effort(self, mock_load_fs, mock_init):
         """Test loading skill with effort parameter."""
@@ -435,7 +448,9 @@ class TestSkillLoader:
 
         assert result.name == "test-skill"
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_load_skill_force_reload(self, mock_init):
         """Test force reload bypasses cache."""
         mock_init.return_value = None
@@ -462,7 +477,9 @@ class TestSkillLoader:
             loader.load_skill("test-skill", force_reload=True)
             assert mock_load.call_count >= 1
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_get_cache_stats(self, mock_init):
         """Test getting cache statistics."""
         mock_init.return_value = None
@@ -480,7 +497,9 @@ class TestSkillLoader:
 class TestSkillLoaderFileParsing:
     """Test skill file parsing methods."""
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_parse_skill_file_with_frontmatter(self, mock_init):
         """Test parsing skill file with YAML frontmatter."""
         mock_init.return_value = None
@@ -499,7 +518,9 @@ Some content here"""
         assert frontmatter["name"] == "test-skill"
         assert "Skill Content" in body
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_parse_skill_file_no_frontmatter(self, mock_init):
         """Test parsing skill file without frontmatter."""
         mock_init.return_value = None
@@ -516,7 +537,9 @@ Some content here"""
 class TestDetectRequiredSkills:
     """Test automatic skill detection."""
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_detect_skills_for_expert_backend(self, mock_init):
         """Test detecting skills for backend expert."""
         from moai_adk.core.skill_loading_system import detect_required_skills
@@ -528,7 +551,9 @@ class TestDetectRequiredSkills:
         assert "moai-foundation-claude" in skills
         assert "moai-lang-unified" in skills
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     def test_detect_skills_from_prompt(self, mock_init):
         """Test detecting skills from prompt content."""
         from moai_adk.core.skill_loading_system import detect_required_skills
@@ -546,7 +571,9 @@ class TestDetectRequiredSkills:
 class TestSkillLoaderGetSkillPath:
     """Test skill path resolution."""
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     @patch("moai_adk.core.skill_loading_system.os.path.exists")
     def test_get_skill_path_first_location(self, mock_exists, mock_init):
         """Test getting skill path from first location."""
@@ -559,7 +586,9 @@ class TestSkillLoaderGetSkillPath:
         assert ".claude/skills" in path
         assert "test-skill" in path
 
-    @patch("moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem")
+    @patch(
+        "moai_adk.core.skill_loading_system.SkillRegistry.initialize_from_filesystem"
+    )
     @patch("moai_adk.core.skill_loading_system.os.path.exists")
     def test_get_skill_path_fallback_location(self, mock_exists, mock_init):
         """Test getting skill path from fallback location."""

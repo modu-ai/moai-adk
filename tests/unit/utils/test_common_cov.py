@@ -481,6 +481,7 @@ class TestRateLimiterCleanup:
 
         # Wait for time window to pass
         import time
+
         time.sleep(1.1)
 
         # Check can make request should clean up old requests
@@ -496,6 +497,7 @@ class TestRateLimiterCleanup:
 
         # Requests should eventually be cleaned up after time window
         import time
+
         time.sleep(1.1)
         limiter.can_make_request()
         assert len(limiter.requests) == 0
@@ -510,6 +512,7 @@ class TestRateLimiterWait:
         limiter = RateLimiter(max_requests=10, time_window=60)
         # Should not wait
         import time
+
         start = time.time()
         await limiter.wait_if_needed()
         elapsed = time.time() - start
@@ -525,6 +528,7 @@ class TestRateLimiterWait:
 
         # Should need to wait
         import time
+
         start = time.time()
         await limiter.wait_if_needed()
         elapsed = time.time() - start
@@ -542,26 +546,36 @@ class TestLoadHookTimeout:
 
     def test_load_hook_timeout_from_config(self):
         """Test load_hook_timeout reads from config file."""
-        config_content = json.dumps({
-            "hooks": {
-                "timeout_ms": 3000
-            }
-        })
+        config_content = json.dumps({"hooks": {"timeout_ms": 3000}})
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.open", create=True):
-                with patch("builtins.open", MagicMock(return_value=MagicMock(
-                    __enter__=lambda s: MagicMock(__enter__=lambda x: MagicMock(read=lambda: config_content)),
-                    __exit__=lambda s, *args: None
-                ))):
+                with patch(
+                    "builtins.open",
+                    MagicMock(
+                        return_value=MagicMock(
+                            __enter__=lambda s: MagicMock(
+                                __enter__=lambda x: MagicMock(
+                                    read=lambda: config_content
+                                )
+                            ),
+                            __exit__=lambda s, *args: None,
+                        )
+                    ),
+                ):
                     # Patch json.load directly
-                    with patch("json.load", return_value={"hooks": {"timeout_ms": 3000}}):
+                    with patch(
+                        "json.load", return_value={"hooks": {"timeout_ms": 3000}}
+                    ):
                         timeout = load_hook_timeout()
                         assert timeout == 3000
 
     def test_load_hook_timeout_invalid_json(self):
         """Test load_hook_timeout handles invalid JSON."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", MagicMock(side_effect=json.JSONDecodeError("msg", "doc", 0))):
+            with patch(
+                "builtins.open",
+                MagicMock(side_effect=json.JSONDecodeError("msg", "doc", 0)),
+            ):
                 timeout = load_hook_timeout()
                 assert timeout == 5000
 
@@ -592,25 +606,39 @@ class TestGetGracefulDegradation:
     def test_get_graceful_degradation_true(self):
         """Test get_graceful_degradation reads true value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {"graceful_degradation": True}}):
+            with patch(
+                "json.load", return_value={"hooks": {"graceful_degradation": True}}
+            ):
                 result = get_graceful_degradation()
                 assert result is True
 
     def test_get_graceful_degradation_false(self):
         """Test get_graceful_degradation reads false value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", MagicMock(return_value=MagicMock(
-                __enter__=lambda s: MagicMock(read=lambda: '{"hooks": {"graceful_degradation": false}}'),
-                __exit__=lambda s, *args: None
-            ))):
-                with patch("json.load", return_value={"hooks": {"graceful_degradation": False}}):
+            with patch(
+                "builtins.open",
+                MagicMock(
+                    return_value=MagicMock(
+                        __enter__=lambda s: MagicMock(
+                            read=lambda: '{"hooks": {"graceful_degradation": false}}'
+                        ),
+                        __exit__=lambda s, *args: None,
+                    )
+                ),
+            ):
+                with patch(
+                    "json.load", return_value={"hooks": {"graceful_degradation": False}}
+                ):
                     result = get_graceful_degradation()
                     assert result is False
 
     def test_get_graceful_degradation_invalid_json(self):
         """Test get_graceful_degradation handles invalid JSON."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", MagicMock(side_effect=json.JSONDecodeError("msg", "doc", 0))):
+            with patch(
+                "builtins.open",
+                MagicMock(side_effect=json.JSONDecodeError("msg", "doc", 0)),
+            ):
                 result = get_graceful_degradation()
                 assert result is True
 

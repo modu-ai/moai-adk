@@ -618,7 +618,9 @@ class TestMainFunction:
         # Setup mocks
         mock_framework_instance = mock.MagicMock()
         mock_framework.return_value = mock_framework_instance
-        mock_framework_instance.configure_pytest_environment.return_value = {"pytest": {}}
+        mock_framework_instance.configure_pytest_environment.return_value = {
+            "pytest": {}
+        }
 
         mock_quality_instance = mock.MagicMock()
         mock_quality.return_value = mock_quality_instance
@@ -626,7 +628,9 @@ class TestMainFunction:
 
         mock_coverage_instance = mock.MagicMock()
         mock_coverage.return_value = mock_coverage_instance
-        mock_coverage_instance.analyze_code_coverage.return_value = {"summary": {"percentage": 85}}
+        mock_coverage_instance.analyze_code_coverage.return_value = {
+            "summary": {"percentage": 85}
+        }
 
         mock_automation_instance = mock.MagicMock()
         mock_automation.return_value = mock_automation_instance
@@ -634,7 +638,9 @@ class TestMainFunction:
 
         mock_reporting_instance = mock.MagicMock()
         mock_reporting.return_value = mock_reporting_instance
-        mock_reporting_instance.generate_test_reports.return_value = {"summary": {"total_tests": 10}}
+        mock_reporting_instance.generate_test_reports.return_value = {
+            "summary": {"total_tests": 10}
+        }
 
         mock_data_instance = mock.MagicMock()
         mock_data.return_value = mock_data_instance

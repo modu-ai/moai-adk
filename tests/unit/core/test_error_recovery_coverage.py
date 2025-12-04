@@ -342,7 +342,10 @@ class TestSystemSnapshot:
         snapshot = SystemSnapshot(
             snapshot_id="snap_123",
             timestamp=now,
-            component_states={"api": {"status": "running"}, "database": {"status": "ready"}},
+            component_states={
+                "api": {"status": "running"},
+                "database": {"status": "ready"},
+            },
             configuration_hash="abc123def456",
             data_checksums={"table1": "hash1", "table2": "hash2"},
         )
@@ -492,9 +495,7 @@ class TestErrorRecoverySystem:
     def test_error_statistics(self, recovery_system):
         """Test error statistics tracking."""
         # Arrange
-        recovery_system.handle_error(
-            ValueError("Error 1"), severity=ErrorSeverity.HIGH
-        )
+        recovery_system.handle_error(ValueError("Error 1"), severity=ErrorSeverity.HIGH)
         recovery_system.handle_error(
             RuntimeError("Error 2"), severity=ErrorSeverity.CRITICAL
         )
@@ -529,7 +530,11 @@ class TestErrorRecoverySystem:
 
         # Assert
         assert cleanup_result is not None
-        assert "removed_count" in cleanup_result or "cleaned" in cleanup_result or "status" in cleanup_result
+        assert (
+            "removed_count" in cleanup_result
+            or "cleaned" in cleanup_result
+            or "status" in cleanup_result
+        )
 
     @patch("subprocess.run")
     def test_automatic_recovery_retry(self, mock_run, recovery_system):
@@ -596,9 +601,7 @@ class TestErrorRecoverySystem:
             for error in errors:
                 recovery_system.handle_error(error)
 
-        threads = [
-            threading.Thread(target=handle_errors) for _ in range(2)
-        ]
+        threads = [threading.Thread(target=handle_errors) for _ in range(2)]
         for t in threads:
             t.start()
         for t in threads:

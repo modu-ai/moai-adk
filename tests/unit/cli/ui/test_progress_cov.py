@@ -56,7 +56,7 @@ class TestMoAISpinnerColumn:
         # Mock spinner.render to return a string
         original_render = column.spinner.render
 
-        with patch.object(column.spinner, 'render', return_value="spinner_frame"):
+        with patch.object(column.spinner, "render", return_value="spinner_frame"):
             result = column.render(task)
             assert isinstance(result, Text)
             assert "spinner_frame" in str(result)
@@ -124,7 +124,7 @@ class TestCreateSpinner:
 
     def test_default_parameters(self):
         """Test spinner with default parameters."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             mock_status.return_value = MagicMock()
             spinner = create_spinner()
             mock_status.assert_called_once()
@@ -133,7 +133,7 @@ class TestCreateSpinner:
 
     def test_custom_message(self):
         """Test spinner with custom message."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             mock_status.return_value = MagicMock()
             create_spinner(message="Checking updates...")
             args, kwargs = mock_status.call_args
@@ -141,15 +141,15 @@ class TestCreateSpinner:
 
     def test_custom_spinner_name(self):
         """Test spinner with custom spinner name."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             mock_status.return_value = MagicMock()
             create_spinner(spinner_name="arc")
             _, kwargs = mock_status.call_args
-            assert kwargs['spinner'] == "arc"
+            assert kwargs["spinner"] == "arc"
 
     def test_returns_status_object(self):
         """Test that create_spinner returns Status object."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             status_mock = MagicMock()
             mock_status.return_value = status_mock
             result = create_spinner()
@@ -170,7 +170,7 @@ class TestProgressContext:
 
     def test_context_manager_enter(self):
         """Test entering context manager."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_create.return_value = mock_progress
 
@@ -184,7 +184,7 @@ class TestProgressContext:
 
     def test_context_manager_exit(self):
         """Test exiting context manager."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_create.return_value = mock_progress
 
@@ -196,17 +196,17 @@ class TestProgressContext:
 
     def test_context_manager_with_transient(self):
         """Test context manager with transient mode."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_create.return_value = mock_progress
 
             with ProgressContext("Test task", transient=True) as ctx:
                 args, kwargs = mock_create.call_args
-                assert kwargs['transient'] is True
+                assert kwargs["transient"] is True
 
     def test_add_task_success(self):
         """Test adding a task."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -228,7 +228,7 @@ class TestProgressContext:
 
     def test_add_task_defaults_total_to_100(self):
         """Test add_task defaults total to 100."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -236,11 +236,11 @@ class TestProgressContext:
             with ProgressContext("Test") as ctx:
                 ctx.add_task("Task without total")
                 _, kwargs = mock_progress.add_task.call_args
-                assert kwargs['total'] == 100
+                assert kwargs["total"] == 100
 
     def test_advance_task(self):
         """Test advancing a task."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -253,7 +253,7 @@ class TestProgressContext:
 
     def test_advance_task_default_advance(self):
         """Test advancing task with default advance value."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -266,7 +266,7 @@ class TestProgressContext:
 
     def test_advance_unknown_task(self):
         """Test advancing a task that doesn't exist."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_create.return_value = mock_progress
 
@@ -282,7 +282,7 @@ class TestProgressContext:
 
     def test_update_task_completed(self):
         """Test updating task completed value."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -295,7 +295,7 @@ class TestProgressContext:
 
     def test_update_task_total(self):
         """Test updating task total value."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -308,7 +308,7 @@ class TestProgressContext:
 
     def test_update_task_description(self):
         """Test updating task description."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -323,7 +323,7 @@ class TestProgressContext:
 
     def test_update_task_multiple_values(self):
         """Test updating multiple task values at once."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_create.return_value = mock_progress
@@ -333,12 +333,12 @@ class TestProgressContext:
                 ctx.update_task("Download", completed=75, total=100)
 
                 _, kwargs = mock_progress.update.call_args
-                assert kwargs['completed'] == 75
-                assert kwargs['total'] == 100
+                assert kwargs["completed"] == 75
+                assert kwargs["total"] == 100
 
     def test_complete_task(self):
         """Test completing a task."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_task = MagicMock()
             mock_task.total = 100
@@ -354,7 +354,7 @@ class TestProgressContext:
 
     def test_complete_unknown_task(self):
         """Test completing a task that doesn't exist."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_create.return_value = mock_progress
 
@@ -394,7 +394,7 @@ class TestSpinnerContext:
 
     def test_context_manager_enter(self):
         """Test entering context manager."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             mock_status_obj = MagicMock()
             mock_status.return_value = mock_status_obj
 
@@ -407,7 +407,7 @@ class TestSpinnerContext:
 
     def test_context_manager_exit_without_message(self):
         """Test exiting context manager without final message."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             mock_status_obj = MagicMock()
             mock_status.return_value = mock_status_obj
 
@@ -418,8 +418,8 @@ class TestSpinnerContext:
 
     def test_context_manager_exit_with_success_message(self):
         """Test exiting with success message."""
-        with patch.object(console, 'status') as mock_status:
-            with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "status") as mock_status:
+            with patch.object(console, "print") as mock_print:
                 mock_status_obj = MagicMock()
                 mock_status.return_value = mock_status_obj
 
@@ -434,8 +434,8 @@ class TestSpinnerContext:
 
     def test_context_manager_exit_with_error_message(self):
         """Test exiting with error message."""
-        with patch.object(console, 'status') as mock_status:
-            with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "status") as mock_status:
+            with patch.object(console, "print") as mock_print:
                 mock_status_obj = MagicMock()
                 mock_status.return_value = mock_status_obj
 
@@ -449,7 +449,7 @@ class TestSpinnerContext:
 
     def test_update_message(self):
         """Test updating spinner message."""
-        with patch.object(console, 'status') as mock_status:
+        with patch.object(console, "status") as mock_status:
             mock_status_obj = MagicMock()
             mock_status.return_value = mock_status_obj
 
@@ -496,8 +496,8 @@ class TestSpinnerContext:
 
     def test_multiple_status_calls(self):
         """Test setting multiple status messages overwrites."""
-        with patch.object(console, 'status') as mock_status:
-            with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "status") as mock_status:
+            with patch.object(console, "print") as mock_print:
                 mock_status_obj = MagicMock()
                 mock_status.return_value = mock_status_obj
 
@@ -519,7 +519,7 @@ class TestProgressSteps:
         """Test iterating through progress steps."""
         steps = ["Download", "Extract", "Install"]
 
-        with patch('moai_adk.cli.ui.progress.ProgressContext') as mock_ctx_class:
+        with patch("moai_adk.cli.ui.progress.ProgressContext") as mock_ctx_class:
             mock_ctx = MagicMock()
             mock_ctx_class.return_value = mock_ctx
             mock_ctx.__enter__.return_value = mock_ctx
@@ -533,7 +533,7 @@ class TestProgressSteps:
         """Test that step descriptions are updated during iteration."""
         steps = ["Step1", "Step2"]
 
-        with patch('moai_adk.cli.ui.progress.ProgressContext') as mock_ctx_class:
+        with patch("moai_adk.cli.ui.progress.ProgressContext") as mock_ctx_class:
             mock_ctx = MagicMock()
             mock_ctx_class.return_value = mock_ctx
             mock_ctx.__enter__.return_value = mock_ctx
@@ -542,14 +542,14 @@ class TestProgressSteps:
                 list(step_iter)
 
             # Verify update_task was called for each step
-            update_calls = [c for c in mock_ctx.method_calls if 'update_task' in str(c)]
+            update_calls = [c for c in mock_ctx.method_calls if "update_task" in str(c)]
             assert len(update_calls) >= len(steps)
 
     def test_progress_advanced(self):
         """Test that progress advances after each step."""
         steps = ["A", "B", "C"]
 
-        with patch('moai_adk.cli.ui.progress.ProgressContext') as mock_ctx_class:
+        with patch("moai_adk.cli.ui.progress.ProgressContext") as mock_ctx_class:
             mock_ctx = MagicMock()
             mock_ctx_class.return_value = mock_ctx
             mock_ctx.__enter__.return_value = mock_ctx
@@ -559,14 +559,14 @@ class TestProgressSteps:
                     pass
 
             # Verify advance was called
-            advance_calls = [c for c in mock_ctx.method_calls if 'advance' in str(c)]
+            advance_calls = [c for c in mock_ctx.method_calls if "advance" in str(c)]
             assert len(advance_calls) >= len(steps)
 
     def test_task_created(self):
         """Test that a task is created for steps."""
         steps = ["Step1", "Step2", "Step3"]
 
-        with patch('moai_adk.cli.ui.progress.ProgressContext') as mock_ctx_class:
+        with patch("moai_adk.cli.ui.progress.ProgressContext") as mock_ctx_class:
             mock_ctx = MagicMock()
             mock_ctx_class.return_value = mock_ctx
             mock_ctx.__enter__.return_value = mock_ctx
@@ -577,11 +577,11 @@ class TestProgressSteps:
             # Verify add_task was called with correct total
             mock_ctx.add_task.assert_called_once()
             args, kwargs = mock_ctx.add_task.call_args
-            assert kwargs['total'] == len(steps)
+            assert kwargs["total"] == len(steps)
 
     def test_custom_title(self):
         """Test with custom title."""
-        with patch('moai_adk.cli.ui.progress.ProgressContext') as mock_ctx_class:
+        with patch("moai_adk.cli.ui.progress.ProgressContext") as mock_ctx_class:
             mock_ctx = MagicMock()
             mock_ctx_class.return_value = mock_ctx
             mock_ctx.__enter__.return_value = mock_ctx
@@ -598,7 +598,7 @@ class TestPrintStep:
 
     def test_running_status(self):
         """Test printing step with running status."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(1, 5, "Processing files", status="running")
             mock_print.assert_called_once()
             args, _ = mock_print.call_args
@@ -608,7 +608,7 @@ class TestPrintStep:
 
     def test_complete_status(self):
         """Test printing step with complete status."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(3, 5, "Download", status="complete")
             mock_print.assert_called_once()
             args, _ = mock_print.call_args
@@ -616,7 +616,7 @@ class TestPrintStep:
 
     def test_error_status(self):
         """Test printing step with error status."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(2, 5, "Installation failed", status="error")
             mock_print.assert_called_once()
             args, _ = mock_print.call_args
@@ -624,7 +624,7 @@ class TestPrintStep:
 
     def test_skipped_status(self):
         """Test printing step with skipped status."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(4, 5, "Optional feature", status="skipped")
             mock_print.assert_called_once()
             args, _ = mock_print.call_args
@@ -632,7 +632,7 @@ class TestPrintStep:
 
     def test_unknown_status_defaults(self):
         """Test unknown status uses default symbol."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(1, 5, "Step", status="unknown")
             mock_print.assert_called_once()
             args, _ = mock_print.call_args
@@ -640,35 +640,36 @@ class TestPrintStep:
 
     def test_step_number_format(self):
         """Test step number formatting."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(7, 12, "Final step")
             args, _ = mock_print.call_args
             assert "[7/12]" in args[0]
 
     def test_message_included(self):
         """Test that message is included in output."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(1, 1, "Only step")
             args, _ = mock_print.call_args
             assert "Only step" in args[0]
 
     def test_style_applied(self):
         """Test that style is applied to output."""
-        with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "print") as mock_print:
             print_step(1, 3, "Processing")
             _, kwargs = mock_print.call_args
-            assert 'style' in kwargs
-            assert kwargs['style'] is not None
+            assert "style" in kwargs
+            assert kwargs["style"] is not None
 
 
 # Integration Tests
+
 
 class TestProgressIntegration:
     """Integration tests combining multiple components."""
 
     def test_progress_context_full_cycle(self):
         """Test full progress context cycle."""
-        with patch('moai_adk.cli.ui.progress.create_progress_bar') as mock_create:
+        with patch("moai_adk.cli.ui.progress.create_progress_bar") as mock_create:
             mock_progress = MagicMock()
             mock_progress.add_task.return_value = TaskID(1)
             mock_task = MagicMock()
@@ -688,8 +689,8 @@ class TestProgressIntegration:
 
     def test_spinner_context_with_multiple_updates(self):
         """Test spinner with multiple status updates."""
-        with patch.object(console, 'status') as mock_status:
-            with patch.object(console, 'print') as mock_print:
+        with patch.object(console, "status") as mock_status:
+            with patch.object(console, "print") as mock_print:
                 mock_status_obj = MagicMock()
                 mock_status.return_value = mock_status_obj
 
@@ -719,7 +720,7 @@ class TestProgressIntegration:
         """Test progress_steps with actual iteration."""
         steps = ["Setup", "Build", "Test", "Deploy"]
 
-        with patch('moai_adk.cli.ui.progress.ProgressContext') as mock_ctx_class:
+        with patch("moai_adk.cli.ui.progress.ProgressContext") as mock_ctx_class:
             mock_ctx = MagicMock()
             mock_ctx_class.return_value = mock_ctx
             mock_ctx.__enter__.return_value = mock_ctx

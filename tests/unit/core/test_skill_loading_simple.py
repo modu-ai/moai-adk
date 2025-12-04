@@ -44,7 +44,7 @@ class TestSkillData:
             name="test-skill",
             frontmatter=frontmatter,
             content=content,
-            loaded_at=loaded_at
+            loaded_at=loaded_at,
         )
 
         assert skill.name == "test-skill"
@@ -56,13 +56,13 @@ class TestSkillData:
         """Test retrieving capability from skill."""
         frontmatter = {
             "name": "test-skill",
-            "capabilities": {"async": True, "testing": True}
+            "capabilities": {"async": True, "testing": True},
         }
         skill = SkillData(
             name="test-skill",
             frontmatter=frontmatter,
             content="",
-            loaded_at=datetime.now()
+            loaded_at=datetime.now(),
         )
 
         assert skill.get_capability("async") is True
@@ -76,7 +76,7 @@ class TestSkillData:
             name="test-skill",
             frontmatter=frontmatter,
             content="",
-            loaded_at=datetime.now()
+            loaded_at=datetime.now(),
         )
 
         assert skill.supports_effort(1) is True
@@ -99,7 +99,7 @@ Advanced content"""
             name="test-skill",
             frontmatter={"name": "test-skill"},
             content=content,
-            loaded_at=datetime.now()
+            loaded_at=datetime.now(),
         )
 
         skill.apply_filter("basic")
@@ -119,7 +119,7 @@ Advanced content here"""
             name="test-skill",
             frontmatter={"name": "test-skill"},
             content=content,
-            loaded_at=datetime.now()
+            loaded_at=datetime.now(),
         )
 
         skill.apply_filter("standard")
@@ -151,10 +151,7 @@ class TestLRUCache:
         """Test setting and getting cache values."""
         cache = LRUCache(maxsize=100)
         skill = SkillData(
-            name="test-skill",
-            frontmatter={},
-            content="test",
-            loaded_at=datetime.now()
+            name="test-skill", frontmatter={}, content="test", loaded_at=datetime.now()
         )
 
         cache.set("test-skill", skill)
@@ -169,10 +166,7 @@ class TestLRUCache:
 
         for i in range(5):
             skill = SkillData(
-                name=f"skill-{i}",
-                frontmatter={},
-                content="",
-                loaded_at=datetime.now()
+                name=f"skill-{i}", frontmatter={}, content="", loaded_at=datetime.now()
             )
             cache.set(f"skill-{i}", skill)
 
@@ -187,10 +181,7 @@ class TestLRUCache:
         cache = LRUCache(maxsize=100)
 
         skill = SkillData(
-            name="test",
-            frontmatter={},
-            content="",
-            loaded_at=datetime.now()
+            name="test", frontmatter={}, content="", loaded_at=datetime.now()
         )
         cache.set("test", skill)
 
@@ -206,10 +197,7 @@ class TestLRUCache:
 
         for i in range(3):
             skill = SkillData(
-                name=f"skill-{i}",
-                frontmatter={},
-                content="",
-                loaded_at=datetime.now()
+                name=f"skill-{i}", frontmatter={}, content="", loaded_at=datetime.now()
             )
             cache.set(f"skill-{i}", skill)
 
@@ -298,8 +286,7 @@ class TestSkillValidator:
         validator = SkillValidator(registry)
 
         result = validator.validate_dependencies(
-            "test-skill",
-            ["moai-foundation-core", "moai-lang-unified"]
+            "test-skill", ["moai-foundation-core", "moai-lang-unified"]
         )
 
         assert result is True
@@ -313,10 +300,7 @@ class TestSkillValidator:
         validator = SkillValidator(registry)
 
         with pytest.raises(DependencyError):
-            validator.validate_dependencies(
-                "test-skill",
-                ["moai-foundation-core"]
-            )
+            validator.validate_dependencies("test-skill", ["moai-foundation-core"])
 
 
 class TestSkillRegistry:
@@ -334,11 +318,7 @@ class TestSkillRegistry:
         """Test registering a skill."""
         registry = SkillRegistry()
 
-        metadata = {
-            "name": "test-skill",
-            "version": "1.0.0",
-            "requires": []
-        }
+        metadata = {"name": "test-skill", "version": "1.0.0", "requires": []}
 
         registry.register_skill("test-skill", metadata)
 
@@ -399,7 +379,7 @@ class TestSkillLoader:
                 name="test-skill",
                 frontmatter={"name": "test-skill"},
                 content="cached",
-                loaded_at=datetime.now()
+                loaded_at=datetime.now(),
             )
 
             loader.cache.set("test-skill", cached_skill)
@@ -426,7 +406,10 @@ class TestSkillLoader:
                 pass
 
             # Verify the loading_stack was cleaned up
-            assert "test-skill" not in loader.loading_stack or len(loader.loading_stack) >= 0
+            assert (
+                "test-skill" not in loader.loading_stack
+                or len(loader.loading_stack) >= 0
+            )
 
     def test_load_skill_with_effort_parameter(self):
         """Test loading skill with effort parameter."""
@@ -443,7 +426,7 @@ class TestSkillLoader:
                         name="test-skill",
                         frontmatter={"supported_efforts": [1, 3, 5]},
                         content="test content",
-                        loaded_at=datetime.now()
+                        loaded_at=datetime.now(),
                     )
                     mock_load.return_value = skill
 
@@ -464,7 +447,7 @@ class TestSkillLoader:
                 name="test-skill",
                 frontmatter={},
                 content="cached",
-                loaded_at=datetime.now()
+                loaded_at=datetime.now(),
             )
             loader.cache.set("test-skill", cached_skill)
 
@@ -478,7 +461,7 @@ class TestSkillLoader:
                         name="test-skill",
                         frontmatter={},
                         content="new",
-                        loaded_at=datetime.now()
+                        loaded_at=datetime.now(),
                     )
                     mock_load.return_value = new_skill
 
@@ -545,7 +528,7 @@ version: 1.0.0
                 name="test-skill",
                 frontmatter={},
                 content="## Quick Reference\nContent",
-                loaded_at=datetime.now()
+                loaded_at=datetime.now(),
             )
 
             result = loader._apply_effort_parameter(skill, 1)
@@ -561,7 +544,7 @@ version: 1.0.0
                 name="test-skill",
                 frontmatter={},
                 content="# Content",
-                loaded_at=datetime.now()
+                loaded_at=datetime.now(),
             )
 
             result = loader._apply_effort_parameter(skill, 3)
@@ -577,7 +560,7 @@ version: 1.0.0
                 name="test-skill",
                 frontmatter={},
                 content="# Full Content",
-                loaded_at=datetime.now()
+                loaded_at=datetime.now(),
             )
 
             result = loader._apply_effort_parameter(skill, 5)
@@ -590,10 +573,7 @@ version: 1.0.0
             loader = SkillLoader()
 
             skill = SkillData(
-                name="test-skill",
-                frontmatter={},
-                content="",
-                loaded_at=datetime.now()
+                name="test-skill", frontmatter={}, content="", loaded_at=datetime.now()
             )
             loader.cache.set("test-skill", skill)
 
@@ -611,27 +591,20 @@ class TestModuleLevelFunctions:
         """Test module-level load_skill function."""
         with patch("moai_adk.core.skill_loading_system.SKILL_LOADER") as mock_loader:
             mock_skill = SkillData(
-                name="test",
-                frontmatter={},
-                content="",
-                loaded_at=datetime.now()
+                name="test", frontmatter={}, content="", loaded_at=datetime.now()
             )
             mock_loader.load_skill.return_value = mock_skill
 
             result = load_skill("test-skill", effort=3, force_reload=False)
 
-            mock_loader.load_skill.assert_called_once_with(
-                "test-skill",
-                3,
-                False
-            )
+            mock_loader.load_skill.assert_called_once_with("test-skill", 3, False)
 
     def test_get_skill_cache_stats_function(self):
         """Test module-level cache stats function."""
         with patch("moai_adk.core.skill_loading_system.SKILL_LOADER") as mock_loader:
             mock_loader.get_cache_stats.return_value = {
                 "cached_skills": [],
-                "cache_size": 0
+                "cache_size": 0,
             }
 
             result = get_skill_cache_stats()

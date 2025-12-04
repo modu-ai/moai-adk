@@ -46,7 +46,10 @@ class TestComponentArchitecture:
         assert result["valid"] is True
         assert result["hierarchy_level"] == 4
         assert len(result["components"]) == len(
-            components["atoms"] + components["molecules"] + components["organisms"] + components["pages"]
+            components["atoms"]
+            + components["molecules"]
+            + components["organisms"]
+            + components["pages"]
         )
 
     def test_component_composition_patterns(self):
@@ -104,7 +107,12 @@ class TestStateManagement:
         advisor = StateManagementAdvisor()
 
         # Test small app (Context API recommended)
-        small_app = {"complexity": "small", "components": 15, "shared_state": ["theme", "user"], "async_actions": False}
+        small_app = {
+            "complexity": "small",
+            "components": 15,
+            "shared_state": ["theme", "user"],
+            "async_actions": False,
+        }
         result = advisor.recommend_solution(small_app)
         assert result["solution"] in ["Context API", "Local State"]
         assert result["confidence"] > 0.8
@@ -187,7 +195,10 @@ class TestStateManagement:
                 "reducers": {"setUser": "updates user", "clearUser": "clears user"},
                 "async_thunks": ["loginAsync", "refreshAsync"],
             },
-            "cart": {"actions": ["addItem", "removeItem", "updateQuantity"], "async_thunks": ["checkoutAsync"]},
+            "cart": {
+                "actions": ["addItem", "removeItem", "updateQuantity"],
+                "async_thunks": ["checkoutAsync"],
+            },
         }
 
         result = advisor.validate_redux_design(slices)
@@ -234,7 +245,12 @@ class TestAccessibility:
         # Define form with ARIA attributes
         form_component = {
             "inputs": [
-                {"name": "email", "aria_label": "Email address", "aria_required": True, "aria_invalid": False},
+                {
+                    "name": "email",
+                    "aria_label": "Email address",
+                    "aria_required": True,
+                    "aria_invalid": False,
+                },
                 {
                     "name": "password",
                     "aria_label": "Password",
@@ -393,7 +409,12 @@ class TestResponsiveDesign:
             "responsive_images": True,
             "aspect_ratio_preserved": True,
             "max_width_constraint": 1200,
-            "grid_columns_responsive": {"mobile": 1, "tablet": 2, "desktop": 3, "wide": 4},
+            "grid_columns_responsive": {
+                "mobile": 1,
+                "tablet": 2,
+                "desktop": 3,
+                "wide": 4,
+            },
         }
 
         result = planner.validate_fluid_layout(layout_config)
@@ -413,7 +434,11 @@ class TestResponsiveDesign:
             "lazy_loading": "native",
             "image_optimization": True,
             "webp_format": True,
-            "breakpoint_images": {"mobile": "400px", "tablet": "800px", "desktop": "1200px"},
+            "breakpoint_images": {
+                "mobile": "400px",
+                "tablet": "800px",
+                "desktop": "1200px",
+            },
             "placeholder_strategy": "blur",
         }
 

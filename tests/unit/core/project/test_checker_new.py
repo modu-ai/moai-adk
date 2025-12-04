@@ -39,9 +39,9 @@ class TestSystemChecker:
 
         # Assert
         assert checker is not None
-        assert hasattr(checker, 'REQUIRED_TOOLS')
-        assert hasattr(checker, 'OPTIONAL_TOOLS')
-        assert hasattr(checker, 'LANGUAGE_TOOLS')
+        assert hasattr(checker, "REQUIRED_TOOLS")
+        assert hasattr(checker, "OPTIONAL_TOOLS")
+        assert hasattr(checker, "LANGUAGE_TOOLS")
 
     def test_required_tools_contain_git_and_python(self):
         """Test REQUIRED_TOOLS contains git and python."""
@@ -125,7 +125,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value="/usr/bin/git"):
+        with patch("shutil.which", return_value="/usr/bin/git"):
             result = checker._check_tool("git --version")
 
         # Assert
@@ -137,7 +137,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value=None):
+        with patch("shutil.which", return_value=None):
             result = checker._check_tool("nonexistent_tool --version")
 
         # Assert
@@ -160,7 +160,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch.object(checker, '_is_tool_available', return_value=True):
+        with patch.object(checker, "_is_tool_available", return_value=True):
             result = checker.check_language_tools("python")
 
         # Assert
@@ -173,7 +173,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch.object(checker, '_is_tool_available', return_value=True):
+        with patch.object(checker, "_is_tool_available", return_value=True):
             result = checker.check_language_tools("typescript")
 
         # Assert
@@ -186,7 +186,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch.object(checker, '_is_tool_available', return_value=True):
+        with patch.object(checker, "_is_tool_available", return_value=True):
             result = checker.check_language_tools("go")
 
         # Assert
@@ -198,7 +198,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch.object(checker, '_is_tool_available', return_value=True):
+        with patch.object(checker, "_is_tool_available", return_value=True):
             result = checker.check_language_tools("rust")
 
         # Assert
@@ -211,7 +211,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch.object(checker, '_is_tool_available', return_value=True):
+        with patch.object(checker, "_is_tool_available", return_value=True):
             result = checker.check_language_tools("java")
 
         # Assert
@@ -257,7 +257,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch.object(checker, '_is_tool_available', return_value=True):
+        with patch.object(checker, "_is_tool_available", return_value=True):
             result = checker.check_language_tools("PYTHON")
 
         # Assert
@@ -269,7 +269,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value="/usr/bin/python3"):
+        with patch("shutil.which", return_value="/usr/bin/python3"):
             result = checker._is_tool_available("python3")
 
         # Assert
@@ -281,7 +281,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which') as mock_which:
+        with patch("shutil.which") as mock_which:
             mock_which.return_value = "/usr/bin/python3"
             checker._is_tool_available("python3")
 
@@ -294,12 +294,9 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value="/usr/bin/python3"):
-            with patch('subprocess.run') as mock_run:
-                mock_run.return_value = MagicMock(
-                    returncode=0,
-                    stdout="Python 3.11.0"
-                )
+        with patch("shutil.which", return_value="/usr/bin/python3"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0, stdout="Python 3.11.0")
                 result = checker.get_tool_version("python3")
 
         # Assert
@@ -312,7 +309,7 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value=None):
+        with patch("shutil.which", return_value=None):
             result = checker.get_tool_version("nonexistent")
 
         # Assert
@@ -335,8 +332,8 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value="/usr/bin/tool"):
-            with patch('subprocess.run') as mock_run:
+        with patch("shutil.which", return_value="/usr/bin/tool"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.side_effect = subprocess.TimeoutExpired("tool", 2)
                 result = checker.get_tool_version("tool")
 
@@ -349,8 +346,8 @@ class TestSystemChecker:
         checker = SystemChecker()
 
         # Act
-        with patch('shutil.which', return_value="/usr/bin/tool"):
-            with patch('subprocess.run') as mock_run:
+        with patch("shutil.which", return_value="/usr/bin/tool"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.side_effect = OSError("Permission denied")
                 result = checker.get_tool_version("tool")
 
@@ -448,7 +445,7 @@ class TestHelperFunctions:
         windows_msg = "Check permissions"
 
         # Act
-        with patch('platform.system', return_value="Linux"):
+        with patch("platform.system", return_value="Linux"):
             result = get_platform_specific_message(unix_msg, windows_msg)
 
         # Assert
@@ -461,7 +458,7 @@ class TestHelperFunctions:
         windows_msg = "Check permissions"
 
         # Act
-        with patch('platform.system', return_value="Windows"):
+        with patch("platform.system", return_value="Windows"):
             result = get_platform_specific_message(unix_msg, windows_msg)
 
         # Assert
@@ -474,7 +471,7 @@ class TestHelperFunctions:
         windows_msg = "Check permissions"
 
         # Act
-        with patch('platform.system', return_value="Darwin"):
+        with patch("platform.system", return_value="Darwin"):
             result = get_platform_specific_message(unix_msg, windows_msg)
 
         # Assert
@@ -486,7 +483,7 @@ class TestHelperFunctions:
         path = ".moai"
 
         # Act
-        with patch('platform.system', return_value="Linux"):
+        with patch("platform.system", return_value="Linux"):
             result = get_permission_fix_message(path)
 
         # Assert
@@ -499,7 +496,7 @@ class TestHelperFunctions:
         path = ".moai"
 
         # Act
-        with patch('platform.system', return_value="Windows"):
+        with patch("platform.system", return_value="Windows"):
             result = get_permission_fix_message(path)
 
         # Assert
@@ -593,4 +590,6 @@ class TestLanguageToolsIntegration:
         # Act & Assert
         for language, tools_config in checker.LANGUAGE_TOOLS.items():
             assert "required" in tools_config, f"{language} missing required tools"
-            assert len(tools_config["required"]) > 0, f"{language} has no required tools"
+            assert (
+                len(tools_config["required"]) > 0
+            ), f"{language} has no required tools"

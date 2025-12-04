@@ -23,7 +23,9 @@ class TestLanguageValidator:
         # This test should fail initially
         from moai_adk.core.language_validator import LanguageValidator
 
-        validator = LanguageValidator(supported_languages=["python", "javascript", "typescript"])
+        validator = LanguageValidator(
+            supported_languages=["python", "javascript", "typescript"]
+        )
         assert validator.supported_languages == {"python", "javascript", "typescript"}
 
     def test_language_validator_supported_languages_default(self):
@@ -41,7 +43,9 @@ class TestLanguageValidator:
         # This test should fail initially
         from moai_adk.core.language_validator import LanguageValidator
 
-        validator = LanguageValidator(supported_languages=["python", "javascript", "typescript"])
+        validator = LanguageValidator(
+            supported_languages=["python", "javascript", "typescript"]
+        )
 
         # Test valid languages
         assert validator.validate_language("python") is True
@@ -109,7 +113,9 @@ class TestLanguageValidator:
         }
 
         # Test Python project validation
-        is_valid, issues = validator.validate_project_structure(project_structure, "python")
+        is_valid, issues = validator.validate_project_structure(
+            project_structure, "python"
+        )
         assert isinstance(is_valid, bool)
         assert isinstance(issues, list)
 
@@ -217,7 +223,10 @@ class TestLanguageValidator:
         validator = LanguageValidator()
 
         # Valid Python configuration
-        valid_config = {"project": {"language": "python", "name": "test-project"}, "directories": {"source": "src/"}}
+        valid_config = {
+            "project": {"language": "python", "name": "test-project"},
+            "directories": {"source": "src/"},
+        }
 
         is_valid, issues = validator.validate_project_configuration(valid_config)
         assert isinstance(is_valid, bool)
@@ -237,7 +246,14 @@ class TestLanguageValidator:
 
         validator = LanguageValidator()
 
-        files = ["src/main.py", "src/utils.py", "tests/test_main.py", "app.js", "styles.css", "README.md"]
+        files = [
+            "src/main.py",
+            "src/utils.py",
+            "tests/test_main.py",
+            "app.js",
+            "styles.css",
+            "README.md",
+        ]
 
         stats = validator.get_language_statistics(files)
 

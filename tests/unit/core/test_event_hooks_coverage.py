@@ -350,8 +350,8 @@ class TestResourcePool:
         pool = ResourcePool(isolation_level=ResourceIsolationLevel.SHARED)
 
         # Act & Assert
-        assert hasattr(pool, 'isolation_level')
-        assert hasattr(pool, 'max_concurrent')
+        assert hasattr(pool, "isolation_level")
+        assert hasattr(pool, "max_concurrent")
         assert pool.isolation_level == ResourceIsolationLevel.SHARED
 
     def test_resource_pool_isolation_levels(self):
@@ -388,7 +388,9 @@ class TestEventProcessor:
     def test_event_processor_register_handler(self):
         """Test registering event handler."""
         # Arrange
-        processor = EventProcessor(ResourcePool(isolation_level=ResourceIsolationLevel.SHARED))
+        processor = EventProcessor(
+            ResourcePool(isolation_level=ResourceIsolationLevel.SHARED)
+        )
         handler = AsyncMock()
 
         # Act
@@ -401,7 +403,9 @@ class TestEventProcessor:
     async def test_event_processor_process_event(self):
         """Test processing an event."""
         # Arrange
-        processor = EventProcessor(ResourcePool(isolation_level=ResourceIsolationLevel.SHARED))
+        processor = EventProcessor(
+            ResourcePool(isolation_level=ResourceIsolationLevel.SHARED)
+        )
         handler = AsyncMock()
         processor.register_handler(EventType.SYSTEM_ALERT, handler)
 
@@ -538,7 +542,9 @@ class TestEventDrivenHookSystem:
         )
 
         # Act
-        await hook_system.message_broker.publish(EventType.HOOK_EXECUTION_REQUEST, event)
+        await hook_system.message_broker.publish(
+            EventType.HOOK_EXECUTION_REQUEST, event
+        )
         await asyncio.sleep(0.05)
 
         # Assert

@@ -75,7 +75,9 @@ class TestValidateSystemRequirements:
         try:
             validator.validate_system_requirements()
         except ValidationError:
-            pytest.fail("validate_system_requirements raised ValidationError unexpectedly")
+            pytest.fail(
+                "validate_system_requirements raised ValidationError unexpectedly"
+            )
 
     def test_validate_system_requirements_checks_git(self):
         """Should check for Git installation"""
@@ -110,7 +112,9 @@ class TestValidateProjectPath:
         with pytest.raises(ValidationError, match="must be absolute"):
             validator.validate_project_path(Path("relative/path"))
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="Windows path regex pattern mismatch")
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="Windows path regex pattern mismatch"
+    )
     def test_validate_project_path_checks_parent_exists(self, tmp_project_dir: Path):
         """Should check parent directory exists"""
         validator = ProjectValidator()
@@ -121,7 +125,9 @@ class TestValidateProjectPath:
         with pytest.raises(ValidationError, match="Parent directory does not exist"):
             validator.validate_project_path(nonexistent_path)
 
-    def test_validate_project_path_succeeds_with_valid_path(self, tmp_project_dir: Path):
+    def test_validate_project_path_succeeds_with_valid_path(
+        self, tmp_project_dir: Path
+    ):
         """Should pass with valid absolute path"""
         validator = ProjectValidator()
 
@@ -137,12 +143,16 @@ class TestValidateProjectPath:
 class TestValidateInstallation:
     """Test validate_installation method"""
 
-    def test_validate_installation_checks_required_directories(self, tmp_project_dir: Path):
+    def test_validate_installation_checks_required_directories(
+        self, tmp_project_dir: Path
+    ):
         """Should check for required directories"""
         validator = ProjectValidator()
 
         # Missing .moai/ directory
-        with pytest.raises(ValidationError, match="Required directory not found: .moai/"):
+        with pytest.raises(
+            ValidationError, match="Required directory not found: .moai/"
+        ):
             validator.validate_installation(tmp_project_dir)
 
     def test_validate_installation_checks_required_files(self, tmp_project_dir: Path):
@@ -191,7 +201,9 @@ class TestValidateAlfredCommands:
     # REMOVED_ORPHAN_TEST:INIT-005:ALFRED-VALIDATION | Comprehensive Alfred command validation
     """
 
-    def test_validate_installation_checks_alfred_command_files(self, tmp_project_dir: Path):
+    def test_validate_installation_checks_alfred_command_files(
+        self, tmp_project_dir: Path
+    ):
         """Should verify all required Alfred command files exist
 
         # REMOVED_ORPHAN_TEST:INIT-005:VERIFY-002 | Missing Alfred command validation
@@ -217,7 +229,9 @@ class TestValidateAlfredCommands:
         with pytest.raises(ValidationError, match="Alfred command"):
             validator.validate_installation(tmp_project_dir)
 
-    def test_validate_installation_succeeds_with_all_alfred_commands(self, tmp_project_dir: Path):
+    def test_validate_installation_succeeds_with_all_alfred_commands(
+        self, tmp_project_dir: Path
+    ):
         """Should pass when all MoAI command files exist"""
         validator = ProjectValidator()
 
@@ -245,7 +259,9 @@ class TestValidateAlfredCommands:
         except ValidationError:
             pytest.fail("validate_installation raised ValidationError unexpectedly")
 
-    def test_validate_installation_reports_missing_command_files(self, tmp_project_dir: Path):
+    def test_validate_installation_reports_missing_command_files(
+        self, tmp_project_dir: Path
+    ):
         """Should report which command files are missing"""
         validator = ProjectValidator()
 
@@ -277,7 +293,9 @@ class TestValidateAlfredCommands:
 class TestIsInsideMoaiPackage:
     """Test _is_inside_moai_package method"""
 
-    def test_is_inside_moai_package_returns_false_for_normal_project(self, tmp_project_dir: Path):
+    def test_is_inside_moai_package_returns_false_for_normal_project(
+        self, tmp_project_dir: Path
+    ):
         """Should return False for normal project directory"""
         validator = ProjectValidator()
 
@@ -285,7 +303,9 @@ class TestIsInsideMoaiPackage:
 
         assert result is False
 
-    def test_is_inside_moai_package_returns_true_when_in_moai_package(self, tmp_project_dir: Path):
+    def test_is_inside_moai_package_returns_true_when_in_moai_package(
+        self, tmp_project_dir: Path
+    ):
         """Should return True when inside moai-adk package"""
         validator = ProjectValidator()
 
@@ -297,7 +317,9 @@ class TestIsInsideMoaiPackage:
 
         assert result is True
 
-    def test_is_inside_moai_package_checks_parent_directories(self, tmp_project_dir: Path):
+    def test_is_inside_moai_package_checks_parent_directories(
+        self, tmp_project_dir: Path
+    ):
         """Should check parent directories for pyproject.toml"""
         validator = ProjectValidator()
 

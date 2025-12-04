@@ -42,7 +42,9 @@ class TestCircuitBreaker:
     def test_circuit_breaker_init(self):
         """Test CircuitBreaker initialization."""
         # Arrange & Act
-        cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60, success_threshold=5)
+        cb = CircuitBreaker(
+            failure_threshold=3, timeout_seconds=60, success_threshold=5
+        )
 
         # Assert
         assert cb.failure_threshold == 3
@@ -155,6 +157,7 @@ class TestHookResultCache:
 
         # Act
         import time
+
         time.sleep(1.1)
         result = cache.get("key")
 
@@ -323,7 +326,11 @@ class TestHealthChecker:
         manager._hook_registry = {}
         manager._hooks_by_event = {}
         manager._advanced_cache = MagicMock()
-        manager._advanced_cache.get_stats.return_value = {"size": 0, "utilization": 0.0, "max_size": 100}
+        manager._advanced_cache.get_stats.return_value = {
+            "size": 0,
+            "utilization": 0.0,
+            "max_size": 100,
+        }
         manager._connection_pool = MagicMock()
         manager._connection_pool.get_pool_stats.return_value = {"pools": {}}
         manager._circuit_breakers = {}
@@ -460,11 +467,15 @@ class TestJITEnhancedHookManager:
 
         # Act & Assert
         for hook in critical_hooks:
-            priority = hook_manager._determine_hook_priority(hook, HookEvent.PRE_TOOL_USE)
+            priority = hook_manager._determine_hook_priority(
+                hook, HookEvent.PRE_TOOL_USE
+            )
             assert priority in [HookPriority.CRITICAL, HookPriority.HIGH]
 
         for hook in optional_hooks:
-            priority = hook_manager._determine_hook_priority(hook, HookEvent.SESSION_END)
+            priority = hook_manager._determine_hook_priority(
+                hook, HookEvent.SESSION_END
+            )
             assert priority in [HookPriority.LOW, HookPriority.NORMAL]
 
     def test_jit_manager_estimate_execution_time(self, hook_manager):
@@ -492,11 +503,7 @@ class TestJITEnhancedHookManager:
 
         # Act
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="result",
-                stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="result", stderr="")
             hook_manager._register_hook("test_hook.py", HookEvent.SESSION_START)
 
         # Assert
@@ -568,7 +575,9 @@ class TestJITEnhancedHookManager:
         hook_path = "test_hook.py"
 
         # Act
-        relevance = hook_manager._determine_phase_relevance(hook_path, HookEvent.SESSION_START)
+        relevance = hook_manager._determine_phase_relevance(
+            hook_path, HookEvent.SESSION_START
+        )
 
         # Assert
         assert isinstance(relevance, dict)
@@ -675,7 +684,7 @@ class TestContextCache:
 
         # Assert
         assert cache.max_size == 100
-        assert hasattr(cache, 'max_memory_mb') or hasattr(cache, 'max_memory_bytes')
+        assert hasattr(cache, "max_memory_mb") or hasattr(cache, "max_memory_bytes")
         assert isinstance(cache.cache, dict)
 
     def test_context_cache_get(self):

@@ -38,7 +38,15 @@ class TestHookEnums:
     def test_phase_enum_exists(self):
         """Test Phase enum exists and has expected phases."""
         # Just verify the phases exist, not their string values
-        phases = [Phase.SPEC, Phase.RED, Phase.GREEN, Phase.REFACTOR, Phase.SYNC, Phase.DEBUG, Phase.PLANNING]
+        phases = [
+            Phase.SPEC,
+            Phase.RED,
+            Phase.GREEN,
+            Phase.REFACTOR,
+            Phase.SYNC,
+            Phase.DEBUG,
+            Phase.PLANNING,
+        ]
         assert len(phases) == 7
 
 
@@ -50,7 +58,7 @@ class TestHookMetadata:
         metadata = HookMetadata(
             hook_path="/test/hook.py",
             event_type=HookEvent.SESSION_START,
-            priority=HookPriority.HIGH
+            priority=HookPriority.HIGH,
         )
         assert metadata.hook_path == "/test/hook.py"
         assert metadata.event_type == HookEvent.SESSION_START
@@ -61,7 +69,7 @@ class TestHookMetadata:
         metadata = HookMetadata(
             hook_path="/test/hook.py",
             event_type=HookEvent.SESSION_START,
-            priority=HookPriority.NORMAL
+            priority=HookPriority.NORMAL,
         )
         assert metadata.estimated_execution_time_ms == 0.0
         assert metadata.last_execution_time is None
@@ -84,7 +92,7 @@ class TestHookMetadata:
             phase_relevance={Phase.RED: 0.9, Phase.GREEN: 0.8},
             token_cost_estimate=200,
             dependencies={"/dep1.py", "/dep2.py"},
-            parallel_safe=True
+            parallel_safe=True,
         )
         assert metadata.estimated_execution_time_ms == 50.0
         assert metadata.last_execution_time == now
@@ -104,7 +112,7 @@ class TestHookExecutionResult:
             success=True,
             execution_time_ms=25.5,
             token_usage=100,
-            output={"status": "ok"}
+            output={"status": "ok"},
         )
         assert result.success is True
         assert result.execution_time_ms == 25.5
@@ -118,25 +126,21 @@ class TestHookExecutionResult:
             execution_time_ms=15.0,
             token_usage=50,
             output=None,
-            error_message="Hook execution timed out"
+            error_message="Hook execution timed out",
         )
         assert result.success is False
         assert result.error_message == "Hook execution timed out"
 
     def test_hook_execution_result_with_metadata(self):
         """Test hook execution result with metadata."""
-        metadata = {
-            "retry_count": 2,
-            "phase": "RED",
-            "cache_hit": True
-        }
+        metadata = {"retry_count": 2, "phase": "RED", "cache_hit": True}
         result = HookExecutionResult(
             hook_path="/test/hook.py",
             success=True,
             execution_time_ms=30.0,
             token_usage=120,
             output={"data": "value"},
-            metadata=metadata
+            metadata=metadata,
         )
         assert result.metadata == metadata
 

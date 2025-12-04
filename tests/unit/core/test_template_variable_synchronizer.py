@@ -14,6 +14,7 @@ class TestTemplateVariableSynchronizer:
             from moai_adk.core.template_variable_synchronizer import (
                 TemplateVariableSynchronizer,
             )
+
             assert TemplateVariableSynchronizer is not None
         except ImportError:
             pytest.skip("Module not available")
@@ -24,6 +25,7 @@ class TestTemplateVariableSynchronizer:
             from moai_adk.core.template_variable_synchronizer import (
                 TemplateVariableSynchronizer,
             )
+
             sync = TemplateVariableSynchronizer()
             assert sync is not None
         except (ImportError, Exception):
@@ -39,6 +41,7 @@ class TestSynchronization:
             from moai_adk.core.template_variable_synchronizer import (
                 TemplateVariableSynchronizer,
             )
+
             sync = TemplateVariableSynchronizer()
             assert hasattr(sync, "sync")
         except (ImportError, Exception):
@@ -50,6 +53,7 @@ class TestSynchronization:
             from moai_adk.core.template_variable_synchronizer import (
                 TemplateVariableSynchronizer,
             )
+
             sync = TemplateVariableSynchronizer()
             if hasattr(sync, "find_variables"):
                 assert callable(sync.find_variables)
@@ -66,6 +70,7 @@ class TestVariablePatterns:
             from moai_adk.core.template_variable_synchronizer import (
                 TemplateVariableSynchronizer,
             )
+
             sync = TemplateVariableSynchronizer()
             # Should be able to recognize template variables
             assert sync is not None

@@ -22,7 +22,11 @@ class TestBasicSubstitution:
         """Test substitution of multiple variables"""
         processor = TemplateProcessor(tmp_path)
         processor.set_context(
-            {"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "My awesome project", "AUTHOR": "John Doe"}
+            {
+                "PROJECT_NAME": "MyProject",
+                "PROJECT_DESCRIPTION": "My awesome project",
+                "AUTHOR": "John Doe",
+            }
         )
 
         content = """# {{PROJECT_NAME}}
@@ -113,7 +117,9 @@ class TestFileOperations:
 
         # Create processor and set context
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "Test project"})
+        processor.set_context(
+            {"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "Test project"}
+        )
 
         # Copy with substitution
         dst = tmp_path / "output.md"
@@ -213,7 +219,11 @@ class TestIntegration:
         # Setup
         processor = TemplateProcessor(tmp_path)
         processor.set_context(
-            {"PROJECT_NAME": "AwesomeApp", "PROJECT_DESCRIPTION": "An awesome application", "AUTHOR": "DevTeam"}
+            {
+                "PROJECT_NAME": "AwesomeApp",
+                "PROJECT_DESCRIPTION": "An awesome application",
+                "AUTHOR": "DevTeam",
+            }
         )
 
         # Create and copy files
@@ -296,7 +306,9 @@ Unknown: {{UNKNOWN_VAR}}
         result, warnings = processor._substitute_variables(content)
 
         # Should have warnings for all unsubstituted variables
-        assert len(warnings) >= 2  # At least "Template variables not substituted" and details
+        assert (
+            len(warnings) >= 2
+        )  # At least "Template variables not substituted" and details
 
         warning_text = " ".join(warnings)
         assert "PROJECT_NAME" in warning_text

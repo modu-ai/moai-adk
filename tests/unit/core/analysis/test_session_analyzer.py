@@ -141,6 +141,7 @@ class TestSessionAnalyzerParseSessions:
             old_time = (datetime.now() - timedelta(days=10)).timestamp()
             Path(old_file).touch()
             import os
+
             os.utime(old_file, (old_time, old_time))
 
             analyzer = SessionAnalyzer(days_back=7)
@@ -156,10 +157,7 @@ class TestSessionAnalyzerAnalyzeSession:
     def test_analyze_session_summary_format(self):
         """Test analyzing session in summary format."""
         analyzer = SessionAnalyzer()
-        session = {
-            "type": "summary",
-            "summary": "Testing and building application"
-        }
+        session = {"type": "summary", "summary": "Testing and building application"}
         analyzer._analyze_session(session)
         assert analyzer.patterns["total_events"] == 1
 
@@ -168,7 +166,7 @@ class TestSessionAnalyzerAnalyzeSession:
         analyzer = SessionAnalyzer()
         session = {
             "type": "summary",
-            "summary": "Build failed with error in compilation"
+            "summary": "Build failed with error in compilation",
         }
         analyzer._analyze_session(session)
         assert analyzer.patterns["failed_sessions"] > 0

@@ -232,7 +232,9 @@ class TestEARSValidator:
     def test_analyze_priority_security(self):
         """Test priority detection for security requirement."""
         validator = EARSValidator()
-        result = validator.analyze("When user logs in, the system shall encrypt password")
+        result = validator.analyze(
+            "When user logs in, the system shall encrypt password"
+        )
 
         # Security requirements should have high priority
         assert result["priority"] >= 7
@@ -252,7 +254,9 @@ class TestEARSAnalyzer:
     def test_generate_test_cases_simple(self):
         """Test generating test cases from simple requirement."""
         analyzer = EARSAnalyzer()
-        test_cases = analyzer.generate_test_cases("When user clicks button, then dialog opens")
+        test_cases = analyzer.generate_test_cases(
+            "When user clicks button, then dialog opens"
+        )
 
         assert len(test_cases) > 0
         assert all("given" in tc for tc in test_cases)

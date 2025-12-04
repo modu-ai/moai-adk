@@ -110,7 +110,10 @@ class TestWorktreeManagerInstantiation:
 
             manager = WorktreeManager(repo_path=repo_path, worktree_root=worktree_root)
             # Check for list method
-            assert hasattr(manager, "list") or len([m for m in dir(manager) if "list" in m.lower()]) > 0
+            assert (
+                hasattr(manager, "list")
+                or len([m for m in dir(manager) if "list" in m.lower()]) > 0
+            )
 
 
 class TestWorktreeManagerAttributes:
@@ -156,6 +159,7 @@ class TestWorktreeManagerExceptionHandling:
             WorktreeExistsError,
             WorktreeNotFoundError,
         )
+
         # Verify exceptions exist
         assert GitOperationError is not None
         assert MergeConflictError is not None
@@ -179,6 +183,7 @@ class TestWorktreeManagerMethodSignatures:
 
             manager = WorktreeManager(repo_path=repo_path, worktree_root=worktree_root)
             import inspect
+
             sig = inspect.signature(manager.create)
             params = list(sig.parameters.keys())
             # Should have spec_id parameter
@@ -196,6 +201,7 @@ class TestWorktreeManagerMethodSignatures:
 
             manager = WorktreeManager(repo_path=repo_path, worktree_root=worktree_root)
             import inspect
+
             sig = inspect.signature(manager.remove)
             params = list(sig.parameters.keys())
             # Should have spec_id parameter

@@ -249,9 +249,9 @@ class TestVersionFunctions:
         mock_response = MagicMock()
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
-        mock_response.read.return_value = json.dumps({
-            "info": {"version": "0.9.0"}
-        }).encode("utf-8")
+        mock_response.read.return_value = json.dumps(
+            {"info": {"version": "0.9.0"}}
+        ).encode("utf-8")
         mock_urlopen.return_value = mock_response
 
         # Act
@@ -266,6 +266,7 @@ class TestVersionFunctions:
         """Test network error handling when fetching version."""
         # Arrange
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.URLError("Connection failed")
 
         # Act & Assert
@@ -351,7 +352,7 @@ class TestConfigVersionFunctions:
         # Arrange
         config_data = {
             "project": {"template_version": "0.8.1"},
-            "moai": {"version": "0.8.0"}
+            "moai": {"version": "0.8.0"},
         }
 
         with patch("pathlib.Path.exists", return_value=True):
@@ -367,10 +368,7 @@ class TestConfigVersionFunctions:
     def test_get_project_config_version_fallback_moai_version(self):
         """Test project config version with moai version fallback."""
         # Arrange
-        config_data = {
-            "project": {},
-            "moai": {"version": "0.8.0"}
-        }
+        config_data = {"project": {}, "moai": {"version": "0.8.0"}}
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text") as mock_read:
@@ -385,10 +383,7 @@ class TestConfigVersionFunctions:
     def test_get_project_config_version_placeholder_value(self):
         """Test project config version with unsubstituted placeholder."""
         # Arrange
-        config_data = {
-            "project": {"template_version": "{{VERSION}}"},
-            "moai": {}
-        }
+        config_data = {"project": {"template_version": "{{VERSION}}"}, "moai": {}}
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text") as mock_read:
@@ -456,7 +451,9 @@ class TestMergeStrategyFunctions:
     @patch("pathlib.Path.rglob")
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
-    def test_generate_manual_merge_guide(self, mock_exists, mock_mkdir, mock_rglob, mock_write):
+    def test_generate_manual_merge_guide(
+        self, mock_exists, mock_mkdir, mock_rglob, mock_write
+    ):
         """Test manual merge guide generation."""
         # Arrange
         mock_exists.return_value = True
@@ -470,9 +467,7 @@ class TestMergeStrategyFunctions:
         project_path = Path("/tmp")
 
         # Act
-        result = _generate_manual_merge_guide(
-            backup_path, template_path, project_path
-        )
+        result = _generate_manual_merge_guide(backup_path, template_path, project_path)
 
         # Assert
         assert result is not None
@@ -509,7 +504,7 @@ class TestLegacyLogMigration:
         """Test legacy log migration in dry-run mode."""
         # Arrange
         mock_exists.side_effect = [
-            True,   # legacy_memory.exists()
+            True,  # legacy_memory.exists()
             False,  # legacy_error_logs.exists()
             False,  # legacy_reports.exists()
             False,  # session_file.exists()
@@ -529,10 +524,10 @@ class TestLegacyLogMigration:
         """Test actual legacy log migration."""
         # Arrange
         mock_exists.side_effect = [
-            True,   # legacy_memory.exists()
+            True,  # legacy_memory.exists()
             False,  # legacy_error_logs.exists()
             False,  # legacy_reports.exists()
-            True,   # session_file.exists()
+            True,  # session_file.exists()
             False,  # target_file.exists()
         ]
 

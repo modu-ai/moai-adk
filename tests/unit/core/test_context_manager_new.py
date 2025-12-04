@@ -182,7 +182,9 @@ class TestSavePhaseResult:
 
             # Mock os.replace to verify atomic behavior
             with patch("moai_adk.core.context_manager.os.replace") as mock_replace:
-                with patch("moai_adk.core.context_manager.tempfile.mkstemp") as mock_mkstemp:
+                with patch(
+                    "moai_adk.core.context_manager.tempfile.mkstemp"
+                ) as mock_mkstemp:
                     mock_mkstemp.return_value = (999, "/tmp/test.tmp")
                     with patch("builtins.open", create=True):
                         with patch(

@@ -86,9 +86,7 @@ class TestAPIDesignValidatorAdditional:
     def test_validate_rest_endpoint_missing_path(self):
         """Test endpoint with missing path."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "GET", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"method": "GET", "status_code": 200})
         assert result["valid"] is False
 
     def test_validate_rest_endpoint_missing_status_code(self):
@@ -420,9 +418,7 @@ class TestAuthenticationManagerAdditional:
         signature = hmac.new(
             "test-secret".encode(), message.encode(), hashlib.sha256
         ).digest()
-        signature_encoded = (
-            base64.urlsafe_b64encode(signature).decode().rstrip("=")
-        )
+        signature_encoded = base64.urlsafe_b64encode(signature).decode().rstrip("=")
         expired_token = f"{message}.{signature_encoded}"
 
         with pytest.raises(ValueError, match="Token expired"):
@@ -506,7 +502,9 @@ class TestErrorHandlingStrategyAdditional:
         """Test logging with INFO level."""
         handler = ErrorHandlingStrategy()
         context = {"user_id": 123, "action": "create_user"}
-        log_entry = handler.log_with_context("INFO", "User created successfully", context)
+        log_entry = handler.log_with_context(
+            "INFO", "User created successfully", context
+        )
         assert log_entry["level"] == "INFO"
         assert log_entry["context"]["user_id"] == 123
 
@@ -514,7 +512,9 @@ class TestErrorHandlingStrategyAdditional:
         """Test logging with ERROR level."""
         handler = ErrorHandlingStrategy()
         context = {"error_code": "DB_001"}
-        log_entry = handler.log_with_context("ERROR", "Database connection failed", context)
+        log_entry = handler.log_with_context(
+            "ERROR", "Database connection failed", context
+        )
         assert log_entry["level"] == "ERROR"
         assert log_entry["context"]["error_code"] == "DB_001"
 
@@ -648,15 +648,9 @@ class TestBackendMetricsCollectorAdditional:
     def test_record_request_metrics_various_errors(self):
         """Test recording various error codes."""
         collector = BackendMetricsCollector()
-        collector.record_request_metrics(
-            "/api/users", "GET", 404, 10.0
-        )
-        collector.record_request_metrics(
-            "/api/users", "POST", 400, 15.0
-        )
-        collector.record_request_metrics(
-            "/api/users", "DELETE", 500, 200.0
-        )
+        collector.record_request_metrics("/api/users", "GET", 404, 10.0)
+        collector.record_request_metrics("/api/users", "POST", 400, 15.0)
+        collector.record_request_metrics("/api/users", "DELETE", 500, 200.0)
         assert len(collector.error_counts) == 3
 
     def test_get_error_rate_no_metrics(self):
@@ -700,9 +694,7 @@ class TestBackendMetricsCollectorAdditional:
         """Test service health when healthy."""
         collector = BackendMetricsCollector()
         for _ in range(100):
-            collector.record_request_metrics(
-                "/api/users", "GET", 200, 50.0
-            )
+            collector.record_request_metrics("/api/users", "GET", 200, 50.0)
         health = collector.get_service_health()
         assert health["status"] == "healthy"
         assert health["metrics"]["total_requests"] == 100
@@ -711,13 +703,9 @@ class TestBackendMetricsCollectorAdditional:
         """Test service health when degraded."""
         collector = BackendMetricsCollector()
         for _ in range(100):
-            collector.record_request_metrics(
-                "/api/users", "GET", 200, 50.0
-            )
+            collector.record_request_metrics("/api/users", "GET", 200, 50.0)
         for _ in range(3):
-            collector.record_request_metrics(
-                "/api/users", "POST", 500, 200.0
-            )
+            collector.record_request_metrics("/api/users", "POST", 500, 200.0)
         health = collector.get_service_health()
         assert health["status"] == "degraded"
 
@@ -725,9 +713,7 @@ class TestBackendMetricsCollectorAdditional:
         """Test service health when unhealthy."""
         collector = BackendMetricsCollector()
         for _ in range(100):
-            collector.record_request_metrics(
-                "/api/users", "POST", 500, 150.0
-            )
+            collector.record_request_metrics("/api/users", "POST", 500, 150.0)
         health = collector.get_service_health()
         assert health["status"] == "unhealthy"
 

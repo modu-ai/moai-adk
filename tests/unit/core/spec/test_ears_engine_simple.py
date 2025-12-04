@@ -138,7 +138,19 @@ class TestComplexityAnalysis:
         engine = EARSTemplateEngine()
         extraction = {
             "classes": ["Class1", "Class2", "Class3"],
-            "functions": ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11"],
+            "functions": [
+                "f1",
+                "f2",
+                "f3",
+                "f4",
+                "f5",
+                "f6",
+                "f7",
+                "f8",
+                "f9",
+                "f10",
+                "f11",
+            ],
             "imports": [],
             "domain_keywords": [],
         }
@@ -375,7 +387,9 @@ class TestTemplateRendering:
             "required_fields": [],
         }
 
-        result = engine._render_template(template, {"project_name": "MyAPI", "language": "Python"})
+        result = engine._render_template(
+            template, {"project_name": "MyAPI", "language": "Python"}
+        )
 
         assert "MyAPI" in result
         assert "Python" in result
@@ -400,7 +414,9 @@ class TestTemplateRendering:
             "required_fields": [],
         }
 
-        result = engine._render_template(template, {"classes": ["ClassA", "ClassB", "ClassC"]})
+        result = engine._render_template(
+            template, {"classes": ["ClassA", "ClassB", "ClassC"]}
+        )
 
         assert "ClassA" in result
         assert "ClassB" in result
@@ -569,8 +585,12 @@ class TestContentGeneration:
 
         result = engine._generate_security_specs(extraction, "auth")
 
-        assert ("Authentication" in result or "authentication" in result or
-                "Security" in result or "security" in result)
+        assert (
+            "Authentication" in result
+            or "authentication" in result
+            or "Security" in result
+            or "security" in result
+        )
 
     def test_generate_performance_specs_returns_string(self):
         """Test performance specs generation returns string."""
@@ -738,4 +758,10 @@ class TestExtractionInformation:
 
         extraction = engine._extract_information_from_analysis(code_analysis, "test.py")
 
-        assert extraction["architecture"] in ["simple", "mvc", "frontend", "api", "data"]
+        assert extraction["architecture"] in [
+            "simple",
+            "mvc",
+            "frontend",
+            "api",
+            "data",
+        ]

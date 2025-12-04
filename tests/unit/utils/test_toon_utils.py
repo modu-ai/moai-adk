@@ -51,6 +51,7 @@ class TestToonEncode:
 
     def test_encode_invalid_data(self):
         """Test encode with unencodable data."""
+
         class CustomClass:
             pass
 

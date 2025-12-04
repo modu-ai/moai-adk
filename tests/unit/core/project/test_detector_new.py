@@ -33,7 +33,7 @@ class TestLanguageDetector:
 
         # Assert
         assert detector is not None
-        assert hasattr(detector, 'LANGUAGE_PATTERNS')
+        assert hasattr(detector, "LANGUAGE_PATTERNS")
         assert len(detector.LANGUAGE_PATTERNS) > 0
 
     def test_language_patterns_contains_major_languages(self):
