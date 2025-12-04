@@ -42,10 +42,10 @@ jobs:
           echo "📦 Installing project dependencies..."
           uv sync --group dev --group security
 
-      - name: 🎨 Check code formatting (black)
+      - name: 🎨 Check code formatting (ruff)
         run: |
-          echo "🎨 Checking code formatting with black..."
-          uv run black --check src/ tests/ .claude/ --line-length=120
+          echo "🎨 Checking code formatting with ruff..."
+          uv run ruff format --check src/ tests/ .claude/
           echo "✅ Code formatting check passed"
 
       - name: 🔧 Lint code (ruff)
