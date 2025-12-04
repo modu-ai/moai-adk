@@ -825,46 +825,36 @@ CONDITION: `branch_creation.prompt_always == true`
 
 ACTION: Ask user for branch/worktree creation preference
 
-```python
-# Early exit if auto_branch is disabled
-auto_branch = config.get("git_strategy", {}).get("automation", {}).get("auto_branch", True)
+**Step 1: Check auto_branch configuration**
 
-if auto_branch == False:
-    ROUTE = "USE_CURRENT_BRANCH"
-    # Skip to Step 2.4 - do not ask user
+Read configuration value from config.yaml:
+- Path: git_strategy.automation.auto_branch
+- Default: true
 
-else:
-    # Ask user for branch/worktree creation preference
-    AskUserQuestion({
-        "questions": [{
-            "question": "Create a development environment for this SPEC?",
-            "header": "Development Environment",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "Create Worktree",
-                    "description": "Create isolated worktree environment (recommended for parallel SPEC development)"
-                },
-                {
-                    "label": "Create Branch",
-                    "description": "Create feature/SPEC-{SPEC_ID} branch (traditional workflow)"
-                },
-                {
-                    "label": "Use current branch",
-                    "description": "Work directly on current branch"
-                }
-            ]
-        }]
-    })
+**Step 2: Early exit if auto_branch is disabled**
 
-    # Based on user choice:
-    if user_choice == "Create Worktree":
-        ROUTE = "CREATE_WORKTREE"
-    elif user_choice == "Create Branch":
-        ROUTE = "CREATE_BRANCH"
-    else:
-        ROUTE = "USE_CURRENT_BRANCH"
-```
+If auto_branch equals false:
+- Set ROUTE to USE_CURRENT_BRANCH
+- Skip to Step 2.4 immediately
+- Do NOT ask user any questions
+
+**Step 3: Ask user if auto_branch is enabled**
+
+Use AskUserQuestion tool with the following parameters:
+- Question: "Create a development environment for this SPEC?"
+- Header: "Development Environment"
+- MultiSelect: false
+- Options:
+  1. "Create Worktree" - Create isolated worktree environment (recommended for parallel SPEC development)
+  2. "Create Branch" - Create feature/SPEC-{SPEC_ID} branch (traditional workflow)
+  3. "Use current branch" - Work directly on current branch
+
+**Step 4: Determine route based on user choice**
+
+Based on user selection:
+- If "Create Worktree" selected: Set ROUTE to CREATE_WORKTREE
+- If "Create Branch" selected: Set ROUTE to CREATE_BRANCH
+- If "Use current branch" selected: Set ROUTE to USE_CURRENT_BRANCH
 
 Next Step: Go to Step 2.5 (worktree), 2.3 (branch), or 2.4 (current) based on route
 
