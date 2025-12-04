@@ -677,7 +677,6 @@ def format_session_output() -> str:
     """
     # Gather information (in parallel for git, cached for config/SPEC)
     git_info = get_git_info()
-    spec_progress = get_spec_progress()
 
     # Get config for language and version info
     config = get_cached_config()
