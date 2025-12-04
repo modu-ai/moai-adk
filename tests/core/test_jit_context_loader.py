@@ -55,9 +55,7 @@ class TestPhaseDetector:
 
         for input_text in spec_inputs:
             phase = detector.detect_phase(input_text)
-            assert (
-                phase == Phase.SPEC
-            ), f"Failed to detect SPEC phase from: {input_text}"
+            assert phase == Phase.SPEC, f"Failed to detect SPEC phase from: {input_text}"
 
     def test_detect_red_phase(self):
         """Test RED phase detection"""
@@ -87,9 +85,7 @@ class TestPhaseDetector:
 
         for input_text in green_inputs:
             phase = detector.detect_phase(input_text)
-            assert (
-                phase == Phase.GREEN
-            ), f"Failed to detect GREEN phase from: {input_text}"
+            assert phase == Phase.GREEN, f"Failed to detect GREEN phase from: {input_text}"
 
     def test_phase_history_tracking(self):
         """Test phase change history tracking"""
@@ -97,12 +93,8 @@ class TestPhaseDetector:
 
         # Simulate phase progression with explicit phase indicators
         detector.detect_phase("/moai:1-plan user authentication system")  # SPEC
-        detector.detect_phase(
-            "RED phase: write failing tests for authentication"
-        )  # RED
-        detector.detect_phase(
-            "Green phase: minimal implementation to pass tests"
-        )  # GREEN
+        detector.detect_phase("RED phase: write failing tests for authentication")  # RED
+        detector.detect_phase("Green phase: minimal implementation to pass tests")  # GREEN
 
         # Check history - should have 2 transitions
         assert len(detector.phase_history) == 2
@@ -387,9 +379,7 @@ class TestJITContextLoader:
 
             # Create mock documents
             spec_file = project_dir / ".moai" / "specs" / "SPEC-001" / "spec.md"
-            spec_file.write_text(
-                "# SPEC-001: User Authentication System\n\nRequirements..."
-            )
+            spec_file.write_text("# SPEC-001: User Authentication System\n\nRequirements...")
 
             python_file = project_dir / "src" / "auth" / "auth.py"
             python_file.write_text("def authenticate_user():\n    pass")
@@ -401,19 +391,11 @@ class TestJITContextLoader:
         """Create JIT loader instance with temp directory"""
         with patch("moai_adk.core.jit_context_loader.SkillFilterEngine") as mock_engine:
             # Mock skill filter to use temp directory
-            mock_engine.return_value.skills_dir = (
-                temp_project_dir / ".claude" / "skills"
-            )
+            mock_engine.return_value.skills_dir = temp_project_dir / ".claude" / "skills"
             mock_engine.return_value.skill_index = {
                 "moai-foundation-ears": SkillInfo(
                     name="moai-foundation-ears",
-                    path=str(
-                        temp_project_dir
-                        / ".claude"
-                        / "skills"
-                        / "moai-foundation-ears"
-                        / "SKILL.md"
-                    ),
+                    path=str(temp_project_dir / ".claude" / "skills" / "moai-foundation-ears" / "SKILL.md"),
                     size=1000,
                     tokens=250,
                     categories=["core"],
@@ -421,13 +403,7 @@ class TestJITContextLoader:
                 ),
                 "moai-lang-python": SkillInfo(
                     name="moai-lang-python",
-                    path=str(
-                        temp_project_dir
-                        / ".claude"
-                        / "skills"
-                        / "moai-lang-python"
-                        / "SKILL.md"
-                    ),
+                    path=str(temp_project_dir / ".claude" / "skills" / "moai-lang-python" / "SKILL.md"),
                     size=1000,
                     tokens=250,
                     categories=["language"],
@@ -448,9 +424,7 @@ class TestJITContextLoader:
         user_input = "/moai:1-plan user authentication system"
         context = {"spec_id": "SPEC-001", "language": "python"}
 
-        context_data, metrics = await jit_loader.load_context(
-            user_input, context=context
-        )
+        context_data, metrics = await jit_loader.load_context(user_input, context=context)
 
         # Verify context structure
         assert context_data["phase"] == Phase.SPEC.value
@@ -471,15 +445,11 @@ class TestJITContextLoader:
         context = {"spec_id": "SPEC-001"}
 
         # First load (cache miss)
-        context_data1, metrics1 = await jit_loader.load_context(
-            user_input, context=context
-        )
+        context_data1, metrics1 = await jit_loader.load_context(user_input, context=context)
         assert not metrics1.cache_hit
 
         # Second load (cache hit)
-        context_data2, metrics2 = await jit_loader.load_context(
-            user_input, context=context
-        )
+        context_data2, metrics2 = await jit_loader.load_context(user_input, context=context)
         assert metrics2.cache_hit
         assert metrics2.load_time < metrics1.load_time  # Should be faster
 
@@ -494,9 +464,7 @@ class TestJITContextLoader:
         assert context_data1["phase"] == Phase.SPEC.value
 
         # Transition to RED phase
-        context_data2, _ = await jit_loader.load_context(
-            "/moai:2-run SPEC-001 RED phase"
-        )
+        context_data2, _ = await jit_loader.load_context("/moai:2-run SPEC-001 RED phase")
         assert context_data2["phase"] == Phase.RED.value
 
         # Check phase history
@@ -526,9 +494,7 @@ class TestJITContextLoader:
         user_input = "/moai:2-run SPEC-001 GREEN phase"
         context = {"spec_id": "SPEC-001"}
 
-        context_data, metrics = await jit_loader.load_context(
-            user_input, context=context
-        )
+        context_data, metrics = await jit_loader.load_context(user_input, context=context)
 
         # Should apply aggressive optimization
         assert metrics.token_count <= 25000  # GREEN phase budget
@@ -570,9 +536,7 @@ class TestIntegration:
 
         for user_input, context in workflow_steps:
             # Use the global convenience function
-            context_data, metrics = await load_optimized_context(
-                user_input, context=context
-            )
+            context_data, metrics = await load_optimized_context(user_input, context=context)
 
             # Verify basic structure
             assert "phase" in context_data
@@ -644,9 +608,7 @@ class TestErrorHandling:
         loader = JITContextLoader()
 
         # Test with malformed context
-        context_data, metrics = await loader.load_context(
-            "/moai:1-plan test", context={"invalid_key": "value"}
-        )
+        context_data, metrics = await loader.load_context("/moai:1-plan test", context={"invalid_key": "value"})
         assert context_data is not None
         assert metrics is not None
 

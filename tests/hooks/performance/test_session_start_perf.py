@@ -77,9 +77,7 @@ class TestSessionStartPerformance:
 
         # Cache hit should be reasonably fast (< 300ms target)
         print(f"\n⚡ Cached call: {elapsed_ms:.2f}ms")
-        assert (
-            elapsed_ms < 500
-        ), f"Cache hit too slow: {elapsed_ms:.2f}ms (expected < 500ms)"
+        assert elapsed_ms < 500, f"Cache hit too slow: {elapsed_ms:.2f}ms (expected < 500ms)"
 
     def test_git_info_first_call_baseline(self, tmp_path):
         """RED: Measure baseline performance of get_git_info()
@@ -234,9 +232,7 @@ class TestSessionStartPerformance:
 
         print(f"\n🎯 Total SessionStart time (warm cache): {elapsed_ms:.2f}ms")
         # Realistic target: warm cache calls should complete within 600ms (accounting for macOS overhead)
-        assert (
-            elapsed_ms < 600
-        ), f"Total time {elapsed_ms:.2f}ms exceeds target of 600ms"
+        assert elapsed_ms < 600, f"Total time {elapsed_ms:.2f}ms exceeds target of 600ms"
 
 
 class TestCacheHitRate:
@@ -278,9 +274,7 @@ class TestCacheErrorHandling:
 
         # Should still work (fall back to direct call)
         result = get_package_version_info(str(tmp_path))
-        assert (
-            result["current"] is not None
-        ), "Should fall back to direct call on cache error"
+        assert result["current"] is not None, "Should fall back to direct call on cache error"
 
     def test_network_timeout_uses_cached_data(self, tmp_path):
         """RED: Verify network timeout uses stale cache gracefully

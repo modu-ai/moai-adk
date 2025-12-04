@@ -42,9 +42,7 @@ class TestCircuitBreaker:
     def test_circuit_breaker_init(self):
         """Test CircuitBreaker initialization."""
         # Arrange & Act
-        cb = CircuitBreaker(
-            failure_threshold=3, timeout_seconds=60, success_threshold=5
-        )
+        cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60, success_threshold=5)
 
         # Assert
         assert cb.failure_threshold == 3
@@ -467,15 +465,11 @@ class TestJITEnhancedHookManager:
 
         # Act & Assert
         for hook in critical_hooks:
-            priority = hook_manager._determine_hook_priority(
-                hook, HookEvent.PRE_TOOL_USE
-            )
+            priority = hook_manager._determine_hook_priority(hook, HookEvent.PRE_TOOL_USE)
             assert priority in [HookPriority.CRITICAL, HookPriority.HIGH]
 
         for hook in optional_hooks:
-            priority = hook_manager._determine_hook_priority(
-                hook, HookEvent.SESSION_END
-            )
+            priority = hook_manager._determine_hook_priority(hook, HookEvent.SESSION_END)
             assert priority in [HookPriority.LOW, HookPriority.NORMAL]
 
     def test_jit_manager_estimate_execution_time(self, hook_manager):
@@ -575,9 +569,7 @@ class TestJITEnhancedHookManager:
         hook_path = "test_hook.py"
 
         # Act
-        relevance = hook_manager._determine_phase_relevance(
-            hook_path, HookEvent.SESSION_START
-        )
+        relevance = hook_manager._determine_phase_relevance(hook_path, HookEvent.SESSION_START)
 
         # Assert
         assert isinstance(relevance, dict)

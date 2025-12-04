@@ -150,9 +150,7 @@ class TestLRUCache:
     def test_cache_set_and_get(self):
         """Test setting and getting cache values."""
         cache = LRUCache(maxsize=100)
-        skill = SkillData(
-            name="test-skill", frontmatter={}, content="test", loaded_at=datetime.now()
-        )
+        skill = SkillData(name="test-skill", frontmatter={}, content="test", loaded_at=datetime.now())
 
         cache.set("test-skill", skill)
         retrieved = cache.get("test-skill")
@@ -165,9 +163,7 @@ class TestLRUCache:
         cache = LRUCache(maxsize=3, ttl=3600)
 
         for i in range(5):
-            skill = SkillData(
-                name=f"skill-{i}", frontmatter={}, content="", loaded_at=datetime.now()
-            )
+            skill = SkillData(name=f"skill-{i}", frontmatter={}, content="", loaded_at=datetime.now())
             cache.set(f"skill-{i}", skill)
 
         keys = cache.keys()
@@ -180,9 +176,7 @@ class TestLRUCache:
         """Test clearing cache."""
         cache = LRUCache(maxsize=100)
 
-        skill = SkillData(
-            name="test", frontmatter={}, content="", loaded_at=datetime.now()
-        )
+        skill = SkillData(name="test", frontmatter={}, content="", loaded_at=datetime.now())
         cache.set("test", skill)
 
         assert len(cache.keys()) == 1
@@ -196,9 +190,7 @@ class TestLRUCache:
         cache = LRUCache(maxsize=100)
 
         for i in range(3):
-            skill = SkillData(
-                name=f"skill-{i}", frontmatter={}, content="", loaded_at=datetime.now()
-            )
+            skill = SkillData(name=f"skill-{i}", frontmatter={}, content="", loaded_at=datetime.now())
             cache.set(f"skill-{i}", skill)
 
         keys = cache.keys()
@@ -280,23 +272,17 @@ class TestSkillValidator:
     def test_validate_dependencies_met(self):
         """Test validating met dependencies."""
         registry = MagicMock()
-        registry.get_skill_metadata.return_value = {
-            "requires": ["moai-foundation-core"]
-        }
+        registry.get_skill_metadata.return_value = {"requires": ["moai-foundation-core"]}
         validator = SkillValidator(registry)
 
-        result = validator.validate_dependencies(
-            "test-skill", ["moai-foundation-core", "moai-lang-unified"]
-        )
+        result = validator.validate_dependencies("test-skill", ["moai-foundation-core", "moai-lang-unified"])
 
         assert result is True
 
     def test_validate_dependencies_missing(self):
         """Test missing dependencies raise error."""
         registry = MagicMock()
-        registry.get_skill_metadata.return_value = {
-            "requires": ["moai-foundation-core", "moai-missing"]
-        }
+        registry.get_skill_metadata.return_value = {"requires": ["moai-foundation-core", "moai-missing"]}
         validator = SkillValidator(registry)
 
         with pytest.raises(DependencyError):
@@ -406,10 +392,7 @@ class TestSkillLoader:
                 pass
 
             # Verify the loading_stack was cleaned up
-            assert (
-                "test-skill" not in loader.loading_stack
-                or len(loader.loading_stack) >= 0
-            )
+            assert "test-skill" not in loader.loading_stack or len(loader.loading_stack) >= 0
 
     def test_load_skill_with_effort_parameter(self):
         """Test loading skill with effort parameter."""
@@ -507,9 +490,7 @@ version: 1.0.0
             loader = SkillLoader()
 
             with patch.object(loader, "validator") as mock_validator:
-                mock_validator.validate_skill_name.side_effect = SkillValidationError(
-                    "Skill not found"
-                )
+                mock_validator.validate_skill_name.side_effect = SkillValidationError("Skill not found")
 
                 with patch.object(loader, "_get_fallback_skill") as mock_fallback:
                     fallback_skill = SkillData.get_empty_skill("test-skill")
@@ -572,9 +553,7 @@ version: 1.0.0
         with patch.object(SkillRegistry, "initialize_from_filesystem"):
             loader = SkillLoader()
 
-            skill = SkillData(
-                name="test-skill", frontmatter={}, content="", loaded_at=datetime.now()
-            )
+            skill = SkillData(name="test-skill", frontmatter={}, content="", loaded_at=datetime.now())
             loader.cache.set("test-skill", skill)
 
             stats = loader.get_cache_stats()
@@ -590,9 +569,7 @@ class TestModuleLevelFunctions:
     def test_load_skill_function(self):
         """Test module-level load_skill function."""
         with patch("moai_adk.core.skill_loading_system.SKILL_LOADER") as mock_loader:
-            mock_skill = SkillData(
-                name="test", frontmatter={}, content="", loaded_at=datetime.now()
-            )
+            mock_skill = SkillData(name="test", frontmatter={}, content="", loaded_at=datetime.now())
             mock_loader.load_skill.return_value = mock_skill
 
             result = load_skill("test-skill", effort=3, force_reload=False)

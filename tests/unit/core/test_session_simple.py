@@ -44,9 +44,7 @@ class TestSessionManagerInitialization:
             session_file = Path(tmpdir) / "sessions.json"
             transcript_dir = Path(tmpdir) / "transcripts"
 
-            manager = SessionManager(
-                session_file=session_file, transcript_dir=transcript_dir
-            )
+            manager = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
             assert manager._session_file == session_file
             assert manager._transcript_dir == transcript_dir
@@ -197,9 +195,7 @@ class TestResumeLogic:
                 chain_id="SPEC-001-impl",
             )
 
-            resume_id = manager.get_resume_id(
-                agent_name="tdd-implementer", chain_id="SPEC-001-impl"
-            )
+            resume_id = manager.get_resume_id(agent_name="tdd-implementer", chain_id="SPEC-001-impl")
 
             assert resume_id == "tdd-xyz789"
 
@@ -209,9 +205,7 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            resume_id = manager.get_resume_id(
-                agent_name="unknown-agent", chain_id="SPEC-001"
-            )
+            resume_id = manager.get_resume_id(agent_name="unknown-agent", chain_id="SPEC-001")
 
             assert resume_id is None
 
@@ -221,9 +215,7 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}, chain_id="CHAIN-A"
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={}, chain_id="CHAIN-A")
 
             resume_id = manager.get_resume_id(agent_name="agent1", chain_id="CHAIN-B")
 
@@ -235,9 +227,7 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            result = manager.should_resume(
-                agent_name="new-agent", current_task="Task 1", previous_task="Task 0"
-            )
+            result = manager.should_resume(agent_name="new-agent", current_task="Task 1", previous_task="Task 0")
 
             assert result is False
 
@@ -247,13 +237,9 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={})
 
-            result = manager.should_resume(
-                agent_name="agent1", current_task="Task 1", previous_task=None
-            )
+            result = manager.should_resume(agent_name="agent1", current_task="Task 1", previous_task=None)
 
             assert result is False
 
@@ -263,9 +249,7 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="tdd-implementer", agent_id="tdd1", result={}
-            )
+            manager.register_agent_result(agent_name="tdd-implementer", agent_id="tdd1", result={})
 
             result = manager.should_resume(
                 agent_name="tdd-implementer",
@@ -281,16 +265,12 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={})
 
             # Set resume count to max
             manager._metadata["id1"]["resume_count"] = 5
 
-            result = manager.should_resume(
-                agent_name="agent1", current_task="Task B", previous_task="Task A"
-            )
+            result = manager.should_resume(agent_name="agent1", current_task="Task B", previous_task="Task A")
 
             assert result is False
 
@@ -304,9 +284,7 @@ class TestSessionPersistence:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={"key": "value"}
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={"key": "value"})
 
             assert session_file.exists()
 
@@ -321,9 +299,7 @@ class TestSessionPersistence:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={})
 
             initial_count = manager._metadata["id1"]["resume_count"]
             manager.increment_resume_count("id1")
@@ -384,9 +360,7 @@ class TestChainManagement:
 
             chain_id = "SPEC-001-workflow"
 
-            manager.register_agent_result(
-                agent_name="spec-builder", agent_id="id1", result={}, chain_id=chain_id
-            )
+            manager.register_agent_result(agent_name="spec-builder", agent_id="id1", result={}, chain_id=chain_id)
             manager.register_agent_result(
                 agent_name="tdd-implementer",
                 agent_id="id2",
@@ -419,9 +393,7 @@ class TestChainManagement:
 
             chain_id = "SPEC-001"
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}, chain_id=chain_id
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={}, chain_id=chain_id)
 
             assert chain_id in manager._chains
 
@@ -442,9 +414,7 @@ class TestSessionRetrieval:
 
             test_result = {"files": ["test.py"], "tests": 10}
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result=test_result
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result=test_result)
 
             retrieved = manager.get_agent_result("id1")
 
@@ -466,12 +436,8 @@ class TestSessionRetrieval:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}, chain_id="chain1"
-            )
-            manager.register_agent_result(
-                agent_name="agent2", agent_id="id2", result={}, chain_id="chain2"
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={}, chain_id="chain1")
+            manager.register_agent_result(agent_name="agent2", agent_id="id2", result={}, chain_id="chain2")
 
             sessions = manager.get_all_sessions()
 
@@ -489,9 +455,7 @@ class TestSessionClearance:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(
-                agent_name="agent1", agent_id="id1", result={}
-            )
+            manager.register_agent_result(agent_name="agent1", agent_id="id1", result={})
 
             assert "agent1" in manager._sessions
 
@@ -512,9 +476,7 @@ class TestTranscriptManagement:
 
             session_file = Path(tmpdir) / "sessions.json"
 
-            manager = SessionManager(
-                session_file=session_file, transcript_dir=transcript_dir
-            )
+            manager = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
             # Create a mock transcript file
             transcript_file = transcript_dir / "agent-abc123.jsonl"
@@ -530,9 +492,7 @@ class TestTranscriptManagement:
             transcript_dir = Path(tmpdir) / "transcripts"
             session_file = Path(tmpdir) / "sessions.json"
 
-            manager = SessionManager(
-                session_file=session_file, transcript_dir=transcript_dir
-            )
+            manager = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
             result = manager.export_transcript("nonexistent")
 
@@ -582,6 +542,4 @@ class TestConvenienceFunctions:
             result = should_resume("agent1", "task1", "task0")
 
             assert result is True
-            mock_manager.should_resume.assert_called_once_with(
-                "agent1", "task1", "task0"
-            )
+            mock_manager.should_resume.assert_called_once_with("agent1", "task1", "task0")

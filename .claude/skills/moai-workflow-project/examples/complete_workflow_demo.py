@@ -172,9 +172,7 @@ class DemoRunner:
         print(f"✅ Documentation generated in {duration:.2f} seconds")
         print(f"📄 Feature docs: {'✅' if 'feature_docs' in docs_result else '❌'}")
         print(f"🔗 API docs: {'✅' if 'api_docs' in docs_result else '❌'}")
-        print(
-            f"🌐 Localized docs: {'✅' if 'localized_documentation' in docs_result else '❌'}"
-        )
+        print(f"🌐 Localized docs: {'✅' if 'localized_documentation' in docs_result else '❌'}")
 
         print("\\n📋 Generated Documentation Structure:")
         docs_dir = self.demo_project_dir / "docs"
@@ -213,14 +211,10 @@ class DemoRunner:
                 )
 
                 print(f"  ✅ {lang.upper()} configured")
-                print(
-                    f"  📁 Docs structure: {'✅' if multilingual_result['success'] else '❌'}"
-                )
+                print(f"  📁 Docs structure: {'✅' if multilingual_result['success'] else '❌'}")
 
                 # Get token cost analysis
-                cost_analysis = (
-                    self.project.language_initializer.get_token_cost_analysis(lang)
-                )
+                cost_analysis = self.project.language_initializer.get_token_cost_analysis(lang)
                 print(f"  💰 Token cost impact: +{cost_analysis['cost_impact']}%")
 
             else:
@@ -229,9 +223,7 @@ class DemoRunner:
         print("\\n🌍 Multilingual Support Summary:")
         lang_status = self.project.language_initializer.get_language_status()
         print(f"  - Current language: {lang_status['current_language']}")
-        print(
-            f"  - Supported languages: {', '.join(lang_status['supported_languages'])}"
-        )
+        print(f"  - Supported languages: {', '.join(lang_status['supported_languages'])}")
 
         print("\\n" + "=" * 50 + "\\n")
 
@@ -341,9 +333,7 @@ Complex template logic:
             "apply_complexity_optimizations": True,
         }
 
-        opt_result = self.project.template_optimizer.create_optimized_templates(
-            optimization_options
-        )
+        opt_result = self.project.template_optimizer.create_optimized_templates(optimization_options)
 
         opt_time = time.time() - start_time
 
@@ -362,15 +352,11 @@ Complex template logic:
             if "size_reduction" in opt_results:
                 print(f"📉 Size reduction: {opt_results['size_reduction']:.1f}%")
             if "performance_improvement" in opt_results:
-                print(
-                    f"⚡ Performance improvement: {opt_results['performance_improvement']:.1f}%"
-                )
+                print(f"⚡ Performance improvement: {opt_results['performance_improvement']:.1f}%")
 
         # Run benchmark
         print("\\n🏃 Running performance benchmark...")
-        benchmark_result = (
-            self.project.template_optimizer.benchmark_template_performance()
-        )
+        benchmark_result = self.project.template_optimizer.benchmark_template_performance()
 
         if benchmark_result.get("success"):
             print("✅ Benchmark completed successfully")
@@ -432,16 +418,12 @@ Complex template logic:
             start_time = time.time()
 
             # Export documentation
-            export_result = self.project.export_project_documentation(
-                format_type=format_type, language="ko"
-            )
+            export_result = self.project.export_project_documentation(format_type=format_type, language="ko")
 
             export_time = time.time() - start_time
 
             if export_result.get("success"):
-                print(
-                    f"✅ {format_type.upper()} export completed in {export_time:.2f} seconds"
-                )
+                print(f"✅ {format_type.upper()} export completed in {export_time:.2f} seconds")
                 print(f"📁 Export path: {export_result.get('export_path', 'N/A')}")
             else:
                 print(f"❌ {format_type.upper()} export failed")
@@ -484,9 +466,7 @@ Complex template logic:
         print("\\n🌐 Language Status:")
         lang_status = status["language_status"]
         print(f"  💬 Current: {lang_status.get('current_language', 'N/A')}")
-        print(
-            f"  🌍 Supported: {', '.join(lang_status.get('supported_languages', []))}"
-        )
+        print(f"  🌍 Supported: {', '.join(lang_status.get('supported_languages', []))}")
 
         print("\\n📚 Documentation Status:")
         doc_status = status["documentation_status"]
@@ -506,9 +486,7 @@ Complex template logic:
 
         print("\\n  Workflows:")
         for workflow_name, workflow_steps in matrix["workflows"].items():
-            print(
-                f"    🔄 {workflow_name.replace('_', ' ').title()}: {len(workflow_steps)} steps"
-            )
+            print(f"    🔄 {workflow_name.replace('_', ' ').title()}: {len(workflow_steps)} steps")
 
         print("\\n" + "=" * 50 + "\\n")
 
@@ -537,9 +515,7 @@ Complex template logic:
             init_time = time.time() - start_time
 
             if init_result["success"]:
-                print(
-                    f"✅ Convenience initialization completed in {init_time:.2f} seconds"
-                )
+                print(f"✅ Convenience initialization completed in {init_time:.2f} seconds")
                 print(f"📦 Modules: {', '.join(init_result['modules_initialized'])}")
 
             # Test documentation generation convenience function
@@ -594,17 +570,13 @@ Complex template logic:
 
         if "documentation_generation" in self.results:
             docs = self.results["documentation_generation"]
-            print(
-                f"  📚 Feature docs: {'✅' if docs['feature_docs_generated'] else '❌'}"
-            )
+            print(f"  📚 Feature docs: {'✅' if docs['feature_docs_generated'] else '❌'}")
             print(f"  🔗 API docs: {'✅' if docs['api_docs_generated'] else '❌'}")
 
         if "template_optimization" in self.results:
             opt = self.results["template_optimization"]
             print(f"  📁 Templates analyzed: {opt['files_analyzed']}")
-            print(
-                f"  ⚡ Optimizations applied: {'✅' if opt['optimizations_applied'] else '❌'}"
-            )
+            print(f"  ⚡ Optimizations applied: {'✅' if opt['optimizations_applied'] else '❌'}")
 
         if "backup_creation" in self.results:
             backup = self.results["backup_creation"]

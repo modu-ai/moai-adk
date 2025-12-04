@@ -222,9 +222,7 @@ class TestSafeJsonLoadFile:
 
         assert result == {}
 
-    def test_safe_json_load_file_nonexistent_with_custom_default(
-        self, nonexistent_file
-    ):
+    def test_safe_json_load_file_nonexistent_with_custom_default(self, nonexistent_file):
         """Safely load nonexistent file with custom default"""
         custom_default = {"error": "file not found"}
 
@@ -242,9 +240,7 @@ class TestSafeJsonLoadFile:
         """Safely load file with invalid JSON and custom default"""
         custom_default = {"default": "value"}
 
-        result = JSONUtils.safe_json_load_file(
-            invalid_json_file, default=custom_default
-        )
+        result = JSONUtils.safe_json_load_file(invalid_json_file, default=custom_default)
 
         assert result == custom_default
 
@@ -261,9 +257,7 @@ class TestSafeJsonLoadFile:
         """Safely load JSON file with unicode content"""
         test_data = {"message": "🎯 테스트 メッセージ"}
         json_file = tmp_path / "unicode.json"
-        json_file.write_text(
-            json.dumps(test_data, ensure_ascii=False), encoding="utf-8"
-        )
+        json_file.write_text(json.dumps(test_data, ensure_ascii=False), encoding="utf-8")
 
         result = JSONUtils.safe_json_load_file(json_file)
 
@@ -462,9 +456,7 @@ class TestGetNestedValue:
 
     def test_get_nested_value_missing_key_with_default(self, sample_json_data):
         """Get nonexistent key with custom default"""
-        value = JSONUtils.get_nested_value(
-            sample_json_data, ["nonexistent"], default="default_value"
-        )
+        value = JSONUtils.get_nested_value(sample_json_data, ["nonexistent"], default="default_value")
 
         assert value == "default_value"
 
@@ -556,18 +548,14 @@ class TestCreateStandardResponse:
 
     def test_create_error_response(self):
         """Create error response"""
-        response = JSONUtils.create_standard_response(
-            success=False, error="Something went wrong"
-        )
+        response = JSONUtils.create_standard_response(success=False, error="Something went wrong")
 
         assert response["success"] is False
         assert response["error"] == "Something went wrong"
 
     def test_create_response_with_message(self):
         """Create response with message"""
-        response = JSONUtils.create_standard_response(
-            success=True, message="Operation completed"
-        )
+        response = JSONUtils.create_standard_response(success=True, message="Operation completed")
 
         assert response["success"] is True
         assert response["message"] == "Operation completed"
@@ -602,9 +590,7 @@ class TestCreateStandardResponse:
 
     def test_create_response_empty_optional_fields(self):
         """Create response omits empty optional fields"""
-        response = JSONUtils.create_standard_response(
-            success=True, message=None, error=None, data=None
-        )
+        response = JSONUtils.create_standard_response(success=True, message=None, error=None, data=None)
 
         assert response == {"success": True}
 
@@ -771,9 +757,7 @@ class TestJsonUtilsIntegration:
 
     def test_standard_response_roundtrip(self, tmp_path):
         """Create response, write, and read"""
-        response = JSONUtils.create_standard_response(
-            success=True, message="Test message", data={"id": 123}
-        )
+        response = JSONUtils.create_standard_response(success=True, message="Test message", data={"id": 123})
 
         file_path = tmp_path / "response.json"
         write_success = JSONUtils.write_json_to_file(response, file_path)

@@ -222,9 +222,7 @@ class TestBuildStatuslineData:
                 "moai_adk.statusline.main.safe_collect_git_info",
                 return_value=("main", ""),
             ):
-                with mock.patch(
-                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
-                ):
+                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
                     with mock.patch(
                         "moai_adk.statusline.main.safe_collect_alfred_task",
                         return_value="",
@@ -256,9 +254,7 @@ class TestBuildStatuslineData:
                 "moai_adk.statusline.main.safe_collect_git_info",
                 return_value=("main", ""),
             ):
-                with mock.patch(
-                    "moai_adk.statusline.main.safe_collect_duration", return_value="5m"
-                ):
+                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="5m"):
                     with mock.patch(
                         "moai_adk.statusline.main.safe_collect_alfred_task",
                         return_value="[TASK]",
@@ -271,9 +267,7 @@ class TestBuildStatuslineData:
                                 "moai_adk.statusline.main.safe_check_update",
                                 return_value=(False, None),
                             ):
-                                statusline = build_statusline_data(
-                                    session_context, mode="compact"
-                                )
+                                statusline = build_statusline_data(session_context, mode="compact")
 
         # Should not raise exception
         assert isinstance(statusline, str)
@@ -288,9 +282,7 @@ class TestBuildStatuslineData:
                 "moai_adk.statusline.main.safe_collect_git_info",
                 return_value=("main", ""),
             ):
-                with mock.patch(
-                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
-                ):
+                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
                     with mock.patch(
                         "moai_adk.statusline.main.safe_collect_alfred_task",
                         return_value="",
@@ -304,9 +296,7 @@ class TestBuildStatuslineData:
                                 return_value=(False, None),
                             ):
                                 for mode in ["compact", "extended", "minimal"]:
-                                    statusline = build_statusline_data(
-                                        session_context, mode=mode
-                                    )
+                                    statusline = build_statusline_data(session_context, mode=mode)
                                     assert isinstance(statusline, str)
 
     def test_build_statusline_error_handling(self):
@@ -319,9 +309,7 @@ class TestBuildStatuslineData:
                 "moai_adk.statusline.main.safe_collect_git_info",
                 return_value=("main", ""),
             ):
-                with mock.patch(
-                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
-                ):
+                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
                     with mock.patch(
                         "moai_adk.statusline.main.safe_collect_alfred_task",
                         return_value="",
@@ -345,9 +333,7 @@ class TestStatuslineExtraction:
 
     def test_extract_model_info(self):
         """Test extracting model information."""
-        session_context = {
-            "model": {"display_name": "Claude 3 Opus", "name": "claude-opus"}
-        }
+        session_context = {"model": {"display_name": "Claude 3 Opus", "name": "claude-opus"}}
 
         with mock.patch("moai_adk.statusline.main.StatuslineRenderer") as mock_renderer:
             mock_renderer.return_value.render.return_value = ""
@@ -355,9 +341,7 @@ class TestStatuslineExtraction:
                 "moai_adk.statusline.main.safe_collect_git_info",
                 return_value=("main", ""),
             ):
-                with mock.patch(
-                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
-                ):
+                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
                     with mock.patch(
                         "moai_adk.statusline.main.safe_collect_alfred_task",
                         return_value="",
@@ -383,9 +367,7 @@ class TestStatuslineExtraction:
                 "moai_adk.statusline.main.safe_collect_git_info",
                 return_value=("main", ""),
             ):
-                with mock.patch(
-                    "moai_adk.statusline.main.safe_collect_duration", return_value="1m"
-                ):
+                with mock.patch("moai_adk.statusline.main.safe_collect_duration", return_value="1m"):
                     with mock.patch(
                         "moai_adk.statusline.main.safe_collect_alfred_task",
                         return_value="",

@@ -241,9 +241,7 @@ class TestStyledCheckbox:
             mock_result.execute.return_value = ["Option A"]
             mock_checkbox.return_value = mock_result
 
-            result = styled_checkbox(
-                "Choose", ["Option A", "Option B"], default=["Option A"]
-            )
+            result = styled_checkbox("Choose", ["Option A", "Option B"], default=["Option A"])
             assert result == ["Option A"]
 
     def test_styled_checkbox_keyboard_interrupt(self):
@@ -692,12 +690,8 @@ class TestPromptsIntegration:
     def test_grouped_choices_large_groups(self):
         """Test grouped choices with many items."""
         groups = {
-            "Category A": [
-                {"name": f"Item {i}", "value": f"item_{i}"} for i in range(10)
-            ],
-            "Category B": [
-                {"name": f"Option {i}", "value": f"option_{i}"} for i in range(5)
-            ],
+            "Category A": [{"name": f"Item {i}", "value": f"item_{i}"} for i in range(10)],
+            "Category B": [{"name": f"Option {i}", "value": f"option_{i}"} for i in range(5)],
         }
 
         result = create_grouped_choices(groups)

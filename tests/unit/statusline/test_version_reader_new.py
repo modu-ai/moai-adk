@@ -50,9 +50,7 @@ class TestVersionReaderAsyncMethods:
         reader = VersionReader()
         test_path = Path("/fake/path")
 
-        with patch.object(
-            asyncio, "get_event_loop", side_effect=Exception("Loop error")
-        ):
+        with patch.object(asyncio, "get_event_loop", side_effect=Exception("Loop error")):
             result = await reader._file_exists_async(test_path)
             assert result is False
 
@@ -350,9 +348,7 @@ class TestVersionReaderPackageVersion:
         """Test package version when package not found."""
         reader = VersionReader()
 
-        with patch(
-            "importlib.metadata.version", side_effect=Exception("PackageNotFoundError")
-        ):
+        with patch("importlib.metadata.version", side_effect=Exception("PackageNotFoundError")):
             result = reader._get_package_version()
             assert result == ""
 
@@ -372,9 +368,7 @@ class TestVersionReaderCache:
         """Test cache check with valid entry."""
         reader = VersionReader()
         config_key = str(reader._config_path)
-        entry = CacheEntry(
-            version="0.20.1", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE
-        )
+        entry = CacheEntry(version="0.20.1", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE)
         reader._cache[config_key] = entry
 
         result = reader._check_cache()
@@ -405,9 +399,7 @@ class TestVersionReaderCache:
     def test_is_cache_entry_valid(self):
         """Test cache entry validation."""
         reader = VersionReader()
-        entry = CacheEntry(
-            version="0.20.1", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE
-        )
+        entry = CacheEntry(version="0.20.1", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE)
         assert reader._is_cache_entry_valid(entry) is True
 
     def test_is_cache_entry_expired(self):
@@ -457,9 +449,7 @@ class TestVersionReaderCache:
     def test_clear_cache(self):
         """Test cache clearing."""
         reader = VersionReader()
-        reader._cache["key"] = CacheEntry(
-            "version", datetime.now(), VersionSource.CONFIG_FILE
-        )
+        reader._cache["key"] = CacheEntry("version", datetime.now(), VersionSource.CONFIG_FILE)
         reader._cache_time = datetime.now()
 
         reader.clear_cache()
@@ -580,9 +570,7 @@ class TestVersionReaderEdgeCases:
     def test_get_version_force_refresh(self):
         """Test force refresh of version."""
         reader = VersionReader()
-        reader._cache[str(reader._config_path)] = CacheEntry(
-            "cached_version", datetime.now(), VersionSource.CACHE
-        )
+        reader._cache[str(reader._config_path)] = CacheEntry("cached_version", datetime.now(), VersionSource.CACHE)
 
         with patch.object(reader, "get_version_sync", return_value="fresh_version"):
             # Cache should be cleared
@@ -608,9 +596,7 @@ class TestVersionReaderEdgeCases:
         reader = VersionReader()
 
         config_key = str(reader._config_path)
-        reader._cache[config_key] = CacheEntry(
-            "0.20.1", datetime.now(), VersionSource.CONFIG_FILE
-        )
+        reader._cache[config_key] = CacheEntry("0.20.1", datetime.now(), VersionSource.CONFIG_FILE)
 
         # Trigger cache hit
         reader._check_cache()

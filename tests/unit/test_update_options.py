@@ -45,9 +45,7 @@ class TestTemplatesOnlyOption:
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--templates-only"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--templates-only"])
 
             assert result.exit_code == 0
             mock_sync.assert_called_once()
@@ -73,9 +71,7 @@ class TestTemplatesOnlyOption:
         with patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
             mock_sync.return_value = True
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--templates-only", "--force"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--templates-only", "--force"])
 
             assert result.exit_code == 0
             # Force should be passed to _sync_templates
@@ -88,9 +84,7 @@ class TestTemplatesOnlyOption:
         with patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
             mock_sync.return_value = False
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--templates-only"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--templates-only"])
 
             assert result.exit_code != 0
             assert "Template sync failed" in result.output or "Error" in result.output
@@ -100,16 +94,11 @@ class TestTemplatesOnlyOption:
         with patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
             mock_sync.return_value = True
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--templates-only"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--templates-only"])
 
             assert result.exit_code == 0
             # Should not show upgrade messages
-            assert (
-                "Upgrading" not in result.output
-                or "upgrade" not in result.output.lower()
-            )
+            assert "Upgrading" not in result.output or "upgrade" not in result.output.lower()
 
 
 class TestCheckOption:
@@ -181,11 +170,7 @@ class TestCheckOption:
             result = runner.invoke(update, ["--path", str(mock_project_dir), "--check"])
 
             assert result.exit_code == 0
-            assert (
-                "up to date" in result.output.lower()
-                or "Already" in result.output
-                or "already" in result.output
-            )
+            assert "up to date" in result.output.lower() or "Already" in result.output or "already" in result.output
 
     def test_check_shows_dev_version(self, runner, mock_project_dir):
         """Test --check shows dev version message when current > latest."""
@@ -332,9 +317,7 @@ class TestCombinedOptions:
             mock_detect.return_value = ["uv", "tool", "upgrade", "moai-adk"]
             mock_upgrade.return_value = True
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--yes", "--force"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--yes", "--force"])
 
             assert result.exit_code == 0
             mock_upgrade.assert_called_once()
@@ -349,9 +332,7 @@ class TestCombinedOptions:
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--check", "--templates-only"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--check", "--templates-only"])
 
             # Check should take priority - show version info but don't sync
             assert "0.6.1" in result.output or "Current" in result.output
@@ -367,9 +348,7 @@ class TestCombinedOptions:
             mock_current.return_value = "0.6.1"
             mock_latest.return_value = "0.6.2"
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--check", "--yes"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--check", "--yes"])
 
             # Should only check, not upgrade
             assert result.exit_code == 0
@@ -380,9 +359,7 @@ class TestCombinedOptions:
         with patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
             mock_sync.return_value = True
 
-            result = runner.invoke(
-                update, ["--path", str(mock_project_dir), "--templates-only", "--yes"]
-            )
+            result = runner.invoke(update, ["--path", str(mock_project_dir), "--templates-only", "--yes"])
 
             assert result.exit_code == 0
             mock_sync.assert_called_once()

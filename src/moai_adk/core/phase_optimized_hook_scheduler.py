@@ -61,9 +61,7 @@ class HookSchedulingContext:
     max_execution_time_ms: float
     current_time: datetime = field(default_factory=datetime.now)
     system_load: float = 0.5  # 0.0 (idle) to 1.0 (busy)
-    recent_performance: Dict[str, float] = field(
-        default_factory=dict
-    )  # hook_path -> avg_time_ms
+    recent_performance: Dict[str, float] = field(default_factory=dict)  # hook_path -> avg_time_ms
     active_dependencies: Set[str] = field(default_factory=set)
 
 
@@ -152,8 +150,7 @@ class PhaseOptimizedHookScheduler:
 
         # Adaptive strategy selection
         self._strategy_performance: Dict[SchedulingStrategy, Dict[str, float]] = {
-            strategy: {"success_rate": 1.0, "avg_efficiency": 0.8, "usage_count": 0}
-            for strategy in SchedulingStrategy
+            strategy: {"success_rate": 1.0, "avg_efficiency": 0.8, "usage_count": 0} for strategy in SchedulingStrategy
         }
 
     def _initialize_phase_parameters(self) -> Dict[Phase, Dict[str, Any]]:
@@ -257,31 +254,23 @@ class PhaseOptimizedHookScheduler:
         start_time = time.time()
 
         # Select optimal strategy
-        selected_strategy = strategy or self._select_optimal_strategy(
-            event_type, context
-        )
+        selected_strategy = strategy or self._select_optimal_strategy(event_type, context)
 
         # Get available hooks for event type
         available_hooks = self.hook_manager._hooks_by_event.get(event_type, [])
 
         # Create scheduled hooks with initial analysis
-        scheduled_hooks = await self._create_scheduled_hooks(
-            available_hooks, context, selected_strategy
-        )
+        scheduled_hooks = await self._create_scheduled_hooks(available_hooks, context, selected_strategy)
 
         # Filter and prioritize hooks
         filtered_hooks = self._filter_hooks_by_constraints(scheduled_hooks, context)
-        prioritized_hooks = self._prioritize_hooks(
-            filtered_hooks, context, selected_strategy
-        )
+        prioritized_hooks = self._prioritize_hooks(filtered_hooks, context, selected_strategy)
 
         # Resolve dependencies
         dependency_resolved_hooks = self._resolve_dependencies(prioritized_hooks)
 
         # Create execution groups
-        execution_groups = self._create_execution_groups(
-            dependency_resolved_hooks, context, selected_strategy
-        )
+        execution_groups = self._create_execution_groups(dependency_resolved_hooks, context, selected_strategy)
 
         # Optimize execution order
         optimized_groups = self._optimize_execution_order(execution_groups, context)
@@ -292,11 +281,7 @@ class PhaseOptimizedHookScheduler:
 
         # Create execution plan
         execution_plan = [
-            [
-                hook
-                for hook in group.hooks
-                if hook.scheduling_decision == SchedulingDecision.EXECUTE
-            ]
+            [hook for hook in group.hooks if hook.scheduling_decision == SchedulingDecision.EXECUTE]
             for group in optimized_groups
         ]
 
@@ -305,14 +290,12 @@ class PhaseOptimizedHookScheduler:
         skipped_hooks = [
             hook
             for hook in scheduled_hooks
-            if hook not in executed_hooks
-            and hook.scheduling_decision == SchedulingDecision.SKIP
+            if hook not in executed_hooks and hook.scheduling_decision == SchedulingDecision.SKIP
         ]
         deferred_hooks = [
             hook
             for hook in scheduled_hooks
-            if hook not in executed_hooks
-            and hook.scheduling_decision == SchedulingDecision.DEFER
+            if hook not in executed_hooks and hook.scheduling_decision == SchedulingDecision.DEFER
         ]
 
         # Create scheduling result
@@ -332,9 +315,7 @@ class PhaseOptimizedHookScheduler:
 
         return result
 
-    def _select_optimal_strategy(
-        self, event_type: HookEvent, context: HookSchedulingContext
-    ) -> SchedulingStrategy:
+    def _select_optimal_strategy(self, event_type: HookEvent, context: HookSchedulingContext) -> SchedulingStrategy:
         """Select optimal scheduling strategy based on context"""
         if not self.enable_adaptive_scheduling:
             return self.default_strategy
@@ -363,9 +344,7 @@ class PhaseOptimizedHookScheduler:
 
             for strategy, performance in self._strategy_performance.items():
                 if performance["usage_count"] > 0:
-                    efficiency = (
-                        performance["success_rate"] * performance["avg_efficiency"]
-                    )
+                    efficiency = performance["success_rate"] * performance["avg_efficiency"]
                     if efficiency > best_efficiency:
                         best_efficiency = efficiency
                         best_strategy = strategy
@@ -459,9 +438,7 @@ class PhaseOptimizedHookScheduler:
 
         return base_score
 
-    def _estimate_hook_cost(
-        self, metadata: HookMetadata, context: HookSchedulingContext
-    ) -> int:
+    def _estimate_hook_cost(self, metadata: HookMetadata, context: HookSchedulingContext) -> int:
         """Estimate token cost for hook execution"""
         base_cost = metadata.token_cost_estimate
 
@@ -480,9 +457,7 @@ class PhaseOptimizedHookScheduler:
 
         return base_cost
 
-    def _estimate_hook_time(
-        self, metadata: HookMetadata, context: HookSchedulingContext
-    ) -> float:
+    def _estimate_hook_time(self, metadata: HookMetadata, context: HookSchedulingContext) -> float:
         """Estimate execution time for hook"""
         base_time = metadata.estimated_execution_time_ms
 
@@ -538,9 +513,7 @@ class PhaseOptimizedHookScheduler:
         remaining_time_budget = context.max_execution_time_ms
 
         # Sort by priority score (highest first)
-        sorted_hooks = sorted(
-            scheduled_hooks, key=lambda h: h.priority_score, reverse=True
-        )
+        sorted_hooks = sorted(scheduled_hooks, key=lambda h: h.priority_score, reverse=True)
 
         for hook in sorted_hooks:
             if hook.scheduling_decision != SchedulingDecision.EXECUTE:
@@ -548,10 +521,7 @@ class PhaseOptimizedHookScheduler:
                 continue
 
             # Check if hook fits within constraints
-            if (
-                hook.estimated_cost <= remaining_token_budget
-                and hook.estimated_time_ms <= remaining_time_budget
-            ):
+            if hook.estimated_cost <= remaining_token_budget and hook.estimated_time_ms <= remaining_time_budget:
                 filtered_hooks.append(hook)
                 remaining_token_budget -= hook.estimated_cost
                 remaining_time_budget -= hook.estimated_time_ms
@@ -570,16 +540,8 @@ class PhaseOptimizedHookScheduler:
     ) -> List[ScheduledHook]:
         """Prioritize hooks for execution"""
         # Separate by scheduling decision
-        execute_hooks = [
-            h
-            for h in scheduled_hooks
-            if h.scheduling_decision == SchedulingDecision.EXECUTE
-        ]
-        other_hooks = [
-            h
-            for h in scheduled_hooks
-            if h.scheduling_decision != SchedulingDecision.EXECUTE
-        ]
+        execute_hooks = [h for h in scheduled_hooks if h.scheduling_decision == SchedulingDecision.EXECUTE]
+        other_hooks = [h for h in scheduled_hooks if h.scheduling_decision != SchedulingDecision.EXECUTE]
 
         # Sort execute hooks by priority (descending)
         execute_hooks.sort(key=lambda h: h.priority_score, reverse=True)
@@ -609,17 +571,12 @@ class PhaseOptimizedHookScheduler:
             ready_hooks = [
                 h
                 for h in remaining_hooks
-                if not any(
-                    dep in [rh.hook_path for rh in remaining_hooks]
-                    for dep in h.dependencies
-                )
+                if not any(dep in [rh.hook_path for rh in remaining_hooks] for dep in h.dependencies)
             ]
 
             if not ready_hooks:
                 # Circular dependency - break by priority
-                ready_hooks = sorted(
-                    remaining_hooks, key=lambda h: h.priority_score, reverse=True
-                )
+                ready_hooks = sorted(remaining_hooks, key=lambda h: h.priority_score, reverse=True)
                 ready_hooks = [ready_hooks[0]]
 
             # Add highest priority ready hook
@@ -703,9 +660,7 @@ class PhaseOptimizedHookScheduler:
             avg_priority = sum(h.priority_score for h in group.hooks) / len(group.hooks)
 
             # Parallel groups get bonus for speed
-            parallel_bonus = (
-                10 if group.execution_type == SchedulingDecision.PARALLEL else 0
-            )
+            parallel_bonus = 10 if group.execution_type == SchedulingDecision.PARALLEL else 0
 
             # Smaller groups get bonus for better time management
             size_bonus = max(0, 5 - len(group.hooks))
@@ -717,9 +672,7 @@ class PhaseOptimizedHookScheduler:
 
         return optimized_groups
 
-    def _update_scheduling_history(
-        self, result: SchedulingResult, planning_time_ms: float
-    ) -> None:
+    def _update_scheduling_history(self, result: SchedulingResult, planning_time_ms: float) -> None:
         """Update scheduling history for learning"""
         with self._scheduling_lock:
             history_entry: Dict[str, Any] = {
@@ -760,32 +713,22 @@ class PhaseOptimizedHookScheduler:
             execution_ratio = executed_hooks / total_hooks
 
             # Consider resource utilization
-            time_efficiency = min(
-                1.0, result.estimated_total_time_ms / context.max_execution_time_ms
-            )
+            time_efficiency = min(1.0, result.estimated_total_time_ms / context.max_execution_time_ms)
             token_efficiency = min(
                 1.0,
                 result.estimated_total_tokens / max(1, context.available_token_budget),
             )
 
             # Overall efficiency
-            overall_efficiency = (
-                (execution_ratio * 0.5)
-                + (time_efficiency * 0.3)
-                + (token_efficiency * 0.2)
-            )
+            overall_efficiency = (execution_ratio * 0.5) + (time_efficiency * 0.3) + (token_efficiency * 0.2)
 
             # Update rolling average
             current_avg = performance["avg_efficiency"]
-            performance["avg_efficiency"] = (current_avg * 0.8) + (
-                overall_efficiency * 0.2
-            )
+            performance["avg_efficiency"] = (current_avg * 0.8) + (overall_efficiency * 0.2)
 
         # Update success rate (assume successful if no critical errors)
         # This would be updated with actual execution results
-        performance["success_rate"] = min(
-            1.0, performance["success_rate"] * 0.95 + 0.05
-        )
+        performance["success_rate"] = min(1.0, performance["success_rate"] * 0.95 + 0.05)
 
     def get_scheduling_statistics(self) -> Dict[str, Any]:
         """Get scheduling statistics and performance data"""
@@ -807,16 +750,11 @@ class PhaseOptimizedHookScheduler:
                         "usage_count": performance["usage_count"],
                         "success_rate": performance["success_rate"],
                         "avg_efficiency": performance["avg_efficiency"],
-                        "recommendation_score": performance["success_rate"]
-                        * performance["avg_efficiency"],
+                        "recommendation_score": performance["success_rate"] * performance["avg_efficiency"],
                     }
 
             # Get recent performance
-            recent_performance = (
-                self._scheduling_history[-10:]
-                if total_schedules >= 10
-                else self._scheduling_history
-            )
+            recent_performance = self._scheduling_history[-10:] if total_schedules >= 10 else self._scheduling_history
 
             return {
                 "total_schedules": total_schedules,
@@ -840,9 +778,7 @@ class PhaseOptimizedHookScheduler:
         phase_schedules = [
             s
             for s in self._scheduling_history
-            if any(
-                phase.value.lower() in s.get("context", "").lower() for phase in [phase]
-            )
+            if any(phase.value.lower() in s.get("context", "").lower() for phase in [phase])
         ]
 
         insights: Dict[str, Any] = {
@@ -860,31 +796,23 @@ class PhaseOptimizedHookScheduler:
         else:
             recs_list = insights["optimization_recommendations"]
             if isinstance(recs_list, list):
-                recs_list.append(
-                    "This phase prefers sequential hook execution for consistency"
-                )
+                recs_list.append("This phase prefers sequential hook execution for consistency")
 
         if phase_params.get("token_budget_ratio", 0) > 0.2:
             recs_list = insights["optimization_recommendations"]
             if isinstance(recs_list, list):
-                recs_list.append(
-                    "This phase requires significant token budget - consider token-efficient scheduling"
-                )
+                recs_list.append("This phase requires significant token budget - consider token-efficient scheduling")
 
         # Add strategy recommendations
         strategy_stats = self.get_scheduling_statistics()["strategy_performance"]
         best_strategy = (
-            max(strategy_stats.items(), key=lambda x: x[1]["recommendation_score"])
-            if strategy_stats
-            else None
+            max(strategy_stats.items(), key=lambda x: x[1]["recommendation_score"]) if strategy_stats else None
         )
 
         if best_strategy:
             insights["recommended_strategy"] = best_strategy[0]
             score = best_strategy[1]["recommendation_score"]
-            insights["strategy_rationale"] = (
-                f"Best performance with {best_strategy[0]} strategy (score: {score:.2f})"
-            )
+            insights["strategy_rationale"] = f"Best performance with {best_strategy[0]} strategy (score: {score:.2f})"
 
         return insights
 

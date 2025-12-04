@@ -46,10 +46,7 @@ class TestComponentArchitecture:
         assert result["valid"] is True
         assert result["hierarchy_level"] == 4
         assert len(result["components"]) == len(
-            components["atoms"]
-            + components["molecules"]
-            + components["organisms"]
-            + components["pages"]
+            components["atoms"] + components["molecules"] + components["organisms"] + components["pages"]
         )
 
     def test_component_composition_patterns(self):

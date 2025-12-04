@@ -94,9 +94,7 @@ class TestTestResult:
 
     def test_test_result_minimal(self):
         """Test TestResult with minimal fields."""
-        result = TestResult(
-            name="test_minimal", status=TestStatus.SKIPPED, duration=0.0
-        )
+        result = TestResult(name="test_minimal", status=TestStatus.SKIPPED, duration=0.0)
         assert result.name == "test_minimal"
         assert result.error_message is None
         assert result.metadata is None
@@ -108,9 +106,7 @@ class TestTestResult:
 
     def test_test_result_large_duration(self):
         """Test TestResult with large duration."""
-        result = TestResult(
-            name="test_long", status=TestStatus.RUNNING, duration=9999.99
-        )
+        result = TestResult(name="test_long", status=TestStatus.RUNNING, duration=9999.99)
         assert result.duration == 9999.99
 
 
@@ -1607,10 +1603,7 @@ class TestEdgeCases:
 
     def test_very_large_test_count(self):
         """Test handling very large test counts."""
-        results = [
-            TestResult(name=f"test_{i}", status=TestStatus.PASSED, duration=0.1)
-            for i in range(10000)
-        ]
+        results = [TestResult(name=f"test_{i}", status=TestStatus.PASSED, duration=0.1) for i in range(10000)]
         report = generate_test_report(results)
 
         assert report["summary"]["total_tests"] == 10000
@@ -1649,9 +1642,7 @@ class TestEdgeCases:
 
     def test_very_large_duration_values(self):
         """Test handling very large duration values."""
-        results = [
-            TestResult(name="test_long", status=TestStatus.PASSED, duration=999999.99)
-        ]
+        results = [TestResult(name="test_long", status=TestStatus.PASSED, duration=999999.99)]
         report = generate_test_report(results)
 
         assert report["summary"]["total_duration"] == 999999.99

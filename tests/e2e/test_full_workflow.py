@@ -42,10 +42,7 @@ class TestFullWorkflow:
             if Path(".moai").exists():
                 result = runner.invoke(cli, ["status"])
                 assert result.exit_code == 0
-                assert (
-                    "personal" in result.output.lower()
-                    or "mode" in result.output.lower()
-                )
+                assert "personal" in result.output.lower() or "mode" in result.output.lower()
 
     @pytest.mark.e2e
     def test_doctor_workflow(self):
@@ -130,9 +127,7 @@ class TestIntegrationFlow:
 
             # 2. Doctor (always runs)
             result_doctor = runner.invoke(cli, ["doctor"])
-            assert (
-                result_doctor.exit_code == 0 or "check" in result_doctor.output.lower()
-            )
+            assert result_doctor.exit_code == 0 or "check" in result_doctor.output.lower()
 
             # 3. Status (if init succeeded)
             if result_init.exit_code == 0 and Path(".moai").exists():

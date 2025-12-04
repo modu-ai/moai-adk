@@ -212,9 +212,7 @@ class EARSTemplateEngine:
         start_time = time.time()
 
         # Extract information from code analysis
-        extraction_result = self._extract_information_from_analysis(
-            code_analysis, file_path
-        )
+        extraction_result = self._extract_information_from_analysis(code_analysis, file_path)
 
         # Determine domain
         domain = self._determine_domain(extraction_result)
@@ -223,15 +221,9 @@ class EARSTemplateEngine:
         spec_id = self._generate_spec_id(extraction_result, domain)
 
         # Generate content for each section
-        spec_md_content = self._generate_spec_content(
-            extraction_result, domain, spec_id, custom_config
-        )
-        plan_md_content = self._generate_plan_content(
-            extraction_result, domain, spec_id, custom_config
-        )
-        acceptance_md_content = self._generate_acceptance_content(
-            extraction_result, domain, spec_id, custom_config
-        )
+        spec_md_content = self._generate_spec_content(extraction_result, domain, spec_id, custom_config)
+        plan_md_content = self._generate_plan_content(extraction_result, domain, spec_id, custom_config)
+        acceptance_md_content = self._generate_acceptance_content(extraction_result, domain, spec_id, custom_config)
 
         # Validate content
         validation_result = self._validate_ears_compliance(
@@ -256,9 +248,7 @@ class EARSTemplateEngine:
 
         return result  # type: ignore[return-value]
 
-    def _extract_information_from_analysis(
-        self, code_analysis: Dict[str, Any], file_path: str
-    ) -> Dict[str, Any]:
+    def _extract_information_from_analysis(self, code_analysis: Dict[str, Any], file_path: str) -> Dict[str, Any]:
         """Extract information from code analysis."""
         extraction = {
             "file_path": file_path,
@@ -341,9 +331,7 @@ class EARSTemplateEngine:
             return "frontend"
         elif any("fastapi" in imp.lower() or "flask" in imp.lower() for imp in imports):
             return "api"
-        elif any(
-            "sqlalchemy" in imp.lower() or "django" in imp.lower() for imp in imports
-        ):
+        elif any("sqlalchemy" in imp.lower() or "django" in imp.lower() for imp in imports):
             return "data"
         else:
             return "simple"
@@ -364,11 +352,7 @@ class EARSTemplateEngine:
 
         domain_scores = {}
         for domain, keywords in domain_indicators.items():
-            score = sum(
-                1
-                for keyword in keywords
-                if any(keyword in kw for kw in domain_keywords)
-            )
+            score = sum(1 for keyword in keywords if any(keyword in kw for kw in domain_keywords))
             domain_scores[domain] = score
 
         # Return domain with highest score
@@ -388,9 +372,7 @@ class EARSTemplateEngine:
         # Generate hash for uniqueness
         import hashlib
 
-        file_hash = hashlib.md5(
-            f"{file_name}{domain}{time.time()}".encode()
-        ).hexdigest()[:4]
+        file_hash = hashlib.md5(f"{file_name}{domain}{time.time()}".encode()).hexdigest()[:4]
 
         return f"{domain_upper}-{clean_name[:8]}-{file_hash}"
 
@@ -424,13 +406,9 @@ class EARSTemplateEngine:
         spec_content = self._render_template(
             self.ears_templates["environment"],
             {
-                "project_name": config.get(
-                    "project_name", f"{domain.capitalize()} System"
-                ),
+                "project_name": config.get("project_name", f"{domain.capitalize()} System"),
                 "language": extraction["language"],
-                "framework": config.get(
-                    "framework", self._detect_framework(extraction)
-                ),
+                "framework": config.get("framework", self._detect_framework(extraction)),
                 "paradigm": config.get("paradigm", "Object-Oriented"),
                 "platform": config.get("platform", "Web/Server"),
                 "deployment": config.get("deployment", "Cloud-based"),
@@ -440,9 +418,7 @@ class EARSTemplateEngine:
         )
 
         # Add assumptions
-        spec_content += "\n\n" + self._render_template(
-            self.ears_templates["assumptions"], extraction
-        )
+        spec_content += "\n\n" + self._render_template(self.ears_templates["assumptions"], extraction)
 
         # Add requirements
         spec_content += "\n\n" + self._render_template(
@@ -501,9 +477,7 @@ class EARSTemplateEngine:
 
         return spec_md
 
-    def _render_template(
-        self, template: Dict[str, str], context: Dict[str, Any]
-    ) -> str:
+    def _render_template(self, template: Dict[str, str], context: Dict[str, Any]) -> str:
         """Render template with context."""
         template_text = template["template"]
 
@@ -532,9 +506,7 @@ class EARSTemplateEngine:
         else:
             return f"Process data and perform {domain} operations"
 
-    def _generate_state_requirements(
-        self, extraction: Dict[str, Any], domain: str
-    ) -> str:
+    def _generate_state_requirements(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate state-based requirements."""
         base_requirements = [
             "- **REQ-006**: System SHALL transition from initial state to target state",
@@ -568,9 +540,7 @@ class EARSTemplateEngine:
 
         return result
 
-    def _generate_event_requirements(
-        self, extraction: Dict[str, Any], domain: str
-    ) -> str:
+    def _generate_event_requirements(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate event-based requirements."""
         base_events = [
             "- **EVT-001**: System SHALL respond to user input events",
@@ -627,9 +597,7 @@ class EARSTemplateEngine:
 
         return "\n".join(technical_specs)
 
-    def _generate_technical_details(
-        self, extraction: Dict[str, Any], domain: str
-    ) -> Dict[str, str]:
+    def _generate_technical_details(self, extraction: Dict[str, Any], domain: str) -> Dict[str, str]:
         """Generate technical details for specifications."""
         return {
             "technical_details": f"""#### Technical Details
@@ -740,9 +708,7 @@ class EARSTemplateEngine:
         else:
             return "Security specifications apply by default."
 
-    def _generate_performance_specs(
-        self, extraction: Dict[str, Any], domain: str
-    ) -> str:
+    def _generate_performance_specs(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate performance specifications."""
         return """
 **Performance Requirements**:
@@ -756,9 +722,7 @@ class EARSTemplateEngine:
 - Resource usage monitoring
 - Error rate monitoring"""
 
-    def _generate_scalability_specs(
-        self, extraction: Dict[str, Any], domain: str
-    ) -> str:
+    def _generate_scalability_specs(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate scalability specifications."""
         return """
 **Scalability Requirements**:
@@ -948,9 +912,7 @@ domain: "{domain}"
 
         return plan_content
 
-    def _generate_architecture_diagram(
-        self, extraction: Dict[str, Any], domain: str
-    ) -> str:
+    def _generate_architecture_diagram(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate architecture diagram."""
         if domain == "auth":
             return """
@@ -1258,9 +1220,7 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
             "section_scores": section_scores,
             "suggestions": suggestions[:5],  # Top 5 suggestions
             "total_sections": len(required_sections),
-            "present_sections": sum(
-                1 for score in section_scores.values() if score > 0
-            ),
+            "present_sections": sum(1 for score in section_scores.values() if score > 0),
         }
 
     def _detect_framework(self, extraction: Dict[str, Any]) -> str:

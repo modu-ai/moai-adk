@@ -579,9 +579,7 @@ class TestBackendIntegration:
         assert token is not None
 
         # Record metrics
-        metrics.record_request_metrics(
-            path="/api/v1/users/1", method="GET", status_code=200, duration_ms=50
-        )
+        metrics.record_request_metrics(path="/api/v1/users/1", method="GET", status_code=200, duration_ms=50)
 
         # Verify metrics
         error_rate = metrics.get_error_rate()

@@ -26,9 +26,7 @@ logger = logging.getLogger(__name__)
 class TemplateSkill:
     """Represents a template skill directory."""
 
-    def __init__(
-        self, name: str, path: Path, has_skill_md: bool, is_template: bool = False
-    ):
+    def __init__(self, name: str, path: Path, has_skill_md: bool, is_template: bool = False):
         """Initialize a TemplateSkill.
 
         Args:

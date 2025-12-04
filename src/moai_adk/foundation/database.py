@@ -144,13 +144,9 @@ class SchemaNormalizer:
                     "emails",
                     "addresses",
                 ]
-                if any(
-                    pattern in column_name.lower() for pattern in multi_value_patterns
-                ):
+                if any(pattern in column_name.lower() for pattern in multi_value_patterns):
                     if "VARCHAR" in column_type or "TEXT" in column_type:
-                        violations.append(
-                            f"{table_name}.{column_name}: Likely contains multiple values"
-                        )
+                        violations.append(f"{table_name}.{column_name}: Likely contains multiple values")
 
         is_valid = len(violations) == 0
         normalization_level = "1NF" if is_valid else "0NF"
@@ -365,10 +361,7 @@ class DatabaseSelector:
             Database recommendation with reasoning
         """
         # PostgreSQL for ACID compliance
-        if (
-            requirements.get("acid_compliance")
-            or requirements.get("transactions") == "required"
-        ):
+        if requirements.get("acid_compliance") or requirements.get("transactions") == "required":
             return {
                 "database": "PostgreSQL",
                 "version": "17",
@@ -378,10 +371,7 @@ class DatabaseSelector:
             }
 
         # MongoDB for flexible schemas
-        if (
-            requirements.get("schema_flexibility") == "high"
-            or requirements.get("data_model") == "document"
-        ):
+        if requirements.get("schema_flexibility") == "high" or requirements.get("data_model") == "document":
             return {
                 "database": "MongoDB",
                 "version": "8.0",
@@ -391,10 +381,7 @@ class DatabaseSelector:
             }
 
         # Redis for caching
-        if (
-            requirements.get("use_case") == "caching"
-            or requirements.get("speed") == "critical"
-        ):
+        if requirements.get("use_case") == "caching" or requirements.get("speed") == "critical":
             return {
                 "database": "Redis",
                 "version": "7.4",
@@ -404,10 +391,7 @@ class DatabaseSelector:
             }
 
         # MySQL for legacy compatibility
-        if (
-            requirements.get("legacy_support")
-            or requirements.get("ecosystem") == "mature"
-        ):
+        if requirements.get("legacy_support") or requirements.get("ecosystem") == "mature":
             return {
                 "database": "MySQL",
                 "version": "8.4",
@@ -490,9 +474,7 @@ class IndexingOptimizer:
             "estimated_improvement": 0.60,
         }
 
-    def detect_redundant_indexes(
-        self, existing_indexes: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def detect_redundant_indexes(self, existing_indexes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Detect redundant indexes.
 
@@ -516,10 +498,7 @@ class IndexingOptimizer:
                     )
 
                 # Check for duplicate indexes on same column
-                if (
-                    index1["columns"] == index2["columns"]
-                    and index1["name"] != index2["name"]
-                ):
+                if index1["columns"] == index2["columns"] and index1["name"] != index2["name"]:
                     redundant.append(
                         {
                             "name": index2["name"],
@@ -529,9 +508,7 @@ class IndexingOptimizer:
 
         return redundant
 
-    def _sort_columns_for_composite(
-        self, columns: List[str], conditions: List[str]
-    ) -> List[str]:
+    def _sort_columns_for_composite(self, columns: List[str], conditions: List[str]) -> List[str]:
         """Sort columns for composite index (equality columns first)."""
         equality_cols = []
         range_cols = []
@@ -574,9 +551,7 @@ class ConnectionPoolManager:
     Calculates optimal pool sizes and monitors pool health.
     """
 
-    def calculate_optimal_pool_size(
-        self, server_config: Dict[str, Any]
-    ) -> Dict[str, int]:
+    def calculate_optimal_pool_size(self, server_config: Dict[str, Any]) -> Dict[str, int]:
         """
         Calculate optimal connection pool size.
 
@@ -631,14 +606,10 @@ class ConnectionPoolManager:
         is_saturated = saturation_level >= 0.90
 
         if is_saturated:
-            warnings.append(
-                f"Pool saturation at {saturation_level:.1%} - consider increasing max size"
-            )
+            warnings.append(f"Pool saturation at {saturation_level:.1%} - consider increasing max size")
 
         if wait_time > 100:
-            warnings.append(
-                f"Average wait time {wait_time}ms exceeds threshold - pool may be undersized"
-            )
+            warnings.append(f"Average wait time {wait_time}ms exceeds threshold - pool may be undersized")
 
         if idle / max(total_usage, 1) < 0.10:
             warnings.append("Low idle connection count - pool may need expansion")
@@ -650,9 +621,7 @@ class ConnectionPoolManager:
             "health_score": self._calculate_health_score(saturation_level, wait_time),
         }
 
-    def recommend_adjustments(
-        self, current_config: Dict[str, int], metrics: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def recommend_adjustments(self, current_config: Dict[str, int], metrics: Dict[str, Any]) -> Dict[str, Any]:
         """
         Recommend pool configuration adjustments.
 
@@ -752,9 +721,7 @@ class MigrationPlanner:
         # Check for destructive operations
         if operation == "drop_column":
             if not migration.get("backup", False):
-                risks.append(
-                    "Data loss risk: column will be permanently deleted without backup"
-                )
+                risks.append("Data loss risk: column will be permanently deleted without backup")
                 is_safe = False
 
         if operation == "change_column_type":
@@ -797,36 +764,23 @@ class MigrationPlanner:
 
         # Dropping columns is breaking
         if operation == "drop_column":
-            breaking_changes.append(
-                f"Dropping column {migration['column']} will break dependent code"
-            )
+            breaking_changes.append(f"Dropping column {migration['column']} will break dependent code")
             has_breaking = True
 
         # Adding non-nullable columns without default
         if operation == "add_column":
             column_def = migration.get("column", {})
-            if (
-                not column_def.get("nullable", True)
-                and column_def.get("default") is None
-            ):
-                breaking_changes.append(
-                    "Adding non-nullable column without default will fail on existing rows"
-                )
+            if not column_def.get("nullable", True) and column_def.get("default") is None:
+                breaking_changes.append("Adding non-nullable column without default will fail on existing rows")
                 has_breaking = True
 
         impact_level = "high" if has_breaking else "low"
 
         return {
             "has_breaking_changes": has_breaking,
-            "changes": (
-                breaking_changes
-                if breaking_changes
-                else ["No breaking changes detected"]
-            ),
+            "changes": (breaking_changes if breaking_changes else ["No breaking changes detected"]),
             "impact_level": impact_level,
-            "mitigation_strategies": self._generate_mitigation_strategies(
-                breaking_changes
-            ),
+            "mitigation_strategies": self._generate_mitigation_strategies(breaking_changes),
         }
 
     def _plan_add_column(self, change_request: Dict[str, Any]) -> Dict[str, Any]:
@@ -926,9 +880,7 @@ class TransactionManager:
     Validates transaction configurations and handles deadlock detection.
     """
 
-    def validate_acid_compliance(
-        self, transaction_config: Dict[str, Any]
-    ) -> Dict[str, bool]:
+    def validate_acid_compliance(self, transaction_config: Dict[str, Any]) -> Dict[str, bool]:
         """
         Validate ACID property compliance.
 
@@ -1000,14 +952,10 @@ class TransactionManager:
         return {
             "deadlock_detected": deadlock_detected,
             "involved_transactions": list(involved),
-            "resolution_strategy": (
-                "Abort lowest priority transaction" if deadlock_detected else None
-            ),
+            "resolution_strategy": ("Abort lowest priority transaction" if deadlock_detected else None),
         }
 
-    def _has_cycle_dfs(
-        self, node: str, graph: Dict[str, str], visited: set, rec_stack: set
-    ) -> bool:
+    def _has_cycle_dfs(self, node: str, graph: Dict[str, str], visited: set, rec_stack: set) -> bool:
         """Detect cycle using DFS with recursion stack."""
         # Mark current node as visited and in recursion stack
         visited.add(node)
@@ -1104,9 +1052,7 @@ class PerformanceMonitor:
             "optimization_priority": "high" if avg_time > 1000 else "low",
         }
 
-    def monitor_connection_usage(
-        self, connection_metrics: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def monitor_connection_usage(self, connection_metrics: Dict[str, Any]) -> Dict[str, Any]:
         """
         Monitor database connection usage.
 
@@ -1132,14 +1078,10 @@ class PerformanceMonitor:
             "health_status": health,
             "usage_ratio": usage_ratio,
             "failed_attempts": failed_attempts,
-            "recommendations": self._generate_connection_recommendations(
-                usage_ratio, failed_attempts
-            ),
+            "recommendations": self._generate_connection_recommendations(usage_ratio, failed_attempts),
         }
 
-    def _generate_connection_recommendations(
-        self, usage_ratio: float, failed_attempts: int
-    ) -> List[str]:
+    def _generate_connection_recommendations(self, usage_ratio: float, failed_attempts: int) -> List[str]:
         """Generate connection usage recommendations."""
         recommendations = []
 
@@ -1147,9 +1089,7 @@ class PerformanceMonitor:
             recommendations.append("Increase connection pool size")
 
         if failed_attempts > 10:
-            recommendations.append(
-                "Investigate connection failures and timeout settings"
-            )
+            recommendations.append("Investigate connection failures and timeout settings")
 
         return recommendations
 

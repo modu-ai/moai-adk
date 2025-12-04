@@ -141,9 +141,7 @@ class UserBehaviorAnalytics:
     """Main user behavior analytics system"""
 
     def __init__(self, storage_path: Optional[Path] = None):
-        self.storage_path = (
-            storage_path or Path.cwd() / ".moai" / "analytics" / "user_behavior"
-        )
+        self.storage_path = storage_path or Path.cwd() / ".moai" / "analytics" / "user_behavior"
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
         # Data storage
@@ -220,9 +218,7 @@ class UserBehaviorAnalytics:
             self._insight_cache.clear()
             self._last_cache_update = datetime.now()
 
-    def start_session(
-        self, user_id: str, working_directory: str = "", git_branch: str = ""
-    ) -> str:
+    def start_session(self, user_id: str, working_directory: str = "", git_branch: str = "") -> str:
         """Start tracking a new user session"""
         session_id = str(uuid.uuid4())
 
@@ -311,19 +307,13 @@ class UserBehaviorAnalytics:
 
         if user_sessions:
             # Session metrics
-            durations = [
-                s.total_duration_ms for s in user_sessions if s.total_duration_ms > 0
-            ]
-            productivity_scores = [
-                s.productivity_score for s in user_sessions if s.productivity_score > 0
-            ]
+            durations = [s.total_duration_ms for s in user_sessions if s.total_duration_ms > 0]
+            productivity_scores = [s.productivity_score for s in user_sessions if s.productivity_score > 0]
 
             if durations:
                 patterns["avg_session_duration"] = statistics.mean(durations)
             if productivity_scores:
-                patterns["avg_productivity_score"] = statistics.mean(
-                    productivity_scores
-                )
+                patterns["avg_productivity_score"] = statistics.mean(productivity_scores)
 
             # Command usage
             all_commands = []
@@ -344,22 +334,15 @@ class UserBehaviorAnalytics:
             hour_productivity = defaultdict(list)
 
             for session in user_sessions:
-                hour_productivity[session.start_time.hour].append(
-                    session.productivity_score
-                )
+                hour_productivity[session.start_time.hour].append(session.productivity_score)
 
             avg_hourly_productivity = {
-                hour: statistics.mean(scores) if scores else 0
-                for hour, scores in hour_productivity.items()
+                hour: statistics.mean(scores) if scores else 0 for hour, scores in hour_productivity.items()
             }
 
             # Top 3 most productive hours
-            top_hours = sorted(
-                avg_hourly_productivity.items(), key=lambda x: x[1], reverse=True
-            )[:3]
-            patterns["peak_productivity_hours"] = [
-                f"{hour:02d}:00" for hour, _ in top_hours
-            ]
+            top_hours = sorted(avg_hourly_productivity.items(), key=lambda x: x[1], reverse=True)[:3]
+            patterns["peak_productivity_hours"] = [f"{hour:02d}:00" for hour, _ in top_hours]
 
         # Cache results
         self._pattern_cache[cache_key] = patterns
@@ -404,8 +387,7 @@ class UserBehaviorAnalytics:
         recent_actions = [
             action
             for action in self.action_history
-            if action.user_id == user_id
-            and action.timestamp >= datetime.now() - timedelta(days=days)
+            if action.user_id == user_id and action.timestamp >= datetime.now() - timedelta(days=days)
         ]
 
         error_actions = [
@@ -422,9 +404,7 @@ class UserBehaviorAnalytics:
         # Tool usage insights
         if patterns["most_used_tools"]:
             top_tool = max(patterns["most_used_tools"].items(), key=lambda x: x[1])
-            insights["tool_recommendations"].append(
-                f"Most frequently used tool: {top_tool[0]} ({top_tool[1]} uses)"
-            )
+            insights["tool_recommendations"].append(f"Most frequently used tool: {top_tool[0]} ({top_tool[1]} uses)")
 
         # Command pattern insights
         if patterns["most_used_commands"]:
@@ -457,11 +437,7 @@ class UserBehaviorAnalytics:
         cutoff_date = datetime.now() - timedelta(days=days)
 
         # Get all sessions in time range
-        recent_sessions = [
-            session
-            for session in self.user_sessions.values()
-            if session.start_time >= cutoff_date
-        ]
+        recent_sessions = [session for session in self.user_sessions.values() if session.start_time >= cutoff_date]
 
         # Aggregate metrics
         team_metrics = {
@@ -478,14 +454,8 @@ class UserBehaviorAnalytics:
 
         if recent_sessions:
             # Calculate averages
-            durations = [
-                s.total_duration_ms for s in recent_sessions if s.total_duration_ms > 0
-            ]
-            scores = [
-                s.productivity_score
-                for s in recent_sessions
-                if s.productivity_score > 0
-            ]
+            durations = [s.total_duration_ms for s in recent_sessions if s.total_duration_ms > 0]
+            scores = [s.productivity_score for s in recent_sessions if s.productivity_score > 0]
 
             if durations:
                 team_metrics["avg_session_duration"] = statistics.mean(durations)
@@ -494,9 +464,7 @@ class UserBehaviorAnalytics:
 
             # Most active users
             user_session_counts = Counter(s.user_id for s in recent_sessions)
-            team_metrics["most_active_users"] = dict(
-                user_session_counts.most_common(10)
-            )
+            team_metrics["most_active_users"] = dict(user_session_counts.most_common(10))
 
             # Most used tools across team
             all_tools: List[str] = []
@@ -530,9 +498,7 @@ class UserBehaviorAnalytics:
 
         return team_metrics
 
-    def _extract_action_tags(
-        self, action_type: UserActionType, action_data: Dict[str, Any]
-    ) -> Set[str]:
+    def _extract_action_tags(self, action_type: UserActionType, action_data: Dict[str, Any]) -> Set[str]:
         """Extract relevant tags from action data"""
         tags = {action_type.value}
 
@@ -569,9 +535,7 @@ class UserBehaviorAnalytics:
         if action.action_type == UserActionType.COMMAND_EXECUTION:
             command = action.action_data.get("command", "")
             if command:
-                prefs.preferred_commands[command] = (
-                    prefs.preferred_commands.get(command, 0) + 1
-                )
+                prefs.preferred_commands[command] = prefs.preferred_commands.get(command, 0) + 1
 
         # Update tool preferences
         if "tool" in action.action_data:
@@ -609,13 +573,9 @@ class UserBehaviorAnalytics:
             return SessionState.IDLE
 
         # Calculate metrics
-        error_rate = sum(1 for action in recent_actions if not action.success) / len(
-            recent_actions
-        )
+        error_rate = sum(1 for action in recent_actions if not action.success) / len(recent_actions)
 
-        durations_with_ms = [
-            a.duration_ms for a in recent_actions if a.duration_ms is not None
-        ]
+        durations_with_ms = [a.duration_ms for a in recent_actions if a.duration_ms is not None]
         avg_duration = statistics.mean(durations_with_ms) if durations_with_ms else 0
 
         # Determine state
@@ -672,20 +632,14 @@ class UserBehaviorAnalytics:
                     prefs.preferred_commands = prefs_dict.get("preferred_commands", {})
                     prefs.preferred_tools = prefs_dict.get("preferred_tools", {})
                     prefs.working_hours = prefs_dict.get("working_hours", {})
-                    prefs.peak_productivity_times = prefs_dict.get(
-                        "peak_productivity_times", []
-                    )
+                    prefs.peak_productivity_times = prefs_dict.get("peak_productivity_times", [])
                     prefs.common_workflows = prefs_dict.get("common_workflows", [])
                     prefs.error_patterns = prefs_dict.get("error_patterns", [])
                     prefs.success_patterns = prefs_dict.get("success_patterns", [])
-                    prefs.collaboration_patterns = prefs_dict.get(
-                        "collaboration_patterns", {}
-                    )
+                    prefs.collaboration_patterns = prefs_dict.get("collaboration_patterns", {})
 
                     if prefs_dict.get("last_updated"):
-                        prefs.last_updated = datetime.fromisoformat(
-                            prefs_dict["last_updated"]
-                        )
+                        prefs.last_updated = datetime.fromisoformat(prefs_dict["last_updated"])
 
                     self.user_preferences[user_id] = prefs
 
@@ -773,18 +727,12 @@ class UserBehaviorAnalytics:
         today_start = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Filter sessions and calculate metrics
-        today_sessions = [
-            session
-            for session in self.user_sessions.values()
-            if session.start_time >= today_start
-        ]
+        today_sessions = [session for session in self.user_sessions.values() if session.start_time >= today_start]
 
         metrics["total_sessions_today"] = len(today_sessions)
 
         if today_sessions:
-            durations = [
-                s.total_duration_ms for s in today_sessions if s.total_duration_ms > 0
-            ]
+            durations = [s.total_duration_ms for s in today_sessions if s.total_duration_ms > 0]
             if durations:
                 metrics["avg_session_duration"] = statistics.mean(durations)
 
@@ -830,14 +778,10 @@ def track_user_action(
 ) -> None:
     """Track a user action"""
     analytics = get_user_analytics()
-    analytics.track_action(
-        action_type, user_id, session_id, action_data, context, duration_ms, success
-    )
+    analytics.track_action(action_type, user_id, session_id, action_data, context, duration_ms, success)
 
 
-def start_user_session(
-    user_id: str, working_directory: str = "", git_branch: str = ""
-) -> str:
+def start_user_session(user_id: str, working_directory: str = "", git_branch: str = "") -> str:
     """Start tracking a user session"""
     analytics = get_user_analytics()
     return analytics.start_session(user_id, working_directory, git_branch)

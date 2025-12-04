@@ -117,9 +117,7 @@ class TestFileOperations:
 
         # Create processor and set context
         processor = TemplateProcessor(tmp_path)
-        processor.set_context(
-            {"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "Test project"}
-        )
+        processor.set_context({"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "Test project"})
 
         # Copy with substitution
         dst = tmp_path / "output.md"
@@ -306,9 +304,7 @@ Unknown: {{UNKNOWN_VAR}}
         result, warnings = processor._substitute_variables(content)
 
         # Should have warnings for all unsubstituted variables
-        assert (
-            len(warnings) >= 2
-        )  # At least "Template variables not substituted" and details
+        assert len(warnings) >= 2  # At least "Template variables not substituted" and details
 
         warning_text = " ".join(warnings)
         assert "PROJECT_NAME" in warning_text

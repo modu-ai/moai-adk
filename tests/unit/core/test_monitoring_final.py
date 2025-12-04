@@ -769,11 +769,7 @@ class TestAlertManager:
         manager.active_alerts[alert.alert_id] = alert
 
         # Act
-        critical_alerts = [
-            a
-            for a in manager.get_active_alerts()
-            if a.severity == AlertSeverity.CRITICAL
-        ]
+        critical_alerts = [a for a in manager.get_active_alerts() if a.severity == AlertSeverity.CRITICAL]
 
         # Assert
         assert len(critical_alerts) == 1

@@ -57,9 +57,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         self.performance_results["initialization_time"] = init_time
 
         # Performance assertions
-        self.assertLess(
-            init_time, 10.0, "Initialization should complete within 10 seconds"
-        )
+        self.assertLess(init_time, 10.0, "Initialization should complete within 10 seconds")
         self.assertTrue(result["success"])
 
         print(f"✅ Initialization completed in {init_time:.2f} seconds")
@@ -89,15 +87,9 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         template_load_time = time.time() - start_time
 
         # Performance assertions
-        self.assertLess(
-            doc_load_time, 1.0, "DocumentationManager should load within 1 second"
-        )
-        self.assertLess(
-            lang_load_time, 1.0, "LanguageInitializer should load within 1 second"
-        )
-        self.assertLess(
-            template_load_time, 1.0, "TemplateOptimizer should load within 1 second"
-        )
+        self.assertLess(doc_load_time, 1.0, "DocumentationManager should load within 1 second")
+        self.assertLess(lang_load_time, 1.0, "LanguageInitializer should load within 1 second")
+        self.assertLess(template_load_time, 1.0, "TemplateOptimizer should load within 1 second")
 
         print(f"✅ DocumentationManager loaded in {doc_load_time:.3f} seconds")
         print(f"✅ LanguageInitializer loaded in {lang_load_time:.3f} seconds")
@@ -114,9 +106,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             "id": "SPEC-001",
             "title": "Performance Test Feature",
             "description": "Testing documentation generation performance",
-            "requirements": [
-                f"Requirement {i}" for i in range(50)
-            ],  # Large requirement list
+            "requirements": [f"Requirement {i}" for i in range(50)],  # Large requirement list
             "api_endpoints": [
                 {
                     "path": f"/api/endpoint/{i}",
@@ -128,17 +118,13 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         }
 
         # Measure documentation generation time
-        result, gen_time = self.measure_time(
-            self.project.generate_documentation_from_spec, spec_data
-        )
+        result, gen_time = self.measure_time(self.project.generate_documentation_from_spec, spec_data)
 
         # Record performance metric
         self.performance_results["documentation_generation_time"] = gen_time
 
         # Performance assertions
-        self.assertLess(
-            gen_time, 5.0, "Documentation generation should complete within 5 seconds"
-        )
+        self.assertLess(gen_time, 5.0, "Documentation generation should complete within 5 seconds")
         self.assertTrue(result["success"])
 
         print(
@@ -178,35 +164,23 @@ Complex logic:
 {{% endif %}}
             """
 
-            (templates_dir / f"template_{i}.md").write_text(
-                template_content, encoding="utf-8"
-            )
+            (templates_dir / f"template_{i}.md").write_text(template_content, encoding="utf-8")
 
         # Measure template analysis time
-        result, analysis_time = self.measure_time(
-            self.project.template_optimizer.analyze_project_templates
-        )
+        result, analysis_time = self.measure_time(self.project.template_optimizer.analyze_project_templates)
 
         # Measure optimization time
-        result, opt_time = self.measure_time(
-            self.project.template_optimizer.create_optimized_templates
-        )
+        result, opt_time = self.measure_time(self.project.template_optimizer.create_optimized_templates)
 
         # Record performance metrics
         self.performance_results["template_analysis_time"] = analysis_time
         self.performance_results["template_optimization_time"] = opt_time
 
         # Performance assertions
-        self.assertLess(
-            analysis_time, 3.0, "Template analysis should complete within 3 seconds"
-        )
-        self.assertLess(
-            opt_time, 5.0, "Template optimization should complete within 5 seconds"
-        )
+        self.assertLess(analysis_time, 3.0, "Template analysis should complete within 3 seconds")
+        self.assertLess(opt_time, 5.0, "Template optimization should complete within 5 seconds")
 
-        print(
-            f"✅ Template analysis completed in {analysis_time:.2f} seconds for 10 templates"
-        )
+        print(f"✅ Template analysis completed in {analysis_time:.2f} seconds for 10 templates")
         print(f"✅ Template optimization completed in {opt_time:.2f} seconds")
 
     def test_language_detection_performance(self):
@@ -236,17 +210,13 @@ Complex logic:
             full_path.write_text(content, encoding="utf-8")
 
         # Measure language detection time
-        result, detection_time = self.measure_time(
-            self.project.language_initializer.detect_project_language
-        )
+        result, detection_time = self.measure_time(self.project.language_initializer.detect_project_language)
 
         # Record performance metric
         self.performance_results["language_detection_time"] = detection_time
 
         # Performance assertions
-        self.assertLess(
-            detection_time, 1.0, "Language detection should complete within 1 second"
-        )
+        self.assertLess(detection_time, 1.0, "Language detection should complete within 1 second")
 
         print(f"✅ Language detection completed in {detection_time:.3f} seconds")
 
@@ -291,13 +261,9 @@ Complex logic:
             self.performance_results["memory_increase_mb"] = memory_increase
 
             # Memory assertions (should be reasonable)
-            self.assertLess(
-                memory_increase, 100, "Memory increase should be less than 100MB"
-            )
+            self.assertLess(memory_increase, 100, "Memory increase should be less than 100MB")
 
-            print(
-                f"✅ Memory usage increased by {memory_increase:.2f} MB during operations"
-            )
+            print(f"✅ Memory usage increased by {memory_increase:.2f} MB during operations")
 
         except ImportError:
             self.skipTest("psutil not available for memory testing")
@@ -313,18 +279,14 @@ Complex logic:
             subproject_dir.mkdir(exist_ok=True)
 
             subproject = MoaiMenuProject(str(subproject_dir))
-            return subproject.initialize_complete_project(
-                language="en", project_type="web_application"
-            )
+            return subproject.initialize_complete_project(language="en", project_type="web_application")
 
         # Test with 5 concurrent operations
         start_time = time.time()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(initialize_subproject, i) for i in range(5)]
-            results = [
-                future.result() for future in concurrent.futures.as_completed(futures)
-            ]
+            results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
         concurrent_time = time.time() - start_time
 
@@ -400,9 +362,7 @@ Complex structure:
         start_time = time.time()
 
         # Initialize
-        init_result = self.project.initialize_complete_project(
-            optimization_enabled=True
-        )
+        init_result = self.project.initialize_complete_project(optimization_enabled=True)
 
         # Analyze templates
         analysis_result = self.project.template_optimizer.analyze_project_templates()
@@ -414,9 +374,7 @@ Complex structure:
 
         # Record performance metrics
         self.performance_results["large_project_time"] = total_time
-        self.performance_results["templates_analyzed"] = len(
-            analysis_result.get("analyzed_files", [])
-        )
+        self.performance_results["templates_analyzed"] = len(analysis_result.get("analyzed_files", []))
 
         # Performance assertions
         self.assertLess(
@@ -428,9 +386,7 @@ Complex structure:
         self.assertTrue(analysis_result["success"])
         self.assertTrue(opt_result["success"])
 
-        print(
-            f"✅ Large project ({template_count} templates) processed in {total_time:.2f} seconds"
-        )
+        print(f"✅ Large project ({template_count} templates) processed in {total_time:.2f} seconds")
 
     def test_performance_regression_detection(self):
         """Test detection of performance regressions."""
@@ -462,10 +418,7 @@ Complex structure:
                             "metric": metric,
                             "baseline": baseline,
                             "actual": actual_value,
-                            "regression_percentage": (
-                                (actual_value - baseline) / baseline
-                            )
-                            * 100,
+                            "regression_percentage": ((actual_value - baseline) / baseline) * 100,
                         }
                     )
 

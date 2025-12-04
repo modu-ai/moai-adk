@@ -116,9 +116,7 @@ class BatchQuestionsManager:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize the batch questions manager."""
         self.config = config or {}
-        self.template_dir = (
-            Path(__file__).parent.parent / "templates" / "question-templates"
-        )
+        self.template_dir = Path(__file__).parent.parent / "templates" / "question-templates"
         self.cache_dir = Path(__file__).parent.parent / "cache"
 
         # Ensure directories exist
@@ -162,9 +160,7 @@ class BatchQuestionsManager:
             if "validation" in q_config:
                 val_config = q_config["validation"]
                 validation = ValidationConfig(
-                    rules=[
-                        ValidationRule(rule) for rule in val_config.get("rules", [])
-                    ],
+                    rules=[ValidationRule(rule) for rule in val_config.get("rules", [])],
                     parameters=val_config.get("parameters", {}),
                     error_message=val_config.get("error_message"),
                     custom_validator=val_config.get("custom_validator"),
@@ -232,9 +228,7 @@ class BatchQuestionsManager:
             logger.error(f"Error loading template {template_name}: {e}")
             return None
 
-    def filter_questions(
-        self, batch: QuestionBatch, context: Dict[str, Any]
-    ) -> List[Question]:
+    def filter_questions(self, batch: QuestionBatch, context: Dict[str, Any]) -> List[Question]:
         """
         Filter questions based on context and conditional logic.
 
@@ -258,9 +252,7 @@ class BatchQuestionsManager:
 
         return filtered_questions
 
-    def execute_batch(
-        self, batch: QuestionBatch, context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, UserResponse]:
+    def execute_batch(self, batch: QuestionBatch, context: Optional[Dict[str, Any]] = None) -> Dict[str, UserResponse]:
         """
         Execute a question batch and collect responses.
 
@@ -294,14 +286,10 @@ class BatchQuestionsManager:
 
             # Validate response
             if question.validation:
-                validation_result = self._validate_response(
-                    response_value, question.validation
-                )
+                validation_result = self._validate_response(response_value, question.validation)
                 if not validation_result.is_valid:
                     # Handle validation error
-                    raise ValueError(
-                        f"Validation failed for question {question.id}: {validation_result.error}"
-                    )
+                    raise ValueError(f"Validation failed for question {question.id}: {validation_result.error}")
 
             responses[question.id] = UserResponse(
                 question_id=question.id,
@@ -380,9 +368,7 @@ class BatchQuestionsManager:
 
         return config
 
-    def save_responses(
-        self, responses: Dict[str, UserResponse], file_path: str
-    ) -> bool:
+    def save_responses(self, responses: Dict[str, UserResponse], file_path: str) -> bool:
         """
         Save responses to a file.
 
@@ -633,16 +619,12 @@ class BatchQuestionsManager:
         else:
             return None
 
-    def _validate_response(
-        self, value: Any, validation: ValidationConfig
-    ) -> "ValidationResult":
+    def _validate_response(self, value: Any, validation: ValidationConfig) -> "ValidationResult":
         """Validate a response value."""
         # Placeholder for validation logic
         return ValidationResult(is_valid=True, error=None)
 
-    def _evaluate_condition(
-        self, condition: Dict[str, Any], context: Dict[str, Any]
-    ) -> bool:
+    def _evaluate_condition(self, condition: Dict[str, Any], context: Dict[str, Any]) -> bool:
         """Evaluate conditional logic for questions."""
         # Simple implementation for now
         for key, expected in condition.items():
@@ -670,9 +652,7 @@ class BatchQuestionsManager:
 
         current[keys[-1]] = value
 
-    def _parse_conditional_questions(
-        self, conditional_configs: List[Dict[str, Any]]
-    ) -> List[Question]:
+    def _parse_conditional_questions(self, conditional_configs: List[Dict[str, Any]]) -> List[Question]:
         """Parse conditional questions from configuration."""
         questions = []
         for config in conditional_configs:
@@ -680,10 +660,7 @@ class BatchQuestionsManager:
                 id=config["id"],
                 text=config["text"],
                 type=QuestionType(config["type"]),
-                options=[
-                    QuestionOption(opt["label"], opt["value"])
-                    for opt in config.get("options", [])
-                ],
+                options=[QuestionOption(opt["label"], opt["value"]) for opt in config.get("options", [])],
             )
             questions.append(question)
 
@@ -715,9 +692,7 @@ def create_project_initializer(config: Dict[str, Any]) -> BatchQuestionsManager:
     return BatchQuestionsManager(config)
 
 
-def ask_skill_questions(
-    skill_name: str, context: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+def ask_skill_questions(skill_name: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Ask skill-specific questions and return responses.
 

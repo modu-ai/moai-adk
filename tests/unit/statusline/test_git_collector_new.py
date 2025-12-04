@@ -78,9 +78,7 @@ class TestGitCollectorFetchGitInfo:
         git_output = "## main...origin/main\nM  file1.py\n"
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout=git_output, stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=git_output, stderr="")
             result = collector._fetch_git_info()
             assert result.branch == "main"
             mock_run.assert_called_once()
@@ -90,9 +88,7 @@ class TestGitCollectorFetchGitInfo:
         collector = GitCollector()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=1, stdout="", stderr="fatal: not a git repository"
-            )
+            mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="fatal: not a git repository")
             result = collector._fetch_git_info()
             assert result.branch == "unknown"
             assert result.staged == 0
@@ -120,9 +116,7 @@ class TestGitCollectorFetchGitInfo:
         git_output = "## main...origin/main\n"
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout=git_output, stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=git_output, stderr="")
             collector._fetch_git_info()
             mock_run.assert_called_once_with(
                 ["git", "status", "-b", "--porcelain"],
@@ -137,9 +131,7 @@ class TestGitCollectorFetchGitInfo:
         git_output = "## main...origin/main\n"
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout=git_output, stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=git_output, stderr="")
             collector._fetch_git_info()
             call_args = mock_run.call_args
             assert call_args.kwargs["timeout"] == 2
@@ -179,12 +171,7 @@ class TestGitCollectorParseGitOutput:
     def test_parse_git_output_mixed_changes(self):
         """Test parsing with mixed file changes."""
         collector = GitCollector()
-        output = (
-            "## develop...origin/develop\n"
-            "A  new.py\n"
-            "M  modified.py\n"
-            "?? untracked.py\n"
-        )
+        output = "## develop...origin/develop\n" "A  new.py\n" "M  modified.py\n" "?? untracked.py\n"
         result = collector._parse_git_output(output)
         assert result.branch == "develop"
         assert result.staged == 2  # A and M are both staged changes
@@ -260,9 +247,7 @@ class TestGitCollectorCountChanges:
         ]
         staged, modified, untracked = collector._count_changes(lines)
         assert staged == 2
-        assert (
-            modified == 3
-        )  # space+M (1) + ?? (2 more from second char not being space)
+        assert modified == 3  # space+M (1) + ?? (2 more from second char not being space)
         assert untracked == 2
 
     def test_count_changes_short_lines(self):
@@ -310,16 +295,12 @@ class TestGitCollectorExtractBranch:
 
     def test_extract_branch_with_dashes(self):
         """Test branch extraction with dashes in name."""
-        branch = GitCollector._extract_branch(
-            "## feature-branch...origin/feature-branch"
-        )
+        branch = GitCollector._extract_branch("## feature-branch...origin/feature-branch")
         assert branch == "feature-branch"
 
     def test_extract_branch_with_slashes(self):
         """Test branch extraction with slashes in name."""
-        branch = GitCollector._extract_branch(
-            "## feature/new-feature...origin/feature/new-feature"
-        )
+        branch = GitCollector._extract_branch("## feature/new-feature...origin/feature/new-feature")
         assert branch == "feature/new-feature"
 
     def test_extract_branch_invalid_format_no_header(self):
@@ -431,9 +412,7 @@ class TestGitCollectorIntegration:
         )
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout=git_output, stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=git_output, stderr="")
             result = collector.collect_git_info()
             assert result.branch == "feature-branch"
             assert result.staged == 2  # A and M in index
@@ -446,9 +425,7 @@ class TestGitCollectorIntegration:
         git_output = "## main...origin/main\nM  file.py\n"
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout=git_output, stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=git_output, stderr="")
 
             # First call
             result1 = collector.collect_git_info()
@@ -504,9 +481,7 @@ class TestGitCollectorEdgeCases:
         collector = GitCollector()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout="## main...origin/main\n", stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="## main...origin/main\n", stderr="")
             collector._fetch_git_info()
             assert mock_run.called
             assert mock_run.call_args.kwargs["capture_output"] is True

@@ -118,9 +118,7 @@ class LanguageInitializer:
         # Method 1: Check existing config
         if self.config_path.exists():
             existing_config = json.loads(self.config_path.read_text(encoding="utf-8"))
-            existing_lang = existing_config.get("language", {}).get(
-                "conversation_language"
-            )
+            existing_lang = existing_config.get("language", {}).get("conversation_language")
             if existing_lang:
                 return existing_lang
 
@@ -263,9 +261,7 @@ class LanguageInitializer:
 
         # Update user settings
         if user_name:
-            current_config.setdefault("user", {}).update(
-                {"name": user_name, "selected_at": datetime.now().isoformat()}
-            )
+            current_config.setdefault("user", {}).update({"name": user_name, "selected_at": datetime.now().isoformat()})
 
         # Update domain settings if provided
         if domains:
@@ -286,9 +282,7 @@ class LanguageInitializer:
         templates = self._generate_localized_templates(language)
 
         # Save updated configuration
-        self.config_path.write_text(
-            json.dumps(current_config, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        self.config_path.write_text(json.dumps(current_config, indent=2, ensure_ascii=False), encoding="utf-8")
 
         return {
             "language": language,
@@ -440,8 +434,7 @@ class LanguageInitializer:
                     "conversation_overhead": overhead_percentage,
                     "agent_prompt_overhead": (
                         15
-                        if self.LANGUAGE_CONFIG[language]["agent_prompt_language"]
-                        == "english"
+                        if self.LANGUAGE_CONFIG[language]["agent_prompt_language"] == "english"
                         else overhead_percentage
                     ),
                     "documentation_overhead": overhead_percentage,
@@ -474,9 +467,7 @@ class LanguageInitializer:
         # Load current configuration
         if self.config_path.exists():
             config = json.loads(self.config_path.read_text(encoding="utf-8"))
-            agent_lang = config.get("language", {}).get(
-                "agent_prompt_language", "english"
-            )
+            agent_lang = config.get("language", {}).get("agent_prompt_language", "english")
         else:
             agent_lang = "english"
 
@@ -505,14 +496,14 @@ class LanguageInitializer:
 
         elif language == "zh":
             # Add Chinese-specific instructions
-            chinese_additions = "\n\nIMPORTANT: Please respond in Chinese (中文) when interacting with the user. Use standard Mandarin."
+            chinese_additions = (
+                "\n\nIMPORTANT: Please respond in Chinese (中文) when interacting with the user. Use standard Mandarin."
+            )
             localized_prompt += chinese_additions
 
         return localized_prompt
 
-    def create_multilingual_documentation_structure(
-        self, language: str = None
-    ) -> Dict[str, Any]:
+    def create_multilingual_documentation_structure(self, language: str = None) -> Dict[str, Any]:
         """
         Create documentation structure for multilingual support.
 
@@ -554,9 +545,7 @@ class LanguageInitializer:
 
         # Save language index
         index_path = docs_root / "languages.json"
-        index_path.write_text(
-            json.dumps(language_index, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        index_path.write_text(json.dumps(language_index, indent=2, ensure_ascii=False), encoding="utf-8")
 
         # Create .htaccess for language redirection (if web docs)
         htaccess_content = f"""
@@ -625,25 +614,19 @@ DefaultLanguage {language}
 
             for field in required_fields:
                 if field not in language_config:
-                    validation_result["errors"].append(
-                        f"Missing required field: language.{field}"
-                    )
+                    validation_result["errors"].append(f"Missing required field: language.{field}")
                     validation_result["valid"] = False
 
             # Validate language codes
             conv_lang = language_config.get("conversation_language")
             if conv_lang and conv_lang not in self.LANGUAGE_CONFIG:
-                validation_result["errors"].append(
-                    f"Invalid conversation language: {conv_lang}"
-                )
+                validation_result["errors"].append(f"Invalid conversation language: {conv_lang}")
                 validation_result["valid"] = False
 
             # Check agent prompt language consistency
             agent_lang = language_config.get("agent_prompt_language")
             if agent_lang and agent_lang not in ["english", "localized"]:
-                validation_result["warnings"].append(
-                    f"Unusual agent prompt language: {agent_lang}"
-                )
+                validation_result["warnings"].append(f"Unusual agent prompt language: {agent_lang}")
 
             # Check for optimization opportunities
             if conv_lang != "en" and agent_lang == "localized":
@@ -654,9 +637,7 @@ DefaultLanguage {language}
             # Validate user section
             user_config = current_config.get("user", {})
             if "name" not in user_config:
-                validation_result["recommendations"].append(
-                    "Set user name for personalized experience"
-                )
+                validation_result["recommendations"].append("Set user name for personalized experience")
 
         except json.JSONDecodeError as e:
             validation_result["errors"].append(f"Invalid JSON in configuration: {e}")
@@ -734,9 +715,7 @@ DefaultLanguage {language}
 
                 # Calculate token impact
                 if status["configured_language"]:
-                    status["token_impact"] = self._calculate_token_impact(
-                        status["configured_language"]
-                    )
+                    status["token_impact"] = self._calculate_token_impact(status["configured_language"])
 
                 # Get domain support
                 if status["configured_language"]:

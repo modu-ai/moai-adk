@@ -149,9 +149,7 @@ class TestHookMetadata:
         """Test HookMetadata properties."""
         # Arrange & Act
         try:
-            metadata = HookMetadata(
-                hook_id="test_456", event_type="hook_exec", tags={"key": "value"}
-            )
+            metadata = HookMetadata(hook_id="test_456", event_type="hook_exec", tags={"key": "value"})
             # Assert
             assert metadata is not None
         except (TypeError, AttributeError):
@@ -203,9 +201,7 @@ class TestHookExecutionResult:
         """Test creating HookExecutionResult."""
         # Arrange & Act
         try:
-            result = HookExecutionResult(
-                hook_id="test_hook", success=True, duration=0.5
-            )
+            result = HookExecutionResult(hook_id="test_hook", success=True, duration=0.5)
             # Assert
             assert result is not None
         except (TypeError, AttributeError):
@@ -281,9 +277,7 @@ class TestJITEnhancedHookManager:
 
         # Act
         try:
-            hook_id = manager.register_hook(
-                event=HookEvent.SESSION_START, callback=mock_hook
-            )
+            hook_id = manager.register_hook(event=HookEvent.SESSION_START, callback=mock_hook)
             if hook_id:
                 manager.unregister_hook(hook_id)
         except (AttributeError, TypeError):
@@ -595,9 +589,7 @@ class TestHookErrorHandling:
         # Act
         try:
             if hasattr(manager, "execute_hook_safe"):
-                manager.execute_hook_safe(
-                    MagicMock(side_effect=Exception("Hook failed"))
-                )
+                manager.execute_hook_safe(MagicMock(side_effect=Exception("Hook failed")))
         except Exception:
             pass
 
@@ -627,9 +619,7 @@ class TestHookDependencies:
                 callback=hook1,
                 priority=HookPriority.HIGH,
             )
-            manager.register_hook(
-                event=HookEvent.SESSION_START, callback=hook2, priority=HookPriority.LOW
-            )
+            manager.register_hook(event=HookEvent.SESSION_START, callback=hook2, priority=HookPriority.LOW)
         except (AttributeError, TypeError):
             pass
 

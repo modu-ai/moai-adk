@@ -418,9 +418,7 @@ class TestDashboardManager(unittest.TestCase):
         """Test listing dashboards by type."""
         # Arrange
         # Act
-        dashboards = self.dashboard_manager.list_dashboards(
-            dashboard_type=DashboardType.SYSTEM_OVERVIEW
-        )
+        dashboards = self.dashboard_manager.list_dashboards(dashboard_type=DashboardType.SYSTEM_OVERVIEW)
 
         # Assert
         for dashboard in dashboards:
@@ -437,9 +435,7 @@ class TestDashboardManager(unittest.TestCase):
         )
 
         # Act
-        result = self.dashboard_manager.update_dashboard(
-            dashboard_id, {"name": "Updated Name"}
-        )
+        result = self.dashboard_manager.update_dashboard(dashboard_id, {"name": "Updated Name"})
 
         # Assert
         self.assertTrue(result)
@@ -479,9 +475,7 @@ class TestRealtimeMonitoringDashboard(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.dashboard = RealtimeMonitoringDashboard(
-            enable_websocket=False, enable_external_integration=False
-        )
+        self.dashboard = RealtimeMonitoringDashboard(enable_websocket=False, enable_external_integration=False)
 
     def test_dashboard_initialization(self):
         """Test RealtimeMonitoringDashboard initialization."""
@@ -500,9 +494,7 @@ class TestRealtimeMonitoringDashboard(unittest.TestCase):
         self.dashboard.add_metric(MetricType.CPU_USAGE, 45.0, component="test_system")
 
         # Assert
-        metrics = self.dashboard.metrics_collector.get_metrics(
-            metric_type=MetricType.CPU_USAGE
-        )
+        metrics = self.dashboard.metrics_collector.get_metrics(metric_type=MetricType.CPU_USAGE)
         self.assertGreater(len(metrics), 0)
 
     def test_get_system_status(self):
@@ -595,9 +587,7 @@ class TestMonitoringDashboardIntegration(unittest.TestCase):
     def test_full_monitoring_workflow(self):
         """Test a complete monitoring workflow."""
         # Arrange
-        dashboard = RealtimeMonitoringDashboard(
-            enable_websocket=False, enable_external_integration=False
-        )
+        dashboard = RealtimeMonitoringDashboard(enable_websocket=False, enable_external_integration=False)
 
         # Act
         dashboard.add_metric(MetricType.CPU_USAGE, 45.0, component="test")
@@ -613,9 +603,7 @@ class TestMonitoringDashboardIntegration(unittest.TestCase):
     def test_alert_workflow(self):
         """Test alert creation and management workflow."""
         # Arrange
-        dashboard = RealtimeMonitoringDashboard(
-            enable_websocket=False, enable_external_integration=False
-        )
+        dashboard = RealtimeMonitoringDashboard(enable_websocket=False, enable_external_integration=False)
         # Note: Dashboard initializes with 4 default alert rules
 
         # Act - Add a custom alert rule
@@ -634,14 +622,8 @@ class TestMonitoringDashboardIntegration(unittest.TestCase):
             dashboard.add_metric(MetricType.CPU_USAGE, 95.0, component="test")
 
         # Assert
-        self.assertEqual(
-            len(dashboard.alert_manager.alert_rules), initial_rule_count + 1
-        )
-        custom_rule = [
-            r
-            for r in dashboard.alert_manager.alert_rules
-            if r["name"] == "High CPU Custom"
-        ][0]
+        self.assertEqual(len(dashboard.alert_manager.alert_rules), initial_rule_count + 1)
+        custom_rule = [r for r in dashboard.alert_manager.alert_rules if r["name"] == "High CPU Custom"][0]
         self.assertEqual(custom_rule["name"], "High CPU Custom")
 
 

@@ -27,18 +27,12 @@ def print_banner(version: str = "0.3.0") -> None:
         version: MoAI-ADK version
     """
     console.print(f"[{CLAUDE_TERRA_COTTA}]{MOAI_BANNER}[/{CLAUDE_TERRA_COTTA}]")
-    console.print(
-        "[dim]  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred[/dim]\n"
-    )
+    console.print("[dim]  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred[/dim]\n")
     console.print(f"[dim]  Version: {version}[/dim]\n")
 
 
 def print_welcome_message() -> None:
     """Print the welcome message"""
-    console.print(
-        "[cyan bold]🚀 Welcome to MoAI-ADK Project Initialization![/cyan bold]\n"
-    )
-    console.print(
-        "[dim]This wizard will guide you through setting up your MoAI-ADK project.[/dim]"
-    )
+    console.print("[cyan bold]🚀 Welcome to MoAI-ADK Project Initialization![/cyan bold]\n")
+    console.print("[dim]This wizard will guide you through setting up your MoAI-ADK project.[/dim]")
     console.print("[dim]You can press Ctrl+C at any time to cancel.\n[/dim]")

@@ -552,9 +552,7 @@ class TestAutoScaler:
 
         # Add more than max metrics
         for i in range(150):
-            scaler.update_metrics(
-                cpu_usage=float(i), memory_usage=50.0, request_rate=100.0
-            )
+            scaler.update_metrics(cpu_usage=float(i), memory_usage=50.0, request_rate=100.0)
 
         assert len(scaler.metrics_history) <= 100
 
@@ -569,9 +567,7 @@ class TestAutoScaler:
             scaler.update_metrics(cpu_usage=85.0, memory_usage=50.0, request_rate=80.0)
 
         # Reset cooldown
-        scaler._last_scale_up = datetime.now() - timedelta(
-            seconds=scaler.scale_up_cooldown
-        )
+        scaler._last_scale_up = datetime.now() - timedelta(seconds=scaler.scale_up_cooldown)
 
         result = scaler.should_scale_up()
 
@@ -587,9 +583,7 @@ class TestAutoScaler:
             scaler.update_metrics(cpu_usage=40.0, memory_usage=50.0, request_rate=150.0)
 
         # Reset cooldown
-        scaler._last_scale_up = datetime.now() - timedelta(
-            seconds=scaler.scale_up_cooldown
-        )
+        scaler._last_scale_up = datetime.now() - timedelta(seconds=scaler.scale_up_cooldown)
 
         result = scaler.should_scale_up()
 
@@ -603,9 +597,7 @@ class TestAutoScaler:
         for _ in range(5):
             scaler.update_metrics(cpu_usage=90.0, memory_usage=80.0, request_rate=200.0)
 
-        scaler._last_scale_up = datetime.now() - timedelta(
-            seconds=scaler.scale_up_cooldown
-        )
+        scaler._last_scale_up = datetime.now() - timedelta(seconds=scaler.scale_up_cooldown)
 
         result = scaler.should_scale_up()
 
@@ -632,9 +624,7 @@ class TestAutoScaler:
         for i in range(3):
             scaler.update_metrics(cpu_usage=85.0, memory_usage=50.0, request_rate=100.0)
 
-        scaler._last_scale_up = datetime.now() - timedelta(
-            seconds=scaler.scale_up_cooldown
-        )
+        scaler._last_scale_up = datetime.now() - timedelta(seconds=scaler.scale_up_cooldown)
 
         result = scaler.should_scale_up()
 
@@ -651,9 +641,7 @@ class TestAutoScaler:
         for _ in range(5):
             scaler.update_metrics(cpu_usage=20.0, memory_usage=30.0, request_rate=20.0)
 
-        scaler._last_scale_down = datetime.now() - timedelta(
-            seconds=scaler.scale_down_cooldown
-        )
+        scaler._last_scale_down = datetime.now() - timedelta(seconds=scaler.scale_down_cooldown)
 
         result = scaler.should_scale_down()
 
@@ -668,9 +656,7 @@ class TestAutoScaler:
         for _ in range(5):
             scaler.update_metrics(cpu_usage=10.0, memory_usage=20.0, request_rate=10.0)
 
-        scaler._last_scale_down = datetime.now() - timedelta(
-            seconds=scaler.scale_down_cooldown
-        )
+        scaler._last_scale_down = datetime.now() - timedelta(seconds=scaler.scale_down_cooldown)
 
         result = scaler.should_scale_down()
 
@@ -697,9 +683,7 @@ class TestAutoScaler:
         for _ in range(5):
             scaler.update_metrics(cpu_usage=90.0, memory_usage=80.0, request_rate=200.0)
 
-        scaler._last_scale_up = datetime.now() - timedelta(
-            seconds=scaler.scale_up_cooldown
-        )
+        scaler._last_scale_up = datetime.now() - timedelta(seconds=scaler.scale_up_cooldown)
 
         result = scaler.should_scale_up()
 
@@ -714,9 +698,7 @@ class TestAutoScaler:
         for _ in range(5):
             scaler.update_metrics(cpu_usage=90.0, memory_usage=80.0, request_rate=200.0)
 
-        scaler._last_scale_up = datetime.now() - timedelta(
-            seconds=scaler.scale_up_cooldown
-        )
+        scaler._last_scale_up = datetime.now() - timedelta(seconds=scaler.scale_up_cooldown)
 
         result = scaler.should_scale_up()
 

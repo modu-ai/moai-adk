@@ -127,9 +127,7 @@ class CICDPipelineOrchestrator:
                         },
                         {
                             "name": "Install Dependencies",
-                            "run": config.get(
-                                "build_command", 'echo "Install dependencies"'
-                            ),
+                            "run": config.get("build_command", 'echo "Install dependencies"'),
                         },
                         {
                             "name": "Run Tests",
@@ -285,9 +283,7 @@ class InfrastructureManager:
         self.supported_providers = ["aws", "gcp", "azure", "kubernetes"]
         self.default_region = "us-west-2"
 
-    def generate_kubernetes_manifests(
-        self, app_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def generate_kubernetes_manifests(self, app_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate Kubernetes manifests for application deployment.
 
@@ -316,9 +312,7 @@ class InfrastructureManager:
                                 {
                                     "name": app_config.get("name", "app"),
                                     "image": app_config.get("image", "nginx:latest"),
-                                    "ports": [
-                                        {"containerPort": app_config.get("port", 8080)}
-                                    ],
+                                    "ports": [{"containerPort": app_config.get("port", 8080)}],
                                     "resources": app_config.get(
                                         "resources",
                                         {
@@ -405,9 +399,7 @@ class InfrastructureManager:
             "Chart.yaml": {
                 "apiVersion": "v2",
                 "name": chart_config.get("name", "app-chart"),
-                "description": chart_config.get(
-                    "description", "Helm chart for application"
-                ),
+                "description": chart_config.get("description", "Helm chart for application"),
                 "type": "application",
                 "version": chart_config.get("version", "0.1.0"),
                 "appVersion": chart_config.get("app_version", "latest"),
@@ -582,9 +574,7 @@ class ContainerOrchestrator:
 
         return optimization
 
-    def scan_container_security(
-        self, image_name: str, security_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def scan_container_security(self, image_name: str, security_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Scan container image for security vulnerabilities.
 
@@ -625,9 +615,7 @@ class ContainerOrchestrator:
 
         return scan_results
 
-    def plan_kubernetes_deployment(
-        self, deployment_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def plan_kubernetes_deployment(self, deployment_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Plan Kubernetes deployment strategy.
 
@@ -648,20 +636,14 @@ class ContainerOrchestrator:
                 },
                 "spec": {
                     "replicas": deployment_config.get("replicas", 3),
-                    "selector": {
-                        "matchLabels": {"app": deployment_config.get("app_name", "app")}
-                    },
+                    "selector": {"matchLabels": {"app": deployment_config.get("app_name", "app")}},
                     "template": {
-                        "metadata": {
-                            "labels": {"app": deployment_config.get("app_name", "app")}
-                        },
+                        "metadata": {"labels": {"app": deployment_config.get("app_name", "app")}},
                         "spec": {
                             "containers": [
                                 {
                                     "name": deployment_config.get("app_name", "app"),
-                                    "image": deployment_config.get(
-                                        "image", "nginx:latest"
-                                    ),
+                                    "image": deployment_config.get("image", "nginx:latest"),
                                     "ports": [{"containerPort": 8080}],
                                     "resources": deployment_config.get(
                                         "resources",
@@ -713,9 +695,7 @@ class ContainerOrchestrator:
                                         "pathType": "Prefix",
                                         "backend": {
                                             "service": {
-                                                "name": deployment_config.get(
-                                                    "app_name", "app"
-                                                ),
+                                                "name": deployment_config.get("app_name", "app"),
                                                 "port": {"number": 80},
                                             }
                                         },
@@ -821,13 +801,7 @@ class MonitoringArchitect:
                         "job_name": metrics_config.get("app_name", "app"),
                         "scrape_interval": metrics_config.get("scrape_interval", "30s"),
                         "metrics_path": "/metrics",
-                        "static_configs": [
-                            {
-                                "targets": [
-                                    f"{metrics_config.get('app_name', 'app')}:9000"
-                                ]
-                            }
-                        ],
+                        "static_configs": [{"targets": [f"{metrics_config.get('app_name', 'app')}:9000"]}],
                     }
                 ],
                 "rule_files": ["rules/*.yml"],
@@ -850,9 +824,7 @@ class MonitoringArchitect:
 
         return prometheus_config
 
-    def design_grafana_dashboards(
-        self, dashboard_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def design_grafana_dashboards(self, dashboard_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Design Grafana dashboards for monitoring visualization.
 
@@ -882,18 +854,14 @@ class MonitoringArchitect:
 
         dashboard_json = {
             "dashboard_json": {
-                "title": dashboard_config.get(
-                    "dashboard_name", "Application Dashboard"
-                ),
+                "title": dashboard_config.get("dashboard_name", "Application Dashboard"),
                 "panels": panels,
                 "templating": {
                     "list": [
                         {
                             "name": "Instance",
                             "type": "query",
-                            "datasource": dashboard_config.get(
-                                "datasource", "Prometheus"
-                            ),
+                            "datasource": dashboard_config.get("datasource", "Prometheus"),
                             "refresh": 1,
                             "includeAll": True,
                         }
@@ -965,9 +933,7 @@ class MonitoringArchitect:
             "filebeat_config": filebeat_config,
             "index_template": {
                 "index_patterns": logging_config.get("index_patterns", ["logs-*"]),
-                "template": {
-                    "settings": {"number_of_shards": 1, "number_of_replicas": 1}
-                },
+                "template": {"settings": {"number_of_shards": 1, "number_of_replicas": 1}},
             },
             "retention_policy": {
                 "days": logging_config.get("retention_days", 30),
@@ -1060,14 +1026,11 @@ class DeploymentStrategist:
         cd_strategy = {
             "pipeline_stages": pipeline_stages,
             "quality_gates": [
-                {"name": gate, "type": "automated", "required": True}
-                for gate in cd_config.get("gates", [])
+                {"name": gate, "type": "automated", "required": True} for gate in cd_config.get("gates", [])
             ],
             "rollback_strategy": {
                 "enabled": True,
-                "trigger_condition": cd_config.get(
-                    "rollback_threshold", "error_rate > 5%"
-                ),
+                "trigger_condition": cd_config.get("rollback_threshold", "error_rate > 5%"),
                 "automatic_rollback": True,
                 "rollback_timeout": "5m",
             },
@@ -1103,9 +1066,7 @@ class DeploymentStrategist:
             "traffic_splitting": {
                 "steps": [
                     {"percentage": percentage, "duration": "10m"}
-                    for percentage in canary_config.get(
-                        "increment_steps", [10, 25, 50, 100]
-                    )
+                    for percentage in canary_config.get("increment_steps", [10, 25, 50, 100])
                 ]
             },
             "monitoring_rules": [
@@ -1126,9 +1087,7 @@ class DeploymentStrategist:
 
         return config
 
-    def implement_blue_green_deployment(
-        self, bg_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def implement_blue_green_deployment(self, bg_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Implement blue-green deployment strategy.
 
@@ -1165,9 +1124,7 @@ class DeploymentStrategist:
             },
             "rollback_procedure": {
                 "automatic": True,
-                "timeout_minutes": int(
-                    bg_config.get("rollback_timeout", "5m").rstrip("m")
-                ),
+                "timeout_minutes": int(bg_config.get("rollback_timeout", "5m").rstrip("m")),
                 "validation_required": True,
             },
             "cleanup_strategy": {
@@ -1179,9 +1136,7 @@ class DeploymentStrategist:
 
         return config
 
-    def integrate_automated_testing(
-        self, testing_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def integrate_automated_testing(self, testing_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Integrate automated testing into deployment pipeline.
 
@@ -1200,9 +1155,7 @@ class DeploymentStrategist:
                         "parallel": testing_config.get("parallel_execution", False),
                         "timeout": "10m",
                     }
-                    for test_type in testing_config.get(
-                        "test_types", ["unit", "integration"]
-                    )
+                    for test_type in testing_config.get("test_types", ["unit", "integration"])
                 ]
             },
             "execution_strategy": {
@@ -1426,9 +1379,7 @@ class DevOpsMetricsCollector:
     def __init__(self):
         self.metrics_window_days = 30
 
-    def collect_deployment_metrics(
-        self, deployment_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def collect_deployment_metrics(self, deployment_info: Dict[str, Any]) -> Dict[str, Any]:
         """
         Collect deployment metrics.
 
@@ -1463,9 +1414,7 @@ class DevOpsMetricsCollector:
 
         return metrics
 
-    def track_pipeline_performance(
-        self, pipeline_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def track_pipeline_performance(self, pipeline_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Track CI/CD pipeline performance metrics.
 
@@ -1480,9 +1429,7 @@ class DevOpsMetricsCollector:
 
         stage_performance = {}
         bottleneck_analysis = {
-            "slowest_stage": max(
-                execution_times.keys(), key=lambda k: execution_times[k]
-            ),
+            "slowest_stage": max(execution_times.keys(), key=lambda k: execution_times[k]),
             "slowest_stage_time": max(execution_times.values()),
             "optimization_opportunities": [
                 "Parallelize independent stages",
@@ -1586,12 +1533,8 @@ class DevOpsMetricsCollector:
         Returns:
             DevOps health status assessment
         """
-        health_config.get(
-            "check_categories", ["deployment", "monitoring", "security", "performance"]
-        )
-        thresholds = health_config.get(
-            "health_threshold", {"deployment_success": 95, "uptime": 99.9}
-        )
+        health_config.get("check_categories", ["deployment", "monitoring", "security", "performance"])
+        thresholds = health_config.get("health_threshold", {"deployment_success": 95, "uptime": 99.9})
 
         category_scores = {
             "deployment": 92,
@@ -1632,8 +1575,7 @@ class DevOpsMetricsCollector:
                     "current_value": category_scores.get("deployment", 0),
                     "status": (
                         "healthy"
-                        if category_scores.get("deployment", 0)
-                        >= thresholds.get("deployment_success", 95)
+                        if category_scores.get("deployment", 0) >= thresholds.get("deployment_success", 95)
                         else "warning"
                     ),
                 }

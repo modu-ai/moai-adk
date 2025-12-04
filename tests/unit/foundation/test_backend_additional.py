@@ -35,51 +35,39 @@ class TestAPIDesignValidatorAdditional:
     def test_validate_rest_endpoint_head_method(self):
         """Test HEAD method validation."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "HEAD", "path": "/api/users", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"method": "HEAD", "path": "/api/users", "status_code": 200})
         assert result["valid"] is True
         assert result["method"] == "HEAD"
 
     def test_validate_rest_endpoint_options_method(self):
         """Test OPTIONS method validation."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "OPTIONS", "path": "/api/users", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"method": "OPTIONS", "path": "/api/users", "status_code": 200})
         assert result["valid"] is True
 
     def test_validate_rest_endpoint_patch_method(self):
         """Test PATCH method with 200 status."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "PATCH", "path": "/api/users/1", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"method": "PATCH", "path": "/api/users/1", "status_code": 200})
         assert result["valid"] is True
 
     def test_validate_rest_endpoint_post_with_wrong_status(self):
         """Test POST with incorrect status code."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "POST", "path": "/api/users", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/users", "status_code": 200})
         assert result["valid"] is False
         assert "Status code 200 not allowed for POST" in str(result["errors"])
 
     def test_validate_rest_endpoint_delete_with_wrong_status(self):
         """Test DELETE with incorrect status code."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "DELETE", "path": "/api/users/1", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"method": "DELETE", "path": "/api/users/1", "status_code": 200})
         assert result["valid"] is False
 
     def test_validate_rest_endpoint_missing_method(self):
         """Test endpoint with missing method."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"path": "/api/users", "status_code": 200}
-        )
+        result = validator.validate_rest_endpoint({"path": "/api/users", "status_code": 200})
         assert result["valid"] is False
         assert "Invalid HTTP method" in str(result["errors"])
 
@@ -92,17 +80,13 @@ class TestAPIDesignValidatorAdditional:
     def test_validate_rest_endpoint_missing_status_code(self):
         """Test endpoint with missing status code."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "GET", "path": "/api/users"}
-        )
+        result = validator.validate_rest_endpoint({"method": "GET", "path": "/api/users"})
         assert result["valid"] is False
 
     def test_validate_rest_endpoint_invalid_status_code(self):
         """Test endpoint with invalid status code."""
         validator = APIDesignValidator()
-        result = validator.validate_rest_endpoint(
-            {"method": "GET", "path": "/api/users", "status_code": 999}
-        )
+        result = validator.validate_rest_endpoint({"method": "GET", "path": "/api/users", "status_code": 999})
         assert result["valid"] is False
 
     def test_get_versioning_strategy_header(self):
@@ -165,17 +149,13 @@ class TestMicroserviceArchitectAdditional:
     def test_validate_service_boundary_missing_domain(self):
         """Test service without domain."""
         architect = MicroserviceArchitect()
-        result = architect.validate_service_boundary(
-            {"name": "user-service", "endpoints": ["GET /users"]}
-        )
+        result = architect.validate_service_boundary({"name": "user-service", "endpoints": ["GET /users"]})
         assert result["valid"] is False
 
     def test_validate_service_boundary_missing_endpoints(self):
         """Test service without endpoints."""
         architect = MicroserviceArchitect()
-        result = architect.validate_service_boundary(
-            {"name": "user-service", "domain": "auth"}
-        )
+        result = architect.validate_service_boundary({"name": "user-service", "domain": "auth"})
         assert result["valid"] is False
 
     def test_validate_service_boundary_valid_complete(self):
@@ -194,9 +174,7 @@ class TestMicroserviceArchitectAdditional:
     def test_get_communication_pattern_rest(self):
         """Test REST communication pattern."""
         architect = MicroserviceArchitect()
-        pattern = architect.get_communication_pattern(
-            "rest", {"source": "api-gateway", "target": "user-service"}
-        )
+        pattern = architect.get_communication_pattern("rest", {"source": "api-gateway", "target": "user-service"})
         assert pattern["pattern"] == "rest"
         assert pattern["source"] == "api-gateway"
         assert pattern["async"] is False
@@ -219,9 +197,7 @@ class TestMicroserviceArchitectAdditional:
     def test_configure_service_discovery_consul(self):
         """Test Consul service discovery configuration."""
         architect = MicroserviceArchitect()
-        config = architect.configure_service_discovery(
-            "consul", {"consul_host": "consul.local", "consul_port": 8500}
-        )
+        config = architect.configure_service_discovery("consul", {"consul_host": "consul.local", "consul_port": 8500})
         assert config["registry"] == "consul"
         assert config["host"] == "consul.local"
         assert config["health_check_enabled"] is True
@@ -368,9 +344,7 @@ class TestAuthenticationManagerAdditional:
     def test_generate_jwt_token_with_custom_expiry(self):
         """Test JWT token with custom expiration."""
         auth = AuthenticationManager("test-secret")
-        token = auth.generate_jwt_token(
-            {"user_id": 123, "email": "test@example.com"}, expires_in_hours=24
-        )
+        token = auth.generate_jwt_token({"user_id": 123, "email": "test@example.com"}, expires_in_hours=24)
         assert token is not None
         assert isinstance(token, str)
         assert token.count(".") == 2  # JWT has 3 parts
@@ -408,16 +382,10 @@ class TestAuthenticationManagerAdditional:
             "exp": int((datetime.now(UTC) - timedelta(hours=1)).timestamp()),
         }
 
-        header_encoded = (
-            base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
-        )
-        payload_encoded = (
-            base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-        )
+        header_encoded = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
         message = f"{header_encoded}.{payload_encoded}"
-        signature = hmac.new(
-            "test-secret".encode(), message.encode(), hashlib.sha256
-        ).digest()
+        signature = hmac.new("test-secret".encode(), message.encode(), hashlib.sha256).digest()
         signature_encoded = base64.urlsafe_b64encode(signature).decode().rstrip("=")
         expired_token = f"{message}.{signature_encoded}"
 
@@ -502,9 +470,7 @@ class TestErrorHandlingStrategyAdditional:
         """Test logging with INFO level."""
         handler = ErrorHandlingStrategy()
         context = {"user_id": 123, "action": "create_user"}
-        log_entry = handler.log_with_context(
-            "INFO", "User created successfully", context
-        )
+        log_entry = handler.log_with_context("INFO", "User created successfully", context)
         assert log_entry["level"] == "INFO"
         assert log_entry["context"]["user_id"] == 123
 
@@ -512,9 +478,7 @@ class TestErrorHandlingStrategyAdditional:
         """Test logging with ERROR level."""
         handler = ErrorHandlingStrategy()
         context = {"error_code": "DB_001"}
-        log_entry = handler.log_with_context(
-            "ERROR", "Database connection failed", context
-        )
+        log_entry = handler.log_with_context("ERROR", "Database connection failed", context)
         assert log_entry["level"] == "ERROR"
         assert log_entry["context"]["error_code"] == "DB_001"
 
@@ -547,9 +511,7 @@ class TestPerformanceOptimizerAdditional:
     def test_configure_cache_redis(self):
         """Test Redis cache configuration."""
         optimizer = PerformanceOptimizer()
-        cache_config = optimizer.configure_cache(
-            backend="redis", ttl=7200, invalidation_triggers=["user_updated"]
-        )
+        cache_config = optimizer.configure_cache(backend="redis", ttl=7200, invalidation_triggers=["user_updated"])
         assert cache_config["backend"] == "redis"
         assert cache_config["ttl"] == 7200
         assert "user_updated" in cache_config["invalidation_triggers"]

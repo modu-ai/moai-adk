@@ -42,9 +42,7 @@ class UserSelectionUI:
             self.interactive_ui = None
             self.use_interactive = False
 
-    def prompt_user_selection(
-        self, backup_available: bool = True
-    ) -> Optional[List[str]]:
+    def prompt_user_selection(self, backup_available: bool = True) -> Optional[List[str]]:
         """Prompt user to select custom elements for restoration.
 
         Args:
@@ -182,9 +180,7 @@ class UserSelectionUI:
         # Add skills (which are directories)
         if "skills" in custom_elements:
             for skill in custom_elements["skills"]:
-                organized["Skills"].append(
-                    {"name": skill.name, "path": str(skill.path), "type": "skill"}
-                )
+                organized["Skills"].append({"name": skill.name, "path": str(skill.path), "type": "skill"})
 
         # Add file-based elements
         for element_type in ["agents", "commands", "hooks"]:
@@ -202,9 +198,7 @@ class UserSelectionUI:
 
         return organized
 
-    def _parse_selection(
-        self, user_input: str, custom_elements: List[Dict[str, str]]
-    ) -> List[str]:
+    def _parse_selection(self, user_input: str, custom_elements: List[Dict[str, str]]) -> List[str]:
         """Parse user selection input with enhanced support for multiple separators.
 
         Args:
@@ -247,9 +241,7 @@ class UserSelectionUI:
                         break
 
                 if not found:
-                    print(
-                        f"⚠️ Invalid selection: {selection} (not a number or matching element name)"
-                    )
+                    print(f"⚠️ Invalid selection: {selection} (not a number or matching element name)")
 
         return selected_paths
 

@@ -68,9 +68,7 @@ class TestAnalyzeCommandOptions:
             mock_analyzer_class.assert_called_once_with(days_back=14, verbose=False)
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_analyze_with_verbose_flag_enables_verbose_output(
-        self, mock_analyzer_class
-    ):
+    def test_analyze_with_verbose_flag_enables_verbose_output(self, mock_analyzer_class):
         """Should enable verbose mode when --verbose flag is provided"""
         # Setup
         mock_analyzer = Mock()
@@ -93,9 +91,7 @@ class TestAnalyzeCommandOptions:
             mock_analyzer_class.assert_called_once_with(days_back=7, verbose=True)
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_analyze_with_output_path_saves_to_custom_location(
-        self, mock_analyzer_class
-    ):
+    def test_analyze_with_output_path_saves_to_custom_location(self, mock_analyzer_class):
         """Should save report to custom location when --output option is provided"""
         # Setup
         mock_analyzer = Mock()
@@ -130,9 +126,7 @@ class TestProjectPathValidation:
         runner = CliRunner()
         with runner.isolated_filesystem():
             Path(".moai").mkdir()
-            with patch(
-                "moai_adk.cli.commands.analyze.SessionAnalyzer"
-            ) as mock_analyzer_class:
+            with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
                 mock_analyzer = Mock()
                 mock_analyzer.parse_sessions.return_value = {
                     "total_sessions": 0,
@@ -457,9 +451,7 @@ class TestSuggestionDisplay:
             assert "Suggestion 11" not in result.output
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_analyze_skips_empty_and_separator_lines_in_suggestions(
-        self, mock_analyzer_class
-    ):
+    def test_analyze_skips_empty_and_separator_lines_in_suggestions(self, mock_analyzer_class):
         """Should skip empty lines and separators when displaying suggestions"""
         # Setup
         mock_analyzer = Mock()
@@ -584,9 +576,7 @@ class TestReportOnlyMode:
             mock_analyzer.save_report.assert_called_once()
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_report_only_does_not_call_generate_report_for_suggestions(
-        self, mock_analyzer_class
-    ):
+    def test_report_only_does_not_call_generate_report_for_suggestions(self, mock_analyzer_class):
         """Should not call generate_report for suggestions when --report-only is enabled"""
         # Setup
         mock_analyzer = Mock()
@@ -638,9 +628,7 @@ class TestEdgeCases:
             assert "Analyzed 0 sessions" in result.output
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_analyze_handles_missing_success_rate_in_patterns(
-        self, mock_analyzer_class
-    ):
+    def test_analyze_handles_missing_success_rate_in_patterns(self, mock_analyzer_class):
         """Should handle missing success_rate key gracefully"""
         # Setup
         mock_analyzer = Mock()
@@ -699,9 +687,7 @@ class TestEdgeCases:
             mock_analyzer.save_report.assert_called_once()
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_analyze_handles_suggestion_extraction_edge_cases(
-        self, mock_analyzer_class
-    ):
+    def test_analyze_handles_suggestion_extraction_edge_cases(self, mock_analyzer_class):
         """Should handle edge cases in suggestion section extraction"""
         # Setup
         mock_analyzer = Mock()
@@ -734,9 +720,7 @@ class TestIntegrationWithSessionAnalyzer:
     """Test integration with SessionAnalyzer class"""
 
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
-    def test_analyze_calls_session_analyzer_with_correct_parameters(
-        self, mock_analyzer_class
-    ):
+    def test_analyze_calls_session_analyzer_with_correct_parameters(self, mock_analyzer_class):
         """Should initialize SessionAnalyzer with correct parameters"""
         # Setup
         mock_analyzer = Mock()

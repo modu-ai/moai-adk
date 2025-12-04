@@ -129,9 +129,7 @@ class IntegrationTester:
 
         return results
 
-    def run_concurrent_tests(
-        self, tests: List[tuple], timeout: Optional[float] = None
-    ) -> List[IntegrationTestResult]:
+    def run_concurrent_tests(self, tests: List[tuple], timeout: Optional[float] = None) -> List[IntegrationTestResult]:
         """
         Run multiple tests concurrently.
 
@@ -175,9 +173,7 @@ class IntegrationTester:
         """
         return self.discovery.discover_components(base_path)
 
-    def create_test_environment(
-        self, temp_dir: Optional[str] = None
-    ) -> TestEnvironment:
+    def create_test_environment(self, temp_dir: Optional[str] = None) -> TestEnvironment:
         """
         Create a test environment for integration testing.
 

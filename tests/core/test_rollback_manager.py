@@ -58,29 +58,15 @@ def temp_project_dir():
         settings_file.write_text(json.dumps({"settings": "test"}))
 
         # Create sample source files
-        (project_root / "src" / "sample.py").write_text(
-            "# Sample source code\nprint('test')"
-        )
-        (project_root / "tests" / "sample_test.py").write_text(
-            "# Sample test\nassert True"
-        )
-        (project_root / "docs" / "sample.md").write_text(
-            "# Sample Documentation\nThis is a sample."
-        )
+        (project_root / "src" / "sample.py").write_text("# Sample source code\nprint('test')")
+        (project_root / "tests" / "sample_test.py").write_text("# Sample test\nassert True")
+        (project_root / "docs" / "sample.md").write_text("# Sample Documentation\nThis is a sample.")
 
         # Create sample research components
-        (project_root / ".claude" / "skills" / "sample_skill.md").write_text(
-            "# Sample Skill\nDescription"
-        )
-        (project_root / ".claude" / "agents" / "sample_agent.md").write_text(
-            "# Sample Agent\nDescription"
-        )
-        (project_root / ".claude" / "commands" / "sample_command.md").write_text(
-            "# Sample Command\nDescription"
-        )
-        (project_root / ".claude" / "hooks" / "sample_hook.py").write_text(
-            "# Sample Hook\npass"
-        )
+        (project_root / ".claude" / "skills" / "sample_skill.md").write_text("# Sample Skill\nDescription")
+        (project_root / ".claude" / "agents" / "sample_agent.md").write_text("# Sample Agent\nDescription")
+        (project_root / ".claude" / "commands" / "sample_command.md").write_text("# Sample Command\nDescription")
+        (project_root / ".claude" / "hooks" / "sample_hook.py").write_text("# Sample Hook\npass")
 
         yield project_root
 
@@ -203,9 +189,7 @@ class TestRollbackManagerInitialization:
     def test_manager_loads_existing_registry(self, temp_project_dir):
         """Test that manager loads existing registry from file"""
         # Create a registry file with data
-        registry_file = (
-            temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
-        )
+        registry_file = temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
         registry_file.parent.mkdir(parents=True, exist_ok=True)
         registry_data = {"rollback_001": {"id": "rollback_001", "description": "test"}}
         registry_file.write_text(json.dumps(registry_data))
@@ -241,9 +225,7 @@ class TestCreateRollbackPoint:
     def test_create_rollback_point_with_changes(self, rollback_manager):
         """Test creating a rollback point with specific changes list"""
         changes = ["config.json", "settings.json"]
-        rollback_id = rollback_manager.create_rollback_point(
-            "Backup with changes", changes
-        )
+        rollback_id = rollback_manager.create_rollback_point("Backup with changes", changes)
 
         assert rollback_id in rollback_manager.registry
         assert rollback_manager.registry[rollback_id]["changes"] == changes
@@ -267,9 +249,7 @@ class TestCreateRollbackPoint:
         assert (backup_dir / "research").exists()
         assert (backup_dir / "code").exists()
 
-    def test_create_rollback_point_backups_configuration(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_create_rollback_point_backups_configuration(self, rollback_manager, temp_project_dir):
         """Test that rollback point backs up configuration files"""
         rollback_id = rollback_manager.create_rollback_point("Config backup")
         backup_dir = rollback_manager.backup_root / rollback_id
@@ -332,9 +312,7 @@ class TestCreateRollbackPoint:
         assert metadata["created_by"] == "rollback_manager"
         assert metadata["version"] == "1.0.0"
 
-    def test_create_rollback_point_handles_missing_files(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_create_rollback_point_handles_missing_files(self, rollback_manager, temp_project_dir):
         """Test that rollback handles missing optional files gracefully"""
         # Remove optional research components
         shutil.rmtree(temp_project_dir / ".claude" / "skills")
@@ -386,9 +364,7 @@ class TestRollbackToPoint:
 
         assert isinstance(result, RollbackResult)
 
-    def test_rollback_validates_after_restoration(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_rollback_validates_after_restoration(self, rollback_manager, temp_project_dir):
         """Test that rollback validates system after restoration"""
         rollback_id = rollback_manager.create_rollback_point("Post-validation test")
         result = rollback_manager.rollback_to_point(rollback_id, validate_after=True)
@@ -398,9 +374,7 @@ class TestRollbackToPoint:
     def test_rollback_skips_validation_when_requested(self, rollback_manager):
         """Test that rollback skips validation when disabled"""
         rollback_id = rollback_manager.create_rollback_point("No validation test")
-        result = rollback_manager.rollback_to_point(
-            rollback_id, validate_before=False, validate_after=False
-        )
+        result = rollback_manager.rollback_to_point(rollback_id, validate_before=False, validate_after=False)
 
         assert isinstance(result, RollbackResult)
 
@@ -433,9 +407,7 @@ class TestRollbackToPoint:
             # Restore permissions for cleanup
             os.chmod(test_file, 0o644)
 
-    def test_rollback_returns_restored_files_list(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_rollback_returns_restored_files_list(self, rollback_manager, temp_project_dir):
         """Test that rollback returns list of restored files"""
         rollback_id = rollback_manager.create_rollback_point("File list test")
         result = rollback_manager.rollback_to_point(rollback_id)
@@ -469,22 +441,16 @@ class TestRollbackResearchIntegration:
 
         assert isinstance(result, RollbackResult)
 
-    def test_research_rollback_specific_component(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_research_rollback_specific_component(self, rollback_manager, temp_project_dir):
         """Test rolling back specific component by name"""
         rollback_manager.create_rollback_point("Specific component backup")
-        result = rollback_manager.rollback_research_integration(
-            component_type="skills", component_name="sample_skill"
-        )
+        result = rollback_manager.rollback_research_integration(component_type="skills", component_name="sample_skill")
 
         assert isinstance(result, RollbackResult)
 
     def test_research_rollback_no_suitable_points(self, rollback_manager):
         """Test research rollback when no suitable points exist"""
-        result = rollback_manager.rollback_research_integration(
-            component_type="agents", component_name="nonexistent"
-        )
+        result = rollback_manager.rollback_research_integration(component_type="agents", component_name="nonexistent")
 
         assert result.success is False
         assert "no suitable rollback points" in result.message.lower()
@@ -576,9 +542,7 @@ class TestValidateRollbackSystem:
         assert validation["system_healthy"] is True
         assert validation["issues"] == []
 
-    def test_validate_checks_backup_directories(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_validate_checks_backup_directories(self, rollback_manager, temp_project_dir):
         """Test validation checks for backup directories"""
         # Remove a backup directory
         shutil.rmtree(rollback_manager.config_backup_dir)
@@ -587,9 +551,7 @@ class TestValidateRollbackSystem:
         assert validation["system_healthy"] is False
         assert len(validation["issues"]) > 0
 
-    def test_validate_checks_invalid_rollback_points(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_validate_checks_invalid_rollback_points(self, rollback_manager, temp_project_dir):
         """Test validation identifies invalid rollback points"""
         rollback_id = rollback_manager.create_rollback_point("Test")
 
@@ -749,9 +711,7 @@ class TestRegistryManagement:
 
     def test_load_registry_existing_file(self, temp_project_dir):
         """Test loading registry from existing file"""
-        registry_file = (
-            temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
-        )
+        registry_file = temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
         registry_data = {"rollback_001": {"id": "rollback_001", "description": "test"}}
         registry_file.write_text(json.dumps(registry_data))
 
@@ -823,9 +783,7 @@ class TestBackupOperations:
         assert (code_backup / "src" / "sample.py").exists()
         assert (code_backup / "tests" / "sample_test.py").exists()
 
-    def test_backup_handles_nonexistent_directories(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_backup_handles_nonexistent_directories(self, rollback_manager, temp_project_dir):
         """Test backup handles gracefully when directories don't exist"""
         # Remove a directory
         shutil.rmtree(temp_project_dir / "docs")
@@ -913,9 +871,7 @@ class TestValidationOperations:
 
         assert len(result["warnings"]) > 0
 
-    def test_validate_system_after_rollback_valid_config(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_validate_system_after_rollback_valid_config(self, rollback_manager, temp_project_dir):
         """Test system validation after rollback with valid config"""
         rollback_id = rollback_manager.create_rollback_point("Config validation test")
         rollback_manager.rollback_to_point(rollback_id)
@@ -924,9 +880,7 @@ class TestValidationOperations:
 
         assert result["config_valid"] is True
 
-    def test_validate_system_after_rollback_invalid_config(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_validate_system_after_rollback_invalid_config(self, rollback_manager, temp_project_dir):
         """Test system validation detects invalid config after rollback"""
         rollback_manager.create_rollback_point("Invalid config test")
 
@@ -977,14 +931,9 @@ class TestPerformRollback:
             restored_content = config_file.read_text()
 
         # Verify restoration happened (may be in different location)
-        assert (
-            restored_content == original_content
-            or config_file.read_text() == original_content
-        )
+        assert restored_content == original_content or config_file.read_text() == original_content
 
-    def test_perform_rollback_restores_research(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_perform_rollback_restores_research(self, rollback_manager, temp_project_dir):
         """Test that rollback restores research components"""
         rollback_id = rollback_manager.create_rollback_point("Research restore test")
 
@@ -1041,27 +990,19 @@ class TestPerformResearchRollback:
         assert len(failed) == 0
         assert len(restored) > 0
 
-    def test_perform_research_rollback_specific_type(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_perform_research_rollback_specific_type(self, rollback_manager, temp_project_dir):
         """Test rolling back specific component type"""
         rollback_id = rollback_manager.create_rollback_point("Type-specific rollback")
         rollback_point = rollback_manager.registry[rollback_id]
 
-        restored, failed = rollback_manager._perform_research_rollback(
-            rollback_point, component_type="skills"
-        )
+        restored, failed = rollback_manager._perform_research_rollback(rollback_point, component_type="skills")
 
         assert isinstance(restored, list)
         assert isinstance(failed, list)
 
-    def test_perform_research_rollback_specific_component(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_perform_research_rollback_specific_component(self, rollback_manager, temp_project_dir):
         """Test rolling back specific component"""
-        rollback_id = rollback_manager.create_rollback_point(
-            "Component-specific rollback"
-        )
+        rollback_id = rollback_manager.create_rollback_point("Component-specific rollback")
         rollback_point = rollback_manager.registry[rollback_id]
 
         restored, failed = rollback_manager._perform_research_rollback(
@@ -1072,9 +1013,7 @@ class TestPerformResearchRollback:
 
     def test_perform_research_rollback_missing_backup(self, rollback_manager):
         """Test rollback handles missing research backup"""
-        rollback_id = rollback_manager.create_rollback_point(
-            "Missing research backup test"
-        )
+        rollback_id = rollback_manager.create_rollback_point("Missing research backup test")
         rollback_point = rollback_manager.registry[rollback_id]
 
         # Remove research backup
@@ -1102,9 +1041,7 @@ class TestFindResearchRollbackPoints:
         """Test finding research points by component type"""
         rollback_manager.create_rollback_point("Skills backup")
 
-        points = rollback_manager._find_research_rollback_points(
-            component_type="skills"
-        )
+        points = rollback_manager._find_research_rollback_points(component_type="skills")
 
         assert len(points) > 0
 
@@ -1112,9 +1049,7 @@ class TestFindResearchRollbackPoints:
         """Test finding research points by component name"""
         rollback_manager.create_rollback_point("Specific component backup")
 
-        points = rollback_manager._find_research_rollback_points(
-            component_type="skills", component_name="sample_skill"
-        )
+        points = rollback_manager._find_research_rollback_points(component_type="skills", component_name="sample_skill")
 
         assert isinstance(points, list)
 
@@ -1122,9 +1057,7 @@ class TestFindResearchRollbackPoints:
         """Test finding research points with no matches"""
         rollback_manager.create_rollback_point("Backup")
 
-        points = rollback_manager._find_research_rollback_points(
-            component_type="agents", component_name="nonexistent"
-        )
+        points = rollback_manager._find_research_rollback_points(component_type="agents", component_name="nonexistent")
 
         assert isinstance(points, list)
 
@@ -1164,9 +1097,7 @@ class TestDirectorySizeCalculations:
 
         assert size > 0
 
-    def test_get_directory_size_empty_directory(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_get_directory_size_empty_directory(self, rollback_manager, temp_project_dir):
         """Test directory size for empty directory"""
         test_dir = temp_project_dir / "empty_dir"
         test_dir.mkdir()
@@ -1224,16 +1155,12 @@ class TestEdgeCases:
 
     def test_multiple_concurrent_rollback_operations(self, rollback_manager):
         """Test multiple rollback point creations"""
-        rollback_ids = [
-            rollback_manager.create_rollback_point(f"Concurrent {i}") for i in range(10)
-        ]
+        rollback_ids = [rollback_manager.create_rollback_point(f"Concurrent {i}") for i in range(10)]
 
         assert len(rollback_ids) == 10
         assert len(set(rollback_ids)) == 10  # All unique
 
-    def test_rollback_point_with_empty_directories(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_rollback_point_with_empty_directories(self, rollback_manager, temp_project_dir):
         """Test handling of empty directories"""
         # Create empty directories
         (temp_project_dir / "empty_dir").mkdir()
@@ -1256,9 +1183,7 @@ class TestEdgeCases:
 class TestErrorPaths:
     """Tests for error handling and exceptional paths"""
 
-    def test_rollback_to_point_handles_corrupted_registry(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_rollback_to_point_handles_corrupted_registry(self, rollback_manager, temp_project_dir):
         """Test rollback handles corrupted registry data"""
         rollback_id = rollback_manager.create_rollback_point("Error test")
 
@@ -1269,9 +1194,7 @@ class TestErrorPaths:
         with pytest.raises((TypeError, KeyError, ValueError)):
             RollbackPoint(**rollback_manager.registry[rollback_id])
 
-    def test_perform_rollback_with_file_permission_error(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_perform_rollback_with_file_permission_error(self, rollback_manager, temp_project_dir):
         """Test rollback handles file permission errors"""
         rollback_id = rollback_manager.create_rollback_point("Permission test")
         backup_dir = rollback_manager.backup_root / rollback_id
@@ -1291,9 +1214,7 @@ class TestErrorPaths:
         finally:
             os.chmod(config_file, 0o644)
 
-    def test_validate_rollback_point_with_corrupted_backup(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_validate_rollback_point_with_corrupted_backup(self, rollback_manager, temp_project_dir):
         """Test validation detects corrupted backup files"""
         rollback_id = rollback_manager.create_rollback_point("Corruption test")
         rollback_point = RollbackPoint(**rollback_manager.registry[rollback_id])
@@ -1311,17 +1232,13 @@ class TestErrorPaths:
     def test_registry_save_with_invalid_path(self, rollback_manager, temp_project_dir):
         """Test registry save handles invalid path gracefully"""
         # Create an invalid registry file path scenario
-        rollback_manager.registry_file = (
-            temp_project_dir / "nonexistent" / "subdir" / "registry.json"
-        )
+        rollback_manager.registry_file = temp_project_dir / "nonexistent" / "subdir" / "registry.json"
 
         # Should raise an exception for invalid path
         with pytest.raises(Exception):
             rollback_manager._save_registry()
 
-    def test_backup_operations_with_readonly_directory(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_backup_operations_with_readonly_directory(self, rollback_manager, temp_project_dir):
         """Test backup operations handle read-only directories"""
         # Create a read-only directory
         readonly_dir = temp_project_dir / "readonly"
@@ -1351,9 +1268,7 @@ class TestErrorPaths:
         # Should handle gracefully
         assert isinstance(result, dict)
 
-    def test_validate_system_handles_unreadable_files(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_validate_system_handles_unreadable_files(self, rollback_manager, temp_project_dir):
         """Test validation handles unreadable files"""
         rollback_manager.create_rollback_point("Unreadable test")
 
@@ -1370,9 +1285,7 @@ class TestErrorPaths:
 
     def test_load_registry_with_invalid_json(self, temp_project_dir):
         """Test loading registry with invalid JSON file"""
-        registry_file = (
-            temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
-        )
+        registry_file = temp_project_dir / ".moai" / "rollbacks" / "rollback_registry.json"
         registry_file.write_text("{invalid json content")
 
         # Should return empty registry on error
@@ -1394,16 +1307,12 @@ class TestErrorPaths:
         # Should have warnings about missing files
         assert len(result["warnings"]) > 0
 
-    def test_perform_research_rollback_with_missing_component_dir(
-        self, rollback_manager
-    ):
+    def test_perform_research_rollback_with_missing_component_dir(self, rollback_manager):
         """Test research rollback handles missing component directory"""
         rollback_id = rollback_manager.create_rollback_point("Missing component dir")
         rollback_point = rollback_manager.registry[rollback_id]
 
-        restored, failed = rollback_manager._perform_research_rollback(
-            rollback_point, component_type="nonexistent"
-        )
+        restored, failed = rollback_manager._perform_research_rollback(rollback_point, component_type="nonexistent")
 
         # Should have recorded failures
         assert len(failed) > 0
@@ -1423,9 +1332,7 @@ class TestRollbackPointDiscovery:
         assert len(all_points) == 5
 
         # Find points with specific type
-        specific_points = rollback_manager._find_research_rollback_points(
-            component_type="skills"
-        )
+        specific_points = rollback_manager._find_research_rollback_points(component_type="skills")
         assert len(specific_points) > 0
 
     def test_list_with_used_and_unused_points(self, rollback_manager):
@@ -1464,9 +1371,7 @@ class TestBackupIntegrity:
         backup_nested = backup_dir / "code" / "src" / "nested" / "deep" / "file.py"
         assert backup_nested.exists()
 
-    def test_backup_handles_symlinks_gracefully(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_backup_handles_symlinks_gracefully(self, rollback_manager, temp_project_dir):
         """Test backup handling of symbolic links"""
         # Create a file
         source_file = temp_project_dir / "src" / "source.py"
@@ -1511,9 +1416,7 @@ class TestRollbackRecoveryScenarios:
 
         # Create multiple rollback points
         for i in range(3):
-            rollback_id = rollback_manager.create_rollback_point(
-                f"Sequential backup {i}"
-            )
+            rollback_id = rollback_manager.create_rollback_point(f"Sequential backup {i}")
             rollback_ids.append(rollback_id)
 
             # Modify files between backups
@@ -1524,9 +1427,7 @@ class TestRollbackRecoveryScenarios:
         points = rollback_manager.list_rollback_points()
         assert len(points) >= 3
 
-    def test_rollback_after_multiple_modifications(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_rollback_after_multiple_modifications(self, rollback_manager, temp_project_dir):
         """Test rollback after multiple file modifications"""
         rollback_id = rollback_manager.create_rollback_point("Multi-modify test")
 
@@ -1567,9 +1468,7 @@ class TestFailureRecovery:
         rollback_id = rollback_manager.create_rollback_point("Validation failure test")
 
         # Corrupt the rollback data
-        rollback_manager.registry[rollback_id][
-            "backup_path"
-        ] = "/invalid/path/to/backup"
+        rollback_manager.registry[rollback_id]["backup_path"] = "/invalid/path/to/backup"
 
         result = rollback_manager.rollback_to_point(rollback_id, validate_before=True)
 
@@ -1586,14 +1485,10 @@ class TestFailureRecovery:
             "_perform_rollback",
             side_effect=Exception("Restore failed"),
         ):
-            result = rollback_manager.rollback_to_point(
-                rollback_id, validate_before=False, validate_after=False
-            )
+            result = rollback_manager.rollback_to_point(rollback_id, validate_before=False, validate_after=False)
 
             assert result.success is False
-            assert (
-                "error" in result.message.lower() or "failed" in result.message.lower()
-            )
+            assert "error" in result.message.lower() or "failed" in result.message.lower()
 
     def test_research_rollback_with_exception(self, rollback_manager):
         """Test research rollback handles exceptions"""
@@ -1718,34 +1613,26 @@ class TestComplexScenarios:
             for i in range(15):
                 rollback_manager.create_rollback_point(f"Reset {i}")
 
-            result = rollback_manager.cleanup_old_rollbacks(
-                keep_count=keep_count, dry_run=False
-            )
+            result = rollback_manager.cleanup_old_rollbacks(keep_count=keep_count, dry_run=False)
 
             if not result["dry_run"]:
                 assert result["kept_count"] <= 15
 
-    def test_get_directory_size_with_large_files(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_get_directory_size_with_large_files(self, rollback_manager, temp_project_dir):
         """Test directory size calculation with large files"""
         # Create large files
         large_dir = temp_project_dir / "large_files"
         large_dir.mkdir()
 
         for i in range(3):
-            (large_dir / f"large_{i}.bin").write_bytes(
-                b"x" * (1024 * 1024)
-            )  # 1MB files
+            (large_dir / f"large_{i}.bin").write_bytes(b"x" * (1024 * 1024))  # 1MB files
 
         size = rollback_manager._get_directory_size(large_dir)
 
         # Should report reasonable size
         assert size >= (3 * 1024 * 1024)
 
-    def test_research_components_validation_comprehensive(
-        self, rollback_manager, temp_project_dir
-    ):
+    def test_research_components_validation_comprehensive(self, rollback_manager, temp_project_dir):
         """Test comprehensive validation of research components"""
         rollback_manager.create_rollback_point("Research comprehensive validation")
 

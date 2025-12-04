@@ -43,9 +43,7 @@ class TestTrustChecker:
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_pass_when_coverage_above_85_percent(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_pass_when_coverage_above_85_percent(self, trust_checker, sample_project_path):
         """
         Given: 프로젝트의 테스트 커버리지가 87%
         When: trust_checker.validate_coverage() 실행
@@ -62,9 +60,7 @@ class TestTrustChecker:
         assert result.message == "Test coverage: 87.5% (Target: 85%)"
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_fail_when_coverage_below_85_percent(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_fail_when_coverage_below_85_percent(self, trust_checker, sample_project_path):
         """
         Given: 프로젝트의 테스트 커버리지가 78%
         When: trust_checker.validate_coverage() 실행
@@ -92,18 +88,14 @@ class TestTrustChecker:
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_pass_when_all_files_within_300_loc(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_pass_when_all_files_within_300_loc(self, trust_checker, sample_project_path):
         """
         Given: 모든 소스 파일이 300 LOC 이하
         When: trust_checker.validate_file_size() 실행
         Then: ValidationResult.passed = True
         """
         # Arrange
-        (sample_project_path / "src" / "small.py").write_text(
-            "\n".join([f"# Line {i}" for i in range(200)])
-        )
+        (sample_project_path / "src" / "small.py").write_text("\n".join([f"# Line {i}" for i in range(200)]))
 
         # Act
         result = trust_checker.validate_file_size(sample_project_path / "src")
@@ -113,9 +105,7 @@ class TestTrustChecker:
         assert "All files within 300 LOC" in result.message
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_fail_when_file_exceeds_300_loc(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_fail_when_file_exceeds_300_loc(self, trust_checker, sample_project_path):
         """
         Given: 파일이 342 LOC로 300 LOC 초과
         When: trust_checker.validate_file_size() 실행
@@ -138,9 +128,7 @@ class TestTrustChecker:
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_pass_when_all_functions_within_50_loc(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_pass_when_all_functions_within_50_loc(self, trust_checker, sample_project_path):
         """
         Given: 모든 함수가 50 LOC 이하
         When: trust_checker.validate_function_size() 실행
@@ -163,9 +151,7 @@ def small_function():
         assert "All functions within 50 LOC" in result.message
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_fail_when_function_exceeds_50_loc(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_fail_when_function_exceeds_50_loc(self, trust_checker, sample_project_path):
         """
         Given: 함수가 58 LOC로 50 LOC 초과
         When: trust_checker.validate_function_size() 실행
@@ -193,9 +179,7 @@ def large_function():
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_pass_when_all_params_within_5(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_pass_when_all_params_within_5(self, trust_checker, sample_project_path):
         """
         Given: 모든 함수의 매개변수가 5개 이하
         When: trust_checker.validate_param_count() 실행
@@ -242,9 +226,7 @@ def function_with_7_params(a, b, c, d, e, f, g):
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_pass_when_complexity_within_10(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_pass_when_complexity_within_10(self, trust_checker, sample_project_path):
         """
         Given: 모든 함수의 순환 복잡도가 10 이하
         When: trust_checker.validate_complexity() 실행
@@ -267,9 +249,7 @@ def simple_function(x):
         assert "All functions within complexity 10" in result.message
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_fail_when_complexity_exceeds_10(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_fail_when_complexity_exceeds_10(self, trust_checker, sample_project_path):
         """
         Given: 함수의 순환 복잡도가 15로 10 초과
         When: trust_checker.validate_complexity() 실행
@@ -307,18 +287,14 @@ def complex_function(x):
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_pass_when_tag_chain_complete(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_pass_when_tag_chain_complete(self, trust_checker, sample_project_path):
         """
         When: trust_checker.validate_tag_chain() 실행
         Then: ValidationResult.passed = True
         """
         # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
-        (sample_project_path / "src" / "auth.py").write_text(
-            "# # REMOVED_ORPHAN_CODE:AUTH-004"
-        )
+        (sample_project_path / "src" / "auth.py").write_text("# # REMOVED_ORPHAN_CODE:AUTH-004")
 
         # Act
         result = trust_checker.validate_tag_chain(sample_project_path)
@@ -328,17 +304,13 @@ def complex_function(x):
         assert "chain complete" in result.message
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_fail_when_tag_chain_broken(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_fail_when_tag_chain_broken(self, trust_checker, sample_project_path):
         """
         When: trust_checker.validate_tag_chain() 실행
         Then: ValidationResult.passed = False, 끊어진 체인 표시
         """
         # Arrange
-        (sample_project_path / "src" / "auth.py").write_text(
-            "# # REMOVED_ORPHAN_CODE:AUTH-004"
-        )
+        (sample_project_path / "src" / "auth.py").write_text("# # REMOVED_ORPHAN_CODE:AUTH-004")
 
         # Act
         result = trust_checker.validate_tag_chain(sample_project_path)
@@ -350,9 +322,7 @@ def complex_function(x):
 
         # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
-        (sample_project_path / "src" / "user.py").write_text(
-            "# # REMOVED_ORPHAN_CODE:USER-001"
-        )
+        (sample_project_path / "src" / "user.py").write_text("# # REMOVED_ORPHAN_CODE:USER-001")
 
         # Act
         orphans = trust_checker.detect_orphan_tags(sample_project_path)
@@ -408,9 +378,7 @@ def complex_function(x):
     # ========================================
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_provide_specific_error_message(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_provide_specific_error_message(self, trust_checker, sample_project_path):
         """
         Given: 테스트 커버리지 78% (미달)
         When: trust_checker.validate_coverage() 실행
@@ -431,9 +399,7 @@ def complex_function(x):
         assert "recommended" in result.details.lower() or "권장" in result.details
 
     @pytest.mark.xfail(reason="Test data migration needed")
-    def test_should_provide_generic_error_when_no_details(
-        self, trust_checker, sample_project_path
-    ):
+    def test_should_provide_generic_error_when_no_details(self, trust_checker, sample_project_path):
         """
         Given: 검증 실패했으나 상세 정보 없음
         When: trust_checker.validate() 실행
@@ -443,9 +409,7 @@ def complex_function(x):
         # (상세 정보 없는 실패 상황 시뮬레이션)
 
         # Act
-        result = trust_checker.validate_coverage(
-            sample_project_path, {"total_coverage": 70.0}
-        )
+        result = trust_checker.validate_coverage(sample_project_path, {"total_coverage": 70.0})
 
         # Assert
         assert result.passed is False

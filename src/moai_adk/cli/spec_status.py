@@ -34,9 +34,7 @@ except ImportError:
         raise ImportError("SpecStatusManager not found")
 
 
-def update_spec_status(
-    spec_id: str, new_status: str, reason: str = ""
-) -> Dict[str, Any]:
+def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[str, Any]:
     """Update SPEC status with validation and logging
 
     Args:

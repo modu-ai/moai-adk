@@ -205,12 +205,8 @@ class TestSkillFilterEngine:
         """Test that skill filtering respects token budget"""
         # Arrange
         engine = SkillFilterEngine()
-        engine.skill_index["skill1"] = SkillInfo(
-            name="skill1", path="/s1", size=100, tokens=1000, categories=[]
-        )
-        engine.skill_index["skill2"] = SkillInfo(
-            name="skill2", path="/s2", size=100, tokens=2000, categories=[]
-        )
+        engine.skill_index["skill1"] = SkillInfo(name="skill1", path="/s1", size=100, tokens=1000, categories=[])
+        engine.skill_index["skill2"] = SkillInfo(name="skill2", path="/s2", size=100, tokens=2000, categories=[])
 
         # Act
         skills = engine.filter_skills(Phase.SPEC, 1500)
@@ -224,9 +220,7 @@ class TestSkillFilterEngine:
         """Test getting skill statistics"""
         # Arrange
         engine = SkillFilterEngine()
-        engine.skill_index["skill1"] = SkillInfo(
-            name="skill1", path="/s1", size=100, tokens=500, categories=["lang"]
-        )
+        engine.skill_index["skill1"] = SkillInfo(name="skill1", path="/s1", size=100, tokens=500, categories=["lang"])
 
         # Act
         stats = engine.get_skill_stats()
@@ -470,9 +464,7 @@ class TestJITContextLoaderAsync:
         ]
 
         # Act
-        context, metrics = await loader.load_context(
-            "Next phase", conversation_history=history
-        )
+        context, metrics = await loader.load_context("Next phase", conversation_history=history)
 
         # Assert
         assert isinstance(context, dict)
@@ -487,9 +479,7 @@ class TestJITContextLoaderAsync:
         context_data = {"spec_id": "SPEC-001", "module": "auth"}
 
         # Act
-        context, metrics = await loader.load_context(
-            "Load context", context=context_data
-        )
+        context, metrics = await loader.load_context("Load context", context=context_data)
 
         # Assert
         assert isinstance(context, dict)

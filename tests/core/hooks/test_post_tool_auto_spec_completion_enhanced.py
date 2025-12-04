@@ -101,27 +101,21 @@ class TestShouldTriggerSpecCompletion:
         """Test trigger returns False for excluded patterns"""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "test_file.py"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "test_file.py"})
         assert result is False  # test_ prefix is excluded
 
     def test_trigger_success_python(self):
         """Test trigger succeeds for Python files"""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "module.py"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "module.py"})
         assert result is True
 
     def test_trigger_success_typescript(self):
         """Test trigger succeeds for TypeScript files"""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "component.ts"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "component.ts"})
         assert result is True
 
 
@@ -148,9 +142,7 @@ class TestFilePathExtraction:
     def test_extract_from_multiedit_tool(self):
         """Test extracting multiple file paths from MultiEdit"""
         hook = PostToolAutoSpecCompletion()
-        args = {
-            "edits": [{"file_path": "/path/file1.py"}, {"file_path": "/path/file2.py"}]
-        }
+        args = {"edits": [{"file_path": "/path/file1.py"}, {"file_path": "/path/file2.py"}]}
 
         paths = hook._extract_file_paths(args)
         assert len(paths) == 2
@@ -228,9 +220,7 @@ class TestCodeChangeDetection:
     def test_detect_write_tool_changes(self):
         """Test detecting changes from Write tool"""
         hook = PostToolAutoSpecCompletion()
-        changes = hook.detect_code_changes(
-            "Write", {"file_path": "/path/file.py"}, None
-        )
+        changes = hook.detect_code_changes("Write", {"file_path": "/path/file.py"}, None)
 
         assert len(changes) == 1
         assert "/path/file.py" in changes[0]
@@ -245,9 +235,7 @@ class TestCodeChangeDetection:
     def test_detect_multiedit_tool_changes(self):
         """Test detecting changes from MultiEdit tool"""
         hook = PostToolAutoSpecCompletion()
-        args = {
-            "edits": [{"file_path": "/path/file1.py"}, {"file_path": "/path/file2.py"}]
-        }
+        args = {"edits": [{"file_path": "/path/file1.py"}, {"file_path": "/path/file2.py"}]}
         changes = hook.detect_code_changes("MultiEdit", args, None)
 
         assert len(changes) == 2
@@ -257,15 +245,11 @@ class TestCodeChangeDetection:
         hook = PostToolAutoSpecCompletion()
 
         # First detection
-        changes1 = hook.detect_code_changes(
-            "Write", {"file_path": "/path/file.py"}, None
-        )
+        changes1 = hook.detect_code_changes("Write", {"file_path": "/path/file.py"}, None)
         assert len(changes1) == 1
 
         # Second detection of same file
-        changes2 = hook.detect_code_changes(
-            "Write", {"file_path": "/path/file.py"}, None
-        )
+        changes2 = hook.detect_code_changes("Write", {"file_path": "/path/file.py"}, None)
         assert len(changes2) == 0  # Already processed
 
 
@@ -460,9 +444,7 @@ class TestSpecValidation:
     def test_check_content_quality(self):
         """Test content quality checking"""
         hook = PostToolAutoSpecCompletion()
-        spec_content = {
-            "spec_md": "API data interface module component architecture REQ-001 SPEC-001"
-        }
+        spec_content = {"spec_md": "API data interface module component architecture REQ-001 SPEC-001"}
 
         score = hook._check_content_quality(spec_content)
         assert score > 0.5
@@ -493,9 +475,7 @@ class TestSpecFileCreation:
         content = {"spec_md": "content"}
 
         # Invalid path should return False
-        result = hook.create_spec_files(
-            "TEST-001", content, "/invalid/path/that/does/not/exist"
-        )
+        result = hook.create_spec_files("TEST-001", content, "/invalid/path/that/does/not/exist")
         assert result is False
 
 

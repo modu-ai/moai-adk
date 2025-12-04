@@ -492,9 +492,7 @@ class TestGetStringContext:
         json_str = '{"key": "value\\"test"}'
 
         # Act
-        result = parser._get_string_context(
-            json_str, 15
-        )  # Inside string with escaped quote
+        result = parser._get_string_context(json_str, 15)  # Inside string with escaped quote
 
         # Assert
         assert result is True

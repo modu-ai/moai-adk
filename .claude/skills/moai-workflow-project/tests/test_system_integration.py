@@ -68,12 +68,8 @@ class TestSystemIntegration(unittest.TestCase):
         self.assertIsNotNone(self.project.template_optimizer)
 
         # Modules should share the same project root and config
-        self.assertEqual(
-            self.project.documentation_manager.project_root, str(self.test_dir)
-        )
-        self.assertEqual(
-            self.project.language_initializer.project_root, str(self.test_dir)
-        )
+        self.assertEqual(self.project.documentation_manager.project_root, str(self.test_dir))
+        self.assertEqual(self.project.language_initializer.project_root, str(self.test_dir))
 
     def test_configuration_sharing(self):
         """Test configuration sharing between modules."""
@@ -109,9 +105,7 @@ class TestSystemIntegration(unittest.TestCase):
         """Test integration of different workflows."""
 
         # Step 1: Initialize project
-        init_result = self.project.initialize_complete_project(
-            language="en", project_type="web_application"
-        )
+        init_result = self.project.initialize_complete_project(language="en", project_type="web_application")
 
         self.assertTrue(init_result["success"])
 
@@ -121,9 +115,7 @@ class TestSystemIntegration(unittest.TestCase):
             "title": "Test Feature",
             "description": "Test feature implementation",
             "requirements": ["Requirement 1", "Requirement 2"],
-            "api_endpoints": [
-                {"path": "/api/test", "method": "POST", "description": "Test endpoint"}
-            ],
+            "api_endpoints": [{"path": "/api/test", "method": "POST", "description": "Test endpoint"}],
         }
 
         docs_result = self.project.generate_documentation_from_spec(spec_data)
@@ -204,9 +196,7 @@ class TestSystemIntegration(unittest.TestCase):
         test_dir2 = Path(tempfile.mkdtemp())
 
         try:
-            result = initialize_project(
-                str(test_dir2), language="en", project_type="mobile_application"
-            )
+            result = initialize_project(str(test_dir2), language="en", project_type="mobile_application")
 
             self.assertTrue(result["success"])
 
@@ -225,9 +215,7 @@ class TestSystemIntegration(unittest.TestCase):
             side_effect=Exception("Module error"),
         ):
             # Should still complete initialization with optimization disabled
-            result = self.project.initialize_complete_project(
-                optimization_enabled=False
-            )  # Disable to avoid the error
+            result = self.project.initialize_complete_project(optimization_enabled=False)  # Disable to avoid the error
 
             self.assertTrue(result["success"])
             self.assertIn("language_initializer", result["modules_initialized"])

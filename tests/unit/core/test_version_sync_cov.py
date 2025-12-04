@@ -404,9 +404,7 @@ class TestUpdateVersionInContent:
         sync = VersionSynchronizer(tmp_path)
         content = '{"moai": {"version": "1.0.0"}}'
 
-        updated = sync._update_version_in_content(
-            content, VersionSource.CONFIG_JSON, "2.0.0"
-        )
+        updated = sync._update_version_in_content(content, VersionSource.CONFIG_JSON, "2.0.0")
 
         assert "2.0.0" in updated
         assert '"version": "2.0.0"' in updated
@@ -419,9 +417,7 @@ class TestUpdateVersionInContent:
         content = '__version__ = "1.0.0"'
 
         try:
-            updated = sync._update_version_in_content(
-                content, VersionSource.PACKAGE_METADATA, "2.0.0"
-            )
+            updated = sync._update_version_in_content(content, VersionSource.PACKAGE_METADATA, "2.0.0")
             assert "2.0.0" in updated
         except Exception:
             # The implementation has a known issue with regex backreferences when version has digits
@@ -440,9 +436,7 @@ class TestSynchronizeFile:
         config_file.write_text('{"moai": {"version": "1.0.0"}}')
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync._synchronize_file(
-            config_file, VersionSource.CONFIG_JSON, "1.0.0", False
-        )
+        result = sync._synchronize_file(config_file, VersionSource.CONFIG_JSON, "1.0.0", False)
 
         assert result is True
         assert "1.0.0" in config_file.read_text()
@@ -455,9 +449,7 @@ class TestSynchronizeFile:
         config_file.write_text('{"moai": {"version": "1.0.0"}}')
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync._synchronize_file(
-            config_file, VersionSource.CONFIG_JSON, "2.0.0", False
-        )
+        result = sync._synchronize_file(config_file, VersionSource.CONFIG_JSON, "2.0.0", False)
 
         assert result is True
         assert "2.0.0" in config_file.read_text()
@@ -471,9 +463,7 @@ class TestSynchronizeFile:
         config_file.write_text(original_content)
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync._synchronize_file(
-            config_file, VersionSource.CONFIG_JSON, "2.0.0", True
-        )
+        result = sync._synchronize_file(config_file, VersionSource.CONFIG_JSON, "2.0.0", True)
 
         assert result is True
         assert config_file.read_text() == original_content

@@ -195,9 +195,7 @@ class TestSafeGlobRead:
         mock_path2.__str__.return_value = "/tmp/file2.txt"
 
         with patch("pathlib.Path.glob", return_value=[mock_path1, mock_path2]):
-            with patch.object(
-                reader, "read_text", side_effect=["content1", "content2"]
-            ):
+            with patch.object(reader, "read_text", side_effect=["content1", "content2"]):
                 result = reader.safe_glob_read("*.txt")
                 assert len(result) == 2
                 assert "/tmp/file1.txt" in result
@@ -297,9 +295,7 @@ class TestDefaultEncodings:
         """Test DEFAULT_ENCODINGS contains common encodings."""
         encodings = SafeFileReader.DEFAULT_ENCODINGS
         assert "utf-8" in encodings
-        assert any(
-            "iso" in enc or "latin" in enc or "cp1252" in enc for enc in encodings
-        )
+        assert any("iso" in enc or "latin" in enc or "cp1252" in enc for enc in encodings)
 
 
 class TestSafeReadFile:

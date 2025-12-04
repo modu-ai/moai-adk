@@ -79,13 +79,9 @@ class SkillData:
             in_basic_section = False
 
             for line in lines:
-                if line.startswith("## Quick Reference") or line.startswith(
-                    "### Core Patterns"
-                ):
+                if line.startswith("## Quick Reference") or line.startswith("### Core Patterns"):
                     in_basic_section = True
-                elif line.startswith("## ") and not line.startswith(
-                    "## Quick Reference"
-                ):
+                elif line.startswith("## ") and not line.startswith("## Quick Reference"):
                     in_basic_section = False
 
                 if in_basic_section or line.startswith("#"):
@@ -104,9 +100,7 @@ class SkillData:
             skip_section = False
 
             for line in lines:
-                if line.startswith("## Advanced") or line.startswith(
-                    "## Implementation Details"
-                ):
+                if line.startswith("## Advanced") or line.startswith("## Implementation Details"):
                     skip_section = True
                 elif line.startswith("## ") and not line.startswith("## Advanced"):
                     skip_section = False
@@ -133,9 +127,7 @@ class LRUCache:
     def __init__(self, maxsize: int = 100, ttl: int = 3600):
         self.maxsize = maxsize
         self.ttl = ttl  # Time to live in seconds
-        self.cache: OrderedDict[str, tuple[SkillData, datetime]] = (
-            OrderedDict()
-        )  # key -> (data, timestamp)
+        self.cache: OrderedDict[str, tuple[SkillData, datetime]] = OrderedDict()  # key -> (data, timestamp)
         self.lock = threading.Lock()
 
     def get(self, key: str) -> Optional[SkillData]:
@@ -210,9 +202,7 @@ class SkillValidator:
 
         # Validate effort range
         if effort not in [1, 3, 5]:
-            raise SkillValidationError(
-                f"Invalid effort level: {effort}. Must be 1, 3, or 5"
-            )
+            raise SkillValidationError(f"Invalid effort level: {effort}. Must be 1, 3, or 5")
 
         # Check if skill supports the requested effort level
         supported_efforts = metadata.get("supported_efforts", [1, 3, 5])
@@ -230,14 +220,10 @@ class SkillValidator:
             return False
 
         required_skills = metadata.get("requires", [])
-        missing_skills = [
-            skill for skill in required_skills if skill not in loaded_skills
-        ]
+        missing_skills = [skill for skill in required_skills if skill not in loaded_skills]
 
         if missing_skills:
-            raise DependencyError(
-                f"Skill {skill_name} requires missing dependencies: {missing_skills}"
-            )
+            raise DependencyError(f"Skill {skill_name} requires missing dependencies: {missing_skills}")
 
         return True
 
@@ -336,9 +322,7 @@ class SkillLoader:
         self.registry = SkillRegistry()
         self.validator = SkillValidator(self.registry)
         self.cache = LRUCache(maxsize=100, ttl=3600)  # 1 hour TTL
-        self.loading_stack: List[str] = (
-            []
-        )  # Track loading order to prevent circular dependencies
+        self.loading_stack: List[str] = []  # Track loading order to prevent circular dependencies
 
         # Initialize registry
         default_paths = [
@@ -348,9 +332,7 @@ class SkillLoader:
         ]
         self.registry.initialize_from_filesystem(skill_paths or default_paths)
 
-    def load_skill(
-        self, skill_name: str, effort: Optional[int] = None, force_reload: bool = False
-    ) -> SkillData:
+    def load_skill(self, skill_name: str, effort: Optional[int] = None, force_reload: bool = False) -> SkillData:
         """Primary skill loading function with comprehensive validation"""
         try:
             # Check cache first (unless force_reload)
@@ -397,14 +379,10 @@ class SkillLoader:
             logger.error(f"Failed to load skill {skill_name}: {e}")
             return self._get_fallback_skill(skill_name, effort)
 
-    def _validate_cached_skill(
-        self, cached_skill: SkillData, effort: Optional[int] = None
-    ) -> SkillData:
+    def _validate_cached_skill(self, cached_skill: SkillData, effort: Optional[int] = None) -> SkillData:
         """Validate cached skill against current effort parameter"""
         if effort is not None and not cached_skill.supports_effort(effort):
-            logger.warning(
-                f"Cached skill {cached_skill.name} doesn't support effort {effort}, reloading"
-            )
+            logger.warning(f"Cached skill {cached_skill.name} doesn't support effort {effort}, reloading")
             return self.load_skill(cached_skill.name, effort, force_reload=True)
 
         return cached_skill
@@ -475,9 +453,7 @@ class SkillLoader:
 
         return skill_data
 
-    def _get_fallback_skill(
-        self, skill_name: str, effort: Optional[int] = None
-    ) -> SkillData:
+    def _get_fallback_skill(self, skill_name: str, effort: Optional[int] = None) -> SkillData:
         """Get fallback skill when loading fails"""
         fallback_map = {
             "moai-foundation-core": "moai-toolkit-essentials",
@@ -509,9 +485,7 @@ class SkillLoader:
 SKILL_LOADER = SkillLoader()
 
 
-def load_skill(
-    skill_name: str, effort: Optional[int] = None, force_reload: bool = False
-) -> SkillData:
+def load_skill(skill_name: str, effort: Optional[int] = None, force_reload: bool = False) -> SkillData:
     """Public API for loading skills"""
     return SKILL_LOADER.load_skill(skill_name, effort, force_reload)
 
@@ -568,9 +542,7 @@ def _detect_skills_from_prompt(prompt: str) -> List[str]:
     if any(lang in prompt_lower for lang in ["python", "fastapi", "django"]):
         detected_skills.append("moai-lang-unified")
 
-    if any(
-        lang in prompt_lower for lang in ["typescript", "react", "next.js", "frontend"]
-    ):
+    if any(lang in prompt_lower for lang in ["typescript", "react", "next.js", "frontend"]):
         detected_skills.append("moai-lang-unified")
 
     # Domain detection

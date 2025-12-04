@@ -175,11 +175,7 @@ def skill_names(all_skills) -> Set[str]:
 @pytest.fixture(scope="session")
 def skill_names_from_metadata(all_skills) -> Set[str]:
     """Set of skill names from metadata 'name' field."""
-    return {
-        skill.metadata.get("name", "")
-        for skill in all_skills
-        if skill.metadata.get("name")
-    }
+    return {skill.metadata.get("name", "") for skill in all_skills if skill.metadata.get("name")}
 
 
 @pytest.fixture(scope="session")

@@ -41,9 +41,7 @@ def temp_project_dir():
 
         # Create necessary directory structure
         (project_root / ".moai" / "memory").mkdir(parents=True, exist_ok=True)
-        (project_root / ".moai" / "logs" / "agent-transcripts").mkdir(
-            parents=True, exist_ok=True
-        )
+        (project_root / ".moai" / "logs" / "agent-transcripts").mkdir(parents=True, exist_ok=True)
 
         yield project_root
 
@@ -122,9 +120,7 @@ class TestSessionManagerInitialization:
         session_file.parent.mkdir(parents=True, exist_ok=True)
         session_file.write_text(json.dumps(existing_data))
 
-        manager = SessionManager(
-            session_file=session_file, transcript_dir=transcript_dir
-        )
+        manager = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
         assert manager._sessions == {"agent-1": "id-abc123"}
         assert manager._chains == {"SPEC-001": ["id-abc123"]}
@@ -137,9 +133,7 @@ class TestSessionManagerInitialization:
         session_file.parent.mkdir(parents=True, exist_ok=True)
         session_file.write_text("{ invalid json }")
 
-        manager = SessionManager(
-            session_file=session_file, transcript_dir=transcript_dir
-        )
+        manager = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
         # Should initialize with empty state instead of crashing
         assert manager._sessions == {}
@@ -292,9 +286,7 @@ class TestResumeDecision:
             chain_id="SPEC-AUTH-001",
         )
 
-        resume_id = session_manager.get_resume_id(
-            "test-agent", chain_id="SPEC-AUTH-001"
-        )
+        resume_id = session_manager.get_resume_id("test-agent", chain_id="SPEC-AUTH-001")
 
         assert resume_id == "id-12345"
 
@@ -307,9 +299,7 @@ class TestResumeDecision:
             chain_id="SPEC-AUTH-001",
         )
 
-        resume_id = session_manager.get_resume_id(
-            "test-agent", chain_id="SPEC-OTHER-001"
-        )
+        resume_id = session_manager.get_resume_id("test-agent", chain_id="SPEC-OTHER-001")
 
         assert resume_id is None
 
@@ -399,9 +389,7 @@ class TestResumeDecision:
             ("Create REST endpoints", "Delete test files", False),
         ],
     )
-    def test_should_resume_keyword_matching(
-        self, session_manager, current, previous, expected
-    ):
+    def test_should_resume_keyword_matching(self, session_manager, current, previous, expected):
         """Test keyword matching in resume decision"""
         session_manager.register_agent_result(
             agent_name="test-agent",
@@ -772,17 +760,13 @@ class TestSessionPersistence:
         session_data = {
             "sessions": {"agent-1": "id-abc123"},
             "chains": {"SPEC-001": ["id-abc123"]},
-            "metadata": {
-                "id-abc123": {"agent_name": "agent-1", "created_at": "2025-01-01"}
-            },
+            "metadata": {"id-abc123": {"agent_name": "agent-1", "created_at": "2025-01-01"}},
         }
         session_file.parent.mkdir(parents=True, exist_ok=True)
         session_file.write_text(json.dumps(session_data))
 
         # Load and verify
-        manager = SessionManager(
-            session_file=session_file, transcript_dir=transcript_dir
-        )
+        manager = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
         assert manager._sessions == {"agent-1": "id-abc123"}
         assert manager._chains == {"SPEC-001": ["id-abc123"]}
@@ -793,9 +777,7 @@ class TestSessionPersistence:
         transcript_dir = temp_project_dir / ".moai" / "logs" / "agent-transcripts"
 
         # First manager: register agent
-        manager1 = SessionManager(
-            session_file=session_file, transcript_dir=transcript_dir
-        )
+        manager1 = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
         manager1.register_agent_result(
             agent_name="test-agent",
             agent_id="id-12345",
@@ -803,9 +785,7 @@ class TestSessionPersistence:
         )
 
         # Second manager: load same file
-        manager2 = SessionManager(
-            session_file=session_file, transcript_dir=transcript_dir
-        )
+        manager2 = SessionManager(session_file=session_file, transcript_dir=transcript_dir)
 
         # Sessions are persisted (session mappings)
         assert manager2._sessions["test-agent"] == "id-12345"
@@ -1150,9 +1130,7 @@ class TestEdgeCases:
             result={"status": "success"},
         )
 
-        assert (
-            session_manager.get_resume_id("agent-with-special_chars.123") == "id-12345"
-        )
+        assert session_manager.get_resume_id("agent-with-special_chars.123") == "id-12345"
 
     def test_unicode_in_result_data(self, session_manager):
         """Test handling Unicode characters in result data"""

@@ -712,9 +712,7 @@ class TestComprehensiveMonitoringSystem:
         system = ComprehensiveMonitoringSystem()
         system.add_metric(MetricType.CPU_USAGE, 50.0, tags={"zone": "a"})
 
-        metrics = system.performance_monitor.metrics_collector.get_metrics(
-            MetricType.CPU_USAGE
-        )
+        metrics = system.performance_monitor.metrics_collector.get_metrics(MetricType.CPU_USAGE)
         assert len(metrics) == 1
 
     def test_get_system_health_healthy(self):
@@ -829,9 +827,7 @@ class TestComprehensiveMonitoringSystem:
         for t in threads:
             t.join()
 
-        metrics = system.performance_monitor.metrics_collector.get_metrics(
-            MetricType.CPU_USAGE
-        )
+        metrics = system.performance_monitor.metrics_collector.get_metrics(MetricType.CPU_USAGE)
         assert len(metrics) >= 100
 
 

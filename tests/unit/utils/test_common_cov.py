@@ -553,19 +553,13 @@ class TestLoadHookTimeout:
                     "builtins.open",
                     MagicMock(
                         return_value=MagicMock(
-                            __enter__=lambda s: MagicMock(
-                                __enter__=lambda x: MagicMock(
-                                    read=lambda: config_content
-                                )
-                            ),
+                            __enter__=lambda s: MagicMock(__enter__=lambda x: MagicMock(read=lambda: config_content)),
                             __exit__=lambda s, *args: None,
                         )
                     ),
                 ):
                     # Patch json.load directly
-                    with patch(
-                        "json.load", return_value={"hooks": {"timeout_ms": 3000}}
-                    ):
+                    with patch("json.load", return_value={"hooks": {"timeout_ms": 3000}}):
                         timeout = load_hook_timeout()
                         assert timeout == 3000
 
@@ -606,9 +600,7 @@ class TestGetGracefulDegradation:
     def test_get_graceful_degradation_true(self):
         """Test get_graceful_degradation reads true value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "json.load", return_value={"hooks": {"graceful_degradation": True}}
-            ):
+            with patch("json.load", return_value={"hooks": {"graceful_degradation": True}}):
                 result = get_graceful_degradation()
                 assert result is True
 
@@ -619,16 +611,12 @@ class TestGetGracefulDegradation:
                 "builtins.open",
                 MagicMock(
                     return_value=MagicMock(
-                        __enter__=lambda s: MagicMock(
-                            read=lambda: '{"hooks": {"graceful_degradation": false}}'
-                        ),
+                        __enter__=lambda s: MagicMock(read=lambda: '{"hooks": {"graceful_degradation": false}}'),
                         __exit__=lambda s, *args: None,
                     )
                 ),
             ):
-                with patch(
-                    "json.load", return_value={"hooks": {"graceful_degradation": False}}
-                ):
+                with patch("json.load", return_value={"hooks": {"graceful_degradation": False}}):
                     result = get_graceful_degradation()
                     assert result is False
 

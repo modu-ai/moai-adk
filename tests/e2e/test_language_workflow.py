@@ -164,9 +164,7 @@ class TestJapaneseUserWorkflow:
         """Japanese language variables substitute in templates."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context(
-            {"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語"}
-        )
+        processor.set_context({"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語"})
 
         template = "ドキュメント言語: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})"
 
@@ -284,9 +282,7 @@ class TestMultiLanguageMigration:
             ("en", "English"),
         ],
     )
-    def test_migrate_all_supported_languages(
-        self, language_code: str, language_name: str
-    ) -> None:
+    def test_migrate_all_supported_languages(self, language_code: str, language_name: str) -> None:
         """Migration works for all supported languages."""
         # Arrange
         legacy_config = {"conversation_language": language_code}

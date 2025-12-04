@@ -590,9 +590,7 @@ class TestEdgeCases:
     def test_platform_switch_behavior(self):
         """Test behavior with different platform configurations."""
         for is_windows in [True, False]:
-            with patch(
-                "platform.system", return_value="Windows" if is_windows else "Linux"
-            ):
+            with patch("platform.system", return_value="Windows" if is_windows else "Linux"):
                 timeout = CrossPlatformTimeout(5)
                 assert timeout._is_windows == is_windows
 

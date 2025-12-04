@@ -57,9 +57,7 @@ def example_multilingual_setup():
 
     print(f"설정 성공: {result['success']}")
     print(f"언어: {result['configuration_updates']['language']['language']}")
-    print(
-        f"사용자 이름: {result['configuration_updates']['language']['updated_config']['user']['name']}"
-    )
+    print(f"사용자 이름: {result['configuration_updates']['language']['updated_config']['user']['name']}")
 
     # Check token impact
     token_impact = result["configuration_updates"]["language"]["token_cost_impact"]
@@ -239,9 +237,7 @@ def example_multilingual_workflow():
 
     # Step 2: Update language settings
     lang_update = project.update_language_settings(
-        {
-            "language.agent_prompt_language": "english"
-        }  # Use English for agent prompts to save tokens
+        {"language.agent_prompt_language": "english"}  # Use English for agent prompts to save tokens
     )
 
     print(f"Language settings updated: {lang_update['success']}")
@@ -311,9 +307,7 @@ def main():
             print(f"❌ {name}: Failed - {result['error']}")
         else:
             success = result.get("success", True)
-            print(
-                f"{'✅' if success else '⚠️'} {name}: {'Success' if success else 'Partial'}"
-            )
+            print(f"{'✅' if success else '⚠️'} {name}: {'Success' if success else 'Partial'}")
 
     return results
 

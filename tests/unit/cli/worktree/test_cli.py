@@ -194,9 +194,7 @@ class TestGetManagerEdgeCases:
     @patch("moai_adk.cli.worktree.cli.Path.cwd")
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_get_manager_finds_git_in_parent(
-        self, mock_detect, mock_manager_class, mock_cwd
-    ):
+    def test_get_manager_finds_git_in_parent(self, mock_detect, mock_manager_class, mock_cwd):
         """Test get_manager finds .git in parent directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
@@ -213,9 +211,7 @@ class TestGetManagerEdgeCases:
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_get_manager_with_explicit_worktree_root(
-        self, mock_detect, mock_manager_class
-    ):
+    def test_get_manager_with_explicit_worktree_root(self, mock_detect, mock_manager_class):
         """Test get_manager uses explicit worktree_root."""
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_path = Path(tmpdir)

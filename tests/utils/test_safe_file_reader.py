@@ -86,9 +86,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_utf8_file(self):
         """Test reading a UTF-8 encoded file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Hello, World!")
             temp_path = f.name
 
@@ -101,9 +99,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_file_with_string_path(self):
         """Test reading file with string path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Test content")
             temp_path = f.name
 
@@ -116,9 +112,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_file_with_pathlib_path(self):
         """Test reading file with pathlib.Path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Test content")
             temp_path = Path(f.name)
 
@@ -138,9 +132,7 @@ class TestSafeFileReaderReadText:
     def test_read_file_with_different_encodings(self):
         """Test reading files with different encodings."""
         # Test UTF-8
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("UTF-8 content: café")
             temp_path = f.name
 
@@ -194,9 +186,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_large_file(self):
         """Test reading large file successfully."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             large_content = "Line " * 10000
             f.write(large_content)
             temp_path = f.name
@@ -210,9 +200,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_file_with_special_characters(self):
         """Test reading file with special characters."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Special: é à ñ ü © ® ™")
             temp_path = f.name
 
@@ -226,9 +214,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_multiline_file(self):
         """Test reading file with multiple lines."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\nLine 2\nLine 3")
             temp_path = f.name
 
@@ -243,9 +229,7 @@ class TestSafeFileReaderReadText:
 
     def test_read_file_with_single_encoding(self):
         """Test reading with single encoding in list."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Single encoding")
             temp_path = f.name
 
@@ -313,9 +297,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_basic(self):
         """Test reading lines from basic file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\nLine 2\nLine 3")
             temp_path = f.name
 
@@ -331,9 +313,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_keeps_ends(self):
         """Test read_lines keeps line endings."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\nLine 2\n")
             temp_path = f.name
 
@@ -365,9 +345,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_single_line(self):
         """Test reading single line file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Single line")
             temp_path = f.name
 
@@ -381,9 +359,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_with_blank_lines(self):
         """Test reading file with blank lines."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\n\nLine 3")
             temp_path = f.name
 
@@ -397,9 +373,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_with_different_encodings(self):
         """Test reading lines with encoding fallback."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Café\nNiño\nÉcole")
             temp_path = f.name
 
@@ -412,9 +386,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_with_string_path(self):
         """Test read_lines with string path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\nLine 2")
             temp_path = f.name
 
@@ -427,9 +399,7 @@ class TestSafeFileReaderReadLines:
 
     def test_read_lines_many_lines(self):
         """Test reading file with many lines."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             for i in range(1000):
                 f.write(f"Line {i}\n")
             temp_path = f.name
@@ -608,9 +578,7 @@ class TestSafeFileReaderIsSafeFile:
 
     def test_is_safe_file_readable_file(self):
         """Test is_safe_file returns True for readable file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Safe content")
             temp_path = f.name
 
@@ -640,9 +608,7 @@ class TestSafeFileReaderIsSafeFile:
 
     def test_is_safe_file_with_string_path(self):
         """Test is_safe_file with string path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Content")
             temp_path = f.name
 
@@ -654,9 +620,7 @@ class TestSafeFileReaderIsSafeFile:
 
     def test_is_safe_file_with_pathlib_path(self):
         """Test is_safe_file with pathlib.Path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Content")
             temp_path = Path(f.name)
 
@@ -692,9 +656,7 @@ class TestConvenienceFunctions:
 
     def test_safe_read_file_basic(self):
         """Test safe_read_file convenience function."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Convenience function test")
             temp_path = f.name
 
@@ -711,9 +673,7 @@ class TestConvenienceFunctions:
 
     def test_safe_read_file_with_custom_encodings(self):
         """Test safe_read_file with custom encodings."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Custom encoding test")
             temp_path = f.name
 
@@ -725,9 +685,7 @@ class TestConvenienceFunctions:
 
     def test_safe_read_file_with_string_path(self):
         """Test safe_read_file with string path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Test")
             temp_path = f.name
 
@@ -739,9 +697,7 @@ class TestConvenienceFunctions:
 
     def test_safe_read_file_with_pathlib_path(self):
         """Test safe_read_file with pathlib.Path."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Test")
             temp_path = Path(f.name)
 
@@ -753,9 +709,7 @@ class TestConvenienceFunctions:
 
     def test_safe_read_lines_basic(self):
         """Test safe_read_lines convenience function."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\nLine 2")
             temp_path = f.name
 
@@ -772,9 +726,7 @@ class TestConvenienceFunctions:
 
     def test_safe_read_lines_with_custom_encodings(self):
         """Test safe_read_lines with custom encodings."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Line 1\nLine 2")
             temp_path = f.name
 
@@ -807,9 +759,7 @@ class TestConvenienceFunctions:
             test_file = Path(temp_dir) / "test.txt"
             test_file.write_text("Content")
 
-            results = safe_glob_read(
-                "*.txt", base_path=temp_dir, encodings=["utf-8", "ascii"]
-            )
+            results = safe_glob_read("*.txt", base_path=temp_dir, encodings=["utf-8", "ascii"])
 
             assert len(results) >= 1
 
@@ -901,9 +851,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_multiple_encoding_attempts(self):
         """Test that all encodings in list are attempted."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Test")
             temp_path = f.name
 
@@ -921,9 +869,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_empty_encodings_list_fallback(self):
         """Test behavior with empty encodings list."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Test")
             temp_path = f.name
 
@@ -981,9 +927,7 @@ class TestIntegration:
 
     def test_workflow_read_write_read(self):
         """Test workflow: write file, read it, verify content."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             original_content = "Test\nMultiline\nContent"
             f.write(original_content)
             temp_path = f.name
@@ -1039,9 +983,7 @@ class TestIntegration:
 
     def test_workflow_encoding_conversion(self):
         """Test workflow: read file with encoding fallback chain."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
             f.write("Special: é à ç ñ")
             temp_path = f.name
 

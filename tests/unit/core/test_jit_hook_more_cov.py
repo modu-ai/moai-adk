@@ -155,9 +155,7 @@ class TestHookPrioritization:
         )
 
         # Act
-        results = hook_manager._prioritize_hooks(
-            [reliable_hook, unreliable_hook], Phase.RED
-        )
+        results = hook_manager._prioritize_hooks([reliable_hook, unreliable_hook], Phase.RED)
 
         # Assert - reliable hook should have higher priority
         reliable_score = next(s for p, s in results if p == reliable_hook)
@@ -197,9 +195,7 @@ class TestHookExecution:
             manager._hook_registry = {}
             manager.jit_loader = MagicMock()
             manager.jit_loader.phase_detector = MagicMock()
-            manager.jit_loader.phase_detector.detect_phase = MagicMock(
-                return_value=Phase.RED
-            )
+            manager.jit_loader.phase_detector.detect_phase = MagicMock(return_value=Phase.RED)
             manager.jit_loader.load_context = AsyncMock(return_value=({}, {}))
             return manager
 
@@ -233,9 +229,7 @@ class TestHookExecution:
         )
 
         # Assert
-        hook_manager.jit_loader.phase_detector.detect_phase.assert_called_once_with(
-            user_input
-        )
+        hook_manager.jit_loader.phase_detector.detect_phase.assert_called_once_with(user_input)
 
     @pytest.mark.asyncio
     async def test_execute_hooks_fallback_to_spec_phase(self, hook_manager):
@@ -247,9 +241,7 @@ class TestHookExecution:
         hook_manager.jit_loader.load_context = AsyncMock(return_value=({}, {}))
 
         # Act
-        results = await hook_manager.execute_hooks(
-            HookEvent.USER_PROMPT_SUBMIT, {}, user_input="test"
-        )
+        results = await hook_manager.execute_hooks(HookEvent.USER_PROMPT_SUBMIT, {}, user_input="test")
 
         # Assert
         assert isinstance(results, list)
@@ -280,9 +272,7 @@ class TestHookExecution:
         hook_manager._execute_hooks_optimized = AsyncMock(return_value=[])
 
         # Act
-        await hook_manager.execute_hooks(
-            HookEvent.SESSION_START, {}, max_total_execution_time_ms=5000.0
-        )
+        await hook_manager.execute_hooks(HookEvent.SESSION_START, {}, max_total_execution_time_ms=5000.0)
 
         # Assert - the time constraint should be passed through
         hook_manager._execute_hooks_optimized.assert_called()
@@ -303,18 +293,14 @@ class TestContextLoading:
     async def test_load_optimized_context_success(self, hook_manager):
         """Test successful context loading."""
         # Arrange
-        hook_manager.jit_loader.load_context = AsyncMock(
-            return_value=({"loaded": True}, {"tokens": 100})
-        )
+        hook_manager.jit_loader.load_context = AsyncMock(return_value=({"loaded": True}, {"tokens": 100}))
         event_type = HookEvent.SESSION_START
         context = {"original": "context"}
         phase = Phase.RED
         prioritized_hooks = [("hook1.py", 1.0), ("hook2.py", 2.0)]
 
         # Act
-        result = await hook_manager._load_optimized_context(
-            event_type, context, phase, prioritized_hooks
-        )
+        result = await hook_manager._load_optimized_context(event_type, context, phase, prioritized_hooks)
 
         # Assert
         assert "hook_event_type" in result
@@ -327,15 +313,11 @@ class TestContextLoading:
     async def test_load_optimized_context_jit_fallback(self, hook_manager):
         """Test fallback when JIT loader fails."""
         # Arrange
-        hook_manager.jit_loader.load_context = AsyncMock(
-            side_effect=TypeError("JIT interface mismatch")
-        )
+        hook_manager.jit_loader.load_context = AsyncMock(side_effect=TypeError("JIT interface mismatch"))
         context = {"original": "context"}
 
         # Act
-        result = await hook_manager._load_optimized_context(
-            HookEvent.SESSION_START, context, Phase.RED, []
-        )
+        result = await hook_manager._load_optimized_context(HookEvent.SESSION_START, context, Phase.RED, [])
 
         # Assert - should return original context in optimized format
         assert "hook_event_type" in result
@@ -348,9 +330,7 @@ class TestContextLoading:
         hook_manager.jit_loader.load_context = AsyncMock(return_value=({}, {}))
 
         # Act
-        result = await hook_manager._load_optimized_context(
-            HookEvent.SESSION_START, {}, None, []
-        )
+        result = await hook_manager._load_optimized_context(HookEvent.SESSION_START, {}, None, [])
 
         # Assert
         assert result["hook_phase"] is None
@@ -364,9 +344,7 @@ class TestContextLoading:
         prioritized_hooks = [(f"hook{i}.py", float(i)) for i in range(10)]
 
         # Act
-        result = await hook_manager._load_optimized_context(
-            HookEvent.SESSION_START, {}, Phase.RED, prioritized_hooks
-        )
+        result = await hook_manager._load_optimized_context(HookEvent.SESSION_START, {}, Phase.RED, prioritized_hooks)
 
         # Assert
         assert len(result["prioritized_hooks"]) == 5
@@ -439,9 +417,7 @@ class TestSingleHookExecution:
         )
         hook_manager._hook_registry[hook_path] = metadata
 
-        with patch.object(
-            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
-        ) as mock_exec:
+        with patch.object(hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = HookExecutionResult(
                 hook_path=hook_path,
                 success=True,
@@ -516,9 +492,7 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(return_value=mock_result)
         mock_rp = MagicMock()
 
-        with patch.object(
-            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
-        ) as mock_exec:
+        with patch.object(hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = mock_result
             with patch(
                 "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
@@ -562,9 +536,7 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(return_value=mock_result)
         mock_rp = MagicMock()
 
-        with patch.object(
-            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
-        ) as mock_exec:
+        with patch.object(hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = mock_result
             with patch(
                 "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
@@ -594,9 +566,7 @@ class TestSingleHookExecution:
         )
         hook_manager._hook_registry[hook_path] = metadata
         hook_manager._execution_profiles[hook_path] = []
-        hook_manager._anomaly_detector.detect_anomaly = MagicMock(
-            return_value="Execution time doubled"
-        )
+        hook_manager._anomaly_detector.detect_anomaly = MagicMock(return_value="Execution time doubled")
 
         mock_result = HookExecutionResult(
             hook_path=hook_path,
@@ -612,9 +582,7 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(return_value=mock_result)
         mock_rp = MagicMock()
 
-        with patch.object(
-            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
-        ) as mock_exec:
+        with patch.object(hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = mock_result
             with patch(
                 "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
@@ -649,9 +617,7 @@ class TestSingleHookExecution:
         mock_cb.call = AsyncMock(side_effect=RuntimeError("Unexpected execution error"))
         mock_rp = MagicMock()
 
-        with patch.object(
-            hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock
-        ) as mock_exec:
+        with patch.object(hook_manager, "_execute_hook_subprocess", new_callable=AsyncMock) as mock_exec:
             mock_exec.side_effect = RuntimeError("Unexpected execution error")
             with patch(
                 "moai_adk.core.jit_enhanced_hook_manager.CircuitBreaker",
@@ -666,10 +632,7 @@ class TestSingleHookExecution:
 
         # Assert
         assert result.success is False
-        assert (
-            "Unexpected error" in result.error_message
-            or "error" in result.error_message.lower()
-        )
+        assert "Unexpected error" in result.error_message or "error" in result.error_message.lower()
 
 
 class TestCacheTTLDetermination:

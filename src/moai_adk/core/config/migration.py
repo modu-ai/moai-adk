@@ -39,9 +39,7 @@ def migrate_config_to_nested_structure(config: dict[str, Any]) -> dict[str, Any]
         from ..language_config import LANGUAGE_CONFIG
 
         # Extract language names from enhanced config
-        language_names = {
-            code: info["native_name"] for code, info in LANGUAGE_CONFIG.items()
-        }
+        language_names = {code: info["native_name"] for code, info in LANGUAGE_CONFIG.items()}
 
         language_name = language_names.get(conversation_language, "English")
 
@@ -122,9 +120,7 @@ def get_conversation_language_name(config: dict[str, Any]) -> str:
     from ..language_config import LANGUAGE_CONFIG
 
     # Extract language names from enhanced config
-    language_names = {
-        code: info["native_name"] for code, info in LANGUAGE_CONFIG.items()
-    }
+    language_names = {code: info["native_name"] for code, info in LANGUAGE_CONFIG.items()}
     return language_names.get(language_code, "English")
 
 
@@ -180,9 +176,7 @@ def migrate_config_schema_v0_17_0(config: dict[str, Any]) -> dict[str, Any]:
     if "spec_git_workflow" not in github_config:
         github_config["spec_git_workflow"] = "per_spec"
         github_config["spec_git_workflow_configured"] = False
-        github_config["spec_git_workflow_rationale"] = (
-            "Ask per SPEC (flexible, user controls each workflow)"
-        )
+        github_config["spec_git_workflow_rationale"] = "Ask per SPEC (flexible, user controls each workflow)"
 
     # Add notes for new fields if missing
     if "notes_new_fields" not in github_config:

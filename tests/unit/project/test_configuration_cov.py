@@ -175,9 +175,7 @@ class TestConditionalBatchRendererEvaluation:
         context = {"mode": "personal", "documentation_mode": "full_now"}
 
         # Act
-        result = renderer.evaluate_condition(
-            "mode == 'personal' AND documentation_mode == 'full_now'", context
-        )
+        result = renderer.evaluate_condition("mode == 'personal' AND documentation_mode == 'full_now'", context)
 
         # Assert
         assert result is True
@@ -189,9 +187,7 @@ class TestConditionalBatchRendererEvaluation:
         context = {"mode": "personal"}
 
         # Act
-        result = renderer.evaluate_condition(
-            "mode == 'personal' OR mode == 'team'", context
-        )
+        result = renderer.evaluate_condition("mode == 'personal' OR mode == 'team'", context)
 
         # Assert
         assert result is True
@@ -239,9 +235,7 @@ class TestConditionalBatchRendererEvaluation:
         context = {"mode": "personal", "doc_mode": "full", "coverage": 85}
 
         # Act
-        result = renderer.evaluate_condition(
-            "mode == 'personal' AND (doc_mode == 'full' OR coverage > 80)", context
-        )
+        result = renderer.evaluate_condition("mode == 'personal' AND (doc_mode == 'full' OR coverage > 80)", context)
 
         # Assert
         # Note: The current implementation doesn't support nested expressions
@@ -254,12 +248,8 @@ class TestConditionalBatchRendererEvaluation:
         context = {"variable": "value"}
 
         # Act & Assert
-        assert (
-            ConditionalBatchRenderer._resolve_operand("'string'", context) == "string"
-        )
-        assert (
-            ConditionalBatchRenderer._resolve_operand('"string"', context) == "string"
-        )
+        assert ConditionalBatchRenderer._resolve_operand("'string'", context) == "string"
+        assert ConditionalBatchRenderer._resolve_operand('"string"', context) == "string"
 
     def test_resolve_operand_with_integers(self):
         """Test resolving integer operands."""
@@ -314,9 +304,7 @@ class TestTemplateVariableInterpolatorAdvanced:
                 "personal": {"workflow": "github-flow"},
             },
         }
-        template = (
-            "User {{user.name}} owns {{project.name}} with mode {{git_strategy.mode}}"
-        )
+        template = "User {{user.name}} owns {{project.name}} with mode {{git_strategy.mode}}"
 
         # Act
         result = TemplateVariableInterpolator.interpolate(template, config)
@@ -496,10 +484,7 @@ class TestTabSchemaValidatorAdvanced:
         """Test validation catches batch with too many questions."""
         # Arrange
         batch = {
-            "questions": [
-                {"header": f"Q{i}", "question": "?", "options": ["A", "B"]}
-                for i in range(5)  # Max is 4
-            ]
+            "questions": [{"header": f"Q{i}", "question": "?", "options": ["A", "B"]} for i in range(5)]  # Max is 4
         }
 
         # Act
@@ -521,9 +506,7 @@ class TestAutoDetectionEngineLanguageDetection:
             package_json.write_text("{}")
 
             # Act
-            with patch(
-                "moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)
-            ):
+            with patch("moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)):
                 engine = AutoDetectionEngine()
                 result = engine.detect_language()
 
@@ -538,9 +521,7 @@ class TestAutoDetectionEngineLanguageDetection:
             go_mod.write_text("")
 
             # Act
-            with patch(
-                "moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)
-            ):
+            with patch("moai_adk.project.configuration.Path.cwd", return_value=Path(tmpdir)):
                 engine = AutoDetectionEngine()
                 result = engine.detect_language()
 
@@ -696,9 +677,7 @@ class TestConditionalBatchRendererGetVisibleBatches:
         renderer = ConditionalBatchRenderer(schema)
 
         # Act
-        visible = renderer.get_visible_batches(
-            "tab_3_git_automation", {"mode": "personal"}
-        )
+        visible = renderer.get_visible_batches("tab_3_git_automation", {"mode": "personal"})
 
         # Assert
         assert len(visible) == 1

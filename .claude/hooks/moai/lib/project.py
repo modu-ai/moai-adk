@@ -224,9 +224,7 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
 
             # Check exit code manually
             if result.returncode != 0:
-                raise subprocess.CalledProcessError(
-                    result.returncode, ["git"] + args, result.stdout, result.stderr
-                )
+                raise subprocess.CalledProcessError(result.returncode, ["git"] + args, result.stdout, result.stderr)
 
             return result.stdout.strip()
 
@@ -624,9 +622,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     # Import VersionCache from the same directory (using dynamic import for testing compatibility)
     try:
         version_cache_path = Path(__file__).parent / "version_cache.py"
-        spec = importlib.util.spec_from_file_location(
-            "version_cache", version_cache_path
-        )
+        spec = importlib.util.spec_from_file_location("version_cache", version_cache_path)
         if spec and spec.loader:
             version_cache_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(version_cache_module)
@@ -742,9 +738,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                 result["upgrade_command"] = "uv tool upgrade moai-adk"
 
                 # Detect major version change
-                result["is_major_update"] = is_major_version_change(
-                    current_str, latest_str
-                )
+                result["is_major_update"] = is_major_version_change(current_str, latest_str)
             else:
                 result["is_major_update"] = False
         except (ValueError, AttributeError):

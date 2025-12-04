@@ -141,9 +141,7 @@ class ConventionalCommitValidator:
             is_breaking = True
 
         # Validate format: type(scope): subject
-        pattern = (
-            r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
-        )
+        pattern = r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
         match = re.match(pattern, first_line)
 
         if not match:
@@ -164,9 +162,7 @@ class ConventionalCommitValidator:
         # Extract components
         type_match = re.match(r"^(\w+)(\((.+?)\))?(!)?", first_line)
         if not type_match:
-            return ValidateResult(
-                is_valid=False, errors=["Could not parse commit message"]
-            )
+            return ValidateResult(is_valid=False, errors=["Could not parse commit message"])
 
         commit_type = type_match.group(1)
         scope = type_match.group(3) if type_match.group(3) else None
@@ -220,9 +216,7 @@ class BranchingStrategySelector:
         },
     }
 
-    def select_strategy(
-        self, team_size: int, risk_level: str, need_review: bool
-    ) -> str:
+    def select_strategy(self, team_size: int, risk_level: str, need_review: bool) -> str:
         """Select branching strategy based on parameters."""
         # Feature branch for teams, risky changes, or review requirements
         if team_size > 1 or risk_level == "high" or need_review:
@@ -267,9 +261,7 @@ class GitWorkflowManager:
             return f"git switch -c {branch_name}"
         return f"git checkout -b {branch_name}"
 
-    def format_tdd_commit(
-        self, commit_type: str, scope: str, subject: str, phase: str
-    ) -> str:
+    def format_tdd_commit(self, commit_type: str, scope: str, subject: str, phase: str) -> str:
         """Format TDD phase commit message."""
         base_msg = f"{commit_type}({scope}): {subject}"
 

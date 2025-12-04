@@ -87,30 +87,20 @@ class MergeAnalyzer:
                     console.print("[green]✅ Analysis complete[/green]")
                     return analysis
                 else:
-                    console.print(
-                        f"[yellow]⚠️  Analysis failed: {analysis.get('summary', 'Unknown error')}[/yellow]"
-                    )
-                    return self._fallback_analysis(
-                        backup_path, template_path, diff_files
-                    )
+                    console.print(f"[yellow]⚠️  Analysis failed: {analysis.get('summary', 'Unknown error')}[/yellow]")
+                    return self._fallback_analysis(backup_path, template_path, diff_files)
             else:
                 # Use improved error detection
                 error_msg = self._detect_claude_errors(result.stderr)
-                console.print(
-                    f"[yellow]⚠️  Claude execution error: {error_msg}[/yellow]"
-                )
+                console.print(f"[yellow]⚠️  Claude execution error: {error_msg}[/yellow]")
                 return self._fallback_analysis(backup_path, template_path, diff_files)
 
         except subprocess.TimeoutExpired:
-            console.print(
-                "[yellow]⚠️  Claude analysis timeout (exceeded 120 seconds)[/yellow]"
-            )
+            console.print("[yellow]⚠️  Claude analysis timeout (exceeded 120 seconds)[/yellow]")
             return self._fallback_analysis(backup_path, template_path, diff_files)
         except FileNotFoundError:
             console.print("[red]❌ Claude Code not found.[/red]")
-            console.print(
-                "[cyan]   Install Claude Code: https://claude.com/claude-code[/cyan]"
-            )
+            console.print("[cyan]   Install Claude Code: https://claude.com/claude-code[/cyan]")
             return self._fallback_analysis(backup_path, template_path, diff_files)
 
     def ask_user_confirmation(self, analysis: dict[str, Any]) -> bool:
@@ -145,9 +135,7 @@ class MergeAnalyzer:
 
         return proceed
 
-    def _collect_diff_files(
-        self, backup_path: Path, template_path: Path
-    ) -> dict[str, dict[str, Any]]:
+    def _collect_diff_files(self, backup_path: Path, template_path: Path) -> dict[str, dict[str, Any]]:
         """Collect differences between backup and template files
 
         Returns:
@@ -340,9 +328,7 @@ Analyze the following items and provide a JSON response:
                                 return json.loads(result_text)
                             else:
                                 # Try to find JSON pattern in text
-                                json_match = re.search(
-                                    r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", result_text
-                                )
+                                json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", result_text)
                                 if json_match:
                                     try:
                                         return json.loads(json_match.group(0))
@@ -350,22 +336,16 @@ Analyze the following items and provide a JSON response:
                                         pass
 
                 # Fallback: try to find any JSON in the text
-                json_match = re.search(
-                    r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", response_text
-                )
+                json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", response_text)
                 if json_match:
                     return json.loads(json_match.group(0))
 
             except (json.JSONDecodeError, KeyError, TypeError) as e:
-                console.print(
-                    f"[yellow]⚠️  Failed to parse Claude v2.0+ response: {e}[/yellow]"
-                )
+                console.print(f"[yellow]⚠️  Failed to parse Claude v2.0+ response: {e}[/yellow]")
                 logger.warning(f"Claude response parsing failed: {e}")
 
         # If all parsing attempts fail, return error structure
-        logger.error(
-            f"Could not parse Claude response. Raw response: {response_text[:500]}..."
-        )
+        logger.error(f"Could not parse Claude response. Raw response: {response_text[:500]}...")
         return {
             "files": [],
             "safe_to_auto_merge": False,
@@ -442,11 +422,7 @@ Analyze the following items and provide a JSON response:
         summary = []
         for file_name, info in diff_files.items():
             if info["backup_exists"] and info["template_exists"]:
-                status = (
-                    f"✏️  Modified ({info['diff_lines']} lines)"
-                    if info["has_diff"]
-                    else "✓ Identical"
-                )
+                status = f"✏️  Modified ({info['diff_lines']} lines)" if info["has_diff"] else "✓ Identical"
             elif info["backup_exists"]:
                 status = "❌ Deleted from template"
             else:
@@ -500,10 +476,6 @@ Analyze the following items and provide a JSON response:
             "safe_to_auto_merge": not has_high_risk,
             "user_action_required": has_high_risk,
             "summary": f"{len(files_analysis)} files changed (fallback analysis)",
-            "risk_assessment": (
-                "High - Claude unavailable, manual review recommended"
-                if has_high_risk
-                else "Low"
-            ),
+            "risk_assessment": ("High - Claude unavailable, manual review recommended" if has_high_risk else "Low"),
             "fallback": True,
         }

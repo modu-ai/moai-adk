@@ -165,12 +165,8 @@ class TestVersionConstants2:
         pattern = r"^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$"
 
         # TEMPLATE_VERSION should match
-        assert re.match(
-            pattern, TEMPLATE_VERSION
-        ), f"TEMPLATE_VERSION {TEMPLATE_VERSION} doesn't match pattern"
+        assert re.match(pattern, TEMPLATE_VERSION), f"TEMPLATE_VERSION {TEMPLATE_VERSION} doesn't match pattern"
 
         # MOAI_VERSION should match or be the fallback
         if MOAI_VERSION != "0.30.0":
-            assert re.match(
-                pattern, MOAI_VERSION
-            ), f"MOAI_VERSION {MOAI_VERSION} doesn't match pattern"
+            assert re.match(pattern, MOAI_VERSION), f"MOAI_VERSION {MOAI_VERSION} doesn't match pattern"

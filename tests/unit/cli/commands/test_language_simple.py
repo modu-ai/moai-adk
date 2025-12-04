@@ -86,9 +86,7 @@ def test_validate_config_with_valid_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create config file
         config_file = Path(tmpdir) / "config.json"
-        config_file.write_text(
-            json.dumps({"language": {"conversation_language": "en"}})
-        )
+        config_file.write_text(json.dumps({"language": {"conversation_language": "en"}}))
 
         result = runner.invoke(validate_config, [str(config_file)])
 
@@ -138,9 +136,7 @@ def test_translate_descriptions_mocked():
 
     runner = CliRunner()
 
-    with patch(
-        "moai_adk.cli.commands.language.ClaudeCLIIntegration"
-    ) as mock_integration_class:
+    with patch("moai_adk.cli.commands.language.ClaudeCLIIntegration") as mock_integration_class:
         mock_integration = MagicMock()
         mock_integration_class.return_value = mock_integration
         mock_integration.generate_multilingual_descriptions.return_value = {
@@ -171,9 +167,7 @@ def test_execute_command_with_language():
 
     runner = CliRunner()
 
-    with patch(
-        "moai_adk.cli.commands.language.ClaudeCLIIntegration"
-    ) as mock_integration_class:
+    with patch("moai_adk.cli.commands.language.ClaudeCLIIntegration") as mock_integration_class:
         mock_integration = MagicMock()
         mock_integration_class.return_value = mock_integration
         mock_integration.process_template_command.return_value = {

@@ -66,9 +66,7 @@ class TestStatusConfigReading:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         # Create multiple SPEC directories
         specs_dir = tmp_path / ".moai" / "specs"
@@ -93,9 +91,7 @@ class TestStatusConfigReading:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -203,9 +199,7 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -226,9 +220,7 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -248,9 +240,7 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -270,9 +260,7 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -289,9 +277,7 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -377,9 +363,7 @@ class TestStatusPanelRendering:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -402,9 +386,7 @@ class TestStatusPanelRendering:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(
-            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
-        )
+        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 

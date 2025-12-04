@@ -311,9 +311,7 @@ class DocumentationGenerator:
                 filepath = base_path / filename
                 filepath.write_text(documents[doc_type], encoding="utf-8")
 
-    def load_document(
-        self, doc_name: str, base_path: Path = Path(".moai/project")
-    ) -> Optional[str]:
+    def load_document(self, doc_name: str, base_path: Path = Path(".moai/project")) -> Optional[str]:
         """Load a generated document from disk.
 
         Reads markdown document content for use by agents.
@@ -545,9 +543,7 @@ class AgentContextInjector:
             content = doc_path.read_text(encoding="utf-8")
             if "architecture_context" not in config:
                 config["architecture_context"] = ""
-            config[
-                "architecture_context"
-            ] += f"\n\n## Architecture Reference\n{content}"
+            config["architecture_context"] += f"\n\n## Architecture Reference\n{content}"
 
         return config
 

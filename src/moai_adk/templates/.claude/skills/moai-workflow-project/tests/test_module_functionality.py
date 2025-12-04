@@ -352,9 +352,7 @@ class TestModuleInteractions(unittest.TestCase):
         """Test integration between language and documentation modules."""
 
         # Initialize with Korean language
-        self.project.initialize_complete_project(
-            language="ko", project_type="web_application"
-        )
+        self.project.initialize_complete_project(language="ko", project_type="web_application")
 
         # Generate documentation
         spec_data = {
@@ -375,9 +373,7 @@ class TestModuleInteractions(unittest.TestCase):
         self.project.initialize_complete_project(optimization_enabled=True)
 
         # Generate documentation after optimization
-        docs_result = self.project.documentation_manager.export_documentation(
-            "markdown"
-        )
+        docs_result = self.project.documentation_manager.export_documentation("markdown")
 
         self.assertTrue(docs_result["success"])
 

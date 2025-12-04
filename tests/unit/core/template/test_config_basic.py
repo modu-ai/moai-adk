@@ -53,9 +53,7 @@ class TestConfigLoad:
         manager = ConfigManager(Path("/tmp/config.json"))
         with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = (
-                    json.dumps(test_config)
-                )
+                mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(test_config)
                 with patch("json.load", return_value=test_config):
                     result = manager.load()
                     assert isinstance(result, dict)

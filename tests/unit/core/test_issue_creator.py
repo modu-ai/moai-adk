@@ -40,9 +40,7 @@ class TestIssueConfig:
 
     def test_create_minimal_config(self):
         """Test creating minimal config."""
-        config = IssueConfig(
-            issue_type=IssueType.BUG, title="Test bug", description="Bug description"
-        )
+        config = IssueConfig(issue_type=IssueType.BUG, title="Test bug", description="Bug description")
         assert config.issue_type == IssueType.BUG
         assert config.priority == IssuePriority.MEDIUM
 

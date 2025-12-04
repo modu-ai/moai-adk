@@ -270,9 +270,7 @@ class AdvancedRecoveryAction:
     retry_attempts: int = 0
     max_retries: int = 3
     rollback_action_id: Optional[str] = None
-    dependencies: List[str] = field(
-        default_factory=list
-    )  # Other actions this depends on
+    dependencies: List[str] = field(default_factory=list)  # Other actions this depends on
     priority: int = 5  # 1-10, lower number = higher priority
 
     def to_dict(self) -> Dict[str, Any]:
@@ -362,14 +360,10 @@ class ErrorRecoverySystem:
 
         # Background monitoring thread
         self.monitoring_active = True
-        self.monitor_thread = threading.Thread(
-            target=self._background_monitoring, daemon=True
-        )
+        self.monitor_thread = threading.Thread(target=self._background_monitoring, daemon=True)
         self.monitor_thread.start()
 
-        logger.info(
-            "Error Recovery System initialized with Phase 3 enterprise features"
-        )
+        logger.info("Error Recovery System initialized with Phase 3 enterprise features")
 
     def handle_error(
         self,
@@ -432,9 +426,7 @@ class ErrorRecoverySystem:
                 logger.info(f"Automatic recovery successful for error {error_id}")
                 self.active_errors.pop(error_id, None)
             else:
-                logger.warning(
-                    f"Automatic recovery failed for error {error_id}: {recovery_result.message}"
-                )
+                logger.warning(f"Automatic recovery failed for error {error_id}: {recovery_result.message}")
 
         # Update system health
         self._update_system_health()
@@ -673,9 +665,7 @@ class ErrorRecoverySystem:
         removed_count = len(old_errors)
 
         # Keep only recent errors
-        self.error_history = [
-            e for e in self.error_history if e.timestamp >= cutoff_date
-        ]
+        self.error_history = [e for e in self.error_history if e.timestamp >= cutoff_date]
 
         # Save updated error history
         self._save_error_history()
@@ -831,9 +821,7 @@ class ErrorRecoverySystem:
             duration=0.0,
         )
 
-    def _restart_research_engines(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _restart_research_engines(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Restart research engines and clear caches"""
         try:
             logger.info("Restarting research engines...")
@@ -866,9 +854,7 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to restart research engines: {str(e)}")
             return False
 
-    def _restore_config_backup(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _restore_config_backup(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Restore configuration from backup"""
         try:
             logger.info("Restoring configuration from backup...")
@@ -899,9 +885,7 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to restore configuration: {str(e)}")
             return False
 
-    def _clear_agent_cache(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _clear_agent_cache(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Clear agent communication cache"""
         try:
             logger.info("Clearing agent cache...")
@@ -929,9 +913,7 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to clear agent cache: {str(e)}")
             return False
 
-    def _validate_research_integrity(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _validate_research_integrity(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Validate research component integrity"""
         issues_found: List[str] = []
         repairs_made: List[str] = []
@@ -986,9 +968,7 @@ class ErrorRecoverySystem:
 
         return validation_results
 
-    def _rollback_last_changes(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _rollback_last_changes(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Rollback last research integration changes"""
         try:
             logger.info("Rolling back last research changes...")
@@ -1020,9 +1000,7 @@ class ErrorRecoverySystem:
             logger.error(f"Rollback operation failed: {str(e)}")
             return False
 
-    def _reset_system_state(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _reset_system_state(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Reset system to known good state"""
         try:
             logger.info("Resetting system to known good state...")
@@ -1055,9 +1033,7 @@ class ErrorRecoverySystem:
             logger.error(f"System state reset failed: {str(e)}")
             return False
 
-    def _optimize_performance(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _optimize_performance(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Optimize system performance"""
         try:
             logger.info("Optimizing system performance...")
@@ -1089,9 +1065,7 @@ class ErrorRecoverySystem:
             logger.error(f"Performance optimization failed: {str(e)}")
             return False
 
-    def _free_resources(
-        self, error_report: ErrorReport, parameters: Dict[str, Any]
-    ) -> bool:
+    def _free_resources(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
         """Free up system resources"""
         try:
             logger.info("Freeing up system resources...")
@@ -1117,9 +1091,7 @@ class ErrorRecoverySystem:
     def _generate_error_id(self) -> str:
         """Generate unique error ID"""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        random_suffix = hashlib.md5(os.urandom(4), usedforsecurity=False).hexdigest()[
-            :6
-        ]
+        random_suffix = hashlib.md5(os.urandom(4), usedforsecurity=False).hexdigest()[:6]
         return f"ERR_{timestamp}_{random_suffix}"
 
     def _log_error(self, error_report: ErrorReport):
@@ -1128,9 +1100,7 @@ class ErrorRecoverySystem:
         error_file = self.error_log_dir / f"error_{error_report.id}.json"
         try:
             with open(error_file, "w", encoding="utf-8") as f:
-                json.dump(
-                    asdict(error_report), f, indent=2, default=str, ensure_ascii=False
-                )
+                json.dump(asdict(error_report), f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to log error to file: {str(e)}")
 
@@ -1166,14 +1136,8 @@ class ErrorRecoverySystem:
         current_time = datetime.now(timezone.utc)
 
         # Determine system status
-        critical_errors = [
-            e
-            for e in self.active_errors.values()
-            if e.severity == ErrorSeverity.CRITICAL
-        ]
-        high_errors = [
-            e for e in self.active_errors.values() if e.severity == ErrorSeverity.HIGH
-        ]
+        critical_errors = [e for e in self.active_errors.values() if e.severity == ErrorSeverity.CRITICAL]
+        high_errors = [e for e in self.active_errors.values() if e.severity == ErrorSeverity.HIGH]
 
         if critical_errors:
             self.system_health["status"] = "critical"
@@ -1198,16 +1162,8 @@ class ErrorRecoverySystem:
                 "type": "active_errors",
                 "count": len(self.active_errors),
                 "severity_distribution": {
-                    severity: len(
-                        [
-                            e
-                            for e in self.active_errors.values()
-                            if e.severity.value == severity
-                        ]
-                    )
-                    for severity in set(
-                        e.severity.value for e in self.active_errors.values()
-                    )
+                    severity: len([e for e in self.active_errors.values() if e.severity.value == severity])
+                    for severity in set(e.severity.value for e in self.active_errors.values())
                 },
             }
         ]
@@ -1229,16 +1185,12 @@ class ErrorRecoverySystem:
     def _check_error_patterns(self):
         """Check for concerning error patterns"""
         recent_errors = [
-            e
-            for e in self.error_history
-            if (datetime.now(timezone.utc) - e.timestamp).total_seconds() < 300
+            e for e in self.error_history if (datetime.now(timezone.utc) - e.timestamp).total_seconds() < 300
         ]  # Last 5 minutes
 
         # Check for error bursts
         if len(recent_errors) > 10:
-            logger.warning(
-                f"High error rate detected: {len(recent_errors)} errors in last 5 minutes"
-            )
+            logger.warning(f"High error rate detected: {len(recent_errors)} errors in last 5 minutes")
 
         # Check for repeated errors
         error_messages = [e.message for e in recent_errors]
@@ -1325,9 +1277,7 @@ class ErrorRecoverySystem:
             tips.append("Regularly validate configuration files before making changes")
 
         if category_counts.get("research", 0) > 5:
-            tips.append(
-                "Monitor research engine performance and clear caches regularly"
-            )
+            tips.append("Monitor research engine performance and clear caches regularly")
 
         if category_counts.get("communication", 0) > 5:
             tips.append("Ensure stable network connections for agent communication")
@@ -1435,9 +1385,7 @@ class ErrorRecoverySystem:
         history_file = self.error_log_dir / "error_history.json"
         try:
             with open(history_file, "w") as f:
-                json.dump(
-                    [asdict(e) for e in self.error_history], f, indent=2, default=str
-                )
+                json.dump([asdict(e) for e in self.error_history], f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save error history: {str(e)}")
 
@@ -1527,9 +1475,7 @@ class ErrorRecoverySystem:
         # Check for cascade failures
         await self._check_cascade_failures(failure)
 
-        logger.warning(
-            f"Advanced failure reported: {failure_mode.value} in {component} - {description}"
-        )
+        logger.warning(f"Advanced failure reported: {failure_mode.value} in {component} - {description}")
         return failure_id
 
     async def _trigger_advanced_recovery(self, failure: FailureEvent):
@@ -1555,9 +1501,7 @@ class ErrorRecoverySystem:
 
             if success:
                 self.advanced_recovery_stats["auto_recoveries_successful"] += 1
-                logger.info(
-                    f"Advanced recovery successful for failure {failure.failure_id}"
-                )
+                logger.info(f"Advanced recovery successful for failure {failure.failure_id}")
             else:
                 # Add to dead letter queue for manual intervention
                 self.dead_letter_queue.append(
@@ -1573,14 +1517,10 @@ class ErrorRecoverySystem:
         except Exception as e:
             logger.error(f"Error triggering advanced recovery: {e}")
 
-    async def _execute_advanced_recovery_action(
-        self, action: AdvancedRecoveryAction
-    ) -> bool:
+    async def _execute_advanced_recovery_action(self, action: AdvancedRecoveryAction) -> bool:
         """Execute advanced recovery action with enhanced capabilities"""
         action.status = RecoveryStatus.IN_PROGRESS
-        action.execution_log.append(
-            f"Starting advanced recovery: {action.strategy.value}"
-        )
+        action.execution_log.append(f"Starting advanced recovery: {action.strategy.value}")
 
         try:
             # Check dependencies
@@ -1588,9 +1528,7 @@ class ErrorRecoverySystem:
                 if dep_action_id in self.advanced_recovery_actions:
                     dep_action = self.advanced_recovery_actions[dep_action_id]
                     if dep_action.status != RecoveryStatus.COMPLETED:
-                        action.execution_log.append(
-                            f"Waiting for dependency: {dep_action_id}"
-                        )
+                        action.execution_log.append(f"Waiting for dependency: {dep_action_id}")
                         return False
 
             # Execute based on strategy
@@ -1617,9 +1555,7 @@ class ErrorRecoverySystem:
         except Exception as e:
             action.status = RecoveryStatus.FAILED
             action.execution_log.append(f"Advanced recovery error: {str(e)}")
-            logger.error(
-                f"Error executing advanced recovery action {action.action_id}: {e}"
-            )
+            logger.error(f"Error executing advanced recovery action {action.action_id}: {e}")
             return False
 
     async def _execute_retry_with_backoff(self, action: AdvancedRecoveryAction) -> bool:
@@ -1632,9 +1568,7 @@ class ErrorRecoverySystem:
         for attempt in range(action.max_retries + 1):
             try:
                 action.retry_attempts = attempt
-                action.execution_log.append(
-                    f"Retry attempt {attempt + 1}/{action.max_retries + 1}"
-                )
+                action.execution_log.append(f"Retry attempt {attempt + 1}/{action.max_retries + 1}")
 
                 # Simulate retry logic - in real implementation, this would call the failing function
                 if attempt >= 2:  # Simulate success after a few attempts
@@ -1649,16 +1583,12 @@ class ErrorRecoverySystem:
                     await asyncio.sleep(delay)
 
             except Exception as e:
-                action.execution_log.append(
-                    f"Retry attempt {attempt + 1} error: {str(e)}"
-                )
+                action.execution_log.append(f"Retry attempt {attempt + 1} error: {str(e)}")
 
         action.execution_log.append("All retry attempts exhausted")
         return False
 
-    async def _execute_circuit_breaker_action(
-        self, action: AdvancedRecoveryAction
-    ) -> bool:
+    async def _execute_circuit_breaker_action(self, action: AdvancedRecoveryAction) -> bool:
         """Execute circuit breaker action"""
         failure = self.advanced_failures[action.failure_id]
         component = failure.component
@@ -1669,9 +1599,7 @@ class ErrorRecoverySystem:
         cb_state["failure_count"] += 1
         cb_state["last_failure_time"] = datetime.now(timezone.utc).isoformat()
 
-        action.execution_log.append(
-            f"Circuit breaker opened for component: {component}"
-        )
+        action.execution_log.append(f"Circuit breaker opened for component: {component}")
         return True
 
     async def _execute_rollback_action(self, action: AdvancedRecoveryAction) -> bool:
@@ -1681,9 +1609,7 @@ class ErrorRecoverySystem:
             snapshot_id = await self._create_system_snapshot("pre_rollback_snapshot")
 
             # Perform rollback logic
-            action.execution_log.append(
-                "Creating rollback snapshot and performing rollback"
-            )
+            action.execution_log.append("Creating rollback snapshot and performing rollback")
 
             # In real implementation, this would restore system state from snapshot
             self.advanced_recovery_stats["rollbacks_performed"] += 1
@@ -1706,9 +1632,7 @@ class ErrorRecoverySystem:
         # For now, just log the action
         return True
 
-    async def _execute_legacy_recovery_action(
-        self, action: AdvancedRecoveryAction
-    ) -> bool:
+    async def _execute_legacy_recovery_action(self, action: AdvancedRecoveryAction) -> bool:
         """Execute legacy recovery action as fallback"""
         failure = self.advanced_failures[action.failure_id]
 
@@ -1722,9 +1646,7 @@ class ErrorRecoverySystem:
         legacy_error = ErrorReport(
             id=failure.failure_id,
             timestamp=failure.timestamp,
-            severity=getattr(
-                ErrorSeverity, failure.severity.upper(), ErrorSeverity.MEDIUM
-            ),
+            severity=getattr(ErrorSeverity, failure.severity.upper(), ErrorSeverity.MEDIUM),
             category=getattr(ErrorCategory, "SYSTEM", ErrorCategory.SYSTEM),
             message=failure.description,
             details=failure.error_details or {},
@@ -1744,9 +1666,7 @@ class ErrorRecoverySystem:
             action.execution_log.append(f"Legacy recovery action error: {str(e)}")
             return False
 
-    def _determine_advanced_recovery_strategy(
-        self, failure_mode: FailureMode
-    ) -> RecoveryStrategy:
+    def _determine_advanced_recovery_strategy(self, failure_mode: FailureMode) -> RecoveryStrategy:
         """Determine advanced recovery strategy based on failure mode"""
         strategy_map = {
             FailureMode.HOOK_EXECUTION_FAILURE: RecoveryStrategy.RETRY_WITH_BACKOFF,
@@ -1795,8 +1715,7 @@ class ErrorRecoverySystem:
         recent_failures = [
             f
             for f in self.advanced_failures.values()
-            if (datetime.now(timezone.utc) - f.timestamp).total_seconds()
-            < 300  # Last 5 minutes
+            if (datetime.now(timezone.utc) - f.timestamp).total_seconds() < 300  # Last 5 minutes
             and f.failure_id != failure.failure_id
         ]
 
@@ -1804,22 +1723,17 @@ class ErrorRecoverySystem:
         related_failures = [
             f
             for f in recent_failures
-            if f.component == failure.component
-            or f.component in failure.context.get("related_components", [])
+            if f.component == failure.component or f.component in failure.context.get("related_components", [])
         ]
 
         if len(related_failures) >= 3:
             self.advanced_recovery_stats["cascade_failures_detected"] += 1
-            logger.warning(
-                f"Cascade failure detected: {len(related_failures)} related failures"
-            )
+            logger.warning(f"Cascade failure detected: {len(related_failures)} related failures")
 
             # Trigger emergency recovery
             await self._trigger_emergency_recovery(failure, related_failures)
 
-    async def _trigger_emergency_recovery(
-        self, failure: FailureEvent, related_failures: List[FailureEvent]
-    ):
+    async def _trigger_emergency_recovery(self, failure: FailureEvent, related_failures: List[FailureEvent]):
         """Trigger emergency recovery for cascade failures"""
         emergency_action = AdvancedRecoveryAction(
             action_id=str(uuid.uuid4()),
@@ -1848,9 +1762,7 @@ class ErrorRecoverySystem:
         # Implementation would analyze resource usage patterns
         pass
 
-    async def _create_system_snapshot(
-        self, description: str = "", is_rollback_point: bool = False
-    ) -> str:
+    async def _create_system_snapshot(self, description: str = "", is_rollback_point: bool = False) -> str:
         """Create a system state snapshot"""
         snapshot_id = str(uuid.uuid4())
 

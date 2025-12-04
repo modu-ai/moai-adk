@@ -51,15 +51,11 @@ class TestCreateProgressCallback:
 
         # Test phase 1 (index 0)
         callback("Phase 1 message", 1, 5)
-        mock_progress.update.assert_called_with(
-            10, completed=1, description="Phase 1 message"
-        )
+        mock_progress.update.assert_called_with(10, completed=1, description="Phase 1 message")
 
         # Test phase 3 (index 2)
         callback("Phase 3 message", 3, 5)
-        mock_progress.update.assert_called_with(
-            30, completed=1, description="Phase 3 message"
-        )
+        mock_progress.update.assert_called_with(30, completed=1, description="Phase 3 message")
 
     def test_progress_callback_handles_out_of_range_phases(self) -> None:
         """Should not crash on out-of-range phase numbers"""
@@ -93,9 +89,7 @@ class TestInitVersionHandling:
 
         with patch("moai_adk.cli.commands.init.VersionReader") as mock_reader:
             # Simulate version read error
-            mock_reader.return_value.get_version.side_effect = Exception(
-                "Version fetch failed"
-            )
+            mock_reader.return_value.get_version.side_effect = Exception("Version fetch failed")
 
             with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
                 mock_init.return_value.is_initialized.return_value = False
@@ -143,9 +137,7 @@ class TestInitVersionHandling:
 class TestInitInteractiveMode:
     """Test interactive mode prompts and flow (lines 164-184)"""
 
-    def test_init_interactive_mode_calls_prompt_project_setup(
-        self, tmp_path: Path
-    ) -> None:
+    def test_init_interactive_mode_calls_prompt_project_setup(self, tmp_path: Path) -> None:
         """Should call prompt_project_setup in interactive mode"""
         runner = CliRunner()
 
@@ -284,9 +276,7 @@ class TestInitInteractiveMode:
                     call_kwargs = mock_prompt.call_args.kwargs
                     assert call_kwargs["is_current_dir"] is True
 
-    def test_init_interactive_mode_uses_locale_from_answers_when_none(
-        self, tmp_path: Path
-    ) -> None:
+    def test_init_interactive_mode_uses_locale_from_answers_when_none(self, tmp_path: Path) -> None:
         """Should use locale from answers when initial_locale is None (line 184)"""
         runner = CliRunner()
 
@@ -416,9 +406,7 @@ class TestInitReinitializationFlow:
             # Old hook file should be removed
             assert not old_hook_file.exists()
 
-    def test_init_handles_old_hook_file_removal_error_gracefully(
-        self, tmp_path: Path
-    ) -> None:
+    def test_init_handles_old_hook_file_removal_error_gracefully(self, tmp_path: Path) -> None:
         """Should continue if old hook file removal fails"""
         runner = CliRunner()
 
@@ -441,9 +429,7 @@ class TestInitReinitializationFlow:
             )
 
             # Mock unlink to raise exception
-            with patch.object(
-                Path, "unlink", side_effect=PermissionError("Access denied")
-            ):
+            with patch.object(Path, "unlink", side_effect=PermissionError("Access denied")):
                 result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
                 # Should still succeed
@@ -599,9 +585,7 @@ class TestInitReinitializationFlow:
                 updated_config = json.loads(config_file.read_text())
                 assert updated_config["moai"]["version"] == "0.28.5"
 
-    def test_init_falls_back_to_package_version_on_reader_error(
-        self, tmp_path: Path
-    ) -> None:
+    def test_init_falls_back_to_package_version_on_reader_error(self, tmp_path: Path) -> None:
         """Should fall back to __version__ if VersionReader fails"""
         runner = CliRunner()
 
@@ -611,9 +595,7 @@ class TestInitReinitializationFlow:
         config_file.write_text(json.dumps({"moai": {}, "project": {}}, indent=2))
 
         with patch("moai_adk.cli.commands.init.VersionReader") as mock_reader:
-            mock_reader.return_value.get_version.side_effect = Exception(
-                "Reader failed"
-            )
+            mock_reader.return_value.get_version.side_effect = Exception("Reader failed")
 
             with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
                 mock_init.return_value.is_initialized.return_value = True
@@ -664,9 +646,7 @@ class TestInitSuccessOutput:
             assert "Backup:" in result.output
             assert "backup-2025-01-01" in result.output
 
-    def test_init_shows_cd_instruction_for_non_current_dir(
-        self, tmp_path: Path
-    ) -> None:
+    def test_init_shows_cd_instruction_for_non_current_dir(self, tmp_path: Path) -> None:
         """Should show 'cd' instruction when not in current directory (lines 324-326)"""
         runner = CliRunner()
 
@@ -762,9 +742,7 @@ class TestInitErrorHandling:
 
         with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
             mock_init.return_value.is_initialized.return_value = False
-            mock_init.return_value.initialize.side_effect = FileExistsError(
-                "Already exists"
-            )
+            mock_init.return_value.initialize.side_effect = FileExistsError("Already exists")
 
             result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
@@ -777,9 +755,7 @@ class TestInitErrorHandling:
 
         with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
             mock_init.return_value.is_initialized.return_value = False
-            mock_init.return_value.initialize.side_effect = RuntimeError(
-                "Unexpected error"
-            )
+            mock_init.return_value.initialize.side_effect = RuntimeError("Unexpected error")
 
             result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
 
@@ -832,9 +808,7 @@ class TestInitNonInteractiveMode:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(
-                init, [str(tmp_path), "--non-interactive", "--locale", "ko"]
-            )
+            result = runner.invoke(init, [str(tmp_path), "--non-interactive", "--locale", "ko"])
 
             assert result.exit_code == 0
 
@@ -857,9 +831,7 @@ class TestInitNonInteractiveMode:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(
-                init, [str(tmp_path), "--non-interactive", "--mode", "team"]
-            )
+            result = runner.invoke(init, [str(tmp_path), "--non-interactive", "--mode", "team"])
 
             assert result.exit_code == 0
 
@@ -882,9 +854,7 @@ class TestInitNonInteractiveMode:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(
-                init, [str(tmp_path), "--non-interactive", "--language", "go"]
-            )
+            result = runner.invoke(init, [str(tmp_path), "--non-interactive", "--language", "go"])
 
             assert result.exit_code == 0
 
@@ -1048,9 +1018,7 @@ class TestInitLanguageDisplay:
                 created_files=[".moai/"],
             )
 
-            result = runner.invoke(
-                init, [str(tmp_path), "--non-interactive", "--language", "typescript"]
-            )
+            result = runner.invoke(init, [str(tmp_path), "--non-interactive", "--language", "typescript"])
 
             assert result.exit_code == 0
             assert "typescript" in result.output

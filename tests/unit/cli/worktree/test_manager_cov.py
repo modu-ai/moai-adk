@@ -26,9 +26,7 @@ from moai_adk.cli.worktree.exceptions import (
 class TestWorktreeManagerCreate:
     """Test WorktreeManager.create method."""
 
-    @pytest.mark.skip(
-        reason="Mock Repo.heads property interaction issue - complex GitPython behavior"
-    )
+    @pytest.mark.skip(reason="Mock Repo.heads property interaction issue - complex GitPython behavior")
     @patch("moai_adk.cli.worktree.manager.Repo")
     def test_create_new_worktree(self, mock_repo_class):
         """Test creating a new worktree."""
@@ -164,9 +162,7 @@ class TestWorktreeManagerCreate:
             worktree_root = Path(tmpdir) / "worktrees"
 
             mock_repo = MagicMock()
-            mock_repo.remotes.origin.fetch = MagicMock(
-                side_effect=Exception("Network error")
-            )
+            mock_repo.remotes.origin.fetch = MagicMock(side_effect=Exception("Network error"))
             mock_repo.heads = []
             mock_repo.git.worktree = MagicMock(side_effect=Exception("Git error"))
             mock_repo_class.return_value = mock_repo
@@ -471,9 +467,7 @@ class TestWorktreeManagerSync:
             mock_worktree_repo.remotes.origin.fetch = MagicMock()
             mock_worktree_repo.git.rev_parse = MagicMock()
             # Simulate merge conflict
-            mock_worktree_repo.git.merge = MagicMock(
-                side_effect=Exception("Merge conflict")
-            )
+            mock_worktree_repo.git.merge = MagicMock(side_effect=Exception("Merge conflict"))
             mock_worktree_repo.git.status = MagicMock(return_value="UU file.py")
             mock_worktree_repo.git.merge.__name__ = "merge"
             mock_worktree_repo.git.rebase = MagicMock()
@@ -599,9 +593,7 @@ class TestWorktreeManagerCleanMerged:
 
             mock_repo = MagicMock()
             # Mock merged branches output
-            mock_repo.git.branch = MagicMock(
-                return_value="  feature/SPEC-001\n  main\n"
-            )
+            mock_repo.git.branch = MagicMock(return_value="  feature/SPEC-001\n  main\n")
             mock_repo.git.worktree = MagicMock()
             mock_repo.git.status = MagicMock(return_value="")
             mock_repo_class.return_value = mock_repo
@@ -717,9 +709,7 @@ line 2"""
 
             mock_worktree_repo = MagicMock()
             mock_worktree_repo.working_dir = str(spec_path)
-            mock_worktree_repo.git.checkout = MagicMock(
-                side_effect=Exception("No ours")
-            )
+            mock_worktree_repo.git.checkout = MagicMock(side_effect=Exception("No ours"))
             mock_worktree_repo.git.add = MagicMock()
             mock_worktree_repo.git.commit = MagicMock()
 

@@ -46,9 +46,7 @@ class TestProjectInfoDisplay:
         """Git branch information is displayed correctly"""
         with hook_tmp_project:
             # Mock git to return a branch
-            mock_subprocess.return_value = MagicMock(
-                returncode=0, stdout="feature/test-branch\n", stderr=""
-            )
+            mock_subprocess.return_value = MagicMock(returncode=0, stdout="feature/test-branch\n", stderr="")
 
             # Simulate getting git info
             from unittest.mock import MagicMock as MM
@@ -56,9 +54,7 @@ class TestProjectInfoDisplay:
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MM(returncode=0, stdout="feature/test-branch\n")
 
-                result = subprocess.run(
-                    ["git", "branch", "--show-current"], capture_output=True, text=True
-                )
+                result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True)
 
                 assert result.returncode == 0
                 assert "feature/test-branch" in result.stdout
@@ -80,16 +76,10 @@ class TestProjectInfoDisplay:
         with hook_tmp_project as proj_root:
             # Verify spec files exist
             specs_dir = proj_root / ".moai" / "specs"
-            spec_folders = [
-                d
-                for d in specs_dir.iterdir()
-                if d.is_dir() and d.name.startswith("SPEC-")
-            ]
+            spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
 
             total = len(spec_folders)
-            completed = sum(
-                1 for folder in spec_folders if (folder / "spec.md").exists()
-            )
+            completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
 
             assert total >= 2
             assert completed == 2  # SPEC-001 and SPEC-002 have spec.md
@@ -185,9 +175,7 @@ class TestAutoCleanup:
             assert config_data["auto_cleanup"]["enabled"] is True
             assert config_data["auto_cleanup"]["cleanup_days"] == 7
 
-    def test_cleanup_old_reports(
-        self, config_file, cleanup_test_files, hook_tmp_project
-    ):
+    def test_cleanup_old_reports(self, config_file, cleanup_test_files, hook_tmp_project):
         """Old report files are cleaned up"""
         with hook_tmp_project as proj_root:
             reports_dir = proj_root / ".moai" / "reports"
@@ -293,9 +281,7 @@ class TestHookChainExecution:
                 "auto_cleanup",
             ]
 
-    def test_hook_payload_propagation(
-        self, config_file, hook_payload, hook_tmp_project
-    ):
+    def test_hook_payload_propagation(self, config_file, hook_payload, hook_tmp_project):
         """Hook payload is propagated through chain"""
         with hook_tmp_project:
             payload = hook_payload
@@ -310,9 +296,7 @@ class TestHookChainExecution:
         """Session start hook main function executes successfully"""
         with hook_tmp_project:
             # Simulate hook payload
-            json.dumps(
-                {"event": "session_start", "timestamp": datetime.now().isoformat()}
-            )
+            json.dumps({"event": "session_start", "timestamp": datetime.now().isoformat()})
 
             # Simulate main function execution
             result = {
@@ -346,21 +330,15 @@ class TestHookChainExecution:
 class TestSessionStartSetupMessages:
     """Test setup message suppression logic"""
 
-    def test_show_setup_messages_when_not_suppressed(
-        self, config_file, hook_tmp_project
-    ):
+    def test_show_setup_messages_when_not_suppressed(self, config_file, hook_tmp_project):
         """Setup messages are shown when not suppressed"""
         with hook_tmp_project:
             config_data = json.loads(config_file.read_text())
 
-            suppress = config_data.get("session", {}).get(
-                "suppress_setup_messages", False
-            )
+            suppress = config_data.get("session", {}).get("suppress_setup_messages", False)
             assert suppress is False
 
-    def test_suppress_setup_messages_with_timestamp(
-        self, config_file, hook_tmp_project
-    ):
+    def test_suppress_setup_messages_with_timestamp(self, config_file, hook_tmp_project):
         """Setup messages are suppressed with valid timestamp"""
         with hook_tmp_project as proj_root:
             config_path = proj_root / ".moai" / "config" / "config.json"
@@ -368,9 +346,7 @@ class TestSessionStartSetupMessages:
 
             # Update config with suppression
             config_data["session"]["suppress_setup_messages"] = True
-            config_data["session"][
-                "setup_messages_suppressed_at"
-            ] = datetime.now().isoformat()
+            config_data["session"]["setup_messages_suppressed_at"] = datetime.now().isoformat()
 
             config_path.write_text(json.dumps(config_data, indent=2))
 
@@ -378,9 +354,7 @@ class TestSessionStartSetupMessages:
             loaded_config = json.loads(config_path.read_text())
             assert loaded_config["session"]["suppress_setup_messages"] is True
 
-    def test_show_messages_after_suppression_expires(
-        self, config_file, hook_tmp_project
-    ):
+    def test_show_messages_after_suppression_expires(self, config_file, hook_tmp_project):
         """Setup messages are shown after 7 days of suppression"""
         with hook_tmp_project as proj_root:
             config_path = proj_root / ".moai" / "config" / "config.json"
@@ -389,9 +363,7 @@ class TestSessionStartSetupMessages:
             # Set suppression from 8 days ago
             suppressed_at = datetime.now() - timedelta(days=8)
             config_data["session"]["suppress_setup_messages"] = True
-            config_data["session"][
-                "setup_messages_suppressed_at"
-            ] = suppressed_at.isoformat()
+            config_data["session"]["setup_messages_suppressed_at"] = suppressed_at.isoformat()
 
             config_path.write_text(json.dumps(config_data, indent=2))
 
@@ -482,9 +454,7 @@ class TestHookTimeoutHandling:
 class TestHookIntegrationScenarios:
     """Test complete Hook integration scenarios"""
 
-    def test_full_session_start_flow(
-        self, config_file, spec_files, session_state_file, hook_tmp_project
-    ):
+    def test_full_session_start_flow(self, config_file, spec_files, session_state_file, hook_tmp_project):
         """Full SessionStart flow executes successfully"""
         with hook_tmp_project as proj_root:
             # Verify all components exist
@@ -495,11 +465,7 @@ class TestHookIntegrationScenarios:
             # Simulate flow
             config_data = json.loads(config_file.read_text())
             specs_dir = proj_root / ".moai" / "specs"
-            spec_folders = [
-                d
-                for d in specs_dir.iterdir()
-                if d.is_dir() and d.name.startswith("SPEC-")
-            ]
+            spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
 
             # Generate output
             output = {

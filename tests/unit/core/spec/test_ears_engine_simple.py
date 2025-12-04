@@ -387,9 +387,7 @@ class TestTemplateRendering:
             "required_fields": [],
         }
 
-        result = engine._render_template(
-            template, {"project_name": "MyAPI", "language": "Python"}
-        )
+        result = engine._render_template(template, {"project_name": "MyAPI", "language": "Python"})
 
         assert "MyAPI" in result
         assert "Python" in result
@@ -414,9 +412,7 @@ class TestTemplateRendering:
             "required_fields": [],
         }
 
-        result = engine._render_template(
-            template, {"classes": ["ClassA", "ClassB", "ClassC"]}
-        )
+        result = engine._render_template(template, {"classes": ["ClassA", "ClassB", "ClassC"]})
 
         assert "ClassA" in result
         assert "ClassB" in result
@@ -585,12 +581,7 @@ class TestContentGeneration:
 
         result = engine._generate_security_specs(extraction, "auth")
 
-        assert (
-            "Authentication" in result
-            or "authentication" in result
-            or "Security" in result
-            or "security" in result
-        )
+        assert "Authentication" in result or "authentication" in result or "Security" in result or "security" in result
 
     def test_generate_performance_specs_returns_string(self):
         """Test performance specs generation returns string."""

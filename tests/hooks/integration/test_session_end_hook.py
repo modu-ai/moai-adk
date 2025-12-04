@@ -127,9 +127,7 @@ class TestSessionMetricsSaving:
 
             # Create multiple session files
             for i in range(3):
-                session_id = (datetime.now() - timedelta(hours=i)).strftime(
-                    "%Y-%m-%d-%H%M%S"
-                )
+                session_id = (datetime.now() - timedelta(hours=i)).strftime("%Y-%m-%d-%H%M%S")
 
                 metrics = {"session_id": session_id, "files_modified": i + 1}
 
@@ -229,17 +227,13 @@ class TestUncommittedChangesDetection:
                 text=True,
             )
 
-            uncommitted_lines = [
-                line for line in result.stdout.strip().split("\n") if line
-            ]
+            uncommitted_lines = [line for line in result.stdout.strip().split("\n") if line]
             uncommitted_count = len(uncommitted_lines)
 
             # Should have at least 2 uncommitted files
             assert uncommitted_count >= 2
 
-    def test_warning_message_for_uncommitted(
-        self, git_repo_with_changes, hook_tmp_project
-    ):
+    def test_warning_message_for_uncommitted(self, git_repo_with_changes, hook_tmp_project):
         """Warning is generated for uncommitted changes"""
         with hook_tmp_project:
             git_root = git_repo_with_changes
@@ -262,9 +256,7 @@ class TestUncommittedChangesDetection:
 class TestCleanupExecution:
     """Test cleanup execution in SessionEnd"""
 
-    def test_cleanup_temp_files(
-        self, config_file, cleanup_test_files, hook_tmp_project
-    ):
+    def test_cleanup_temp_files(self, config_file, cleanup_test_files, hook_tmp_project):
         """Temporary files are cleaned up"""
         with hook_tmp_project as proj_root:
             temp_dir = proj_root / ".moai" / "temp"
@@ -283,9 +275,7 @@ class TestCleanupExecution:
 
             assert not old_file.exists()
 
-    def test_cleanup_cache_files(
-        self, config_file, cleanup_test_files, hook_tmp_project
-    ):
+    def test_cleanup_cache_files(self, config_file, cleanup_test_files, hook_tmp_project):
         """Cache files are cleaned up"""
         with hook_tmp_project as proj_root:
             cache_dir = proj_root / ".moai" / "cache"
@@ -396,9 +386,7 @@ class TestSessionCompletion:
     def test_session_summary_includes_cleanup_info(self, config_file, hook_tmp_project):
         """Session summary includes cleanup information"""
         with hook_tmp_project:
-            summary = (
-                "✅ Session Ended\n   • Files modified: 3\n   • Cleaned: 5 temp files"
-            )
+            summary = "✅ Session Ended\n   • Files modified: 3\n   • Cleaned: 5 temp files"
 
             assert "Session Ended" in summary
             assert "Files modified" in summary
@@ -425,11 +413,7 @@ class TestRootDocumentViolations:
             (proj_root / "API-DOCS.md").write_text("# API")
 
             # Scan for violations
-            root_files = [
-                f.name
-                for f in proj_root.iterdir()
-                if f.is_file() and not f.name.startswith(".")
-            ]
+            root_files = [f.name for f in proj_root.iterdir() if f.is_file() and not f.name.startswith(".")]
 
             violations = [f for f in root_files if f.endswith(".md")]
 
@@ -440,9 +424,7 @@ class TestRootDocumentViolations:
         with hook_tmp_project as proj_root:
             config_data = json.loads(config_file.read_text())
 
-            whitelist = config_data.get("document_management", {}).get(
-                "root_whitelist", []
-            )
+            whitelist = config_data.get("document_management", {}).get("root_whitelist", [])
 
             # README.md should be whitelisted
             (proj_root / "README.md").write_text("# Project")
@@ -505,9 +487,7 @@ class TestSessionEndResponse:
 class TestSessionEndIntegrationScenarios:
     """Test complete SessionEnd integration scenarios"""
 
-    def test_full_session_end_flow(
-        self, config_file, git_repo_with_changes, session_state_file, hook_tmp_project
-    ):
+    def test_full_session_end_flow(self, config_file, git_repo_with_changes, session_state_file, hook_tmp_project):
         """Full SessionEnd flow executes successfully"""
         with hook_tmp_project:
             # Verify all components exist

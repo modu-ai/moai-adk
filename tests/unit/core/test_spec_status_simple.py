@@ -629,9 +629,7 @@ class TestSpecDirHandling:
 
                 spec_file = spec_dir / "spec.md"
                 with open(spec_file, "w") as f:
-                    f.write(
-                        f"---\nstatus: draft\nspec_id: SPEC-{i:03d}\n---\n# Content"
-                    )
+                    f.write(f"---\nstatus: draft\nspec_id: SPEC-{i:03d}\n---\n# Content")
 
             manager = SpecStatusManager(project_root)
             drafts = manager.detect_draft_specs()

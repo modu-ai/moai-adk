@@ -155,9 +155,7 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch(
-                "moai_adk.core.project.phase_executor.TemplateProcessor"
-            ) as mock_processor:
+            with patch("moai_adk.core.project.phase_executor.TemplateProcessor") as mock_processor:
                 mock_processor_instance = MagicMock()
                 mock_processor.return_value = mock_processor_instance
                 result = executor.execute_resource_phase(path)
@@ -184,9 +182,7 @@ class TestPhaseExecutor:
             }
 
             # Act
-            with patch(
-                "moai_adk.core.project.phase_executor.TemplateProcessor"
-            ) as mock_processor:
+            with patch("moai_adk.core.project.phase_executor.TemplateProcessor") as mock_processor:
                 mock_processor_instance = MagicMock()
                 mock_processor.return_value = mock_processor_instance
                 executor.execute_resource_phase(path, config)
@@ -379,9 +375,7 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch(
-                "moai_adk.core.project.phase_executor.subprocess.run"
-            ) as mock_run:
+            with patch("moai_adk.core.project.phase_executor.subprocess.run") as mock_run:
                 executor._initialize_git(path)
 
             # Assert
@@ -401,9 +395,7 @@ class TestPhaseExecutor:
             (path / ".git").mkdir()
 
             # Act
-            with patch(
-                "moai_adk.core.project.phase_executor.subprocess.run"
-            ) as mock_run:
+            with patch("moai_adk.core.project.phase_executor.subprocess.run") as mock_run:
                 executor._initialize_git(path)
 
             # Assert
@@ -419,9 +411,7 @@ class TestPhaseExecutor:
             path = Path(temp_dir)
 
             # Act
-            with patch(
-                "moai_adk.core.project.phase_executor.subprocess.run"
-            ) as mock_run:
+            with patch("moai_adk.core.project.phase_executor.subprocess.run") as mock_run:
                 mock_run.side_effect = subprocess.CalledProcessError(1, "git init")
                 # Should not raise
                 executor._initialize_git(path)
@@ -533,9 +523,7 @@ class TestPhaseExecutor:
             (src_dir / "protected" / "file.txt").write_text("protected content")
 
             # Act
-            with patch(
-                "moai_adk.core.project.phase_executor.is_protected_path"
-            ) as mock_protected:
+            with patch("moai_adk.core.project.phase_executor.is_protected_path") as mock_protected:
 
                 def is_protected(path):
                     return "protected" in str(path)

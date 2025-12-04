@@ -232,9 +232,7 @@ class TestEARSValidator:
     def test_analyze_priority_security(self):
         """Test priority detection for security requirement."""
         validator = EARSValidator()
-        result = validator.analyze(
-            "When user logs in, the system shall encrypt password"
-        )
+        result = validator.analyze("When user logs in, the system shall encrypt password")
 
         # Security requirements should have high priority
         assert result["priority"] >= 7
@@ -254,9 +252,7 @@ class TestEARSAnalyzer:
     def test_generate_test_cases_simple(self):
         """Test generating test cases from simple requirement."""
         analyzer = EARSAnalyzer()
-        test_cases = analyzer.generate_test_cases(
-            "When user clicks button, then dialog opens"
-        )
+        test_cases = analyzer.generate_test_cases("When user clicks button, then dialog opens")
 
         assert len(test_cases) > 0
         assert all("given" in tc for tc in test_cases)
@@ -266,9 +262,7 @@ class TestEARSAnalyzer:
     def test_generate_test_cases_with_condition(self):
         """Test generating test cases with conditions."""
         analyzer = EARSAnalyzer()
-        test_cases = analyzer.generate_test_cases(
-            "When user submits form where age > 18, then registration succeeds"
-        )
+        test_cases = analyzer.generate_test_cases("When user submits form where age > 18, then registration succeeds")
 
         # Should generate multiple test cases (happy path + condition cases)
         assert len(test_cases) >= 2
@@ -311,9 +305,7 @@ class TestEARSAnalyzer:
     def test_analyze_with_conditions(self):
         """Test analyzing requirement with conditions."""
         analyzer = EARSAnalyzer()
-        result = analyzer.analyze(
-            "When user submits form where email is valid, then account is created"
-        )
+        result = analyzer.analyze("When user submits form where email is valid, then account is created")
 
         assert result["test_count"] >= 2  # At least happy path + invalid condition
 

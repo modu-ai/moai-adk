@@ -186,9 +186,7 @@ class TestSessionTracking(unittest.TestCase):
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
 
         # Act
-        session_id = analytics.start_session(
-            "user_001", "/Users/goos/MoAI/MoAI-ADK", "main"
-        )
+        session_id = analytics.start_session("user_001", "/Users/goos/MoAI/MoAI-ADK", "main")
 
         # Assert
         self.assertIsNotNone(session_id)
@@ -233,9 +231,7 @@ class TestActionTracking(unittest.TestCase):
     """Test action tracking functionality."""
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
     def test_track_action(self, mock_mkdir, mock_update_prefs, mock_load_data):
         """Test tracking a user action."""
@@ -253,18 +249,12 @@ class TestActionTracking(unittest.TestCase):
         )
 
         # Assert
-        self.assertEqual(
-            len(analytics.action_history), 2
-        )  # SESSION_START + COMMAND_EXECUTION
+        self.assertEqual(len(analytics.action_history), 2)  # SESSION_START + COMMAND_EXECUTION
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_track_multiple_actions(
-        self, mock_mkdir, mock_update_prefs, mock_load_data
-    ):
+    def test_track_multiple_actions(self, mock_mkdir, mock_update_prefs, mock_load_data):
         """Test tracking multiple actions in a session."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -295,13 +285,9 @@ class TestActionTracking(unittest.TestCase):
         self.assertEqual(len(session.actions), 4)  # SESSION_START + 3 actions
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_track_action_with_error(
-        self, mock_mkdir, mock_update_prefs, mock_load_data
-    ):
+    def test_track_action_with_error(self, mock_mkdir, mock_update_prefs, mock_load_data):
         """Test tracking a failed action."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -339,14 +325,10 @@ class TestPatternAnalysis(unittest.TestCase):
         self.assertEqual(patterns["avg_session_duration"], 0.0)
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._save_data")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_get_user_patterns_with_sessions(
-        self, mock_mkdir, mock_save_data, mock_update_prefs, mock_load_data
-    ):
+    def test_get_user_patterns_with_sessions(self, mock_mkdir, mock_save_data, mock_update_prefs, mock_load_data):
         """Test getting patterns with existing sessions."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -388,14 +370,10 @@ class TestInsights(unittest.TestCase):
         self.assertIn("tool_recommendations", insights)
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._save_data")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_get_user_insights_with_data(
-        self, mock_mkdir, mock_save_data, mock_update_prefs, mock_load_data
-    ):
+    def test_get_user_insights_with_data(self, mock_mkdir, mock_save_data, mock_update_prefs, mock_load_data):
         """Test getting insights with user data."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -438,14 +416,10 @@ class TestTeamAnalytics(unittest.TestCase):
         self.assertEqual(team_metrics["unique_users"], 0)
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._save_data")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_get_team_analytics_multiple_users(
-        self, mock_mkdir, mock_save_data, mock_update_prefs, mock_load_data
-    ):
+    def test_get_team_analytics_multiple_users(self, mock_mkdir, mock_save_data, mock_update_prefs, mock_load_data):
         """Test getting team analytics with multiple users."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -472,13 +446,9 @@ class TestProductivityScore(unittest.TestCase):
     """Test productivity score calculation."""
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_calculate_productivity_score_no_actions(
-        self, mock_mkdir, mock_update_prefs, mock_load_data
-    ):
+    def test_calculate_productivity_score_no_actions(self, mock_mkdir, mock_update_prefs, mock_load_data):
         """Test productivity score with no actions."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -491,13 +461,9 @@ class TestProductivityScore(unittest.TestCase):
         self.assertEqual(score, 0.0)
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_calculate_productivity_score_with_success(
-        self, mock_mkdir, mock_update_prefs, mock_load_data
-    ):
+    def test_calculate_productivity_score_with_success(self, mock_mkdir, mock_update_prefs, mock_load_data):
         """Test productivity score with successful actions."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
@@ -585,13 +551,9 @@ class TestRealTimeMetrics(unittest.TestCase):
         self.assertEqual(metrics["total_sessions_today"], 0)
 
     @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._load_data")
-    @patch(
-        "src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences"
-    )
+    @patch("src.moai_adk.core.user_behavior_analytics.UserBehaviorAnalytics._update_user_preferences")
     @patch("src.moai_adk.core.user_behavior_analytics.Path.mkdir")
-    def test_get_realtime_metrics_with_session(
-        self, mock_mkdir, mock_update_prefs, mock_load_data
-    ):
+    def test_get_realtime_metrics_with_session(self, mock_mkdir, mock_update_prefs, mock_load_data):
         """Test getting real-time metrics with active session."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))

@@ -249,9 +249,7 @@ class TestVersionFunctions:
         mock_response = MagicMock()
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
-        mock_response.read.return_value = json.dumps(
-            {"info": {"version": "0.9.0"}}
-        ).encode("utf-8")
+        mock_response.read.return_value = json.dumps({"info": {"version": "0.9.0"}}).encode("utf-8")
         mock_urlopen.return_value = mock_response
 
         # Act
@@ -451,9 +449,7 @@ class TestMergeStrategyFunctions:
     @patch("pathlib.Path.rglob")
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
-    def test_generate_manual_merge_guide(
-        self, mock_exists, mock_mkdir, mock_rglob, mock_write
-    ):
+    def test_generate_manual_merge_guide(self, mock_exists, mock_mkdir, mock_rglob, mock_write):
         """Test manual merge guide generation."""
         # Arrange
         mock_exists.return_value = True
@@ -675,9 +671,7 @@ class TestUpgradeWithRetry:
     @patch("moai_adk.cli.commands.update._clear_uv_package_cache")
     @patch("moai_adk.cli.commands.update._get_latest_version")
     @patch("subprocess.run")
-    def test_execute_upgrade_with_retry_success(
-        self, mock_run, mock_latest, mock_clear, mock_detect
-    ):
+    def test_execute_upgrade_with_retry_success(self, mock_run, mock_latest, mock_clear, mock_detect):
         """Test successful upgrade without retry."""
         # Arrange
         mock_run.return_value = MagicMock(
@@ -698,9 +692,7 @@ class TestUpgradeWithRetry:
     @patch("moai_adk.cli.commands.update._get_latest_version")
     @patch("moai_adk.cli.commands.update._get_current_version")
     @patch("subprocess.run")
-    def test_execute_upgrade_with_retry_stale_cache(
-        self, mock_run, mock_current, mock_latest, mock_clear, mock_detect
-    ):
+    def test_execute_upgrade_with_retry_stale_cache(self, mock_run, mock_current, mock_latest, mock_clear, mock_detect):
         """Test upgrade with stale cache detection and retry."""
         # Arrange
         mock_run.side_effect = [

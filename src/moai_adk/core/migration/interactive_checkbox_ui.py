@@ -41,9 +41,7 @@ class InteractiveCheckboxUI:
         self.selected_indices: Set[int] = set()
         self.current_index = 0
 
-    def prompt_user_selection(
-        self, backup_available: bool = True
-    ) -> Optional[List[str]]:
+    def prompt_user_selection(self, backup_available: bool = True) -> Optional[List[str]]:
         """Launch interactive checkbox selection interface.
 
         Args:
@@ -68,14 +66,10 @@ class InteractiveCheckboxUI:
 
         # Launch curses interface
         try:
-            selected_indices = self._run_curses_interface(
-                flattened_elements, elements_by_category
-            )
+            selected_indices = self._run_curses_interface(flattened_elements, elements_by_category)
         except ImportError:
             # Curses not available, use enhanced fallback immediately
-            print(
-                "\n📱 Terminal doesn't support interactive mode, using enhanced selection..."
-            )
+            print("\n📱 Terminal doesn't support interactive mode, using enhanced selection...")
             return self._fallback_selection(flattened_elements)
         except Exception as e:
             # Fallback to simple selection if curses fails
@@ -123,9 +117,7 @@ class InteractiveCheckboxUI:
                 else:
                     skill_name = f"{skill.name} (custom)"
 
-                organized["Skills"].append(
-                    {"name": skill_name, "path": str(skill.path), "type": "skill"}
-                )
+                organized["Skills"].append({"name": skill_name, "path": str(skill.path), "type": "skill"})
 
         # Add file-based elements
         for element_type in ["agents", "commands", "hooks"]:
@@ -144,9 +136,7 @@ class InteractiveCheckboxUI:
         # Remove empty categories
         return {k: v for k, v in organized.items() if v}
 
-    def _flatten_elements(
-        self, elements_by_category: Dict[str, List[Dict]]
-    ) -> List[Dict]:
+    def _flatten_elements(self, elements_by_category: Dict[str, List[Dict]]) -> List[Dict]:
         """Flatten categorized elements into a single list with display info.
 
         Args:
@@ -178,9 +168,7 @@ class InteractiveCheckboxUI:
 
         return flattened
 
-    def _run_curses_interface(
-        self, elements: List[Dict], elements_by_category: Dict
-    ) -> Optional[Set[int]]:
+    def _run_curses_interface(self, elements: List[Dict], elements_by_category: Dict) -> Optional[Set[int]]:
         """Run the curses-based interactive interface.
 
         Args:
@@ -228,9 +216,7 @@ class InteractiveCheckboxUI:
         # Run curses interface
         return curses.wrapper(interface)
 
-    def _display_interface(
-        self, stdscr, elements: List[Dict], elements_by_category: Dict
-    ) -> None:
+    def _display_interface(self, stdscr, elements: List[Dict], elements_by_category: Dict) -> None:
         """Display the interactive interface.
 
         Args:
@@ -246,9 +232,7 @@ class InteractiveCheckboxUI:
         stdscr.addstr(1, (w - len(title)) // 2, title, curses.A_BOLD)
 
         # Instructions
-        instructions = [
-            "↑↓ Navigate | Space Toggle | A:All N:None | Enter:Confirm | Q/ESC:Cancel"
-        ]
+        instructions = ["↑↓ Navigate | Space Toggle | A:All N:None | Enter:Confirm | Q/ESC:Cancel"]
         for i, instruction in enumerate(instructions):
             stdscr.addstr(3, 2, instruction)
 
@@ -264,9 +248,7 @@ class InteractiveCheckboxUI:
             if element["type"] == "header":
                 # Category header
                 header_text = f"📁 {element['text']}"
-                stdscr.addstr(
-                    y_offset, 2, header_text, curses.color_pair(2) | curses.A_BOLD
-                )
+                stdscr.addstr(y_offset, 2, header_text, curses.color_pair(2) | curses.A_BOLD)
                 y_offset += 1
             else:
                 # Element with checkbox
@@ -279,9 +261,7 @@ class InteractiveCheckboxUI:
                 line = f"{checkbox} {display_name}"
 
                 if is_current:
-                    stdscr.addstr(
-                        y_offset, 4, line, curses.color_pair(1) | curses.A_BOLD
-                    )
+                    stdscr.addstr(y_offset, 4, line, curses.color_pair(1) | curses.A_BOLD)
                 else:
                     stdscr.addstr(y_offset, 4, line)
 
@@ -289,11 +269,7 @@ class InteractiveCheckboxUI:
 
         # Status bar
         selected_count = len(
-            [
-                i
-                for i, el in enumerate(elements)
-                if el["type"] == "element" and i in self.selected_indices
-            ]
+            [i for i, el in enumerate(elements) if el["type"] == "element" and i in self.selected_indices]
         )
         total_count = len([el for el in elements if el["type"] == "element"])
         status = f"Selected: {selected_count}/{total_count} | Use Space to toggle, Enter to confirm"
@@ -398,9 +374,7 @@ class InteractiveCheckboxUI:
         key = stdscr.getch()
         return key in [ord("y"), ord("Y"), ord("\n"), ord("\r")]
 
-    def _fallback_selection(
-        self, flattened_elements: List[Dict]
-    ) -> Optional[List[str]]:
+    def _fallback_selection(self, flattened_elements: List[Dict]) -> Optional[List[str]]:
         """Fallback selection method when curses is not available.
 
         Args:

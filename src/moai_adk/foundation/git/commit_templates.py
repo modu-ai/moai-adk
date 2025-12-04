@@ -438,9 +438,7 @@ class CommitTemplates:
         """Get template by commit type"""
         return self.templates.get(commit_type)
 
-    def generate_from_template(
-        self, template: CommitTemplate, scope: str, description: str
-    ) -> Dict[str, Any]:
+    def generate_from_template(self, template: CommitTemplate, scope: str, description: str) -> Dict[str, Any]:
         """Generate commit from template"""
         import re
 
@@ -489,9 +487,7 @@ class CommitTemplates:
             category_stats[category.value] = len(templates)
 
         # Find most used types
-        most_used_types = sorted(
-            self.templates.items(), key=lambda x: len(x[1].examples), reverse=True
-        )[:5]
+        most_used_types = sorted(self.templates.items(), key=lambda x: len(x[1].examples), reverse=True)[:5]
 
         return {
             "total_templates": total_templates,
@@ -521,10 +517,7 @@ class CommitTemplates:
         matching_templates = []
 
         for template in self.templates.values():
-            if any(
-                keyword.lower() in [k.lower() for k in template.keywords]
-                for keyword in keywords
-            ):
+            if any(keyword.lower() in [k.lower() for k in template.keywords] for keyword in keywords):
                 matching_templates.append(template)
 
         return matching_templates
@@ -545,8 +538,7 @@ class CommitTemplates:
                 for name, template in self.templates.items()
             },
             "categories": {
-                category.value: [t.type for t in templates]
-                for category, templates in self.categories.items()
+                category.value: [t.type for t in templates] for category, templates in self.categories.items()
             },
         }
 

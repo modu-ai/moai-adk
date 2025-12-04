@@ -633,8 +633,7 @@ class TestSetupLoggerHandlers:
             console_handlers = [
                 h
                 for h in logger.handlers
-                if isinstance(h, logging.StreamHandler)
-                and not isinstance(h, logging.FileHandler)
+                if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
             ]
             assert len(console_handlers) > 0
 
@@ -643,9 +642,7 @@ class TestSetupLoggerHandlers:
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = setup_logger("app", log_dir=tmpdir)
 
-            file_handlers = [
-                h for h in logger.handlers if isinstance(h, logging.FileHandler)
-            ]
+            file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
             assert len(file_handlers) > 0
 
     def test_setup_logger_handlers_have_formatter(self):

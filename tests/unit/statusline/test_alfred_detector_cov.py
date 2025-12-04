@@ -63,9 +63,7 @@ class TestActiveTaskDetection:
 
         with patch.object(detector, "_is_cache_valid", return_value=False):
             with patch.object(detector, "_read_session_state") as mock_read:
-                mock_read.return_value = AlfredTask(
-                    command="test_command", spec_id="SPEC-001", stage="RED"
-                )
+                mock_read.return_value = AlfredTask(command="test_command", spec_id="SPEC-001", stage="RED")
 
                 # Act
                 result = detector.detect_active_task()
@@ -80,9 +78,7 @@ class TestActiveTaskDetection:
         """Test that cached result is returned when cache is valid."""
         # Arrange
         detector = AlfredDetector()
-        cached_task = AlfredTask(
-            command="cached_command", spec_id="SPEC-999", stage="REFACTOR"
-        )
+        cached_task = AlfredTask(command="cached_command", spec_id="SPEC-999", stage="REFACTOR")
         detector._cache = cached_task
         detector._cache_time = datetime.now()
 
@@ -100,9 +96,7 @@ class TestActiveTaskDetection:
         """Test that session state is read when cache is invalid."""
         # Arrange
         detector = AlfredDetector()
-        fresh_task = AlfredTask(
-            command="fresh_command", spec_id="SPEC-002", stage="GREEN"
-        )
+        fresh_task = AlfredTask(command="fresh_command", spec_id="SPEC-002", stage="GREEN")
 
         with patch.object(detector, "_is_cache_valid", return_value=False):
             with patch.object(detector, "_read_session_state") as mock_read:
@@ -264,9 +258,7 @@ class TestSessionStateReading:
             with patch("builtins.open", side_effect=ValueError("Bad data")):
                 with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
-                    with patch(
-                        "moai_adk.statusline.alfred_detector.logger"
-                    ) as mock_logger:
+                    with patch("moai_adk.statusline.alfred_detector.logger") as mock_logger:
                         # Act
                         detector._read_session_state()
 
@@ -332,9 +324,7 @@ class TestCacheValidation:
         """Test cache validation within TTL window."""
         # Arrange
         detector._cache = AlfredTask(command="test", spec_id=None, stage=None)
-        detector._cache_time = datetime.now() - timedelta(
-            milliseconds=500
-        )  # 0.5 seconds ago
+        detector._cache_time = datetime.now() - timedelta(milliseconds=500)  # 0.5 seconds ago
 
         # Act
         result = detector._is_cache_valid()
@@ -370,9 +360,7 @@ class TestCacheValidation:
         """Test cache validation just before expiry."""
         # Arrange
         detector._cache = AlfredTask(command="test", spec_id=None, stage=None)
-        detector._cache_time = datetime.now() - timedelta(
-            milliseconds=999
-        )  # Just under 1 second
+        detector._cache_time = datetime.now() - timedelta(milliseconds=999)  # Just under 1 second
 
         # Act
         result = detector._is_cache_valid()

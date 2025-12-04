@@ -138,9 +138,7 @@ class TestPhaseResultBuilder:
 
     def test_timestamp_format(self):
         """Test that timestamp is in correct ISO 8601 UTC format"""
-        result = build_phase_result(
-            phase_name="test", status="completed", outputs={}, files_created=[]
-        )
+        result = build_phase_result(phase_name="test", status="completed", outputs={}, files_created=[])
 
         # Check UTC format
         assert result["timestamp"].endswith("Z")
@@ -284,9 +282,7 @@ class TestEdgeCases:
             assert result == ["python"]
 
     def test_build_phase_result_minimal_data(self):
-        result = build_phase_result(
-            phase_name="0-project", status="completed", outputs={}, files_created=[]
-        )
+        result = build_phase_result(phase_name="0-project", status="completed", outputs={}, files_created=[])
 
         # Verify all required fields present
         assert result["phase"] == "0-project"

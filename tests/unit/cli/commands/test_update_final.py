@@ -209,9 +209,7 @@ class TestLatestVersionDetection:
         """Test successfully fetching latest version from PyPI."""
         # Arrange
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps(
-            {"info": {"version": "0.7.0"}}
-        ).encode("utf-8")
+        mock_response.read.return_value = json.dumps({"info": {"version": "0.7.0"}}).encode("utf-8")
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 

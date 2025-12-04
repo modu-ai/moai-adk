@@ -29,9 +29,7 @@ class TestPromptProjectSetup:
         mock_select.return_value = "en"
 
         # Act
-        result = prompt_project_setup(
-            is_current_dir=True, project_path=Path("/test/my-project")
-        )
+        result = prompt_project_setup(is_current_dir=True, project_path=Path("/test/my-project"))
 
         # Assert
         assert result["project_name"] == "my-project"
@@ -236,9 +234,7 @@ class TestPromptProjectSetup:
         """Test setup returns proper ProjectSetupAnswers dict."""
         # Arrange
         with patch("moai_adk.cli.prompts.init_prompts._prompt_text") as mock_text:
-            with patch(
-                "moai_adk.cli.prompts.init_prompts._prompt_select"
-            ) as mock_select:
+            with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
                 mock_text.return_value = "test-project"
                 mock_select.return_value = "en"
 

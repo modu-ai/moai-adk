@@ -28,12 +28,8 @@ class TestDocumentation:
         guide = Path(".moai/docs/workflow-templates.md")
         assert guide.exists(), "Workflow templates guide not found"
         content = guide.read_text()
-        assert (
-            "python-tag-validation.yml" in content
-        ), "Missing Python workflow documentation"
-        assert (
-            "javascript-tag-validation.yml" in content
-        ), "Missing JavaScript workflow documentation"
+        assert "python-tag-validation.yml" in content, "Missing Python workflow documentation"
+        assert "javascript-tag-validation.yml" in content, "Missing JavaScript workflow documentation"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_readme_has_language_support_section(self):

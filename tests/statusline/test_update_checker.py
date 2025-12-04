@@ -31,9 +31,7 @@ class TestUpdateChecker:
             update_info = checker.check_for_update("0.20.1")
 
             assert update_info.available is True, "Expected available=True"
-            assert "0.21.0" in str(
-                update_info.latest_version
-            ), "Expected latest_version=0.21.0"
+            assert "0.21.0" in str(update_info.latest_version), "Expected latest_version=0.21.0"
 
     def test_check_update_not_available(self):
         """
@@ -53,9 +51,7 @@ class TestUpdateChecker:
 
             update_info = checker.check_for_update("0.21.0")
 
-            assert (
-                update_info.available is False
-            ), "Expected available=False when versions match"
+            assert update_info.available is False, "Expected available=False when versions match"
 
     def test_api_failure_graceful(self):
         """
@@ -73,9 +69,7 @@ class TestUpdateChecker:
             update_info = checker.check_for_update("0.20.1")
 
             # Should gracefully handle error
-            assert (
-                update_info.available is False
-            ), "Should gracefully handle API failure"
+            assert update_info.available is False, "Should gracefully handle API failure"
 
     def test_update_checker_caching(self):
         """

@@ -448,10 +448,7 @@ class TestEnhancedInputValidationMiddleware:
         )
 
         # Path should be normalized with forward slashes
-        assert (
-            "/" in result.normalized_input["file_path"]
-            or "\\" in result.normalized_input["file_path"]
-        )
+        assert "/" in result.normalized_input["file_path"] or "\\" in result.normalized_input["file_path"]
 
     def test_normalize_numeric_strings(self):
         """Test normalizing numeric strings"""
@@ -572,9 +569,7 @@ class TestEnhancedInputValidationMiddleware:
         )
 
         # Should have at least one error from custom validation failure
-        has_validation_error = any(
-            e.code == "validation_function_failed" for e in result.errors
-        )
+        has_validation_error = any(e.code == "validation_function_failed" for e in result.errors)
         assert has_validation_error
 
     def test_all_tools_have_parameters(self):

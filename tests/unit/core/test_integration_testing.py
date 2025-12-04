@@ -81,9 +81,7 @@ class TestIntegrationTester:
 
         # Add test results with different execution times
         tester.add_test_result(IntegrationTestResult("test1", True, execution_time=1.0))
-        tester.add_test_result(
-            IntegrationTestResult("test2", False, execution_time=2.0)
-        )
+        tester.add_test_result(IntegrationTestResult("test2", False, execution_time=2.0))
         tester.add_test_result(IntegrationTestResult("test3", True, execution_time=3.0))
 
         stats = tester.get_test_stats()
@@ -243,9 +241,7 @@ class TestIntegrationTester:
 
         # Add test results
         tester.add_test_result(IntegrationTestResult("test1", True, execution_time=1.0))
-        tester.add_test_result(
-            IntegrationTestResult("test2", False, error_message="Error")
-        )
+        tester.add_test_result(IntegrationTestResult("test2", False, error_message="Error"))
 
         exported = tester.export_results("dict")
 
@@ -261,9 +257,7 @@ class TestIntegrationTester:
 
         # Add test results
         tester.add_test_result(IntegrationTestResult("test1", True))
-        tester.add_test_result(
-            IntegrationTestResult("test2", False, error_message="Error")
-        )
+        tester.add_test_result(IntegrationTestResult("test2", False, error_message="Error"))
 
         exported = tester.export_results("summary")
 
@@ -288,9 +282,7 @@ class TestIntegrationTester:
         # Add failing tests to get low success rate
         tester.add_test_result(IntegrationTestResult("test1", False))
         tester.add_test_result(IntegrationTestResult("test2", False))
-        tester.add_test_result(
-            IntegrationTestResult("test3", True)
-        )  # Only 33% success rate
+        tester.add_test_result(IntegrationTestResult("test3", True))  # Only 33% success rate
 
         warnings = tester.validate_test_environment()
 

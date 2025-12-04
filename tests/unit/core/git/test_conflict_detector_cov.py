@@ -91,9 +91,7 @@ class TestConflictDetection:
 
         with patch.object(detector, "_detect_conflicted_files") as mock_detect:
             mock_detect.return_value = [
-                ConflictFile(
-                    "file.py", ConflictSeverity.HIGH, "code", 1, "Conflict in file.py"
-                )
+                ConflictFile("file.py", ConflictSeverity.HIGH, "code", 1, "Conflict in file.py")
             ]
 
             result = detector.can_merge("feature", "main")
@@ -115,9 +113,7 @@ class TestConflictDetection:
         """Test error handling in can_merge."""
         detector.repo = MagicMock()
         # Make active_branch raise exception
-        type(detector.repo).active_branch = PropertyMock(
-            side_effect=Exception("Git error")
-        )
+        type(detector.repo).active_branch = PropertyMock(side_effect=Exception("Git error"))
         detector.git = MagicMock()
 
         result = detector.can_merge("feature", "main")
@@ -138,18 +134,14 @@ class TestConflictDetection:
     def test_detect_conflicted_files_with_markers(self, detector):
         """Test detecting conflicted files with conflict markers."""
         detector.repo = MagicMock()
-        detector.repo.index.unmerged_blobs.return_value = {
-            "src/config.json": MagicMock()
-        }
+        detector.repo.index.unmerged_blobs.return_value = {"src/config.json": MagicMock()}
         detector.repo_path = Path("/test/repo")
 
         mock_file = MagicMock()
         mock_file.read_text.return_value = "<<<<<<<\nconflict content\n>>>>>>>"
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "pathlib.Path.read_text", return_value="<<<<<<<\nconflict\n>>>>>>>"
-            ):
+            with patch("pathlib.Path.read_text", return_value="<<<<<<<\nconflict\n>>>>>>>"):
                 conflicts = detector._detect_conflicted_files()
 
                 assert len(conflicts) > 0
@@ -161,9 +153,7 @@ class TestConflictDetection:
         detector.repo_path = Path("/test/repo")
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "pathlib.Path.read_text", return_value="<<<<<<<\n<<<<<<< second marker"
-            ):
+            with patch("pathlib.Path.read_text", return_value="<<<<<<<\n<<<<<<< second marker"):
                 conflicts = detector._detect_conflicted_files()
 
                 if conflicts:
@@ -261,9 +251,7 @@ class TestConflictAnalysis:
 
     def test_analyze_conflicts_single(self, detector):
         """Test analyzing single conflict."""
-        conflicts = [
-            ConflictFile("file.py", ConflictSeverity.MEDIUM, "code", 1, "Conflict")
-        ]
+        conflicts = [ConflictFile("file.py", ConflictSeverity.MEDIUM, "code", 1, "Conflict")]
         analyzed = detector.analyze_conflicts(conflicts)
 
         assert len(analyzed) == 1
@@ -274,9 +262,7 @@ class TestConflictAnalysis:
         conflicts = [
             ConflictFile("low.md", ConflictSeverity.LOW, "config", 1, "Low severity"),
             ConflictFile("high.py", ConflictSeverity.HIGH, "code", 1, "High severity"),
-            ConflictFile(
-                "medium.js", ConflictSeverity.MEDIUM, "code", 1, "Medium severity"
-            ),
+            ConflictFile("medium.js", ConflictSeverity.MEDIUM, "code", 1, "Medium severity"),
         ]
 
         with patch.object(detector, "_determine_severity") as mock_severity:
@@ -303,11 +289,7 @@ class TestConflictAnalysis:
 
     def test_summarize_conflicts_single(self, detector):
         """Test summarization with single conflict."""
-        conflicts = [
-            ConflictFile(
-                "file.py", ConflictSeverity.HIGH, "code", 1, "Conflict in file.py"
-            )
-        ]
+        conflicts = [ConflictFile("file.py", ConflictSeverity.HIGH, "code", 1, "Conflict in file.py")]
         summary = detector.summarize_conflicts(conflicts)
 
         assert "HIGH severity" in summary
@@ -345,25 +327,17 @@ class TestAutoResolution:
 
     def test_auto_resolve_safe_unsafe_file(self, detector):
         """Test auto-resolve fails with unsafe files."""
-        conflict = ConflictFile(
-            "src/main.py", ConflictSeverity.HIGH, "code", 1, "High severity conflict"
-        )
+        conflict = ConflictFile("src/main.py", ConflictSeverity.HIGH, "code", 1, "High severity conflict")
 
-        with patch.object(
-            detector, "_detect_conflicted_files", return_value=[conflict]
-        ):
+        with patch.object(detector, "_detect_conflicted_files", return_value=[conflict]):
             result = detector.auto_resolve_safe()
             assert result is False
 
     def test_auto_resolve_safe_unsafe_severity(self, detector):
         """Test auto-resolve fails with high severity conflicts."""
-        conflict = ConflictFile(
-            ".gitignore", ConflictSeverity.HIGH, "config", 1, "High severity"
-        )
+        conflict = ConflictFile(".gitignore", ConflictSeverity.HIGH, "config", 1, "High severity")
 
-        with patch.object(
-            detector, "_detect_conflicted_files", return_value=[conflict]
-        ):
+        with patch.object(detector, "_detect_conflicted_files", return_value=[conflict]):
             result = detector.auto_resolve_safe()
             assert result is False
 
@@ -371,13 +345,9 @@ class TestAutoResolution:
         """Test auto-resolve with CLAUDE.md."""
         detector.repo = MagicMock()
         detector.git = MagicMock()
-        conflict = ConflictFile(
-            "CLAUDE.md", ConflictSeverity.LOW, "config", 1, "CLAUDE.md conflict"
-        )
+        conflict = ConflictFile("CLAUDE.md", ConflictSeverity.LOW, "config", 1, "CLAUDE.md conflict")
 
-        with patch.object(
-            detector, "_detect_conflicted_files", return_value=[conflict]
-        ):
+        with patch.object(detector, "_detect_conflicted_files", return_value=[conflict]):
             with patch("moai_adk.core.template.merger.TemplateMerger"):
                 result = detector.auto_resolve_safe()
                 assert result is True
@@ -386,13 +356,9 @@ class TestAutoResolution:
         """Test auto-resolve with .gitignore."""
         detector.repo = MagicMock()
         detector.git = MagicMock()
-        conflict = ConflictFile(
-            ".gitignore", ConflictSeverity.LOW, "config", 1, ".gitignore conflict"
-        )
+        conflict = ConflictFile(".gitignore", ConflictSeverity.LOW, "config", 1, ".gitignore conflict")
 
-        with patch.object(
-            detector, "_detect_conflicted_files", return_value=[conflict]
-        ):
+        with patch.object(detector, "_detect_conflicted_files", return_value=[conflict]):
             with patch("moai_adk.core.template.merger.TemplateMerger"):
                 result = detector.auto_resolve_safe()
                 assert result is True
@@ -409,9 +375,7 @@ class TestAutoResolution:
             "Settings conflict",
         )
 
-        with patch.object(
-            detector, "_detect_conflicted_files", return_value=[conflict]
-        ):
+        with patch.object(detector, "_detect_conflicted_files", return_value=[conflict]):
             with patch("moai_adk.core.template.merger.TemplateMerger"):
                 result = detector.auto_resolve_safe()
                 assert result is True
@@ -422,13 +386,9 @@ class TestAutoResolution:
         detector.git = MagicMock()
         detector.git.add.side_effect = GitCommandError("add", "error")
 
-        conflict = ConflictFile(
-            "CLAUDE.md", ConflictSeverity.LOW, "config", 1, "Conflict"
-        )
+        conflict = ConflictFile("CLAUDE.md", ConflictSeverity.LOW, "config", 1, "Conflict")
 
-        with patch.object(
-            detector, "_detect_conflicted_files", return_value=[conflict]
-        ):
+        with patch.object(detector, "_detect_conflicted_files", return_value=[conflict]):
             with patch("moai_adk.core.template.merger.TemplateMerger"):
                 result = detector.auto_resolve_safe()
                 assert result is False
@@ -624,6 +584,4 @@ class TestSafeAutoResolveFiles:
         """Test that config file patterns are defined."""
         assert hasattr(GitConflictDetector, "CONFIG_FILE_PATTERNS")
         assert ".md" in GitConflictDetector.CONFIG_FILE_PATTERNS
-        assert (
-            ".json" not in GitConflictDetector.CONFIG_FILE_PATTERNS
-        )  # Not in patterns, checked via extension
+        assert ".json" not in GitConflictDetector.CONFIG_FILE_PATTERNS  # Not in patterns, checked via extension

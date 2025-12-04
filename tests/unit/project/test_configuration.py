@@ -178,9 +178,7 @@ class TestAutoDetectionEngine:
             mock_path = MagicMock()
             mock_cwd.return_value = mock_path
 
-            mock_path.__truediv__ = lambda self, x: MagicMock(
-                exists=lambda: x == "pyproject.toml"
-            )
+            mock_path.__truediv__ = lambda self, x: MagicMock(exists=lambda: x == "pyproject.toml")
             result = AutoDetectionEngine.detect_language()
             assert result == "python"
 
@@ -190,9 +188,7 @@ class TestAutoDetectionEngine:
             mock_path = MagicMock()
             mock_cwd.return_value = mock_path
 
-            mock_path.__truediv__ = lambda self, x: MagicMock(
-                exists=lambda: x == "tsconfig.json"
-            )
+            mock_path.__truediv__ = lambda self, x: MagicMock(exists=lambda: x == "tsconfig.json")
             result = AutoDetectionEngine.detect_language()
             assert result == "typescript"
 
@@ -282,9 +278,7 @@ class TestConditionalBatchRenderer:
 
     def test_get_visible_batches_with_true_condition(self):
         """Test get_visible_batches with true condition."""
-        schema = {
-            "tabs": [{"id": "tab_1", "batches": [{"id": "batch_1", "show_if": "true"}]}]
-        }
+        schema = {"tabs": [{"id": "tab_1", "batches": [{"id": "batch_1", "show_if": "true"}]}]}
         renderer = ConditionalBatchRenderer(schema)
         result = renderer.get_visible_batches("tab_1", {})
         assert len(result) == 1
@@ -313,9 +307,7 @@ class TestConditionalBatchRenderer:
     def test_safe_evaluate_or_operator(self):
         """Test _safe_evaluate with OR operator."""
         renderer = ConditionalBatchRenderer({})
-        result = renderer._safe_evaluate(
-            "mode == 'personal' OR mode == 'team'", {"mode": "personal"}
-        )
+        result = renderer._safe_evaluate("mode == 'personal' OR mode == 'team'", {"mode": "personal"})
         assert result is True
 
     def test_resolve_operand_string_literal(self):
@@ -364,9 +356,7 @@ class TestTemplateVariableInterpolator:
     def test_get_nested_value(self):
         """Test _get_nested_value method."""
         config = {"user": {"profile": {"name": "Test"}}}
-        result = TemplateVariableInterpolator._get_nested_value(
-            config, "user.profile.name"
-        )
+        result = TemplateVariableInterpolator._get_nested_value(config, "user.profile.name")
         assert result == "Test"
 
     def test_get_nested_value_missing(self):

@@ -75,9 +75,7 @@ class RobustJSONParser:
             "escape_sequence": re.compile(r'\\(?![nrtbf"\'\\/])'),
             "partial_object": re.compile(r"^\s*\{[^}]*\s*$"),
             "missing_brace": re.compile(r"^[^{]*\{[^}]*[^}]*$"),
-            "invalid_quotes": re.compile(
-                r'(?<!\\)"(?:[^"\\]|\\.)*?[^\\]"(?![\s,}\]:])'
-            ),
+            "invalid_quotes": re.compile(r'(?<!\\)"(?:[^"\\]|\\.)*?[^\\]"(?![\s,}\]:])'),
             "control_chars": re.compile(r"[\x00-\x1F\x7F-\x9F]"),
         }
 
@@ -155,9 +153,7 @@ class RobustJSONParser:
 
         except json.JSONDecodeError as e:
             if self.enable_logging:
-                logger.warning(
-                    f"Initial JSON parse failed: {e.msg} at line {e.lineno}, col {e.colno}"
-                )
+                logger.warning(f"Initial JSON parse failed: {e.msg} at line {e.lineno}, col {e.colno}")
 
             last_error = str(e)
 
@@ -174,15 +170,11 @@ class RobustJSONParser:
                                 current_input = modified_input
                                 warnings.extend(applied_warnings)
                                 if self.enable_logging:
-                                    logger.debug(
-                                        f"Applied recovery strategy: {strategy.__name__}"
-                                    )
+                                    logger.debug(f"Applied recovery strategy: {strategy.__name__}")
                                 break
                         except Exception as strategy_error:
                             if self.enable_logging:
-                                logger.debug(
-                                    f"Recovery strategy {strategy.__name__} failed: {strategy_error}"
-                                )
+                                logger.debug(f"Recovery strategy {strategy.__name__} failed: {strategy_error}")
                             continue
 
                     # Try parsing with recovered input
@@ -195,19 +187,13 @@ class RobustJSONParser:
                         error=None,
                         original_input=original_input,
                         recovery_attempts=recovery_attempts,
-                        severity=(
-                            ErrorSeverity.MEDIUM
-                            if recovery_attempts > 0
-                            else ErrorSeverity.LOW
-                        ),
+                        severity=(ErrorSeverity.MEDIUM if recovery_attempts > 0 else ErrorSeverity.LOW),
                         parse_time_ms=(time.time() - start_time) * 1000,
                         warnings=warnings,
                     )
 
                     if self.enable_logging:
-                        logger.info(
-                            f"JSON recovered after {recovery_attempts} attempts"
-                        )
+                        logger.info(f"JSON recovered after {recovery_attempts} attempts")
 
                     return result
 
@@ -232,19 +218,13 @@ class RobustJSONParser:
                 error=last_error,
                 original_input=original_input,
                 recovery_attempts=recovery_attempts,
-                severity=(
-                    ErrorSeverity.HIGH
-                    if recovery_attempts > 0
-                    else ErrorSeverity.CRITICAL
-                ),
+                severity=(ErrorSeverity.HIGH if recovery_attempts > 0 else ErrorSeverity.CRITICAL),
                 parse_time_ms=(time.time() - start_time) * 1000,
                 warnings=warnings,
             )
 
             if self.enable_logging:
-                logger.error(
-                    f"JSON parsing failed after {recovery_attempts} recovery attempts: {last_error}"
-                )
+                logger.error(f"JSON parsing failed after {recovery_attempts} recovery attempts: {last_error}")
 
             return result
 
@@ -367,9 +347,7 @@ class RobustJSONParser:
 
         # Simple replacement: replace single quotes with double quotes
         # This handles cases like {'name': 'test'} -> {"name": "test"}
-        if json_string.startswith("'") or (
-            "'" in json_string and '"' not in json_string
-        ):
+        if json_string.startswith("'") or ("'" in json_string and '"' not in json_string):
             # Case: entirely single-quoted JSON
             modified_str = json_string.replace("'", '"')
             if modified_str != json_string:
@@ -516,9 +494,7 @@ class RobustJSONParser:
         for line in lines:
             line = line.strip()
             # Skip lines that are clearly not JSON
-            if line.startswith(
-                ("```", "#", "*", "-", ">", "Error:", "Success:")
-            ) or line.endswith(("```", ".")):
+            if line.startswith(("```", "#", "*", "-", ">", "Error:", "Success:")) or line.endswith(("```", ".")):
                 continue
             json_lines.append(line)
 
@@ -551,10 +527,7 @@ class RobustJSONParser:
         if total > 0:
             return {
                 **self.stats,
-                "success_rate": (
-                    self.stats["successful_parses"] + self.stats["recovered_parses"]
-                )
-                / total,
+                "success_rate": (self.stats["successful_parses"] + self.stats["recovered_parses"]) / total,
                 "recovery_rate": self.stats["recovered_parses"] / total,
                 "failure_rate": self.stats["failed_parses"] / total,
                 "avg_recovery_time": (

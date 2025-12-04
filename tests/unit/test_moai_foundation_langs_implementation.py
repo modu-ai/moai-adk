@@ -125,9 +125,7 @@ class TestBestPracticePatterns:
     def test_identify_async_pattern_python(self):
         """Test identification of async/await as best practice."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern(
-            "async def fetch_user(): return await db.get_user()"
-        )
+        pattern = analyzer.identify_pattern("async def fetch_user(): return await db.get_user()")
 
         assert pattern is not None
         assert pattern.pattern_type == "best_practice"
@@ -136,9 +134,7 @@ class TestBestPracticePatterns:
     def test_identify_type_hints_pattern_python(self):
         """Test identification of type hints as best practice."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern(
-            "def create_user(name: str, age: int) -> User:"
-        )
+        pattern = analyzer.identify_pattern("def create_user(name: str, age: int) -> User:")
 
         assert pattern is not None
         assert pattern.pattern_type == "best_practice"
@@ -146,9 +142,7 @@ class TestBestPracticePatterns:
     def test_type_safety_pattern_typescript(self):
         """Test strict typing as best practice."""
         analyzer = PatternAnalyzer()
-        pattern = analyzer.identify_pattern(
-            "interface User { name: string; email: string; }"
-        )
+        pattern = analyzer.identify_pattern("interface User { name: string; email: string; }")
 
         assert pattern is not None
         assert "type" in pattern.description.lower()
@@ -160,9 +154,7 @@ class TestAntiPatternDetection:
     def test_detect_callback_hell_javascript(self):
         """Test detection of callback hell anti-pattern."""
         detector = AntiPatternDetector()
-        pattern = detector.detect_anti_pattern(
-            "callback(error, result => { callback2(null, x => {...}); });"
-        )
+        pattern = detector.detect_anti_pattern("callback(error, result => { callback2(null, x => {...}); });")
 
         assert pattern is not None
         assert pattern.pattern_type == "anti_pattern"
@@ -171,9 +163,7 @@ class TestAntiPatternDetection:
     def test_detect_global_state_python(self):
         """Test detection of mutable global state."""
         detector = AntiPatternDetector()
-        pattern = detector.detect_anti_pattern(
-            "GLOBAL_STATE = {}\ndef update(): GLOBAL_STATE['x'] = 1"
-        )
+        pattern = detector.detect_anti_pattern("GLOBAL_STATE = {}\ndef update(): GLOBAL_STATE['x'] = 1")
 
         assert pattern is not None
         assert pattern.pattern_type == "anti_pattern"
@@ -183,9 +173,7 @@ class TestAntiPatternDetection:
         """Test detection of SQL injection risk."""
         detector = AntiPatternDetector()
         user_id = 123  # Define user_id for the test
-        pattern = detector.detect_anti_pattern(
-            f"query = f'SELECT * FROM users WHERE id = {user_id}'"
-        )
+        pattern = detector.detect_anti_pattern(f"query = f'SELECT * FROM users WHERE id = {user_id}'")
 
         assert pattern is not None
         assert pattern.severity in ["high", "critical"]
@@ -276,10 +264,7 @@ class TestTestingStrategyRecommendations:
         strategy = tester.get_strategy("TypeScript")
 
         assert strategy is not None
-        assert (
-            "vitest" in strategy.framework.lower()
-            or "jest" in strategy.framework.lower()
-        )
+        assert "vitest" in strategy.framework.lower() or "jest" in strategy.framework.lower()
 
     def test_go_testing_strategy(self):
         """Test Go testing strategy recommendations."""

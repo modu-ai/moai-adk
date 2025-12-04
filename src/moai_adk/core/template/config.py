@@ -118,9 +118,7 @@ class ConfigManager:
         merged = self._deep_merge(current, updates)
         self.save(merged)
 
-    def _deep_merge(
-        self, base: dict[str, Any], updates: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _deep_merge(self, base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
         """
         Recursively deep-merge dictionaries.
 
@@ -133,11 +131,7 @@ class ConfigManager:
         """
         result = base.copy()
         for key, value in updates.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value

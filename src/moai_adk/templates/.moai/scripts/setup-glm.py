@@ -56,9 +56,7 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         if gitignore_path.exists():
             gitignore_content = gitignore_path.read_text()
             if glm_entry not in gitignore_content:
-                gitignore_path.write_text(
-                    gitignore_content.rstrip() + f"\n{glm_entry}\n"
-                )
+                gitignore_path.write_text(gitignore_content.rstrip() + f"\n{glm_entry}\n")
         else:
             gitignore_path.write_text(f"{glm_entry}\n")
 
@@ -87,9 +85,7 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         with open(settings_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2, ensure_ascii=False)
 
-        print(
-            f"✓ GLM model configuration updated in: {settings_path.relative_to(project_root)}"
-        )
+        print(f"✓ GLM model configuration updated in: {settings_path.relative_to(project_root)}")
         print()
         print("Configured environment variables:")
         print(f"   • ANTHROPIC_AUTH_TOKEN: {api_token[:20]}... (loaded from .env.glm)")

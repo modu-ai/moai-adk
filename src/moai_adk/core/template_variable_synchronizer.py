@@ -60,9 +60,7 @@ class TemplateVariableSynchronizer:
         self.project_root = Path(project_root)
         self.language_resolver = get_resolver(project_root)
 
-    def synchronize_after_config_change(
-        self, changed_config_path: Optional[Path] = None
-    ) -> Dict[str, Any]:
+    def synchronize_after_config_change(self, changed_config_path: Optional[Path] = None) -> Dict[str, Any]:
         """
         Synchronize template variables after configuration changes.
 
@@ -83,21 +81,15 @@ class TemplateVariableSynchronizer:
         try:
             # Get current resolved configuration
             current_config = self.language_resolver.resolve_config(force_refresh=True)
-            template_vars = self.language_resolver.export_template_variables(
-                current_config
-            )
+            template_vars = self.language_resolver.export_template_variables(current_config)
 
             # Find files that need updating
-            files_to_update = self._find_files_with_template_variables(
-                changed_config_path
-            )
+            files_to_update = self._find_files_with_template_variables(changed_config_path)
 
             # Update each file
             for file_path in files_to_update:
                 try:
-                    updated_vars = self._update_file_template_variables(
-                        file_path, template_vars
-                    )
+                    updated_vars = self._update_file_template_variables(file_path, template_vars)
                     if updated_vars:
                         files_updated: int = results["files_updated"]  # type: ignore[assignment]
                         results["files_updated"] = files_updated + 1
@@ -119,9 +111,7 @@ class TemplateVariableSynchronizer:
 
         return results
 
-    def _find_files_with_template_variables(
-        self, changed_config_path: Optional[Path]
-    ) -> List[Path]:
+    def _find_files_with_template_variables(self, changed_config_path: Optional[Path]) -> List[Path]:
         """
         Find files that contain template variables and might need updating.
 
@@ -181,9 +171,7 @@ class TemplateVariableSynchronizer:
         except (OSError, ValueError):
             return []
 
-    def _update_file_template_variables(
-        self, file_path: Path, template_vars: Dict[str, str]
-    ) -> List[str]:
+    def _update_file_template_variables(self, file_path: Path, template_vars: Dict[str, str]) -> List[str]:
         """
         Update template variables in a specific file.
 
@@ -223,9 +211,7 @@ class TemplateVariableSynchronizer:
             # File read/write errors - skip this file
             return []
 
-    def _handle_special_file_updates(
-        self, template_vars: Dict[str, str], results: Dict[str, Any]
-    ) -> None:
+    def _handle_special_file_updates(self, template_vars: Dict[str, str], results: Dict[str, Any]) -> None:
         """
         Handle special cases for certain file types.
 
@@ -239,9 +225,7 @@ class TemplateVariableSynchronizer:
             try:
                 self._update_settings_env_vars(settings_file, template_vars, results)
             except Exception as e:
-                results["errors"].append(
-                    f"Failed to update settings.json env vars: {str(e)}"
-                )
+                results["errors"].append(f"Failed to update settings.json env vars: {str(e)}")
 
     def _update_settings_env_vars(
         self,
@@ -313,9 +297,7 @@ class TemplateVariableSynchronizer:
         try:
             # Get current template variables
             current_config = self.language_resolver.resolve_config()
-            current_vars = self.language_resolver.export_template_variables(
-                current_config
-            )
+            current_vars = self.language_resolver.export_template_variables(current_config)
 
             # Check files for template variable consistency
             files_with_variables = self._find_files_with_template_variables(None)
@@ -332,9 +314,7 @@ class TemplateVariableSynchronizer:
 
                         if pattern.search(content):
                             files_with_vars: int = validation_results["files_with_variables"]  # type: ignore[assignment]
-                            validation_results["files_with_variables"] = (
-                                files_with_vars + 1
-                            )
+                            validation_results["files_with_variables"] = files_with_vars + 1
                             # Variable found but not substituted - this might be expected
                             # Only report as inconsistency if we expect it to be substituted
                             pass
@@ -420,9 +400,7 @@ class TemplateVariableSynchronizer:
         return usage_report
 
 
-def synchronize_template_variables(
-    project_root: str, changed_config_path: Optional[str] = None
-) -> Dict[str, Any]:
+def synchronize_template_variables(project_root: str, changed_config_path: Optional[str] = None) -> Dict[str, Any]:
     """
     Convenience function to synchronize template variables.
 

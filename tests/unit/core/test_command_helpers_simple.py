@@ -202,9 +202,7 @@ class TestBuildPhaseResult:
         next_phase = "2-run"
 
         # Act
-        result = build_phase_result(
-            phase_name, status, outputs, files_created, next_phase
-        )
+        result = build_phase_result(phase_name, status, outputs, files_created, next_phase)
 
         # Assert
         assert result["next_phase"] == "2-run"
@@ -337,9 +335,7 @@ class TestSaveCommandContext:
             files_created = ["file1.txt"]
 
             # Act
-            result = save_command_context(
-                phase_name, project_root, outputs, files_created
-            )
+            result = save_command_context(phase_name, project_root, outputs, files_created)
 
             # Assert
             assert result == "/path/to/saved.json"
@@ -361,9 +357,7 @@ class TestSaveCommandContext:
             next_phase = "2-run"
 
             # Act
-            result = save_command_context(
-                phase_name, project_root, outputs, files_created, next_phase
-            )
+            result = save_command_context(phase_name, project_root, outputs, files_created, next_phase)
 
             # Assert
             assert result == "/path/saved.json"
@@ -379,9 +373,7 @@ class TestSaveCommandContext:
             files_created = []
 
             # Act - should handle ImportError gracefully
-            result = save_command_context(
-                phase_name, project_root, outputs, files_created
-            )
+            result = save_command_context(phase_name, project_root, outputs, files_created)
 
             # Assert
             assert result is None
@@ -399,9 +391,7 @@ class TestSaveCommandContext:
             files_created = []
 
             # Act
-            result = save_command_context(
-                phase_name, project_root, outputs, files_created
-            )
+            result = save_command_context(phase_name, project_root, outputs, files_created)
 
             # Assert
             assert result is None

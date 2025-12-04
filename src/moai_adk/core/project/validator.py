@@ -59,9 +59,7 @@ class ProjectValidator:
         import sys
 
         if sys.version_info < (3, 10):
-            raise ValidationError(
-                f"Python 3.10+ required (current: {sys.version_info.major}.{sys.version_info.minor})"
-            )
+            raise ValidationError(f"Python 3.10+ required (current: {sys.version_info.major}.{sys.version_info.minor})")
 
     def validate_project_path(self, project_path: Path) -> None:
         """Verify the project path.
@@ -78,9 +76,7 @@ class ProjectValidator:
 
         # Parent directory must exist
         if not project_path.parent.exists():
-            raise ValidationError(
-                f"Parent directory does not exist: {project_path.parent}"
-            )
+            raise ValidationError(f"Parent directory does not exist: {project_path.parent}")
 
         # Prevent initialization inside the MoAI-ADK package
         if self._is_inside_moai_package(project_path):
@@ -117,9 +113,7 @@ class ProjectValidator:
 
         if missing_commands:
             missing_list = ", ".join(missing_commands)
-            raise ValidationError(
-                f"Required Alfred command files not found: {missing_list}"
-            )
+            raise ValidationError(f"Required Alfred command files not found: {missing_list}")
 
     def _is_inside_moai_package(self, project_path: Path) -> bool:
         """Determine whether the path is inside the MoAI-ADK package.

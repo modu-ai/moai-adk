@@ -51,12 +51,8 @@ def temp_project_dir():
         (project_root / ".moai" / "error_logs").mkdir(parents=True, exist_ok=True)
         (project_root / ".claude" / "cache").mkdir(parents=True, exist_ok=True)
         (project_root / ".claude" / "skills").mkdir(parents=True, exist_ok=True)
-        (project_root / ".claude" / "agents" / "alfred").mkdir(
-            parents=True, exist_ok=True
-        )
-        (project_root / ".claude" / "commands" / "alfred").mkdir(
-            parents=True, exist_ok=True
-        )
+        (project_root / ".claude" / "agents" / "alfred").mkdir(parents=True, exist_ok=True)
+        (project_root / ".claude" / "commands" / "alfred").mkdir(parents=True, exist_ok=True)
 
         yield project_root
 
@@ -372,9 +368,7 @@ class TestErrorHandling:
         """Test that critical errors trigger automatic recovery"""
         error = RuntimeError("Critical error")
 
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=True,
                 action_name="test",
@@ -394,9 +388,7 @@ class TestErrorHandling:
         """Test that high severity errors trigger automatic recovery"""
         error = RuntimeError("High severity error")
 
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
@@ -415,9 +407,7 @@ class TestErrorHandling:
         """Test that low severity errors don't trigger automatic recovery"""
         error = RuntimeError("Low severity error")
 
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             report = error_recovery_system.handle_error(
                 error, severity=ErrorSeverity.LOW, category=ErrorCategory.USER_INPUT
             )
@@ -512,13 +502,8 @@ class TestRecoveryActionManagement:
         error_recovery_system.register_recovery_action(action1)
         error_recovery_system.register_recovery_action(action2)
 
-        assert (
-            error_recovery_system.recovery_actions["overwrite_test"].description
-            == "Second action"
-        )
-        assert (
-            error_recovery_system.recovery_actions["overwrite_test"].handler == handler2
-        )
+        assert error_recovery_system.recovery_actions["overwrite_test"].description == "Second action"
+        assert error_recovery_system.recovery_actions["overwrite_test"].handler == handler2
 
 
 class TestManualRecovery:
@@ -544,9 +529,7 @@ class TestManualRecovery:
         error_recovery_system.register_recovery_action(action)
 
         # Attempt recovery
-        result = error_recovery_system.attempt_manual_recovery(
-            error_id, "test_recovery"
-        )
+        result = error_recovery_system.attempt_manual_recovery(error_id, "test_recovery")
 
         assert result.success is True
         assert result.action_name == "test_recovery"
@@ -555,9 +538,7 @@ class TestManualRecovery:
 
     def test_attempt_manual_recovery_nonexistent_error(self, error_recovery_system):
         """Test manual recovery on non-existent error"""
-        result = error_recovery_system.attempt_manual_recovery(
-            "ERR_nonexistent", "some_action"
-        )
+        result = error_recovery_system.attempt_manual_recovery("ERR_nonexistent", "some_action")
 
         assert result.success is False
         assert "not found in active errors" in result.message
@@ -570,9 +551,7 @@ class TestManualRecovery:
         error_id = report.id
 
         # Attempt with non-existent action
-        result = error_recovery_system.attempt_manual_recovery(
-            error_id, "nonexistent_action"
-        )
+        result = error_recovery_system.attempt_manual_recovery(error_id, "nonexistent_action")
 
         assert result.success is False
         assert "not found" in result.message
@@ -598,9 +577,7 @@ class TestManualRecovery:
 
         # Attempt recovery with parameters
         params = {"retry": True, "timeout": 30}
-        result = error_recovery_system.attempt_manual_recovery(
-            error_id, "parameterized_recovery", params
-        )
+        result = error_recovery_system.attempt_manual_recovery(error_id, "parameterized_recovery", params)
 
         assert result.success is True
         handler.assert_called_once()
@@ -628,9 +605,7 @@ class TestManualRecovery:
         error_recovery_system.register_recovery_action(action)
 
         # Attempt recovery
-        result = error_recovery_system.attempt_manual_recovery(
-            error_id, "failing_recovery"
-        )
+        result = error_recovery_system.attempt_manual_recovery(error_id, "failing_recovery")
 
         assert result.success is False
         assert "Handler failed" in result.message
@@ -689,9 +664,7 @@ class TestSystemHealth:
     def test_system_health_degraded_with_high_errors(self, error_recovery_system):
         """Test system health becomes degraded with high severity errors"""
         # Patch automatic recovery to fail so error remains in active_errors
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
@@ -707,9 +680,7 @@ class TestSystemHealth:
     def test_system_health_critical_with_critical_errors(self, error_recovery_system):
         """Test system health becomes critical with critical errors"""
         # Patch automatic recovery to fail so error remains in active_errors
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
@@ -761,9 +732,7 @@ class TestErrorSummary:
     def test_get_error_summary_with_errors(self, error_recovery_system):
         """Test error summary with multiple errors"""
         # Patch automatic recovery to fail so errors remain in active_errors
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
@@ -777,9 +746,7 @@ class TestErrorSummary:
             ]
 
             for error, severity, category in errors:
-                error_recovery_system.handle_error(
-                    error, severity=severity, category=category
-                )
+                error_recovery_system.handle_error(error, severity=severity, category=category)
 
         summary = error_recovery_system.get_error_summary()
 
@@ -789,15 +756,9 @@ class TestErrorSummary:
 
     def test_error_summary_by_severity(self, error_recovery_system):
         """Test error summary categorization by severity"""
-        error_recovery_system.handle_error(
-            ValueError("Error 1"), severity=ErrorSeverity.CRITICAL
-        )
-        error_recovery_system.handle_error(
-            RuntimeError("Error 2"), severity=ErrorSeverity.CRITICAL
-        )
-        error_recovery_system.handle_error(
-            TypeError("Error 3"), severity=ErrorSeverity.HIGH
-        )
+        error_recovery_system.handle_error(ValueError("Error 1"), severity=ErrorSeverity.CRITICAL)
+        error_recovery_system.handle_error(RuntimeError("Error 2"), severity=ErrorSeverity.CRITICAL)
+        error_recovery_system.handle_error(TypeError("Error 3"), severity=ErrorSeverity.HIGH)
 
         summary = error_recovery_system.get_error_summary()
 
@@ -806,15 +767,9 @@ class TestErrorSummary:
 
     def test_error_summary_by_category(self, error_recovery_system):
         """Test error summary categorization by category"""
-        error_recovery_system.handle_error(
-            ValueError("Error 1"), category=ErrorCategory.SYSTEM
-        )
-        error_recovery_system.handle_error(
-            RuntimeError("Error 2"), category=ErrorCategory.RESEARCH
-        )
-        error_recovery_system.handle_error(
-            TypeError("Error 3"), category=ErrorCategory.SYSTEM
-        )
+        error_recovery_system.handle_error(ValueError("Error 1"), category=ErrorCategory.SYSTEM)
+        error_recovery_system.handle_error(RuntimeError("Error 2"), category=ErrorCategory.RESEARCH)
+        error_recovery_system.handle_error(TypeError("Error 3"), category=ErrorCategory.SYSTEM)
 
         summary = error_recovery_system.get_error_summary()
 
@@ -845,9 +800,7 @@ class TestErrorSummary:
 
         assert len(summary["recent_errors"]) == 3
         assert all("id" in e and "timestamp" in e for e in summary["recent_errors"])
-        assert all(
-            "severity" in e and "category" in e for e in summary["recent_errors"]
-        )
+        assert all("severity" in e and "category" in e for e in summary["recent_errors"])
 
     def test_error_summary_recovery_rate(self, error_recovery_system):
         """Test error summary calculates recovery rate"""
@@ -885,9 +838,7 @@ class TestTroubleshootingGuide:
         """Test guide generation with error history"""
         # Create multiple errors of same type
         for i in range(3):
-            error_recovery_system.handle_error(
-                ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION)
 
         guide = error_recovery_system.generate_troubleshooting_guide()
 
@@ -915,9 +866,7 @@ class TestTroubleshootingGuide:
         """Test prevention tips generation"""
         # Create multiple configuration errors
         for i in range(6):
-            error_recovery_system.handle_error(
-                ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION)
 
         guide = error_recovery_system.generate_troubleshooting_guide()
 
@@ -1001,9 +950,7 @@ class TestPatternDetection:
         error_recovery_system.handle_error(error1, category=ErrorCategory.VALIDATION)
         error_recovery_system.handle_error(error2, category=ErrorCategory.VALIDATION)
 
-        patterns = error_recovery_system._identify_error_patterns(
-            error_recovery_system.error_history
-        )
+        patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
         assert len(patterns) > 0
         assert any("validation" in pattern for pattern in patterns.keys())
@@ -1019,9 +966,7 @@ class TestPatternDetection:
         for error, category in errors:
             error_recovery_system.handle_error(error, category=category)
 
-        patterns = error_recovery_system._identify_error_patterns(
-            error_recovery_system.error_history
-        )
+        patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
         # Should have multiple patterns
         assert len(patterns) > 1
@@ -1030,13 +975,9 @@ class TestPatternDetection:
         """Test that patterns track frequency"""
         # Create multiple same-type errors
         for i in range(3):
-            error_recovery_system.handle_error(
-                ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Validation error {i}"), category=ErrorCategory.VALIDATION)
 
-        patterns = error_recovery_system._identify_error_patterns(
-            error_recovery_system.error_history
-        )
+        patterns = error_recovery_system._identify_error_patterns(error_recovery_system.error_history)
 
         # Should have pattern with frequency 3
         assert any(count == 3 for count in patterns.values())
@@ -1045,9 +986,7 @@ class TestPatternDetection:
 class TestAutomaticRecovery:
     """Tests for automatic recovery mechanisms"""
 
-    def test_attempt_automatic_recovery_no_suitable_actions(
-        self, error_recovery_system
-    ):
+    def test_attempt_automatic_recovery_no_suitable_actions(self, error_recovery_system):
         """Test automatic recovery when no suitable actions exist"""
         error = ValueError("Test error")
         report = error_recovery_system.handle_error(
@@ -1059,9 +998,7 @@ class TestAutomaticRecovery:
         assert result.success is False
         assert "no suitable" in result.message.lower()
 
-    def test_attempt_automatic_recovery_finds_matching_action(
-        self, error_recovery_system
-    ):
+    def test_attempt_automatic_recovery_finds_matching_action(self, error_recovery_system):
         """Test automatic recovery finds matching action"""
         # Remove default recovery action first to test our custom one
         error_recovery_system.recovery_actions.clear()
@@ -1127,9 +1064,7 @@ class TestAutomaticRecovery:
         handler.assert_not_called()
         assert result.success is False
 
-    def test_automatic_recovery_continues_on_action_failure(
-        self, error_recovery_system
-    ):
+    def test_automatic_recovery_continues_on_action_failure(self, error_recovery_system):
         """Test that automatic recovery tries next action if one fails"""
         # Remove default recovery actions first
         error_recovery_system.recovery_actions.clear()
@@ -1210,9 +1145,7 @@ class TestHelperMethods:
         for error in error_recovery_system.error_history:
             error.recovery_successful = True
 
-        rate = error_recovery_system._calculate_recovery_rate(
-            error_recovery_system.error_history
-        )
+        rate = error_recovery_system._calculate_recovery_rate(error_recovery_system.error_history)
         assert rate == 1.0
 
     def test_calculate_recovery_rate_partial(self, error_recovery_system):
@@ -1224,9 +1157,7 @@ class TestHelperMethods:
         error_recovery_system.error_history[0].recovery_successful = True
         error_recovery_system.error_history[1].recovery_successful = True
 
-        rate = error_recovery_system._calculate_recovery_rate(
-            error_recovery_system.error_history
-        )
+        rate = error_recovery_system._calculate_recovery_rate(error_recovery_system.error_history)
         assert rate == 0.5
 
     def test_get_pattern_severity_mapping(self, error_recovery_system):
@@ -1245,9 +1176,7 @@ class TestHelperMethods:
 
     def test_get_solutions_for_pattern(self, error_recovery_system):
         """Test getting solutions for error patterns"""
-        solutions = error_recovery_system._get_solutions_for_pattern(
-            "research:Exception"
-        )
+        solutions = error_recovery_system._get_solutions_for_pattern("research:Exception")
 
         assert isinstance(solutions, list)
         assert len(solutions) > 0
@@ -1257,9 +1186,7 @@ class TestHelperMethods:
         """Test prevention tips generation"""
         # Create multiple configuration errors
         for i in range(6):
-            error_recovery_system.handle_error(
-                ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION
-            )
+            error_recovery_system.handle_error(ValueError(f"Config error {i}"), category=ErrorCategory.CONFIGURATION)
 
         tips = error_recovery_system._generate_prevention_tips()
 
@@ -1336,9 +1263,7 @@ class TestConvenienceFunctions:
 
         ers_module._error_recovery_system = None
 
-        @error_handler(
-            severity=ErrorSeverity.CRITICAL, context={"operation": "test_operation"}
-        )
+        @error_handler(severity=ErrorSeverity.CRITICAL, context={"operation": "test_operation"})
         def context_function():
             raise RuntimeError("Context error")
 
@@ -1394,9 +1319,7 @@ class TestValidationMethods:
 
     def test_validate_agent_file_valid(self, temp_project_dir):
         """Test validating a valid agent file"""
-        agent_file = (
-            temp_project_dir / ".claude" / "agents" / "alfred" / "test_agent.md"
-        )
+        agent_file = temp_project_dir / ".claude" / "agents" / "alfred" / "test_agent.md"
         agent_file.write_text("role: test_role\n" + "content" * 50)
 
         system = ErrorRecoverySystem(project_root=temp_project_dir)
@@ -1578,9 +1501,7 @@ class TestEdgeCases:
 
         # Large parameters
         large_params = {"data": "x" * 10000}
-        result = error_recovery_system.attempt_manual_recovery(
-            error_id, "large_params", large_params
-        )
+        result = error_recovery_system.attempt_manual_recovery(error_id, "large_params", large_params)
 
         assert result.success is True
 
@@ -1591,9 +1512,7 @@ class TestIntegration:
     def test_full_error_lifecycle(self, error_recovery_system):
         """Test complete error lifecycle"""
         # 1. Create and handle error (patch recovery so error stays in active_errors)
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
@@ -1622,9 +1541,7 @@ class TestIntegration:
         )
         error_recovery_system.register_recovery_action(action)
 
-        result = error_recovery_system.attempt_manual_recovery(
-            error_id, "lifecycle_recovery"
-        )
+        result = error_recovery_system.attempt_manual_recovery(error_id, "lifecycle_recovery")
 
         # 4. Verify recovery
         assert result.success is True
@@ -1646,18 +1563,14 @@ class TestIntegration:
 
         reports = []
         for error, severity, category in errors:
-            with patch.object(
-                error_recovery_system, "_attempt_automatic_recovery"
-            ) as mock_recovery:
+            with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
                 mock_recovery.return_value = RecoveryResult(
                     success=True,
                     action_name="auto_recovery",
                     message="Auto recovered",
                     duration=1.0,
                 )
-                report = error_recovery_system.handle_error(
-                    error, severity=severity, category=category
-                )
+                report = error_recovery_system.handle_error(error, severity=severity, category=category)
                 reports.append(report)
 
         # Verify all handled
@@ -1675,35 +1588,27 @@ class TestIntegration:
         assert health["status"] == "healthy"
 
         # Add high severity error (patch recovery to fail so error stays)
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
                 message="Recovery failed",
                 duration=1.0,
             )
-            error_recovery_system.handle_error(
-                RuntimeError("High error"), severity=ErrorSeverity.HIGH
-            )
+            error_recovery_system.handle_error(RuntimeError("High error"), severity=ErrorSeverity.HIGH)
 
         health = error_recovery_system.get_system_health()
         assert health["status"] == "degraded"
 
         # Add critical error
-        with patch.object(
-            error_recovery_system, "_attempt_automatic_recovery"
-        ) as mock_recovery:
+        with patch.object(error_recovery_system, "_attempt_automatic_recovery") as mock_recovery:
             mock_recovery.return_value = RecoveryResult(
                 success=False,
                 action_name="test",
                 message="Recovery failed",
                 duration=1.0,
             )
-            error_recovery_system.handle_error(
-                RuntimeError("Critical error"), severity=ErrorSeverity.CRITICAL
-            )
+            error_recovery_system.handle_error(RuntimeError("Critical error"), severity=ErrorSeverity.CRITICAL)
 
         health = error_recovery_system.get_system_health()
         assert health["status"] == "critical"

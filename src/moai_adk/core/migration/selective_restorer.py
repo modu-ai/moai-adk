@@ -65,9 +65,7 @@ class SelectiveRestorer:
         backup_dirs.sort(reverse=True)
         return backup_dirs[0][1]  # Return the Path object
 
-    def restore_elements(
-        self, selected_elements: List[str]
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def restore_elements(self, selected_elements: List[str]) -> Tuple[bool, Dict[str, Any]]:
         """Restore selected custom elements from backup.
 
         Args:
@@ -124,9 +122,7 @@ class SelectiveRestorer:
 
         return is_success, stats
 
-    def _group_elements_by_type(
-        self, selected_elements: List[str]
-    ) -> Dict[str, List[Path]]:
+    def _group_elements_by_type(self, selected_elements: List[str]) -> Dict[str, List[Path]]:
         """Group selected elements by their type.
 
         Args:
@@ -165,9 +161,7 @@ class SelectiveRestorer:
 
         return groups
 
-    def _restore_element_type(
-        self, element_type: str, elements: List[Path]
-    ) -> Dict[str, int]:
+    def _restore_element_type(self, element_type: str, elements: List[Path]) -> Dict[str, int]:
         """Restore elements of a specific type.
 
         Args:
@@ -220,31 +214,21 @@ class SelectiveRestorer:
                         _, relative_part = element_str.split(safe_prefix, 1)
                         # Reconstruct the relative path
                         normalized_path = Path(safe_prefix.rstrip("/")) / relative_part
-                        logger.debug(
-                            f"Normalized absolute path {element_path} -> {normalized_path}"
-                        )
+                        logger.debug(f"Normalized absolute path {element_path} -> {normalized_path}")
                         return normalized_path
                     except (ValueError, IndexError):
-                        logger.warning(
-                            f"Failed to extract relative path from {element_path}"
-                        )
+                        logger.warning(f"Failed to extract relative path from {element_path}")
                         continue
 
             # If no safe prefix found in absolute path, this is suspicious
-            logger.error(
-                f"Absolute path {element_path} doesn't contain .claude/ or .moai/ prefixes"
-            )
+            logger.error(f"Absolute path {element_path} doesn't contain .claude/ or .moai/ prefixes")
             return None
 
         # Handle relative paths
         else:
             # Ensure relative path starts with .claude or .moai
-            if not (
-                element_str.startswith(".claude/") or element_str.startswith(".moai/")
-            ):
-                logger.error(
-                    f"Relative path {element_path} must start with .claude/ or .moai/"
-                )
+            if not (element_str.startswith(".claude/") or element_str.startswith(".moai/")):
+                logger.error(f"Relative path {element_path} must start with .claude/ or .moai/")
                 return None
 
             logger.debug(f"Relative path already normalized: {element_path}")
@@ -269,18 +253,14 @@ class SelectiveRestorer:
         # Ensure path starts with allowed prefixes
         allowed_prefixes = [".claude/", ".moai/"]
         if not any(path_str.startswith(prefix) for prefix in allowed_prefixes):
-            logger.error(
-                f"Path {path_str} doesn't start with allowed prefix: {allowed_prefixes}"
-            )
+            logger.error(f"Path {path_str} doesn't start with allowed prefix: {allowed_prefixes}")
             return False
 
         # Additional validation: check for suspicious patterns
         suspicious_patterns = ["//", "~", "$"]
         for pattern in suspicious_patterns:
             if pattern in path_str:
-                logger.warning(
-                    f"Suspicious pattern '{pattern}' found in path: {path_str}"
-                )
+                logger.warning(f"Suspicious pattern '{pattern}' found in path: {path_str}")
 
         return True
 
@@ -411,13 +391,9 @@ class SelectiveRestorer:
             for element_type, type_stats in by_type_stats.items():
                 if type_stats["total"] > 0:
                     status_icon = "✅" if type_stats["failed"] == 0 else "❌"
-                    print(
-                        f"   {element_type.title()}: {type_stats['success']}/{type_stats['total']} {status_icon}"
-                    )
+                    print(f"   {element_type.title()}: {type_stats['success']}/{type_stats['total']} {status_icon}")
 
-    def _log_restoration_details(
-        self, selected_elements: List[str], stats: Dict[str, int]
-    ) -> None:
+    def _log_restoration_details(self, selected_elements: List[str], stats: Dict[str, int]) -> None:
         """Log detailed restoration information for debugging.
 
         Args:
@@ -429,11 +405,7 @@ class SelectiveRestorer:
         )
 
         if stats["failed"] > 0:
-            failed_elements = [
-                elem
-                for elem in selected_elements
-                if not self._was_restoration_successful(Path(elem))
-            ]
+            failed_elements = [elem for elem in selected_elements if not self._was_restoration_successful(Path(elem))]
             logger.warning(f"Failed elements: {failed_elements}")
 
         # Log all restoration attempts from the log
@@ -453,17 +425,12 @@ class SelectiveRestorer:
             True if element was restored successfully
         """
         for entry in self.restoration_log:
-            if (
-                str(Path(entry["path"])) == str(element_path)
-                and entry["status"] == "success"
-            ):
+            if str(Path(entry["path"])) == str(element_path) and entry["status"] == "success":
                 return True
         return False
 
 
-def create_selective_restorer(
-    project_path: str | Path, backup_path: Optional[Path] = None
-) -> SelectiveRestorer:
+def create_selective_restorer(project_path: str | Path, backup_path: Optional[Path] = None) -> SelectiveRestorer:
     """Factory function to create a SelectiveRestorer.
 
     Args:

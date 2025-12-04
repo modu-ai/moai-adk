@@ -449,9 +449,7 @@ class DataPipelineBuilder:
             # Create interaction features if needed
             if transformation == "create_interactions":
                 interaction_features = [
-                    f"{features[i]}_{features[j]}"
-                    for i in range(len(features))
-                    for j in range(i + 1, len(features))
+                    f"{features[i]}_{features[j]}" for i in range(len(features)) for j in range(i + 1, len(features))
                 ]
                 output_features = features + interaction_features
             else:
@@ -724,11 +722,7 @@ CMD ["python", "serve.py"]
         Returns:
             Endpoint configuration with URL and auth token
         """
-        auth_token = (
-            hashlib.sha256(f"{model_id}_{endpoint_name}".encode()).hexdigest()[:32]
-            if auth_enabled
-            else None
-        )
+        auth_token = hashlib.sha256(f"{model_id}_{endpoint_name}".encode()).hexdigest()[:32] if auth_enabled else None
 
         endpoint = {
             "endpoint_url": f"https://api.example.com/{endpoint_name}",
@@ -844,9 +838,7 @@ class DriftDetectionMonitor:
 
         result = {
             "model_id": model_id,
-            "performance_degradation": (
-                total_degradation / len(baseline_metrics) if baseline_metrics else 0.0
-            ),
+            "performance_degradation": (total_degradation / len(baseline_metrics) if baseline_metrics else 0.0),
             "alert": len(degraded_metrics) > 0,
             "degraded_metrics": degraded_metrics,
             "timestamp": datetime.now(UTC).isoformat(),
@@ -900,9 +892,7 @@ class DriftDetectionMonitor:
             "threshold": self.threshold,
             "status": "healthy",
             "total_checks": len(self.drift_history),
-            "drift_incidents": sum(
-                1 for d in self.drift_history if d["drift_detected"]
-            ),
+            "drift_incidents": sum(1 for d in self.drift_history if d["drift_detected"]),
         }
 
 
@@ -945,9 +935,7 @@ class PerformanceOptimizer:
         """
         # Simulate quantization (4x reduction for int8)
         original_size = 600.0  # MB
-        reduction_factor = {"int8": 4.0, "int4": 8.0, "float16": 2.0}.get(
-            precision, 1.0
-        )
+        reduction_factor = {"int8": 4.0, "int4": 8.0, "float16": 2.0}.get(precision, 1.0)
         quantized_size = original_size / reduction_factor
 
         result = {

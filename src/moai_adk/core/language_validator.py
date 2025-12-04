@@ -141,9 +141,7 @@ class LanguageValidator:
             "supported_languages_found": 0,
         }
 
-    def _validate_and_normalize_input(
-        self, value: Any, input_type: str
-    ) -> Optional[Any]:
+    def _validate_and_normalize_input(self, value: Any, input_type: str) -> Optional[Any]:
         """
         Validate and normalize input values.
 
@@ -380,9 +378,7 @@ class LanguageValidator:
 
         return language.strip().lower()
 
-    def validate_project_configuration(
-        self, config: Dict[str, Any]
-    ) -> Tuple[bool, List[str]]:
+    def validate_project_configuration(self, config: Dict[str, Any]) -> Tuple[bool, List[str]]:
         """
         Validate project configuration for language support.
 
@@ -429,18 +425,13 @@ class LanguageValidator:
             return False, issues
 
         # Additional validation for empty strings and whitespace-only names
-        if (
-            isinstance(project_config["name"], str)
-            and not project_config["name"].strip()
-        ):
+        if isinstance(project_config["name"], str) and not project_config["name"].strip():
             issues.append("Project name cannot be empty or contain only whitespace")
             return False, issues
 
         return True, issues
 
-    def validate_project_structure(
-        self, project_files: Dict[str, bool], language: str
-    ) -> Tuple[bool, List[str]]:
+    def validate_project_structure(self, project_files: Dict[str, bool], language: str) -> Tuple[bool, List[str]]:
         """
         Validate project structure for a specific language.
 
@@ -452,12 +443,8 @@ class LanguageValidator:
             Tuple of (is_valid, issues) where is_valid is boolean and issues is list of strings.
         """
         if self.auto_validate:
-            validated_project_files = self._validate_and_normalize_input(
-                project_files, "dict"
-            )
-            validated_language = self._validate_and_normalize_input(
-                language, "language"
-            )
+            validated_project_files = self._validate_and_normalize_input(project_files, "dict")
+            validated_language = self._validate_and_normalize_input(language, "language")
             if validated_project_files is None or validated_language is None:
                 return False, ["Invalid input format for project structure validation"]
 
@@ -482,9 +469,7 @@ class LanguageValidator:
                     break
 
             if not found_files_in_dir and expected_dir != "{package_name}/":
-                issues.append(
-                    f"No source files found in expected directory: {expected_dir}"
-                )
+                issues.append(f"No source files found in expected directory: {expected_dir}")
 
         # Check for files in unexpected directories
         # Note: Using simplified check since is_code_directory signature changed

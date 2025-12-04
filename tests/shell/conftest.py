@@ -53,9 +53,7 @@ def bash_available() -> bool:
 def run_powershell():
     """PowerShell 스크립트를 실행하고 결과를 반환하는 헬퍼"""
 
-    def _run(
-        script: str, *args, check: bool = True, **kwargs
-    ) -> subprocess.CompletedProcess:
+    def _run(script: str, *args, check: bool = True, **kwargs) -> subprocess.CompletedProcess:
         """
         PowerShell 스크립트 실행
 
@@ -84,9 +82,7 @@ def run_powershell():
 def run_bash():
     """Bash 스크립트를 실행하고 결과를 반환하는 헬퍼"""
 
-    def _run(
-        script: str, *args, check: bool = True, **kwargs
-    ) -> subprocess.CompletedProcess:
+    def _run(script: str, *args, check: bool = True, **kwargs) -> subprocess.CompletedProcess:
         """
         Bash 스크립트 실행
 

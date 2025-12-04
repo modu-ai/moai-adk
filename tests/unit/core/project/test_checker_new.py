@@ -590,6 +590,4 @@ class TestLanguageToolsIntegration:
         # Act & Assert
         for language, tools_config in checker.LANGUAGE_TOOLS.items():
             assert "required" in tools_config, f"{language} missing required tools"
-            assert (
-                len(tools_config["required"]) > 0
-            ), f"{language} has no required tools"
+            assert len(tools_config["required"]) > 0, f"{language} has no required tools"

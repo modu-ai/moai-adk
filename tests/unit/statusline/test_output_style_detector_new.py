@@ -163,9 +163,7 @@ class TestOutputStyleDetectorEnvironment:
         """Test exception handling in environment detection."""
         detector = OutputStyleDetector()
         with patch.dict("os.environ", {"CLAUDE_OUTPUT_STYLE": "test"}):
-            with patch.object(
-                detector, "_normalize_style", side_effect=Exception("test error")
-            ):
+            with patch.object(detector, "_normalize_style", side_effect=Exception("test error")):
                 with patch("sys.stderr", new_callable=MagicMock):
                     result = detector.detect_from_environment()
                     # Still returns None due to exception
@@ -202,9 +200,7 @@ class TestOutputStyleDetectorBehavioral:
             mock_cwd_result = MagicMock()
             mock_cwd_result.__truediv__ = MagicMock(
                 side_effect=lambda x: (
-                    mock_docs_dir
-                    if x == "docs"
-                    else MagicMock(exists=MagicMock(return_value=False))
+                    mock_docs_dir if x == "docs" else MagicMock(exists=MagicMock(return_value=False))
                 )
             )
             mock_cwd.return_value = mock_cwd_result
@@ -216,9 +212,7 @@ class TestOutputStyleDetectorBehavioral:
         detector = OutputStyleDetector()
         with patch("pathlib.Path.cwd") as mock_cwd:
             mock_cwd_result = MagicMock()
-            mock_cwd_result.__truediv__ = MagicMock(
-                return_value=MagicMock(exists=MagicMock(return_value=False))
-            )
+            mock_cwd_result.__truediv__ = MagicMock(return_value=MagicMock(exists=MagicMock(return_value=False)))
             mock_cwd.return_value = mock_cwd_result
             result = detector.detect_from_behavioral_analysis()
             assert result is None
@@ -520,24 +514,16 @@ class TestOutputStyleDetectorEdgeCases:
     def test_multiple_detection_methods_priority(self):
         """Test that detection methods are called in priority order."""
         detector = OutputStyleDetector()
-        with patch.object(
-            detector, "detect_from_session_context", return_value="R2-D2"
-        ):
-            with patch.object(
-                detector, "detect_from_environment", return_value="Concise"
-            ):
+        with patch.object(detector, "detect_from_session_context", return_value="R2-D2"):
+            with patch.object(detector, "detect_from_environment", return_value="Concise"):
                 result = detector.get_output_style({})
                 assert result == "R2-D2"  # Session context has priority
 
     def test_get_output_style_with_unknown_style(self):
         """Test handling of unknown/empty detected style."""
         detector = OutputStyleDetector()
-        with patch.object(
-            detector, "detect_from_session_context", return_value="Unknown"
-        ):
-            with patch.object(
-                detector, "detect_from_environment", return_value="Concise"
-            ):
+        with patch.object(detector, "detect_from_session_context", return_value="Unknown"):
+            with patch.object(detector, "detect_from_environment", return_value="Concise"):
                 result = detector.get_output_style({})
                 assert result == "Concise"  # Moves to next method
 

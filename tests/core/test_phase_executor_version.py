@@ -29,9 +29,7 @@ class TestPhaseExecutorVersion:
             "moai": {"version": "1.5.0-custom", "update_check_frequency": "daily"},
             "project": {"name": "TestProject", "mode": "team"},
         }
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
         validator = ProjectValidator()
@@ -46,9 +44,7 @@ class TestPhaseExecutorVersion:
         # Verify phase 4 succeeded
         assert len(result) == 1, f"Phase 4 should return one file, got {len(result)}"
         actual_config_path = tmp_path / ".moai" / "config" / "config.json"
-        assert (
-            str(actual_config_path) in result
-        ), f"Should return actual config file path {actual_config_path}"
+        assert str(actual_config_path) in result, f"Should return actual config file path {actual_config_path}"
 
         # Read and verify preserved config
         actual_config_path = tmp_path / ".moai" / "config" / "config.json"
@@ -57,16 +53,12 @@ class TestPhaseExecutorVersion:
 
         # Verify that the existing version field is preserved
         assert "moai" in final_config, "Final config should have 'moai' section"
-        assert (
-            "version" in final_config["moai"]
-        ), "moai section should have 'version' field"
+        assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert (
             final_config["moai"]["version"] == "1.5.0-custom"
         ), f"Should preserve custom version '1.5.0-custom', got {final_config['moai']['version']}"
 
-    def test_phase_4_merges_new_config_with_existing_version(
-        self, tmp_path: Path
-    ) -> None:
+    def test_phase_4_merges_new_config_with_existing_version(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing .moai/config/config.json with version and new config with other fields
         WHEN: Phase 4 (configuration generation) executes
@@ -84,9 +76,7 @@ class TestPhaseExecutorVersion:
             "moai": {"version": "2.0.0-existing", "update_check_frequency": "weekly"},
             "project": {"name": "TestProject", "language": "python"},
         }
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
         validator = ProjectValidator()
@@ -103,9 +93,7 @@ class TestPhaseExecutorVersion:
 
         # Verify phase 4 succeeded
         actual_config_path = tmp_path / ".moai" / "config" / "config.json"
-        assert (
-            str(actual_config_path) in result
-        ), f"Should return actual config file path {actual_config_path}"
+        assert str(actual_config_path) in result, f"Should return actual config file path {actual_config_path}"
 
         # Read and verify merged config
         with open(actual_config_path, "r", encoding="utf-8") as f:
@@ -113,9 +101,7 @@ class TestPhaseExecutorVersion:
 
         # Verify that the existing version field is preserved
         assert "moai" in final_config, "Final config should have 'moai' section"
-        assert (
-            "version" in final_config["moai"]
-        ), "moai section should have 'version' field"
+        assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert (
             final_config["moai"]["version"] == "2.0.0-existing"
         ), f"Should preserve existing version '2.0.0-existing', got {final_config['moai']['version']}"
@@ -127,9 +113,7 @@ class TestPhaseExecutorVersion:
         ), f"Should have new project mode 'team', got {final_config['project'].get('mode')}"
         assert "constitution" in final_config, "Should have constitution section"
 
-    def test_phase_4_handles_version_field_priority_correctly(
-        self, tmp_path: Path
-    ) -> None:
+    def test_phase_4_handles_version_field_priority_correctly(self, tmp_path: Path) -> None:
         """
         GIVEN: New config has moai.version and existing config has different version
         WHEN: Phase 4 (configuration generation) executes
@@ -149,18 +133,14 @@ class TestPhaseExecutorVersion:
                 "update_check_frequency": "monthly",
             }
         }
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
         validator = ProjectValidator()
         executor = PhaseExecutor(validator)
 
         # New config with different version (should be ignored)
-        new_config = {
-            "moai": {"version": "1.0.0-template", "update_check_frequency": "daily"}
-        }
+        new_config = {"moai": {"version": "1.0.0-template", "update_check_frequency": "daily"}}
 
         # Execute phase 4
         executor.execute_configuration_phase(tmp_path, new_config)
@@ -176,9 +156,7 @@ class TestPhaseExecutorVersion:
             final_config["moai"]["version"] == "3.1.0-user-custom"
         ), f"Should preserve user's custom version '3.1.0-user-custom', got {final_config['moai']['version']}"
 
-    def test_phase_4_preserves_version_during_reinitialization(
-        self, tmp_path: Path
-    ) -> None:
+    def test_phase_4_preserves_version_during_reinitialization(self, tmp_path: Path) -> None:
         """
         GIVEN: Reinitialization with existing .moai/config.json containing custom version
         WHEN: Phase 4 (configuration generation) executes with reinit=True
@@ -200,18 +178,14 @@ class TestPhaseExecutorVersion:
             },
             "project": {"name": "MyCustomProject", "mode": "team"},
         }
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
         validator = ProjectValidator()
         executor = PhaseExecutor(validator)
 
         # New config for reinitialization
-        new_config = {
-            "project": {"name": "MyCustomProject", "locale": "en"}
-        }  # Same name, should not overwrite
+        new_config = {"project": {"name": "MyCustomProject", "locale": "en"}}  # Same name, should not overwrite
 
         # Execute phase 4 (simulating reinitialization)
         executor.execute_configuration_phase(tmp_path, new_config)
@@ -223,9 +197,7 @@ class TestPhaseExecutorVersion:
 
         # Verify that the custom version is preserved during reinitialization
         assert "moai" in final_config, "Final config should have 'moai' section"
-        assert (
-            "version" in final_config["moai"]
-        ), "moai section should have 'version' field"
+        assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert (
             final_config["moai"]["version"] == custom_version
         ), f"Should preserve custom version '{custom_version}', got {final_config['moai']['version']}"
@@ -255,9 +227,7 @@ class TestPhaseExecutorVersion:
                 "update_check_frequency": "daily",
             }
         }
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
         validator = ProjectValidator()
@@ -275,9 +245,7 @@ class TestPhaseExecutorVersion:
 
         # RED: These assertions will fail because Phase 4 doesn't preserve invalid version fields
         assert "moai" in final_config, "Final config should have 'moai' section"
-        assert (
-            "version" in final_config["moai"]
-        ), "moai section should have 'version' field"
+        assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert (
             final_config["moai"]["version"] == "invalid-version-string"
         ), f"Should preserve invalid version string, got {final_config['moai']['version']}"
@@ -294,9 +262,7 @@ class TestPhaseExecutorVersion:
         config_path = config_dir / "config.json"
 
         existing_config = {"project": {"name": "TestProject"}}
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
@@ -317,16 +283,12 @@ class TestPhaseExecutorVersion:
 
         # Should create moai section with version from template
         assert "moai" in final_config, "Final config should have 'moai' section"
-        assert (
-            "version" in final_config["moai"]
-        ), "moai section should have 'version' field"
+        assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert (
             final_config["moai"]["version"] != "unknown"
         ), f"Version should not be 'unknown', got {final_config['moai']['version']}"
 
-    def test_phase_4_version_field_preservation_with_multiple_changes(
-        self, tmp_path: Path
-    ) -> None:
+    def test_phase_4_version_field_preservation_with_multiple_changes(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing config with version and multiple other fields being changed
         WHEN: Phase 4 (configuration generation) executes
@@ -349,9 +311,7 @@ class TestPhaseExecutorVersion:
             "project": {"name": "TestProject", "language": "python"},
             "constitution": {"enforce_tdd": True, "test_coverage_target": 80},
         }
-        config_path.write_text(
-            json.dumps(existing_config, indent=2, ensure_ascii=False)
-        )
+        config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
         validator = ProjectValidator()
@@ -377,9 +337,7 @@ class TestPhaseExecutorVersion:
 
         # Verify that the version is preserved during multiple changes
         assert "moai" in final_config, "Final config should have 'moai' section"
-        assert (
-            "version" in final_config["moai"]
-        ), "moai section should have 'version' field"
+        assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert (
             final_config["moai"]["version"] == "4.2.1-stable"
         ), f"Should preserve version '4.2.1-stable', got {final_config['moai']['version']}"
@@ -411,12 +369,8 @@ class TestPhaseExecutorVersion:
                 config_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Create existing config with specific version
-                existing_config = {
-                    "moai": {"version": version, "update_check_frequency": "daily"}
-                }
-                config_path.write_text(
-                    json.dumps(existing_config, indent=2, ensure_ascii=False)
-                )
+                existing_config = {"moai": {"version": version, "update_check_frequency": "daily"}}
+                config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
                 # Create phase executor
                 validator = ProjectValidator()
@@ -434,16 +388,12 @@ class TestPhaseExecutorVersion:
 
                 # RED: These assertions will fail because Phase 4 doesn't preserve version
                 assert "moai" in final_config, "Final config should have 'moai' section"
-                assert (
-                    "version" in final_config["moai"]
-                ), "moai section should have 'version' field"
+                assert "version" in final_config["moai"], "moai section should have 'version' field"
                 assert (
                     final_config["moai"]["version"] == version
                 ), f"Should preserve exact version '{version}', got '{final_config['moai']['version']}'"
 
-    def test_phase_4_version_field_with_special_characters(
-        self, tmp_path: Path
-    ) -> None:
+    def test_phase_4_version_field_with_special_characters(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing config with version containing special characters
         WHEN: Phase 4 (configuration generation) executes
@@ -466,12 +416,8 @@ class TestPhaseExecutorVersion:
                 config_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Create existing config with special version
-                existing_config = {
-                    "moai": {"version": version, "update_check_frequency": "daily"}
-                }
-                config_path.write_text(
-                    json.dumps(existing_config, indent=2, ensure_ascii=False)
-                )
+                existing_config = {"moai": {"version": version, "update_check_frequency": "daily"}}
+                config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
                 # Create phase executor
                 validator = ProjectValidator()
@@ -489,9 +435,7 @@ class TestPhaseExecutorVersion:
 
                 # RED: These assertions will fail because Phase 4 doesn't preserve special version formats
                 assert "moai" in final_config, "Final config should have 'moai' section"
-                assert (
-                    "version" in final_config["moai"]
-                ), "moai section should have 'version' field"
+                assert "version" in final_config["moai"], "moai section should have 'version' field"
                 assert (
                     final_config["moai"]["version"] == version
                 ), f"Should preserve special version '{version}', got '{final_config['moai']['version']}'"

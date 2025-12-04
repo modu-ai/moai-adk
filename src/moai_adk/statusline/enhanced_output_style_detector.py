@@ -60,9 +60,7 @@ class OutputStyleDetector:
         self.cache = {}
         self.cache_ttl = 5  # Cache for 5 seconds to balance performance and accuracy
 
-    def detect_from_session_context(
-        self, session_data: Dict[str, Any]
-    ) -> Optional[str]:
+    def detect_from_session_context(self, session_data: Dict[str, Any]) -> Optional[str]:
         """
         Detect output style from Claude Code session context.
 
@@ -151,9 +149,7 @@ class OutputStyleDetector:
                 yoda_files = list(moai_dir.rglob("*yoda*"))
                 if yoda_files:
                     # Check if any Yoda files are recently modified
-                    recent_yoda = any(
-                        f.stat().st_mtime > (time.time() - 300) for f in yoda_files
-                    )  # Last 5 minutes
+                    recent_yoda = any(f.stat().st_mtime > (time.time() - 300) for f in yoda_files)  # Last 5 minutes
                     if recent_yoda:
                         return "🧙 Yoda Master"
 
@@ -248,11 +244,7 @@ class OutputStyleDetector:
                 return None
 
             # Look for style indicators in recent responses
-            full_text = " ".join(
-                msg.get("content", "")
-                for msg in messages[-3:]
-                if msg.get("role") == "assistant"
-            )
+            full_text = " ".join(msg.get("content", "") for msg in messages[-3:] if msg.get("role") == "assistant")
 
             if not full_text:
                 return None
@@ -268,9 +260,7 @@ class OutputStyleDetector:
                 "wisdom",
                 "patience",
             ]
-            yoda_count = sum(
-                1 for indicator in yoda_indicators if indicator in text_lower
-            )
+            yoda_count = sum(1 for indicator in yoda_indicators if indicator in text_lower)
 
             if yoda_count >= 2:
                 return "🧙 Yoda Master"

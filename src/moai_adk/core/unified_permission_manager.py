@@ -199,9 +199,7 @@ class UnifiedPermissionManager:
             if self.enable_logging:
                 logger.info("Saved corrected configuration")
 
-    def validate_agent_permission(
-        self, agent_name: str, agent_config: Dict[str, Any]
-    ) -> ValidationResult:
+    def validate_agent_permission(self, agent_name: str, agent_config: Dict[str, Any]) -> ValidationResult:
         """
         Validate and auto-correct agent permission configuration.
 
@@ -251,18 +249,14 @@ class UnifiedPermissionManager:
         if "model" in agent_config:
             model = agent_config["model"]
             if not isinstance(model, str) or not model.strip():
-                result.errors.append(
-                    f"Invalid model configuration for agent '{agent_name}'"
-                )
+                result.errors.append(f"Invalid model configuration for agent '{agent_name}'")
                 result.severity = PermissionSeverity.MEDIUM
 
         # Check for required fields
         required_fields = ["description", "systemPrompt"]
         for req_field in required_fields:
             if req_field not in agent_config or not agent_config[req_field]:
-                result.warnings.append(
-                    f"Missing or empty '{req_field}' for agent '{agent_name}'"
-                )
+                result.warnings.append(f"Missing or empty '{req_field}' for agent '{agent_name}'")
 
         return result
 
@@ -277,21 +271,15 @@ class UnifiedPermissionManager:
         agent_lower = agent_name.lower()
 
         # Security and compliance focused agents should be more restrictive
-        if any(
-            keyword in agent_lower for keyword in ["security", "audit", "compliance"]
-        ):
+        if any(keyword in agent_lower for keyword in ["security", "audit", "compliance"]):
             return PermissionMode.PLAN.value
 
         # Code execution and modification agents should accept edits
-        if any(
-            keyword in agent_lower for keyword in ["expert", "implementer", "builder"]
-        ):
+        if any(keyword in agent_lower for keyword in ["expert", "implementer", "builder"]):
             return PermissionMode.ACCEPT_EDITS.value
 
         # Planning and analysis agents should use plan mode
-        if any(
-            keyword in agent_lower for keyword in ["planner", "analyzer", "designer"]
-        ):
+        if any(keyword in agent_lower for keyword in ["planner", "analyzer", "designer"]):
             return PermissionMode.PLAN.value
 
         # Management agents should have appropriate permissions
@@ -325,17 +313,13 @@ class UnifiedPermissionManager:
 
         for tool in allowed_tools:
             if tool in dangerous_tools:
-                result.warnings.append(
-                    f"Dangerous tool allowed: {tool}. Consider restricting access."
-                )
+                result.warnings.append(f"Dangerous tool allowed: {tool}. Consider restricting access.")
                 result.severity = PermissionSeverity.HIGH
                 self.stats["security_violations"] += 1
 
         return result
 
-    def check_tool_permission(
-        self, user_role: str, tool_name: str, operation: str
-    ) -> bool:
+    def check_tool_permission(self, user_role: str, tool_name: str, operation: str) -> bool:
         """
         Check if a user role is permitted to use a specific tool.
 
@@ -354,9 +338,7 @@ class UnifiedPermissionManager:
         # If not directly permitted, check role hierarchy
         if not permitted:
             for subordinate_role in self.role_hierarchy.get(user_role, []):
-                if self._check_direct_permission(
-                    subordinate_role, tool_name, operation
-                ):
+                if self._check_direct_permission(subordinate_role, tool_name, operation):
                     permitted = True
                     break
 
@@ -366,15 +348,11 @@ class UnifiedPermissionManager:
         if not permitted:
             self.stats["permission_denied"] += 1
             if self.enable_logging:
-                logger.warning(
-                    f"Permission denied: {user_role} cannot {operation} with {tool_name}"
-                )
+                logger.warning(f"Permission denied: {user_role} cannot {operation} with {tool_name}")
 
         return permitted
 
-    def _check_direct_permission(
-        self, role: str, tool_name: str, operation: str
-    ) -> bool:
+    def _check_direct_permission(self, role: str, tool_name: str, operation: str) -> bool:
         """Check direct permissions for a specific role"""
         # Default permissions by role
         role_permissions = {
@@ -399,9 +377,7 @@ class UnifiedPermissionManager:
 
         return False
 
-    def validate_configuration(
-        self, config_path: Optional[str] = None
-    ) -> ValidationResult:
+    def validate_configuration(self, config_path: Optional[str] = None) -> ValidationResult:
         """
         Validate Claude Code configuration file for security and compliance.
 
@@ -492,12 +468,8 @@ class UnifiedPermissionManager:
         dangerous_commands = ["rm -rf", "sudo", "format", "mkfs"]
 
         for dangerous_cmd in dangerous_commands:
-            if any(
-                dangerous_cmd in validated_cmd for validated_cmd in validated_commands
-            ):
-                logger.warning(
-                    f"Dangerous command in validated commands: {dangerous_cmd}"
-                )
+            if any(dangerous_cmd in validated_cmd for validated_cmd in validated_commands):
+                logger.warning(f"Dangerous command in validated commands: {dangerous_cmd}")
                 return False
 
         return True
@@ -514,9 +486,7 @@ class UnifiedPermissionManager:
 
                 for flag in dangerous_flags:
                     if flag in command:
-                        logger.warning(
-                            f"Dangerous flag in MCP server {server_name}: {flag}"
-                        )
+                        logger.warning(f"Dangerous flag in MCP server {server_name}: {flag}")
                         return False
 
         return True
@@ -700,9 +670,7 @@ class UnifiedPermissionManager:
 permission_manager = UnifiedPermissionManager()
 
 
-def validate_agent_permission(
-    agent_name: str, agent_config: Dict[str, Any]
-) -> ValidationResult:
+def validate_agent_permission(agent_name: str, agent_config: Dict[str, Any]) -> ValidationResult:
     """Convenience function to validate agent permissions"""
     return permission_manager.validate_agent_permission(agent_name, agent_config)
 
@@ -751,9 +719,7 @@ if __name__ == "__main__":
     for agent in test_agents:
         print(f"\nTesting agent: {agent['name']}")
         agent_config: Dict[str, Any] = agent["config"]  # type: ignore[assignment]
-        print(
-            f"Original permissionMode: {agent_config.get('permissionMode', 'default')}"
-        )
+        print(f"Original permissionMode: {agent_config.get('permissionMode', 'default')}")
 
         agent_name: str = agent["name"]  # type: ignore[assignment]
         result = permission_manager.validate_agent_permission(agent_name, agent_config)

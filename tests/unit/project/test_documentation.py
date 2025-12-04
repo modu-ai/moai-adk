@@ -181,10 +181,7 @@ class TestDocumentationGenerator:
             assert (base_path / "product.md").exists()
             assert (base_path / "structure.md").exists()
             assert (base_path / "tech.md").exists()
-            assert (
-                "[Add your project vision here]"
-                in (base_path / "product.md").read_text()
-            )
+            assert "[Add your project vision here]" in (base_path / "product.md").read_text()
 
 
 class TestBrainstormQuestionGenerator:
@@ -264,16 +261,11 @@ class TestAgentContextInjector:
             # Create a product.md file
             (base_path / "product.md").write_text("# Product\nVision: Build fast API")
 
-            result = AgentContextInjector.inject_project_manager_context(
-                agent_config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(agent_config, base_path)
 
             assert "system_context" in result
             # Check that project documentation was injected
-            assert (
-                "Project Documentation" in result["system_context"]
-                or "Build fast API" in result["system_context"]
-            )
+            assert "Project Documentation" in result["system_context"] or "Build fast API" in result["system_context"]
 
     def test_inject_tdd_implementer_context(self):
         """Test injecting TDD implementer context."""
@@ -286,9 +278,7 @@ class TestAgentContextInjector:
             # Create a structure.md file
             (base_path / "structure.md").write_text("# Architecture\nMicroservices")
 
-            result = AgentContextInjector.inject_tdd_implementer_context(
-                agent_config, base_path
-            )
+            result = AgentContextInjector.inject_tdd_implementer_context(agent_config, base_path)
 
             assert "architecture_context" in result
 
@@ -303,9 +293,7 @@ class TestAgentContextInjector:
             # Create a tech.md file
             (base_path / "tech.md").write_text("# Technology\nPython, FastAPI")
 
-            result = AgentContextInjector.inject_domain_expert_context(
-                agent_config, "backend_expert", base_path
-            )
+            result = AgentContextInjector.inject_domain_expert_context(agent_config, "backend_expert", base_path)
 
             assert "tech_context" in result
 
@@ -317,9 +305,7 @@ class TestAgentContextInjector:
             base_path = Path(tmpdir)
             base_path.mkdir(exist_ok=True)
 
-            result = AgentContextInjector.inject_project_manager_context(
-                agent_config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(agent_config, base_path)
 
             # Should return original config when document doesn't exist
             assert result == agent_config
@@ -334,9 +320,7 @@ class TestAgentContextInjector:
             base_path.mkdir(exist_ok=True)
             (base_path / "product.md").write_text("# Content")
 
-            result = AgentContextInjector.inject_project_manager_context(
-                agent_config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(agent_config, base_path)
 
             # Original should not be modified
             assert agent_config == original_config

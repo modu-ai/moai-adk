@@ -102,9 +102,7 @@ class TestHasExistingFiles:
 class TestCreateBackup:
     """Test backup creation"""
 
-    def test_create_backup_creates_timestamped_directory(
-        self, tmp_project: Path
-    ) -> None:
+    def test_create_backup_creates_timestamped_directory(self, tmp_project: Path) -> None:
         """Should create timestamped backup directory"""
         backup = TemplateBackup(tmp_project)
 
@@ -256,9 +254,7 @@ class TestCopyExcludeProtected:
         # reports should not be copied
         assert not (dst / "reports").exists()
 
-    def test_copy_exclude_protected_handles_nested_protected(
-        self, tmp_path: Path
-    ) -> None:
+    def test_copy_exclude_protected_handles_nested_protected(self, tmp_path: Path) -> None:
         """Should exclude top-level protected directories"""
         src = tmp_path / "src"
         dst = tmp_path / "dst"
@@ -334,9 +330,7 @@ class TestRestoreBackup:
         backup.create_backup()
 
         # Modify current files
-        (tmp_project / ".moai" / "config" / "config.json").write_text(
-            '{"modified": true}'
-        )
+        (tmp_project / ".moai" / "config" / "config.json").write_text('{"modified": true}')
 
         # Restore
         backup.restore_backup()
@@ -377,9 +371,7 @@ class TestRestoreBackup:
         assert (tmp_project / "CLAUDE.md").exists()
         assert "# Project" in (tmp_project / "CLAUDE.md").read_text()
 
-    def test_restore_backup_skips_missing_items_in_backup(
-        self, tmp_project: Path
-    ) -> None:
+    def test_restore_backup_skips_missing_items_in_backup(self, tmp_project: Path) -> None:
         """Should skip items not present in backup"""
         backup = TemplateBackup(tmp_project)
 
@@ -448,9 +440,7 @@ class TestGetLatestBackup:
         assert latest is not None
         assert latest.name == "20241201_143022"  # Should prefer timestamped
 
-    def test_get_latest_backup_returns_none_when_no_backups(
-        self, tmp_project: Path
-    ) -> None:
+    def test_get_latest_backup_returns_none_when_no_backups(self, tmp_project: Path) -> None:
         """Should return None when no backups exist"""
         backup = TemplateBackup(tmp_project)
         latest = backup.get_latest_backup()

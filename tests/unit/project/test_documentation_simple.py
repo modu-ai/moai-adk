@@ -360,9 +360,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "product.md").write_text("# Content")
 
-            result = AgentContextInjector.inject_project_manager_context(
-                config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(config, base_path)
 
             assert "system_context" in result
 
@@ -374,9 +372,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "product.md").write_text("# Test")
 
-            result = AgentContextInjector.inject_project_manager_context(
-                original, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(original, base_path)
 
             # Original should not be modified
             assert original == {"prompt": "test"}
@@ -390,9 +386,7 @@ class TestAgentContextInjectorSimple:
         with TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
 
-            result = AgentContextInjector.inject_project_manager_context(
-                config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(config, base_path)
 
             # Should return a copy of original config
             assert result == config
@@ -405,9 +399,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "product.md").write_text("# Project Doc\nVision: Test")
 
-            result = AgentContextInjector.inject_project_manager_context(
-                config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(config, base_path)
 
             # Either the context should contain the doc content or a reference
             assert "system_context" in result
@@ -420,9 +412,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "structure.md").write_text("# Architecture\nContent")
 
-            result = AgentContextInjector.inject_tdd_implementer_context(
-                config, base_path
-            )
+            result = AgentContextInjector.inject_tdd_implementer_context(config, base_path)
 
             assert "architecture_context" in result
 
@@ -434,9 +424,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "structure.md").write_text("# Arch")
 
-            result = AgentContextInjector.inject_tdd_implementer_context(
-                original, base_path
-            )
+            result = AgentContextInjector.inject_tdd_implementer_context(original, base_path)
 
             # Original unchanged
             assert original == {"prompt": "test"}
@@ -449,9 +437,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "tech.md").write_text("# Tech\nContent")
 
-            result = AgentContextInjector.inject_domain_expert_context(
-                config, "backend_expert", base_path
-            )
+            result = AgentContextInjector.inject_domain_expert_context(config, "backend_expert", base_path)
 
             assert "tech_context" in result
 
@@ -463,9 +449,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "tech.md").write_text("# Tech")
 
-            result = AgentContextInjector.inject_domain_expert_context(
-                config, "frontend_expert", base_path
-            )
+            result = AgentContextInjector.inject_domain_expert_context(config, "frontend_expert", base_path)
 
             assert "tech_context" in result
 
@@ -477,9 +461,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "tech.md").write_text("# Tech")
 
-            result = AgentContextInjector.inject_domain_expert_context(
-                original, "backend_expert", base_path
-            )
+            result = AgentContextInjector.inject_domain_expert_context(original, "backend_expert", base_path)
 
             # Original unchanged
             assert original == {"prompt": "test"}
@@ -492,9 +474,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "product.md").write_text("# New content")
 
-            result = AgentContextInjector.inject_project_manager_context(
-                config, base_path
-            )
+            result = AgentContextInjector.inject_project_manager_context(config, base_path)
 
             # Should preserve original
             assert config == {"system_context": "Existing context"}
@@ -507,9 +487,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "structure.md").write_text("# New")
 
-            result = AgentContextInjector.inject_tdd_implementer_context(
-                config, base_path
-            )
+            result = AgentContextInjector.inject_tdd_implementer_context(config, base_path)
 
             # Original should not be modified
             assert config == {"architecture_context": "Existing"}

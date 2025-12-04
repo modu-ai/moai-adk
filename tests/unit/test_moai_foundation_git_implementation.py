@@ -87,25 +87,19 @@ class TestBranchingStrategySelection:
     def test_select_feature_branch_strategy(self):
         """Test feature branch strategy for teams."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=3, risk_level="high", need_review=True
-        )
+        strategy = selector.select_strategy(team_size=3, risk_level="high", need_review=True)
         assert strategy == "feature_branch"
 
     def test_select_direct_commit_strategy(self):
         """Test direct commit strategy for individuals."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=1, risk_level="low", need_review=False
-        )
+        strategy = selector.select_strategy(team_size=1, risk_level="low", need_review=False)
         assert strategy == "direct_commit"
 
     def test_select_per_spec_strategy(self):
         """Test flexible per-SPEC strategy."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=2, risk_level="medium", need_review=False
-        )
+        strategy = selector.select_strategy(team_size=2, risk_level="medium", need_review=False)
         assert strategy in ["feature_branch", "direct_commit"]
 
 
@@ -234,15 +228,11 @@ class ConventionalCommitValidator:
         is_breaking = "!" in first_line or any("BREAKING" in line for line in lines)
 
         # Parse: type(scope): subject
-        pattern = (
-            r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
-        )
+        pattern = r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
         if not re.match(pattern, first_line):
             return ValidateResult(
                 is_valid=False,
-                errors=[
-                    "Invalid Conventional Commits format. Expected: type(scope): subject"
-                ],
+                errors=["Invalid Conventional Commits format. Expected: type(scope): subject"],
             )
 
         # Extract type and scope
@@ -253,17 +243,13 @@ class ConventionalCommitValidator:
         commit_type = match.group(1)
         scope = match.group(3)
 
-        return ValidateResult(
-            is_valid=True, type=commit_type, scope=scope, is_breaking_change=is_breaking
-        )
+        return ValidateResult(is_valid=True, type=commit_type, scope=scope, is_breaking_change=is_breaking)
 
 
 class BranchingStrategySelector:
     """Selects appropriate branching strategy."""
 
-    def select_strategy(
-        self, team_size: int, risk_level: str, need_review: bool
-    ) -> str:
+    def select_strategy(self, team_size: int, risk_level: str, need_review: bool) -> str:
         """Select branching strategy based on parameters."""
         # Feature branch for teams, risky changes, or review requirements
         if team_size > 1 or risk_level == "high" or need_review:
@@ -284,9 +270,7 @@ class GitWorkflowManager:
         """Create branch creation command."""
         return f"git switch -c {branch_name}"
 
-    def format_tdd_commit(
-        self, commit_type: str, scope: str, subject: str, phase: str
-    ) -> str:
+    def format_tdd_commit(self, commit_type: str, scope: str, subject: str, phase: str) -> str:
         """Format TDD commit message with phase information."""
         base_msg = f"{commit_type}({scope}): {subject}"
         return f"{base_msg} ({phase})"

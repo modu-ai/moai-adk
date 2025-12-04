@@ -126,9 +126,7 @@ class TestMLPipelineOrchestration:
         execution_time = time.time() - start_time
 
         # Performance target: < 5 seconds
-        assert (
-            execution_time < 5.0
-        ), f"Pipeline orchestration took {execution_time:.2f}s (target: < 5s)"
+        assert execution_time < 5.0, f"Pipeline orchestration took {execution_time:.2f}s (target: < 5s)"
         assert config is not None
 
 
@@ -190,11 +188,7 @@ class TestModelVersioning:
         assert "config" in artifacts
         assert "metadata" in artifacts
         assert artifacts["storage_backend"] == "s3"
-        assert all(
-            "path" in artifact
-            for artifact in artifacts.values()
-            if isinstance(artifact, dict)
-        )
+        assert all("path" in artifact for artifact in artifacts.values() if isinstance(artifact, dict))
 
 
 class TestDataManagement:
@@ -269,9 +263,7 @@ class TestDataManagement:
         # Memory target: < 1GB (1073741824 bytes)
         # Note: This is a simplified check; actual memory profiling requires tracemalloc
         memory_estimate = sys.getsizeof(pipeline)
-        assert (
-            memory_estimate < 1073741824
-        ), f"Pipeline memory: {memory_estimate} bytes (target: < 1GB)"
+        assert memory_estimate < 1073741824, f"Pipeline memory: {memory_estimate} bytes (target: < 1GB)"
 
 
 class TestModelDeployment:
@@ -375,9 +367,7 @@ class TestModelDeployment:
         p99_latency = latencies[98]  # 99th percentile
 
         # Performance target: < 100ms (p99)
-        assert (
-            p99_latency < 100
-        ), f"Deployment p99 latency: {p99_latency:.2f}ms (target: < 100ms)"
+        assert p99_latency < 100, f"Deployment p99 latency: {p99_latency:.2f}ms (target: < 100ms)"
 
 
 class TestMonitoringDriftDetection:
@@ -456,9 +446,7 @@ class TestMonitoringDriftDetection:
         detection_time = (time.time() - start_time) * 1000  # Convert to ms
 
         # Performance target: < 500ms for 1000 samples
-        assert (
-            detection_time < 500
-        ), f"Drift detection took {detection_time:.2f}ms (target: < 500ms)"
+        assert detection_time < 500, f"Drift detection took {detection_time:.2f}ms (target: < 500ms)"
         assert result is not None
 
 

@@ -40,9 +40,7 @@ class TestParallelProcessor:
         async def sample_task(task_id: str) -> Dict[str, Any]:
             return {"id": task_id, "status": "completed"}
 
-        result = asyncio.run(
-            processor.process_tasks([lambda: sample_task("sample_task")])
-        )
+        result = asyncio.run(processor.process_tasks([lambda: sample_task("sample_task")]))
         assert len(result) == 1
         assert result[0]["id"] == "sample_task"
         assert result[0]["status"] == "completed"

@@ -43,15 +43,7 @@ def temp_project(tmp_path):
     settings = claude_root / "settings.json"
     settings.write_text(
         json.dumps(
-            {
-                "hooks": {
-                    "SessionStart": [
-                        {
-                            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start.py"
-                        }
-                    ]
-                }
-            }
+            {"hooks": {"SessionStart": [{"command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start.py"}]}}
         )
     )
 
@@ -169,9 +161,7 @@ class TestFullMigrationWorkflow:
         config = migrator._load_config()
 
         # Verify no migration state initially
-        assert "migration" not in config or "alfred_to_moai" not in config.get(
-            "migration", {}
-        )
+        assert "migration" not in config or "alfred_to_moai" not in config.get("migration", {})
 
         # Execute migration
         result = migrator.execute_migration()
@@ -192,9 +182,7 @@ class TestFullMigrationWorkflow:
 class TestMigrationRollback:
     """Tests for migration rollback on failure"""
 
-    def test_rollback_restores_alfred_folders_on_settings_update_failure(
-        self, temp_project
-    ):
+    def test_rollback_restores_alfred_folders_on_settings_update_failure(self, temp_project):
         """Should rollback (restore from backup) if settings.json update fails"""
         migrator = AlfredToMoaiMigrator(temp_project)
 

@@ -179,11 +179,7 @@ class CircuitBreaker:
                 raise Exception("Circuit breaker is OPEN - call blocked")
 
         try:
-            result = (
-                await func(*args, **kwargs)
-                if inspect.iscoroutinefunction(func)
-                else func(*args, **kwargs)
-            )
+            result = await func(*args, **kwargs) if inspect.iscoroutinefunction(func) else func(*args, **kwargs)
             self._on_success()
             return result
         except Exception as e:
@@ -194,9 +190,7 @@ class CircuitBreaker:
         """Check if circuit breaker should attempt reset"""
         if self.state.last_failure_time is None:
             return False
-        return datetime.now() - self.state.last_failure_time > timedelta(
-            seconds=self.timeout_seconds
-        )
+        return datetime.now() - self.state.last_failure_time > timedelta(seconds=self.timeout_seconds)
 
     def _on_success(self) -> None:
         """Handle successful call"""
@@ -222,9 +216,7 @@ class HookResultCache:
     def __init__(self, max_size: int = 1000, default_ttl_seconds: int = 300):
         self.max_size = max_size
         self.default_ttl_seconds = default_ttl_seconds
-        self._cache: Dict[str, Tuple[Any, datetime, int]] = (
-            {}
-        )  # key -> (value, expiry, access_count)
+        self._cache: Dict[str, Tuple[Any, datetime, int]] = {}  # key -> (value, expiry, access_count)
         self._access_times: Dict[str, datetime] = {}
         self._lock = threading.RLock()
 
@@ -322,9 +314,7 @@ class ConnectionPool:
         # Create new connection outside of lock
         try:
             connection = (
-                await connection_factory()
-                if inspect.iscoroutinefunction(connection_factory)
-                else connection_factory()
+                await connection_factory() if inspect.iscoroutinefunction(connection_factory) else connection_factory()
             )
             return connection
         except Exception:
@@ -376,11 +366,7 @@ class RetryPolicy:
 
         for attempt in range(self.max_retries + 1):
             try:
-                result = (
-                    await func(*args, **kwargs)
-                    if inspect.iscoroutinefunction(func)
-                    else func(*args, **kwargs)
-                )
+                result = await func(*args, **kwargs) if inspect.iscoroutinefunction(func) else func(*args, **kwargs)
                 return result
             except Exception as e:
                 last_exception = e
@@ -459,15 +445,9 @@ class ResourceMonitor:
                 open_files = 0
 
             # Update peak usage
-            self._peak_usage.memory_usage_mb = max(
-                self._peak_usage.memory_usage_mb, memory_mb
-            )
-            self._peak_usage.cpu_usage_percent = max(
-                self._peak_usage.cpu_usage_percent, cpu_percent
-            )
-            self._peak_usage.thread_count = max(
-                self._peak_usage.thread_count, thread_count
-            )
+            self._peak_usage.memory_usage_mb = max(self._peak_usage.memory_usage_mb, memory_mb)
+            self._peak_usage.cpu_usage_percent = max(self._peak_usage.cpu_usage_percent, cpu_percent)
+            self._peak_usage.thread_count = max(self._peak_usage.thread_count, thread_count)
             self._peak_usage.open_files = max(self._peak_usage.open_files, open_files)
 
             return ResourceUsageMetrics(
@@ -508,11 +488,7 @@ class HealthChecker:
         try:
             # Check hook registry
             checks["hook_registry"] = {
-                "status": (
-                    "healthy"
-                    if len(self.hook_manager._hook_registry) > 0
-                    else "warning"
-                ),
+                "status": ("healthy" if len(self.hook_manager._hook_registry) > 0 else "warning"),
                 "registered_hooks": len(self.hook_manager._hook_registry),
                 "events_supported": len(self.hook_manager._hooks_by_event),
             }
@@ -535,9 +511,7 @@ class HealthChecker:
 
             # Check circuit breakers
             tripped_breakers = [
-                name
-                for name, cb in self.hook_manager._circuit_breakers.items()
-                if cb.state.state == "OPEN"
+                name for name, cb in self.hook_manager._circuit_breakers.items() if cb.state.state == "OPEN"
             ]
 
             checks["circuit_breakers"] = {
@@ -584,9 +558,7 @@ class PerformanceAnomalyDetector:
         self.sensitivity_factor = sensitivity_factor
         self._performance_history: Dict[str, List[float]] = defaultdict(list)
 
-    def detect_anomaly(
-        self, hook_path: str, execution_time_ms: float
-    ) -> Optional[Dict[str, Any]]:
+    def detect_anomaly(self, hook_path: str, execution_time_ms: float) -> Optional[Dict[str, Any]]:
         """Detect if execution time is anomalous"""
         history = self._performance_history[hook_path]
 
@@ -610,11 +582,7 @@ class PerformanceAnomalyDetector:
                 "mean_time_ms": mean_time,
                 "std_dev_ms": std_dev,
                 "deviation_factor": abs(execution_time_ms - mean_time) / std_dev,
-                "severity": (
-                    "high"
-                    if abs(execution_time_ms - mean_time) > (3 * std_dev)
-                    else "medium"
-                ),
+                "severity": ("high" if abs(execution_time_ms - mean_time) > (3 * std_dev) else "medium"),
             }
 
         # Update history (keep last 50 entries)
@@ -657,9 +625,7 @@ class JITEnhancedHookManager:
             connection_pool_size: Size of connection pool for external resources
         """
         self.hooks_directory = hooks_directory or Path.cwd() / ".claude" / "hooks"
-        self.cache_directory = (
-            cache_directory or Path.cwd() / ".moai" / "cache" / "hooks"
-        )
+        self.cache_directory = cache_directory or Path.cwd() / ".moai" / "cache" / "hooks"
         self.max_concurrent_hooks = max_concurrent_hooks
         self.enable_performance_monitoring = enable_performance_monitoring
 
@@ -704,9 +670,7 @@ class JITEnhancedHookManager:
     ) -> None:
         """Initialize Phase 2 optimization components"""
         # Advanced result cache with TTL
-        self._advanced_cache = HookResultCache(
-            max_size=1000, default_ttl_seconds=cache_ttl_seconds
-        )
+        self._advanced_cache = HookResultCache(max_size=1000, default_ttl_seconds=cache_ttl_seconds)
 
         # Connection pooling for MCP servers and external resources
         self._connection_pool = ConnectionPool(max_connections=connection_pool_size)
@@ -786,17 +750,12 @@ class JITEnhancedHookManager:
             self._hooks_by_event[event_type] = []
         self._hooks_by_event[event_type].append(hook_path)
 
-    def _determine_hook_priority(
-        self, hook_path: str, event_type: HookEvent
-    ) -> HookPriority:
+    def _determine_hook_priority(self, hook_path: str, event_type: HookEvent) -> HookPriority:
         """Determine hook priority based on its characteristics"""
         filename = hook_path.lower()
 
         # Security and validation hooks are critical
-        if any(
-            keyword in filename
-            for keyword in ["security", "validation", "health_check"]
-        ):
+        if any(keyword in filename for keyword in ["security", "validation", "health_check"]):
             return HookPriority.CRITICAL
 
         # Performance optimization hooks are high priority
@@ -846,9 +805,7 @@ class JITEnhancedHookManager:
         # Simple hooks are fast
         return 10.0  # 10ms estimate for simple operations
 
-    def _determine_phase_relevance(
-        self, hook_path: str, event_type: HookEvent
-    ) -> Dict[Phase, float]:
+    def _determine_phase_relevance(self, hook_path: str, event_type: HookEvent) -> Dict[Phase, float]:
         """Determine hook relevance to different development phases"""
         filename = hook_path.lower()
         relevance = {}
@@ -857,9 +814,7 @@ class JITEnhancedHookManager:
         default_relevance = 0.5
 
         # SPEC phase relevance
-        if any(
-            keyword in filename for keyword in ["spec", "plan", "design", "requirement"]
-        ):
+        if any(keyword in filename for keyword in ["spec", "plan", "design", "requirement"]):
             relevance[Phase.SPEC] = 1.0
         else:
             relevance[Phase.SPEC] = default_relevance
@@ -871,34 +826,25 @@ class JITEnhancedHookManager:
             relevance[Phase.RED] = default_relevance
 
         # GREEN phase relevance (implementation)
-        if any(
-            keyword in filename for keyword in ["implement", "code", "green", "build"]
-        ):
+        if any(keyword in filename for keyword in ["implement", "code", "green", "build"]):
             relevance[Phase.GREEN] = 1.0
         else:
             relevance[Phase.GREEN] = default_relevance
 
         # REFACTOR phase relevance
-        if any(
-            keyword in filename
-            for keyword in ["refactor", "optimize", "improve", "clean"]
-        ):
+        if any(keyword in filename for keyword in ["refactor", "optimize", "improve", "clean"]):
             relevance[Phase.REFACTOR] = 1.0
         else:
             relevance[Phase.REFACTOR] = default_relevance
 
         # SYNC phase relevance (documentation)
-        if any(
-            keyword in filename for keyword in ["sync", "doc", "document", "deploy"]
-        ):
+        if any(keyword in filename for keyword in ["sync", "doc", "document", "deploy"]):
             relevance[Phase.SYNC] = 1.0
         else:
             relevance[Phase.SYNC] = default_relevance
 
         # DEBUG phase relevance
-        if any(
-            keyword in filename for keyword in ["debug", "error", "troubleshoot", "log"]
-        ):
+        if any(keyword in filename for keyword in ["debug", "error", "troubleshoot", "log"]):
             relevance[Phase.DEBUG] = 1.0
         else:
             relevance[Phase.DEBUG] = default_relevance
@@ -931,9 +877,7 @@ class JITEnhancedHookManager:
         filename = hook_path.lower()
 
         # Hooks that modify shared state are not parallel safe
-        if any(
-            keyword in filename for keyword in ["write", "modify", "update", "delete"]
-        ):
+        if any(keyword in filename for keyword in ["write", "modify", "update", "delete"]):
             return False
 
         # Hooks with external dependencies might not be parallel safe
@@ -980,14 +924,10 @@ class JITEnhancedHookManager:
         prioritized_hooks = self._prioritize_hooks(hook_paths, phase)
 
         # Load optimized context using JIT system
-        optimized_context = await self._load_optimized_context(
-            event_type, context, phase, prioritized_hooks
-        )
+        optimized_context = await self._load_optimized_context(event_type, context, phase, prioritized_hooks)
 
         # Execute hooks with optimization
-        results = await self._execute_hooks_optimized(
-            prioritized_hooks, optimized_context, max_total_execution_time_ms
-        )
+        results = await self._execute_hooks_optimized(prioritized_hooks, optimized_context, max_total_execution_time_ms)
 
         # Update performance metrics
         if self.enable_performance_monitoring:
@@ -995,9 +935,7 @@ class JITEnhancedHookManager:
 
         return results
 
-    def _prioritize_hooks(
-        self, hook_paths: List[str], phase: Optional[Phase]
-    ) -> List[Tuple[str, float]]:
+    def _prioritize_hooks(self, hook_paths: List[str], phase: Optional[Phase]) -> List[Tuple[str, float]]:
         """Prioritize hooks based on phase relevance and performance characteristics
 
         Args:
@@ -1023,9 +961,7 @@ class JITEnhancedHookManager:
             # Phase relevance bonus
             if phase and phase in metadata.phase_relevance:
                 relevance = metadata.phase_relevance[phase]
-                priority_score -= (
-                    relevance * 5
-                )  # Higher relevance = lower score (higher priority)
+                priority_score -= relevance * 5  # Higher relevance = lower score (higher priority)
 
             # Performance penalty (slower hooks get lower priority)
             priority_score += metadata.estimated_execution_time_ms / 100
@@ -1080,9 +1016,7 @@ class JITEnhancedHookManager:
                 "hook_event_type": event_type.value,
                 "hook_phase": phase.value if phase else None,
                 "hook_execution_mode": "optimized",
-                "prioritized_hooks": [
-                    hook_path for hook_path, _ in prioritized_hooks[:5]
-                ],  # Top 5 hooks
+                "prioritized_hooks": [hook_path for hook_path, _ in prioritized_hooks[:5]],  # Top 5 hooks
             }
         )
 
@@ -1120,9 +1054,7 @@ class JITEnhancedHookManager:
 
         # Execute parallel hooks first (faster)
         if parallel_hooks and remaining_time > 0:
-            parallel_results = await self._execute_hooks_parallel(
-                parallel_hooks, context, remaining_time
-            )
+            parallel_results = await self._execute_hooks_parallel(parallel_hooks, context, remaining_time)
             results.extend(parallel_results)
 
             # Update remaining time
@@ -1131,9 +1063,7 @@ class JITEnhancedHookManager:
 
         # Execute sequential hooks with remaining time
         if sequential_hooks and remaining_time > 0:
-            sequential_results = await self._execute_hooks_sequential(
-                sequential_hooks, context, remaining_time
-            )
+            sequential_results = await self._execute_hooks_sequential(sequential_hooks, context, remaining_time)
             results.extend(sequential_results)
 
         return results
@@ -1224,9 +1154,7 @@ class JITEnhancedHookManager:
 
         return results
 
-    async def _execute_single_hook(
-        self, hook_path: str, context: Dict[str, Any]
-    ) -> HookExecutionResult:
+    async def _execute_single_hook(self, hook_path: str, context: Dict[str, Any]) -> HookExecutionResult:
         """Execute a single hook with Phase 2 optimizations
 
         Args:
@@ -1270,15 +1198,11 @@ class JITEnhancedHookManager:
 
             # Execute with circuit breaker protection and retry logic
             async def execute_hook_with_retry():
-                return await self._execute_hook_subprocess(
-                    full_hook_path, context, metadata
-                )
+                return await self._execute_hook_subprocess(full_hook_path, context, metadata)
 
             # Apply circuit breaker and retry pattern
             try:
-                result = await circuit_breaker.call(
-                    retry_policy.execute_with_retry, execute_hook_with_retry
-                )
+                result = await circuit_breaker.call(retry_policy.execute_with_retry, execute_hook_with_retry)
             except Exception as e:
                 # Circuit breaker is OPEN or all retries exhausted
                 execution_time = (time.time() - start_time) * 1000
@@ -1286,9 +1210,7 @@ class JITEnhancedHookManager:
                     if circuit_breaker.state.state == "OPEN":
                         self.metrics.circuit_breaker_trips += 1
 
-                self._logger.warning(
-                    f"Hook {hook_path} failed due to circuit breaker: {str(e)}"
-                )
+                self._logger.warning(f"Hook {hook_path} failed due to circuit breaker: {str(e)}")
 
                 return HookExecutionResult(
                     hook_path=hook_path,
@@ -1306,13 +1228,9 @@ class JITEnhancedHookManager:
                 self.metrics.resource_usage = current_resources
 
             # Performance anomaly detection
-            anomaly = self._anomaly_detector.detect_anomaly(
-                hook_path, result.execution_time_ms
-            )
+            anomaly = self._anomaly_detector.detect_anomaly(hook_path, result.execution_time_ms)
             if anomaly:
-                self._logger.warning(
-                    f"Performance anomaly detected for {hook_path}: {anomaly}"
-                )
+                self._logger.warning(f"Performance anomaly detected for {hook_path}: {anomaly}")
                 result.metadata["performance_anomaly"] = anomaly
 
             # Cache successful results with TTL based on hook characteristics
@@ -1360,9 +1278,7 @@ class JITEnhancedHookManager:
             return 1800  # 30 minutes
 
         # Hooks that write or modify data should have very short TTL
-        if any(
-            keyword in filename for keyword in ["write", "modify", "update", "create"]
-        ):
+        if any(keyword in filename for keyword in ["write", "modify", "update", "create"]):
             return 30  # 30 seconds
 
         # Default TTL
@@ -1448,9 +1364,7 @@ class JITEnhancedHookManager:
                 error_message=str(e),
             )
 
-    def _update_hook_metadata(
-        self, hook_path: str, result: HookExecutionResult
-    ) -> None:
+    def _update_hook_metadata(self, hook_path: str, result: HookExecutionResult) -> None:
         """Update hook metadata based on execution result"""
         metadata = self._hook_registry.get(hook_path)
         if not metadata:
@@ -1467,9 +1381,7 @@ class JITEnhancedHookManager:
         cache_entry["avg_time_ms"] = cache_entry["total_time"] / cache_entry["count"]
 
         # Update success rate
-        metadata.success_rate = (metadata.success_rate * 0.8) + (
-            1.0 if result.success else 0.0
-        ) * 0.2
+        metadata.success_rate = (metadata.success_rate * 0.8) + (1.0 if result.success else 0.0) * 0.2
         metadata.last_execution_time = datetime.now()
 
     def _update_performance_metrics(
@@ -1485,16 +1397,14 @@ class JITEnhancedHookManager:
             self.metrics.successful_executions += sum(1 for r in results if r.success)
 
             total_execution_time = sum(r.execution_time_ms for r in results)
-            self.metrics.average_execution_time_ms = (
-                self.metrics.average_execution_time_ms * 0.9
-            ) + (total_execution_time / len(results) * 0.1)
+            self.metrics.average_execution_time_ms = (self.metrics.average_execution_time_ms * 0.9) + (
+                total_execution_time / len(results) * 0.1
+            )
 
             self.metrics.total_token_usage += sum(r.token_usage for r in results)
 
             if phase:
-                self.metrics.phase_distribution[phase] = (
-                    self.metrics.phase_distribution.get(phase, 0) + 1
-                )
+                self.metrics.phase_distribution[phase] = self.metrics.phase_distribution.get(phase, 0) + 1
 
             self.metrics.event_type_distribution[event_type] = (
                 self.metrics.event_type_distribution.get(event_type, 0) + 1
@@ -1597,9 +1507,7 @@ class JITEnhancedHookManager:
                 }
 
         # Determine overall health
-        success_rate = self.metrics.successful_executions / max(
-            self.metrics.total_executions, 1
-        )
+        success_rate = self.metrics.successful_executions / max(self.metrics.total_executions, 1)
         if success_rate < 0.9:
             summary["overall_health"] = "degraded"
         elif success_rate < 0.7:
@@ -1633,11 +1541,7 @@ class JITEnhancedHookManager:
             hook_path: {
                 "state": cb.state.state,
                 "failure_count": cb.state.failure_count,
-                "last_failure_time": (
-                    cb.state.last_failure_time.isoformat()
-                    if cb.state.last_failure_time
-                    else None
-                ),
+                "last_failure_time": (cb.state.last_failure_time.isoformat() if cb.state.last_failure_time else None),
                 "success_threshold": cb.state.success_threshold,
             }
             for hook_path, cb in self._circuit_breakers.items()
@@ -1742,14 +1646,8 @@ class JITEnhancedHookManager:
                     "circuit_breaker_trips": current_metrics.circuit_breaker_trips,
                     "retry_attempts": current_metrics.retry_attempts,
                     "resource_usage": current_metrics.resource_usage.__dict__,
-                    "phase_distribution": {
-                        k.value: v
-                        for k, v in current_metrics.phase_distribution.items()
-                    },
-                    "event_type_distribution": {
-                        k.value: v
-                        for k, v in current_metrics.event_type_distribution.items()
-                    },
+                    "phase_distribution": {k.value: v for k, v in current_metrics.phase_distribution.items()},
+                    "event_type_distribution": {k.value: v for k, v in current_metrics.event_type_distribution.items()},
                 },
                 "health_status": health_report,
                 "cache_stats": self.get_advanced_cache_stats(),
@@ -1760,9 +1658,7 @@ class JITEnhancedHookManager:
                         "estimated_execution_time_ms": metadata.estimated_execution_time_ms,
                         "success_rate": metadata.success_rate,
                         "last_execution_time": (
-                            metadata.last_execution_time.isoformat()
-                            if metadata.last_execution_time
-                            else None
+                            metadata.last_execution_time.isoformat() if metadata.last_execution_time else None
                         ),
                         "priority": metadata.priority.value,
                         "parallel_safe": metadata.parallel_safe,
@@ -1860,9 +1756,7 @@ async def execute_session_start_hooks(
 ) -> List[HookExecutionResult]:
     """Execute SessionStart hooks with JIT optimization"""
     manager = get_jit_hook_manager()
-    return await manager.execute_hooks(
-        HookEvent.SESSION_START, context, user_input=user_input
-    )
+    return await manager.execute_hooks(HookEvent.SESSION_START, context, user_input=user_input)
 
 
 async def execute_pre_tool_hooks(
@@ -1870,9 +1764,7 @@ async def execute_pre_tool_hooks(
 ) -> List[HookExecutionResult]:
     """Execute PreToolUse hooks with JIT optimization"""
     manager = get_jit_hook_manager()
-    return await manager.execute_hooks(
-        HookEvent.PRE_TOOL_USE, context, user_input=user_input
-    )
+    return await manager.execute_hooks(HookEvent.PRE_TOOL_USE, context, user_input=user_input)
 
 
 async def execute_session_end_hooks(
@@ -1880,9 +1772,7 @@ async def execute_session_end_hooks(
 ) -> List[HookExecutionResult]:
     """Execute SessionEnd hooks with JIT optimization"""
     manager = get_jit_hook_manager()
-    return await manager.execute_hooks(
-        HookEvent.SESSION_END, context, user_input=user_input
-    )
+    return await manager.execute_hooks(HookEvent.SESSION_END, context, user_input=user_input)
 
 
 def get_hook_performance_metrics() -> HookPerformanceMetrics:
@@ -1963,11 +1853,9 @@ async def optimize_hook_system() -> Dict[str, Any]:
         "timestamp": datetime.now().isoformat(),
         "health_status": health_report["status"],
         "performance_summary": {
-            "success_rate": metrics.successful_executions
-            / max(metrics.total_executions, 1),
+            "success_rate": metrics.successful_executions / max(metrics.total_executions, 1),
             "average_execution_time_ms": metrics.average_execution_time_ms,
-            "cache_efficiency": metrics.cache_hits
-            / max(metrics.cache_hits + metrics.cache_misses, 1),
+            "cache_efficiency": metrics.cache_hits / max(metrics.cache_hits + metrics.cache_misses, 1),
             "circuit_breaker_trips": metrics.circuit_breaker_trips,
         },
         "recommendations": [],
@@ -1975,9 +1863,7 @@ async def optimize_hook_system() -> Dict[str, Any]:
 
     # Performance recommendations
     if metrics.average_execution_time_ms > 500:
-        optimization_report["recommendations"].append(
-            "Consider optimizing slow hooks or increasing parallel execution"
-        )
+        optimization_report["recommendations"].append("Consider optimizing slow hooks or increasing parallel execution")
 
     if metrics.cache_hits / max(metrics.cache_hits + metrics.cache_misses, 1) < 0.3:
         optimization_report["recommendations"].append(
@@ -2032,22 +1918,16 @@ if __name__ == "__main__":
             print(f"Executed {len(results)} hooks")
             for result in results:
                 status = "✓" if result.success else "✗"
-                print(
-                    f"  {result.hook_path}: {status} ({result.execution_time_ms:.1f}ms)"
-                )
+                print(f"  {result.hook_path}: {status} ({result.execution_time_ms:.1f}ms)")
                 if result.metadata.get("performance_anomaly"):
                     anomaly = result.metadata["performance_anomaly"]
-                    print(
-                        f"    ⚠️  Performance anomaly: {anomaly['anomaly_type']} ({anomaly['severity']})"
-                    )
+                    print(f"    ⚠️  Performance anomaly: {anomaly['anomaly_type']} ({anomaly['severity']})")
 
             # Show Phase 2 enhanced metrics
             print("\n📈 Phase 2 Performance Metrics:")
             metrics = manager.get_performance_metrics()
             print(f"  Total executions: {metrics.total_executions}")
-            print(
-                f"  Success rate: {metrics.successful_executions}/{metrics.total_executions}"
-            )
+            print(f"  Success rate: {metrics.successful_executions}/{metrics.total_executions}")
             print(f"  Avg execution time: {metrics.average_execution_time_ms:.1f}ms")
             print(f"  Cache hits: {metrics.cache_hits}, misses: {metrics.cache_misses}")
             print(f"  Circuit breaker trips: {metrics.circuit_breaker_trips}")
@@ -2073,20 +1953,14 @@ if __name__ == "__main__":
             print("\n⚡ Circuit Breaker Status:")
             cb_status = manager.get_circuit_breaker_status()
             for hook_name, cb_data in cb_status.items():
-                print(
-                    f"  {hook_name}: {cb_data['state']} ({cb_data['failure_count']} failures)"
-                )
+                print(f"  {hook_name}: {cb_data['state']} ({cb_data['failure_count']} failures)")
 
             # Test system optimization
             print("\n🔧 System Optimization:")
             optimization_report = await optimize_hook_system()
             print(f"  Health status: {optimization_report['health_status']}")
-            print(
-                f"  Success rate: {optimization_report['performance_summary']['success_rate']:.1%}"
-            )
-            print(
-                f"  Cache efficiency: {optimization_report['performance_summary']['cache_efficiency']:.1%}"
-            )
+            print(f"  Success rate: {optimization_report['performance_summary']['success_rate']:.1%}")
+            print(f"  Cache efficiency: {optimization_report['performance_summary']['cache_efficiency']:.1%}")
 
             if optimization_report["recommendations"]:
                 print("  Recommendations:")

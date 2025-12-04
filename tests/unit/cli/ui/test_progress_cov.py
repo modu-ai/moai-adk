@@ -216,9 +216,7 @@ class TestProgressContext:
 
                 assert "Download" in ctx.tasks
                 assert ctx.tasks["Download"] == TaskID(1)
-                mock_progress.add_task.assert_called_once_with(
-                    "Download", total=100, visible=True
-                )
+                mock_progress.add_task.assert_called_once_with("Download", total=100, visible=True)
 
     def test_add_task_without_progress_raises(self):
         """Test add_task raises when context not started."""

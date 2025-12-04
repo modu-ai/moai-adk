@@ -162,26 +162,20 @@ class TestStateManagementAdvisorAdditional:
     def test_recommend_solution_very_small_app(self):
         """Test recommendation for very small app."""
         advisor = StateManagementAdvisor()
-        result = advisor.recommend_solution(
-            {"complexity": "small", "components": 20, "async_actions": False}
-        )
+        result = advisor.recommend_solution({"complexity": "small", "components": 20, "async_actions": False})
         assert result["solution"] == "Local State"
         assert result["confidence"] == 0.95
 
     def test_recommend_solution_small_app_with_async(self):
         """Test recommendation for small app with async."""
         advisor = StateManagementAdvisor()
-        result = advisor.recommend_solution(
-            {"complexity": "small", "components": 25, "async_actions": True}
-        )
+        result = advisor.recommend_solution({"complexity": "small", "components": 25, "async_actions": True})
         assert result["solution"] == "Context API"
 
     def test_recommend_solution_medium_app(self):
         """Test recommendation for medium app."""
         advisor = StateManagementAdvisor()
-        result = advisor.recommend_solution(
-            {"complexity": "medium", "components": 75, "async_actions": True}
-        )
+        result = advisor.recommend_solution({"complexity": "medium", "components": 75, "async_actions": True})
         # Could be Zustand or Context API depending on implementation
         assert result["solution"] in ("Zustand", "Context API", "Redux Toolkit")
 
@@ -201,9 +195,7 @@ class TestStateManagementAdvisorAdditional:
     def test_validate_context_pattern_optimal(self):
         """Test context pattern validation for optimal config."""
         advisor = StateManagementAdvisor()
-        result = advisor.validate_context_pattern(
-            {"splitting": True, "actions": ["action1", "action2", "action3"]}
-        )
+        result = advisor.validate_context_pattern({"splitting": True, "actions": ["action1", "action2", "action3"]})
         assert result["valid"] is True
 
     def test_validate_context_pattern_too_many_actions(self):
@@ -605,9 +597,7 @@ class TestFrontendMetricsCollectorAdditional:
     def test_analyze_metrics_all_good(self):
         """Test metrics analysis when all good."""
         collector = FrontendMetricsCollector()
-        metrics = PerformanceMetrics(
-            lcp=1.8, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=3.5, bundle_size=150
-        )
+        metrics = PerformanceMetrics(lcp=1.8, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=3.5, bundle_size=150)
         result = collector.analyze_metrics(metrics)
         assert result["core_web_vitals_pass"] is True
         assert result["performance_score"] > 0.7
@@ -615,9 +605,7 @@ class TestFrontendMetricsCollectorAdditional:
     def test_analyze_metrics_lcp_poor(self):
         """Test metrics analysis with poor LCP."""
         collector = FrontendMetricsCollector()
-        metrics = PerformanceMetrics(
-            lcp=4.0, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=3.5, bundle_size=150
-        )
+        metrics = PerformanceMetrics(lcp=4.0, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=3.5, bundle_size=150)
         result = collector.analyze_metrics(metrics)
         assert result["lcp_status"] == "needs_improvement"
         assert len(result["recommendations"]) > 0
@@ -625,9 +613,7 @@ class TestFrontendMetricsCollectorAdditional:
     def test_analyze_metrics_large_bundle(self):
         """Test metrics with large bundle size."""
         collector = FrontendMetricsCollector()
-        metrics = PerformanceMetrics(
-            lcp=2.0, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=3.5, bundle_size=300
-        )
+        metrics = PerformanceMetrics(lcp=2.0, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=3.5, bundle_size=300)
         result = collector.analyze_metrics(metrics)
         assert any("bundle" in rec.lower() for rec in result["recommendations"])
 

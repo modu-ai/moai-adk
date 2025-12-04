@@ -110,9 +110,7 @@ class TestTemplateVariableSubstitution:
         """{{CONVERSATION_LANGUAGE}} substitutes correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context(
-            {"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어"}
-        )
+        processor.set_context({"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어"})
 
         template_content = "Language: {{CONVERSATION_LANGUAGE}}"
 
@@ -127,9 +125,7 @@ class TestTemplateVariableSubstitution:
         """{{CONVERSATION_LANGUAGE_NAME}} substitutes correctly."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context(
-            {"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어"}
-        )
+        processor.set_context({"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어"})
 
         template_content = "Language Name: {{CONVERSATION_LANGUAGE_NAME}}"
 
@@ -137,9 +133,7 @@ class TestTemplateVariableSubstitution:
         result, warnings = processor._substitute_variables(template_content)
 
         # Assert
-        assert (
-            result == "Language Name: 한국어"
-        ), "Should substitute CONVERSATION_LANGUAGE_NAME"
+        assert result == "Language Name: 한국어", "Should substitute CONVERSATION_LANGUAGE_NAME"
         assert not warnings, "Should have no warnings"
 
     def test_multiple_language_variables(self) -> None:
@@ -175,9 +169,7 @@ class TestTemplateVariableSubstitution:
         processor = TemplateProcessor(Path("/tmp"))
         processor.set_context({"CONVERSATION_LANGUAGE": "ko"})
 
-        template_content = (
-            "Language: {{CONVERSATION_LANGUAGE}}, Missing: {{MISSING_VAR}}"
-        )
+        template_content = "Language: {{CONVERSATION_LANGUAGE}}, Missing: {{MISSING_VAR}}"
 
         # Act
         result, warnings = processor._substitute_variables(template_content)
@@ -186,9 +178,7 @@ class TestTemplateVariableSubstitution:
         assert "ko" in result, "Should substitute known variable"
         assert "{{MISSING_VAR}}" in result, "Should not substitute missing variable"
         assert len(warnings) > 0, "Should have warnings for unsubstituted variables"
-        assert any(
-            "MISSING_VAR" in warning for warning in warnings
-        ), "Warning should mention missing variable"
+        assert any("MISSING_VAR" in warning for warning in warnings), "Warning should mention missing variable"
 
 
 class TestPhaseExecutorResourcePhase:
@@ -225,12 +215,8 @@ class TestPhaseExecutorResourcePhase:
             mock_processor.set_context.assert_called_once()
             context = mock_processor.set_context.call_args[0][0]
 
-            assert (
-                context["CONVERSATION_LANGUAGE"] == "ko"
-            ), "Should set Korean language"
-            assert (
-                context["CONVERSATION_LANGUAGE_NAME"] == "한국어"
-            ), "Should set Korean name"
+            assert context["CONVERSATION_LANGUAGE"] == "ko", "Should set Korean language"
+            assert context["CONVERSATION_LANGUAGE_NAME"] == "한국어", "Should set Korean name"
 
     @patch("moai_adk.core.project.phase_executor.TemplateProcessor")
     def test_resource_phase_defaults_language_context(
@@ -261,9 +247,7 @@ class TestPhaseExecutorResourcePhase:
             context = mock_processor.set_context.call_args[0][0]
 
             assert context["CONVERSATION_LANGUAGE"] == "en", "Should default to English"
-            assert (
-                context["CONVERSATION_LANGUAGE_NAME"] == "English"
-            ), "Should default English name"
+            assert context["CONVERSATION_LANGUAGE_NAME"] == "English", "Should default English name"
 
 
 class TestLanguageConfigMigration:

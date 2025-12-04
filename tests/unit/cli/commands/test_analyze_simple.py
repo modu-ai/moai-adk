@@ -56,9 +56,7 @@ def test_analyze_with_valid_project_calls_analyzer():
     with tempfile.TemporaryDirectory() as tmpdir:
         Path(tmpdir).joinpath(".moai").mkdir(parents=True)
 
-        with patch(
-            "moai_adk.cli.commands.analyze.SessionAnalyzer"
-        ) as mock_analyzer_class:
+        with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
             mock_analyzer.parse_sessions.return_value = {
@@ -88,9 +86,7 @@ def test_analyze_days_option_parsed_correctly():
     with tempfile.TemporaryDirectory() as tmpdir:
         Path(tmpdir).joinpath(".moai").mkdir(parents=True)
 
-        with patch(
-            "moai_adk.cli.commands.analyze.SessionAnalyzer"
-        ) as mock_analyzer_class:
+        with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
             mock_analyzer.parse_sessions.return_value = {
@@ -119,9 +115,7 @@ def test_analyze_verbose_option_parsed():
     with tempfile.TemporaryDirectory() as tmpdir:
         Path(tmpdir).joinpath(".moai").mkdir(parents=True)
 
-        with patch(
-            "moai_adk.cli.commands.analyze.SessionAnalyzer"
-        ) as mock_analyzer_class:
+        with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
             mock_analyzer.parse_sessions.return_value = {
@@ -150,9 +144,7 @@ def test_analyze_report_only_flag():
     with tempfile.TemporaryDirectory() as tmpdir:
         Path(tmpdir).joinpath(".moai").mkdir(parents=True)
 
-        with patch(
-            "moai_adk.cli.commands.analyze.SessionAnalyzer"
-        ) as mock_analyzer_class:
+        with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
             mock_analyzer.parse_sessions.return_value = {
@@ -180,9 +172,7 @@ def test_analyze_output_option_passed():
         Path(tmpdir).joinpath(".moai").mkdir(parents=True)
         output_file = str(Path(tmpdir) / "report.md")
 
-        with patch(
-            "moai_adk.cli.commands.analyze.SessionAnalyzer"
-        ) as mock_analyzer_class:
+        with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
             mock_analyzer.parse_sessions.return_value = {
@@ -195,9 +185,7 @@ def test_analyze_output_option_passed():
             mock_analyzer.generate_report.return_value = "Report"
             mock_analyzer.save_report.return_value = output_file
 
-            result = runner.invoke(
-                analyze, ["--project-path", tmpdir, "--output", output_file]
-            )
+            result = runner.invoke(analyze, ["--project-path", tmpdir, "--output", output_file])
 
             # May fail due to Path issue but command runs
             assert result.exit_code in [0, 1]
@@ -211,9 +199,7 @@ def test_analyze_default_project_path():
     with runner.isolated_filesystem():
         Path(".moai").mkdir(parents=True)
 
-        with patch(
-            "moai_adk.cli.commands.analyze.SessionAnalyzer"
-        ) as mock_analyzer_class:
+        with patch("moai_adk.cli.commands.analyze.SessionAnalyzer") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
             mock_analyzer.parse_sessions.return_value = {

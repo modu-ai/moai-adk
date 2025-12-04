@@ -195,9 +195,7 @@ class TestPhaseDetector:
         """Test detection uses conversation history."""
         detector = PhaseDetector()
 
-        phase = detector.detect_phase(
-            "Start here", ["spec discussion", "requirements", "create SPEC-001"]
-        )
+        phase = detector.detect_phase("Start here", ["spec discussion", "requirements", "create SPEC-001"])
 
         assert phase == Phase.SPEC
 

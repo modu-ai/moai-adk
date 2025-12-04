@@ -140,14 +140,9 @@ class UnifiedConfigManager:
 
             # Load from file (auto-detect format)
             with open(self._config_path, "r", encoding="utf-8") as f:
-                if (
-                    self._config_path.suffix == ".yaml"
-                    or self._config_path.suffix == ".yml"
-                ):
+                if self._config_path.suffix == ".yaml" or self._config_path.suffix == ".yml":
                     if not YAML_AVAILABLE:
-                        raise ImportError(
-                            "PyYAML is required for YAML config files. Install with: pip install pyyaml"
-                        )
+                        raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
                     self._config = yaml.safe_load(f) or {}
                 else:
                     self._config = json.load(f)
@@ -263,14 +258,9 @@ class UnifiedConfigManager:
 
             # Write to temp file (auto-detect format)
             with open(temp_path, "w", encoding="utf-8") as f:
-                if (
-                    self._config_path.suffix == ".yaml"
-                    or self._config_path.suffix == ".yml"
-                ):
+                if self._config_path.suffix == ".yaml" or self._config_path.suffix == ".yml":
                     if not YAML_AVAILABLE:
-                        raise ImportError(
-                            "PyYAML is required for YAML config files. Install with: pip install pyyaml"
-                        )
+                        raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
                     yaml.safe_dump(
                         self._config,
                         f,
@@ -334,11 +324,7 @@ class UnifiedConfigManager:
         result = base.copy()
 
         for key, value in updates.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = UnifiedConfigManager._deep_merge(result[key], value)
             else:
                 result[key] = value

@@ -51,9 +51,7 @@ class TestTemplateVariableSubstitution:
 
         version = config["moai"]["version"]
         assert version == "0.22.4", f"Version should be '0.22.4', got '{version}'"
-        assert (
-            "{{MOAI_VERSION}}" not in version
-        ), "Version should not contain placeholder"
+        assert "{{MOAI_VERSION}}" not in version, "Version should not contain placeholder"
 
     def test_moai_version_substitution_in_claude_template(self) -> None:
         """
@@ -97,13 +95,9 @@ class TestTemplateVariableSubstitution:
         rendered = template_engine.render_string(template_content, variables)
 
         # Verify substitution worked correctly
-        assert (
-            "{{MOAI_VERSION}}" not in rendered
-        ), "Template should not contain placeholder"
+        assert "{{MOAI_VERSION}}" not in rendered, "Template should not contain placeholder"
         assert "0.22.4" in rendered, "Template should contain actual version"
-        assert (
-            "> **Version**: 0.22.4" in rendered
-        ), "Version should be properly substituted"
+        assert "> **Version**: 0.22.4" in rendered, "Version should be properly substituted"
 
     def test_multiple_template_variables_substitution(self) -> None:
         """
@@ -155,9 +149,7 @@ class TestTemplateVariableSubstitution:
         assert (
             config["project"]["name"] == "TestProject"
         ), f"project.name should be 'TestProject', got '{config['project']['name']}'"
-        assert (
-            config["project"]["mode"] == "team"
-        ), f"project.mode should be 'team', got '{config['project']['mode']}'"
+        assert config["project"]["mode"] == "team", f"project.mode should be 'team', got '{config['project']['mode']}'"
         assert (
             config["project"]["version"] == "1.0.0"
         ), f"project.version should be '1.0.0', got '{config['project']['version']}'"
@@ -166,9 +158,7 @@ class TestTemplateVariableSubstitution:
         ), f"language.conversation_language should be 'en', got '{config['language']['conversation_language']}'"
 
         # Verify no placeholders remain
-        rendered_without_placeholders = template_engine.render_string(
-            template_content, variables
-        )
+        rendered_without_placeholders = template_engine.render_string(template_content, variables)
         assert (
             "{{MOAI_VERSION}}" not in rendered_without_placeholders
         ), "Template should not contain MOAI_VERSION placeholder"
@@ -211,9 +201,7 @@ class TestTemplateVariableSubstitution:
         variables = {"MOAI_VERSION": "0.22.4", "PROJECT_NAME": "TestProject"}
 
         # Render file
-        rendered = template_engine.render_file(
-            config_template, variables, output_dir / "config.json"
-        )
+        rendered = template_engine.render_file(config_template, variables, output_dir / "config.json")
 
         # Verify rendered content
         config = json.loads(rendered)
@@ -229,13 +217,9 @@ class TestTemplateVariableSubstitution:
         # Verify file was written
         output_file = output_dir / "config.json"
         assert output_file.exists(), "Output file should exist"
-        assert (
-            "{{MOAI_VERSION}}" not in output_file.read_text()
-        ), "Output file should not contain placeholder"
+        assert "{{MOAI_VERSION}}" not in output_file.read_text(), "Output file should not contain placeholder"
 
-    def test_version_substitution_in_directory_based_rendering(
-        self, tmp_path: Path
-    ) -> None:
+    def test_version_substitution_in_directory_based_rendering(self, tmp_path: Path) -> None:
         """
         GIVEN: A directory of template files with {{MOAI_VERSION}} placeholders
         WHEN: Directory is rendered using TemplateEngine
@@ -295,13 +279,9 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # Check CLAUDE.md
         claude_content = results["CLAUDE.md"]
-        assert (
-            "{{MOAI_VERSION}}" not in claude_content
-        ), "CLAUDE.md should not contain placeholder"
+        assert "{{MOAI_VERSION}}" not in claude_content, "CLAUDE.md should not contain placeholder"
         assert "0.22.4" in claude_content, "CLAUDE.md should contain actual version"
-        assert (
-            "> **Version**: 0.22.4" in claude_content
-        ), "CLAUDE.md should have substituted version"
+        assert "> **Version**: 0.22.4" in claude_content, "CLAUDE.md should have substituted version"
 
         # Verify files were written
         assert (output_dir / "config.json").exists(), "config.json should exist"
@@ -378,18 +358,12 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # RED: These assertions will fail because the test demonstrates the current behavior
         # The existing values should be preserved
-        assert (
-            config["moai"]["version"] == "0.22.4"
-        ), "moai.version should be substituted"
-        assert (
-            config["moai"]["update_check_frequency"] == "daily"
-        ), "moai.update_check_frequency should be preserved"
+        assert config["moai"]["version"] == "0.22.4", "moai.version should be substituted"
+        assert config["moai"]["update_check_frequency"] == "daily", "moai.update_check_frequency should be preserved"
         assert (
             config["constitution"]["test_coverage_target"] == 85
         ), "constitution.test_coverage_target should be preserved"
-        assert (
-            config["constitution"]["enforce_tdd"] is True
-        ), "constitution.enforce_tdd should be preserved"
+        assert config["constitution"]["enforce_tdd"] is True, "constitution.enforce_tdd should be preserved"
 
     def test_version_substitution_error_handling(self) -> None:
         """
@@ -467,9 +441,7 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # Verify USER_NAME is extracted from config.user.name
         assert "USER_NAME" in variables, "USER_NAME should be in variables"
-        assert (
-            variables["USER_NAME"] == "철수"
-        ), f"USER_NAME should be '철수', got '{variables['USER_NAME']}'"
+        assert variables["USER_NAME"] == "철수", f"USER_NAME should be '철수', got '{variables['USER_NAME']}'"
 
         # Verify PROJECT_OWNER is separate from USER_NAME
         assert (
@@ -495,9 +467,7 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # Verify USER_NAME returns empty string
         assert "USER_NAME" in variables, "USER_NAME should be in variables"
-        assert (
-            variables["USER_NAME"] == ""
-        ), f"USER_NAME should be empty string, got '{variables['USER_NAME']}'"
+        assert variables["USER_NAME"] == "", f"USER_NAME should be empty string, got '{variables['USER_NAME']}'"
 
     def test_user_name_variable_with_empty_string(self) -> None:
         """
@@ -517,9 +487,7 @@ This is a test project with version {{MOAI_VERSION}}.
         variables = template_engine.get_default_variables(config)
 
         # Verify USER_NAME is empty string
-        assert (
-            variables["USER_NAME"] == ""
-        ), f"USER_NAME should be empty string, got '{variables['USER_NAME']}'"
+        assert variables["USER_NAME"] == "", f"USER_NAME should be empty string, got '{variables['USER_NAME']}'"
 
     def test_user_name_variable_with_unicode_names(self) -> None:
         """
@@ -577,9 +545,7 @@ This is a test project with version {{MOAI_VERSION}}.
         # Parse JSON to verify
         config = json.loads(rendered)
 
-        assert (
-            config["user"]["name"] == "철수"
-        ), f"user.name should be '철수', got '{config['user']['name']}'"
+        assert config["user"]["name"] == "철수", f"user.name should be '철수', got '{config['user']['name']}'"
         assert (
             config["project"]["owner"] == "GoosLab"
         ), f"project.owner should be 'GoosLab', got '{config['project']['owner']}'"
@@ -600,15 +566,11 @@ This is a test project with version {{MOAI_VERSION}}.
         variables = template_engine.get_default_variables(config)
 
         # Both variables should exist but have different values
-        assert (
-            variables["PROJECT_OWNER"] == "GoosLab"
-        ), "PROJECT_OWNER should be GitHub username"
+        assert variables["PROJECT_OWNER"] == "GoosLab", "PROJECT_OWNER should be GitHub username"
         assert variables["USER_NAME"] == "김철수", "USER_NAME should be personal name"
 
         # They should NOT be the same
-        assert (
-            variables["PROJECT_OWNER"] != variables["USER_NAME"]
-        ), "PROJECT_OWNER and USER_NAME should be different"
+        assert variables["PROJECT_OWNER"] != variables["USER_NAME"], "PROJECT_OWNER and USER_NAME should be different"
 
     def test_render_file_with_nonexistent_template(self) -> None:
         """
@@ -656,9 +618,7 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # Render with output path
         output_file = tmp_path / "output.txt"
-        rendered = template_engine.render_file(
-            template_file, {"NAME": "World"}, output_file
-        )
+        rendered = template_engine.render_file(template_file, {"NAME": "World"}, output_file)
 
         # Verify rendered content
         assert rendered == "Hello World"
@@ -777,9 +737,7 @@ This is a test project with version {{MOAI_VERSION}}.
         assert not is_valid
         assert any("ENABLE_TRUST_5" in error for error in errors)
 
-    def test_render_file_with_template_syntax_error_in_file(
-        self, tmp_path: Path
-    ) -> None:
+    def test_render_file_with_template_syntax_error_in_file(self, tmp_path: Path) -> None:
         """
         GIVEN: A template file with invalid Jinja2 syntax
         WHEN: render_file is called

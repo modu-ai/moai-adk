@@ -77,16 +77,10 @@ if __name__ == "__main__":
             if "click" in action:
                 for name, info in selectors.items():
                     if info["type"] == "button":
-                        interactions.append(
-                            f"        page.locator('{info['selector']}').click()"
-                        )
-                        assertions.append(
-                            f"        expect(page.locator('{info['selector']}')).to_be_visible()"
-                        )
+                        interactions.append(f"        page.locator('{info['selector']}').click()")
+                        assertions.append(f"        expect(page.locator('{info['selector']}')).to_be_visible()")
 
-        return script_template.format(
-            interactions="\n".join(interactions), assertions="\n".join(assertions)
-        )
+        return script_template.format(interactions="\n".join(interactions), assertions="\n".join(assertions))
 
 
 class Context7TestEnhancer:
@@ -148,9 +142,7 @@ class VisualRegressionTester:
         self.current_dir = "./current"
         self.diff_dir = "./diff"
 
-    async def capture_screenshot(
-        self, page: Page, name: str, selector: Optional[str] = None
-    ):
+    async def capture_screenshot(self, page: Page, name: str, selector: Optional[str] = None):
         """Capture intelligent screenshot with Context7 patterns"""
 
         # Wait for dynamic content

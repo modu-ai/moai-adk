@@ -109,9 +109,7 @@ class ConfigurationValidator:
             },
         }
 
-    def validate_config(
-        self, config: Dict[str, Any]
-    ) -> Tuple[bool, List[ValidationIssue]]:
+    def validate_config(self, config: Dict[str, Any]) -> Tuple[bool, List[ValidationIssue]]:
         """Validate complete configuration and return issues"""
         issues = []
 
@@ -134,10 +132,7 @@ class ConfigurationValidator:
         if "performance" in config:
             issues.extend(self._validate_performance(config["performance"]))
 
-        is_valid = not any(
-            issue.level in [ValidationLevel.ERROR, ValidationLevel.CRITICAL]
-            for issue in issues
-        )
+        is_valid = not any(issue.level in [ValidationLevel.ERROR, ValidationLevel.CRITICAL] for issue in issues)
         return is_valid, issues
 
     def _validate_structure(self, config: Dict[str, Any]) -> List[ValidationIssue]:
@@ -164,9 +159,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_timeout_manager(
-        self, timeout_config: Dict[str, Any]
-    ) -> List[ValidationIssue]:
+    def _validate_timeout_manager(self, timeout_config: Dict[str, Any]) -> List[ValidationIssue]:
         """Validate timeout manager configuration"""
         issues = []
         base_path = ".timeout_manager"
@@ -245,24 +238,18 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_hook_configs(
-        self, hook_configs: Dict[str, Any]
-    ) -> List[ValidationIssue]:
+    def _validate_hook_configs(self, hook_configs: Dict[str, Any]) -> List[ValidationIssue]:
         """Validate hook-specific configurations"""
         issues = []
         base_path = ".hook_configs"
 
         for hook_name, config in hook_configs.items():
             hook_path = f"{base_path}.{hook_name}"
-            issues.extend(
-                self._validate_single_hook_config(hook_name, config, hook_path)
-            )
+            issues.extend(self._validate_single_hook_config(hook_name, config, hook_path))
 
         return issues
 
-    def _validate_single_hook_config(
-        self, hook_name: str, config: Dict[str, Any], path: str
-    ) -> List[ValidationIssue]:
+    def _validate_single_hook_config(self, hook_name: str, config: Dict[str, Any], path: str) -> List[ValidationIssue]:
         """Validate configuration for a single hook"""
         issues = []
 
@@ -373,9 +360,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_resources(
-        self, resource_config: Dict[str, Any]
-    ) -> List[ValidationIssue]:
+    def _validate_resources(self, resource_config: Dict[str, Any]) -> List[ValidationIssue]:
         """Validate resource configuration"""
         issues = []
         base_path = ".resources"
@@ -437,9 +422,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_performance(
-        self, performance_config: Dict[str, Any]
-    ) -> List[ValidationIssue]:
+    def _validate_performance(self, performance_config: Dict[str, Any]) -> List[ValidationIssue]:
         """Validate performance-related configuration"""
         issues = []
         base_path = ".performance"
@@ -506,14 +489,10 @@ class ConfigurationValidator:
             timeout_manager["graceful_degradation"] = True
 
         if "default_retry_count" not in timeout_manager:
-            timeout_manager["default_retry_count"] = (
-                self._timeout_schema.recommended_retry_count
-            )
+            timeout_manager["default_retry_count"] = self._timeout_schema.recommended_retry_count
 
         if "default_retry_delay_ms" not in timeout_manager:
-            timeout_manager["default_retry_delay_ms"] = (
-                self._timeout_schema.default_retry_delay_ms
-            )
+            timeout_manager["default_retry_delay_ms"] = self._timeout_schema.default_retry_delay_ms
 
         # Ensure hook_configs section exists
         if "hook_configs" not in normalized:
@@ -523,11 +502,7 @@ class ConfigurationValidator:
         for hook_type, template in self._hook_templates.items():
             if hook_type not in normalized["hook_configs"]:
                 # Look for existing hooks with this type
-                matching_hooks = [
-                    k
-                    for k in normalized["hook_configs"].keys()
-                    if hook_type in k.lower()
-                ]
+                matching_hooks = [k for k in normalized["hook_configs"].keys() if hook_type in k.lower()]
                 if not matching_hooks:
                     # Add template as default
                     normalized["hook_configs"][hook_type] = template.copy()
@@ -544,9 +519,7 @@ class ConfigurationValidator:
             }
 
         if "workers" not in resources:
-            resources["workers"] = {
-                "default_max_workers": self._resource_schema.default_max_workers
-            }
+            resources["workers"] = {"default_max_workers": self._resource_schema.default_max_workers}
 
         # Ensure performance section exists
         if "performance" not in normalized:
@@ -554,9 +527,7 @@ class ConfigurationValidator:
 
         performance = normalized["performance"]
         if "cache" not in performance:
-            performance["cache"] = {
-                "size_limit": self._resource_schema.cache_size_default
-            }
+            performance["cache"] = {"size_limit": self._resource_schema.cache_size_default}
 
         if "monitoring" not in performance:
             performance["monitoring"] = {"enabled": True}
@@ -593,9 +564,7 @@ class ConfigurationValidator:
 
         for level in level_order:
             if level in by_level:
-                lines.append(
-                    f"{level_icons[level]} {level.value.upper()} ISSUES ({len(by_level[level])})"
-                )
+                lines.append(f"{level_icons[level]} {level.value.upper()} ISSUES ({len(by_level[level])})")
                 for issue in by_level[level]:
                     lines.append(f"   • {issue.path}: {issue.message}")
                     if issue.suggestion:
@@ -604,9 +573,7 @@ class ConfigurationValidator:
 
         return "\n".join(lines)
 
-    def validate_and_fix_config_file(
-        self, config_path: Path
-    ) -> Tuple[bool, Dict[str, Any], List[ValidationIssue]]:
+    def validate_and_fix_config_file(self, config_path: Path) -> Tuple[bool, Dict[str, Any], List[ValidationIssue]]:
         """Validate and optionally fix a configuration file"""
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -616,9 +583,7 @@ class ConfigurationValidator:
             is_valid, issues = self.validate_config(config)
 
             if not is_valid:
-                self._logger.warning(
-                    f"Configuration validation failed with {len(issues)} issues"
-                )
+                self._logger.warning(f"Configuration validation failed with {len(issues)} issues")
 
             # Normalize configuration (apply defaults, fix minor issues)
             normalized_config = self.normalize_config(config)
@@ -670,7 +635,5 @@ def validate_hook_config(
             )
         ]
 
-    is_valid, normalized_config, issues = validator.validate_and_fix_config_file(
-        config_path
-    )
+    is_valid, normalized_config, issues = validator.validate_and_fix_config_file(config_path)
     return is_valid, issues

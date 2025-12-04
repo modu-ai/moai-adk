@@ -43,9 +43,7 @@ class TestUpdateSpecStatus:
             # Mock Path.cwd() to return our temp directory
             with patch("moai_adk.cli.spec_status.Path.cwd", return_value=project_root):
                 # Act
-                result = update_spec_status(
-                    "SPEC-AUTH-001", "in-progress", "Started work"
-                )
+                result = update_spec_status("SPEC-AUTH-001", "in-progress", "Started work")
 
                 # Assert
                 assert result["success"] is True
@@ -170,9 +168,7 @@ class TestUpdateSpecStatus:
                 mock_manager.update_spec_status.return_value = True
                 mock_manager_class.return_value = mock_manager
 
-                with patch(
-                    "moai_adk.cli.spec_status.Path.cwd", return_value=project_root
-                ):
+                with patch("moai_adk.cli.spec_status.Path.cwd", return_value=project_root):
                     # Act
                     result = update_spec_status("SPEC-TEST-001", status_val)
 

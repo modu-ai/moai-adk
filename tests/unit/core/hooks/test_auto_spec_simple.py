@@ -32,9 +32,7 @@ class TestBaseHook:
         hook = BaseHook()
 
         assert hook.name == "PostToolAutoSpecCompletion"
-        assert (
-            hook.description == "PostToolUse Hook for Automated SPEC Completion System"
-        )
+        assert hook.description == "PostToolUse Hook for Automated SPEC Completion System"
 
 
 class TestSpecGenerator:
@@ -131,9 +129,7 @@ class TestShouldTriggerSpecCompletion:
         """Test trigger true for Write tool with Python file."""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "/path/to/module.py"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "/path/to/module.py"})
 
         assert result is True
 
@@ -141,9 +137,7 @@ class TestShouldTriggerSpecCompletion:
         """Test trigger true for Edit tool with TypeScript file."""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Edit", {"file_path": "/path/to/index.ts"}
-        )
+        result = hook.should_trigger_spec_completion("Edit", {"file_path": "/path/to/index.ts"})
 
         assert result is True
 
@@ -151,9 +145,7 @@ class TestShouldTriggerSpecCompletion:
         """Test trigger false for unsupported file type."""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "/path/to/file.txt"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "/path/to/file.txt"})
 
         assert result is False
 
@@ -161,9 +153,7 @@ class TestShouldTriggerSpecCompletion:
         """Test trigger false for excluded files."""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "/path/to/test_module.py"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "/path/to/test_module.py"})
 
         assert result is False
 
@@ -171,9 +161,7 @@ class TestShouldTriggerSpecCompletion:
         """Test trigger false for excluded directory."""
         hook = PostToolAutoSpecCompletion()
 
-        result = hook.should_trigger_spec_completion(
-            "Write", {"file_path": "/path/__tests__/module.py"}
-        )
+        result = hook.should_trigger_spec_completion("Write", {"file_path": "/path/__tests__/module.py"})
 
         assert result is False
 

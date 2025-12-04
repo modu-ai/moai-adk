@@ -193,9 +193,7 @@ class UnifiedTimeoutManager:
         else:
             return self._default_configs[TimeoutPolicy.NORMAL]
 
-    def create_timeout_session(
-        self, hook_name: str, config: Optional[HookTimeoutConfig] = None
-    ) -> TimeoutSession:
+    def create_timeout_session(self, hook_name: str, config: Optional[HookTimeoutConfig] = None) -> TimeoutSession:
         """Create a new timeout session for a hook"""
         if not config:
             config = self.get_timeout_config(hook_name)
@@ -263,9 +261,7 @@ class UnifiedTimeoutManager:
         timer.start()
 
         # Store timer for cleanup
-        session.cleanup_actions.append(
-            lambda: timer.cancel() if timer.is_alive() else None
-        )
+        session.cleanup_actions.append(lambda: timer.cancel() if timer.is_alive() else None)
 
     def _start_unix_timeout(self, session: TimeoutSession) -> None:
         """Unix: Use signal.SIGALRM for timeout"""
@@ -295,9 +291,7 @@ class UnifiedTimeoutManager:
                     break
 
             if timed_out_session:
-                execution_time = (
-                    datetime.now() - timed_out_session.start_time
-                ).total_seconds()
+                execution_time = (datetime.now() - timed_out_session.start_time).total_seconds()
                 error_msg = (
                     f"Hook {timed_out_session.hook_id} timed out after "
                     f"{timed_out_session.timeout_seconds}s (execution: {execution_time:.2f}s)"
@@ -371,9 +365,7 @@ class UnifiedTimeoutManager:
                 # Cancel timeout on success
                 self.cancel_timeout(session)
 
-                self._logger.debug(
-                    f"Hook {hook_name} completed in {execution_time:.2f}s"
-                )
+                self._logger.debug(f"Hook {hook_name} completed in {execution_time:.2f}s")
                 return result
 
             except HookTimeoutError as e:
@@ -381,14 +373,10 @@ class UnifiedTimeoutManager:
                 self.cancel_timeout(session)
 
                 if attempt < config.retry_count:
-                    self._logger.warning(
-                        f"Hook {hook_name} timeout, retrying ({attempt + 1}/{config.retry_count})"
-                    )
+                    self._logger.warning(f"Hook {hook_name} timeout, retrying ({attempt + 1}/{config.retry_count})")
                     time.sleep(config.retry_delay_ms / 1000.0)
                 else:
-                    self._logger.error(
-                        f"Hook {hook_name} failed after {config.retry_count} retries"
-                    )
+                    self._logger.error(f"Hook {hook_name} failed after {config.retry_count} retries")
 
                     if config.graceful_degradation:
                         return self._get_graceful_degradation_result(hook_name)
@@ -400,9 +388,7 @@ class UnifiedTimeoutManager:
                 self.cancel_timeout(session)
 
                 if attempt < config.retry_count:
-                    self._logger.warning(
-                        f"Hook {hook_name} error, retrying ({attempt + 1}/{config.retry_count}): {e}"
-                    )
+                    self._logger.warning(f"Hook {hook_name} error, retrying ({attempt + 1}/{config.retry_count}): {e}")
                     time.sleep(config.retry_delay_ms / 1000.0)
                 else:
                     self._logger.error(f"Hook {hook_name} failed with exception: {e}")
@@ -421,9 +407,7 @@ class UnifiedTimeoutManager:
             memory_mb = process.memory_info().rss / 1024 / 1024
 
             if memory_mb > limit_mb:
-                self._logger.warning(
-                    f"Memory usage ({memory_mb:.1f}MB) exceeds limit ({limit_mb}MB)"
-                )
+                self._logger.warning(f"Memory usage ({memory_mb:.1f}MB) exceeds limit ({limit_mb}MB)")
                 # Could implement more aggressive cleanup here
         except ImportError:
             # psutil not available, skip memory checking
@@ -478,11 +462,7 @@ class UnifiedTimeoutManager:
     def cleanup_completed_sessions(self) -> int:
         """Clean up completed sessions and return count cleaned"""
         with self._session_lock:
-            completed_ids = [
-                hook_id
-                for hook_id, session in self._active_sessions.items()
-                if session.completed
-            ]
+            completed_ids = [hook_id for hook_id, session in self._active_sessions.items() if session.completed]
 
             for hook_id in completed_ids:
                 del self._active_sessions[hook_id]

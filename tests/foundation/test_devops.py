@@ -1478,9 +1478,7 @@ class TestDevOpsIntegration:
         collector = DevOpsMetricsCollector()
 
         deployment_metrics = collector.collect_deployment_metrics({})
-        pipeline_metrics = collector.track_pipeline_performance(
-            {"execution_times": {"build": 100, "test": 200}}
-        )
+        pipeline_metrics = collector.track_pipeline_performance({"execution_times": {"build": 100, "test": 200}})
         health = collector.get_devops_health_status({})
 
         assert deployment_metrics is not None

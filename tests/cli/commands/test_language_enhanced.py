@@ -102,14 +102,10 @@ class TestListCommand:
 
     @patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG", new_callable=lambda: {})
     @patch("moai_adk.cli.commands.language.console")
-    def test_list_json_output_displays_full_config(
-        self, mock_console, mock_config, runner, mock_language_config
-    ):
+    def test_list_json_output_displays_full_config(self, mock_console, mock_config, runner, mock_language_config):
         """Should output complete language config as JSON"""
         # Replace the entire LANGUAGE_CONFIG dict with our test data
-        with patch(
-            "moai_adk.cli.commands.language.LANGUAGE_CONFIG", mock_language_config
-        ):
+        with patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG", mock_language_config):
             result = runner.invoke(list_command, ["--json-output"])
 
         assert result.exit_code == 0
@@ -121,9 +117,7 @@ class TestListCommand:
 
     @patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG")
     @patch("moai_adk.cli.commands.language.console")
-    def test_list_table_output_displays_all_languages(
-        self, mock_console, mock_config, runner, mock_language_config
-    ):
+    def test_list_table_output_displays_all_languages(self, mock_console, mock_config, runner, mock_language_config):
         """Should display all languages in table format"""
         mock_config.items.return_value = mock_language_config.items()
 
@@ -135,9 +129,7 @@ class TestListCommand:
 
     @patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG")
     @patch("moai_adk.cli.commands.language.console")
-    def test_list_table_includes_all_columns(
-        self, mock_console, mock_config, runner, mock_language_config
-    ):
+    def test_list_table_includes_all_columns(self, mock_console, mock_config, runner, mock_language_config):
         """Should include all required columns in table"""
         mock_config.items.return_value = mock_language_config.items()
 
@@ -181,9 +173,7 @@ class TestInfoCommand:
 
     @patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG")
     @patch("moai_adk.cli.commands.language.console")
-    def test_info_valid_language_displays_basic_info(
-        self, mock_console, mock_config, runner, mock_language_config
-    ):
+    def test_info_valid_language_displays_basic_info(self, mock_console, mock_config, runner, mock_language_config):
         """Should display basic language information"""
         mock_config.get.return_value = mock_language_config["en"]
 
@@ -217,9 +207,7 @@ class TestInfoCommand:
 
     @patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG")
     @patch("moai_adk.cli.commands.language.console")
-    def test_info_case_insensitive_language_code(
-        self, mock_console, mock_config, runner, mock_language_config
-    ):
+    def test_info_case_insensitive_language_code(self, mock_console, mock_config, runner, mock_language_config):
         """Should handle uppercase language codes by converting to lowercase"""
         mock_config.get.return_value = mock_language_config["en"]
 
@@ -264,9 +252,7 @@ class TestRenderTemplateCommand:
 
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_render_template_without_output_prints_to_console(
-        self, mock_console, mock_engine, runner, tmp_path
-    ):
+    def test_render_template_without_output_prints_to_console(self, mock_console, mock_engine, runner, tmp_path):
         """Should print rendered content when no output file specified"""
         template_file = tmp_path / "template.txt"
         template_file.write_text("Test template")
@@ -277,9 +263,7 @@ class TestRenderTemplateCommand:
         mock_engine_instance.render_file.return_value = "Rendered output"
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(
-            render_template, [str(template_file), str(variables_file)]
-        )
+        result = runner.invoke(render_template, [str(template_file), str(variables_file)])
 
         assert result.exit_code == 0
         # Should print rendered content
@@ -292,9 +276,7 @@ class TestRenderTemplateCommand:
 
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_render_template_with_output_saves_to_file(
-        self, mock_console, mock_engine, runner, tmp_path
-    ):
+    def test_render_template_with_output_saves_to_file(self, mock_console, mock_engine, runner, tmp_path):
         """Should save rendered content to output file when specified"""
         template_file = tmp_path / "template.txt"
         template_file.write_text("Test template")
@@ -323,25 +305,17 @@ class TestRenderTemplateCommand:
     def test_render_template_handles_file_not_found_error(self, runner):
         """Should handle and display error when template file doesn't exist"""
         # Use CliRunner's isolated filesystem to ensure files don't exist
-        result = runner.invoke(
-            render_template, ["/nonexistent/template.txt", "/nonexistent/vars.json"]
-        )
+        result = runner.invoke(render_template, ["/nonexistent/template.txt", "/nonexistent/vars.json"])
 
         # Click validates file existence, so exit code 2 is expected (usage error)
         # or exit code 0 with error message if caught by the command
         assert result.exit_code in (0, 2)
         # Check that error output indicates file problem
-        assert (
-            "Error" in result.output
-            or "does not exist" in result.output
-            or result.exception is not None
-        )
+        assert "Error" in result.output or "does not exist" in result.output or result.exception is not None
 
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_render_template_handles_invalid_json_error(
-        self, mock_console, mock_engine, runner, tmp_path
-    ):
+    def test_render_template_handles_invalid_json_error(self, mock_console, mock_engine, runner, tmp_path):
         """Should handle and display error when variables JSON is invalid"""
         template_file = tmp_path / "template.txt"
         template_file.write_text("Test")
@@ -360,9 +334,7 @@ class TestRenderTemplateCommand:
 
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_render_template_handles_rendering_error(
-        self, mock_console, mock_engine, runner, tmp_path
-    ):
+    def test_render_template_handles_rendering_error(self, mock_console, mock_engine, runner, tmp_path):
         """Should handle and display template rendering errors"""
         template_file = tmp_path / "template.txt"
         template_file.write_text("Test")
@@ -370,9 +342,7 @@ class TestRenderTemplateCommand:
         variables_file.write_text('{"key": "value"}')
 
         mock_engine_instance = Mock()
-        mock_engine_instance.render_file.side_effect = Exception(
-            "Template syntax error"
-        )
+        mock_engine_instance.render_file.side_effect = Exception("Template syntax error")
         mock_engine.return_value = mock_engine_instance
 
         runner.invoke(render_template, [str(template_file), str(variables_file)])
@@ -391,9 +361,7 @@ class TestTranslateDescriptionsCommand:
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_uses_specified_languages(
-        self, mock_console, mock_integration, runner
-    ):
+    def test_translate_uses_specified_languages(self, mock_console, mock_integration, runner):
         """Should translate to specified target languages"""
         mock_integration_instance = Mock()
         mock_integration_instance.generate_multilingual_descriptions.return_value = {
@@ -402,22 +370,16 @@ class TestTranslateDescriptionsCommand:
         }
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(
-            translate_descriptions, ["Test description", "-t", "en,ko"]
-        )
+        result = runner.invoke(translate_descriptions, ["Test description", "-t", "en,ko"])
 
         assert result.exit_code == 0
         # Should call with specified languages
-        call_args = (
-            mock_integration_instance.generate_multilingual_descriptions.call_args
-        )
+        call_args = mock_integration_instance.generate_multilingual_descriptions.call_args
         assert call_args[0][1] == ["en", "ko"]
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_uses_default_languages_when_not_specified(
-        self, mock_console, mock_integration, runner
-    ):
+    def test_translate_uses_default_languages_when_not_specified(self, mock_console, mock_integration, runner):
         """Should use default language list when no target languages specified"""
         mock_integration_instance = Mock()
         mock_integration_instance.generate_multilingual_descriptions.return_value = {}
@@ -427,16 +389,12 @@ class TestTranslateDescriptionsCommand:
 
         assert result.exit_code == 0
         # Should use default languages
-        call_args = (
-            mock_integration_instance.generate_multilingual_descriptions.call_args
-        )
+        call_args = mock_integration_instance.generate_multilingual_descriptions.call_args
         assert call_args[0][1] == ["en", "ko", "ja", "es", "fr", "de"]
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_saves_to_output_file_when_specified(
-        self, mock_console, mock_integration, runner, tmp_path
-    ):
+    def test_translate_saves_to_output_file_when_specified(self, mock_console, mock_integration, runner, tmp_path):
         """Should save translations to JSON file when output specified"""
         output_file = tmp_path / "translations.json"
         mock_integration_instance = Mock()
@@ -446,9 +404,7 @@ class TestTranslateDescriptionsCommand:
         }
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(
-            translate_descriptions, ["Test description", "-o", str(output_file)]
-        )
+        result = runner.invoke(translate_descriptions, ["Test description", "-o", str(output_file)])
 
         assert result.exit_code == 0
         # Should confirm file saved
@@ -461,9 +417,7 @@ class TestTranslateDescriptionsCommand:
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_prints_to_console_when_no_output(
-        self, mock_console, mock_integration, runner
-    ):
+    def test_translate_prints_to_console_when_no_output(self, mock_console, mock_integration, runner):
         """Should print translations to console when no output file"""
         mock_integration_instance = Mock()
         mock_integration_instance.generate_multilingual_descriptions.return_value = {
@@ -480,14 +434,10 @@ class TestTranslateDescriptionsCommand:
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_handles_integration_error(
-        self, mock_console, mock_integration, runner
-    ):
+    def test_translate_handles_integration_error(self, mock_console, mock_integration, runner):
         """Should handle and display errors from Claude integration"""
         mock_integration_instance = Mock()
-        mock_integration_instance.generate_multilingual_descriptions.side_effect = (
-            Exception("API error")
-        )
+        mock_integration_instance.generate_multilingual_descriptions.side_effect = Exception("API error")
         mock_integration.return_value = mock_integration_instance
 
         runner.invoke(translate_descriptions, ["Test description"])
@@ -502,9 +452,7 @@ class TestTranslateDescriptionsCommand:
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_strips_whitespace_from_language_codes(
-        self, mock_console, mock_integration, runner
-    ):
+    def test_translate_strips_whitespace_from_language_codes(self, mock_console, mock_integration, runner):
         """Should strip whitespace from comma-separated language codes"""
         mock_integration_instance = Mock()
         mock_integration_instance.generate_multilingual_descriptions.return_value = {}
@@ -514,9 +462,7 @@ class TestTranslateDescriptionsCommand:
 
         assert result.exit_code == 0
         # Should strip whitespace
-        call_args = (
-            mock_integration_instance.generate_multilingual_descriptions.call_args
-        )
+        call_args = mock_integration_instance.generate_multilingual_descriptions.call_args
         assert call_args[0][1] == ["en", "ko", "ja"]
 
 
@@ -526,9 +472,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_native_name")
-    def test_execute_dry_run_displays_command_without_executing(
-        self, mock_get_name, mock_console, mock_engine, runner
-    ):
+    def test_execute_dry_run_displays_command_without_executing(self, mock_get_name, mock_console, mock_engine, runner):
         """Should display command in dry-run mode without execution"""
         mock_get_name.return_value = "한국어"
         mock_engine_instance = Mock()
@@ -549,9 +493,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_native_name")
-    def test_execute_loads_variables_from_file(
-        self, mock_get_name, mock_console, mock_engine, runner, tmp_path
-    ):
+    def test_execute_loads_variables_from_file(self, mock_get_name, mock_console, mock_engine, runner, tmp_path):
         """Should load variables from JSON file when provided"""
         variables_file = tmp_path / "vars.json"
         variables_file.write_text('{"key": "value"}')
@@ -561,9 +503,7 @@ class TestExecuteCommand:
         mock_engine_instance.render_string.return_value = "Processed"
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(
-            execute, ["Test prompt", "-v", str(variables_file), "--dry-run"]
-        )
+        result = runner.invoke(execute, ["Test prompt", "-v", str(variables_file), "--dry-run"])
 
         assert result.exit_code == 0
         # Should have loaded variables
@@ -574,9 +514,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_native_name")
-    def test_execute_injects_language_variables_when_specified(
-        self, mock_get_name, mock_console, mock_engine, runner
-    ):
+    def test_execute_injects_language_variables_when_specified(self, mock_get_name, mock_console, mock_engine, runner):
         """Should inject language variables when language is specified"""
         mock_get_name.return_value = "日本語"
         mock_engine_instance = Mock()
@@ -595,9 +533,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_success_displays_output(
-        self, mock_console, mock_engine, mock_integration, runner
-    ):
+    def test_execute_success_displays_output(self, mock_console, mock_engine, mock_integration, runner):
         """Should display successful execution output"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.return_value = "Processed prompt"
@@ -625,9 +561,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_parses_json_output_when_format_is_json(
-        self, mock_console, mock_engine, mock_integration, runner
-    ):
+    def test_execute_parses_json_output_when_format_is_json(self, mock_console, mock_engine, mock_integration, runner):
         """Should parse and pretty-print JSON output when format is json"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.return_value = "Processed"
@@ -657,9 +591,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_handles_invalid_json_gracefully(
-        self, mock_console, mock_engine, mock_integration, runner
-    ):
+    def test_execute_handles_invalid_json_gracefully(self, mock_console, mock_engine, mock_integration, runner):
         """Should handle invalid JSON output gracefully"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.return_value = "Processed"
@@ -682,9 +614,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_failure_displays_error_messages(
-        self, mock_console, mock_engine, mock_integration, runner
-    ):
+    def test_execute_failure_displays_error_messages(self, mock_console, mock_engine, mock_integration, runner):
         """Should display error messages when execution fails"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.return_value = "Processed"
@@ -704,19 +634,14 @@ class TestExecuteCommand:
         # Should display failure message
         failure_printed = False
         for call_obj in mock_console.print.call_args_list:
-            if call_obj[0] and (
-                "failed" in str(call_obj[0][0]).lower()
-                or "Error" in str(call_obj[0][0])
-            ):
+            if call_obj[0] and ("failed" in str(call_obj[0][0]).lower() or "Error" in str(call_obj[0][0])):
                 failure_printed = True
                 break
         assert failure_printed
 
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_handles_exception_gracefully(
-        self, mock_console, mock_engine, runner
-    ):
+    def test_execute_handles_exception_gracefully(self, mock_console, mock_engine, runner):
         """Should handle exceptions during execution"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.side_effect = Exception("Template error")
@@ -735,9 +660,7 @@ class TestExecuteCommand:
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_with_custom_output_format(
-        self, mock_console, mock_engine, mock_integration, runner
-    ):
+    def test_execute_with_custom_output_format(self, mock_console, mock_engine, mock_integration, runner):
         """Should pass custom output format to Claude integration"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.return_value = "Processed"
@@ -751,9 +674,7 @@ class TestExecuteCommand:
         }
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(
-            execute, ["Test prompt", "--output-format", "stream-json"]
-        )
+        result = runner.invoke(execute, ["Test prompt", "--output-format", "stream-json"])
 
         assert result.exit_code == 0
         # Should pass format to integration
@@ -765,9 +686,7 @@ class TestValidateConfigCommand:
     """Test validate_config command (lines 193-247)"""
 
     @patch("moai_adk.cli.commands.language.console")
-    def test_validate_config_missing_language_section_warns(
-        self, mock_console, runner, tmp_path
-    ):
+    def test_validate_config_missing_language_section_warns(self, mock_console, runner, tmp_path):
         """Should warn when language section is missing"""
         config_file = tmp_path / "config.json"
         config_file.write_text('{"project": {"name": "test"}}')
@@ -784,9 +703,7 @@ class TestValidateConfigCommand:
         assert warning_printed
 
     @patch("moai_adk.cli.commands.language.console")
-    def test_validate_config_invalid_language_structure_shows_error(
-        self, mock_console, runner, tmp_path
-    ):
+    def test_validate_config_invalid_language_structure_shows_error(self, mock_console, runner, tmp_path):
         """Should show error when language section is not a dict"""
         config_file = tmp_path / "config.json"
         config_file.write_text('{"language": "invalid"}')
@@ -825,9 +742,7 @@ class TestValidateConfigCommand:
 
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_all_supported_codes")
-    def test_validate_config_unsupported_language_shows_error(
-        self, mock_get_codes, mock_console, runner, tmp_path
-    ):
+    def test_validate_config_unsupported_language_shows_error(self, mock_get_codes, mock_console, runner, tmp_path):
         """Should show error for unsupported language codes"""
         mock_get_codes.return_value = ["en", "ko", "ja"]
         config_file = tmp_path / "config.json"
@@ -846,9 +761,7 @@ class TestValidateConfigCommand:
         assert error_printed
 
     @patch("moai_adk.cli.commands.language.console")
-    def test_validate_config_missing_conversation_language_warns(
-        self, mock_console, runner, tmp_path
-    ):
+    def test_validate_config_missing_conversation_language_warns(self, mock_console, runner, tmp_path):
         """Should warn when conversation_language is not specified"""
         config_file = tmp_path / "config.json"
         config_data = {"language": {}}
@@ -937,9 +850,7 @@ class TestValidateConfigCommand:
         }
         config_file.write_text(json.dumps(config_data))
 
-        result = runner.invoke(
-            validate_config, [str(config_file), "--validate-languages"]
-        )
+        result = runner.invoke(validate_config, [str(config_file), "--validate-languages"])
 
         assert result.exit_code == 0
         # Should report found language codes
@@ -951,9 +862,7 @@ class TestValidateConfigCommand:
         assert found_printed
 
     @patch("moai_adk.cli.commands.language.console")
-    def test_validate_config_handles_invalid_json_error(
-        self, mock_console, runner, tmp_path
-    ):
+    def test_validate_config_handles_invalid_json_error(self, mock_console, runner, tmp_path):
         """Should handle and display error for invalid JSON"""
         config_file = tmp_path / "config.json"
         config_file.write_text("invalid json{")
@@ -995,9 +904,7 @@ class TestEdgeCasesAndIntegration:
 
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_render_template_empty_variables_file(
-        self, mock_console, mock_engine, runner, tmp_path
-    ):
+    def test_render_template_empty_variables_file(self, mock_console, mock_engine, runner, tmp_path):
         """Should handle empty variables file"""
         template_file = tmp_path / "template.txt"
         template_file.write_text("Static template")
@@ -1008,18 +915,14 @@ class TestEdgeCasesAndIntegration:
         mock_engine_instance.render_file.return_value = "Static template"
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(
-            render_template, [str(template_file), str(variables_file)]
-        )
+        result = runner.invoke(render_template, [str(template_file), str(variables_file)])
 
         assert result.exit_code == 0
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.TemplateEngine")
     @patch("moai_adk.cli.commands.language.console")
-    def test_execute_empty_stdout_displays_nothing(
-        self, mock_console, mock_engine, mock_integration, runner
-    ):
+    def test_execute_empty_stdout_displays_nothing(self, mock_console, mock_engine, mock_integration, runner):
         """Should handle empty stdout gracefully"""
         mock_engine_instance = Mock()
         mock_engine_instance.render_string.return_value = "Processed"
@@ -1039,9 +942,7 @@ class TestEdgeCasesAndIntegration:
 
     @patch("moai_adk.cli.commands.language.console")
     @patch("moai_adk.cli.commands.language.get_all_supported_codes")
-    def test_validate_config_empty_language_section(
-        self, mock_get_codes, mock_console, runner, tmp_path
-    ):
+    def test_validate_config_empty_language_section(self, mock_get_codes, mock_console, runner, tmp_path):
         """Should handle empty language section"""
         mock_get_codes.return_value = ["en", "ko"]
         config_file = tmp_path / "config.json"
@@ -1064,9 +965,7 @@ class TestEdgeCasesAndIntegration:
 
     @patch("moai_adk.cli.commands.language.ClaudeCLIIntegration")
     @patch("moai_adk.cli.commands.language.console")
-    def test_translate_with_empty_description(
-        self, mock_console, mock_integration, runner
-    ):
+    def test_translate_with_empty_description(self, mock_console, mock_integration, runner):
         """Should handle empty description"""
         mock_integration_instance = Mock()
         mock_integration_instance.generate_multilingual_descriptions.return_value = {}
@@ -1128,9 +1027,7 @@ class TestParametrizedScenarios:
         }
         mock_integration.return_value = mock_integration_instance
 
-        result = runner.invoke(
-            execute, ["Test prompt", "--output-format", output_format]
-        )
+        result = runner.invoke(execute, ["Test prompt", "--output-format", output_format])
 
         assert result.exit_code == 0
         call_args = mock_integration_instance.process_template_command.call_args
@@ -1158,7 +1055,5 @@ class TestParametrizedScenarios:
         result = runner.invoke(translate_descriptions, ["Test", "-t", languages])
 
         assert result.exit_code == 0
-        call_args = (
-            mock_integration_instance.generate_multilingual_descriptions.call_args
-        )
+        call_args = mock_integration_instance.generate_multilingual_descriptions.call_args
         assert call_args[0][1] == expected_list

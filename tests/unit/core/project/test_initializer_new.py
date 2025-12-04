@@ -204,9 +204,7 @@ class TestProjectInitializer:
             initializer = ProjectInitializer(path)
 
             # Act
-            with patch(
-                "moai_adk.core.project.initializer.Path.exists", return_value=False
-            ):
+            with patch("moai_adk.core.project.initializer.Path.exists", return_value=False):
                 created_files = initializer._create_user_settings()
 
             # Assert
@@ -222,9 +220,7 @@ class TestProjectInitializer:
             initializer = ProjectInitializer(path)
 
             # Act
-            with patch(
-                "moai_adk.core.project.initializer.Path.exists", return_value=False
-            ):
+            with patch("moai_adk.core.project.initializer.Path.exists", return_value=False):
                 initializer._create_user_settings()
 
             # Assert
@@ -314,17 +310,13 @@ class TestProjectInitializer:
                 ".claude/",
                 ".moai/",
             ]
-            mock_executor_instance.execute_configuration_phase.return_value = [
-                "config.json"
-            ]
+            mock_executor_instance.execute_configuration_phase.return_value = ["config.json"]
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
                 with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(
-                        initializer, "_create_user_settings", return_value=[]
-                    ):
+                    with patch.object(initializer, "_create_user_settings", return_value=[]):
                         result = initializer.initialize()
 
             # Assert
@@ -350,12 +342,8 @@ class TestProjectInitializer:
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
                 with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(
-                        initializer, "_create_user_settings", return_value=[]
-                    ):
-                        result = initializer.initialize(
-                            locale="other", custom_language="Custom Language"
-                        )
+                    with patch.object(initializer, "_create_user_settings", return_value=[]):
+                        result = initializer.initialize(locale="other", custom_language="Custom Language")
 
             # Assert
             assert result.locale == "other"
@@ -368,9 +356,7 @@ class TestProjectInitializer:
             initializer = ProjectInitializer(temp_dir)
             mock_executor_instance = MagicMock()
             mock_executor.return_value = mock_executor_instance
-            mock_executor_instance.execute_preparation_phase.side_effect = RuntimeError(
-                "Test error"
-            )
+            mock_executor_instance.execute_preparation_phase.side_effect = RuntimeError("Test error")
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
@@ -387,9 +373,7 @@ class TestProjectInitializer:
             path = Path(temp_dir)
 
             # Act
-            with patch(
-                "moai_adk.core.project.initializer.ProjectInitializer"
-            ) as mock_class:
+            with patch("moai_adk.core.project.initializer.ProjectInitializer") as mock_class:
                 mock_instance = MagicMock()
                 mock_class.return_value = mock_instance
                 mock_instance.initialize.return_value = InstallationResult(
@@ -427,17 +411,13 @@ class TestProjectInitializer:
                 nonlocal config_arg
                 config_arg = config
 
-            mock_executor_instance.execute_configuration_phase.side_effect = (
-                capture_config
-            )
+            mock_executor_instance.execute_configuration_phase.side_effect = capture_config
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
                 with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(
-                        initializer, "_create_user_settings", return_value=[]
-                    ):
+                    with patch.object(initializer, "_create_user_settings", return_value=[]):
                         initializer.initialize(locale="ko")
 
             # Assert
@@ -466,9 +446,7 @@ class TestProjectInitializer:
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
                 with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(
-                        initializer, "_create_user_settings", return_value=[]
-                    ):
+                    with patch.object(initializer, "_create_user_settings", return_value=[]):
                         result = initializer.initialize()
 
             # Assert
@@ -494,17 +472,13 @@ class TestProjectInitializer:
                 nonlocal config_arg
                 config_arg = config
 
-            mock_executor_instance.execute_configuration_phase.side_effect = (
-                capture_config
-            )
+            mock_executor_instance.execute_configuration_phase.side_effect = capture_config
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
                 with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(
-                        initializer, "_create_user_settings", return_value=[]
-                    ):
+                    with patch.object(initializer, "_create_user_settings", return_value=[]):
                         initializer.initialize()
 
             # Assert

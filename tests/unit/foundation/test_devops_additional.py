@@ -281,8 +281,7 @@ class TestContainerOrchestratorAdditional:
         assert "readinessProbe" in health_checks
         # Check rolling update strategy at top level or in health_checks
         has_rolling_update = (
-            "rolling_update_strategy" in plan
-            and plan["rolling_update_strategy"]["type"] == "RollingUpdate"
+            "rolling_update_strategy" in plan and plan["rolling_update_strategy"]["type"] == "RollingUpdate"
         ) or (
             "rolling_update_strategy" in health_checks
             and health_checks["rolling_update_strategy"]["type"] == "RollingUpdate"

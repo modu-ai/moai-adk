@@ -98,9 +98,7 @@ class TestFindMainRepository:
         # Arrange
         with patch(
             "pathlib.Path.parent",
-            new_callable=lambda: property(
-                lambda self: self if self.name == "repo" else Path("/test")
-            ),
+            new_callable=lambda: property(lambda self: self if self.name == "repo" else Path("/test")),
         ):
             test_path = Path("/test/repo")
 
@@ -149,17 +147,13 @@ class TestGetManager:
 
         # Assert
         assert result == mock_manager
-        mock_manager_class.assert_called_once_with(
-            repo_path=repo_path, worktree_root=worktree_root
-        )
+        mock_manager_class.assert_called_once_with(repo_path=repo_path, worktree_root=worktree_root)
         mock_detect.assert_not_called()
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
     @patch("moai_adk.cli.worktree.cli.Path.cwd")
-    def test_get_manager_auto_detect_worktree_root(
-        self, mock_cwd, mock_detect, mock_manager_class
-    ):
+    def test_get_manager_auto_detect_worktree_root(self, mock_cwd, mock_detect, mock_manager_class):
         """Test get_manager auto-detects worktree root."""
         # Arrange
         mock_cwd.return_value = Path("/test/repo")
@@ -287,9 +281,7 @@ class TestNewWorktreeCommand:
         runner = CliRunner()
 
         mock_manager = MagicMock()
-        mock_manager.create.side_effect = WorktreeExistsError(
-            "Worktree already exists", Path("/test/path")
-        )
+        mock_manager.create.side_effect = WorktreeExistsError("Worktree already exists", Path("/test/path"))
         mock_get_manager.return_value = mock_manager
 
         # Act
@@ -489,9 +481,7 @@ class TestGetManagerWithPathFinding:
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
     @patch("moai_adk.cli.worktree.cli.Path")
-    def test_get_manager_finds_git_directory(
-        self, mock_path_class, mock_detect, mock_manager_class
-    ):
+    def test_get_manager_finds_git_directory(self, mock_path_class, mock_detect, mock_manager_class):
         """Test get_manager walks up to find .git directory."""
         # Arrange
         git_dir = Path("/test/repo/.git")

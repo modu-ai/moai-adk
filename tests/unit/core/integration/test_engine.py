@@ -174,9 +174,7 @@ class TestEngine:
 
         # Should handle timeout gracefully
         try:
-            results = engine.run_concurrent_tests(
-                tests, timeout=0.5
-            )  # Very short batch timeout
+            results = engine.run_concurrent_tests(tests, timeout=0.5)  # Very short batch timeout
             # May get partial results before timeout
             assert len(results) >= 0  # May get partial results before timeout
         except TimeoutError:

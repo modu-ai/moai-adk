@@ -117,18 +117,14 @@ class TestProcessTemplateCommand:
     def test_process_template_success(self, mock_subprocess_run):
         """Test successful template command processing."""
         # Setup
-        mock_subprocess_run.return_value = Mock(
-            returncode=0, stdout="output", stderr="", text=True
-        )
+        mock_subprocess_run.return_value = Mock(returncode=0, stdout="output", stderr="", text=True)
 
         integration = ClaudeCLIIntegration()
         command_template = "Hello {{NAME}}"
         variables = {"NAME": "World"}
 
         # Execute
-        with patch.object(
-            integration.template_engine, "render_string", return_value="Hello World"
-        ):
+        with patch.object(integration.template_engine, "render_string", return_value="Hello World"):
             result = integration.process_template_command(command_template, variables)
 
         # Assert
@@ -144,9 +140,7 @@ class TestProcessTemplateCommand:
         mock_subprocess_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="test"
-        ):
+        with patch.object(integration.template_engine, "render_string", return_value="test"):
             integration.process_template_command("test", {}, print_mode=True)
 
         # Verify --print flag was added
@@ -159,12 +153,8 @@ class TestProcessTemplateCommand:
         mock_subprocess_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="test"
-        ):
-            integration.process_template_command(
-                "test", {}, output_format="stream-json"
-            )
+        with patch.object(integration.template_engine, "render_string", return_value="test"):
+            integration.process_template_command("test", {}, output_format="stream-json")
 
         call_args = mock_subprocess_run.call_args[0][0]
         assert "--output-format" in call_args
@@ -173,14 +163,10 @@ class TestProcessTemplateCommand:
     @patch("moai_adk.core.claude_integration.subprocess.run")
     def test_process_template_error_handling(self, mock_subprocess_run):
         """Test error handling in template processing."""
-        mock_subprocess_run.return_value = Mock(
-            returncode=1, stdout="", stderr="Error occurred"
-        )
+        mock_subprocess_run.return_value = Mock(returncode=1, stdout="", stderr="Error occurred")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="test"
-        ):
+        with patch.object(integration.template_engine, "render_string", return_value="test"):
             result = integration.process_template_command("test", {})
 
         assert result["success"] is False
@@ -193,9 +179,7 @@ class TestProcessTemplateCommand:
         mock_subprocess_run.side_effect = Exception("Command failed")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="test"
-        ):
+        with patch.object(integration.template_engine, "render_string", return_value="test"):
             result = integration.process_template_command("test", {})
 
         assert result["success"] is False
@@ -241,9 +225,7 @@ class TestGenerateMultilingualDescriptions:
                 "stdout": "Descripción de prueba",
             }
 
-            result = integration.generate_multilingual_descriptions(
-                base_descriptions, target_languages
-            )
+            result = integration.generate_multilingual_descriptions(base_descriptions, target_languages)
 
         assert "test" in result
         assert "en" in result["test"]
@@ -273,12 +255,8 @@ class TestGenerateMultilingualDescriptions:
         integration = ClaudeCLIIntegration()
         base_descriptions = {"test": "Original"}
 
-        with patch(
-            "moai_adk.core.claude_integration.get_language_info", return_value=None
-        ):
-            result = integration.generate_multilingual_descriptions(
-                base_descriptions, ["en", "unsupported"]
-            )
+        with patch("moai_adk.core.claude_integration.get_language_info", return_value=None):
+            result = integration.generate_multilingual_descriptions(base_descriptions, ["en", "unsupported"])
 
         assert "test" in result
         assert "en" in result["test"]
@@ -293,9 +271,7 @@ class TestCreateAgentWithMultilingualSupport:
         """Test basic agent creation."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(
-            integration, "generate_multilingual_descriptions"
-        ) as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {
                 "test-agent": {
                     "en": "Test agent description",
@@ -320,9 +296,7 @@ class TestCreateAgentWithMultilingualSupport:
         """Test agent creation with custom model."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(
-            integration, "generate_multilingual_descriptions"
-        ) as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {"test": {"en": "Test"}}
 
             result = integration.create_agent_with_multilingual_support(
@@ -338,9 +312,7 @@ class TestCreateAgentWithMultilingualSupport:
         """Test agent creation with custom target languages."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(
-            integration, "generate_multilingual_descriptions"
-        ) as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {"test": {"en": "Test", "ko": "테스트"}}
 
             custom_langs = ["en", "ko"]
@@ -367,9 +339,7 @@ class TestCreateCommandWithMultilingualSupport:
         """Test basic command creation."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(
-            integration, "generate_multilingual_descriptions"
-        ) as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {"test-cmd": {"en": "Test command"}}
 
             result = integration.create_command_with_multilingual_support(
@@ -389,9 +359,7 @@ class TestCreateCommandWithMultilingualSupport:
         """Test command creation with custom model."""
         integration = ClaudeCLIIntegration()
 
-        with patch.object(
-            integration, "generate_multilingual_descriptions"
-        ) as mock_gen:
+        with patch.object(integration, "generate_multilingual_descriptions") as mock_gen:
             mock_gen.return_value = {"test": {"en": "Test"}}
 
             result = integration.create_command_with_multilingual_support(
@@ -457,9 +425,7 @@ class TestProcessJsonStreamInput:
 
         with patch.object(integration.template_engine, "render_string") as mock_render:
             mock_render.return_value = "Hello World"
-            result = integration.process_json_stream_input(
-                input_data, {"NAME": "World"}
-            )
+            result = integration.process_json_stream_input(input_data, {"NAME": "World"})
 
         # Only the field with variables should be processed
         assert mock_render.called
@@ -471,17 +437,11 @@ class TestExecuteHeadlessCommand:
     @patch("moai_adk.core.claude_integration.subprocess.run")
     def test_execute_headless_non_streaming(self, mock_subprocess_run):
         """Test headless command execution with non-streaming output."""
-        mock_subprocess_run.return_value = Mock(
-            returncode=0, stdout="line1\nline2\n", stderr=""
-        )
+        mock_subprocess_run.return_value = Mock(returncode=0, stdout="line1\nline2\n", stderr="")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="prompt"
-        ):
-            result = integration.execute_headless_command(
-                "test prompt", {}, output_format="json"
-            )
+        with patch.object(integration.template_engine, "render_string", return_value="prompt"):
+            result = integration.execute_headless_command("test prompt", {}, output_format="json")
 
         assert result["success"] is True
         assert isinstance(result["stdout"], list)
@@ -507,12 +467,8 @@ class TestExecuteHeadlessCommand:
         mock_popen.return_value = mock_process
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="prompt"
-        ):
-            result = integration.execute_headless_command(
-                "test prompt", {}, output_format="stream-json"
-            )
+        with patch.object(integration.template_engine, "render_string", return_value="prompt"):
+            result = integration.execute_headless_command("test prompt", {}, output_format="stream-json")
 
         assert result["success"] is True
         assert isinstance(result["stdout"], list)
@@ -523,9 +479,7 @@ class TestExecuteHeadlessCommand:
         mock_subprocess_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="prompt"
-        ):
+        with patch.object(integration.template_engine, "render_string", return_value="prompt"):
             integration.execute_headless_command(
                 "test",
                 {},
@@ -545,12 +499,8 @@ class TestExecuteHeadlessCommand:
         mock_subprocess_run.side_effect = Exception("Execution failed")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="prompt"
-        ):
-            result = integration.execute_headless_command(
-                "test", {}, output_format="json"
-            )
+        with patch.object(integration.template_engine, "render_string", return_value="prompt"):
+            result = integration.execute_headless_command("test", {}, output_format="json")
 
         assert result["success"] is False
         assert "error" in result
@@ -612,14 +562,10 @@ class TestEdgeCases:
     def test_large_output_handling(self, mock_subprocess_run):
         """Test handling of large subprocess output."""
         large_output = "x" * 100000
-        mock_subprocess_run.return_value = Mock(
-            returncode=0, stdout=large_output, stderr=""
-        )
+        mock_subprocess_run.return_value = Mock(returncode=0, stdout=large_output, stderr="")
 
         integration = ClaudeCLIIntegration()
-        with patch.object(
-            integration.template_engine, "render_string", return_value="test"
-        ):
+        with patch.object(integration.template_engine, "render_string", return_value="test"):
             result = integration.process_template_command("test", {})
 
         assert result["success"] is True

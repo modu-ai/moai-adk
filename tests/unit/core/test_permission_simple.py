@@ -421,13 +421,9 @@ class TestValidateConfiguration:
             config_path = f.name
 
         try:
-            with patch.object(
-                UnifiedPermissionManager, "_load_configuration"
-            ) as mock_load:
+            with patch.object(UnifiedPermissionManager, "_load_configuration") as mock_load:
                 mock_load.return_value = {}
-                with patch.object(
-                    UnifiedPermissionManager, "_validate_all_permissions"
-                ):
+                with patch.object(UnifiedPermissionManager, "_validate_all_permissions"):
                     manager = UnifiedPermissionManager()
 
             # Act

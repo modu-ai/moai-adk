@@ -35,17 +35,9 @@ class TestTemplateVariableSynchronizerInit:
 
         # Template patterns are regex patterns, not literal strings
         assert len(TemplateVariableSynchronizer.TEMPLATE_PATTERNS) > 0
-        assert any(
-            "CONVERSATION_LANGUAGE" in p
-            for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS
-        )
-        assert any(
-            "USER_NAME" in p for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS
-        )
-        assert (
-            ".claude/settings.json"
-            in TemplateVariableSynchronizer.TEMPLATE_TRACKING_PATTERNS
-        )
+        assert any("CONVERSATION_LANGUAGE" in p for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS)
+        assert any("USER_NAME" in p for p in TemplateVariableSynchronizer.TEMPLATE_PATTERNS)
+        assert ".claude/settings.json" in TemplateVariableSynchronizer.TEMPLATE_TRACKING_PATTERNS
 
 
 class TestFindFilesWithTemplateVariables:
@@ -221,9 +213,7 @@ class TestUpdateFileTemplateVariables:
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
         template_vars = {"USER_NAME": "TestUser"}
 
-        updated = synchronizer._update_file_template_variables(
-            nonexistent, template_vars
-        )
+        updated = synchronizer._update_file_template_variables(nonexistent, template_vars)
 
         assert updated == []
 
@@ -518,9 +508,7 @@ class TestSynchronizeTemplateVariablesFunction:
         )
 
         mock_instance = MagicMock()
-        mock_instance.synchronize_after_config_change.return_value = {
-            "sync_status": "completed"
-        }
+        mock_instance.synchronize_after_config_change.return_value = {"sync_status": "completed"}
         mock_class.return_value = mock_instance
 
         result = synchronize_template_variables("/test/root", "/test/config.json")
@@ -536,9 +524,7 @@ class TestSynchronizeTemplateVariablesFunction:
         )
 
         mock_instance = MagicMock()
-        mock_instance.synchronize_after_config_change.return_value = {
-            "sync_status": "completed"
-        }
+        mock_instance.synchronize_after_config_change.return_value = {"sync_status": "completed"}
         mock_class.return_value = mock_instance
 
         result = synchronize_template_variables("/test/root", None)

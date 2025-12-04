@@ -41,9 +41,7 @@ class TestIntegrationTestResult:
 
     def test_result_with_error(self):
         """Test result with error"""
-        result = IntegrationTestResult(
-            test_name="test_failed", passed=False, error_message="Something went wrong"
-        )
+        result = IntegrationTestResult(test_name="test_failed", passed=False, error_message="Something went wrong")
 
         assert result.passed is False
         assert result.error_message == "Something went wrong"
@@ -78,9 +76,7 @@ class TestComponent:
 
     def test_component_defaults(self):
         """Test component with default dependencies"""
-        component = TestComponentClass(
-            name="test_comp", component_type="module", version="2.0.0"
-        )
+        component = TestComponentClass(name="test_comp", component_type="module", version="2.0.0")
 
         assert component.dependencies == []
 
@@ -108,9 +104,7 @@ class TestSuite:
     def test_suite_defaults(self):
         """Test suite with default test cases"""
         component = TestComponentClass("comp", "type", "1.0.0")
-        suite = TestSuiteClass(
-            name="empty_suite", description="Empty test suite", components=[component]
-        )
+        suite = TestSuiteClass(name="empty_suite", description="Empty test suite", components=[component])
 
         assert suite.test_cases == []
 

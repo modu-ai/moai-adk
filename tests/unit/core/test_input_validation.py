@@ -303,11 +303,7 @@ class TestEnhancedInputValidationMiddlewareInstantiation:
         """Test EnhancedInputValidationMiddleware has validation methods."""
         middleware = EnhancedInputValidationMiddleware()
         # Check for methods by looking at callable attributes
-        methods = [
-            m
-            for m in dir(middleware)
-            if not m.startswith("_") and callable(getattr(middleware, m))
-        ]
+        methods = [m for m in dir(middleware) if not m.startswith("_") and callable(getattr(middleware, m))]
         assert len(methods) > 0
 
 

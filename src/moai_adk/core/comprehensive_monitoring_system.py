@@ -125,9 +125,7 @@ class Alert:
             "resolved": self.resolved,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
             "acknowledged": self.acknowledged,
-            "acknowledged_at": (
-                self.acknowledged_at.isoformat() if self.acknowledged_at else None
-            ),
+            "acknowledged_at": (self.acknowledged_at.isoformat() if self.acknowledged_at else None),
         }
 
 
@@ -164,9 +162,7 @@ class MetricsCollector:
     def __init__(self, buffer_size: int = 10000, retention_hours: int = 24):
         self.buffer_size = buffer_size
         self.retention_hours = retention_hours
-        self.metrics_buffer: Dict[MetricType, deque] = defaultdict(
-            lambda: deque(maxlen=buffer_size)
-        )
+        self.metrics_buffer: Dict[MetricType, deque] = defaultdict(lambda: deque(maxlen=buffer_size))
         self.aggregated_metrics: Dict[MetricType, Dict[str, Any]] = defaultdict(dict)
         self._lock = threading.Lock()
         self._last_cleanup = datetime.now()
@@ -211,10 +207,7 @@ class MetricsCollector:
         cutoff_time = now - timedelta(hours=self.retention_hours)
 
         for metric_type in self.metrics_buffer:
-            while (
-                self.metrics_buffer[metric_type]
-                and self.metrics_buffer[metric_type][0].timestamp < cutoff_time
-            ):
+            while self.metrics_buffer[metric_type] and self.metrics_buffer[metric_type][0].timestamp < cutoff_time:
                 self.metrics_buffer[metric_type].popleft()
 
         self._last_cleanup = now
@@ -250,9 +243,7 @@ class MetricsCollector:
 
             return metrics
 
-    def get_statistics(
-        self, metric_type: MetricType, minutes: int = 60
-    ) -> Dict[str, Any]:
+    def get_statistics(self, metric_type: MetricType, minutes: int = 60) -> Dict[str, Any]:
         """Get statistical summary for a metric type"""
         with self._lock:
             agg = self.aggregated_metrics.get(metric_type, {})
@@ -286,16 +277,8 @@ class MetricsCollector:
                     "min": min(values),
                     "max": max(values),
                     "std_dev": statistics.stdev(values) if len(values) > 1 else 0,
-                    "p95": (
-                        statistics.quantiles(values, n=20)[18]
-                        if len(values) > 20
-                        else max(values)
-                    ),
-                    "p99": (
-                        statistics.quantiles(values, n=100)[98]
-                        if len(values) > 100
-                        else max(values)
-                    ),
+                    "p95": (statistics.quantiles(values, n=20)[18] if len(values) > 20 else max(values)),
+                    "p99": (statistics.quantiles(values, n=100)[98] if len(values) > 100 else max(values)),
                 }
             except (statistics.StatisticsError, IndexError):
                 return {
@@ -343,8 +326,7 @@ class AlertManager:
             "window_minutes": window_minutes,
             "consecutive_violations": consecutive_violations,
             "tags": tags or {},
-            "description": description
-            or f"Alert when {metric_type.value} {operator} {threshold}",
+            "description": description or f"Alert when {metric_type.value} {operator} {threshold}",
             "violation_count": 0,
             "last_check": None,
             "enabled": True,
@@ -365,8 +347,7 @@ class AlertManager:
                 # Get recent metrics for this rule
                 recent_metrics = self.metrics_collector.get_metrics(
                     metric_type=rule["metric_type"],
-                    start_time=datetime.now()
-                    - timedelta(minutes=rule["window_minutes"]),
+                    start_time=datetime.now() - timedelta(minutes=rule["window_minutes"]),
                 )
 
                 if not recent_metrics:
@@ -378,9 +359,7 @@ class AlertManager:
 
                 for metric in recent_metrics:
                     if isinstance(metric.value, (int, float)):
-                        if self._evaluate_condition(
-                            metric.value, rule["threshold"], rule["operator"]
-                        ):
+                        if self._evaluate_condition(metric.value, rule["threshold"], rule["operator"]):
                             violations += 1
                         latest_value = metric.value
 
@@ -419,23 +398,18 @@ class AlertManager:
             resolved_alerts = []
             for alert_id, alert in list(self.active_alerts.items()):
                 # Check if alert condition is no longer met
-                rule = next(
-                    (r for r in self.alert_rules if r["name"] in alert_id), None
-                )
+                rule = next((r for r in self.alert_rules if r["name"] in alert_id), None)
                 if rule:
                     recent_metrics = self.metrics_collector.get_metrics(
                         metric_type=rule["metric_type"],
-                        start_time=datetime.now()
-                        - timedelta(minutes=1),  # Check last minute
+                        start_time=datetime.now() - timedelta(minutes=1),  # Check last minute
                     )
 
                     if recent_metrics:
                         latest_value = None
                         for metric in recent_metrics:
                             if isinstance(metric.value, (int, float)):
-                                if not self._evaluate_condition(
-                                    metric.value, rule["threshold"], rule["operator"]
-                                ):
+                                if not self._evaluate_condition(metric.value, rule["threshold"], rule["operator"]):
                                     latest_value = metric.value
                                     break
 
@@ -448,9 +422,7 @@ class AlertManager:
 
         return triggered_alerts
 
-    def _evaluate_condition(
-        self, value: float, threshold: float, operator: str
-    ) -> bool:
+    def _evaluate_condition(self, value: float, threshold: float, operator: str) -> bool:
         """Evaluate alert condition"""
         if operator == "gt":
             return value > threshold
@@ -480,16 +452,12 @@ class AlertManager:
                 return True
             return False
 
-    def get_active_alerts(
-        self, severity: Optional[AlertSeverity] = None
-    ) -> List[Alert]:
+    def get_active_alerts(self, severity: Optional[AlertSeverity] = None) -> List[Alert]:
         """Get currently active alerts"""
         alerts = list(self.active_alerts.values())
         if severity:
             alerts = [a for a in alerts if a.severity == severity]
-        return sorted(
-            alerts, key=lambda a: (a.severity.value, a.timestamp), reverse=True
-        )
+        return sorted(alerts, key=lambda a: (a.severity.value, a.timestamp), reverse=True)
 
     def get_alert_history(self, hours: int = 24) -> List[Alert]:
         """Get alert history"""
@@ -566,11 +534,7 @@ class PredictiveAnalytics:
             return {
                 "prediction": {
                     "future_values": future_y.tolist(),
-                    "trend": (
-                        "increasing"
-                        if coeffs[0] > 0
-                        else "decreasing" if coeffs[0] < 0 else "stable"
-                    ),
+                    "trend": ("increasing" if coeffs[0] > 0 else "decreasing" if coeffs[0] < 0 else "stable"),
                     "slope": coeffs[0],
                 },
                 "confidence": confidence,
@@ -764,9 +728,7 @@ class PerformanceMonitor:
             alerts = self.alert_manager.check_alerts()
             if alerts:
                 for alert in alerts:
-                    logger.warning(
-                        f"Alert triggered: {alert.title} - {alert.current_value}"
-                    )
+                    logger.warning(f"Alert triggered: {alert.title} - {alert.current_value}")
 
         except Exception as e:
             logger.error(f"Error checking alerts: {e}")
@@ -800,9 +762,7 @@ class PerformanceMonitor:
                 MetricType.CPU_USAGE, start_time=datetime.now() - timedelta(minutes=5)
             )
             if cpu_metrics:
-                cpu_values = [
-                    m.value for m in cpu_metrics if isinstance(m.value, (int, float))
-                ]
+                cpu_values = [m.value for m in cpu_metrics if isinstance(m.value, (int, float))]
                 if cpu_values:
                     avg_cpu = statistics.mean(cpu_values)
                     cpu_score = max(0, 100 - avg_cpu)  # Lower CPU usage = higher score
@@ -814,14 +774,10 @@ class PerformanceMonitor:
                 start_time=datetime.now() - timedelta(minutes=5),
             )
             if memory_metrics:
-                memory_values = [
-                    m.value for m in memory_metrics if isinstance(m.value, (int, float))
-                ]
+                memory_values = [m.value for m in memory_metrics if isinstance(m.value, (int, float))]
                 if memory_values:
                     avg_memory = statistics.mean(memory_values)
-                    memory_score = max(
-                        0, 100 - avg_memory
-                    )  # Lower memory usage = higher score
+                    memory_score = max(0, 100 - avg_memory)  # Lower memory usage = higher score
                     component_scores["memory"] = memory_score
 
             # Error rate health
@@ -829,14 +785,10 @@ class PerformanceMonitor:
                 MetricType.ERROR_RATE, start_time=datetime.now() - timedelta(minutes=10)
             )
             if error_metrics:
-                error_values = [
-                    m.value for m in error_metrics if isinstance(m.value, (int, float))
-                ]
+                error_values = [m.value for m in error_metrics if isinstance(m.value, (int, float))]
                 if error_values:
                     avg_error = statistics.mean(error_values)
-                    error_score = max(
-                        0, 100 - avg_error * 10
-                    )  # Lower error rate = higher score
+                    error_score = max(0, 100 - avg_error * 10)  # Lower error rate = higher score
                     component_scores["error_rate"] = error_score
 
             # Calculate overall score
@@ -935,9 +887,7 @@ class ComprehensiveMonitoringSystem:
     """Main monitoring system orchestrator"""
 
     def __init__(self, config_file: Optional[Path] = None):
-        self.config_file = (
-            config_file or Path.cwd() / ".moai" / "config" / "monitoring.json"
-        )
+        self.config_file = config_file or Path.cwd() / ".moai" / "config" / "monitoring.json"
         self.config = self._load_config()
 
         # Initialize components
@@ -1054,9 +1004,7 @@ class ComprehensiveMonitoringSystem:
             predictions = {}
             if self.config.get("enable_predictions", True):
                 for metric_type in [MetricType.CPU_USAGE, MetricType.MEMORY_USAGE]:
-                    pred = self.predictive_analytics.predict_metric_trend(
-                        metric_type, hours_ahead=1
-                    )
+                    pred = self.predictive_analytics.predict_metric_trend(metric_type, hours_ahead=1)
                     if pred["confidence"] > 0.5:
                         predictions[metric_type.value] = pred
 
@@ -1079,9 +1027,7 @@ class ComprehensiveMonitoringSystem:
             # Overall metrics summary
             summary = {}
             for metric_type in MetricType:
-                stats = self.metrics_collector.get_statistics(
-                    metric_type, minutes=hours * 60
-                )
+                stats = self.metrics_collector.get_statistics(metric_type, minutes=hours * 60)
                 if stats["count"] > 0:
                     summary[metric_type.value] = stats
 
@@ -1093,9 +1039,7 @@ class ComprehensiveMonitoringSystem:
                     MetricType.MEMORY_USAGE,
                     MetricType.ERROR_RATE,
                 ]:
-                    anomaly_result = self.predictive_analytics.detect_anomalies(
-                        metric_type
-                    )
+                    anomaly_result = self.predictive_analytics.detect_anomalies(metric_type)
                     if anomaly_result["anomalies"]:
                         anomalies[metric_type.value] = anomaly_result
 
@@ -1133,9 +1077,7 @@ class ComprehensiveMonitoringSystem:
             logger.error(f"Error generating analytics report: {e}")
             return {"error": str(e), "generated_at": datetime.now().isoformat()}
 
-    def _generate_recommendations(
-        self, metrics_summary: Dict[str, Any], anomalies: Dict[str, Any]
-    ) -> List[str]:
+    def _generate_recommendations(self, metrics_summary: Dict[str, Any], anomalies: Dict[str, Any]) -> List[str]:
         """Generate optimization recommendations based on metrics and anomalies"""
         recommendations = []
 
@@ -1143,9 +1085,7 @@ class ComprehensiveMonitoringSystem:
         if MetricType.CPU_USAGE.value in metrics_summary:
             cpu_stats = metrics_summary[MetricType.CPU_USAGE.value]
             if cpu_stats["average"] > 70:
-                recommendations.append(
-                    "High CPU usage detected. Consider optimizing code or scaling resources."
-                )
+                recommendations.append("High CPU usage detected. Consider optimizing code or scaling resources.")
 
         # Memory recommendations
         if MetricType.MEMORY_USAGE.value in metrics_summary:
@@ -1236,9 +1176,7 @@ if __name__ == "__main__":
 
         # Generate analytics report
         report = monitoring.get_analytics_report(hours=1)
-        print(
-            f"Analytics Report: {len(report['metrics_summary'])} metric types tracked"
-        )
+        print(f"Analytics Report: {len(report['metrics_summary'])} metric types tracked")
 
     finally:
         monitoring.stop()

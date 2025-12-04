@@ -35,8 +35,4 @@ class TestStatusCommand:
             result = runner.invoke(status)
 
             # Should mention "project" or "status" somewhere
-            assert (
-                "project" in result.output.lower()
-                or "status" in result.output.lower()
-                or result.exit_code in [0, 1]
-            )
+            assert "project" in result.output.lower() or "status" in result.output.lower() or result.exit_code in [0, 1]

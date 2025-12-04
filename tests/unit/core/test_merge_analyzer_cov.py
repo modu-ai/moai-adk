@@ -154,9 +154,7 @@ class TestCreateAnalysisPrompt:
             }
         }
 
-        prompt = analyzer._create_analysis_prompt(
-            backup_path, template_path, diff_files
-        )
+        prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
 
         assert isinstance(prompt, str)
         assert "MoAI-ADK configuration file merge expert" in prompt
@@ -181,9 +179,7 @@ class TestCreateAnalysisPrompt:
             }
         }
 
-        prompt = analyzer._create_analysis_prompt(
-            backup_path, template_path, diff_files
-        )
+        prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
 
         assert "CLAUDE.md: Preserve Project Information section" in prompt
         assert "settings.json" in prompt
@@ -434,9 +430,7 @@ class TestFallbackAnalysis:
 
         assert "files" in result
         if result["files"]:
-            assert any(
-                f["conflict_severity"] in ["medium", "high"] for f in result["files"]
-            )
+            assert any(f["conflict_severity"] in ["medium", "high"] for f in result["files"])
 
 
 class TestDisplayAnalysis:
@@ -495,7 +489,9 @@ class TestAnalyzeMergeIntegration:
 
         mock_result = MagicMock()
         mock_result.returncode = 0
-        mock_result.stdout = '{"files": [], "safe_to_auto_merge": true, "user_action_required": false, "summary": "Test"}'
+        mock_result.stdout = (
+            '{"files": [], "safe_to_auto_merge": true, "user_action_required": false, "summary": "Test"}'
+        )
         mock_subprocess.return_value = mock_result
 
         result = analyzer.analyze_merge(backup_path, template_path)
@@ -545,9 +541,7 @@ class TestAskUserConfirmation:
 
     @patch("moai_adk.core.merge.analyzer.click.confirm")
     @patch("moai_adk.core.merge.analyzer.console")
-    def test_ask_user_confirmation_safe_merge(
-        self, mock_console, mock_confirm, tmp_path
-    ):
+    def test_ask_user_confirmation_safe_merge(self, mock_console, mock_confirm, tmp_path):
         """Should ask for confirmation on safe merge."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
@@ -567,9 +561,7 @@ class TestAskUserConfirmation:
 
     @patch("moai_adk.core.merge.analyzer.click.confirm")
     @patch("moai_adk.core.merge.analyzer.console")
-    def test_ask_user_confirmation_requires_intervention(
-        self, mock_console, mock_confirm, tmp_path
-    ):
+    def test_ask_user_confirmation_requires_intervention(self, mock_console, mock_confirm, tmp_path):
         """Should show warnings for conflicts."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 

@@ -72,9 +72,7 @@ class ConfigManager:
         Args:
             config_path: Path to configuration file (defaults to .moai/config/config.json)
         """
-        self.config_path = (
-            config_path or find_project_root() / ".moai" / "config" / "config.json"
-        )
+        self.config_path = config_path or find_project_root() / ".moai" / "config" / "config.json"
         self._config: Optional[Dict[str, Any]] = None
 
     def load_config(self) -> Dict[str, Any]:
@@ -306,9 +304,7 @@ class ConfigManager:
 
         return True
 
-    def _merge_configs(
-        self, base: Dict[str, Any], override: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively merge two configuration dictionaries.
 
         Args:
@@ -321,11 +317,7 @@ class ConfigManager:
         result = base.copy()
 
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._merge_configs(result[key], value)
             else:
                 result[key] = value

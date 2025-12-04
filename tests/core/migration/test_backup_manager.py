@@ -55,9 +55,7 @@ class TestBackupManager:
         config_file = temp_project_root / ".moai" / "config" / "config.json"
         config_file.write_text('{"test": "data"}')
 
-        statusline_file = (
-            temp_project_root / ".moai" / "config" / "statusline-config.yaml"
-        )
+        statusline_file = temp_project_root / ".moai" / "config" / "statusline-config.yaml"
         statusline_file.write_text("test: yaml")
 
         backup_dir = backup_manager.create_backup("test_backup")
@@ -74,9 +72,7 @@ class TestBackupManager:
         backups = backup_manager.list_backups()
         assert backups == []
 
-    def test_list_backups_with_corrupt_metadata(
-        self, backup_manager, temp_project_root
-    ):
+    def test_list_backups_with_corrupt_metadata(self, backup_manager, temp_project_root):
         """Test listing backups with corrupted metadata."""
         # Create backup directory with corrupted metadata
         backup_dir = backup_manager.backup_base_dir / "corrupt_20250101_120000"
@@ -160,9 +156,7 @@ class TestBackupManager:
         assert latest is not None
         assert "second" in str(latest)
 
-    def test_create_full_project_backup_no_files(
-        self, backup_manager, temp_project_root
-    ):
+    def test_create_full_project_backup_no_files(self, backup_manager, temp_project_root):
         """Test full project backup with no existing files."""
         backup_dir = backup_manager.create_full_project_backup("full_backup")
 
@@ -178,9 +172,7 @@ class TestBackupManager:
 
         assert metadata["backup_type"] == "full_project"
 
-    def test_create_full_project_backup_with_files(
-        self, backup_manager, temp_project_root
-    ):
+    def test_create_full_project_backup_with_files(self, backup_manager, temp_project_root):
         """Test full project backup with existing files."""
         # Create test files
         (temp_project_root / ".moai" / "test.txt").write_text("test")

@@ -69,9 +69,7 @@ class EARSParser:
 
     # Regex patterns for EARS components
     WHEN_PATTERN = re.compile(r"when\s+([^,\.]*?)(?:,|where|then|\.|$)", re.IGNORECASE)
-    AGENT_PATTERN = re.compile(
-        r"as\s+(?:an?\s+)?([^,\n]+?)(?:,|\n|when|shall|i\s+shall|\.|$)", re.IGNORECASE
-    )
+    AGENT_PATTERN = re.compile(r"as\s+(?:an?\s+)?([^,\n]+?)(?:,|\n|when|shall|i\s+shall|\.|$)", re.IGNORECASE)
     WHERE_PATTERN = re.compile(r"where\s+([^,\.]*?)(?:,|then|$)", re.IGNORECASE)
     THEN_PATTERN = re.compile(r"then\s+([^\.]*?)(?:\.|$)", re.IGNORECASE)
     SCENARIO_PATTERN = re.compile(r"scenario\s*:\s*([^\n]+)", re.IGNORECASE)
@@ -150,9 +148,7 @@ class EARSParser:
 
         # Extract capability/action for agent patterns
         # Look for: shall <action>, can <action>, able to <action>
-        capability_pattern = re.compile(
-            r"(?:shall|can|able to)\s+([^\.]*?)(?:\.|$)", re.IGNORECASE
-        )
+        capability_pattern = re.compile(r"(?:shall|can|able to)\s+([^\.]*?)(?:\.|$)", re.IGNORECASE)
         cap_matches = capability_pattern.findall(text)
         if cap_matches:
             # For agent patterns, treat first capability as the result and capability
@@ -248,9 +244,7 @@ class EARSValidator:
                 "is_valid": False,
                 "errors": ["Requirement text is empty"],
                 "missing_elements": ["When", "Then"],
-                "suggestions": [
-                    "Provide a complete EARS requirement with When and Then clauses"
-                ],
+                "suggestions": ["Provide a complete EARS requirement with When and Then clauses"],
             }
 
         # Check for required elements based on pattern type
@@ -290,9 +284,7 @@ class EARSValidator:
 
         # Check if pattern was identified
         if pattern_type == "unknown":
-            errors.append(
-                "Could not identify EARS pattern (Event/Agent/Scenario/Validation)"
-            )
+            errors.append("Could not identify EARS pattern (Event/Agent/Scenario/Validation)")
             suggestions.append("Use clear EARS keywords: When, As a, Where, Then")
             is_valid = False
 
@@ -327,16 +319,11 @@ class EARSValidator:
         # Assign priority based on requirement type
         priority = 5  # Default
 
-        if any(
-            word in req_lower
-            for word in ["security", "authentication", "authorization", "encrypt"]
-        ):
+        if any(word in req_lower for word in ["security", "authentication", "authorization", "encrypt"]):
             priority = 8
         elif any(word in req_lower for word in ["performance", "optimize", "fast"]):
             priority = 6
-        elif any(
-            word in req_lower for word in ["user experience", "ui", "tooltip", "hover"]
-        ):
+        elif any(word in req_lower for word in ["user experience", "ui", "tooltip", "hover"]):
             priority = 4
         elif any(word in req_lower for word in ["core", "critical", "essential"]):
             priority = 9

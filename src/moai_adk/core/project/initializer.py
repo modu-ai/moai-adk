@@ -138,13 +138,7 @@ class ProjectInitializer:
             import sys
 
             utils_dir = (
-                Path(__file__).parent.parent.parent
-                / "templates"
-                / ".claude"
-                / "hooks"
-                / "moai"
-                / "shared"
-                / "utils"
+                Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
             )
 
             if utils_dir.exists():
@@ -159,21 +153,15 @@ class ProjectInitializer:
                     announcements = translate_announcements(language, self.path)
                     settings_local["companyAnnouncements"] = announcements
                 except Exception as e:
-                    print(
-                        f"[ProjectInitializer] Warning: Failed to add announcements: {e}"
-                    )
+                    print(f"[ProjectInitializer] Warning: Failed to add announcements: {e}")
                 finally:
                     sys.path.remove(str(utils_dir))
 
         except Exception as e:
-            print(
-                f"[ProjectInitializer] Warning: Announcement module not available: {e}"
-            )
+            print(f"[ProjectInitializer] Warning: Announcement module not available: {e}")
 
         settings_local_file = claude_dir / "settings.local.json"
-        settings_local_file.write_text(
-            json.dumps(settings_local, indent=2, ensure_ascii=False)
-        )
+        settings_local_file.write_text(json.dumps(settings_local, indent=2, ensure_ascii=False))
         created_files.append(str(settings_local_file))
 
         return created_files
@@ -220,9 +208,7 @@ class ProjectInitializer:
             detected_language = language or "generic"
 
             # Phase 1: Preparation (backup and validation)
-            self.executor.execute_preparation_phase(
-                self.path, backup_enabled, progress_callback
-            )
+            self.executor.execute_preparation_phase(self.path, backup_enabled, progress_callback)
 
             # Phase 2: Directory (create directories)
             self.executor.execute_directory_phase(self.path, progress_callback)
@@ -239,9 +225,7 @@ class ProjectInitializer:
             }
 
             # Phase 3: Resource (copy templates with variable substitution)
-            resource_files = self.executor.execute_resource_phase(
-                self.path, config, progress_callback
-            )
+            resource_files = self.executor.execute_resource_phase(self.path, config, progress_callback)
 
             # Post-Phase 3: Fix shell script permissions
             # git may not preserve file permissions, so explicitly set them
@@ -250,9 +234,7 @@ class ProjectInitializer:
                 for script_file in scripts_dir.glob("*.sh"):
                     try:
                         current_mode = script_file.stat().st_mode
-                        new_mode = (
-                            current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-                        )
+                        new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
                         # On Windows, chmod has limited effect, but we try anyway
                         # or check os.name != 'nt' if strict behavior is needed.
                         # For now, we just apply it and ignore errors if it fails.
@@ -351,9 +333,7 @@ class ProjectInitializer:
                     "Set to true to suppress messages (show again after 7 days)",
                 },
             }
-            config_files = self.executor.execute_configuration_phase(
-                self.path, config_data, progress_callback
-            )
+            config_files = self.executor.execute_configuration_phase(self.path, config_data, progress_callback)
 
             # Phase 5: Validation (verify and finalize)
             self.executor.execute_validation_phase(self.path, mode, progress_callback)
@@ -373,10 +353,7 @@ class ProjectInitializer:
                 mode=mode,
                 locale=locale,
                 duration=duration,
-                created_files=resource_files
-                + config_files
-                + memory_files
-                + user_settings_files,
+                created_files=resource_files + config_files + memory_files + user_settings_files,
             )
 
         except Exception as e:
@@ -401,9 +378,7 @@ class ProjectInitializer:
         return (self.path / ".moai").exists()
 
 
-def initialize_project(
-    project_path: Path, progress_callback: ProgressCallback | None = None
-) -> InstallationResult:
+def initialize_project(project_path: Path, progress_callback: ProgressCallback | None = None) -> InstallationResult:
     """Initialize project (for CLI command)
 
     Args:

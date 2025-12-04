@@ -71,13 +71,9 @@ class GitConflictDetector:
             self.repo_path = repo_path
             self.git = self.repo.git
         except InvalidGitRepositoryError as e:
-            raise InvalidGitRepositoryError(
-                f"Path {repo_path} is not a valid Git repository"
-            ) from e
+            raise InvalidGitRepositoryError(f"Path {repo_path} is not a valid Git repository") from e
 
-    def can_merge(
-        self, feature_branch: str, base_branch: str
-    ) -> dict[str, bool | list | str]:
+    def can_merge(self, feature_branch: str, base_branch: str) -> dict[str, bool | list | str]:
         """Check if merge is possible without conflicts.
 
         Uses git merge --no-commit --no-ff for safe detection without
@@ -186,9 +182,7 @@ class GitConflictDetector:
 
         for conflict in conflicts:
             # Update severity based on analysis
-            conflict.severity = self._determine_severity(
-                conflict.path, conflict.conflict_type
-            )
+            conflict.severity = self._determine_severity(conflict.path, conflict.conflict_type)
             analyzed.append(conflict)
 
         # Sort by severity (HIGH first, LOW last)
@@ -231,9 +225,7 @@ class GitConflictDetector:
 
         return "code"
 
-    def _determine_severity(
-        self, file_path: str, conflict_type: str
-    ) -> ConflictSeverity:
+    def _determine_severity(self, file_path: str, conflict_type: str) -> ConflictSeverity:
         """Determine conflict severity based on file type and location.
 
         Args:
@@ -416,8 +408,6 @@ class GitConflictDetector:
             if severity in by_severity:
                 summary_lines.append(f"\n{severity.upper()} severity:")
                 for conflict in by_severity[severity]:
-                    summary_lines.append(
-                        f"  - {conflict.path} ({conflict.conflict_type}): {conflict.description}"
-                    )
+                    summary_lines.append(f"  - {conflict.path} ({conflict.conflict_type}): {conflict.description}")
 
         return "\n".join(summary_lines)

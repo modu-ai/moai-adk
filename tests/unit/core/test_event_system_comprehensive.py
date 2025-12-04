@@ -622,9 +622,7 @@ class TestEventMetrics:
         ]
 
         # Act
-        critical_count = sum(
-            1 for e in events if e["priority"] == EventPriority.CRITICAL
-        )
+        critical_count = sum(1 for e in events if e["priority"] == EventPriority.CRITICAL)
         high_count = sum(1 for e in events if e["priority"] == EventPriority.HIGH)
 
         # Assert

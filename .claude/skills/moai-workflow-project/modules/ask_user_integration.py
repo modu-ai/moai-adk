@@ -56,9 +56,7 @@ class AskUserQuestionIntegrator:
         except ImportError:
             # Mock implementation for development/testing
             self.AskUserQuestion = self._mock_ask_user_question
-            logger.warning(
-                "Using mock AskUserQuestion - not in Claude Code environment"
-            )
+            logger.warning("Using mock AskUserQuestion - not in Claude Code environment")
 
     def _mock_ask_user_question(
         self, questions: List[Dict[str, Any]], answers: Optional[Dict[str, str]] = None
@@ -109,9 +107,7 @@ class AskUserQuestionIntegrator:
             for opt in question.options:
                 option_dict = {
                     "label": opt.label,
-                    "description": (
-                        opt.description if self.config.enable_descriptions else None
-                    ),
+                    "description": (opt.description if self.config.enable_descriptions else None),
                 }
 
                 # Only include non-None descriptions
@@ -144,9 +140,7 @@ class AskUserQuestionIntegrator:
 
         return ask_user_q
 
-    def process_ask_user_response(
-        self, question: Question, response_value: Union[str, List[str]]
-    ) -> Any:
+    def process_ask_user_response(self, question: Question, response_value: Union[str, List[str]]) -> Any:
         """
         Process AskUserQuestion response back to our expected format.
 
@@ -158,10 +152,7 @@ class AskUserQuestionIntegrator:
             Processed response value in our expected format
         """
         # Handle multi-select responses
-        if (
-            isinstance(response_value, list)
-            and question.type == QuestionType.MULTI_CHOICE
-        ):
+        if isinstance(response_value, list) and question.type == QuestionType.MULTI_CHOICE:
             # Convert labels back to values
             selected_values = []
             for label in response_value:
@@ -198,9 +189,7 @@ class AskUserQuestionIntegrator:
 
         return response_value
 
-    def ask_question(
-        self, question: Question, context: Optional[Dict[str, Any]] = None
-    ) -> UserResponse:
+    def ask_question(self, question: Question, context: Optional[Dict[str, Any]] = None) -> UserResponse:
         """
         Ask a single question using AskUserQuestion.
 
@@ -232,9 +221,7 @@ class AskUserQuestionIntegrator:
 
             # Validate response
             if question.validation:
-                validation_result = self._validate_response(
-                    response_value, question.validation
-                )
+                validation_result = self._validate_response(response_value, question.validation)
                 if not validation_result.is_valid:
                     raise ValueError(f"Invalid response: {validation_result.error}")
 
@@ -294,9 +281,7 @@ class AskUserQuestionIntegrator:
 
         return responses
 
-    def _evaluate_condition(
-        self, condition: Dict[str, Any], context: Dict[str, Any]
-    ) -> bool:
+    def _evaluate_condition(self, condition: Dict[str, Any], context: Dict[str, Any]) -> bool:
         """Evaluate conditional logic for questions."""
         if not self.config.enable_conditional:
             return True

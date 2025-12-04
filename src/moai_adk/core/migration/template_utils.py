@@ -14,9 +14,7 @@ def _get_template_skill_names() -> Set[str]:
     Returns:
         Set of skill directory names found in the template
     """
-    template_path = (
-        Path(__file__).parent.parent.parent / "templates" / ".claude" / "skills"
-    )
+    template_path = Path(__file__).parent.parent.parent / "templates" / ".claude" / "skills"
     skill_names = set()
 
     if template_path.exists():
@@ -33,13 +31,7 @@ def _get_template_command_names() -> Set[str]:
     Returns:
         Set of command file names found in the template
     """
-    template_path = (
-        Path(__file__).parent.parent.parent
-        / "templates"
-        / ".claude"
-        / "commands"
-        / "moai"
-    )
+    template_path = Path(__file__).parent.parent.parent / "templates" / ".claude" / "commands" / "moai"
     command_names = set()
 
     if template_path.exists():
@@ -55,9 +47,7 @@ def _get_template_agent_names() -> Set[str]:
     Returns:
         Set of agent file names found in the template
     """
-    template_path = (
-        Path(__file__).parent.parent.parent / "templates" / ".claude" / "agents"
-    )
+    template_path = Path(__file__).parent.parent.parent / "templates" / ".claude" / "agents"
     agent_names = set()
 
     if template_path.exists():
@@ -74,9 +64,7 @@ def _get_template_hook_names() -> Set[str]:
     Returns:
         Set of hook file names found in the template
     """
-    template_path = (
-        Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai"
-    )
+    template_path = Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai"
     hook_names = set()
 
     if template_path.exists():

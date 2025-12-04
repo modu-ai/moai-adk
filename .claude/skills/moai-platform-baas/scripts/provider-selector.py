@@ -210,9 +210,7 @@ class BaaSProviderSelector:
 
         return score
 
-    def score_deployment_provider(
-        self, provider: str, scores: Dict[str, float]
-    ) -> float:
+    def score_deployment_provider(self, provider: str, scores: Dict[str, float]) -> float:
         """Score deployment provider against requirements."""
         score = 0.0
 
@@ -252,19 +250,12 @@ class BaaSProviderSelector:
         scores = self.analyze_requirements(requirements)
 
         # Score all providers
-        auth_scores = {
-            provider: self.score_auth_provider(provider, scores)
-            for provider in self.auth_providers
-        }
+        auth_scores = {provider: self.score_auth_provider(provider, scores) for provider in self.auth_providers}
 
-        db_scores = {
-            provider: self.score_database_provider(provider, scores)
-            for provider in self.database_providers
-        }
+        db_scores = {provider: self.score_database_provider(provider, scores) for provider in self.database_providers}
 
         deploy_scores = {
-            provider: self.score_deployment_provider(provider, scores)
-            for provider in self.deployment_providers
+            provider: self.score_deployment_provider(provider, scores) for provider in self.deployment_providers
         }
 
         # Select top providers

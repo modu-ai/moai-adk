@@ -153,9 +153,7 @@ class TestUpdateCheckerFetchLatestVersion:
         """Test handling of network errors."""
         checker = UpdateChecker()
 
-        with patch(
-            "urllib.request.urlopen", side_effect=urllib.error.URLError("Network error")
-        ):
+        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("Network error")):
             result = checker._fetch_latest_version("0.20.0")
             assert result.available is False
 

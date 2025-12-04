@@ -296,9 +296,7 @@ class TestChecklistReport:
         assert report.failed_items == 2
         assert report.percentage_score == 80.0
 
-    def test_checklist_report_with_results_and_recommendations(
-        self, sample_checklist_result
-    ):
+    def test_checklist_report_with_results_and_recommendations(self, sample_checklist_result):
         """Test ChecklistReport with results and recommendations."""
         recommendations = [
             "Improve test coverage",
@@ -341,9 +339,7 @@ class TestTRUSTValidationChecklistInitialization:
 
     def test_test_first_checklists_count(self, validation_checklist):
         """Test that TEST_FIRST category has 10 checklists."""
-        test_first_checklists = validation_checklist.checklists[
-            ChecklistType.TEST_FIRST
-        ]
+        test_first_checklists = validation_checklist.checklists[ChecklistType.TEST_FIRST]
         assert len(test_first_checklists) == 10
 
     def test_readable_checklists_count(self, validation_checklist):
@@ -414,9 +410,7 @@ class TestTestFirstChecklists:
     def test_test_first_critical_items(self, validation_checklist):
         """Test that TEST_FIRST has 2 CRITICAL items."""
         checklists = validation_checklist.checklists[ChecklistType.TEST_FIRST]
-        critical_items = [
-            c for c in checklists if c.severity == ChecklistSeverity.CRITICAL
-        ]
+        critical_items = [c for c in checklists if c.severity == ChecklistSeverity.CRITICAL]
         assert len(critical_items) == 2
 
     def test_test_first_total_weight(self, validation_checklist):
@@ -446,9 +440,7 @@ class TestReadableChecklists:
     def test_readable_critical_items(self, validation_checklist):
         """Test that READABLE has 1 CRITICAL item."""
         checklists = validation_checklist.checklists[ChecklistType.READABLE]
-        critical_items = [
-            c for c in checklists if c.severity == ChecklistSeverity.CRITICAL
-        ]
+        critical_items = [c for c in checklists if c.severity == ChecklistSeverity.CRITICAL]
         assert len(critical_items) == 1
 
     def test_readable_high_severity_items(self, validation_checklist):
@@ -476,9 +468,7 @@ class TestSecuredChecklists:
     def test_secured_critical_items(self, validation_checklist):
         """Test that SECURED has 5 CRITICAL items."""
         checklists = validation_checklist.checklists[ChecklistType.SECURED]
-        critical_items = [
-            c for c in checklists if c.severity == ChecklistSeverity.CRITICAL
-        ]
+        critical_items = [c for c in checklists if c.severity == ChecklistSeverity.CRITICAL]
         assert len(critical_items) == 5
 
     def test_secured_validation_rules(self, validation_checklist):
@@ -486,10 +476,7 @@ class TestSecuredChecklists:
         checklists = validation_checklist.checklists[ChecklistType.SECURED]
         for item in checklists:
             assert item.validation_rule
-            assert (
-                "_" in item.validation_rule
-                or "validation" in item.validation_rule.lower()
-            )
+            assert "_" in item.validation_rule or "validation" in item.validation_rule.lower()
 
 
 # ============================================================================
@@ -533,9 +520,7 @@ class TestTestCoverageValidation:
         (temp_project_dir / "src" / "module1.py").write_text("# source")
         (temp_project_dir / "src" / "module2.py").write_text("# source")
 
-        passed, details = validation_checklist._check_test_coverage(
-            temp_project_dir, "test_coverage_ratio >= 0.8"
-        )
+        passed, details = validation_checklist._check_test_coverage(temp_project_dir, "test_coverage_ratio >= 0.8")
 
         assert isinstance(passed, bool)
         assert "result" in details
@@ -543,24 +528,18 @@ class TestTestCoverageValidation:
 
     def test_test_coverage_extracts_ratio(self, validation_checklist, temp_project_dir):
         """Test that test coverage extracts ratio correctly."""
-        passed, details = validation_checklist._check_test_coverage(
-            temp_project_dir, "test_coverage_ratio >= 0.7"
-        )
+        passed, details = validation_checklist._check_test_coverage(temp_project_dir, "test_coverage_ratio >= 0.7")
 
         assert "target" in details
         assert details["target"] == 0.7
 
-    def test_test_coverage_with_various_thresholds(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_test_coverage_with_various_thresholds(self, validation_checklist, temp_project_dir):
         """Test coverage checks with various thresholds."""
         thresholds = [0.5, 0.6, 0.7, 0.8, 0.9]
 
         for threshold in thresholds:
             rule = f"test_coverage_ratio >= {threshold}"
-            passed, details = validation_checklist._check_test_coverage(
-                temp_project_dir, rule
-            )
+            passed, details = validation_checklist._check_test_coverage(temp_project_dir, rule)
             assert details["target"] == threshold
 
 
@@ -619,24 +598,18 @@ def test_integration_user_workflow():
 """
         (temp_project_dir / "tests" / "test_integration.py").write_text(content)
 
-        passed, details = validation_checklist._check_integration_tests(
-            temp_project_dir
-        )
+        passed, details = validation_checklist._check_integration_tests(temp_project_dir)
 
         assert passed is True
         assert details["integration_test_files"] > 0
 
     def test_integration_tests_not_found(self, validation_checklist, temp_project_dir):
         """Test when no integration tests found."""
-        passed, details = validation_checklist._check_integration_tests(
-            temp_project_dir
-        )
+        passed, details = validation_checklist._check_integration_tests(temp_project_dir)
 
         assert passed is False
 
-    def test_integration_tests_pattern_matching(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_integration_tests_pattern_matching(self, validation_checklist, temp_project_dir):
         """Test various integration test patterns."""
         patterns = [
             "# @integration_test",
@@ -646,9 +619,7 @@ def test_integration_user_workflow():
 
         for pattern in patterns:
             content = f"def test_example():\n    '''{pattern}'''\n    pass"
-            (
-                temp_project_dir / "tests" / f"test_{patterns.index(pattern)}.py"
-            ).write_text(content)
+            (temp_project_dir / "tests" / f"test_{patterns.index(pattern)}.py").write_text(content)
 
 
 # ============================================================================
@@ -659,9 +630,7 @@ def test_integration_user_workflow():
 class TestDocstringCoverage:
     """Test docstring coverage validation."""
 
-    def test_docstring_coverage_calculation(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_docstring_coverage_calculation(self, validation_checklist, temp_project_dir):
         """Test docstring coverage calculation."""
         content = '''
 def function_with_docstring():
@@ -673,16 +642,12 @@ def function_without_docstring():
 '''
         (temp_project_dir / "tests" / "test_module.py").write_text(content)
 
-        passed, details = validation_checklist._check_test_docstrings(
-            temp_project_dir, "test_docstrings_ratio >= 0.5"
-        )
+        passed, details = validation_checklist._check_test_docstrings(temp_project_dir, "test_docstrings_ratio >= 0.5")
 
         assert "result" in details
         assert "target" in details
 
-    def test_docstring_coverage_all_documented(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_docstring_coverage_all_documented(self, validation_checklist, temp_project_dir):
         """Test when all test functions have docstrings."""
         content = '''
 def test_one():
@@ -695,9 +660,7 @@ def test_two():
 '''
         (temp_project_dir / "tests" / "test_all_documented.py").write_text(content)
 
-        passed, details = validation_checklist._check_test_docstrings(
-            temp_project_dir, "test_docstrings_ratio >= 0.9"
-        )
+        passed, details = validation_checklist._check_test_docstrings(temp_project_dir, "test_docstrings_ratio >= 0.9")
 
         assert details["total_functions"] > 0
         assert details["docstringed_functions"] > 0
@@ -711,9 +674,7 @@ def test_two():
 class TestFunctionLengthValidation:
     """Test function length validation."""
 
-    def test_function_length_short_functions(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_function_length_short_functions(self, validation_checklist, temp_project_dir):
         """Test when all functions are short."""
         content = """
 def short_function1():
@@ -724,26 +685,18 @@ def short_function2():
 """
         (temp_project_dir / "src" / "module.py").write_text(content)
 
-        passed, details = validation_checklist._check_function_length(
-            temp_project_dir, "max_function_length <= 50"
-        )
+        passed, details = validation_checklist._check_function_length(temp_project_dir, "max_function_length <= 50")
 
         assert "total_functions" in details
         assert "long_functions" in details
 
-    def test_function_length_extracts_max_length(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_function_length_extracts_max_length(self, validation_checklist, temp_project_dir):
         """Test that function length rule extracts max length."""
-        passed, details = validation_checklist._check_function_length(
-            temp_project_dir, "max_function_length <= 100"
-        )
+        passed, details = validation_checklist._check_function_length(temp_project_dir, "max_function_length <= 100")
 
         assert details["max_length"] == 100
 
-    def test_function_length_various_thresholds(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_function_length_various_thresholds(self, validation_checklist, temp_project_dir):
         """Test function length with various thresholds."""
         content = "\n".join([f"# Line {i}" for i in range(30)])
         content = "def test():\n" + "\n".join([f"    # Line {i}" for i in range(25)])
@@ -776,20 +729,14 @@ class ShortClass2:
 """
         (temp_project_dir / "src" / "module.py").write_text(content)
 
-        passed, details = validation_checklist._check_class_length(
-            temp_project_dir, "max_class_length <= 200"
-        )
+        passed, details = validation_checklist._check_class_length(temp_project_dir, "max_class_length <= 200")
 
         assert "total_classes" in details
         assert "long_classes" in details
 
-    def test_class_length_extracts_max_length(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_class_length_extracts_max_length(self, validation_checklist, temp_project_dir):
         """Test that class length rule extracts max length."""
-        passed, details = validation_checklist._check_class_length(
-            temp_project_dir, "max_class_length <= 300"
-        )
+        passed, details = validation_checklist._check_class_length(temp_project_dir, "max_class_length <= 300")
 
         assert details["max_length"] == 300
 
@@ -802,9 +749,7 @@ class ShortClass2:
 class TestTypeHintCoverage:
     """Test type hint coverage validation."""
 
-    def test_type_hint_coverage_with_hints(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_type_hint_coverage_with_hints(self, validation_checklist, temp_project_dir):
         """Test type hint coverage detection."""
         content = """
 def function_with_hints(x: int) -> str:
@@ -815,16 +760,12 @@ def function_without_hints(x):
 """
         (temp_project_dir / "src" / "module.py").write_text(content)
 
-        passed, details = validation_checklist._check_type_hint_coverage(
-            temp_project_dir, "type_hint_coverage >= 0.5"
-        )
+        passed, details = validation_checklist._check_type_hint_coverage(temp_project_dir, "type_hint_coverage >= 0.5")
 
         assert "total_functions" in details
         assert "hinted_functions" in details
 
-    def test_type_hint_coverage_return_type(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_type_hint_coverage_return_type(self, validation_checklist, temp_project_dir):
         """Test type hint coverage with return types."""
         content = """
 def function_with_return_type() -> int:
@@ -832,9 +773,7 @@ def function_with_return_type() -> int:
 """
         (temp_project_dir / "src" / "module.py").write_text(content)
 
-        passed, details = validation_checklist._check_type_hint_coverage(
-            temp_project_dir, "type_hint_coverage >= 0.5"
-        )
+        passed, details = validation_checklist._check_type_hint_coverage(temp_project_dir, "type_hint_coverage >= 0.5")
 
         assert details["total_functions"] > 0
 
@@ -858,9 +797,7 @@ variable_name = "test"
 """
         (temp_project_dir / "src" / "module.py").write_text(content)
 
-        passed, details = validation_checklist._check_naming_conventions(
-            temp_project_dir
-        )
+        passed, details = validation_checklist._check_naming_conventions(temp_project_dir)
 
         assert isinstance(passed, bool)
         assert "violations" in details
@@ -875,9 +812,7 @@ variable_name = "test"
 class TestDocstringCoverageGeneral:
     """Test general docstring coverage."""
 
-    def test_docstring_coverage_functions_and_classes(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_docstring_coverage_functions_and_classes(self, validation_checklist, temp_project_dir):
         """Test docstring coverage for functions and classes."""
         content = '''
 def documented_function():
@@ -896,16 +831,12 @@ class UndocumentedClass:
 '''
         (temp_project_dir / "src" / "module.py").write_text(content)
 
-        passed, details = validation_checklist._check_docstring_coverage(
-            temp_project_dir, "docstring_coverage >= 0.5"
-        )
+        passed, details = validation_checklist._check_docstring_coverage(temp_project_dir, "docstring_coverage >= 0.5")
 
         assert "total_items" in details
         assert "docstringed_items" in details
 
-    def test_docstring_coverage_various_thresholds(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_docstring_coverage_various_thresholds(self, validation_checklist, temp_project_dir):
         """Test docstring coverage with various thresholds."""
         content = '''
 def test1():
@@ -923,9 +854,7 @@ def test3():
 
         for threshold in [0.5, 0.6, 0.7]:
             rule = f"docstring_coverage >= {threshold}"
-            passed, details = validation_checklist._check_docstring_coverage(
-                temp_project_dir, rule
-            )
+            passed, details = validation_checklist._check_docstring_coverage(temp_project_dir, rule)
             assert details["target"] == threshold
 
 
@@ -937,13 +866,9 @@ def test3():
 class TestChecklistExecution:
     """Test checklist execution workflow."""
 
-    def test_execute_checklist_single_type(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_execute_checklist_single_type(self, validation_checklist, temp_project_dir):
         """Test executing a single checklist type."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.TEST_FIRST
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.TEST_FIRST)
 
         assert report.checklist_type == ChecklistType.TEST_FIRST
         assert report.total_items > 0
@@ -951,26 +876,16 @@ class TestChecklistExecution:
         assert report.failed_items >= 0
         assert report.execution_time >= 0
 
-    def test_execute_checklist_report_statistics(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_execute_checklist_report_statistics(self, validation_checklist, temp_project_dir):
         """Test that checklist report has correct statistics."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.READABLE
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.READABLE)
 
-        total_expected = (
-            report.passed_items + report.failed_items + report.skipped_items
-        )
+        total_expected = report.passed_items + report.failed_items + report.skipped_items
         assert total_expected == report.total_items
 
-    def test_execute_checklist_score_calculation(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_execute_checklist_score_calculation(self, validation_checklist, temp_project_dir):
         """Test score calculation in checklist report."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.UNIFIED
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.UNIFIED)
 
         # Percentage should be between 0 and 100
         assert 0 <= report.percentage_score <= 100
@@ -979,13 +894,9 @@ class TestChecklistExecution:
         if report.max_score > 0:
             assert report.total_score <= report.max_score
 
-    def test_execute_checklist_includes_results(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_execute_checklist_includes_results(self, validation_checklist, temp_project_dir):
         """Test that checklist report includes results."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.SECURED
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.SECURED)
 
         assert len(report.results) > 0
         assert all(isinstance(r, ChecklistResult) for r in report.results)
@@ -1006,63 +917,43 @@ class TestChecklistExecution:
 class TestValidationRuleEvaluation:
     """Test validation rule evaluation."""
 
-    def test_evaluate_validation_rule_test_coverage(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_evaluate_validation_rule_test_coverage(self, validation_checklist, temp_project_dir):
         """Test evaluating test coverage rule."""
-        passed, details = validation_checklist._evaluate_validation_rule(
-            temp_project_dir, "test_coverage_ratio >= 0.5"
-        )
+        passed, details = validation_checklist._evaluate_validation_rule(temp_project_dir, "test_coverage_ratio >= 0.5")
 
         assert isinstance(passed, bool)
         assert isinstance(details, dict)
 
-    def test_evaluate_validation_rule_test_structure(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_evaluate_validation_rule_test_structure(self, validation_checklist, temp_project_dir):
         """Test evaluating test structure rule."""
-        passed, details = validation_checklist._evaluate_validation_rule(
-            temp_project_dir, "test_files_structure_valid"
-        )
+        passed, details = validation_checklist._evaluate_validation_rule(temp_project_dir, "test_files_structure_valid")
 
         assert isinstance(passed, bool)
         assert isinstance(details, dict)
 
-    def test_evaluate_validation_rule_unknown_rule(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_evaluate_validation_rule_unknown_rule(self, validation_checklist, temp_project_dir):
         """Test evaluating unknown validation rule."""
-        passed, details = validation_checklist._evaluate_validation_rule(
-            temp_project_dir, "unknown_rule"
-        )
+        passed, details = validation_checklist._evaluate_validation_rule(temp_project_dir, "unknown_rule")
 
         assert passed is False
         assert "error" in details
 
-    def test_evaluate_validation_rule_all_test_first_rules(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_evaluate_validation_rule_all_test_first_rules(self, validation_checklist, temp_project_dir):
         """Test evaluating all TEST_FIRST rules."""
         test_first_items = validation_checklist.checklists[ChecklistType.TEST_FIRST]
 
         for item in test_first_items:
-            passed, details = validation_checklist._evaluate_validation_rule(
-                temp_project_dir, item.validation_rule
-            )
+            passed, details = validation_checklist._evaluate_validation_rule(temp_project_dir, item.validation_rule)
 
             assert isinstance(passed, bool)
             assert isinstance(details, dict)
 
-    def test_evaluate_validation_rule_all_readable_rules(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_evaluate_validation_rule_all_readable_rules(self, validation_checklist, temp_project_dir):
         """Test evaluating all READABLE rules."""
         readable_items = validation_checklist.checklists[ChecklistType.READABLE]
 
         for item in readable_items[:5]:  # Test first 5 to avoid excessive execution
-            passed, details = validation_checklist._evaluate_validation_rule(
-                temp_project_dir, item.validation_rule
-            )
+            passed, details = validation_checklist._evaluate_validation_rule(temp_project_dir, item.validation_rule)
 
             assert isinstance(passed, bool)
             assert isinstance(details, dict)
@@ -1076,34 +967,24 @@ class TestValidationRuleEvaluation:
 class TestChecklistItemExecution:
     """Test execution of single checklist items."""
 
-    def test_execute_checklist_item_success(
-        self, validation_checklist, temp_project_dir, sample_checklist_item
-    ):
+    def test_execute_checklist_item_success(self, validation_checklist, temp_project_dir, sample_checklist_item):
         """Test successful checklist item execution."""
-        result = validation_checklist._execute_checklist_item(
-            str(temp_project_dir), sample_checklist_item
-        )
+        result = validation_checklist._execute_checklist_item(str(temp_project_dir), sample_checklist_item)
 
         assert isinstance(result, ChecklistResult)
         assert result.item == sample_checklist_item
         assert result.execution_time >= 0
 
-    def test_execute_checklist_item_updates_status(
-        self, validation_checklist, temp_project_dir, sample_checklist_item
-    ):
+    def test_execute_checklist_item_updates_status(self, validation_checklist, temp_project_dir, sample_checklist_item):
         """Test that item status is updated after execution."""
-        validation_checklist._execute_checklist_item(
-            str(temp_project_dir), sample_checklist_item
-        )
+        validation_checklist._execute_checklist_item(str(temp_project_dir), sample_checklist_item)
 
         assert sample_checklist_item.status in [
             ChecklistStatus.PASS,
             ChecklistStatus.FAIL,
         ]
 
-    def test_execute_checklist_item_with_error_handling(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_execute_checklist_item_with_error_handling(self, validation_checklist, temp_project_dir):
         """Test error handling in checklist item execution."""
         # Create an item with invalid rule
         invalid_item = ChecklistItem(
@@ -1116,9 +997,7 @@ class TestChecklistItemExecution:
             expected_result="Expected",
         )
 
-        result = validation_checklist._execute_checklist_item(
-            str(temp_project_dir), invalid_item
-        )
+        result = validation_checklist._execute_checklist_item(str(temp_project_dir), invalid_item)
 
         assert result.passed is False
 
@@ -1148,9 +1027,7 @@ class TestReportGeneration:
             score=1.0,
         )
 
-        recommendations = validation_checklist._generate_recommendations(
-            ChecklistType.TEST_FIRST, [result]
-        )
+        recommendations = validation_checklist._generate_recommendations(ChecklistType.TEST_FIRST, [result])
 
         assert len(recommendations) > 0
         assert any("Excellent" in rec or "excellent" in rec for rec in recommendations)
@@ -1172,9 +1049,7 @@ class TestReportGeneration:
             score=0,
         )
 
-        recommendations = validation_checklist._generate_recommendations(
-            ChecklistType.TEST_FIRST, [result]
-        )
+        recommendations = validation_checklist._generate_recommendations(ChecklistType.TEST_FIRST, [result])
 
         assert len(recommendations) > 0
 
@@ -1187,9 +1062,7 @@ class TestReportGeneration:
         assert "TRUST" in summary
         assert "Summary" in summary
 
-    def test_summary_report_includes_scores(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_summary_report_includes_scores(self, validation_checklist, temp_project_dir):
         """Test that summary report includes score information."""
         reports = validation_checklist.execute_all_checklists(str(temp_project_dir))
         summary = validation_checklist.generate_summary_report(reports)
@@ -1246,9 +1119,7 @@ class TestDocumentationValidation:
 
     def test_documentation_rst_files(self, validation_checklist, temp_project_dir):
         """Test detecting RST documentation files."""
-        (temp_project_dir / "docs" / "index.rst").parent.mkdir(
-            parents=True, exist_ok=True
-        )
+        (temp_project_dir / "docs" / "index.rst").parent.mkdir(parents=True, exist_ok=True)
         (temp_project_dir / "docs" / "index.rst").write_text("Documentation")
 
         passed, details = validation_checklist._check_documentation(temp_project_dir)
@@ -1295,39 +1166,25 @@ class TestChangelogValidation:
 class TestDependencyTrackingValidation:
     """Test dependency tracking validation."""
 
-    def test_dependency_tracking_requirements(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_dependency_tracking_requirements(self, validation_checklist, temp_project_dir):
         """Test detecting requirements.txt."""
-        (temp_project_dir / "requirements.txt").write_text(
-            "pytest>=7.0\npytest-cov>=4.0"
-        )
+        (temp_project_dir / "requirements.txt").write_text("pytest>=7.0\npytest-cov>=4.0")
 
-        passed, details = validation_checklist._check_dependency_tracking(
-            temp_project_dir
-        )
+        passed, details = validation_checklist._check_dependency_tracking(temp_project_dir)
 
         assert passed is True
 
-    def test_dependency_tracking_pyproject(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_dependency_tracking_pyproject(self, validation_checklist, temp_project_dir):
         """Test detecting pyproject.toml."""
         (temp_project_dir / "pyproject.toml").write_text("[project]\ndependencies = []")
 
-        passed, details = validation_checklist._check_dependency_tracking(
-            temp_project_dir
-        )
+        passed, details = validation_checklist._check_dependency_tracking(temp_project_dir)
 
         assert passed is True
 
-    def test_dependency_tracking_not_exists(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_dependency_tracking_not_exists(self, validation_checklist, temp_project_dir):
         """Test when dependency tracking not found."""
-        passed, details = validation_checklist._check_dependency_tracking(
-            temp_project_dir
-        )
+        passed, details = validation_checklist._check_dependency_tracking(temp_project_dir)
 
         assert passed is False
 
@@ -1366,9 +1223,7 @@ class TestEdgeCasesAndErrors:
 
     def test_checklist_execution_with_nonexistent_path(self, validation_checklist):
         """Test checklist execution with nonexistent directory."""
-        report = validation_checklist.execute_checklist(
-            "/nonexistent/path", ChecklistType.TEST_FIRST
-        )
+        report = validation_checklist.execute_checklist("/nonexistent/path", ChecklistType.TEST_FIRST)
 
         assert report.checklist_type == ChecklistType.TEST_FIRST
         assert report.total_items > 0
@@ -1376,9 +1231,7 @@ class TestEdgeCasesAndErrors:
     def test_checklist_execution_empty_directory(self, validation_checklist):
         """Test checklist execution with empty directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            report = validation_checklist.execute_checklist(
-                tmpdir, ChecklistType.READABLE
-            )
+            report = validation_checklist.execute_checklist(tmpdir, ChecklistType.READABLE)
 
             assert report.checklist_type == ChecklistType.READABLE
             assert report.total_items > 0
@@ -1412,32 +1265,20 @@ class TestEdgeCasesAndErrors:
         )
         assert report.total_items == 0
 
-    def test_evaluate_validation_rule_with_special_characters(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_evaluate_validation_rule_with_special_characters(self, validation_checklist, temp_project_dir):
         """Test validation rule with special characters."""
-        passed, details = validation_checklist._evaluate_validation_rule(
-            temp_project_dir, "max_function_length <= 50"
-        )
+        passed, details = validation_checklist._evaluate_validation_rule(temp_project_dir, "max_function_length <= 50")
         assert isinstance(passed, bool)
 
-    def test_multiple_checklist_executions(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_multiple_checklist_executions(self, validation_checklist, temp_project_dir):
         """Test multiple sequential checklist executions."""
         for _ in range(3):
-            report = validation_checklist.execute_checklist(
-                str(temp_project_dir), ChecklistType.TEST_FIRST
-            )
+            report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.TEST_FIRST)
             assert report.checklist_type == ChecklistType.TEST_FIRST
 
-    def test_checklist_with_malformed_python_file(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_checklist_with_malformed_python_file(self, validation_checklist, temp_project_dir):
         """Test handling malformed Python files gracefully."""
-        (temp_project_dir / "src" / "bad.py").write_text(
-            "def function(\n    invalid syntax here"
-        )
+        (temp_project_dir / "src" / "bad.py").write_text("def function(\n    invalid syntax here")
 
         # Should handle gracefully and not crash
         try:
@@ -1457,9 +1298,7 @@ class TestEdgeCasesAndErrors:
 class TestIntegration:
     """Integration tests combining multiple features."""
 
-    def test_full_workflow_single_checklist_type(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_full_workflow_single_checklist_type(self, validation_checklist, temp_project_dir):
         """Test full workflow for single checklist type."""
         # Create sample files
         (temp_project_dir / "tests" / "__init__.py").write_text("")
@@ -1468,9 +1307,7 @@ class TestIntegration:
         )
 
         # Execute checklist
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.TEST_FIRST
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.TEST_FIRST)
 
         # Verify report
         assert report.total_items > 0
@@ -1524,21 +1361,15 @@ class TestPerformance:
 
             # Create multiple Python files
             for i in range(20):
-                (project_path / "src" / f"module_{i}.py").write_text(
-                    f"def function_{i}():\n    pass\n"
-                )
+                (project_path / "src" / f"module_{i}.py").write_text(f"def function_{i}():\n    pass\n")
 
             # Should complete successfully
-            report = validation_checklist.execute_checklist(
-                str(project_path), ChecklistType.READABLE
-            )
+            report = validation_checklist.execute_checklist(str(project_path), ChecklistType.READABLE)
             assert report.total_items > 0
 
     def test_execution_time_recorded(self, validation_checklist, temp_project_dir):
         """Test that execution time is recorded."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.TEST_FIRST
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.TEST_FIRST)
 
         assert report.execution_time >= 0
         assert all(r.execution_time >= 0 for r in report.results)
@@ -1552,13 +1383,9 @@ class TestPerformance:
 class TestDataValidation:
     """Test data validation and integrity."""
 
-    def test_checklist_report_total_consistency(
-        self, validation_checklist, temp_project_dir
-    ):
+    def test_checklist_report_total_consistency(self, validation_checklist, temp_project_dir):
         """Test that report totals are consistent."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.TEST_FIRST
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.TEST_FIRST)
 
         # Total should equal sum of passed, failed, and skipped
         total = report.passed_items + report.failed_items + report.skipped_items
@@ -1566,18 +1393,14 @@ class TestDataValidation:
 
     def test_score_consistency(self, validation_checklist, temp_project_dir):
         """Test score consistency in report."""
-        report = validation_checklist.execute_checklist(
-            str(temp_project_dir), ChecklistType.READABLE
-        )
+        report = validation_checklist.execute_checklist(str(temp_project_dir), ChecklistType.READABLE)
 
         # Percentage should match calculation
         if report.max_score > 0:
             expected_percentage = (report.total_score / report.max_score) * 100
             assert abs(report.percentage_score - round(expected_percentage, 2)) < 0.01
 
-    def test_result_score_calculation(
-        self, validation_checklist, sample_checklist_item
-    ):
+    def test_result_score_calculation(self, validation_checklist, sample_checklist_item):
         """Test that result scores are calculated correctly."""
         sample_checklist_item.score_weight = 3.0
         result_passed = ChecklistResult(

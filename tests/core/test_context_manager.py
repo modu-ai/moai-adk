@@ -29,9 +29,7 @@ def temp_project_dir():
         project_root = Path(tmpdir)
 
         # Create directory structure
-        (project_root / ".moai" / "memory" / "command-state").mkdir(
-            parents=True, exist_ok=True
-        )
+        (project_root / ".moai" / "memory" / "command-state").mkdir(parents=True, exist_ok=True)
         (project_root / ".moai" / "project").mkdir(parents=True, exist_ok=True)
         (project_root / "src").mkdir(parents=True, exist_ok=True)
 
@@ -54,9 +52,7 @@ class TestPathValidation:
         project_root = temp_project_dir
         inside_path = os.path.join(project_root, ".moai", "project", "file.md")
 
-        assert _is_path_within_root(
-            inside_path, project_root
-        ), "Path should be within root"
+        assert _is_path_within_root(inside_path, project_root), "Path should be within root"
 
     def test_is_path_within_root_outside_case(self, temp_project_dir):
         """Test _is_path_within_root helper function for paths outside root"""
@@ -65,9 +61,7 @@ class TestPathValidation:
         project_root = temp_project_dir
         outside_path = os.path.dirname(project_root) + "/other_project/file.md"
 
-        assert not _is_path_within_root(
-            outside_path, project_root
-        ), "Path should be outside root"
+        assert not _is_path_within_root(outside_path, project_root), "Path should be outside root"
 
     def test_relative_path_to_absolute_conversion(self, temp_project_dir):
         """Test that relative paths are correctly converted to absolute paths"""
@@ -77,9 +71,7 @@ class TestPathValidation:
         result = validate_and_convert_path(relative_path, temp_project_dir)
 
         assert os.path.isabs(result), f"Result should be absolute path: {result}"
-        assert result.startswith(
-            expected_prefix
-        ), f"Path should start with project root: {result}"
+        assert result.startswith(expected_prefix), f"Path should start with project root: {result}"
         assert result.endswith("product.md"), f"Path should end with filename: {result}"
 
     def test_absolute_path_pass_through(self, temp_project_dir):
@@ -191,11 +183,7 @@ class TestAtomicJsonWrite:
         save_phase_result(test_data, target_path)
 
         # Check no temp files in the directory
-        temp_files = [
-            f
-            for f in os.listdir(temp_state_dir)
-            if f.startswith(".tmp") or f.endswith(".tmp")
-        ]
+        temp_files = [f for f in os.listdir(temp_state_dir) if f.startswith(".tmp") or f.endswith(".tmp")]
 
         assert len(temp_files) == 0, f"No temporary files should remain: {temp_files}"
 
@@ -220,10 +208,7 @@ class TestAtomicJsonWrite:
             "phase": "2-run",
             "timestamp": "2025-11-12T10:30:00Z",
             "files_created": [f"/path/to/file_{i}.py" for i in range(100)],
-            "test_results": {
-                f"test_{i}": {"passed": True, "duration": 0.5 + i * 0.01}
-                for i in range(50)
-            },
+            "test_results": {f"test_{i}": {"passed": True, "duration": 0.5 + i * 0.01} for i in range(50)},
         }
         target_path = os.path.join(temp_state_dir, "large-state.json")
 

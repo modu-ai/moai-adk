@@ -21,9 +21,7 @@ class TestTemplateSkill:
     def test_initialization(self):
         """Test TemplateSkill initialization."""
         path = Path("/project/.claude/skills/my-skill")
-        skill = TemplateSkill(
-            name="my-skill", path=path, has_skill_md=True, is_template=False
-        )
+        skill = TemplateSkill(name="my-skill", path=path, has_skill_md=True, is_template=False)
 
         assert skill.name == "my-skill"
         assert skill.path == path
@@ -68,18 +66,10 @@ class TestCustomElementScanner:
 
     def test_get_template_elements(self):
         """Test _get_template_elements returns correct structure."""
-        with patch(
-            "moai_adk.core.migration.custom_element_scanner._get_template_skill_names"
-        ) as mock_skills:
-            with patch(
-                "moai_adk.core.migration.custom_element_scanner._get_template_command_names"
-            ) as mock_cmds:
-                with patch(
-                    "moai_adk.core.migration.custom_element_scanner._get_template_agent_names"
-                ) as mock_agents:
-                    with patch(
-                        "moai_adk.core.migration.custom_element_scanner._get_template_hook_names"
-                    ) as mock_hooks:
+        with patch("moai_adk.core.migration.custom_element_scanner._get_template_skill_names") as mock_skills:
+            with patch("moai_adk.core.migration.custom_element_scanner._get_template_command_names") as mock_cmds:
+                with patch("moai_adk.core.migration.custom_element_scanner._get_template_agent_names") as mock_agents:
+                    with patch("moai_adk.core.migration.custom_element_scanner._get_template_hook_names") as mock_hooks:
                         mock_skills.return_value = {"moai-skill"}
                         mock_cmds.return_value = {"cmd.md"}
                         mock_agents.return_value = {"agent.md"}
@@ -95,23 +85,15 @@ class TestCustomElementScanner:
     def test_scan_custom_elements_returns_all_types(self):
         """Test scan_custom_elements returns all element types."""
         with patch.object(CustomElementScanner, "_scan_custom_agents") as mock_agents:
-            with patch.object(
-                CustomElementScanner, "_scan_custom_commands"
-            ) as mock_cmds:
-                with patch.object(
-                    CustomElementScanner, "_scan_custom_skills"
-                ) as mock_skills:
-                    with patch.object(
-                        CustomElementScanner, "_scan_custom_hooks"
-                    ) as mock_hooks:
+            with patch.object(CustomElementScanner, "_scan_custom_commands") as mock_cmds:
+                with patch.object(CustomElementScanner, "_scan_custom_skills") as mock_skills:
+                    with patch.object(CustomElementScanner, "_scan_custom_hooks") as mock_hooks:
                         mock_agents.return_value = []
                         mock_cmds.return_value = []
                         mock_skills.return_value = []
                         mock_hooks.return_value = []
 
-                        with patch.object(
-                            CustomElementScanner, "_get_template_elements"
-                        ):
+                        with patch.object(CustomElementScanner, "_get_template_elements"):
                             scanner = CustomElementScanner(Path("/project"))
                             result = scanner.scan_custom_elements()
 
@@ -170,9 +152,7 @@ class TestCustomElementScanner:
                 with patch("pathlib.Path.rglob") as mock_rglob:
                     with patch("pathlib.Path.relative_to") as mock_relative:
                         mock_rglob.return_value = [template_file, custom_file]
-                        mock_relative.side_effect = lambda p: Path(
-                            f".claude/agents/{p.name}"
-                        )
+                        mock_relative.side_effect = lambda p: Path(f".claude/agents/{p.name}")
 
                         scanner = CustomElementScanner(Path("/project"))
                         result = scanner._scan_custom_agents()
@@ -253,22 +233,16 @@ class TestCustomElementScanner:
                     template_skill = MagicMock(spec=Path)
                     template_skill.is_dir.return_value = True
                     template_skill.name = "moai-foundation"
-                    template_skill.relative_to.return_value = Path(
-                        ".claude/skills/moai-foundation"
-                    )
+                    template_skill.relative_to.return_value = Path(".claude/skills/moai-foundation")
 
                     custom_skill = MagicMock(spec=Path)
                     custom_skill.is_dir.return_value = True
                     custom_skill.name = "my-custom-skill"
-                    custom_skill.relative_to.return_value = Path(
-                        ".claude/skills/my-custom-skill"
-                    )
+                    custom_skill.relative_to.return_value = Path(".claude/skills/my-custom-skill")
 
                     mock_iterdir.return_value = [template_skill, custom_skill]
 
-                    with patch.object(
-                        CustomElementScanner, "__init__", lambda x, y: None
-                    ):
+                    with patch.object(CustomElementScanner, "__init__", lambda x, y: None):
                         scanner = CustomElementScanner.__new__(CustomElementScanner)
                         scanner.project_path = Path("/project")
                         scanner.template_elements = {
@@ -279,9 +253,7 @@ class TestCustomElementScanner:
                         }
 
                         # Mock Path operations
-                        with patch(
-                            "moai_adk.core.migration.custom_element_scanner.Path"
-                        ) as mock_path_class:
+                        with patch("moai_adk.core.migration.custom_element_scanner.Path") as mock_path_class:
                             mock_path_class.return_value.exists.return_value = False
                             result = scanner._scan_custom_skills()
 
@@ -303,22 +275,16 @@ class TestCustomElementScanner:
                     template_skill = MagicMock(spec=Path)
                     template_skill.is_dir.return_value = True
                     template_skill.name = "moai-foundation"
-                    template_skill.relative_to.return_value = Path(
-                        ".claude/skills/moai-foundation"
-                    )
+                    template_skill.relative_to.return_value = Path(".claude/skills/moai-foundation")
 
                     custom_skill = MagicMock(spec=Path)
                     custom_skill.is_dir.return_value = True
                     custom_skill.name = "custom-skill"
-                    custom_skill.relative_to.return_value = Path(
-                        ".claude/skills/custom-skill"
-                    )
+                    custom_skill.relative_to.return_value = Path(".claude/skills/custom-skill")
 
                     mock_iterdir.return_value = [template_skill, custom_skill]
 
-                    with patch.object(
-                        CustomElementScanner, "__init__", lambda x, y: None
-                    ):
+                    with patch.object(CustomElementScanner, "__init__", lambda x, y: None):
                         scanner = CustomElementScanner.__new__(CustomElementScanner)
                         scanner.project_path = Path("/project")
                         scanner.template_elements = {
@@ -328,9 +294,7 @@ class TestCustomElementScanner:
                             "hooks": set(),
                         }
 
-                        with patch(
-                            "moai_adk.core.migration.custom_element_scanner.Path"
-                        ) as mock_path_class:
+                        with patch("moai_adk.core.migration.custom_element_scanner.Path") as mock_path_class:
                             mock_path_class.return_value.exists.return_value = False
                             result = scanner._scan_custom_skills()
 
@@ -353,12 +317,8 @@ class TestCustomElementScanner:
                     skill_dir = MagicMock()
                     skill_dir.is_dir.return_value = True
                     skill_dir.name = "test-skill"
-                    skill_dir.relative_to.return_value = Path(
-                        ".claude/skills/test-skill"
-                    )
-                    skill_dir.__truediv__.return_value = MagicMock(
-                        exists=MagicMock(return_value=True)
-                    )
+                    skill_dir.relative_to.return_value = Path(".claude/skills/test-skill")
+                    skill_dir.__truediv__.return_value = MagicMock(exists=MagicMock(return_value=True))
 
                     mock_iterdir.return_value = [skill_dir]
                     mock_exists.return_value = True
@@ -482,9 +442,7 @@ class TestCustomElementScanner:
                 result = scanner.get_custom_elements_display_list()
 
                 assert len(result) == 2
-                template_entry = [r for r in result if r["name"] == "moai-foundation"][
-                    0
-                ]
+                template_entry = [r for r in result if r["name"] == "moai-foundation"][0]
                 custom_entry = [r for r in result if r["name"] == "my-skill"][0]
 
                 assert "template" in template_entry["display_name"]
@@ -512,9 +470,7 @@ class TestCustomElementScanner:
     def test_get_custom_elements_display_list_all_types(self):
         """Test display list with all element types."""
         with patch.object(CustomElementScanner, "scan_custom_elements") as mock_scan:
-            skill = TemplateSkill(
-                name="skill", path=Path(".claude/skills/skill"), has_skill_md=True
-            )
+            skill = TemplateSkill(name="skill", path=Path(".claude/skills/skill"), has_skill_md=True)
 
             mock_scan.return_value = {
                 "agents": [Path(".claude/agents/agent.md")],
@@ -601,38 +557,20 @@ class TestCustomElementScannerIntegration:
     def test_full_scan_workflow(self):
         """Test full scan workflow."""
         with patch.object(CustomElementScanner, "_get_template_elements") as mock_get:
-            with patch.object(
-                CustomElementScanner, "_scan_custom_agents"
-            ) as mock_agents:
-                with patch.object(
-                    CustomElementScanner, "_scan_custom_commands"
-                ) as mock_cmds:
-                    with patch.object(
-                        CustomElementScanner, "_scan_custom_skills"
-                    ) as mock_skills:
-                        with patch.object(
-                            CustomElementScanner, "_scan_custom_hooks"
-                        ) as mock_hooks:
+            with patch.object(CustomElementScanner, "_scan_custom_agents") as mock_agents:
+                with patch.object(CustomElementScanner, "_scan_custom_commands") as mock_cmds:
+                    with patch.object(CustomElementScanner, "_scan_custom_skills") as mock_skills:
+                        with patch.object(CustomElementScanner, "_scan_custom_hooks") as mock_hooks:
                             mock_get.return_value = {
                                 "agents": set(),
                                 "commands": set(),
                                 "skills": set(),
                                 "hooks": set(),
                             }
-                            mock_agents.return_value = [
-                                Path(".claude/agents/custom.md")
-                            ]
-                            mock_cmds.return_value = [
-                                Path(".claude/commands/moai/custom.md")
-                            ]
-                            mock_skills.return_value = [
-                                TemplateSkill(
-                                    "custom", Path(".claude/skills/custom"), True
-                                )
-                            ]
-                            mock_hooks.return_value = [
-                                Path(".claude/hooks/moai/custom.py")
-                            ]
+                            mock_agents.return_value = [Path(".claude/agents/custom.md")]
+                            mock_cmds.return_value = [Path(".claude/commands/moai/custom.md")]
+                            mock_skills.return_value = [TemplateSkill("custom", Path(".claude/skills/custom"), True)]
+                            mock_hooks.return_value = [Path(".claude/hooks/moai/custom.py")]
 
                             scanner = CustomElementScanner(Path("/project"))
                             elements = scanner.scan_custom_elements()
@@ -663,23 +601,15 @@ class TestCustomElementScannerIntegration:
     def test_multiple_scans_consistent(self):
         """Test multiple scans return consistent results."""
         with patch.object(CustomElementScanner, "_scan_custom_agents") as mock_agents:
-            with patch.object(
-                CustomElementScanner, "_scan_custom_commands"
-            ) as mock_cmds:
-                with patch.object(
-                    CustomElementScanner, "_scan_custom_skills"
-                ) as mock_skills:
-                    with patch.object(
-                        CustomElementScanner, "_scan_custom_hooks"
-                    ) as mock_hooks:
+            with patch.object(CustomElementScanner, "_scan_custom_commands") as mock_cmds:
+                with patch.object(CustomElementScanner, "_scan_custom_skills") as mock_skills:
+                    with patch.object(CustomElementScanner, "_scan_custom_hooks") as mock_hooks:
                         mock_agents.return_value = [Path(".claude/agents/agent.md")]
                         mock_cmds.return_value = []
                         mock_skills.return_value = []
                         mock_hooks.return_value = []
 
-                        with patch.object(
-                            CustomElementScanner, "_get_template_elements"
-                        ):
+                        with patch.object(CustomElementScanner, "_get_template_elements"):
                             scanner = CustomElementScanner(Path("/project"))
 
                             result1 = scanner.scan_custom_elements()

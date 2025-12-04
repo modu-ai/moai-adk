@@ -96,10 +96,7 @@ class TestTabSchemaLoading:
         tab = _create_tab3_git_automation()
         personal_batch = tab["batches"][0]
         assert "show_if" in personal_batch
-        assert (
-            "git_strategy_mode == 'personal' OR git_strategy_mode == 'hybrid'"
-            in personal_batch["show_if"]
-        )
+        assert "git_strategy_mode == 'personal' OR git_strategy_mode == 'hybrid'" in personal_batch["show_if"]
 
     def test_tab3_team_batch_conditional(self):
         """Test Tab 3 team batch conditional logic."""

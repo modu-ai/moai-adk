@@ -209,9 +209,7 @@ class TestLanguageDetectorLaravel:
         """Should detect Laravel project as PHP from artisan file"""
         # Given: Laravel artisan file
         (tmp_project_dir / "artisan").write_text("#!/usr/bin/env php")
-        (tmp_project_dir / "composer.json").write_text(
-            '{"require": {"laravel/framework": "^11.0"}}'
-        )
+        (tmp_project_dir / "composer.json").write_text('{"require": {"laravel/framework": "^11.0"}}')
 
         # When: detect language
         detector = LanguageDetector()
@@ -391,9 +389,7 @@ class TestLanguageDetectorWorkflowTemplate:
         assert "go-tag-validation.yml" in str(result)
         assert result.endswith("go-tag-validation.yml")
 
-    def test_get_workflow_template_path_unsupported_language(
-        self, tmp_project_dir: Path
-    ):
+    def test_get_workflow_template_path_unsupported_language(self, tmp_project_dir: Path):
         """Should raise ValueError for unsupported language"""
         detector = LanguageDetector()
 

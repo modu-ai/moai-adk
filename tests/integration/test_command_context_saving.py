@@ -91,12 +91,8 @@ class TestProjectCommandContextSaving:
         saved_path = context_manager.save_phase_result(phase_data)
 
         # Assert: File exists and is in correct location
-        assert os.path.exists(
-            saved_path
-        ), f"Phase result file should exist: {saved_path}"
-        assert saved_path.startswith(
-            context_manager.get_state_dir()
-        ), "File should be in command-state directory"
+        assert os.path.exists(saved_path), f"Phase result file should exist: {saved_path}"
+        assert saved_path.startswith(context_manager.get_state_dir()), "File should be in command-state directory"
         assert saved_path.endswith(".json"), "File should have .json extension"
 
         # Verify file content
@@ -126,9 +122,7 @@ class TestProjectCommandContextSaving:
             "timestamp": "2025-11-12T10:30:00Z",
             "status": "completed",
             "outputs": {"project_name": "TestProject", "mode": "personal"},
-            "files_created": [
-                os.path.join(mock_project_dir, ".moai/project/product.md")
-            ],
+            "files_created": [os.path.join(mock_project_dir, ".moai/project/product.md")],
             "next_phase": "1-plan",
         }
 
@@ -152,15 +146,11 @@ class TestProjectCommandContextSaving:
         assert isinstance(loaded_data["timestamp"], str), "timestamp should be string"
         assert isinstance(loaded_data["status"], str), "status should be string"
         assert isinstance(loaded_data["outputs"], dict), "outputs should be dict"
-        assert isinstance(
-            loaded_data["files_created"], list
-        ), "files_created should be list"
+        assert isinstance(loaded_data["files_created"], list), "files_created should be list"
         assert isinstance(loaded_data["next_phase"], str), "next_phase should be string"
 
         # Timestamp format (ISO 8601)
-        assert loaded_data["timestamp"].endswith(
-            "Z"
-        ), "timestamp should be UTC (end with Z)"
+        assert loaded_data["timestamp"].endswith("Z"), "timestamp should be UTC (end with Z)"
 
         # Status values
         assert loaded_data["status"] in [
@@ -185,10 +175,7 @@ class TestProjectCommandContextSaving:
         ]
 
         # Convert to absolute using validate_and_convert_path
-        absolute_paths = [
-            validate_and_convert_path(rel_path, mock_project_dir)
-            for rel_path in relative_paths
-        ]
+        absolute_paths = [validate_and_convert_path(rel_path, mock_project_dir) for rel_path in relative_paths]
 
         phase_data = {
             "phase": "0-project",
@@ -208,9 +195,7 @@ class TestProjectCommandContextSaving:
 
         for file_path in loaded_data["files_created"]:
             assert os.path.isabs(file_path), f"Path should be absolute: {file_path}"
-            assert file_path.startswith(
-                mock_project_dir
-            ), f"Path should be within project root: {file_path}"
+            assert file_path.startswith(mock_project_dir), f"Path should be within project root: {file_path}"
 
     def test_0_project_no_template_vars(self, context_manager, mock_project_dir):
         """
@@ -229,9 +214,7 @@ class TestProjectCommandContextSaving:
                 "mode": "{{MODE}}",  # Should be substituted
                 "language": "en",
             },
-            "files_created": [
-                "{{PROJECT_ROOT}}/.moai/project/product.md"
-            ],  # Should be substituted
+            "files_created": ["{{PROJECT_ROOT}}/.moai/project/product.md"],  # Should be substituted
             "next_phase": "1-plan",
         }
 
@@ -248,10 +231,7 @@ class TestProjectCommandContextSaving:
         raw_data["outputs"] = json.loads(outputs_substituted)
 
         # Substitute files_created
-        raw_data["files_created"] = [
-            substitute_template_variables(path, context)
-            for path in raw_data["files_created"]
-        ]
+        raw_data["files_created"] = [substitute_template_variables(path, context) for path in raw_data["files_created"]]
 
         # Act
         saved_path = context_manager.save_phase_result(raw_data)
@@ -268,15 +248,9 @@ class TestProjectCommandContextSaving:
 
         # Parse and verify substituted values
         loaded_data = json.loads(content)
-        assert (
-            loaded_data["outputs"]["project_name"] == "TestProject"
-        ), "PROJECT_NAME should be substituted"
-        assert (
-            loaded_data["outputs"]["mode"] == "personal"
-        ), "MODE should be substituted"
-        assert (
-            mock_project_dir in loaded_data["files_created"][0]
-        ), "PROJECT_ROOT should be substituted in file paths"
+        assert loaded_data["outputs"]["project_name"] == "TestProject", "PROJECT_NAME should be substituted"
+        assert loaded_data["outputs"]["mode"] == "personal", "MODE should be substituted"
+        assert mock_project_dir in loaded_data["files_created"][0], "PROJECT_ROOT should be substituted in file paths"
 
     # Additional test: Error handling for graceful failure
     def test_0_project_save_failure_graceful(self, context_manager, mock_project_dir):
@@ -307,9 +281,7 @@ class TestProjectCommandContextSaving:
             with pytest.raises(IOError) as exc_info:
                 context_manager.save_phase_result(invalid_data)
 
-            assert "Failed to write" in str(
-                exc_info.value
-            ), "Error message should indicate write failure"
+            assert "Failed to write" in str(exc_info.value), "Error message should indicate write failure"
 
         finally:
             # Cleanup: Restore permissions

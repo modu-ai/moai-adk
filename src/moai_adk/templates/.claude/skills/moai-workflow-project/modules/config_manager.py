@@ -155,9 +155,7 @@ class UnifiedConfigManager:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 if self.config_path.suffix.lower() in [".yml", ".yaml"]:
                     if not HAS_YAML:
-                        raise ImportError(
-                            "PyYAML is required for YAML configuration files"
-                        )
+                        raise ImportError("PyYAML is required for YAML configuration files")
                     config = yaml.safe_load(f)
                 else:
                     config = json.load(f)

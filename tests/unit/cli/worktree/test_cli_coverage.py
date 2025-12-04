@@ -79,9 +79,7 @@ class TestGetManager:
 
         # Assert
         assert result == mock_manager_instance
-        mock_manager_class.assert_called_once_with(
-            repo_path=repo_path, worktree_root=wt_root
-        )
+        mock_manager_class.assert_called_once_with(repo_path=repo_path, worktree_root=wt_root)
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
@@ -227,9 +225,7 @@ class TestNewWorktreeCommand:
         mock_get_manager.return_value = mock_manager
 
         # Act
-        result = runner.invoke(
-            new_worktree, ["SPEC-001", "--branch", "feature/spec-001"]
-        )
+        result = runner.invoke(new_worktree, ["SPEC-001", "--branch", "feature/spec-001"])
 
         # Assert
         assert result.exit_code == 0
@@ -241,9 +237,7 @@ class TestNewWorktreeCommand:
         # Arrange
         runner = CliRunner()
         mock_manager = MagicMock()
-        mock_manager.create.side_effect = WorktreeExistsError(
-            "SPEC-001", Path("/mock/worktree")
-        )
+        mock_manager.create.side_effect = WorktreeExistsError("SPEC-001", Path("/mock/worktree"))
         mock_get_manager.return_value = mock_manager
 
         # Act

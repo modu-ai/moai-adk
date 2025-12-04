@@ -460,9 +460,7 @@ class TestErrorRecoverySystem:
         recovery_system.register_recovery_action(action)
 
         # Act
-        result = recovery_system.attempt_manual_recovery(
-            error_id, "retry_action", parameters={}
-        )
+        result = recovery_system.attempt_manual_recovery(error_id, "retry_action", parameters={})
 
         # Assert
         assert result is not None
@@ -471,9 +469,7 @@ class TestErrorRecoverySystem:
     def test_attempt_manual_recovery_not_found(self, recovery_system):
         """Test manual recovery with non-existent error."""
         # Act
-        result = recovery_system.attempt_manual_recovery(
-            "nonexistent_id", "action_name"
-        )
+        result = recovery_system.attempt_manual_recovery("nonexistent_id", "action_name")
 
         # Assert
         assert result.success is False
@@ -496,9 +492,7 @@ class TestErrorRecoverySystem:
         """Test error statistics tracking."""
         # Arrange
         recovery_system.handle_error(ValueError("Error 1"), severity=ErrorSeverity.HIGH)
-        recovery_system.handle_error(
-            RuntimeError("Error 2"), severity=ErrorSeverity.CRITICAL
-        )
+        recovery_system.handle_error(RuntimeError("Error 2"), severity=ErrorSeverity.CRITICAL)
 
         # Act
         # Check error history was populated
@@ -530,11 +524,7 @@ class TestErrorRecoverySystem:
 
         # Assert
         assert cleanup_result is not None
-        assert (
-            "removed_count" in cleanup_result
-            or "cleaned" in cleanup_result
-            or "status" in cleanup_result
-        )
+        assert "removed_count" in cleanup_result or "cleaned" in cleanup_result or "status" in cleanup_result
 
     @patch("subprocess.run")
     def test_automatic_recovery_retry(self, mock_run, recovery_system):

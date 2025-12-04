@@ -94,9 +94,7 @@ def render_template(template_path, variables_file, output, language):
         template_path_obj = Path(template_path)
         output_path_obj = Path(output) if output else None
 
-        rendered = template_engine.render_file(
-            template_path_obj, variables, output_path_obj
-        )
+        rendered = template_engine.render_file(template_path_obj, variables, output_path_obj)
 
         if not output:
             console.print("[bold]Rendered Template:[/bold]")
@@ -121,9 +119,7 @@ def translate_descriptions(base_description, target_languages, output):
             languages = ["en", "ko", "ja", "es", "fr", "de"]
 
         claude_integration = ClaudeCLIIntegration()
-        descriptions = claude_integration.generate_multilingual_descriptions(
-            {"base": base_description}, languages
-        )
+        descriptions = claude_integration.generate_multilingual_descriptions({"base": base_description}, languages)
 
         if output:
             with open(output, "w", encoding="utf-8") as f:
@@ -139,13 +135,9 @@ def translate_descriptions(base_description, target_languages, output):
 
 @language.command()
 @click.argument("prompt_template")
-@click.option(
-    "--variables", "-v", type=click.Path(exists=True), help="Variables JSON file"
-)
+@click.option("--variables", "-v", type=click.Path(exists=True), help="Variables JSON file")
 @click.option("--language", "-l", help="Target language code")
-@click.option(
-    "--output-format", default="json", help="Output format (text, json, stream-json)"
-)
+@click.option("--output-format", default="json", help="Output format (text, json, stream-json)")
 @click.option("--dry-run", is_flag=True, help="Show command without executing")
 def execute(prompt_template, variables, language, output_format, dry_run):
     """Execute Claude CLI with template variables and language support."""
@@ -166,9 +158,7 @@ def execute(prompt_template, variables, language, output_format, dry_run):
 
         if dry_run:
             console.print("[bold]Dry Run - Command that would be executed:[/bold]")
-            console.print(
-                f"claude --print --output-format {output_format} '{processed_prompt}'"
-            )
+            console.print(f"claude --print --output-format {output_format} '{processed_prompt}'")
             console.print("[bold]Variables used:[/bold]")
             console.print(json.dumps(template_vars, indent=2, ensure_ascii=False))
             return
@@ -202,9 +192,7 @@ def execute(prompt_template, variables, language, output_format, dry_run):
 
 @language.command()
 @click.argument("config_file", type=click.Path(exists=True))
-@click.option(
-    "--validate-languages", is_flag=True, help="Validate language codes in config"
-)
+@click.option("--validate-languages", is_flag=True, help="Validate language codes in config")
 def validate_config(config_file, validate_languages):
     """Validate language configuration in MoAI-ADK config file."""
     try:
@@ -227,28 +215,22 @@ def validate_config(config_file, validate_languages):
                 conv_lang = lang_config.get("conversation_language")
                 if conv_lang:
                     if conv_lang in get_all_supported_codes():
-                        console.print(
-                            f"[green]✓ conversation_language '{conv_lang}' is supported[/green]"
-                        )
+                        console.print(f"[green]✓ conversation_language '{conv_lang}' is supported[/green]")
                     else:
-                        console.print(
-                            f"[red]✗ conversation_language '{conv_lang}' is not supported[/red]"
-                        )
+                        console.print(f"[red]✗ conversation_language '{conv_lang}' is not supported[/red]")
                 else:
-                    console.print(
-                        "[yellow]⚠ No conversation_language specified[/yellow]"
-                    )
+                    console.print("[yellow]⚠ No conversation_language specified[/yellow]")
 
                 # Check conversation_language_name
                 conv_lang_name = lang_config.get("conversation_language_name")
                 if conv_lang_name and conv_lang:
                     expected_name = get_native_name(conv_lang)
                     if conv_lang_name == expected_name:
-                        console.print(
-                            "[green]✓ conversation_language_name matches[/green]"
-                        )
+                        console.print("[green]✓ conversation_language_name matches[/green]")
                     else:
-                        warning_msg = f"⚠ conversation_language_name '{conv_lang_name}' doesn't match expected '{expected_name}'"
+                        warning_msg = (
+                            f"⚠ conversation_language_name '{conv_lang_name}' doesn't match expected '{expected_name}'"
+                        )
                         console.print(f"[yellow]{warning_msg}[/yellow]")
 
         if validate_languages:
@@ -260,9 +242,7 @@ def validate_config(config_file, validate_languages):
                     found_codes.append(code)
 
             if found_codes:
-                console.print(
-                    f"[blue]Found language codes in config: {', '.join(found_codes)}[/blue]"
-                )
+                console.print(f"[blue]Found language codes in config: {', '.join(found_codes)}[/blue]")
 
     except Exception as e:
         console.print(f"[red]Error validating config: {e}[/red]")

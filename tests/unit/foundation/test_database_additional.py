@@ -275,27 +275,21 @@ class TestIndexingOptimizerAdditional:
     def test_recommend_index_single_column_equality(self):
         """Test index recommendation for single column equality."""
         optimizer = IndexingOptimizer()
-        result = optimizer.recommend_index(
-            {"columns": ["user_id"], "conditions": ["user_id = 123"]}
-        )
+        result = optimizer.recommend_index({"columns": ["user_id"], "conditions": ["user_id = 123"]})
         assert result["index_type"] == "HASH"
         assert result["columns"] == ["user_id"]
 
     def test_recommend_index_single_column_range(self):
         """Test index recommendation for range queries."""
         optimizer = IndexingOptimizer()
-        result = optimizer.recommend_index(
-            {"columns": ["age"], "conditions": ["age > 18", "age < 65"]}
-        )
+        result = optimizer.recommend_index({"columns": ["age"], "conditions": ["age > 18", "age < 65"]})
         assert result["index_type"] == "BTREE"
         assert "range" in result["reasoning"].lower()
 
     def test_recommend_index_between_condition(self):
         """Test index recommendation for BETWEEN clause."""
         optimizer = IndexingOptimizer()
-        result = optimizer.recommend_index(
-            {"columns": ["price"], "conditions": ["price BETWEEN 10 AND 100"]}
-        )
+        result = optimizer.recommend_index({"columns": ["price"], "conditions": ["price BETWEEN 10 AND 100"]})
         assert result["index_type"] == "BTREE"
 
     def test_recommend_index_composite_multi_column(self):
@@ -497,9 +491,7 @@ class TestMigrationPlannerAdditional:
     def test_generate_migration_plan_drop_column(self):
         """Test migration plan for dropping column."""
         planner = MigrationPlanner()
-        plan = planner.generate_migration_plan(
-            {"operation": "drop_column", "table": "users", "column": "old_field"}
-        )
+        plan = planner.generate_migration_plan({"operation": "drop_column", "table": "users", "column": "old_field"})
         assert plan["reversible"] is True
         assert "Backup" in plan["steps"][0]
 
@@ -559,9 +551,7 @@ class TestMigrationPlannerAdditional:
     def test_detect_breaking_changes_drop_column(self):
         """Test breaking change detection for drop column."""
         planner = MigrationPlanner()
-        result = planner.detect_breaking_changes(
-            {"operation": "drop_column", "column": "user_id"}
-        )
+        result = planner.detect_breaking_changes({"operation": "drop_column", "column": "user_id"})
         assert result["has_breaking_changes"] is True
 
     def test_detect_breaking_changes_add_non_nullable(self):
@@ -685,36 +675,28 @@ class TestPerformanceMonitorAdditional:
     def test_analyze_query_performance_excellent(self):
         """Test excellent query performance analysis."""
         monitor = PerformanceMonitor()
-        result = monitor.analyze_query_performance(
-            {"avg_execution_time_ms": 10, "max_execution_time_ms": 20}
-        )
+        result = monitor.analyze_query_performance({"avg_execution_time_ms": 10, "max_execution_time_ms": 20})
         assert result["performance_rating"] == "excellent"
         assert len(result["recommendations"]) == 0
 
     def test_analyze_query_performance_good(self):
         """Test good query performance."""
         monitor = PerformanceMonitor()
-        result = monitor.analyze_query_performance(
-            {"avg_execution_time_ms": 75, "max_execution_time_ms": 150}
-        )
+        result = monitor.analyze_query_performance({"avg_execution_time_ms": 75, "max_execution_time_ms": 150})
         # Could be excellent or good depending on implementation
         assert result["performance_rating"] in ("good", "excellent")
 
     def test_analyze_query_performance_needs_improvement(self):
         """Test query needing improvement."""
         monitor = PerformanceMonitor()
-        result = monitor.analyze_query_performance(
-            {"avg_execution_time_ms": 750, "max_execution_time_ms": 1500}
-        )
+        result = monitor.analyze_query_performance({"avg_execution_time_ms": 750, "max_execution_time_ms": 1500})
         assert result["performance_rating"] == "needs_improvement"
         assert len(result["recommendations"]) > 0
 
     def test_analyze_query_performance_poor(self):
         """Test poor query performance."""
         monitor = PerformanceMonitor()
-        result = monitor.analyze_query_performance(
-            {"avg_execution_time_ms": 2000, "max_execution_time_ms": 8000}
-        )
+        result = monitor.analyze_query_performance({"avg_execution_time_ms": 2000, "max_execution_time_ms": 8000})
         assert result["performance_rating"] == "poor"
         assert len(result["recommendations"]) > 0
 

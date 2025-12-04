@@ -44,9 +44,7 @@ class TestInteractiveCheckboxUIInitialization:
     def test_init_scanner_created(self):
         """Test scanner is created during initialization."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch(
-                "moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"
-            ):
+            with patch("moai_adk.core.migration.interactive_checkbox_ui.create_custom_element_scanner"):
                 ui = InteractiveCheckboxUI(tmpdir)
                 assert hasattr(ui, "scanner")
 
@@ -100,9 +98,7 @@ class TestInteractiveCheckboxUIGetElementsByCategory:
             with patch.object(
                 ui.scanner,
                 "scan_custom_elements",
-                return_value={
-                    "agents": [str(Path(tmpdir) / "agents" / "test-agent.md")]
-                },
+                return_value={"agents": [str(Path(tmpdir) / "agents" / "test-agent.md")]},
             ):
                 result = ui._get_elements_by_category()
                 assert "Agents" in result
@@ -115,9 +111,7 @@ class TestInteractiveCheckboxUIGetElementsByCategory:
             with patch.object(
                 ui.scanner,
                 "scan_custom_elements",
-                return_value={
-                    "commands": [str(Path(tmpdir) / "commands" / "test-cmd.md")]
-                },
+                return_value={"commands": [str(Path(tmpdir) / "commands" / "test-cmd.md")]},
             ):
                 result = ui._get_elements_by_category()
                 assert "Commands" in result
@@ -161,11 +155,7 @@ class TestInteractiveCheckboxUIFlattenElements:
         with tempfile.TemporaryDirectory() as tmpdir:
             ui = InteractiveCheckboxUI(tmpdir)
 
-            elements_by_category = {
-                "Agents": [
-                    {"name": "test-agent", "path": "/path/to/agent", "type": "agent"}
-                ]
-            }
+            elements_by_category = {"Agents": [{"name": "test-agent", "path": "/path/to/agent", "type": "agent"}]}
 
             result = ui._flatten_elements(elements_by_category)
 
@@ -197,11 +187,7 @@ class TestInteractiveCheckboxUIFlattenElements:
         with tempfile.TemporaryDirectory() as tmpdir:
             ui = InteractiveCheckboxUI(tmpdir)
 
-            elements_by_category = {
-                "Skills": [
-                    {"name": "test-skill", "path": "/test/path/skill", "type": "skill"}
-                ]
-            }
+            elements_by_category = {"Skills": [{"name": "test-skill", "path": "/test/path/skill", "type": "skill"}]}
 
             result = ui._flatten_elements(elements_by_category)
             element = result[1]

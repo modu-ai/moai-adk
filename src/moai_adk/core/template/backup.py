@@ -43,10 +43,7 @@ class TemplateBackup:
         Returns:
             True when any tracked file exists.
         """
-        return any(
-            (self.target_path / item).exists()
-            for item in [".moai", ".claude", ".github", "CLAUDE.md"]
-        )
+        return any((self.target_path / item).exists() for item in [".moai", ".claude", ".github", "CLAUDE.md"])
 
     def create_backup(self) -> Path:
         """Create a timestamped backup under .moai-backups/.
@@ -96,11 +93,7 @@ class TemplateBackup:
         if backup_dir.exists():
             # Match pattern: YYYYMMDD_HHMMSS (8 digits + underscore + 6 digits)
             timestamp_pattern = re.compile(r"^\d{8}_\d{6}$")
-            timestamped_backups = [
-                d
-                for d in backup_dir.iterdir()
-                if d.is_dir() and timestamp_pattern.match(d.name)
-            ]
+            timestamped_backups = [d for d in backup_dir.iterdir() if d.is_dir() and timestamp_pattern.match(d.name)]
 
             if timestamped_backups:
                 # Sort by name (timestamp) and return the latest
@@ -128,10 +121,7 @@ class TemplateBackup:
             rel_path_str = str(rel_path)
 
             # Skip excluded paths
-            if any(
-                rel_path_str.startswith(exclude_dir)
-                for exclude_dir in self.BACKUP_EXCLUDE_DIRS
-            ):
+            if any(rel_path_str.startswith(exclude_dir) for exclude_dir in self.BACKUP_EXCLUDE_DIRS):
                 continue
 
             dst_item = dst / rel_path

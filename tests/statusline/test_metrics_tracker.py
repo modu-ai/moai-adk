@@ -60,9 +60,7 @@ class TestMetricsTracker:
 
         duration = tracker.get_duration()
 
-        assert "h" in duration or (
-            "1" in duration and "30" in duration
-        ), f"Duration should reflect hours: {duration}"
+        assert "h" in duration or ("1" in duration and "30" in duration), f"Duration should reflect hours: {duration}"
 
     def test_metrics_caching(self):
         """

@@ -59,9 +59,7 @@ class TestWorktreeManagerExecutable:
             with patch("moai_adk.cli.worktree.manager.Repo") as mock_repo_class:
                 mock_repo = MagicMock()
                 mock_repo_class.return_value = mock_repo
-                mock_repo.remotes.origin.fetch = MagicMock(
-                    side_effect=Exception("no origin")
-                )
+                mock_repo.remotes.origin.fetch = MagicMock(side_effect=Exception("no origin"))
                 mock_repo.heads = []
                 mock_repo.git.worktree = MagicMock(side_effect=Exception("git failed"))
                 mock_repo.create_head = MagicMock()
@@ -165,9 +163,7 @@ class TestWorktreeManagerCreateExecution:
                 mock_repo_class.return_value = mock_repo
                 mock_repo.remotes.origin.fetch = MagicMock(side_effect=Exception())
                 mock_repo.heads = []
-                mock_repo.git.worktree = MagicMock(
-                    side_effect=Exception("force scenario")
-                )
+                mock_repo.git.worktree = MagicMock(side_effect=Exception("force scenario"))
                 mock_repo.create_head = MagicMock()
                 mock_repo.git.status = MagicMock(return_value="")
 
@@ -178,9 +174,7 @@ class TestWorktreeManagerCreateExecution:
                 existing_info.path = existing_path
 
                 # First call returns existing, subsequent calls return None
-                manager.registry.get = MagicMock(
-                    side_effect=[existing_info, None, None]
-                )
+                manager.registry.get = MagicMock(side_effect=[existing_info, None, None])
                 manager.registry.unregister = MagicMock()
 
                 # Act & Assert - should raise GitOperationError from create attempt
@@ -248,13 +242,9 @@ class TestWorktreeManagerSyncExecution:
                 with patch("moai_adk.cli.worktree.manager.Repo") as inner_repo_patch:
                     mock_worktree_repo = MagicMock()
                     inner_repo_patch.return_value = mock_worktree_repo
-                    mock_worktree_repo.remotes.origin.fetch = MagicMock(
-                        side_effect=Exception()
-                    )
+                    mock_worktree_repo.remotes.origin.fetch = MagicMock(side_effect=Exception())
                     # rev_parse fails for both candidates
-                    mock_worktree_repo.git.rev_parse = MagicMock(
-                        side_effect=Exception()
-                    )
+                    mock_worktree_repo.git.rev_parse = MagicMock(side_effect=Exception())
 
                     with pytest.raises(GitOperationError):
                         manager.sync("SPEC-001")
@@ -286,9 +276,7 @@ class TestWorktreeManagerBranchDetection:
                 with patch("moai_adk.cli.worktree.manager.Repo") as inner_repo_patch:
                     mock_worktree_repo = MagicMock()
                     inner_repo_patch.return_value = mock_worktree_repo
-                    mock_worktree_repo.remotes.origin.fetch = MagicMock(
-                        side_effect=Exception()
-                    )
+                    mock_worktree_repo.remotes.origin.fetch = MagicMock(side_effect=Exception())
 
                     # First call (origin/main) succeeds
                     mock_worktree_repo.git.rev_parse = MagicMock(return_value="abc123")
@@ -328,18 +316,12 @@ class TestWorktreeManagerConflictHandling:
                 with patch("moai_adk.cli.worktree.manager.Repo") as inner_repo_patch:
                     mock_worktree_repo = MagicMock()
                     inner_repo_patch.return_value = mock_worktree_repo
-                    mock_worktree_repo.remotes.origin.fetch = MagicMock(
-                        side_effect=Exception()
-                    )
+                    mock_worktree_repo.remotes.origin.fetch = MagicMock(side_effect=Exception())
                     mock_worktree_repo.git.rev_parse = MagicMock(return_value="abc123")
                     # Merge fails
-                    mock_worktree_repo.git.merge = MagicMock(
-                        side_effect=Exception("conflict")
-                    )
+                    mock_worktree_repo.git.merge = MagicMock(side_effect=Exception("conflict"))
                     # Status shows unmerged files
-                    mock_worktree_repo.git.status = MagicMock(
-                        return_value="UU src/file.py"
-                    )
+                    mock_worktree_repo.git.status = MagicMock(return_value="UU src/file.py")
                     mock_worktree_repo.git.merge = MagicMock(side_effect=Exception())
                     mock_worktree_repo.git.rebase = MagicMock()
 

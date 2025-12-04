@@ -361,12 +361,7 @@ class TestTemplateProcessorVersionFormatting:
 
         # Act & Assert
         assert processor._format_trimmed_version("v1.2.3", max_length=10) == "1.2.3"
-        assert (
-            processor._format_trimmed_version(
-                "v1.2.3-verylongprerelease", max_length=10
-            )
-            == "1.2.3-very"
-        )
+        assert processor._format_trimmed_version("v1.2.3-verylongprerelease", max_length=10) == "1.2.3-very"
 
     def test_is_valid_version_format(self):
         """Test version format validation."""

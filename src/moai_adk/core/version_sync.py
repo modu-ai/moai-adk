@@ -131,22 +131,16 @@ class VersionSynchronizer:
             VersionInfo from pyproject.toml or None if not found
         """
         try:
-            version_info = self._extract_version(
-                self.pyproject_path, VersionSource.PYPROJECT_TOML
-            )
+            version_info = self._extract_version(self.pyproject_path, VersionSource.PYPROJECT_TOML)
             if version_info and version_info.is_valid:
-                logger.info(
-                    f"Master version from pyproject.toml: {version_info.version}"
-                )
+                logger.info(f"Master version from pyproject.toml: {version_info.version}")
                 return version_info
         except Exception as e:
             logger.error(f"Failed to get master version from pyproject.toml: {e}")
 
         return None
 
-    def synchronize_all(
-        self, target_version: Optional[str] = None, dry_run: bool = False
-    ) -> bool:
+    def synchronize_all(self, target_version: Optional[str] = None, dry_run: bool = False) -> bool:
         """
         Synchronize all version files to match master version
 
@@ -173,17 +167,13 @@ class VersionSynchronizer:
                 continue  # Skip pyproject.toml as it's the source
 
             try:
-                success = self._synchronize_file(
-                    file_path, source, target_version, dry_run
-                )
+                success = self._synchronize_file(file_path, source, target_version, dry_run)
                 sync_results.append((file_path, success))
 
                 if not dry_run and success:
                     logger.info(f"Synchronized {file_path} to version {target_version}")
                 elif dry_run:
-                    logger.info(
-                        f"[DRY RUN] Would synchronize {file_path} to version {target_version}"
-                    )
+                    logger.info(f"[DRY RUN] Would synchronize {file_path} to version {target_version}")
 
             except Exception as e:
                 logger.error(f"Failed to synchronize {file_path}: {e}")
@@ -198,9 +188,7 @@ class VersionSynchronizer:
         logger.error("Some files failed to synchronize")
         return False
 
-    def _extract_version(
-        self, file_path: Path, source: VersionSource
-    ) -> Optional[VersionInfo]:
+    def _extract_version(self, file_path: Path, source: VersionSource) -> Optional[VersionInfo]:
         """Extract version from specific file based on source type"""
         if not file_path.exists():
             logger.debug(f"File not found: {file_path}")
@@ -254,9 +242,7 @@ class VersionSynchronizer:
         match = re.search(pattern, content)
         return match.group(1) if match else None
 
-    def _synchronize_file(
-        self, file_path: Path, source: VersionSource, target_version: str, dry_run: bool
-    ) -> bool:
+    def _synchronize_file(self, file_path: Path, source: VersionSource, target_version: str, dry_run: bool) -> bool:
         """Synchronize specific file to target version"""
         current_info = self._extract_version(file_path, source)
         if not current_info:
@@ -271,9 +257,7 @@ class VersionSynchronizer:
             return True
 
         try:
-            new_content = self._update_version_in_content(
-                current_info.raw_content, source, target_version
-            )
+            new_content = self._update_version_in_content(current_info.raw_content, source, target_version)
 
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(new_content)
@@ -284,9 +268,7 @@ class VersionSynchronizer:
             logger.error(f"Failed to update {file_path}: {e}")
             return False
 
-    def _update_version_in_content(
-        self, content: str, source: VersionSource, target_version: str
-    ) -> str:
+    def _update_version_in_content(self, content: str, source: VersionSource, target_version: str) -> str:
         """Update version in content based on source type"""
         if source == VersionSource.CONFIG_JSON:
             # Update moai.version in JSON
@@ -299,9 +281,7 @@ class VersionSynchronizer:
             except json.JSONDecodeError:
                 # Fallback: regex replacement
                 pattern = r'("moai"\s*:\s*\{[^}]*"version"\s*:\s*")[^"\']+(")'
-                return re.sub(
-                    pattern, f"\\1{target_version}\\2", content, flags=re.DOTALL
-                )
+                return re.sub(pattern, f"\\1{target_version}\\2", content, flags=re.DOTALL)
 
         elif source == VersionSource.PACKAGE_METADATA:
             # Update __version__ in Python (fallback version)
@@ -323,9 +303,7 @@ class VersionSynchronizer:
                     shutil.rmtree(cache_dir)
                     cache_dir.mkdir(exist_ok=True)
                     cleared_count += cache_size
-                    logger.info(
-                        f"Cleared cache directory: {cache_dir} ({cache_size} files)"
-                    )
+                    logger.info(f"Cleared cache directory: {cache_dir} ({cache_size} files)")
                 except Exception as e:
                     logger.warning(f"Failed to clear cache directory {cache_dir}: {e}")
 
@@ -415,12 +393,8 @@ class VersionSynchronizer:
 
         invalid_versions = [info for info in version_infos if not info.is_valid]
         if invalid_versions:
-            issues_list.append(
-                f"Invalid version format in {len(invalid_versions)} files"
-            )
-            recommendations_list.append(
-                "Fix version format to follow semantic versioning"
-            )
+            issues_list.append(f"Invalid version format in {len(invalid_versions)} files")
+            recommendations_list.append("Fix version format to follow semantic versioning")
 
         return report
 
@@ -440,9 +414,7 @@ def check_project_versions(working_dir: Optional[Path] = None) -> Dict[str, Any]
     return synchronizer.get_version_report()
 
 
-def synchronize_project_versions(
-    working_dir: Optional[Path] = None, dry_run: bool = False
-) -> bool:
+def synchronize_project_versions(working_dir: Optional[Path] = None, dry_run: bool = False) -> bool:
     """
     Synchronize all version files in the project
 

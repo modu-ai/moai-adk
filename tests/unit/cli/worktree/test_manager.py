@@ -110,10 +110,7 @@ class TestWorktreeManagerInstantiation:
 
             manager = WorktreeManager(repo_path=repo_path, worktree_root=worktree_root)
             # Check for list method
-            assert (
-                hasattr(manager, "list")
-                or len([m for m in dir(manager) if "list" in m.lower()]) > 0
-            )
+            assert hasattr(manager, "list") or len([m for m in dir(manager) if "list" in m.lower()]) > 0
 
 
 class TestWorktreeManagerAttributes:

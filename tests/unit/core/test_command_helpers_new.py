@@ -570,8 +570,6 @@ class TestEdgeCases:
             special_dir.mkdir()
             (special_dir / "file_with_underscore.txt").touch()
 
-            result = validate_phase_files(
-                ["dir-with-dash/file_with_underscore.txt"], tmpdir
-            )
+            result = validate_phase_files(["dir-with-dash/file_with_underscore.txt"], tmpdir)
 
             assert len(result) == 1

@@ -94,9 +94,7 @@ class LegacyConfigDetector:
                 for pattern in patterns:
                     for file_path in search_dir.glob(f"**/{pattern}"):
                         try:
-                            config_info = self._analyze_config_file(
-                                file_path, module_name
-                            )
+                            config_info = self._analyze_config_file(file_path, module_name)
                             if config_info:
                                 legacy_configs.append(config_info)
                         except Exception as e:
@@ -106,9 +104,7 @@ class LegacyConfigDetector:
         legacy_configs.sort(key=lambda x: (x.priority, str(x.path)))
         return legacy_configs
 
-    def _analyze_config_file(
-        self, file_path: Path, module_name: str
-    ) -> Optional[LegacyConfigInfo]:
+    def _analyze_config_file(self, file_path: Path, module_name: str) -> Optional[LegacyConfigInfo]:
         """Analyze individual configuration file."""
         if not file_path.is_file():
             return None
@@ -141,9 +137,7 @@ class LegacyConfigDetector:
                     return None
 
             # Extract version if available
-            version = (
-                data.get("version", "1.0.0") if isinstance(data, dict) else "1.0.0"
-            )
+            version = data.get("version", "1.0.0") if isinstance(data, dict) else "1.0.0"
 
             # Determine priority based on file location and naming
             priority = self._calculate_priority(file_path, module_name)
@@ -264,13 +258,9 @@ class ConfigurationMigrator:
 
         return results
 
-    def _migrate_module(
-        self, module_name: str, configs: List[LegacyConfigInfo], backup: bool
-    ) -> Dict[str, Any]:
+    def _migrate_module(self, module_name: str, configs: List[LegacyConfigInfo], backup: bool) -> Dict[str, Any]:
         """Migrate configurations for a specific module."""
-        logger.info(
-            f"Migrating {len(configs)} configuration files for module {module_name}"
-        )
+        logger.info(f"Migrating {len(configs)} configuration files for module {module_name}")
 
         # Load existing unified config
         unified_config = self.config_manager.load_config()
@@ -348,9 +338,7 @@ class ConfigurationMigrator:
             logger.error(f"Failed to load {config_info.path}: {e}")
             raise
 
-    def _transform_legacy_data(
-        self, data: Dict[str, Any], module_name: str, version: str
-    ) -> Dict[str, Any]:
+    def _transform_legacy_data(self, data: Dict[str, Any], module_name: str, version: str) -> Dict[str, Any]:
         """Transform legacy data to unified format."""
         if module_name not in self.migration_steps:
             logger.warning(f"No migration steps defined for {module_name}")
@@ -362,13 +350,9 @@ class ConfigurationMigrator:
                 try:
                     migration_func = getattr(self, step.migration_func)
                     data = migration_func(data)
-                    logger.debug(
-                        f"Applied migration {step.from_version}->{step.to_version} for {module_name}"
-                    )
+                    logger.debug(f"Applied migration {step.from_version}->{step.to_version} for {module_name}")
                 except Exception as e:
-                    logger.error(
-                        f"Failed to apply migration {step.from_version}->{step.to_version}: {e}"
-                    )
+                    logger.error(f"Failed to apply migration {step.from_version}->{step.to_version}: {e}")
                     raise
 
         return data
@@ -569,9 +553,7 @@ class ConfigurationMigrator:
 
 
 # Utility functions
-def run_migration(
-    config_dir: Union[str, Path], backup: bool = True, dry_run: bool = False
-) -> Dict[str, Any]:
+def run_migration(config_dir: Union[str, Path], backup: bool = True, dry_run: bool = False) -> Dict[str, Any]:
     """
     Run complete migration process.
 

@@ -324,10 +324,7 @@ class TestEnhancedInputValidationMiddleware:
             },
         )
         # Should have converted the string to integer
-        assert (
-            isinstance(result.normalized_input["head_limit"], int)
-            or result.normalized_input["head_limit"] == 50
-        )
+        assert isinstance(result.normalized_input["head_limit"], int) or result.normalized_input["head_limit"] == 50
 
     def test_type_conversion_integer_from_float(self):
         """Test converting float to integer"""
@@ -627,9 +624,7 @@ class TestEnhancedInputValidationMiddleware:
             "Grep",
             {},  # Missing required pattern
         )
-        critical_errors = [
-            e for e in result.errors if e.severity == ValidationSeverity.CRITICAL
-        ]
+        critical_errors = [e for e in result.errors if e.severity == ValidationSeverity.CRITICAL]
         assert len(critical_errors) > 0
 
     def test_warning_messages(self):

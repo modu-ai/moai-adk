@@ -133,9 +133,7 @@ class SafeFileReader:
 
 
 # Global convenience functions
-def safe_read_file(
-    file_path: Union[str, Path], encodings: Optional[List[str]] = None
-) -> Optional[str]:
+def safe_read_file(file_path: Union[str, Path], encodings: Optional[List[str]] = None) -> Optional[str]:
     """
     Convenience function to safely read a single file.
 
@@ -150,9 +148,7 @@ def safe_read_file(
     return reader.read_text(file_path)
 
 
-def safe_read_lines(
-    file_path: Union[str, Path], encodings: Optional[List[str]] = None
-) -> List[str]:
+def safe_read_lines(file_path: Union[str, Path], encodings: Optional[List[str]] = None) -> List[str]:
     """
     Convenience function to safely read file lines.
 

@@ -73,9 +73,7 @@ def is_root_whitelisted(filename: str, config: Dict[str, Any]) -> bool:
     return False
 
 
-def get_file_pattern_category(
-    filename: str, config: Dict[str, Any]
-) -> Optional[Tuple[str, str]]:
+def get_file_pattern_category(filename: str, config: Dict[str, Any]) -> Optional[Tuple[str, str]]:
     """Match filename against patterns to determine category.
 
     Consolidated from pre_tool__document_management.py and session_end__auto_cleanup.py
@@ -117,12 +115,7 @@ def suggest_moai_location(filename: str, config: Dict[str, Any]) -> str:
 
     if match:
         dir_type, category = match
-        base_dir = (
-            config.get("document_management", {})
-            .get("directories", {})
-            .get(dir_type, {})
-            .get("base", "")
-        )
+        base_dir = config.get("document_management", {}).get("directories", {}).get(dir_type, {}).get("base", "")
         if base_dir:
             return f"{base_dir}{category}/"
 

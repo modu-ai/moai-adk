@@ -386,11 +386,7 @@ class TestCompareFormatsMetrics:
 
     def test_compare_formats_large_data(self):
         """Test compare with large data."""
-        data = {
-            "items": [
-                {"id": i, "name": f"Item{i}", "value": i * 10} for i in range(100)
-            ]
-        }
+        data = {"items": [{"id": i, "name": f"Item{i}", "value": i * 10} for i in range(100)]}
         result = compare_formats(data)
         assert result["json"]["size_bytes"] > 0
         assert result["toon"]["size_bytes"] > 0

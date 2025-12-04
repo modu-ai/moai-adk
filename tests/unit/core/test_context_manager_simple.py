@@ -72,9 +72,7 @@ class TestIsPathWithinRoot:
 
     def test_invalid_path_returns_false(self):
         """Test invalid path returns false."""
-        result = _is_path_within_root(
-            "/nonexistent/path/to/nowhere", "/nonexistent/root"
-        )
+        result = _is_path_within_root("/nonexistent/path/to/nowhere", "/nonexistent/root")
 
         assert result is False
 

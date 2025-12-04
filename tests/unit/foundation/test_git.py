@@ -177,25 +177,19 @@ class TestBranchingStrategySelector:
     def test_select_strategy_team(self):
         """Test select_strategy for team environment."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=3, risk_level="high", need_review=True
-        )
+        strategy = selector.select_strategy(team_size=3, risk_level="high", need_review=True)
         assert strategy == "feature_branch"
 
     def test_select_strategy_solo_low_risk(self):
         """Test select_strategy for solo developer."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=1, risk_level="low", need_review=False
-        )
+        strategy = selector.select_strategy(team_size=1, risk_level="low", need_review=False)
         assert strategy == "direct_commit"
 
     def test_select_strategy_per_spec(self):
         """Test select_strategy defaults to per_spec."""
         selector = BranchingStrategySelector()
-        strategy = selector.select_strategy(
-            team_size=1, risk_level="medium", need_review=False
-        )
+        strategy = selector.select_strategy(team_size=1, risk_level="medium", need_review=False)
         assert strategy in ["direct_commit", "per_spec"]
 
     def test_get_strategy_details(self):
@@ -240,9 +234,7 @@ class TestGitWorkflowManager:
     def test_format_tdd_commit_refactor(self):
         """Test format_tdd_commit for REFACTOR phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_tdd_commit(
-            "refactor", "auth", "improve performance", "REFACTOR"
-        )
+        commit = manager.format_tdd_commit("refactor", "auth", "improve performance", "REFACTOR")
         assert "refactor(auth): improve performance" in commit
         assert "REFACTOR phase" in commit
 

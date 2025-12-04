@@ -51,9 +51,7 @@ class TestGetLanguageTemplate:
         """Should be case-insensitive"""
         assert get_language_template("Python") == get_language_template("python")
         assert get_language_template("PYTHON") == get_language_template("python")
-        assert get_language_template("TypeScript") == get_language_template(
-            "typescript"
-        )
+        assert get_language_template("TypeScript") == get_language_template("typescript")
 
     def test_get_language_template_unknown_language(self):
         """Should return default template for unknown language"""

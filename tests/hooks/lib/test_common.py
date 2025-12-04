@@ -445,6 +445,4 @@ class TestCommonIntegration:
             }
 
             assert all(isinstance(v, str) for v in report.values())
-            assert all(
-                any(unit in v for unit in ["s", "m", "h"]) for v in report.values()
-            )
+            assert all(any(unit in v for unit in ["s", "m", "h"]) for v in report.values())

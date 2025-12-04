@@ -352,9 +352,7 @@ class TestRenderDirectory:
             variables = {"text": "data"}
 
             # Act
-            result = engine.render_directory(
-                template_dir, output_dir, variables, pattern="*.txt"
-            )
+            result = engine.render_directory(template_dir, output_dir, variables, pattern="*.txt")
 
             # Assert
             assert "file.txt" in result

@@ -26,9 +26,7 @@ class TestGetManager:
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
     @patch("moai_adk.cli.worktree.cli.Path.cwd")
-    def test_get_manager_with_explicit_paths(
-        self, mock_cwd, mock_detect, mock_manager_class
-    ):
+    def test_get_manager_with_explicit_paths(self, mock_cwd, mock_detect, mock_manager_class):
         """Test get_manager with explicit repo and worktree paths."""
         # Arrange
         repo_path = Path("/test/repo")
@@ -41,17 +39,13 @@ class TestGetManager:
 
         # Assert
         assert result == mock_manager
-        mock_manager_class.assert_called_once_with(
-            repo_path=repo_path, worktree_root=worktree_root
-        )
+        mock_manager_class.assert_called_once_with(repo_path=repo_path, worktree_root=worktree_root)
         mock_detect.assert_not_called()
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
     @patch("moai_adk.cli.worktree.cli.Path")
-    def test_get_manager_finds_git_directory(
-        self, mock_path_class, mock_detect, mock_manager_class
-    ):
+    def test_get_manager_finds_git_directory(self, mock_path_class, mock_detect, mock_manager_class):
         """Test get_manager finds .git directory walking up."""
         # Arrange
         # Create a mock path that walks up directories
@@ -77,9 +71,7 @@ class TestGetManager:
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_get_manager_calls_detect_worktree_root(
-        self, mock_detect, mock_manager_class
-    ):
+    def test_get_manager_calls_detect_worktree_root(self, mock_detect, mock_manager_class):
         """Test get_manager calls _detect_worktree_root when not specified."""
         # Arrange
         mock_detect.return_value = Path("/detected/worktrees")
@@ -88,9 +80,7 @@ class TestGetManager:
 
         with patch("moai_adk.cli.worktree.cli.Path") as mock_path:
             mock_cwd = MagicMock()
-            mock_cwd.__truediv__ = MagicMock(
-                return_value=MagicMock(exists=MagicMock(return_value=False))
-            )
+            mock_cwd.__truediv__ = MagicMock(return_value=MagicMock(exists=MagicMock(return_value=False)))
             mock_cwd.parent = MagicMock()
             mock_cwd.parent.__eq__ = MagicMock(return_value=True)
 
@@ -158,9 +148,7 @@ class TestFindMainRepository:
         with patch("moai_adk.cli.worktree.cli.Path") as mock_path_class:
             repo_path = Path("/test/repo")
             mock_repo = MagicMock()
-            mock_repo.__truediv__ = MagicMock(
-                return_value=MagicMock(exists=MagicMock(return_value=True))
-            )
+            mock_repo.__truediv__ = MagicMock(return_value=MagicMock(exists=MagicMock(return_value=True)))
 
             # The actual implementation would call _find_main_repository
             # This is a helper function with filesystem operations
@@ -182,9 +170,7 @@ class TestCliCommands:
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_manager_initialization_with_none_paths(
-        self, mock_detect, mock_manager_class
-    ):
+    def test_manager_initialization_with_none_paths(self, mock_detect, mock_manager_class):
         """Test manager is initialized when worktree_root is None."""
         # Arrange
         mock_manager = MagicMock()
@@ -226,9 +212,7 @@ class TestCliCommands:
         mock_manager_class.return_value = mock_manager
 
         # Act
-        result = get_manager(
-            repo_path=Path("/test/repo"), worktree_root=Path("/test/worktrees")
-        )
+        result = get_manager(repo_path=Path("/test/repo"), worktree_root=Path("/test/worktrees"))
 
         # Assert
         assert result == mock_manager
@@ -261,9 +245,7 @@ class TestWorktreeManagerIntegration:
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
-    def test_manager_with_auto_detect_worktree_root(
-        self, mock_detect, mock_manager_class
-    ):
+    def test_manager_with_auto_detect_worktree_root(self, mock_detect, mock_manager_class):
         """Test get_manager auto-detects worktree root when not provided."""
         # Arrange
         repo_path = Path("/test/repo")

@@ -75,9 +75,7 @@ def test_detect_stale_cache_false():
     assert result is False
 
     # Scenario 3: Empty output
-    result = _detect_stale_cache(
-        upgrade_output="", current_version="0.8.3", latest_version="0.9.0"
-    )
+    result = _detect_stale_cache(upgrade_output="", current_version="0.8.3", latest_version="0.9.0")
     assert result is False
 
     # Scenario 4: Current version is newer (dev version)
@@ -148,9 +146,7 @@ def test_clear_cache_failure(monkeypatch):
 
     # Scenario 2: Timeout expired
     def mock_timeout(*args, **kwargs):
-        raise subprocess.TimeoutExpired(
-            cmd=["uv", "cache", "clean", "moai-adk"], timeout=10
-        )
+        raise subprocess.TimeoutExpired(cmd=["uv", "cache", "clean", "moai-adk"], timeout=10)
 
     monkeypatch.setattr("subprocess.run", mock_timeout)
     result = _clear_uv_package_cache("moai-adk")
@@ -336,9 +332,7 @@ def test_upgrade_cache_clear_fails(monkeypatch):
     update_module = sys.modules["moai_adk.cli.commands.update"]
     monkeypatch.setattr(update_module, "_get_current_version", lambda: "0.8.3")
     monkeypatch.setattr(update_module, "_get_latest_version", lambda: "0.9.1")
-    monkeypatch.setattr(
-        update_module, "_clear_uv_package_cache", lambda x: False
-    )  # Cache clear fails
+    monkeypatch.setattr(update_module, "_clear_uv_package_cache", lambda x: False)  # Cache clear fails
 
     # Execute
     result = _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])

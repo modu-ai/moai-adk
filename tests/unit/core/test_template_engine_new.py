@@ -67,9 +67,7 @@ class TestRenderString:
     def test_render_string_conditional(self):
         """Test rendering conditional sections."""
         engine = TemplateEngine()
-        template = (
-            "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}"
-        )
+        template = "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}"
         variables = {"enabled": True}
 
         result = engine.render_string(template, variables)
@@ -116,9 +114,7 @@ class TestRenderString:
     def test_render_string_complex_expression(self):
         """Test rendering complex Jinja2 expressions."""
         engine = TemplateEngine()
-        template = (
-            "{% if count > 0 %}There are {{count}} items{% else %}No items{% endif %}"
-        )
+        template = "{% if count > 0 %}There are {{count}} items{% else %}No items{% endif %}"
         variables = {"count": 5}
 
         result = engine.render_string(template, variables)

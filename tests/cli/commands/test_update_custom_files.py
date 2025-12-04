@@ -370,9 +370,7 @@ class TestPromptCustomFilesRestore:
         """
         from moai_adk.cli.commands.update import _prompt_custom_files_restore
 
-        result = _prompt_custom_files_restore(
-            custom_commands=[], custom_agents=[], custom_hooks=[], yes=False
-        )
+        result = _prompt_custom_files_restore(custom_commands=[], custom_agents=[], custom_hooks=[], yes=False)
 
         # Should return empty selections
         assert result == {"commands": [], "agents": [], "hooks": []}

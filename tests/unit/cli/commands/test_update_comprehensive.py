@@ -302,9 +302,7 @@ class TestVersionRetrieval:
         """Test fetching latest version from PyPI."""
         # Arrange
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps(
-            {"info": {"version": "0.2.0"}}
-        ).encode("utf-8")
+        mock_response.read.return_value = json.dumps({"info": {"version": "0.2.0"}}).encode("utf-8")
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
@@ -512,9 +510,7 @@ class TestCustomFileDetection:
         custom_extensions = [".json", ".yaml", ".yml", ".md"]
 
         # Act
-        custom_files = [
-            f for f in files if any(f.endswith(ext) for ext in custom_extensions)
-        ]
+        custom_files = [f for f in files if any(f.endswith(ext) for ext in custom_extensions)]
 
         # Assert
         assert len(custom_files) >= 2
@@ -550,9 +546,7 @@ class TestMigrationOperations:
         ]
 
         # Act
-        sorted_steps = sorted(
-            migration_steps, key=lambda x: packaging_version.parse(x["version"])
-        )
+        sorted_steps = sorted(migration_steps, key=lambda x: packaging_version.parse(x["version"]))
 
         # Assert
         assert sorted_steps[0]["version"] == "0.1.0"

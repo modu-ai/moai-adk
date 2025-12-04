@@ -148,12 +148,8 @@ class TestTemplateProcessor:
             value = "test\n\r\tvalue{{placeholder}}"
             sanitized = processor._sanitize_value(value)
 
-            assert (
-                "{{placeholder}}" not in sanitized
-            )  # Recursive substitution prevented
-            assert (
-                "\n" in sanitized and "\r" in sanitized and "\t" in sanitized
-            )  # Whitespace preserved
+            assert "{{placeholder}}" not in sanitized  # Recursive substitution prevented
+            assert "\n" in sanitized and "\r" in sanitized and "\t" in sanitized  # Whitespace preserved
 
     def test_is_text_file(self):
         """Test text file detection."""
@@ -380,12 +376,8 @@ Content here
 
             # Test unsupported extensions
             assert processor._is_text_file(Path("test.unknown")) is False
-            assert (
-                processor._is_text_file(Path("test.cpp")) is False
-            )  # Not in default list
-            assert (
-                processor._is_text_file(Path("test.java")) is False
-            )  # Not in default list
+            assert processor._is_text_file(Path("test.cpp")) is False  # Not in default list
+            assert processor._is_text_file(Path("test.java")) is False  # Not in default list
 
     def test_substitute_variables_empty_context(self):
         """Test variable substitution with empty context."""
