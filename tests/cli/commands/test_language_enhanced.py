@@ -238,7 +238,10 @@ class TestRenderTemplateCommand:
         mock_engine_instance.render_file.return_value = "Hello World"
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(render_template, [str(template_file), str(variables_file), "--language", "ko"])
+        result = runner.invoke(
+            render_template,
+            [str(template_file), str(variables_file), "--language", "ko"],
+        )
 
         assert result.exit_code == 0
         # Check that language variables were added
@@ -285,7 +288,10 @@ class TestRenderTemplateCommand:
         mock_engine_instance.render_file.return_value = "Rendered output"
         mock_engine.return_value = mock_engine_instance
 
-        result = runner.invoke(render_template, [str(template_file), str(variables_file), "-o", str(output_file)])
+        result = runner.invoke(
+            render_template,
+            [str(template_file), str(variables_file), "-o", str(output_file)],
+        )
 
         assert result.exit_code == 0
         # Should confirm file saved
@@ -776,7 +782,13 @@ class TestValidateConfigCommand:
     @patch("moai_adk.cli.commands.language.get_native_name")
     @patch("moai_adk.cli.commands.language.get_all_supported_codes")
     def test_validate_config_matching_language_name_shows_success(
-        self, mock_get_codes, mock_get_name, mock_console, runner, tmp_path, sample_config
+        self,
+        mock_get_codes,
+        mock_get_name,
+        mock_console,
+        runner,
+        tmp_path,
+        sample_config,
     ):
         """Should show success when language name matches"""
         mock_get_codes.return_value = ["ko"]
@@ -980,7 +992,13 @@ class TestParametrizedScenarios:
     @patch("moai_adk.cli.commands.language.LANGUAGE_CONFIG")
     @patch("moai_adk.cli.commands.language.console")
     def test_info_handles_various_case_combinations(
-        self, mock_console, mock_config, runner, lang_code, expected_code, mock_language_config
+        self,
+        mock_console,
+        mock_config,
+        runner,
+        lang_code,
+        expected_code,
+        mock_language_config,
     ):
         """Should handle various case combinations for language codes"""
         mock_config.get.return_value = mock_language_config.get(expected_code)

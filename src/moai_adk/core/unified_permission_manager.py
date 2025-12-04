@@ -103,7 +103,13 @@ class UnifiedPermissionManager:
     """
 
     # Valid permission modes from Claude Code
-    VALID_PERMISSION_MODES = {"acceptEdits", "bypassPermissions", "default", "dontAsk", "plan"}
+    VALID_PERMISSION_MODES = {
+        "acceptEdits",
+        "bypassPermissions",
+        "default",
+        "dontAsk",
+        "plan",
+    }
 
     # Default permission mappings
     DEFAULT_PERMISSIONS = {
@@ -132,7 +138,11 @@ class UnifiedPermissionManager:
         }
 
         # Role hierarchy for inheritance
-        self.role_hierarchy = {"admin": ["developer", "user"], "developer": ["user"], "user": []}
+        self.role_hierarchy = {
+            "admin": ["developer", "user"],
+            "developer": ["user"],
+            "user": [],
+        }
 
         # Load and validate current configuration
         self.config = self._load_configuration()
@@ -558,7 +568,9 @@ class UnifiedPermissionManager:
                 }
 
                 results[agent_name] = ValidationResult(
-                    valid=True, auto_corrected=True, warnings=[f"Created default configuration for agent: {agent_name}"]
+                    valid=True,
+                    auto_corrected=True,
+                    warnings=[f"Created default configuration for agent: {agent_name}"],
                 )
 
         if any(result.auto_corrected for result in results.values()):
@@ -685,9 +697,21 @@ if __name__ == "__main__":
 
     # Test agent permission validation
     test_agents = [
-        {"name": "backend-expert", "config": {"permissionMode": "ask", "description": "Backend expert agent"}},
-        {"name": "security-expert", "config": {"permissionMode": "auto", "description": "Security expert agent"}},
-        {"name": "api-designer", "config": {"permissionMode": "plan", "description": "API designer agent"}},
+        {
+            "name": "backend-expert",
+            "config": {"permissionMode": "ask", "description": "Backend expert agent"},
+        },
+        {
+            "name": "security-expert",
+            "config": {
+                "permissionMode": "auto",
+                "description": "Security expert agent",
+            },
+        },
+        {
+            "name": "api-designer",
+            "config": {"permissionMode": "plan", "description": "API designer agent"},
+        },
     ]
 
     print("Testing agent permission validation and auto-correction...")

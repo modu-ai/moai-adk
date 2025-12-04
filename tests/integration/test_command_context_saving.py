@@ -39,7 +39,11 @@ def mock_project_dir():
 
         # Create config.json
         config = {
-            "project": {"name": "TestProject", "mode": "personal", "owner": "@testuser"},
+            "project": {
+                "name": "TestProject",
+                "mode": "personal",
+                "owner": "@testuser",
+            },
             "language": {"conversation_language": "en"},
         }
         config_path = project_root / ".moai" / "config" / "config.json"
@@ -70,7 +74,12 @@ class TestProjectCommandContextSaving:
             "phase": "0-project",
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "status": "completed",
-            "outputs": {"project_name": "TestProject", "mode": "personal", "language": "en", "tech_stack": ["python"]},
+            "outputs": {
+                "project_name": "TestProject",
+                "mode": "personal",
+                "language": "en",
+                "tech_stack": ["python"],
+            },
             "files_created": [
                 os.path.join(mock_project_dir, ".moai/project/product.md"),
                 os.path.join(mock_project_dir, ".moai/project/structure.md"),
@@ -159,7 +168,11 @@ class TestProjectCommandContextSaving:
         AND all paths must be within project root
         """
         # Arrange: Mix of relative and absolute paths (should all be converted)
-        relative_paths = [".moai/project/product.md", ".moai/project/structure.md", "src/main.py"]
+        relative_paths = [
+            ".moai/project/product.md",
+            ".moai/project/structure.md",
+            "src/main.py",
+        ]
 
         # Convert to absolute using validate_and_convert_path
         absolute_paths = [validate_and_convert_path(rel_path, mock_project_dir) for rel_path in relative_paths]
@@ -206,7 +219,11 @@ class TestProjectCommandContextSaving:
         }
 
         # Substitute template variables
-        context = {"PROJECT_NAME": "TestProject", "MODE": "personal", "PROJECT_ROOT": mock_project_dir}
+        context = {
+            "PROJECT_NAME": "TestProject",
+            "MODE": "personal",
+            "PROJECT_ROOT": mock_project_dir,
+        }
 
         # Convert outputs to JSON string, substitute, then parse back
         outputs_str = json.dumps(raw_data["outputs"])

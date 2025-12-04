@@ -217,7 +217,7 @@ def compare_formats(data: Any) -> dict[str, Any]:
                 "tokens": toon_tokens,
             },
             "reduction": reduction,
-            "size_reduction_percent": 100 * (1 - len(toon_str) / len(json_str)) if json_str else 0,
+            "size_reduction_percent": (100 * (1 - len(toon_str) / len(json_str)) if json_str else 0),
         }
     except (ValueError, TypeError) as e:
         raise ValueError(f"Failed to compare formats: {e}") from e

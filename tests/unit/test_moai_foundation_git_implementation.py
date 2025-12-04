@@ -231,7 +231,8 @@ class ConventionalCommitValidator:
         pattern = r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
         if not re.match(pattern, first_line):
             return ValidateResult(
-                is_valid=False, errors=["Invalid Conventional Commits format. Expected: type(scope): subject"]
+                is_valid=False,
+                errors=["Invalid Conventional Commits format. Expected: type(scope): subject"],
             )
 
         # Extract type and scope
@@ -279,7 +280,11 @@ class GitPerformanceOptimizer:
     """Provides Git performance optimization tips."""
 
     PERFORMANCE_TIPS = {
-        "small": ["Standard clone operations", "Keep working directory clean", "Regular garbage collection"],
+        "small": [
+            "Standard clone operations",
+            "Keep working directory clean",
+            "Regular garbage collection",
+        ],
         "medium": [
             "Enable MIDX for faster operations",
             "Use shallow clones for CI/CD",

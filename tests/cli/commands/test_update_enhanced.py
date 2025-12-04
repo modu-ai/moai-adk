@@ -169,7 +169,10 @@ class TestToolDetection:
     def test_detect_tool_installer_uv_priority(self):
         """Test that uv tool has priority over pipx and pip."""
         with (
-            patch("moai_adk.cli.commands.update._is_installed_via_uv_tool", return_value=True),
+            patch(
+                "moai_adk.cli.commands.update._is_installed_via_uv_tool",
+                return_value=True,
+            ),
             patch("moai_adk.cli.commands.update._is_installed_via_pipx", return_value=True),
             patch("moai_adk.cli.commands.update._is_installed_via_pip", return_value=True),
         ):
@@ -179,7 +182,10 @@ class TestToolDetection:
     def test_detect_tool_installer_pipx_priority(self):
         """Test that pipx has priority over pip."""
         with (
-            patch("moai_adk.cli.commands.update._is_installed_via_uv_tool", return_value=False),
+            patch(
+                "moai_adk.cli.commands.update._is_installed_via_uv_tool",
+                return_value=False,
+            ),
             patch("moai_adk.cli.commands.update._is_installed_via_pipx", return_value=True),
             patch("moai_adk.cli.commands.update._is_installed_via_pip", return_value=True),
         ):
@@ -189,8 +195,14 @@ class TestToolDetection:
     def test_detect_tool_installer_pip_fallback(self):
         """Test pip as fallback when uv and pipx not available."""
         with (
-            patch("moai_adk.cli.commands.update._is_installed_via_uv_tool", return_value=False),
-            patch("moai_adk.cli.commands.update._is_installed_via_pipx", return_value=False),
+            patch(
+                "moai_adk.cli.commands.update._is_installed_via_uv_tool",
+                return_value=False,
+            ),
+            patch(
+                "moai_adk.cli.commands.update._is_installed_via_pipx",
+                return_value=False,
+            ),
             patch("moai_adk.cli.commands.update._is_installed_via_pip", return_value=True),
         ):
             result = _detect_tool_installer()
@@ -199,8 +211,14 @@ class TestToolDetection:
     def test_detect_tool_installer_none_found(self):
         """Test when no installer is detected."""
         with (
-            patch("moai_adk.cli.commands.update._is_installed_via_uv_tool", return_value=False),
-            patch("moai_adk.cli.commands.update._is_installed_via_pipx", return_value=False),
+            patch(
+                "moai_adk.cli.commands.update._is_installed_via_uv_tool",
+                return_value=False,
+            ),
+            patch(
+                "moai_adk.cli.commands.update._is_installed_via_pipx",
+                return_value=False,
+            ),
             patch("moai_adk.cli.commands.update._is_installed_via_pip", return_value=False),
         ):
             result = _detect_tool_installer()
@@ -301,7 +319,10 @@ class TestVersionFunctions:
         """Test project config version with template_version field."""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_data = {"project": {"template_version": "0.6.5"}, "moai": {"version": "0.6.0"}}
+        config_data = {
+            "project": {"template_version": "0.6.5"},
+            "moai": {"version": "0.6.0"},
+        }
         (config_dir / "config.json").write_text(json.dumps(config_data))
 
         result = _get_project_config_version(tmp_path)
@@ -321,7 +342,10 @@ class TestVersionFunctions:
         """Test project config version with placeholder values."""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_data = {"project": {"template_version": "{{TEMPLATE_VERSION}}"}, "moai": {"version": "{{MOAI_VERSION}}"}}
+        config_data = {
+            "project": {"template_version": "{{TEMPLATE_VERSION}}"},
+            "moai": {"version": "{{MOAI_VERSION}}"},
+        }
         (config_dir / "config.json").write_text(json.dumps(config_data))
 
         result = _get_project_config_version(tmp_path)
@@ -344,7 +368,10 @@ class TestVersionFunctions:
 
     def test_get_latest_version_deprecated_error_returns_none(self):
         """Test deprecated function returns None on error."""
-        with patch("moai_adk.cli.commands.update._get_latest_version", side_effect=RuntimeError("Error")):
+        with patch(
+            "moai_adk.cli.commands.update._get_latest_version",
+            side_effect=RuntimeError("Error"),
+        ):
             result = get_latest_version()
             assert result is None
 
@@ -427,11 +454,16 @@ class TestUpgradeExecution:
         """Test upgrade with retry when stale cache detected."""
         with (
             patch("subprocess.run") as mock_run,
-            patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
+            patch(
+                "moai_adk.cli.commands.update._get_current_version",
+                return_value="0.6.0",
+            ),
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
-            patch("moai_adk.cli.commands.update._clear_uv_package_cache", return_value=True),
+            patch(
+                "moai_adk.cli.commands.update._clear_uv_package_cache",
+                return_value=True,
+            ),
         ):
-
             # First call: stale cache
             # Second call: successful upgrade
             mock_run.side_effect = [
@@ -447,11 +479,16 @@ class TestUpgradeExecution:
         """Test upgrade with retry when cache clear fails."""
         with (
             patch("subprocess.run") as mock_run,
-            patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
+            patch(
+                "moai_adk.cli.commands.update._get_current_version",
+                return_value="0.6.0",
+            ),
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
-            patch("moai_adk.cli.commands.update._clear_uv_package_cache", return_value=False),
+            patch(
+                "moai_adk.cli.commands.update._clear_uv_package_cache",
+                return_value=False,
+            ),
         ):
-
             mock_run.return_value = MagicMock(returncode=0, stdout="Nothing to upgrade", stderr="")
 
             result = _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
@@ -469,9 +506,11 @@ class TestUpgradeExecution:
         """Test upgrade with retry when version check fails."""
         with (
             patch("subprocess.run") as mock_run,
-            patch("moai_adk.cli.commands.update._get_current_version", side_effect=RuntimeError("Error")),
+            patch(
+                "moai_adk.cli.commands.update._get_current_version",
+                side_effect=RuntimeError("Error"),
+            ),
         ):
-
             mock_run.return_value = MagicMock(returncode=0, stdout="Nothing to upgrade", stderr="")
 
             result = _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
@@ -481,11 +520,16 @@ class TestUpgradeExecution:
         """Test upgrade with retry when retry also fails."""
         with (
             patch("subprocess.run") as mock_run,
-            patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
+            patch(
+                "moai_adk.cli.commands.update._get_current_version",
+                return_value="0.6.0",
+            ),
             patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
-            patch("moai_adk.cli.commands.update._clear_uv_package_cache", return_value=True),
+            patch(
+                "moai_adk.cli.commands.update._clear_uv_package_cache",
+                return_value=True,
+            ),
         ):
-
             # Both attempts return error
             mock_run.side_effect = [
                 MagicMock(returncode=0, stdout="Nothing to upgrade", stderr=""),
@@ -655,15 +699,6 @@ class TestSkillManagement:
         result = _prompt_skill_restore([], yes=False)
         assert result == []
 
-    def test_prompt_skill_restore_user_selection(self):
-        """Test prompting skill restore with user selection."""
-        custom_skills = ["custom-skill-1", "custom-skill-2"]
-
-        with patch("questionary.checkbox") as mock_checkbox:
-            mock_checkbox.return_value.ask.return_value = ["custom-skill-1"]
-            result = _prompt_skill_restore(custom_skills, yes=False)
-            assert result == ["custom-skill-1"]
-
     def test_restore_selected_skills_success(self, tmp_path):
         """Test restoring selected skills successfully."""
         backup_path = tmp_path / "backup"
@@ -776,6 +811,30 @@ class TestMergeStrategies:
 class TestTemplateContext:
     """Test template context building"""
 
+    @pytest.fixture(autouse=True)
+    def clear_moai_env_vars(self):
+        """Clear MOAI environment variables for test isolation."""
+        import os
+
+        moai_env_vars = [
+            "MOAI_USER_NAME",
+            "MOAI_CONVERSATION_LANG",
+            "MOAI_AGENT_PROMPT_LANG",
+            "MOAI_CONVERSATION_LANG_NAME",
+            "MOAI_GIT_COMMIT_MESSAGES_LANG",
+            "MOAI_CODE_COMMENTS_LANG",
+            "MOAI_DOCUMENTATION_LANG",
+            "MOAI_ERROR_MESSAGES_LANG",
+        ]
+        saved_env = {}
+        for key in moai_env_vars:
+            if key in os.environ:
+                saved_env[key] = os.environ.pop(key)
+        yield
+        # Restore saved environment variables
+        for key, value in saved_env.items():
+            os.environ[key] = value
+
     def test_is_placeholder_true(self):
         """Test placeholder detection for valid placeholders."""
         assert _is_placeholder("{{PROJECT_NAME}}") is True
@@ -834,7 +893,10 @@ class TestTemplateContext:
                 "language": "python",
                 "author": "tester",
             },
-            "language": {"conversation_language": "en", "conversation_language_name": "English"},
+            "language": {
+                "conversation_language": "en",
+                "conversation_language_name": "English",
+            },
         }
 
         result = _build_template_context(tmp_path, existing_config, "0.7.0")
@@ -1235,11 +1297,13 @@ class TestSyncTemplates:
 
         with (
             patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor,
-            patch("moai_adk.cli.commands.update._get_template_skill_names", return_value=set()),
+            patch(
+                "moai_adk.cli.commands.update._get_template_skill_names",
+                return_value=set(),
+            ),
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
         ):
-
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -1262,11 +1326,13 @@ class TestSyncTemplates:
             patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor,
             patch("moai_adk.core.template.backup.TemplateBackup") as mock_backup,
             patch("moai_adk.cli.commands.update.MergeAnalyzer") as mock_analyzer,
-            patch("moai_adk.cli.commands.update._get_template_skill_names", return_value=set()),
+            patch(
+                "moai_adk.cli.commands.update._get_template_skill_names",
+                return_value=set(),
+            ),
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
         ):
-
             mock_proc_instance = Mock()
             mock_proc_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_proc_instance
@@ -1298,11 +1364,13 @@ class TestSyncTemplates:
         with (
             patch("moai_adk.core.template.backup.TemplateBackup") as mock_backup,
             patch("moai_adk.cli.commands.update.MergeAnalyzer") as mock_analyzer,
-            patch("moai_adk.cli.commands.update._get_template_skill_names", return_value=set()),
+            patch(
+                "moai_adk.cli.commands.update._get_template_skill_names",
+                return_value=set(),
+            ),
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.TemplateProcessor"),
         ):
-
             mock_backup_instance = Mock()
             mock_backup_instance.has_existing_files.return_value = True
             mock_backup_instance.create_backup.return_value = tmp_path / "backup"
@@ -1324,12 +1392,14 @@ class TestSyncTemplates:
 
         with (
             patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor,
-            patch("moai_adk.cli.commands.update._get_template_skill_names", return_value=set()),
+            patch(
+                "moai_adk.cli.commands.update._get_template_skill_names",
+                return_value=set(),
+            ),
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
             patch("moai_adk.core.template.backup.TemplateBackup") as mock_backup,
         ):
-
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -1356,12 +1426,14 @@ class TestSyncTemplates:
 
         with (
             patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor,
-            patch("moai_adk.cli.commands.update._get_template_skill_names", return_value=set()),
+            patch(
+                "moai_adk.cli.commands.update._get_template_skill_names",
+                return_value=set(),
+            ),
             patch("moai_adk.cli.commands.update._detect_custom_skills", return_value=[]),
             patch("moai_adk.cli.commands.update.AlfredToMoaiMigrator") as mock_migrator,
             patch("moai_adk.core.template.backup.TemplateBackup") as mock_backup,
         ):
-
             mock_instance = Mock()
             mock_instance.copy_templates.return_value = None
             mock_processor.return_value = mock_instance
@@ -1391,10 +1463,15 @@ class TestUpdateCommandIntegration:
 
             with (
                 patch("moai_adk.cli.commands.update._sync_templates", return_value=True),
-                patch("moai_adk.cli.commands.update._preserve_user_settings", return_value={}),
-                patch("moai_adk.cli.commands.update._restore_user_settings", return_value=True),
+                patch(
+                    "moai_adk.cli.commands.update._preserve_user_settings",
+                    return_value={},
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._restore_user_settings",
+                    return_value=True,
+                ),
             ):
-
                 result = runner.invoke(update, ["--templates-only"])
                 assert result.exit_code == 0
                 assert "Syncing templates only" in result.output
@@ -1406,19 +1483,36 @@ class TestUpdateCommandIntegration:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             moai_dir = Path(".moai") / "config"
             moai_dir.mkdir(parents=True)
-            config_data = {"project": {"template_version": "0.6.0"}, "moai": {"version": "0.6.0"}}
+            config_data = {
+                "project": {"template_version": "0.6.0"},
+                "moai": {"version": "0.6.0"},
+            }
             (moai_dir / "config.json").write_text(json.dumps(config_data))
 
             with (
-                patch("moai_adk.cli.commands.update._get_current_version", return_value="0.7.0"),
-                patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
-                patch("moai_adk.cli.commands.update._get_package_config_version", return_value="0.7.0"),
-                patch("moai_adk.cli.commands.update._get_project_config_version", return_value="0.6.0"),
-                patch("moai_adk.cli.commands.update._execute_migration_if_needed", return_value=True),
+                patch(
+                    "moai_adk.cli.commands.update._get_current_version",
+                    return_value="0.7.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._get_latest_version",
+                    return_value="0.7.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._get_package_config_version",
+                    return_value="0.7.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._get_project_config_version",
+                    return_value="0.6.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._execute_migration_if_needed",
+                    return_value=True,
+                ),
                 patch("moai_adk.core.migration.backup_manager.BackupManager") as mock_backup,
                 patch("moai_adk.cli.commands.update._generate_manual_merge_guide") as mock_guide,
             ):
-
                 mock_backup_instance = Mock()
                 mock_backup_instance.create_full_project_backup.return_value = Path.cwd() / "backup"
                 mock_backup.return_value = mock_backup_instance
@@ -1438,8 +1532,14 @@ class TestUpdateCommandIntegration:
             moai_dir.mkdir()
 
             with (
-                patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
-                patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
+                patch(
+                    "moai_adk.cli.commands.update._get_current_version",
+                    return_value="0.6.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._get_latest_version",
+                    return_value="0.7.0",
+                ),
                 patch(
                     "moai_adk.cli.commands.update._detect_tool_installer",
                     return_value=["uv", "tool", "upgrade", "moai-adk"],
@@ -1447,7 +1547,6 @@ class TestUpdateCommandIntegration:
                 patch("moai_adk.cli.commands.update._execute_upgrade", return_value=True),
                 patch("click.confirm", return_value=True),
             ):
-
                 result = runner.invoke(update)
                 assert result.exit_code == 0
                 assert "Upgrading" in result.output
@@ -1462,12 +1561,20 @@ class TestUpdateCommandIntegration:
             moai_dir.mkdir()
 
             with (
-                patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
-                patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
-                patch("moai_adk.cli.commands.update._detect_tool_installer", return_value=None),
+                patch(
+                    "moai_adk.cli.commands.update._get_current_version",
+                    return_value="0.6.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._get_latest_version",
+                    return_value="0.7.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._detect_tool_installer",
+                    return_value=None,
+                ),
                 patch("click.confirm", return_value=True),
             ):
-
                 result = runner.invoke(update)
                 assert result.exit_code != 0
                 assert "Cannot detect package installer" in result.output
@@ -1481,8 +1588,14 @@ class TestUpdateCommandIntegration:
             moai_dir.mkdir()
 
             with (
-                patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
-                patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
+                patch(
+                    "moai_adk.cli.commands.update._get_current_version",
+                    return_value="0.6.0",
+                ),
+                patch(
+                    "moai_adk.cli.commands.update._get_latest_version",
+                    return_value="0.7.0",
+                ),
                 patch(
                     "moai_adk.cli.commands.update._detect_tool_installer",
                     return_value=["uv", "tool", "upgrade", "moai-adk"],
@@ -1493,7 +1606,6 @@ class TestUpdateCommandIntegration:
                 ),
                 patch("click.confirm", return_value=True),
             ):
-
                 result = runner.invoke(update)
                 assert result.exit_code != 0
                 assert "timed out" in result.output

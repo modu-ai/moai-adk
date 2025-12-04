@@ -66,7 +66,11 @@ class TestCICDPipelineOrchestration:
         """Test Jenkins pipeline definition."""
         orchestrator = CICDPipelineOrchestrator()
 
-        config = {"agent": "any", "tools": {"maven": "3.8.6", "jdk": "17"}, "stages": ["Build", "Test", "Deploy"]}
+        config = {
+            "agent": "any",
+            "tools": {"maven": "3.8.6", "jdk": "17"},
+            "stages": ["Build", "Test", "Deploy"],
+        }
 
         result = orchestrator.orchestrate_jenkins(config)
 
@@ -134,7 +138,10 @@ class TestInfrastructureAsCode:
             "version": "1.0.0",
             "app_version": "latest",
             "description": "Web API Helm chart",
-            "values": {"image": {"repository": "myapp", "tag": "latest"}, "service": {"port": 80, "targetPort": 8000}},
+            "values": {
+                "image": {"repository": "myapp", "tag": "latest"},
+                "service": {"port": 80, "targetPort": 8000},
+            },
         }
 
         result = infra_manager.create_helm_charts(chart_config)
@@ -207,7 +214,11 @@ class TestContainerOrchestration:
         container_orchestrator = ContainerOrchestrator()
 
         image_name = "myapp:latest"
-        security_config = {"scan_level": "comprehensive", "vulnerability_threshold": "medium", "license_check": True}
+        security_config = {
+            "scan_level": "comprehensive",
+            "vulnerability_threshold": "medium",
+            "license_check": True,
+        }
 
         result = container_orchestrator.scan_container_security(image_name, security_config)
 
@@ -229,7 +240,10 @@ class TestContainerOrchestration:
             "image": "myapp:latest",
             "replicas": 3,
             "namespace": "production",
-            "resources": {"requests": {"cpu": "100m", "memory": "128Mi"}, "limits": {"cpu": "500m", "memory": "512Mi"}},
+            "resources": {
+                "requests": {"cpu": "100m", "memory": "128Mi"},
+                "limits": {"cpu": "500m", "memory": "512Mi"},
+            },
             "environment": "production",
         }
 
@@ -257,7 +271,11 @@ class TestMonitoringAndObservability:
             "app_name": "web-api",
             "metrics_port": 9090,
             "scrape_interval": "30s",
-            "custom_metrics": ["http_requests_total", "request_duration_seconds", "error_rate_percentage"],
+            "custom_metrics": [
+                "http_requests_total",
+                "request_duration_seconds",
+                "error_rate_percentage",
+            ],
         }
 
         result = monitoring_architect.setup_prometheus(metrics_config)

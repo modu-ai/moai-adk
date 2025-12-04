@@ -136,7 +136,12 @@ class TestCICDPipelineOrchestrator:
 
     def test_orchestrator_initialization(self, orchestrator):
         """Test orchestrator initialization."""
-        assert orchestrator.supported_platforms == ["github", "gitlab", "jenkins", "azure-pipelines"]
+        assert orchestrator.supported_platforms == [
+            "github",
+            "gitlab",
+            "jenkins",
+            "azure-pipelines",
+        ]
         assert orchestrator.default_environments == ["dev", "staging", "prod"]
 
     def test_orchestrate_github_actions_basic(self, orchestrator):
@@ -851,7 +856,12 @@ class TestDeploymentStrategist:
 
     def test_strategist_initialization(self, strategist):
         """Test deployment strategist initialization."""
-        assert strategist.supported_strategies == ["blue_green", "canary", "rolling", "a_b_testing"]
+        assert strategist.supported_strategies == [
+            "blue_green",
+            "canary",
+            "rolling",
+            "a_b_testing",
+        ]
         assert strategist.default_health_check_path == "/health"
 
     def test_plan_continuous_deployment_basic(self, strategist):
@@ -1398,7 +1408,12 @@ class TestDevOpsMetricsCollector:
         with patch.object(collector, "get_devops_health_status") as mock:
             mock.return_value = {
                 "overall_health_score": 85,
-                "category_scores": {"deployment": 85, "monitoring": 85, "security": 85, "performance": 85},
+                "category_scores": {
+                    "deployment": 85,
+                    "monitoring": 85,
+                    "security": 85,
+                    "performance": 85,
+                },
                 "critical_issues": [{"category": "monitoring", "severity": "medium"}],
             }
             health = collector.get_devops_health_status(config)

@@ -34,7 +34,11 @@ def mock_project():
 
         # Create config.json
         config = {
-            "project": {"name": "TestProject", "mode": "personal", "owner": "@testuser"},
+            "project": {
+                "name": "TestProject",
+                "mode": "personal",
+                "owner": "@testuser",
+            },
             "language": {"conversation_language": "en"},
         }
 
@@ -118,7 +122,11 @@ class TestPhaseResultBuilder:
         files = ["/abs/path/file.txt"]
 
         result = build_phase_result(
-            phase_name="0-project", status="completed", outputs=outputs, files_created=files, next_phase="1-plan"
+            phase_name="0-project",
+            status="completed",
+            outputs=outputs,
+            files_created=files,
+            next_phase="1-plan",
         )
 
         assert result["phase"] == "0-project"
@@ -174,7 +182,11 @@ class TestContextSaving:
         files = [".moai/config/config.json"]
 
         saved_path = save_command_context(
-            phase_name="0-project", project_root=mock_project, outputs=outputs, files_created=files, next_phase="1-plan"
+            phase_name="0-project",
+            project_root=mock_project,
+            outputs=outputs,
+            files_created=files,
+            next_phase="1-plan",
         )
 
         if saved_path:  # Only if ContextManager available
@@ -192,7 +204,10 @@ class TestContextSaving:
         """Test error handling when save fails"""
         # Invalid project root
         saved_path = save_command_context(
-            phase_name="test", project_root="/nonexistent/path", outputs={}, files_created=[]
+            phase_name="test",
+            project_root="/nonexistent/path",
+            outputs={},
+            files_created=[],
         )
 
         # Should return None on error, not raise
@@ -208,7 +223,12 @@ class TestPreviousPhaseLoading:
         outputs = {"version": 1}
         files = []
 
-        save_command_context(phase_name="0-project", project_root=mock_project, outputs=outputs, files_created=files)
+        save_command_context(
+            phase_name="0-project",
+            project_root=mock_project,
+            outputs=outputs,
+            files_created=files,
+        )
 
         # Load it back
         loaded = load_previous_phase(mock_project)
@@ -230,7 +250,6 @@ class TestPreviousPhaseLoading:
 
 
 class TestEdgeCases:
-
     def test_extract_metadata_missing_keys(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
@@ -280,7 +299,11 @@ class TestEdgeCases:
             (project_root / ".moai" / "config").mkdir(parents=True)
 
             # Paths that attempt to escape project root
-            invalid_paths = ["../../../etc/passwd", "/etc/passwd", "../../outside/project"]
+            invalid_paths = [
+                "../../../etc/passwd",
+                "/etc/passwd",
+                "../../outside/project",
+            ]
 
             result = validate_phase_files(invalid_paths, str(project_root))
 
@@ -297,7 +320,10 @@ class TestEdgeCases:
         monkeypatch.setattr(helpers, "CONTEXT_MANAGER_AVAILABLE", False)
 
         result = save_command_context(
-            phase_name="test", project_root="/tmp/test", outputs={"test": "data"}, files_created=[]
+            phase_name="test",
+            project_root="/tmp/test",
+            outputs={"test": "data"},
+            files_created=[],
         )
 
         # Should return None gracefully, not raise exception
@@ -319,7 +345,11 @@ class TestEdgeCases:
     def test_build_phase_result_with_next_phase(self):
         """Test phase result includes next_phase when provided"""
         result = build_phase_result(
-            phase_name="0-project", status="completed", outputs={}, files_created=[], next_phase="1-plan"
+            phase_name="0-project",
+            status="completed",
+            outputs={},
+            files_created=[],
+            next_phase="1-plan",
         )
 
         assert "next_phase" in result

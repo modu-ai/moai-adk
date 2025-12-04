@@ -18,7 +18,7 @@ only explicitly selected elements are modified, preserving all other files.
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class SelectiveRestorer:
         """
         self.project_path = project_path
         self.backup_path = backup_path or self._find_latest_backup()
-        self.restoration_log = []
+        self.restoration_log: List[Dict[str, str]] = []
 
     def _find_latest_backup(self) -> Optional[Path]:
         """Find the latest backup directory.
@@ -65,7 +65,7 @@ class SelectiveRestorer:
         backup_dirs.sort(reverse=True)
         return backup_dirs[0][1]  # Return the Path object
 
-    def restore_elements(self, selected_elements: List[str]) -> Tuple[bool, Dict[str, int]]:
+    def restore_elements(self, selected_elements: List[str]) -> Tuple[bool, Dict[str, Any]]:
         """Restore selected custom elements from backup.
 
         Args:
@@ -93,16 +93,20 @@ class SelectiveRestorer:
         element_groups = self._group_elements_by_type(selected_elements)
 
         # Track restoration statistics
-        stats = {"total": 0, "success": 0, "failed": 0, "by_type": {}}
+        stats: Dict[str, Any] = {"total": 0, "success": 0, "failed": 0, "by_type": {}}
 
         # Restore each type of element
         for element_type, elements in element_groups.items():
             print(f"\n📂 Restoring {element_type}s...")
             type_stats = self._restore_element_type(element_type, elements)
-            stats["by_type"][element_type] = type_stats
-            stats["total"] += type_stats["total"]
-            stats["success"] += type_stats["success"]
-            stats["failed"] += type_stats["failed"]
+            by_type: Dict[str, Dict[str, int]] = stats["by_type"]
+            by_type[element_type] = type_stats
+            total_count: int = stats["total"]
+            success_count: int = stats["success"]
+            failed_count: int = stats["failed"]
+            stats["total"] = total_count + type_stats["total"]
+            stats["success"] = success_count + type_stats["success"]
+            stats["failed"] = failed_count + type_stats["failed"]
 
         # Display final summary
         self._display_restoration_summary(stats)
@@ -110,13 +114,13 @@ class SelectiveRestorer:
         # Log restoration details
         self._log_restoration_details(selected_elements, stats)
 
-        success = stats["failed"] == 0
-        if success:
+        is_success: bool = stats["failed"] == 0
+        if is_success:
             logger.info(f"Successfully restored {stats['success']} elements")
         else:
             logger.warning(f"Failed to restore {stats['failed']} elements")
 
-        return success, stats
+        return is_success, stats
 
     def _group_elements_by_type(self, selected_elements: List[str]) -> Dict[str, List[Path]]:
         """Group selected elements by their type.
@@ -127,11 +131,12 @@ class SelectiveRestorer:
         Returns:
             Dictionary with element types as keys and lists of element paths as values
         """
-        groups = {
+        groups: Dict[str, List[Path]] = {
             "agents": [],
             "commands": [],
             "skills": [],
-            "hooks": []
+            "hooks": [],
+            "unknown": [],
         }
 
         for element_path in selected_elements:
@@ -309,12 +314,14 @@ class SelectiveRestorer:
                 shutil.copy2(backup_source, target_path)
 
             # Record successful restoration
-            self.restoration_log.append({
-                "path": str(element_path),
-                "type": element_type,
-                "status": "success",
-                "timestamp": str(backup_source.stat().st_mtime)
-            })
+            self.restoration_log.append(
+                {
+                    "path": str(element_path),
+                    "type": element_type,
+                    "status": "success",
+                    "timestamp": str(backup_source.stat().st_mtime),
+                }
+            )
 
             logger.info(f"Restored: {relative_path}")
             return True
@@ -368,9 +375,9 @@ class SelectiveRestorer:
         Args:
             stats: Restoration statistics dictionary
         """
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("🎉 Restoration Complete")
-        print("="*50)
+        print("=" * 50)
         print(f"Total elements: {stats['total']}")
         print(f"✅ Successfully restored: {stats['success']}")
 
@@ -380,7 +387,8 @@ class SelectiveRestorer:
         # Show breakdown by type
         if "by_type" in stats:
             print("\n📊 By Type:")
-            for element_type, type_stats in stats["by_type"].items():
+            by_type_stats: Dict[str, Dict[str, int]] = stats["by_type"]  # type: ignore[assignment]
+            for element_type, type_stats in by_type_stats.items():
                 if type_stats["total"] > 0:
                     status_icon = "✅" if type_stats["failed"] == 0 else "❌"
                     print(f"   {element_type.title()}: {type_stats['success']}/{type_stats['total']} {status_icon}")
@@ -392,12 +400,12 @@ class SelectiveRestorer:
             selected_elements: List of elements that were selected for restoration
             stats: Restoration statistics
         """
-        logger.info(f"Restoration completed - Total: {stats['total']}, "
-                   f"Success: {stats['success']}, Failed: {stats['failed']}")
+        logger.info(
+            f"Restoration completed - Total: {stats['total']}, Success: {stats['success']}, Failed: {stats['failed']}"
+        )
 
         if stats["failed"] > 0:
-            failed_elements = [elem for elem in selected_elements
-                              if not self._was_restoration_successful(elem)]
+            failed_elements = [elem for elem in selected_elements if not self._was_restoration_successful(Path(elem))]
             logger.warning(f"Failed elements: {failed_elements}")
 
         # Log all restoration attempts from the log
@@ -417,15 +425,12 @@ class SelectiveRestorer:
             True if element was restored successfully
         """
         for entry in self.restoration_log:
-            if Path(entry["path"]) == element_path and entry["status"] == "success":
+            if str(Path(entry["path"])) == str(element_path) and entry["status"] == "success":
                 return True
         return False
 
 
-def create_selective_restorer(
-    project_path: str | Path,
-    backup_path: Optional[Path] = None
-) -> SelectiveRestorer:
+def create_selective_restorer(project_path: str | Path, backup_path: Optional[Path] = None) -> SelectiveRestorer:
     """Factory function to create a SelectiveRestorer.
 
     Args:

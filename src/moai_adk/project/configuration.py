@@ -116,7 +116,11 @@ class ConfigurationManager:
             "project_description": ("project", "description"),
             "git_strategy_mode": ("git_strategy", "mode"),
             "git_strategy_workflow": ("git_strategy", "workflow"),
-            "git_personal_auto_checkpoint": ("git_strategy", "personal", "auto_checkpoint"),
+            "git_personal_auto_checkpoint": (
+                "git_strategy",
+                "personal",
+                "auto_checkpoint",
+            ),
             "git_personal_push_remote": ("git_strategy", "personal", "push_to_remote"),
             "git_team_auto_pr": ("git_strategy", "team", "auto_pr"),
             "git_team_draft_pr": ("git_strategy", "team", "draft_pr"),

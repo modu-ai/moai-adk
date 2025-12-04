@@ -63,7 +63,11 @@ class TestAPIDesignPatterns:
         invalid_endpoints = [
             {"method": "INVALID", "path": "/api/v1/users", "status_code": 200},
             {"method": "GET", "path": "users", "status_code": 200},  # Missing /api/v1
-            {"method": "POST", "path": "/api/v1/users", "status_code": 200},  # Should be 201
+            {
+                "method": "POST",
+                "path": "/api/v1/users",
+                "status_code": 200,
+            },  # Should be 201
         ]
 
         # Validate and expect failures
@@ -127,9 +131,21 @@ class TestMicroservicesArchitecture:
 
         # Define services with clear boundaries
         services = [
-            {"name": "user-service", "domain": "authentication", "endpoints": ["/users", "/auth"]},
-            {"name": "product-service", "domain": "catalog", "endpoints": ["/products", "/inventory"]},
-            {"name": "order-service", "domain": "commerce", "endpoints": ["/orders", "/cart"]},
+            {
+                "name": "user-service",
+                "domain": "authentication",
+                "endpoints": ["/users", "/auth"],
+            },
+            {
+                "name": "product-service",
+                "domain": "catalog",
+                "endpoints": ["/products", "/inventory"],
+            },
+            {
+                "name": "order-service",
+                "domain": "commerce",
+                "endpoints": ["/orders", "/cart"],
+            },
         ]
 
         # Validate service decomposition
@@ -147,7 +163,12 @@ class TestMicroservicesArchitecture:
 
         # Test REST communication
         rest_comm = architect.get_communication_pattern(
-            "rest", {"source": "order-service", "target": "product-service", "operation": "check_inventory"}
+            "rest",
+            {
+                "source": "order-service",
+                "target": "product-service",
+                "operation": "check_inventory",
+            },
         )
         assert rest_comm["pattern"] == "rest"
         assert rest_comm["protocol"] == "HTTP/REST"
@@ -155,7 +176,12 @@ class TestMicroservicesArchitecture:
 
         # Test async messaging
         async_comm = architect.get_communication_pattern(
-            "async", {"source": "order-service", "target": "notification-service", "operation": "send_email"}
+            "async",
+            {
+                "source": "order-service",
+                "target": "notification-service",
+                "operation": "send_email",
+            },
         )
         assert async_comm["pattern"] == "async"
         assert async_comm["protocol"] in ["RabbitMQ", "Kafka", "AWS SQS"]
@@ -350,9 +376,21 @@ class TestErrorHandling:
         # Test different error types
         errors = [
             {"type": "ValidationError", "message": "Invalid input", "status_code": 400},
-            {"type": "NotFoundError", "message": "Resource not found", "status_code": 404},
-            {"type": "AuthenticationError", "message": "Unauthorized", "status_code": 401},
-            {"type": "InternalServerError", "message": "Server error", "status_code": 500},
+            {
+                "type": "NotFoundError",
+                "message": "Resource not found",
+                "status_code": 404,
+            },
+            {
+                "type": "AuthenticationError",
+                "message": "Unauthorized",
+                "status_code": 401,
+            },
+            {
+                "type": "InternalServerError",
+                "message": "Server error",
+                "status_code": 500,
+            },
         ]
 
         for error in errors:
@@ -372,7 +410,11 @@ class TestErrorHandling:
         log_entry = error_handler.log_with_context(
             level="INFO",
             message="User created successfully",
-            context={"user_id": "user123", "email": "user@example.com", "request_id": "req-12345"},
+            context={
+                "user_id": "user123",
+                "email": "user@example.com",
+                "request_id": "req-12345",
+            },
         )
 
         assert log_entry["level"] == "INFO"
@@ -416,7 +458,10 @@ class TestPerformanceOptimization:
 
         # Configure rate limiting
         rate_limit = optimizer.configure_rate_limit(
-            requests_per_minute=100, requests_per_hour=5000, burst_size=20, strategy="token_bucket"
+            requests_per_minute=100,
+            requests_per_hour=5000,
+            burst_size=20,
+            strategy="token_bucket",
         )
 
         assert rate_limit["requests_per_minute"] == 100
@@ -447,7 +492,11 @@ class TestBackendMetricsCollection:
 
         # Record metrics
         metrics = collector.record_request_metrics(
-            path="/api/v1/users", method="GET", status_code=200, duration_ms=100, response_size_bytes=1024
+            path="/api/v1/users",
+            method="GET",
+            status_code=200,
+            duration_ms=100,
+            response_size_bytes=1024,
         )
 
         assert metrics["path"] == "/api/v1/users"
@@ -465,7 +514,10 @@ class TestBackendMetricsCollection:
         # Record multiple requests
         for i in range(10):
             collector.record_request_metrics(
-                path="/api/v1/users", method="GET", status_code=200 if i < 8 else 500, duration_ms=50
+                path="/api/v1/users",
+                method="GET",
+                status_code=200 if i < 8 else 500,
+                duration_ms=50,
             )
 
         # Get error rate
@@ -518,7 +570,11 @@ class TestBackendIntegration:
 
         # Generate auth token
         token = auth_manager.generate_jwt_token(
-            {"sub": "user@example.com", "iat": datetime.now(UTC), "exp": datetime.now(UTC) + timedelta(hours=1)}
+            {
+                "sub": "user@example.com",
+                "iat": datetime.now(UTC),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
+            }
         )
         assert token is not None
 

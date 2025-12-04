@@ -40,6 +40,11 @@ class TestDocumentation:
         # Check for language support mention (flexible matching)
         has_language_section = any(
             keyword in content.lower()
-            for keyword in ["language support", "languages", "detect language", "workflow template"]
+            for keyword in [
+                "language support",
+                "languages",
+                "detect language",
+                "workflow template",
+            ]
         )
         assert has_language_section, "README missing language support information"

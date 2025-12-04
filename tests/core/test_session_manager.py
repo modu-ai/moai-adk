@@ -110,7 +110,12 @@ class TestSessionManagerInitialization:
         existing_data = {
             "sessions": {"agent-1": "id-abc123"},
             "chains": {"SPEC-001": ["id-abc123"]},
-            "metadata": {"id-abc123": {"agent_name": "agent-1", "created_at": "2025-01-01T00:00:00"}},
+            "metadata": {
+                "id-abc123": {
+                    "agent_name": "agent-1",
+                    "created_at": "2025-01-01T00:00:00",
+                }
+            },
         }
         session_file.parent.mkdir(parents=True, exist_ok=True)
         session_file.write_text(json.dumps(existing_data))
@@ -1001,7 +1006,11 @@ class TestComplexWorkflows:
         # All experts run in parallel
         experts = [
             ("backend-expert", "backend-jkl012", {"recommendations": ["Use JWT"]}),
-            ("security-expert", "security-mno345", {"vulnerabilities": ["Rate limiting"]}),
+            (
+                "security-expert",
+                "security-mno345",
+                {"vulnerabilities": ["Rate limiting"]},
+            ),
             ("frontend-expert", "frontend-pqr678", {"ui_concerns": ["Token refresh"]}),
         ]
 

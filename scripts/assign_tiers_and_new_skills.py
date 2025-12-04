@@ -16,59 +16,173 @@ TODAY = datetime.now().strftime("%Y-%m-%d")
 TIER_MAPPING = {
     1: {
         "name": "moai-lang-*",
-        "skills": ["python", "javascript", "typescript", "go", "rust", "kotlin", "java", "php", "ruby", "swift", "scala", "c", "cpp", "csharp", "dart", "elixir", "html-css", "shell", "sql", "r", "tailwind-css"]
+        "skills": [
+            "python",
+            "javascript",
+            "typescript",
+            "go",
+            "rust",
+            "kotlin",
+            "java",
+            "php",
+            "ruby",
+            "swift",
+            "scala",
+            "c",
+            "cpp",
+            "csharp",
+            "dart",
+            "elixir",
+            "html-css",
+            "shell",
+            "sql",
+            "r",
+            "tailwind-css",
+        ],
     },
     2: {
         "name": "moai-domain-*",
-        "skills": ["backend", "frontend", "database", "cloud", "cli-tool", "mobile-app", "iot", "figma", "notion", "toon", "ml-ops", "monitoring", "devops", "web-api", "testing", "security"]
+        "skills": [
+            "backend",
+            "frontend",
+            "database",
+            "cloud",
+            "cli-tool",
+            "mobile-app",
+            "iot",
+            "figma",
+            "notion",
+            "toon",
+            "ml-ops",
+            "monitoring",
+            "devops",
+            "web-api",
+            "testing",
+            "security",
+        ],
     },
     3: {
         "name": "moai-security-*",
-        "skills": ["auth", "api", "owasp", "zero-trust", "encryption", "identity", "ssrf", "threat", "compliance", "secrets"]
+        "skills": [
+            "auth",
+            "api",
+            "owasp",
+            "zero-trust",
+            "encryption",
+            "identity",
+            "ssrf",
+            "threat",
+            "compliance",
+            "secrets",
+        ],
     },
     4: {
         "name": "moai-core-*",
-        "skills": ["context-budget", "code-reviewer", "workflow", "issue-labels", "personas", "spec-authoring", "env-security", "clone-pattern", "dev-guide", "expertise-detection", "feedback-templates", "language-detection", "practices", "proactive-suggestions", "session-state", "todowrite-pattern", "config-schema", "ask-user-questions", "agent-factory"]
+        "skills": [
+            "context-budget",
+            "code-reviewer",
+            "workflow",
+            "issue-labels",
+            "personas",
+            "spec-authoring",
+            "env-security",
+            "clone-pattern",
+            "dev-guide",
+            "expertise-detection",
+            "feedback-templates",
+            "language-detection",
+            "practices",
+            "proactive-suggestions",
+            "session-state",
+            "todowrite-pattern",
+            "config-schema",
+            "ask-user-questions",
+            "agent-factory",
+        ],
     },
     5: {
         "name": "moai-foundation-*",
-        "skills": ["ears", "specs", "trust", "git", "langs"]
+        "skills": ["ears", "specs", "trust", "git", "langs"],
     },
     6: {
         "name": "moai-cc-*",
-        "skills": ["hooks", "commands", "skill-factory", "configuration", "claude-md", "claude-settings", "memory", "permission-mode", "skills-guide", "subagents-guide"]
+        "skills": [
+            "hooks",
+            "commands",
+            "skill-factory",
+            "configuration",
+            "claude-md",
+            "claude-settings",
+            "memory",
+            "permission-mode",
+            "skills-guide",
+            "subagents-guide",
+        ],
     },
     7: {
         "name": "moai-baas-*",
-        "skills": ["vercel-ext", "neon-ext", "clerk-ext", "auth0-ext", "supabase-ext", "firebase-ext", "railway-ext", "cloudflare-ext", "convex-ext", "foundation"]
+        "skills": [
+            "vercel-ext",
+            "neon-ext",
+            "clerk-ext",
+            "auth0-ext",
+            "supabase-ext",
+            "firebase-ext",
+            "railway-ext",
+            "cloudflare-ext",
+            "convex-ext",
+            "foundation",
+        ],
     },
     8: {
         "name": "moai-essentials-*",
-        "skills": ["debug", "perf", "refactor", "review", "testing-integration", "performance-profiling"]
+        "skills": [
+            "debug",
+            "perf",
+            "refactor",
+            "review",
+            "testing-integration",
+            "performance-profiling",
+        ],
     },
     9: {
         "name": "moai-project-*",
-        "skills": ["config-manager", "language-initializer", "batch-questions", "documentation", "template-optimizer"]
+        "skills": [
+            "config-manager",
+            "language-initializer",
+            "batch-questions",
+            "documentation",
+            "template-optimizer",
+        ],
     },
-    10: {
-        "name": "moai-lib-*",
-        "skills": ["shadcn-ui"]
-    }
+    10: {"name": "moai-lib-*", "skills": ["shadcn-ui"]},
 }
 
 # Special skills that don't fit standard tiers
 SPECIAL_SKILLS = {
-    "moai-docs-generation", "moai-docs-toolkit", "moai-docs-validation", "moai-docs-linting", "moai-docs-unified",
+    "moai-docs-generation",
+    "moai-docs-toolkit",
+    "moai-docs-validation",
+    "moai-docs-linting",
+    "moai-docs-unified",
     "moai-core-uiux",
-    "moai-mermaid-diagram-expert", "moai-webapp-testing",
-    "moai-artifacts-builder", "moai-streaming-ui",
-    "moai-mcp-integration", "moai-internal-comms",
-    "moai-change-logger", "moai-learning-optimizer",
-    "moai-document-processing", "moai-readme-expert", "moai-session-info",
+    "moai-mermaid-diagram-expert",
+    "moai-webapp-testing",
+    "moai-artifacts-builder",
+    "moai-streaming-ui",
+    "moai-mcp-integration",
+    "moai-internal-comms",
+    "moai-change-logger",
+    "moai-learning-optimizer",
+    "moai-document-processing",
+    "moai-readme-expert",
+    "moai-session-info",
     "moai-spec-intelligent-workflow",
-    "moai-jit-docs-enhanced", "moai-context7-integration",
+    "moai-jit-docs-enhanced",
+    "moai-context7-integration",
     "moai-nextra-architecture",
-    "moai-cloud-aws-advanced", "moai-cloud-gcp-advanced"
+    "moai-cloud-aws-advanced",
+    "moai-cloud-gcp-advanced",
 }
 
 
@@ -108,7 +222,7 @@ def assign_tiers_to_all_skills():
 
             frontmatter_str = content[3:end].strip()
             metadata = yaml.safe_load(frontmatter_str) or {}
-            body = content[end + 3:]
+            body = content[end + 3 :]
 
             # Check if tier already assigned
             current_tier = metadata.get("category_tier")
@@ -116,10 +230,21 @@ def assign_tiers_to_all_skills():
 
             if current_tier != new_tier:
                 metadata["category_tier"] = new_tier
-                
+
                 # Reconstruct YAML
                 yaml_lines = ["---"]
-                for key in ["name", "description", "version", "modularized", "allowed-tools", "last_updated", "compliance_score", "auto_trigger_keywords", "category_tier", "agent_coverage"]:
+                for key in [
+                    "name",
+                    "description",
+                    "version",
+                    "modularized",
+                    "allowed-tools",
+                    "last_updated",
+                    "compliance_score",
+                    "auto_trigger_keywords",
+                    "category_tier",
+                    "agent_coverage",
+                ]:
                     if key in metadata and metadata[key] is not None:
                         if key == "compliance_score":
                             yaml_lines.append(f"{key}: {metadata[key]}")
@@ -162,11 +287,22 @@ def create_new_skill(skill_name: str, description: str, tier: int, keywords: lis
         "compliance_score": 85,
         "auto_trigger_keywords": keywords,
         "category_tier": tier,
-        "agent_coverage": []
+        "agent_coverage": [],
     }
 
     yaml_lines = ["---"]
-    for key in ["name", "description", "version", "modularized", "allowed-tools", "last_updated", "compliance_score", "auto_trigger_keywords", "category_tier", "agent_coverage"]:
+    for key in [
+        "name",
+        "description",
+        "version",
+        "modularized",
+        "allowed-tools",
+        "last_updated",
+        "compliance_score",
+        "auto_trigger_keywords",
+        "category_tier",
+        "agent_coverage",
+    ]:
         if key in frontmatter and frontmatter[key] is not None:
             if key == "compliance_score":
                 yaml_lines.append(f"{key}: {frontmatter[key]}")
@@ -180,15 +316,22 @@ def create_new_skill(skill_name: str, description: str, tier: int, keywords: lis
                 yaml_lines.append(f"{key}: {frontmatter[key]}")
 
     yaml_lines.append("---")
-    skill_content = "\n".join(yaml_lines) + "\n\n## Quick Reference\n\n[Quick reference content]\n\n## When to Use\n\n[When to use this skill]\n"
+    skill_content = (
+        "\n".join(yaml_lines)
+        + "\n\n## Quick Reference\n\n[Quick reference content]\n\n## When to Use\n\n[When to use this skill]\n"
+    )
 
     (skill_dir / "SKILL.md").write_text(skill_content, encoding="utf-8")
 
     # Create examples.md
-    (skill_dir / "examples.md").write_text("# Examples\n\n[Usage examples]\n", encoding="utf-8")
+    (skill_dir / "examples.md").write_text(
+        "# Examples\n\n[Usage examples]\n", encoding="utf-8"
+    )
 
     # Create basic module files
-    (modules_dir / "advanced-patterns.md").write_text("# Advanced Patterns\n\n[Advanced patterns]\n", encoding="utf-8")
+    (modules_dir / "advanced-patterns.md").write_text(
+        "# Advanced Patterns\n\n[Advanced patterns]\n", encoding="utf-8"
+    )
 
     print(f"✓ Created new skill: {skill_name}")
 
@@ -200,37 +343,77 @@ def create_new_skills():
             "name": "moai-core-code-templates",
             "description": "Code templates and boilerplates for common patterns and frameworks like FastAPI, React, and Vue",
             "tier": 4,
-            "keywords": ["template", "boilerplate", "code", "initialization", "fastapi", "react", "vue"]
+            "keywords": [
+                "template",
+                "boilerplate",
+                "code",
+                "initialization",
+                "fastapi",
+                "react",
+                "vue",
+            ],
         },
         {
             "name": "moai-security-api-versioning",
             "description": "API versioning strategies for REST, GraphQL and gRPC with backward compatibility and deprecation management",
             "tier": 3,
-            "keywords": ["api", "versioning", "rest", "graphql", "grpc", "compatibility", "deprecation"]
+            "keywords": [
+                "api",
+                "versioning",
+                "rest",
+                "graphql",
+                "grpc",
+                "compatibility",
+                "deprecation",
+            ],
         },
         {
             "name": "moai-essentials-testing-integration",
             "description": "Integration and E2E testing patterns using Playwright, Cypress, Jest and pytest for comprehensive test coverage",
             "tier": 8,
-            "keywords": ["testing", "integration", "e2e", "playwright", "cypress", "jest", "pytest"]
+            "keywords": [
+                "testing",
+                "integration",
+                "e2e",
+                "playwright",
+                "cypress",
+                "jest",
+                "pytest",
+            ],
         },
         {
             "name": "moai-essentials-performance-profiling",
             "description": "Performance profiling tools and techniques for CPU, memory and latency analysis across Python, Node.js and Go",
             "tier": 8,
-            "keywords": ["performance", "profiling", "optimization", "cpu", "memory", "benchmark"]
+            "keywords": [
+                "performance",
+                "profiling",
+                "optimization",
+                "cpu",
+                "memory",
+                "benchmark",
+            ],
         },
         {
             "name": "moai-security-accessibility-wcag3",
             "description": "WCAG 3.0 accessibility compliance validation using axe-core, Pa11y and automated A11y testing",
             "tier": 3,
-            "keywords": ["accessibility", "wcag", "a11y", "aria", "compliance", "testing"]
-        }
+            "keywords": [
+                "accessibility",
+                "wcag",
+                "a11y",
+                "aria",
+                "compliance",
+                "testing",
+            ],
+        },
     ]
 
     for skill in new_skills:
         try:
-            create_new_skill(skill["name"], skill["description"], skill["tier"], skill["keywords"])
+            create_new_skill(
+                skill["name"], skill["description"], skill["tier"], skill["keywords"]
+            )
         except Exception as e:
             print(f"✗ Error creating {skill['name']}: {e}")
 

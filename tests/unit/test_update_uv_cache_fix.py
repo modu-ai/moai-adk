@@ -23,15 +23,27 @@ def test_detect_stale_cache_true():
     from moai_adk.cli.commands.update import _detect_stale_cache
 
     # Scenario 1: Minor version difference
-    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.8.3", latest_version="0.9.0")
+    result = _detect_stale_cache(
+        upgrade_output="Nothing to upgrade",
+        current_version="0.8.3",
+        latest_version="0.9.0",
+    )
     assert result is True
 
     # Scenario 2: Patch version difference
-    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.8.3", latest_version="0.8.4")
+    result = _detect_stale_cache(
+        upgrade_output="Nothing to upgrade",
+        current_version="0.8.3",
+        latest_version="0.8.4",
+    )
     assert result is True
 
     # Scenario 3: Major version difference
-    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.9.0", latest_version="1.0.0")
+    result = _detect_stale_cache(
+        upgrade_output="Nothing to upgrade",
+        current_version="0.9.0",
+        latest_version="1.0.0",
+    )
     assert result is True
 
 
@@ -47,12 +59,18 @@ def test_detect_stale_cache_false():
     from moai_adk.cli.commands.update import _detect_stale_cache
 
     # Scenario 1: Already up to date (same version)
-    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.9.0", latest_version="0.9.0")
+    result = _detect_stale_cache(
+        upgrade_output="Nothing to upgrade",
+        current_version="0.9.0",
+        latest_version="0.9.0",
+    )
     assert result is False
 
     # Scenario 2: Upgrade succeeded (different message)
     result = _detect_stale_cache(
-        upgrade_output="Successfully updated moai-adk 0.8.3 -> 0.9.0", current_version="0.8.3", latest_version="0.9.0"
+        upgrade_output="Successfully updated moai-adk 0.8.3 -> 0.9.0",
+        current_version="0.8.3",
+        latest_version="0.9.0",
     )
     assert result is False
 
@@ -61,12 +79,18 @@ def test_detect_stale_cache_false():
     assert result is False
 
     # Scenario 4: Current version is newer (dev version)
-    result = _detect_stale_cache(upgrade_output="Nothing to upgrade", current_version="0.9.1", latest_version="0.9.0")
+    result = _detect_stale_cache(
+        upgrade_output="Nothing to upgrade",
+        current_version="0.9.1",
+        latest_version="0.9.0",
+    )
     assert result is False
 
     # Scenario 5: Invalid version string (graceful degradation)
     result = _detect_stale_cache(
-        upgrade_output="Nothing to upgrade", current_version="invalid-version", latest_version="0.9.0"
+        upgrade_output="Nothing to upgrade",
+        current_version="invalid-version",
+        latest_version="0.9.0",
     )
     assert result is False
 

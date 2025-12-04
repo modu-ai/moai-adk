@@ -334,15 +334,17 @@ def create_worktree(self, spec_id: str, description: str = "", options) -> Workt
 
 def _apply_template(self, worktree_path: Path, template_name: str) -> None:
  """Apply worktree template for initial setup."""
+ import shlex
 
  template_config = self._load_template_config(template_name)
 
- # Execute setup commands
+ # Execute setup commands safely (shell=False to prevent command injection CWE-78)
  for command in template_config.get('setup_commands', []):
+ # Parse command string into list for safe execution
+ cmd_list = shlex.split(command) if isinstance(command, str) else command
  result = subprocess.run(
- command,
+ cmd_list,
  cwd=worktree_path,
- shell=True,
  capture_output=True,
  text=True
  )

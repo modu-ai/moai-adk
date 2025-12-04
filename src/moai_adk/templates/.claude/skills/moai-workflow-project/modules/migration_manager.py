@@ -9,7 +9,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from .config_manager import UnifiedConfigManager
 
@@ -50,11 +50,31 @@ class LegacyConfigDetector:
         """
         self.search_dirs = search_dirs
         self.legacy_patterns = {
-            "batch_questions": ["batch_questions_config.json", "batch-config.json", ".batch_questions.json"],
-            "documentation": ["docs_config.json", "documentation.json", ".docs_config.json"],
-            "language_config": ["language_settings.json", "i18n_config.json", ".language_config.json"],
-            "template_optimizer": ["template_config.json", "optimizer_config.json", ".template_config.json"],
-            "project_initializer": ["init_config.json", "project_config.json", ".init_config.json"],
+            "batch_questions": [
+                "batch_questions_config.json",
+                "batch-config.json",
+                ".batch_questions.json",
+            ],
+            "documentation": [
+                "docs_config.json",
+                "documentation.json",
+                ".docs_config.json",
+            ],
+            "language_config": [
+                "language_settings.json",
+                "i18n_config.json",
+                ".language_config.json",
+            ],
+            "template_optimizer": [
+                "template_config.json",
+                "optimizer_config.json",
+                ".template_config.json",
+            ],
+            "project_initializer": [
+                "init_config.json",
+                "project_config.json",
+                ".init_config.json",
+            ],
         }
 
     def find_legacy_configs(self) -> List[LegacyConfigInfo]:
@@ -123,7 +143,11 @@ class LegacyConfigDetector:
             priority = self._calculate_priority(file_path, module_name)
 
             return LegacyConfigInfo(
-                path=file_path, module_name=module_name, version=version, format=format_type, priority=priority
+                path=file_path,
+                module_name=module_name,
+                version=version,
+                format=format_type,
+                priority=priority,
             )
 
         except Exception as e:
@@ -572,7 +596,12 @@ def check_migration_status(config_dir: Union[str, Path]) -> Dict[str, Any]:
         "has_unified_config": has_unified_config,
         "legacy_configs_found": len(legacy_configs),
         "legacy_configs": [
-            {"path": str(c.path), "module": c.module_name, "version": c.version, "format": c.format}
+            {
+                "path": str(c.path),
+                "module": c.module_name,
+                "version": c.version,
+                "format": c.format,
+            }
             for c in legacy_configs
         ],
         "migration_needed": len(legacy_configs) > 0,

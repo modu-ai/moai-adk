@@ -9,10 +9,9 @@ documentation generation, multilingual support, and template optimization.
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 # Import module components
 from .modules.documentation_manager import DocumentationManager
@@ -73,7 +72,11 @@ class MoaiMenuProject:
 
         # Create default configuration
         default_config = {
-            "project": {"name": "My Project", "type": "web_application", "initialized_at": datetime.now().isoformat()},
+            "project": {
+                "name": "My Project",
+                "type": "web_application",
+                "initialized_at": datetime.now().isoformat(),
+            },
             "language": {
                 "conversation_language": "en",
                 "conversation_language_name": "English",
@@ -81,7 +84,10 @@ class MoaiMenuProject:
                 "documentation_language": "en",
             },
             "user": {"name": "Developer", "selected_at": datetime.now().isoformat()},
-            "menu_system": {"version": self.version, "initialized_at": datetime.now().isoformat()},
+            "menu_system": {
+                "version": self.version,
+                "initialized_at": datetime.now().isoformat(),
+            },
         }
 
         # Ensure config directory exists
@@ -212,7 +218,11 @@ class MoaiMenuProject:
         # This would apply language-specific formatting, terminology, and structure
         # Implementation would be more sophisticated in practice
 
-        localized_docs = {"language": language, "localization_applied": True, "modified_sections": []}
+        localized_docs = {
+            "language": language,
+            "localization_applied": True,
+            "modified_sections": [],
+        }
 
         return localized_docs
 
@@ -341,7 +351,11 @@ class MoaiMenuProject:
         if backup_name is None:
             backup_name = f"project-backup-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
 
-        backup_result = {"backup_name": backup_name, "timestamp": datetime.now().isoformat(), "components": {}}
+        backup_result = {
+            "backup_name": backup_name,
+            "timestamp": datetime.now().isoformat(),
+            "components": {},
+        }
 
         # Backup templates
         template_backup = self.template_optimizer._create_template_backup(f"{backup_name}-templates")
@@ -352,7 +366,10 @@ class MoaiMenuProject:
         config_backup_path.parent.mkdir(parents=True, exist_ok=True)
         config_backup_path.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        backup_result["components"]["configuration"] = {"success": True, "backup_path": str(config_backup_path)}
+        backup_result["components"]["configuration"] = {
+            "success": True,
+            "backup_path": str(config_backup_path),
+        }
 
         # Backup documentation if exists
         docs_dir = self.project_root / "docs"
@@ -364,7 +381,10 @@ class MoaiMenuProject:
                 shutil.rmtree(docs_backup_path)
             shutil.copytree(docs_dir, docs_backup_path)
 
-            backup_result["components"]["documentation"] = {"success": True, "backup_path": str(docs_backup_path)}
+            backup_result["components"]["documentation"] = {
+                "success": True,
+                "backup_path": str(docs_backup_path),
+            }
 
         backup_result["success"] = all(
             component.get("success", False) for component in backup_result["components"].values()
@@ -394,19 +414,31 @@ class MoaiMenuProject:
                     "description": "Manages project documentation generation and maintenance",
                     "integrates_with": ["language_initializer"],
                     "output_formats": ["markdown", "html", "pdf"],
-                    "key_features": ["template-based generation", "multilingual support", "SPEC integration"],
+                    "key_features": [
+                        "template-based generation",
+                        "multilingual support",
+                        "SPEC integration",
+                    ],
                 },
                 "language_initializer": {
                     "description": "Handles language detection, configuration, and localization",
                     "integrates_with": ["documentation_manager"],
                     "supported_languages": ["en", "ko", "ja", "zh"],
-                    "key_features": ["auto-detection", "locale management", "agent prompt localization"],
+                    "key_features": [
+                        "auto-detection",
+                        "locale management",
+                        "agent prompt localization",
+                    ],
                 },
                 "template_optimizer": {
                     "description": "Analyzes and optimizes project templates for performance",
                     "integrates_with": [],
                     "optimization_types": ["size", "performance", "complexity"],
-                    "key_features": ["automated analysis", "backup creation", "benchmarking"],
+                    "key_features": [
+                        "automated analysis",
+                        "backup creation",
+                        "benchmarking",
+                    ],
                 },
             },
             "workflows": {

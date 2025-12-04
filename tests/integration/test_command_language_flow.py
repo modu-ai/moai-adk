@@ -29,7 +29,11 @@ class TestConfigMigration:
     def test_migrate_legacy_flat_config_to_nested(self) -> None:
         """Legacy flat config converts to nested structure."""
         # Arrange
-        legacy_config = {"conversation_language": "ko", "locale": "ko", "project": {"name": "TestProject"}}
+        legacy_config = {
+            "conversation_language": "ko",
+            "locale": "ko",
+            "project": {"name": "TestProject"},
+        }
 
         # Act
         migrated = migrate_config_to_nested_structure(legacy_config)
@@ -62,7 +66,12 @@ class TestConfigMigration:
     def test_migrate_already_nested_config_unchanged(self) -> None:
         """Config already in nested structure should not be modified."""
         # Arrange
-        nested_config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
+        nested_config = {
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            }
+        }
 
         # Act
         result = migrate_config_to_nested_structure(nested_config)
@@ -73,7 +82,12 @@ class TestConfigMigration:
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_get_conversation_language_from_nested(self) -> None:
         """Reading language from nested structure works."""
-        config = {"language": {"conversation_language": "ja", "conversation_language_name": "日本語"}}
+        config = {
+            "language": {
+                "conversation_language": "ja",
+                "conversation_language_name": "日本語",
+            }
+        }
 
         result = get_conversation_language(config)
 
@@ -88,7 +102,12 @@ class TestConfigMigration:
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_get_conversation_language_name(self) -> None:
         """Reading language name works correctly."""
-        config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
+        config = {
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            }
+        }
 
         result = get_conversation_language_name(config)
 
@@ -123,7 +142,10 @@ class TestPhaseExecutorLanguageContext:
         executor = PhaseExecutor(validator)
 
         config = {
-            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            },
             "name": "TestProject",
         }
 
@@ -151,7 +173,10 @@ class TestPhaseExecutorLanguageContext:
         executor = PhaseExecutor(validator)
 
         config = {
-            "language": {"conversation_language": "ja", "conversation_language_name": "日本語"},
+            "language": {
+                "conversation_language": "ja",
+                "conversation_language_name": "日本語",
+            },
             "name": "TestProject",
         }
 
@@ -199,7 +224,11 @@ class TestTemplateVariableSubstitution:
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
         processor.set_context(
-            {"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어", "PROJECT_NAME": "TestProject"}
+            {
+                "CONVERSATION_LANGUAGE": "ko",
+                "CONVERSATION_LANGUAGE_NAME": "한국어",
+                "PROJECT_NAME": "TestProject",
+            }
         )
 
         template = "Language: {{CONVERSATION_LANGUAGE}}, Project: {{PROJECT_NAME}}"

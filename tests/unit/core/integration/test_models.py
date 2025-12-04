@@ -27,7 +27,10 @@ class TestIntegrationTestResult:
     def test_result_creation(self):
         """Test basic result creation"""
         result = IntegrationTestResult(
-            test_name="test_example", passed=True, execution_time=1.5, components_tested=["comp1", "comp2"]
+            test_name="test_example",
+            passed=True,
+            execution_time=1.5,
+            components_tested=["comp1", "comp2"],
         )
 
         assert result.test_name == "test_example"
@@ -60,7 +63,10 @@ class TestComponent:
     def test_component_creation(self):
         """Test basic component creation"""
         component = TestComponentClass(
-            name="test_component", component_type="python_module", version="1.0.0", dependencies=["dep1", "dep2"]
+            name="test_component",
+            component_type="python_module",
+            version="1.0.0",
+            dependencies=["dep1", "dep2"],
         )
 
         assert component.name == "test_component"

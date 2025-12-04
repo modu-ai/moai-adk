@@ -59,7 +59,13 @@ class TestFullWorkflow:
         """Test all --help commands work"""
         runner = CliRunner()
 
-        commands = ["", "init", "status", "doctor", "update"]  # restore removed - not implemented
+        commands = [
+            "",
+            "init",
+            "status",
+            "doctor",
+            "update",
+        ]  # restore removed - not implemented
 
         for cmd in commands:
             args = [cmd, "--help"] if cmd else ["--help"]
@@ -88,15 +94,6 @@ class TestCLIErrorHandling:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             result = runner.invoke(cli, ["status"])
             assert result.exit_code != 0 or "not found" in result.output.lower()
-
-    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
-    def test_restore_without_backups(self, tmp_path):
-        """Test restore without backups"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            result = runner.invoke(cli, ["restore"])
-            assert result.exit_code != 0 or "backup" in result.output.lower()
 
     def test_update_without_init(self, tmp_path):
         """Test update without initialization"""
@@ -141,7 +138,12 @@ class TestIntegrationFlow:
         """Test all commands have consistent help"""
         runner = CliRunner()
 
-        commands = ["init", "status", "doctor", "update"]  # restore removed - not implemented
+        commands = [
+            "init",
+            "status",
+            "doctor",
+            "update",
+        ]  # restore removed - not implemented
 
         for cmd in commands:
             result = runner.invoke(cli, [cmd, "--help"])

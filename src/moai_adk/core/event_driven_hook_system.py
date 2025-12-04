@@ -53,29 +53,29 @@ class EventPriority(Enum):
     """Event priority levels for message queuing"""
 
     CRITICAL = 1  # System-critical events (security, failures)
-    HIGH = 2      # High-impact events (performance, alerts)
-    NORMAL = 3    # Standard events (hook execution)
-    LOW = 4       # Background events (analytics, metrics)
-    BULK = 5      # Bulk processing (batch operations)
+    HIGH = 2  # High-impact events (performance, alerts)
+    NORMAL = 3  # Standard events (hook execution)
+    LOW = 4  # Background events (analytics, metrics)
+    BULK = 5  # Bulk processing (batch operations)
 
 
 class ResourceIsolationLevel(Enum):
     """Resource isolation levels for hook execution"""
 
-    SHARED = "shared"           # Share resources across all hooks
-    TYPE_ISOLATED = "type"      # Isolate by hook type (event type)
+    SHARED = "shared"  # Share resources across all hooks
+    TYPE_ISOLATED = "type"  # Isolate by hook type (event type)
     PRIORITY_ISOLATED = "priority"  # Isolate by priority level
-    FULL_ISOLATION = "full"     # Complete isolation for each hook
+    FULL_ISOLATION = "full"  # Complete isolation for each hook
 
 
 class MessageBrokerType(Enum):
     """Supported message broker types"""
 
-    MEMORY = "memory"           # In-memory message broker
-    REDIS = "redis"             # Redis message broker
-    RABBITMQ = "rabbitmq"       # RabbitMQ message broker
-    KAFKA = "kafka"            # Apache Kafka
-    AWS_SQS = "aws_sqs"        # AWS SQS
+    MEMORY = "memory"  # In-memory message broker
+    REDIS = "redis"  # Redis message broker
+    RABBITMQ = "rabbitmq"  # RabbitMQ message broker
+    KAFKA = "kafka"  # Apache Kafka
+    AWS_SQS = "aws_sqs"  # AWS SQS
 
 
 @dataclass
@@ -204,7 +204,7 @@ class InMemoryMessageBroker(MessageBroker):
     def __init__(self, max_queue_size: int = 10000):
         self.max_queue_size = max_queue_size
         self.queues: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_queue_size))
-        self.subscribers: Dict[str, List[Callable]] = defaultdict(list)
+        self.subscribers: Dict[str, List[tuple[str, Callable[[Event], None]]]] = defaultdict(list)
         self._lock = asyncio.Lock()
         self._stats = {
             "messages_published": 0,
@@ -226,7 +226,7 @@ class InMemoryMessageBroker(MessageBroker):
                 self._stats["messages_published"] += 1
 
                 # Notify subscribers
-                for callback in self.subscribers[topic]:
+                for sub_id, callback in self.subscribers[topic]:
                     try:
                         # Create task for async callback
                         asyncio.create_task(self._safe_callback(callback, event))
@@ -244,7 +244,9 @@ class InMemoryMessageBroker(MessageBroker):
         """Safely execute callback with error handling"""
         try:
             if asyncio.iscoroutinefunction(callback):
-                await callback(event)
+                result = callback(event)  # type: ignore[func-returns-value]
+                if result is not None:
+                    await result
             else:
                 callback(event)
         except Exception as e:
@@ -261,13 +263,15 @@ class InMemoryMessageBroker(MessageBroker):
     async def unsubscribe(self, subscription_id: str) -> bool:
         """Unsubscribe from topic"""
         async with self._lock:
-            for topic, subscribers in self.subscribers.items():
+            for topic in list(self.subscribers.keys()):
+                subscribers = self.subscribers[topic]
+                original_len = len(subscribers)
                 self.subscribers[topic] = [
-                    (sub_id, callback) for sub_id, callback in subscribers
-                    if sub_id != subscription_id
+                    (sub_id, callback) for sub_id, callback in subscribers if sub_id != subscription_id
                 ]
-                self._stats["active_subscriptions"] -= 1
-                return True
+                if len(self.subscribers[topic]) < original_len:
+                    self._stats["active_subscriptions"] -= 1
+                    return True
         return False
 
     async def create_queue(self, queue_name: str, config: Dict[str, Any]) -> bool:
@@ -303,7 +307,7 @@ class RedisMessageBroker(MessageBroker):
         self.redis_url = redis_url
         self._redis = None
         self._pubsub = None
-        self._subscribers: Dict[str, List] = defaultdict(list)
+        self._subscribers: Dict[str, List[tuple[str, Callable[[Event], None]]]] = defaultdict(list)
         self._stats = {
             "messages_published": 0,
             "messages_delivered": 0,
@@ -316,9 +320,11 @@ class RedisMessageBroker(MessageBroker):
         """Connect to Redis"""
         if self._redis is None:
             try:
-                import redis.asyncio as redis
-                self._redis = redis.from_url(self.redis_url)
-                self._pubsub = self._redis.pubsub()
+                import redis.asyncio as redis_module
+
+                redis_client = redis_module.from_url(self.redis_url)
+                self._redis = redis_client
+                self._pubsub = redis_client.pubsub()  # type: ignore[union-attr]
             except ImportError:
                 raise ImportError("redis package is required for RedisMessageBroker")
             except Exception as e:
@@ -328,6 +334,8 @@ class RedisMessageBroker(MessageBroker):
         """Publish event to Redis topic"""
         try:
             await self._connect()
+            if self._redis is None:
+                raise ConnectionError("Redis connection not established")
             message = json.dumps(event.to_dict())
             await self._redis.publish(topic, message)
             self._stats["messages_published"] += 1
@@ -341,6 +349,8 @@ class RedisMessageBroker(MessageBroker):
         """Subscribe to Redis topic"""
         try:
             await self._connect()
+            if self._pubsub is None:
+                raise ConnectionError("Redis pubsub not established")
             subscription_id = str(uuid.uuid4())
 
             # Add to local subscribers
@@ -360,6 +370,8 @@ class RedisMessageBroker(MessageBroker):
 
     async def _listen_to_topic(self, topic: str) -> None:
         """Listen to Redis topic and call callbacks"""
+        if self._pubsub is None:
+            return
         try:
             async for message in self._pubsub.listen():
                 if message["type"] == "message":
@@ -388,8 +400,7 @@ class RedisMessageBroker(MessageBroker):
             # Remove from local subscribers
             for topic, subscribers in self._subscribers.items():
                 self._subscribers[topic] = [
-                    (sub_id, callback) for sub_id, callback in subscribers
-                    if sub_id != subscription_id
+                    (sub_id, callback) for sub_id, callback in subscribers if sub_id != subscription_id
                 ]
 
             self._stats["active_subscriptions"] -= 1
@@ -413,6 +424,8 @@ class RedisMessageBroker(MessageBroker):
         """Delete Redis queue"""
         try:
             await self._connect()
+            if self._redis is None:
+                raise ConnectionError("Redis connection not established")
             await self._redis.delete(queue_name)
             return True
         except Exception as e:
@@ -433,7 +446,7 @@ class ResourcePool:
         self._pools: Dict[str, asyncio.Semaphore] = {}
         self._active_executions: Dict[str, Set[str]] = defaultdict(set)
         self._lock = asyncio.Lock()
-        self._stats = {
+        self._stats: Dict[str, Any] = {
             "total_executions": 0,
             "active_executions": 0,
             "pool_utilization": {},
@@ -481,7 +494,7 @@ class ResourcePool:
                 self._stats["total_executions"] += 1
 
                 # Update pool utilization
-                available = semaphore.get_value()
+                available = semaphore._value
                 total = self.max_concurrent
                 utilization = ((total - available) / total) * 100
                 self._stats["pool_utilization"][pool_key] = utilization
@@ -501,7 +514,7 @@ class ResourcePool:
             self._stats["active_executions"] = max(0, self._stats["active_executions"] - 1)
 
             # Update pool utilization
-            available = semaphore.get_value()
+            available = semaphore._value
             total = self.max_concurrent
             utilization = ((total - available) / total) * 100
             self._stats["pool_utilization"][pool_key] = utilization
@@ -510,6 +523,7 @@ class ResourcePool:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get resource pool statistics"""
+
         async def get_async_stats():
             async with self._lock:
                 return {
@@ -519,10 +533,10 @@ class ResourcePool:
                         {
                             "pool_key": key,
                             "active_executions": len(executions),
-                            "executions": list(executions)
+                            "executions": list(executions),
                         }
                         for key, executions in self._active_executions.items()
-                    ]
+                    ],
                 }
 
         # Return synchronous version for compatibility
@@ -532,7 +546,7 @@ class ResourcePool:
                 return self._stats
             else:
                 return loop.run_until_complete(get_async_stats())
-        except:
+        except Exception:
             return self._stats
 
 
@@ -542,7 +556,7 @@ class EventProcessor:
     def __init__(self, resource_pool: ResourcePool):
         self.resource_pool = resource_pool
         self._handlers: Dict[EventType, List[Callable]] = defaultdict(list)
-        self._processing_stats = {
+        self._processing_stats: Dict[str, Any] = {
             "events_processed": 0,
             "events_failed": 0,
             "average_processing_time_ms": 0.0,
@@ -590,30 +604,31 @@ class EventProcessor:
 
     def _update_stats(self, event_type: EventType, processing_time_ms: float, success: bool) -> None:
         """Update processing statistics"""
-        self._processing_stats["events_processed"] += 1
-        self._processing_stats["by_event_type"][event_type.value] += 1
+        events_processed: int = self._processing_stats["events_processed"]
+        events_processed += 1
+        self._processing_stats["events_processed"] = events_processed
+        by_event_type: Dict[str, int] = self._processing_stats["by_event_type"]
+        by_event_type[event_type.value] = by_event_type.get(event_type.value, 0) + 1
 
         if not success:
-            self._processing_stats["events_failed"] += 1
+            events_failed: int = self._processing_stats["events_failed"]
+            self._processing_stats["events_failed"] = events_failed + 1
 
         # Update average processing time
-        total_events = self._processing_stats["events_processed"]
-        current_avg = self._processing_stats["average_processing_time_ms"]
+        total_events = events_processed
+        current_avg: float = self._processing_stats["average_processing_time_ms"]
         self._processing_stats["average_processing_time_ms"] = (
-            (current_avg * (total_events - 1) + processing_time_ms) / total_events
-        )
+            current_avg * (total_events - 1) + processing_time_ms
+        ) / total_events
 
     def get_stats(self) -> Dict[str, Any]:
         """Get event processing statistics"""
+        events_processed: int = self._processing_stats["events_processed"]
+        events_failed: int = self._processing_stats["events_failed"]
         return {
             **self._processing_stats,
-            "success_rate": (
-                (self._processing_stats["events_processed"] - self._processing_stats["events_failed"]) /
-                max(self._processing_stats["events_processed"], 1)
-            ) * 100,
-            "handlers_registered": {
-                event_type.value: len(handlers) for event_type, handlers in self._handlers.items()
-            }
+            "success_rate": ((events_processed - events_failed) / max(events_processed, 1)) * 100,
+            "handlers_registered": {event_type.value: len(handlers) for event_type, handlers in self._handlers.items()},
         }
 
 
@@ -750,70 +765,46 @@ class EventDrivenHookSystem:
     def _register_event_handlers(self) -> None:
         """Register event handlers for different event types"""
         # Hook execution request handler
-        self.event_processor.register_handler(
-            EventType.HOOK_EXECUTION_REQUEST,
-            self._handle_hook_execution_request
-        )
+        self.event_processor.register_handler(EventType.HOOK_EXECUTION_REQUEST, self._handle_hook_execution_request)
 
         # Hook execution completion handler
-        self.event_processor.register_handler(
-            EventType.HOOK_EXECUTION_COMPLETED,
-            self._handle_hook_execution_completed
-        )
+        self.event_processor.register_handler(EventType.HOOK_EXECUTION_COMPLETED, self._handle_hook_execution_completed)
 
         # Hook execution failure handler
-        self.event_processor.register_handler(
-            EventType.HOOK_EXECUTION_FAILED,
-            self._handle_hook_execution_failed
-        )
+        self.event_processor.register_handler(EventType.HOOK_EXECUTION_FAILED, self._handle_hook_execution_failed)
 
         # System alert handler
-        self.event_processor.register_handler(
-            EventType.SYSTEM_ALERT,
-            self._handle_system_alert
-        )
+        self.event_processor.register_handler(EventType.SYSTEM_ALERT, self._handle_system_alert)
 
         # Health check handler
-        self.event_processor.register_handler(
-            EventType.HEALTH_CHECK,
-            self._handle_health_check
-        )
+        self.event_processor.register_handler(EventType.HEALTH_CHECK, self._handle_health_check)
 
         # Batch execution handler
-        self.event_processor.register_handler(
-            EventType.BATCH_EXECUTION_REQUEST,
-            self._handle_batch_execution_request
-        )
+        self.event_processor.register_handler(EventType.BATCH_EXECUTION_REQUEST, self._handle_batch_execution_request)
 
         # Workflow orchestration handler
-        self.event_processor.register_handler(
-            EventType.WORKFLOW_ORCHESTRATION,
-            self._handle_workflow_orchestration
-        )
+        self.event_processor.register_handler(EventType.WORKFLOW_ORCHESTRATION, self._handle_workflow_orchestration)
 
     async def _setup_message_queues(self) -> None:
         """Setup message queues for different event types"""
         queue_configs = {
             "hook_execution_high": {
                 "max_size": 1000,
-                "priority": EventPriority.HIGH.value
+                "priority": EventPriority.HIGH.value,
             },
             "hook_execution_normal": {
                 "max_size": 5000,
-                "priority": EventPriority.NORMAL.value
+                "priority": EventPriority.NORMAL.value,
             },
             "hook_execution_low": {
                 "max_size": 10000,
-                "priority": EventPriority.LOW.value
+                "priority": EventPriority.LOW.value,
             },
             "system_events": {
                 "max_size": 1000,
-                "priority": EventPriority.CRITICAL.value
+                "priority": EventPriority.CRITICAL.value,
             },
-            "analytics": {
-                "max_size": 20000,
-                "priority": EventPriority.BULK.value
-            },
+            "analytics": {"max_size": 20000, "priority": EventPriority.BULK.value},
         }
 
         for queue_name, config in queue_configs.items():
@@ -925,8 +916,7 @@ class EventDrivenHookSystem:
         try:
             # Acquire execution slot from resource pool
             acquired = await self.resource_pool.acquire_execution_slot(
-                event.hook_path,
-                event.hook_event_type or HookEvent.SESSION_START
+                event.hook_path, event.hook_event_type or HookEvent.SESSION_START
             )
 
             if not acquired:
@@ -939,10 +929,10 @@ class EventDrivenHookSystem:
                     payload={
                         "hook_path": event.hook_path,
                         "reason": "Resource pool full",
-                        "original_event_id": event.event_id
+                        "original_event_id": event.event_id,
                     },
                     correlation_id=event.correlation_id,
-                    causation_id=event.event_id
+                    causation_id=event.event_id,
                 )
                 await self.message_broker.publish("system_events", failure_event)
                 return
@@ -961,10 +951,10 @@ class EventDrivenHookSystem:
                         "hook_path": event.hook_path,
                         "execution_time": 0.0,  # Would be filled by actual execution
                         "success": True,
-                        "original_event_id": event.event_id
+                        "original_event_id": event.event_id,
                     },
                     correlation_id=event.correlation_id,
-                    causation_id=event.event_id
+                    causation_id=event.event_id,
                 )
                 await self.message_broker.publish("hook_execution_normal", completion_event)
 
@@ -973,8 +963,7 @@ class EventDrivenHookSystem:
             finally:
                 # Always release the execution slot
                 await self.resource_pool.release_execution_slot(
-                    event.hook_path,
-                    event.hook_event_type or HookEvent.SESSION_START
+                    event.hook_path, event.hook_event_type or HookEvent.SESSION_START
                 )
 
         except Exception as e:
@@ -989,10 +978,10 @@ class EventDrivenHookSystem:
                 payload={
                     "hook_path": event.hook_path,
                     "reason": str(e),
-                    "original_event_id": event.event_id
+                    "original_event_id": event.event_id,
                 },
                 correlation_id=event.correlation_id,
-                causation_id=event.event_id
+                causation_id=event.event_id,
             )
             await self.message_broker.publish("system_events", failure_event)
 
@@ -1046,15 +1035,13 @@ class EventDrivenHookSystem:
             priority=EventPriority.LOW,
             timestamp=datetime.now(),
             payload=self._system_metrics,
-            source="event_system"
+            source="event_system",
         )
         await self.message_broker.publish("analytics", performance_event)
 
     def _update_system_metrics(self) -> None:
         """Update system metrics"""
-        self._system_metrics["system_uptime_seconds"] = (
-            datetime.now() - self._startup_time
-        ).total_seconds()
+        self._system_metrics["system_uptime_seconds"] = (datetime.now() - self._startup_time).total_seconds()
 
     async def _cleanup_old_events(self) -> None:
         """Clean up old processed events"""
@@ -1062,9 +1049,9 @@ class EventDrivenHookSystem:
 
         # Remove old processed events
         old_events = [
-            event_id for event_id in self._processed_events
-            if event_id in self._pending_events and
-            self._pending_events[event_id].timestamp < cutoff_time
+            event_id
+            for event_id in self._processed_events
+            if event_id in self._pending_events and self._pending_events[event_id].timestamp < cutoff_time
         ]
 
         for event_id in old_events:
@@ -1085,10 +1072,7 @@ class EventDrivenHookSystem:
         try:
             # Persist pending events
             pending_file = self.persistence_path / "pending_events.json"
-            pending_data = {
-                event_id: event.to_dict()
-                for event_id, event in self._pending_events.items()
-            }
+            pending_data = {event_id: event.to_dict() for event_id, event in self._pending_events.items()}
 
             with open(pending_file, "w") as f:
                 json.dump(pending_data, f, indent=2)
@@ -1119,8 +1103,7 @@ class EventDrivenHookSystem:
                     pending_data = json.load(f)
 
                 self._pending_events = {
-                    event_id: Event.from_dict(event_data)
-                    for event_id, event_data in pending_data.items()
+                    event_id: Event.from_dict(event_data) for event_id, event_data in pending_data.items()
                 }
 
             # Load processed events
@@ -1158,7 +1141,7 @@ class EventDrivenHookSystem:
             payload={
                 "hook_path": hook_path,
                 "event_type": event_type.value,
-                "execution_context": execution_context
+                "execution_context": execution_context,
             },
             source="event_system",
             correlation_id=correlation_id or str(uuid.uuid4()),
@@ -1211,9 +1194,9 @@ class EventDrivenHookSystem:
             payload={
                 "alert_type": alert_type,
                 "message": message,
-                "metadata": metadata or {}
+                "metadata": metadata or {},
             },
-            source="event_system"
+            source="event_system",
         )
 
         await self.message_broker.publish("system_events", alert_event)
@@ -1249,16 +1232,12 @@ class EventDrivenHookSystem:
                 "hook_execution": [
                     "HOOK_EXECUTION_REQUEST -> Resource Pool -> Hook Execution -> HOOK_EXECUTION_COMPLETED"
                 ],
-                "system_alerts": [
-                    "SYSTEM_ALERT -> Alert Handlers -> Notification"
-                ],
-                "batch_processing": [
-                    "BATCH_EXECUTION_REQUEST -> Batch Queue -> Parallel Execution -> Results"
-                ],
+                "system_alerts": ["SYSTEM_ALERT -> Alert Handlers -> Notification"],
+                "batch_processing": ["BATCH_EXECUTION_REQUEST -> Batch Queue -> Parallel Execution -> Results"],
                 "workflow_orchestration": [
                     "WORKFLOW_ORCHESTRATION -> Workflow Engine -> Step Execution -> State Update"
-                ]
-            }
+                ],
+            },
         }
 
 
@@ -1328,16 +1307,16 @@ if __name__ == "__main__":
                     event_type=HookEvent.SESSION_START,
                     execution_context={"test": True, "iteration": i},
                     isolation_level=ResourceIsolationLevel.FULL_ISOLATION,
-                    priority=EventPriority.NORMAL
+                    priority=EventPriority.NORMAL,
                 )
                 event_ids.append(event_id)
-                print(f"  Published event {i+1}: {event_id}")
+                print(f"  Published event {i + 1}: {event_id}")
 
             # Publish a system alert
             alert_id = await event_system.publish_system_alert(
                 alert_type="TEST_ALERT",
                 message="This is a test alert from the event system",
-                severity=EventPriority.HIGH
+                severity=EventPriority.HIGH,
             )
             print(f"\n🚨 Published system alert: {alert_id}")
 
@@ -1356,13 +1335,13 @@ if __name__ == "__main__":
             print(f"  Pending Events: {status['pending_events_count']}")
 
             # Get message broker stats
-            broker_stats = status['message_broker_stats']
+            broker_stats = status["message_broker_stats"]
             print("\n📨 Message Broker Stats:")
             print(f"  Messages Published: {broker_stats.get('messages_published', 0)}")
             print(f"  Messages Delivered: {broker_stats.get('messages_delivered', 0)}")
 
             # Get resource pool stats
-            pool_stats = status['resource_pool_stats']
+            pool_stats = status["resource_pool_stats"]
             print("\n🏊 Resource Pool Stats:")
             print(f"  Total Executions: {pool_stats.get('total_executions', 0)}")
             print(f"  Active Executions: {pool_stats.get('active_executions', 0)}")
@@ -1379,6 +1358,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"\n❌ Demo failed: {str(e)}")
             import traceback
+
             traceback.print_exc()
 
         finally:

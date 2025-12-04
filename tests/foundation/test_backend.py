@@ -293,7 +293,11 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_valid(self, architect):
         """Test valid service boundary."""
-        service = {"name": "user-service", "domain": "auth", "endpoints": ["/api/v1/users"]}
+        service = {
+            "name": "user-service",
+            "domain": "auth",
+            "endpoints": ["/api/v1/users"],
+        }
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is True
@@ -303,7 +307,11 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_invalid_name_no_hyphen(self, architect):
         """Test service name without hyphen."""
-        service = {"name": "userservice", "domain": "auth", "endpoints": ["/api/v1/users"]}
+        service = {
+            "name": "userservice",
+            "domain": "auth",
+            "endpoints": ["/api/v1/users"],
+        }
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
@@ -334,7 +342,11 @@ class TestMicroserviceArchitect:
 
     def test_validate_service_boundary_stores_service(self, architect):
         """Test validated service is stored."""
-        service = {"name": "user-service", "domain": "auth", "endpoints": ["/api/v1/users"]}
+        service = {
+            "name": "user-service",
+            "domain": "auth",
+            "endpoints": ["/api/v1/users"],
+        }
         architect.validate_service_boundary(service)
 
         assert "user-service" in architect.services
@@ -347,7 +359,8 @@ class TestMicroserviceArchitect:
     def test_get_communication_pattern_rest(self, architect):
         """Test REST communication pattern."""
         pattern = architect.get_communication_pattern(
-            "rest", {"source": "api-gateway", "target": "user-service", "operation": "query"}
+            "rest",
+            {"source": "api-gateway", "target": "user-service", "operation": "query"},
         )
 
         assert pattern["pattern"] == "rest"
@@ -384,7 +397,12 @@ class TestMicroserviceArchitect:
     def test_configure_service_discovery_consul(self, architect):
         """Test Consul service discovery configuration."""
         config = architect.configure_service_discovery(
-            "consul", {"consul_host": "consul.local", "consul_port": 8500, "health_check_interval": 5}
+            "consul",
+            {
+                "consul_host": "consul.local",
+                "consul_port": 8500,
+                "health_check_interval": 5,
+            },
         )
 
         assert config["registry"] == "consul"
@@ -658,7 +676,11 @@ class TestAuthenticationManager:
 
     def test_generate_jwt_token_with_multiple_claims(self, auth):
         """Test JWT token with multiple claims."""
-        claims = {"sub": "user@example.com", "name": "John Doe", "email": "john@example.com"}
+        claims = {
+            "sub": "user@example.com",
+            "name": "John Doe",
+            "email": "john@example.com",
+        }
         token = auth.generate_jwt_token(claims)
 
         assert isinstance(token, str)
@@ -703,7 +725,11 @@ class TestAuthenticationManager:
 
     def test_generate_oauth_auth_code(self, auth):
         """Test generate OAuth2 authorization code."""
-        params = {"client_id": "client123", "redirect_uri": "https://example.com/callback", "state": "state123"}
+        params = {
+            "client_id": "client123",
+            "redirect_uri": "https://example.com/callback",
+            "state": "state123",
+        }
         result = auth.generate_oauth_auth_code(params)
 
         assert "code" in result
@@ -788,7 +814,11 @@ class TestErrorLog:
         """Test ErrorLog with different log levels."""
         for level in ["INFO", "WARNING", "ERROR", "CRITICAL"]:
             log = ErrorLog(
-                level=level, message="Message", timestamp="2025-01-01T00:00:00Z", trace_id="trace-123", context={}
+                level=level,
+                message="Message",
+                timestamp="2025-01-01T00:00:00Z",
+                trace_id="trace-123",
+                context={},
             )
             assert log.level == level
 
@@ -836,7 +866,11 @@ class TestErrorHandlingStrategy:
 
     def test_handle_error_server_error(self, handler):
         """Test handle server error."""
-        error = {"type": "InternalServerError", "message": "Database connection failed", "status_code": 500}
+        error = {
+            "type": "InternalServerError",
+            "message": "Database connection failed",
+            "status_code": 500,
+        }
 
         result = handler.handle_error(error)
 
@@ -1129,7 +1163,11 @@ class TestBackendMetricsCollector:
     def test_record_request_metrics_with_response_size(self, collector):
         """Test record metrics with response size."""
         result = collector.record_request_metrics(
-            path="/api/v1/users", method="GET", status_code=200, duration_ms=50.0, response_size_bytes=2048
+            path="/api/v1/users",
+            method="GET",
+            status_code=200,
+            duration_ms=50.0,
+            response_size_bytes=2048,
         )
 
         assert result["response_size_bytes"] == 2048
@@ -1393,7 +1431,11 @@ class TestBackendIntegration:
         auth = AuthenticationManager(secret_key="test-secret")
 
         # Validate service
-        service = {"name": "user-service", "domain": "auth", "endpoints": ["/api/v1/users"]}
+        service = {
+            "name": "user-service",
+            "domain": "auth",
+            "endpoints": ["/api/v1/users"],
+        }
         result = architect.validate_service_boundary(service)
         assert result["valid"] is True
 

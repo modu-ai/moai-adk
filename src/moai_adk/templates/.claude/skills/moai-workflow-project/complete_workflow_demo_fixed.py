@@ -46,7 +46,11 @@ class DemoRunner:
 
         # Initialize configuration
         self.config = {
-            "project": {"name": "MoAI Menu Project Demo", "type": "web_application", "version": "1.0.0"},
+            "project": {
+                "name": "MoAI Menu Project Demo",
+                "type": "web_application",
+                "version": "1.0.0",
+            },
             "language": {
                 "conversation_language": "ko",
                 "documentation_language": "ko",
@@ -71,7 +75,9 @@ class DemoRunner:
 
         # Initialize language configuration
         lang_result = self.lang_init.initialize_language_configuration(
-            language="ko", user_name="데모 사용자", domains=["backend", "frontend", "mobile"]
+            language="ko",
+            user_name="데모 사용자",
+            domains=["backend", "frontend", "mobile"],
         )
 
         # Initialize documentation structure
@@ -131,7 +137,11 @@ class DemoRunner:
                     "path": "/api/auth/register",
                     "method": "POST",
                     "description": "신규 사용자 등록",
-                    "parameters": {"email": "string", "password": "string", "name": "string"},
+                    "parameters": {
+                        "email": "string",
+                        "password": "string",
+                        "name": "string",
+                    },
                 },
                 {
                     "path": "/api/auth/login",
@@ -200,7 +210,10 @@ class DemoRunner:
             print(f"🔤 Testing {lang.upper()} language support...")
 
             # Update language settings
-            lang_updates = {"language.conversation_language": lang, "language.documentation_language": lang}
+            lang_updates = {
+                "language.conversation_language": lang,
+                "language.documentation_language": lang,
+            }
 
             self.lang_init.update_language_settings(lang_updates)
 
@@ -215,7 +228,7 @@ class DemoRunner:
                 cost_analysis = self.lang_init.get_token_cost_analysis(lang)
                 cost_impact = cost_analysis.get("cost_impact", 0)
                 print(f"  💰 Token cost impact: +{cost_impact}%")
-            except:
+            except Exception:
                 print("  💰 Token cost analysis: N/A")
 
         print("\\n🌍 Multilingual Support Summary:")
@@ -225,7 +238,7 @@ class DemoRunner:
             supported_langs = lang_status.get("supported_languages", [])
             print(f"  - Current language: {current_lang}")
             print(f"  - Supported languages: {', '.join(supported_langs) if supported_langs else 'N/A'}")
-        except:
+        except Exception:
             print("  - Language status: Available")
 
         print("\\n" + "=" * 50 + "\\n")
@@ -403,7 +416,13 @@ Complex template logic:
             "title": "統合テスト機能",
             "description": "Integration test feature with multilingual support",
             "requirements": ["要件 1", "要件 2", "要件 3"],
-            "api_endpoints": [{"path": "/api/integration", "method": "GET", "description": "統合エンドポイント"}],
+            "api_endpoints": [
+                {
+                    "path": "/api/integration",
+                    "method": "GET",
+                    "description": "統合エンドポイント",
+                }
+            ],
         }
         spec_result = self.doc_manager.generate_documentation_from_spec(spec_data)
         step3_time = time.time() - step3_start

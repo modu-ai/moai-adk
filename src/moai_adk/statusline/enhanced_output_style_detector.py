@@ -253,7 +253,13 @@ class OutputStyleDetector:
             text_lower = full_text.lower()
 
             # Yoda Master indicators
-            yoda_indicators = ["young padawan", "the force", "master", "wisdom", "patience"]
+            yoda_indicators = [
+                "young padawan",
+                "the force",
+                "master",
+                "wisdom",
+                "patience",
+            ]
             yoda_count = sum(1 for indicator in yoda_indicators if indicator in text_lower)
 
             if yoda_count >= 2:
@@ -263,7 +269,12 @@ class OutputStyleDetector:
             if len(full_text) > 2000:  # Long responses
                 explanatory_count = sum(
                     1
-                    for phrase in ["let me explain", "here's how", "the reason is", "to understand"]
+                    for phrase in [
+                        "let me explain",
+                        "here's how",
+                        "the reason is",
+                        "to understand",
+                    ]
                     if phrase in text_lower
                 )
                 if explanatory_count >= 2:
@@ -301,7 +312,10 @@ class OutputStyleDetector:
 
         # Detection methods in priority order
         detection_methods = [
-            ("Session Context", lambda: self.detect_from_session_context(session_context or {})),
+            (
+                "Session Context",
+                lambda: self.detect_from_session_context(session_context or {}),
+            ),
             ("Environment", self.detect_from_environment),
             ("Behavioral Analysis", self.detect_from_behavioral_analysis),
             ("Settings File", self.detect_from_settings),

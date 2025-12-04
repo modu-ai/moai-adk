@@ -115,13 +115,28 @@ class TemplateOptimizer:
                     )
 
         # Also check common template directories
-        template_dirs = ["templates", "template", "views", "layouts", "_layouts", "_includes", "_templates"]
+        template_dirs = [
+            "templates",
+            "template",
+            "views",
+            "layouts",
+            "_layouts",
+            "_includes",
+            "_templates",
+        ]
 
         for template_dir in template_dirs:
             dir_path = self.project_root / template_dir
             if dir_path.exists() and dir_path.is_dir():
                 for file_path in dir_path.rglob("*"):
-                    if file_path.is_file() and file_path.suffix in [".md", ".html", ".txt", ".yml", ".yaml", ".json"]:
+                    if file_path.is_file() and file_path.suffix in [
+                        ".md",
+                        ".html",
+                        ".txt",
+                        ".yml",
+                        ".yaml",
+                        ".json",
+                    ]:
                         # Check if file contains template markers
                         content = file_path.read_text(encoding="utf-8", errors="ignore")
                         if self._contains_template_markers(content):
@@ -236,7 +251,7 @@ class TemplateOptimizer:
                 "character_count": len(content),
                 "line_count": len(lines),
                 "blank_lines": sum(1 for line in lines if not line.strip()),
-                "average_line_length": sum(len(line) for line in lines) / len(lines) if lines else 0,
+                "average_line_length": (sum(len(line) for line in lines) / len(lines) if lines else 0),
                 "max_line_length": max(len(line) for line in lines) if lines else 0,
             }
 
@@ -277,7 +292,10 @@ class TemplateOptimizer:
 
             for char in content:
                 if char == "{":
-                    if content[content.index(char) : content.index(char) + 2] in ["{{", "{%"]:
+                    if content[content.index(char) : content.index(char) + 2] in [
+                        "{{",
+                        "{%",
+                    ]:
                         current_level += 1
                         max_level = max(max_level, current_level)
                 elif char == "}":
@@ -474,7 +492,7 @@ class TemplateOptimizer:
                 {
                     "type": "size_optimization",
                     "priority": "high",
-                    "description": f"Large total template size ({total_size/1024:.1f}KB)",
+                    "description": f"Large total template size ({total_size / 1024:.1f}KB)",
                     "recommendation": "Consider consolidating shared templates and removing unused content",
                     "estimated_impact": "15-25% reduction in load time",
                 }
@@ -524,7 +542,9 @@ class TemplateOptimizer:
             )
 
         return sorted(
-            opportunities, key=lambda x: {"high": 3, "medium": 2, "low": 1}.get(x["priority"], 0), reverse=True
+            opportunities,
+            key=lambda x: {"high": 3, "medium": 2, "low": 1}.get(x["priority"], 0),
+            reverse=True,
         )
 
     def _analyze_project_complexity(self, template_files: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -562,7 +582,10 @@ class TemplateOptimizer:
                 "largest_file": None,
             },
             "memory_estimates": {"peak_usage_kb": 0, "average_usage_kb": 0},
-            "performance_predictions": {"concurrent_render_support": 0, "recommended_cache_size_mb": 0},
+            "performance_predictions": {
+                "concurrent_render_support": 0,
+                "recommended_cache_size_mb": 0,
+            },
         }
 
         if template_files:
@@ -685,7 +708,10 @@ class TemplateOptimizer:
                 optimization_result["optimizations_applied"].extend(file_optimization["applied_optimizations"])
             else:
                 optimization_result["errors"].append(
-                    {"file": template_file["path"], "error": file_optimization.get("error", "Unknown error")}
+                    {
+                        "file": template_file["path"],
+                        "error": file_optimization.get("error", "Unknown error"),
+                    }
                 )
 
         # Calculate overall improvements

@@ -207,7 +207,11 @@ class EARSValidator:
     # Required elements for each pattern type
     PATTERN_REQUIREMENTS = {
         "event": ["trigger", "result"],
-        "agent": ["agent", "trigger", "result"],  # Agent patterns should have trigger (When does agent use capability?)
+        "agent": [
+            "agent",
+            "trigger",
+            "result",
+        ],  # Agent patterns should have trigger (When does agent use capability?)
         "scenario": ["scenario", "result"],
         "validation": ["condition", "result"],
         "complex": ["trigger", "condition", "result"],

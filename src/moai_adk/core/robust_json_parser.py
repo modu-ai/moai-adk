@@ -187,7 +187,7 @@ class RobustJSONParser:
                         error=None,
                         original_input=original_input,
                         recovery_attempts=recovery_attempts,
-                        severity=ErrorSeverity.MEDIUM if recovery_attempts > 0 else ErrorSeverity.LOW,
+                        severity=(ErrorSeverity.MEDIUM if recovery_attempts > 0 else ErrorSeverity.LOW),
                         parse_time_ms=(time.time() - start_time) * 1000,
                         warnings=warnings,
                     )
@@ -218,7 +218,7 @@ class RobustJSONParser:
                 error=last_error,
                 original_input=original_input,
                 recovery_attempts=recovery_attempts,
-                severity=ErrorSeverity.HIGH if recovery_attempts > 0 else ErrorSeverity.CRITICAL,
+                severity=(ErrorSeverity.HIGH if recovery_attempts > 0 else ErrorSeverity.CRITICAL),
                 parse_time_ms=(time.time() - start_time) * 1000,
                 warnings=warnings,
             )

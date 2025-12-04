@@ -33,7 +33,7 @@ def load_skill_md(skill_path: Path) -> tuple[dict, str]:
 
         frontmatter_str = content[3:end].strip()
         metadata = yaml.safe_load(frontmatter_str) or {}
-        body = content[end + 3:].strip()
+        body = content[end + 3 :].strip()
         return metadata, body
     except Exception as e:
         print(f"Error parsing {skill_path.name}: {e}")
@@ -42,20 +42,37 @@ def load_skill_md(skill_path: Path) -> tuple[dict, str]:
 
 def calculate_compliance_score(metadata: dict, description: str) -> int:
     """Calculate compliance score based on present fields."""
-    required_fields = {"name", "description", "version", "modularized", "last_updated", "compliance_score"}
-    optional_fields = {"allowed-tools", "dependencies", "category_tier", "auto_trigger_keywords", "agent_coverage"}
+    required_fields = {
+        "name",
+        "description",
+        "version",
+        "modularized",
+        "last_updated",
+        "compliance_score",
+    }
+    optional_fields = {
+        "allowed-tools",
+        "dependencies",
+        "category_tier",
+        "auto_trigger_keywords",
+        "agent_coverage",
+    }
 
-    present_required = sum(1 for field in required_fields if field in metadata and metadata[field])
-    present_optional = sum(1 for field in optional_fields if field in metadata and metadata[field])
+    present_required = sum(
+        1 for field in required_fields if field in metadata and metadata[field]
+    )
+    present_optional = sum(
+        1 for field in optional_fields if field in metadata and metadata[field]
+    )
 
     # Check description quality
     desc_len = len(description or "")
     desc_score = 25 if 100 <= desc_len <= 200 else 15
 
     total_score = (
-        (present_required / len(required_fields)) * 50 +  # 50% for required fields
-        (present_optional / len(optional_fields)) * 25 +   # 25% for optional fields
-        desc_score                                           # 25% for description
+        (present_required / len(required_fields)) * 50  # 50% for required fields
+        + (present_optional / len(optional_fields)) * 25  # 25% for optional fields
+        + desc_score  # 25% for description
     )
 
     return int(total_score)
@@ -100,7 +117,10 @@ def normalize_skill_metadata(skill_path: Path) -> bool:
 
     # Calculate and add compliance score (required)
     compliance_score = calculate_compliance_score(metadata, description)
-    if "compliance_score" not in metadata or metadata.get("compliance_score") != compliance_score:
+    if (
+        "compliance_score" not in metadata
+        or metadata.get("compliance_score") != compliance_score
+    ):
         metadata["compliance_score"] = compliance_score
         modified = True
 
@@ -114,7 +134,18 @@ def normalize_skill_metadata(skill_path: Path) -> bool:
     if modified:
         # Reconstruct SKILL.md
         frontmatter_lines = ["---"]
-        for key in ["name", "description", "version", "modularized", "allowed-tools", "last_updated", "compliance_score", "auto_trigger_keywords", "category_tier", "agent_coverage"]:
+        for key in [
+            "name",
+            "description",
+            "version",
+            "modularized",
+            "allowed-tools",
+            "last_updated",
+            "compliance_score",
+            "auto_trigger_keywords",
+            "category_tier",
+            "agent_coverage",
+        ]:
             if key in metadata and metadata[key] is not None:
                 if key == "compliance_score":
                     frontmatter_lines.append(f"{key}: {metadata[key]}")

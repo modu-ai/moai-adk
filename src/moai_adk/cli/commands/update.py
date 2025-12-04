@@ -537,11 +537,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
         files_skipped = 0
 
         # Check if any legacy directories exist
-        has_legacy_files = (
-            legacy_memory.exists() or
-            legacy_error_logs.exists() or
-            legacy_reports.exists()
-        )
+        has_legacy_files = legacy_memory.exists() or legacy_error_logs.exists() or legacy_reports.exists()
 
         if not has_legacy_files:
             if not dry_run:
@@ -580,9 +576,13 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                         shutil.copy2(session_file, target_file)
                         # Preserve original timestamp
                         shutil.copystat(session_file, target_file)
-                        migration_log.append(f"Migrated: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        src_path = session_file.relative_to(project_path)
+                        dst_path = target_file.relative_to(project_path)
+                        migration_log.append(f"Migrated: {src_path} → {dst_path}")
                     else:
-                        migration_log.append(f"Would migrate: {session_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                        src_path = session_file.relative_to(project_path)
+                        dst_path = target_file.relative_to(project_path)
+                        migration_log.append(f"Would migrate: {src_path} → {dst_path}")
                     files_migrated += 1
 
         # Migration 2: .moai/error_logs/ → .moai/logs/errors/
@@ -598,14 +598,19 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
 
                     if target_file.exists():
                         files_skipped += 1
-                        migration_log.append(f"Skipped: {error_file.relative_to(project_path)} (target already exists)")
+                        error_path = error_file.relative_to(project_path)
+                        migration_log.append(f"Skipped: {error_path} (target already exists)")
                     else:
                         if not dry_run:
                             shutil.copy2(error_file, target_file)
                             shutil.copystat(error_file, target_file)
-                            migration_log.append(f"Migrated: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            error_path = error_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Migrated: {error_path} → {target_path}")
                         else:
-                            migration_log.append(f"Would migrate: {error_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            error_path = error_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Would migrate: {error_path} → {target_path}")
                         files_migrated += 1
 
         # Migration 3: .moai/reports/ → .moai/docs/reports/
@@ -621,14 +626,19 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
 
                     if target_file.exists():
                         files_skipped += 1
-                        migration_log.append(f"Skipped: {report_file.relative_to(project_path)} (target already exists)")
+                        report_path = report_file.relative_to(project_path)
+                        migration_log.append(f"Skipped: {report_path} (target already exists)")
                     else:
                         if not dry_run:
                             shutil.copy2(report_file, target_file)
                             shutil.copystat(report_file, target_file)
-                            migration_log.append(f"Migrated: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            report_path = report_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Migrated: {report_path} → {target_path}")
                         else:
-                            migration_log.append(f"Would migrate: {report_file.relative_to(project_path)} → {target_file.relative_to(project_path)}")
+                            report_path = report_file.relative_to(project_path)
+                            target_path = target_file.relative_to(project_path)
+                            migration_log.append(f"Would migrate: {report_path} → {target_path}")
                         files_migrated += 1
 
         # Create migration log
@@ -641,10 +651,13 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                 "files_skipped": files_skipped,
                 "migration_log": migration_log,
                 "legacy_directories_found": [
-                    str(d.relative_to(project_path)) for d in [legacy_memory, legacy_error_logs, legacy_reports] if d.exists()
-                ]
+                    str(d.relative_to(project_path))
+                    for d in [legacy_memory, legacy_error_logs, legacy_reports]
+                    if d.exists()
+                ],
             }
-            migration_log_path.write_text(json.dumps(migration_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            json_content = json.dumps(migration_data, indent=2, ensure_ascii=False)
+            migration_log_path.write_text(json_content + "\n", encoding="utf-8")
 
         # Display results
         if files_migrated > 0 or files_skipped > 0:
@@ -1097,7 +1110,7 @@ def _prompt_custom_files_restore(
     custom_hooks: list[str],
     yes: bool = False,
 ) -> dict[str, list[str]]:
-    """Interactive questionary multi-select for custom files restore (opt-in default).
+    """Interactive fuzzy checkbox for custom files restore with search support.
 
     Args:
         custom_commands: List of custom command file names
@@ -1108,8 +1121,6 @@ def _prompt_custom_files_restore(
     Returns:
         Dictionary with selected files grouped by type.
     """
-    import questionary
-
     # If no custom files, skip UI
     if not (custom_commands or custom_agents or custom_hooks):
         return {
@@ -1127,33 +1138,64 @@ def _prompt_custom_files_restore(
             "hooks": [],
         }
 
-    # Build checkbox choices grouped by type
-    from questionary import Choice, Separator
+    # Try to use new UI, fallback to questionary if import fails
+    try:
+        from moai_adk.cli.ui.prompts import create_grouped_choices, fuzzy_checkbox
 
-    choices: list[Union[Separator, Choice]] = []
+        # Build grouped choices for fuzzy checkbox
+        groups: dict[str, list[dict[str, str]]] = {}
 
-    if custom_commands:
-        choices.append(Separator("Commands (.claude/commands/moai/)"))
-        for cmd in custom_commands:
-            choices.append(Choice(title=cmd, value=f"cmd:{cmd}"))
+        if custom_commands:
+            groups["Commands (.claude/commands/moai/)"] = [
+                {"name": cmd, "value": f"cmd:{cmd}"} for cmd in custom_commands
+            ]
 
-    if custom_agents:
-        choices.append(Separator("Agents (.claude/agents/)"))
-        for agent in custom_agents:
-            choices.append(Choice(title=agent, value=f"agent:{agent}"))
+        if custom_agents:
+            groups["Agents (.claude/agents/)"] = [{"name": agent, "value": f"agent:{agent}"} for agent in custom_agents]
 
-    if custom_hooks:
-        choices.append(Separator("Hooks (.claude/hooks/moai/)"))
-        for hook in custom_hooks:
-            choices.append(Choice(title=hook, value=f"hook:{hook}"))
+        if custom_hooks:
+            groups["Hooks (.claude/hooks/moai/)"] = [{"name": hook, "value": f"hook:{hook}"} for hook in custom_hooks]
 
-    console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
-    console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
+        choices = create_grouped_choices(groups)
 
-    selected = questionary.checkbox(
-        "Select custom files to restore:",
-        choices=choices,
-    ).ask()
+        console.print("\n[#DA7756]📦 Custom files detected in backup:[/#DA7756]")
+        console.print("[dim]   Use fuzzy search to find files quickly[/dim]\n")
+
+        selected = fuzzy_checkbox(
+            "Select custom files to restore:",
+            choices=choices,
+            instruction="[Space] Toggle  [Tab] All  [Enter] Confirm  [Type to search]",
+        )
+
+    except ImportError:
+        # Fallback to questionary if new UI not available
+        import questionary
+        from questionary import Choice, Separator
+
+        choices_legacy: list[Union[Separator, Choice]] = []
+
+        if custom_commands:
+            choices_legacy.append(Separator("Commands (.claude/commands/moai/)"))
+            for cmd in custom_commands:
+                choices_legacy.append(Choice(title=cmd, value=f"cmd:{cmd}"))
+
+        if custom_agents:
+            choices_legacy.append(Separator("Agents (.claude/agents/)"))
+            for agent in custom_agents:
+                choices_legacy.append(Choice(title=agent, value=f"agent:{agent}"))
+
+        if custom_hooks:
+            choices_legacy.append(Separator("Hooks (.claude/hooks/moai/)"))
+            for hook in custom_hooks:
+                choices_legacy.append(Choice(title=hook, value=f"hook:{hook}"))
+
+        console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
+        console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
+
+        selected = questionary.checkbox(
+            "Select custom files to restore:",
+            choices=choices_legacy,
+        ).ask()
 
     # Parse results
     result_commands = []
@@ -1281,7 +1323,7 @@ def _detect_custom_skills(project_path: Path, template_skills: set[str]) -> list
 
 
 def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[str]:
-    """Interactive questionary multi-select for skill restore (opt-in default).
+    """Interactive fuzzy checkbox for skill restore with search support.
 
     Args:
         custom_skills: List of custom skill names
@@ -1290,12 +1332,10 @@ def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[s
     Returns:
         List of skills user selected to restore.
     """
-    import questionary
-
     if not custom_skills:
         return []
 
-    console.print("\n[cyan]📦 Custom skills detected in backup:[/cyan]")
+    console.print("\n[#DA7756]📦 Custom skills detected in backup:[/#DA7756]")
     for skill in custom_skills:
         console.print(f"   • {skill}")
     console.print()
@@ -1304,10 +1344,25 @@ def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[s
         console.print("[dim]   Skipping restoration (--yes mode)[/dim]\n")
         return []
 
-    selected = questionary.checkbox(
-        "Select skills to restore (none selected by default):",
-        choices=[questionary.Choice(title=skill, checked=False) for skill in custom_skills],
-    ).ask()
+    # Try new UI, fallback to questionary
+    try:
+        from moai_adk.cli.ui.prompts import fuzzy_checkbox
+
+        choices = [{"name": skill, "value": skill} for skill in custom_skills]
+
+        selected = fuzzy_checkbox(
+            "Select skills to restore (type to search):",
+            choices=choices,
+            instruction="[Space] Toggle  [Tab] All  [Enter] Confirm  [Type to search]",
+        )
+
+    except ImportError:
+        import questionary
+
+        selected = questionary.checkbox(
+            "Select skills to restore (none selected by default):",
+            choices=[questionary.Choice(title=skill, checked=False) for skill in custom_skills],
+        ).ask()
 
     return selected if selected else []
 
@@ -1386,17 +1441,17 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
     try:
         # NEW: Detect custom files and skills BEFORE backup/sync
         template_skills = _get_template_skill_names()
-        custom_skills = _detect_custom_skills(project_path, template_skills)
+        _detect_custom_skills(project_path, template_skills)
 
         # Detect custom commands, agents, and hooks
         template_commands = _get_template_command_names()
-        custom_commands = _detect_custom_commands(project_path, template_commands)
+        _detect_custom_commands(project_path, template_commands)
 
         template_agents = _get_template_agent_names()
-        custom_agents = _detect_custom_agents(project_path, template_agents)
+        _detect_custom_agents(project_path, template_agents)
 
         template_hooks = _get_template_hook_names()
-        custom_hooks = _detect_custom_hooks(project_path, template_hooks)
+        _detect_custom_hooks(project_path, template_hooks)
 
         processor = TemplateProcessor(project_path)
 
@@ -1670,7 +1725,8 @@ def _build_template_context(
             language_config = {}
 
         user_name = existing_config.get("user", {}).get("name", "")
-        personalized_greeting = f"{user_name}님" if user_name and language_config.get("conversation_language") == "ko" else user_name
+        conv_lang = language_config.get("conversation_language")
+        personalized_greeting = f"{user_name}님" if user_name and conv_lang == "ko" else user_name
         config_source = "config_file"
 
     # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
@@ -1727,8 +1783,12 @@ def _build_template_context(
         "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),
         "GIT_COMMIT_MESSAGES_LANGUAGE": language_config.get("git_commit_messages", "en"),
         "CODE_COMMENTS_LANGUAGE": language_config.get("code_comments", "en"),
-        "DOCUMENTATION_LANGUAGE": language_config.get("documentation", language_config.get("conversation_language", "en")),
-        "ERROR_MESSAGES_LANGUAGE": language_config.get("error_messages", language_config.get("conversation_language", "en")),
+        "DOCUMENTATION_LANGUAGE": language_config.get(
+            "documentation", language_config.get("conversation_language", "en")
+        ),
+        "ERROR_MESSAGES_LANGUAGE": language_config.get(
+            "error_messages", language_config.get("conversation_language", "en")
+        ),
         "USER_NAME": user_name,
         "PERSONALIZED_GREETING": personalized_greeting,
         "LANGUAGE_CONFIG_SOURCE": config_source,
@@ -1837,7 +1897,7 @@ def _validate_template_substitution(project_path: Path) -> None:
         console.print("[red]✗ Template substitution validation failed:[/red]")
         for issue in issues_found:
             console.print(f"   {issue}")
-        console.print("[yellow]💡 Run '/moai:project' to fix template variables[/yellow]")
+        console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
 
@@ -1880,7 +1940,7 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
         if backup_path:
             console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
         else:
-            console.print("[yellow]💡 Run '/moai:project' to fix template variables[/yellow]")
+            console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
         return False
@@ -2094,8 +2154,20 @@ def update(
         # Note: If --check is used, always fetch versions even if --templates-only is also present
         if check or not templates_only:
             try:
-                current = _get_current_version()
-                latest = _get_latest_version()
+                # Try to use new spinner UI
+                try:
+                    from moai_adk.cli.ui.progress import SpinnerContext
+
+                    with SpinnerContext("Checking for updates...") as spinner:
+                        current = _get_current_version()
+                        spinner.update("Fetching latest version from PyPI...")
+                        latest = _get_latest_version()
+                        spinner.success("Version check complete")
+                except ImportError:
+                    # Fallback to simple console output
+                    console.print("[dim]Checking for updates...[/dim]")
+                    current = _get_current_version()
+                    latest = _get_latest_version()
             except RuntimeError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 if not force:
@@ -2199,6 +2271,11 @@ def update(
             console.print("[yellow]⚠️  Update continuing without migration[/yellow]")
             console.print("[cyan]💡 Some features may require migration to work correctly[/cyan]")
 
+        # Migrate config.json → config.yaml (v0.32.0+)
+        console.print("\n[cyan]🔍 Checking for config format migration...[/cyan]")
+        if not _migrate_config_json_to_yaml(project_path):
+            console.print("[yellow]⚠️  Config migration failed, continuing with existing format[/yellow]")
+
         # Stage 2: Config Version Comparison
         try:
             package_config_version = _get_package_config_version()
@@ -2288,10 +2365,25 @@ def update(
         else:
             console.print("   [yellow]⚠ Skipping backup (--force)[/yellow]")
 
-        # Sync templates
+        # Sync templates with progress indicator
         try:
-            if not _sync_templates(project_path, force, yes):
-                raise TemplateSyncError("Template sync returned False")
+            # Try to use spinner for visual feedback
+            try:
+                from moai_adk.cli.ui.progress import SpinnerContext
+
+                with SpinnerContext("Syncing templates...") as spinner:
+                    spinner.update("Copying .claude/ templates...")
+                    if not _sync_templates(project_path, force, yes):
+                        raise TemplateSyncError("Template sync returned False")
+                    spinner.update("Restoring user settings...")
+                    _restore_user_settings(project_path, preserved_settings)
+                    spinner.success("Template sync complete")
+            except ImportError:
+                # Fallback without spinner
+                console.print("   [cyan]Syncing templates...[/cyan]")
+                if not _sync_templates(project_path, force, yes):
+                    raise TemplateSyncError("Template sync returned False")
+                _restore_user_settings(project_path, preserved_settings)
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")
             _show_template_sync_failure_help()
@@ -2301,9 +2393,6 @@ def update(
             _show_template_sync_failure_help()
             raise click.Abort()
 
-        # Restore user-specific settings after sync
-        _restore_user_settings(project_path, preserved_settings)
-
         console.print("   [green]✅ .claude/ update complete[/green]")
         console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
@@ -2311,7 +2400,7 @@ def update(
         console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
 
         console.print("\n[green]✓ Update complete![/green]")
-        console.print("[cyan]ℹ️  Next step: Run /moai:project update to optimize template changes[/cyan]")
+        console.print("[cyan]ℹ️  Next step: Run /moai:0-project update to optimize template changes[/cyan]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")
@@ -2396,7 +2485,7 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
                 console.print("[green]✓ All unselected elements remain preserved[/green]")
             else:
                 console.print(f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]")
-                if stats['failed'] > 0:
+                if stats["failed"] > 0:
                     console.print(f"[red]❌ Failed to restore {stats['failed']} elements[/red]")
                 console.print("[yellow]⚠️ All other elements remain preserved[/yellow]")
         else:
@@ -2432,3 +2521,132 @@ def _cleanup_legacy_presets(project_path: Path) -> None:
             console.print(f"   [yellow]⚠️ Failed to remove legacy presets directory: {e}[/yellow]")
             logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
             # Don't fail the update process, just log the warning
+
+
+def _migrate_config_json_to_yaml(project_path: Path) -> bool:
+    """Migrate legacy config.json to config.yaml format.
+
+    This function:
+    1. Checks if config.json exists
+    2. Converts it to config.yaml using YAML format
+    3. Removes the old config.json file
+    4. Also migrates preset files from JSON to YAML
+
+    Args:
+        project_path: Project directory path (absolute)
+
+    Returns:
+        bool: True if migration successful or not needed, False on error
+    """
+    try:
+        import yaml
+    except ImportError:
+        console.print("   [yellow]⚠️ PyYAML not available, skipping config migration[/yellow]")
+        return True  # Not a critical error
+
+    config_dir = project_path / ".moai" / "config"
+    json_path = config_dir / "config.json"
+    yaml_path = config_dir / "config.yaml"
+
+    # Check if migration needed
+    if not json_path.exists():
+        # No JSON file, migration not needed
+        return True
+
+    if yaml_path.exists():
+        # YAML already exists, just remove JSON
+        try:
+            json_path.unlink()
+            console.print("   [cyan]🔄 Removed legacy config.json (YAML version exists)[/cyan]")
+            logger.info(f"Removed legacy config.json: {json_path}")
+            return True
+        except Exception as e:
+            console.print(f"   [yellow]⚠️ Failed to remove legacy config.json: {e}[/yellow]")
+            logger.warning(f"Failed to remove {json_path}: {e}")
+            return True  # Not critical
+
+    # Perform migration
+    try:
+        # Read JSON config
+        with open(json_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+
+        # Write YAML config
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                config_data,
+                f,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+            )
+
+        # Remove old JSON file
+        json_path.unlink()
+
+        console.print("   [green]✓ Migrated config.json → config.yaml[/green]")
+        logger.info(f"Migrated config from JSON to YAML: {json_path} → {yaml_path}")
+
+        # Migrate preset files if they exist
+        _migrate_preset_files_to_yaml(config_dir)
+
+        return True
+
+    except Exception as e:
+        console.print(f"   [red]✗ Config migration failed: {e}[/red]")
+        logger.error(f"Failed to migrate config.json to YAML: {e}")
+        return False
+
+
+def _migrate_preset_files_to_yaml(config_dir: Path) -> None:
+    """Migrate preset files from JSON to YAML format.
+
+    Args:
+        config_dir: .moai/config directory path
+    """
+    try:
+        import yaml
+    except ImportError:
+        return
+
+    presets_dir = config_dir / "presets"
+    if not presets_dir.exists():
+        return
+
+    migrated_count = 0
+    for json_file in presets_dir.glob("*.json"):
+        yaml_file = json_file.with_suffix(".yaml")
+
+        # Skip if YAML already exists
+        if yaml_file.exists():
+            # Just remove the JSON file
+            try:
+                json_file.unlink()
+                migrated_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to remove {json_file}: {e}")
+            continue
+
+        # Migrate JSON → YAML
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                preset_data = json.load(f)
+
+            with open(yaml_file, "w", encoding="utf-8") as f:
+                yaml.safe_dump(
+                    preset_data,
+                    f,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
+
+            json_file.unlink()
+            migrated_count += 1
+
+        except Exception as e:
+            logger.warning(f"Failed to migrate preset {json_file}: {e}")
+
+    if migrated_count > 0:
+        console.print(f"   [cyan]🔄 Migrated {migrated_count} preset file(s) to YAML[/cyan]")
+        logger.info(f"Migrated {migrated_count} preset files to YAML")

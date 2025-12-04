@@ -15,11 +15,11 @@ Enhanced Features:
 """
 
 import json
-import sys
 import logging
-from datetime import datetime, timedelta
+import sys
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
@@ -28,51 +28,55 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 # Import path utils for project root resolution
-from lib.path_utils import find_project_root
+from lib.path_utils import find_project_root  # noqa: E402
 
 # Import unified timeout manager and Git operations manager
 try:
-    from lib.unified_timeout_manager import (
-        get_timeout_manager, hook_timeout_context, HookTimeoutConfig,
-        TimeoutPolicy, HookTimeoutError
-    )
-    from lib.git_operations_manager import get_git_manager, GitOperationType
+    from lib.git_operations_manager import GitOperationType, get_git_manager
     from lib.timeout import TimeoutError as PlatformTimeoutError
+    from lib.unified_timeout_manager import (
+        HookTimeoutConfig,
+        HookTimeoutError,
+        TimeoutPolicy,
+        get_timeout_manager,
+        hook_timeout_context,
+    )
 except ImportError:
     # Fallback implementations if new modules not available
-    import signal
 
     def get_timeout_manager():
         return None
 
     def hook_timeout_context(hook_name, config=None):
         import contextlib
+
         @contextlib.contextmanager
         def dummy_context():
             yield
+
         return dummy_context()
 
-    class HookTimeoutConfig:
+    class HookTimeoutConfig:  # type: ignore[no-redef]
         def __init__(self, **kwargs):
             pass
 
-    class TimeoutPolicy:
+    class TimeoutPolicy:  # type: ignore[no-redef]
         FAST = "fast"
         NORMAL = "normal"
         SLOW = "slow"
 
-    class HookTimeoutError(Exception):
+    class HookTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
     def get_git_manager():
         return None
 
-    class GitOperationType:
+    class GitOperationType:  # type: ignore[no-redef]
         BRANCH = "branch"
         LOG = "log"
         STATUS = "status"
 
-    class PlatformTimeoutError(Exception):
+    class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
 
@@ -92,13 +96,41 @@ except ImportError:
         return None
 
     def get_cached_spec_progress():
-        specs_dir = find_project_root() / ".moai" / "specs"
+        """Get SPEC progress information - FIXED to use YAML frontmatter parsing"""
+        # FIX #3: Use absolute path from find_project_root() to ensure current project only
+        project_root = find_project_root()
+        specs_dir = project_root / ".moai" / "specs"
+
         if not specs_dir.exists():
             return {"completed": 0, "total": 0, "percentage": 0}
         try:
+            # Only scan SPEC folders in THIS project's .moai/specs/ directory
             spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
             total = len(spec_folders)
-            completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
+
+            # FIX: Parse YAML frontmatter to check for status: completed
+            completed = 0
+            for folder in spec_folders:
+                spec_file = folder / "spec.md"
+                if not spec_file.exists():
+                    continue
+
+                try:
+                    # Read spec.md content
+                    content = spec_file.read_text(encoding="utf-8")
+
+                    # Parse YAML frontmatter (between --- delimiters)
+                    if content.startswith("---"):
+                        yaml_end = content.find("---", 3)
+                        if yaml_end > 0:
+                            yaml_content = content[3:yaml_end]
+                            # Check for status: completed (with or without quotes)
+                            if "status: completed" in yaml_content or 'status: "completed"' in yaml_content:
+                                completed += 1
+                except (OSError, UnicodeDecodeError):
+                    # File read failure or encoding error - considered incomplete
+                    pass
+
             percentage = (completed / total * 100) if total > 0 else 0
             return {
                 "completed": completed,
@@ -162,30 +194,69 @@ def should_show_setup_messages() -> bool:
         return True
 
 
+def check_git_initialized() -> bool:
+    """Check if git repository is initialized
+
+    Returns:
+        bool: True if .git directory exists, False otherwise
+    """
+    try:
+        project_root = find_project_root()
+        git_dir = project_root / ".git"
+        return git_dir.exists() and git_dir.is_dir()
+    except Exception:
+        return False
+
+
 def get_git_info() -> Dict[str, Any]:
     """Get comprehensive git information using optimized Git operations manager
+
+    FIXED: Handles git not initialized state properly
+    - Branch: Shows helpful message if git not initialized
+    - Last Commit: Shows helpful message if git not initialized or no commits
 
     Uses connection pooling, caching, and parallel execution for optimal performance.
     Falls back to basic implementation if Git manager unavailable.
     """
+    # FIX #1 and #4: Check if git is initialized first
+    if not check_git_initialized():
+        return {
+            "branch": "Git not initialized → Run 'moai-adk init' to set up Git repository",
+            "last_commit": "Git not initialized → Run 'moai-adk init' to set up Git repository",
+            "commit_time": "",
+            "changes": 0,
+            "git_initialized": False,
+        }
+
     git_manager = get_git_manager()
     if git_manager:
         try:
             # Use optimized Git manager
             project_info = git_manager.get_project_info(use_cache=True)
+            branch = project_info.get("branch", "unknown")
+            last_commit = project_info.get("last_commit", "unknown")
+
+            # FIX #1: Handle empty branch (no commits yet)
+            if not branch or branch == "unknown":
+                branch = "No commits yet → Make your first commit"
+
+            # FIX #4: Handle no commits case
+            if not last_commit or last_commit == "unknown":
+                last_commit = "No commits yet"
+
             return {
-                "branch": project_info.get("branch", "unknown"),
-                "last_commit": project_info.get("last_commit", "unknown"),
+                "branch": branch,
+                "last_commit": last_commit,
                 "commit_time": project_info.get("commit_time", "unknown"),
                 "changes": project_info.get("changes", 0),
                 "fetch_time": project_info.get("fetch_time", ""),
+                "git_initialized": True,
             }
         except Exception as e:
             logging.warning(f"Git manager failed, falling back: {e}")
 
     # Fallback to basic Git operations
     try:
-        import subprocess
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         # Define git commands to run in parallel
@@ -211,21 +282,34 @@ def get_git_info() -> Dict[str, Any]:
                     # Future execution timeout or runtime errors
                     results[key] = ""
 
-        # Process results
+        # Process results with proper handling for empty values
+        branch = results.get("branch", "")
+        last_commit = results.get("last_commit", "")
+
+        # FIX #1: Handle empty branch (no commits yet)
+        if not branch:
+            branch = "No commits yet → Make your first commit"
+
+        # FIX #4: Handle no commits case
+        if not last_commit:
+            last_commit = "No commits yet"
+
         return {
-            "branch": results.get("branch", "unknown"),
-            "last_commit": results.get("last_commit", "unknown"),
-            "commit_time": results.get("commit_time", "unknown"),
+            "branch": branch,
+            "last_commit": last_commit,
+            "commit_time": results.get("commit_time", ""),
             "changes": (len(results.get("changes_raw", "").splitlines()) if results.get("changes_raw") else 0),
+            "git_initialized": True,
         }
 
     except (RuntimeError, OSError, TimeoutError):
         # ThreadPoolExecutor, git command, or timeout errors
         return {
-            "branch": "unknown",
-            "last_commit": "unknown",
-            "commit_time": "unknown",
+            "branch": "Error reading git info",
+            "last_commit": "Error reading git info",
+            "commit_time": "",
             "changes": 0,
+            "git_initialized": True,
         }
 
 
@@ -233,11 +317,44 @@ def _run_git_command_fallback(cmd: list[str]) -> str:
     """Fallback git command execution"""
     try:
         import subprocess
+
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
         return result.stdout.strip() if result.returncode == 0 else ""
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, OSError):
+    except (
+        subprocess.TimeoutExpired,
+        subprocess.SubprocessError,
+        FileNotFoundError,
+        OSError,
+    ):
         # Git command timeout, subprocess error, or git not found
         return ""
+
+
+def get_git_strategy_info(config: dict) -> dict:
+    """Get git strategy information from config
+
+    FIX #2: NEW FEATURE - Display git strategy information
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        Dictionary with git_flow and auto_branch information
+    """
+    if not config:
+        return {"git_flow": "unknown", "auto_branch": "unknown"}
+
+    git_strategy = config.get("git_strategy", {})
+    mode = git_strategy.get("mode", "manual")
+
+    # Get auto_branch setting from branch_creation config
+    branch_creation = git_strategy.get("branch_creation", {})
+    auto_enabled = branch_creation.get("auto_enabled", False)
+
+    # Determine auto_branch display
+    auto_branch_display = "Yes" if auto_enabled else "No"
+
+    return {"git_flow": mode, "auto_branch": auto_branch_display}
 
 
 def _parse_version(version_str: str) -> tuple[int, ...]:
@@ -408,24 +525,24 @@ def get_language_info(config: dict) -> dict:
         Dictionary with language info including display name and status
     """
     if not config:
-        return {"conversation_language": "en", "language_name": "English", "status": "⚠️ No config"}
+        return {
+            "conversation_language": "en",
+            "language_name": "English",
+            "status": "⚠️ No config",
+        }
 
     lang_config = config.get("language", {})
     conversation_lang = lang_config.get("conversation_language", "en")
     lang_name = lang_config.get("conversation_language_name", "Unknown")
 
-    # Language status indicator
-    status = "✅ Active" if conversation_lang != "en" else "🌐 English"
-
-    return {
-        "conversation_language": conversation_lang,
-        "language_name": lang_name,
-        "status": status
-    }
+    # Language status indicator (removed Active indicator for cleaner output)
+    return {"conversation_language": conversation_lang, "language_name": lang_name}
 
 
 def load_user_personalization() -> dict:
     """Load user personalization settings using centralized language configuration resolver
+
+    FIX #5: Check for template variables and provide setup guidance
 
     Uses the new LanguageConfigResolver which provides:
     - Environment variable priority handling
@@ -444,16 +561,21 @@ def load_user_personalization() -> dict:
         resolver = get_resolver(str(find_project_root()))
         config = resolver.resolve_config()
 
+        # FIX #5: Check if USER_NAME is a template variable or empty
+        user_name = config.get("user_name", "")
+        has_valid_name = user_name and not user_name.startswith("{{") and not user_name.endswith("}}")
+
         # Build personalization info using resolved configuration
         personalization = {
-            'user_name': config.get('user_name', ''),
-            'conversation_language': config.get('conversation_language', 'en'),
-            'conversation_language_name': config.get('conversation_language_name', 'English'),
-            'agent_prompt_language': config.get('agent_prompt_language', 'en'),
-            'is_korean': config.get('conversation_language') == 'ko',
-            'has_personalization': bool(config.get('user_name', '').strip()),
-            'config_source': config.get('config_source', 'default'),
-            'personalized_greeting': resolver.get_personalized_greeting(config)
+            "user_name": user_name if has_valid_name else "",
+            "conversation_language": config.get("conversation_language", "en"),
+            "conversation_language_name": config.get("conversation_language_name", "English"),
+            "agent_prompt_language": config.get("agent_prompt_language", "en"),
+            "is_korean": config.get("conversation_language") == "ko",
+            "has_personalization": has_valid_name,
+            "config_source": config.get("config_source", "default"),
+            "personalized_greeting": (resolver.get_personalized_greeting(config) if has_valid_name else ""),
+            "needs_setup": not has_valid_name,  # FIX #5: Flag for setup guidance
         }
 
         # Export template variables for other system components
@@ -469,7 +591,7 @@ def load_user_personalization() -> dict:
                 "personalization": personalization,
                 "template_variables": template_vars,
                 "resolved_at": datetime.now().isoformat(),
-                "config_source": config.get('config_source', 'default')
+                "config_source": config.get("config_source", "default"),
             }
             personalization_cache_file.write_text(json.dumps(cache_data, ensure_ascii=False, indent=2))
 
@@ -487,38 +609,46 @@ def load_user_personalization() -> dict:
         config = get_cached_config()
 
         # Environment variables take priority
-        user_name = os.getenv('MOAI_USER_NAME')
-        conversation_lang = os.getenv('MOAI_CONVERSATION_LANG')
+        user_name = os.getenv("MOAI_USER_NAME")
+        conversation_lang = os.getenv("MOAI_CONVERSATION_LANG")
 
         # Fallback to config file if environment variables not set
         if user_name is None and config:
-            user_name = config.get('user', {}).get('name', '')
+            user_name = config.get("user", {}).get("name", "")
 
         if conversation_lang is None and config:
-            conversation_lang = config.get('language', {}).get('conversation_language', 'en')
+            conversation_lang = config.get("language", {}).get("conversation_language", "en")
+
+        # FIX #5: Check if USER_NAME is a template variable or empty
+        has_valid_name = user_name and not user_name.startswith("{{") and not user_name.endswith("}}")
 
         # Get language name
         lang_name_map = {
-            'ko': 'Korean',
-            'en': 'English',
-            'ja': 'Japanese',
-            'zh': 'Chinese',
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German',
-            'ru': 'Russian'
+            "ko": "Korean",
+            "en": "English",
+            "ja": "Japanese",
+            "zh": "Chinese",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "ru": "Russian",
         }
-        lang_name = lang_name_map.get(conversation_lang, 'Unknown')
+        lang_name = lang_name_map.get(conversation_lang, "Unknown")
 
         # Build personalization info
         personalization = {
-            'user_name': user_name or '',
-            'conversation_language': conversation_lang or 'en',
-            'conversation_language_name': lang_name,
-            'is_korean': conversation_lang == 'ko',
-            'has_personalization': bool(user_name),
-            'config_source': 'fallback',
-            'personalized_greeting': f"{user_name}님" if user_name and conversation_lang == 'ko' else user_name or ''
+            "user_name": user_name if has_valid_name else "",
+            "conversation_language": conversation_lang or "en",
+            "conversation_language_name": lang_name,
+            "is_korean": conversation_lang == "ko",
+            "has_personalization": has_valid_name,
+            "config_source": "fallback",
+            "personalized_greeting": (
+                f"{user_name}님"
+                if has_valid_name and conversation_lang == "ko"
+                else user_name if has_valid_name else ""
+            ),
+            "needs_setup": not has_valid_name,  # FIX #5: Flag for setup guidance
         }
 
         # Store for session-wide access
@@ -549,35 +679,64 @@ def format_session_output() -> str:
     # Load user personalization settings
     personalization = load_user_personalization()
 
-    # Get MoAI version
-    moai_version = "unknown"
-    if config:
-        moai_version = config.get("moai", {}).get("version", "unknown")
+    # Get MoAI version from installed package (not config.json)
+    try:
+        from moai_adk import __version__ as installed_version
+
+        moai_version = installed_version
+    except ImportError:
+        # Fallback to config version if package import fails
+        moai_version = "unknown"
+        if config:
+            moai_version = config.get("moai", {}).get("version", "unknown")
 
     # Get language info
     lang_info = get_language_info(config)
 
+    # FIX #2: Get git strategy info
+    git_strategy = get_git_strategy_info(config)
+
     # Check for version updates (uses Phase 1 cache)
     version_status, _has_update = check_version_update()
 
-    # Format output with each item on separate line
+    # Format output with each item on separate line (reordered per user request)
     output = [
         "🚀 MoAI-ADK Session Started",
-        f"📦 Version: {moai_version} {version_status}",
-        f"🌿 Branch: {git_info['branch']}",
-        f"🔄 Changes: {git_info['changes']}",
-        f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
-        f"🔨 Last Commit: {git_info['last_commit']}",
-        f"🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']}) {lang_info['status']}",
+        f"   📦 Version: {moai_version} {version_status}",
+        f"   🔄 Changes: {git_info['changes']}",
+        f"   🎯 SPEC: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']:.0f}%)",
+        f"   🌿 Branch: {git_info['branch']}",
+        # FIX #2: Add Git Strategy information
+        f"   🔧 Github-Flow: {git_strategy['git_flow']} | Auto Branch: {git_strategy['auto_branch']}",
+        f"   🔨 Last Commit: {git_info['last_commit']}",
+        f"   🌐 Language: {lang_info['language_name']} ({lang_info['conversation_language']})",
     ]
 
-    # Add personalization info if available
-    if personalization['has_personalization']:
-        user_greeting = personalization.get('personalized_greeting', '')
-        if user_greeting:
-            greeting = f"👋 Welcome back, {user_greeting}!" if personalization['is_korean'] else f"👋 Welcome back, {user_greeting}!"
+    # FIX #5: Add personalization or setup guidance (never show template variables)
+    if personalization.get("needs_setup", False):
+        # Show setup guidance (based on conversation_language)
+        if personalization["is_korean"]:
+            output.append(
+                "   👋 환영합니다! 프로젝트를 시작하기 전에 "
+                "'moai:0-project setting' 명령어로 사용자 이름과 설정을 구성해주세요"
+            )
         else:
-            greeting = f"👋 Welcome back, {personalization['user_name']}!" if personalization['is_korean'] else f"👋 Welcome back, {personalization['user_name']}!"
+            output.append(
+                "   👋 Welcome! Before starting, please run 'moai:0-project setting' "
+                "to configure your name and project settings"
+            )
+    elif personalization["has_personalization"]:
+        user_greeting = personalization.get("personalized_greeting", "")
+        if user_greeting:
+            if personalization["is_korean"]:
+                greeting = f"   👋 다시 오신 것을 환영합니다, {user_greeting}!"
+            else:
+                greeting = f"   👋 Welcome back, {user_greeting}!"
+        else:
+            if personalization["is_korean"]:
+                greeting = f"   👋 다시 오신 것을 환영합니다, {personalization['user_name']}님!"
+            else:
+                greeting = f"   👋 Welcome back, {personalization['user_name']}!"
         output.append(greeting)
 
     # Configuration source is now handled silently for cleaner output
@@ -592,6 +751,7 @@ def main() -> None:
     Displays enhanced project information including:
     - Programming language and version
     - Git branch, changes, and last commit with time
+    - Git strategy (mode and auto_branch setting)
     - SPEC progress (completed/total)
     - Test coverage and status
     - Risk assessment
@@ -613,7 +773,7 @@ def main() -> None:
         retry_count=1,
         retry_delay_ms=200,
         graceful_degradation=True,
-        memory_limit_mb=100  # Optional memory limit
+        memory_limit_mb=100,  # Optional memory limit
     )
 
     def execute_session_start():
@@ -621,7 +781,7 @@ def main() -> None:
         # Read JSON payload from stdin (for compatibility)
         # Handle Docker/non-interactive environments by checking TTY
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        data = json.loads(input_data) if input_data.strip() else {}
+        json.loads(input_data) if input_data.strip() else {}
 
         # Check if setup messages should be shown
         show_messages = should_show_setup_messages()
@@ -635,8 +795,8 @@ def main() -> None:
             "systemMessage": session_output,
             "performance": {
                 "git_manager_used": get_git_manager() is not None,
-                "timeout_manager_used": get_timeout_manager() is not None
-            }
+                "timeout_manager_used": get_timeout_manager() is not None,
+            },
         }
 
         return result
@@ -648,7 +808,7 @@ def main() -> None:
             result = timeout_manager.execute_with_timeout(
                 "session_start__show_project_info",
                 execute_session_start,
-                config=timeout_config
+                config=timeout_config,
             )
 
             print(json.dumps(result, ensure_ascii=False))
@@ -663,8 +823,8 @@ def main() -> None:
                     "hook_id": e.hook_id,
                     "timeout_seconds": e.timeout_seconds,
                     "execution_time": e.execution_time,
-                    "will_retry": e.will_retry
-                }
+                    "will_retry": e.will_retry,
+                },
             }
             print(json.dumps(timeout_response, ensure_ascii=False))
             print(f"SessionStart hook timeout: {e}", file=sys.stderr)
@@ -678,8 +838,8 @@ def main() -> None:
                 "error_details": {
                     "error_type": type(e).__name__,
                     "message": str(e),
-                    "graceful_degradation": True
-                }
+                    "graceful_degradation": True,
+                },
             }
             print(json.dumps(error_response, ensure_ascii=False))
             print(f"SessionStart error: {e}", file=sys.stderr)
@@ -702,11 +862,11 @@ def main() -> None:
 
             except PlatformTimeoutError:
                 # Timeout - return minimal valid response
-                timeout_response: Dict[str, Any] = {
+                timeout_response_legacy: Dict[str, Any] = {
                     "continue": True,
                     "systemMessage": "⚠️ Session start timeout - continuing without project info",
                 }
-                print(json.dumps(timeout_response))
+                print(json.dumps(timeout_response_legacy))
                 print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
                 sys.exit(1)
 
@@ -721,11 +881,15 @@ def main() -> None:
                 print(json.dumps(result))
                 sys.exit(0)
             except Exception as e:
-                print(json.dumps({
-                    "continue": True,
-                    "systemMessage": "⚠️ Session start completed with errors",
-                    "error": str(e)
-                }))
+                print(
+                    json.dumps(
+                        {
+                            "continue": True,
+                            "systemMessage": "⚠️ Session start completed with errors",
+                            "error": str(e),
+                        }
+                    )
+                )
                 sys.exit(0)
 
         except json.JSONDecodeError as e:

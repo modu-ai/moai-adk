@@ -197,9 +197,17 @@ class EnterpriseTestOrchestrator:
         """AI-optimized browser testing matrix"""
 
         base_matrix = [
-            {"browser": "chromium", "versions": ["latest"], "viewports": ["desktop", "mobile"]},
+            {
+                "browser": "chromium",
+                "versions": ["latest"],
+                "viewports": ["desktop", "mobile"],
+            },
             {"browser": "firefox", "versions": ["latest"], "viewports": ["desktop"]},
-            {"browser": "webkit", "versions": ["latest"], "viewports": ["desktop", "mobile"]},
+            {
+                "browser": "webkit",
+                "versions": ["latest"],
+                "viewports": ["desktop", "mobile"],
+            },
         ]
 
         if complexity in ["high", "medium"]:
@@ -212,7 +220,11 @@ class EnterpriseTestOrchestrator:
     def _set_coverage_targets(self, app_type: str) -> Dict:
         """AI-optimized coverage targets"""
 
-        targets = {"functional_coverage": 85, "visual_coverage": 80, "performance_coverage": 70}
+        targets = {
+            "functional_coverage": 85,
+            "visual_coverage": 80,
+            "performance_coverage": 70,
+        }
 
         if app_type == "e-commerce":
             targets["functional_coverage"] = 95

@@ -365,7 +365,8 @@ class DatabaseSelector:
             return {
                 "database": "PostgreSQL",
                 "version": "17",
-                "reasoning": "PostgreSQL 17+ provides full ACID compliance, advanced transaction support, and strong consistency guarantees",
+                "reasoning": "PostgreSQL 17+ provides full ACID compliance, "
+                "advanced transaction support, and strong consistency guarantees",
                 "alternatives": ["MySQL 8.4+ for legacy compatibility"],
             }
 
@@ -374,7 +375,8 @@ class DatabaseSelector:
             return {
                 "database": "MongoDB",
                 "version": "8.0",
-                "reasoning": "MongoDB 8.0+ offers flexible schema design, horizontal scalability, and document-based data model",
+                "reasoning": "MongoDB 8.0+ offers flexible schema design, "
+                "horizontal scalability, and document-based data model",
                 "alternatives": ["PostgreSQL with JSONB for hybrid approach"],
             }
 
@@ -383,7 +385,8 @@ class DatabaseSelector:
             return {
                 "database": "Redis",
                 "version": "7.4",
-                "reasoning": "Redis 7.4+ provides in-memory cache, TTL support, and high-performance key-value operations",
+                "reasoning": "Redis 7.4+ provides in-memory cache, TTL support, "
+                "and high-performance key-value operations",
                 "alternatives": ["Memcached for simpler caching needs"],
             }
 
@@ -392,7 +395,8 @@ class DatabaseSelector:
             return {
                 "database": "MySQL",
                 "version": "8.4",
-                "reasoning": "MySQL 8.4 LTS offers legacy compatibility, mature ecosystem, and reliable relational database features",
+                "reasoning": "MySQL 8.4 LTS offers legacy compatibility, "
+                "mature ecosystem, and reliable relational database features",
                 "alternatives": ["MariaDB for open-source alternative"],
             }
 
@@ -724,7 +728,11 @@ class MigrationPlanner:
             risks.append("Type conversion may fail for incompatible data")
             is_safe = False
 
-        requires_backup = operation in ["drop_column", "change_column_type", "drop_table"]
+        requires_backup = operation in [
+            "drop_column",
+            "change_column_type",
+            "drop_table",
+        ]
 
         return {
             "is_safe": is_safe,
@@ -770,7 +778,7 @@ class MigrationPlanner:
 
         return {
             "has_breaking_changes": has_breaking,
-            "changes": breaking_changes if breaking_changes else ["No breaking changes detected"],
+            "changes": (breaking_changes if breaking_changes else ["No breaking changes detected"]),
             "impact_level": impact_level,
             "mitigation_strategies": self._generate_mitigation_strategies(breaking_changes),
         }
@@ -944,7 +952,7 @@ class TransactionManager:
         return {
             "deadlock_detected": deadlock_detected,
             "involved_transactions": list(involved),
-            "resolution_strategy": "Abort lowest priority transaction" if deadlock_detected else None,
+            "resolution_strategy": ("Abort lowest priority transaction" if deadlock_detected else None),
         }
 
     def _has_cycle_dfs(self, node: str, graph: Dict[str, str], visited: set, rec_stack: set) -> bool:

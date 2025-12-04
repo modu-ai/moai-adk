@@ -39,7 +39,7 @@ class HookPayload(dict):
         """Set value in payload."""
         super().__setitem__(key, value)
 
-    def update(self, other: Dict[str, Any]) -> None:
+    def update(self, other: Dict[str, Any]) -> None:  # type: ignore[override]
         """Update payload with another dictionary."""
         super().update(other)
 

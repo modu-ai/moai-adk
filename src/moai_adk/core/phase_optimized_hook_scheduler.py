@@ -236,7 +236,10 @@ class PhaseOptimizedHookScheduler:
         }
 
     async def schedule_hooks(
-        self, event_type: HookEvent, context: HookSchedulingContext, strategy: Optional[SchedulingStrategy] = None
+        self,
+        event_type: HookEvent,
+        context: HookSchedulingContext,
+        strategy: Optional[SchedulingStrategy] = None,
     ) -> SchedulingResult:
         """Schedule hooks for execution with optimization
 
@@ -349,7 +352,10 @@ class PhaseOptimizedHookScheduler:
             return best_strategy
 
     async def _create_scheduled_hooks(
-        self, hook_paths: List[str], context: HookSchedulingContext, strategy: SchedulingStrategy
+        self,
+        hook_paths: List[str],
+        context: HookSchedulingContext,
+        strategy: SchedulingStrategy,
     ) -> List[ScheduledHook]:
         """Create scheduled hooks from hook paths with analysis"""
         scheduled_hooks = []
@@ -387,7 +393,10 @@ class PhaseOptimizedHookScheduler:
         return scheduled_hooks
 
     def _calculate_priority_score(
-        self, metadata: HookMetadata, context: HookSchedulingContext, strategy: SchedulingStrategy
+        self,
+        metadata: HookMetadata,
+        context: HookSchedulingContext,
+        strategy: SchedulingStrategy,
     ) -> float:
         """Calculate priority score for hook based on strategy"""
         base_score = 0.0
@@ -461,7 +470,11 @@ class PhaseOptimizedHookScheduler:
         return base_time * load_factor * reliability_factor
 
     def _make_initial_scheduling_decision(
-        self, metadata: HookMetadata, context: HookSchedulingContext, estimated_cost: int, estimated_time: float
+        self,
+        metadata: HookMetadata,
+        context: HookSchedulingContext,
+        estimated_cost: int,
+        estimated_time: float,
     ) -> SchedulingDecision:
         """Make initial scheduling decision for hook"""
         # Critical hooks always execute
@@ -520,7 +533,10 @@ class PhaseOptimizedHookScheduler:
         return filtered_hooks
 
     def _prioritize_hooks(
-        self, scheduled_hooks: List[ScheduledHook], context: HookSchedulingContext, strategy: SchedulingStrategy
+        self,
+        scheduled_hooks: List[ScheduledHook],
+        context: HookSchedulingContext,
+        strategy: SchedulingStrategy,
     ) -> List[ScheduledHook]:
         """Prioritize hooks for execution"""
         # Separate by scheduling decision
@@ -571,7 +587,10 @@ class PhaseOptimizedHookScheduler:
         return resolved_hooks
 
     def _create_execution_groups(
-        self, hooks: List[ScheduledHook], context: HookSchedulingContext, strategy: SchedulingStrategy
+        self,
+        hooks: List[ScheduledHook],
+        context: HookSchedulingContext,
+        strategy: SchedulingStrategy,
     ) -> List[ExecutionGroup]:
         """Create execution groups for optimal performance"""
         groups = []
@@ -675,7 +694,10 @@ class PhaseOptimizedHookScheduler:
                 self._scheduling_history = self._scheduling_history[-500:]
 
     def _update_strategy_performance(
-        self, strategy: SchedulingStrategy, result: SchedulingResult, context: HookSchedulingContext
+        self,
+        strategy: SchedulingStrategy,
+        result: SchedulingResult,
+        context: HookSchedulingContext,
     ) -> None:
         """Update strategy performance metrics"""
         performance = self._strategy_performance[strategy]
@@ -692,7 +714,10 @@ class PhaseOptimizedHookScheduler:
 
             # Consider resource utilization
             time_efficiency = min(1.0, result.estimated_total_time_ms / context.max_execution_time_ms)
-            token_efficiency = min(1.0, result.estimated_total_tokens / max(1, context.available_token_budget))
+            token_efficiency = min(
+                1.0,
+                result.estimated_total_tokens / max(1, context.available_token_budget),
+            )
 
             # Overall efficiency
             overall_efficiency = (execution_ratio * 0.5) + (time_efficiency * 0.3) + (token_efficiency * 0.2)
@@ -711,7 +736,11 @@ class PhaseOptimizedHookScheduler:
             total_schedules = len(self._scheduling_history)
 
             if total_schedules == 0:
-                return {"total_schedules": 0, "strategy_performance": {}, "recent_performance": []}
+                return {
+                    "total_schedules": 0,
+                    "strategy_performance": {},
+                    "recent_performance": [],
+                }
 
             # Calculate strategy statistics
             strategy_stats = {}
@@ -732,7 +761,10 @@ class PhaseOptimizedHookScheduler:
                 "strategy_performance": strategy_stats,
                 "recent_performance": recent_performance,
                 "recommended_strategy": (
-                    max(strategy_stats.keys(), key=lambda k: strategy_stats[k]["recommendation_score"])
+                    max(
+                        strategy_stats.keys(),
+                        key=lambda k: strategy_stats[k]["recommendation_score"],
+                    )
                     if strategy_stats
                     else None
                 ),
@@ -779,9 +811,8 @@ class PhaseOptimizedHookScheduler:
 
         if best_strategy:
             insights["recommended_strategy"] = best_strategy[0]
-            insights["strategy_rationale"] = (
-                f"Best performance with {best_strategy[0]} strategy (score: {best_strategy[1]['recommendation_score']:.2f})"
-            )
+            score = best_strategy[1]["recommendation_score"]
+            insights["strategy_rationale"] = f"Best performance with {best_strategy[0]} strategy (score: {score:.2f})"
 
         return insights
 

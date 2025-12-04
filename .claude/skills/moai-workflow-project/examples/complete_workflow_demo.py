@@ -28,7 +28,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from moai_menu_project import MoaiMenuProject, generate_docs, initialize_project, optimize_templates
+    from moai_menu_project import (
+        MoaiMenuProject,
+        generate_docs,
+        initialize_project,
+        optimize_templates,
+    )
 except ImportError as e:
     print(f"❌ Import Error: {e}")
     print("Make sure you're running this from the correct directory")
@@ -124,7 +129,11 @@ class DemoRunner:
                     "path": "/api/auth/register",
                     "method": "POST",
                     "description": "신규 사용자 등록",
-                    "parameters": {"email": "string", "password": "string", "name": "string"},
+                    "parameters": {
+                        "email": "string",
+                        "password": "string",
+                        "name": "string",
+                    },
                 },
                 {
                     "path": "/api/auth/login",
@@ -188,7 +197,10 @@ class DemoRunner:
             print(f"🔤 Testing {lang.upper()} language support...")
 
             # Update language settings
-            updates = {"language.conversation_language": lang, "language.documentation_language": lang}
+            updates = {
+                "language.conversation_language": lang,
+                "language.documentation_language": lang,
+            }
 
             update_result = self.project.update_language_settings(updates)
 
@@ -395,7 +407,10 @@ Complex template logic:
         print("-" * 28)
 
         # Test different export formats
-        export_formats = ["markdown", "html"]  # PDF would require additional dependencies
+        export_formats = [
+            "markdown",
+            "html",
+        ]  # PDF would require additional dependencies
 
         for format_type in export_formats:
             print(f"📄 Testing {format_type.upper()} export...")
@@ -491,7 +506,10 @@ Complex template logic:
             start_time = time.time()
 
             init_result = initialize_project(
-                str(convenience_dir), language="ja", user_name="利便性テスト", project_type="mobile_application"
+                str(convenience_dir),
+                language="ja",
+                user_name="利便性テスト",
+                project_type="mobile_application",
             )
 
             init_time = time.time() - start_time

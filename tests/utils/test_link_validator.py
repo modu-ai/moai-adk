@@ -205,7 +205,12 @@ class TestValidationResult:
     def test_validation_result_success_rate_all_valid(self):
         """Test success_rate calculation with all valid links."""
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=True, response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=True,
+                response_time=0.1,
+            )
             for i in range(5)
         ]
         val_result = ValidationResult(
@@ -219,7 +224,12 @@ class TestValidationResult:
     def test_validation_result_success_rate_all_invalid(self):
         """Test success_rate calculation with all invalid links."""
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=404, is_valid=False, response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=404,
+                is_valid=False,
+                response_time=0.1,
+            )
             for i in range(5)
         ]
         val_result = ValidationResult(
@@ -233,10 +243,20 @@ class TestValidationResult:
     def test_validation_result_success_rate_partial(self):
         """Test success_rate calculation with mixed results."""
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=True, response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=True,
+                response_time=0.1,
+            )
             for i in range(3)
         ] + [
-            LinkResult(url=f"https://example.com/bad/{i}", status_code=404, is_valid=False, response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/bad/{i}",
+                status_code=404,
+                is_valid=False,
+                response_time=0.1,
+            )
             for i in range(2)
         ]
         val_result = ValidationResult(
@@ -271,7 +291,12 @@ class TestValidationResult:
     def test_validation_result_success_rate_parametrized(self, total, valid, invalid, expected_rate):
         """Test success_rate with parametrized values."""
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=(i < valid), response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=(i < valid),
+                response_time=0.1,
+            )
             for i in range(total)
         ]
         val_result = ValidationResult(
@@ -640,7 +665,10 @@ class TestLinkValidatorValidateAllLinks:
             # Alternate valid and invalid
             mock_validate.side_effect = [
                 LinkResult(
-                    url=links[i], status_code=(200 if i % 2 == 0 else 404), is_valid=(i % 2 == 0), response_time=0.1
+                    url=links[i],
+                    status_code=(200 if i % 2 == 0 else 404),
+                    is_valid=(i % 2 == 0),
+                    response_time=0.1,
                 )
                 for i in range(5)
             ]
@@ -677,8 +705,18 @@ class TestLinkValidatorValidateAllLinks:
 
         with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
-                LinkResult(url="https://valid.com", status_code=200, is_valid=True, response_time=0.5),
-                LinkResult(url="https://invalid.com", status_code=404, is_valid=False, response_time=0.3),
+                LinkResult(
+                    url="https://valid.com",
+                    status_code=200,
+                    is_valid=True,
+                    response_time=0.5,
+                ),
+                LinkResult(
+                    url="https://invalid.com",
+                    status_code=404,
+                    is_valid=False,
+                    response_time=0.3,
+                ),
             ]
 
             result = await validator.validate_all_links(links)
@@ -731,7 +769,11 @@ class TestLinkValidatorValidateAllLinks:
         """Test validate_all_links preserves link processing order (approximately)."""
         validator = LinkValidator()
 
-        links = ["https://example.com/1", "https://example.com/2", "https://example.com/3"]
+        links = [
+            "https://example.com/1",
+            "https://example.com/2",
+            "https://example.com/3",
+        ]
 
         with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
@@ -774,7 +816,12 @@ class TestLinkValidatorGenerateReport:
         """Test generating report with all valid links."""
         validator = LinkValidator()
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=True, response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=True,
+                response_time=0.1,
+            )
             for i in range(3)
         ]
         val_result = ValidationResult(
@@ -824,11 +871,25 @@ class TestLinkValidatorGenerateReport:
         """Test generating report with mixed results."""
         validator = LinkValidator()
         results = [
-            LinkResult(url="https://example.com", status_code=200, is_valid=True, response_time=0.5),
             LinkResult(
-                url="https://broken.com", status_code=404, is_valid=False, response_time=0.2, error_message="Not found"
+                url="https://example.com",
+                status_code=200,
+                is_valid=True,
+                response_time=0.5,
             ),
-            LinkResult(url="https://slow.com", status_code=200, is_valid=True, response_time=2.0),
+            LinkResult(
+                url="https://broken.com",
+                status_code=404,
+                is_valid=False,
+                response_time=0.2,
+                error_message="Not found",
+            ),
+            LinkResult(
+                url="https://slow.com",
+                status_code=200,
+                is_valid=True,
+                response_time=2.0,
+            ),
         ]
         val_result = ValidationResult(
             total_links=3,
@@ -850,7 +911,12 @@ class TestLinkValidatorGenerateReport:
         """Test report includes response time statistics."""
         validator = LinkValidator()
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=True, response_time=float(i))
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=True,
+                response_time=float(i),
+            )
             for i in range(1, 4)
         ]
         val_result = ValidationResult(
@@ -933,7 +999,12 @@ class TestLinkValidatorGenerateReport:
         """Test generating reports with parametrized data."""
         validator = LinkValidator()
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=(i < valid), response_time=0.1)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=(i < valid),
+                response_time=0.1,
+            )
             for i in range(total)
         ]
         val_result = ValidationResult(
@@ -1302,7 +1373,13 @@ class TestLinkValidatorEdgeCases:
 
         with patch.object(validator, "validate_link") as mock_validate:
             mock_validate.side_effect = [
-                LinkResult(url="https://example.com", status_code=200, is_valid=True, response_time=0.1) for _ in links
+                LinkResult(
+                    url="https://example.com",
+                    status_code=200,
+                    is_valid=True,
+                    response_time=0.1,
+                )
+                for _ in links
             ]
 
             result = await validator.validate_all_links(links)
@@ -1312,7 +1389,12 @@ class TestLinkValidatorEdgeCases:
     def test_validation_result_with_large_response_times(self):
         """Test ValidationResult with very large response times."""
         results = [
-            LinkResult(url=f"https://example.com/{i}", status_code=200, is_valid=True, response_time=1000.0)
+            LinkResult(
+                url=f"https://example.com/{i}",
+                status_code=200,
+                is_valid=True,
+                response_time=1000.0,
+            )
             for i in range(3)
         ]
         val_result = ValidationResult(

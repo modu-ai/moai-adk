@@ -222,7 +222,7 @@ class ShadcnUIArchitectOptimizer:
 
 ### Best Practices
 
-DO:
+Requirements:
 - Use CSS variables for theme customization
 - Implement proper TypeScript types
 - Follow accessibility guidelines (WCAG 2.1 AA)
@@ -231,14 +231,35 @@ DO:
 - Optimize bundle size with tree-shaking
 - Implement responsive design patterns
 
-DON'T:
-- Hardcode colors (use CSS variables)
-- Skip accessibility attributes
-- Ignore keyboard navigation
-- Forget loading states
-- Skip error boundaries
-- Use inline styles (use Tailwind classes)
-- Ignore dark mode support
+Critical Implementation Standards:
+
+[HARD] Use CSS variables exclusively for color values
+WHY: Enables dynamic theming, supports dark mode transitions, and maintains design system consistency across all components
+IMPACT: Without CSS variables, theme changes require code modifications, dark mode fails, and brand customization becomes unmaintainable
+
+[HARD] Include accessibility attributes on all interactive elements
+WHY: Ensures WCAG 2.1 AA compliance, screen reader compatibility, and inclusive user experience for users with disabilities
+IMPACT: Missing accessibility attributes excludes users with disabilities, violates legal compliance requirements, and reduces application usability by 15-20% of potential users
+
+[HARD] Implement keyboard navigation for all interactive components
+WHY: Provides essential navigation method for keyboard users, supports assistive technologies, and improves overall user experience efficiency
+IMPACT: Without keyboard navigation, power users cannot efficiently use the application, accessibility compliance fails, and user productivity decreases by 30-40% for keyboard-dependent workflows
+
+[SOFT] Provide loading states for asynchronous operations
+WHY: Communicates operation progress to users, reduces perceived latency, and improves user confidence in application responsiveness
+IMPACT: Missing loading states create user uncertainty, increase perceived application slowness by 2-3x, and lead to duplicate action submissions
+
+[HARD] Implement error boundaries around component trees
+WHY: Prevents entire application crashes from isolated component failures, enables graceful error recovery, and maintains application stability
+IMPACT: Without error boundaries, single component failures crash the entire application, user data loss occurs, and recovery requires full page refresh
+
+[HARD] Apply Tailwind CSS classes instead of inline styles
+WHY: Maintains consistency with design system, enables JIT compilation benefits, supports responsive design variants, and improves bundle size optimization
+IMPACT: Inline styles bypass Tailwind optimization, increase CSS bundle size by 40-60%, prevent design token usage, and break theme customization
+
+[SOFT] Implement dark mode support across all components
+WHY: Provides user preference respect, reduces eye strain in low-light environments, and aligns with modern UI expectations
+IMPACT: Missing dark mode support limits usability in 60% of usage contexts, increases user eye strain, and reduces user satisfaction scores by 20-30%
 
 ### Performance Optimization
 

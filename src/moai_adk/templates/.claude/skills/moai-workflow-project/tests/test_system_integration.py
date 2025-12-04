@@ -75,7 +75,10 @@ class TestSystemIntegration(unittest.TestCase):
         """Test configuration sharing between modules."""
 
         # Update language settings
-        updates = {"language.conversation_language": "ja", "language.agent_prompt_language": "english"}
+        updates = {
+            "language.conversation_language": "ja",
+            "language.agent_prompt_language": "english",
+        }
 
         result = self.project.update_language_settings(updates)
         self.assertTrue(result["success"])
@@ -207,9 +210,10 @@ class TestSystemIntegration(unittest.TestCase):
 
         # Mock a module to raise an exception
         with patch.object(
-            self.project.template_optimizer, "analyze_project_templates", side_effect=Exception("Module error")
+            self.project.template_optimizer,
+            "analyze_project_templates",
+            side_effect=Exception("Module error"),
         ):
-
             # Should still complete initialization with optimization disabled
             result = self.project.initialize_complete_project(optimization_enabled=False)  # Disable to avoid the error
 

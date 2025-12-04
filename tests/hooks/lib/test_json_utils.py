@@ -41,7 +41,11 @@ class TestReadJsonFromStdin:
 
     def test_read_complex_json_from_stdin(self):
         """Read complex nested JSON from stdin"""
-        test_data = {"nested": {"deep": {"value": "test"}}, "list": [1, 2, 3], "bool": True}
+        test_data = {
+            "nested": {"deep": {"value": "test"}},
+            "list": [1, 2, 3],
+            "bool": True,
+        }
         json_str = json.dumps(test_data)
 
         with patch("sys.stdin", StringIO(json_str)):
@@ -289,7 +293,12 @@ class TestWriteJsonToFile:
 
     def test_write_json_to_file_complex_structure(self, tmp_path):
         """Write complex nested structure to file"""
-        data = {"nested": {"deep": {"value": "test"}}, "list": [1, 2, 3, 4, 5], "bool": True, "null": None}
+        data = {
+            "nested": {"deep": {"value": "test"}},
+            "list": [1, 2, 3, 4, 5],
+            "bool": True,
+            "null": None,
+        }
         file_path = tmp_path / "complex.json"
 
         success = JSONUtils.write_json_to_file(data, file_path)
@@ -562,7 +571,10 @@ class TestCreateStandardResponse:
     def test_create_response_all_fields(self):
         """Create response with all fields"""
         response = JSONUtils.create_standard_response(
-            success=False, message="Operation failed", error="Database error", data={"retry_after": 60}
+            success=False,
+            message="Operation failed",
+            error="Database error",
+            data={"retry_after": 60},
         )
 
         assert response["success"] is False

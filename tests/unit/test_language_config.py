@@ -22,7 +22,12 @@ class TestLanguageConfigReading:
     def test_reads_nested_language_config(self) -> None:
         """PhaseExecutor reads language from nested config.language.conversation_language."""
         # Arrange
-        config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
+        config = {
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            }
+        }
 
         # Act
         language_config = config.get("language", {})
@@ -64,7 +69,12 @@ class TestLanguageConfigReading:
     def test_japanese_language_config(self) -> None:
         """Reads Japanese language configuration correctly."""
         # Arrange
-        config = {"language": {"conversation_language": "ja", "conversation_language_name": "日本語"}}
+        config = {
+            "language": {
+                "conversation_language": "ja",
+                "conversation_language_name": "日本語",
+            }
+        }
 
         # Act
         language_config = config.get("language", {})
@@ -78,7 +88,12 @@ class TestLanguageConfigReading:
     def test_spanish_language_config(self) -> None:
         """Reads Spanish language configuration correctly."""
         # Arrange
-        config = {"language": {"conversation_language": "es", "conversation_language_name": "Español"}}
+        config = {
+            "language": {
+                "conversation_language": "es",
+                "conversation_language_name": "Español",
+            }
+        }
 
         # Act
         language_config = config.get("language", {})
@@ -126,7 +141,11 @@ class TestTemplateVariableSubstitution:
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
         processor.set_context(
-            {"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語", "PROJECT_NAME": "TestProject"}
+            {
+                "CONVERSATION_LANGUAGE": "ja",
+                "CONVERSATION_LANGUAGE_NAME": "日本語",
+                "PROJECT_NAME": "TestProject",
+            }
         )
 
         template_content = """
@@ -179,7 +198,10 @@ class TestPhaseExecutorResourcePhase:
         executor = PhaseExecutor(validator)
 
         config = {
-            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            },
             "name": "TestProject",
         }
 
@@ -244,7 +266,12 @@ class TestLanguageConfigMigration:
 
     def test_new_config_structure(self) -> None:
         """New nested config structure is recognized."""
-        new_config = {"language": {"conversation_language": "ko", "conversation_language_name": "한국어"}}
+        new_config = {
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            }
+        }
 
         # Act
         language_config = new_config.get("language", {})

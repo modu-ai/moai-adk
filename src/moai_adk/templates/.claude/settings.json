@@ -164,9 +164,7 @@
     "padding": 0,
     "refreshInterval": 300
   },
-  "spinnerTipsEnabled": false,
   "outputStyle": "R2-D2",
-  "includeCoAuthoredBy": false,
   "cleanupPeriodDays": 30,
   "env": {
     "MOAI_CONVERSATION_LANG": "{{CONVERSATION_LANGUAGE}}",

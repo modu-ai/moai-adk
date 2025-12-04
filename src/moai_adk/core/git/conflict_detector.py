@@ -186,7 +186,11 @@ class GitConflictDetector:
             analyzed.append(conflict)
 
         # Sort by severity (HIGH first, LOW last)
-        severity_order = {ConflictSeverity.HIGH: 0, ConflictSeverity.MEDIUM: 1, ConflictSeverity.LOW: 2}
+        severity_order = {
+            ConflictSeverity.HIGH: 0,
+            ConflictSeverity.MEDIUM: 1,
+            ConflictSeverity.LOW: 2,
+        }
         analyzed.sort(key=lambda c: severity_order.get(c.severity, 3))
 
         return analyzed

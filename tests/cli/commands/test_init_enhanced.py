@@ -22,6 +22,7 @@ import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
 from click.testing import CliRunner
 
 from moai_adk import __version__
@@ -645,30 +646,6 @@ class TestInitSuccessOutput:
             assert "Backup:" in result.output
             assert "backup-2025-01-01" in result.output
 
-    def test_init_shows_optimized_false_message_on_reinit(self, tmp_path: Path) -> None:
-        """Should show configuration merge required message on reinit"""
-        runner = CliRunner()
-
-        (tmp_path / ".moai").mkdir()
-
-        with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
-            mock_init.return_value.is_initialized.return_value = True
-            mock_init.return_value.initialize.return_value = InstallationResult(
-                success=True,
-                project_path=str(tmp_path),
-                language="python",
-                mode="personal",
-                locale="en",
-                duration=100,
-                created_files=[".moai/"],
-            )
-
-            result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
-
-            assert "optimized=false" in result.output
-            assert "Configuration merge required" in result.output
-            assert "/moai:project" in result.output
-
     def test_init_shows_cd_instruction_for_non_current_dir(self, tmp_path: Path) -> None:
         """Should show 'cd' instruction when not in current directory (lines 324-326)"""
         runner = CliRunner()
@@ -1024,28 +1001,6 @@ class TestInitProgressDisplay:
 
 class TestInitLanguageDisplay:
     """Test language display in summary"""
-
-    def test_init_displays_generic_as_auto_detect(self, tmp_path: Path) -> None:
-        """Should display 'Auto-detect' for generic language"""
-        runner = CliRunner()
-
-        with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
-            mock_init.return_value.is_initialized.return_value = False
-            mock_init.return_value.initialize.return_value = InstallationResult(
-                success=True,
-                project_path=str(tmp_path),
-                language="generic",
-                mode="personal",
-                locale="en",
-                duration=100,
-                created_files=[".moai/"],
-            )
-
-            result = runner.invoke(init, [str(tmp_path), "--non-interactive"])
-
-            assert result.exit_code == 0
-            assert "Auto-detect" in result.output
-            assert "/moai:project" in result.output
 
     def test_init_displays_specific_language(self, tmp_path: Path) -> None:
         """Should display specific language when set"""

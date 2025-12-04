@@ -227,7 +227,10 @@ def example_multilingual_workflow():
 
     # Step 1: Initialize with Korean language
     init_result = project.initialize_complete_project(
-        language="ko", user_name="박디벨로퍼", domains=["backend", "frontend"], project_type="web_application"
+        language="ko",
+        user_name="박디벨로퍼",
+        domains=["backend", "frontend"],
+        project_type="web_application",
     )
 
     print(f"Korean project initialized: {init_result['success']}")
@@ -244,7 +247,12 @@ def example_multilingual_workflow():
         "id": "SPEC-KO-001",
         "title": "사용자 관리 시스템",
         "description": "사용자 등록, 인증, 프로필 관리 기능 구현",
-        "requirements": ["이메일을 통한 사용자 등록", "소셜 로그인 지원", "프로필 관리 및 수정", "사용자 권한 관리"],
+        "requirements": [
+            "이메일을 통한 사용자 등록",
+            "소셜 로그인 지원",
+            "프로필 관리 및 수정",
+            "사용자 권한 관리",
+        ],
         "status": "Planned",
         "priority": "High",
     }
@@ -286,13 +294,13 @@ def main():
 
     for name, example_func in examples:
         try:
-            print(f"\n{'='*20} {name} {'='*20}")
+            print(f"\n{'=' * 20} {name} {'=' * 20}")
             results[name] = example_func()
         except Exception as e:
             print(f"Error in {name}: {e}")
             results[name] = {"error": str(e)}
 
-    print(f"\n{'='*20} Summary {'='*20}")
+    print(f"\n{'=' * 20} Summary {'=' * 20}")
 
     for name, result in results.items():
         if "error" in result:

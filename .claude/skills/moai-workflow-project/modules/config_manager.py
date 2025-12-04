@@ -73,7 +73,11 @@ class UnifiedConfigManager:
     - Environment-specific overrides
     """
 
-    def __init__(self, config_path: Union[str, Path], schema_path: Optional[Union[str, Path]] = None):
+    def __init__(
+        self,
+        config_path: Union[str, Path],
+        schema_path: Optional[Union[str, Path]] = None,
+    ):
         """
         Initialize configuration manager.
 
@@ -265,7 +269,11 @@ class UnifiedConfigManager:
                 "optimization_level": "basic",
                 "minification": False,
                 "caching": {"enabled": True, "strategy": "memory", "ttl_minutes": 60},
-                "validation": {"strict_mode": False, "check_syntax": True, "check_security": True},
+                "validation": {
+                    "strict_mode": False,
+                    "check_syntax": True,
+                    "check_security": True,
+                },
             },
             "project_initializer": {
                 "auto_dependencies": True,

@@ -89,10 +89,23 @@ class TestSessionStartPerformance:
         import subprocess
 
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "Initial"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
         )
 
         # Measure first call
@@ -116,10 +129,23 @@ class TestSessionStartPerformance:
         import subprocess
 
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "Initial"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
         )
 
         # First call to populate cache
@@ -171,10 +197,23 @@ class TestSessionStartPerformance:
         import subprocess
 
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "Initial"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
         )
 
         # First call to populate all caches

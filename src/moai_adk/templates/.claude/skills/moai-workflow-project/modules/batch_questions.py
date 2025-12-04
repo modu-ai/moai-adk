@@ -275,7 +275,9 @@ class BatchQuestionsManager:
             # Check if question already has response in context
             if question.id in context:
                 responses[question.id] = UserResponse(
-                    question_id=question.id, value=context[question.id], metadata={"source": "context"}
+                    question_id=question.id,
+                    value=context[question.id],
+                    metadata={"source": "context"},
                 )
                 continue
 
@@ -290,7 +292,9 @@ class BatchQuestionsManager:
                     raise ValueError(f"Validation failed for question {question.id}: {validation_result.error}")
 
             responses[question.id] = UserResponse(
-                question_id=question.id, value=response_value, metadata={"source": "user_input"}
+                question_id=question.id,
+                value=response_value,
+                metadata={"source": "user_input"},
             )
 
             # Update context for subsequent questions
@@ -379,7 +383,10 @@ class BatchQuestionsManager:
             # Convert responses to serializable format
             serializable_responses = {}
             for resp in responses.values():
-                serializable_responses[resp.question_id] = {"value": resp.value, "metadata": resp.metadata}
+                serializable_responses[resp.question_id] = {
+                    "value": resp.value,
+                    "metadata": resp.metadata,
+                }
 
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(serializable_responses, f, indent=2, ensure_ascii=False)
@@ -416,7 +423,10 @@ class BatchQuestionsManager:
                     "text": "What is your project name?",
                     "type": "text_input",
                     "required": True,
-                    "validation": {"rules": ["required", "min_length"], "parameters": {"min_length": 2}},
+                    "validation": {
+                        "rules": ["required", "min_length"],
+                        "parameters": {"min_length": 2},
+                    },
                 },
                 {
                     "id": "project.type",

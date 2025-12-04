@@ -10,7 +10,7 @@ Version: 1.0.0
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 from .batch_questions import BatchQuestionsManager, Question, QuestionType, UserResponse
@@ -50,7 +50,7 @@ class AskUserQuestionIntegrator:
         # For now, we'll create a mock implementation
         try:
             # In actual Claude Code environment, this would be available
-            from claude_code import ask_user_question as AskUserQuestion
+            from claude_code import ask_user_question as AskUserQuestion  # noqa: N812
 
             self.AskUserQuestion = AskUserQuestion
         except ImportError:
@@ -107,7 +107,7 @@ class AskUserQuestionIntegrator:
             for opt in question.options:
                 option_dict = {
                     "label": opt.label,
-                    "description": opt.description if self.config.enable_descriptions else None,
+                    "description": (opt.description if self.config.enable_descriptions else None),
                 }
 
                 # Only include non-None descriptions
@@ -120,7 +120,12 @@ class AskUserQuestionIntegrator:
 
         # Handle text input questions (convert to choice with text input)
         elif question.type in [QuestionType.TEXT_INPUT, QuestionType.NUMBER_INPUT]:
-            ask_user_q["options"] = [{"label": "Enter value...", "description": f"Type your {question.type.value}"}]
+            ask_user_q["options"] = [
+                {
+                    "label": "Enter value...",
+                    "description": f"Type your {question.type.value}",
+                }
+            ]
 
         # Handle boolean questions
         elif question.type == QuestionType.BOOLEAN:
@@ -233,7 +238,9 @@ class AskUserQuestionIntegrator:
             logger.error(f"Error asking question {question.id}: {e}")
             # Return default value on error
             return UserResponse(
-                question_id=question.id, value=question.default_value, metadata={"error": str(e), "fallback": True}
+                question_id=question.id,
+                value=question.default_value,
+                metadata={"error": str(e), "fallback": True},
             )
 
     def ask_question_batch(
@@ -258,7 +265,9 @@ class AskUserQuestionIntegrator:
             # Check if question already has response in context
             if question.id in context:
                 responses[question.id] = UserResponse(
-                    question_id=question.id, value=context[question.id], metadata={"source": "context"}
+                    question_id=question.id,
+                    value=context[question.id],
+                    metadata={"source": "context"},
                 )
                 continue
 

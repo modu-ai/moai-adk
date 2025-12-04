@@ -735,7 +735,13 @@ stages:
                 }
             },
             "components": {
-                "securitySchemes": {"BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}
+                "securitySchemes": {
+                    "BearerAuth": {
+                        "type": "http",
+                        "scheme": "bearer",
+                        "bearerFormat": "JWT",
+                    }
+                }
             },
         }
 
@@ -780,7 +786,7 @@ Authorization: Bearer <your-jwt-token>
 ### 2. 프로젝트 클론
 ```bash
 git clone <repository-url>
-cd {self.config.get('project', {}).get('name', 'my-project')}
+cd {self.config.get("project", {}).get("name", "my-project")}
 ```
 
 ### 3. 환경 설정
@@ -833,7 +839,7 @@ npm run dev
 ### 2. Clone Project
 ```bash
 git clone <repository-url>
-cd {self.config.get('project', {}).get('name', 'my-project')}
+cd {self.config.get("project", {}).get("name", "my-project")}
 ```
 
 ### 3. Environment Setup
@@ -1058,8 +1064,8 @@ npm run dev
         doc_content += f"""
 ## Implementation Details
 - **SPEC ID**: {spec_id}
-- **Status**: {spec_data.get('status', 'Planned')}
-- **Priority**: {spec_data.get('priority', 'Medium')}
+- **Status**: {spec_data.get("status", "Planned")}
+- **Priority**: {spec_data.get("priority", "Medium")}
 
 ## Usage Examples
 [Add usage examples here]
@@ -1168,7 +1174,12 @@ npm run dev
             Dict with export results
         """
 
-        export_results = {"format": format_type, "files": [], "output_directory": "", "success": False}
+        export_results = {
+            "format": format_type,
+            "files": [],
+            "output_directory": "",
+            "success": False,
+        }
 
         if format_type == "markdown":
             export_results = self._export_markdown()
@@ -1198,17 +1209,26 @@ npm run dev
             shutil.copy2(md_file, output_path)
             exported_files.append(str(output_path))
 
-        return {"format": "markdown", "files": exported_files, "output_directory": str(output_dir), "success": True}
+        return {
+            "format": "markdown",
+            "files": exported_files,
+            "output_directory": str(output_dir),
+            "success": True,
+        }
 
     def _export_html(self) -> Dict[str, Any]:
         """Export documentation as HTML."""
 
         # Check for markdown to HTML converter
         try:
-            import jinja2
+            import jinja2  # noqa: F401 - availability check
             import markdown
         except ImportError:
-            return {"format": "html", "error": "Required packages not found: markdown, jinja2", "success": False}
+            return {
+                "format": "html",
+                "error": "Required packages not found: markdown, jinja2",
+                "success": False,
+            }
 
         output_dir = self.project_root / "docs-html"
         output_dir.mkdir(exist_ok=True)
@@ -1219,7 +1239,8 @@ npm run dev
 
         for md_file in markdown_files:
             html_content = markdown.markdown(
-                md_file.read_text(encoding="utf-8"), extensions=["toc", "codehilite", "tables"]
+                md_file.read_text(encoding="utf-8"),
+                extensions=["toc", "codehilite", "tables"],
             )
 
             relative_path = md_file.relative_to(self.docs_dir)
@@ -1229,7 +1250,12 @@ npm run dev
             html_path.write_text(html_content, encoding="utf-8")
             exported_files.append(str(html_path))
 
-        return {"format": "html", "files": exported_files, "output_directory": str(output_dir), "success": True}
+        return {
+            "format": "html",
+            "files": exported_files,
+            "output_directory": str(output_dir),
+            "success": True,
+        }
 
     def _export_pdf(self) -> Dict[str, Any]:
         """Export documentation as PDF."""
@@ -1239,7 +1265,11 @@ npm run dev
             import markdown
             import weasyprint
         except ImportError:
-            return {"format": "pdf", "error": "Required packages not found: markdown, weasyprint", "success": False}
+            return {
+                "format": "pdf",
+                "error": "Required packages not found: markdown, weasyprint",
+                "success": False,
+            }
 
         output_dir = self.project_root / "docs-pdf"
         output_dir.mkdir(exist_ok=True)
@@ -1252,7 +1282,8 @@ npm run dev
             md_path = self.docs_dir / filename
             if md_path.exists():
                 html_content = markdown.markdown(
-                    md_path.read_text(encoding="utf-8"), extensions=["toc", "codehilite", "tables"]
+                    md_path.read_text(encoding="utf-8"),
+                    extensions=["toc", "codehilite", "tables"],
                 )
 
                 pdf_path = output_dir / filename.replace(".md", ".pdf")
@@ -1261,7 +1292,12 @@ npm run dev
                 weasyprint.HTML(string=html_content).write_pdf(pdf_path)
                 exported_files.append(str(pdf_path))
 
-        return {"format": "pdf", "files": exported_files, "output_directory": str(output_dir), "success": True}
+        return {
+            "format": "pdf",
+            "files": exported_files,
+            "output_directory": str(output_dir),
+            "success": True,
+        }
 
     def get_documentation_status(self) -> Dict[str, Any]:
         """Get current documentation status and metrics."""

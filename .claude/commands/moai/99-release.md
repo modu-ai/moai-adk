@@ -1,28 +1,29 @@
 ---
 name: moai:99-release
-description: "Interactive release management for MoAI-ADK packages with menu-driven workflow"
+description: "Interactive release management for MoAI-ADK packages with automatic quality gates"
 argument-hint: "[no arguments - uses interactive menu]"
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, TodoWrite, AskUserQuestion, Task, Skill
-model: "haiku"
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion
+model: "sonnet"
 ---
 
-##  Pre-execution Context
+## Pre-execution Context
 
 !git status --porcelain
 !git branch --show-current
-!git tag --list
+!git tag --list --sort=-v:refname | head -5
 !git log --oneline -5
 !git remote -v
 
-##  Essential Files
+## Essential Files
 
 @pyproject.toml
-@src/moai_adk/init.py
+@src/moai_adk/__init__.py
 @CHANGELOG.md
+@.moai/config/config.json
 
----
+# MoAI-ADK Interactive Release Management
 
-#  MoAI-ADK 인터랙티브 릴리즈 관리
+# MoAI-ADK 인터랙티브 릴리즈 관리
 
 ## EXCEPTION: Local-Only Development Tool
 
@@ -33,7 +34,7 @@ This command is exempt from "Zero Direct Tool Usage" principle because:
 3. Direct system access required - PyPI release automation requires direct shell commands
 4. Interactive menu system - Uses AskUserQuestion for user-driven workflow
 
-Production commands (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`) must strictly adhere to agent delegation principle.
+Production commands must strictly adhere to agent delegation principle.
 
 ---
 
@@ -43,217 +44,665 @@ Production commands (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-
 
 ---
 
-##  사용 방법
+## Command Purpose
 
-인터랙티브 메뉴 방식:
+Execute automated release management workflow following GitHub Flow:
+
+1. PHASE 1: Automatic Quality Gates (pytest, ruff, mypy)
+2. PHASE 2: Auto-fix and Commit (if fixes needed)
+3. PHASE 3: Interactive Menu Selection
+4. PHASE 4: Execute Selected Operation
+5. PHASE 5: PR Creation and Merge (GitHub Flow)
+6. PHASE 6: Completion and Next Steps
+
+Run on: Interactive menu (no arguments required)
+
+---
+
+## CRITICAL: GitHub Flow Compliance
+
+This command MUST follow GitHub Flow. Direct commits/pushes to main are PROHIBITED.
+
+### Required Workflow
+
+1. Create or use existing release branch: `release/vX.Y.Z`
+2. All changes committed to release branch
+3. Push release branch to origin
+4. Create PR from release branch to main
+5. Wait for CI checks to pass
+6. Merge PR (via GitHub UI or gh CLI)
+7. Tag the merged commit on main
+
+### Prohibited Actions
+
+- NEVER commit directly to main
+- NEVER push directly to main
+- NEVER create tags before PR merge
+- NEVER use `git merge` locally to main
+
+---
+
+## Execution Philosophy: "Validate → Fix → Select → Execute"
+
+`/moai:99-release` performs release management through automatic quality validation followed by interactive menu:
+
+```
+```
+User Command: /moai:99-release
+    |
+Phase 1: Automatic Quality Gates
+    |- pytest execution
+    |- ruff check and format
+    |- mypy type check
+    |
+Phase 2: Auto-fix and Commit (if needed)
+    |- Apply ruff fixes
+    |- Commit fixes automatically
+    |
+Phase 3: AskUserQuestion (Main Menu)
+    |- validate: Full quality validation
+    |- version: Version management
+    |- changelog: Bilingual changelog
+    |- prepare: CI/CD preparation
+    |- rollback: Emergency rollback
+    |
+Phase 4: Execute Selected Operation
+    |- Run selected workflow
+    |- Report results
+    |
+Phase 5: AskUserQuestion (Next Steps)
+    |- Continue with another operation
+    |- Exit release management
+```
+
+### Key Principle: Automatic Progression
+
+This command automatically executes quality checks on start:
+
+- Phase 1 runs IMMEDIATELY on command invocation
+- No waiting for user input before quality checks
+- Auto-fix and commit if issues found
+- Then present interactive menu
+
+---
+
+## PHASE 1: Automatic Quality Gates
+
+Goal: Run quality checks immediately on command start
+
+### Step 1.1: Initialize Task Tracking
+
+Create TodoWrite to track progress:
+
+```json
+todos:
+  - content: "Run pytest quality check"
+    status: "in_progress"
+    activeForm: "Running pytest quality check"
+  - content: "Run ruff lint and format check"
+    status: "pending"
+    activeForm: "Running ruff lint and format check"
+  - content: "Run mypy type check"
+    status: "pending"
+    activeForm: "Running mypy type check"
+  - content: "Auto-fix and commit if needed"
+    status: "pending"
+    activeForm: "Auto-fixing and committing"
+  - content: "Present interactive menu"
+    status: "pending"
+    activeForm: "Presenting interactive menu"
+```
+
+### Step 1.2: Run pytest
+
+Execute pytest and capture results:
 
 ```bash
-/moai:99-release
+uv run pytest tests/ -v --tb=short 2>&1 | head -100
 ```
 
-메뉴에서 원하는 작업을 선택하고 안내에 따라 진행하세요.
+Record result:
 
-##  워크플로우
+- PASS: All tests passed
+- FAIL: Tests failed (note count and names)
 
-### 1단계: 메인 메뉴 선택
+### Step 1.3: Run ruff check
 
+Execute ruff lint check:
+
+```bash
+uv run ruff check src/ --output-format=concise 2>&1 | head -50
 ```
- MoAI-ADK 릴리즈 관리 - 원하는 작업을 선택하세요:
+
+Record result:
+
+- PASS: No lint issues
+- FIXABLE: Issues found, can be auto-fixed
+- FAIL: Critical issues requiring manual fix
+
+### Step 1.4: Run ruff format check
+
+Execute ruff format check:
+
+```bash
+uv run ruff format --check src/ 2>&1 | head -20
 ```
 
-### 2단계: 세부 옵션 선택
+Record result:
 
-각 작업에 맞는 세부 옵션을 선택합니다.
+- PASS: No formatting issues
+- FIXABLE: Formatting needed
 
-### 3단계: 실행 확인
+### Step 1.5: Run mypy
 
-선택한 작업을 실행하기 전 최종 확인을 받습니다.
+Execute mypy type check:
 
-### 4단계: 결과 보고
+```bash
+uv run mypy src/moai_adk/ --ignore-missing-imports 2>&1 | head -50
+```
 
-실행 결과와 다음 단계를 안내받습니다.
+Record result:
 
----
+- PASS: No type errors
+- WARNING: Type hints missing
+- FAIL: Type errors found
 
-##  메인 메뉴 옵션
+### Step 1.6: Quality Summary
 
-###  validate - 사전 릴리즈 품질 검증
+Present quality gate summary to user:
 
-목적: 릴리즈 전 코드 품질과 보안 검증
+```text
+Quality Gate Results:
+- pytest: [PASS/FAIL]
+- ruff lint: [PASS/FIXABLE/FAIL]
+- ruff format: [PASS/FIXABLE]
+- mypy: [PASS/WARNING/FAIL]
 
-세부 옵션:
-
--  Quick 검증 (5분): 기본 품질 게이트
-  - pytest 실행
-  - ruff 코드 포맷 검사
-  - mypy 타입 검사
--  Full 검증 (15분): 전체 품질 게이트 + 보안 스캔
-  - Quick 검증 모든 항목
-  - bandit 보안 스캔
-  - pip-audit 의존성 취약점 검사
--  사용자 정의: 특정 검증 항목 선택
-
-실행 결과:
-
-- 검증 통과/실패 보고
-- 문제점 상세 분석
-- 수정 권장 사항
-
-###  version - 버전 관리
-
-목적: 시맨틱 버전 관리 (major/minor/patch)
-
-세부 옵션:
-
--  patch: 버그 수정 (0.27.2 → 0.27.3)
--  minor: 기능 추가 (0.27.2 → 0.28.0)
--  major: 호환성 변경 (0.27.2 → 1.0.0)
-
-업데이트 파일:
-
-- `pyproject.toml` - 패키지 버전
-- `src/moai_adk/__init__.py` - Python 버전
-- `.moai/config/config.json` - 설정 버전
-
-실행 결과:
-
-- 모든 파일 버전 동기화 완료
-- Git 커밋 생성 제안
-- 다음 단계 안내
-
-###  changelog - 이중언어 변경로그 생성
-
-목적: 한국어/영어 이중언어 변경로그 자동 생성
-
-세부 옵션:
-
--  자동 생성: Git 히스토리 기반 자동 생성
-  - 최신 태그 이후 커밋 분석
-  - 자동 분류 (기능/버그/개선)
-  - 이중언어 번역
--  수동 편집: 템플릿 제공 후 직접 편집
-  - 표준 변경로그 템플릿
-  - 사용자 편집 가이드
--  기존 수정: 기존 changelog.md 수정
-
-실행 결과:
-
-- `CHANGELOG.md` 업데이트
-- GitHub Release 노트 형식
-- Git 커밋 제안
-
-###  prepare - CI/CD 배포 준비
-
-목적: PyPI/CI/CD 배포를 위한 준비 작업
-
-세부 옵션:
-
--  test 환경: TestPyPI 배포 준비
-  - 패키지 빌드 검증
-  - TestPyPI 토큰 유효성 확인
-  - 테스트 배포 시뮬레이션
--  production 환경: PyPI 배포 준비
-  - 프로덕션 토큰 유효성 확인
-  - 보안 검증 통과 확인
-  - GitHub Actions 트리거 준비
--  검토용: 릴리즈 검토용 번들 생성
-  - 릴리즈 노트 미리보기
-  - 배포 검토 체크리스트
-  - 승인 요청 번들
-
-실행 결과:
-
-- 배포 준비 상태 보고
-- GitHub Actions 실행 안내
-- 승인 절차 안내
-
-###  rollback - 응급 롤백
-
-목적: 배포 실패 시 응급 롤백 절차
-
-세부 옵션:
-
--  PyPI만: 패키지만 롤백
-  - PyPI 버전 숨기기
-  - 다운로드 차단
--  전체: PyPI + GitHub Release + 태그
-  - PyPI 완전 삭제
-  - GitHub Release 삭제
-  - Git 태그 삭제
--  특정 버전: 특정 버전 지정 롤백
-  - 버전별 선택
-  - 부분 롤백
-
-실행 결과:
-
-- 롤백 실행 상태
-- 복구 절차 안내
-- 팀 알림 발송
+Overall Status: [READY/NEEDS_FIX/BLOCKED]
+```
 
 ---
 
-##  보안 정책
+## PHASE 2: Auto-fix and Commit
 
-### 환경별 접근 제어
+Goal: Automatically fix issues and commit if needed
 
-- 테스트 환경: 즉시 실행 가능
-- 프로덕션 환경: 5분 대기 + 확인 절차
+### Step 2.1: Check if Fixes Needed
 
-### 토큰 관리
+Condition: Execute only if ruff lint or format has FIXABLE status
 
-- PyPI 토큰: `~/.pypirc`에서 관리
-- GitHub 토큰: GitHub Secrets에서 관리
-- 유효성 검증: 배포 전 자동 확인
+### Step 2.2: Apply ruff fixes
 
-### 승인 절차
+```bash
+uv run ruff check src/ --fix
+uv run ruff format src/
+```
 
-- 개인 모드: 1인 승인 가능
-- 팀 모드: 2인 이상 승인 필요
+### Step 2.3: Check for Changes
 
----
+```bash
+git status --porcelain
+```
 
-##  모니터링 및 로깅
+### Step 2.4: Auto-commit Fixes
 
-### 실행 기록
+If changes exist, create commit:
 
-- `.moai/logs/release-*.log`에 상세 기록
-- 각 단계별 타임스탬프
-- 성공/실패 상세 원인
+```bash
+git add -A
+git commit -m "fix: Auto-fix lint and format issues for release preparation"
+```
 
-### 알림 시스템
+### Step 2.5: Update Quality Status
 
-- Slack/이메일 알림 (설정 시)
-- GitHub Issues 자동 생성 (롤백 시)
-- 팀 멤버 알림 (프로덕션 배포 시)
+Re-run quick validation to confirm fixes:
 
----
+```bash
+uv run ruff check src/ --output-format=concise 2>&1 | head -10
+```
 
-##  문제 해결
-
-### 일반적인 문제
-
-1. 토큰 만료: 새 토큰 발급 필요
-2. 권한 부족: PyPI/GitHub 권한 확인
-3. 네트워크 오류: 방화벽/프록시 설정 확인
-
-### 긴급 연락처
-
-- 팀 리드: GitHub Issues
-- PyPI 지원: <pypi@python.org>
-- GitHub 지원: <support@github.com>
+Report: "Auto-fix applied and committed successfully"
 
 ---
 
-##  관련 문서
+## PHASE 3: Interactive Main Menu
 
-- CI/CD 워크플로우: `.github/workflows/release-secure.yml`
-- 보안 정책: `.moai/security/` 디렉토리
-- 모니터링: `.moai/monitoring/` 디렉토리
-- 응급 절차: `.moai/emergency/` 디렉토리
+Goal: Present release management options via AskUserQuestion
+
+### Step 3.1: Present Main Menu
+
+Use AskUserQuestion to display options:
+
+```yaml
+question: "Quality gates completed. Select release management operation:"
+header: "MoAI-ADK Release Management"
+multiSelect: false
+options:
+  - label: "validate"
+    description: "Run full pre-release quality validation (pytest, ruff, mypy, bandit, pip-audit)"
+  - label: "version"
+    description: "Version management and synchronization (patch/minor/major)"
+  - label: "changelog"
+    description: "Generate bilingual changelog (Korean/English)"
+  - label: "prepare"
+    description: "Prepare CI/CD deployment (TestPyPI or PyPI)"
+  - label: "rollback"
+    description: "Emergency rollback procedures"
+  - label: "exit"
+    description: "Exit release management"
+```
+
+### Step 3.2: Route to Selected Operation
+
+Based on user selection, proceed to Phase 4 with appropriate workflow.
 
 ---
 
-Status: Local-Only Development Tool
+## PHASE 4: Execute Selected Operation
+
+Goal: Execute the selected release management operation
+
+### Operation: validate
+
+Full pre-release quality validation workflow:
+
+Sub-options (via AskUserQuestion):
+
+- Quick (5min): pytest, ruff, mypy, version consistency
+- Full (15min): Quick + bandit, pip-audit, full coverage
+- Custom: Select specific checks
+
+Execution steps:
+
+1. Quick validation:
+
+```bash
+uv run pytest tests/ -v --tb=short
+uv run ruff check src/
+uv run mypy src/moai_adk/ --ignore-missing-imports
+```
+
+2. Full validation (additional):
+
+```bash
+uv run bandit -r src/ -ll
+uv run pip-audit
+uv run pytest tests/ --cov=src/moai_adk --cov-report=term-missing
+```
+
+3. Version consistency check:
+
+- Read version from pyproject.toml
+- Compare with .moai/config/config.json
+- Compare with src/moai_adk/__init__.py
+- Report any mismatches
+
+Report validation results with PASS/FAIL for each item.
+
+### Operation: version
+
+Version management workflow (GitHub Flow compliant):
+
+Sub-options (via AskUserQuestion):
+
+- patch: Bug fix (0.31.3 -> 0.31.4)
+- minor: Feature addition (0.31.3 -> 0.32.0)
+- major: Breaking change (0.31.3 -> 1.0.0)
+- custom: Enter specific version
+- check: Version consistency check only
+- sync: Synchronize all version files
+
+Execution steps:
+
+1. Verify current branch is release/vX.Y.Z (NOT main)
+2. Read current version from pyproject.toml
+3. Calculate new version based on selection
+4. Update files on release branch:
+   - pyproject.toml (master source)
+   - .moai/config/config.json
+   - src/moai_adk/__init__.py (if applicable)
+5. Create Git commit: "chore: Bump version to X.Y.Z"
+6. Push release branch to origin
+7. IMPORTANT: Tags are created AFTER PR merge (see Phase 5)
+8. Report all changes made
+
+NOTE: Do NOT create tags on release branch. Tags are created on main after PR merge.
+
+### Operation: changelog
+
+Bilingual changelog generation:
+
+Sub-options (via AskUserQuestion):
+
+- auto: Generate from Git history since last tag
+- manual: Provide changelog template for editing
+- edit: Modify existing CHANGELOG.md
+
+Execution steps:
+
+1. Get commits since last tag:
+
+```bash
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+```
+
+2. Categorize commits:
+
+   - feat: New features
+   - fix: Bug fixes
+   - docs: Documentation
+   - refactor: Code refactoring
+   - test: Test additions
+   - chore: Maintenance
+
+3. Generate bilingual changelog format:
+
+   - First section: Complete changelog content in English
+   - Separator: "---" line
+   - Second section: Complete changelog content in Korean (full translation of English section)
+
+   Example format:
+   ```
+   # v0.31.4 - Session Start Hook Fixes (2025-12-03)
+
+   ## Summary
+   [English content...]
+
+   ## Bug Fixes
+   [English content...]
+
+   ---
+
+   # v0.31.4 - 세션 시작 훅 수정 (2025-12-03)
+
+   ## 요약
+   [Korean content - full translation...]
+
+   ## 버그 수정
+   [Korean content - full translation...]
+   ```
+
+4. Update CHANGELOG.md with new bilingual section
+5. Create commit: "docs: Update changelog for vX.Y.Z"
+
+### Operation: prepare
+
+CI/CD deployment preparation (GitHub Flow compliant):
+
+Sub-options (via AskUserQuestion):
+
+- pr-create: Create PR from release branch to main
+- pr-merge: Merge approved PR and create tag
+- test-deploy: TestPyPI deployment (after PR merge)
+- prod-deploy: PyPI deployment (after PR merge)
+
+Execution steps:
+
+1. Verify current branch is release/vX.Y.Z
+2. Verify all quality gates passed
+3. Verify version consistency
+4. Push release branch if needed:
+
+```bash
+git push origin release/vX.Y.Z
+```
+
+5. Create or update PR:
+
+```bash
+gh pr create --base main --head release/vX.Y.Z --title "Release vX.Y.Z" --body "..."
+# OR if PR exists:
+gh pr view release/vX.Y.Z --json url
+```
+
+6. Wait for CI checks to pass
+7. After PR approval, merge via:
+
+```bash
+gh pr merge --squash --delete-branch
+```
+
+8. After merge, checkout main and create tag:
+
+```bash
+git checkout main
+git pull origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+9. Build and deploy package:
+
+```bash
+uv run python -m build
+uv run twine check dist/*
+uv run twine upload dist/*  # or --repository testpypi
+```
+
+10. Report deployment status
+
+### Operation: rollback
+
+Emergency rollback procedures:
+
+Sub-options (via AskUserQuestion):
+
+- pypi-only: Hide PyPI version
+- full: PyPI + GitHub Release + Tag
+- specific: Rollback to specific version
+
+Execution steps:
+
+1. Confirm rollback with user (double confirmation for production)
+2. Execute selected rollback:
+   - PyPI: Use yank command
+   - GitHub: Delete release via gh CLI
+   - Git: Delete tag locally and remotely
+
+3. Report rollback status
+4. Create incident log entry
+
+---
+
+## PHASE 5: PR Creation and Merge (GitHub Flow)
+
+Goal: Create PR from release branch to main and manage merge process
+
+### Step 5.1: Verify Branch State
+
+```bash
+git branch --show-current  # Must be release/vX.Y.Z
+git status --porcelain     # Must be clean
+```
+
+### Step 5.2: Push Release Branch
+
+```bash
+git push origin release/vX.Y.Z
+```
+
+### Step 5.3: Create or Check PR
+
+Check if PR exists:
+
+```bash
+gh pr list --head release/vX.Y.Z --json number,state
+```
+
+If no PR exists, create one:
+
+```bash
+gh pr create --base main --head release/vX.Y.Z \
+  --title "Release vX.Y.Z: [Brief Description]" \
+  --body "[PR body with summary and test plan]"
+```
+
+### Step 5.4: Wait for CI
+
+```bash
+gh pr checks release/vX.Y.Z --watch
+```
+
+### Step 5.5: Merge PR (After Approval)
+
+Use AskUserQuestion to confirm merge:
+
+```yaml
+question: "PR checks passed. Ready to merge to main?"
+options:
+  - label: "Merge PR"
+    description: "Merge release branch to main via squash merge"
+  - label: "Wait"
+    description: "Wait for more review or changes"
+```
+
+If merge selected:
+
+```bash
+gh pr merge --squash --delete-branch
+```
+
+### Step 5.6: Create Tag on Main
+
+After merge:
+
+```bash
+git checkout main
+git pull origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+---
+
+## PHASE 6: Completion and Next Steps
+
+Goal: Guide user to next action after operation completes
+
+### Step 6.1: Report Operation Results
+
+Display summary of completed operation:
+- Operation type
+- Actions performed
+- Files modified
+- Git commits created
+- PR URL (if created)
+- Tag created (if applicable)
+- Current status
+
+### Step 6.2: Present Next Steps
+
+Use AskUserQuestion:
+
+```yaml
+question: "[Operation] completed successfully. What would you like to do next?"
+header: "Next Steps"
+multiSelect: false
+options:
+  - label: "Continue with another operation"
+    description: "Return to main menu"
+  - label: "View current status"
+    description: "Show project and release status"
+  - label: "Deploy to PyPI"
+    description: "Build and upload package"
+  - label: "Exit"
+    description: "Complete release management session"
+```
+
+### Step 6.3: Loop or Exit
+
+If user selects "Continue", return to Phase 3 (Main Menu).
+If user selects "Exit", display final summary and end session.
+
+---
+
+## Quality Gate Standards
+
+### Minimum Requirements for Release
+
+- pytest: All tests must pass
+- ruff lint: No errors (warnings acceptable)
+- ruff format: Must be formatted
+- mypy: No critical errors
+- Version: All files synchronized
+
+### Security Requirements (Full validation)
+
+- bandit: No high-severity issues
+- pip-audit: No known vulnerabilities
+
+### Coverage Requirements
+
+- Minimum: 80% code coverage
+- Target: 85% code coverage
+
+---
+
+## Version File Locations
+
+Master source: pyproject.toml
+Synchronized files:
+- .moai/config/config.json (project.version)
+- src/moai_adk/__init__.py (__version__)
+
+Git tag format: vX.Y.Z (e.g., v0.31.3)
+
+---
+
+## Logging and Monitoring
+
+Execution logs: .moai/logs/release-YYYY-MM-DD.log
+
+Log format:
+- Timestamp (ISO8601)
+- Operation type
+- Status (start/success/fail)
+- Details
+
+---
+
+## Related Documentation
+
+- CI/CD Workflow: .github/workflows/release-secure.yml
+- Version Management: .moai/docs/version-management-guide.md
+- Core Module: src/moai_adk/core/version_sync.py
+
+---
+
+## Quick Reference
+
+| Operation | Purpose | Duration | Key Steps |
+|-----------|---------|----------|-----------|
+| validate | Quality check | 5-15 min | pytest, ruff, mypy, bandit |
+| version | Version bump | 2 min | Update files, commit, tag |
+| changelog | Update log | 5 min | Parse commits, generate bilingual |
+| prepare | Build & deploy | 10 min | Build, verify, upload |
+| rollback | Emergency revert | 5 min | Yank, delete, log |
+
+Status: Enhanced with GitHub Flow Compliance and PR-based Workflow
 Python Version: 3.14
-MoAI-ADK Version: 0.27.2+
-Last Updated: 2025-11-21
+MoAI-ADK Version: 0.32.0+
+Last Updated: 2025-12-04
+
+---
+
+## EXECUTION DIRECTIVE
+
+You must NOW execute the command following the "Execution Philosophy" described above.
+
+1. IMMEDIATELY verify current branch (must be release/vX.Y.Z, NOT main)
+2. Run Phase 1 quality gates (pytest, ruff, mypy)
+3. Display quality gate results to user
+4. If fixes needed, apply auto-fixes and commit on release branch (Phase 2)
+5. Present interactive main menu via AskUserQuestion (Phase 3)
+6. Execute selected operation (Phase 4)
+7. Create/update PR for release (Phase 5)
+8. Guide to next steps (Phase 6)
+
+CRITICAL RULES:
+- NEVER commit or push directly to main
+- ALWAYS work on release/vX.Y.Z branch
+- ALWAYS create PR for main merge
+- ONLY create tags AFTER PR is merged to main
+
+Begin with TodoWrite to track progress, then verify branch and execute pytest immediately.

@@ -107,7 +107,7 @@ class TestCreateBackup:
         backup = TemplateBackup(tmp_project)
 
         # Mock datetime to get predictable timestamp
-        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
             mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
             backup_path = backup.create_backup()
 
@@ -166,7 +166,7 @@ class TestCreateBackup:
         """Should create unique timestamped directories"""
         backup = TemplateBackup(tmp_project)
 
-        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
             # First backup
             mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
             backup_path1 = backup.create_backup()
@@ -398,7 +398,7 @@ class TestGetLatestBackup:
         """Should return latest timestamped backup"""
         backup = TemplateBackup(tmp_project)
 
-        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
             # Create multiple backups
             mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
             backup.create_backup()
@@ -431,7 +431,7 @@ class TestGetLatestBackup:
         legacy_path.mkdir(parents=True)
         (legacy_path / ".moai").mkdir()
 
-        with patch('moai_adk.core.template.backup.datetime') as mock_datetime:
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
             # Create timestamped backup
             mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
             backup.create_backup()

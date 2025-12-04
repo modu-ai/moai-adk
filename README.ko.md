@@ -416,13 +416,13 @@ MoAI-ADK는 **24개의 전문 에이전트**를 **5개 계층**으로 조직하�
 - `builder-skill`: 새로운 스킬 생성
 - `builder-command`: 새로운 명령어 생성
 
-**Tier 4: MCP Integrators** (MCP 통합, 5개)
+**Tier 4: MCP Integrators** (MCP 통합, 6개)
 
 - `mcp-context7`: 최신 라이브러리 문서 조회
 - `mcp-sequential-thinking`: 복잡한 추론 분석
 - `mcp-playwright`: 웹 자동화 테스트
-- `mcp-design`: Figma 디자인 시스템
-- `mcp-browser`: 웹 테스트 자동화
+- `mcp-figma`: Figma 디자인 시스템
+- `mcp-notion`: Notion 워크스페이스 관리
 
 **Tier 5: AI Services** (AI 서비스, 1개)
 
@@ -560,7 +560,7 @@ flowchart LR
 
     Run -->|"<br/>테스트 통과<br/>코드 완성<br/>"| Sync["<b>📚 SYNC</b><br/>(자동화)<br/>━━━━━━<br/>🔴 최종 테스트<br/>📊 커버리지 확인<br/>🔍 코드 품질 검사<br/>📝 자동 커밋 생성<br/>🚀 병합 준비<br/>⏱️ 5분"]
 
-    Sync -->|"<br/>완전 자동화 완료!<br/>🚀 병합 준비 완료<br/>| End([✅ 기능 배포 완료])
+    Sync -->|"<br/>완전 자동화 완료!<br/>🚀 병합 준비 완료<br/>"| End([✅ 기능 배포 완료])
 
     classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
     classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000

@@ -296,7 +296,10 @@ This is a test project with version {{MOAI_VERSION}}.
         template_engine = TemplateEngine()
 
         # Test config with version field
-        config = {"moai": {"version": "1.5.0", "update_check_frequency": "weekly"}, "project": {"name": "TestProject"}}
+        config = {
+            "moai": {"version": "1.5.0", "update_check_frequency": "weekly"},
+            "project": {"name": "TestProject"},
+        }
 
         # Get default variables
         variables = template_engine.get_default_variables(config)
@@ -309,7 +312,10 @@ This is a test project with version {{MOAI_VERSION}}.
         ), f"MOAI_VERSION should be '1.5.0', got '{variables['MOAI_VERSION']}'"
 
         # Test config without version field (should return default)
-        config_without_version = {"moai": {"update_check_frequency": "daily"}, "project": {"name": "TestProject"}}
+        config_without_version = {
+            "moai": {"update_check_frequency": "daily"},
+            "project": {"name": "TestProject"},
+        }
 
         variables = template_engine.get_default_variables(config_without_version)
 
@@ -425,7 +431,10 @@ This is a test project with version {{MOAI_VERSION}}.
         template_engine = TemplateEngine()
 
         # Test config with user.name
-        config = {"project": {"name": "TestProject", "owner": "GoosLab"}, "user": {"name": "철수"}}
+        config = {
+            "project": {"name": "TestProject", "owner": "GoosLab"},
+            "user": {"name": "철수"},
+        }
 
         # Get default variables
         variables = template_engine.get_default_variables(config)
@@ -469,7 +478,10 @@ This is a test project with version {{MOAI_VERSION}}.
         template_engine = TemplateEngine()
 
         # Test config with empty user.name
-        config = {"project": {"name": "TestProject", "owner": "GoosLab"}, "user": {"name": ""}}
+        config = {
+            "project": {"name": "TestProject", "owner": "GoosLab"},
+            "user": {"name": ""},
+        }
 
         # Get default variables
         variables = template_engine.get_default_variables(config)
@@ -495,7 +507,10 @@ This is a test project with version {{MOAI_VERSION}}.
         ]
 
         for input_name, expected_name in test_cases:
-            config = {"project": {"name": "TestProject", "owner": "TestOwner"}, "user": {"name": input_name}}
+            config = {
+                "project": {"name": "TestProject", "owner": "TestOwner"},
+                "user": {"name": input_name},
+            }
 
             variables = template_engine.get_default_variables(config)
 

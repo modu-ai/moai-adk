@@ -473,7 +473,7 @@ class TestDisplayLanguageTools:
         from moai_adk.cli.commands.doctor import console
 
         mock_checker = Mock()
-        mock_checker.get_tool_version.side_effect = lambda tool: "1.0.0" if tool != "mypy" else "not installed"
+        mock_checker.get_tool_version.side_effect = lambda tool: ("1.0.0" if tool != "mypy" else "not installed")
 
         tools = {"pytest": True, "mypy": False, "ruff": True}
 

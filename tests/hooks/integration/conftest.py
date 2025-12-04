@@ -59,18 +59,35 @@ def valid_config_dict():
         "moai": {"version": "0.26.0"},
         "project": {"name": "test-project", "initialized": True},
         "language": {"conversation_language": "en"},
-        "session": {"suppress_setup_messages": False, "setup_messages_suppressed_at": None},
-        "auto_cleanup": {"enabled": True, "cleanup_days": 7, "max_reports": 10, "last_cleanup": None},
+        "session": {
+            "suppress_setup_messages": False,
+            "setup_messages_suppressed_at": None,
+        },
+        "auto_cleanup": {
+            "enabled": True,
+            "cleanup_days": 7,
+            "max_reports": 10,
+            "last_cleanup": None,
+        },
         "daily_analysis": {"enabled": True, "last_analysis": None},
         "hooks": {"timeout_ms": 5000, "graceful_degradation": True},
         "document_management": {
             "enabled": True,
-            "root_whitelist": ["README.md", "LICENSE", "pyproject.toml", "package.json", ".env.example"],
+            "root_whitelist": [
+                "README.md",
+                "LICENSE",
+                "pyproject.toml",
+                "package.json",
+                ".env.example",
+            ],
             "file_patterns": {
                 "spec": {"spec_docs": ["SPEC-*.md"]},
                 "docs": {"implementation": ["*.implementation.md"]},
             },
-            "directories": {"spec": {"base": ".moai/specs/"}, "docs": {"base": ".moai/docs/"}},
+            "directories": {
+                "spec": {"base": ".moai/specs/"},
+                "docs": {"base": ".moai/docs/"},
+            },
         },
     }
 
@@ -150,7 +167,11 @@ def cleanup_test_files(hook_tmp_project):
         old_cache.write_text(json.dumps({"branch": "old"}))
         Path(old_cache).touch((timestamp_old, timestamp_old))
 
-        yield {"reports_dir": reports_dir, "cache_dir": cache_dir, "old_timestamp": timestamp_old}
+        yield {
+            "reports_dir": reports_dir,
+            "cache_dir": cache_dir,
+            "old_timestamp": timestamp_old,
+        }
 
 
 @pytest.fixture
@@ -161,14 +182,26 @@ def git_repo_with_changes(hook_tmp_project):
         subprocess.run(["git", "init"], cwd=proj_root, capture_output=True)
 
         # Configure git
-        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=proj_root, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=proj_root,
+            capture_output=True,
+        )
 
-        subprocess.run(["git", "config", "user.name", "Test User"], cwd=proj_root, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"],
+            cwd=proj_root,
+            capture_output=True,
+        )
 
         # Create initial commit
         (proj_root / "README.md").write_text("# Test Project")
         subprocess.run(["git", "add", "README.md"], cwd=proj_root, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=proj_root, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit"],
+            cwd=proj_root,
+            capture_output=True,
+        )
 
         # Create uncommitted changes
         (proj_root / "modified.txt").write_text("Modified content")

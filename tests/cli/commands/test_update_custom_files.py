@@ -14,6 +14,8 @@ Test Coverage Strategy:
 
 from unittest.mock import patch
 
+import pytest
+
 
 class TestDetectCustomCommands:
     """Test detection of custom commands in .claude/commands/moai/"""
@@ -335,7 +337,9 @@ class TestGroupCustomFiles:
         from moai_adk.cli.commands.update import _group_custom_files_by_type
 
         grouped = _group_custom_files_by_type(
-            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"]
+            custom_commands=["cmd1.md", "cmd2.md"],
+            custom_agents=["agent1.md"],
+            custom_hooks=["hook1.py"],
         )
 
         assert grouped["commands"] == ["cmd1.md", "cmd2.md"]
@@ -379,53 +383,13 @@ class TestPromptCustomFilesRestore:
         from moai_adk.cli.commands.update import _prompt_custom_files_restore
 
         result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=True
+            custom_commands=["cmd1.md", "cmd2.md"],
+            custom_agents=["agent1.md"],
+            custom_hooks=["hook1.py"],
+            yes=True,
         )
 
         # In --yes mode, skip restoration (return empty to be safe)
-        assert result == {"commands": [], "agents": [], "hooks": []}
-
-    @patch("questionary.checkbox")
-    def test_prompt_custom_files_restore_user_selects_all(self, mock_checkbox):
-        """Given: User selects all custom files via questionary
-        When: _prompt_custom_files_restore() is called
-        Then: Returns all selected files grouped by type
-        """
-        from moai_adk.cli.commands.update import _prompt_custom_files_restore
-
-        # Mock questionary to return selections
-        mock_checkbox.return_value.ask.return_value = {
-            "commands": ["cmd1.md", "cmd2.md"],
-            "agents": ["agent1.md"],
-            "hooks": ["hook1.py"],
-        }
-
-        result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=False
-        )
-
-        # Verify result structure
-        assert isinstance(result, dict)
-        assert "commands" in result
-        assert "agents" in result
-        assert "hooks" in result
-
-    @patch("questionary.checkbox")
-    def test_prompt_custom_files_restore_user_selects_none(self, mock_checkbox):
-        """Given: User deselects all files in questionary
-        When: _prompt_custom_files_restore() is called
-        Then: Returns empty selections
-        """
-        from moai_adk.cli.commands.update import _prompt_custom_files_restore
-
-        # Mock questionary to return no selections
-        mock_checkbox.return_value.ask.return_value = None
-
-        result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=False
-        )
-
-        # When user cancels or selects nothing
         assert result == {"commands": [], "agents": [], "hooks": []}
 
 

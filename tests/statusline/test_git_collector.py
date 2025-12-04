@@ -158,7 +158,11 @@ class TestGitCollector:
             git_info = collector.collect_git_info()
 
             # Should gracefully handle error
-            assert git_info.branch in ["unknown", "N/A", "?"], f"Expected graceful default, got {git_info.branch}"
+            assert git_info.branch in [
+                "unknown",
+                "N/A",
+                "?",
+            ], f"Expected graceful default, got {git_info.branch}"
             assert git_info.staged == 0
             assert git_info.modified == 0
             assert git_info.untracked == 0

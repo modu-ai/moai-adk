@@ -838,7 +838,7 @@ class DriftDetectionMonitor:
 
         result = {
             "model_id": model_id,
-            "performance_degradation": total_degradation / len(baseline_metrics) if baseline_metrics else 0.0,
+            "performance_degradation": (total_degradation / len(baseline_metrics) if baseline_metrics else 0.0),
             "alert": len(degraded_metrics) > 0,
             "degraded_metrics": degraded_metrics,
             "timestamp": datetime.now(UTC).isoformat(),

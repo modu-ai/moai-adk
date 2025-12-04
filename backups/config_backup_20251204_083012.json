@@ -1,0 +1,25 @@
+{
+  "moai": {
+    "version": "0.28.0",
+    "update_check_frequency": "daily"
+  },
+  "project": {
+    "name": "MyProject",
+    "initialized": false,
+    "optimized": true
+  },
+  "hooks": {
+    "timeout_ms": 2000,
+    "graceful_degradation": true
+  },
+  "session": {
+    "suppress_setup_messages": false
+  },
+  "language": {
+    "conversation_language": "en",
+    "agent_prompt_language": "en"
+  },
+  "mode": "team",
+  "locale": "ko",
+  "test": "value"
+}

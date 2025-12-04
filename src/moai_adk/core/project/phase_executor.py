@@ -599,9 +599,8 @@ class PhaseExecutor:
         # - 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
         self.validator.validate_installation(project_path)
 
-        # Initialize Git for team mode
-        if mode == "team":
-            self._initialize_git(project_path)
+        # Initialize Git for all modes (team, personal, solo)
+        self._initialize_git(project_path)
 
     def _create_backup(self, project_path: Path) -> None:
         """Create a single backup (v0.4.2).
@@ -666,11 +665,17 @@ class PhaseExecutor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
     def _initialize_git(self, project_path: Path) -> None:
-        """Initialize a Git repository.
+        """Initialize a Git repository if not already initialized.
 
         Args:
             project_path: Project path.
         """
+        # Check if .git directory already exists
+        git_dir = project_path / ".git"
+        if git_dir.exists() and git_dir.is_dir():
+            # Git already initialized, skip
+            return
+
         try:
             subprocess.run(
                 ["git", "init"],

@@ -48,7 +48,11 @@ class BaaSProviderSelector:
             "convex": {
                 "strengths": ["realtime_backend", "reactive", "optimistic_updates"],
                 "cost_tier": "mid_tier",
-                "use_cases": ["collaborative_apps", "realtime_features", "typescript_apps"],
+                "use_cases": [
+                    "collaborative_apps",
+                    "realtime_features",
+                    "typescript_apps",
+                ],
             },
             "firestore": {
                 "strengths": ["mobile_sync", "offline_support", "google_integration"],
@@ -263,7 +267,11 @@ class BaaSProviderSelector:
 
         return {
             "recommendation": recommendation,
-            "scores": {"authentication": auth_scores, "database": db_scores, "deployment": deploy_scores},
+            "scores": {
+                "authentication": auth_scores,
+                "database": db_scores,
+                "deployment": deploy_scores,
+            },
             "requirement_analysis": scores,
         }
 
@@ -274,7 +282,9 @@ async def main():
     if len(sys.argv) < 2:
         print("Usage: python provider-selector.py <json_requirements>")
         print(
-            'Example: python provider-selector.py \'{"requirements": ["scalable", "real-time"], "tech_stack": "Next.js", "team_size": 5, "budget": "$500/month"}\''
+            "Example: python provider-selector.py "
+            '\'{"requirements": ["scalable", "real-time"], '
+            '"tech_stack": "Next.js", "team_size": 5, "budget": "$500/month"}\''
         )
         sys.exit(1)
 

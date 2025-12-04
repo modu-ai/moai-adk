@@ -287,7 +287,11 @@ class TestIndexingStrategy:
 
         existing_indexes = [
             {"name": "idx_user_id", "columns": ["user_id"], "type": "BTREE"},
-            {"name": "idx_user_created", "columns": ["user_id", "created_at"], "type": "BTREE"},
+            {
+                "name": "idx_user_created",
+                "columns": ["user_id", "created_at"],
+                "type": "BTREE",
+            },
             {"name": "idx_user", "columns": ["user_id"], "type": "HASH"},  # Redundant
         ]
 

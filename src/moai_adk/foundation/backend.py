@@ -275,9 +275,21 @@ class MicroserviceArchitect:
     }
 
     SERVICE_DISCOVERY_BACKENDS = {
-        "consul": {"service": "Consul", "health_check_enabled": True, "auto_deregister": True},
-        "eureka": {"service": "Eureka", "health_check_enabled": True, "auto_deregister": False},
-        "etcd": {"service": "etcd", "health_check_enabled": True, "auto_deregister": True},
+        "consul": {
+            "service": "Consul",
+            "health_check_enabled": True,
+            "auto_deregister": True,
+        },
+        "eureka": {
+            "service": "Eureka",
+            "health_check_enabled": True,
+            "auto_deregister": False,
+        },
+        "etcd": {
+            "service": "etcd",
+            "health_check_enabled": True,
+            "auto_deregister": True,
+        },
     }
 
     def __init__(self) -> None:
@@ -582,7 +594,11 @@ class AuthenticationManager:
             Authorization code response
         """
         code = str(uuid.uuid4())
-        self.oauth_codes[code] = {"params": params, "created_at": datetime.now(UTC), "expires_in": 600}
+        self.oauth_codes[code] = {
+            "params": params,
+            "created_at": datetime.now(UTC),
+            "expires_in": 600,
+        }
 
         return {"code": code, "expires_in": 600, "state": params.get("state", "")}
 
@@ -750,7 +766,11 @@ class PerformanceOptimizer:
         self.rate_limits: Dict[str, Dict[str, Any]] = {}
 
     def configure_cache(
-        self, backend: str = "redis", ttl: int = 3600, key_pattern: str = "", invalidation_triggers: List[str] = None
+        self,
+        backend: str = "redis",
+        ttl: int = 3600,
+        key_pattern: str = "",
+        invalidation_triggers: List[str] = None,
     ) -> Dict[str, Any]:
         """
         Configure caching strategy.
@@ -820,7 +840,11 @@ class PerformanceOptimizer:
                 "Use INNER JOIN when possible",
                 "Avoid multiple JOINs in single query",
             ],
-            "UPDATE": ["Batch multiple updates", "Use indexes on WHERE clauses", "Consider performance during updates"],
+            "UPDATE": [
+                "Batch multiple updates",
+                "Use indexes on WHERE clauses",
+                "Consider performance during updates",
+            ],
         }
         return tips.get(query_type, [])
 
@@ -878,7 +902,12 @@ class BackendMetricsCollector:
         self.error_counts: Dict[str, int] = {}
 
     def record_request_metrics(
-        self, path: str, method: str, status_code: int, duration_ms: float, response_size_bytes: int = 0
+        self,
+        path: str,
+        method: str,
+        status_code: int,
+        duration_ms: float,
+        response_size_bytes: int = 0,
     ) -> Dict[str, Any]:
         """
         Record request/response metrics.

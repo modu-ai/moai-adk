@@ -344,7 +344,10 @@ class TestStatusErrorHandling:
         runner = CliRunner()
 
         with patch("moai_adk.cli.commands.status.Path.cwd", return_value=tmp_path):
-            with patch("moai_adk.cli.commands.status.json.load", side_effect=RuntimeError("Unexpected error")):
+            with patch(
+                "moai_adk.cli.commands.status.json.load",
+                side_effect=RuntimeError("Unexpected error"),
+            ):
                 result = runner.invoke(status)
 
                 # Should display error message and fail

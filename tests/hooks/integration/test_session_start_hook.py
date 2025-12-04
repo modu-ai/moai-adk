@@ -275,7 +275,11 @@ class TestHookChainExecution:
             mock_auto_cleanup()
 
             # Verify order
-            assert execution_order == ["show_project_info", "config_health_check", "auto_cleanup"]
+            assert execution_order == [
+                "show_project_info",
+                "config_health_check",
+                "auto_cleanup",
+            ]
 
     def test_hook_payload_propagation(self, config_file, hook_payload, hook_tmp_project):
         """Hook payload is propagated through chain"""
@@ -295,7 +299,10 @@ class TestHookChainExecution:
             json.dumps({"event": "session_start", "timestamp": datetime.now().isoformat()})
 
             # Simulate main function execution
-            result = {"continue": True, "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0 (latest)"}
+            result = {
+                "continue": True,
+                "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0 (latest)",
+            }
 
             assert result["continue"] is True
             assert "systemMessage" in result
@@ -386,7 +393,10 @@ class TestHookResponse:
     def test_hook_response_with_system_message(self, config_file, hook_tmp_project):
         """Hook response includes system message"""
         with hook_tmp_project:
-            response = {"continue": True, "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0"}
+            response = {
+                "continue": True,
+                "systemMessage": "🚀 MoAI-ADK Session Started\n📦 Version: 0.26.0",
+            }
 
             assert response["systemMessage"]
             assert len(response["systemMessage"]) > 0
@@ -394,7 +404,11 @@ class TestHookResponse:
     def test_hook_response_json_serializable(self, config_file, hook_tmp_project):
         """Hook response is JSON serializable"""
         with hook_tmp_project:
-            response = {"continue": True, "systemMessage": "Session started", "timestamp": datetime.now().isoformat()}
+            response = {
+                "continue": True,
+                "systemMessage": "Session started",
+                "timestamp": datetime.now().isoformat(),
+            }
 
             # Should be serializable
             json_str = json.dumps(response)
@@ -477,7 +491,11 @@ class TestHookIntegrationScenarios:
             assert len(spec_folders) == 0
 
             # Should not cause error
-            output = {"hook": "session_start", "success": True, "specs_found": len(spec_folders)}
+            output = {
+                "hook": "session_start",
+                "success": True,
+                "specs_found": len(spec_folders),
+            }
 
             assert output["success"] is True
             assert output["specs_found"] == 0

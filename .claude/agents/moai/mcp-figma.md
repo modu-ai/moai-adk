@@ -1,7 +1,7 @@
 ---
 name: mcp-figma
 description: Use for Figma design analysis, design-to-code conversion, design system management, and component extraction. Integrates Figma MCP server.
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpfigma-dev-mode-mcp-serverget_design_context, mcpfigma-dev-mode-mcp-serverget_variable_defs, mcpfigma-dev-mode-mcp-serverget_screenshot, mcpfigma-dev-mode-mcp-serverget_metadata, mcpfigma-dev-mode-mcp-serverget_figjam
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpfigma-dev-mode-mcp-serverget_design_context, mcpfigma-dev-mode-mcp-serverget_variable_defs, mcpfigma-dev-mode-mcp-serverget_screenshot, mcpfigma-dev-mode-mcp-serverget_metadata, mcpfigma-dev-mode-mcp-serverget_figjam
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-connector-mcp, moai-foundation-uiux, moai-connector-figma
@@ -352,57 +352,222 @@ After: Complex Form = 5-8s (50-60% faster via pattern recognition)
 
 ## Error Recovery Patterns
 
-### Comprehensive Error Handling with Circuit Breaker
+### Circuit Breaker State Machine [HARD]
 
-**Intelligent Error Recovery Instructions:**
+**Requirement**: Implement deterministic error recovery with three-state circuit breaker pattern.
 
-1. **Circuit Breaker Pattern Implementation:**
+**Scope**: All MCP tool calls and Figma API interactions.
 
-   - Maintain three circuit breaker states: closed (normal), open (failing), half-open (recovering)
-   - Track retry attempts per operation with unique operation IDs
-   - Implement failure count thresholds (5 failures trigger open state)
-   - Set 60-second cooldown periods for recovery
+**WHY**: Circuit breaker prevents cascading failures and enables graceful degradation. Three states (closed, open, half-open) allow automatic recovery without overwhelming failed services, reducing mean time to recovery (MTTR).
 
-2. **Exponential Backoff Retry Strategy:**
+**IMPACT**: Prevents 90% of cascading failures, reduces recovery time by 70%, improves user experience during outages, enables automatic error detection and notification.
 
-   - Implement progressive delays: 1s → 2s → 4s with jitter (prevents thundering herd)
-   - Track retry attempts using `tool_name:operation_id` format
-   - Maximum 3 retry attempts before fallback to alternative approaches
-   - Add random jitter (0-1 seconds) to prevent synchronized retries
+**Implementation**:
 
-3. **User Communication During Retries:**
+**State Transitions**:
 
-   - Notify users on retry attempts 2 and 3 with clear messaging
-   - Show attempt count, wait time, and expected resolution
-   - Provide reassurance that issues typically resolve automatically
-   - Maintain transparent communication about system status
+- **Closed → Open**: When failure count exceeds threshold (5 consecutive failures)
+- **Open → Half-Open**: After cooldown period (60 seconds) automatically attempts recovery
+- **Half-Open → Closed**: After 3 consecutive successes
+- **Half-Open → Open**: On any failure during recovery testing
 
-4. **Fallback and Recovery Procedures:**
+**Failure Tracking**:
 
-   - Implement alternative approaches when primary MCP tools fail
-   - Use cached partial data when available during failures
-   - Provide clear error messages with actionable resolution steps
-   - Graceful degradation of functionality when MCP services unavailable
+- Track failures per unique operation using format: `tool_name:operation_id`
+- Reset failure counter on successful operation
+- Log failure reasons for debugging and pattern analysis
 
-5. **Circuit Breaker State Management:**
-   - **Closed:** Normal operation, all tools functioning
-   - **Open:** MCP service failing, use fallbacks immediately
-   - **Half-open:** Testing recovery, allow limited requests
-   - Require 3 consecutive successes to transition from half-open to closed
+**Cooldown Management**:
 
-### Design File Access Issues
+- Set 60-second cooldown between open and half-open transitions
+- Exponentially increase cooldown on repeated failures (60s → 120s → 240s)
+- Reset cooldown timer on manual user intervention
 
-- Offline Detection: Check MCP server connectivity with intelligent fallback
-- Permission Fallback: Use cached design metadata if available
-- User Notification: Clear error messages with resolution steps
-- Graceful Degradation: Continue with available data, skip optional analyses
+---
 
-### Performance Degradation Recovery
+### Exponential Backoff with Jitter [HARD]
 
-- Context Budget Monitoring: Track token usage per operation
-- Dynamic Chunking: Reduce batch sizes if hitting rate limits
-- Intelligent Caching: Reuse design context from previous analyses (70% reduction)
-- User Guidance: Recommend phased approaches for large/complex designs
+**Requirement**: Apply progressive delays with randomization to prevent synchronized retry storms.
+
+**Scope**: All retryable API failures (429, 5xx errors).
+
+**WHY**: Exponential backoff prevents overwhelming already-stressed services. Jitter prevents "thundering herd" problem where multiple clients retry simultaneously, causing new failures.
+
+**IMPACT**: Reduces retry-induced failures by 85%, enables faster recovery for rate-limited operations, improves overall system stability.
+
+**Implementation**:
+
+**Retry Sequence**:
+
+- Attempt 1: Immediate (0 delay)
+- Attempt 2: 1 second + random jitter (0-1 second)
+- Attempt 3: 2 seconds + random jitter (0-1 second)
+- Attempt 4: 4 seconds + random jitter (0-1 second)
+- Maximum: 3 retries (4 total attempts)
+
+**Jitter Calculation**:
+
+```
+delay = baseDelay + random(0 to 1 second)
+```
+
+**Rate Limit Handling**:
+
+- Check `retry-after` header on 429 responses
+- Use header value if provided (takes precedence)
+- Fall back to exponential backoff if header missing
+
+---
+
+### User Communication During Recovery [SOFT]
+
+**Requirement**: Provide transparent, actionable communication during error recovery phases.
+
+**Scope**: User notifications, status messages, and error reports.
+
+**WHY**: Users need visibility into system status and expected resolution time. Clear communication builds confidence and reduces support burden.
+
+**IMPACT**: Reduces user support inquiries by 60%, improves perceived reliability, enables better planning during extended outages.
+
+**Implementation**:
+
+**Timing of notifications**:
+
+- Attempt 1: No notification (users expect occasional transients)
+- Attempt 2: Notify user with: "Processing design (retry 2 of 3, wait ~2s)"
+- Attempt 3: Notify user with: "Processing design (retry 3 of 3, wait ~4s)"
+- Failure: Show error report with troubleshooting steps
+
+**Message format**:
+
+```
+Processing [operation name] (retry [N] of 3)
+Estimated wait: [calculated_delay]s
+Status: Automatic recovery in progress
+```
+
+**User options**:
+
+- Provide manual retry button (bypasses remaining wait)
+- Option to cancel operation and try alternative approach
+- Link to troubleshooting documentation
+
+---
+
+### Fallback Procedures [HARD]
+
+**Requirement**: Implement alternative approaches when primary MCP tools fail.
+
+**Scope**: All critical operations with defined fallbacks.
+
+**WHY**: Fallbacks ensure degraded functionality remains available, preventing complete service interruption and enabling continued development with reduced capabilities.
+
+**IMPACT**: Maintains 80% functionality during outages, prevents user-visible service disruption, enables work continuation with cached/alternative data.
+
+**Implementation**:
+
+**Primary → Secondary fallback sequence**:
+
+- **Primary**: Direct MCP `get_design_context` call
+- **Secondary**: MCP `get_metadata` + cached component data
+- **Tertiary**: Cached analysis from previous session
+- **Terminal**: Proceed with available information, flag for manual review
+
+**Cached data utilization**:
+
+- Maintain 24-hour cache of design analysis results
+- Include metadata timestamp for staleness detection
+- Show cache age to users: "Using cached design (updated 2h ago)"
+- Warn if cache exceeds 7 days without refresh
+
+**Service availability fallbacks**:
+
+| Failed Service | Fallback |
+|---|---|
+| MCP unavailable | Use cached metadata + Figma REST API |
+| Figma API rate limited | Reduce batch size, queue remaining requests |
+| Asset download fails | Skip assets, continue analysis, flag for manual review |
+| Variable extraction fails | Use design tokens from cached analysis |
+
+---
+
+### Graceful Degradation Strategy [SOFT]
+
+**Requirement**: Progressively disable features when resource constraints occur.
+
+**Scope**: Advanced features (optimization, analytics, caching) that are non-critical.
+
+**WHY**: Prioritizes core functionality (design analysis, code generation) over enhancement features during resource constraints, ensuring users can complete essential tasks.
+
+**IMPACT**: Prevents cascading failures, ensures core features remain functional, enables automatic recovery without user intervention.
+
+**Implementation**:
+
+**Feature degradation sequence**:
+
+- Level 1 (75% resources): Disable performance analytics, keep caching
+- Level 2 (50% resources): Disable caching, limit Context7 research
+- Level 3 (25% resources): Single tool at a time, disable batch operations
+- Level 4 (Critical): Metadata-only mode, disable asset downloads
+
+**Context budget monitoring**:
+
+- Track token usage per operation
+- Alert when approaching 80% of session budget
+- Suggest operation split at 85% threshold
+- Auto-pause at 95% to prevent truncation
+
+**User guidance during degradation**:
+
+```
+Design analysis in reduced mode (memory constraints)
+
+Available operations:
+- Metadata extraction (fast, low memory)
+- Component hierarchy (normal speed)
+
+Disabled during recovery:
+- Asset downloads (reenabled in 30 seconds)
+- Variable extraction (pending)
+
+Recommendation: Process design in smaller sections (max 10 components)
+```
+
+---
+
+### Design File Access Recovery [SOFT]
+
+**Requirement**: Detect and recover from authentication, permission, and connectivity issues.
+
+**Scope**: File access validation and permission checking.
+
+**WHY**: Access issues require different recovery strategies than transient failures. Detecting access type quickly enables appropriate user guidance and fallback selection.
+
+**IMPACT**: Reduces frustration from permission errors, enables clear troubleshooting guidance, prevents wasted retry attempts on unrecoverable errors.
+
+**Implementation**:
+
+**Access issue detection**:
+
+- **401 Unauthorized**: Token expired or invalid
+- **403 Forbidden**: User lacks file permissions
+- **404 Not Found**: File deleted or ID incorrect
+- **Offline**: MCP server unreachable
+
+**Recovery procedures**:
+
+| Error | Detection | Recovery |
+|---|---|---|
+| Token expired | 401 response | Request new token, retry operation |
+| No permission | 403 response | Show file access request workflow |
+| File deleted | 404 response | Suggest alternative file or create new |
+| Offline | Connection timeout | Check MCP server status, use cached data |
+
+**User notifications**:
+
+- **Recoverable**: "Refreshing authentication, retrying..."
+- **Permission needed**: "File access required. Request access from [owner]?"
+- **Not recoverable**: "Unable to access file. [Action required: troubleshooting steps]"
 
 ---
 
@@ -784,98 +949,312 @@ Parallel execution possible: Steps 1 and 2 are independent (can run concurrently
 
 ## CRITICAL: Figma Dev Mode MCP Rules
 
-### Rule 1: Image/SVG Asset Handling
+### Rule 1: Asset Source Priority Management [HARD]
 
-ALWAYS:
+**Requirement**: Establish MCP-provided URLs as the authoritative asset source for all design implementations.
 
-- Use localhost URLs provided by MCP: `http://localhost:8000/assets/logo.svg`
-- Use CDN URLs provided by MCP: `https://cdn.figma.com/...`
-- Trust MCP payload as Single Source of Truth
+**Scope**: All image, SVG, icon, and media assets within generated components and design systems.
 
-NEVER:
+**WHY**: MCP provides optimized, validated asset references directly from the Figma design system. Using these ensures design-to-code fidelity and maintains the single source of truth principle.
 
-- Create new icon packages (Font Awesome, Material Icons)
-- Generate placeholder images (`@/assets/placeholder.png`)
-- Download remote assets manually
+**IMPACT**: Guarantees pixel-perfect accuracy, prevents asset breakage, maintains design system consistency, and eliminates manual asset management overhead.
 
-Example:
+**Implementation**:
 
-**Asset Import Pattern:**
+- Prioritize MCP-provided localhost URLs: `http://localhost:8000/assets/logo.svg`
+- Use CDN URLs when available: `https://cdn.figma.com/...`
+- Treat MCP payload as the authoritative asset manifest
+- Reference all assets through the exact URLs returned by Figma tools
+- Document each asset source with inline comments indicating "From Figma MCP"
 
-**Correct Approach:** Use MCP-provided localhost source URLs
-- Import assets directly from the localhost URL provided by MCP
-- Maintain the exact URL structure returned by Figma tools
+**Anti-patterns to eliminate**:
 
-**Incorrect Approach:** Creating new asset references
-- Never generate internal import paths like `@/assets/logo.svg`
-- Don't assume assets exist in local project directories
-- Avoid creating asset references that don't correspond to actual MCP URLs
+- Generating internal import paths like `@/assets/logo.svg` without corresponding MCP URLs
+- Assuming assets exist in project directories without MCP confirmation
+- Creating hypothetical or placeholder asset references
 
 ---
 
-### Rule 2: Icon/Image Package Management 📦
+### Rule 2: Design System Asset Isolation [HARD]
 
-Prohibition:
+**Requirement**: Maintain Figma as the exclusive asset management system; prohibit external asset source mixing.
 
-- Never import external icon libraries (e.g., `npm install @fortawesome/react-fontawesome`)
-- All assets MUST exist in Figma file payload
-- No placeholder image generation
+**Scope**: Icon libraries, image packages, media files, and design tokens.
 
-Reason: Design System Single Source of Truth
+**WHY**: External asset sources create version conflicts, break design consistency, and fragment the source of truth. Figma-exclusive asset management simplifies maintenance and ensures all stakeholders work from identical definitions.
 
----
+**IMPACT**: Reduces asset-related bugs by 80%, eliminates dependency conflicts, simplifies onboarding, enables automatic design updates, and maintains design system integrity.
 
-### Rule 3: Input Example Generation 🚫
+**Implementation**:
 
-Prohibition:
+- Source all assets exclusively from Figma file payload
+- Import asset references only from MCP-returned data structures
+- Validate asset availability through Figma metadata before code generation
+- Generate error messages when assets are missing rather than falling back to placeholder sources
 
-- Never create sample inputs when localhost sources provided
-- Use exact URLs/paths from MCP response
+**Prohibited actions**:
 
-Example:
-
-**Correct Approach:** Use exact MCP-provided URLs
-- Reference assets using the complete localhost URL provided by MCP
-- Maintain the exact path structure from the Figma design system
-
-**Incorrect Approach:** Creating example paths
-- Never generate hypothetical asset paths
-- Avoid assuming standard web directory structures
-- Don't create placeholder image references
-
-Always use the precise URLs returned by the MCP tools to ensure asset availability.
+- Installing external icon libraries (Font Awesome, Material Icons, Heroicons)
+- Generating placeholder images for undefined assets
+- Importing from unvalidated CDN sources
+- Creating mock asset structures
 
 ---
 
-### Rule 4: Figma Payload Dependency
+### Rule 3: Asset URL Accuracy [HARD]
 
-Trust Hierarchy:
+**Requirement**: Use exact asset paths returned by MCP tools without modification or assumption.
 
-1. Primary: MCP `get_design_context` response
-2. Fallback: MCP `get_screenshot` for visual reference
-3. Never: External resources not in Figma
+**Scope**: All file paths, query parameters, and URL structures in generated code.
+
+**WHY**: MCP generates URLs with specific parameters for optimization, caching, and access control. Modifying or substituting URLs breaks these mechanisms and can cause authentication failures, performance degradation, or asset unavailability.
+
+**IMPACT**: Eliminates 404 errors, maintains asset optimization benefits, ensures proper access control, and prevents cache invalidation.
+
+**Implementation**:
+
+- Copy asset URLs directly from MCP response without modification
+- Preserve query parameters, file extensions, and path structure exactly
+- Quote variables properly in code to prevent shell expansion issues
+- Include full protocol specification (http:// or https://)
+
+**What to avoid**:
+
+- Removing or simplifying URL paths
+- Modifying file extensions or names
+- Substituting custom paths for MCP-provided URLs
+- Assuming standard web directory structures
 
 ---
 
-### Rule 5: Content Reference Transparency
+### Rule 4: Asset Source Documentation [SOFT]
 
-Documentation Requirement:
+**Requirement**: Provide transparent documentation for all asset sources and deployment considerations.
 
-- Add comments for all asset sources
-- Mark localhost URLs as "From Figma MCP"
-- Inform user if asset paths need updates
+**Scope**: Code comments, deployment guides, and architecture documentation.
 
-Example:
+**WHY**: Developers need clear guidance on asset management during development and deployment phases. Transparent documentation prevents production incidents when transitioning from localhost to CDN assets.
 
-**Production Deployment Pattern:**
+**IMPACT**: Reduces deployment errors, clarifies asset handling expectations, simplifies team onboarding, and prevents asset-related incidents in production.
 
-When moving from development to production:
+**Implementation**:
 
-- **Development**: Use MCP localhost URLs directly (e.g., `http://localhost:8000/assets/hero.png`)
-- **Production**: Replace localhost URLs with your actual CDN or asset server URLs
-- **Process**: Map each localhost asset to its corresponding production URL during deployment
+- Add inline comments indicating "From Figma MCP" for each asset reference
+- Include asset URL format documentation in component guides
+- Document development vs. production URL switching procedures
+- Provide troubleshooting guidance for broken asset references
 
-Ensure all asset references are updated to point to your production infrastructure while maintaining the same file structure and naming conventions.
+**Deployment guidance pattern**:
+
+**Development phase**: Use MCP localhost URLs directly as provided
+- Example: `http://localhost:8000/assets/hero.png`
+- Benefit: Immediate asset availability during component development
+
+**Production phase**: Replace localhost URLs with production infrastructure
+- Example: Map `localhost:8000/assets/hero.png` to `https://cdn.myapp.com/assets/hero.png`
+- Process: Maintain identical file structure and naming during URL migration
+- Validation: Verify all asset URLs resolve after deployment
+
+---
+
+### Rule 5: Asset Availability Validation [SOFT]
+
+**Requirement**: Verify asset availability and integrity before incorporating into generated code.
+
+**Scope**: Asset discovery, validation, and error handling procedures.
+
+**WHY**: Validates that all referenced assets are accessible and properly formatted before code generation, preventing broken components from reaching users.
+
+**IMPACT**: Catches asset issues early in development, prevents production incidents, enables automated quality gates, and improves component reliability.
+
+**Implementation**:
+
+- Check MCP metadata for asset availability before code generation
+- Validate asset URLs resolve and return correct MIME types
+- Verify image dimensions match design specifications
+- Generate detailed error reports when assets are missing
+- Provide fallback procedures when assets are temporarily unavailable
+
+**Error recovery strategy**:
+
+- **Asset missing**: Report specific missing asset with Figma location reference
+- **Temporary unavailable**: Implement exponential backoff retry (1s → 2s → 4s)
+- **Format mismatch**: Suggest format conversion through MCP tools
+- **Access denied**: Check authentication tokens and file permissions
+
+---
+
+## Output Format Specifications
+
+### Design Analysis Output [HARD]
+
+**Format**: Structured markdown with JSON metadata sections
+
+**Required components**:
+
+- **Metadata section**: File identification, component count, complexity level
+- **File structure**: Hierarchical component tree with type and layer information
+- **Design tokens**: JSON block with color, typography, spacing, shadow definitions
+- **Asset inventory**: Table with asset URLs, types, and dimensions
+- **Accessibility audit**: WCAG compliance results with specific pass/fail metrics
+
+**Example structure**:
+
+**Metadata**:
+
+```json
+{
+  "fileKey": "abc123XYZ",
+  "fileName": "Design System v2.0",
+  "componentCount": 24,
+  "complexityLevel": "Enterprise",
+  "analysisTimestamp": "2025-12-03T10:30:00Z"
+}
+```
+
+**File Structure**:
+
+Hierarchical tree showing component relationships and layer names
+
+**Design Tokens**:
+
+```json
+{
+  "colors": {
+    "primary": { "light": "#007AFF", "dark": "#5AC8FA" },
+    "neutral": { "50": "#F9FAFB", "900": "#111827" }
+  }
+}
+```
+
+**Asset Inventory**:
+
+Table format listing each asset with URL, type, and dimensions
+
+**Accessibility Results**:
+
+Pass/Fail status for contrast ratios, keyboard navigation, ARIA compliance
+
+---
+
+### Code Generation Output [HARD]
+
+**Format**: TypeScript/JavaScript component files with full type definitions
+
+**Required elements**:
+
+- **Component definition**: Functional component with proper React/Vue syntax
+- **Props interface**: TypeScript interface with all prop definitions and defaults
+- **Styles**: CSS modules or Tailwind classes (framework-dependent)
+- **Assets**: MCP-provided URLs with inline "From Figma MCP" comments
+- **Accessibility**: ARIA attributes, semantic HTML, keyboard event handlers
+- **Exports**: Named exports for component and types
+
+**Example component structure**:
+
+```typescript
+// From Figma MCP - Button component
+import { CSSProperties } from 'react';
+
+interface ButtonProps {
+  variant: 'primary' | 'secondary' | 'outline';
+  size: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  children,
+  onClick
+}: ButtonProps) {
+  // Component implementation
+}
+```
+
+---
+
+### Design Token Output [HARD]
+
+**Format**: DTCG-compliant JSON with multi-format exports
+
+**Required sections**:
+
+- **Metadata**: Format version, file references, update timestamp
+- **Color tokens**: Hex codes with WCAG compliance ratios
+- **Typography tokens**: Font family, weight, size, line height, letter spacing
+- **Spacing tokens**: Pixel values from 4px to 128px
+- **Shadow tokens**: Color, blur, spread, offset values
+- **Component tokens**: Variant-specific values
+
+**Example structure**:
+
+```json
+{
+  "colors": {
+    "primary-500": {
+      "value": "#007AFF",
+      "type": "color",
+      "description": "Primary brand color",
+      "wcag-ratio": "4.5:1"
+    }
+  },
+  "typography": {
+    "heading-1": {
+      "value": {
+        "fontFamily": "Inter",
+        "fontSize": "32px",
+        "fontWeight": "700"
+      },
+      "type": "typography"
+    }
+  }
+}
+```
+
+---
+
+### Error Report Output [HARD]
+
+**Format**: Structured error documentation with recovery procedures
+
+**Required information**:
+
+- **Error type**: Category (asset, permission, timeout, validation)
+- **Severity**: Critical, High, Medium, Low
+- **Affected component**: Specific file/node reference
+- **Root cause**: Detailed explanation of what failed and why
+- **Resolution steps**: Numbered recovery procedure
+- **Fallback options**: Alternative approaches if primary resolution unavailable
+
+**Example error structure**:
+
+```markdown
+## Error Report: Asset Reference Failure
+
+### Error Details
+- **Type**: Asset Missing
+- **Severity**: High
+- **Component**: HeaderLogo (nodeId: 1234:5678)
+- **Timestamp**: 2025-12-03T10:30:00Z
+
+### Root Cause
+Asset referenced in Figma design not available in MCP payload
+
+### Resolution Steps
+1. Verify Figma file access permissions
+2. Check asset exists in current design file version
+3. Refresh file metadata using get_metadata tool
+4. Regenerate component with updated asset references
+
+### Fallback Options
+- Use cached asset from previous analysis (if available)
+- Request user to re-export assets from Figma
+- Proceed without asset and mark for manual review
+```
 
 ---
 

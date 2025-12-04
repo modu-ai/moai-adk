@@ -322,7 +322,11 @@ class TestCreateRollbackPoint:
 
     def test_create_rollback_point_cleanup_on_failure(self, rollback_manager):
         """Test that partial backups are cleaned up on failure"""
-        with patch.object(rollback_manager, "_backup_code_files", side_effect=Exception("Backup failed")):
+        with patch.object(
+            rollback_manager,
+            "_backup_code_files",
+            side_effect=Exception("Backup failed"),
+        ):
             with pytest.raises(Exception):
                 rollback_manager.create_rollback_point("Failed backup")
 
@@ -1476,7 +1480,11 @@ class TestFailureRecovery:
         rollback_id = rollback_manager.create_rollback_point("Exception during restore")
 
         # Patch the perform_rollback to simulate exception
-        with patch.object(rollback_manager, "_perform_rollback", side_effect=Exception("Restore failed")):
+        with patch.object(
+            rollback_manager,
+            "_perform_rollback",
+            side_effect=Exception("Restore failed"),
+        ):
             result = rollback_manager.rollback_to_point(rollback_id, validate_before=False, validate_after=False)
 
             assert result.success is False
@@ -1488,7 +1496,11 @@ class TestFailureRecovery:
         rollback_manager.create_rollback_point("Research exception test")
 
         # Patch to simulate exception
-        with patch.object(rollback_manager, "_perform_research_rollback", side_effect=Exception("Research failed")):
+        with patch.object(
+            rollback_manager,
+            "_perform_research_rollback",
+            side_effect=Exception("Research failed"),
+        ):
             result = rollback_manager.rollback_research_integration()
 
             assert result.success is False

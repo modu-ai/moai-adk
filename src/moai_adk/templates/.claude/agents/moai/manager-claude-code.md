@@ -1,7 +1,7 @@
 ---
 name: manager-claude-code
 description: Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed
-tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project

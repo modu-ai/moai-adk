@@ -217,7 +217,10 @@ class TestLanguageValidator:
         validator = LanguageValidator()
 
         # Valid Python configuration
-        valid_config = {"project": {"language": "python", "name": "test-project"}, "directories": {"source": "src/"}}
+        valid_config = {
+            "project": {"language": "python", "name": "test-project"},
+            "directories": {"source": "src/"},
+        }
 
         is_valid, issues = validator.validate_project_configuration(valid_config)
         assert isinstance(is_valid, bool)
@@ -237,7 +240,14 @@ class TestLanguageValidator:
 
         validator = LanguageValidator()
 
-        files = ["src/main.py", "src/utils.py", "tests/test_main.py", "app.js", "styles.css", "README.md"]
+        files = [
+            "src/main.py",
+            "src/utils.py",
+            "tests/test_main.py",
+            "app.js",
+            "styles.css",
+            "README.md",
+        ]
 
         stats = validator.get_language_statistics(files)
 

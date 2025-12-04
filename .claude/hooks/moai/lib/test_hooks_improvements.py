@@ -15,15 +15,12 @@ Test Coverage:
 """
 
 import json
-import os
+import subprocess
 import sys
 import tempfile
 import time
-import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
-import subprocess
 
 # Add lib directory to path
 hooks_dir = Path(__file__).parent
@@ -31,11 +28,23 @@ sys.path.insert(0, str(hooks_dir))
 
 # Import modules to test
 try:
-    from unified_timeout_manager import (
-        get_timeout_manager, HookTimeoutConfig, TimeoutPolicy, HookTimeoutError
+    from config_validator import (  # noqa: F401 - imports used for availability check
+        ValidationIssue,
+        ValidationLevel,
+        get_config_validator,
     )
-    from git_operations_manager import get_git_manager, GitOperationType, GitCommand
-    from config_validator import get_config_validator, ValidationIssue, ValidationLevel
+    from git_operations_manager import (  # noqa: F401 - imports used for availability check
+        GitCommand,
+        GitOperationType,
+        get_git_manager,
+    )
+    from unified_timeout_manager import (  # noqa: F401 - imports used for availability check
+        HookTimeoutConfig,
+        HookTimeoutError,
+        TimeoutPolicy,
+        get_timeout_manager,
+    )
+
     TIMEOUT_MANAGER_AVAILABLE = True
     GIT_MANAGER_AVAILABLE = True
     CONFIG_VALIDATOR_AVAILABLE = True
@@ -63,7 +72,7 @@ class HooksTestSuite:
             "passed": passed,
             "message": message,
             "duration": duration,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
         self.test_results.append(result)
         print(f"{status} {test_name}{f' - {message}' if message else ''} ({duration:.3f}s)")
@@ -84,7 +93,7 @@ class HooksTestSuite:
                 policy=TimeoutPolicy.FAST,
                 custom_timeout_ms=1000,
                 retry_count=1,
-                graceful_degradation=True
+                graceful_degradation=True,
             )
 
             # Test successful execution
@@ -120,7 +129,7 @@ class HooksTestSuite:
                 policy=TimeoutPolicy.FAST,
                 custom_timeout_ms=500,  # 0.5 second timeout
                 retry_count=0,  # No retries for timeout test
-                graceful_degradation=True
+                graceful_degradation=True,
             )
 
             try:
@@ -128,11 +137,21 @@ class HooksTestSuite:
                 # If graceful degradation is enabled, should return default result
                 assert "graceful_degradation" in str(result), "Should return graceful degradation result"
                 duration = time.time() - start
-                self.log_test_result("Timeout Manager - Timeout", True, "Graceful degradation working", duration)
+                self.log_test_result(
+                    "Timeout Manager - Timeout",
+                    True,
+                    "Graceful degradation working",
+                    duration,
+                )
 
             except HookTimeoutError:
                 duration = time.time() - start
-                self.log_test_result("Timeout Manager - Timeout", True, "Timeout exception raised correctly", duration)
+                self.log_test_result(
+                    "Timeout Manager - Timeout",
+                    True,
+                    "Timeout exception raised correctly",
+                    duration,
+                )
 
         except Exception as e:
             duration = time.time() - start
@@ -164,7 +183,12 @@ class HooksTestSuite:
             assert isinstance(cleared_count, int), "Should return count of cleared entries"
 
             duration = time.time() - start
-            self.log_test_result("Git Operations Manager", True, f"Cached {len(project_info)} fields", duration)
+            self.log_test_result(
+                "Git Operations Manager",
+                True,
+                f"Cached {len(project_info)} fields",
+                duration,
+            )
 
         except Exception as e:
             duration = time.time() - start
@@ -185,7 +209,7 @@ class HooksTestSuite:
             example_config_path = hooks_dir / "example_config.json"
             assert example_config_path.exists(), "Example config should exist"
 
-            with open(example_config_path, 'r') as f:
+            with open(example_config_path, "r") as f:
                 config = json.load(f)
 
             # Validate configuration
@@ -224,7 +248,7 @@ class HooksTestSuite:
                 text=True,
                 capture_output=True,
                 timeout=10,
-                cwd=self.temp_dir
+                cwd=self.temp_dir,
             )
 
             # Should not crash and should produce JSON output
@@ -258,7 +282,7 @@ class HooksTestSuite:
                 # Benchmark git info retrieval
                 git_start = time.time()
                 for _ in range(5):
-                    project_info = manager.get_project_info(use_cache=True)
+                    manager.get_project_info(use_cache=True)
                 git_duration = time.time() - git_start
 
                 avg_git_time = git_duration / 5
@@ -290,7 +314,7 @@ class HooksTestSuite:
                     "timeout_manager": {
                         "global_timeout_ms": -1000,  # Invalid negative timeout
                         "default_retry_count": "invalid",  # Invalid type
-                        "graceful_degradation": "maybe"  # Invalid boolean
+                        "graceful_degradation": "maybe",  # Invalid boolean
                     }
                 }
 
@@ -306,7 +330,7 @@ class HooksTestSuite:
                     policy=TimeoutPolicy.FAST,
                     custom_timeout_ms=100,
                     retry_count=0,
-                    graceful_degradation=True
+                    graceful_degradation=True,
                 )
 
                 def failing_task():
@@ -369,19 +393,19 @@ class HooksTestSuite:
         print(f"Total Tests: {total_tests}")
         print(f"Passed: {passed_tests} ✅")
         print(f"Failed: {failed_tests} ❌")
-        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        print(f"Success Rate: {(passed_tests / total_tests * 100):.1f}%")
         print(f"Total Duration: {total_duration:.3f}s")
         print(f"Suite Duration: {suite_duration:.3f}s")
         print(f"Completed at: {end_time}")
 
         if failed_tests > 0:
-            print(f"\n❌ FAILED TESTS:")
+            print("\n❌ FAILED TESTS:")
             for result in self.test_results:
                 if not result["passed"]:
                     print(f"  • {result['test_name']}: {result['message']}")
 
         # Module availability report
-        print(f"\n🔧 MODULE AVAILABILITY:")
+        print("\n🔧 MODULE AVAILABILITY:")
         print(f"  Timeout Manager: {'✅ Available' if TIMEOUT_MANAGER_AVAILABLE else '❌ Not Available'}")
         print(f"  Git Operations Manager: {'✅ Available' if GIT_MANAGER_AVAILABLE else '❌ Not Available'}")
         print(f"  Config Validator: {'✅ Available' if CONFIG_VALIDATOR_AVAILABLE else '❌ Not Available'}")
@@ -390,7 +414,7 @@ class HooksTestSuite:
         if GIT_MANAGER_AVAILABLE:
             try:
                 stats = get_git_manager().get_statistics()
-                print(f"\n📈 PERFORMANCE SUMMARY:")
+                print("\n📈 PERFORMANCE SUMMARY:")
                 print(f"  Git Operations: {stats['operations']['total']}")
                 print(f"  Cache Hit Rate: {stats['operations']['cache_hit_rate']:.1%}")
                 print(f"  Cache Size: {stats['cache']['size']}/{stats['cache']['size_limit']}")
@@ -400,6 +424,7 @@ class HooksTestSuite:
         # Cleanup
         try:
             import shutil
+
             shutil.rmtree(self.temp_dir)
             print(f"\n🧹 Cleaned up test directory: {self.temp_dir}")
         except Exception:

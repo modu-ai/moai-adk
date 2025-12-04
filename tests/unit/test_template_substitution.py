@@ -22,7 +22,11 @@ class TestBasicSubstitution:
         """Test substitution of multiple variables"""
         processor = TemplateProcessor(tmp_path)
         processor.set_context(
-            {"PROJECT_NAME": "MyProject", "PROJECT_DESCRIPTION": "My awesome project", "AUTHOR": "John Doe"}
+            {
+                "PROJECT_NAME": "MyProject",
+                "PROJECT_DESCRIPTION": "My awesome project",
+                "AUTHOR": "John Doe",
+            }
         )
 
         content = """# {{PROJECT_NAME}}
@@ -213,7 +217,11 @@ class TestIntegration:
         # Setup
         processor = TemplateProcessor(tmp_path)
         processor.set_context(
-            {"PROJECT_NAME": "AwesomeApp", "PROJECT_DESCRIPTION": "An awesome application", "AUTHOR": "DevTeam"}
+            {
+                "PROJECT_NAME": "AwesomeApp",
+                "PROJECT_DESCRIPTION": "An awesome application",
+                "AUTHOR": "DevTeam",
+            }
         )
 
         # Create and copy files

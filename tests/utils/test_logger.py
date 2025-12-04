@@ -320,7 +320,13 @@ class TestSensitiveDataFilterPassword:
 
         for msg in test_cases:
             record = logging.LogRecord(
-                name="test_logger", level=logging.INFO, pathname="test.py", lineno=0, msg=msg, args=(), exc_info=None
+                name="test_logger",
+                level=logging.INFO,
+                pathname="test.py",
+                lineno=0,
+                msg=msg,
+                args=(),
+                exc_info=None,
             )
 
             result = filter_instance.filter(record)
@@ -392,7 +398,13 @@ class TestSensitiveDataFilterEdgeCases:
         """Test filtering empty message."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test_logger", level=logging.INFO, pathname="test.py", lineno=0, msg="", args=(), exc_info=None
+            name="test_logger",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg="",
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -1012,7 +1024,13 @@ class TestSensitiveDataFilterComprehensive:
         """Test filtering various API key formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=f"Key: {api_key}", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg=f"Key: {api_key}",
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -1033,7 +1051,13 @@ class TestSensitiveDataFilterComprehensive:
         """Test filtering various email formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=f"Email: {email}", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg=f"Email: {email}",
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -1056,7 +1080,13 @@ class TestSensitiveDataFilterComprehensive:
         """Test filtering various password formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=password_msg, args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg=password_msg,
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)

@@ -294,7 +294,7 @@ class TestSelectiveRestorerPathResolution:
         elements = [
             ".claude/agents/my-agent.md",
             ".claude/commands/moai/my-command.md",
-            ".claude/hooks/moai/my-hook.py"
+            ".claude/hooks/moai/my-hook.py",
         ]
 
         try:

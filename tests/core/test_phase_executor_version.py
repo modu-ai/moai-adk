@@ -83,7 +83,10 @@ class TestPhaseExecutorVersion:
         executor = PhaseExecutor(validator)
 
         # New config being passed to phase 4
-        new_config = {"project": {"mode": "team", "test_coverage_target": 85}, "constitution": {"enforce_tdd": True}}
+        new_config = {
+            "project": {"mode": "team", "test_coverage_target": 85},
+            "constitution": {"enforce_tdd": True},
+        }
 
         # Execute phase 4
         result = executor.execute_configuration_phase(tmp_path, new_config)
@@ -124,7 +127,12 @@ class TestPhaseExecutorVersion:
         config_dir.mkdir(parents=True, exist_ok=True)
         config_path = config_dir / "config.json"
 
-        existing_config = {"moai": {"version": "3.1.0-user-custom", "update_check_frequency": "monthly"}}
+        existing_config = {
+            "moai": {
+                "version": "3.1.0-user-custom",
+                "update_check_frequency": "monthly",
+            }
+        }
         config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
@@ -164,7 +172,10 @@ class TestPhaseExecutorVersion:
 
         custom_version = "5.0.0-my-custom-version"
         existing_config = {
-            "moai": {"version": custom_version, "version_check": {"enabled": True, "cache_ttl_hours": 48}},
+            "moai": {
+                "version": custom_version,
+                "version_check": {"enabled": True, "cache_ttl_hours": 48},
+            },
             "project": {"name": "MyCustomProject", "mode": "team"},
         }
         config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
@@ -210,7 +221,12 @@ class TestPhaseExecutorVersion:
         config_dir.mkdir(parents=True, exist_ok=True)
         config_path = config_dir / "config.json"
 
-        existing_config = {"moai": {"version": "invalid-version-string", "update_check_frequency": "daily"}}
+        existing_config = {
+            "moai": {
+                "version": "invalid-version-string",
+                "update_check_frequency": "daily",
+            }
+        }
         config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
         # Create phase executor
@@ -287,7 +303,11 @@ class TestPhaseExecutorVersion:
         config_path = config_dir / "config.json"
 
         existing_config = {
-            "moai": {"version": "4.2.1-stable", "update_check_frequency": "daily", "version_check": {"enabled": False}},
+            "moai": {
+                "version": "4.2.1-stable",
+                "update_check_frequency": "daily",
+                "version_check": {"enabled": False},
+            },
             "project": {"name": "TestProject", "language": "python"},
             "constitution": {"enforce_tdd": True, "test_coverage_target": 80},
         }
@@ -300,7 +320,10 @@ class TestPhaseExecutorVersion:
         # New config with changes
         new_config = {
             "project": {"name": "TestProject", "mode": "team", "locale": "en"},
-            "constitution": {"enforce_tdd": True, "test_coverage_target": 85},  # Changed from 80 to 85
+            "constitution": {
+                "enforce_tdd": True,
+                "test_coverage_target": 85,
+            },  # Changed from 80 to 85
             "language": {"conversation_language": "en"},
         }
 
@@ -379,7 +402,12 @@ class TestPhaseExecutorVersion:
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
-        special_versions = ["1.2.3+build.123", "2.0.0-alpha.1", "3.1.0-rc.1+build.456", "4.0.0-dev.1+build.789"]
+        special_versions = [
+            "1.2.3+build.123",
+            "2.0.0-alpha.1",
+            "3.1.0-rc.1+build.456",
+            "4.0.0-dev.1+build.789",
+        ]
 
         for version in special_versions:
             with tempfile.TemporaryDirectory() as tmpdir:

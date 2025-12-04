@@ -328,7 +328,7 @@ Analyze the following items and provide a JSON response:
                                 return json.loads(result_text)
                             else:
                                 # Try to find JSON pattern in text
-                                json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', result_text)
+                                json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", result_text)
                                 if json_match:
                                     try:
                                         return json.loads(json_match.group(0))
@@ -336,7 +336,7 @@ Analyze the following items and provide a JSON response:
                                         pass
 
                 # Fallback: try to find any JSON in the text
-                json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_text)
+                json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", response_text)
                 if json_match:
                     return json.loads(json_match.group(0))
 
@@ -353,7 +353,7 @@ Analyze the following items and provide a JSON response:
             "summary": "Failed to parse Claude response",
             "risk_assessment": "High - Response parsing failed",
             "error": "response_parse_failed",
-            "raw_response": response_text[:500] if response_text else ""
+            "raw_response": response_text[:500] if response_text else "",
         }
 
     def _detect_claude_errors(self, stderr: str) -> str:
@@ -476,6 +476,6 @@ Analyze the following items and provide a JSON response:
             "safe_to_auto_merge": not has_high_risk,
             "user_action_required": has_high_risk,
             "summary": f"{len(files_analysis)} files changed (fallback analysis)",
-            "risk_assessment": "High - Claude unavailable, manual review recommended" if has_high_risk else "Low",
+            "risk_assessment": ("High - Claude unavailable, manual review recommended" if has_high_risk else "Low"),
             "fallback": True,
         }

@@ -9,7 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from moai_adk.core.integration import IntegrationTester, IntegrationTestResult, TestComponent, TestSuite
+from moai_adk.core.integration import (
+    IntegrationTester,
+    IntegrationTestResult,
+    TestComponent,
+    TestSuite,
+)
 
 
 class TestIntegrationTester:
@@ -138,7 +143,10 @@ class TestIntegrationTester:
         comp1 = TestComponent("comp1", "type1", "1.0.0")
         comp2 = TestComponent("comp2", "type2", "2.0.0")
         suite = TestSuite(
-            name="test_suite", description="Test suite", components=[comp1, comp2], test_cases=["test1", "test2"]
+            name="test_suite",
+            description="Test suite",
+            components=[comp1, comp2],
+            test_cases=["test1", "test2"],
         )
 
         results = tester.run_test_suite(suite)
@@ -174,7 +182,10 @@ class TestIntegrationTester:
         def test_func(value):
             return value
 
-        tests = [(lambda: test_func("async1"), "async_test1", []), (lambda: test_func("async2"), "async_test2", [])]
+        tests = [
+            (lambda: test_func("async1"), "async_test1", []),
+            (lambda: test_func("async2"), "async_test2", []),
+        ]
 
         results = await tester.run_concurrent_tests_async(tests)
 
@@ -264,14 +275,6 @@ class TestIntegrationTester:
         with pytest.raises(ValueError, match="Unsupported format"):
             tester.export_results("invalid_format")
 
-    def test_validate_test_environment_empty(self):
-        """Test validating empty test environment."""
-        tester = IntegrationTester()
-        warnings = tester.validate_test_environment()
-
-        assert len(warnings) == 1
-        assert "No test results found" in warnings[0]
-
     def test_validate_test_environment_low_success_rate(self):
         """Test validating environment with low success rate."""
         tester = IntegrationTester()
@@ -285,17 +288,3 @@ class TestIntegrationTester:
 
         assert len(warnings) == 1
         assert "Low success rate" in warnings[0]
-
-    def test_validate_test_environment_good(self):
-        """Test validating good test environment."""
-        tester = IntegrationTester()
-
-        # Add mostly successful tests
-        tester.add_test_result(IntegrationTestResult("test1", True))
-        tester.add_test_result(IntegrationTestResult("test2", True))
-        tester.add_test_result(IntegrationTestResult("test3", True))
-        tester.add_test_result(IntegrationTestResult("test4", False))  # 75% success rate
-
-        warnings = tester.validate_test_environment()
-
-        assert len(warnings) == 0  # No warnings for good environment

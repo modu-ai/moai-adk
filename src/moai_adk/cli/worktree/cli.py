@@ -16,6 +16,11 @@ from moai_adk.cli.worktree.exceptions import (
 )
 from moai_adk.cli.worktree.manager import WorktreeManager
 
+try:
+    from git import Repo
+except ImportError:
+    Repo = None  # type: ignore[misc,assignment]
+
 # Initialize Rich console for formatted output
 console = Console()
 
@@ -77,7 +82,7 @@ def _detect_worktree_root(repo_path: Path) -> Path:
         registry_path = root / ".moai-worktree-registry.json"
         if registry_path.exists():
             try:
-                with open(registry_path, 'r') as f:
+                with open(registry_path, "r") as f:
                     content = f.read().strip()
                     if content and content != "{}":
                         return root
@@ -121,7 +126,7 @@ def _find_main_repository(start_path: Path) -> Path:
             if git_path.is_file():
                 # This is a worktree - read the main repo path
                 try:
-                    with open(git_path, 'r') as f:
+                    with open(git_path, "r") as f:
                         for line in f:
                             if line.startswith("gitdir:"):
                                 gitdir_path = line[8:].strip()
@@ -200,7 +205,12 @@ def new_worktree(
 
 
 @worktree.command(name="list")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table", help="Output format")
+@click.option(
+    "--format",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    help="Output format",
+)
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
 @click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
 def list_worktrees(format: str, repo: str | None, worktree_root: str | None) -> None:
@@ -410,7 +420,7 @@ def sync_worktree(
     sync_all: bool,
     auto_resolve: bool,
     repo: str | None,
-    worktree_root: str | None
+    worktree_root: str | None,
 ) -> None:
     """Sync worktree with base branch.
 
@@ -456,7 +466,7 @@ def sync_worktree(
                         base_branch=base,
                         rebase=rebase,
                         ff_only=ff_only,
-                        auto_resolve=auto_resolve
+                        auto_resolve=auto_resolve,
                     )
                     sync_method = "rebase" if rebase else ("fast-forward" if ff_only else "merge")
                     console.print(f"[green]✓[/green] {info.spec_id} ({sync_method})")
@@ -489,7 +499,7 @@ def sync_worktree(
                 base_branch=base,
                 rebase=rebase,
                 ff_only=ff_only,
-                auto_resolve=auto_resolve
+                auto_resolve=auto_resolve,
             )
             sync_method = "rebase" if rebase else ("fast-forward" if ff_only else "merge")
             console.print(f"[green]✓[/green] Worktree synced: {spec_id} ({sync_method})")
@@ -541,14 +551,13 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
 
             try:
                 selection = input("> ").strip()
-                if selection.lower() == 'all':
+                if selection.lower() == "all":
                     cleaned = [info.spec_id for info in worktrees]
                 else:
-                    indices = [int(x.strip()) for x in selection.split(',') if x.strip().isdigit()]
-                    cleaned = []
+                    indices = [int(x.strip()) for x in selection.split(",") if x.strip().isdigit()]
                     for idx in indices:
                         if 1 <= idx <= len(worktrees):
-                            cleaned.append(worktrees[idx-1].spec_id)
+                            cleaned.append(worktrees[idx - 1].spec_id)
                         else:
                             console.print(f"[red]✗[/red] Invalid index: {idx}")
                             raise click.Abort()
@@ -559,14 +568,14 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
 
                 # Final confirmation
                 console.print(f"[yellow]About to remove {len(cleaned)} worktrees: {', '.join(cleaned)}[/yellow]")
-                if input("Continue? [y/N]: ").strip().lower() in ['y', 'yes']:
+                if input("Continue? [y/N]: ").strip().lower() in ["y", "yes"]:
                     for spec_id in cleaned:
                         try:
                             manager.remove(spec_id, force=True)
                         except Exception as e:
                             console.print(f"[red]✗[/red] Failed to remove {spec_id}: {e}")
 
-                console.print(f"[green]✓[/green] Interactive cleanup completed")
+                console.print("[green]✓[/green] Interactive cleanup completed")
 
             except (ValueError, KeyboardInterrupt):
                 console.print("[yellow]Interactive cleanup cancelled[/yellow]")
@@ -579,7 +588,11 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
                 return
 
             cleaned = [info.spec_id for info in worktrees]
-            console.print(f"[yellow]Removing all worktrees. Use --merged-only for merged branches only or --interactive for selective cleanup.[/yellow]")
+            console.print(
+                "[yellow]Removing all worktrees. "
+                "Use --merged-only for merged branches only "
+                "or --interactive for selective cleanup.[/yellow]"
+            )
 
             for spec_id in cleaned:
                 try:
@@ -590,7 +603,7 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
 
         if cleaned:
             console.print(f"[green]✓[/green] Cleaned {len(cleaned)} worktree(s)")
-            for spec_id in cleaned or []:
+            for spec_id in cleaned:
                 console.print(f"  - {spec_id}")
         else:
             console.print("[yellow]No worktrees were cleaned[/yellow]")

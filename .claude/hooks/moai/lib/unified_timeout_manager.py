@@ -19,25 +19,26 @@ import platform
 import signal
 import threading
 import time
-import traceback
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Set, Union
-from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Optional, Set
 
 
 class TimeoutPolicy(Enum):
     """Timeout policy types for different hook categories"""
-    FAST = "fast"          # 1-2 seconds (PreTool hooks)
-    NORMAL = "normal"      # 3-5 seconds (SessionStart/End)
-    SLOW = "slow"         # 10-15 seconds (Complex operations)
-    CUSTOM = "custom"     # User-defined timeout
+
+    FAST = "fast"  # 1-2 seconds (PreTool hooks)
+    NORMAL = "normal"  # 3-5 seconds (SessionStart/End)
+    SLOW = "slow"  # 10-15 seconds (Complex operations)
+    CUSTOM = "custom"  # User-defined timeout
 
 
 @dataclass
 class HookTimeoutConfig:
     """Configuration for hook timeout behavior"""
+
     policy: TimeoutPolicy = TimeoutPolicy.NORMAL
     custom_timeout_ms: Optional[int] = None
     retry_count: int = 0
@@ -50,6 +51,7 @@ class HookTimeoutConfig:
 @dataclass
 class TimeoutSession:
     """Active timeout session tracking"""
+
     hook_id: str
     start_time: datetime
     timeout_seconds: float
@@ -61,8 +63,15 @@ class TimeoutSession:
 
 class HookTimeoutError(Exception):
     """Enhanced timeout error with context"""
-    def __init__(self, message: str, hook_id: str = "", timeout_seconds: float = 0,
-                 execution_time: float = 0, will_retry: bool = False):
+
+    def __init__(
+        self,
+        message: str,
+        hook_id: str = "",
+        timeout_seconds: float = 0,
+        execution_time: float = 0,
+        will_retry: bool = False,
+    ):
         super().__init__(message)
         self.hook_id = hook_id
         self.timeout_seconds = timeout_seconds
@@ -82,10 +91,10 @@ class UnifiedTimeoutManager:
     """
 
     # Global singleton instance
-    _instance: Optional['UnifiedTimeoutManager'] = None
+    _instance: Optional["UnifiedTimeoutManager"] = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> 'UnifiedTimeoutManager':
+    def __new__(cls) -> "UnifiedTimeoutManager":
         """Singleton pattern to ensure single timeout manager"""
         if cls._instance is None:
             with cls._lock:
@@ -94,7 +103,7 @@ class UnifiedTimeoutManager:
         return cls._instance
 
     def __init__(self) -> None:
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
 
         self._initialized = True
@@ -112,7 +121,7 @@ class UnifiedTimeoutManager:
         self._signal_lock = threading.Lock()
 
         # Resource monitoring
-        self._memory_tracker = {}
+        self._memory_tracker: Dict[str, Any] = {}
         self._cleanup_registry: Set[str] = set()
 
         # Default timeout configurations
@@ -121,20 +130,20 @@ class UnifiedTimeoutManager:
                 policy=TimeoutPolicy.FAST,
                 custom_timeout_ms=2000,  # 2 seconds
                 retry_count=1,
-                retry_delay_ms=100
+                retry_delay_ms=100,
             ),
             TimeoutPolicy.NORMAL: HookTimeoutConfig(
                 policy=TimeoutPolicy.NORMAL,
                 custom_timeout_ms=5000,  # 5 seconds
                 retry_count=1,
-                retry_delay_ms=200
+                retry_delay_ms=200,
             ),
             TimeoutPolicy.SLOW: HookTimeoutConfig(
                 policy=TimeoutPolicy.SLOW,
                 custom_timeout_ms=15000,  # 15 seconds
                 retry_count=2,
-                retry_delay_ms=500
-            )
+                retry_delay_ms=500,
+            ),
         }
 
         self._logger.info("UnifiedTimeoutManager initialized")
@@ -151,7 +160,9 @@ class UnifiedTimeoutManager:
             self._logger.warning(f"Failed to load timeout config: {e}")
         return {}
 
-    def get_timeout_config(self, hook_name: str, custom_config: Optional[HookTimeoutConfig] = None) -> HookTimeoutConfig:
+    def get_timeout_config(
+        self, hook_name: str, custom_config: Optional[HookTimeoutConfig] = None
+    ) -> HookTimeoutConfig:
         """Get timeout configuration for a specific hook"""
         if custom_config:
             return custom_config
@@ -171,7 +182,7 @@ class UnifiedTimeoutManager:
                 retry_count=hook_config.get("retry_count", 1),
                 retry_delay_ms=hook_config.get("retry_delay_ms", 200),
                 graceful_degradation=hook_config.get("graceful_degradation", True),
-                memory_limit_mb=hook_config.get("memory_limit_mb")
+                memory_limit_mb=hook_config.get("memory_limit_mb"),
             )
 
         # Use default based on hook name patterns
@@ -194,7 +205,7 @@ class UnifiedTimeoutManager:
             policy_timeouts = {
                 TimeoutPolicy.FAST: 2000,
                 TimeoutPolicy.NORMAL: 5000,
-                TimeoutPolicy.SLOW: 15000
+                TimeoutPolicy.SLOW: 15000,
             }
             timeout_ms = policy_timeouts.get(config.policy, 5000)
 
@@ -208,7 +219,7 @@ class UnifiedTimeoutManager:
             start_time=datetime.now(),
             timeout_seconds=timeout_seconds,
             thread_id=threading.get_ident(),
-            callback=config.on_timeout_callback
+            callback=config.on_timeout_callback,
         )
 
         with self._session_lock:
@@ -225,11 +236,14 @@ class UnifiedTimeoutManager:
 
     def _start_windows_timeout(self, session: TimeoutSession) -> None:
         """Windows: Use threading.Timer for timeout"""
+
         def timeout_handler():
             if session.hook_id in self._active_sessions and not session.completed:
                 execution_time = (datetime.now() - session.start_time).total_seconds()
-                error_msg = (f"Hook {session.hook_id} timed out after "
-                           f"{session.timeout_seconds}s (execution: {execution_time:.2f}s)")
+                error_msg = (
+                    f"Hook {session.hook_id} timed out after "
+                    f"{session.timeout_seconds}s (execution: {execution_time:.2f}s)"
+                )
 
                 # Execute callback if provided
                 if session.callback:
@@ -254,7 +268,9 @@ class UnifiedTimeoutManager:
         with self._signal_lock:
             # Register our signal handler if not already done
             if self._original_signal_handler is None:
-                self._original_signal_handler = signal.signal(signal.SIGALRM, self._unix_signal_handler)
+                self._original_signal_handler = signal.signal(  # type: ignore[assignment]
+                    signal.SIGALRM, self._unix_signal_handler
+                )
 
             # Set alarm for this session
             signal.alarm(int(session.timeout_seconds))
@@ -276,8 +292,10 @@ class UnifiedTimeoutManager:
 
             if timed_out_session:
                 execution_time = (datetime.now() - timed_out_session.start_time).total_seconds()
-                error_msg = (f"Hook {timed_out_session.hook_id} timed out after "
-                           f"{timed_out_session.timeout_seconds}s (execution: {execution_time:.2f}s)")
+                error_msg = (
+                    f"Hook {timed_out_session.hook_id} timed out after "
+                    f"{timed_out_session.timeout_seconds}s (execution: {execution_time:.2f}s)"
+                )
 
                 # Execute callback if provided
                 if timed_out_session.callback:
@@ -294,7 +312,7 @@ class UnifiedTimeoutManager:
                     error_msg,
                     hook_id=timed_out_session.hook_id,
                     timeout_seconds=timed_out_session.timeout_seconds,
-                    execution_time=execution_time
+                    execution_time=execution_time,
                 )
 
     def cancel_timeout(self, session: TimeoutSession) -> None:
@@ -314,13 +332,19 @@ class UnifiedTimeoutManager:
             if session.hook_id in self._active_sessions:
                 del self._active_sessions[session.hook_id]
 
-    def execute_with_timeout(self, hook_name: str, func: Callable, *args,
-                           config: Optional[HookTimeoutConfig] = None, **kwargs) -> Any:
+    def execute_with_timeout(
+        self,
+        hook_name: str,
+        func: Callable,
+        *args,
+        config: Optional[HookTimeoutConfig] = None,
+        **kwargs,
+    ) -> Any:
         """Execute a function with timeout management and retry logic"""
         if not config:
             config = self.get_timeout_config(hook_name)
 
-        last_exception = None
+        last_exception: Optional[Exception] = None
 
         for attempt in range(config.retry_count + 1):
             session = self.create_timeout_session(hook_name, config)
@@ -378,6 +402,7 @@ class UnifiedTimeoutManager:
         """Check current memory usage against limit"""
         try:
             import psutil
+
             process = psutil.Process()
             memory_mb = process.memory_info().rss / 1024 / 1024
 
@@ -397,26 +422,26 @@ class UnifiedTimeoutManager:
             return {
                 "continue": True,
                 "systemMessage": "⚠️ Session start hook timeout - continuing with reduced functionality",
-                "graceful_degradation": True
+                "graceful_degradation": True,
             }
         elif "session_end" in hook_name.lower():
             return {
                 "continue": True,
                 "success": False,
                 "error": "Hook timeout but continuing due to graceful degradation",
-                "graceful_degradation": True
+                "graceful_degradation": True,
             }
         elif "pre_tool" in hook_name.lower():
             return {
                 "continue": True,
                 "systemMessage": "⚠️ Validation timeout - operation proceeding",
-                "graceful_degradation": True
+                "graceful_degradation": True,
             }
         else:
             return {
                 "continue": True,
                 "error": "Hook timeout but continuing due to graceful degradation",
-                "graceful_degradation": True
+                "graceful_degradation": True,
             }
 
     def get_active_sessions(self) -> Dict[str, Dict[str, Any]]:
@@ -429,7 +454,7 @@ class UnifiedTimeoutManager:
                     "timeout_seconds": session.timeout_seconds,
                     "thread_id": session.thread_id,
                     "completed": session.completed,
-                    "elapsed": (datetime.now() - session.start_time).total_seconds()
+                    "elapsed": (datetime.now() - session.start_time).total_seconds(),
                 }
                 for hook_id, session in self._active_sessions.items()
             }
@@ -437,10 +462,7 @@ class UnifiedTimeoutManager:
     def cleanup_completed_sessions(self) -> int:
         """Clean up completed sessions and return count cleaned"""
         with self._session_lock:
-            completed_ids = [
-                hook_id for hook_id, session in self._active_sessions.items()
-                if session.completed
-            ]
+            completed_ids = [hook_id for hook_id, session in self._active_sessions.items() if session.completed]
 
             for hook_id in completed_ids:
                 del self._active_sessions[hook_id]
@@ -473,6 +495,7 @@ class UnifiedTimeoutManager:
 
 # Global instance
 _timeout_manager = None
+
 
 def get_timeout_manager() -> UnifiedTimeoutManager:
     """Get the global timeout manager instance"""

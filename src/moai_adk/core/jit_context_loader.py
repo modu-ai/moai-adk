@@ -180,7 +180,7 @@ class PhaseDetector:
                     "from": self.last_phase.value,
                     "to": best_phase.value,
                     "timestamp": datetime.now(),
-                    "context": user_input[:100] + "..." if len(user_input) > 100 else user_input,
+                    "context": (user_input[:100] + "..." if len(user_input) > 100 else user_input),
                 }
             )
 
@@ -203,7 +203,10 @@ class PhaseDetector:
                     "moai-lang-python",
                     "moai-core-spec-authoring",
                 ],
-                essential_documents=[".moai/specs/template.md", ".claude/skills/moai-foundation-ears/SKILL.md"],
+                essential_documents=[
+                    ".moai/specs/template.md",
+                    ".claude/skills/moai-foundation-ears/SKILL.md",
+                ],
                 cache_clear_on_phase_change=True,
             ),
             Phase.RED: PhaseConfig(
@@ -216,11 +219,18 @@ class PhaseDetector:
                     "moai-essentials-debug",
                     "moai-lang-python",
                 ],
-                essential_documents=[".moai/specs/{spec_id}/spec.md", ".claude/skills/moai-domain-testing/SKILL.md"],
+                essential_documents=[
+                    ".moai/specs/{spec_id}/spec.md",
+                    ".claude/skills/moai-domain-testing/SKILL.md",
+                ],
             ),
             Phase.GREEN: PhaseConfig(
                 max_tokens=25000,
-                essential_skills=["moai-lang-python", "moai-domain-backend", "moai-essentials-review"],
+                essential_skills=[
+                    "moai-lang-python",
+                    "moai-domain-backend",
+                    "moai-essentials-review",
+                ],
                 essential_documents=[".moai/specs/{spec_id}/spec.md"],
             ),
             Phase.REFACTOR: PhaseConfig(
@@ -244,7 +254,10 @@ class PhaseDetector:
                     "moai-core-spec-authoring",
                     "moai-cc-configuration",
                 ],
-                essential_documents=[".moai/specs/{spec_id}/implementation.md", ".moai/specs/{spec_id}/test-cases.md"],
+                essential_documents=[
+                    ".moai/specs/{spec_id}/implementation.md",
+                    ".moai/specs/{spec_id}/test-cases.md",
+                ],
                 cache_clear_on_phase_change=True,
             ),
             Phase.DEBUG: PhaseConfig(
@@ -254,7 +267,11 @@ class PhaseDetector:
             ),
             Phase.PLANNING: PhaseConfig(
                 max_tokens=35000,
-                essential_skills=["moai-core-practices", "moai-essentials-review", "moai-foundation-specs"],
+                essential_skills=[
+                    "moai-core-practices",
+                    "moai-essentials-review",
+                    "moai-foundation-specs",
+                ],
                 essential_documents=[".moai/specs/{spec_id}/spec.md"],
             ),
         }
@@ -291,7 +308,11 @@ class SkillFilterEngine:
                 "moai-essentials-debug": 2,
                 "moai-lang-python": 3,
             },
-            "green": {"moai-lang-python": 1, "moai-domain-backend": 1, "moai-essentials-review": 2},
+            "green": {
+                "moai-lang-python": 1,
+                "moai-domain-backend": 1,
+                "moai-essentials-review": 2,
+            },
             "refactor": {
                 "moai-essentials-refactor": 1,
                 "moai-essentials-review": 2,
@@ -305,7 +326,11 @@ class SkillFilterEngine:
                 "moai-cc-configuration": 2,
             },
             "debug": {"moai-essentials-debug": 1, "moai-core-code-reviewer": 2},
-            "planning": {"moai-core-practices": 1, "moai-essentials-review": 2, "moai-foundation-specs": 2},
+            "planning": {
+                "moai-core-practices": 1,
+                "moai-essentials-review": 2,
+                "moai-foundation-specs": 2,
+            },
         }
 
     def _build_skill_index(self):
@@ -405,7 +430,7 @@ class SkillFilterEngine:
             "total_skills": total_skills,
             "total_tokens": total_tokens,
             "categories": categories,
-            "average_tokens_per_skill": total_tokens / total_skills if total_skills > 0 else 0,
+            "average_tokens_per_skill": (total_tokens / total_skills if total_skills > 0 else 0),
         }
 
 
@@ -466,7 +491,12 @@ class TokenBudgetManager:
     def get_efficiency_metrics(self) -> Dict[str, Any]:
         """Calculate and return efficiency metrics"""
         if not self.usage_history:
-            return {"efficiency_score": 0, "average_phase_efficiency": {}, "budget_compliance": 100, "total_usage": 0}
+            return {
+                "efficiency_score": 0,
+                "average_phase_efficiency": {},
+                "budget_compliance": 100,
+                "total_usage": 0,
+            }
 
         # Calculate efficiency by phase
         phase_usage = {}
@@ -620,7 +650,10 @@ class JITContextLoader:
         }
 
     async def load_context(
-        self, user_input: str, conversation_history: List[str] = None, context: Dict[str, Any] = None
+        self,
+        user_input: str,
+        conversation_history: List[str] = None,
+        context: Dict[str, Any] = None,
     ) -> Tuple[Dict[str, Any], ContextMetrics]:
         """Load optimized context based on current phase and requirements"""
         start_time = time.time()
@@ -890,7 +923,9 @@ jit_context_loader = JITContextLoader()
 
 # Convenience functions
 async def load_optimized_context(
-    user_input: str, conversation_history: List[str] = None, context: Dict[str, Any] = None
+    user_input: str,
+    conversation_history: List[str] = None,
+    context: Dict[str, Any] = None,
 ) -> Tuple[Dict[str, Any], ContextMetrics]:
     """Load optimized context using global JIT loader instance"""
     return await jit_context_loader.load_context(user_input, conversation_history, context)

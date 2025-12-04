@@ -8,7 +8,9 @@ from unittest.mock import patch
 
 from moai_adk.core.integration.models import IntegrationTestResult, TestComponent
 from moai_adk.core.integration.utils import ComponentDiscovery, TestEnvironment
-from moai_adk.core.integration.utils import TestResultAnalyzer as IntegrationTestResultAnalyzer
+from moai_adk.core.integration.utils import (
+    TestResultAnalyzer as IntegrationTestResultAnalyzer,
+)
 
 
 class TestComponentDiscovery:
@@ -121,7 +123,14 @@ class TestResultAnalyzer:
         """Test execution stats with empty results"""
         stats = IntegrationTestResultAnalyzer.get_execution_stats([])
 
-        expected = {"total": 0, "passed": 0, "failed": 0, "success_rate": 0.0, "total_time": 0.0, "avg_time": 0.0}
+        expected = {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "success_rate": 0.0,
+            "total_time": 0.0,
+            "avg_time": 0.0,
+        }
 
         assert stats == expected
 
@@ -143,8 +152,8 @@ class TestResultAnalyzer:
         assert stats["avg_time"] == 2.0
 
 
-class TestEnvironment:
-    """Test TestEnvironment class"""
+class TestTestEnvironmentUtil:
+    """Test TestEnvironment class from utils module"""
 
     def test_environment_with_auto_temp_dir(self):
         """Test environment with auto-created temp directory"""

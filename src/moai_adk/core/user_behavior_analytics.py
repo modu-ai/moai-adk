@@ -474,7 +474,13 @@ class UserBehaviorAnalytics:
             team_metrics["most_used_tools"] = dict(Counter(all_tools).most_common(10))
 
             # Productivity distribution
-            productivity_ranges = {"0-20": 0, "21-40": 0, "41-60": 0, "61-80": 0, "81-100": 0}
+            productivity_ranges = {
+                "0-20": 0,
+                "21-40": 0,
+                "41-60": 0,
+                "61-80": 0,
+                "81-100": 0,
+            }
 
             for score in scores:
                 if score <= 20:

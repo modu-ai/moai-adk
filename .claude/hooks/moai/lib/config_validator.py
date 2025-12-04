@@ -14,15 +14,15 @@ Features:
 
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Tuple
-import re
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ValidationLevel(Enum):
     """Severity levels for validation issues"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -32,6 +32,7 @@ class ValidationLevel(Enum):
 @dataclass
 class ValidationIssue:
     """Configuration validation issue with context"""
+
     level: ValidationLevel
     path: str
     message: str
@@ -42,6 +43,7 @@ class ValidationIssue:
 @dataclass
 class TimeoutConfigSchema:
     """Schema for timeout configuration validation"""
+
     min_timeout_ms: int = 500
     max_timeout_ms: int = 30000
     default_timeout_ms: int = 5000
@@ -54,6 +56,7 @@ class TimeoutConfigSchema:
 @dataclass
 class ResourceConfigSchema:
     """Schema for resource configuration validation"""
+
     default_memory_limit_mb: int = 100
     max_memory_limit_mb: int = 1000
     default_max_workers: int = 4
@@ -86,7 +89,7 @@ class ConfigurationValidator:
                 "retry_count": 1,
                 "retry_delay_ms": 200,
                 "graceful_degradation": True,
-                "memory_limit_mb": 100
+                "memory_limit_mb": 100,
             },
             "session_end": {
                 "policy": "normal",
@@ -94,7 +97,7 @@ class ConfigurationValidator:
                 "retry_count": 1,
                 "retry_delay_ms": 500,
                 "graceful_degradation": True,
-                "memory_limit_mb": 150
+                "memory_limit_mb": 150,
             },
             "pre_tool": {
                 "policy": "fast",
@@ -102,8 +105,8 @@ class ConfigurationValidator:
                 "retry_count": 1,
                 "retry_delay_ms": 100,
                 "graceful_degradation": True,
-                "memory_limit_mb": 50
-            }
+                "memory_limit_mb": 50,
+            },
         }
 
     def validate_config(self, config: Dict[str, Any]) -> Tuple[bool, List[ValidationIssue]]:
@@ -137,15 +140,22 @@ class ConfigurationValidator:
         issues = []
 
         # Check for required sections (optional for backward compatibility)
-        expected_sections = ["timeout_manager", "hook_configs", "resources", "performance"]
+        expected_sections = [
+            "timeout_manager",
+            "hook_configs",
+            "resources",
+            "performance",
+        ]
         for section in expected_sections:
             if section not in config:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.INFO,
-                    path=f".{section}",
-                    message=f"Missing optional '{section}' configuration section",
-                    suggestion=f"Add '{section}' section to enable advanced features"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.INFO,
+                        path=f".{section}",
+                        message=f"Missing optional '{section}' configuration section",
+                        suggestion=f"Add '{section}' section to enable advanced features",
+                    )
+                )
 
         return issues
 
@@ -158,61 +168,73 @@ class ConfigurationValidator:
         if "global_timeout_ms" in timeout_config:
             timeout_ms = timeout_config["global_timeout_ms"]
             if not isinstance(timeout_ms, int) or timeout_ms < 0:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{base_path}.global_timeout_ms",
-                    message="Global timeout must be a non-negative integer",
-                    current_value=str(timeout_ms),
-                    suggestion="Use a positive integer like 5000 (5 seconds)"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{base_path}.global_timeout_ms",
+                        message="Global timeout must be a non-negative integer",
+                        current_value=str(timeout_ms),
+                        suggestion="Use a positive integer like 5000 (5 seconds)",
+                    )
+                )
             elif timeout_ms < self._timeout_schema.min_timeout_ms:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.WARNING,
-                    path=f"{base_path}.global_timeout_ms",
-                    message=f"Global timeout is very low ({timeout_ms}ms)",
-                    current_value=str(timeout_ms),
-                    suggestion=f"Consider using at least {self._timeout_schema.min_timeout_ms}ms"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.WARNING,
+                        path=f"{base_path}.global_timeout_ms",
+                        message=f"Global timeout is very low ({timeout_ms}ms)",
+                        current_value=str(timeout_ms),
+                        suggestion=f"Consider using at least {self._timeout_schema.min_timeout_ms}ms",
+                    )
+                )
             elif timeout_ms > self._timeout_schema.max_timeout_ms:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.WARNING,
-                    path=f"{base_path}.global_timeout_ms",
-                    message=f"Global timeout is very high ({timeout_ms}ms)",
-                    current_value=str(timeout_ms),
-                    suggestion=f"Consider using at most {self._timeout_schema.max_timeout_ms}ms"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.WARNING,
+                        path=f"{base_path}.global_timeout_ms",
+                        message=f"Global timeout is very high ({timeout_ms}ms)",
+                        current_value=str(timeout_ms),
+                        suggestion=f"Consider using at most {self._timeout_schema.max_timeout_ms}ms",
+                    )
+                )
 
         # Validate default retry count
         if "default_retry_count" in timeout_config:
             retry_count = timeout_config["default_retry_count"]
             if not isinstance(retry_count, int) or retry_count < 0:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{base_path}.default_retry_count",
-                    message="Default retry count must be a non-negative integer",
-                    current_value=str(retry_count),
-                    suggestion="Use an integer between 0 and 3"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{base_path}.default_retry_count",
+                        message="Default retry count must be a non-negative integer",
+                        current_value=str(retry_count),
+                        suggestion="Use an integer between 0 and 3",
+                    )
+                )
             elif retry_count > self._timeout_schema.max_retry_count:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.WARNING,
-                    path=f"{base_path}.default_retry_count",
-                    message=f"High retry count may cause performance issues ({retry_count})",
-                    current_value=str(retry_count),
-                    suggestion=f"Consider using at most {self._timeout_schema.max_retry_count} retries"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.WARNING,
+                        path=f"{base_path}.default_retry_count",
+                        message=f"High retry count may cause performance issues ({retry_count})",
+                        current_value=str(retry_count),
+                        suggestion=f"Consider using at most {self._timeout_schema.max_retry_count} retries",
+                    )
+                )
 
         # Validate graceful degradation setting
         if "graceful_degradation" in timeout_config:
             graceful = timeout_config["graceful_degradation"]
             if not isinstance(graceful, bool):
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{base_path}.graceful_degradation",
-                    message="Graceful degradation must be a boolean",
-                    current_value=str(graceful),
-                    suggestion="Use true or false"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{base_path}.graceful_degradation",
+                        message="Graceful degradation must be a boolean",
+                        current_value=str(graceful),
+                        suggestion="Use true or false",
+                    )
+                )
 
         return issues
 
@@ -232,93 +254,109 @@ class ConfigurationValidator:
         issues = []
 
         # Get template for this hook type
-        template = self._get_hook_template(hook_name)
+        self._get_hook_template(hook_name)
 
         # Validate policy
         if "policy" in config:
             policy = config["policy"]
             valid_policies = ["fast", "normal", "slow", "custom"]
             if policy not in valid_policies:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{path}.policy",
-                    message=f"Invalid policy '{policy}'",
-                    current_value=str(policy),
-                    suggestion=f"Use one of: {', '.join(valid_policies)}"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{path}.policy",
+                        message=f"Invalid policy '{policy}'",
+                        current_value=str(policy),
+                        suggestion=f"Use one of: {', '.join(valid_policies)}",
+                    )
+                )
 
         # Validate timeout_ms
         if "timeout_ms" in config:
             timeout_ms = config["timeout_ms"]
             if not isinstance(timeout_ms, int) or timeout_ms <= 0:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{path}.timeout_ms",
-                    message="Timeout must be a positive integer",
-                    current_value=str(timeout_ms),
-                    suggestion="Use a positive integer in milliseconds"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{path}.timeout_ms",
+                        message="Timeout must be a positive integer",
+                        current_value=str(timeout_ms),
+                        suggestion="Use a positive integer in milliseconds",
+                    )
+                )
             else:
                 # Policy-based timeout validation
                 if "policy" in config:
                     policy = config["policy"]
                     recommended = self._get_recommended_timeout(policy)
                     if timeout_ms < recommended * 0.5:
-                        issues.append(ValidationIssue(
-                            level=ValidationLevel.WARNING,
-                            path=f"{path}.timeout_ms",
-                            message=f"Timeout is very low for '{policy}' policy",
-                            current_value=str(timeout_ms),
-                            suggestion=f"Consider using at least {recommended}ms"
-                        ))
+                        issues.append(
+                            ValidationIssue(
+                                level=ValidationLevel.WARNING,
+                                path=f"{path}.timeout_ms",
+                                message=f"Timeout is very low for '{policy}' policy",
+                                current_value=str(timeout_ms),
+                                suggestion=f"Consider using at least {recommended}ms",
+                            )
+                        )
                     elif timeout_ms > recommended * 3:
-                        issues.append(ValidationIssue(
-                            level=ValidationLevel.WARNING,
-                            path=f"{path}.timeout_ms",
-                            message=f"Timeout is very high for '{policy}' policy",
-                            current_value=str(timeout_ms),
-                            suggestion=f"Consider using at most {recommended * 2}ms"
-                        ))
+                        issues.append(
+                            ValidationIssue(
+                                level=ValidationLevel.WARNING,
+                                path=f"{path}.timeout_ms",
+                                message=f"Timeout is very high for '{policy}' policy",
+                                current_value=str(timeout_ms),
+                                suggestion=f"Consider using at most {recommended * 2}ms",
+                            )
+                        )
 
         # Validate retry_count
         if "retry_count" in config:
             retry_count = config["retry_count"]
             if not isinstance(retry_count, int) or retry_count < 0:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{path}.retry_count",
-                    message="Retry count must be a non-negative integer",
-                    current_value=str(retry_count),
-                    suggestion="Use an integer between 0 and 3"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{path}.retry_count",
+                        message="Retry count must be a non-negative integer",
+                        current_value=str(retry_count),
+                        suggestion="Use an integer between 0 and 3",
+                    )
+                )
             elif retry_count > self._timeout_schema.max_retry_count:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.WARNING,
-                    path=f"{path}.retry_count",
-                    message=f"High retry count may cause delays ({retry_count})",
-                    current_value=str(retry_count),
-                    suggestion=f"Consider using at most {self._timeout_schema.max_retry_count} retries"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.WARNING,
+                        path=f"{path}.retry_count",
+                        message=f"High retry count may cause delays ({retry_count})",
+                        current_value=str(retry_count),
+                        suggestion=f"Consider using at most {self._timeout_schema.max_retry_count} retries",
+                    )
+                )
 
         # Validate retry_delay_ms
         if "retry_delay_ms" in config:
             delay_ms = config["retry_delay_ms"]
             if not isinstance(delay_ms, int) or delay_ms < 0:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.ERROR,
-                    path=f"{path}.retry_delay_ms",
-                    message="Retry delay must be a non-negative integer",
-                    current_value=str(delay_ms),
-                    suggestion="Use a positive integer in milliseconds"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.ERROR,
+                        path=f"{path}.retry_delay_ms",
+                        message="Retry delay must be a non-negative integer",
+                        current_value=str(delay_ms),
+                        suggestion="Use a positive integer in milliseconds",
+                    )
+                )
             elif delay_ms > self._timeout_schema.max_retry_delay_ms:
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.WARNING,
-                    path=f"{path}.retry_delay_ms",
-                    message=f"High retry delay may cause poor performance ({delay_ms}ms)",
-                    current_value=str(delay_ms),
-                    suggestion=f"Consider using at most {self._timeout_schema.max_retry_delay_ms}ms"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.WARNING,
+                        path=f"{path}.retry_delay_ms",
+                        message=f"High retry delay may cause poor performance ({delay_ms}ms)",
+                        current_value=str(delay_ms),
+                        suggestion=f"Consider using at most {self._timeout_schema.max_retry_delay_ms}ms",
+                    )
+                )
 
         return issues
 
@@ -333,24 +371,28 @@ class ConfigurationValidator:
             if "default_mb" in memory_config:
                 default_mb = memory_config["default_mb"]
                 if not isinstance(default_mb, int) or default_mb <= 0:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.ERROR,
-                        path=f"{base_path}.memory_limits.default_mb",
-                        message="Default memory limit must be a positive integer",
-                        current_value=str(default_mb),
-                        suggestion="Use a positive integer in MB"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.ERROR,
+                            path=f"{base_path}.memory_limits.default_mb",
+                            message="Default memory limit must be a positive integer",
+                            current_value=str(default_mb),
+                            suggestion="Use a positive integer in MB",
+                        )
+                    )
 
             if "max_mb" in memory_config:
                 max_mb = memory_config["max_mb"]
                 if not isinstance(max_mb, int) or max_mb <= 0:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.ERROR,
-                        path=f"{base_path}.memory_limits.max_mb",
-                        message="Maximum memory limit must be a positive integer",
-                        current_value=str(max_mb),
-                        suggestion="Use a positive integer in MB"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.ERROR,
+                            path=f"{base_path}.memory_limits.max_mb",
+                            message="Maximum memory limit must be a positive integer",
+                            current_value=str(max_mb),
+                            suggestion="Use a positive integer in MB",
+                        )
+                    )
 
         # Validate worker configurations
         if "workers" in resource_config:
@@ -358,21 +400,25 @@ class ConfigurationValidator:
             if "default_max_workers" in workers_config:
                 max_workers = workers_config["default_max_workers"]
                 if not isinstance(max_workers, int) or max_workers <= 0:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.ERROR,
-                        path=f"{base_path}.workers.default_max_workers",
-                        message="Default max workers must be a positive integer",
-                        current_value=str(max_workers),
-                        suggestion="Use a positive integer between 1 and 8"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.ERROR,
+                            path=f"{base_path}.workers.default_max_workers",
+                            message="Default max workers must be a positive integer",
+                            current_value=str(max_workers),
+                            suggestion="Use a positive integer between 1 and 8",
+                        )
+                    )
                 elif max_workers > self._resource_schema.max_max_workers:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.WARNING,
-                        path=f"{base_path}.workers.default_max_workers",
-                        message=f"High worker count may impact system performance ({max_workers})",
-                        current_value=str(max_workers),
-                        suggestion=f"Consider using at most {self._resource_schema.max_max_workers} workers"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.WARNING,
+                            path=f"{base_path}.workers.default_max_workers",
+                            message=f"High worker count may impact system performance ({max_workers})",
+                            current_value=str(max_workers),
+                            suggestion=f"Consider using at most {self._resource_schema.max_max_workers} workers",
+                        )
+                    )
 
         return issues
 
@@ -387,13 +433,15 @@ class ConfigurationValidator:
             if "size_limit" in cache_config:
                 size_limit = cache_config["size_limit"]
                 if not isinstance(size_limit, int) or size_limit <= 0:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.ERROR,
-                        path=f"{base_path}.cache.size_limit",
-                        message="Cache size limit must be a positive integer",
-                        current_value=str(size_limit),
-                        suggestion="Use a positive integer for cache size"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.ERROR,
+                            path=f"{base_path}.cache.size_limit",
+                            message="Cache size limit must be a positive integer",
+                            current_value=str(size_limit),
+                            suggestion="Use a positive integer for cache size",
+                        )
+                    )
 
         # Validate monitoring settings
         if "monitoring" in performance_config:
@@ -401,13 +449,15 @@ class ConfigurationValidator:
             if "enabled" in monitoring_config:
                 enabled = monitoring_config["enabled"]
                 if not isinstance(enabled, bool):
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.ERROR,
-                        path=f"{base_path}.monitoring.enabled",
-                        message="Monitoring enabled flag must be boolean",
-                        current_value=str(enabled),
-                        suggestion="Use true or false"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.ERROR,
+                            path=f"{base_path}.monitoring.enabled",
+                            message="Monitoring enabled flag must be boolean",
+                            current_value=str(enabled),
+                            suggestion="Use true or false",
+                        )
+                    )
 
         return issues
 
@@ -421,12 +471,7 @@ class ConfigurationValidator:
 
     def _get_recommended_timeout(self, policy: str) -> int:
         """Get recommended timeout for a policy"""
-        policy_timeouts = {
-            "fast": 2000,
-            "normal": 5000,
-            "slow": 15000,
-            "custom": 5000
-        }
+        policy_timeouts = {"fast": 2000, "normal": 5000, "slow": 15000, "custom": 5000}
         return policy_timeouts.get(policy, 5000)
 
     def normalize_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
@@ -470,13 +515,11 @@ class ConfigurationValidator:
         if "memory_limits" not in resources:
             resources["memory_limits"] = {
                 "default_mb": self._resource_schema.default_memory_limit_mb,
-                "max_mb": self._resource_schema.max_memory_limit_mb
+                "max_mb": self._resource_schema.max_memory_limit_mb,
             }
 
         if "workers" not in resources:
-            resources["workers"] = {
-                "default_max_workers": self._resource_schema.default_max_workers
-            }
+            resources["workers"] = {"default_max_workers": self._resource_schema.default_max_workers}
 
         # Ensure performance section exists
         if "performance" not in normalized:
@@ -484,14 +527,10 @@ class ConfigurationValidator:
 
         performance = normalized["performance"]
         if "cache" not in performance:
-            performance["cache"] = {
-                "size_limit": self._resource_schema.cache_size_default
-            }
+            performance["cache"] = {"size_limit": self._resource_schema.cache_size_default}
 
         if "monitoring" not in performance:
-            performance["monitoring"] = {
-                "enabled": True
-            }
+            performance["monitoring"] = {"enabled": True}
 
         return normalized
 
@@ -503,19 +542,24 @@ class ConfigurationValidator:
         lines = ["📋 Configuration Validation Report", ""]
 
         # Group issues by severity
-        by_level = {}
+        by_level: Dict[ValidationLevel, List[ValidationIssue]] = {}
         for issue in issues:
             if issue.level not in by_level:
                 by_level[issue.level] = []
             by_level[issue.level].append(issue)
 
         # Display issues by severity (most critical first)
-        level_order = [ValidationLevel.CRITICAL, ValidationLevel.ERROR, ValidationLevel.WARNING, ValidationLevel.INFO]
+        level_order = [
+            ValidationLevel.CRITICAL,
+            ValidationLevel.ERROR,
+            ValidationLevel.WARNING,
+            ValidationLevel.INFO,
+        ]
         level_icons = {
             ValidationLevel.CRITICAL: "🚨",
             ValidationLevel.ERROR: "❌",
             ValidationLevel.WARNING: "⚠️",
-            ValidationLevel.INFO: "ℹ️"
+            ValidationLevel.INFO: "ℹ️",
         }
 
         for level in level_order:
@@ -547,12 +591,14 @@ class ConfigurationValidator:
             return is_valid, normalized_config, issues
 
         except Exception as e:
-            error_issues = [ValidationIssue(
-                level=ValidationLevel.CRITICAL,
-                path=".file",
-                message=f"Failed to load configuration file: {e}",
-                suggestion="Check file format and permissions"
-            )]
+            error_issues = [
+                ValidationIssue(
+                    level=ValidationLevel.CRITICAL,
+                    path=".file",
+                    message=f"Failed to load configuration file: {e}",
+                    suggestion="Check file format and permissions",
+                )
+            ]
             return False, {}, error_issues
 
 
@@ -569,7 +615,9 @@ def get_config_validator() -> ConfigurationValidator:
 
 
 # Convenience functions
-def validate_hook_config(config_path: Optional[Path] = None) -> Tuple[bool, List[ValidationIssue]]:
+def validate_hook_config(
+    config_path: Optional[Path] = None,
+) -> Tuple[bool, List[ValidationIssue]]:
     """Validate hooks configuration"""
     validator = get_config_validator()
 
@@ -578,12 +626,14 @@ def validate_hook_config(config_path: Optional[Path] = None) -> Tuple[bool, List
 
     if not config_path.exists():
         # Return success with info about missing file
-        return True, [ValidationIssue(
-            level=ValidationLevel.INFO,
-            path=".file",
-            message="Configuration file not found, using defaults",
-            suggestion="Create a configuration file to customize hook behavior"
-        )]
+        return True, [
+            ValidationIssue(
+                level=ValidationLevel.INFO,
+                path=".file",
+                message="Configuration file not found, using defaults",
+                suggestion="Create a configuration file to customize hook behavior",
+            )
+        ]
 
     is_valid, normalized_config, issues = validator.validate_and_fix_config_file(config_path)
     return is_valid, issues

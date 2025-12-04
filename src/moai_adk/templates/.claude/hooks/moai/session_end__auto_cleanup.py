@@ -26,29 +26,31 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from lib.path_utils import find_project_root
+from lib.path_utils import find_project_root  # noqa: E402
 
 # Import unified timeout manager and Git operations manager
 try:
-    from lib.unified_timeout_manager import (
-        get_timeout_manager, hook_timeout_context, HookTimeoutConfig,
-        TimeoutPolicy, HookTimeoutError
-    )
-    from lib.git_operations_manager import get_git_manager, GitOperationType
-    from lib.config_validator import get_config_validator, ValidationIssue
     from lib.common import (  # noqa: E402
         format_duration,
-        get_file_pattern_category,
         get_summary_stats,
         is_root_whitelisted,
         suggest_moai_location,
     )
     from lib.config_manager import ConfigManager  # noqa: E402
+    from lib.config_validator import ValidationIssue, get_config_validator
+    from lib.git_operations_manager import GitOperationType, get_git_manager
+    from lib.unified_timeout_manager import (
+        HookTimeoutConfig,
+        HookTimeoutError,
+        TimeoutPolicy,
+        get_timeout_manager,
+        hook_timeout_context,
+    )
 except ImportError:
     # Fallback implementations if new modules not available
     def get_timeout_manager():
@@ -56,34 +58,36 @@ except ImportError:
 
     def hook_timeout_context(hook_name, config=None):
         import contextlib
+
         @contextlib.contextmanager
         def dummy_context():
             yield
+
         return dummy_context()
 
-    class HookTimeoutConfig:
+    class HookTimeoutConfig:  # type: ignore[no-redef]
         def __init__(self, **kwargs):
             pass
 
-    class TimeoutPolicy:
+    class TimeoutPolicy:  # type: ignore[no-redef]
         FAST = "fast"
         NORMAL = "normal"
         SLOW = "slow"
 
-    class HookTimeoutError(Exception):
+    class HookTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
     def get_git_manager():
         return None
 
-    class GitOperationType:
+    class GitOperationType:  # type: ignore[no-redef]
         STATUS = "status"
         LOG = "log"
 
     def get_config_validator():
         return None
 
-    class ValidationIssue:
+    class ValidationIssue:  # type: ignore[no-redef]
         pass
 
     ConfigManager = None  # type: ignore
@@ -186,7 +190,12 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
     return stats
 
 
-def cleanup_directory(directory: Path, cutoff_date: datetime, max_files: Optional[int], patterns: List[str]) -> int:
+def cleanup_directory(
+    directory: Path,
+    cutoff_date: datetime,
+    max_files: Optional[int],
+    patterns: List[str],
+) -> int:
     """Clean up directory files
 
     Args:
@@ -321,12 +330,15 @@ def check_uncommitted_changes() -> Optional[str]:
         try:
             # Use optimized Git manager
             from lib.git_operations_manager import GitCommand
-            status_result = git_manager.execute_git_command(GitCommand(
-                operation_type=GitOperationType.STATUS,
-                args=["status", "--porcelain"],
-                cache_ttl_seconds=5,  # Short TTL for status
-                timeout_seconds=3
-            ))
+
+            status_result = git_manager.execute_git_command(
+                GitCommand(
+                    operation_type=GitOperationType.STATUS,
+                    args=["status", "--porcelain"],
+                    cache_ttl_seconds=5,  # Short TTL for status
+                    timeout_seconds=3,
+                )
+            )
 
             if status_result.success:
                 uncommitted = status_result.stdout.strip()
@@ -339,9 +351,7 @@ def check_uncommitted_changes() -> Optional[str]:
 
     # Fallback to direct Git command
     try:
-        result = subprocess.run(
-            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1
-        )
+        result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1)
 
         if result.returncode == 0:
             uncommitted = result.stdout.strip()
@@ -367,12 +377,15 @@ def get_current_branch() -> Optional[str]:
     if git_manager:
         try:
             from lib.git_operations_manager import GitCommand
-            branch_result = git_manager.execute_git_command(GitCommand(
-                operation_type=GitOperationType.BRANCH,
-                args=["rev-parse", "--abbrev-ref", "HEAD"],
-                cache_ttl_seconds=30,
-                timeout_seconds=3
-            ))
+
+            branch_result = git_manager.execute_git_command(
+                GitCommand(
+                    operation_type=GitOperationType.BRANCH,
+                    args=["rev-parse", "--abbrev-ref", "HEAD"],
+                    cache_ttl_seconds=30,
+                    timeout_seconds=3,
+                )
+            )
 
             if branch_result.success:
                 return branch_result.stdout.strip()
@@ -382,7 +395,12 @@ def get_current_branch() -> Optional[str]:
 
     # Fallback to direct Git command
     try:
-        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=1)
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
         if result.returncode == 0:
             return result.stdout.strip()
     except Exception:
@@ -397,12 +415,15 @@ def count_modified_files() -> int:
     if git_manager:
         try:
             from lib.git_operations_manager import GitCommand
-            status_result = git_manager.execute_git_command(GitCommand(
-                operation_type=GitOperationType.STATUS,
-                args=["status", "--porcelain"],
-                cache_ttl_seconds=5,
-                timeout_seconds=3
-            ))
+
+            status_result = git_manager.execute_git_command(
+                GitCommand(
+                    operation_type=GitOperationType.STATUS,
+                    args=["status", "--porcelain"],
+                    cache_ttl_seconds=5,
+                    timeout_seconds=3,
+                )
+            )
 
             if status_result.success:
                 return len([line for line in status_result.stdout.strip().split("\n") if line])
@@ -432,12 +453,15 @@ def count_recent_commits() -> int:
     if git_manager:
         try:
             from lib.git_operations_manager import GitCommand
-            log_result = git_manager.execute_git_command(GitCommand(
-                operation_type=GitOperationType.LOG,
-                args=["rev-list", "--since=1 hour", "HEAD"],
-                cache_ttl_seconds=60,  # Cache for 1 minute
-                timeout_seconds=5
-            ))
+
+            log_result = git_manager.execute_git_command(
+                GitCommand(
+                    operation_type=GitOperationType.LOG,
+                    args=["rev-list", "--since=1 hour", "HEAD"],
+                    cache_ttl_seconds=60,  # Cache for 1 minute
+                    timeout_seconds=5,
+                )
+            )
 
             if log_result.success:
                 commits = [line for line in log_result.stdout.strip().split("\n") if line]
@@ -449,7 +473,10 @@ def count_recent_commits() -> int:
     # Fallback to direct Git command
     try:
         result = subprocess.run(
-            ["git", "rev-list", "--since=1 hour", "HEAD"], capture_output=True, text=True, timeout=1
+            ["git", "rev-list", "--since=1 hour", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=1,
         )
         if result.returncode == 0:
             commits = [line for line in result.stdout.strip().split("\n") if line]
@@ -509,7 +536,13 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
                 # Check for backup directories
                 if item.name.endswith("-backup") or item.name.endswith("_backup") or "_backup_" in item.name:
                     suggested = suggest_moai_location(item.name, config)
-                    violations.append({"file": item.name + "/", "type": "directory", "suggested": suggested})
+                    violations.append(
+                        {
+                            "file": item.name + "/",
+                            "type": "directory",
+                            "suggested": suggested,
+                        }
+                    )
                 continue
 
             # Skip hidden files and directories
@@ -599,7 +632,7 @@ def generate_session_summary(
     return "\n".join(summary_lines)
 
 
-def execute_session_end_workflow() -> Dict[str, Any]:
+def execute_session_end_workflow() -> tuple[Dict[str, Any], str]:
     """Execute the session end workflow with proper error handling"""
     start_time = time.time()
 
@@ -625,8 +658,8 @@ def execute_session_end_workflow() -> Dict[str, Any]:
         "performance": {
             "git_manager_used": get_git_manager() is not None,
             "timeout_manager_used": get_timeout_manager() is not None,
-            "config_validator_used": get_config_validator() is not None
-        }
+            "config_validator_used": get_config_validator() is not None,
+        },
     }
 
     try:
@@ -660,7 +693,10 @@ def execute_session_end_workflow() -> Dict[str, Any]:
             violations = scan_root_violations(config)
             if violations:
                 migration_report = generate_migration_report(violations)
-                results["document_violations"] = {"count": len(violations), "violations": violations}
+                results["document_violations"] = {
+                    "count": len(violations),
+                    "violations": violations,
+                }
 
         # P1-3: Generate session summary
         session_summary = generate_session_summary(cleanup_stats, work_state, len(violations))
@@ -705,7 +741,7 @@ def main() -> None:
         retry_count=1,
         retry_delay_ms=500,
         graceful_degradation=True,
-        memory_limit_mb=150  # Higher memory limit for cleanup operations
+        memory_limit_mb=150,  # Higher memory limit for cleanup operations
     )
 
     # Use unified timeout manager if available
@@ -715,7 +751,7 @@ def main() -> None:
             results, migration_report = timeout_manager.execute_with_timeout(
                 "session_end__auto_cleanup",
                 execute_session_end_workflow,
-                config=timeout_config
+                config=timeout_config,
             )
 
             # Print results
@@ -737,7 +773,7 @@ def main() -> None:
                     "hook_id": e.hook_id,
                     "timeout_seconds": e.timeout_seconds,
                     "execution_time": e.execution_time,
-                    "will_retry": e.will_retry
+                    "will_retry": e.will_retry,
                 },
                 "graceful_degradation": True,
                 "timestamp": datetime.now().isoformat(),
@@ -754,7 +790,7 @@ def main() -> None:
                 "error_details": {
                     "error_type": type(e).__name__,
                     "message": str(e),
-                    "graceful_degradation": True
+                    "graceful_degradation": True,
                 },
                 "timestamp": datetime.now().isoformat(),
             }

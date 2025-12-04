@@ -153,8 +153,6 @@ def update(ctx: click.Context, **kwargs) -> None:
     ctx.invoke(_update, **kwargs)
 
 
-
-
 # statusline command (for Claude Code statusline rendering)
 @cli.command(name="statusline")
 def statusline() -> None:

@@ -55,8 +55,17 @@ class TestDocumentationManager(unittest.TestCase):
             "id": "SPEC-001",
             "title": "User Authentication",
             "description": "Implement secure authentication system",
-            "requirements": ["User registration with email verification", "JWT token generation and validation"],
-            "api_endpoints": [{"path": "/api/auth/login", "method": "POST", "description": "User login endpoint"}],
+            "requirements": [
+                "User registration with email verification",
+                "JWT token generation and validation",
+            ],
+            "api_endpoints": [
+                {
+                    "path": "/api/auth/login",
+                    "method": "POST",
+                    "description": "User login endpoint",
+                }
+            ],
         }
 
         result = self.doc_manager.generate_documentation_from_spec(spec_data)
@@ -112,7 +121,10 @@ class TestLanguageInitializer(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.test_dir = Path(tempfile.mkdtemp())
-        self.config = {"project": {"name": "Test Project"}, "language": {"conversation_language": "en"}}
+        self.config = {
+            "project": {"name": "Test Project"},
+            "language": {"conversation_language": "en"},
+        }
         self.lang_init = LanguageInitializer(str(self.test_dir), self.config)
 
     def tearDown(self):
@@ -174,7 +186,10 @@ def calculate_score():
     def test_language_settings_update(self):
         """Test language settings update functionality."""
 
-        updates = {"language.conversation_language": "ja", "language.agent_prompt_language": "english"}
+        updates = {
+            "language.conversation_language": "ja",
+            "language.agent_prompt_language": "english",
+        }
 
         result = self.lang_init.update_language_settings(updates)
 
@@ -271,7 +286,11 @@ Complex logic that could be simplified:
     def test_optimization_creation(self):
         """Test optimized template creation."""
 
-        options = {"backup_first": True, "apply_size_optimizations": True, "apply_performance_optimizations": True}
+        options = {
+            "backup_first": True,
+            "apply_size_optimizations": True,
+            "apply_performance_optimizations": True,
+        }
 
         result = self.template_opt.create_optimized_templates(options)
 
@@ -336,7 +355,11 @@ class TestModuleInteractions(unittest.TestCase):
         self.project.initialize_complete_project(language="ko", project_type="web_application")
 
         # Generate documentation
-        spec_data = {"id": "SPEC-001", "title": "테스트 기능", "description": "한국어 테스트 기능 구현"}
+        spec_data = {
+            "id": "SPEC-001",
+            "title": "테스트 기능",
+            "description": "한국어 테스트 기능 구현",
+        }
 
         docs_result = self.project.generate_documentation_from_spec(spec_data)
 

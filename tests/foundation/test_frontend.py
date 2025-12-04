@@ -149,7 +149,11 @@ def sample_accessibility_component():
         "color_contrast_ratio": 5.5,
         "inputs": [
             {"name": "email", "aria_label": "Email Address", "aria_required": "true"},
-            {"name": "password", "aria_label": "Password", "aria_describedby": "pwd-hint"},
+            {
+                "name": "password",
+                "aria_label": "Password",
+                "aria_describedby": "pwd-hint",
+            },
         ],
         "buttons": [
             {"aria_label": "Submit", "aria_pressed": "false"},
@@ -668,7 +672,10 @@ class TestStateManagementAdvisor:
     def test_validate_redux_design_multiple_slices(self, state_management_advisor):
         """Test validation of Redux store with multiple slices."""
         slices = {
-            "user": {"actions": ["setUser", "clearUser"], "async_thunks": ["fetchUser"]},
+            "user": {
+                "actions": ["setUser", "clearUser"],
+                "async_thunks": ["fetchUser"],
+            },
             "products": {
                 "actions": ["setProducts"],
                 "async_thunks": ["fetchProducts", "searchProducts"],
@@ -1712,7 +1719,15 @@ class TestFrontendMetricsCollector:
 
     def test_collect_metrics_timestamp_generated(self, metrics_collector):
         """Test that timestamp is automatically generated."""
-        metrics = {"lcp": 1.8, "fid": 45, "cls": 0.08, "ttfb": 100, "fcp": 1.2, "tti": 2.5, "bundle_size": 150}
+        metrics = {
+            "lcp": 1.8,
+            "fid": 45,
+            "cls": 0.08,
+            "ttfb": 100,
+            "fcp": 1.2,
+            "tti": 2.5,
+            "bundle_size": 150,
+        }
 
         result = metrics_collector.collect_metrics(metrics)
 

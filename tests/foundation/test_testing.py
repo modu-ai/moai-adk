@@ -54,7 +54,12 @@ class TestTestStatus:
 
     def test_test_status_enumeration(self):
         """Test TestStatus enumeration members."""
-        statuses = [TestStatus.PASSED, TestStatus.FAILED, TestStatus.SKIPPED, TestStatus.RUNNING]
+        statuses = [
+            TestStatus.PASSED,
+            TestStatus.FAILED,
+            TestStatus.SKIPPED,
+            TestStatus.RUNNING,
+        ]
         assert len(statuses) == 4
 
 

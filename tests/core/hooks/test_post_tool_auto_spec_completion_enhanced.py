@@ -259,7 +259,11 @@ class TestConfidenceCalculation:
     def test_confidence_complete_analysis(self):
         """Test confidence calculation with complete analysis"""
         hook = PostToolAutoSpecCompletion()
-        analysis = {"structure_score": 0.9, "domain_accuracy": 0.8, "documentation_level": 0.7}
+        analysis = {
+            "structure_score": 0.9,
+            "domain_accuracy": 0.8,
+            "documentation_level": 0.7,
+        }
 
         confidence = hook.calculate_completion_confidence(analysis)
 
@@ -285,12 +289,20 @@ class TestConfidenceCalculation:
         hook = PostToolAutoSpecCompletion()
 
         # Test upper bound
-        analysis = {"structure_score": 1.5, "domain_accuracy": 1.5, "documentation_level": 1.5}
+        analysis = {
+            "structure_score": 1.5,
+            "domain_accuracy": 1.5,
+            "documentation_level": 1.5,
+        }
         confidence = hook.calculate_completion_confidence(analysis)
         assert confidence <= 1.0
 
         # Test lower bound
-        analysis = {"structure_score": -0.5, "domain_accuracy": -0.5, "documentation_level": -0.5}
+        analysis = {
+            "structure_score": -0.5,
+            "domain_accuracy": -0.5,
+            "documentation_level": -0.5,
+        }
         confidence = hook.calculate_completion_confidence(analysis)
         assert confidence >= 0.0
 
@@ -444,7 +456,11 @@ class TestSpecFileCreation:
     def test_create_spec_files(self, tmp_path):
         """Test creating SPEC files on disk"""
         hook = PostToolAutoSpecCompletion()
-        content = {"spec_md": "spec content", "plan_md": "plan content", "acceptance_md": "acceptance content"}
+        content = {
+            "spec_md": "spec content",
+            "plan_md": "plan content",
+            "acceptance_md": "acceptance content",
+        }
 
         result = hook.create_spec_files("TEST-001", content, str(tmp_path))
 
@@ -507,5 +523,10 @@ class TestExecuteHook:
 
 if __name__ == "__main__":
     pytest.main(
-        [__file__, "-v", "--cov=moai_adk.core.hooks.post_tool_auto_spec_completion", "--cov-report=term-missing"]
+        [
+            __file__,
+            "-v",
+            "--cov=moai_adk.core.hooks.post_tool_auto_spec_completion",
+            "--cov-report=term-missing",
+        ]
     )

@@ -292,7 +292,11 @@ def get_git_info(cwd: str) -> dict[str, Any]:
             "last_commit": last_commit,
         }
 
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+    except (
+        subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+    ):
         return {}
 
 
@@ -479,7 +483,11 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         if "cache_ttl_hours" in version_check_config:
             cache_ttl_hours = version_check_config["cache_ttl_hours"]
 
-        return {"enabled": enabled, "frequency": frequency, "cache_ttl_hours": cache_ttl_hours}
+        return {
+            "enabled": enabled,
+            "frequency": frequency,
+            "cache_ttl_hours": cache_ttl_hours,
+        }
 
     except (OSError, json.JSONDecodeError, KeyError):
         # Config read or parse error - return defaults

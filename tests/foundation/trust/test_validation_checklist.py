@@ -979,7 +979,10 @@ class TestChecklistItemExecution:
         """Test that item status is updated after execution."""
         validation_checklist._execute_checklist_item(str(temp_project_dir), sample_checklist_item)
 
-        assert sample_checklist_item.status in [ChecklistStatus.PASS, ChecklistStatus.FAIL]
+        assert sample_checklist_item.status in [
+            ChecklistStatus.PASS,
+            ChecklistStatus.FAIL,
+        ]
 
     def test_execute_checklist_item_with_error_handling(self, validation_checklist, temp_project_dir):
         """Test error handling in checklist item execution."""

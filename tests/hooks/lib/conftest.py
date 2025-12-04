@@ -22,7 +22,12 @@ def valid_config_file(temp_config_dir):
             "timeout_ms": 5000,
             "minimum_timeout_seconds": 1,
             "graceful_degradation": True,
-            "exit_codes": {"success": 0, "error": 1, "critical_error": 2, "config_error": 3},
+            "exit_codes": {
+                "success": 0,
+                "error": 1,
+                "critical_error": 2,
+                "config_error": 3,
+            },
             "messages": {
                 "timeout": {
                     "post_tool_use": "⚠️ PostToolUse timeout",
@@ -30,7 +35,11 @@ def valid_config_file(temp_config_dir):
                     "session_start": "⚠️ Session start timeout",
                 }
             },
-            "cache": {"directory": ".moai/cache", "version_ttl_seconds": 1800, "git_ttl_seconds": 10},
+            "cache": {
+                "directory": ".moai/cache",
+                "version_ttl_seconds": 1800,
+                "git_ttl_seconds": 10,
+            },
             "git": {"timeout_seconds": 2},
         },
         "language": {"conversation_language": "en"},

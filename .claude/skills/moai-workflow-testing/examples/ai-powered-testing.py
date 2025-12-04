@@ -7,7 +7,7 @@ import asyncio
 import json
 from typing import Dict, List, Optional
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, expect, sync_playwright
 
 
 class AITestGenerator:
@@ -33,7 +33,11 @@ class AITestGenerator:
             if text:
                 # Generate robust selector
                 selector = f"button:has-text('{text.strip()}')"
-                smart_selectors[f"button_{i}"] = {"selector": selector, "text": text.strip(), "type": "button"}
+                smart_selectors[f"button_{i}"] = {
+                    "selector": selector,
+                    "text": text.strip(),
+                    "type": "button",
+                }
 
         return smart_selectors
 
@@ -95,7 +99,10 @@ class Context7TestEnhancer:
             },
             "cross_browser": {
                 "browsers": ["chromium", "firefox", "webkit"],
-                "viewports": [{"width": 1920, "height": 1080}, {"width": 375, "height": 667}],
+                "viewports": [
+                    {"width": 1920, "height": 1080},
+                    {"width": 375, "height": 667},
+                ],
                 "devices": ["Desktop Chrome", "iPhone 12"],
             },
             "performance_testing": {
@@ -112,9 +119,17 @@ class Context7TestEnhancer:
         enhanced_config = test_config.copy()
 
         # Apply Context7 patterns
-        enhanced_config["screenshot_options"] = {"full_page": True, "animations": "disabled", "caret": "hide"}
+        enhanced_config["screenshot_options"] = {
+            "full_page": True,
+            "animations": "disabled",
+            "caret": "hide",
+        }
 
-        enhanced_config["wait_strategies"] = {"networkidle": True, "element_visible": True, "timeout": 10000}
+        enhanced_config["wait_strategies"] = {
+            "networkidle": True,
+            "element_visible": True,
+            "timeout": 10000,
+        }
 
         return enhanced_config
 
@@ -214,12 +229,16 @@ class CrossBrowserOrchestrator:
         try:
             expect(page.locator("h1")).to_be_visible()
             assertions_passed += 1
-        except:
+        except Exception:
             pass
 
         execution_time = time.time() - start_time
 
-        return {"time": execution_time, "assertions": f"{assertions_passed}/{assertions_total}", "issues": []}
+        return {
+            "time": execution_time,
+            "assertions": f"{assertions_passed}/{assertions_total}",
+            "issues": [],
+        }
 
 
 # Example usage and integration

@@ -122,6 +122,7 @@ class Alert:
     context: Dict[str, Any] = field(default_factory=dict)
     affected_services: List[str] = field(default_factory=list)
     recovery_actions: List[str] = field(default_factory=list)
+    tenant_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
@@ -140,7 +141,7 @@ class Alert:
             "resolved": self.resolved,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
             "acknowledged": self.acknowledged,
-            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "acknowledged_at": (self.acknowledged_at.isoformat() if self.acknowledged_at else None),
             "correlation_id": self.correlation_id,
             "context": self.context,
             "affected_services": self.affected_services,
@@ -288,12 +289,11 @@ class MetricsCollector:
         """Get metrics with comprehensive filtering"""
         with self._lock:
             # Choose the right metrics source
+            source_metrics: List[MetricData] = []
             if tenant_id:
-                source_metrics = []
                 for buffer in self.tenant_metrics.get(tenant_id, {}).values():
                     source_metrics.extend(buffer)
             else:
-                source_metrics = []
                 for buffer in self.metrics_buffer.values():
                     source_metrics.extend(buffer)
 
@@ -340,11 +340,11 @@ class MetricsCollector:
 
             # Choose the right aggregated metrics
             if tenant_id:
-                agg = {}
+                agg: Dict[str, Any] = {}
                 # Calculate tenant-specific stats
                 tenant_metrics = self.get_metrics(metric_type, component, tenant_id)
                 if tenant_metrics:
-                    values = [m.value for m in tenant_metrics if isinstance(m.value, (int, float))]
+                    values: List[float] = [float(m.value) for m in tenant_metrics if isinstance(m.value, (int, float))]
                     if values:
                         agg = {
                             "count": len(values),
@@ -352,7 +352,7 @@ class MetricsCollector:
                             "median": statistics.median(values),
                             "min": min(values),
                             "max": max(values),
-                            "std_dev": statistics.stdev(values) if len(values) > 1 else 0,
+                            "std_dev": (statistics.stdev(values) if len(values) > 1 else 0),
                             "p95": self._percentile(values, 95),
                             "p99": self._percentile(values, 99),
                         }
@@ -360,10 +360,18 @@ class MetricsCollector:
                 agg = self.aggregated_metrics.get(key, {})
 
             if not agg or agg.get("count", 0) == 0:
-                return {"count": 0, "average": None, "min": None, "max": None, "median": None, "std_dev": None}
+                return {
+                    "count": 0,
+                    "average": None,
+                    "min": None,
+                    "max": None,
+                    "median": None,
+                    "std_dev": None,
+                }
 
-            values = agg.get("values", [])
-            if not values:
+            agg_values_raw = agg.get("values", [])
+            values_list: List[float] = agg_values_raw if isinstance(agg_values_raw, list) else []
+            if not values_list:
                 return {
                     "count": agg.get("count", 0),
                     "average": agg.get("sum", 0) / max(agg.get("count", 1), 1),
@@ -376,28 +384,33 @@ class MetricsCollector:
                 }
 
             try:
+                last_updated_raw = agg.get("last_updated", datetime.now())
+                if isinstance(last_updated_raw, datetime):
+                    last_updated_str = last_updated_raw.isoformat()
+                else:
+                    last_updated_str = datetime.now().isoformat()
                 return {
-                    "count": len(values),
-                    "average": statistics.mean(values),
-                    "median": statistics.median(values),
-                    "min": min(values),
-                    "max": max(values),
-                    "std_dev": statistics.stdev(values) if len(values) > 1 else 0,
-                    "p95": self._percentile(values, 95),
-                    "p99": self._percentile(values, 99),
-                    "last_updated": agg.get("last_updated", datetime.now()).isoformat(),
+                    "count": len(values_list),
+                    "average": statistics.mean(values_list),
+                    "median": statistics.median(values_list),
+                    "min": min(values_list),
+                    "max": max(values_list),
+                    "std_dev": (statistics.stdev(values_list) if len(values_list) > 1 else 0),
+                    "p95": self._percentile(values_list, 95),
+                    "p99": self._percentile(values_list, 99),
+                    "last_updated": last_updated_str,
                 }
             except (statistics.StatisticsError, IndexError):
                 return {
-                    "count": len(values),
-                    "average": statistics.mean(values),
-                    "median": statistics.median(values),
-                    "min": min(values),
-                    "max": max(values),
+                    "count": len(values_list),
+                    "average": statistics.mean(values_list),
+                    "median": statistics.median(values_list),
+                    "min": min(values_list),
+                    "max": max(values_list),
                     "std_dev": 0,
-                    "p95": max(values),
-                    "p99": max(values),
-                    "last_updated": agg.get("last_updated", datetime.now()).isoformat(),
+                    "p95": max(values_list),
+                    "p99": max(values_list),
+                    "last_updated": datetime.now().isoformat(),
                 }
 
     def _percentile(self, values: List[float], percentile: int) -> float:
@@ -664,12 +677,12 @@ class AlertManager:
         alerts = self.get_alert_history(hours, tenant_id)
 
         # Count by severity
-        by_severity = defaultdict(int)
-        by_component = defaultdict(int)
-        by_hour = defaultdict(int)
+        by_severity: Dict[str, int] = defaultdict(int)
+        by_component: Dict[str, int] = defaultdict(int)
+        by_hour: Dict[str, int] = defaultdict(int)
 
         for alert in alerts:
-            by_severity[alert.severity.value] += 1
+            by_severity[str(alert.severity.value)] += 1
             by_component[alert.component] += 1
             hour_key = alert.timestamp.strftime("%Y-%m-%d %H:00")
             by_hour[hour_key] += 1
@@ -750,7 +763,7 @@ class DashboardManager:
     ) -> List[Dashboard]:
         """List dashboards with filtering"""
         with self._lock:
-            dashboards = []
+            dashboards: List[Dashboard] = []
 
             # Collect dashboards
             if tenant_id:
@@ -1085,7 +1098,7 @@ class RealtimeMonitoringDashboard:
                     try:
                         # Close connection
                         pass  # Implementation depends on WebSocket library
-                    except:
+                    except Exception:
                         pass
                 self.websocket_connections.clear()
 
@@ -1096,6 +1109,7 @@ class RealtimeMonitoringDashboard:
 
     def _start_background_monitoring(self) -> None:
         """Start background metrics collection"""
+
         def monitor_loop():
             while self._running:
                 try:
@@ -1110,6 +1124,7 @@ class RealtimeMonitoringDashboard:
 
     def _start_alert_monitoring(self) -> None:
         """Start alert checking"""
+
         def alert_loop():
             while self._running:
                 try:
@@ -1163,7 +1178,6 @@ class RealtimeMonitoringDashboard:
     def _collect_system_metrics(self) -> None:
         """Collect system performance metrics"""
         try:
-
             import psutil
 
             # CPU Usage
@@ -1172,7 +1186,7 @@ class RealtimeMonitoringDashboard:
                 MetricType.CPU_USAGE,
                 cpu_percent,
                 tags={"component": "system"},
-                source="psutil"
+                source="psutil",
             )
 
             # Memory Usage
@@ -1181,7 +1195,7 @@ class RealtimeMonitoringDashboard:
                 MetricType.MEMORY_USAGE,
                 memory.percent,
                 tags={"component": "system"},
-                source="psutil"
+                source="psutil",
             )
 
             # Python process memory
@@ -1191,7 +1205,7 @@ class RealtimeMonitoringDashboard:
                 MetricType.MEMORY_USAGE,
                 process_memory.rss / (1024**2),  # MB
                 tags={"component": "python_process"},
-                source="psutil"
+                source="psutil",
             )
 
             # System load
@@ -1201,7 +1215,7 @@ class RealtimeMonitoringDashboard:
                     MetricType.SYSTEM_PERFORMANCE,
                     load_avg[0],  # 1-minute load average
                     tags={"component": "system", "metric": "load_1min"},
-                    source="psutil"
+                    source="psutil",
                 )
             except (AttributeError, OSError):
                 pass  # Not available on all systems
@@ -1265,9 +1279,7 @@ class RealtimeMonitoringDashboard:
             widgets_data = {}
             for widget in dashboard.widgets:
                 try:
-                    widget_data = self._get_widget_data(
-                        widget, start_time, end_time, tenant_id, filters
-                    )
+                    widget_data = self._get_widget_data(widget, start_time, end_time, tenant_id, filters)
                     widgets_data[widget.widget_id] = widget_data
                 except Exception as e:
                     logger.error(f"Error getting data for widget {widget.widget_id}: {e}")
@@ -1321,11 +1333,7 @@ class RealtimeMonitoringDashboard:
         else:
             return {"error": f"Unknown metric: {metric_name}"}
 
-        recent_metrics = self.metrics_collector.get_metrics(
-            metric_type=metric_type,
-            tenant_id=tenant_id,
-            limit=1
-        )
+        recent_metrics = self.metrics_collector.get_metrics(metric_type=metric_type, tenant_id=tenant_id, limit=1)
 
         if not recent_metrics:
             return {"value": 0, "status": "no_data"}
@@ -1374,20 +1382,24 @@ class RealtimeMonitoringDashboard:
                     tenant_id=tenant_id,
                     start_time=start_time,
                     end_time=end_time,
-                    limit=100
+                    limit=100,
                 )
 
                 series_data = []
                 for metric in metric_data:
-                    series_data.append({
-                        "timestamp": metric.timestamp.isoformat(),
-                        "value": metric.value,
-                    })
+                    series_data.append(
+                        {
+                            "timestamp": metric.timestamp.isoformat(),
+                            "value": metric.value,
+                        }
+                    )
 
-                chart_data["data"].append({
-                    "name": metric_name,
-                    "series": series_data,
-                })
+                chart_data["data"].append(
+                    {
+                        "name": metric_name,
+                        "series": series_data,
+                    }
+                )
 
         return chart_data
 
@@ -1401,23 +1413,30 @@ class RealtimeMonitoringDashboard:
     ) -> Dict[str, Any]:
         """Get data for table widget"""
         if widget.widget_id == "alert_table":
-            alerts = self.alert_manager.get_alert_history(
-                hours=24, tenant_id=tenant_id
-            )
+            alerts = self.alert_manager.get_alert_history(hours=24, tenant_id=tenant_id)
 
             table_data = []
             for alert in alerts:
-                table_data.append({
-                    "timestamp": alert.timestamp.isoformat(),
-                    "severity": alert.severity.value,
-                    "title": alert.title,
-                    "description": alert.description,
-                    "component": alert.component,
-                    "resolved": alert.resolved,
-                })
+                table_data.append(
+                    {
+                        "timestamp": alert.timestamp.isoformat(),
+                        "severity": alert.severity.value,
+                        "title": alert.title,
+                        "description": alert.description,
+                        "component": alert.component,
+                        "resolved": alert.resolved,
+                    }
+                )
 
             return {
-                "columns": ["timestamp", "severity", "title", "description", "component", "resolved"],
+                "columns": [
+                    "timestamp",
+                    "severity",
+                    "title",
+                    "description",
+                    "component",
+                    "resolved",
+                ],
                 "data": table_data,
             }
 
@@ -1430,8 +1449,7 @@ class RealtimeMonitoringDashboard:
         return {
             "active_count": len(active_alerts),
             "severity_breakdown": {
-                severity.value: len([a for a in active_alerts if a.severity == severity])
-                for severity in AlertSeverity
+                severity.value: len([a for a in active_alerts if a.severity == severity]) for severity in AlertSeverity
             },
             "recent_alerts": [
                 {
@@ -1466,7 +1484,7 @@ class RealtimeMonitoringDashboard:
         if not self.enable_websocket:
             return
 
-        message = {
+        {
             "type": "alert",
             "data": alert.to_dict(),
             "timestamp": datetime.now().isoformat(),
@@ -1622,21 +1640,21 @@ if __name__ == "__main__":
                     MetricType.CPU_USAGE,
                     20 + (i % 80),  # CPU usage from 20% to 100%
                     tags={"component": "system", "instance": "demo"},
-                    source="demo"
+                    source="demo",
                 )
 
                 dashboard.add_metric(
                     MetricType.MEMORY_USAGE,
                     30 + (i % 70),  # Memory usage from 30% to 100%
                     tags={"component": "system"},
-                    source="demo"
+                    source="demo",
                 )
 
                 dashboard.add_hook_metric(
                     f"test_hook_{i % 5}.py",
                     100 + (i * 50),  # Execution time from 100ms to 1000ms
                     i % 4 != 0,  # 75% success rate
-                    tenant_id="demo_tenant" if i % 2 == 0 else None
+                    tenant_id="demo_tenant" if i % 2 == 0 else None,
                 )
 
                 await asyncio.sleep(0.1)
@@ -1665,8 +1683,14 @@ if __name__ == "__main__":
             cpu_stats = dashboard.metrics_collector.get_statistics(MetricType.CPU_USAGE, minutes=10)
             memory_stats = dashboard.metrics_collector.get_statistics(MetricType.MEMORY_USAGE, minutes=10)
             print("\n📈 Metrics Statistics (last 10 minutes):")
-            print(f"  CPU Usage - Avg: {cpu_stats.get('average', 0):.1f}%, Max: {cpu_stats.get('max', 0):.1f}%, Count: {cpu_stats.get('count', 0)}")
-            print(f"  Memory Usage - Avg: {memory_stats.get('average', 0):.1f}%, Max: {memory_stats.get('max', 0):.1f}%, Count: {memory_stats.get('count', 0)}")
+            cpu_avg = cpu_stats.get("average", 0)
+            cpu_max = cpu_stats.get("max", 0)
+            cpu_count = cpu_stats.get("count", 0)
+            print(f"  CPU Usage - Avg: {cpu_avg:.1f}%, Max: {cpu_max:.1f}%, Count: {cpu_count}")
+            mem_avg = memory_stats.get("average", 0)
+            mem_max = memory_stats.get("max", 0)
+            mem_count = memory_stats.get("count", 0)
+            print(f"  Memory Usage - Avg: {mem_avg:.1f}%, Max: {mem_max:.1f}%, Count: {mem_count}")
 
             # Get alert statistics
             alert_stats = dashboard.alert_manager.get_alert_statistics(hours=1)
@@ -1687,6 +1711,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"\n❌ Demo failed: {str(e)}")
             import traceback
+
             traceback.print_exc()
 
         finally:

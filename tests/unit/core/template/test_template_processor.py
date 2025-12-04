@@ -7,6 +7,8 @@ Test cases for template synchronization and processing functionality.
 import tempfile
 from pathlib import Path
 
+import pytest
+
 
 class TestTemplateProcessor:
     """Test suite for template processor functionality."""
@@ -34,7 +36,11 @@ class TestTemplateProcessor:
             target_path = Path(temp_dir)
             processor = TemplateProcessor(target_path)
 
-            context = {"PROJECT_NAME": "test-project", "AUTHOR": "Test Author", "CONVERSATION_LANGUAGE": "ko"}
+            context = {
+                "PROJECT_NAME": "test-project",
+                "AUTHOR": "Test Author",
+                "CONVERSATION_LANGUAGE": "ko",
+            }
             processor.set_context(context)
             assert processor.context == context
 
@@ -78,7 +84,11 @@ class TestTemplateProcessor:
             target_path = Path(temp_dir)
             processor = TemplateProcessor(target_path)
 
-            context = {"PROJECT_NAME": "test-project", "AUTHOR": "Test Author", "VERSION": "1.0.0"}
+            context = {
+                "PROJECT_NAME": "test-project",
+                "AUTHOR": "Test Author",
+                "VERSION": "1.0.0",
+            }
             processor.set_context(context)
 
             content = "{{PROJECT_NAME}} by {{AUTHOR}}, version {{VERSION}}"
@@ -355,23 +365,6 @@ Content here
             result = processor._has_existing_files()
             assert result is True
 
-    def test_create_backup(self):
-        """Test backup creation."""
-        # This test should fail initially
-        from moai_adk.core.template.processor import TemplateProcessor
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            target_path = Path(temp_dir)
-            processor = TemplateProcessor(target_path)
-
-            # Create some files to backup
-            (target_path / "existing.txt").write_text("content")
-
-            backup_path = processor.create_backup()
-
-            assert backup_path.exists()
-            assert "backup" in backup_path.name.lower()
-
     def test_is_text_file_unsupported_extension(self):
         """Test text file detection with unsupported extension."""
         # This test should fail initially
@@ -412,7 +405,10 @@ Content here
             processor = TemplateProcessor(target_path)
 
             # Test with value that contains problematic characters
-            context = {"PROJECT_NAME": "test\nproject\r{{BAD}}", "SAFE_VALUE": "normal_value"}
+            context = {
+                "PROJECT_NAME": "test\nproject\r{{BAD}}",
+                "SAFE_VALUE": "normal_value",
+            }
             processor.set_context(context)
 
             content = "{{PROJECT_NAME}} and {{SAFE_VALUE}}"

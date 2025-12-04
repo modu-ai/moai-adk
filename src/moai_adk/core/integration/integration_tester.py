@@ -120,7 +120,11 @@ class IntegrationTester:
         for test_case_name in test_suite.test_cases:
             # This is a simplified implementation
             # In practice, you would map test case names to actual test functions
-            result = self.run_test(placeholder_test, test_case_name, [c.name for c in test_suite.components])
+            result = self.run_test(
+                placeholder_test,
+                test_case_name,
+                [c.name for c in test_suite.components],
+            )
             results.append(result)
 
         return results

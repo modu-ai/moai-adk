@@ -50,13 +50,22 @@ Phase 1: Task(subagent_type="manager-quality")
 Output: Issue created with link
 ```
 
-### Key Principle: Zero Direct Tool Usage
+### Key Principle: Full Delegation Pattern
 
-This command uses ONLY these tools:
+This command exclusively uses these tools:
 
--  Task() for agent delegation
--  AskUserQuestion() for user interaction (delegated to agent)
--  No Bash (delegated to agent)
+- [HARD] Task() for agent delegation
+  WHY: Task orchestration ensures feedback collection responsibility lies with specialized agents
+  IMPACT: Direct tool usage bypasses quality assurance and agent expertise
+
+- [HARD] AskUserQuestion() for user interaction AT COMMAND LEVEL ONLY
+  WHY: Subagents via Task() are stateless and cannot interact with users directly
+  IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
+  CORRECT: Command collects feedback type and details, passes to agent as parameters
+
+- [HARD] Delegate all Bash operations to manager-quality agent
+  WHY: Agent context ensures proper error handling and feedback capture
+  IMPACT: Direct Bash execution loses feedback traceability and error context
 
 ---
 
@@ -65,6 +74,54 @@ This command uses ONLY these tools:
 | Agent/Skill     | Purpose                                       |
 | --------------- | --------------------------------------------- |
 | manager-quality | Feedback collection and GitHub issue creation |
+
+---
+
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining ✅
+
+Command implements simple sequential execution through 2 phases:
+
+Phase Flow:
+- Phase 1: Feedback Collection (manager-quality analyzes type and collects details)
+- Phase 2: GitHub Issue Creation (manager-quality creates issue with collected information)
+
+Each phase receives outputs from previous phase as context.
+
+WHY: Sequential execution ensures complete feedback capture before submission
+- Phase 2 requires validated feedback details from Phase 1
+- Issue creation requires all user input to be collected
+
+IMPACT: Skipping Phase 1 would create incomplete GitHub issues
+
+### Parallel Execution ❌
+
+Not applicable - simple linear workflow
+
+WHY: Feedback workflow has minimal complexity
+- Only one agent (manager-quality) handles entire process
+- Single feedback submission at a time
+- No independent operations to parallelize
+
+IMPACT: Parallel execution unnecessary for single-agent linear workflow
+
+### Resumable Agent Support ❌
+
+Not applicable - command completes in single execution
+
+WHY: Feedback submission is fast atomic operation
+- Typical execution completes in under 30 seconds
+- GitHub API calls are atomic and fast
+- No long-running processes requiring checkpoints
+
+IMPACT: Resume pattern unnecessary for simple feedback workflows
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
 
 ---
 
@@ -85,43 +142,87 @@ Instructions:
 
 1. Determine Feedback Type:
 
-   - If $ARGUMENTS is provided, use it.
-   - If not, ask user to select type:
-     - Bug Report
-     - Feature Request
-     - Question/Other
+   [HARD] Resolve feedback type from $ARGUMENTS if provided
+   WHY: Pre-specified type accelerates feedback collection
+   IMPACT: Skipping argument check forces unnecessary user interaction
+
+   [HARD] Prompt user to select type when $ARGUMENTS is empty
+   WHY: Interactive selection ensures proper categorization
+   IMPACT: Assuming default type may misclassify feedback
+
+   Supported Feedback Types:
+   - Bug Report: Technical issues or errors
+   - Feature Request: Suggestions for improvements
+   - Question/Other: Clarifications or general feedback
 
 2. Collect Details:
 
-   - Ask for 'Title' (short summary)
-   - Ask for 'Description' (detailed explanation)
-   - Ask for 'Priority' (Low/Medium/High)
+   [HARD] Solicit feedback title from user
+   WHY: Title establishes feedback summary for issue search and triage
+   IMPACT: Missing title reduces issue discoverability
+
+   [HARD] Solicit detailed description from user
+   WHY: Description provides context for developers to understand and respond
+   IMPACT: Vague descriptions create follow-up communication overhead
+
+   [SOFT] Solicit priority level from user (Low/Medium/High)
+   WHY: Priority directs team resource allocation
+   IMPACT: Missing priority defaults to normal urgency
 
 3. Create GitHub Issue:
 
-   - Use appropriate tools with GitHub CLI (`gh issue create`) to submit.
-   - Add appropriate labels (bug, enhancement, question) via `--label` flag.
-   - Format the body with standard templates.
+   [HARD] Execute GitHub CLI (gh issue create) command with collected feedback
+   WHY: GitHub integration ensures feedback enters official issue tracking system
+   IMPACT: Untracked feedback is lost to follow-up and implementation
+
+   [HARD] Apply appropriate labels based on feedback type
+   WHY: Labels enable automated triage and dashboard organization
+   IMPACT: Untagged issues are invisible to responsible team members
+
+   [SOFT] Format issue body using consistent template
+   WHY: Standardized templates improve issue clarity and consistency
+   IMPACT: Inconsistent formatting wastes developer time parsing issues
 
 4. Report Result:
-   - Show the created issue URL.
-   - Confirm success to the user.
+   [HARD] Provide user with created issue URL
+   WHY: Direct issue link enables immediate user access and tracking
+   IMPACT: Missing link requires users to manually search for their feedback
 
-Important:
+   [HARD] Confirm successful feedback submission to user
+   WHY: Confirmation provides closure and acknowledgment of user contribution
+   IMPACT: Silent completion leaves user uncertain about feedback status
 
-- Use conversation_language for all user interactions.
-- NO EMOJIS in AskUserQuestion options.
+Language and Accessibility:
+
+- [HARD] Use conversation_language for all user-facing interactions
+  WHY: User language ensures comprehension and accessibility
+  IMPACT: Wrong language creates friction and reduces usability
+
+- [HARD] Provide text-based options in AskUserQuestion (exclude emojis)
+  WHY: Text options ensure consistency across all platforms and locales
+  IMPACT: Emoji options are platform-dependent and may not display correctly
 
 ---
 
-##  Summary: Your Execution Checklist
+##  Summary: Execution Verification Checklist
 
-Before you consider this command complete, verify:
+Before considering command execution complete, verify all requirements:
 
-- [ ] Agent Called: `manager-quality` agent was invoked.
-- [ ] Feedback Collected: User was asked for details.
-- [ ] Issue Created: GitHub issue was successfully created.
-- [ ] Link Provided: User received the issue URL.
+- [HARD] Agent Invoked: manager-quality agent executed with feedback details
+  Verification: Confirm agent Task() call with feedback context
+  Acceptance Criteria: Agent response confirms feedback reception
+
+- [HARD] Feedback Collected: User provided title, description, and type
+  Verification: Confirm all required fields captured
+  Acceptance Criteria: No empty or null feedback fields
+
+- [HARD] Issue Created: GitHub issue successfully submitted to repository
+  Verification: Confirm gh issue create command executed successfully
+  Acceptance Criteria: GitHub API response contains issue ID and URL
+
+- [HARD] Link Provided: User received direct URL to created issue
+  Verification: Confirm issue URL displayed in user response
+  Acceptance Criteria: User can click URL and access their feedback immediately
 
 ---
 
@@ -151,39 +252,57 @@ Architecture: Commands → Agents → Skills (Complete delegation)
 
 ---
 
-## Final Step: Next Action Selection
+## Output Format
 
-After feedback submission completes, use AskUserQuestion tool to guide user to next action:
+Structure agent responses with semantic sections for clarity and consistency:
 
-```python
-AskUserQuestion({
-    "questions": [{
-        "question": "Feedback submitted successfully. What would you like to do next?",
-        "header": "Next Steps",
-        "multiSelect": false,
-        "options": [
-            {
-                "label": "Continue Development",
-                "description": "Return to current workflow"
-            },
-            {
-                "label": "Submit Another Feedback",
-                "description": "Report another issue or suggestion"
-            },
-            {
-                "label": "View Issue",
-                "description": "Open created GitHub issue in browser"
-            }
-        ]
-    }]
-})
-```
+Response Structure:
 
-Important:
+The agent response must include these sections:
 
-- Use conversation language from config
-- No emojis in any AskUserQuestion fields
-- Always provide clear next step options
+Feedback Summary:
+Concise recap of feedback type, title, and key points submitted
+
+GitHub Integration:
+Confirmation that feedback was submitted to GitHub with issue URL and ID
+
+User Language:
+Response provided in user's conversation_language configuration
+
+Next Actions:
+Clear options for user to continue workflow or submit additional feedback
+
+WHY: Semantic structure ensures consistent response quality and user experience
+IMPACT: Unstructured responses create ambiguity and require user clarification
+
+---
+
+## Post-Submission User Direction
+
+After successful feedback submission, present user with next action options:
+
+[HARD] Display post-submission summary to user
+WHY: Summary confirms successful completion and provides issue reference
+IMPACT: Missing summary leaves user uncertain about submission status
+
+[SOFT] Offer user next step choices via AskUserQuestion
+WHY: Guided choices help users continue productive workflows
+IMPACT: Abrupt completion requires user to determine next actions
+
+Next Step Options:
+- Continue Development: Return to current development workflow
+- Submit Additional Feedback: Report another issue or suggestion
+- View Issue: Open created GitHub issue in browser
+
+Requirements:
+
+- [HARD] Use conversation_language for all post-submission messaging
+  WHY: Consistent language maintains user context
+  IMPACT: Language switching disorients users
+
+- [HARD] Express all options as text labels without emoji characters
+  WHY: Text-only labels ensure universal platform compatibility
+  IMPACT: Emojis may fail to display across different systems
 
 ---
 

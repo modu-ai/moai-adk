@@ -1314,7 +1314,13 @@ class TestIntegrationScenarios:
         """Test save-load file I/O roundtrip."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "data.toon"
-            original = {"config": {"debug": True, "port": 8080, "hosts": ["localhost", "127.0.0.1"]}}
+            original = {
+                "config": {
+                    "debug": True,
+                    "port": 8080,
+                    "hosts": ["localhost", "127.0.0.1"],
+                }
+            }
 
             # Save
             toon_save(original, path)

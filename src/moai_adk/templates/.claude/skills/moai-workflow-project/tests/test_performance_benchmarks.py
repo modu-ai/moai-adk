@@ -108,7 +108,11 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             "description": "Testing documentation generation performance",
             "requirements": [f"Requirement {i}" for i in range(50)],  # Large requirement list
             "api_endpoints": [
-                {"path": f"/api/endpoint/{i}", "method": "POST", "description": f"Test endpoint {i}"}
+                {
+                    "path": f"/api/endpoint/{i}",
+                    "method": "POST",
+                    "description": f"Test endpoint {i}",
+                }
                 for i in range(20)  # 20 endpoints
             ],
         }
@@ -192,7 +196,10 @@ Complex logic:
 
         # Create multiple language variations
         korean_files = [
-            ("korean_module.py", "# 한국어 모듈\\ndef calculate():\\n    # 계산 함수\\n    return 100"),
+            (
+                "korean_module.py",
+                "# 한국어 모듈\\ndef calculate():\\n    # 계산 함수\\n    return 100",
+            ),
             ("korean_readme.md", "# 한국어 프로젝트\\n이것은 테스트 프로젝트입니다"),
         ]
 
@@ -217,7 +224,7 @@ Complex logic:
         """Test memory usage during operations."""
 
         try:
-            import gc
+            import gc  # noqa: F401 - memory profiling availability check
 
             import psutil
 
@@ -238,7 +245,7 @@ Complex logic:
                     {
                         "path": f"/api/endpoint/{i}",
                         "method": "POST",
-                        "description": f"Test endpoint {i} with large content {"x" * 100}",
+                        "description": f"Test endpoint {i} with large content {'x' * 100}",
                     }
                     for i in range(100)
                 ],
@@ -291,7 +298,11 @@ Complex logic:
         self.assertTrue(all(result["success"] for result in results))
 
         # Performance assertions
-        self.assertLess(concurrent_time, 20.0, "5 concurrent operations should complete within 20 seconds")
+        self.assertLess(
+            concurrent_time,
+            20.0,
+            "5 concurrent operations should complete within 20 seconds",
+        )
 
         print(f"✅ 5 concurrent operations completed in {concurrent_time:.2f} seconds")
 
@@ -366,7 +377,11 @@ Complex structure:
         self.performance_results["templates_analyzed"] = len(analysis_result.get("analyzed_files", []))
 
         # Performance assertions
-        self.assertLess(total_time, 30.0, "Large project operations should complete within 30 seconds")
+        self.assertLess(
+            total_time,
+            30.0,
+            "Large project operations should complete within 30 seconds",
+        )
         self.assertTrue(init_result["success"])
         self.assertTrue(analysis_result["success"])
         self.assertTrue(opt_result["success"])

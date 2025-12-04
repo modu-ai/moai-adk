@@ -67,9 +67,24 @@ class LanguageVersionManager:
             "tier": "Tier 1",
             "deprecated_versions": ["2.7", "3.9"],
         },
-        "TypeScript": {"min_version": "4.5", "current": "5.9", "tier": "Tier 1", "deprecated_versions": []},
-        "Go": {"min_version": "1.20", "current": "1.23", "tier": "Tier 1", "deprecated_versions": ["1.19"]},
-        "Rust": {"min_version": "1.70", "current": "1.77", "tier": "Tier 1", "deprecated_versions": []},
+        "TypeScript": {
+            "min_version": "4.5",
+            "current": "5.9",
+            "tier": "Tier 1",
+            "deprecated_versions": [],
+        },
+        "Go": {
+            "min_version": "1.20",
+            "current": "1.23",
+            "tier": "Tier 1",
+            "deprecated_versions": ["1.19"],
+        },
+        "Rust": {
+            "min_version": "1.70",
+            "current": "1.77",
+            "tier": "Tier 1",
+            "deprecated_versions": [],
+        },
         "Java": {
             "min_version": "11",
             "current": "23",
@@ -77,15 +92,30 @@ class LanguageVersionManager:
             "tier": "Tier 2",
             "deprecated_versions": ["8", "9", "10"],
         },
-        "C#": {"min_version": "11", "current": "12", "tier": "Tier 2", "deprecated_versions": ["7", "8"]},
+        "C#": {
+            "min_version": "11",
+            "current": "12",
+            "tier": "Tier 2",
+            "deprecated_versions": ["7", "8"],
+        },
         "PHP": {
             "min_version": "8.2",
             "current": "8.4",
             "tier": "Tier 2",
             "deprecated_versions": ["5.6", "7.0", "7.1", "7.2"],
         },
-        "JavaScript": {"min_version": "ES2020", "current": "ES2024", "tier": "Tier 2", "deprecated_versions": ["ES5"]},
-        "R": {"min_version": "4.2", "current": "4.4", "tier": "Tier 3", "deprecated_versions": ["3.x"]},
+        "JavaScript": {
+            "min_version": "ES2020",
+            "current": "ES2024",
+            "tier": "Tier 2",
+            "deprecated_versions": ["ES5"],
+        },
+        "R": {
+            "min_version": "4.2",
+            "current": "4.4",
+            "tier": "Tier 3",
+            "deprecated_versions": ["3.x"],
+        },
     }
 
     def detect(self, language_version_str: str) -> LanguageInfo:
@@ -408,16 +438,24 @@ class TestingStrategyAdvisor:
 
     STRATEGIES = {
         "Python": TestingStrategy(
-            framework="pytest", features="async support, fixtures, parametrization, pytest-asyncio", language="Python"
+            framework="pytest",
+            features="async support, fixtures, parametrization, pytest-asyncio",
+            language="Python",
         ),
         "TypeScript": TestingStrategy(
-            framework="Vitest/Jest", features="snapshot testing, coverage reporting, mocking", language="TypeScript"
+            framework="Vitest/Jest",
+            features="snapshot testing, coverage reporting, mocking",
+            language="TypeScript",
         ),
         "Go": TestingStrategy(
-            framework="testing + testify", features="assertions, mocking, test helpers, benchmarks", language="Go"
+            framework="testing + testify",
+            features="assertions, mocking, test helpers, benchmarks",
+            language="Go",
         ),
         "Rust": TestingStrategy(
-            framework="cargo test", features="unit tests, integration tests, doc tests", language="Rust"
+            framework="cargo test",
+            features="unit tests, integration tests, doc tests",
+            language="Rust",
         ),
     }
 

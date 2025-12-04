@@ -200,7 +200,13 @@ def test_module_integration():
         # Test multilingual documentation
         multilingual_result = lang_init.create_multilingual_documentation_structure("ko")
 
-        integration_success = all([lang_result["success"], doc_result["success"], multilingual_result["success"]])
+        integration_success = all(
+            [
+                lang_result["success"],
+                doc_result["success"],
+                multilingual_result["success"],
+            ]
+        )
 
         print(f"✅ Language + Documentation integration: {integration_success}")
 
@@ -317,7 +323,8 @@ def test_performance():
 
         # Create some test files
         (test_dir / "test.py").write_text(
-            "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100", encoding="utf-8"
+            "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100",
+            encoding="utf-8",
         )
 
         lang_init.detect_project_language()

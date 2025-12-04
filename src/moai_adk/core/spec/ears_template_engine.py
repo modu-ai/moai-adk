@@ -28,31 +28,66 @@ class EARSTemplateEngine:
         self.domain_templates = {
             "auth": {
                 "description": "User authentication and security system",
-                "common_features": ["Login", "Registration", "Password Reset", "Session Management"],
-                "security_requirements": ["Encryption", "Password Hashing", "Rate Limiting"],
+                "common_features": [
+                    "Login",
+                    "Registration",
+                    "Password Reset",
+                    "Session Management",
+                ],
+                "security_requirements": [
+                    "Encryption",
+                    "Password Hashing",
+                    "Rate Limiting",
+                ],
                 "environment": "Web Application with User Management",
             },
             "api": {
                 "description": "RESTful API service",
-                "common_features": ["Endpoints", "Authentication", "Rate Limiting", "Caching"],
-                "technical_requirements": ["RESTful Design", "JSON Format", "HTTP Status Codes"],
+                "common_features": [
+                    "Endpoints",
+                    "Authentication",
+                    "Rate Limiting",
+                    "Caching",
+                ],
+                "technical_requirements": [
+                    "RESTful Design",
+                    "JSON Format",
+                    "HTTP Status Codes",
+                ],
                 "environment": "Microservice Architecture",
             },
             "data": {
                 "description": "Data processing and storage system",
-                "common_features": ["Data Validation", "Persistence", "Backup", "Migration"],
-                "technical_requirements": ["Data Integrity", "Performance", "Scalability"],
+                "common_features": [
+                    "Data Validation",
+                    "Persistence",
+                    "Backup",
+                    "Migration",
+                ],
+                "technical_requirements": [
+                    "Data Integrity",
+                    "Performance",
+                    "Scalability",
+                ],
                 "environment": "Database System with Analytics",
             },
             "ui": {
                 "description": "User interface and experience system",
                 "common_features": ["Components", "Navigation", "Forms", "Validation"],
-                "experience_requirements": ["Responsive Design", "Accessibility", "Performance"],
+                "experience_requirements": [
+                    "Responsive Design",
+                    "Accessibility",
+                    "Performance",
+                ],
                 "environment": "Web Frontend with React/Angular/Vue",
             },
             "business": {
                 "description": "Business logic and workflow system",
-                "common_features": ["Process Management", "Rules Engine", "Notifications"],
+                "common_features": [
+                    "Process Management",
+                    "Rules Engine",
+                    "Notifications",
+                ],
                 "business_requirements": ["Compliance", "Audit Trail", "Reporting"],
                 "environment": "Enterprise Application",
             },
@@ -71,7 +106,12 @@ class EARSTemplateEngine:
 - **Deployment**: {deployment}
 - **Status**: {status}
 - **Generation Method**: Auto-analysis based""",
-                "required_fields": ["project_name", "language", "framework", "paradigm"],
+                "required_fields": [
+                    "project_name",
+                    "language",
+                    "framework",
+                    "paradigm",
+                ],
             },
             "assumptions": {
                 "template": """### Assumptions
@@ -153,7 +193,10 @@ class EARSTemplateEngine:
         }
 
     def generate_complete_spec(
-        self, code_analysis: Dict[str, Any], file_path: str, custom_config: Dict[str, Any] = None
+        self,
+        code_analysis: Dict[str, Any],
+        file_path: str,
+        custom_config: Dict[str, Any] = None,
     ) -> Dict[str, str]:
         """
         Generate complete SPEC document in EARS format.
@@ -184,7 +227,11 @@ class EARSTemplateEngine:
 
         # Validate content
         validation_result = self._validate_ears_compliance(
-            {"spec_md": spec_md_content, "plan_md": plan_md_content, "acceptance_md": acceptance_md_content}
+            {
+                "spec_md": spec_md_content,
+                "plan_md": plan_md_content,
+                "acceptance_md": acceptance_md_content,
+            }
         )
 
         # Create result
@@ -330,7 +377,11 @@ class EARSTemplateEngine:
         return f"{domain_upper}-{clean_name[:8]}-{file_hash}"
 
     def _generate_spec_content(
-        self, extraction: Dict[str, Any], domain: str, spec_id: str, custom_config: Dict[str, Any] = None
+        self,
+        extraction: Dict[str, Any],
+        domain: str,
+        spec_id: str,
+        custom_config: Dict[str, Any] = None,
     ) -> str:
         """Generate main spec.md content."""
         config = custom_config or {}
@@ -383,7 +434,11 @@ class EARSTemplateEngine:
         # Add specifications
         spec_content += "\n\n" + self._render_template(
             self.ears_templates["specifications"],
-            {"technical_specs": technical_specs, **self._generate_technical_details(extraction, domain), **extraction},
+            {
+                "technical_specs": technical_specs,
+                **self._generate_technical_details(extraction, domain),
+                **extraction,
+            },
         )
 
         # Add traceability
@@ -523,8 +578,10 @@ class EARSTemplateEngine:
         """Generate technical specifications."""
         technical_specs = [
             "#### Core Implementation",
-            f"- **SPEC-001**: {extraction['classes'][0] if extraction['classes'] else 'Main'} class SHALL be implemented",
-            f"- **SPEC-002**: {extraction['functions'][0] if extraction['functions'] else 'Core'} function SHALL be implemented",
+            f"- **SPEC-001**: {extraction['classes'][0] if extraction['classes'] else 'Main'} "
+            "class SHALL be implemented",
+            f"- **SPEC-002**: {extraction['functions'][0] if extraction['functions'] else 'Core'} "
+            "function SHALL be implemented",
             "- **SPEC-003**: Input validation SHALL be implemented",
             "- **SPEC-004**: Error handling mechanism SHALL be implemented",
             "- **SPEC-005**: Logging system SHALL be implemented",
@@ -735,7 +792,11 @@ class EARSTemplateEngine:
         return domain_reviews.get(domain, "Review general requirements")
 
     def _generate_plan_content(
-        self, extraction: Dict[str, Any], domain: str, spec_id: str, custom_config: Dict[str, Any] = None
+        self,
+        extraction: Dict[str, Any],
+        domain: str,
+        spec_id: str,
+        custom_config: Dict[str, Any] = None,
     ) -> str:
         """Generate plan.md content."""
 
@@ -936,7 +997,11 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
         return modules.get(domain, "Standard modules")
 
     def _generate_acceptance_content(
-        self, extraction: Dict[str, Any], domain: str, spec_id: str, custom_config: Dict[str, Any] = None
+        self,
+        extraction: Dict[str, Any],
+        domain: str,
+        spec_id: str,
+        custom_config: Dict[str, Any] = None,
     ) -> str:
         """Generate acceptance.md content."""
 
@@ -1125,7 +1190,14 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
         spec_md = spec_content.get("spec_md", "")
 
         # Check for required sections
-        required_sections = ["Overview", "Environment", "Assumptions", "Requirements", "Specifications", "Traceability"]
+        required_sections = [
+            "Overview",
+            "Environment",
+            "Assumptions",
+            "Requirements",
+            "Specifications",
+            "Traceability",
+        ]
 
         section_scores = {}
         for section in required_sections:

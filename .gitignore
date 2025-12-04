@@ -81,11 +81,30 @@ docs/
 .env.glm
 secrets/
 credentials/
+
+# Certificate files
 *.pem
-*.key
 *.pfx
 *.p12
 *.jks
+
+# Private keys and certificates (specific patterns to avoid false positives)
+# FIXED: Issue #237 - Replaced overly broad *.key pattern
+# Old pattern caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
+*-key.*
+*_key.*
+*.key.*
+*-secret-key.*
+*-api-key.*
+api-key-*
+secret-key-*
+private-key*
+*-secret.*
+*_secret.*
+*.secret.*
+secret-*.*
+
+# Cloud provider credentials
 .aws/credentials
 .aws/config
 .gcloud/
@@ -234,46 +253,83 @@ uv.lock
 .claude/.venv/
 .claude/.pytest_cache/
 
-# .moai/ directory management
+# .moai/ directory management (ROOT ONLY - leading slash)
 # Tracked in git: config/, memory/, scripts/, specs/
 # User-generated content: logs/, cache/, reports/, etc.
-.moai/*
-!.moai/config/
-!.moai/config/**
-!.moai/memory/
-!.moai/memory/**
-!.moai/scripts/
-!.moai/scripts/**
-!.moai/specs/
-!.moai/specs/**
+# Template .moai (src/moai_adk/templates/.moai/) is fully tracked
+/.moai/*
+!/.moai/config/
+!/.moai/config/**
+!/.moai/memory/
+!/.moai/memory/**
+!/.moai/scripts/
+!/.moai/scripts/**
+!/.moai/specs/
+!/.moai/specs/**
 
-# .moai local-only directories (explicitly excluded)
-.moai/cache/
-.moai/logs/
-.moai/docs/
-.moai/reports/
-.moai/analytics/
-.moai/archive/
-.moai/archived-skills/
+# .moai local-only directories (explicitly excluded - ROOT ONLY)
+/.moai/cache/
+/.moai/logs/
+/.moai/docs/
+/.moai/reports/
+/.moai/analytics/
+/.moai/archive/
+/.moai/archived-skills/
 
-# .moai/scripts local development scripts (not in package)
-.moai/scripts/phase*.py
-.moai/scripts/phase*.sh
-.moai/scripts/sync-*.sh
-.moai/scripts/sync-*.py
-.moai/scripts/*sync*.sh
-.moai/scripts/__pycache__/
-.moai/backups/
-.moai/error_logs/
-.moai/indexes/
-.moai/learning/
-.moai/optimization/
-.moai/release/
-.moai/research/
-.moai/templates/
+# .moai/scripts local development scripts (not in package - ROOT ONLY)
+/.moai/scripts/phase*.py
+/.moai/scripts/phase*.sh
+/.moai/scripts/sync-*.sh
+/.moai/scripts/sync-*.py
+/.moai/scripts/*sync*.sh
+/.moai/scripts/__pycache__/
+/.moai/backups/
+/.moai/error_logs/
+/.moai/indexes/
+/.moai/learning/
+/.moai/optimization/
+/.moai/release/
+/.moai/research/
+/.moai/templates/
 
 # @CLAUDE.local.md is tracked (local development guide)
 !@CLAUDE.local.md
 
 # Documentation site files (not related to package distribution)
 theme.config.tsx
+.cursor/
+# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
+# .moai local-only directories (user projects only)
+.claude/settings.local.*.json
+# Environment Variables & Secrets
+!.env.example
+# OS Files
+# Version: 0.28.0
+# .moai local development scripts (not distributed)
+.moai/work/
+.moai/temp/
+.claude/.env.local*
+# Node.js (for docs/Nextra)
+.ruff_cache/
+# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
+# Claude Code Skills Secrets
+# Claude Code Local Configuration
+# ============================================
+# IDE & Editors
+# uv.lock is intentionally included for reproducible builds
+# ---------------------------------------------
+# API credentials patterns
+# Package Distribution
+# MoAI-ADK Package Distribution .gitignore
+# uv.lock
+.uv-cache/
+# Logs & Temporary Files
+# Add to .gitignore if needed per project
+# MoAI Directory Management
+# Python Cache & Database
+.uv_cache/
+*.pyd
+# Purpose: Essential patterns for user projects
+# Virtual Environments
+# Build Artifacts
+# Test Coverage

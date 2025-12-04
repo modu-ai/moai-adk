@@ -291,7 +291,11 @@ class TestContextManager:
     def test_context_manager_saves_phase_result(self, temp_project_dir):
         """Test that ContextManager can save phase results"""
         manager = ContextManager(project_root=temp_project_dir)
-        phase_data = {"phase": "0-project", "status": "completed", "outputs": {"project_name": "Test"}}
+        phase_data = {
+            "phase": "0-project",
+            "status": "completed",
+            "outputs": {"project_name": "Test"},
+        }
 
         manager.save_phase_result(phase_data)
 
@@ -303,7 +307,11 @@ class TestContextManager:
         """Test loading the latest phase result"""
         manager = ContextManager(project_root=temp_project_dir)
 
-        phase_data = {"phase": "0-project", "status": "completed", "outputs": {"project_name": "Test"}}
+        phase_data = {
+            "phase": "0-project",
+            "status": "completed",
+            "outputs": {"project_name": "Test"},
+        }
 
         manager.save_phase_result(phase_data)
         loaded = manager.load_latest_phase()

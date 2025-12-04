@@ -96,10 +96,16 @@ class LanguageInitializer:
                     "agent_prompt_language": "english",
                     "documentation_language": "en",
                 },
-                "user": {"name": "Developer", "selected_at": datetime.now().isoformat()},
+                "user": {
+                    "name": "Developer",
+                    "selected_at": datetime.now().isoformat(),
+                },
                 "project": {"name": "My Project", "type": "web_application"},
             }
-            self.config_path.write_text(json.dumps(default_config, indent=2, ensure_ascii=False), encoding="utf-8")
+            self.config_path.write_text(
+                json.dumps(default_config, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
     def detect_project_language(self) -> str:
         """
@@ -170,7 +176,13 @@ class LanguageInitializer:
         src_dir = self.project_root / "src"
         if src_dir.exists():
             for file_path in src_dir.rglob("*"):
-                if file_path.is_file() and file_path.suffix in [".py", ".js", ".ts", ".java", ".cpp"]:
+                if file_path.is_file() and file_path.suffix in [
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".java",
+                    ".cpp",
+                ]:
                     try:
                         content = file_path.read_text(encoding="utf-8", errors="ignore")
                         for lang_code, lang_indicators in indicators.items():
@@ -260,7 +272,10 @@ class LanguageInitializer:
                     valid_domains.append(domain)
 
             current_config.setdefault("project", {}).update(
-                {"selected_domains": valid_domains, "domain_selection_date": datetime.now().isoformat()}
+                {
+                    "selected_domains": valid_domains,
+                    "domain_selection_date": datetime.now().isoformat(),
+                }
             )
 
         # Generate localized templates
@@ -281,7 +296,12 @@ class LanguageInitializer:
     def _generate_localized_templates(self, language: str) -> Dict[str, str]:
         """Generate language-specific templates and prompts."""
 
-        templates = {"welcome_message": "", "error_messages": {}, "success_messages": {}, "prompts": {}}
+        templates = {
+            "welcome_message": "",
+            "error_messages": {},
+            "success_messages": {},
+            "prompts": {},
+        }
 
         if language == "ko":
             templates.update(
@@ -399,7 +419,10 @@ class LanguageInitializer:
                     "agent_prompt_overhead": 0,
                     "documentation_overhead": 0,
                     "total_overhead_percentage": 0,
-                    "recommendations": ["Most token-efficient choice", "Widely supported documentation and libraries"],
+                    "recommendations": [
+                        "Most token-efficient choice",
+                        "Widely supported documentation and libraries",
+                    ],
                 }
             )
         else:
@@ -457,12 +480,18 @@ class LanguageInitializer:
 
         if language == "ko":
             # Add Korean-specific instructions
-            korean_additions = "\n\nIMPORTANT: Please respond in Korean (한국어) when interacting with the user. Use formal polite form (합니다/입니다 style)."
+            korean_additions = (
+                "\n\nIMPORTANT: Please respond in Korean (한국어) "
+                "when interacting with the user. Use formal polite form (합니다/입니다 style)."
+            )
             localized_prompt += korean_additions
 
         elif language == "ja":
             # Add Japanese-specific instructions
-            japanese_additions = "\n\nIMPORTANT: Please respond in Japanese (日本語) when interacting with the user. Use polite form (です/ます style)."
+            japanese_additions = (
+                "\n\nIMPORTANT: Please respond in Japanese (日本語) "
+                "when interacting with the user. Use polite form (です/ます style)."
+            )
             localized_prompt += japanese_additions
 
         elif language == "zh":
@@ -555,7 +584,13 @@ DefaultLanguage {language}
             Validation results with recommendations
         """
 
-        validation_result = {"valid": True, "errors": [], "warnings": [], "recommendations": [], "current_config": {}}
+        validation_result = {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "recommendations": [],
+            "current_config": {},
+        }
 
         if not self.config_path.exists():
             validation_result["errors"].append("Configuration file does not exist")
@@ -639,9 +674,16 @@ DefaultLanguage {language}
                 target[keys[-1]] = value
 
             # Save updated config
-            self.config_path.write_text(json.dumps(current_config, indent=2, ensure_ascii=False), encoding="utf-8")
+            self.config_path.write_text(
+                json.dumps(current_config, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
-            return {"success": True, "updated_config": current_config, "updates_applied": updates}
+            return {
+                "success": True,
+                "updated_config": current_config,
+                "updates_applied": updates,
+            }
 
         except Exception as e:
             return {"success": False, "error": str(e)}

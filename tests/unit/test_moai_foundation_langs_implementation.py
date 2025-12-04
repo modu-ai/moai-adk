@@ -462,9 +462,18 @@ class TestingStrategyAdvisor:
     """Provides testing strategy recommendations."""
 
     STRATEGIES = {
-        "Python": {"framework": "pytest", "features": "async support, fixtures, parametrization"},
-        "TypeScript": {"framework": "Vitest/Jest", "features": "snapshot testing, coverage reporting"},
-        "Go": {"framework": "testing + testify", "features": "assertions, mocking, test helpers"},
+        "Python": {
+            "framework": "pytest",
+            "features": "async support, fixtures, parametrization",
+        },
+        "TypeScript": {
+            "framework": "Vitest/Jest",
+            "features": "snapshot testing, coverage reporting",
+        },
+        "Go": {
+            "framework": "testing + testify",
+            "features": "assertions, mocking, test helpers",
+        },
     }
 
     def get_strategy(self, language: str):

@@ -1022,7 +1022,6 @@ class TemplateProcessor:
             dst: Project config.json.
         """
         import json
-        from pathlib import Path
 
         # Load template config
         try:
@@ -1032,13 +1031,12 @@ class TemplateProcessor:
             return
 
         # Find latest backup config.json
-        backup_config = {}
         latest_backup = self.backup.get_latest_backup()
         if latest_backup:
             backup_config_path = latest_backup / ".moai" / "config" / "config.json"
             if backup_config_path.exists():
                 try:
-                    backup_config = json.loads(backup_config_path.read_text(encoding="utf-8"))
+                    json.loads(backup_config_path.read_text(encoding="utf-8"))
                 except json.JSONDecodeError as e:
                     console.print(f"⚠️ Warning: Could not read backup config.json: {e}")
 
@@ -1074,11 +1072,15 @@ class TemplateProcessor:
 
             # Apply environment variables (highest priority)
             import os
+
             env_mappings = {
                 "MOAI_USER_NAME": ("user", "name"),
                 "MOAI_CONVERSATION_LANG": ("language", "conversation_language"),
                 "MOAI_AGENT_PROMPT_LANG": ("language", "agent_prompt_language"),
-                "MOAI_CONVERSATION_LANG_NAME": ("language", "conversation_language_name"),
+                "MOAI_CONVERSATION_LANG_NAME": (
+                    "language",
+                    "conversation_language_name",
+                ),
                 "MOAI_GIT_COMMIT_MESSAGES_LANG": ("language", "git_commit_messages"),
                 "MOAI_CODE_COMMENTS_LANG": ("language", "code_comments"),
                 "MOAI_DOCUMENTATION_LANG": ("language", "documentation"),
@@ -1097,7 +1099,10 @@ class TemplateProcessor:
             merged_config = resolver._ensure_consistency(merged_config)
 
             # Write merged config
-            dst.write_text(json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            dst.write_text(
+                json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
 
         except ImportError:
             # Fallback: simple merge without LanguageConfigResolver
@@ -1108,7 +1113,10 @@ class TemplateProcessor:
                 if key not in ["config_source"]:
                     merged_config[key] = value
 
-            dst.write_text(json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            dst.write_text(
+                json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
             console.print("   ⚠️ Warning: Using simple merge (LanguageConfigResolver not available)")
 
     def _copy_gitignore(self, silent: bool = False) -> None:

@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} - Mission & Strategy
+# MoAI-ADK - Mission & Strategy
 
 ## What problem do we solve?
 {{PROJECT_DESCRIPTION}}
