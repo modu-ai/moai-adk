@@ -15,6 +15,7 @@ node_modules/
 
 # Backups
 .moai-backups/
+/backups/
 *.backup/
 *-backup/
 *_backup_*/
