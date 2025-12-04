@@ -43,6 +43,7 @@ class TestExtractProjectMetadata:
                 "language": {"conversation_language": "en"},
             }
             import yaml
+
             config_file.write_text(yaml.dump(config_data))
 
             # Act
@@ -64,6 +65,7 @@ class TestExtractProjectMetadata:
 
             config_data = {"project": {}, "language": {}}
             import yaml
+
             config_file.write_text(yaml.dump(config_data))
 
             # Act
@@ -94,6 +96,7 @@ class TestExtractProjectMetadata:
 
             # Act & Assert
             import yaml
+
             with pytest.raises(yaml.YAMLError):
                 extract_project_metadata(tmpdir)
 
