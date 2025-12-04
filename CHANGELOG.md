@@ -1,3 +1,144 @@
+# v0.32.8 - Documentation Standards & Code Quality Improvements (2025-12-04)
+
+## Summary
+
+This patch release focuses on strengthening documentation standards, improving code quality, and fixing minor issues discovered during quality gate checks. Key improvements include enhanced documentation standards enforcement, removal of unused code, and configuration optimization.
+
+## Changes
+
+### Bug Fixes
+
+- **fix**: Remove unused `spec_progress` variable in session_start hook
+  - Eliminated dead code that was assigned but never used
+  - Improves code clarity and passes ruff lint checks
+  - Location: `session_start__show_project_info.py:680`
+
+- **fix**: Auto-branch configuration compliance
+  - Ensure `auto_branch` setting is properly respected in branch creation logic
+  - Improves GitHub Flow compliance
+
+- **fix**: MD5 hash security warning resolution
+  - Added `usedforsecurity=False` flag to MD5 usage for non-security purposes
+  - Addresses security audit warnings
+
+### Documentation
+
+- **docs**: Strengthen Documentation Standards
+  - Prohibit code blocks in instruction documents
+  - Enforce narrative text format for flow control and branching logic
+  - Add clear examples of correct vs incorrect documentation patterns
+  - Apply to: CLAUDE.md, agent definitions, commands, skills, hooks
+
+- **docs**: Add time estimation prohibition to CLAUDE.md
+  - Remove all time estimates from documentation
+  - Eliminates unverifiable expectations
+
+### Refactoring
+
+- **refactor**: Simplify configuration and align with documentation standards
+  - Clean up configuration structure
+  - Improve consistency across config files
+
+- **refactor**: Convert code blocks to text instructions in 1-plan.md
+  - Replace code syntax with narrative explanations
+  - Improve documentation readability
+
+### Features
+
+- **feat**: Separate user-facing output (Markdown) from internal agent data (XML)
+  - User-facing: Always use Markdown formatting
+  - Internal: XML tags reserved for agent-to-agent data transfer
+  - Clarifies output format usage across all agents
+
+### Chore
+
+- **chore**: Update settings, gitignore, and memory files
+  - Configuration file maintenance
+  - Memory state synchronization
+
+- **chore**: Update output styles and memory files
+  - R2D2 and Yoda output style refinements
+
+## Breaking Changes
+
+None
+
+## Migration Guide
+
+No migration required. This is a bug fix and quality improvement release.
+
+---
+
+# v0.32.8 - 문서 표준 및 코드 품질 개선 (2025-12-04)
+
+## 요약
+
+이번 패치 릴리즈는 문서 표준 강화, 코드 품질 개선, 품질 게이트 검사 중 발견된 사소한 문제 수정에 초점을 맞추고 있습니다. 주요 개선 사항으로는 문서 표준 적용 강화, 미사용 코드 제거, 설정 최적화가 있습니다.
+
+## 변경 사항
+
+### 버그 수정
+
+- **fix**: session_start 훅에서 미사용 `spec_progress` 변수 제거
+  - 할당되었지만 사용되지 않는 데드 코드 제거
+  - 코드 명확성 개선 및 ruff lint 검사 통과
+  - 위치: `session_start__show_project_info.py:680`
+
+- **fix**: auto_branch 설정 준수
+  - 브랜치 생성 로직에서 `auto_branch` 설정이 올바르게 반영되도록 보장
+  - GitHub Flow 준수 개선
+
+- **fix**: MD5 해시 보안 경고 해결
+  - 비보안 목적의 MD5 사용에 `usedforsecurity=False` 플래그 추가
+  - 보안 감사 경고 해결
+
+### 문서
+
+- **docs**: 문서 표준 강화
+  - 지침 문서에서 코드 블록 사용 금지
+  - 흐름 제어 및 분기 로직에 대한 설명 텍스트 형식 강제
+  - 올바른 문서화 패턴과 잘못된 패턴의 명확한 예시 추가
+  - 적용 대상: CLAUDE.md, 에이전트 정의, 명령어, 스킬, 훅
+
+- **docs**: CLAUDE.md에 시간 추정 금지 추가
+  - 문서에서 모든 시간 추정 제거
+  - 검증할 수 없는 기대치 제거
+
+### 리팩토링
+
+- **refactor**: 설정 단순화 및 문서 표준 정렬
+  - 설정 구조 정리
+  - 설정 파일 간 일관성 개선
+
+- **refactor**: 1-plan.md의 코드 블록을 텍스트 지침으로 변환
+  - 코드 구문을 설명 텍스트로 대체
+  - 문서 가독성 개선
+
+### 기능
+
+- **feat**: 사용자 대면 출력(Markdown)과 내부 에이전트 데이터(XML) 분리
+  - 사용자 대면: 항상 Markdown 형식 사용
+  - 내부: XML 태그는 에이전트 간 데이터 전송용으로만 예약
+  - 모든 에이전트에 걸쳐 출력 형식 사용 명확화
+
+### 유지보수
+
+- **chore**: 설정, gitignore, 메모리 파일 업데이트
+  - 설정 파일 유지보수
+  - 메모리 상태 동기화
+
+- **chore**: 출력 스타일 및 메모리 파일 업데이트
+  - R2D2 및 Yoda 출력 스타일 개선
+
+## 호환성 변경
+
+없음
+
+## 마이그레이션 가이드
+
+마이그레이션 불필요. 버그 수정 및 품질 개선 릴리즈입니다.
+
+---
 # v0.32.6 - Dynamic Version Management & YAML Config Support (2025-12-04)
 
 ## Summary
