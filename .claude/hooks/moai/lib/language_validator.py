@@ -73,13 +73,21 @@ def validate_language_config(config: Dict[str, Any]) -> Dict[str, Any]:
         result["valid"] = False
         errors.append("conversation_language_name is empty or missing")
     elif conversation_lang == "ko" and lang_name != "Korean":
-        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'Korean' for Korean language")
+        warnings.append(
+            f"conversation_language_name '{lang_name}' doesn't match 'Korean' for Korean language"
+        )
     elif conversation_lang == "en" and lang_name != "English":
-        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'English' for English language")
+        warnings.append(
+            f"conversation_language_name '{lang_name}' doesn't match 'English' for English language"
+        )
     elif conversation_lang == "ja" and lang_name != "Japanese":
-        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'Japanese' for Japanese language")
+        warnings.append(
+            f"conversation_language_name '{lang_name}' doesn't match 'Japanese' for Japanese language"
+        )
     elif conversation_lang == "zh" and lang_name != "Chinese":
-        warnings.append(f"conversation_language_name '{lang_name}' doesn't match 'Chinese' for Chinese language")
+        warnings.append(
+            f"conversation_language_name '{lang_name}' doesn't match 'Chinese' for Chinese language"
+        )
 
     # Validate agent_prompt_language
     agent_lang = lang_config.get("agent_prompt_language", conversation_lang)
@@ -136,19 +144,27 @@ def validate_output_style_compatibility() -> Dict[str, Any]:
                 "Language Configuration",
             ]
 
-            result["language_support_present"] = any(keyword in content for keyword in language_keywords)
+            result["language_support_present"] = any(
+                keyword in content for keyword in language_keywords
+            )
             result["config_reading_present"] = ".moai/config/config.json" in content
 
             if not result["language_support_present"]:
-                recommendations.append("Add language support documentation to R2-D2 output style")
+                recommendations.append(
+                    "Add language support documentation to R2-D2 output style"
+                )
 
             if not result["config_reading_present"]:
-                recommendations.append("Add config.json reading instructions to R2-D2 output style")
+                recommendations.append(
+                    "Add config.json reading instructions to R2-D2 output style"
+                )
 
         except Exception as e:
             result["error"] = f"Error reading R2-D2 output style: {e}"
     else:
-        recommendations.append("R2-D2 output style not found - ensure proper installation")
+        recommendations.append(
+            "R2-D2 output style not found - ensure proper installation"
+        )
 
     return result
 
@@ -175,9 +191,16 @@ def validate_session_start_hook() -> Dict[str, Any]:
                 content = f.read()
 
             # Check for language display functionality
-            language_indicators = ["get_language_info", "conversation_language", "language_name", "Language:"]
+            language_indicators = [
+                "get_language_info",
+                "conversation_language",
+                "language_name",
+                "Language:",
+            ]
 
-            result["language_display_present"] = any(indicator in content for indicator in language_indicators)
+            result["language_display_present"] = any(
+                indicator in content for indicator in language_indicators
+            )
 
             if not result["language_display_present"]:
                 recommendations.append("Add language info display to SessionStart hook")
@@ -185,7 +208,9 @@ def validate_session_start_hook() -> Dict[str, Any]:
         except Exception as e:
             result["error"] = f"Error reading SessionStart hook: {e}"
     else:
-        recommendations.append("SessionStart hook not found - ensure proper installation")
+        recommendations.append(
+            "SessionStart hook not found - ensure proper installation"
+        )
 
     return result
 
@@ -280,7 +305,9 @@ def generate_validation_report() -> str:
         else:
             report_lines.append("🌐 English language responses configured.")
     else:
-        report_lines.append("⚠️ Issues found that may prevent proper language functionality.")
+        report_lines.append(
+            "⚠️ Issues found that may prevent proper language functionality."
+        )
         report_lines.append("   See recommendations above for fixes.")
 
     return "\n".join(report_lines)

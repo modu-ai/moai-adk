@@ -238,7 +238,9 @@ def save_command_context(
     try:
         context_mgr = ContextManager(project_root)
         absolute_paths = validate_phase_files(files_created, project_root)
-        phase_data = _prepare_phase_data(phase_name, status, outputs, absolute_paths, next_phase)
+        phase_data = _prepare_phase_data(
+            phase_name, status, outputs, absolute_paths, next_phase
+        )
         return _validate_and_save(context_mgr, phase_data)
 
     except Exception as e:

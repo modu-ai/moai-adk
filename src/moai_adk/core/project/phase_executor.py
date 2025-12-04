@@ -109,12 +109,24 @@ class PhaseExecutor:
 
             # Enhanced version context with multiple format options
             version_context["MOAI_VERSION"] = moai_version
-            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
-            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
-            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(moai_version, max_length=10)
-            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(moai_version)
-            version_context["MOAI_VERSION_VALID"] = "true" if moai_version != "unknown" else "false"
-            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(version_reader)
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(
+                moai_version, max_length=10
+            )
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_VALID"] = (
+                "true" if moai_version != "unknown" else "false"
+            )
+            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(
+                version_reader
+            )
 
             # Add performance metrics for debugging
             cache_age = version_reader.get_cache_age_seconds()
@@ -128,10 +140,18 @@ class PhaseExecutor:
             # Use fallback version with comprehensive fallback formatting
             fallback_version = __version__
             version_context["MOAI_VERSION"] = fallback_version
-            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(fallback_version)
-            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(fallback_version)
-            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(fallback_version, max_length=10)
-            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(fallback_version)
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(
+                fallback_version, max_length=10
+            )
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(
+                fallback_version
+            )
             version_context["MOAI_VERSION_VALID"] = "true"
             version_context["MOAI_VERSION_SOURCE"] = "fallback_package"
             version_context["MOAI_VERSION_CACHE_AGE"] = "unavailable"
@@ -272,7 +292,9 @@ class PhaseExecutor:
             progress_callback: Optional progress callback.
         """
         self.current_phase = 2
-        self._report_progress("Phase 2: Creating directory structure...", progress_callback)
+        self._report_progress(
+            "Phase 2: Creating directory structure...", progress_callback
+        )
 
         for directory in self.REQUIRED_DIRECTORIES:
             dir_path = project_path / directory
@@ -309,7 +331,11 @@ class PhaseExecutor:
                 language_config = {}
 
             # Detect OS for cross-platform Hook path configuration
-            hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
+            hook_project_dir = (
+                "%CLAUDE_PROJECT_DIR%"
+                if platform.system() == "Windows"
+                else "$CLAUDE_PROJECT_DIR"
+            )
 
             # Get enhanced version context with fallback strategies
             version_context = self._get_enhanced_version_context()
@@ -323,14 +349,20 @@ class PhaseExecutor:
                 "PROJECT_VERSION": config.get("version", "0.1.0"),
                 "PROJECT_OWNER": config.get("author", "@user"),
                 "AUTHOR": config.get("author", "@user"),
-                "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
-                "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+                "CONVERSATION_LANGUAGE": language_config.get(
+                    "conversation_language", "en"
+                ),
+                "CONVERSATION_LANGUAGE_NAME": language_config.get(
+                    "conversation_language_name", "English"
+                ),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
                 "PROJECT_DIR": hook_project_dir,
             }
             processor.set_context(context)
 
-        processor.copy_templates(backup=False, silent=True)  # Avoid progress bar conflicts
+        processor.copy_templates(
+            backup=False, silent=True
+        )  # Avoid progress bar conflicts
 
         # Post-process: Set executable permission on shell scripts
         # This is necessary because git may not preserve file permissions during clone/checkout
@@ -344,9 +376,13 @@ class PhaseExecutor:
                     current_mode = script_file.stat().st_mode
                     new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
                     script_file.chmod(new_mode)
-                    logger.debug(f"Set executable permission on {script_file}: {oct(current_mode)} -> {oct(new_mode)}")
+                    logger.debug(
+                        f"Set executable permission on {script_file}: {oct(current_mode)} -> {oct(new_mode)}"
+                    )
                 except Exception as e:
-                    logger.warning(f"Failed to set executable permission on {script_file}: {e}")
+                    logger.warning(
+                        f"Failed to set executable permission on {script_file}: {e}"
+                    )
         else:
             logger.debug(f"Scripts directory not found: {scripts_dir}")
 
@@ -376,7 +412,9 @@ class PhaseExecutor:
             List of created files.
         """
         self.current_phase = 4
-        self._report_progress("Phase 4: Generating configurations...", progress_callback)
+        self._report_progress(
+            "Phase 4: Generating configurations...", progress_callback
+        )
 
         logger = logging.getLogger(__name__)
 
@@ -393,7 +431,9 @@ class PhaseExecutor:
                 existing_config = {}
 
         # Enhanced config merging with comprehensive version preservation
-        merged_config = self._merge_configuration_preserving_versions(config, existing_config)
+        merged_config = self._merge_configuration_preserving_versions(
+            config, existing_config
+        )
 
         # Enhanced version handling using VersionReader for consistency
         try:
@@ -401,11 +441,17 @@ class PhaseExecutor:
             current_config_version = version_reader.get_version()
 
             # Ensure version consistency across the merged config
-            self._ensure_version_consistency(merged_config, current_config_version, existing_config)
+            self._ensure_version_consistency(
+                merged_config, current_config_version, existing_config
+            )
 
-            logger.debug(f"Version consistency check completed. Current version: {current_config_version}")
+            logger.debug(
+                f"Version consistency check completed. Current version: {current_config_version}"
+            )
         except Exception as e:
-            logger.warning(f"Version consistency check failed: {e}. Using fallback version.")
+            logger.warning(
+                f"Version consistency check failed: {e}. Using fallback version."
+            )
             merged_config["moai"]["version"] = __version__
 
         # Write final config with enhanced formatting
@@ -445,7 +491,9 @@ class PhaseExecutor:
         for section_name, strategy in config_sections.items():
             if section_name in existing_config:
                 logger.debug(f"Merging section: {section_name}")
-                self._merge_config_section(merged_config, existing_config, section_name, strategy)
+                self._merge_config_section(
+                    merged_config, existing_config, section_name, strategy
+                )
 
         return merged_config
 
@@ -529,8 +577,12 @@ class PhaseExecutor:
         elif "version" in config_moai:
             # Version already in new config, validate it
             config_version = config_moai["version"]
-            if config_version == "unknown" or not self._is_valid_version_format(config_version):
-                logger.debug(f"Invalid config version {config_version}, updating to current: {current_version}")
+            if config_version == "unknown" or not self._is_valid_version_format(
+                config_version
+            ):
+                logger.debug(
+                    f"Invalid config version {config_version}, updating to current: {current_version}"
+                )
                 config_moai["version"] = current_version
         else:
             # No version found, use current version
@@ -552,7 +604,9 @@ class PhaseExecutor:
         pattern = r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"
         return bool(re.match(pattern, version))
 
-    def _write_configuration_file(self, config_path: Path, config: dict[str, Any]) -> None:
+    def _write_configuration_file(
+        self, config_path: Path, config: dict[str, Any]
+    ) -> None:
         """
         Write configuration file with enhanced formatting and error handling.
 
@@ -591,7 +645,9 @@ class PhaseExecutor:
             progress_callback: Optional progress callback.
         """
         self.current_phase = 5
-        self._report_progress("Phase 5: Validation and finalization...", progress_callback)
+        self._report_progress(
+            "Phase 5: Validation and finalization...", progress_callback
+        )
 
         # Validate installation results
         # Comprehensive installation validation

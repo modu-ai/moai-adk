@@ -13,7 +13,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from moai_adk.core.language_config_resolver import LanguageConfigResolver, get_resolver, resolve_language_config
+from moai_adk.core.language_config_resolver import (
+    LanguageConfigResolver,
+    get_resolver,
+    resolve_language_config,
+)
 
 
 class TestLanguageConfigResolver(unittest.TestCase):
@@ -169,7 +173,9 @@ class TestLanguageConfigResolver(unittest.TestCase):
 
     def test_truly_unknown_language_code(self):
         """Test that truly unknown 2-char codes get title-cased name."""
-        config_data = {"language": {"conversation_language": "zz"}}  # Not a known language code
+        config_data = {
+            "language": {"conversation_language": "zz"}
+        }  # Not a known language code
         self._write_config(config_data)
 
         resolver = LanguageConfigResolver(str(self.test_dir))
@@ -181,7 +187,10 @@ class TestLanguageConfigResolver(unittest.TestCase):
 
     def test_project_owner_fallback(self):
         """Test fallback to project.owner when user.name is not available."""
-        config_data = {"project": {"owner": "ProjectOwner"}, "language": {"conversation_language": "ko"}}
+        config_data = {
+            "project": {"owner": "ProjectOwner"},
+            "language": {"conversation_language": "ko"},
+        }
         self._write_config(config_data)
 
         resolver = LanguageConfigResolver(str(self.test_dir))
@@ -222,7 +231,10 @@ class TestLanguageConfigResolver(unittest.TestCase):
 
     def test_personalized_greeting_korean(self):
         """Test Korean personalized greeting generation."""
-        config_data = {"user": {"name": "홍길동"}, "language": {"conversation_language": "ko"}}
+        config_data = {
+            "user": {"name": "홍길동"},
+            "language": {"conversation_language": "ko"},
+        }
         self._write_config(config_data)
 
         resolver = LanguageConfigResolver(str(self.test_dir))
@@ -233,7 +245,10 @@ class TestLanguageConfigResolver(unittest.TestCase):
 
     def test_personalized_greeting_english(self):
         """Test English personalized greeting generation."""
-        config_data = {"user": {"name": "JohnDoe"}, "language": {"conversation_language": "en"}}
+        config_data = {
+            "user": {"name": "JohnDoe"},
+            "language": {"conversation_language": "en"},
+        }
         self._write_config(config_data)
 
         resolver = LanguageConfigResolver(str(self.test_dir))
@@ -312,7 +327,10 @@ class TestLanguageConfigResolver(unittest.TestCase):
         # Write initial config
         config_data = {
             "user": {"name": "ConfigUser"},
-            "language": {"conversation_language": "en", "conversation_language_name": "English"},
+            "language": {
+                "conversation_language": "en",
+                "conversation_language_name": "English",
+            },
             "project": {"owner": "ProjectOwner"},
         }
         self._write_config(config_data)

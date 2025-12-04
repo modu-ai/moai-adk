@@ -47,7 +47,11 @@ class MoaiMenuProject:
 
         result = {
             "success": True,
-            "modules_initialized": ["documentation_manager", "language_initializer", "template_optimizer"],
+            "modules_initialized": [
+                "documentation_manager",
+                "language_initializer",
+                "template_optimizer",
+            ],
             "created_files": [],
             "configuration_updates": {},
             "timestamp": datetime.now().isoformat(),
@@ -71,7 +75,9 @@ class MoaiMenuProject:
             "fully_initialized": True,
         }
 
-    def generate_documentation_from_spec(self, spec_data: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_documentation_from_spec(
+        self, spec_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Generate documentation from SPEC data."""
         return {
             "spec_id": spec_data.get("id", "SPEC-001"),
@@ -79,7 +85,9 @@ class MoaiMenuProject:
             "updated_files": ["docs/product.md", "docs/structure.md", "docs/tech.md"],
         }
 
-    def export_project_documentation(self, format_type: str = "markdown") -> Dict[str, Any]:
+    def export_project_documentation(
+        self, format_type: str = "markdown"
+    ) -> Dict[str, Any]:
         """Export project documentation."""
         return {
             "success": True,
@@ -172,9 +180,15 @@ def quick_start():
     print("\n🎉 Quick start completed!")
     print("\nNext steps:")
     print("   1. Explore the generated documentation in ./my-awesome-project/docs/")
-    print("   2. Check the configuration in ./my-awesome-project/.moai/config/config.json")
-    print("   3. Customize templates in ./my-awesome-project/.claude/skills/moai-menu-project/templates/")
-    print("   4. Run additional optimizations with: project.optimize_project_templates()")
+    print(
+        "   2. Check the configuration in ./my-awesome-project/.moai/config/config.json"
+    )
+    print(
+        "   3. Customize templates in ./my-awesome-project/.claude/skills/moai-menu-project/templates/"
+    )
+    print(
+        "   4. Run additional optimizations with: project.optimize_project_templates()"
+    )
 
     return result
 

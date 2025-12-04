@@ -42,7 +42,10 @@ class TestFullWorkflow:
             if Path(".moai").exists():
                 result = runner.invoke(cli, ["status"])
                 assert result.exit_code == 0
-                assert "personal" in result.output.lower() or "mode" in result.output.lower()
+                assert (
+                    "personal" in result.output.lower()
+                    or "mode" in result.output.lower()
+                )
 
     @pytest.mark.e2e
     def test_doctor_workflow(self):
@@ -59,7 +62,13 @@ class TestFullWorkflow:
         """Test all --help commands work"""
         runner = CliRunner()
 
-        commands = ["", "init", "status", "doctor", "update"]  # restore removed - not implemented
+        commands = [
+            "",
+            "init",
+            "status",
+            "doctor",
+            "update",
+        ]  # restore removed - not implemented
 
         for cmd in commands:
             args = [cmd, "--help"] if cmd else ["--help"]
@@ -121,7 +130,9 @@ class TestIntegrationFlow:
 
             # 2. Doctor (always runs)
             result_doctor = runner.invoke(cli, ["doctor"])
-            assert result_doctor.exit_code == 0 or "check" in result_doctor.output.lower()
+            assert (
+                result_doctor.exit_code == 0 or "check" in result_doctor.output.lower()
+            )
 
             # 3. Status (if init succeeded)
             if result_init.exit_code == 0 and Path(".moai").exists():
@@ -132,7 +143,12 @@ class TestIntegrationFlow:
         """Test all commands have consistent help"""
         runner = CliRunner()
 
-        commands = ["init", "status", "doctor", "update"]  # restore removed - not implemented
+        commands = [
+            "init",
+            "status",
+            "doctor",
+            "update",
+        ]  # restore removed - not implemented
 
         for cmd in commands:
             result = runner.invoke(cli, [cmd, "--help"])

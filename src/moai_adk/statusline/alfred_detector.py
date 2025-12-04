@@ -34,7 +34,9 @@ class AlfredDetector:
         self._cache: Optional[AlfredTask] = None
         self._cache_time: Optional[datetime] = None
         self._cache_ttl = timedelta(seconds=self._CACHE_TTL_SECONDS)
-        self._session_state_path = Path.home() / ".moai" / "memory" / "last-session-state.json"
+        self._session_state_path = (
+            Path.home() / ".moai" / "memory" / "last-session-state.json"
+        )
 
     def detect_active_task(self) -> AlfredTask:
         """

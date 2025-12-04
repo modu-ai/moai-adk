@@ -159,7 +159,9 @@ class APIDesignValidator:
         if method in self.STATUS_CODE_RANGES:
             valid_codes = self.STATUS_CODE_RANGES[method]
             if status_code not in valid_codes:
-                errors.append(f"Status code {status_code} not allowed for {method} (expected: {valid_codes})")
+                errors.append(
+                    f"Status code {status_code} not allowed for {method} (expected: {valid_codes})"
+                )
 
         return {
             "valid": len(errors) == 0,
@@ -275,9 +277,21 @@ class MicroserviceArchitect:
     }
 
     SERVICE_DISCOVERY_BACKENDS = {
-        "consul": {"service": "Consul", "health_check_enabled": True, "auto_deregister": True},
-        "eureka": {"service": "Eureka", "health_check_enabled": True, "auto_deregister": False},
-        "etcd": {"service": "etcd", "health_check_enabled": True, "auto_deregister": True},
+        "consul": {
+            "service": "Consul",
+            "health_check_enabled": True,
+            "auto_deregister": True,
+        },
+        "eureka": {
+            "service": "Eureka",
+            "health_check_enabled": True,
+            "auto_deregister": False,
+        },
+        "etcd": {
+            "service": "etcd",
+            "health_check_enabled": True,
+            "auto_deregister": True,
+        },
     }
 
     def __init__(self) -> None:
@@ -323,7 +337,9 @@ class MicroserviceArchitect:
             "errors": errors if errors else None,
         }
 
-    def get_communication_pattern(self, pattern_type: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    def get_communication_pattern(
+        self, pattern_type: str, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Get inter-service communication pattern.
 
@@ -334,7 +350,9 @@ class MicroserviceArchitect:
         Returns:
             Communication pattern configuration
         """
-        pattern = self.COMMUNICATION_PATTERNS.get(pattern_type, self.COMMUNICATION_PATTERNS["rest"])
+        pattern = self.COMMUNICATION_PATTERNS.get(
+            pattern_type, self.COMMUNICATION_PATTERNS["rest"]
+        )
 
         # Determine message broker for async patterns
         if pattern_type == "async":
@@ -348,7 +366,9 @@ class MicroserviceArchitect:
             "operation": context.get("operation", ""),
         }
 
-    def configure_service_discovery(self, backend: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    def configure_service_discovery(
+        self, backend: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Configure service discovery backend.
 
@@ -359,7 +379,9 @@ class MicroserviceArchitect:
         Returns:
             Service discovery configuration
         """
-        discovery_config = self.SERVICE_DISCOVERY_BACKENDS.get(backend, self.SERVICE_DISCOVERY_BACKENDS["consul"])
+        discovery_config = self.SERVICE_DISCOVERY_BACKENDS.get(
+            backend, self.SERVICE_DISCOVERY_BACKENDS["consul"]
+        )
 
         return {
             "registry": backend,
@@ -404,7 +426,9 @@ class AsyncPatternAdvisor:
         """Initialize async pattern advisor."""
         self.async_operations: List[asyncio.Task] = []
 
-    async def execute_concurrent(self, operations: List[Callable], timeout: Optional[float] = None) -> List[Any]:
+    async def execute_concurrent(
+        self, operations: List[Callable], timeout: Optional[float] = None
+    ) -> List[Any]:
         """
         Execute multiple async operations concurrently.
 
@@ -419,7 +443,9 @@ class AsyncPatternAdvisor:
 
         try:
             if timeout:
-                results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks), timeout=timeout
+                )
             else:
                 results = await asyncio.gather(*tasks)
             return results
@@ -443,7 +469,9 @@ class AsyncPatternAdvisor:
         """
         return await asyncio.wait_for(coro, timeout=timeout)
 
-    def async_retry(self, max_attempts: int = 3, backoff_factor: float = 2.0) -> Callable:
+    def async_retry(
+        self, max_attempts: int = 3, backoff_factor: float = 2.0
+    ) -> Callable:
         """
         Decorator for async function retry logic.
 
@@ -511,7 +539,9 @@ class AuthenticationManager:
         self.algorithms = ["HS256"]
         self.oauth_codes: Dict[str, Dict[str, Any]] = {}
 
-    def generate_jwt_token(self, data: Dict[str, Any], expires_in_hours: int = 1) -> str:
+    def generate_jwt_token(
+        self, data: Dict[str, Any], expires_in_hours: int = 1
+    ) -> str:
         """
         Generate JWT token.
 
@@ -528,16 +558,24 @@ class AuthenticationManager:
         payload = {
             **data,
             "iat": int(datetime.now(UTC).timestamp()),
-            "exp": int((datetime.now(UTC) + timedelta(hours=expires_in_hours)).timestamp()),
+            "exp": int(
+                (datetime.now(UTC) + timedelta(hours=expires_in_hours)).timestamp()
+            ),
         }
 
         # Create JWT parts
-        header_encoded = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
-        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+        header_encoded = (
+            base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+        )
+        payload_encoded = (
+            base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+        )
 
         # Create signature
         message = f"{header_encoded}.{payload_encoded}"
-        signature = hmac.new(self.secret_key.encode(), message.encode(), hashlib.sha256).digest()
+        signature = hmac.new(
+            self.secret_key.encode(), message.encode(), hashlib.sha256
+        ).digest()
         signature_encoded = base64.urlsafe_b64encode(signature).decode().rstrip("=")
 
         return f"{message}.{signature_encoded}"
@@ -582,7 +620,11 @@ class AuthenticationManager:
             Authorization code response
         """
         code = str(uuid.uuid4())
-        self.oauth_codes[code] = {"params": params, "created_at": datetime.now(UTC), "expires_in": 600}
+        self.oauth_codes[code] = {
+            "params": params,
+            "created_at": datetime.now(UTC),
+            "expires_in": 600,
+        }
 
         return {"code": code, "expires_in": 600, "state": params.get("state", "")}
 
@@ -668,7 +710,9 @@ class ErrorHandlingStrategy:
             "details": error.get("details", {}),
         }
 
-    def log_with_context(self, level: str, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    def log_with_context(
+        self, level: str, message: str, context: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
         Log with request context and correlation ID.
 
@@ -750,7 +794,11 @@ class PerformanceOptimizer:
         self.rate_limits: Dict[str, Dict[str, Any]] = {}
 
     def configure_cache(
-        self, backend: str = "redis", ttl: int = 3600, key_pattern: str = "", invalidation_triggers: List[str] = None
+        self,
+        backend: str = "redis",
+        ttl: int = 3600,
+        key_pattern: str = "",
+        invalidation_triggers: List[str] = None,
     ) -> Dict[str, Any]:
         """
         Configure caching strategy.
@@ -820,7 +868,11 @@ class PerformanceOptimizer:
                 "Use INNER JOIN when possible",
                 "Avoid multiple JOINs in single query",
             ],
-            "UPDATE": ["Batch multiple updates", "Use indexes on WHERE clauses", "Consider performance during updates"],
+            "UPDATE": [
+                "Batch multiple updates",
+                "Use indexes on WHERE clauses",
+                "Consider performance during updates",
+            ],
         }
         return tips.get(query_type, [])
 
@@ -878,7 +930,12 @@ class BackendMetricsCollector:
         self.error_counts: Dict[str, int] = {}
 
     def record_request_metrics(
-        self, path: str, method: str, status_code: int, duration_ms: float, response_size_bytes: int = 0
+        self,
+        path: str,
+        method: str,
+        status_code: int,
+        duration_ms: float,
+        response_size_bytes: int = 0,
     ) -> Dict[str, Any]:
         """
         Record request/response metrics.

@@ -138,8 +138,18 @@ def tmp_git_repo(tmp_path: Path) -> Path:
     subprocess.run(["git", "init"], cwd=git_repo, check=True, capture_output=True)
 
     # Configure Git user (required for commits)
-    subprocess.run(["git", "config", "user.name", "Test User"], cwd=git_repo, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=git_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=git_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=git_repo,
+        check=True,
+        capture_output=True,
+    )
 
     return git_repo
 
@@ -165,7 +175,11 @@ def skill_names(all_skills) -> Set[str]:
 @pytest.fixture(scope="session")
 def skill_names_from_metadata(all_skills) -> Set[str]:
     """Set of skill names from metadata 'name' field."""
-    return {skill.metadata.get("name", "") for skill in all_skills if skill.metadata.get("name")}
+    return {
+        skill.metadata.get("name", "")
+        for skill in all_skills
+        if skill.metadata.get("name")
+    }
 
 
 @pytest.fixture(scope="session")
@@ -232,7 +246,12 @@ def count_description_quality(all_skills: List[SkillMetadata]) -> Dict[str, int]
         else:
             medium += 1
 
-    return {"optimal": optimal, "too_short": too_short, "too_long": too_long, "medium": medium}
+    return {
+        "optimal": optimal,
+        "too_short": too_short,
+        "too_long": too_long,
+        "medium": medium,
+    }
 
 
 def calculate_compliance_score(all_skills: List[SkillMetadata]) -> float:

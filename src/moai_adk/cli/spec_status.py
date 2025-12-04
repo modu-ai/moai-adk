@@ -34,7 +34,9 @@ except ImportError:
         raise ImportError("SpecStatusManager not found")
 
 
-def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[str, Any]:
+def update_spec_status(
+    spec_id: str, new_status: str, reason: str = ""
+) -> Dict[str, Any]:
     """Update SPEC status with validation and logging
 
     Args:
@@ -53,7 +55,10 @@ def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[
         # Validate new status
         valid_statuses = ["draft", "in-progress", "completed", "archived"]
         if new_status not in valid_statuses:
-            return {"success": False, "error": f"Invalid status: {new_status}. Valid statuses: {valid_statuses}"}
+            return {
+                "success": False,
+                "error": f"Invalid status: {new_status}. Valid statuses: {valid_statuses}",
+            }
 
         # Check if SPEC exists
         spec_file = project_root / ".moai" / "specs" / spec_id / "spec.md"
@@ -89,7 +94,10 @@ def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[
                 "timestamp": log_entry["timestamp"],
             }
         else:
-            return {"success": False, "error": f"Failed to update SPEC {spec_id} status"}
+            return {
+                "success": False,
+                "error": f"Failed to update SPEC {spec_id} status",
+            }
 
     except Exception as e:
         return {"success": False, "error": f"Error updating SPEC status: {str(e)}"}
@@ -114,7 +122,10 @@ def validate_spec_completion(spec_id: str) -> Dict[str, Any]:
         return {"success": True, "spec_id": spec_id, "validation": validation}
 
     except Exception as e:
-        return {"success": False, "error": f"Error validating SPEC completion: {str(e)}"}
+        return {
+            "success": False,
+            "error": f"Error validating SPEC completion: {str(e)}",
+        }
 
 
 def batch_update_completed_specs() -> Dict[str, Any]:
@@ -131,7 +142,11 @@ def batch_update_completed_specs() -> Dict[str, Any]:
         results = manager.batch_update_completed_specs()
 
         # Log the batch update
-        log_entry = {"timestamp": datetime.now().isoformat(), "operation": "batch_update_completed", "results": results}
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "operation": "batch_update_completed",
+            "results": results,
+        }
 
         log_dir = project_root / ".moai" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -140,7 +155,11 @@ def batch_update_completed_specs() -> Dict[str, Any]:
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
-        return {"success": True, "results": results, "timestamp": log_entry["timestamp"]}
+        return {
+            "success": True,
+            "results": results,
+            "timestamp": log_entry["timestamp"],
+        }
 
     except Exception as e:
         return {"success": False, "error": f"Error in batch update: {str(e)}"}
@@ -158,7 +177,11 @@ def detect_draft_specs() -> Dict[str, Any]:
 
         draft_specs = manager.detect_draft_specs()
 
-        return {"success": True, "draft_specs": list(draft_specs), "count": len(draft_specs)}
+        return {
+            "success": True,
+            "draft_specs": list(draft_specs),
+            "count": len(draft_specs),
+        }
 
     except Exception as e:
         return {"success": False, "error": f"Error detecting draft SPECs: {str(e)}"}
@@ -169,7 +192,12 @@ def main():
     parser = argparse.ArgumentParser(description="Spec Status Manager Hooks")
     parser.add_argument(
         "command",
-        choices=["status_update", "validate_completion", "batch_update", "detect_drafts"],
+        choices=[
+            "status_update",
+            "validate_completion",
+            "batch_update",
+            "detect_drafts",
+        ],
         help="Command to execute",
     )
     parser.add_argument("spec_id", nargs="?", help="SPEC ID (for specific commands)")
@@ -183,14 +211,28 @@ def main():
 
         if args.command == "status_update":
             if not args.spec_id or not args.status:
-                print(json.dumps({"success": False, "error": "status_update requires spec_id and --status"}))
+                print(
+                    json.dumps(
+                        {
+                            "success": False,
+                            "error": "status_update requires spec_id and --status",
+                        }
+                    )
+                )
                 sys.exit(1)
 
             result = update_spec_status(args.spec_id, args.status, args.reason)
 
         elif args.command == "validate_completion":
             if not args.spec_id:
-                print(json.dumps({"success": False, "error": "validate_completion requires spec_id"}))
+                print(
+                    json.dumps(
+                        {
+                            "success": False,
+                            "error": "validate_completion requires spec_id",
+                        }
+                    )
+                )
                 sys.exit(1)
 
             result = validate_spec_completion(args.spec_id)

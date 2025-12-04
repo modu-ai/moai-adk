@@ -61,7 +61,9 @@ class SpecStatusManager:
                         frontmatter = None
 
                         # Handle JSON-like meta (common in older specs)
-                        meta_match = re.search(r"<%?\s*---\s*\n(.*?)\n---\s*%?>", content, re.DOTALL)
+                        meta_match = re.search(
+                            r"<%?\s*---\s*\n(.*?)\n---\s*%?>", content, re.DOTALL
+                        )
                         if meta_match:
                             try:
                                 meta_text = meta_match.group(1)
@@ -69,7 +71,9 @@ class SpecStatusManager:
                                 meta_text = meta_text.replace('"', "").replace("'", "")
                                 frontmatter = yaml.safe_load("{" + meta_text + "}")
                             except Exception as e:
-                                logger.debug(f"JSON meta parsing failed for {spec_dir.name}: {e}")
+                                logger.debug(
+                                    f"JSON meta parsing failed for {spec_dir.name}: {e}"
+                                )
 
                         # Handle regular YAML frontmatter
                         elif content.startswith("---"):
@@ -79,7 +83,9 @@ class SpecStatusManager:
                                 try:
                                     frontmatter = yaml.safe_load(frontmatter_text)
                                 except yaml.YAMLError as e:
-                                    logger.warning(f"YAML parsing error for {spec_dir.name}: {e}")
+                                    logger.warning(
+                                        f"YAML parsing error for {spec_dir.name}: {e}"
+                                    )
                                     # Try to fix common issues (like @ in author field)
                                     try:
                                         # Replace problematic @author entries
@@ -92,7 +98,9 @@ class SpecStatusManager:
                                             )
                                         frontmatter = yaml.safe_load(fixed_text)
                                     except yaml.YAMLError:
-                                        logger.error(f"Could not parse YAML for {spec_dir.name} even after fixes")
+                                        logger.error(
+                                            f"Could not parse YAML for {spec_dir.name} even after fixes"
+                                        )
                                         continue
 
                         if frontmatter and frontmatter.get("status") == "draft":
@@ -127,11 +135,19 @@ class SpecStatusManager:
             spec_dir = spec_file.parent
 
             # Check for implementation files
-            src_files = list(spec_dir.rglob("*.py")) if (spec_dir.parent.parent / "src").exists() else []
+            src_files = (
+                list(spec_dir.rglob("*.py"))
+                if (spec_dir.parent.parent / "src").exists()
+                else []
+            )
 
             # Check for test files
             test_dir = spec_dir.parent.parent / "tests"
-            test_files = list(test_dir.rglob(f"test_*{spec_id.lower()}*.py")) if test_dir.exists() else []
+            test_files = (
+                list(test_dir.rglob(f"test_*{spec_id.lower()}*.py"))
+                if test_dir.exists()
+                else []
+            )
 
             # Simple completion criteria
             has_code = len(src_files) > 0
@@ -145,7 +161,9 @@ class SpecStatusManager:
             # Overall completion check
             is_complete = has_code and has_tests and has_acceptance_criteria
 
-            logger.info(f"SPEC {spec_id} implementation status: {'COMPLETE' if is_complete else 'INCOMPLETE'}")
+            logger.info(
+                f"SPEC {spec_id} implementation status: {'COMPLETE' if is_complete else 'INCOMPLETE'}"
+            )
             return is_complete
 
         except Exception as e:
@@ -186,10 +204,14 @@ class SpecStatusManager:
                         try:
                             fixed_text = frontmatter_text
                             if "author: @" in fixed_text:
-                                fixed_text = re.sub(r"author:\s*@(\w+)", r'author: "\1"', fixed_text)
+                                fixed_text = re.sub(
+                                    r"author:\s*@(\w+)", r'author: "\1"', fixed_text
+                                )
                             frontmatter = yaml.safe_load(fixed_text) or {}
                         except yaml.YAMLError:
-                            logger.error(f"Could not parse YAML for {spec_id} even after fixes")
+                            logger.error(
+                                f"Could not parse YAML for {spec_id} even after fixes"
+                            )
                             return False
 
                     # Update status
@@ -197,12 +219,16 @@ class SpecStatusManager:
 
                     # Bump version if completing
                     if new_status == "completed":
-                        frontmatter["version"] = self._bump_version(frontmatter.get("version", "0.1.0"))
+                        frontmatter["version"] = self._bump_version(
+                            frontmatter.get("version", "0.1.0")
+                        )
                         frontmatter["updated"] = datetime.now().strftime("%Y-%m-%d")
 
                     # Reconstruct the file
                     new_frontmatter = yaml.dump(frontmatter, default_flow_style=False)
-                    new_content = f"---\n{new_frontmatter}---{content[end_marker + 3 :]}"
+                    new_content = (
+                        f"---\n{new_frontmatter}---{content[end_marker + 3 :]}"
+                    )
 
                     # Write back to file
                     with open(spec_file, "w", encoding="utf-8") as f:
@@ -261,7 +287,9 @@ class SpecStatusManager:
             # Check for code implementation
             spec_dir = spec_file.parent
             src_dir = spec_dir.parent.parent / "src"
-            criteria_checks["code_implemented"] = src_dir.exists() and len(list(src_dir.rglob("*.py"))) > 0
+            criteria_checks["code_implemented"] = (
+                src_dir.exists() and len(list(src_dir.rglob("*.py"))) > 0
+            )
             if not criteria_checks["code_implemented"]:
                 issues_list = result["issues"]
                 if isinstance(issues_list, list):
@@ -277,14 +305,18 @@ class SpecStatusManager:
                     issues_list.append("No test files found")
 
             # Check for acceptance criteria
-            criteria_checks["tasks_completed"] = self._check_acceptance_criteria(spec_file)
+            criteria_checks["tasks_completed"] = self._check_acceptance_criteria(
+                spec_file
+            )
             if not criteria_checks["tasks_completed"]:
                 issues_list = result["issues"]
                 if isinstance(issues_list, list):
                     issues_list.append("Missing acceptance criteria section")
 
             # 4. Acceptance criteria present
-            criteria_checks["has_acceptance_criteria"] = self._check_acceptance_criteria(spec_file)
+            criteria_checks["has_acceptance_criteria"] = (
+                self._check_acceptance_criteria(spec_file)
+            )
             if (
                 not criteria_checks["has_acceptance_criteria"]
                 and self.validation_criteria["require_acceptance_criteria"]
@@ -298,7 +330,9 @@ class SpecStatusManager:
             if not criteria_checks["docs_synced"]:
                 recs_list = result["recommendations"]
                 if isinstance(recs_list, list):
-                    recs_list.append("Consider running /moai:3-sync to update documentation")
+                    recs_list.append(
+                        "Consider running /moai:3-sync to update documentation"
+                    )
 
             result["criteria_met"] = criteria_checks
             result["is_ready"] = all(criteria_checks.values())
@@ -307,7 +341,9 @@ class SpecStatusManager:
             if result["is_ready"]:
                 recs_list = result["recommendations"]
                 if isinstance(recs_list, list):
-                    recs_list.append("SPEC is ready for completion. Consider updating status to 'completed'")
+                    recs_list.append(
+                        "SPEC is ready for completion. Consider updating status to 'completed'"
+                    )
 
         except Exception as e:
             logger.error(f"Error validating SPEC {spec_id}: {e}")
@@ -354,7 +390,9 @@ class SpecStatusManager:
                     skipped_list = results["skipped"]
                     if isinstance(skipped_list, list):
                         skipped_list.append(spec_id)
-                    logger.debug(f"SPEC {spec_id} not ready for completion: {validation['issues']}")
+                    logger.debug(
+                        f"SPEC {spec_id} not ready for completion: {validation['issues']}"
+                    )
 
             except Exception as e:
                 failed_list = results["failed"]

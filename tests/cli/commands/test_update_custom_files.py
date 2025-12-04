@@ -337,7 +337,9 @@ class TestGroupCustomFiles:
         from moai_adk.cli.commands.update import _group_custom_files_by_type
 
         grouped = _group_custom_files_by_type(
-            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"]
+            custom_commands=["cmd1.md", "cmd2.md"],
+            custom_agents=["agent1.md"],
+            custom_hooks=["hook1.py"],
         )
 
         assert grouped["commands"] == ["cmd1.md", "cmd2.md"]
@@ -368,7 +370,9 @@ class TestPromptCustomFilesRestore:
         """
         from moai_adk.cli.commands.update import _prompt_custom_files_restore
 
-        result = _prompt_custom_files_restore(custom_commands=[], custom_agents=[], custom_hooks=[], yes=False)
+        result = _prompt_custom_files_restore(
+            custom_commands=[], custom_agents=[], custom_hooks=[], yes=False
+        )
 
         # Should return empty selections
         assert result == {"commands": [], "agents": [], "hooks": []}
@@ -381,7 +385,10 @@ class TestPromptCustomFilesRestore:
         from moai_adk.cli.commands.update import _prompt_custom_files_restore
 
         result = _prompt_custom_files_restore(
-            custom_commands=["cmd1.md", "cmd2.md"], custom_agents=["agent1.md"], custom_hooks=["hook1.py"], yes=True
+            custom_commands=["cmd1.md", "cmd2.md"],
+            custom_agents=["agent1.md"],
+            custom_hooks=["hook1.py"],
+            yes=True,
         )
 
         # In --yes mode, skip restoration (return empty to be safe)

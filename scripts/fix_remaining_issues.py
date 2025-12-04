@@ -6,11 +6,12 @@ from pathlib import Path
 
 SKILLS_DIR = Path("/Users/goos/MoAI/MoAI-ADK/.claude/skills")
 
+
 def fix_metadata_name_mismatches():
     """Fix metadata name fields that don't match directory."""
     fixes = {
         "moai-core-feedback-templates": "moai-core-feedback-templates",
-        "moai-webapp-testing": "moai-webapp-testing"
+        "moai-webapp-testing": "moai-webapp-testing",
     }
 
     for skill_dir_name, correct_name in fixes.items():
@@ -25,21 +26,34 @@ def fix_metadata_name_mismatches():
                         frontmatter_str = content[3:end].strip()
                         metadata = yaml.safe_load(frontmatter_str) or {}
                         metadata["name"] = correct_name
-                        
+
                         # Reconstruct
                         yaml_lines = ["---"]
-                        for key in ["name", "description", "version", "modularized", "allowed-tools", "last_updated", "compliance_score", "auto_trigger_keywords", "category_tier", "agent_coverage"]:
+                        for key in [
+                            "name",
+                            "description",
+                            "version",
+                            "modularized",
+                            "allowed-tools",
+                            "last_updated",
+                            "compliance_score",
+                            "auto_trigger_keywords",
+                            "category_tier",
+                            "agent_coverage",
+                        ]:
                             if key in metadata and metadata[key] is not None:
                                 if isinstance(metadata[key], list):
                                     yaml_lines.append(f"{key}:")
                                     for item in metadata[key]:
                                         yaml_lines.append(f"  - {item}")
                                 elif isinstance(metadata[key], bool):
-                                    yaml_lines.append(f"{key}: {str(metadata[key]).lower()}")
+                                    yaml_lines.append(
+                                        f"{key}: {str(metadata[key]).lower()}"
+                                    )
                                 else:
                                     yaml_lines.append(f"{key}: {metadata[key]}")
                         yaml_lines.append("---")
-                        new_content = "\n".join(yaml_lines) + content[end + 3:]
+                        new_content = "\n".join(yaml_lines) + content[end + 3 :]
                         skill_md.write_text(new_content)
                         print(f"✓ Fixed name mismatch: {skill_dir_name}")
 
@@ -49,7 +63,7 @@ def create_google_nano_banana():
     skill_dir = SKILLS_DIR / "moai-google-nano-banana"
     if not skill_dir.exists():
         skill_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Create SKILL.md
         content = """---
 name: moai-google-nano-banana
@@ -85,6 +99,7 @@ def main():
     fix_metadata_name_mismatches()
     create_google_nano_banana()
     print("✓ Fixes applied!")
+
 
 if __name__ == "__main__":
     main()

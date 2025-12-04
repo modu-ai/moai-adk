@@ -81,7 +81,9 @@ class TestCliIntegration:
         # Should succeed (exit code 0)
         assert result.exit_code == 0
         # Should display help text
-        assert "MoAI Agentic Development Kit" in result.output or "Usage:" in result.output
+        assert (
+            "MoAI Agentic Development Kit" in result.output or "Usage:" in result.output
+        )
 
     def test_cli_version_option(self):
         """Test that cli has version option."""
@@ -162,7 +164,9 @@ class TestModuleReExports:
         assert main.__doc__ is not None
         assert len(main.__doc__.strip()) > 0
         # Should describe the module's purpose
-        assert any(keyword in main.__doc__.lower() for keyword in ["cli", "entry", "module"])
+        assert any(
+            keyword in main.__doc__.lower() for keyword in ["cli", "entry", "module"]
+        )
 
 
 class TestErrorHandling:
@@ -181,7 +185,9 @@ class TestErrorHandling:
 
         # Verify all symbols in __all__ are actually available
         for symbol in all_exports:
-            assert hasattr(main_module, symbol), f"Symbol '{symbol}' in __all__ but not found in module"
+            assert hasattr(
+                main_module, symbol
+            ), f"Symbol '{symbol}' in __all__ but not found in module"
 
     def test_cli_invocation_with_invalid_command(self):
         """Test CLI behavior with invalid command."""
@@ -193,4 +199,8 @@ class TestErrorHandling:
         # Should fail with non-zero exit code
         assert result.exit_code != 0
         # Should show error message
-        assert "Error" in result.output or "No such command" in result.output or result.exit_code == 2
+        assert (
+            "Error" in result.output
+            or "No such command" in result.output
+            or result.exit_code == 2
+        )

@@ -249,7 +249,9 @@ class CacheSystem:
                     count += 1
         return count
 
-    def set_if_not_exists(self, key: str, value: Any, ttl: Optional[float] = None) -> bool:
+    def set_if_not_exists(
+        self, key: str, value: Any, ttl: Optional[float] = None
+    ) -> bool:
         """
         Set a value only if the key doesn't exist.
 

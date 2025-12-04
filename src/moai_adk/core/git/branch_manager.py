@@ -85,7 +85,11 @@ class BranchManager:
         Returns:
             Names of checkpoint branches.
         """
-        return [head.name for head in self.repo.heads if head.name.startswith(self.CHECKPOINT_PREFIX)]
+        return [
+            head.name
+            for head in self.repo.heads
+            if head.name.startswith(self.CHECKPOINT_PREFIX)
+        ]
 
     def mark_as_old(self, branch_name: str) -> None:
         """
@@ -108,7 +112,9 @@ class BranchManager:
         checkpoints = self.list_checkpoint_branches()
 
         # Sort in chronological order (branches marked via mark_as_old first)
-        sorted_checkpoints = sorted(checkpoints, key=lambda name: (name not in self._old_branches, name))
+        sorted_checkpoints = sorted(
+            checkpoints, key=lambda name: (name not in self._old_branches, name)
+        )
 
         # Delete the excess branches
         to_delete = sorted_checkpoints[: len(sorted_checkpoints) - max_count]
@@ -123,7 +129,9 @@ class BranchManager:
         if len(checkpoints) > self.MAX_CHECKPOINTS:
             # Sort alphabetically (older timestamps first)
             sorted_checkpoints = sorted(checkpoints)
-            to_delete = sorted_checkpoints[: len(sorted_checkpoints) - self.MAX_CHECKPOINTS]
+            to_delete = sorted_checkpoints[
+                : len(sorted_checkpoints) - self.MAX_CHECKPOINTS
+            ]
 
             for branch_name in to_delete:
                 self.repo.delete_head(branch_name, force=True)

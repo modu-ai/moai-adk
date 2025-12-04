@@ -22,7 +22,9 @@ class MockSkillElement:
 class TestUserSelectionUIEnhancement:
     """Test enhanced UI for custom element selection"""
 
-    def _create_mock_scan_result(self, agents=None, commands=None, skills=None, hooks=None):
+    def _create_mock_scan_result(
+        self, agents=None, commands=None, skills=None, hooks=None
+    ):
         """Create a mock scan result in the format scan_custom_elements() returns.
 
         Args:
@@ -51,7 +53,9 @@ class TestUserSelectionUIEnhancement:
         Returns:
             Configured UserSelectionUI instance
         """
-        with patch("moai_adk.core.migration.user_selection_ui.create_custom_element_scanner") as mock_scanner:
+        with patch(
+            "moai_adk.core.migration.user_selection_ui.create_custom_element_scanner"
+        ) as mock_scanner:
             mock_scanner_instance = MagicMock()
             mock_scanner.return_value = mock_scanner_instance
             mock_scanner_instance.scan_custom_elements.return_value = scan_result
@@ -108,7 +112,9 @@ class TestUserSelectionUIEnhancement:
 
         # Test 'all' selection
         with patch("builtins.input", return_value="all"):
-            with patch.object(ui, "confirm_selection", return_value=True) as mock_confirm:
+            with patch.object(
+                ui, "confirm_selection", return_value=True
+            ) as mock_confirm:
                 result = ui.prompt_user_selection(backup_available=True)
 
         # Should select all elements
@@ -147,7 +153,11 @@ class TestUserSelectionUIEnhancement:
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should select elements 1, 3, and 4
-        expected = [".claude/agents/agent1.md", ".claude/skills/skill1", ".claude/hooks/moai/hook1.py"]
+        expected = [
+            ".claude/agents/agent1.md",
+            ".claude/skills/skill1",
+            ".claude/hooks/moai/hook1.py",
+        ]
         assert set(result) == set(expected)
 
     def test_ui_enhanced_error_handling(self, tmp_path):
@@ -259,7 +269,11 @@ class TestUserSelectionUIEnhancement:
             result = ui.prompt_user_selection(backup_available=True)
 
         # Should select elements 1, 3, and 4
-        expected = [".claude/agents/agent1.md", ".claude/skills/skill1", ".claude/hooks/moai/hook1.py"]
+        expected = [
+            ".claude/agents/agent1.md",
+            ".claude/skills/skill1",
+            ".claude/hooks/moai/hook1.py",
+        ]
         assert set(result) == set(expected)
 
     def test_ui_enhanced_confirmation_enhancement(self, tmp_path):
@@ -276,7 +290,10 @@ class TestUserSelectionUIEnhancement:
         )
         ui = self._create_ui_with_mock_scanner(project_path, scan_result)
 
-        selected_elements = [".claude/agents/agent1.md", ".claude/commands/moai/cmd1.md"]
+        selected_elements = [
+            ".claude/agents/agent1.md",
+            ".claude/commands/moai/cmd1.md",
+        ]
 
         # Test enhanced confirmation display
         with patch("builtins.input", return_value="y"):

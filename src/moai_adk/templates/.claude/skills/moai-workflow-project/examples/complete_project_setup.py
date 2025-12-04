@@ -57,7 +57,9 @@ def example_multilingual_setup():
 
     print(f"설정 성공: {result['success']}")
     print(f"언어: {result['configuration_updates']['language']['language']}")
-    print(f"사용자 이름: {result['configuration_updates']['language']['updated_config']['user']['name']}")
+    print(
+        f"사용자 이름: {result['configuration_updates']['language']['updated_config']['user']['name']}"
+    )
 
     # Check token impact
     token_impact = result["configuration_updates"]["language"]["token_cost_impact"]
@@ -227,14 +229,19 @@ def example_multilingual_workflow():
 
     # Step 1: Initialize with Korean language
     init_result = project.initialize_complete_project(
-        language="ko", user_name="박디벨로퍼", domains=["backend", "frontend"], project_type="web_application"
+        language="ko",
+        user_name="박디벨로퍼",
+        domains=["backend", "frontend"],
+        project_type="web_application",
     )
 
     print(f"Korean project initialized: {init_result['success']}")
 
     # Step 2: Update language settings
     lang_update = project.update_language_settings(
-        {"language.agent_prompt_language": "english"}  # Use English for agent prompts to save tokens
+        {
+            "language.agent_prompt_language": "english"
+        }  # Use English for agent prompts to save tokens
     )
 
     print(f"Language settings updated: {lang_update['success']}")
@@ -244,7 +251,12 @@ def example_multilingual_workflow():
         "id": "SPEC-KO-001",
         "title": "사용자 관리 시스템",
         "description": "사용자 등록, 인증, 프로필 관리 기능 구현",
-        "requirements": ["이메일을 통한 사용자 등록", "소셜 로그인 지원", "프로필 관리 및 수정", "사용자 권한 관리"],
+        "requirements": [
+            "이메일을 통한 사용자 등록",
+            "소셜 로그인 지원",
+            "프로필 관리 및 수정",
+            "사용자 권한 관리",
+        ],
         "status": "Planned",
         "priority": "High",
     }
@@ -299,7 +311,9 @@ def main():
             print(f"❌ {name}: Failed - {result['error']}")
         else:
             success = result.get("success", True)
-            print(f"{'✅' if success else '⚠️'} {name}: {'Success' if success else 'Partial'}")
+            print(
+                f"{'✅' if success else '⚠️'} {name}: {'Success' if success else 'Partial'}"
+            )
 
     return results
 

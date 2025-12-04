@@ -116,7 +116,11 @@ class TestingFrameworkManager:
             }
         }
 
-        return {"jest_config": jest_config, "npm_scripts": npm_scripts, "package_config": package_config}
+        return {
+            "jest_config": jest_config,
+            "npm_scripts": npm_scripts,
+            "package_config": package_config,
+        }
 
     def configure_playwright_e2e(self) -> Dict[str, Any]:
         """Configure Playwright for E2E testing."""
@@ -124,7 +128,10 @@ class TestingFrameworkManager:
             "testDir": "tests/e2e",
             "timeout": 30000,
             "expect": {"timeout": 5000},
-            "use": {"baseURL": "http://localhost:3000", "viewport": {"width": 1280, "height": 720}},
+            "use": {
+                "baseURL": "http://localhost:3000",
+                "viewport": {"width": 1280, "height": 720},
+            },
         }
 
         test_config = {"headless": False, "slowMo": 100, "retries": 2, "workers": 2}
@@ -135,7 +142,11 @@ class TestingFrameworkManager:
             "webkit": {"channel": "safari"},
         }
 
-        return {"playwright_config": playwright_config, "test_config": test_config, "browsers": browsers}
+        return {
+            "playwright_config": playwright_config,
+            "test_config": test_config,
+            "browsers": browsers,
+        }
 
     def setup_api_testing(self) -> Dict[str, Any]:
         """Setup API testing configuration."""
@@ -143,7 +154,10 @@ class TestingFrameworkManager:
             "base_url": "http://localhost:8080",
             "timeout": 30000,
             "ssl_validation": False,
-            "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
         }
 
         test_data = {
@@ -156,7 +170,11 @@ class TestingFrameworkManager:
         }
 
         assertion_helpers = {
-            "json_path": {"response_data": "$", "status_code": "$.status", "error_message": "$.error"},
+            "json_path": {
+                "response_data": "$",
+                "status_code": "$.status",
+                "error_message": "$.error",
+            },
             "status_code": {
                 "success_range": [200, 299],
                 "client_error_range": [400, 499],
@@ -193,12 +211,24 @@ class QualityGateEngine:
                 "threshold": 8.0,
                 "options": "--disable=all --enable=E,F,U --max-line-length=120",
             },
-            "flake8": {"enabled": True, "threshold": 7.0, "options": "--max-line-length=120 --extend-ignore=E203,W503"},
-            "eslint": {"enabled": True, "config_file": ".eslintrc.js", "threshold": 8.0},
+            "flake8": {
+                "enabled": True,
+                "threshold": 7.0,
+                "options": "--max-line-length=120 --extend-ignore=E203,W503",
+            },
+            "eslint": {
+                "enabled": True,
+                "config_file": ".eslintrc.js",
+                "threshold": 8.0,
+            },
         }
 
         formatters = {
-            "black": {"enabled": True, "line_length": 88, "target_version": ["py38", "py39", "py310", "py311"]},
+            "black": {
+                "enabled": True,
+                "line_length": 88,
+                "target_version": ["py38", "py39", "py310", "py311"],
+            },
             "isort": {"enabled": True, "profile": "black", "line_length": 88},
         }
 
@@ -218,14 +248,27 @@ class QualityGateEngine:
             "max_performance_issues": 2,
         }
 
-        return {"linters": linters, "formatters": formatters, "rules": rules, "thresholds": thresholds}
+        return {
+            "linters": linters,
+            "formatters": formatters,
+            "rules": rules,
+            "thresholds": thresholds,
+        }
 
     def configure_security_scanning(self) -> Dict[str, Any]:
         """Configure security vulnerability scanning."""
         scan_tools = {
-            "bandit": {"enabled": True, "config_file": "bandit.ini", "severity_levels": ["high", "critical"]},
+            "bandit": {
+                "enabled": True,
+                "config_file": "bandit.ini",
+                "severity_levels": ["high", "critical"],
+            },
             "safety": {"enabled": True, "check_deps": True, "report": True},
-            "trivy": {"enabled": True, "severity": ["HIGH", "CRITICAL"], "format": "json"},
+            "trivy": {
+                "enabled": True,
+                "severity": ["HIGH", "CRITICAL"],
+                "format": "json",
+            },
         }
 
         vulnerability_levels = {
@@ -235,9 +278,17 @@ class QualityGateEngine:
             "low": {"action": "monitor", "response_time": "1w"},
         }
 
-        exclusions = {"files": [], "patterns": [], "directories": ["tests", "venv", "__pycache__"]}
+        exclusions = {
+            "files": [],
+            "patterns": [],
+            "directories": ["tests", "venv", "__pycache__"],
+        }
 
-        reporting = {"format": "json", "output_dir": "reports/security", "include_metrics": True}
+        reporting = {
+            "format": "json",
+            "output_dir": "reports/security",
+            "include_metrics": True,
+        }
 
         return {
             "scan_tools": scan_tools,
@@ -249,15 +300,32 @@ class QualityGateEngine:
     def setup_performance_tests(self) -> Dict[str, Any]:
         """Setup performance regression testing."""
         benchmarks = {
-            "response_time": {"api_endpoint": 500, "database_query": 100, "file_operation": 1000},
-            "throughput": {"requests_per_second": 1000, "transactions_per_minute": 60000},
+            "response_time": {
+                "api_endpoint": 500,
+                "database_query": 100,
+                "file_operation": 1000,
+            },
+            "throughput": {
+                "requests_per_second": 1000,
+                "transactions_per_minute": 60000,
+            },
             "memory_usage": {"max_ram_mb": 1024, "max_cpu_percent": 80},
         }
 
-        thresholds = {"max_response_time": 2000, "min_throughput": 500, "max_memory_usage": 2048, "max_cpu_usage": 90}
+        thresholds = {
+            "max_response_time": 2000,
+            "min_throughput": 500,
+            "max_memory_usage": 2048,
+            "max_cpu_usage": 90,
+        }
 
         tools = {
-            "locust": {"enabled": True, "users": 100, "spawn_rate": 10, "run_time": "10m"},
+            "locust": {
+                "enabled": True,
+                "users": 100,
+                "spawn_rate": 10,
+                "run_time": "10m",
+            },
             "jmeter": {"enabled": True, "threads": 50, "ramp_up": 10, "duration": "5m"},
             "k6": {"enabled": True, "vus": 100, "duration": "30s"},
         }
@@ -268,7 +336,12 @@ class QualityGateEngine:
             "stress_test": {"users": 5000, "duration": "10m"},
         }
 
-        return {"benchmarks": benchmarks, "thresholds": thresholds, "tools": tools, "scenarios": scenarios}
+        return {
+            "benchmarks": benchmarks,
+            "thresholds": thresholds,
+            "tools": tools,
+            "scenarios": scenarios,
+        }
 
 
 class CoverageAnalyzer:
@@ -299,7 +372,11 @@ class CoverageAnalyzer:
             "by_file": {
                 "src/main.py": {"lines": 500, "covered": 450, "percentage": 90.0},
                 "src/utils.py": {"lines": 300, "covered": 240, "percentage": 80.0},
-                "tests/test_main.py": {"lines": 200, "covered": 180, "percentage": 90.0},
+                "tests/test_main.py": {
+                    "lines": 200,
+                    "covered": 180,
+                    "percentage": 90.0,
+                },
             },
             "by_module": {
                 "core": {"percentage": 85.0, "trend": "improving"},
@@ -325,17 +402,38 @@ class CoverageAnalyzer:
             "function_coverage": [85.0, 87.0, 88.5],
         }
 
-        return {"summary": summary, "details": details, "recommendations": recommendations, "trends": trends}
+        return {
+            "summary": summary,
+            "details": details,
+            "recommendations": recommendations,
+            "trends": trends,
+        }
 
     def generate_coverage_badges(self) -> Dict[str, Any]:
         """Generate coverage badges for documentation."""
         badges = {
-            "line_coverage": {"percentage": 85.0, "color": "green", "label": "Coverage"},
-            "branch_coverage": {"percentage": 80.0, "color": "yellow", "label": "Branches"},
-            "function_coverage": {"percentage": 88.5, "color": "green", "label": "Functions"},
+            "line_coverage": {
+                "percentage": 85.0,
+                "color": "green",
+                "label": "Coverage",
+            },
+            "branch_coverage": {
+                "percentage": 80.0,
+                "color": "yellow",
+                "label": "Branches",
+            },
+            "function_coverage": {
+                "percentage": 88.5,
+                "color": "green",
+                "label": "Functions",
+            },
         }
 
-        badge_config = {"style": "flat-square", "format": "svg", "directory": "docs/badges"}
+        badge_config = {
+            "style": "flat-square",
+            "format": "svg",
+            "directory": "docs/badges",
+        }
 
         return {"badges": badges, "badge_config": badge_config}
 
@@ -371,9 +469,15 @@ class CoverageAnalyzer:
             "thresholds_set": True,
             "new_thresholds": self.coverage_thresholds,
             "validation": {
-                "line_coverage_threshold": self.coverage_thresholds["min_line_coverage"],
-                "branch_coverage_threshold": self.coverage_thresholds["min_branch_coverage"],
-                "function_coverage_threshold": self.coverage_thresholds["min_function_coverage"],
+                "line_coverage_threshold": self.coverage_thresholds[
+                    "min_line_coverage"
+                ],
+                "branch_coverage_threshold": self.coverage_thresholds[
+                    "min_branch_coverage"
+                ],
+                "function_coverage_threshold": self.coverage_thresholds[
+                    "min_function_coverage"
+                ],
             },
         }
 
@@ -394,7 +498,12 @@ class CoverageAnalyzer:
             "performance": {"status": "failed", "threshold": 2, "actual": 3},
         }
 
-        return {"status": gate_status, "passed_gates": passed_gates, "failed_gates": failed_gates, "details": details}
+        return {
+            "status": gate_status,
+            "passed_gates": passed_gates,
+            "failed_gates": failed_gates,
+            "details": details,
+        }
 
     def collect_test_metrics(self) -> Dict[str, Any]:
         """Collect test metrics and analysis."""
@@ -407,8 +516,16 @@ class CoverageAnalyzer:
                 "skipped_tests": 95,
                 "execution_time": 1250.5,
             },
-            "quality_metrics": {"coverage_percentage": 85.0, "code_quality_score": 8.7, "maintainability_index": 8.2},
-            "performance_metrics": {"avg_test_duration": 0.83, "max_test_duration": 5.2, "test_flakiness": 0.056},
+            "quality_metrics": {
+                "coverage_percentage": 85.0,
+                "code_quality_score": 8.7,
+                "maintainability_index": 8.2,
+            },
+            "performance_metrics": {
+                "avg_test_duration": 0.83,
+                "max_test_duration": 5.2,
+                "test_flakiness": 0.056,
+            },
         }
 
 
@@ -424,11 +541,18 @@ class TestAutomationOrchestrator:
         pipeline_config = {
             "stages": ["build", "test", "security", "deploy"],
             "strategy": "parallel",
-            "variables": {"PYTHON_VERSION": "3.11", "NODE_VERSION": "18", "DOCKER_REGISTRY": "registry.example.com"},
+            "variables": {
+                "PYTHON_VERSION": "3.11",
+                "NODE_VERSION": "18",
+                "DOCKER_REGISTRY": "registry.example.com",
+            },
         }
 
         triggers = {
-            "push": {"branches": ["main", "develop"], "paths": ["src/**", "tests/**", "pyproject.toml"]},
+            "push": {
+                "branches": ["main", "develop"],
+                "paths": ["src/**", "tests/**", "pyproject.toml"],
+            },
             "pull_request": {"branches": ["main"], "paths": ["src/**", "tests/**"]},
             "schedule": {
                 "cron": "0 2 * * 1",  # Every Monday at 2 AM
@@ -442,16 +566,31 @@ class TestAutomationOrchestrator:
                 "script": ["pytest --cov=src/"],
                 "artifacts": {"reports": {"coverage_report": "coverage.xml"}},
             },
-            "security_scan": {"image": "python:3.11", "script": ["bandit -r src/", "safety check"]},
-            "deploy": {"image": "docker:latest", "script": ["docker build -t myapp:latest ."], "only": ["main"]},
+            "security_scan": {
+                "image": "python:3.11",
+                "script": ["bandit -r src/", "safety check"],
+            },
+            "deploy": {
+                "image": "docker:latest",
+                "script": ["docker build -t myapp:latest ."],
+                "only": ["main"],
+            },
         }
 
         artifacts = {
-            "reports": {"coverage_report": "coverage.xml", "security_report": "security-results.json"},
+            "reports": {
+                "coverage_report": "coverage.xml",
+                "security_report": "security-results.json",
+            },
             "cache": {"directories": ["venv/", "node_modules/"]},
         }
 
-        return {"pipeline_config": pipeline_config, "triggers": triggers, "jobs": jobs, "artifacts": artifacts}
+        return {
+            "pipeline_config": pipeline_config,
+            "triggers": triggers,
+            "jobs": jobs,
+            "artifacts": artifacts,
+        }
 
     def configure_parallel_execution(self) -> Dict[str, Any]:
         """Configure parallel test execution."""
@@ -461,9 +600,19 @@ class TestAutomationOrchestrator:
             "resource_allocation": {"cpu": 2, "memory": "4G", "timeout": 30},
         }
 
-        workers = {"max_workers": 8, "cpu_limit": 16, "memory_limit": "32G", "worker_timeout": 60}
+        workers = {
+            "max_workers": 8,
+            "cpu_limit": 16,
+            "memory_limit": "32G",
+            "worker_timeout": 60,
+        }
 
-        distribution = {"by_suite": True, "by_class": True, "by_method": False, "by_file": False}
+        distribution = {
+            "by_suite": True,
+            "by_class": True,
+            "by_method": False,
+            "by_file": False,
+        }
 
         isolation = {
             "test_isolation": True,
@@ -486,8 +635,14 @@ class TestAutomationOrchestrator:
                 "primary": "postgresql://localhost:5432/test_db",
                 "secondary": "mysql://localhost:3306/test_db",
             },
-            "apis": {"internal": "http://localhost:3001", "external": "https://api.example.com"},
-            "files": {"test_data_dir": "tests/data", "fixture_files": ["users.json", "products.json", "orders.json"]},
+            "apis": {
+                "internal": "http://localhost:3001",
+                "external": "https://api.example.com",
+            },
+            "files": {
+                "test_data_dir": "tests/data",
+                "fixture_files": ["users.json", "products.json", "orders.json"],
+            },
         }
 
         fixtures = {
@@ -510,24 +665,58 @@ class TestAutomationOrchestrator:
 
         cleanup = {
             "auto_cleanup": True,
-            "cleanup_strategies": {"database": "truncate", "files": "delete", "cache": "flush"},
+            "cleanup_strategies": {
+                "database": "truncate",
+                "files": "delete",
+                "cache": "flush",
+            },
         }
 
-        validation = {"data_validation": True, "schema_validation": True, "performance_validation": False}
+        validation = {
+            "data_validation": True,
+            "schema_validation": True,
+            "performance_validation": False,
+        }
 
-        return {"data_sources": data_sources, "fixtures": fixtures, "cleanup": cleanup, "validation": validation}
+        return {
+            "data_sources": data_sources,
+            "fixtures": fixtures,
+            "cleanup": cleanup,
+            "validation": validation,
+        }
 
     def orchestrate_test_runs(self) -> Dict[str, Any]:
         """Orchestrate multiple test runs."""
         test_runs = {
-            "unit_tests": {"command": "pytest tests/unit/", "parallel": True, "timeout": 300},
-            "integration_tests": {"command": "pytest tests/integration/", "parallel": False, "timeout": 600},
-            "e2e_tests": {"command": "pytest tests/e2e/", "parallel": False, "timeout": 1800},
-            "performance_tests": {"command": "locust -f tests/performance/", "parallel": False, "timeout": 3600},
+            "unit_tests": {
+                "command": "pytest tests/unit/",
+                "parallel": True,
+                "timeout": 300,
+            },
+            "integration_tests": {
+                "command": "pytest tests/integration/",
+                "parallel": False,
+                "timeout": 600,
+            },
+            "e2e_tests": {
+                "command": "pytest tests/e2e/",
+                "parallel": False,
+                "timeout": 1800,
+            },
+            "performance_tests": {
+                "command": "locust -f tests/performance/",
+                "parallel": False,
+                "timeout": 3600,
+            },
         }
 
         orchestration_config = {
-            "execution_order": ["unit_tests", "integration_tests", "e2e_tests", "performance_tests"],
+            "execution_order": [
+                "unit_tests",
+                "integration_tests",
+                "e2e_tests",
+                "performance_tests",
+            ],
             "dependency_tracking": True,
             "result_aggregation": True,
             "reporting_enabled": True,
@@ -569,7 +758,11 @@ class TestReportingSpecialist:
                 "setup_failures": 15,
                 "teardown_failures": 10,
             },
-            "performance_data": {"avg_response_time": 250, "max_response_time": 1200, "min_response_time": 50},
+            "performance_data": {
+                "avg_response_time": 250,
+                "max_response_time": 1200,
+                "min_response_time": 50,
+            },
         }
 
         trends = {
@@ -586,7 +779,12 @@ class TestReportingSpecialist:
             "Increase E2E test coverage - 30 tests skipped",
         ]
 
-        return {"summary": summary, "details": details, "trends": trends, "recommendations": recommendations}
+        return {
+            "summary": summary,
+            "details": details,
+            "trends": trends,
+            "recommendations": recommendations,
+        }
 
     def create_quality_dashboard(self) -> Dict[str, Any]:
         """Create quality metrics dashboard configuration."""
@@ -673,7 +871,10 @@ class TestReportingSpecialist:
         ]
 
         patterns = {
-            "recurring_failures": ["test_user_authentication", "test_payment_processing"],
+            "recurring_failures": [
+                "test_user_authentication",
+                "test_payment_processing",
+            ],
             "environmental_failures": ["network_related_tests", "external_api_tests"],
             "timing_related_failures": ["slow_tests", "concurrent_access_tests"],
         }
@@ -697,9 +898,24 @@ class TestReportingSpecialist:
         """Track test execution trends over time."""
         historical_data = {
             "test_execution_history": [
-                {"date": "2024-01-01", "total_tests": 1200, "passed": 1050, "failed": 80},
-                {"date": "2024-01-02", "total_tests": 1250, "passed": 1100, "failed": 75},
-                {"date": "2024-01-03", "total_tests": 1300, "passed": 1150, "failed": 70},
+                {
+                    "date": "2024-01-01",
+                    "total_tests": 1200,
+                    "passed": 1050,
+                    "failed": 80,
+                },
+                {
+                    "date": "2024-01-02",
+                    "total_tests": 1250,
+                    "passed": 1100,
+                    "failed": 75,
+                },
+                {
+                    "date": "2024-01-03",
+                    "total_tests": 1300,
+                    "passed": 1150,
+                    "failed": 70,
+                },
             ],
             "coverage_history": [
                 {"date": "2024-01-01", "line_coverage": 82.0, "branch_coverage": 75.0},
@@ -707,9 +923,21 @@ class TestReportingSpecialist:
                 {"date": "2024-01-03", "line_coverage": 85.0, "branch_coverage": 80.0},
             ],
             "quality_history": [
-                {"date": "2024-01-01", "code_quality_score": 8.2, "maintainability_index": 7.8},
-                {"date": "2024-01-02", "code_quality_score": 8.4, "maintainability_index": 8.0},
-                {"date": "2024-01-03", "code_quality_score": 8.7, "maintainability_index": 8.2},
+                {
+                    "date": "2024-01-01",
+                    "code_quality_score": 8.2,
+                    "maintainability_index": 7.8,
+                },
+                {
+                    "date": "2024-01-02",
+                    "code_quality_score": 8.4,
+                    "maintainability_index": 8.0,
+                },
+                {
+                    "date": "2024-01-03",
+                    "code_quality_score": 8.7,
+                    "maintainability_index": 8.2,
+                },
             ],
         }
 
@@ -725,7 +953,10 @@ class TestReportingSpecialist:
             "future_pass_rate": 90.0,
             "predicted_coverage": 87.0,
             "quality_score_forecast": 9.0,
-            "predicted_issues": ["increasing_test_complexity", "environmental_instability"],
+            "predicted_issues": [
+                "increasing_test_complexity",
+                "environmental_instability",
+            ],
         }
 
         insights = [
@@ -764,13 +995,26 @@ class TestDataManager:
                     {"id": -1, "name": "Invalid", "email": "invalid-email"},
                 ],
                 "edge_case_users": [
-                    {"id": 999999, "name": "Very Long Name" * 10, "email": "a" * 100 + "@example.com"},
-                    {"id": 1, "name": "User With Special Chars !@#$%^&*()", "email": "special@example.com"},
+                    {
+                        "id": 999999,
+                        "name": "Very Long Name" * 10,
+                        "email": "a" * 100 + "@example.com",
+                    },
+                    {
+                        "id": 1,
+                        "name": "User With Special Chars !@#$%^&*()",
+                        "email": "special@example.com",
+                    },
                 ],
             },
             "product_data": {
                 "valid_products": [
-                    {"id": 1, "name": "Product A", "price": 19.99, "category": "electronics"},
+                    {
+                        "id": 1,
+                        "name": "Product A",
+                        "price": 19.99,
+                        "category": "electronics",
+                    },
                     {"id": 2, "name": "Product B", "price": 29.99, "category": "books"},
                 ],
                 "invalid_products": [
@@ -780,8 +1024,18 @@ class TestDataManager:
             },
             "order_data": {
                 "valid_orders": [
-                    {"id": 1, "user_id": 1, "items": [{"product_id": 1, "quantity": 2}], "total": 39.98},
-                    {"id": 2, "user_id": 2, "items": [{"product_id": 2, "quantity": 1}], "total": 29.99},
+                    {
+                        "id": 1,
+                        "user_id": 1,
+                        "items": [{"product_id": 1, "quantity": 2}],
+                        "total": 39.98,
+                    },
+                    {
+                        "id": 2,
+                        "user_id": 2,
+                        "items": [{"product_id": 2, "quantity": 1}],
+                        "total": 29.99,
+                    },
                 ],
                 "invalid_orders": [
                     {"id": 0, "user_id": 0, "items": [], "total": 0},
@@ -796,9 +1050,17 @@ class TestDataManager:
             "referential_integrity_validation": True,
         }
 
-        data_management = {"version_control": True, "backup_strategy": "daily", "retention_policy": "30d"}
+        data_management = {
+            "version_control": True,
+            "backup_strategy": "daily",
+            "retention_policy": "30d",
+        }
 
-        return {"test_datasets": test_datasets, "data_validation": data_validation, "data_management": data_management}
+        return {
+            "test_datasets": test_datasets,
+            "data_validation": data_validation,
+            "data_management": data_management,
+        }
 
     def manage_test_fixtures(self) -> Dict[str, Any]:
         """Manage test fixtures and setup."""
@@ -820,11 +1082,17 @@ class TestDataManager:
                 "mock_endpoints": {
                     "/api/users": {
                         "GET": {"status": 200, "response": {"users": []}},
-                        "POST": {"status": 201, "response": {"id": 1, "name": "New User"}},
+                        "POST": {
+                            "status": 201,
+                            "response": {"id": 1, "name": "New User"},
+                        },
                     },
                     "/api/products": {
                         "GET": {"status": 200, "response": {"products": []}},
-                        "POST": {"status": 201, "response": {"id": 1, "name": "New Product"}},
+                        "POST": {
+                            "status": 201,
+                            "response": {"id": 1, "name": "New Product"},
+                        },
                     },
                 }
             },
@@ -841,7 +1109,10 @@ class TestDataManager:
             "dependency_tracking": True,
         }
 
-        return {"fixture_config": fixture_config, "fixture_lifecycle": fixture_lifecycle}
+        return {
+            "fixture_config": fixture_config,
+            "fixture_lifecycle": fixture_lifecycle,
+        }
 
     def setup_test_environments(self) -> Dict[str, Any]:
         """Setup test environments for different scenarios."""
@@ -906,7 +1177,11 @@ class TestDataManager:
             },
         }
 
-        cleanup_schedule = {"immediate_cleanup": True, "scheduled_cleanup": "daily", "retention_period": "7d"}
+        cleanup_schedule = {
+            "immediate_cleanup": True,
+            "scheduled_cleanup": "daily",
+            "retention_period": "7d",
+        }
 
         cleanup_metrics = {
             "cleanup_success_rate": 99.9,
@@ -998,14 +1273,20 @@ class TestingMetricsCollector:
         weighted_scores = {
             "coverage_score": raw_scores["coverage"] * weights["coverage"],
             "code_quality_score": raw_scores["code_quality"] * weights["code_quality"],
-            "test_reliability_score": raw_scores["test_reliability"] * weights["test_reliability"],
+            "test_reliability_score": raw_scores["test_reliability"]
+            * weights["test_reliability"],
             "performance_score": raw_scores["performance"] * weights["performance"],
-            "maintainability_score": raw_scores["maintainability"] * weights["maintainability"],
+            "maintainability_score": raw_scores["maintainability"]
+            * weights["maintainability"],
         }
 
         overall_score = sum(weighted_scores.values())
 
-        grade = "A" if overall_score >= 90 else "B" if overall_score >= 80 else "C" if overall_score >= 70 else "D"
+        grade = (
+            "A"
+            if overall_score >= 90
+            else "B" if overall_score >= 80 else "C" if overall_score >= 70 else "D"
+        )
 
         recommendations = [
             "Improve maintainability score (82.0) - focus on code refactoring",
@@ -1083,8 +1364,16 @@ class TestingMetricsCollector:
                     "e2e_tests": 10.0,
                     "performance_tests": 6.7,
                 },
-                "test_quality": {"pass_rate": 88.0, "coverage_rate": 85.0, "stability_rate": 94.4},
-                "performance_analysis": {"avg_execution_time": 0.83, "throughput": 1.2, "concurrent_efficiency": 92.5},
+                "test_quality": {
+                    "pass_rate": 88.0,
+                    "coverage_rate": 85.0,
+                    "stability_rate": 94.4,
+                },
+                "performance_analysis": {
+                    "avg_execution_time": 0.83,
+                    "throughput": 1.2,
+                    "concurrent_efficiency": 92.5,
+                },
             },
             "actionable_insights": [
                 "Prioritize test refactoring for better maintainability",
@@ -1180,13 +1469,21 @@ def validate_test_configuration(config: Dict[str, Any]) -> Dict[str, Any]:
         test_paths = config["test_paths"]
         for path in test_paths:
             if not os.path.exists(path):
-                validation_results["warnings"].append(f"Test path does not exist: {path}")
+                validation_results["warnings"].append(
+                    f"Test path does not exist: {path}"
+                )
 
     # Generate recommendations
     if validation_results["is_valid"]:
-        validation_results["recommendations"].append("Configuration is valid and ready for use")
-        validation_results["recommendations"].append("Consider adding performance monitoring for production")
-        validation_results["recommendations"].append("Implement test result archiving for compliance")
+        validation_results["recommendations"].append(
+            "Configuration is valid and ready for use"
+        )
+        validation_results["recommendations"].append(
+            "Consider adding performance monitoring for production"
+        )
+        validation_results["recommendations"].append(
+            "Implement test result archiving for compliance"
+        )
 
     return validation_results
 

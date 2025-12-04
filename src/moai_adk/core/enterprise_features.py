@@ -179,7 +179,9 @@ class LoadBalancer:
 
     def __init__(self):
         self.backends: List[Dict[str, Any]] = []
-        self.algorithm = "round_robin"  # round_robin, least_connections, weighted, ip_hash
+        self.algorithm = (
+            "round_robin"  # round_robin, least_connections, weighted, ip_hash
+        )
         self.health_checks: Dict[str, Dict[str, Any]] = {}
         self.session_affinity = False
         self.sticky_sessions: Dict[str, str] = {}
@@ -226,7 +228,9 @@ class LoadBalancer:
                     return True
         return False
 
-    def get_backend(self, session_id: Optional[str] = None, client_ip: str = "") -> Optional[str]:
+    def get_backend(
+        self, session_id: Optional[str] = None, client_ip: str = ""
+    ) -> Optional[str]:
         """Get backend for request using load balancing algorithm"""
         with self._lock:
             if not self.backends:
@@ -234,13 +238,19 @@ class LoadBalancer:
 
             # Filter healthy backends
             healthy_backends = [
-                b for b in self.backends if b["is_healthy"] and b["current_connections"] < b["max_connections"]
+                b
+                for b in self.backends
+                if b["is_healthy"] and b["current_connections"] < b["max_connections"]
             ]
             if not healthy_backends:
                 return None
 
             # Session affinity
-            if self.session_affinity and session_id and session_id in self.sticky_sessions:
+            if (
+                self.session_affinity
+                and session_id
+                and session_id in self.sticky_sessions
+            ):
                 sticky_backend_id = self.sticky_sessions[session_id]
                 for backend in healthy_backends:
                     if backend["backend_id"] == sticky_backend_id:
@@ -250,7 +260,9 @@ class LoadBalancer:
 
             # Load balancing algorithms
             if self.algorithm == "round_robin":
-                backend = healthy_backends[self._stats["total_requests"] % len(healthy_backends)]
+                backend = healthy_backends[
+                    self._stats["total_requests"] % len(healthy_backends)
+                ]
             elif self.algorithm == "least_connections":
                 backend = min(healthy_backends, key=lambda b: b["current_connections"])
             elif self.algorithm == "weighted":
@@ -287,7 +299,9 @@ class LoadBalancer:
         with self._lock:
             for backend in self.backends:
                 if backend["backend_id"] == backend_id:
-                    backend["current_connections"] = max(0, backend["current_connections"] - 1)
+                    backend["current_connections"] = max(
+                        0, backend["current_connections"] - 1
+                    )
                     break
 
     def perform_health_check(self, backend_id: str) -> bool:
@@ -349,9 +363,13 @@ class AutoScaler:
         self.scale_up_cooldown = 300  # seconds
         self.scale_down_cooldown = 600  # seconds
         self._last_scale_up = datetime.now() - timedelta(seconds=self.scale_up_cooldown)
-        self._last_scale_down = datetime.now() - timedelta(seconds=self.scale_down_cooldown)
+        self._last_scale_down = datetime.now() - timedelta(
+            seconds=self.scale_down_cooldown
+        )
 
-    def update_metrics(self, cpu_usage: float, memory_usage: float, request_rate: float) -> None:
+    def update_metrics(
+        self, cpu_usage: float, memory_usage: float, request_rate: float
+    ) -> None:
         """Update metrics for scaling decisions"""
         self.metrics_history.append(
             {
@@ -381,7 +399,9 @@ class AutoScaler:
 
         recent_metrics = list(self.metrics_history)[-5:]
         avg_cpu = sum(m["cpu_usage"] for m in recent_metrics) / len(recent_metrics)
-        avg_request_rate = sum(m["request_rate"] for m in recent_metrics) / len(recent_metrics)
+        avg_request_rate = sum(m["request_rate"] for m in recent_metrics) / len(
+            recent_metrics
+        )
 
         # Scale up conditions
         cpu_pressure = avg_cpu > self.scale_up_threshold
@@ -407,7 +427,9 @@ class AutoScaler:
 
         recent_metrics = list(self.metrics_history)[-10:]
         avg_cpu = sum(m["cpu_usage"] for m in recent_metrics) / len(recent_metrics)
-        avg_request_rate = sum(m["request_rate"] for m in recent_metrics) / len(recent_metrics)
+        avg_request_rate = sum(m["request_rate"] for m in recent_metrics) / len(
+            recent_metrics
+        )
 
         # Scale down conditions
         cpu_ok = avg_cpu < self.scale_down_threshold
@@ -555,7 +577,11 @@ class DeploymentManager:
         )
 
         # Remove blue backends
-        blue_backends = [b for b in self.load_balancer.backends if b["backend_id"].startswith("blue-")]
+        blue_backends = [
+            b
+            for b in self.load_balancer.backends
+            if b["backend_id"].startswith("blue-")
+        ]
         for backend in blue_backends:
             self.load_balancer.remove_backend(backend["backend_id"])
 
@@ -754,13 +780,17 @@ class DeploymentManager:
                     return rollback_result
 
                 # Remove current backends
-                current_backends = [b["backend_id"] for b in self.load_balancer.backends.copy()]
+                current_backends = [
+                    b["backend_id"] for b in self.load_balancer.backends.copy()
+                ]
                 for backend_id in current_backends:
                     self.load_balancer.remove_backend(backend_id)
 
                 # Restore rollback point backends
                 for backend_id in rollback_point["backends"]:
-                    self.load_balancer.add_backend(backend_id, f"http://{backend_id}.example.com")
+                    self.load_balancer.add_backend(
+                        backend_id, f"http://{backend_id}.example.com"
+                    )
 
                 rollback_result["status"] = "completed"
                 rollback_result["completed_at"] = datetime.now().isoformat()
@@ -908,7 +938,9 @@ class TenantManager:
             if tenant_id in self.tenant_metrics:
                 self.tenant_metrics[tenant_id].update(metrics)
 
-    def generate_compliance_report(self, tenant_id: str, standard: ComplianceStandard) -> Dict[str, Any]:
+    def generate_compliance_report(
+        self, tenant_id: str, standard: ComplianceStandard
+    ) -> Dict[str, Any]:
         """Generate compliance report for tenant"""
         tenant = self.get_tenant(tenant_id)
         if not tenant or standard not in tenant.compliance_requirements:
@@ -1007,7 +1039,10 @@ class AuditLogger:
                     continue
                 if severity and log.severity != severity:
                     continue
-                if compliance_standard and compliance_standard not in log.compliance_standards:
+                if (
+                    compliance_standard
+                    and compliance_standard not in log.compliance_standards
+                ):
                     continue
                 if start_time and log.timestamp < start_time:
                     continue
@@ -1090,9 +1125,13 @@ class EnterpriseFeatures:
         # Initialize components
         self.load_balancer = LoadBalancer()
         self.auto_scaler = AutoScaler()
-        self.deployment_manager = DeploymentManager(self.load_balancer, self.auto_scaler)
+        self.deployment_manager = DeploymentManager(
+            self.load_balancer, self.auto_scaler
+        )
         self.tenant_manager = TenantManager() if enable_multi_tenant else None
-        self.audit_logger = AuditLogger(audit_retention_days) if enable_audit_logging else None
+        self.audit_logger = (
+            AuditLogger(audit_retention_days) if enable_audit_logging else None
+        )
 
         # Configure auto_scaler
         self.auto_scaler.min_instances = min_instances
@@ -1158,7 +1197,9 @@ class EnterpriseFeatures:
                         backends = self.deployment_manager.load_balancer.backends.copy()
                         if len(backends) > self.auto_scaler.current_instances:
                             backend_to_remove = backends[-1]
-                            self.deployment_manager.load_balancer.remove_backend(backend_to_remove["backend_id"])
+                            self.deployment_manager.load_balancer.remove_backend(
+                                backend_to_remove["backend_id"]
+                            )
 
                     time.sleep(30)  # Check every 30 seconds
 
@@ -1194,14 +1235,18 @@ class EnterpriseFeatures:
         """Rollback deployment"""
         return self.deployment_manager.rollback(deployment_id)
 
-    def create_tenant(self, tenant_name: str, tenant_type: TenantType = TenantType.SHARED, **kwargs) -> str:
+    def create_tenant(
+        self, tenant_name: str, tenant_type: TenantType = TenantType.SHARED, **kwargs
+    ) -> str:
         """Create new tenant"""
         if not self.enable_multi_tenant:
             raise RuntimeError("Multi-tenant support is not enabled")
 
         return self.tenant_manager.create_tenant(tenant_name, tenant_type, **kwargs)
 
-    def log_audit_event(self, action: str, resource: str, user_id: str, **kwargs) -> str:
+    def log_audit_event(
+        self, action: str, resource: str, user_id: str, **kwargs
+    ) -> str:
         """Log audit event"""
         if not self.enable_audit_logging:
             return ""
@@ -1236,14 +1281,17 @@ class EnterpriseFeatures:
         if self.tenant_manager:
             status["tenant_manager"] = {
                 "total_tenants": len(self.tenant_manager.tenants),
-                "active_tenants": len([t for t in self.tenant_manager.tenants.values() if t.is_active]),
+                "active_tenants": len(
+                    [t for t in self.tenant_manager.tenants.values() if t.is_active]
+                ),
             }
 
         if self.audit_logger:
             status["audit_logger"] = {
                 "total_logs": len(self.audit_logger.audit_logs),
                 "compliance_index": {
-                    standard: len(logs) for standard, logs in self.audit_logger.compliance_index.items()
+                    standard: len(logs)
+                    for standard, logs in self.audit_logger.compliance_index.items()
                 },
             }
 
@@ -1288,7 +1336,9 @@ def stop_enterprise_features() -> None:
 
 
 async def deploy_application(
-    version: str, strategy: DeploymentStrategy = DeploymentStrategy.BLUE_GREEN, **kwargs: Any
+    version: str,
+    strategy: DeploymentStrategy = DeploymentStrategy.BLUE_GREEN,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """Deploy application with enterprise features"""
     enterprise = get_enterprise_features()
@@ -1323,7 +1373,10 @@ if __name__ == "__main__":
                     "memory_gb": 8,
                     "storage_gb": 200,
                 },
-                compliance_requirements=[ComplianceStandard.GDPR, ComplianceStandard.SOC2],
+                compliance_requirements=[
+                    ComplianceStandard.GDPR,
+                    ComplianceStandard.SOC2,
+                ],
                 billing_plan="enterprise",
             )
             print(f"Created tenant: {tenant_id}")
@@ -1368,7 +1421,9 @@ if __name__ == "__main__":
             print("\n📊 Enterprise System Status:")
             print(f"  Status: {status['status']}")
             print(f"  Uptime: {status['uptime_seconds']:.1f}s")
-            print(f"  Load Balancer: {status['load_balancer']['total_backends']} backends")
+            print(
+                f"  Load Balancer: {status['load_balancer']['total_backends']} backends"
+            )
             auto_current = status["auto_scaler"]["current_instances"]
             auto_max = status["auto_scaler"]["max_instances"]
             print(f"  Auto Scaler: {auto_current}/{auto_max} instances")
@@ -1379,7 +1434,9 @@ if __name__ == "__main__":
             tenant_status = enterprise.get_system_status()
             if "tenant_manager" in tenant_status:
                 tm = tenant_status["tenant_manager"]
-                print(f"  Tenants: {tm['total_tenants']} total, {tm['active_tenants']} active")
+                print(
+                    f"  Tenants: {tm['total_tenants']} total, {tm['active_tenants']} active"
+                )
 
             print("\n✅ Enterprise Features demo completed successfully!")
 

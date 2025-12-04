@@ -54,7 +54,9 @@ class TestCommandCompletionPatterns:
         """
         for cmd_name, cmd_path in command_files.items():
             content = cmd_path.read_text()
-            assert "AskUserQuestion" in content, f"Command {cmd_name} missing AskUserQuestion call"
+            assert (
+                "AskUserQuestion" in content
+            ), f"Command {cmd_name} missing AskUserQuestion call"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_commands_have_batched_design(self, command_files):
@@ -105,7 +107,9 @@ class TestCommandCompletionPatterns:
                 matches = re.findall(label_pattern, final_section)
                 option_count = len(matches)
 
-                assert 3 <= option_count <= 4, f"Command {cmd_name} has {option_count} options (expected 3-4)"
+                assert (
+                    3 <= option_count <= 4
+                ), f"Command {cmd_name} has {option_count} options (expected 3-4)"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_no_prose_suggestions_in_completion(self, command_files):
@@ -135,7 +139,9 @@ class TestCommandCompletionPatterns:
                 content_before_final = content
 
             for phrase in prohibited_phrases:
-                assert phrase not in content_before_final, f"Command {cmd_name} contains prohibited prose: '{phrase}'"
+                assert (
+                    phrase not in content_before_final
+                ), f"Command {cmd_name} contains prohibited prose: '{phrase}'"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_commands_use_emoji_in_options(self, command_files):
@@ -157,7 +163,9 @@ class TestCommandCompletionPatterns:
                 common_emojis = ["📋", "🚀", "🔄", "🔍", "✏️", "📚", "🧪", "🔀", "✅"]
                 has_emoji = any(emoji in final_section for emoji in common_emojis)
 
-                assert has_emoji, f"Command {cmd_name} options lack emoji for UX enhancement"
+                assert (
+                    has_emoji
+                ), f"Command {cmd_name} options lack emoji for UX enhancement"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_language_configuration_pass_through(self, command_files):
@@ -180,7 +188,9 @@ class TestCommandCompletionPatterns:
 
                 # This is a soft check - verify pattern exists
                 # (In actual implementation, language is passed via Alfred context)
-                assert "question" in ask_section, f"Command {cmd_name} AskUserQuestion missing question field"
+                assert (
+                    "question" in ask_section
+                ), f"Command {cmd_name} AskUserQuestion missing question field"
 
 
 class TestCommandSpecificOptions:
@@ -196,13 +206,21 @@ class TestCommandSpecificOptions:
         2. Review project structure
         3. Start new session
         """
-        cmd_path = Path("/Users/goos/MoAI/MoAI-ADK/.claude/commands/alfred/0-project.md")
+        cmd_path = Path(
+            "/Users/goos/MoAI/MoAI-ADK/.claude/commands/alfred/0-project.md"
+        )
         content = cmd_path.read_text()
 
         # Check for expected option keywords
-        assert "1-plan" in content or "스펙 작성" in content or "plan" in content.lower()
+        assert (
+            "1-plan" in content or "스펙 작성" in content or "plan" in content.lower()
+        )
         assert "review" in content.lower() or "검토" in content or "구조" in content
-        assert "new session" in content.lower() or "새 세션" in content or "/clear" in content
+        assert (
+            "new session" in content.lower()
+            or "새 세션" in content
+            or "/clear" in content
+        )
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_1_plan_options(self):
@@ -219,8 +237,16 @@ class TestCommandSpecificOptions:
 
         # Check for expected option keywords
         assert "2-run" in content or "구현" in content or "implement" in content.lower()
-        assert "revise" in content.lower() or "수정" in content or "spec" in content.lower()
-        assert "new session" in content.lower() or "새 세션" in content or "/clear" in content
+        assert (
+            "revise" in content.lower()
+            or "수정" in content
+            or "spec" in content.lower()
+        )
+        assert (
+            "new session" in content.lower()
+            or "새 세션" in content
+            or "/clear" in content
+        )
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_2_run_options(self):
@@ -238,7 +264,11 @@ class TestCommandSpecificOptions:
         # Check for expected option keywords
         assert "3-sync" in content or "동기화" in content or "sync" in content.lower()
         assert "test" in content.lower() or "테스트" in content or "검증" in content
-        assert "new session" in content.lower() or "새 세션" in content or "/clear" in content
+        assert (
+            "new session" in content.lower()
+            or "새 세션" in content
+            or "/clear" in content
+        )
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_3_sync_options(self):
@@ -254,9 +284,19 @@ class TestCommandSpecificOptions:
         content = cmd_path.read_text()
 
         # Check for expected option keywords
-        assert "1-plan" in content or "다음 기능" in content or "next feature" in content.lower()
-        assert "merge" in content.lower() or "병합" in content or "pr" in content.lower()
-        assert "complete" in content.lower() or "완료" in content or "session" in content.lower()
+        assert (
+            "1-plan" in content
+            or "다음 기능" in content
+            or "next feature" in content.lower()
+        )
+        assert (
+            "merge" in content.lower() or "병합" in content or "pr" in content.lower()
+        )
+        assert (
+            "complete" in content.lower()
+            or "완료" in content
+            or "session" in content.lower()
+        )
 
 
 if __name__ == "__main__":

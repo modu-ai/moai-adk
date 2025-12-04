@@ -46,7 +46,9 @@ class TestHTTPResponse:
 
     def test_http_response_creation(self):
         """Test creating HTTPResponse with all fields."""
-        response = HTTPResponse(status_code=200, url="https://example.com", load_time=0.5, success=True)
+        response = HTTPResponse(
+            status_code=200, url="https://example.com", load_time=0.5, success=True
+        )
         assert response.status_code == 200
         assert response.url == "https://example.com"
         assert response.load_time == 0.5
@@ -58,20 +60,32 @@ class TestHTTPResponse:
         """Test HTTPResponse with error message."""
         error_msg = "Connection timeout"
         response = HTTPResponse(
-            status_code=0, url="https://example.com", load_time=0.0, success=False, error_message=error_msg
+            status_code=0,
+            url="https://example.com",
+            load_time=0.0,
+            success=False,
+            error_message=error_msg,
         )
         assert response.success is False
         assert response.error_message == error_msg
 
     def test_http_response_timestamp_auto_generation(self):
         """Test timestamp is auto-generated if not provided."""
-        response = HTTPResponse(status_code=200, url="https://example.com", load_time=0.1, success=True)
+        response = HTTPResponse(
+            status_code=200, url="https://example.com", load_time=0.1, success=True
+        )
         assert response.timestamp is not None
         assert isinstance(response.timestamp, datetime)
 
     def test_http_response_timestamp_none_handling(self):
         """Test __post_init__ handles None timestamp."""
-        response = HTTPResponse(status_code=200, url="https://example.com", load_time=0.1, success=True, timestamp=None)
+        response = HTTPResponse(
+            status_code=200,
+            url="https://example.com",
+            load_time=0.1,
+            success=True,
+            timestamp=None,
+        )
         assert response.timestamp is not None
 
     def test_http_response_various_status_codes(self):
@@ -861,7 +875,9 @@ class TestLoadHookTimeout:
         try:
             with patch("pathlib.Path.exists", return_value=True):
                 with patch("builtins.open", create=True) as mock_open:
-                    mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(config)
+                    mock_open.return_value.__enter__.return_value.read.return_value = (
+                        json.dumps(config)
+                    )
                     # Need to patch json.load as well
                     with patch("json.load", return_value=config):
                         with patch("pathlib.Path", return_value=Path(config_path)):
@@ -874,8 +890,12 @@ class TestLoadHookTimeout:
         """Test handling malformed JSON in config."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = "invalid json"
-                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
+                mock_open.return_value.__enter__.return_value.read.return_value = (
+                    "invalid json"
+                )
+                with patch(
+                    "json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)
+                ):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -946,8 +966,12 @@ class TestGetGracefulDegradation:
         """Test handling malformed JSON in config."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = "invalid"
-                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
+                mock_open.return_value.__enter__.return_value.read.return_value = (
+                    "invalid"
+                )
+                with patch(
+                    "json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)
+                ):
                     result = get_graceful_degradation()
                     assert result is True
 

@@ -87,7 +87,10 @@ class TestLoadConfig:
         config = cm.load_config()
 
         assert "hooks" in config
-        assert config["hooks"]["timeout_seconds"] == DEFAULT_CONFIG["hooks"]["timeout_seconds"]
+        assert (
+            config["hooks"]["timeout_seconds"]
+            == DEFAULT_CONFIG["hooks"]["timeout_seconds"]
+        )
 
     def test_load_config_invalid_json_uses_default(self, invalid_config_file):
         """Invalid JSON config falls back to DEFAULT_CONFIG"""
@@ -95,7 +98,10 @@ class TestLoadConfig:
         config = cm.load_config()
 
         assert "hooks" in config
-        assert config["hooks"]["timeout_seconds"] == DEFAULT_CONFIG["hooks"]["timeout_seconds"]
+        assert (
+            config["hooks"]["timeout_seconds"]
+            == DEFAULT_CONFIG["hooks"]["timeout_seconds"]
+        )
 
     def test_load_config_empty_file_uses_default(self, empty_config_file):
         """Empty config file falls back to DEFAULT_CONFIG"""
@@ -581,7 +587,9 @@ class TestConfigManagerEdgeCases:
         """Handle unicode characters in config"""
         config = {"hooks": {"timeout_seconds": 5}, "message": "🎯 테스트 메시지 テスト"}
         config_file = temp_config_dir / "config.json"
-        config_file.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+        config_file.write_text(
+            json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
         cm = ConfigManager(config_path=config_file)
         config = cm.load_config()

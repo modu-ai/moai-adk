@@ -39,6 +39,7 @@ from typing import Any, Dict, Optional, Union
 
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
@@ -139,9 +140,14 @@ class UnifiedConfigManager:
 
             # Load from file (auto-detect format)
             with open(self._config_path, "r", encoding="utf-8") as f:
-                if self._config_path.suffix == ".yaml" or self._config_path.suffix == ".yml":
+                if (
+                    self._config_path.suffix == ".yaml"
+                    or self._config_path.suffix == ".yml"
+                ):
                     if not YAML_AVAILABLE:
-                        raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
+                        raise ImportError(
+                            "PyYAML is required for YAML config files. Install with: pip install pyyaml"
+                        )
                     self._config = yaml.safe_load(f) or {}
                 else:
                     self._config = json.load(f)
@@ -151,7 +157,12 @@ class UnifiedConfigManager:
 
             logger.debug(f"Loaded config from {self._config_path}")
 
-        except (json.JSONDecodeError, yaml.YAMLError if YAML_AVAILABLE else Exception, OSError, UnicodeDecodeError) as e:
+        except (
+            json.JSONDecodeError,
+            yaml.YAMLError if YAML_AVAILABLE else Exception,
+            OSError,
+            UnicodeDecodeError,
+        ) as e:
             logger.error(f"Failed to load config: {e}")
             self._config = self._get_default_config()
 
@@ -252,10 +263,21 @@ class UnifiedConfigManager:
 
             # Write to temp file (auto-detect format)
             with open(temp_path, "w", encoding="utf-8") as f:
-                if self._config_path.suffix == ".yaml" or self._config_path.suffix == ".yml":
+                if (
+                    self._config_path.suffix == ".yaml"
+                    or self._config_path.suffix == ".yml"
+                ):
                     if not YAML_AVAILABLE:
-                        raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
-                    yaml.safe_dump(self._config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+                        raise ImportError(
+                            "PyYAML is required for YAML config files. Install with: pip install pyyaml"
+                        )
+                    yaml.safe_dump(
+                        self._config,
+                        f,
+                        default_flow_style=False,
+                        allow_unicode=True,
+                        sort_keys=False,
+                    )
                 else:
                     json.dump(self._config, f, indent=2, ensure_ascii=False)
 
@@ -312,7 +334,11 @@ class UnifiedConfigManager:
         result = base.copy()
 
         for key, value in updates.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = UnifiedConfigManager._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -354,7 +380,9 @@ class UnifiedConfigManager:
 _unified_config_instance: Optional[UnifiedConfigManager] = None
 
 
-def get_unified_config(config_path: Optional[Union[str, Path]] = None) -> UnifiedConfigManager:
+def get_unified_config(
+    config_path: Optional[Union[str, Path]] = None,
+) -> UnifiedConfigManager:
     """
     Get or create unified configuration manager instance.
 

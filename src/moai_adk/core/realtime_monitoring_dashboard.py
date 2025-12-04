@@ -141,7 +141,9 @@ class Alert:
             "resolved": self.resolved,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
             "acknowledged": self.acknowledged,
-            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "acknowledged_at": (
+                self.acknowledged_at.isoformat() if self.acknowledged_at else None
+            ),
             "correlation_id": self.correlation_id,
             "context": self.context,
             "affected_services": self.affected_services,
@@ -205,9 +207,13 @@ class MetricsCollector:
     def __init__(self, buffer_size: int = 100000, retention_hours: int = 168):  # 7 days
         self.buffer_size = buffer_size
         self.retention_hours = retention_hours
-        self.metrics_buffer: Dict[str, deque] = defaultdict(lambda: deque(maxlen=buffer_size))
+        self.metrics_buffer: Dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=buffer_size)
+        )
         self.aggregated_metrics: Dict[str, Dict[str, Any]] = defaultdict(dict)
-        self.tenant_metrics: Dict[str, Dict[str, deque]] = defaultdict(lambda: defaultdict(deque))
+        self.tenant_metrics: Dict[str, Dict[str, deque]] = defaultdict(
+            lambda: defaultdict(deque)
+        )
         self._lock = threading.Lock()
         self._last_cleanup = datetime.now()
 
@@ -220,7 +226,9 @@ class MetricsCollector:
 
             # Tenant-specific metrics
             if metric.tenant_id:
-                tenant_key = f"{metric.metric_type.value}:{metric.component}:{metric.tenant_id}"
+                tenant_key = (
+                    f"{metric.metric_type.value}:{metric.component}:{metric.tenant_id}"
+                )
                 self.tenant_metrics[metric.tenant_id][tenant_key].append(metric)
 
             # Update aggregated statistics
@@ -316,7 +324,11 @@ class MetricsCollector:
 
             # Filter by tags
             if tags:
-                metrics = [m for m in metrics if all(m.tags.get(k) == v for k, v in tags.items())]
+                metrics = [
+                    m
+                    for m in metrics
+                    if all(m.tags.get(k) == v for k, v in tags.items())
+                ]
 
             # Sort by timestamp (newest first)
             metrics.sort(key=lambda m: m.timestamp, reverse=True)
@@ -344,7 +356,11 @@ class MetricsCollector:
                 # Calculate tenant-specific stats
                 tenant_metrics = self.get_metrics(metric_type, component, tenant_id)
                 if tenant_metrics:
-                    values: List[float] = [float(m.value) for m in tenant_metrics if isinstance(m.value, (int, float))]
+                    values: List[float] = [
+                        float(m.value)
+                        for m in tenant_metrics
+                        if isinstance(m.value, (int, float))
+                    ]
                     if values:
                         agg = {
                             "count": len(values),
@@ -352,7 +368,9 @@ class MetricsCollector:
                             "median": statistics.median(values),
                             "min": min(values),
                             "max": max(values),
-                            "std_dev": statistics.stdev(values) if len(values) > 1 else 0,
+                            "std_dev": (
+                                statistics.stdev(values) if len(values) > 1 else 0
+                            ),
                             "p95": self._percentile(values, 95),
                             "p99": self._percentile(values, 99),
                         }
@@ -360,10 +378,19 @@ class MetricsCollector:
                 agg = self.aggregated_metrics.get(key, {})
 
             if not agg or agg.get("count", 0) == 0:
-                return {"count": 0, "average": None, "min": None, "max": None, "median": None, "std_dev": None}
+                return {
+                    "count": 0,
+                    "average": None,
+                    "min": None,
+                    "max": None,
+                    "median": None,
+                    "std_dev": None,
+                }
 
             agg_values_raw = agg.get("values", [])
-            values_list: List[float] = agg_values_raw if isinstance(agg_values_raw, list) else []
+            values_list: List[float] = (
+                agg_values_raw if isinstance(agg_values_raw, list) else []
+            )
             if not values_list:
                 return {
                     "count": agg.get("count", 0),
@@ -388,7 +415,9 @@ class MetricsCollector:
                     "median": statistics.median(values_list),
                     "min": min(values_list),
                     "max": max(values_list),
-                    "std_dev": statistics.stdev(values_list) if len(values_list) > 1 else 0,
+                    "std_dev": (
+                        statistics.stdev(values_list) if len(values_list) > 1 else 0
+                    ),
                     "p95": self._percentile(values_list, 95),
                     "p99": self._percentile(values_list, 99),
                     "last_updated": last_updated_str,
@@ -457,7 +486,8 @@ class AlertManager:
             "window_minutes": window_minutes,
             "consecutive_violations": consecutive_violations,
             "tags": tags or {},
-            "description": description or f"Alert when {metric_type.value} {operator} {threshold}",
+            "description": description
+            or f"Alert when {metric_type.value} {operator} {threshold}",
             "violation_count": 0,
             "last_check": None,
             "last_triggered": None,
@@ -490,7 +520,8 @@ class AlertManager:
                     metric_type=rule["metric_type"],
                     component=rule.get("component"),
                     tenant_id=rule.get("tenant_id"),
-                    start_time=datetime.now() - timedelta(minutes=rule["window_minutes"]),
+                    start_time=datetime.now()
+                    - timedelta(minutes=rule["window_minutes"]),
                     tags=rule.get("tags"),
                 )
 
@@ -503,7 +534,9 @@ class AlertManager:
 
                 for metric in recent_metrics:
                     if isinstance(metric.value, (int, float)):
-                        if self._evaluate_condition(metric.value, rule["threshold"], rule["operator"]):
+                        if self._evaluate_condition(
+                            metric.value, rule["threshold"], rule["operator"]
+                        ):
                             violations += 1
                         latest_value = metric.value
 
@@ -565,14 +598,17 @@ class AlertManager:
                     metric_type=alert.metric_type,
                     component=alert.component,
                     tenant_id=alert.tenant_id,
-                    start_time=datetime.now() - timedelta(minutes=1),  # Check last minute
+                    start_time=datetime.now()
+                    - timedelta(minutes=1),  # Check last minute
                 )
 
                 if recent_metrics:
                     latest_value = None
                     for metric in recent_metrics:
                         if isinstance(metric.value, (int, float)):
-                            if not self._evaluate_condition(metric.value, alert.threshold, rule["operator"]):
+                            if not self._evaluate_condition(
+                                metric.value, alert.threshold, rule["operator"]
+                            ):
                                 latest_value = metric.value
                                 break
 
@@ -583,10 +619,14 @@ class AlertManager:
                         self.alert_history.append(alert)
                         del self.active_alerts[alert_id]
 
-                        if alert.tenant_id and alert_id in self.tenant_alerts.get(alert.tenant_id, {}):
+                        if alert.tenant_id and alert_id in self.tenant_alerts.get(
+                            alert.tenant_id, {}
+                        ):
                             del self.tenant_alerts[alert.tenant_id][alert_id]
 
-    def _evaluate_condition(self, value: float, threshold: float, operator: str) -> bool:
+    def _evaluate_condition(
+        self, value: float, threshold: float, operator: str
+    ) -> bool:
         """Evaluate alert condition"""
         if operator == "gt":
             return value > threshold
@@ -642,7 +682,9 @@ class AlertManager:
             if component:
                 alerts = [a for a in alerts if a.component == component]
 
-            return sorted(alerts, key=lambda a: (a.severity.value, a.timestamp), reverse=True)
+            return sorted(
+                alerts, key=lambda a: (a.severity.value, a.timestamp), reverse=True
+            )
 
     def get_alert_history(
         self,
@@ -687,7 +729,8 @@ class AlertManager:
             "by_hour": dict(by_hour),
             "resolved_count": sum(1 for a in alerts if a.resolved),
             "acknowledged_count": sum(1 for a in alerts if a.acknowledged),
-            "resolution_rate": sum(1 for a in alerts if a.resolved) / max(len(alerts), 1),
+            "resolution_rate": sum(1 for a in alerts if a.resolved)
+            / max(len(alerts), 1),
             "period_hours": hours,
         }
 
@@ -739,13 +782,17 @@ class DashboardManager:
         logger.info(f"Created dashboard: {name} ({dashboard_id})")
         return dashboard_id
 
-    def get_dashboard(self, dashboard_id: str, tenant_id: Optional[str] = None) -> Optional[Dashboard]:
+    def get_dashboard(
+        self, dashboard_id: str, tenant_id: Optional[str] = None
+    ) -> Optional[Dashboard]:
         """Get a dashboard by ID"""
         with self._lock:
             if tenant_id:
                 return self.tenant_dashboards.get(tenant_id, {}).get(dashboard_id)
             else:
-                return self.dashboards.get(dashboard_id) or self.default_dashboards.get(dashboard_id)
+                return self.dashboards.get(dashboard_id) or self.default_dashboards.get(
+                    dashboard_id
+                )
 
     def list_dashboards(
         self,
@@ -769,7 +816,9 @@ class DashboardManager:
 
             # Apply filters
             if dashboard_type:
-                dashboards = [d for d in dashboards if d.dashboard_type == dashboard_type]
+                dashboards = [
+                    d for d in dashboards if d.dashboard_type == dashboard_type
+                ]
             if owner:
                 dashboards = [d for d in dashboards if d.owner == owner]
             if is_public is not None:
@@ -803,7 +852,9 @@ class DashboardManager:
             dashboard.updated_at = datetime.now()
             return True
 
-    def delete_dashboard(self, dashboard_id: str, tenant_id: Optional[str] = None) -> bool:
+    def delete_dashboard(
+        self, dashboard_id: str, tenant_id: Optional[str] = None
+    ) -> bool:
         """Delete a dashboard"""
         with self._lock:
             if tenant_id:
@@ -1124,7 +1175,9 @@ class RealtimeMonitoringDashboard:
                     alerts = self.alert_manager.check_alerts()
                     if alerts:
                         for alert in alerts:
-                            logger.warning(f"Alert triggered: {alert.title} - {alert.current_value}")
+                            logger.warning(
+                                f"Alert triggered: {alert.title} - {alert.current_value}"
+                            )
                             # Broadcast to WebSocket clients
                             self._broadcast_alert(alert)
 
@@ -1175,11 +1228,21 @@ class RealtimeMonitoringDashboard:
 
             # CPU Usage
             cpu_percent = psutil.cpu_percent(interval=1)
-            self.add_metric(MetricType.CPU_USAGE, cpu_percent, tags={"component": "system"}, source="psutil")
+            self.add_metric(
+                MetricType.CPU_USAGE,
+                cpu_percent,
+                tags={"component": "system"},
+                source="psutil",
+            )
 
             # Memory Usage
             memory = psutil.virtual_memory()
-            self.add_metric(MetricType.MEMORY_USAGE, memory.percent, tags={"component": "system"}, source="psutil")
+            self.add_metric(
+                MetricType.MEMORY_USAGE,
+                memory.percent,
+                tags={"component": "system"},
+                source="psutil",
+            )
 
             # Python process memory
             process = psutil.Process()
@@ -1262,10 +1325,14 @@ class RealtimeMonitoringDashboard:
             widgets_data = {}
             for widget in dashboard.widgets:
                 try:
-                    widget_data = self._get_widget_data(widget, start_time, end_time, tenant_id, filters)
+                    widget_data = self._get_widget_data(
+                        widget, start_time, end_time, tenant_id, filters
+                    )
                     widgets_data[widget.widget_id] = widget_data
                 except Exception as e:
-                    logger.error(f"Error getting data for widget {widget.widget_id}: {e}")
+                    logger.error(
+                        f"Error getting data for widget {widget.widget_id}: {e}"
+                    )
                     widgets_data[widget.widget_id] = {"error": str(e)}
 
             return {
@@ -1291,15 +1358,21 @@ class RealtimeMonitoringDashboard:
         if widget.widget_type == "metric":
             return self._get_metric_widget_data(widget, tenant_id)
         elif widget.widget_type == "chart":
-            return self._get_chart_widget_data(widget, start_time, end_time, tenant_id, filters)
+            return self._get_chart_widget_data(
+                widget, start_time, end_time, tenant_id, filters
+            )
         elif widget.widget_type == "table":
-            return self._get_table_widget_data(widget, start_time, end_time, tenant_id, filters)
+            return self._get_table_widget_data(
+                widget, start_time, end_time, tenant_id, filters
+            )
         elif widget.widget_type == "alert":
             return self._get_alert_widget_data(widget, tenant_id)
         else:
             return {"error": f"Unsupported widget type: {widget.widget_type}"}
 
-    def _get_metric_widget_data(self, widget: DashboardWidget, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    def _get_metric_widget_data(
+        self, widget: DashboardWidget, tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Get data for metric widget"""
         metric_name = widget.config.get("metric")
         if not metric_name:
@@ -1316,7 +1389,9 @@ class RealtimeMonitoringDashboard:
         else:
             return {"error": f"Unknown metric: {metric_name}"}
 
-        recent_metrics = self.metrics_collector.get_metrics(metric_type=metric_type, tenant_id=tenant_id, limit=1)
+        recent_metrics = self.metrics_collector.get_metrics(
+            metric_type=metric_type, tenant_id=tenant_id, limit=1
+        )
 
         if not recent_metrics:
             return {"value": 0, "status": "no_data"}
@@ -1361,7 +1436,11 @@ class RealtimeMonitoringDashboard:
             metric_type = self._map_metric_name(metric_name)
             if metric_type:
                 metric_data = self.metrics_collector.get_metrics(
-                    metric_type=metric_type, tenant_id=tenant_id, start_time=start_time, end_time=end_time, limit=100
+                    metric_type=metric_type,
+                    tenant_id=tenant_id,
+                    start_time=start_time,
+                    end_time=end_time,
+                    limit=100,
                 )
 
                 series_data = []
@@ -1408,20 +1487,32 @@ class RealtimeMonitoringDashboard:
                 )
 
             return {
-                "columns": ["timestamp", "severity", "title", "description", "component", "resolved"],
+                "columns": [
+                    "timestamp",
+                    "severity",
+                    "title",
+                    "description",
+                    "component",
+                    "resolved",
+                ],
                 "data": table_data,
             }
 
         return {"error": "Unknown table type"}
 
-    def _get_alert_widget_data(self, widget: DashboardWidget, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    def _get_alert_widget_data(
+        self, widget: DashboardWidget, tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Get data for alert widget"""
         active_alerts = self.alert_manager.get_active_alerts(tenant_id=tenant_id)
 
         return {
             "active_count": len(active_alerts),
             "severity_breakdown": {
-                severity.value: len([a for a in active_alerts if a.severity == severity]) for severity in AlertSeverity
+                severity.value: len(
+                    [a for a in active_alerts if a.severity == severity]
+                )
+                for severity in AlertSeverity
             },
             "recent_alerts": [
                 {
@@ -1430,7 +1521,9 @@ class RealtimeMonitoringDashboard:
                     "severity": alert.severity.value,
                     "timestamp": alert.timestamp.isoformat(),
                 }
-                for alert in sorted(active_alerts, key=lambda a: a.timestamp, reverse=True)[:10]
+                for alert in sorted(
+                    active_alerts, key=lambda a: a.timestamp, reverse=True
+                )[:10]
             ],
         }
 
@@ -1472,7 +1565,8 @@ class RealtimeMonitoringDashboard:
             "uptime_seconds": (datetime.now() - self._startup_time).total_seconds(),
             "metrics_collected": len(self.metrics_collector.metrics_buffer),
             "active_alerts": len(self.alert_manager.active_alerts),
-            "total_dashboards": len(self.dashboard_manager.dashboards) + len(self.dashboard_manager.default_dashboards),
+            "total_dashboards": len(self.dashboard_manager.dashboards)
+            + len(self.dashboard_manager.default_dashboards),
             "websocket_connections": len(self.websocket_connections),
             "external_integrations": list(self.external_integrations.keys()),
             "last_update": datetime.now().isoformat(),
@@ -1495,7 +1589,9 @@ class RealtimeMonitoringDashboard:
                 widget_id=widget_def.get("widget_id", str(uuid.uuid4())),
                 widget_type=widget_def.get("widget_type", "metric"),
                 title=widget_def.get("title", ""),
-                position=widget_def.get("position", {"x": 0, "y": 0, "width": 4, "height": 2}),
+                position=widget_def.get(
+                    "position", {"x": 0, "y": 0, "width": 4, "height": 2}
+                ),
                 config=widget_def.get("config", {}),
                 metrics=widget_def.get("metrics", []),
             )
@@ -1652,17 +1748,25 @@ if __name__ == "__main__":
             print(f"  Generated at: {dashboard_data.get('generated_at')}")
 
             # Get metrics statistics
-            cpu_stats = dashboard.metrics_collector.get_statistics(MetricType.CPU_USAGE, minutes=10)
-            memory_stats = dashboard.metrics_collector.get_statistics(MetricType.MEMORY_USAGE, minutes=10)
+            cpu_stats = dashboard.metrics_collector.get_statistics(
+                MetricType.CPU_USAGE, minutes=10
+            )
+            memory_stats = dashboard.metrics_collector.get_statistics(
+                MetricType.MEMORY_USAGE, minutes=10
+            )
             print("\n📈 Metrics Statistics (last 10 minutes):")
             cpu_avg = cpu_stats.get("average", 0)
             cpu_max = cpu_stats.get("max", 0)
             cpu_count = cpu_stats.get("count", 0)
-            print(f"  CPU Usage - Avg: {cpu_avg:.1f}%, Max: {cpu_max:.1f}%, Count: {cpu_count}")
+            print(
+                f"  CPU Usage - Avg: {cpu_avg:.1f}%, Max: {cpu_max:.1f}%, Count: {cpu_count}"
+            )
             mem_avg = memory_stats.get("average", 0)
             mem_max = memory_stats.get("max", 0)
             mem_count = memory_stats.get("count", 0)
-            print(f"  Memory Usage - Avg: {mem_avg:.1f}%, Max: {mem_max:.1f}%, Count: {mem_count}")
+            print(
+                f"  Memory Usage - Avg: {mem_avg:.1f}%, Max: {mem_max:.1f}%, Count: {mem_count}"
+            )
 
             # Get alert statistics
             alert_stats = dashboard.alert_manager.get_alert_statistics(hours=1)
@@ -1676,7 +1780,9 @@ if __name__ == "__main__":
             dashboards = dashboard.dashboard_manager.list_dashboards()
             print("\n📋 Available Dashboards:")
             for dashboard_info in dashboards:
-                print(f"  - {dashboard_info.name} ({dashboard_info.dashboard_type.value})")
+                print(
+                    f"  - {dashboard_info.name} ({dashboard_info.dashboard_type.value})"
+                )
 
             print("\n✅ Real-time Monitoring Dashboard demo completed successfully!")
 

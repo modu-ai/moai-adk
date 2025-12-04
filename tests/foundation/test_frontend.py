@@ -149,7 +149,11 @@ def sample_accessibility_component():
         "color_contrast_ratio": 5.5,
         "inputs": [
             {"name": "email", "aria_label": "Email Address", "aria_required": "true"},
-            {"name": "password", "aria_label": "Password", "aria_describedby": "pwd-hint"},
+            {
+                "name": "password",
+                "aria_label": "Password",
+                "aria_describedby": "pwd-hint",
+            },
         ],
         "buttons": [
             {"aria_label": "Submit", "aria_pressed": "false"},
@@ -199,7 +203,9 @@ class TestComponentArchitect:
         assert isinstance(component_architect.composition_patterns, set)
         assert len(component_architect.composition_patterns) >= 4
 
-    def test_validate_atomic_structure_valid_hierarchy(self, component_architect, sample_components):
+    def test_validate_atomic_structure_valid_hierarchy(
+        self, component_architect, sample_components
+    ):
         """Test validation of valid atomic design hierarchy."""
         result = component_architect.validate_atomic_structure(sample_components)
 
@@ -239,7 +245,9 @@ class TestComponentArchitect:
         assert isinstance(result, dict)
         assert "components" in result
 
-    def test_analyze_reusability_optimal_prop_count(self, component_architect, sample_component_props):
+    def test_analyze_reusability_optimal_prop_count(
+        self, component_architect, sample_component_props
+    ):
         """Test reusability analysis with optimal prop counts (2-5 props)."""
         result = component_architect.analyze_reusability(sample_component_props)
 
@@ -314,7 +322,9 @@ class TestComponentArchitect:
         assert result["pattern_count"] == 0
         assert len(result["patterns_found"]) == 0
 
-    def test_validate_composition_patterns_mixed_valid_invalid(self, component_architect):
+    def test_validate_composition_patterns_mixed_valid_invalid(
+        self, component_architect
+    ):
         """Test validation with mixed valid and invalid patterns."""
         patterns = {
             "hooks": "Valid pattern",
@@ -416,12 +426,17 @@ class TestComponentArchitect:
         result = component_architect.validate_atomic_structure(components)
 
         total_counted = (
-            result["atom_count"] + result["molecule_count"] + result["organism_count"] + result["page_count"]
+            result["atom_count"]
+            + result["molecule_count"]
+            + result["organism_count"]
+            + result["page_count"]
         )
         assert total_counted == len(result["components"])
         assert total_counted == 8
 
-    def test_validate_atomic_structure_returns_all_components(self, component_architect):
+    def test_validate_atomic_structure_returns_all_components(
+        self, component_architect
+    ):
         """Test that all components are returned in the result."""
         expected_components = [
             "Button",
@@ -442,7 +457,9 @@ class TestComponentArchitect:
 
         assert set(result["components"]) == set(expected_components)
 
-    def test_validate_composition_patterns_recommended_patterns_stable(self, component_architect):
+    def test_validate_composition_patterns_recommended_patterns_stable(
+        self, component_architect
+    ):
         """Test that recommended patterns are consistent."""
         patterns = {"hooks": "Using hooks"}
 
@@ -451,7 +468,9 @@ class TestComponentArchitect:
 
         assert result1["recommended_patterns"] == result2["recommended_patterns"]
 
-    def test_analyze_reusability_composition_score_calculation(self, component_architect):
+    def test_analyze_reusability_composition_score_calculation(
+        self, component_architect
+    ):
         """Test that composition score is calculated correctly."""
         components = {
             "GoodComponent1": {"a": "1", "b": "2", "c": "3"},  # Reusable
@@ -553,7 +572,9 @@ class TestStateManagementAdvisor:
         assert "solution" in result
         assert result["solution"] == "Local State"  # Default is small
 
-    def test_validate_context_pattern_valid_implementation(self, state_management_advisor):
+    def test_validate_context_pattern_valid_implementation(
+        self, state_management_advisor
+    ):
         """Test validation of correct Context API pattern."""
         pattern = {
             "splitting": True,
@@ -668,7 +689,10 @@ class TestStateManagementAdvisor:
     def test_validate_redux_design_multiple_slices(self, state_management_advisor):
         """Test validation of Redux store with multiple slices."""
         slices = {
-            "user": {"actions": ["setUser", "clearUser"], "async_thunks": ["fetchUser"]},
+            "user": {
+                "actions": ["setUser", "clearUser"],
+                "async_thunks": ["fetchUser"],
+            },
             "products": {
                 "actions": ["setProducts"],
                 "async_thunks": ["fetchProducts", "searchProducts"],
@@ -782,7 +806,9 @@ class TestAccessibilityValidator:
         assert result["compliant"] is True
         assert result["level"] == "AAA"
 
-    def test_validate_wcag_compliance_insufficient_contrast_aa(self, accessibility_validator):
+    def test_validate_wcag_compliance_insufficient_contrast_aa(
+        self, accessibility_validator
+    ):
         """Test WCAG AA fails with insufficient contrast."""
         component = {
             "aria_label": "Button",
@@ -807,7 +833,9 @@ class TestAccessibilityValidator:
         assert result["compliant"] is False
         assert any("aria-label" in f for f in result["failures"])
 
-    def test_validate_wcag_compliance_not_keyboard_accessible(self, accessibility_validator):
+    def test_validate_wcag_compliance_not_keyboard_accessible(
+        self, accessibility_validator
+    ):
         """Test WCAG fails when component is not keyboard accessible."""
         component = {
             "aria_label": "Button",
@@ -832,7 +860,9 @@ class TestAccessibilityValidator:
         assert result["compliant"] is False
         assert len(result["failures"]) >= 2
 
-    def test_validate_wcag_compliance_contrast_threshold_aa(self, accessibility_validator):
+    def test_validate_wcag_compliance_contrast_threshold_aa(
+        self, accessibility_validator
+    ):
         """Test WCAG AA contrast threshold (4.5:1)."""
         # Exactly at threshold
         component_pass = {
@@ -841,7 +871,9 @@ class TestAccessibilityValidator:
             "color_contrast_ratio": 4.5,
         }
 
-        result_pass = accessibility_validator.validate_wcag_compliance(component_pass, "AA")
+        result_pass = accessibility_validator.validate_wcag_compliance(
+            component_pass, "AA"
+        )
         assert result_pass["compliant"] is True
 
         # Just below threshold
@@ -851,10 +883,14 @@ class TestAccessibilityValidator:
             "color_contrast_ratio": 4.4,
         }
 
-        result_fail = accessibility_validator.validate_wcag_compliance(component_fail, "AA")
+        result_fail = accessibility_validator.validate_wcag_compliance(
+            component_fail, "AA"
+        )
         assert result_fail["compliant"] is False
 
-    def test_validate_wcag_compliance_contrast_threshold_aaa(self, accessibility_validator):
+    def test_validate_wcag_compliance_contrast_threshold_aaa(
+        self, accessibility_validator
+    ):
         """Test WCAG AAA contrast threshold (7.0:1)."""
         # Exactly at threshold
         component_pass = {
@@ -863,7 +899,9 @@ class TestAccessibilityValidator:
             "color_contrast_ratio": 7.0,
         }
 
-        result_pass = accessibility_validator.validate_wcag_compliance(component_pass, "AAA")
+        result_pass = accessibility_validator.validate_wcag_compliance(
+            component_pass, "AAA"
+        )
         assert result_pass["compliant"] is True
 
         # Below threshold
@@ -873,18 +911,26 @@ class TestAccessibilityValidator:
             "color_contrast_ratio": 6.9,
         }
 
-        result_fail = accessibility_validator.validate_wcag_compliance(component_fail, "AAA")
+        result_fail = accessibility_validator.validate_wcag_compliance(
+            component_fail, "AAA"
+        )
         assert result_fail["compliant"] is False
 
-    def test_validate_aria_implementation_valid(self, accessibility_validator, sample_accessibility_component):
+    def test_validate_aria_implementation_valid(
+        self, accessibility_validator, sample_accessibility_component
+    ):
         """Test ARIA validation with proper implementation."""
-        result = accessibility_validator.validate_aria_implementation(sample_accessibility_component)
+        result = accessibility_validator.validate_aria_implementation(
+            sample_accessibility_component
+        )
 
         assert result["valid"] is True
         assert result["aria_count"] >= 3
         assert len(result["attributes_found"]) > 0
 
-    def test_validate_aria_implementation_insufficient_attributes(self, accessibility_validator):
+    def test_validate_aria_implementation_insufficient_attributes(
+        self, accessibility_validator
+    ):
         """Test ARIA validation with insufficient attributes."""
         component = {
             "inputs": [{"name": "email", "aria_label": "Email"}],
@@ -908,7 +954,9 @@ class TestAccessibilityValidator:
         assert result["valid"] is False
         assert result["aria_count"] == 0
 
-    def test_validate_aria_implementation_attributes_identified(self, accessibility_validator):
+    def test_validate_aria_implementation_attributes_identified(
+        self, accessibility_validator
+    ):
         """Test that all ARIA attributes are correctly identified."""
         component = {
             "inputs": [
@@ -925,7 +973,9 @@ class TestAccessibilityValidator:
         assert "aria_describedby" in result["attributes_found"]
         assert "aria_pressed" in result["attributes_found"]
 
-    def test_validate_aria_implementation_recommendations(self, accessibility_validator):
+    def test_validate_aria_implementation_recommendations(
+        self, accessibility_validator
+    ):
         """Test that recommendations are provided."""
         component = {
             "inputs": [{"aria_label": "Email"}],
@@ -937,16 +987,22 @@ class TestAccessibilityValidator:
         assert "recommendations" in result
         assert isinstance(result["recommendations"], list)
 
-    def test_validate_keyboard_navigation_valid(self, accessibility_validator, sample_accessibility_component):
+    def test_validate_keyboard_navigation_valid(
+        self, accessibility_validator, sample_accessibility_component
+    ):
         """Test keyboard navigation validation with valid component."""
-        result = accessibility_validator.validate_keyboard_navigation(sample_accessibility_component)
+        result = accessibility_validator.validate_keyboard_navigation(
+            sample_accessibility_component
+        )
 
         assert result["valid"] is True
         assert result["keyboard_compliant"] is True
         assert result["focusable_elements"] >= 3
         assert 0 <= result["focus_management_score"] <= 1
 
-    def test_validate_keyboard_navigation_missing_tab_order(self, accessibility_validator):
+    def test_validate_keyboard_navigation_missing_tab_order(
+        self, accessibility_validator
+    ):
         """Test keyboard navigation without proper tab order."""
         component = {
             "focusable_elements": ["button", "input"],
@@ -960,7 +1016,9 @@ class TestAccessibilityValidator:
 
         assert result["valid"] is False
 
-    def test_validate_keyboard_navigation_focus_management_score(self, accessibility_validator):
+    def test_validate_keyboard_navigation_focus_management_score(
+        self, accessibility_validator
+    ):
         """Test focus management score calculation."""
         component_full = {
             "focusable_elements": ["button"],
@@ -970,7 +1028,9 @@ class TestAccessibilityValidator:
             "focus_restoration": True,
         }
 
-        result_full = accessibility_validator.validate_keyboard_navigation(component_full)
+        result_full = accessibility_validator.validate_keyboard_navigation(
+            component_full
+        )
 
         # All 4 features enabled = 1.0
         assert result_full["focus_management_score"] == 1.0
@@ -983,12 +1043,16 @@ class TestAccessibilityValidator:
             "focus_restoration": False,
         }
 
-        result_partial = accessibility_validator.validate_keyboard_navigation(component_partial)
+        result_partial = accessibility_validator.validate_keyboard_navigation(
+            component_partial
+        )
 
         # 2 out of 4 features = 0.5
         assert result_partial["focus_management_score"] == 0.5
 
-    def test_validate_keyboard_navigation_no_focusable_elements(self, accessibility_validator):
+    def test_validate_keyboard_navigation_no_focusable_elements(
+        self, accessibility_validator
+    ):
         """Test keyboard navigation with no focusable elements."""
         component = {
             "focusable_elements": [],
@@ -1135,7 +1199,9 @@ class TestPerformanceOptimizer:
         assert result["cls_status"] == "good"
         assert result["bundle_optimized"] is True
 
-    def test_validate_performance_metrics_lcp_needs_improvement(self, performance_optimizer):
+    def test_validate_performance_metrics_lcp_needs_improvement(
+        self, performance_optimizer
+    ):
         """Test LCP metric that needs improvement."""
         metrics = {
             "lcp_seconds": 3.0,
@@ -1148,7 +1214,9 @@ class TestPerformanceOptimizer:
         assert result["core_web_vitals_passed"] is False
         assert result["lcp_status"] == "needs_improvement"
 
-    def test_validate_performance_metrics_fid_needs_improvement(self, performance_optimizer):
+    def test_validate_performance_metrics_fid_needs_improvement(
+        self, performance_optimizer
+    ):
         """Test FID metric that needs improvement."""
         metrics = {
             "lcp_seconds": 2.0,
@@ -1161,7 +1229,9 @@ class TestPerformanceOptimizer:
         assert result["core_web_vitals_passed"] is False
         assert result["fid_status"] == "needs_improvement"
 
-    def test_validate_performance_metrics_cls_needs_improvement(self, performance_optimizer):
+    def test_validate_performance_metrics_cls_needs_improvement(
+        self, performance_optimizer
+    ):
         """Test CLS metric that needs improvement."""
         metrics = {
             "lcp_seconds": 2.0,
@@ -1293,7 +1363,9 @@ class TestDesignSystemBuilder:
         assert isinstance(design_system_builder.tokens, dict)
         assert isinstance(design_system_builder.components_doc, dict)
 
-    def test_define_design_tokens_complete(self, design_system_builder, sample_design_tokens):
+    def test_define_design_tokens_complete(
+        self, design_system_builder, sample_design_tokens
+    ):
         """Test complete design token definition."""
         result = design_system_builder.define_design_tokens(sample_design_tokens)
 
@@ -1304,7 +1376,9 @@ class TestDesignSystemBuilder:
         assert "spacing" in result["categories"]
         assert result["theme_support"] == "light_dark"
 
-    def test_define_design_tokens_css_variables_generated(self, design_system_builder, sample_design_tokens):
+    def test_define_design_tokens_css_variables_generated(
+        self, design_system_builder, sample_design_tokens
+    ):
         """Test that CSS variables are generated from tokens."""
         result = design_system_builder.define_design_tokens(sample_design_tokens)
 
@@ -1344,7 +1418,9 @@ class TestDesignSystemBuilder:
         assert result["token_count"] == 0
         assert result["categories"] == []
 
-    def test_design_tokens_persistence(self, design_system_builder, sample_design_tokens):
+    def test_design_tokens_persistence(
+        self, design_system_builder, sample_design_tokens
+    ):
         """Test that tokens are stored in the builder instance."""
         design_system_builder.define_design_tokens(sample_design_tokens)
 
@@ -1511,7 +1587,9 @@ class TestResponsiveLayoutPlanner:
 
         assert result["grid_responsive"] is True
 
-    def test_validate_fluid_layout_insufficient_responsive_columns(self, responsive_layout_planner):
+    def test_validate_fluid_layout_insufficient_responsive_columns(
+        self, responsive_layout_planner
+    ):
         """Test fluid layout with insufficient responsive column definitions."""
         layout_config = {"grid_columns_responsive": {"mobile": 1}}
 
@@ -1542,7 +1620,9 @@ class TestResponsiveLayoutPlanner:
         assert result["webp_support"] is True
         assert result["responsive_images"] is True
 
-    def test_validate_image_strategy_partially_optimized(self, responsive_layout_planner):
+    def test_validate_image_strategy_partially_optimized(
+        self, responsive_layout_planner
+    ):
         """Test partially optimized image strategy."""
         strategy = {
             "srcset_enabled": True,
@@ -1575,7 +1655,9 @@ class TestResponsiveLayoutPlanner:
         assert result["optimization_score"] == 0.0
         assert result["responsive_images"] is False
 
-    def test_validate_image_strategy_lazy_loading_variations(self, responsive_layout_planner):
+    def test_validate_image_strategy_lazy_loading_variations(
+        self, responsive_layout_planner
+    ):
         """Test various lazy loading configurations."""
         for lazy_loading_value in [True, False, "native", "intersection-observer"]:
             strategy = {
@@ -1615,13 +1697,19 @@ class TestResponsiveLayoutPlanner:
             "breakpoint_images": {"mobile": "img.jpg"},
         }
 
-        result_no_webp = responsive_layout_planner.validate_image_strategy(strategy_no_webp)
+        result_no_webp = responsive_layout_planner.validate_image_strategy(
+            strategy_no_webp
+        )
         assert result_no_webp["webp_support"] is False
 
-    def test_validate_image_strategy_responsive_images_count(self, responsive_layout_planner):
+    def test_validate_image_strategy_responsive_images_count(
+        self, responsive_layout_planner
+    ):
         """Test responsive images count in strategy."""
         strategy_single = {"breakpoint_images": {"mobile": "img.jpg"}}
-        result_single = responsive_layout_planner.validate_image_strategy(strategy_single)
+        result_single = responsive_layout_planner.validate_image_strategy(
+            strategy_single
+        )
         assert result_single["responsive_images"] is False
 
         strategy_multi = {
@@ -1712,7 +1800,15 @@ class TestFrontendMetricsCollector:
 
     def test_collect_metrics_timestamp_generated(self, metrics_collector):
         """Test that timestamp is automatically generated."""
-        metrics = {"lcp": 1.8, "fid": 45, "cls": 0.08, "ttfb": 100, "fcp": 1.2, "tti": 2.5, "bundle_size": 150}
+        metrics = {
+            "lcp": 1.8,
+            "fid": 45,
+            "cls": 0.08,
+            "ttfb": 100,
+            "fcp": 1.2,
+            "tti": 2.5,
+            "bundle_size": 150,
+        }
 
         result = metrics_collector.collect_metrics(metrics)
 
@@ -1721,7 +1817,9 @@ class TestFrontendMetricsCollector:
         # ISO format check
         assert "T" in result.timestamp
 
-    def test_analyze_metrics_all_good(self, metrics_collector, sample_performance_metrics):
+    def test_analyze_metrics_all_good(
+        self, metrics_collector, sample_performance_metrics
+    ):
         """Test metrics analysis when all metrics are good."""
         result = metrics_collector.analyze_metrics(sample_performance_metrics)
 
@@ -1782,7 +1880,9 @@ class TestFrontendMetricsCollector:
         assert result["core_web_vitals_pass"] is False
         assert result["cls_status"] == "needs_improvement"
 
-    def test_analyze_metrics_result_structure(self, metrics_collector, sample_performance_metrics):
+    def test_analyze_metrics_result_structure(
+        self, metrics_collector, sample_performance_metrics
+    ):
         """Test the structure of metrics analysis result."""
         result = metrics_collector.analyze_metrics(sample_performance_metrics)
 
@@ -1859,7 +1959,9 @@ class TestFrontendMetricsCollector:
 
         assert any("bundle size" in rec.lower() for rec in result["recommendations"])
 
-    def test_analyze_metrics_performance_score_range(self, metrics_collector, sample_performance_metrics):
+    def test_analyze_metrics_performance_score_range(
+        self, metrics_collector, sample_performance_metrics
+    ):
         """Test that performance score is in valid range."""
         result = metrics_collector.analyze_metrics(sample_performance_metrics)
 
@@ -1943,7 +2045,9 @@ class TestParametrizedScenarios:
             (200, "Redux Toolkit"),
         ],
     )
-    def test_state_solution_by_component_count(self, state_management_advisor, components_count, expected_solution):
+    def test_state_solution_by_component_count(
+        self, state_management_advisor, components_count, expected_solution
+    ):
         """Test state management solution recommendation by component count."""
         metrics = {"components": components_count}
         result = state_management_advisor.recommend_solution(metrics)
@@ -1959,7 +2063,9 @@ class TestParametrizedScenarios:
             (6.9, "AAA", False),
         ],
     )
-    def test_wcag_contrast_validation(self, accessibility_validator, contrast_ratio, level, should_pass):
+    def test_wcag_contrast_validation(
+        self, accessibility_validator, contrast_ratio, level, should_pass
+    ):
         """Test WCAG contrast ratio validation across levels."""
         component = {
             "aria_label": "Button",
@@ -1989,7 +2095,9 @@ class TestParametrizedScenarios:
             ({"chunks": {"main": "app.js"}, "dynamic_imports": 0}, False),
         ],
     )
-    def test_code_splitting_configurations(self, performance_optimizer, code_splitting_config, should_be_optimized):
+    def test_code_splitting_configurations(
+        self, performance_optimizer, code_splitting_config, should_be_optimized
+    ):
         """Test various code splitting configurations."""
         result = performance_optimizer.validate_code_splitting(code_splitting_config)
 
@@ -2050,13 +2158,17 @@ class TestEdgeCasesAndErrors:
         assert result["core_web_vitals_pass"] is False
         assert len(result["recommendations"]) > 0
 
-    def test_accessibility_validator_partial_component_data(self, accessibility_validator):
+    def test_accessibility_validator_partial_component_data(
+        self, accessibility_validator
+    ):
         """Test accessibility validation with incomplete component data."""
         incomplete_component = {
             "aria_label": "Button",
         }
 
-        result = accessibility_validator.validate_wcag_compliance(incomplete_component, "AA")
+        result = accessibility_validator.validate_wcag_compliance(
+            incomplete_component, "AA"
+        )
 
         # Should handle missing fields
         assert "compliant" in result

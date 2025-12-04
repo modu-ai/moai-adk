@@ -104,13 +104,19 @@ class StatuslineRenderer:
 
         # Add Claude Code version if available
         if data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            claude_ver_str = (
+                data.claude_version
+                if data.claude_version.startswith("v")
+                else f"v{data.claude_version}"
+            )
             parts.append(f"🔅 {claude_ver_str}")
 
         # Add MoAI version if display enabled (system status)
         if self._display_config.version:
             # Add 'v' prefix if not already present
-            version_str = data.version if data.version.startswith("v") else f"v{data.version}"
+            version_str = (
+                data.version if data.version.startswith("v") else f"v{data.version}"
+            )
             parts.append(f"🗿 {version_str}")
 
         # Add output style if not empty
@@ -145,13 +151,19 @@ class StatuslineRenderer:
         """
         # Try with truncated branch first
         truncated_branch = self._truncate_branch(data.branch, max_length=30)
-        version_str = data.version if data.version.startswith("v") else f"v{data.version}"
+        version_str = (
+            data.version if data.version.startswith("v") else f"v{data.version}"
+        )
 
         parts = [f"🤖 {data.model}"]
 
         # Add Claude Code version if available
         if data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            claude_ver_str = (
+                data.claude_version
+                if data.claude_version.startswith("v")
+                else f"v{data.claude_version}"
+            )
             parts.append(f"🔅 {claude_ver_str}")
 
         parts.append(f"🗿 {version_str}")
@@ -180,7 +192,9 @@ class StatuslineRenderer:
 
             if data.claude_version:
                 claude_ver_str = (
-                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                    data.claude_version
+                    if data.claude_version.startswith("v")
+                    else f"v{data.claude_version}"
                 )
                 parts.append(f"🔅 {claude_ver_str}")
 
@@ -201,7 +215,9 @@ class StatuslineRenderer:
 
             if data.claude_version:
                 claude_ver_str = (
-                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                    data.claude_version
+                    if data.claude_version.startswith("v")
+                    else f"v{data.claude_version}"
                 )
                 parts.append(f"🔅 {claude_ver_str}")
 
@@ -231,7 +247,9 @@ class StatuslineRenderer:
             Formatted statusline string (max 120 chars)
         """
         branch = self._truncate_branch(data.branch, max_length=30)
-        version_str = data.version if data.version.startswith("v") else f"v{data.version}"
+        version_str = (
+            data.version if data.version.startswith("v") else f"v{data.version}"
+        )
 
         parts = []
 
@@ -241,7 +259,11 @@ class StatuslineRenderer:
 
         # Add Claude Code version if available
         if data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            claude_ver_str = (
+                data.claude_version
+                if data.claude_version.startswith("v")
+                else f"v{data.claude_version}"
+            )
             parts.append(f"🔅 {claude_ver_str}")
 
         # Add MoAI version if display enabled
@@ -273,7 +295,9 @@ class StatuslineRenderer:
 
             if data.claude_version:
                 claude_ver_str = (
-                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                    data.claude_version
+                    if data.claude_version.startswith("v")
+                    else f"v{data.claude_version}"
                 )
                 parts.append(f"🔅 {claude_ver_str}")
 
@@ -315,7 +339,11 @@ class StatuslineRenderer:
 
         # Add Claude Code version if available (truncated for minimal)
         if data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            claude_ver_str = (
+                data.claude_version
+                if data.claude_version.startswith("v")
+                else f"v{data.claude_version}"
+            )
             # For minimal mode, just show major.minor (e.g., "v2.0" from "v2.0.46")
             if len(claude_ver_str.split(".")) > 2:
                 claude_ver_str = ".".join(claude_ver_str.split(".")[:2])
@@ -325,7 +353,9 @@ class StatuslineRenderer:
         if self._display_config.version:
             truncated_ver = self._truncate_version(data.version)
             # Add 'v' prefix if not already present
-            version_str = truncated_ver if truncated_ver.startswith("v") else f"v{truncated_ver}"
+            version_str = (
+                truncated_ver if truncated_ver.startswith("v") else f"v{truncated_ver}"
+            )
             parts.append(f"🗿 {version_str}")
 
         result = self._format_config.separator.join(parts)
@@ -334,7 +364,10 @@ class StatuslineRenderer:
         # and if display is enabled and status not empty
         if self._display_config.git_status and data.git_status:
             status_label = f"Chg: {data.git_status}"
-            if len(result) + len(status_label) + len(self._format_config.separator) <= 40:
+            if (
+                len(result) + len(status_label) + len(self._format_config.separator)
+                <= 40
+            ):
                 result += f"{self._format_config.separator}{status_label}"
 
         return result

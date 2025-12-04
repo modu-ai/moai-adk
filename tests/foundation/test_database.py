@@ -1130,7 +1130,10 @@ class TestTransactionManager:
         ]
         result = manager.detect_deadlock(transactions)
         assert result["deadlock_detected"] is True
-        assert "tx1" in result["involved_transactions"] or "tx2" in result["involved_transactions"]
+        assert (
+            "tx1" in result["involved_transactions"]
+            or "tx2" in result["involved_transactions"]
+        )
 
     def test_detect_deadlock_three_way_cycle(self):
         """Test deadlock detection with three-way cycle."""

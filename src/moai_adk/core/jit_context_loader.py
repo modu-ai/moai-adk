@@ -144,7 +144,9 @@ class PhaseDetector:
         self.phase_history = []
         self.max_history = 10
 
-    def detect_phase(self, user_input: str, conversation_history: List[str] = None) -> Phase:
+    def detect_phase(
+        self, user_input: str, conversation_history: List[str] = None
+    ) -> Phase:
         """Detect current phase from user input and conversation context"""
         import re
 
@@ -180,7 +182,11 @@ class PhaseDetector:
                     "from": self.last_phase.value,
                     "to": best_phase.value,
                     "timestamp": datetime.now(),
-                    "context": user_input[:100] + "..." if len(user_input) > 100 else user_input,
+                    "context": (
+                        user_input[:100] + "..."
+                        if len(user_input) > 100
+                        else user_input
+                    ),
                 }
             )
 
@@ -203,7 +209,10 @@ class PhaseDetector:
                     "moai-lang-python",
                     "moai-core-spec-authoring",
                 ],
-                essential_documents=[".moai/specs/template.md", ".claude/skills/moai-foundation-ears/SKILL.md"],
+                essential_documents=[
+                    ".moai/specs/template.md",
+                    ".claude/skills/moai-foundation-ears/SKILL.md",
+                ],
                 cache_clear_on_phase_change=True,
             ),
             Phase.RED: PhaseConfig(
@@ -216,11 +225,18 @@ class PhaseDetector:
                     "moai-essentials-debug",
                     "moai-lang-python",
                 ],
-                essential_documents=[".moai/specs/{spec_id}/spec.md", ".claude/skills/moai-domain-testing/SKILL.md"],
+                essential_documents=[
+                    ".moai/specs/{spec_id}/spec.md",
+                    ".claude/skills/moai-domain-testing/SKILL.md",
+                ],
             ),
             Phase.GREEN: PhaseConfig(
                 max_tokens=25000,
-                essential_skills=["moai-lang-python", "moai-domain-backend", "moai-essentials-review"],
+                essential_skills=[
+                    "moai-lang-python",
+                    "moai-domain-backend",
+                    "moai-essentials-review",
+                ],
                 essential_documents=[".moai/specs/{spec_id}/spec.md"],
             ),
             Phase.REFACTOR: PhaseConfig(
@@ -244,7 +260,10 @@ class PhaseDetector:
                     "moai-core-spec-authoring",
                     "moai-cc-configuration",
                 ],
-                essential_documents=[".moai/specs/{spec_id}/implementation.md", ".moai/specs/{spec_id}/test-cases.md"],
+                essential_documents=[
+                    ".moai/specs/{spec_id}/implementation.md",
+                    ".moai/specs/{spec_id}/test-cases.md",
+                ],
                 cache_clear_on_phase_change=True,
             ),
             Phase.DEBUG: PhaseConfig(
@@ -254,7 +273,11 @@ class PhaseDetector:
             ),
             Phase.PLANNING: PhaseConfig(
                 max_tokens=35000,
-                essential_skills=["moai-core-practices", "moai-essentials-review", "moai-foundation-specs"],
+                essential_skills=[
+                    "moai-core-practices",
+                    "moai-essentials-review",
+                    "moai-foundation-specs",
+                ],
                 essential_documents=[".moai/specs/{spec_id}/spec.md"],
             ),
         }
@@ -291,7 +314,11 @@ class SkillFilterEngine:
                 "moai-essentials-debug": 2,
                 "moai-lang-python": 3,
             },
-            "green": {"moai-lang-python": 1, "moai-domain-backend": 1, "moai-essentials-review": 2},
+            "green": {
+                "moai-lang-python": 1,
+                "moai-domain-backend": 1,
+                "moai-essentials-review": 2,
+            },
             "refactor": {
                 "moai-essentials-refactor": 1,
                 "moai-essentials-review": 2,
@@ -305,7 +332,11 @@ class SkillFilterEngine:
                 "moai-cc-configuration": 2,
             },
             "debug": {"moai-essentials-debug": 1, "moai-core-code-reviewer": 2},
-            "planning": {"moai-core-practices": 1, "moai-essentials-review": 2, "moai-foundation-specs": 2},
+            "planning": {
+                "moai-core-practices": 1,
+                "moai-essentials-review": 2,
+                "moai-foundation-specs": 2,
+            },
         }
 
     def _build_skill_index(self):
@@ -339,13 +370,25 @@ class SkillFilterEngine:
 
             # Extract categories from content (look for keywords)
             categories = []
-            if any(keyword in content.lower() for keyword in ["python", "javascript", "typescript", "go", "rust"]):
+            if any(
+                keyword in content.lower()
+                for keyword in ["python", "javascript", "typescript", "go", "rust"]
+            ):
                 categories.append("language")
-            if any(keyword in content.lower() for keyword in ["backend", "frontend", "database", "security"]):
+            if any(
+                keyword in content.lower()
+                for keyword in ["backend", "frontend", "database", "security"]
+            ):
                 categories.append("domain")
-            if any(keyword in content.lower() for keyword in ["testing", "debug", "refactor", "review"]):
+            if any(
+                keyword in content.lower()
+                for keyword in ["testing", "debug", "refactor", "review"]
+            ):
                 categories.append("development")
-            if any(keyword in content.lower() for keyword in ["foundation", "essential", "core"]):
+            if any(
+                keyword in content.lower()
+                for keyword in ["foundation", "essential", "core"]
+            ):
                 categories.append("core")
 
             return SkillInfo(
@@ -361,7 +404,9 @@ class SkillFilterEngine:
             logger.error(f"Error analyzing skill {skill_file}: {e}")
             return None
 
-    def filter_skills(self, phase: Phase, token_budget: int, context: Dict[str, Any] = None) -> List[SkillInfo]:
+    def filter_skills(
+        self, phase: Phase, token_budget: int, context: Dict[str, Any] = None
+    ) -> List[SkillInfo]:
         """Filter skills based on phase, token budget, and context"""
         phase_name = phase.value
         preferences = self.phase_preferences.get(phase_name, {})
@@ -405,7 +450,9 @@ class SkillFilterEngine:
             "total_skills": total_skills,
             "total_tokens": total_tokens,
             "categories": categories,
-            "average_tokens_per_skill": total_tokens / total_skills if total_skills > 0 else 0,
+            "average_tokens_per_skill": (
+                total_tokens / total_skills if total_skills > 0 else 0
+            ),
         }
 
 
@@ -459,14 +506,23 @@ class TokenBudgetManager:
         # Check for budget warnings
         phase_budget = self.phase_budgets.get(phase.value, 30000)
         if tokens_used > phase_budget:
-            warning = f"Phase {phase.value} exceeded budget: {tokens_used} > {phase_budget}"
-            self.budget_warnings.append({"warning": warning, "timestamp": datetime.now()})
+            warning = (
+                f"Phase {phase.value} exceeded budget: {tokens_used} > {phase_budget}"
+            )
+            self.budget_warnings.append(
+                {"warning": warning, "timestamp": datetime.now()}
+            )
             logger.warning(warning)
 
     def get_efficiency_metrics(self) -> Dict[str, Any]:
         """Calculate and return efficiency metrics"""
         if not self.usage_history:
-            return {"efficiency_score": 0, "average_phase_efficiency": {}, "budget_compliance": 100, "total_usage": 0}
+            return {
+                "efficiency_score": 0,
+                "average_phase_efficiency": {},
+                "budget_compliance": 100,
+                "total_usage": 0,
+            }
 
         # Calculate efficiency by phase
         phase_usage = {}
@@ -493,12 +549,22 @@ class TokenBudgetManager:
             phase_efficiency[phase] = efficiency
 
         # Overall efficiency
-        overall_efficiency = sum(phase_efficiency.values()) / len(phase_efficiency) if phase_efficiency else 0
+        overall_efficiency = (
+            sum(phase_efficiency.values()) / len(phase_efficiency)
+            if phase_efficiency
+            else 0
+        )
 
         # Budget compliance
         total_entries = len(self.usage_history)
-        over_budget_entries = sum(usage["over_budget"] for usage in phase_usage.values())
-        budget_compliance = ((total_entries - over_budget_entries) / total_entries * 100) if total_entries > 0 else 100
+        over_budget_entries = sum(
+            usage["over_budget"] for usage in phase_usage.values()
+        )
+        budget_compliance = (
+            ((total_entries - over_budget_entries) / total_entries * 100)
+            if total_entries > 0
+            else 100
+        )
 
         return {
             "efficiency_score": overall_efficiency,
@@ -526,7 +592,9 @@ class ContextCache:
 
         # Rough estimation of memory usage
         content_size = sys.getsizeof(entry.content)
-        entry_overhead = sys.getsizeof(entry.key) + sys.getsizeof(str(entry.token_count))
+        entry_overhead = sys.getsizeof(entry.key) + sys.getsizeof(
+            str(entry.token_count)
+        )
         total_size = content_size + entry_overhead
 
         return total_size
@@ -544,7 +612,9 @@ class ContextCache:
         self.misses += 1
         return None
 
-    def put(self, key: str, content: Any, token_count: int, phase: Optional[str] = None):
+    def put(
+        self, key: str, content: Any, token_count: int, phase: Optional[str] = None
+    ):
         """Put entry in cache with LRU eviction"""
         entry = ContextEntry(
             key=key,
@@ -558,7 +628,10 @@ class ContextCache:
         entry_memory = self._calculate_memory_usage(entry)
 
         # Check if we need to evict entries
-        while len(self.cache) >= self.max_size or self.current_memory + entry_memory > self.max_memory_bytes:
+        while (
+            len(self.cache) >= self.max_size
+            or self.current_memory + entry_memory > self.max_memory_bytes
+        ):
             if not self.cache:
                 break
 
@@ -573,7 +646,9 @@ class ContextCache:
 
     def clear_phase(self, phase: str):
         """Clear all entries for a specific phase"""
-        keys_to_remove = [key for key, entry in self.cache.items() if entry.phase == phase]
+        keys_to_remove = [
+            key for key, entry in self.cache.items() if entry.phase == phase
+        ]
         for key in keys_to_remove:
             entry = self.cache.pop(key)
             self.current_memory -= self._calculate_memory_usage(entry)
@@ -620,17 +695,24 @@ class JITContextLoader:
         }
 
     async def load_context(
-        self, user_input: str, conversation_history: List[str] = None, context: Dict[str, Any] = None
+        self,
+        user_input: str,
+        conversation_history: List[str] = None,
+        context: Dict[str, Any] = None,
     ) -> Tuple[Dict[str, Any], ContextMetrics]:
         """Load optimized context based on current phase and requirements"""
         start_time = time.time()
 
         # Detect current phase
-        self.current_phase = self.phase_detector.detect_phase(user_input, conversation_history or [])
+        self.current_phase = self.phase_detector.detect_phase(
+            user_input, conversation_history or []
+        )
         phase_config = self.phase_detector.get_phase_config(self.current_phase)
 
         # Generate cache key
-        cache_key = self._generate_cache_key(self.current_phase, user_input, context or {})
+        cache_key = self._generate_cache_key(
+            self.current_phase, user_input, context or {}
+        )
 
         # Check cache first
         cached_entry = self.context_cache.get(cache_key)
@@ -649,21 +731,29 @@ class JITContextLoader:
             return cached_entry.content, metrics
 
         # Load fresh context
-        context_data = await self._build_context(self.current_phase, phase_config, context or {})
+        context_data = await self._build_context(
+            self.current_phase, phase_config, context or {}
+        )
 
         # Calculate total tokens
         total_tokens = self._calculate_total_tokens(context_data)
 
         # Check token budget
-        within_budget, remaining_budget = self.token_manager.check_budget(self.current_phase, total_tokens)
+        within_budget, remaining_budget = self.token_manager.check_budget(
+            self.current_phase, total_tokens
+        )
 
         if not within_budget:
             # Apply aggressive optimization
-            context_data = await self._optimize_context_aggressively(context_data, remaining_budget)
+            context_data = await self._optimize_context_aggressively(
+                context_data, remaining_budget
+            )
             total_tokens = self._calculate_total_tokens(context_data)
 
         # Cache the result
-        self.context_cache.put(cache_key, context_data, total_tokens, self.current_phase.value)
+        self.context_cache.put(
+            cache_key, context_data, total_tokens, self.current_phase.value
+        )
 
         # Record usage
         load_time = time.time() - start_time
@@ -682,7 +772,9 @@ class JITContextLoader:
         self._record_metrics(metrics)
         return context_data, metrics
 
-    def _generate_cache_key(self, phase: Phase, user_input: str, context: Dict[str, Any]) -> str:
+    def _generate_cache_key(
+        self, phase: Phase, user_input: str, context: Dict[str, Any]
+    ) -> str:
         """Generate unique cache key for context request"""
         key_data = {
             "phase": phase.value,
@@ -693,7 +785,9 @@ class JITContextLoader:
 
         return hashlib.md5(json.dumps(key_data, sort_keys=True).encode()).hexdigest()
 
-    async def _build_context(self, phase: Phase, phase_config: PhaseConfig, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _build_context(
+        self, phase: Phase, phase_config: PhaseConfig, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Build optimized context for the current phase"""
         context_data: Dict[str, Any] = {
             "phase": phase.value,
@@ -707,7 +801,9 @@ class JITContextLoader:
         }
 
         # Filter and load skills
-        skills = self.skill_filter.filter_skills(phase, phase_config.max_tokens // 2, context)
+        skills = self.skill_filter.filter_skills(
+            phase, phase_config.max_tokens // 2, context
+        )
         for skill in skills:
             skill_content = await self._load_skill_content(skill)
             if skill_content:
@@ -750,7 +846,9 @@ class JITContextLoader:
             logger.error(f"Error loading skill {skill.name}: {e}")
             return None
 
-    async def _load_document(self, doc_path: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _load_document(
+        self, doc_path: str, context: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Load and process a document"""
         try:
             # Apply context variable substitution
@@ -786,7 +884,9 @@ class JITContextLoader:
         else:
             return "text"
 
-    async def _optimize_context_aggressively(self, context_data: Dict[str, Any], token_budget: int) -> Dict[str, Any]:
+    async def _optimize_context_aggressively(
+        self, context_data: Dict[str, Any], token_budget: int
+    ) -> Dict[str, Any]:
         """Apply aggressive optimization to fit token budget"""
         current_tokens = self._calculate_total_tokens(context_data)
 
@@ -801,7 +901,9 @@ class JITContextLoader:
         used_tokens = 0
 
         for skill in skills:
-            if used_tokens + skill.get("tokens", 0) <= token_budget * 0.7:  # Reserve 30% for docs
+            if (
+                used_tokens + skill.get("tokens", 0) <= token_budget * 0.7
+            ):  # Reserve 30% for docs
                 optimized_skills.append(skill)
                 used_tokens += skill.get("tokens", 0)
             else:
@@ -828,7 +930,12 @@ class JITContextLoader:
         for line in lines:
             stripped = line.strip()
             # Skip empty lines and common comment patterns
-            if stripped and not stripped.startswith("#") and not stripped.startswith("//") and len(stripped) > 10:
+            if (
+                stripped
+                and not stripped.startswith("#")
+                and not stripped.startswith("//")
+                and len(stripped) > 10
+            ):
                 compressed_lines.append(stripped)
 
         return "\n".join(compressed_lines)
@@ -860,16 +967,20 @@ class JITContextLoader:
 
         # Update performance stats
         self.performance_stats["total_loads"] += 1
-        self.performance_stats["average_load_time"] = sum(m.load_time for m in self.metrics_history) / len(
-            self.metrics_history
-        )
+        self.performance_stats["average_load_time"] = sum(
+            m.load_time for m in self.metrics_history
+        ) / len(self.metrics_history)
 
         cache_hits = sum(1 for m in self.metrics_history if m.cache_hit)
-        self.performance_stats["cache_hit_rate"] = cache_hits / len(self.metrics_history) * 100
+        self.performance_stats["cache_hit_rate"] = (
+            cache_hits / len(self.metrics_history) * 100
+        )
 
         # Update efficiency score from token manager
         efficiency_metrics = self.token_manager.get_efficiency_metrics()
-        self.performance_stats["efficiency_score"] = efficiency_metrics["efficiency_score"]
+        self.performance_stats["efficiency_score"] = efficiency_metrics[
+            "efficiency_score"
+        ]
 
     def get_comprehensive_stats(self) -> Dict[str, Any]:
         """Get comprehensive system statistics"""
@@ -879,7 +990,9 @@ class JITContextLoader:
             "token_efficiency": self.token_manager.get_efficiency_metrics(),
             "skill_filter": self.skill_filter.get_skill_stats(),
             "current_phase": self.current_phase.value,
-            "phase_history": self.phase_detector.phase_history[-5:],  # Last 5 phase changes
+            "phase_history": self.phase_detector.phase_history[
+                -5:
+            ],  # Last 5 phase changes
             "metrics_count": len(self.metrics_history),
         }
 
@@ -890,10 +1003,14 @@ jit_context_loader = JITContextLoader()
 
 # Convenience functions
 async def load_optimized_context(
-    user_input: str, conversation_history: List[str] = None, context: Dict[str, Any] = None
+    user_input: str,
+    conversation_history: List[str] = None,
+    context: Dict[str, Any] = None,
 ) -> Tuple[Dict[str, Any], ContextMetrics]:
     """Load optimized context using global JIT loader instance"""
-    return await jit_context_loader.load_context(user_input, conversation_history, context)
+    return await jit_context_loader.load_context(
+        user_input, conversation_history, context
+    )
 
 
 def get_jit_stats() -> Dict[str, Any]:
@@ -915,7 +1032,11 @@ def initialize_jit_system():
     logger.info("Initializing JIT Context Loading System...")
 
     stats = get_jit_stats()
-    logger.info(f"JIT System initialized with {stats['skill_filter']['total_skills']} skills")
-    logger.info(f"Cache configured: {stats['cache']['entries']} entries, {stats['cache']['memory_usage_mb']:.1f}MB")
+    logger.info(
+        f"JIT System initialized with {stats['skill_filter']['total_skills']} skills"
+    )
+    logger.info(
+        f"Cache configured: {stats['cache']['entries']} entries, {stats['cache']['memory_usage_mb']:.1f}MB"
+    )
 
     return True

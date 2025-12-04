@@ -218,7 +218,10 @@ class TestMLPipelineOrchestrator:
         assert dag_config["dependencies"]["task1"] == ["task2"]
         assert dag_config["dependencies"]["task2"] == ["task3"]
         # task3 should not have dependencies
-        assert "task3" not in dag_config["dependencies"] or dag_config["dependencies"].get("task3") == []
+        assert (
+            "task3" not in dag_config["dependencies"]
+            or dag_config["dependencies"].get("task3") == []
+        )
 
     def test_orchestrate_airflow_dag_custom_dependencies(self, orchestrator):
         """Test Airflow DAG with custom dependencies."""
@@ -463,7 +466,9 @@ class TestModelVersionManager:
 
     def test_track_model_lineage_include_data_sources(self, manager):
         """Test model lineage with data sources."""
-        lineage = manager.track_model_lineage(model_id="model_001", include_data_sources=True)
+        lineage = manager.track_model_lineage(
+            model_id="model_001", include_data_sources=True
+        )
 
         assert lineage["data_sources"] is not None
         assert len(lineage["data_sources"]) == 2
@@ -472,13 +477,17 @@ class TestModelVersionManager:
 
     def test_track_model_lineage_exclude_data_sources(self, manager):
         """Test model lineage without data sources."""
-        lineage = manager.track_model_lineage(model_id="model_001", include_data_sources=False)
+        lineage = manager.track_model_lineage(
+            model_id="model_001", include_data_sources=False
+        )
 
         assert lineage["data_sources"] is None
 
     def test_track_model_lineage_include_training_runs(self, manager):
         """Test model lineage with training runs."""
-        lineage = manager.track_model_lineage(model_id="model_001", include_training_runs=True)
+        lineage = manager.track_model_lineage(
+            model_id="model_001", include_training_runs=True
+        )
 
         assert lineage["training_runs"] is not None
         assert len(lineage["training_runs"]) == 1
@@ -487,7 +496,9 @@ class TestModelVersionManager:
 
     def test_track_model_lineage_exclude_training_runs(self, manager):
         """Test model lineage without training runs."""
-        lineage = manager.track_model_lineage(model_id="model_001", include_training_runs=False)
+        lineage = manager.track_model_lineage(
+            model_id="model_001", include_training_runs=False
+        )
 
         assert lineage["training_runs"] is None
 
@@ -1046,7 +1057,10 @@ class TestModelDeploymentPlanner:
         )
 
         assert endpoint["endpoint_url"] == "https://api.example.com/fraud_detector"
-        assert endpoint["health_check_url"] == "https://api.example.com/fraud_detector/health"
+        assert (
+            endpoint["health_check_url"]
+            == "https://api.example.com/fraud_detector/health"
+        )
 
 
 # ============================================================================

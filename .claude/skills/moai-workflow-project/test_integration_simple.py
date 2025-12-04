@@ -53,7 +53,9 @@ def test_individual_modules():
             "title": "Test Feature",
             "description": "Test feature implementation",
             "requirements": ["Requirement 1", "Requirement 2"],
-            "api_endpoints": [{"path": "/api/test", "method": "POST", "description": "Test endpoint"}],
+            "api_endpoints": [
+                {"path": "/api/test", "method": "POST", "description": "Test endpoint"}
+            ],
         }
 
         docs_result = doc_manager.generate_documentation_from_spec(spec_data)
@@ -81,7 +83,9 @@ def test_individual_modules():
         )
 
         # Test multilingual structure
-        multilingual_result = lang_init.create_multilingual_documentation_structure("ko")
+        multilingual_result = lang_init.create_multilingual_documentation_structure(
+            "ko"
+        )
 
         results["language_initializer"] = {
             "success": lang_result["success"],
@@ -135,7 +139,9 @@ Complex logic:
         analysis = template_opt.analyze_project_templates()
 
         # Test optimization
-        optimization_result = template_opt.create_optimized_templates({"backup_first": True})
+        optimization_result = template_opt.create_optimized_templates(
+            {"backup_first": True}
+        )
 
         # Test benchmarking
         benchmark_result = template_opt.benchmark_template_performance()
@@ -198,9 +204,17 @@ def test_module_integration():
         doc_result = doc_manager.initialize_documentation_structure()
 
         # Test multilingual documentation
-        multilingual_result = lang_init.create_multilingual_documentation_structure("ko")
+        multilingual_result = lang_init.create_multilingual_documentation_structure(
+            "ko"
+        )
 
-        integration_success = all([lang_result["success"], doc_result["success"], multilingual_result["success"]])
+        integration_success = all(
+            [
+                lang_result["success"],
+                doc_result["success"],
+                multilingual_result["success"],
+            ]
+        )
 
         print(f"✅ Language + Documentation integration: {integration_success}")
 
@@ -317,7 +331,8 @@ def test_performance():
 
         # Create some test files
         (test_dir / "test.py").write_text(
-            "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100", encoding="utf-8"
+            "# Korean comments\\ndef calculate():\\n    # 계산 함수\\n    return 100",
+            encoding="utf-8",
         )
 
         lang_init.detect_project_language()
@@ -388,24 +403,35 @@ def main():
 
         # Module success rates
         total_modules = len(module_results)
-        successful_modules = sum(1 for result in module_results.values() if result.get("success", False))
+        successful_modules = sum(
+            1 for result in module_results.values() if result.get("success", False)
+        )
 
         print(f"📦 Modules: {successful_modules}/{total_modules} successful")
 
         # Integration success rates
         total_integrations = len(integration_results)
-        successful_integrations = sum(1 for result in integration_results.values() if result is True)
+        successful_integrations = sum(
+            1 for result in integration_results.values() if result is True
+        )
 
-        print(f"🔗 Integrations: {successful_integrations}/{total_integrations} successful")
+        print(
+            f"🔗 Integrations: {successful_integrations}/{total_integrations} successful"
+        )
 
         # Performance summary
         avg_time = sum(performance_results.values()) / len(performance_results)
         print(f"📈 Average operation time: {avg_time:.3f}s")
 
         # Overall assessment
-        overall_success = successful_modules == total_modules and successful_integrations == total_integrations
+        overall_success = (
+            successful_modules == total_modules
+            and successful_integrations == total_integrations
+        )
 
-        print(f"\\n🎯 Overall Result: {'✅ SUCCESS' if overall_success else '❌ ISSUES DETECTED'}")
+        print(
+            f"\\n🎯 Overall Result: {'✅ SUCCESS' if overall_success else '❌ ISSUES DETECTED'}"
+        )
 
         if overall_success:
             print("\\n🚀 MoAI Menu Project system is fully functional!")

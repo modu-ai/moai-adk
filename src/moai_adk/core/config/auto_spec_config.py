@@ -48,7 +48,9 @@ class AutoSpecConfig:
             # Extract auto-spec completion config
             self.config = self.config.get("auto_spec_completion", {})
 
-            logger.info(f"Loaded auto-spec completion configuration from {self.config_path}")
+            logger.info(
+                f"Loaded auto-spec completion configuration from {self.config_path}"
+            )
 
         except FileNotFoundError:
             logger.warning(f"Configuration file not found: {self.config_path}")
@@ -298,7 +300,9 @@ class AutoSpecConfig:
                 if not isinstance(quality_threshold["ears_compliance"], (int, float)):
                     errors.append("quality_threshold.ears_compliance must be a number")
                 elif not 0 <= quality_threshold["ears_compliance"] <= 1:
-                    errors.append("quality_threshold.ears_compliance must be between 0 and 1")
+                    errors.append(
+                        "quality_threshold.ears_compliance must be between 0 and 1"
+                    )
 
         return errors
 
@@ -325,7 +329,9 @@ class AutoSpecConfig:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(full_config, f, indent=2, ensure_ascii=False)
 
-            logger.info(f"Saved auto-spec completion configuration to {self.config_path}")
+            logger.info(
+                f"Saved auto-spec completion configuration to {self.config_path}"
+            )
 
         except Exception as e:
             logger.error(f"Error saving configuration: {e}")

@@ -21,7 +21,9 @@ console = Console()
 @click.option("--days", "-d", default=7, help="Number of days to analyze (default: 7)")
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-@click.option("--report-only", "-r", is_flag=True, help="Generate report only (no console output)")
+@click.option(
+    "--report-only", "-r", is_flag=True, help="Generate report only (no console output)"
+)
 @click.option(
     "--project-path",
     "-p",
@@ -51,7 +53,9 @@ def analyze(
 
     # Validate project path
     if not (project_path / ".moai").exists():
-        console.print("[red]Error:[/red] Not a MoAI-ADK project (missing .moai directory)")
+        console.print(
+            "[red]Error:[/red] Not a MoAI-ADK project (missing .moai directory)"
+        )
         console.print(f"[blue]Current path:[/blue] {project_path}")
         return
 
@@ -65,7 +69,9 @@ def analyze(
     patterns = analyzer.parse_sessions()
 
     if not report_only:
-        console.print(f"[green]✅ Analyzed {patterns['total_sessions']} sessions[/green]")
+        console.print(
+            f"[green]✅ Analyzed {patterns['total_sessions']} sessions[/green]"
+        )
         console.print(f"[blue]   Total events: {patterns['total_events']}[/blue]")
 
         # Display summary table
@@ -83,7 +89,9 @@ def analyze(
         # Show top tools
         if patterns["tool_usage"]:
             console.print("\n[bold]🔧 Top Tools Used:[/bold]")
-            top_tools = sorted(patterns["tool_usage"].items(), key=lambda x: x[1], reverse=True)[:10]
+            top_tools = sorted(
+                patterns["tool_usage"].items(), key=lambda x: x[1], reverse=True
+            )[:10]
 
             tools_table = Table()
             tools_table.add_column("Tool", style="cyan")
@@ -110,7 +118,9 @@ def analyze(
             if suggestions_start != -1:
                 suggestions_section = report_content[suggestions_start:]
                 # Extract first few suggestions
-                lines = suggestions_section.split("\n")[2:]  # Skip header and empty line
+                lines = suggestions_section.split("\n")[
+                    2:
+                ]  # Skip header and empty line
                 for line in lines[:10]:  # Show first 10 lines
                     if line.strip() and not line.startswith("---"):
                         console.print(line)

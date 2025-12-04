@@ -168,7 +168,9 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     try:
         # Extract model from session context with Claude Code version
         model_info = session_context.get("model", {})
-        model_name = model_info.get("display_name") or model_info.get("name") or "Unknown"
+        model_name = (
+            model_info.get("display_name") or model_info.get("name") or "Unknown"
+        )
 
         # Extract Claude Code version separately for new layout
         claude_version = session_context.get("version", "")
@@ -236,7 +238,9 @@ def main():
 
     if debug_mode:
         # Write debug info to stderr for troubleshooting
-        sys.stderr.write(f"[DEBUG] Received session_context: {json.dumps(session_context, indent=2)}\n")
+        sys.stderr.write(
+            f"[DEBUG] Received session_context: {json.dumps(session_context, indent=2)}\n"
+        )
         sys.stderr.flush()
 
     # Load configuration

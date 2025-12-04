@@ -93,7 +93,11 @@ Examples:
 """,
     )
     parser.add_argument(
-        "--server", action="append", dest="servers", required=True, help="Server command (can be repeated)"
+        "--server",
+        action="append",
+        dest="servers",
+        required=True,
+        help="Server command (can be repeated)",
     )
     parser.add_argument(
         "--port",
@@ -110,8 +114,15 @@ Examples:
         default=None,
         help="Working directory for each server (optional, defaults to current directory)",
     )
-    parser.add_argument("--timeout", type=int, default=30, help="Timeout in seconds per server (default: 30)")
-    parser.add_argument("command", nargs=argparse.REMAINDER, help="Command to run after server(s) ready")
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Timeout in seconds per server (default: 30)",
+    )
+    parser.add_argument(
+        "command", nargs=argparse.REMAINDER, help="Command to run after server(s) ready"
+    )
 
     args = parser.parse_args()
 
@@ -134,7 +145,9 @@ Examples:
         cwds.append(None)
 
     if len(cwds) > len(args.servers):
-        print("Error: Too many --cwd arguments (must not exceed number of --server arguments)")
+        print(
+            "Error: Too many --cwd arguments (must not exceed number of --server arguments)"
+        )
         sys.exit(1)
 
     servers = []
@@ -158,7 +171,9 @@ Examples:
             print(f"Error: {e}")
             sys.exit(1)
 
-        servers.append({"cmd": cmd, "cmd_list": cmd_list, "port": port, "cwd": resolved_cwd})
+        servers.append(
+            {"cmd": cmd, "cmd_list": cmd_list, "port": port, "cwd": resolved_cwd}
+        )
 
     server_processes = []
 
@@ -180,7 +195,9 @@ Examples:
             # Wait for this server to be ready
             print(f"Waiting for server on port {server['port']}...")
             if not is_server_ready(server["port"], timeout=args.timeout):
-                raise RuntimeError(f"Server failed to start on port {server['port']} within {args.timeout}s")
+                raise RuntimeError(
+                    f"Server failed to start on port {server['port']} within {args.timeout}s"
+                )
 
             print(f"Server ready on port {server['port']}")
 

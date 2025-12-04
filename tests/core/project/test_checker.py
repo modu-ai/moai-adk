@@ -51,7 +51,9 @@ class TestSystemChecker:
 
     def test_check_tool_exception(self, system_checker):
         """Test checking tool that raises exception."""
-        result = system_checker._check_tool("invalid tool name with spaces and special chars")
+        result = system_checker._check_tool(
+            "invalid tool name with spaces and special chars"
+        )
 
         # Should handle exception gracefully
         assert isinstance(result, bool)

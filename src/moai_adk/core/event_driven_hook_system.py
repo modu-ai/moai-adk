@@ -203,8 +203,12 @@ class InMemoryMessageBroker(MessageBroker):
 
     def __init__(self, max_queue_size: int = 10000):
         self.max_queue_size = max_queue_size
-        self.queues: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_queue_size))
-        self.subscribers: Dict[str, List[tuple[str, Callable[[Event], None]]]] = defaultdict(list)
+        self.queues: Dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=max_queue_size)
+        )
+        self.subscribers: Dict[str, List[tuple[str, Callable[[Event], None]]]] = (
+            defaultdict(list)
+        )
         self._lock = asyncio.Lock()
         self._stats = {
             "messages_published": 0,
@@ -240,7 +244,9 @@ class InMemoryMessageBroker(MessageBroker):
             self._stats["failed_publishes"] += 1
             return False
 
-    async def _safe_callback(self, callback: Callable[[Event], None], event: Event) -> None:
+    async def _safe_callback(
+        self, callback: Callable[[Event], None], event: Event
+    ) -> None:
         """Safely execute callback with error handling"""
         try:
             if asyncio.iscoroutinefunction(callback):
@@ -267,7 +273,9 @@ class InMemoryMessageBroker(MessageBroker):
                 subscribers = self.subscribers[topic]
                 original_len = len(subscribers)
                 self.subscribers[topic] = [
-                    (sub_id, callback) for sub_id, callback in subscribers if sub_id != subscription_id
+                    (sub_id, callback)
+                    for sub_id, callback in subscribers
+                    if sub_id != subscription_id
                 ]
                 if len(self.subscribers[topic]) < original_len:
                     self._stats["active_subscriptions"] -= 1
@@ -278,7 +286,9 @@ class InMemoryMessageBroker(MessageBroker):
         """Create message queue with configuration"""
         async with self._lock:
             # Queue is created automatically on first use
-            self.queues[queue_name] = deque(maxlen=config.get("max_size", self.max_queue_size))
+            self.queues[queue_name] = deque(
+                maxlen=config.get("max_size", self.max_queue_size)
+            )
             self._stats["queues_created"] += 1
         return True
 
@@ -307,7 +317,9 @@ class RedisMessageBroker(MessageBroker):
         self.redis_url = redis_url
         self._redis = None
         self._pubsub = None
-        self._subscribers: Dict[str, List[tuple[str, Callable[[Event], None]]]] = defaultdict(list)
+        self._subscribers: Dict[str, List[tuple[str, Callable[[Event], None]]]] = (
+            defaultdict(list)
+        )
         self._stats = {
             "messages_published": 0,
             "messages_delivered": 0,
@@ -400,7 +412,9 @@ class RedisMessageBroker(MessageBroker):
             # Remove from local subscribers
             for topic, subscribers in self._subscribers.items():
                 self._subscribers[topic] = [
-                    (sub_id, callback) for sub_id, callback in subscribers if sub_id != subscription_id
+                    (sub_id, callback)
+                    for sub_id, callback in subscribers
+                    if sub_id != subscription_id
                 ]
 
             self._stats["active_subscriptions"] -= 1
@@ -440,7 +454,9 @@ class RedisMessageBroker(MessageBroker):
 class ResourcePool:
     """Resource pool for hook execution with isolation"""
 
-    def __init__(self, isolation_level: ResourceIsolationLevel, max_concurrent: int = 10):
+    def __init__(
+        self, isolation_level: ResourceIsolationLevel, max_concurrent: int = 10
+    ):
         self.isolation_level = isolation_level
         self.max_concurrent = max_concurrent
         self._pools: Dict[str, asyncio.Semaphore] = {}
@@ -453,7 +469,9 @@ class ResourcePool:
             "isolation_violations": 0,
         }
 
-    async def get_semaphore(self, hook_path: str, event_type: HookEvent) -> asyncio.Semaphore:
+    async def get_semaphore(
+        self, hook_path: str, event_type: HookEvent
+    ) -> asyncio.Semaphore:
         """Get semaphore for hook based on isolation level"""
         pool_key = self._get_pool_key(hook_path, event_type)
 
@@ -481,7 +499,9 @@ class ResourcePool:
         else:
             return "shared"
 
-    async def acquire_execution_slot(self, hook_path: str, event_type: HookEvent) -> bool:
+    async def acquire_execution_slot(
+        self, hook_path: str, event_type: HookEvent
+    ) -> bool:
         """Acquire execution slot in appropriate pool"""
         pool_key = self._get_pool_key(hook_path, event_type)
         semaphore = await self.get_semaphore(hook_path, event_type)
@@ -504,14 +524,18 @@ class ResourcePool:
             logger.error(f"Error acquiring execution slot for {hook_path}: {e}")
             return False
 
-    async def release_execution_slot(self, hook_path: str, event_type: HookEvent) -> None:
+    async def release_execution_slot(
+        self, hook_path: str, event_type: HookEvent
+    ) -> None:
         """Release execution slot"""
         pool_key = self._get_pool_key(hook_path, event_type)
         semaphore = await self.get_semaphore(hook_path, event_type)
 
         async with self._lock:
             self._active_executions[pool_key].discard(hook_path)
-            self._stats["active_executions"] = max(0, self._stats["active_executions"] - 1)
+            self._stats["active_executions"] = max(
+                0, self._stats["active_executions"] - 1
+            )
 
             # Update pool utilization
             available = semaphore._value
@@ -530,7 +554,11 @@ class ResourcePool:
                     **self._stats,
                     "pool_count": len(self._pools),
                     "active_pools": [
-                        {"pool_key": key, "active_executions": len(executions), "executions": list(executions)}
+                        {
+                            "pool_key": key,
+                            "active_executions": len(executions),
+                            "executions": list(executions),
+                        }
                         for key, executions in self._active_executions.items()
                     ],
                 }
@@ -571,7 +599,9 @@ class EventProcessor:
         try:
             handlers = self._handlers.get(event.event_type, [])
             if not handlers:
-                logger.warning(f"No handlers registered for event type: {event.event_type}")
+                logger.warning(
+                    f"No handlers registered for event type: {event.event_type}"
+                )
                 return True
 
             # Process event with all registered handlers
@@ -598,7 +628,9 @@ class EventProcessor:
             self._update_stats(event.event_type, processing_time_ms, False)
             return False
 
-    def _update_stats(self, event_type: EventType, processing_time_ms: float, success: bool) -> None:
+    def _update_stats(
+        self, event_type: EventType, processing_time_ms: float, success: bool
+    ) -> None:
         """Update processing statistics"""
         events_processed: int = self._processing_stats["events_processed"]
         events_processed += 1
@@ -623,8 +655,14 @@ class EventProcessor:
         events_failed: int = self._processing_stats["events_failed"]
         return {
             **self._processing_stats,
-            "success_rate": ((events_processed - events_failed) / max(events_processed, 1)) * 100,
-            "handlers_registered": {event_type.value: len(handlers) for event_type, handlers in self._handlers.items()},
+            "success_rate": (
+                (events_processed - events_failed) / max(events_processed, 1)
+            )
+            * 100,
+            "handlers_registered": {
+                event_type.value: len(handlers)
+                for event_type, handlers in self._handlers.items()
+            },
         }
 
 
@@ -659,7 +697,9 @@ class EventDrivenHookSystem:
         self.isolation_level = isolation_level
         self.max_concurrent_hooks = max_concurrent_hooks
         self.enable_persistence = enable_persistence
-        self.persistence_path = persistence_path or Path.cwd() / ".moai" / "cache" / "event_system"
+        self.persistence_path = (
+            persistence_path or Path.cwd() / ".moai" / "cache" / "event_system"
+        )
         self.redis_url = redis_url
 
         # Initialize message broker
@@ -701,7 +741,9 @@ class EventDrivenHookSystem:
         elif self.message_broker_type == MessageBrokerType.REDIS:
             return RedisMessageBroker(self.redis_url)
         else:
-            logger.warning(f"Message broker {self.message_broker_type} not implemented, using in-memory")
+            logger.warning(
+                f"Message broker {self.message_broker_type} not implemented, using in-memory"
+            )
             return InMemoryMessageBroker()
 
     async def start(self) -> None:
@@ -761,33 +803,59 @@ class EventDrivenHookSystem:
     def _register_event_handlers(self) -> None:
         """Register event handlers for different event types"""
         # Hook execution request handler
-        self.event_processor.register_handler(EventType.HOOK_EXECUTION_REQUEST, self._handle_hook_execution_request)
+        self.event_processor.register_handler(
+            EventType.HOOK_EXECUTION_REQUEST, self._handle_hook_execution_request
+        )
 
         # Hook execution completion handler
-        self.event_processor.register_handler(EventType.HOOK_EXECUTION_COMPLETED, self._handle_hook_execution_completed)
+        self.event_processor.register_handler(
+            EventType.HOOK_EXECUTION_COMPLETED, self._handle_hook_execution_completed
+        )
 
         # Hook execution failure handler
-        self.event_processor.register_handler(EventType.HOOK_EXECUTION_FAILED, self._handle_hook_execution_failed)
+        self.event_processor.register_handler(
+            EventType.HOOK_EXECUTION_FAILED, self._handle_hook_execution_failed
+        )
 
         # System alert handler
-        self.event_processor.register_handler(EventType.SYSTEM_ALERT, self._handle_system_alert)
+        self.event_processor.register_handler(
+            EventType.SYSTEM_ALERT, self._handle_system_alert
+        )
 
         # Health check handler
-        self.event_processor.register_handler(EventType.HEALTH_CHECK, self._handle_health_check)
+        self.event_processor.register_handler(
+            EventType.HEALTH_CHECK, self._handle_health_check
+        )
 
         # Batch execution handler
-        self.event_processor.register_handler(EventType.BATCH_EXECUTION_REQUEST, self._handle_batch_execution_request)
+        self.event_processor.register_handler(
+            EventType.BATCH_EXECUTION_REQUEST, self._handle_batch_execution_request
+        )
 
         # Workflow orchestration handler
-        self.event_processor.register_handler(EventType.WORKFLOW_ORCHESTRATION, self._handle_workflow_orchestration)
+        self.event_processor.register_handler(
+            EventType.WORKFLOW_ORCHESTRATION, self._handle_workflow_orchestration
+        )
 
     async def _setup_message_queues(self) -> None:
         """Setup message queues for different event types"""
         queue_configs = {
-            "hook_execution_high": {"max_size": 1000, "priority": EventPriority.HIGH.value},
-            "hook_execution_normal": {"max_size": 5000, "priority": EventPriority.NORMAL.value},
-            "hook_execution_low": {"max_size": 10000, "priority": EventPriority.LOW.value},
-            "system_events": {"max_size": 1000, "priority": EventPriority.CRITICAL.value},
+            "hook_execution_high": {
+                "max_size": 1000,
+                "priority": EventPriority.HIGH.value,
+            },
+            "hook_execution_normal": {
+                "max_size": 5000,
+                "priority": EventPriority.NORMAL.value,
+            },
+            "hook_execution_low": {
+                "max_size": 10000,
+                "priority": EventPriority.LOW.value,
+            },
+            "system_events": {
+                "max_size": 1000,
+                "priority": EventPriority.CRITICAL.value,
+            },
             "analytics": {"max_size": 20000, "priority": EventPriority.BULK.value},
         }
 
@@ -843,7 +911,9 @@ class EventDrivenHookSystem:
         # Finally bulk analytics events
         await self._process_queue_events("analytics", EventPriority.BULK)
 
-    async def _process_queue_events(self, queue_name: str, priority: EventPriority) -> None:
+    async def _process_queue_events(
+        self, queue_name: str, priority: EventPriority
+    ) -> None:
         """Process events from a specific queue"""
         # This is a simplified implementation
         # In a real implementation, you would poll the message broker
@@ -940,7 +1010,9 @@ class EventDrivenHookSystem:
                     correlation_id=event.correlation_id,
                     causation_id=event.event_id,
                 )
-                await self.message_broker.publish("hook_execution_normal", completion_event)
+                await self.message_broker.publish(
+                    "hook_execution_normal", completion_event
+                )
 
                 self._system_metrics["hook_executions"] += 1
 
@@ -959,7 +1031,11 @@ class EventDrivenHookSystem:
                 event_type=EventType.HOOK_EXECUTION_FAILED,
                 priority=EventPriority.HIGH,
                 timestamp=datetime.now(),
-                payload={"hook_path": event.hook_path, "reason": str(e), "original_event_id": event.event_id},
+                payload={
+                    "hook_path": event.hook_path,
+                    "reason": str(e),
+                    "original_event_id": event.event_id,
+                },
                 correlation_id=event.correlation_id,
                 causation_id=event.event_id,
             )
@@ -969,7 +1045,9 @@ class EventDrivenHookSystem:
         """Execute hook event (integration point with existing hook system)"""
         # This is where you would integrate with the existing JITEnhancedHookManager
         # For now, we'll simulate execution
-        logger.info(f"Executing hook: {event.hook_path} with isolation: {event.isolation_level}")
+        logger.info(
+            f"Executing hook: {event.hook_path} with isolation: {event.isolation_level}"
+        )
 
         # Simulate execution time
         await asyncio.sleep(0.1)
@@ -1021,7 +1099,9 @@ class EventDrivenHookSystem:
 
     def _update_system_metrics(self) -> None:
         """Update system metrics"""
-        self._system_metrics["system_uptime_seconds"] = (datetime.now() - self._startup_time).total_seconds()
+        self._system_metrics["system_uptime_seconds"] = (
+            datetime.now() - self._startup_time
+        ).total_seconds()
 
     async def _cleanup_old_events(self) -> None:
         """Clean up old processed events"""
@@ -1031,7 +1111,8 @@ class EventDrivenHookSystem:
         old_events = [
             event_id
             for event_id in self._processed_events
-            if event_id in self._pending_events and self._pending_events[event_id].timestamp < cutoff_time
+            if event_id in self._pending_events
+            and self._pending_events[event_id].timestamp < cutoff_time
         ]
 
         for event_id in old_events:
@@ -1052,7 +1133,10 @@ class EventDrivenHookSystem:
         try:
             # Persist pending events
             pending_file = self.persistence_path / "pending_events.json"
-            pending_data = {event_id: event.to_dict() for event_id, event in self._pending_events.items()}
+            pending_data = {
+                event_id: event.to_dict()
+                for event_id, event in self._pending_events.items()
+            }
 
             with open(pending_file, "w") as f:
                 json.dump(pending_data, f, indent=2)
@@ -1083,7 +1167,8 @@ class EventDrivenHookSystem:
                     pending_data = json.load(f)
 
                 self._pending_events = {
-                    event_id: Event.from_dict(event_data) for event_id, event_data in pending_data.items()
+                    event_id: Event.from_dict(event_data)
+                    for event_id, event_data in pending_data.items()
                 }
 
             # Load processed events
@@ -1118,7 +1203,11 @@ class EventDrivenHookSystem:
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=priority,
             timestamp=datetime.now(),
-            payload={"hook_path": hook_path, "event_type": event_type.value, "execution_context": execution_context},
+            payload={
+                "hook_path": hook_path,
+                "event_type": event_type.value,
+                "execution_context": execution_context,
+            },
             source="event_system",
             correlation_id=correlation_id or str(uuid.uuid4()),
             hook_path=hook_path,
@@ -1167,7 +1256,11 @@ class EventDrivenHookSystem:
             event_type=EventType.SYSTEM_ALERT,
             priority=severity,
             timestamp=datetime.now(),
-            payload={"alert_type": alert_type, "message": message, "metadata": metadata or {}},
+            payload={
+                "alert_type": alert_type,
+                "message": message,
+                "metadata": metadata or {},
+            },
             source="event_system",
         )
 
@@ -1205,7 +1298,9 @@ class EventDrivenHookSystem:
                     "HOOK_EXECUTION_REQUEST -> Resource Pool -> Hook Execution -> HOOK_EXECUTION_COMPLETED"
                 ],
                 "system_alerts": ["SYSTEM_ALERT -> Alert Handlers -> Notification"],
-                "batch_processing": ["BATCH_EXECUTION_REQUEST -> Batch Queue -> Parallel Execution -> Results"],
+                "batch_processing": [
+                    "BATCH_EXECUTION_REQUEST -> Batch Queue -> Parallel Execution -> Results"
+                ],
                 "workflow_orchestration": [
                     "WORKFLOW_ORCHESTRATION -> Workflow Engine -> Step Execution -> State Update"
                 ],

@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional
 
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
@@ -128,7 +129,9 @@ class LanguageConfigResolver:
             with open(self.config_file_path, "r", encoding="utf-8") as f:
                 if self.config_file_path.suffix in [".yaml", ".yml"]:
                     if not YAML_AVAILABLE:
-                        print(f"Warning: PyYAML not available, skipping {self.config_file_path}")
+                        print(
+                            f"Warning: PyYAML not available, skipping {self.config_file_path}"
+                        )
                         return None
                     full_config = yaml.safe_load(f) or {}
                 else:
@@ -151,13 +154,19 @@ class LanguageConfigResolver:
             # Language settings
             language_config = full_config.get("language", {})
             if "conversation_language" in language_config:
-                config["conversation_language"] = language_config["conversation_language"]
+                config["conversation_language"] = language_config[
+                    "conversation_language"
+                ]
 
             if "conversation_language_name" in language_config:
-                config["conversation_language_name"] = language_config["conversation_language_name"]
+                config["conversation_language_name"] = language_config[
+                    "conversation_language_name"
+                ]
 
             if "agent_prompt_language" in language_config:
-                config["agent_prompt_language"] = language_config["agent_prompt_language"]
+                config["agent_prompt_language"] = language_config[
+                    "agent_prompt_language"
+                ]
 
             if "git_commit_messages" in language_config:
                 config["git_commit_messages"] = language_config["git_commit_messages"]
@@ -173,7 +182,12 @@ class LanguageConfigResolver:
 
             return config
 
-        except (json.JSONDecodeError, yaml.YAMLError if YAML_AVAILABLE else Exception, IOError, KeyError) as e:
+        except (
+            json.JSONDecodeError,
+            yaml.YAMLError if YAML_AVAILABLE else Exception,
+            IOError,
+            KeyError,
+        ) as e:
             # Log error but don't fail - fall back to defaults
             print(f"Warning: Failed to load config file {self.config_file_path}: {e}")
             return None
@@ -371,7 +385,9 @@ class LanguageConfigResolver:
             "ru-ru": "ru",
         }
 
-        return standardizations.get(code, code[:2])  # Return first 2 chars if not in standardizations
+        return standardizations.get(
+            code, code[:2]
+        )  # Return first 2 chars if not in standardizations
 
     def is_korean_language(self, config: Optional[Dict[str, Any]] = None) -> bool:
         """
@@ -412,7 +428,9 @@ class LanguageConfigResolver:
 
         return ""
 
-    def export_template_variables(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+    def export_template_variables(
+        self, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, str]:
         """
         Export configuration as template variables for substitution.
 
@@ -459,13 +477,17 @@ def get_resolver(project_root: Optional[str] = None) -> LanguageConfigResolver:
     """
     global _resolver_instance
 
-    if _resolver_instance is None or (project_root and project_root != str(_resolver_instance.project_root)):
+    if _resolver_instance is None or (
+        project_root and project_root != str(_resolver_instance.project_root)
+    ):
         _resolver_instance = LanguageConfigResolver(project_root)
 
     return _resolver_instance
 
 
-def resolve_language_config(project_root: Optional[str] = None, force_refresh: bool = False) -> Dict[str, Any]:
+def resolve_language_config(
+    project_root: Optional[str] = None, force_refresh: bool = False
+) -> Dict[str, Any]:
     """
     Convenience function to resolve language configuration.
 

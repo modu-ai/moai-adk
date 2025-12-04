@@ -70,9 +70,16 @@ class ComponentArchitect:
     def __init__(self) -> None:
         """Initialize component architect."""
         self.components_registry: Dict[str, Dict[str, Any]] = {}
-        self.composition_patterns: Set[str] = {"render_props", "compound_components", "hooks", "hoc"}
+        self.composition_patterns: Set[str] = {
+            "render_props",
+            "compound_components",
+            "hooks",
+            "hoc",
+        }
 
-    def validate_atomic_structure(self, components: Dict[str, List[str]]) -> Dict[str, Any]:
+    def validate_atomic_structure(
+        self, components: Dict[str, List[str]]
+    ) -> Dict[str, Any]:
         """
         Validate atomic design structure with proper hierarchy.
 
@@ -99,7 +106,9 @@ class ComponentArchitect:
             "page_count": len(components.get("pages", [])),
         }
 
-    def analyze_reusability(self, components: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def analyze_reusability(
+        self, components: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Analyze component reusability based on prop flexibility.
 
@@ -119,7 +128,9 @@ class ComponentArchitect:
                 reusable_count += 1
 
             if prop_count > 5:
-                recommendations.append(f"{name}: Consider splitting into smaller components")
+                recommendations.append(
+                    f"{name}: Consider splitting into smaller components"
+                )
 
         composition_score = reusable_count / max(len(components), 1)
 
@@ -162,9 +173,15 @@ class ComponentArchitect:
         typescript_interface = "interface Props {\n"
         for prop, type_val in schema.items():
             if isinstance(type_val, tuple):
-                typescript_interface += f"  {prop}: {' | '.join(repr(v) for v in type_val)};\n"
+                typescript_interface += (
+                    f"  {prop}: {' | '.join(repr(v) for v in type_val)};\n"
+                )
             else:
-                type_str = type_val.__name__ if hasattr(type_val, "__name__") else str(type_val)
+                type_str = (
+                    type_val.__name__
+                    if hasattr(type_val, "__name__")
+                    else str(type_val)
+                )
                 typescript_interface += f"  {prop}: {type_str};\n"
         typescript_interface += "}"
 
@@ -254,7 +271,11 @@ class StateManagementAdvisor:
             "solution": solution,
             "confidence": confidence,
             "rationale": f"Recommended for {components} components with {complexity} complexity",
-            "tradeoffs": {"performance": 0.8, "developer_experience": 0.85, "bundle_size_impact": 0.6},
+            "tradeoffs": {
+                "performance": 0.8,
+                "developer_experience": 0.85,
+                "bundle_size_impact": 0.6,
+            },
         }
 
     def validate_context_pattern(self, pattern: Dict[str, Any]) -> Dict[str, Any]:
@@ -292,12 +313,18 @@ class StateManagementAdvisor:
         return {
             "valid": True,
             "selector_count": len(store_design.get("selectors", [])),
-            "devtools_status": "enabled" if store_design.get("devtools_enabled") else "disabled",
-            "persist_status": "enabled" if store_design.get("persist_enabled") else "disabled",
+            "devtools_status": (
+                "enabled" if store_design.get("devtools_enabled") else "disabled"
+            ),
+            "persist_status": (
+                "enabled" if store_design.get("persist_enabled") else "disabled"
+            ),
             "action_count": len(store_design.get("actions", [])),
         }
 
-    def validate_redux_design(self, slices: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def validate_redux_design(
+        self, slices: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Validate Redux slice design.
 
@@ -316,7 +343,10 @@ class StateManagementAdvisor:
             "valid": True,
             "slice_count": len(slices),
             "total_actions": total_actions,
-            "recommendations": ["Use Redux Toolkit for simplicity", "Enable Redux DevTools"],
+            "recommendations": [
+                "Use Redux Toolkit for simplicity",
+                "Enable Redux DevTools",
+            ],
         }
 
 
@@ -355,11 +385,18 @@ class AccessibilityValidator:
         """Initialize accessibility validator."""
         self.wcag_rules = {
             "AA": ["contrast", "aria_labels", "keyboard_navigation"],
-            "AAA": ["contrast_enhanced", "aria_labels", "keyboard_navigation", "focus_visible"],
+            "AAA": [
+                "contrast_enhanced",
+                "aria_labels",
+                "keyboard_navigation",
+                "focus_visible",
+            ],
         }
         self.min_contrast_ratio = {"AA": 4.5, "AAA": 7.0}
 
-    def validate_wcag_compliance(self, component: Dict[str, Any], level: str = "AA") -> Dict[str, Any]:
+    def validate_wcag_compliance(
+        self, component: Dict[str, Any], level: str = "AA"
+    ) -> Dict[str, Any]:
         """
         Validate WCAG compliance level.
 
@@ -372,7 +409,9 @@ class AccessibilityValidator:
         """
         failures = []
 
-        if component.get("color_contrast_ratio", 0) < self.min_contrast_ratio.get(level, 4.5):
+        if component.get("color_contrast_ratio", 0) < self.min_contrast_ratio.get(
+            level, 4.5
+        ):
             failures.append("Insufficient color contrast ratio")
 
         if not component.get("aria_label"):
@@ -381,7 +420,12 @@ class AccessibilityValidator:
         if not component.get("keyboard_accessible"):
             failures.append("Not keyboard accessible")
 
-        return {"compliant": len(failures) == 0, "level": level, "failures": failures, "warnings": []}
+        return {
+            "compliant": len(failures) == 0,
+            "level": level,
+            "failures": failures,
+            "warnings": [],
+        }
 
     def validate_aria_implementation(self, component: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -550,9 +594,15 @@ class PerformanceOptimizer:
                 and fid <= self.core_web_vitals_thresholds["fid"]["good"]
                 and cls <= self.core_web_vitals_thresholds["cls"]["good"]
             ),
-            "lcp_status": get_status(lcp, self.core_web_vitals_thresholds["lcp"]["good"]),
-            "fid_status": get_status(fid, self.core_web_vitals_thresholds["fid"]["good"]),
-            "cls_status": get_status(cls, self.core_web_vitals_thresholds["cls"]["good"]),
+            "lcp_status": get_status(
+                lcp, self.core_web_vitals_thresholds["lcp"]["good"]
+            ),
+            "fid_status": get_status(
+                fid, self.core_web_vitals_thresholds["fid"]["good"]
+            ),
+            "cls_status": get_status(
+                cls, self.core_web_vitals_thresholds["cls"]["good"]
+            ),
             "metrics": {
                 "lcp": lcp,
                 "fid": fid,
@@ -646,7 +696,14 @@ class ResponsiveLayoutPlanner:
 
     def __init__(self):
         """Initialize responsive layout planner."""
-        self.standard_breakpoints = {"mobile": 0, "sm": 640, "md": 768, "lg": 1024, "xl": 1280, "2xl": 1536}
+        self.standard_breakpoints = {
+            "mobile": 0,
+            "sm": 640,
+            "md": 768,
+            "lg": 1024,
+            "xl": 1280,
+            "2xl": 1536,
+        }
 
     def validate_breakpoints(self, breakpoints: Dict[str, int]) -> Dict[str, Any]:
         """
@@ -661,7 +718,11 @@ class ResponsiveLayoutPlanner:
         is_mobile_first = breakpoints.get("mobile_first", False)
         breakpoint_count = len(breakpoints) - 1  # Exclude mobile_first flag
 
-        return {"mobile_first": is_mobile_first, "breakpoint_count": breakpoint_count, "valid": breakpoint_count >= 4}
+        return {
+            "mobile_first": is_mobile_first,
+            "breakpoint_count": breakpoint_count,
+            "valid": breakpoint_count >= 4,
+        }
 
     def validate_fluid_layout(self, layout_config: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -673,7 +734,9 @@ class ResponsiveLayoutPlanner:
         Returns:
             Fluid layout validation result
         """
-        is_fluid = layout_config.get("container_query_enabled", False) or layout_config.get("fluid_spacing", False)
+        is_fluid = layout_config.get(
+            "container_query_enabled", False
+        ) or layout_config.get("fluid_spacing", False)
 
         responsive_score = sum(
             [
@@ -686,9 +749,12 @@ class ResponsiveLayoutPlanner:
 
         return {
             "fluid": is_fluid,
-            "container_queries_enabled": layout_config.get("container_query_enabled", False),
+            "container_queries_enabled": layout_config.get(
+                "container_query_enabled", False
+            ),
             "responsive_score": responsive_score,
-            "grid_responsive": len(layout_config.get("grid_columns_responsive", {})) >= 3,
+            "grid_responsive": len(layout_config.get("grid_columns_responsive", {}))
+            >= 3,
         }
 
     def validate_image_strategy(self, strategy: Dict[str, Any]) -> Dict[str, Any]:
@@ -801,7 +867,11 @@ class FrontendMetricsCollector:
         all_good = lcp_good and fid_good and cls_good
 
         # Calculate performance score (0-100)
-        score_components = [100 if lcp_good else 50, 100 if fid_good else 50, 100 if cls_good else 50]
+        score_components = [
+            100 if lcp_good else 50,
+            100 if fid_good else 50,
+            100 if cls_good else 50,
+        ]
         performance_score = sum(score_components) / len(score_components) / 100
 
         return {

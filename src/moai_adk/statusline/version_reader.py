@@ -111,7 +111,9 @@ class VersionReader:
         "template_version",
     ]
 
-    def __init__(self, config: Optional[VersionConfig] = None, working_dir: Optional[Path] = None):
+    def __init__(
+        self, config: Optional[VersionConfig] = None, working_dir: Optional[Path] = None
+    ):
         """
         Initialize version reader with enhanced configuration.
 
@@ -213,7 +215,9 @@ class VersionReader:
             version = self._check_cache()
             if version is not None:
                 self._cache_stats["hits"] += 1
-                self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
+                self._cache_stats["cache_hits_by_source"][
+                    VersionSource.CACHE.value
+                ] += 1
                 return version
 
             # Priority 1: Try installed package version first (most accurate)
@@ -254,7 +258,9 @@ class VersionReader:
             version = self._check_cache()
             if version is not None:
                 self._cache_stats["hits"] += 1
-                self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
+                self._cache_stats["cache_hits_by_source"][
+                    VersionSource.CACHE.value
+                ] += 1
                 return version
 
             # Priority 1: Try installed package version first (most accurate)
@@ -300,10 +306,14 @@ class VersionReader:
                 entry.access_count += 1
                 entry.last_access = datetime.now()
                 self._cache_stats["hits"] += 1
-                self._cache_stats["cache_hits_by_source"][VersionSource.CACHE.value] += 1
+                self._cache_stats["cache_hits_by_source"][
+                    VersionSource.CACHE.value
+                ] += 1
 
                 if self.config.debug_mode:
-                    self._logger.debug(f"Cache hit: {entry.version} (source: {entry.source.value})")
+                    self._logger.debug(
+                        f"Cache hit: {entry.version} (source: {entry.source.value})"
+                    )
 
                 return entry.version
 
@@ -348,7 +358,9 @@ class VersionReader:
             self._evict_oldest_cache_entry()
 
         if self.config.debug_mode:
-            self._logger.debug(f"Cache updated with version: {version} (source: {source.value})")
+            self._logger.debug(
+                f"Cache updated with version: {version} (source: {source.value})"
+            )
 
     def _evict_oldest_cache_entry(self) -> None:
         """
@@ -504,7 +516,9 @@ class VersionReader:
         logger.debug("No version field found in config")
         return ""
 
-    def _get_nested_value(self, config: Dict[str, Any], field_path: str) -> Optional[str]:
+    def _get_nested_value(
+        self, config: Dict[str, Any], field_path: str
+    ) -> Optional[str]:
         """
         Get nested value from config using dot notation.
 

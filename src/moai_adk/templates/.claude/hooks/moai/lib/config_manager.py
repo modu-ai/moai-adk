@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
@@ -116,11 +117,18 @@ class ConfigManager:
                             config = DEFAULT_CONFIG.copy()
                         else:
                             file_config = yaml.safe_load(f) or {}
-                            config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
+                            config = self._merge_configs(
+                                DEFAULT_CONFIG.copy(), file_config
+                            )
                     else:
                         file_config = json.load(f)
                         config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
-            except (json.JSONDecodeError, yaml.YAMLError if YAML_AVAILABLE else Exception, IOError, OSError):
+            except (
+                json.JSONDecodeError,
+                yaml.YAMLError if YAML_AVAILABLE else Exception,
+                IOError,
+                OSError,
+            ):
                 # Use defaults if file is corrupted or unreadable
                 config = DEFAULT_CONFIG.copy()
         else:
@@ -333,7 +341,9 @@ class ConfigManager:
 
         return True
 
-    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_configs(
+        self, base: Dict[str, Any], override: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Recursively merge two configuration dictionaries.
 
         Args:
@@ -346,7 +356,11 @@ class ConfigManager:
         result = base.copy()
 
         for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = self._merge_configs(result[key], value)
             else:
                 result[key] = value

@@ -25,7 +25,9 @@ except ImportError:
 console = Console()
 
 
-def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None) -> WorktreeManager:
+def get_manager(
+    repo_path: Path | None = None, worktree_root: Path | None = None
+) -> WorktreeManager:
     """Get or create a WorktreeManager instance.
 
     Args:
@@ -70,9 +72,14 @@ def _detect_worktree_root(repo_path: Path) -> Path:
 
     # Strategy 1: Look for existing registry files in common locations
     potential_roots = [
-        Path.home() / "moai" / "worktrees",  # MoAI worktrees directory (highest priority)
+        Path.home()
+        / "moai"
+        / "worktrees",  # MoAI worktrees directory (highest priority)
         Path.home() / "worktrees",  # User's worktrees directory
-        Path.home() / "moai" / "worktrees" / main_repo_path.name,  # MoAI project-specific
+        Path.home()
+        / "moai"
+        / "worktrees"
+        / main_repo_path.name,  # MoAI project-specific
         main_repo_path.parent / "worktrees",  # Project-level worktrees
         Path("/Users") / Path.home().name / "worktrees",  # macOS user worktrees
         Path.home() / "worktrees" / main_repo_path.name,  # Alternative organization
@@ -130,7 +137,9 @@ def _find_main_repository(start_path: Path) -> Path:
                         for line in f:
                             if line.startswith("gitdir:"):
                                 gitdir_path = line[8:].strip()
-                                main_git_path = Path(current_path / gitdir_path).parent.parent
+                                main_git_path = Path(
+                                    current_path / gitdir_path
+                                ).parent.parent
                                 return main_git_path.resolve()
                 except Exception:
                     pass
@@ -155,8 +164,12 @@ def worktree() -> None:
 @click.option("--branch", "-b", default=None, help="Custom branch name")
 @click.option("--base", default="main", help="Base branch to create from")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-@click.option("--force", "-f", is_flag=True, help="Force creation even if worktree exists")
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
+@click.option(
+    "--force", "-f", is_flag=True, help="Force creation even if worktree exists"
+)
 def new_worktree(
     spec_id: str,
     branch: str | None,
@@ -205,9 +218,16 @@ def new_worktree(
 
 
 @worktree.command(name="list")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table", help="Output format")
+@click.option(
+    "--format",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    help="Output format",
+)
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
 def list_worktrees(format: str, repo: str | None, worktree_root: str | None) -> None:
     """List all active worktrees.
 
@@ -258,7 +278,9 @@ def list_worktrees(format: str, repo: str | None, worktree_root: str | None) -> 
 @worktree.command(name="switch")
 @click.argument("spec_id")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
 def switch_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> None:
     """Switch to a worktree (opens new shell).
 
@@ -292,10 +314,16 @@ def switch_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -
 
 @worktree.command(name="remove")
 @click.argument("spec_id")
-@click.option("--force", "-f", is_flag=True, help="Force remove with uncommitted changes")
+@click.option(
+    "--force", "-f", is_flag=True, help="Force remove with uncommitted changes"
+)
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def remove_worktree(spec_id: str, force: bool, repo: str | None, worktree_root: str | None) -> None:
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
+def remove_worktree(
+    spec_id: str, force: bool, repo: str | None, worktree_root: str | None
+) -> None:
     """Remove a worktree.
 
     Args:
@@ -326,7 +354,9 @@ def remove_worktree(spec_id: str, force: bool, repo: str | None, worktree_root: 
 
 @worktree.command(name="status")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
 def status_worktrees(repo: str | None, worktree_root: str | None) -> None:
     """Show worktree status and sync registry.
 
@@ -368,7 +398,9 @@ def status_worktrees(repo: str | None, worktree_root: str | None) -> None:
 @worktree.command(name="go")
 @click.argument("spec_id")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
 def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> None:
     """Print cd command for shell eval.
 
@@ -406,7 +438,9 @@ def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> No
 @click.option("--all", "sync_all", is_flag=True, help="Sync all worktrees")
 @click.option("--auto-resolve", is_flag=True, help="Automatically resolve conflicts")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
 def sync_worktree(
     spec_id: str | None,
     base: str,
@@ -463,7 +497,9 @@ def sync_worktree(
                         ff_only=ff_only,
                         auto_resolve=auto_resolve,
                     )
-                    sync_method = "rebase" if rebase else ("fast-forward" if ff_only else "merge")
+                    sync_method = (
+                        "rebase" if rebase else ("fast-forward" if ff_only else "merge")
+                    )
                     console.print(f"[green]✓[/green] {info.spec_id} ({sync_method})")
                     success_count += 1
                 except MergeConflictError:
@@ -471,12 +507,20 @@ def sync_worktree(
                         # Try to auto-resolve conflicts
                         try:
                             worktree_repo = Repo(info.path)
-                            conflicted_files = [info.spec_id]  # This will be handled by the method
-                            manager.auto_resolve_conflicts(worktree_repo, info.spec_id, conflicted_files)
-                            console.print(f"[yellow]![/yellow] {info.spec_id} (auto-resolved)")
+                            conflicted_files = [
+                                info.spec_id
+                            ]  # This will be handled by the method
+                            manager.auto_resolve_conflicts(
+                                worktree_repo, info.spec_id, conflicted_files
+                            )
+                            console.print(
+                                f"[yellow]![/yellow] {info.spec_id} (auto-resolved)"
+                            )
                             success_count += 1
                         except Exception as e:
-                            console.print(f"[red]✗[/red] {info.spec_id} (auto-resolve failed: {e})")
+                            console.print(
+                                f"[red]✗[/red] {info.spec_id} (auto-resolve failed: {e})"
+                            )
                             conflict_count += 1
                     else:
                         console.print(f"[red]✗[/red] {info.spec_id} (conflicts)")
@@ -486,12 +530,24 @@ def sync_worktree(
                     conflict_count += 1
 
             console.print()
-            console.print(f"[green]Summary:[/green] {success_count} synced, {conflict_count} failed")
+            console.print(
+                f"[green]Summary:[/green] {success_count} synced, {conflict_count} failed"
+            )
         else:
             # Sync single worktree
-            manager.sync(spec_id=spec_id, base_branch=base, rebase=rebase, ff_only=ff_only, auto_resolve=auto_resolve)
-            sync_method = "rebase" if rebase else ("fast-forward" if ff_only else "merge")
-            console.print(f"[green]✓[/green] Worktree synced: {spec_id} ({sync_method})")
+            manager.sync(
+                spec_id=spec_id,
+                base_branch=base,
+                rebase=rebase,
+                ff_only=ff_only,
+                auto_resolve=auto_resolve,
+            )
+            sync_method = (
+                "rebase" if rebase else ("fast-forward" if ff_only else "merge")
+            )
+            console.print(
+                f"[green]✓[/green] Worktree synced: {spec_id} ({sync_method})"
+            )
 
     except WorktreeNotFoundError as e:
         console.print(f"[red]✗[/red] {e}")
@@ -503,10 +559,16 @@ def sync_worktree(
 
 @worktree.command(name="clean")
 @click.option("--merged-only", is_flag=True, help="Only remove merged branch worktrees")
-@click.option("--interactive", is_flag=True, help="Interactive cleanup with confirmation prompts")
+@click.option(
+    "--interactive", is_flag=True, help="Interactive cleanup with confirmation prompts"
+)
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, worktree_root: str | None) -> None:
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
+def clean_worktrees(
+    merged_only: bool, interactive: bool, repo: str | None, worktree_root: str | None
+) -> None:
     """Remove worktrees for merged branches.
 
     Args:
@@ -533,17 +595,25 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
 
             console.print(f"[cyan]Found {len(worktrees)} worktrees:[/cyan]")
             for i, info in enumerate(worktrees, 1):
-                console.print(f"  {i}. [cyan]{info.spec_id}[/cyan] ({info.branch}) - {info.status}")
+                console.print(
+                    f"  {i}. [cyan]{info.spec_id}[/cyan] ({info.branch}) - {info.status}"
+                )
 
             console.print()
-            console.print("[yellow]Select worktrees to remove (comma-separated numbers, or 'all'):[/yellow]")
+            console.print(
+                "[yellow]Select worktrees to remove (comma-separated numbers, or 'all'):[/yellow]"
+            )
 
             try:
                 selection = input("> ").strip()
                 if selection.lower() == "all":
                     cleaned = [info.spec_id for info in worktrees]
                 else:
-                    indices = [int(x.strip()) for x in selection.split(",") if x.strip().isdigit()]
+                    indices = [
+                        int(x.strip())
+                        for x in selection.split(",")
+                        if x.strip().isdigit()
+                    ]
                     for idx in indices:
                         if 1 <= idx <= len(worktrees):
                             cleaned.append(worktrees[idx - 1].spec_id)
@@ -556,13 +626,17 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
                     return
 
                 # Final confirmation
-                console.print(f"[yellow]About to remove {len(cleaned)} worktrees: {', '.join(cleaned)}[/yellow]")
+                console.print(
+                    f"[yellow]About to remove {len(cleaned)} worktrees: {', '.join(cleaned)}[/yellow]"
+                )
                 if input("Continue? [y/N]: ").strip().lower() in ["y", "yes"]:
                     for spec_id in cleaned:
                         try:
                             manager.remove(spec_id, force=True)
                         except Exception as e:
-                            console.print(f"[red]✗[/red] Failed to remove {spec_id}: {e}")
+                            console.print(
+                                f"[red]✗[/red] Failed to remove {spec_id}: {e}"
+                            )
 
                 console.print("[green]✓[/green] Interactive cleanup completed")
 
@@ -606,8 +680,12 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
 @click.argument("key", required=False)
 @click.argument("value", required=False)
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def config_worktree(key: str | None, value: str | None, repo: str | None, worktree_root: str | None) -> None:
+@click.option(
+    "--worktree-root", type=click.Path(), default=None, help="Worktree root directory"
+)
+def config_worktree(
+    key: str | None, value: str | None, repo: str | None, worktree_root: str | None
+) -> None:
     """Get or set worktree configuration.
 
     Supported configuration keys:
@@ -641,7 +719,9 @@ def config_worktree(key: str | None, value: str | None, repo: str | None, worktr
             if key == "root":
                 console.print(f"[cyan]Worktree root:[/cyan] {manager.worktree_root}")
             elif key == "registry":
-                console.print(f"[cyan]Registry path:[/cyan] {manager.registry.registry_path}")
+                console.print(
+                    f"[cyan]Registry path:[/cyan] {manager.registry.registry_path}"
+                )
             elif key == "all":
                 console.print("[cyan]Configuration:[/cyan]")
                 console.print(f"  root:      {manager.worktree_root}")
@@ -652,7 +732,9 @@ def config_worktree(key: str | None, value: str | None, repo: str | None, worktr
         else:
             # Set configuration (limited support)
             if key == "root":
-                console.print("[yellow]Use --worktree-root option to change root directory[/yellow]")
+                console.print(
+                    "[yellow]Use --worktree-root option to change root directory[/yellow]"
+                )
             else:
                 console.print(f"[yellow]Cannot set configuration key: {key}[/yellow]")
 

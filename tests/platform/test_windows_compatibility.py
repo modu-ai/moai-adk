@@ -132,7 +132,9 @@ class TestFileEncodingUTF8:
 
         with open(manager.registry_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-            assert data["rollback_001"]["description"] == "테스트 with special chars: éàü"
+            assert (
+                data["rollback_001"]["description"] == "테스트 with special chars: éàü"
+            )
 
     def test_backup_manager_read_utf8(self, tmp_path):
         """Test backup_manager reads metadata with UTF-8 encoding"""

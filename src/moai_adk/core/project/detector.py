@@ -212,7 +212,9 @@ class LanguageDetector:
 
         return None
 
-    def detect_build_tool(self, path: str | Path = ".", language: str | None = None) -> str | None:
+    def detect_build_tool(
+        self, path: str | Path = ".", language: str | None = None
+    ) -> str | None:
         """Detect the build tool for the detected language.
 
 

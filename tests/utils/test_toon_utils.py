@@ -238,7 +238,9 @@ class TestToonEncode:
 
     def test_encode_nested_dict(self):
         """Test encoding nested dictionary."""
-        data = {"user": {"id": 1, "name": "Alice", "profile": {"age": 30, "city": "NYC"}}}
+        data = {
+            "user": {"id": 1, "name": "Alice", "profile": {"age": 30, "city": "NYC"}}
+        }
         result = toon_encode(data)
         decoded = json.loads(result)
         assert decoded == data
@@ -608,7 +610,11 @@ class TestValidateRoundtrip:
 
     def test_roundtrip_large_data_structure(self):
         """Test roundtrip validation with large data."""
-        data = {"users": [{"id": i, "name": f"User{i}", "active": i % 2 == 0} for i in range(100)]}
+        data = {
+            "users": [
+                {"id": i, "name": f"User{i}", "active": i % 2 == 0} for i in range(100)
+            ]
+        }
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_with_special_strings(self):
@@ -661,7 +667,9 @@ class TestValidateRoundtrip:
 
     def test_roundtrip_deeply_nested(self):
         """Test roundtrip with deeply nested structure."""
-        data = {"level1": {"level2": {"level3": {"level4": {"level5": {"value": "deep"}}}}}}
+        data = {
+            "level1": {"level2": {"level3": {"level4": {"level5": {"value": "deep"}}}}}
+        }
         assert validate_roundtrip(data) is True
 
     def test_roundtrip_zero_and_negative_numbers(self):
@@ -702,7 +710,12 @@ class TestCompareFormats:
 
     def test_compare_large_data_structure(self):
         """Test format comparison shows token savings."""
-        data = {"users": [{"id": i, "name": f"User{i}", "email": f"user{i}@example.com"} for i in range(50)]}
+        data = {
+            "users": [
+                {"id": i, "name": f"User{i}", "email": f"user{i}@example.com"}
+                for i in range(50)
+            ]
+        }
         result = compare_formats(data)
         assert "json" in result
         assert "toon" in result
@@ -913,7 +926,12 @@ class TestToonSave:
         """Test saving large data structure."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "large.toon"
-            data = {"items": [{"id": i, "name": f"Item{i}", "data": list(range(10))} for i in range(100)]}
+            data = {
+                "items": [
+                    {"id": i, "name": f"Item{i}", "data": list(range(10))}
+                    for i in range(100)
+                ]
+            }
             toon_save(data, path)
 
             assert path.exists()
@@ -1188,7 +1206,9 @@ class TestErrorHandlingCoverage:
             data = {"key": "value"}
 
             # Mock write_text to raise IOError
-            with patch.object(Path, "write_text", side_effect=IOError("Permission denied")):
+            with patch.object(
+                Path, "write_text", side_effect=IOError("Permission denied")
+            ):
                 with pytest.raises(IOError) as exc_info:
                     toon_save(data, path)
                 assert "Failed to write TOON file" in str(exc_info.value)
@@ -1314,7 +1334,13 @@ class TestIntegrationScenarios:
         """Test save-load file I/O roundtrip."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "data.toon"
-            original = {"config": {"debug": True, "port": 8080, "hosts": ["localhost", "127.0.0.1"]}}
+            original = {
+                "config": {
+                    "debug": True,
+                    "port": 8080,
+                    "hosts": ["localhost", "127.0.0.1"],
+                }
+            }
 
             # Save
             toon_save(original, path)
@@ -1398,7 +1424,12 @@ class TestIntegrationScenarios:
         """Test complete workflow using all major functions."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Start data
-            data = {"items": [{"id": i, "name": f"Item{i}", "active": i % 2 == 0} for i in range(10)]}
+            data = {
+                "items": [
+                    {"id": i, "name": f"Item{i}", "active": i % 2 == 0}
+                    for i in range(10)
+                ]
+            }
 
             # 1. Validate roundtrip
             assert validate_roundtrip(data) is True

@@ -175,12 +175,16 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
         # Clean up temporary files
         temp_dir = Path(".moai/temp")
         if temp_dir.exists():
-            stats["temp_cleaned"] = cleanup_directory(temp_dir, cutoff_date, None, patterns=["*"])
+            stats["temp_cleaned"] = cleanup_directory(
+                temp_dir, cutoff_date, None, patterns=["*"]
+            )
 
         # Clean up cache files
         cache_dir = Path(".moai/cache")
         if cache_dir.exists():
-            stats["cache_cleaned"] = cleanup_directory(cache_dir, cutoff_date, None, patterns=["*"])
+            stats["cache_cleaned"] = cleanup_directory(
+                cache_dir, cutoff_date, None, patterns=["*"]
+            )
 
         stats["total_cleaned"] = stats["temp_cleaned"] + stats["cache_cleaned"]
 
@@ -190,7 +194,12 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
     return stats
 
 
-def cleanup_directory(directory: Path, cutoff_date: datetime, max_files: Optional[int], patterns: List[str]) -> int:
+def cleanup_directory(
+    directory: Path,
+    cutoff_date: datetime,
+    max_files: Optional[int],
+    patterns: List[str],
+) -> int:
     """Clean up directory files
 
     Args:
@@ -346,7 +355,9 @@ def check_uncommitted_changes() -> Optional[str]:
 
     # Fallback to direct Git command
     try:
-        result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1)
+        result = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1
+        )
 
         if result.returncode == 0:
             uncommitted = result.stdout.strip()
@@ -390,7 +401,12 @@ def get_current_branch() -> Optional[str]:
 
     # Fallback to direct Git command
     try:
-        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=1)
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
         if result.returncode == 0:
             return result.stdout.strip()
     except Exception:
@@ -416,14 +432,18 @@ def count_modified_files() -> int:
             )
 
             if status_result.success:
-                return len([line for line in status_result.stdout.strip().split("\n") if line])
+                return len(
+                    [line for line in status_result.stdout.strip().split("\n") if line]
+                )
 
         except Exception as e:
             logger.warning(f"Git manager failed for file count: {e}")
 
     # Fallback to direct Git command
     try:
-        result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1)
+        result = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=1
+        )
         if result.returncode == 0:
             return len([line for line in result.stdout.strip().split("\n") if line])
     except Exception:
@@ -454,7 +474,9 @@ def count_recent_commits() -> int:
             )
 
             if log_result.success:
-                commits = [line for line in log_result.stdout.strip().split("\n") if line]
+                commits = [
+                    line for line in log_result.stdout.strip().split("\n") if line
+                ]
                 return len(commits)
 
         except Exception as e:
@@ -463,7 +485,10 @@ def count_recent_commits() -> int:
     # Fallback to direct Git command
     try:
         result = subprocess.run(
-            ["git", "rev-list", "--since=1 hour", "HEAD"], capture_output=True, text=True, timeout=1
+            ["git", "rev-list", "--since=1 hour", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=1,
         )
         if result.returncode == 0:
             commits = [line for line in result.stdout.strip().split("\n") if line]
@@ -521,9 +546,19 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
             # Skip directories (except backup directories)
             if item.is_dir():
                 # Check for backup directories
-                if item.name.endswith("-backup") or item.name.endswith("_backup") or "_backup_" in item.name:
+                if (
+                    item.name.endswith("-backup")
+                    or item.name.endswith("_backup")
+                    or "_backup_" in item.name
+                ):
                     suggested = suggest_moai_location(item.name, config)
-                    violations.append({"file": item.name + "/", "type": "directory", "suggested": suggested})
+                    violations.append(
+                        {
+                            "file": item.name + "/",
+                            "type": "directory",
+                            "suggested": suggested,
+                        }
+                    )
                 continue
 
             # Skip hidden files and directories
@@ -536,7 +571,9 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
 
             # Not whitelisted - add to violations
             suggested = suggest_moai_location(item.name, config)
-            violations.append({"file": item.name, "type": "file", "suggested": suggested})
+            violations.append(
+                {"file": item.name, "type": "file", "suggested": suggested}
+            )
 
     except Exception as e:
         logger.warning(f"Failed to scan root violations: {e}")
@@ -566,7 +603,9 @@ def generate_migration_report(violations: List[Dict[str, str]]) -> str:
         suggested = violation["suggested"]
         report_lines.append(f"   {idx}. {file_display} → {suggested}")
 
-    report_lines.append("\n   Action: Move files to suggested locations or update root_whitelist")
+    report_lines.append(
+        "\n   Action: Move files to suggested locations or update root_whitelist"
+    )
     report_lines.append('   Guide: Skill("moai-core-document-management")')
 
     return "\n".join(report_lines)
@@ -605,7 +644,9 @@ def generate_session_summary(
 
         # Document management violations
         if violations_count > 0:
-            summary_lines.append(f"   ⚠️ {violations_count} root violations detected (see below)")
+            summary_lines.append(
+                f"   ⚠️ {violations_count} root violations detected (see below)"
+            )
 
     except Exception as e:
         logger.warning(f"Failed to generate session summary: {e}")
@@ -674,10 +715,15 @@ def execute_session_end_workflow() -> tuple[Dict[str, Any], str]:
             violations = scan_root_violations(config)
             if violations:
                 migration_report = generate_migration_report(violations)
-                results["document_violations"] = {"count": len(violations), "violations": violations}
+                results["document_violations"] = {
+                    "count": len(violations),
+                    "violations": violations,
+                }
 
         # P1-3: Generate session summary
-        session_summary = generate_session_summary(cleanup_stats, work_state, len(violations))
+        session_summary = generate_session_summary(
+            cleanup_stats, work_state, len(violations)
+        )
         results["session_summary"] = session_summary
 
         # Add migration report to summary if violations exist
@@ -727,7 +773,9 @@ def main() -> None:
     if timeout_manager:
         try:
             results, migration_report = timeout_manager.execute_with_timeout(
-                "session_end__auto_cleanup", execute_session_end_workflow, config=timeout_config
+                "session_end__auto_cleanup",
+                execute_session_end_workflow,
+                config=timeout_config,
             )
 
             # Print results
@@ -754,7 +802,9 @@ def main() -> None:
                 "graceful_degradation": True,
                 "timestamp": datetime.now().isoformat(),
             }
-            timeout_response["message"] = "Hook timeout but continuing due to graceful degradation"
+            timeout_response["message"] = (
+                "Hook timeout but continuing due to graceful degradation"
+            )
             print(json.dumps(timeout_response, ensure_ascii=False, indent=2))
 
         except Exception as e:
@@ -763,10 +813,16 @@ def main() -> None:
                 "hook": "session_end__auto_cleanup",
                 "success": False,
                 "error": f"Hook execution failed: {str(e)}",
-                "error_details": {"error_type": type(e).__name__, "message": str(e), "graceful_degradation": True},
+                "error_details": {
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "graceful_degradation": True,
+                },
                 "timestamp": datetime.now().isoformat(),
             }
-            error_response["message"] = "Hook failed but continuing due to graceful degradation"
+            error_response["message"] = (
+                "Hook failed but continuing due to graceful degradation"
+            )
             print(json.dumps(error_response, ensure_ascii=False, indent=2))
 
     else:
@@ -810,7 +866,9 @@ def main() -> None:
             }
 
             if graceful_degradation:
-                result["message"] = "Hook timeout but continuing due to graceful degradation"
+                result["message"] = (
+                    "Hook timeout but continuing due to graceful degradation"
+                )
 
             print(json.dumps(result, ensure_ascii=False, indent=2))
 
@@ -825,7 +883,9 @@ def main() -> None:
             }
 
             if graceful_degradation:
-                result["message"] = "Hook failed but continuing due to graceful degradation"
+                result["message"] = (
+                    "Hook failed but continuing due to graceful degradation"
+                )
 
             print(json.dumps(result, ensure_ascii=False, indent=2))
 

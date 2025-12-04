@@ -72,7 +72,11 @@ class MoaiMenuProject:
 
         # Create default configuration
         default_config = {
-            "project": {"name": "My Project", "type": "web_application", "initialized_at": datetime.now().isoformat()},
+            "project": {
+                "name": "My Project",
+                "type": "web_application",
+                "initialized_at": datetime.now().isoformat(),
+            },
             "language": {
                 "conversation_language": "en",
                 "conversation_language_name": "English",
@@ -80,14 +84,19 @@ class MoaiMenuProject:
                 "documentation_language": "en",
             },
             "user": {"name": "Developer", "selected_at": datetime.now().isoformat()},
-            "menu_system": {"version": self.version, "initialized_at": datetime.now().isoformat()},
+            "menu_system": {
+                "version": self.version,
+                "initialized_at": datetime.now().isoformat(),
+            },
         }
 
         # Ensure config directory exists
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Save default configuration
-        config_path.write_text(json.dumps(default_config, indent=2, ensure_ascii=False), encoding="utf-8")
+        config_path.write_text(
+            json.dumps(default_config, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
         return default_config
 
@@ -130,49 +139,77 @@ class MoaiMenuProject:
                 self.config["project"]["type"] = project_type
 
             # Step 1: Initialize language configuration
-            language_result = self.language_initializer.initialize_language_configuration(
-                language=language, user_name=user_name, domains=domains
+            language_result = (
+                self.language_initializer.initialize_language_configuration(
+                    language=language, user_name=user_name, domains=domains
+                )
             )
 
             initialization_result["modules_initialized"].append("language_initializer")
             initialization_result["configuration_updates"]["language"] = language_result
 
             # Step 2: Initialize documentation structure
-            docs_result = self.documentation_manager.initialize_documentation_structure()
-
-            initialization_result["modules_initialized"].append("documentation_manager")
-            initialization_result["configuration_updates"]["documentation"] = docs_result
-            initialization_result["created_files"].extend(docs_result.get("created_files", []))
-
-            # Step 3: Create multilingual documentation structure
-            multilingual_result = self.language_initializer.create_multilingual_documentation_structure(
-                language=language_result.get("language", "en")
+            docs_result = (
+                self.documentation_manager.initialize_documentation_structure()
             )
 
-            initialization_result["configuration_updates"]["multilingual"] = multilingual_result
-            initialization_result["created_files"].extend(multilingual_result.get("created_directories", []))
+            initialization_result["modules_initialized"].append("documentation_manager")
+            initialization_result["configuration_updates"][
+                "documentation"
+            ] = docs_result
+            initialization_result["created_files"].extend(
+                docs_result.get("created_files", [])
+            )
+
+            # Step 3: Create multilingual documentation structure
+            multilingual_result = (
+                self.language_initializer.create_multilingual_documentation_structure(
+                    language=language_result.get("language", "en")
+                )
+            )
+
+            initialization_result["configuration_updates"][
+                "multilingual"
+            ] = multilingual_result
+            initialization_result["created_files"].extend(
+                multilingual_result.get("created_directories", [])
+            )
 
             # Step 4: Analyze and optimize templates (if enabled)
             if optimization_enabled:
                 template_analysis = self.template_optimizer.analyze_project_templates()
 
                 # Apply optimizations if opportunities exist
-                optimization_opportunities = template_analysis.get("optimization_opportunities", [])
+                optimization_opportunities = template_analysis.get(
+                    "optimization_opportunities", []
+                )
                 if optimization_opportunities:
-                    optimization_result = self.template_optimizer.create_optimized_templates()
+                    optimization_result = (
+                        self.template_optimizer.create_optimized_templates()
+                    )
                     initialization_result["optimization_results"] = optimization_result
 
-                initialization_result["modules_initialized"].append("template_optimizer")
-                initialization_result["configuration_updates"]["template_analysis"] = template_analysis
+                initialization_result["modules_initialized"].append(
+                    "template_optimizer"
+                )
+                initialization_result["configuration_updates"][
+                    "template_analysis"
+                ] = template_analysis
 
             # Step 5: Create benchmarks (optional)
             if optimization_enabled:
-                benchmark_result = self.template_optimizer.benchmark_template_performance()
-                initialization_result["configuration_updates"]["benchmark"] = benchmark_result
+                benchmark_result = (
+                    self.template_optimizer.benchmark_template_performance()
+                )
+                initialization_result["configuration_updates"][
+                    "benchmark"
+                ] = benchmark_result
 
             # Update final configuration
             self.config["menu_system"]["fully_initialized"] = True
-            self.config["menu_system"]["initialization_completed_at"] = datetime.now().isoformat()
+            self.config["menu_system"][
+                "initialization_completed_at"
+            ] = datetime.now().isoformat()
             self._save_config()
 
         except Exception as e:
@@ -181,7 +218,9 @@ class MoaiMenuProject:
 
         return initialization_result
 
-    def generate_documentation_from_spec(self, spec_data: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_documentation_from_spec(
+        self, spec_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Generate comprehensive documentation from SPEC data.
 
@@ -193,7 +232,9 @@ class MoaiMenuProject:
         """
 
         # Generate base documentation
-        docs_result = self.documentation_manager.generate_documentation_from_spec(spec_data)
+        docs_result = self.documentation_manager.generate_documentation_from_spec(
+            spec_data
+        )
 
         # Localize documentation based on language settings
         language = self.config.get("language", {}).get("conversation_language", "en")
@@ -205,17 +246,25 @@ class MoaiMenuProject:
 
         return docs_result
 
-    def _localize_documentation(self, docs_result: Dict[str, Any], language: str) -> Dict[str, Any]:
+    def _localize_documentation(
+        self, docs_result: Dict[str, Any], language: str
+    ) -> Dict[str, Any]:
         """Localize documentation content based on language."""
 
         # This would apply language-specific formatting, terminology, and structure
         # Implementation would be more sophisticated in practice
 
-        localized_docs = {"language": language, "localization_applied": True, "modified_sections": []}
+        localized_docs = {
+            "language": language,
+            "localization_applied": True,
+            "modified_sections": [],
+        }
 
         return localized_docs
 
-    def optimize_project_templates(self, options: Dict[str, Any] = None) -> Dict[str, Any]:
+    def optimize_project_templates(
+        self, options: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
         Optimize project templates with advanced analysis.
 
@@ -230,7 +279,9 @@ class MoaiMenuProject:
         analysis = self.template_optimizer.analyze_project_templates()
 
         # Apply optimizations based on analysis
-        optimization_result = self.template_optimizer.create_optimized_templates(options)
+        optimization_result = self.template_optimizer.create_optimized_templates(
+            options
+        )
 
         # Create benchmarks for comparison
         benchmark_result = self.template_optimizer.benchmark_template_performance()
@@ -242,7 +293,9 @@ class MoaiMenuProject:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def update_language_settings(self, language_updates: Dict[str, Any]) -> Dict[str, Any]:
+    def update_language_settings(
+        self, language_updates: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Update language configuration.
 
@@ -254,7 +307,9 @@ class MoaiMenuProject:
         """
 
         # Update language configuration
-        update_result = self.language_initializer.update_language_settings(language_updates)
+        update_result = self.language_initializer.update_language_settings(
+            language_updates
+        )
 
         if update_result.get("success"):
             # Reload configuration
@@ -264,7 +319,9 @@ class MoaiMenuProject:
             doc_lang = language_updates.get("language.documentation_language")
             if doc_lang:
                 # Update documentation structure for new language
-                multilingual_result = self.language_initializer.create_multilingual_documentation_structure(doc_lang)
+                multilingual_result = self.language_initializer.create_multilingual_documentation_structure(
+                    doc_lang
+                )
                 update_result["documentation_updated"] = multilingual_result
 
         return update_result
@@ -284,7 +341,9 @@ class MoaiMenuProject:
                 "project_name": self.config.get("project", {}).get("name", "Unknown"),
                 "project_type": self.config.get("project", {}).get("type", "unknown"),
                 "initialized_at": self.config.get("project", {}).get("initialized_at"),
-                "menu_system_version": self.config.get("menu_system", {}).get("version", "1.0.0"),
+                "menu_system_version": self.config.get("menu_system", {}).get(
+                    "version", "1.0.0"
+                ),
             },
             "modules": {
                 "documentation_manager": "initialized",
@@ -297,11 +356,15 @@ class MoaiMenuProject:
         }
 
         # Check if fully initialized
-        status["fully_initialized"] = self.config.get("menu_system", {}).get("fully_initialized", False)
+        status["fully_initialized"] = self.config.get("menu_system", {}).get(
+            "fully_initialized", False
+        )
 
         return status
 
-    def export_project_documentation(self, format_type: str = "markdown", language: str = None) -> Dict[str, Any]:
+    def export_project_documentation(
+        self, format_type: str = "markdown", language: str = None
+    ) -> Dict[str, Any]:
         """
         Export project documentation in specified format.
 
@@ -315,7 +378,9 @@ class MoaiMenuProject:
 
         # Use specified language or default project language
         if language is None:
-            language = self.config.get("language", {}).get("conversation_language", "en")
+            language = self.config.get("language", {}).get(
+                "conversation_language", "en"
+            )
 
         # Export documentation
         export_result = self.documentation_manager.export_documentation(format_type)
@@ -338,35 +403,56 @@ class MoaiMenuProject:
         """
 
         if backup_name is None:
-            backup_name = f"project-backup-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            backup_name = (
+                f"project-backup-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            )
 
-        backup_result = {"backup_name": backup_name, "timestamp": datetime.now().isoformat(), "components": {}}
+        backup_result = {
+            "backup_name": backup_name,
+            "timestamp": datetime.now().isoformat(),
+            "components": {},
+        }
 
         # Backup templates
-        template_backup = self.template_optimizer._create_template_backup(f"{backup_name}-templates")
+        template_backup = self.template_optimizer._create_template_backup(
+            f"{backup_name}-templates"
+        )
         backup_result["components"]["templates"] = template_backup
 
         # Backup configuration
-        config_backup_path = self.project_root / ".moai-backups" / backup_name / "config.json"
+        config_backup_path = (
+            self.project_root / ".moai-backups" / backup_name / "config.json"
+        )
         config_backup_path.parent.mkdir(parents=True, exist_ok=True)
-        config_backup_path.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")
+        config_backup_path.write_text(
+            json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
-        backup_result["components"]["configuration"] = {"success": True, "backup_path": str(config_backup_path)}
+        backup_result["components"]["configuration"] = {
+            "success": True,
+            "backup_path": str(config_backup_path),
+        }
 
         # Backup documentation if exists
         docs_dir = self.project_root / "docs"
         if docs_dir.exists():
             import shutil
 
-            docs_backup_path = self.project_root / ".moai-backups" / backup_name / "docs"
+            docs_backup_path = (
+                self.project_root / ".moai-backups" / backup_name / "docs"
+            )
             if docs_backup_path.exists():
                 shutil.rmtree(docs_backup_path)
             shutil.copytree(docs_dir, docs_backup_path)
 
-            backup_result["components"]["documentation"] = {"success": True, "backup_path": str(docs_backup_path)}
+            backup_result["components"]["documentation"] = {
+                "success": True,
+                "backup_path": str(docs_backup_path),
+            }
 
         backup_result["success"] = all(
-            component.get("success", False) for component in backup_result["components"].values()
+            component.get("success", False)
+            for component in backup_result["components"].values()
         )
 
         return backup_result
@@ -377,7 +463,9 @@ class MoaiMenuProject:
         config_path = self.project_root / ".moai/config/config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        config_path.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")
+        config_path.write_text(
+            json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     def get_integration_matrix(self) -> Dict[str, Any]:
         """
@@ -393,19 +481,31 @@ class MoaiMenuProject:
                     "description": "Manages project documentation generation and maintenance",
                     "integrates_with": ["language_initializer"],
                     "output_formats": ["markdown", "html", "pdf"],
-                    "key_features": ["template-based generation", "multilingual support", "SPEC integration"],
+                    "key_features": [
+                        "template-based generation",
+                        "multilingual support",
+                        "SPEC integration",
+                    ],
                 },
                 "language_initializer": {
                     "description": "Handles language detection, configuration, and localization",
                     "integrates_with": ["documentation_manager"],
                     "supported_languages": ["en", "ko", "ja", "zh"],
-                    "key_features": ["auto-detection", "locale management", "agent prompt localization"],
+                    "key_features": [
+                        "auto-detection",
+                        "locale management",
+                        "agent prompt localization",
+                    ],
                 },
                 "template_optimizer": {
                     "description": "Analyzes and optimizes project templates for performance",
                     "integrates_with": [],
                     "optimization_types": ["size", "performance", "complexity"],
-                    "key_features": ["automated analysis", "backup creation", "benchmarking"],
+                    "key_features": [
+                        "automated analysis",
+                        "backup creation",
+                        "benchmarking",
+                    ],
                 },
             },
             "workflows": {
@@ -455,7 +555,9 @@ def initialize_project(project_root: str = None, **kwargs) -> Dict[str, Any]:
     return project.initialize_complete_project(**kwargs)
 
 
-def generate_docs(spec_data: Dict[str, Any], project_root: str = None) -> Dict[str, Any]:
+def generate_docs(
+    spec_data: Dict[str, Any], project_root: str = None
+) -> Dict[str, Any]:
     """
     Convenience function to generate documentation from SPEC.
 

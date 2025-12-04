@@ -106,7 +106,10 @@ class CICDPipelineOrchestrator:
         """
         workflow = {
             "name": config.get("name", "CI/CD Pipeline"),
-            "on": {"push": {"branches": ["main", "develop"]}, "pull_request": {"branches": ["main"]}},
+            "on": {
+                "push": {"branches": ["main", "develop"]},
+                "pull_request": {"branches": ["main"]},
+            },
             "env": {
                 "PROJECT_NAME": config.get("name", "app"),
                 "RUNTIME": config.get("runtime", "python"),
@@ -124,9 +127,14 @@ class CICDPipelineOrchestrator:
                         },
                         {
                             "name": "Install Dependencies",
-                            "run": config.get("build_command", 'echo "Install dependencies"'),
+                            "run": config.get(
+                                "build_command", 'echo "Install dependencies"'
+                            ),
                         },
-                        {"name": "Run Tests", "run": config.get("test_command", 'echo "Run tests"')},
+                        {
+                            "name": "Run Tests",
+                            "run": config.get("test_command", 'echo "Run tests"'),
+                        },
                     ],
                 },
                 "build": {
@@ -135,7 +143,10 @@ class CICDPipelineOrchestrator:
                     "runs-on": "ubuntu-latest",
                     "steps": [
                         {"uses": "actions/checkout@v4"},
-                        {"name": "Build Application", "run": "echo 'Building application...'"},
+                        {
+                            "name": "Build Application",
+                            "run": "echo 'Building application...'",
+                        },
                     ],
                 },
                 "deploy": {
@@ -167,7 +178,10 @@ class CICDPipelineOrchestrator:
         pipeline = {
             "stages": config.get("stages", ["build", "test", "deploy"]),
             "image": config.get("docker_image", "python:3.11"),
-            "variables": {"PIPELINE_NAME": "gitlab-ci-pipeline", "ENVIRONMENT": "production"},
+            "variables": {
+                "PIPELINE_NAME": "gitlab-ci-pipeline",
+                "ENVIRONMENT": "production",
+            },
         }
 
         # Add before_script if provided
@@ -179,7 +193,10 @@ class CICDPipelineOrchestrator:
             if stage == "build":
                 pipeline["build"] = {
                     "stage": "build",
-                    "script": ["echo 'Building application...'", "echo 'Build completed successfully'"],
+                    "script": [
+                        "echo 'Building application...'",
+                        "echo 'Build completed successfully'",
+                    ],
                     "artifacts": {"paths": ["dist/"], "expire_in": "1 hour"},
                 }
             elif stage == "test":
@@ -191,8 +208,14 @@ class CICDPipelineOrchestrator:
             elif stage == "deploy":
                 pipeline["deploy"] = {
                     "stage": "deploy",
-                    "script": ["echo 'Deploying to production...'", "echo 'Deployment completed'"],
-                    "environment": {"name": "production", "url": "https://app.example.com"},
+                    "script": [
+                        "echo 'Deploying to production...'",
+                        "echo 'Deployment completed'",
+                    ],
+                    "environment": {
+                        "name": "production",
+                        "url": "https://app.example.com",
+                    },
                 }
 
         return pipeline
@@ -207,12 +230,21 @@ class CICDPipelineOrchestrator:
         Returns:
             Jenkins pipeline configuration
         """
-        pipeline = {"pipeline": {"agent": config.get("agent", "any"), "tools": config.get("tools", {}), "stages": []}}
+        pipeline = {
+            "pipeline": {
+                "agent": config.get("agent", "any"),
+                "tools": config.get("tools", {}),
+                "stages": [],
+            }
+        }
 
         # Add stages based on configuration
         stages = config.get("stages", ["Build", "Test", "Deploy"])
         for stage in stages:
-            stage_config = {"stage": stage, "steps": [f"echo 'Running {stage} stage...'"]}
+            stage_config = {
+                "stage": stage,
+                "steps": [f"echo 'Running {stage} stage...'"],
+            }
             pipeline["pipeline"]["stages"].append(stage_config)
 
         return pipeline
@@ -253,7 +285,9 @@ class InfrastructureManager:
         self.supported_providers = ["aws", "gcp", "azure", "kubernetes"]
         self.default_region = "us-west-2"
 
-    def generate_kubernetes_manifests(self, app_config: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_kubernetes_manifests(
+        self, app_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Generate Kubernetes manifests for application deployment.
 
@@ -282,12 +316,20 @@ class InfrastructureManager:
                                 {
                                     "name": app_config.get("name", "app"),
                                     "image": app_config.get("image", "nginx:latest"),
-                                    "ports": [{"containerPort": app_config.get("port", 8080)}],
+                                    "ports": [
+                                        {"containerPort": app_config.get("port", 8080)}
+                                    ],
                                     "resources": app_config.get(
                                         "resources",
                                         {
-                                            "requests": {"cpu": "100m", "memory": "128Mi"},
-                                            "limits": {"cpu": "500m", "memory": "512Mi"},
+                                            "requests": {
+                                                "cpu": "100m",
+                                                "memory": "128Mi",
+                                            },
+                                            "limits": {
+                                                "cpu": "500m",
+                                                "memory": "512Mi",
+                                            },
                                         },
                                     ),
                                 }
@@ -317,7 +359,10 @@ class InfrastructureManager:
                     "name": f"{app_config.get('name', 'app')}-config",
                     "namespace": app_config.get("namespace", "default"),
                 },
-                "data": {"app.properties": "debug=false", "logging.properties": "level=INFO"},
+                "data": {
+                    "app.properties": "debug=false",
+                    "logging.properties": "level=INFO",
+                },
             },
         }
 
@@ -328,12 +373,18 @@ class InfrastructureManager:
             containers_list = cast(List[Dict[str, Any]], deployment_spec["containers"])
             containers = containers_list[0]
             containers["livenessProbe"] = {
-                "httpGet": {"path": health_config.get("path", "/health"), "port": app_config.get("port", 8080)},
+                "httpGet": {
+                    "path": health_config.get("path", "/health"),
+                    "port": app_config.get("port", 8080),
+                },
                 "initialDelaySeconds": health_config.get("initial_delay", 30),
                 "periodSeconds": 10,
             }
             containers["readinessProbe"] = {
-                "httpGet": {"path": health_config.get("path", "/health"), "port": app_config.get("port", 8080)},
+                "httpGet": {
+                    "path": health_config.get("path", "/health"),
+                    "port": app_config.get("port", 8080),
+                },
                 "initialDelaySeconds": 5,
                 "periodSeconds": 5,
             }
@@ -354,7 +405,9 @@ class InfrastructureManager:
             "Chart.yaml": {
                 "apiVersion": "v2",
                 "name": chart_config.get("name", "app-chart"),
-                "description": chart_config.get("description", "Helm chart for application"),
+                "description": chart_config.get(
+                    "description", "Helm chart for application"
+                ),
                 "type": "application",
                 "version": chart_config.get("version", "0.1.0"),
                 "appVersion": chart_config.get("app_version", "latest"),
@@ -363,7 +416,12 @@ class InfrastructureManager:
             "values.yaml": {
                 "replicaCount": 3,
                 "image": chart_config.get("values", {}).get(
-                    "image", {"repository": "nginx", "tag": "latest", "pullPolicy": "IfNotPresent"}
+                    "image",
+                    {
+                        "repository": "nginx",
+                        "tag": "latest",
+                        "pullPolicy": "IfNotPresent",
+                    },
                 ),
                 "service": chart_config.get("values", {}).get(
                     "service", {"type": "ClusterIP", "port": 80, "targetPort": 8080}
@@ -404,8 +462,14 @@ class InfrastructureManager:
                 "version": "~> 5.0",
             },
             "variables": {
-                "region": {"description": "AWS region", "default": module_config.get("region", "us-east-1")},
-                "environment": {"description": "Environment name", "default": "production"},
+                "region": {
+                    "description": "AWS region",
+                    "default": module_config.get("region", "us-east-1"),
+                },
+                "environment": {
+                    "description": "Environment name",
+                    "default": "production",
+                },
             },
             "outputs": {
                 "vpc_id": {"description": "VPC ID"},
@@ -496,9 +560,21 @@ class ContainerOrchestrator:
         """
         optimization = {
             "multi_stage": True,
-            "security_features": {"non_root_user": True, "read_only_filesystem": True, "drop_capabilities": True},
-            "size_optimization": {"estimated_reduction": 40, "alpine_base": True, "minimal_packages": True},
-            "build_cache": {"enabled": True, "cache_mount": True, "layer_optimization": True},
+            "security_features": {
+                "non_root_user": True,
+                "read_only_filesystem": True,
+                "drop_capabilities": True,
+            },
+            "size_optimization": {
+                "estimated_reduction": 40,
+                "alpine_base": True,
+                "minimal_packages": True,
+            },
+            "build_cache": {
+                "enabled": True,
+                "cache_mount": True,
+                "layer_optimization": True,
+            },
             "optimized_dockerfile_path": "Dockerfile.optimized",
             "base_image": dockerfile_config.get("base_image", "python:3.11-slim"),
             "workdir": dockerfile_config.get("workdir", "/app"),
@@ -506,7 +582,9 @@ class ContainerOrchestrator:
 
         return optimization
 
-    def scan_container_security(self, image_name: str, security_config: Dict[str, Any]) -> Dict[str, Any]:
+    def scan_container_security(
+        self, image_name: str, security_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Scan container image for security vulnerabilities.
 
@@ -519,11 +597,24 @@ class ContainerOrchestrator:
         """
         scan_results = {
             "vulnerabilities": [
-                {"severity": "medium", "package": "openssl", "version": "1.1.1f", "cve": "CVE-2023-12345"},
-                {"severity": "low", "package": "curl", "version": "7.68.0", "cve": "CVE-2022-67890"},
+                {
+                    "severity": "medium",
+                    "package": "openssl",
+                    "version": "1.1.1f",
+                    "cve": "CVE-2023-12345",
+                },
+                {
+                    "severity": "low",
+                    "package": "curl",
+                    "version": "7.68.0",
+                    "cve": "CVE-2022-67890",
+                },
             ],
             "security_score": 85,
-            "recommendations": ["Update openssl to latest version", "Use minimal base image to reduce attack surface"],
+            "recommendations": [
+                "Update openssl to latest version",
+                "Use minimal base image to reduce attack surface",
+            ],
             "scan_metadata": {
                 "image_name": image_name,
                 "scan_date": datetime.now(timezone.utc).isoformat(),
@@ -534,7 +625,9 @@ class ContainerOrchestrator:
 
         return scan_results
 
-    def plan_kubernetes_deployment(self, deployment_config: Dict[str, Any]) -> Dict[str, Any]:
+    def plan_kubernetes_deployment(
+        self, deployment_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Plan Kubernetes deployment strategy.
 
@@ -555,20 +648,32 @@ class ContainerOrchestrator:
                 },
                 "spec": {
                     "replicas": deployment_config.get("replicas", 3),
-                    "selector": {"matchLabels": {"app": deployment_config.get("app_name", "app")}},
+                    "selector": {
+                        "matchLabels": {"app": deployment_config.get("app_name", "app")}
+                    },
                     "template": {
-                        "metadata": {"labels": {"app": deployment_config.get("app_name", "app")}},
+                        "metadata": {
+                            "labels": {"app": deployment_config.get("app_name", "app")}
+                        },
                         "spec": {
                             "containers": [
                                 {
                                     "name": deployment_config.get("app_name", "app"),
-                                    "image": deployment_config.get("image", "nginx:latest"),
+                                    "image": deployment_config.get(
+                                        "image", "nginx:latest"
+                                    ),
                                     "ports": [{"containerPort": 8080}],
                                     "resources": deployment_config.get(
                                         "resources",
                                         {
-                                            "requests": {"cpu": "100m", "memory": "128Mi"},
-                                            "limits": {"cpu": "500m", "memory": "512Mi"},
+                                            "requests": {
+                                                "cpu": "100m",
+                                                "memory": "128Mi",
+                                            },
+                                            "limits": {
+                                                "cpu": "500m",
+                                                "memory": "512Mi",
+                                            },
                                         },
                                     ),
                                 }
@@ -608,7 +713,9 @@ class ContainerOrchestrator:
                                         "pathType": "Prefix",
                                         "backend": {
                                             "service": {
-                                                "name": deployment_config.get("app_name", "app"),
+                                                "name": deployment_config.get(
+                                                    "app_name", "app"
+                                                ),
                                                 "port": {"number": 80},
                                             }
                                         },
@@ -624,7 +731,11 @@ class ContainerOrchestrator:
                 "kind": "Namespace",
                 "metadata": {"name": deployment_config.get("namespace", "default")},
             },
-            "rolling_update_strategy": {"maxUnavailable": 1, "maxSurge": 1, "type": "RollingUpdate"},
+            "rolling_update_strategy": {
+                "maxUnavailable": 1,
+                "maxSurge": 1,
+                "type": "RollingUpdate",
+            },
             "health_checks": {
                 "livenessProbe": {
                     "httpGet": {"path": "/health", "port": 8080},
@@ -653,12 +764,20 @@ class ContainerOrchestrator:
                 "enabled": True,
                 "version": "1.18.0",
                 "components": ["pilot", "proxy", "citadel"],
-                "policies": {"mTLS": "STRICT", "traffic_management": "ENABLED", "security_policies": "ENABLED"},
+                "policies": {
+                    "mTLS": "STRICT",
+                    "traffic_management": "ENABLED",
+                    "security_policies": "ENABLED",
+                },
             },
             "cilium": {
                 "enabled": False,
                 "version": "1.13.0",
-                "features": ["network_policy", "bandwidth_management", "service_discovery"],
+                "features": [
+                    "network_policy",
+                    "bandwidth_management",
+                    "service_discovery",
+                ],
             },
         }
 
@@ -692,20 +811,32 @@ class MonitoringArchitect:
                 "global": {
                     "scrape_interval": metrics_config.get("scrape_interval", "30s"),
                     "evaluation_interval": "15s",
-                    "external_labels": {"monitor": "moai-devops-monitor", "environment": "production"},
+                    "external_labels": {
+                        "monitor": "moai-devops-monitor",
+                        "environment": "production",
+                    },
                 },
                 "scrape_configs": [
                     {
                         "job_name": metrics_config.get("app_name", "app"),
                         "scrape_interval": metrics_config.get("scrape_interval", "30s"),
                         "metrics_path": "/metrics",
-                        "static_configs": [{"targets": [f"{metrics_config.get('app_name', 'app')}:9000"]}],
+                        "static_configs": [
+                            {
+                                "targets": [
+                                    f"{metrics_config.get('app_name', 'app')}:9000"
+                                ]
+                            }
+                        ],
                     }
                 ],
                 "rule_files": ["rules/*.yml"],
             },
             "scrape_interval": metrics_config.get("scrape_interval", "30s"),
-            "recording_rules": ["rate:http_requests_total:5m", "histogram_quantile:http_request_duration_seconds:5m"],
+            "recording_rules": [
+                "rate:http_requests_total:5m",
+                "histogram_quantile:http_request_duration_seconds:5m",
+            ],
             "alerting_rules": [
                 {
                     "name": "HighErrorRate",
@@ -719,7 +850,9 @@ class MonitoringArchitect:
 
         return prometheus_config
 
-    def design_grafana_dashboards(self, dashboard_config: Dict[str, Any]) -> Dict[str, Any]:
+    def design_grafana_dashboards(
+        self, dashboard_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Design Grafana dashboards for monitoring visualization.
 
@@ -738,7 +871,10 @@ class MonitoringArchitect:
                     "title": panel_config.get("title", "Metric"),
                     "type": "graph",
                     "targets": [
-                        {"expr": panel_config.get("metric", "up"), "legendFormat": panel_config.get("title", "Metric")}
+                        {
+                            "expr": panel_config.get("metric", "up"),
+                            "legendFormat": panel_config.get("title", "Metric"),
+                        }
                     ],
                     "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
                 }
@@ -746,14 +882,18 @@ class MonitoringArchitect:
 
         dashboard_json = {
             "dashboard_json": {
-                "title": dashboard_config.get("dashboard_name", "Application Dashboard"),
+                "title": dashboard_config.get(
+                    "dashboard_name", "Application Dashboard"
+                ),
                 "panels": panels,
                 "templating": {
                     "list": [
                         {
                             "name": "Instance",
                             "type": "query",
-                            "datasource": dashboard_config.get("datasource", "Prometheus"),
+                            "datasource": dashboard_config.get(
+                                "datasource", "Prometheus"
+                            ),
                             "refresh": 1,
                             "includeAll": True,
                         }
@@ -792,8 +932,16 @@ class MonitoringArchitect:
             "batch.size": 125,
             "batch.delay": 50,
             "input": {"beats": {"port": 5044}, "tcp": {"port": 5000}},
-            "filter": {"json": {"source": "message"}, "date": {"match": ["timestamp", "ISO8601"]}},
-            "output": {"elasticsearch": {"hosts": ["elasticsearch:9200"], "index": "logs-%{+YYYY.MM.dd}"}},
+            "filter": {
+                "json": {"source": "message"},
+                "date": {"match": ["timestamp", "ISO8601"]},
+            },
+            "output": {
+                "elasticsearch": {
+                    "hosts": ["elasticsearch:9200"],
+                    "index": "logs-%{+YYYY.MM.dd}",
+                }
+            },
         }
 
         filebeat_config = {
@@ -817,9 +965,14 @@ class MonitoringArchitect:
             "filebeat_config": filebeat_config,
             "index_template": {
                 "index_patterns": logging_config.get("index_patterns", ["logs-*"]),
-                "template": {"settings": {"number_of_shards": 1, "number_of_replicas": 1}},
+                "template": {
+                    "settings": {"number_of_shards": 1, "number_of_replicas": 1}
+                },
             },
-            "retention_policy": {"days": logging_config.get("retention_days", 30), "actions": ["delete"]},
+            "retention_policy": {
+                "days": logging_config.get("retention_days", 30),
+                "actions": ["delete"],
+            },
         }
 
     def setup_alerting(self) -> Dict[str, Any]:
@@ -831,7 +984,10 @@ class MonitoringArchitect:
         """
         alerting_config = {
             "alertmanager": {
-                "global": {"smtp_smarthost": "localhost:587", "smtp_from": "alerts@example.com"},
+                "global": {
+                    "smtp_smarthost": "localhost:587",
+                    "smtp_from": "alerts@example.com",
+                },
                 "route": {
                     "group_by": ["alertname"],
                     "group_wait": "10s",
@@ -839,7 +995,12 @@ class MonitoringArchitect:
                     "repeat_interval": "1h",
                     "receiver": "web.hook",
                 },
-                "receivers": [{"name": "web.hook", "webhook_configs": [{"url": "http://localhost:5001/"}]}],
+                "receivers": [
+                    {
+                        "name": "web.hook",
+                        "webhook_configs": [{"url": "http://localhost:5001/"}],
+                    }
+                ],
             },
             "alert_rules": [
                 {
@@ -847,7 +1008,10 @@ class MonitoringArchitect:
                     "expr": 'rate(http_requests_total{status=~"5.."}[5m]) > 0.05',
                     "for": "5m",
                     "labels": {"severity": "critical"},
-                    "annotations": {"summary": "High error rate detected", "description": "Error rate is above 5%"},
+                    "annotations": {
+                        "summary": "High error rate detected",
+                        "description": "Error rate is above 5%",
+                    },
                 }
             ],
         }
@@ -896,11 +1060,14 @@ class DeploymentStrategist:
         cd_strategy = {
             "pipeline_stages": pipeline_stages,
             "quality_gates": [
-                {"name": gate, "type": "automated", "required": True} for gate in cd_config.get("gates", [])
+                {"name": gate, "type": "automated", "required": True}
+                for gate in cd_config.get("gates", [])
             ],
             "rollback_strategy": {
                 "enabled": True,
-                "trigger_condition": cd_config.get("rollback_threshold", "error_rate > 5%"),
+                "trigger_condition": cd_config.get(
+                    "rollback_threshold", "error_rate > 5%"
+                ),
                 "automatic_rollback": True,
                 "rollback_timeout": "5m",
             },
@@ -936,20 +1103,32 @@ class DeploymentStrategist:
             "traffic_splitting": {
                 "steps": [
                     {"percentage": percentage, "duration": "10m"}
-                    for percentage in canary_config.get("increment_steps", [10, 25, 50, 100])
+                    for percentage in canary_config.get(
+                        "increment_steps", [10, 25, 50, 100]
+                    )
                 ]
             },
             "monitoring_rules": [
                 {"metric": "error_rate", "threshold": 0.01, "comparison": "less_than"},
                 {"metric": "latency_p95", "threshold": 1000, "comparison": "less_than"},
             ],
-            "promotion_criteria": {"all_metrics_pass": True, "minimum_healthy_duration": "5m", "auto_promotion": True},
-            "rollback_triggers": ["error_rate_increase", "latency_spike", "manual_rollback"],
+            "promotion_criteria": {
+                "all_metrics_pass": True,
+                "minimum_healthy_duration": "5m",
+                "auto_promotion": True,
+            },
+            "rollback_triggers": [
+                "error_rate_increase",
+                "latency_spike",
+                "manual_rollback",
+            ],
         }
 
         return config
 
-    def implement_blue_green_deployment(self, bg_config: Dict[str, Any]) -> Dict[str, Any]:
+    def implement_blue_green_deployment(
+        self, bg_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Implement blue-green deployment strategy.
 
@@ -961,7 +1140,11 @@ class DeploymentStrategist:
         """
         config = {
             "environment_config": {
-                "blue": {"name": bg_config.get("blue_environment", "production-blue"), "color": "blue", "active": True},
+                "blue": {
+                    "name": bg_config.get("blue_environment", "production-blue"),
+                    "color": "blue",
+                    "active": True,
+                },
                 "green": {
                     "name": bg_config.get("green_environment", "production-green"),
                     "color": "green",
@@ -982,15 +1165,23 @@ class DeploymentStrategist:
             },
             "rollback_procedure": {
                 "automatic": True,
-                "timeout_minutes": int(bg_config.get("rollback_timeout", "5m").rstrip("m")),
+                "timeout_minutes": int(
+                    bg_config.get("rollback_timeout", "5m").rstrip("m")
+                ),
                 "validation_required": True,
             },
-            "cleanup_strategy": {"old_version_retention": "24h", "automatic_cleanup": True, "backup_retention": "7d"},
+            "cleanup_strategy": {
+                "old_version_retention": "24h",
+                "automatic_cleanup": True,
+                "backup_retention": "7d",
+            },
         }
 
         return config
 
-    def integrate_automated_testing(self, testing_config: Dict[str, Any]) -> Dict[str, Any]:
+    def integrate_automated_testing(
+        self, testing_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Integrate automated testing into deployment pipeline.
 
@@ -1009,7 +1200,9 @@ class DeploymentStrategist:
                         "parallel": testing_config.get("parallel_execution", False),
                         "timeout": "10m",
                     }
-                    for test_type in testing_config.get("test_types", ["unit", "integration"])
+                    for test_type in testing_config.get(
+                        "test_types", ["unit", "integration"]
+                    )
                 ]
             },
             "execution_strategy": {
@@ -1037,7 +1230,12 @@ class DeploymentStrategist:
 
     def _get_test_framework(self, test_type: str) -> str:
         """Get appropriate test framework for test type"""
-        frameworks = {"unit": "pytest", "integration": "pytest", "e2e": "playwright", "performance": "locust"}
+        frameworks = {
+            "unit": "pytest",
+            "integration": "pytest",
+            "e2e": "playwright",
+            "performance": "locust",
+        }
         return frameworks.get(test_type, "pytest")
 
 
@@ -1103,7 +1301,12 @@ class SecurityHardener:
                 "enabled": True,
                 "backend": "consul",
                 "address": "https://vault.example.com:8200",
-                "policies": [{"name": "app-policy", "rules": 'path "secret/app/*" { capabilities = ["read"] }'}],
+                "policies": [
+                    {
+                        "name": "app-policy",
+                        "rules": 'path "secret/app/*" { capabilities = ["read"] }',
+                    }
+                ],
                 "secrets": {
                     "database_url": {"path": "secret/app/database", "key": "url"},
                     "api_key": {"path": "secret/app/api", "key": "key"},
@@ -1112,9 +1315,16 @@ class SecurityHardener:
             "kubernetes_secrets": {
                 "enabled": True,
                 "encryption_enabled": True,
-                "external_secrets": {"provider": "vault", "secret_store": "vault-backend"},
+                "external_secrets": {
+                    "provider": "vault",
+                    "secret_store": "vault-backend",
+                },
             },
-            "rotation_policy": {"enabled": True, "rotation_interval": "90d", "auto_rotation": True},
+            "rotation_policy": {
+                "enabled": True,
+                "rotation_interval": "90d",
+                "auto_rotation": True,
+            },
         }
 
         return config
@@ -1151,7 +1361,15 @@ class SecurityHardener:
                 "spec": {
                     "podSelector": {},
                     "policyTypes": ["Egress"],
-                    "egress": [{"to": [], "ports": [{"protocol": "UDP", "port": 53}, {"protocol": "TCP", "port": 53}]}],
+                    "egress": [
+                        {
+                            "to": [],
+                            "ports": [
+                                {"protocol": "UDP", "port": 53},
+                                {"protocol": "TCP", "port": 53},
+                            ],
+                        }
+                    ],
                 },
             },
         }
@@ -1187,7 +1405,10 @@ class SecurityHardener:
             "remediation_plan": {
                 "immediate": ["Enable encryption for sensitive data storage"],
                 "short_term": ["Implement enhanced monitoring", "Review IAM policies"],
-                "long_term": ["Establish automated compliance scanning", "Implement zero-trust architecture"],
+                "long_term": [
+                    "Establish automated compliance scanning",
+                    "Implement zero-trust architecture",
+                ],
             },
         }
 
@@ -1205,7 +1426,9 @@ class DevOpsMetricsCollector:
     def __init__(self):
         self.metrics_window_days = 30
 
-    def collect_deployment_metrics(self, deployment_info: Dict[str, Any]) -> Dict[str, Any]:
+    def collect_deployment_metrics(
+        self, deployment_info: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Collect deployment metrics.
 
@@ -1226,13 +1449,23 @@ class DevOpsMetricsCollector:
             "success_rate": 95.5,
             "rollback_count": 0,
             "downtime_minutes": 0.5,
-            "performance_impact": {"cpu_change": "+2%", "memory_change": "+1%", "response_time_change": "-5%"},
-            "deployment_frequency": {"daily_count": 2.5, "weekly_count": 17.5, "monthly_count": 75},
+            "performance_impact": {
+                "cpu_change": "+2%",
+                "memory_change": "+1%",
+                "response_time_change": "-5%",
+            },
+            "deployment_frequency": {
+                "daily_count": 2.5,
+                "weekly_count": 17.5,
+                "monthly_count": 75,
+            },
         }
 
         return metrics
 
-    def track_pipeline_performance(self, pipeline_data: Dict[str, Any]) -> Dict[str, Any]:
+    def track_pipeline_performance(
+        self, pipeline_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Track CI/CD pipeline performance metrics.
 
@@ -1247,7 +1480,9 @@ class DevOpsMetricsCollector:
 
         stage_performance = {}
         bottleneck_analysis = {
-            "slowest_stage": max(execution_times.keys(), key=lambda k: execution_times[k]),
+            "slowest_stage": max(
+                execution_times.keys(), key=lambda k: execution_times[k]
+            ),
             "slowest_stage_time": max(execution_times.values()),
             "optimization_opportunities": [
                 "Parallelize independent stages",
@@ -1272,7 +1507,11 @@ class DevOpsMetricsCollector:
                 "average_pipeline_time": total_execution_time,
                 "success_rate": pipeline_data.get("success_rate", 95.5),
             },
-            "success_trends": {"daily_success_rate": 96.2, "weekly_success_rate": 95.8, "monthly_success_rate": 95.5},
+            "success_trends": {
+                "daily_success_rate": 96.2,
+                "weekly_success_rate": 95.8,
+                "monthly_success_rate": 95.5,
+            },
         }
 
         return metrics
@@ -1291,16 +1530,34 @@ class DevOpsMetricsCollector:
         resource_config.get("metrics", ["cpu", "memory", "disk", "network"])
 
         resource_metrics = {
-            "cpu_utilization": {"current": 65.3, "average": 62.1, "peak": 89.7, "unit": "percent"},
-            "memory_usage": {"current": 72.1, "average": 68.5, "peak": 94.2, "unit": "percent"},
+            "cpu_utilization": {
+                "current": 65.3,
+                "average": 62.1,
+                "peak": 89.7,
+                "unit": "percent",
+            },
+            "memory_usage": {
+                "current": 72.1,
+                "average": 68.5,
+                "peak": 94.2,
+                "unit": "percent",
+            },
             "disk_io": {
                 "read_ops_per_sec": 1250,
                 "write_ops_per_sec": 890,
                 "read_throughput": "45 MB/s",
                 "write_throughput": "32 MB/s",
             },
-            "network_traffic": {"incoming": "125 Mbps", "outgoing": "89 Mbps", "packets_per_sec": 45000},
-            "cost_metrics": {"daily_cost": 125.50, "monthly_projection": 3765.00, "cost_trend": "+2.3%"},
+            "network_traffic": {
+                "incoming": "125 Mbps",
+                "outgoing": "89 Mbps",
+                "packets_per_sec": 45000,
+            },
+            "cost_metrics": {
+                "daily_cost": 125.50,
+                "monthly_projection": 3765.00,
+                "cost_trend": "+2.3%",
+            },
             "scaling_events": [
                 {
                     "timestamp": "2024-01-01T10:30:00Z",
@@ -1329,10 +1586,19 @@ class DevOpsMetricsCollector:
         Returns:
             DevOps health status assessment
         """
-        health_config.get("check_categories", ["deployment", "monitoring", "security", "performance"])
-        thresholds = health_config.get("health_threshold", {"deployment_success": 95, "uptime": 99.9})
+        health_config.get(
+            "check_categories", ["deployment", "monitoring", "security", "performance"]
+        )
+        thresholds = health_config.get(
+            "health_threshold", {"deployment_success": 95, "uptime": 99.9}
+        )
 
-        category_scores = {"deployment": 92, "monitoring": 88, "security": 95, "performance": 90}
+        category_scores = {
+            "deployment": 92,
+            "monitoring": 88,
+            "security": 95,
+            "performance": 90,
+        }
 
         overall_health_score = sum(category_scores.values()) / len(category_scores)
 
@@ -1350,8 +1616,15 @@ class DevOpsMetricsCollector:
                 if overall_health_score < 90
                 else []
             ),
-            "recommendations": ["Optimize monitoring performance", "Review deployment automation"],
-            "trends": {"overall_trend": "improving", "deployment_trend": "stable", "performance_trend": "improving"},
+            "recommendations": [
+                "Optimize monitoring performance",
+                "Review deployment automation",
+            ],
+            "trends": {
+                "overall_trend": "improving",
+                "deployment_trend": "stable",
+                "performance_trend": "improving",
+            },
             "alerts": [
                 {
                     "category": "deployment",
@@ -1359,7 +1632,8 @@ class DevOpsMetricsCollector:
                     "current_value": category_scores.get("deployment", 0),
                     "status": (
                         "healthy"
-                        if category_scores.get("deployment", 0) >= thresholds.get("deployment_success", 95)
+                        if category_scores.get("deployment", 0)
+                        >= thresholds.get("deployment_success", 95)
                         else "warning"
                     ),
                 }

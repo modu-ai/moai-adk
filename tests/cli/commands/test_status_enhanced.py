@@ -66,7 +66,9 @@ class TestStatusConfigReading:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         # Create multiple SPEC directories
         specs_dir = tmp_path / ".moai" / "specs"
@@ -91,7 +93,9 @@ class TestStatusConfigReading:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -199,7 +203,9 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -220,7 +226,9 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -240,7 +248,9 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -260,7 +270,9 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -277,7 +289,9 @@ class TestStatusGitIntegration:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -344,7 +358,10 @@ class TestStatusErrorHandling:
         runner = CliRunner()
 
         with patch("moai_adk.cli.commands.status.Path.cwd", return_value=tmp_path):
-            with patch("moai_adk.cli.commands.status.json.load", side_effect=RuntimeError("Unexpected error")):
+            with patch(
+                "moai_adk.cli.commands.status.json.load",
+                side_effect=RuntimeError("Unexpected error"),
+            ):
                 result = runner.invoke(status)
 
                 # Should display error message and fail
@@ -360,7 +377,9 @@ class TestStatusPanelRendering:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 
@@ -383,7 +402,9 @@ class TestStatusPanelRendering:
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path.write_text(
+            json.dumps({"project": {"mode": "personal", "locale": "en_US"}})
+        )
 
         runner = CliRunner()
 

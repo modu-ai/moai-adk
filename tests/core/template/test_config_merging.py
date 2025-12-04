@@ -57,7 +57,9 @@ def tmp_project_with_config(tmp_path: Path) -> Path:
         "language": {"conversation_language": "ja", "custom_setting": "user_value"},
         "project": {"name": "UserProject"},
     }
-    (tmp_path / ".moai" / "config" / "config.json").write_text(json.dumps(user_config, indent=2))
+    (tmp_path / ".moai" / "config" / "config.json").write_text(
+        json.dumps(user_config, indent=2)
+    )
 
     return tmp_path
 
@@ -80,7 +82,9 @@ def template_with_config(tmp_path: Path) -> Path:
         },
         "project": {"mode": "team", "new_setting": "template_value"},
     }
-    (template_root / ".claude" / "config.json").write_text(json.dumps(template_config, indent=2))
+    (template_root / ".claude" / "config.json").write_text(
+        json.dumps(template_config, indent=2)
+    )
 
     return template_root
 
@@ -88,7 +92,9 @@ def template_with_config(tmp_path: Path) -> Path:
 class TestMergeConfigJson:
     """Test _merge_config_json method"""
 
-    def test_merge_config_json_basic_priority(self, tmp_project_with_config: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_basic_priority(
+        self, tmp_project_with_config: Path, template_with_config: Path
+    ) -> None:
         """Test basic priority merging: User > Template"""
         processor = TemplateProcessor(tmp_project_with_config)
         processor.template_root = template_with_config  # Override for testing
@@ -110,7 +116,9 @@ class TestMergeConfigJson:
 
         # Language should deep merge
         assert merged_config["language"]["conversation_language"] == "ja"  # User
-        assert merged_config["language"]["conversation_language_name"] == "English"  # Template
+        assert (
+            merged_config["language"]["conversation_language_name"] == "English"
+        )  # Template
         assert merged_config["language"]["custom_setting"] == "user_value"  # User only
 
     def test_merge_config_json_with_environment_override(
@@ -121,7 +129,9 @@ class TestMergeConfigJson:
         processor.template_root = template_with_config  # Override for testing
 
         # Set environment variables
-        with patch.dict(os.environ, {"MOAI_USER_NAME": "EnvUser", "MOAI_CONVERSATION_LANG": "ko"}):
+        with patch.dict(
+            os.environ, {"MOAI_USER_NAME": "EnvUser", "MOAI_CONVERSATION_LANG": "ko"}
+        ):
             src = template_with_config / ".claude" / "config.json"
             dst = tmp_project_with_config / ".moai" / "config" / "config.json"
 
@@ -131,9 +141,13 @@ class TestMergeConfigJson:
 
         # Environment should override everything
         assert merged_config["user"]["name"] == "EnvUser"  # Environment > User
-        assert merged_config["language"]["conversation_language"] == "ko"  # Environment > User
+        assert (
+            merged_config["language"]["conversation_language"] == "ko"
+        )  # Environment > User
 
-    def test_merge_config_json_no_existing_config(self, tmp_path: Path, template_with_config: Path) -> None:
+    def test_merge_config_json_no_existing_config(
+        self, tmp_path: Path, template_with_config: Path
+    ) -> None:
         """Test merging when no existing config exists"""
         # Create project without existing config
         (tmp_path / ".moai" / "config").mkdir(parents=True)
@@ -247,7 +261,9 @@ class TestMergeConfigJson:
         # Check deep merge behavior
         language_config = merged_config["language"]
         assert language_config["conversation_language"] == "ja"  # User preserved
-        assert language_config["conversation_language_name"] == "English"  # Template added
+        assert (
+            language_config["conversation_language_name"] == "English"
+        )  # Template added
         assert language_config["custom_setting"] == "user_value"  # User preserved
         assert language_config["git_commit_messages"] == "en"  # Template added
 
@@ -259,10 +275,14 @@ class TestMergeConfigJson:
         processor.template_root = template_with_config  # Override for testing
 
         # Add metadata to existing config
-        existing_config = json.loads((tmp_project_with_config / ".moai" / "config" / "config.json").read_text())
+        existing_config = json.loads(
+            (tmp_project_with_config / ".moai" / "config" / "config.json").read_text()
+        )
         existing_config["config_source"] = "environment"
         existing_config["last_updated"] = "2024-01-01"
-        (tmp_project_with_config / ".moai" / "config" / "config.json").write_text(json.dumps(existing_config, indent=2))
+        (tmp_project_with_config / ".moai" / "config" / "config.json").write_text(
+            json.dumps(existing_config, indent=2)
+        )
 
         src = template_with_config / ".claude" / "config.json"
         dst = tmp_project_with_config / ".moai" / "config" / "config.json"

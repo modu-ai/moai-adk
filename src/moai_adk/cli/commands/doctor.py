@@ -56,7 +56,9 @@ console = Console()
 @click.option("--fix", is_flag=True, help="Suggest fixes for missing tools")
 @click.option("--export", type=click.Path(), help="Export diagnostics to JSON file")
 @click.option("--check", type=str, help="Check specific tool only")
-@click.option("--check-commands", is_flag=True, help="Diagnose slash command loading issues")
+@click.option(
+    "--check-commands", is_flag=True, help="Diagnose slash command loading issues"
+)
 def doctor(
     verbose: bool,
     fix: bool,
@@ -90,7 +92,9 @@ def doctor(
             diagnostics_data["detected_language"] = language
 
             if verbose:
-                console.print(f"[dim]Detected language: {language or 'Unknown'}[/dim]\n")
+                console.print(
+                    f"[dim]Detected language: {language or 'Unknown'}[/dim]\n"
+                )
 
             if language:
                 checker = SystemChecker()
@@ -134,16 +138,22 @@ def doctor(
             console.print("\n[green]✓ All checks passed[/green]")
         else:
             console.print("\n[yellow]⚠ Some checks failed[/yellow]")
-            console.print("[dim]Run [cyan]python -m moai_adk doctor --verbose[/cyan] for detailed diagnostics[/dim]")
+            console.print(
+                "[dim]Run [cyan]python -m moai_adk doctor --verbose[/cyan] for detailed diagnostics[/dim]"
+            )
 
     except Exception as e:
         console.print(f"[red]✗ Diagnostic failed: {e}[/red]")
         raise
 
 
-def _display_language_tools(language: str, tools: dict[str, bool], checker: SystemChecker) -> None:
+def _display_language_tools(
+    language: str, tools: dict[str, bool], checker: SystemChecker
+) -> None:
     """Display a table of language-specific tools (helper)"""
-    table = Table(show_header=True, header_style="bold cyan", title=f"{language.title()} Tools")
+    table = Table(
+        show_header=True, header_style="bold cyan", title=f"{language.title()} Tools"
+    )
     table.add_column("Tool", style="dim")
     table.add_column("Status", justify="center")
     table.add_column("Version", style="blue")
@@ -268,5 +278,7 @@ def _check_slash_commands() -> None:
     elif total == 0:
         console.print("[yellow]⚠ No command files found in .claude/commands/[/yellow]")
     else:
-        console.print(f"[yellow]⚠ Only {valid}/{total} command files are valid[/yellow]")
+        console.print(
+            f"[yellow]⚠ Only {valid}/{total} command files are valid[/yellow]"
+        )
         console.print("[dim]Fix the issues above to enable slash commands[/dim]")

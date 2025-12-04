@@ -148,7 +148,9 @@ class TemplateEngine:
 
         try:
             # Use cached Environment instead of creating new one
-            env = _get_file_environment(template_dir=str(template_dir), strict=self.strict_undefined)
+            env = _get_file_environment(
+                template_dir=str(template_dir), strict=self.strict_undefined
+            )
             template = env.get_template(template_name)
             rendered = template.render(**variables)
 
@@ -158,7 +160,9 @@ class TemplateEngine:
 
             return rendered
         except TemplateNotFound:
-            raise FileNotFoundError(f"Template not found in {template_dir}: {template_name}")
+            raise FileNotFoundError(
+                f"Template not found in {template_dir}: {template_name}"
+            )
         except (TemplateSyntaxError, TemplateRuntimeError) as e:
             raise RuntimeError(f"Template rendering error in {template_path}: {e}")
 
@@ -235,9 +239,15 @@ class TemplateEngine:
             "ENABLE_TRUST_5": github_config.get("enable_trust_5", True),
             "ENABLE_ALFRED_COMMANDS": github_config.get("enable_alfred_commands", True),
             # Language configuration
-            "CONVERSATION_LANGUAGE": config.get("language", {}).get("conversation_language", "en"),
-            "CONVERSATION_LANGUAGE_NAME": config.get("language", {}).get("conversation_language_name", "English"),
-            "AGENT_PROMPT_LANGUAGE": config.get("language", {}).get("agent_prompt_language", "english"),
+            "CONVERSATION_LANGUAGE": config.get("language", {}).get(
+                "conversation_language", "en"
+            ),
+            "CONVERSATION_LANGUAGE_NAME": config.get("language", {}).get(
+                "conversation_language_name", "English"
+            ),
+            "AGENT_PROMPT_LANGUAGE": config.get("language", {}).get(
+                "agent_prompt_language", "english"
+            ),
             # Additional metadata
             "MOAI_VERSION": config.get("moai", {}).get("version", "0.7.0"),
         }
@@ -288,7 +298,9 @@ class TemplateVariableValidator:
                 errors.append(f"Missing required variable: {var_name}")
             elif not isinstance(variables[var_name], var_type):
                 actual_type = type(variables[var_name]).__name__
-                errors.append(f"Invalid type for {var_name}: expected {var_type.__name__}, got {actual_type}")
+                errors.append(
+                    f"Invalid type for {var_name}: expected {var_type.__name__}, got {actual_type}"
+                )
 
         # Check optional variables (if present)
         for var_name, var_type in cls.OPTIONAL_VARIABLES.items():
@@ -296,13 +308,17 @@ class TemplateVariableValidator:
                 if not isinstance(variables[var_name], var_type):
                     if isinstance(var_type, tuple):
                         type_names = (
-                            " or ".join(getattr(t, "__name__", str(t)) for t in var_type)
+                            " or ".join(
+                                getattr(t, "__name__", str(t)) for t in var_type
+                            )
                             if var_type is not None
                             else "unknown"
                         )  # type: ignore[union-attr]
                     else:
                         type_names = getattr(var_type, "__name__", str(var_type))
                     actual_type = type(variables[var_name]).__name__
-                    errors.append(f"Invalid type for {var_name}: expected {type_names}, got {actual_type}")
+                    errors.append(
+                        f"Invalid type for {var_name}: expected {type_names}, got {actual_type}"
+                    )
 
         return len(errors) == 0, errors

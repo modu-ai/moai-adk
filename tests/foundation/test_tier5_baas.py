@@ -47,7 +47,16 @@ class TestVercelSkillMetadata:
 
     def test_vercel_skill_auto_trigger_keywords_minimum(self):
         """Verify Vercel skill has 8-15 auto-trigger keywords."""
-        keywords = ["vercel", "edge", "deploy", "serverless", "next.js", "functions", "cdn", "platform"]
+        keywords = [
+            "vercel",
+            "edge",
+            "deploy",
+            "serverless",
+            "next.js",
+            "functions",
+            "cdn",
+            "platform",
+        ]
         assert 8 <= len(keywords) <= 15
 
     def test_vercel_skill_context7_references(self):
@@ -94,13 +103,22 @@ class TestVercelImplementation:
 
     def test_vercel_edge_function_deployment(self):
         """Test Edge Function deployment pattern."""
-        edge_function = {"path": "/api/hello", "runtime": "edge", "memory": 128, "max_duration": 30}
+        edge_function = {
+            "path": "/api/hello",
+            "runtime": "edge",
+            "memory": 128,
+            "max_duration": 30,
+        }
         assert edge_function["runtime"] == "edge"
         assert edge_function["memory"] == 128
 
     def test_vercel_environment_variables_validation(self):
         """Test validation of Vercel environment variables."""
-        env_vars = {"API_URL": "https://api.example.com", "DATABASE_URL": "postgresql://...", "SECRET_KEY": "secret"}
+        env_vars = {
+            "API_URL": "https://api.example.com",
+            "DATABASE_URL": "postgresql://...",
+            "SECRET_KEY": "secret",
+        }
         # All required vars present
         assert "API_URL" in env_vars
         assert "DATABASE_URL" in env_vars
@@ -131,7 +149,16 @@ class TestNeonSkillMetadata:
 
     def test_neon_auto_trigger_keywords(self):
         """Verify Neon skill has 8-15 auto-trigger keywords."""
-        keywords = ["neon", "postgresql", "serverless", "database", "sql", "connection", "pooling", "scale"]
+        keywords = [
+            "neon",
+            "postgresql",
+            "serverless",
+            "database",
+            "sql",
+            "connection",
+            "pooling",
+            "scale",
+        ]
         assert 8 <= len(keywords) <= 15
 
     def test_neon_context7_references(self):
@@ -154,7 +181,9 @@ class TestNeonImplementation:
     def test_neon_connection_config(self):
         """Test creating Neon connection configuration."""
         config = self.NeonConnectionConfig(
-            connection_string="postgresql://user:pass@host/db", max_connections=10, pool_idle_timeout=300
+            connection_string="postgresql://user:pass@host/db",
+            max_connections=10,
+            pool_idle_timeout=300,
         )
         assert "postgresql://" in config.connection_string
         assert config.max_connections > 0
@@ -190,7 +219,16 @@ class TestClerkSkillMetadata:
 
     def test_clerk_auto_trigger_keywords(self):
         """Verify Clerk skill has 8-15 auto-trigger keywords."""
-        keywords = ["clerk", "auth", "authentication", "oauth", "user-management", "sessions", "mfa", "enterprise"]
+        keywords = [
+            "clerk",
+            "auth",
+            "authentication",
+            "oauth",
+            "user-management",
+            "sessions",
+            "mfa",
+            "enterprise",
+        ]
         assert 8 <= len(keywords) <= 15
 
 
@@ -219,7 +257,12 @@ class TestClerkImplementation:
 
     def test_clerk_oauth_provider_config(self):
         """Test Clerk OAuth provider configuration."""
-        provider = {"name": "google", "client_id": "client_id", "client_secret": "client_secret", "enabled": True}
+        provider = {
+            "name": "google",
+            "client_id": "client_id",
+            "client_secret": "client_secret",
+            "enabled": True,
+        }
         assert provider["enabled"]
         assert provider["name"] in ["google", "github", "microsoft"]
 
@@ -272,19 +315,30 @@ class TestSupabaseImplementation:
     def test_supabase_project_initialization(self):
         """Test Supabase project initialization."""
         project = self.SupabaseProject(
-            project_id="abc123", database_url="postgresql://...", anon_key="anon_key", service_role_key="role_key"
+            project_id="abc123",
+            database_url="postgresql://...",
+            anon_key="anon_key",
+            service_role_key="role_key",
         )
         assert project.project_id == "abc123"
 
     def test_supabase_realtime_configuration(self):
         """Test Supabase Realtime setup."""
-        realtime = {"enabled": True, "max_broadcast_payload": 250000, "max_retrieve_messages": 100}
+        realtime = {
+            "enabled": True,
+            "max_broadcast_payload": 250000,
+            "max_retrieve_messages": 100,
+        }
         assert realtime["enabled"]
         assert realtime["max_broadcast_payload"] > 0
 
     def test_supabase_edge_functions_deployment(self):
         """Test Supabase Edge Functions."""
-        edge_fn = {"name": "my-function", "runtime": "deno", "imports": ["supabase", "oak"]}
+        edge_fn = {
+            "name": "my-function",
+            "runtime": "deno",
+            "imports": ["supabase", "oak"],
+        }
         assert edge_fn["runtime"] in ["deno", "node"]
 
 
@@ -344,7 +398,12 @@ class TestFirebaseImplementation:
 
     def test_firebase_cloud_functions_runtime(self):
         """Test Firebase Cloud Functions runtime."""
-        function = {"name": "greeting", "runtime": "nodejs20", "entry_point": "greeting", "memory": 256}
+        function = {
+            "name": "greeting",
+            "runtime": "nodejs20",
+            "entry_point": "greeting",
+            "memory": 256,
+        }
         assert function["memory"] >= 128
 
 
@@ -362,7 +421,16 @@ class TestCloudflareSkillMetadata:
 
     def test_cloudflare_auto_trigger_keywords(self):
         """Verify Cloudflare skill has 8-15 auto-trigger keywords."""
-        keywords = ["cloudflare", "workers", "pages", "edge", "cdn", "kv", "durable-objects", "wasm"]
+        keywords = [
+            "cloudflare",
+            "workers",
+            "pages",
+            "edge",
+            "cdn",
+            "kv",
+            "durable-objects",
+            "wasm",
+        ]
         assert len(keywords) >= 8
 
 
@@ -483,17 +551,29 @@ class TestBaaSTierIntegration:
 
     def test_vercel_neon_integration(self):
         """Test Vercel + Neon integration pattern."""
-        deployment = {"vercel_project": "my-app", "neon_database": "neon_connection_string", "sync": True}
+        deployment = {
+            "vercel_project": "my-app",
+            "neon_database": "neon_connection_string",
+            "sync": True,
+        }
         assert deployment["sync"]
 
     def test_supabase_cloudflare_integration(self):
         """Test Supabase + Cloudflare integration pattern."""
-        integration = {"supabase_url": "https://...", "cloudflare_kv": "kv_namespace", "edge_cache": True}
+        integration = {
+            "supabase_url": "https://...",
+            "cloudflare_kv": "kv_namespace",
+            "edge_cache": True,
+        }
         assert integration["edge_cache"]
 
     def test_firebase_vercel_integration(self):
         """Test Firebase + Vercel integration pattern."""
-        config = {"firebase_project": "project_id", "vercel_environment": "production", "realtime_sync": True}
+        config = {
+            "firebase_project": "project_id",
+            "vercel_environment": "production",
+            "realtime_sync": True,
+        }
         assert config["realtime_sync"]
 
 

@@ -46,7 +46,11 @@ class DemoRunner:
 
         # Initialize configuration
         self.config = {
-            "project": {"name": "MoAI Menu Project Demo", "type": "web_application", "version": "1.0.0"},
+            "project": {
+                "name": "MoAI Menu Project Demo",
+                "type": "web_application",
+                "version": "1.0.0",
+            },
             "language": {
                 "conversation_language": "ko",
                 "documentation_language": "ko",
@@ -55,9 +59,15 @@ class DemoRunner:
         }
 
         # Initialize managers
-        self.doc_manager = documentation_manager.DocumentationManager(str(self.demo_project_dir), self.config)
-        self.lang_init = language_initializer.LanguageInitializer(str(self.demo_project_dir), self.config)
-        self.template_opt = template_optimizer.TemplateOptimizer(str(self.demo_project_dir), self.config)
+        self.doc_manager = documentation_manager.DocumentationManager(
+            str(self.demo_project_dir), self.config
+        )
+        self.lang_init = language_initializer.LanguageInitializer(
+            str(self.demo_project_dir), self.config
+        )
+        self.template_opt = template_optimizer.TemplateOptimizer(
+            str(self.demo_project_dir), self.config
+        )
 
         print("✅ Demo environment setup complete")
         print("-" * 50)
@@ -71,14 +81,18 @@ class DemoRunner:
 
         # Initialize language configuration
         lang_result = self.lang_init.initialize_language_configuration(
-            language="ko", user_name="데모 사용자", domains=["backend", "frontend", "mobile"]
+            language="ko",
+            user_name="데모 사용자",
+            domains=["backend", "frontend", "mobile"],
         )
 
         # Initialize documentation structure
         docs_result = self.doc_manager.initialize_documentation_structure()
 
         # Create multilingual documentation structure
-        multilingual_result = self.lang_init.create_multilingual_documentation_structure("ko")
+        multilingual_result = (
+            self.lang_init.create_multilingual_documentation_structure("ko")
+        )
 
         # Analyze templates
         analysis = self.template_opt.analyze_project_templates()
@@ -102,9 +116,13 @@ class DemoRunner:
         print(f"📁 Templates analyzed: {len(analysis.get('template_files', []))}")
 
         print("\\n📋 Current Configuration:")
-        print(f"  - Project: {self.config['project']['name']} ({self.config['project']['type']})")
+        print(
+            f"  - Project: {self.config['project']['name']} ({self.config['project']['type']})"
+        )
         print(f"  - Language: {self.config['language']['conversation_language']}")
-        print(f"  - Supported: {', '.join(self.config['language']['supported_languages'])}")
+        print(
+            f"  - Supported: {', '.join(self.config['language']['supported_languages'])}"
+        )
 
         print("\\n" + "=" * 50 + "\\n")
 
@@ -131,7 +149,11 @@ class DemoRunner:
                     "path": "/api/auth/register",
                     "method": "POST",
                     "description": "신규 사용자 등록",
-                    "parameters": {"email": "string", "password": "string", "name": "string"},
+                    "parameters": {
+                        "email": "string",
+                        "password": "string",
+                        "name": "string",
+                    },
                 },
                 {
                     "path": "/api/auth/login",
@@ -172,7 +194,9 @@ class DemoRunner:
 
         print(f"✅ Documentation generated in {duration:.2f} seconds")
         print(f"📄 SPEC documentation: {'✅' if docs_result else '❌'}")
-        print(f"📤 Export successful: {'✅' if export_result.get('success', True) else '❌'}")
+        print(
+            f"📤 Export successful: {'✅' if export_result.get('success', True) else '❌'}"
+        )
 
         print("\\n📋 Generated Documentation Structure:")
         docs_dir = self.demo_project_dir / "docs"
@@ -200,12 +224,17 @@ class DemoRunner:
             print(f"🔤 Testing {lang.upper()} language support...")
 
             # Update language settings
-            lang_updates = {"language.conversation_language": lang, "language.documentation_language": lang}
+            lang_updates = {
+                "language.conversation_language": lang,
+                "language.documentation_language": lang,
+            }
 
             self.lang_init.update_language_settings(lang_updates)
 
             # Create multilingual documentation structure
-            multilingual_result = self.lang_init.create_multilingual_documentation_structure(lang)
+            multilingual_result = (
+                self.lang_init.create_multilingual_documentation_structure(lang)
+            )
 
             print(f"  ✅ {lang.upper()} configured")
             print(f"  📁 Docs structure: {'✅' if multilingual_result else '❌'}")
@@ -224,7 +253,9 @@ class DemoRunner:
             current_lang = lang_status.get("current_language", "unknown")
             supported_langs = lang_status.get("supported_languages", [])
             print(f"  - Current language: {current_lang}")
-            print(f"  - Supported languages: {', '.join(supported_langs) if supported_langs else 'N/A'}")
+            print(
+                f"  - Supported languages: {', '.join(supported_langs) if supported_langs else 'N/A'}"
+            )
         except Exception:
             print("  - Language status: Available")
 
@@ -327,7 +358,9 @@ Complex template logic:
                 file_path = file_info.get("file_path", "unknown")
                 file_size = file_info.get("file_size", 0)
                 complexity = file_info.get("complexity_score", "N/A")
-                print(f"  📄 {Path(file_path).name}: {file_size} bytes, complexity: {complexity}")
+                print(
+                    f"  📄 {Path(file_path).name}: {file_size} bytes, complexity: {complexity}"
+                )
 
         # Apply optimizations
         print("\\n🔧 Applying optimizations...")
@@ -348,7 +381,8 @@ Complex template logic:
             "analysis_time": analysis_time,
             "optimization_time": opt_time,
             "files_analyzed": analyzed_files,
-            "optimizations_applied": len(opt_result.get("optimization_results", {})) > 0,
+            "optimizations_applied": len(opt_result.get("optimization_results", {}))
+            > 0,
         }
 
         print(f"✅ Optimization completed in {opt_time:.2f} seconds")
@@ -359,9 +393,13 @@ Complex template logic:
             if "size_reduction" in opt_results:
                 print(f"📉 Size reduction: {opt_results['size_reduction']:.1f}%")
             if "performance_improvement" in opt_results:
-                print(f"⚡ Performance improvement: {opt_results['performance_improvement']:.1f}%")
+                print(
+                    f"⚡ Performance improvement: {opt_results['performance_improvement']:.1f}%"
+                )
         else:
-            print("ℹ️  No optimization opportunities detected (templates already optimized)")
+            print(
+                "ℹ️  No optimization opportunities detected (templates already optimized)"
+            )
 
         # Run benchmark
         print("\\n🏃 Running performance benchmark...")
@@ -388,13 +426,17 @@ Complex template logic:
             language="ja", user_name="統合テストユーザー", domains=["fullstack"]
         )
         step1_time = time.time() - step1_start
-        workflow_steps.append(("Language Configuration (Japanese)", step1_time, lang_result is not None))
+        workflow_steps.append(
+            ("Language Configuration (Japanese)", step1_time, lang_result is not None)
+        )
 
         # Step 2: Documentation initialization
         step2_start = time.time()
         docs_result = self.doc_manager.initialize_documentation_structure()
         step2_time = time.time() - step2_start
-        workflow_steps.append(("Documentation Initialization", step2_time, isinstance(docs_result, dict)))
+        workflow_steps.append(
+            ("Documentation Initialization", step2_time, isinstance(docs_result, dict))
+        )
 
         # Step 3: SPEC-based documentation generation
         step3_start = time.time()
@@ -403,23 +445,35 @@ Complex template logic:
             "title": "統合テスト機能",
             "description": "Integration test feature with multilingual support",
             "requirements": ["要件 1", "要件 2", "要件 3"],
-            "api_endpoints": [{"path": "/api/integration", "method": "GET", "description": "統合エンドポイント"}],
+            "api_endpoints": [
+                {
+                    "path": "/api/integration",
+                    "method": "GET",
+                    "description": "統合エンドポイント",
+                }
+            ],
         }
         spec_result = self.doc_manager.generate_documentation_from_spec(spec_data)
         step3_time = time.time() - step3_start
-        workflow_steps.append(("SPEC Documentation Generation", step3_time, isinstance(spec_result, dict)))
+        workflow_steps.append(
+            ("SPEC Documentation Generation", step3_time, isinstance(spec_result, dict))
+        )
 
         # Step 4: Template analysis and optimization
         step4_start = time.time()
         template_analysis = self.template_opt.analyze_project_templates()
         step4_time = time.time() - step4_start
-        workflow_steps.append(("Template Analysis", step4_time, isinstance(template_analysis, dict)))
+        workflow_steps.append(
+            ("Template Analysis", step4_time, isinstance(template_analysis, dict))
+        )
 
         # Step 5: Multilingual documentation export
         step5_start = time.time()
         export_result = self.doc_manager.export_documentation("markdown")
         step5_time = time.time() - step5_start
-        workflow_steps.append(("Documentation Export", step5_time, export_result.get("success", True)))
+        workflow_steps.append(
+            ("Documentation Export", step5_time, export_result.get("success", True))
+        )
 
         total_time = time.time() - start_time
 
@@ -437,7 +491,9 @@ Complex template logic:
             print(f"  {status} {step_name}: {step_time:.3f}s")
 
         workflow_success = self.results["integration_workflow"]["successful_steps"] == 5
-        print(f"\\n🎯 Integration Workflow: {'SUCCESS' if workflow_success else 'PARTIAL'}")
+        print(
+            f"\\n🎯 Integration Workflow: {'SUCCESS' if workflow_success else 'PARTIAL'}"
+        )
 
         print("\\n" + "=" * 50 + "\\n")
 
@@ -460,23 +516,37 @@ Complex template logic:
         print("\\n🔑 Key Metrics:")
         if "initialization" in self.results:
             init = self.results["initialization"]
-            print(f"  🌐 Language configured: {'✅' if init['language_configured'] else '❌'}")
-            print(f"  📚 Documentation initialized: {'✅' if init['docs_initialized'] else '❌'}")
-            print(f"  🌍 Multilingual created: {'✅' if init['multilingual_created'] else '❌'}")
+            print(
+                f"  🌐 Language configured: {'✅' if init['language_configured'] else '❌'}"
+            )
+            print(
+                f"  📚 Documentation initialized: {'✅' if init['docs_initialized'] else '❌'}"
+            )
+            print(
+                f"  🌍 Multilingual created: {'✅' if init['multilingual_created'] else '❌'}"
+            )
 
         if "documentation_generation" in self.results:
             docs = self.results["documentation_generation"]
-            print(f"  📝 SPEC docs generated: {'✅' if docs['spec_docs_generated'] else '❌'}")
-            print(f"  📤 Export successful: {'✅' if docs['export_successful'] else '❌'}")
+            print(
+                f"  📝 SPEC docs generated: {'✅' if docs['spec_docs_generated'] else '❌'}"
+            )
+            print(
+                f"  📤 Export successful: {'✅' if docs['export_successful'] else '❌'}"
+            )
 
         if "template_optimization" in self.results:
             opt = self.results["template_optimization"]
             print(f"  📁 Templates analyzed: {opt['files_analyzed']}")
-            print(f"  ⚡ Optimizations applied: {'✅' if opt['optimizations_applied'] else '❌'}")
+            print(
+                f"  ⚡ Optimizations applied: {'✅' if opt['optimizations_applied'] else '❌'}"
+            )
 
         if "integration_workflow" in self.results:
             workflow = self.results["integration_workflow"]
-            success_rate = (workflow["successful_steps"] / workflow["steps_completed"]) * 100
+            success_rate = (
+                workflow["successful_steps"] / workflow["steps_completed"]
+            ) * 100
             print(f"  🔄 Workflow success rate: {success_rate:.1f}%")
 
         print("\\n" + "=" * 50 + "\\n")

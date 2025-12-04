@@ -400,7 +400,9 @@ class EnhancedInputValidationMiddleware:
         valid_modes = ["content", "files_with_matches", "count"]
         return mode in valid_modes
 
-    def validate_and_normalize_input(self, tool_name: str, input_data: Dict[str, Any]) -> ValidationResult:
+    def validate_and_normalize_input(
+        self, tool_name: str, input_data: Dict[str, Any]
+    ) -> ValidationResult:
         """
         Validate and normalize tool input data.
 
@@ -425,36 +427,52 @@ class EnhancedInputValidationMiddleware:
                 return result
 
             # Step 1: Map unrecognized parameters
-            mapped_input, mapping_errors = self._map_parameters(tool_name, result.normalized_input)
+            mapped_input, mapping_errors = self._map_parameters(
+                tool_name, result.normalized_input
+            )
             result.normalized_input = mapped_input
             result.errors.extend(mapping_errors)
 
             # Step 2: Validate required parameters
-            required_errors = self._validate_required_parameters(tool_params, result.normalized_input)
+            required_errors = self._validate_required_parameters(
+                tool_params, result.normalized_input
+            )
             result.errors.extend(required_errors)
 
             # Step 3: Apply default values
             self._apply_default_values(tool_params, result.normalized_input)
 
             # Step 4: Validate parameter values and apply type conversions
-            value_errors = self._validate_parameter_values(tool_params, result.normalized_input)
+            value_errors = self._validate_parameter_values(
+                tool_params, result.normalized_input
+            )
             result.errors.extend(value_errors)
 
             # Apply type conversions from errors
             for error in value_errors:
-                if error.code == "type_conversion" and error.auto_corrected and error.corrected_value is not None:
+                if (
+                    error.code == "type_conversion"
+                    and error.auto_corrected
+                    and error.corrected_value is not None
+                ):
                     result.normalized_input[error.path[0]] = error.corrected_value
 
             # Step 5: Normalize parameter formats
-            transformations = self._normalize_parameter_formats(tool_params, result.normalized_input)
+            transformations = self._normalize_parameter_formats(
+                tool_params, result.normalized_input
+            )
             result.transformations.extend(transformations)
 
             # Step 6: Check for deprecated parameters
-            deprecated_warnings = self._check_deprecated_parameters(tool_params, result.normalized_input)
+            deprecated_warnings = self._check_deprecated_parameters(
+                tool_params, result.normalized_input
+            )
             result.warnings.extend(deprecated_warnings)
 
             # Update valid status
-            critical_errors = [e for e in result.errors if e.severity == ValidationSeverity.CRITICAL]
+            critical_errors = [
+                e for e in result.errors if e.severity == ValidationSeverity.CRITICAL
+            ]
             if critical_errors:
                 result.valid = False
 
@@ -466,7 +484,9 @@ class EnhancedInputValidationMiddleware:
 
             self.stats["transformations_applied"] += len(result.transformations)
 
-            if self.enable_logging and (result.errors or result.warnings or result.transformations):
+            if self.enable_logging and (
+                result.errors or result.warnings or result.transformations
+            ):
                 logger.info(
                     f"Input validation for {tool_name}: "
                     f"valid={result.valid}, errors={len(result.errors)}, "
@@ -566,7 +586,9 @@ class EnhancedInputValidationMiddleware:
 
         return mapped_input, errors
 
-    def _find_closest_parameter_match(self, param_name: str, valid_names: Set[str]) -> Optional[str]:
+    def _find_closest_parameter_match(
+        self, param_name: str, valid_names: Set[str]
+    ) -> Optional[str]:
         """Find the closest matching valid parameter name"""
         # Convert to lowercase for comparison
         param_lower = param_name.lower()
@@ -638,10 +660,16 @@ class EnhancedInputValidationMiddleware:
 
         return errors
 
-    def _apply_default_values(self, tool_params: List[ToolParameter], input_data: Dict[str, Any]) -> None:
+    def _apply_default_values(
+        self, tool_params: List[ToolParameter], input_data: Dict[str, Any]
+    ) -> None:
         """Apply default values for missing optional parameters"""
         for param in tool_params:
-            if not param.required and param.name not in input_data and param.default_value is not None:
+            if (
+                not param.required
+                and param.name not in input_data
+                and param.default_value is not None
+            ):
                 input_data[param.name] = param.default_value
 
     def _validate_parameter_values(
@@ -700,11 +728,14 @@ class EnhancedInputValidationMiddleware:
         # Type mapping
         type_validators = {
             "string": lambda v: isinstance(v, str),
-            "integer": lambda v: isinstance(v, int) or (isinstance(v, str) and v.isdigit()),
-            "boolean": lambda v: isinstance(v, bool) or str(v).lower() in ["true", "false", "1", "0"],
+            "integer": lambda v: isinstance(v, int)
+            or (isinstance(v, str) and v.isdigit()),
+            "boolean": lambda v: isinstance(v, bool)
+            or str(v).lower() in ["true", "false", "1", "0"],
             "dict": lambda v: isinstance(v, dict),
             "list": lambda v: isinstance(v, list),
-            "float": lambda v: isinstance(v, float) or (isinstance(v, (int, str)) and self._is_float(v)),
+            "float": lambda v: isinstance(v, float)
+            or (isinstance(v, (int, str)) and self._is_float(v)),
         }
 
         validator = type_validators.get(param.param_type)
@@ -786,7 +817,9 @@ class EnhancedInputValidationMiddleware:
         except (ValueError, TypeError):
             return False
 
-    def _normalize_parameter_formats(self, tool_params: List[ToolParameter], input_data: Dict[str, Any]) -> List[str]:
+    def _normalize_parameter_formats(
+        self, tool_params: List[ToolParameter], input_data: Dict[str, Any]
+    ) -> List[str]:
         """Normalize parameter formats for consistency"""
         transformations = []
 
@@ -807,18 +840,24 @@ class EnhancedInputValidationMiddleware:
                         )
 
             # Normalize file paths
-            elif param.name in ["file_path", "path", "directory"] and isinstance(value, str):
+            elif param.name in ["file_path", "path", "directory"] and isinstance(
+                value, str
+            ):
                 # Convert to forward slashes and remove trailing slash
                 normalized_path = value.replace("\\", "/").rstrip("/")
                 if value != normalized_path:
                     input_data[param.name] = normalized_path
-                    transformations.append(f"Normalized '{param.name}' path from '{value}' to '{normalized_path}'")
+                    transformations.append(
+                        f"Normalized '{param.name}' path from '{value}' to '{normalized_path}'"
+                    )
 
             # Normalize numeric formats - Always attempt conversion for numeric types
             elif param.param_type in ["integer", "float"] and isinstance(value, str):
                 try:
                     if param.param_type == "integer":
-                        normalized_num: int | float = int(float(value.strip()))  # Handle "123.0" -> 123
+                        normalized_num: int | float = int(
+                            float(value.strip())
+                        )  # Handle "123.0" -> 123
                     else:  # float
                         normalized_num = float(value.strip())
 
@@ -832,7 +871,9 @@ class EnhancedInputValidationMiddleware:
 
         return transformations
 
-    def _check_deprecated_parameters(self, tool_params: List[ToolParameter], input_data: Dict[str, Any]) -> List[str]:
+    def _check_deprecated_parameters(
+        self, tool_params: List[ToolParameter], input_data: Dict[str, Any]
+    ) -> List[str]:
         """Check for deprecated parameter usage"""
         warnings = []
 
@@ -863,7 +904,9 @@ class EnhancedInputValidationMiddleware:
             "cache_size": len(self.validation_cache) if self.validation_cache else 0,
         }
 
-    def register_tool_parameters(self, tool_name: str, parameters: List[ToolParameter]) -> None:
+    def register_tool_parameters(
+        self, tool_name: str, parameters: List[ToolParameter]
+    ) -> None:
         """Register custom tool parameters"""
         self.tool_parameters[tool_name] = parameters
 

@@ -35,7 +35,9 @@ class ClaudeCLIIntegration:
         """
         self.template_engine = template_engine or TemplateEngine()
 
-    def generate_claude_settings(self, variables: Dict[str, Any], output_path: Optional[Path] = None) -> Path:
+    def generate_claude_settings(
+        self, variables: Dict[str, Any], output_path: Optional[Path] = None
+    ) -> Path:
         """Generate Claude settings JSON file with variables.
 
         Args:
@@ -46,7 +48,9 @@ class ClaudeCLIIntegration:
             Path to generated settings file
         """
         if output_path is None:
-            temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+            temp_file = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            )
             output_path = Path(temp_file.name)
             temp_file.close()
 
@@ -54,7 +58,9 @@ class ClaudeCLIIntegration:
             "variables": variables,
             "template_context": {
                 "conversation_language": variables.get("CONVERSATION_LANGUAGE", "en"),
-                "conversation_language_name": variables.get("CONVERSATION_LANGUAGE_NAME", "English"),
+                "conversation_language_name": variables.get(
+                    "CONVERSATION_LANGUAGE_NAME", "English"
+                ),
                 "project_name": variables.get("PROJECT_NAME", ""),
                 "codebase_language": variables.get("CODEBASE_LANGUAGE", "python"),
             },
@@ -83,7 +89,9 @@ class ClaudeCLIIntegration:
         """
         try:
             # Process template variables
-            processed_command = self.template_engine.render_string(command_template, variables)
+            processed_command = self.template_engine.render_string(
+                command_template, variables
+            )
 
             # Build Claude CLI command
             cmd_parts = ["claude"]
@@ -100,7 +108,9 @@ class ClaudeCLIIntegration:
             cmd_parts.append(processed_command)
 
             # Execute Claude CLI
-            result = subprocess.run(cmd_parts, capture_output=True, text=True, encoding="utf-8")
+            result = subprocess.run(
+                cmd_parts, capture_output=True, text=True, encoding="utf-8"
+            )
 
             # Cleanup settings file
             try:
@@ -205,11 +215,15 @@ Translation:"""
             target_languages = ["en", "ko", "ja", "es", "fr", "de"]
 
         # Generate multilingual descriptions
-        descriptions = self.generate_multilingual_descriptions({agent_name: base_description}, target_languages)
+        descriptions = self.generate_multilingual_descriptions(
+            {agent_name: base_description}, target_languages
+        )
 
         agent_config = {
             "name": agent_name,
-            "description": descriptions[agent_name]["en"],  # Primary English description
+            "description": descriptions[agent_name][
+                "en"
+            ],  # Primary English description
             "tools": tools,
             "model": model,
             "descriptions": descriptions[agent_name],  # All language versions
@@ -244,11 +258,15 @@ Translation:"""
             target_languages = ["en", "ko", "ja", "es", "fr", "de"]
 
         # Generate multilingual descriptions
-        descriptions = self.generate_multilingual_descriptions({command_name: base_description}, target_languages)
+        descriptions = self.generate_multilingual_descriptions(
+            {command_name: base_description}, target_languages
+        )
 
         command_config = {
             "name": command_name,
-            "description": descriptions[command_name]["en"],  # Primary English description
+            "description": descriptions[command_name][
+                "en"
+            ],  # Primary English description
             "argument-hint": argument_hint,
             "tools": tools,
             "model": model,
@@ -286,7 +304,9 @@ Translation:"""
             # Process any string values in processed_data with variables
             for key, value in processed_data.items():
                 if isinstance(value, str) and "{{" in value and "}}" in value:
-                    processed_data[key] = self.template_engine.render_string(value, variables)
+                    processed_data[key] = self.template_engine.render_string(
+                        value, variables
+                    )
 
         return processed_data
 
@@ -312,7 +332,9 @@ Translation:"""
         """
         try:
             # Process prompt template
-            processed_prompt = self.template_engine.render_string(prompt_template, variables)
+            processed_prompt = self.template_engine.render_string(
+                prompt_template, variables
+            )
 
             # Build Claude command
             cmd_parts = ["claude", "--print"]
@@ -349,7 +371,11 @@ Translation:"""
                     stdout_line = process.stdout.readline()
                     stderr_line = process.stderr.readline()
 
-                    if stdout_line == "" and stderr_line == "" and process.poll() is not None:
+                    if (
+                        stdout_line == ""
+                        and stderr_line == ""
+                        and process.poll() is not None
+                    ):
                         break
 
                     if stdout_line:
@@ -363,10 +389,16 @@ Translation:"""
 
             else:
                 # Non-streaming execution
-                result = subprocess.run(cmd_parts, capture_output=True, text=True, encoding="utf-8")
+                result = subprocess.run(
+                    cmd_parts, capture_output=True, text=True, encoding="utf-8"
+                )
 
-                stdout_lines = result.stdout.strip().split("\n") if result.stdout else []
-                stderr_lines = result.stderr.strip().split("\n") if result.stderr else []
+                stdout_lines = (
+                    result.stdout.strip().split("\n") if result.stdout else []
+                )
+                stderr_lines = (
+                    result.stderr.strip().split("\n") if result.stderr else []
+                )
                 returncode = result.returncode
 
             # Cleanup

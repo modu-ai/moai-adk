@@ -33,7 +33,11 @@ class AITestGenerator:
             if text:
                 # Generate robust selector
                 selector = f"button:has-text('{text.strip()}')"
-                smart_selectors[f"button_{i}"] = {"selector": selector, "text": text.strip(), "type": "button"}
+                smart_selectors[f"button_{i}"] = {
+                    "selector": selector,
+                    "text": text.strip(),
+                    "type": "button",
+                }
 
         return smart_selectors
 
@@ -73,10 +77,16 @@ if __name__ == "__main__":
             if "click" in action:
                 for name, info in selectors.items():
                     if info["type"] == "button":
-                        interactions.append(f"        page.locator('{info['selector']}').click()")
-                        assertions.append(f"        expect(page.locator('{info['selector']}')).to_be_visible()")
+                        interactions.append(
+                            f"        page.locator('{info['selector']}').click()"
+                        )
+                        assertions.append(
+                            f"        expect(page.locator('{info['selector']}')).to_be_visible()"
+                        )
 
-        return script_template.format(interactions="\n".join(interactions), assertions="\n".join(assertions))
+        return script_template.format(
+            interactions="\n".join(interactions), assertions="\n".join(assertions)
+        )
 
 
 class Context7TestEnhancer:
@@ -95,7 +105,10 @@ class Context7TestEnhancer:
             },
             "cross_browser": {
                 "browsers": ["chromium", "firefox", "webkit"],
-                "viewports": [{"width": 1920, "height": 1080}, {"width": 375, "height": 667}],
+                "viewports": [
+                    {"width": 1920, "height": 1080},
+                    {"width": 375, "height": 667},
+                ],
                 "devices": ["Desktop Chrome", "iPhone 12"],
             },
             "performance_testing": {
@@ -112,9 +125,17 @@ class Context7TestEnhancer:
         enhanced_config = test_config.copy()
 
         # Apply Context7 patterns
-        enhanced_config["screenshot_options"] = {"full_page": True, "animations": "disabled", "caret": "hide"}
+        enhanced_config["screenshot_options"] = {
+            "full_page": True,
+            "animations": "disabled",
+            "caret": "hide",
+        }
 
-        enhanced_config["wait_strategies"] = {"networkidle": True, "element_visible": True, "timeout": 10000}
+        enhanced_config["wait_strategies"] = {
+            "networkidle": True,
+            "element_visible": True,
+            "timeout": 10000,
+        }
 
         return enhanced_config
 
@@ -127,7 +148,9 @@ class VisualRegressionTester:
         self.current_dir = "./current"
         self.diff_dir = "./diff"
 
-    async def capture_screenshot(self, page: Page, name: str, selector: Optional[str] = None):
+    async def capture_screenshot(
+        self, page: Page, name: str, selector: Optional[str] = None
+    ):
         """Capture intelligent screenshot with Context7 patterns"""
 
         # Wait for dynamic content
@@ -219,7 +242,11 @@ class CrossBrowserOrchestrator:
 
         execution_time = time.time() - start_time
 
-        return {"time": execution_time, "assertions": f"{assertions_passed}/{assertions_total}", "issues": []}
+        return {
+            "time": execution_time,
+            "assertions": f"{assertions_passed}/{assertions_total}",
+            "issues": [],
+        }
 
 
 # Example usage and integration

@@ -320,7 +320,13 @@ class TestSensitiveDataFilterPassword:
 
         for msg in test_cases:
             record = logging.LogRecord(
-                name="test_logger", level=logging.INFO, pathname="test.py", lineno=0, msg=msg, args=(), exc_info=None
+                name="test_logger",
+                level=logging.INFO,
+                pathname="test.py",
+                lineno=0,
+                msg=msg,
+                args=(),
+                exc_info=None,
             )
 
             result = filter_instance.filter(record)
@@ -392,7 +398,13 @@ class TestSensitiveDataFilterEdgeCases:
         """Test filtering empty message."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test_logger", level=logging.INFO, pathname="test.py", lineno=0, msg="", args=(), exc_info=None
+            name="test_logger",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg="",
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -621,7 +633,8 @@ class TestSetupLoggerHandlers:
             console_handlers = [
                 h
                 for h in logger.handlers
-                if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+                if isinstance(h, logging.StreamHandler)
+                and not isinstance(h, logging.FileHandler)
             ]
             assert len(console_handlers) > 0
 
@@ -630,7 +643,9 @@ class TestSetupLoggerHandlers:
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = setup_logger("app", log_dir=tmpdir)
 
-            file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+            file_handlers = [
+                h for h in logger.handlers if isinstance(h, logging.FileHandler)
+            ]
             assert len(file_handlers) > 0
 
     def test_setup_logger_handlers_have_formatter(self):
@@ -1012,7 +1027,13 @@ class TestSensitiveDataFilterComprehensive:
         """Test filtering various API key formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=f"Key: {api_key}", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg=f"Key: {api_key}",
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -1033,7 +1054,13 @@ class TestSensitiveDataFilterComprehensive:
         """Test filtering various email formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=f"Email: {email}", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg=f"Email: {email}",
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)
@@ -1056,7 +1083,13 @@ class TestSensitiveDataFilterComprehensive:
         """Test filtering various password formats."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=0, msg=password_msg, args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=0,
+            msg=password_msg,
+            args=(),
+            exc_info=None,
         )
 
         result = filter_instance.filter(record)

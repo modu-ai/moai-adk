@@ -53,7 +53,9 @@ class CrossPlatformTimeout:
         """
         # Convert float to int for signal.alarm()
         self.timeout_seconds = timeout_seconds
-        self.timeout_seconds_int = max(1, int(timeout_seconds))  # signal.alarm requires >=1
+        self.timeout_seconds_int = max(
+            1, int(timeout_seconds)
+        )  # signal.alarm requires >=1
         self.callback = callback
         self.timer: Optional[threading.Timer] = None
         self._is_windows = platform.system() == "Windows"
@@ -90,7 +92,9 @@ class CrossPlatformTimeout:
         def timeout_handler():
             if self.callback:
                 self.callback()
-            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)")
+            raise TimeoutError(
+                f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)"
+            )
 
         self.timer = threading.Timer(self.timeout_seconds, timeout_handler)
         self.timer.daemon = True
@@ -112,7 +116,9 @@ class CrossPlatformTimeout:
                 except Exception:
                     # Ignore callback exceptions, timeout error takes precedence
                     pass
-            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)")
+            raise TimeoutError(
+                f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)"
+            )
 
         # Save old handler to restore later
         self._old_handler = signal.signal(signal.SIGALRM, signal_handler)

@@ -27,7 +27,9 @@ class VersionDetector:
         self.old_config = self.project_root / ".moai" / "config.json"
         self.new_config = self.project_root / ".moai" / "config" / "config.json"
         self.old_statusline = self.project_root / ".claude" / "statusline-config.yaml"
-        self.new_statusline = self.project_root / ".moai" / "config" / "statusline-config.yaml"
+        self.new_statusline = (
+            self.project_root / ".moai" / "config" / "statusline-config.yaml"
+        )
 
     def detect_version(self) -> str:
         """
@@ -118,7 +120,9 @@ class VersionDetector:
         if self.old_config.exists():
             plan["cleanup"].append(str(self.old_config.relative_to(self.project_root)))
         if self.old_statusline.exists():
-            plan["cleanup"].append(str(self.old_statusline.relative_to(self.project_root)))
+            plan["cleanup"].append(
+                str(self.old_statusline.relative_to(self.project_root))
+            )
 
         return plan
 

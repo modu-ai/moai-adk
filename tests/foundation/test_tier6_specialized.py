@@ -46,7 +46,16 @@ class TestContext7SkillMetadata:
 
     def test_context7_auto_trigger_keywords(self):
         """Verify Context7 skill has 8-15 auto-trigger keywords."""
-        keywords = ["context7", "mcp", "library", "documentation", "api", "integration", "patterns", "models"]
+        keywords = [
+            "context7",
+            "mcp",
+            "library",
+            "documentation",
+            "api",
+            "integration",
+            "patterns",
+            "models",
+        ]
         assert 8 <= len(keywords) <= 15
 
     def test_context7_category_tier_is_6(self):
@@ -70,7 +79,10 @@ class TestContext7Implementation:
     def test_context7_library_query_creation(self):
         """Test creating Context7 library query."""
         query = self.Context7Query(
-            library_id="/vercel/next.js", topic="server-side rendering patterns", max_tokens=5000, version="16.0"
+            library_id="/vercel/next.js",
+            topic="server-side rendering patterns",
+            max_tokens=5000,
+            version="16.0",
         )
         assert query.library_id.startswith("/")
         assert query.max_tokens > 0
@@ -100,7 +112,12 @@ class TestContext7Implementation:
 
     def test_context7_version_compatibility(self):
         """Test Context7 version compatibility checking."""
-        compat = {"library": "/vercel/next.js", "current_version": "16.0", "min_version": "14.0", "compatible": True}
+        compat = {
+            "library": "/vercel/next.js",
+            "current_version": "16.0",
+            "min_version": "14.0",
+            "compatible": True,
+        }
         assert compat["compatible"]
 
 
@@ -109,7 +126,11 @@ class TestContext7AdvancedPatterns:
 
     def test_context7_fallback_documentation(self):
         """Test Context7 fallback to static documentation."""
-        doc_source = {"primary": "context7_api", "fallback": "static_markdown", "timeout": 5}
+        doc_source = {
+            "primary": "context7_api",
+            "fallback": "static_markdown",
+            "timeout": 5,
+        }
         assert doc_source["fallback"] == "static_markdown"
 
     def test_context7_caching_strategy(self):
@@ -185,12 +206,20 @@ class TestPlaywrightImplementation:
 
     def test_playwright_page_navigation(self):
         """Test Playwright page navigation."""
-        nav_action = {"url": "https://example.com/login", "wait_until": "networkidle", "timeout": 30000}
+        nav_action = {
+            "url": "https://example.com/login",
+            "wait_until": "networkidle",
+            "timeout": 30000,
+        }
         assert nav_action["url"].startswith("https")
 
     def test_playwright_element_interaction(self):
         """Test Playwright element interaction patterns."""
-        interaction = {"selector": 'input[type="email"]', "action": "fill", "value": "user@example.com"}
+        interaction = {
+            "selector": 'input[type="email"]',
+            "action": "fill",
+            "value": "user@example.com",
+        }
         assert interaction["action"] in ["fill", "click", "type"]
 
     def test_playwright_screenshot_capture(self):
@@ -214,7 +243,11 @@ class TestPlaywrightAdvancedPatterns:
 
     def test_playwright_network_interception(self):
         """Test Playwright network request interception."""
-        intercept = {"pattern": "**/*.json", "response_status": 200, "mock_data": {"status": "ok"}}
+        intercept = {
+            "pattern": "**/*.json",
+            "response_status": 200,
+            "mock_data": {"status": "ok"},
+        }
         assert intercept["response_status"] > 0
 
     def test_playwright_accessibility_testing(self):
@@ -241,7 +274,16 @@ class TestFigmaApiSkillMetadata:
 
     def test_figma_api_auto_trigger_keywords(self):
         """Verify Figma API skill has 8-15 auto-trigger keywords."""
-        keywords = ["figma", "api", "design", "ui-generation", "components", "export", "automation", "integration"]
+        keywords = [
+            "figma",
+            "api",
+            "design",
+            "ui-generation",
+            "components",
+            "export",
+            "automation",
+            "integration",
+        ]
         assert 8 <= len(keywords) <= 15
 
 
@@ -260,7 +302,10 @@ class TestFigmaApiImplementation:
     def test_figma_file_retrieval(self):
         """Test retrieving Figma file metadata."""
         file = self.FigmaFile(
-            file_id="abc123", name="Design System", owner_id="owner_123", last_modified="2025-11-24T10:00:00Z"
+            file_id="abc123",
+            name="Design System",
+            owner_id="owner_123",
+            last_modified="2025-11-24T10:00:00Z",
         )
         assert file.file_id
         assert file.name
@@ -316,7 +361,11 @@ class TestFigmaApiAdvancedPatterns:
 
     def test_figma_plugin_integration(self):
         """Test Figma plugin integration patterns."""
-        plugin = {"name": "code-generator", "api_version": "1.0", "permissions": ["file:read", "library:read"]}
+        plugin = {
+            "name": "code-generator",
+            "api_version": "1.0",
+            "permissions": ["file:read", "library:read"],
+        }
         assert plugin["api_version"]
 
 
@@ -404,17 +453,28 @@ class TestNotionApiAdvancedPatterns:
 
     def test_notion_relation_management(self):
         """Test Notion relation and rollup properties."""
-        relation = {"type": "relation", "database_id": "target_db_123", "synced_property": "Related Tasks"}
+        relation = {
+            "type": "relation",
+            "database_id": "target_db_123",
+            "synced_property": "Related Tasks",
+        }
         assert relation["type"] == "relation"
 
     def test_notion_formula_properties(self):
         """Test Notion formula property configuration."""
-        formula = {"expression": 'concat(prop("Name"), " - ", prop("Status"))', "type": "string"}
+        formula = {
+            "expression": 'concat(prop("Name"), " - ", prop("Status"))',
+            "type": "string",
+        }
         assert "concat" in formula["expression"]
 
     def test_notion_api_authentication(self):
         """Test Notion API authentication."""
-        auth = {"type": "bearer_token", "token": "secret_token", "version": "2024-08-06"}
+        auth = {
+            "type": "bearer_token",
+            "token": "secret_token",
+            "version": "2024-08-06",
+        }
         assert auth["type"] == "bearer_token"
 
 
@@ -469,7 +529,10 @@ class TestDocsImplementation:
     def test_documentation_config_creation(self):
         """Test creating documentation configuration."""
         config = self.DocumentationConfig(
-            project_name="My API", output_format="markdown", source_paths=["./src", "./lib"], template="modern"
+            project_name="My API",
+            output_format="markdown",
+            source_paths=["./src", "./lib"],
+            template="modern",
         )
         assert config.project_name
         assert config.output_format in ["markdown", "html", "pdf"]
@@ -481,12 +544,20 @@ class TestDocsImplementation:
 
     def test_changelog_generation(self):
         """Test changelog generation from commits."""
-        changelog = {"source": "git_commits", "format": "markdown", "grouping": "semantic"}
+        changelog = {
+            "source": "git_commits",
+            "format": "markdown",
+            "grouping": "semantic",
+        }
         assert changelog["source"] == "git_commits"
 
     def test_code_example_extraction(self):
         """Test extracting code examples from source."""
-        examples = {"language": "python", "path_pattern": "**/*.py", "tags": ["example", "usage"]}
+        examples = {
+            "language": "python",
+            "path_pattern": "**/*.py",
+            "tags": ["example", "usage"],
+        }
         assert len(examples["tags"]) > 0
 
     def test_navigation_menu_generation(self):
@@ -505,7 +576,11 @@ class TestDocsAdvancedPatterns:
 
     def test_search_index_generation(self):
         """Test documentation search index generation."""
-        search = {"engine": "algolia", "index_fields": ["title", "content", "keywords"], "enabled": True}
+        search = {
+            "engine": "algolia",
+            "index_fields": ["title", "content", "keywords"],
+            "enabled": True,
+        }
         assert search["enabled"]
 
     def test_documentation_deployment(self):
@@ -522,17 +597,29 @@ class TestSpecializedTierIntegration:
 
     def test_context7_playwright_integration(self):
         """Test Context7 + Playwright integration."""
-        integration = {"context7_docs": "available", "playwright_tests": "automated", "sync": True}
+        integration = {
+            "context7_docs": "available",
+            "playwright_tests": "automated",
+            "sync": True,
+        }
         assert integration["sync"]
 
     def test_figma_docs_integration(self):
         """Test Figma API + Docs integration."""
-        integration = {"figma_export": True, "docs_generation": True, "design_tokens": "included"}
+        integration = {
+            "figma_export": True,
+            "docs_generation": True,
+            "design_tokens": "included",
+        }
         assert integration["design_tokens"]
 
     def test_notion_docs_integration(self):
         """Test Notion API + Docs integration."""
-        integration = {"notion_source": True, "docs_generation": True, "sync_frequency": "daily"}
+        integration = {
+            "notion_source": True,
+            "docs_generation": True,
+            "sync_frequency": "daily",
+        }
         assert integration["notion_source"]
 
 

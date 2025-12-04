@@ -68,7 +68,9 @@ class EnterpriseTestOrchestrator:
         test_plan = {
             "application_type": app_type,
             "complexity_level": complexity,
-            "test_strategies": self._generate_test_strategies(app_type, complexity, context7_patterns),
+            "test_strategies": self._generate_test_strategies(
+                app_type, complexity, context7_patterns
+            ),
             "browser_matrix": self._create_browser_matrix(complexity),
             "coverage_targets": self._set_coverage_targets(app_type),
             "performance_benchmarks": self._define_performance_benchmarks(app_type),
@@ -156,7 +158,9 @@ class EnterpriseTestOrchestrator:
 
         return patterns.get(app_type, {})
 
-    def _generate_test_strategies(self, app_type: str, complexity: str, patterns: Dict) -> List[Dict]:
+    def _generate_test_strategies(
+        self, app_type: str, complexity: str, patterns: Dict
+    ) -> List[Dict]:
         """Generate AI-enhanced test strategies"""
 
         strategies = [
@@ -197,9 +201,17 @@ class EnterpriseTestOrchestrator:
         """AI-optimized browser testing matrix"""
 
         base_matrix = [
-            {"browser": "chromium", "versions": ["latest"], "viewports": ["desktop", "mobile"]},
+            {
+                "browser": "chromium",
+                "versions": ["latest"],
+                "viewports": ["desktop", "mobile"],
+            },
             {"browser": "firefox", "versions": ["latest"], "viewports": ["desktop"]},
-            {"browser": "webkit", "versions": ["latest"], "viewports": ["desktop", "mobile"]},
+            {
+                "browser": "webkit",
+                "versions": ["latest"],
+                "viewports": ["desktop", "mobile"],
+            },
         ]
 
         if complexity in ["high", "medium"]:
@@ -212,7 +224,11 @@ class EnterpriseTestOrchestrator:
     def _set_coverage_targets(self, app_type: str) -> Dict:
         """AI-optimized coverage targets"""
 
-        targets = {"functional_coverage": 85, "visual_coverage": 80, "performance_coverage": 70}
+        targets = {
+            "functional_coverage": 85,
+            "visual_coverage": 80,
+            "performance_coverage": 70,
+        }
 
         if app_type == "e-commerce":
             targets["functional_coverage"] = 95
@@ -268,10 +284,14 @@ class EnterpriseTestOrchestrator:
             coverage_percentage=coverage_percentage,
         )
 
-        logger.info(f"✅ Test suite completed: {pass_rate:.1f}% pass rate, {coverage_percentage:.1f}% coverage")
+        logger.info(
+            f"✅ Test suite completed: {pass_rate:.1f}% pass rate, {coverage_percentage:.1f}% coverage"
+        )
         return test_suite
 
-    async def _execute_strategy(self, strategy: Dict, test_plan: Dict) -> List[TestResult]:
+    async def _execute_strategy(
+        self, strategy: Dict, test_plan: Dict
+    ) -> List[TestResult]:
         """Execute individual test strategy with AI enhancements"""
 
         logger.info(f"🧪 Executing strategy: {strategy['name']}")
@@ -285,7 +305,9 @@ class EnterpriseTestOrchestrator:
                 test_name = f"{strategy['name']}_{browser_config['browser']}_{viewport}"
 
                 # Simulate test execution
-                execution_time = 2.5 + len(strategy["name"]) * 0.1  # Simulate variable execution times
+                execution_time = (
+                    2.5 + len(strategy["name"]) * 0.1
+                )  # Simulate variable execution times
                 status = TestStatus.PASSED if execution_time < 5 else TestStatus.FAILED
 
                 test_result = TestResult(
@@ -306,7 +328,9 @@ class EnterpriseTestOrchestrator:
 
         return test_results
 
-    def _calculate_coverage(self, test_results: List[TestResult], test_plan: Dict) -> float:
+    def _calculate_coverage(
+        self, test_results: List[TestResult], test_plan: Dict
+    ) -> float:
         """AI-powered coverage calculation"""
 
         # Simplified coverage calculation
@@ -318,7 +342,9 @@ class EnterpriseTestOrchestrator:
         browser_coverage = len(test_plan["browser_matrix"])
 
         coverage = (
-            passed_tests / total_tests * 0.6 + (strategies_count / 3) * 0.2 + (browser_coverage / 3) * 0.2
+            passed_tests / total_tests * 0.6
+            + (strategies_count / 3) * 0.2
+            + (browser_coverage / 3) * 0.2
         ) * 100
 
         return min(coverage, 100.0)
@@ -347,9 +373,15 @@ class EnterpriseTestOrchestrator:
             },
             "ai_insights": {
                 "failure_patterns": self._analyze_failure_patterns(failed_tests),
-                "performance_bottlenecks": self._identify_performance_bottlenecks(performance_issues),
-                "maintenance_recommendations": self._generate_maintenance_recommendations(test_suite),
-                "optimization_opportunities": self._identify_optimization_opportunities(test_suite),
+                "performance_bottlenecks": self._identify_performance_bottlenecks(
+                    performance_issues
+                ),
+                "maintenance_recommendations": self._generate_maintenance_recommendations(
+                    test_suite
+                ),
+                "optimization_opportunities": self._identify_optimization_opportunities(
+                    test_suite
+                ),
             },
             "context7_recommendations": {
                 "latest_patterns": "Applied Context7 MCP best practices",
@@ -371,10 +403,18 @@ class EnterpriseTestOrchestrator:
         # Factor in consistency (standard deviation of execution times)
         execution_times = [t.execution_time for t in test_suite.tests]
         avg_time = sum(execution_times) / len(execution_times) if execution_times else 1
-        variance = sum((t - avg_time) ** 2 for t in execution_times) / len(execution_times) if execution_times else 0
+        variance = (
+            sum((t - avg_time) ** 2 for t in execution_times) / len(execution_times)
+            if execution_times
+            else 0
+        )
         consistency_factor = 1 - min(variance / avg_time**2, 1) if avg_time > 0 else 0
 
-        reliability_score = base_score * 0.6 + coverage_factor * 100 * 0.2 + consistency_factor * 100 * 0.2
+        reliability_score = (
+            base_score * 0.6
+            + coverage_factor * 100 * 0.2
+            + consistency_factor * 100 * 0.2
+        )
         return min(reliability_score, 100.0)
 
     def _calculate_performance_score(self, test_suite: TestSuite) -> float:
@@ -440,16 +480,22 @@ class EnterpriseTestOrchestrator:
             browser_failures[test.browser] = browser_failures.get(test.browser, 0) + 1
 
         if len(browser_failures) == 1:
-            patterns.append(f"Browser-specific issues: {list(browser_failures.keys())[0]}")
+            patterns.append(
+                f"Browser-specific issues: {list(browser_failures.keys())[0]}"
+            )
 
         # Analyze timing patterns
         slow_tests = [t for t in failed_tests if t.execution_time > 5.0]
         if slow_tests:
-            patterns.append(f"Performance-related failures: {len(slow_tests)} slow tests")
+            patterns.append(
+                f"Performance-related failures: {len(slow_tests)} slow tests"
+            )
 
         return patterns
 
-    def _identify_performance_bottlenecks(self, performance_issues: List[TestResult]) -> List[str]:
+    def _identify_performance_bottlenecks(
+        self, performance_issues: List[TestResult]
+    ) -> List[str]:
         """AI-powered performance bottleneck identification"""
 
         bottlenecks = []
@@ -457,7 +503,9 @@ class EnterpriseTestOrchestrator:
         if not performance_issues:
             return bottlenecks
 
-        avg_execution_time = sum(t.execution_time for t in performance_issues) / len(performance_issues)
+        avg_execution_time = sum(t.execution_time for t in performance_issues) / len(
+            performance_issues
+        )
 
         if avg_execution_time > 10.0:
             bottlenecks.append("Severe performance degradation detected")
@@ -473,16 +521,26 @@ class EnterpriseTestOrchestrator:
 
         # Coverage recommendations
         if test_suite.coverage_percentage < 80:
-            recommendations.append("Increase test coverage by adding more test scenarios")
+            recommendations.append(
+                "Increase test coverage by adding more test scenarios"
+            )
 
         # Reliability recommendations
         if test_suite.pass_rate < 90:
-            recommendations.append("Investigate failing tests and improve test stability")
+            recommendations.append(
+                "Investigate failing tests and improve test stability"
+            )
 
         # Performance recommendations
-        avg_time = sum(t.execution_time for t in test_suite.tests) / len(test_suite.tests) if test_suite.tests else 0
+        avg_time = (
+            sum(t.execution_time for t in test_suite.tests) / len(test_suite.tests)
+            if test_suite.tests
+            else 0
+        )
         if avg_time > 5.0:
-            recommendations.append("Optimize test execution time through parallelization")
+            recommendations.append(
+                "Optimize test execution time through parallelization"
+            )
 
         return recommendations
 
@@ -493,13 +551,19 @@ class EnterpriseTestOrchestrator:
 
         # Test parallelization opportunities
         if test_suite.total_time > 60:
-            opportunities.append("Implement test parallelization to reduce execution time")
+            opportunities.append(
+                "Implement test parallelization to reduce execution time"
+            )
 
         # Smart selector opportunities
-        opportunities.append("Implement AI-powered smart selectors for better test reliability")
+        opportunities.append(
+            "Implement AI-powered smart selectors for better test reliability"
+        )
 
         # Visual regression optimization
-        opportunities.append("Optimize visual regression tests with AI-driven ignore regions")
+        opportunities.append(
+            "Optimize visual regression tests with AI-driven ignore regions"
+        )
 
         return opportunities
 
@@ -530,7 +594,9 @@ async def main():
 
     # Step 1: Generate AI-powered test plan
     test_plan = await orchestrator.create_test_plan(application_info)
-    print(f"📋 Test Plan Generated: {test_plan['application_type']} ({test_plan['complexity_level']} complexity)")
+    print(
+        f"📋 Test Plan Generated: {test_plan['application_type']} ({test_plan['complexity_level']} complexity)"
+    )
 
     # Step 2: Execute test suite
     test_suite = await orchestrator.execute_test_suite(test_plan)
@@ -540,9 +606,15 @@ async def main():
     intelligence_report = await orchestrator.generate_intelligence_report(test_suite)
 
     print("\n📊 AI Intelligence Report:")
-    print(f"   Reliability Score: {intelligence_report['quality_metrics']['reliability_score']:.1f}/100")
-    print(f"   Performance Score: {intelligence_report['quality_metrics']['performance_score']:.1f}/100")
-    print(f"   Stability Score: {intelligence_report['quality_metrics']['stability_score']:.1f}/100")
+    print(
+        f"   Reliability Score: {intelligence_report['quality_metrics']['reliability_score']:.1f}/100"
+    )
+    print(
+        f"   Performance Score: {intelligence_report['quality_metrics']['performance_score']:.1f}/100"
+    )
+    print(
+        f"   Stability Score: {intelligence_report['quality_metrics']['stability_score']:.1f}/100"
+    )
 
     print("\n💡 AI Recommendations:")
     for rec in intelligence_report["ai_insights"]["maintenance_recommendations"]:

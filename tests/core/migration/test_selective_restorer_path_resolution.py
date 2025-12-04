@@ -162,7 +162,9 @@ class TestSelectiveRestorerPathResolution:
             assert stats["success"] == 1
 
             # Verify the problematic path was resolved correctly
-            restored_file = project_path / ".claude" / "agents" / "yoda" / "yoda-master.md"
+            restored_file = (
+                project_path / ".claude" / "agents" / "yoda" / "yoda-master.md"
+            )
             assert restored_file.exists()
             assert restored_file.read_text() == "Yoda content"
 
@@ -305,7 +307,9 @@ class TestSelectiveRestorerPathResolution:
 
             # Verify all files were restored
             assert (project_path / ".claude" / "agents" / "my-agent.md").exists()
-            assert (project_path / ".claude" / "commands" / "moai" / "my-command.md").exists()
+            assert (
+                project_path / ".claude" / "commands" / "moai" / "my-command.md"
+            ).exists()
             assert (project_path / ".claude" / "hooks" / "moai" / "my-hook.py").exists()
 
         except Exception as e:

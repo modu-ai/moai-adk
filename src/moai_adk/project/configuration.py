@@ -116,7 +116,11 @@ class ConfigurationManager:
             "project_description": ("project", "description"),
             "git_strategy_mode": ("git_strategy", "mode"),
             "git_strategy_workflow": ("git_strategy", "workflow"),
-            "git_personal_auto_checkpoint": ("git_strategy", "personal", "auto_checkpoint"),
+            "git_personal_auto_checkpoint": (
+                "git_strategy",
+                "personal",
+                "auto_checkpoint",
+            ),
             "git_personal_push_remote": ("git_strategy", "personal", "push_to_remote"),
             "git_team_auto_pr": ("git_strategy", "team", "auto_pr"),
             "git_team_draft_pr": ("git_strategy", "team", "draft_pr"),
@@ -329,7 +333,9 @@ class AutoDetectionEngine:
         config["project"]["locale"] = self.detect_locale(conv_lang)
 
         # Detect language name
-        config["language"]["conversation_language_name"] = self.detect_language_name(conv_lang)
+        config["language"]["conversation_language_name"] = self.detect_language_name(
+            conv_lang
+        )
 
         # Detect template version
         config["project"]["template_version"] = self.detect_template_version()
@@ -607,7 +613,9 @@ class ConditionalBatchRenderer:
         """
         self.schema = schema
 
-    def get_visible_batches(self, tab_id: str, git_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def get_visible_batches(
+        self, tab_id: str, git_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Get visible batches for a tab based on configuration.
 
         Filters batches for a given tab by evaluating their show_if conditions
@@ -710,11 +718,17 @@ class ConditionalBatchRenderer:
 
         if " OR " in expression:
             or_parts = expression.split(" OR ")
-            return any(ConditionalBatchRenderer._safe_evaluate(part.strip(), context) for part in or_parts)
+            return any(
+                ConditionalBatchRenderer._safe_evaluate(part.strip(), context)
+                for part in or_parts
+            )
 
         if " AND " in expression:
             and_parts = expression.split(" AND ")
-            return all(ConditionalBatchRenderer._safe_evaluate(part.strip(), context) for part in and_parts)
+            return all(
+                ConditionalBatchRenderer._safe_evaluate(part.strip(), context)
+                for part in and_parts
+            )
 
         return ConditionalBatchRenderer._evaluate_comparison(expression, context)
 
@@ -775,7 +789,9 @@ class ConditionalBatchRenderer:
             Resolved value
         """
         operand = operand.strip()
-        if (operand.startswith("'") and operand.endswith("'")) or (operand.startswith('"') and operand.endswith('"')):
+        if (operand.startswith("'") and operand.endswith("'")) or (
+            operand.startswith('"') and operand.endswith('"')
+        ):
             return operand[1:-1]
         try:
             if "." in operand:
@@ -1017,7 +1033,9 @@ class TabSchemaValidator:
 
         for batch_idx, batch in enumerate(batches):
             batch_errors = TabSchemaValidator._validate_batch(batch)
-            errors.extend([f"Tab {tab_idx}, Batch {batch_idx}: {e}" for e in batch_errors])
+            errors.extend(
+                [f"Tab {tab_idx}, Batch {batch_idx}: {e}" for e in batch_errors]
+            )
 
         return errors
 
@@ -1066,6 +1084,8 @@ class TabSchemaValidator:
         # Check for common emoji Unicode ranges
         for char in text:
             code = ord(char)
-            if 0x1F300 <= code <= 0x1F9FF or 0x2600 <= code <= 0x27BF:  # Emoji range  # Misc symbols
+            if (
+                0x1F300 <= code <= 0x1F9FF or 0x2600 <= code <= 0x27BF
+            ):  # Emoji range  # Misc symbols
                 return True
         return False

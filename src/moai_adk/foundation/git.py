@@ -141,7 +141,9 @@ class ConventionalCommitValidator:
             is_breaking = True
 
         # Validate format: type(scope): subject
-        pattern = r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
+        pattern = (
+            r"^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+?\))?(!)?:\s+.+$"
+        )
         match = re.match(pattern, first_line)
 
         if not match:
@@ -162,7 +164,9 @@ class ConventionalCommitValidator:
         # Extract components
         type_match = re.match(r"^(\w+)(\((.+?)\))?(!)?", first_line)
         if not type_match:
-            return ValidateResult(is_valid=False, errors=["Could not parse commit message"])
+            return ValidateResult(
+                is_valid=False, errors=["Could not parse commit message"]
+            )
 
         commit_type = type_match.group(1)
         scope = type_match.group(3) if type_match.group(3) else None
@@ -172,7 +176,11 @@ class ConventionalCommitValidator:
         subject = subject_match.group(1) if subject_match else None
 
         return ValidateResult(
-            is_valid=True, commit_type=commit_type, scope=scope, subject=subject, is_breaking_change=is_breaking
+            is_valid=True,
+            commit_type=commit_type,
+            scope=scope,
+            subject=subject,
+            is_breaking_change=is_breaking,
         )
 
     def validate_batch(self, messages: List[str]) -> Dict[str, ValidateResult]:
@@ -198,7 +206,11 @@ class BranchingStrategySelector:
             "name": "Direct Commit",
             "description": "Commit directly to main/develop branch",
             "best_for": ["Solo developers", "Low-risk changes", "Rapid prototyping"],
-            "commands": ["git switch develop", "git commit -m 'feat: ...'", "git push origin develop"],
+            "commands": [
+                "git switch develop",
+                "git commit -m 'feat: ...'",
+                "git push origin develop",
+            ],
         },
         "per_spec": {
             "name": "Per-SPEC Choice",
@@ -208,7 +220,9 @@ class BranchingStrategySelector:
         },
     }
 
-    def select_strategy(self, team_size: int, risk_level: str, need_review: bool) -> str:
+    def select_strategy(
+        self, team_size: int, risk_level: str, need_review: bool
+    ) -> str:
         """Select branching strategy based on parameters."""
         # Feature branch for teams, risky changes, or review requirements
         if team_size > 1 or risk_level == "high" or need_review:
@@ -230,9 +244,21 @@ class GitWorkflowManager:
     """Manages Git workflow operations for SPEC-first TDD."""
 
     TDD_PHASES = {
-        "RED": {"commit_type": "test", "description": "Write failing tests", "tests_status": "failing"},
-        "GREEN": {"commit_type": "feat", "description": "Implement to pass tests", "tests_status": "passing"},
-        "REFACTOR": {"commit_type": "refactor", "description": "Optimize implementation", "tests_status": "passing"},
+        "RED": {
+            "commit_type": "test",
+            "description": "Write failing tests",
+            "tests_status": "failing",
+        },
+        "GREEN": {
+            "commit_type": "feat",
+            "description": "Implement to pass tests",
+            "tests_status": "passing",
+        },
+        "REFACTOR": {
+            "commit_type": "refactor",
+            "description": "Optimize implementation",
+            "tests_status": "passing",
+        },
     }
 
     def create_branch_command(self, branch_name: str, use_modern: bool = True) -> str:
@@ -241,12 +267,18 @@ class GitWorkflowManager:
             return f"git switch -c {branch_name}"
         return f"git checkout -b {branch_name}"
 
-    def format_tdd_commit(self, commit_type: str, scope: str, subject: str, phase: str) -> str:
+    def format_tdd_commit(
+        self, commit_type: str, scope: str, subject: str, phase: str
+    ) -> str:
         """Format TDD phase commit message."""
         base_msg = f"{commit_type}({scope}): {subject}"
 
         # Add phase indicator
-        phase_indicators = {"RED": "(RED phase)", "GREEN": "(GREEN phase)", "REFACTOR": "(REFACTOR phase)"}
+        phase_indicators = {
+            "RED": "(RED phase)",
+            "GREEN": "(GREEN phase)",
+            "REFACTOR": "(REFACTOR phase)",
+        }
 
         phase_indicator = phase_indicators.get(phase, f"({phase})")
         return f"{base_msg} {phase_indicator}"
@@ -280,7 +312,11 @@ class GitPerformanceOptimizer:
     """Provides Git performance optimization recommendations."""
 
     PERFORMANCE_TIPS = {
-        "small": ["Standard clone operations sufficient", "Keep working directory clean", "Regular garbage collection"],
+        "small": [
+            "Standard clone operations sufficient",
+            "Keep working directory clean",
+            "Regular garbage collection",
+        ],
         "medium": [
             "Enable MIDX for faster operations",
             "Use shallow clones for CI/CD",

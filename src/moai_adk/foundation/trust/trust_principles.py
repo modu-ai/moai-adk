@@ -170,7 +170,9 @@ class TrustPrinciplesValidator:
 
             # Generate recommendations
             if test_ratio < 0.5:
-                recommendations.append("Increase test file coverage (aim for 1:1 ratio with source files)")
+                recommendations.append(
+                    "Increase test file coverage (aim for 1:1 ratio with source files)"
+                )
 
             if pattern_coverage < 0.7:
                 recommendations.append("Add comprehensive test patterns and assertions")
@@ -236,7 +238,9 @@ class TrustPrinciplesValidator:
                         func_lines = 0
                         indent_level = None
 
-                        for i, line in enumerate(content[func_start:].split("\n")[1:], 1):
+                        for i, line in enumerate(
+                            content[func_start:].split("\n")[1:], 1
+                        ):
                             if line.strip() == "":
                                 continue
 
@@ -249,10 +253,14 @@ class TrustPrinciplesValidator:
 
                         if func_lines > 50:
                             long_functions += 1
-                            issues.append(f"Long function in {file_path.name}: {match.group(1)} ({func_lines} lines)")
+                            issues.append(
+                                f"Long function in {file_path.name}: {match.group(1)} ({func_lines} lines)"
+                            )
 
                         # Check for docstring
-                        func_content = content[func_start : func_start + 1000]  # Check next 1000 chars
+                        func_content = content[
+                            func_start : func_start + 1000
+                        ]  # Check next 1000 chars
                         if '"""' in func_content.split("\n")[1:5]:
                             functions_with_docstrings += 1
 
@@ -267,7 +275,9 @@ class TrustPrinciplesValidator:
 
                         # Check for docstring
                         class_start = match.start()
-                        class_content = content[class_start : class_start + 500]  # Check next 500 chars
+                        class_content = content[
+                            class_start : class_start + 500
+                        ]  # Check next 500 chars
                         if '"""' in class_content.split("\n")[1:3]:
                             classes_with_docstrings += 1
 
@@ -280,7 +290,12 @@ class TrustPrinciplesValidator:
             long_function_ratio = 1 - (long_functions / max(total_functions, 1))
             class_docstring_ratio = classes_with_docstrings / max(total_classes, 1)
 
-            score = docstring_ratio * 30 + type_hint_ratio * 25 + long_function_ratio * 25 + class_docstring_ratio * 20
+            score = (
+                docstring_ratio * 30
+                + type_hint_ratio * 25
+                + long_function_ratio * 25
+                + class_docstring_ratio * 20
+            )
 
             metrics = {
                 "total_functions": total_functions,
@@ -357,7 +372,9 @@ class TrustPrinciplesValidator:
                             unified_patterns_found += 1
 
                     # Check naming violations
-                    if re.search(r"class\s+[a-z]", content):  # Class starting with lowercase
+                    if re.search(
+                        r"class\s+[a-z]", content
+                    ):  # Class starting with lowercase
                         naming_violations += 1
 
                     # Count error handling
@@ -377,7 +394,12 @@ class TrustPrinciplesValidator:
             logging_ratio = logging_count / max(file_count, 1)
             naming_quality = 1 - (naming_violations / max(file_count, 1))
 
-            score = pattern_coverage * 40 + error_handling_ratio * 25 + logging_ratio * 20 + naming_quality * 15
+            score = (
+                pattern_coverage * 40
+                + error_handling_ratio * 25
+                + logging_ratio * 20
+                + naming_quality * 15
+            )
 
             metrics = {
                 "files_analyzed": file_count,
@@ -390,7 +412,9 @@ class TrustPrinciplesValidator:
 
             # Generate recommendations
             if pattern_coverage < 0.7:
-                recommendations.append("Improve code structure consistency across files")
+                recommendations.append(
+                    "Improve code structure consistency across files"
+                )
 
             if error_handling_count < file_count * 0.5:
                 recommendations.append("Add comprehensive error handling")
@@ -451,7 +475,9 @@ class TrustPrinciplesValidator:
                             if pattern_name in ["sql_injection", "secret_management"]:
                                 high_risk_patterns += len(matches)
                                 for match in matches:
-                                    security_issues.append(f"High-risk pattern in {file_path.name}: {pattern_name}")
+                                    security_issues.append(
+                                        f"High-risk pattern in {file_path.name}: {pattern_name}"
+                                    )
 
                     # Check for hardcoded secrets (basic pattern)
                     secret_patterns = [
@@ -463,7 +489,9 @@ class TrustPrinciplesValidator:
 
                     for pattern in secret_patterns:
                         if re.search(pattern, content, re.IGNORECASE):
-                            security_issues.append(f"Potential hardcoded secret in {file_path.name}")
+                            security_issues.append(
+                                f"Potential hardcoded secret in {file_path.name}"
+                            )
                             high_risk_patterns += 1
 
                 except Exception as e:
@@ -491,7 +519,9 @@ class TrustPrinciplesValidator:
 
             # Generate recommendations
             if high_risk_patterns > 0:
-                recommendations.append("Address high-risk security patterns immediately")
+                recommendations.append(
+                    "Address high-risk security patterns immediately"
+                )
                 issues.extend(security_issues[:5])  # Add first 5 issues
 
             if security_patterns_found < 10:
@@ -536,7 +566,9 @@ class TrustPrinciplesValidator:
         principle_scores = {}
 
         # Validate each principle
-        principle_scores[TrustPrinciple.TEST_FIRST] = self.validate_test_first(project_path)
+        principle_scores[TrustPrinciple.TEST_FIRST] = self.validate_test_first(
+            project_path
+        )
         principle_scores[TrustPrinciple.READABLE] = self.validate_readable(project_path)
         principle_scores[TrustPrinciple.UNIFIED] = self.validate_unified(project_path)
         principle_scores[TrustPrinciple.SECURED] = self.validate_secured(project_path)
@@ -562,10 +594,15 @@ class TrustPrinciplesValidator:
         score_levels = [score.compliance_level for score in principle_scores.values()]
         if all(level == ComplianceLevel.CRITICAL for level in score_levels):
             overall_compliance = ComplianceLevel.CRITICAL
-        elif all(level in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH] for level in score_levels):
+        elif all(
+            level in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH]
+            for level in score_levels
+        ):
             overall_compliance = ComplianceLevel.HIGH
         elif all(
-            level in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH, ComplianceLevel.MEDIUM] for level in score_levels
+            level
+            in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH, ComplianceLevel.MEDIUM]
+            for level in score_levels
         ):
             overall_compliance = ComplianceLevel.MEDIUM
         elif all(level != ComplianceLevel.NONE for level in score_levels):
@@ -603,7 +640,9 @@ class TrustPrinciplesValidator:
         report.append(f"Generated: {assessment.timestamp}")
         report.append(f"Overall Score: {assessment.overall_score}/100")
         report.append(f"Compliance Level: {assessment.compliance_level.value.upper()}")
-        report.append(f"Passed Checks: {assessment.passed_checks}/{assessment.total_checks}")
+        report.append(
+            f"Passed Checks: {assessment.passed_checks}/{assessment.total_checks}"
+        )
         report.append("")
 
         # Principle breakdown
@@ -637,13 +676,21 @@ class TrustPrinciplesValidator:
         report.append("")
 
         if assessment.overall_score >= 80:
-            report.append("✅ **EXCELLENT**: Project meets TRUST principles at a high level")
+            report.append(
+                "✅ **EXCELLENT**: Project meets TRUST principles at a high level"
+            )
         elif assessment.overall_score >= 70:
-            report.append("🟡 **GOOD**: Project mostly follows TRUST principles with some areas for improvement")
+            report.append(
+                "🟡 **GOOD**: Project mostly follows TRUST principles with some areas for improvement"
+            )
         elif assessment.overall_score >= 60:
-            report.append("🟠 **NEEDS IMPROVEMENT**: Project has significant gaps in TRUST principles")
+            report.append(
+                "🟠 **NEEDS IMPROVEMENT**: Project has significant gaps in TRUST principles"
+            )
         else:
-            report.append("❌ **CRITICAL**: Project requires immediate attention to TRUST principles")
+            report.append(
+                "❌ **CRITICAL**: Project requires immediate attention to TRUST principles"
+            )
 
         report.append("")
         report.append("## Next Steps")
@@ -656,7 +703,9 @@ class TrustPrinciplesValidator:
 
         if all_recommendations:
             report.append("### Priority Recommendations")
-            for i, rec in enumerate(set(all_recommendations[:10]), 1):  # Top 10 unique recommendations
+            for i, rec in enumerate(
+                set(all_recommendations[:10]), 1
+            ):  # Top 10 unique recommendations
                 report.append(f"{i}. {rec}")
 
         return "\n".join(report)

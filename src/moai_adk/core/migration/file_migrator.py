@@ -47,7 +47,9 @@ class FileMigrator:
             logger.error(f"Failed to create directory {directory}: {e}")
             return False
 
-    def move_file(self, source: Path, destination: Path, copy_instead: bool = True) -> bool:
+    def move_file(
+        self, source: Path, destination: Path, copy_instead: bool = True
+    ) -> bool:
         """
         Move a file from source to destination
 
@@ -114,7 +116,10 @@ class FileMigrator:
                 ".moai/config.json",
                 ".claude/statusline-config.yaml",
             ]
-            is_safe = any(str(file_path.relative_to(self.project_root)).endswith(pattern) for pattern in safe_patterns)
+            is_safe = any(
+                str(file_path.relative_to(self.project_root)).endswith(pattern)
+                for pattern in safe_patterns
+            )
             if not is_safe:
                 logger.warning(f"Refusing to delete non-safe file: {file_path}")
                 return False
@@ -161,9 +166,13 @@ class FileMigrator:
 
             if self.move_file(source, dest, copy_instead=True):
                 results["moved_files"] += 1
-                logger.info(f"✅ {move_op['description']}: {move_op['from']} → {move_op['to']}")
+                logger.info(
+                    f"✅ {move_op['description']}: {move_op['from']} → {move_op['to']}"
+                )
             else:
-                results["errors"].append(f"Failed to move: {move_op['from']} → {move_op['to']}")
+                results["errors"].append(
+                    f"Failed to move: {move_op['from']} → {move_op['to']}"
+                )
                 results["success"] = False
 
         return results

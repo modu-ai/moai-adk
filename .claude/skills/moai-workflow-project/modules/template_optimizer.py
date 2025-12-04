@@ -20,7 +20,9 @@ class TemplateOptimizer:
     def __init__(self, project_root: str, config: Dict[str, Any]):
         self.project_root = Path(project_root)
         self.config = config
-        self.templates_dir = self.project_root / ".claude/skills/moai-menu-project/templates"
+        self.templates_dir = (
+            self.project_root / ".claude/skills/moai-menu-project/templates"
+        )
         self.backups_dir = self.project_root / ".moai-backups"
         self.optimization_cache = {}
         self._ensure_directories()
@@ -58,21 +60,31 @@ class TemplateOptimizer:
         # Analyze each template file
         for template_file in template_files:
             file_analysis = self._analyze_template_file(template_file)
-            analysis_result["performance_metrics"][template_file["path"]] = file_analysis
+            analysis_result["performance_metrics"][
+                template_file["path"]
+            ] = file_analysis
 
         # Identify optimization opportunities
-        analysis_result["optimization_opportunities"] = self._identify_optimization_opportunities(
-            analysis_result["performance_metrics"]
+        analysis_result["optimization_opportunities"] = (
+            self._identify_optimization_opportunities(
+                analysis_result["performance_metrics"]
+            )
         )
 
         # Analyze overall project complexity
-        analysis_result["complexity_analysis"] = self._analyze_project_complexity(template_files)
+        analysis_result["complexity_analysis"] = self._analyze_project_complexity(
+            template_files
+        )
 
         # Calculate resource usage patterns
-        analysis_result["resource_usage"] = self._calculate_resource_usage(template_files)
+        analysis_result["resource_usage"] = self._calculate_resource_usage(
+            template_files
+        )
 
         # Generate backup recommendations
-        analysis_result["backup_recommendations"] = self._generate_backup_recommendations(analysis_result)
+        analysis_result["backup_recommendations"] = (
+            self._generate_backup_recommendations(analysis_result)
+        )
 
         return analysis_result
 
@@ -108,20 +120,37 @@ class TemplateOptimizer:
                             "path": str(relative_path),
                             "absolute_path": str(file_path),
                             "size_bytes": file_stats.st_size,
-                            "modified_time": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                            "modified_time": datetime.fromtimestamp(
+                                file_stats.st_mtime
+                            ).isoformat(),
                             "type": self._determine_template_type(file_path),
                             "language": self._determine_template_language(file_path),
                         }
                     )
 
         # Also check common template directories
-        template_dirs = ["templates", "template", "views", "layouts", "_layouts", "_includes", "_templates"]
+        template_dirs = [
+            "templates",
+            "template",
+            "views",
+            "layouts",
+            "_layouts",
+            "_includes",
+            "_templates",
+        ]
 
         for template_dir in template_dirs:
             dir_path = self.project_root / template_dir
             if dir_path.exists() and dir_path.is_dir():
                 for file_path in dir_path.rglob("*"):
-                    if file_path.is_file() and file_path.suffix in [".md", ".html", ".txt", ".yml", ".yaml", ".json"]:
+                    if file_path.is_file() and file_path.suffix in [
+                        ".md",
+                        ".html",
+                        ".txt",
+                        ".yml",
+                        ".yaml",
+                        ".json",
+                    ]:
                         # Check if file contains template markers
                         content = file_path.read_text(encoding="utf-8", errors="ignore")
                         if self._contains_template_markers(content):
@@ -133,7 +162,9 @@ class TemplateOptimizer:
                                     "path": str(relative_path),
                                     "absolute_path": str(file_path),
                                     "size_bytes": file_stats.st_size,
-                                    "modified_time": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                                    "modified_time": datetime.fromtimestamp(
+                                        file_stats.st_mtime
+                                    ).isoformat(),
                                     "type": "content_template",
                                     "language": "text",
                                 }
@@ -216,7 +247,9 @@ class TemplateOptimizer:
         }
 
         # Calculate overall optimization potential
-        analysis["optimization_potential"] = self._calculate_optimization_potential(analysis)
+        analysis["optimization_potential"] = self._calculate_optimization_potential(
+            analysis
+        )
 
         # Generate specific recommendations
         analysis["recommendations"] = self._generate_file_recommendations(analysis)
@@ -236,7 +269,9 @@ class TemplateOptimizer:
                 "character_count": len(content),
                 "line_count": len(lines),
                 "blank_lines": sum(1 for line in lines if not line.strip()),
-                "average_line_length": sum(len(line) for line in lines) / len(lines) if lines else 0,
+                "average_line_length": (
+                    sum(len(line) for line in lines) / len(lines) if lines else 0
+                ),
                 "max_line_length": max(len(line) for line in lines) if lines else 0,
             }
 
@@ -267,9 +302,15 @@ class TemplateOptimizer:
 
             # Count different template constructs
             complexity["variable_count"] = len(re.findall(r"\{\{[^}]+\}\}", content))
-            complexity["loop_count"] = len(re.findall(r"\{%\s*for\s+.+\s+in\s+.+%\}", content))
-            complexity["conditional_count"] = len(re.findall(r"\{%\s*if\s+.+%\}", content))
-            complexity["include_count"] = len(re.findall(r"\{%\s*(include|extend|import)\s+.+%\}", content))
+            complexity["loop_count"] = len(
+                re.findall(r"\{%\s*for\s+.+\s+in\s+.+%\}", content)
+            )
+            complexity["conditional_count"] = len(
+                re.findall(r"\{%\s*if\s+.+%\}", content)
+            )
+            complexity["include_count"] = len(
+                re.findall(r"\{%\s*(include|extend|import)\s+.+%\}", content)
+            )
 
             # Calculate nesting level
             current_level = 0
@@ -277,7 +318,10 @@ class TemplateOptimizer:
 
             for char in content:
                 if char == "{":
-                    if content[content.index(char) : content.index(char) + 2] in ["{{", "{%"]:
+                    if content[content.index(char) : content.index(char) + 2] in [
+                        "{{",
+                        "{%",
+                    ]:
                         current_level += 1
                         max_level = max(max_level, current_level)
                 elif char == "}":
@@ -344,10 +388,14 @@ class TemplateOptimizer:
         # Add time for file size
         size_time = size_analysis["total_size_bytes"] / 10000  # 10KB per ms
 
-        performance["estimated_render_time_ms"] = base_time + complexity_time + size_time
+        performance["estimated_render_time_ms"] = (
+            base_time + complexity_time + size_time
+        )
 
         # Estimate memory usage
-        performance["memory_usage_estimate_kb"] = size_analysis["total_size_bytes"] / 1024
+        performance["memory_usage_estimate_kb"] = (
+            size_analysis["total_size_bytes"] / 1024
+        )
 
         # Determine CPU intensity
         if performance["estimated_render_time_ms"] > 100:
@@ -410,7 +458,9 @@ class TemplateOptimizer:
 
         return min(potential, 100)  # Cap at 100
 
-    def _generate_file_recommendations(self, file_analysis: Dict[str, Any]) -> List[str]:
+    def _generate_file_recommendations(
+        self, file_analysis: Dict[str, Any]
+    ) -> List[str]:
         """Generate optimization recommendations for a file."""
 
         recommendations = []
@@ -421,7 +471,9 @@ class TemplateOptimizer:
 
         # Size recommendations
         if size_metrics["total_size_bytes"] > 50000:
-            recommendations.append("Consider splitting large template into smaller components")
+            recommendations.append(
+                "Consider splitting large template into smaller components"
+            )
 
         if size_metrics["max_line_length"] > 200:
             recommendations.append("Break long lines for better readability")
@@ -434,7 +486,9 @@ class TemplateOptimizer:
             recommendations.append("Consider consolidating related variables")
 
         if complexity_metrics["loop_count"] > 10:
-            recommendations.append("Optimize loops and consider pagination for large datasets")
+            recommendations.append(
+                "Optimize loops and consider pagination for large datasets"
+            )
 
         # Performance recommendations
         if performance_metrics["estimated_render_time_ms"] > 100:
@@ -444,11 +498,15 @@ class TemplateOptimizer:
             recommendations.append("Restructure template for better cache efficiency")
 
         if performance_metrics["cpu_intensity"] == "high":
-            recommendations.append("Consider moving complex logic to template filters or functions")
+            recommendations.append(
+                "Consider moving complex logic to template filters or functions"
+            )
 
         return recommendations
 
-    def _identify_optimization_opportunities(self, performance_metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _identify_optimization_opportunities(
+        self, performance_metrics: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Identify global optimization opportunities across all templates."""
 
         opportunities = []
@@ -459,13 +517,21 @@ class TemplateOptimizer:
             return opportunities
 
         # Calculate aggregate metrics
-        total_size = sum(metrics["size_metrics"]["total_size_bytes"] for metrics in performance_metrics.values())
+        total_size = sum(
+            metrics["size_metrics"]["total_size_bytes"]
+            for metrics in performance_metrics.values()
+        )
         avg_render_time = (
-            sum(metrics["performance_metrics"]["estimated_render_time_ms"] for metrics in performance_metrics.values())
+            sum(
+                metrics["performance_metrics"]["estimated_render_time_ms"]
+                for metrics in performance_metrics.values()
+            )
             / total_files
         )
         high_complexity_files = sum(
-            1 for metrics in performance_metrics.values() if metrics["complexity_metrics"]["nested_level_max"] > 3
+            1
+            for metrics in performance_metrics.values()
+            if metrics["complexity_metrics"]["nested_level_max"] > 3
         )
 
         # Size optimization opportunities
@@ -524,10 +590,14 @@ class TemplateOptimizer:
             )
 
         return sorted(
-            opportunities, key=lambda x: {"high": 3, "medium": 2, "low": 1}.get(x["priority"], 0), reverse=True
+            opportunities,
+            key=lambda x: {"high": 3, "medium": 2, "low": 1}.get(x["priority"], 0),
+            reverse=True,
         )
 
-    def _analyze_project_complexity(self, template_files: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_project_complexity(
+        self, template_files: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Analyze overall project template complexity."""
 
         complexity_analysis = {
@@ -540,19 +610,27 @@ class TemplateOptimizer:
         }
 
         if template_files:
-            complexity_analysis["average_file_size"] = complexity_analysis["total_size_bytes"] / len(template_files)
+            complexity_analysis["average_file_size"] = complexity_analysis[
+                "total_size_bytes"
+            ] / len(template_files)
 
         # Analyze file types
         for template_file in template_files:
             file_type = template_file["type"]
-            complexity_analysis["file_types"][file_type] = complexity_analysis["file_types"].get(file_type, 0) + 1
+            complexity_analysis["file_types"][file_type] = (
+                complexity_analysis["file_types"].get(file_type, 0) + 1
+            )
 
             lang = template_file["language"]
-            complexity_analysis["template_languages"][lang] = complexity_analysis["template_languages"].get(lang, 0) + 1
+            complexity_analysis["template_languages"][lang] = (
+                complexity_analysis["template_languages"].get(lang, 0) + 1
+            )
 
         return complexity_analysis
 
-    def _calculate_resource_usage(self, template_files: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_resource_usage(
+        self, template_files: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Calculate resource usage patterns and predictions."""
 
         resource_usage = {
@@ -562,14 +640,19 @@ class TemplateOptimizer:
                 "largest_file": None,
             },
             "memory_estimates": {"peak_usage_kb": 0, "average_usage_kb": 0},
-            "performance_predictions": {"concurrent_render_support": 0, "recommended_cache_size_mb": 0},
+            "performance_predictions": {
+                "concurrent_render_support": 0,
+                "recommended_cache_size_mb": 0,
+            },
         }
 
         if template_files:
-            resource_usage["disk_usage"]["average_file_size"] = resource_usage["disk_usage"]["total_bytes"] / len(
-                template_files
-            )
-            resource_usage["disk_usage"]["largest_file"] = max(template_files, key=lambda f: f["size_bytes"])["path"]
+            resource_usage["disk_usage"]["average_file_size"] = resource_usage[
+                "disk_usage"
+            ]["total_bytes"] / len(template_files)
+            resource_usage["disk_usage"]["largest_file"] = max(
+                template_files, key=lambda f: f["size_bytes"]
+            )["path"]
 
             # Estimate memory usage (rough approximation: 3x file size for processing)
             total_size_kb = resource_usage["disk_usage"]["total_bytes"] / 1024
@@ -578,14 +661,18 @@ class TemplateOptimizer:
 
             # Performance predictions
             avg_file_size_kb = resource_usage["disk_usage"]["average_file_size"] / 1024
-            resource_usage["performance_predictions"]["concurrent_render_support"] = int(
-                1000 / (avg_file_size_kb + 10)
+            resource_usage["performance_predictions"]["concurrent_render_support"] = (
+                int(1000 / (avg_file_size_kb + 10))
             )  # Rough estimate
-            resource_usage["performance_predictions"]["recommended_cache_size_mb"] = max(1, int(total_size_kb / 1024))
+            resource_usage["performance_predictions"]["recommended_cache_size_mb"] = (
+                max(1, int(total_size_kb / 1024))
+            )
 
         return resource_usage
 
-    def _generate_backup_recommendations(self, analysis_result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _generate_backup_recommendations(
+        self, analysis_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Generate backup recommendations based on analysis."""
 
         recommendations = []
@@ -596,7 +683,9 @@ class TemplateOptimizer:
 
         # Create backup if optimization opportunities exist
         if optimization_opportunities:
-            high_priority_ops = [op for op in optimization_opportunities if op["priority"] == "high"]
+            high_priority_ops = [
+                op for op in optimization_opportunities if op["priority"] == "high"
+            ]
 
             if high_priority_ops:
                 recommendations.append(
@@ -636,7 +725,9 @@ class TemplateOptimizer:
 
         return recommendations
 
-    def create_optimized_templates(self, optimization_options: Dict[str, Any] = None) -> Dict[str, Any]:
+    def create_optimized_templates(
+        self, optimization_options: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
         Create optimized versions of templates.
 
@@ -678,24 +769,38 @@ class TemplateOptimizer:
 
         # Apply optimizations
         for template_file in analysis["template_files"]:
-            file_optimization = self._optimize_template_file(template_file, optimization_options)
+            file_optimization = self._optimize_template_file(
+                template_file, optimization_options
+            )
 
             if file_optimization["success"]:
                 optimization_result["optimized_files"].append(file_optimization)
-                optimization_result["optimizations_applied"].extend(file_optimization["applied_optimizations"])
+                optimization_result["optimizations_applied"].extend(
+                    file_optimization["applied_optimizations"]
+                )
             else:
                 optimization_result["errors"].append(
-                    {"file": template_file["path"], "error": file_optimization.get("error", "Unknown error")}
+                    {
+                        "file": template_file["path"],
+                        "error": file_optimization.get("error", "Unknown error"),
+                    }
                 )
 
         # Calculate overall improvements
         if optimization_result["optimized_files"]:
-            original_total_size = sum(f["size_bytes"] for f in analysis["template_files"])
-            optimized_total_size = sum(f["optimized_size_bytes"] for f in optimization_result["optimized_files"])
+            original_total_size = sum(
+                f["size_bytes"] for f in analysis["template_files"]
+            )
+            optimized_total_size = sum(
+                f["optimized_size_bytes"]
+                for f in optimization_result["optimized_files"]
+            )
 
             if original_total_size > 0:
                 optimization_result["size_reduction"] = (
-                    (original_total_size - optimized_total_size) / original_total_size * 100
+                    (original_total_size - optimized_total_size)
+                    / original_total_size
+                    * 100
                 )
 
         return optimization_result
@@ -746,7 +851,9 @@ class TemplateOptimizer:
             }
 
             metadata_path = backup_path / "backup-metadata.json"
-            metadata_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            metadata_path.write_text(
+                json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
 
             backup_result["success"] = True
 
@@ -755,7 +862,9 @@ class TemplateOptimizer:
 
         return backup_result
 
-    def _optimize_template_file(self, template_file: Dict[str, Any], options: Dict[str, Any]) -> Dict[str, Any]:
+    def _optimize_template_file(
+        self, template_file: Dict[str, Any], options: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Optimize individual template file."""
 
         file_path = Path(template_file["absolute_path"])
@@ -776,21 +885,27 @@ class TemplateOptimizer:
 
             # Apply size optimizations
             if options.get("apply_size_optimizations", True):
-                size_optimized, size_opts = self._apply_size_optimizations(optimized_content)
+                size_optimized, size_opts = self._apply_size_optimizations(
+                    optimized_content
+                )
                 if size_optimized != optimized_content:
                     optimized_content = size_optimized
                     applied_optimizations.extend(size_opts)
 
             # Apply performance optimizations
             if options.get("apply_performance_optimizations", True):
-                perf_optimized, perf_opts = self._apply_performance_optimizations(optimized_content)
+                perf_optimized, perf_opts = self._apply_performance_optimizations(
+                    optimized_content
+                )
                 if perf_optimized != optimized_content:
                     optimized_content = perf_optimized
                     applied_optimizations.extend(perf_opts)
 
             # Apply complexity optimizations
             if options.get("apply_complexity_optimizations", True):
-                complexity_optimized, complexity_opts = self._apply_complexity_optimizations(optimized_content)
+                complexity_optimized, complexity_opts = (
+                    self._apply_complexity_optimizations(optimized_content)
+                )
                 if complexity_optimized != optimized_content:
                     optimized_content = complexity_optimized
                     applied_optimizations.extend(complexity_opts)
@@ -874,7 +989,9 @@ class TemplateOptimizer:
             applied_optimizations.append("conditional_optimization")
 
         # Cache expensive operations
-        optimized_content = re.sub(r"\{\{\s*(.+?)\|length\s*\}\}", r"{{ \1 | length }}", optimized_content)
+        optimized_content = re.sub(
+            r"\{\{\s*(.+?)\|length\s*\}\}", r"{{ \1 | length }}", optimized_content
+        )
 
         return optimized_content, applied_optimizations
 
@@ -904,7 +1021,9 @@ class TemplateOptimizer:
 
         return optimized_content, applied_optimizations
 
-    def benchmark_template_performance(self, template_paths: List[str] = None) -> Dict[str, Any]:
+    def benchmark_template_performance(
+        self, template_paths: List[str] = None
+    ) -> Dict[str, Any]:
         """
         Benchmark template rendering performance.
 
@@ -941,7 +1060,9 @@ class TemplateOptimizer:
                 performance_metrics = self._estimate_template_performance(file_path)
 
                 benchmark_result["performance_metrics"][template_path] = {
-                    "estimated_render_time_ms": performance_metrics["estimated_render_time_ms"],
+                    "estimated_render_time_ms": performance_metrics[
+                        "estimated_render_time_ms"
+                    ],
                     "memory_usage_kb": performance_metrics["memory_usage_estimate_kb"],
                     "cpu_intensity": performance_metrics["cpu_intensity"],
                     "cache_friendly": performance_metrics["cache_friendly"],
@@ -953,7 +1074,9 @@ class TemplateOptimizer:
         # Calculate summary
         if render_times:
             benchmark_result["summary"]["total_files_tested"] = len(render_times)
-            benchmark_result["summary"]["average_render_time_ms"] = sum(render_times) / len(render_times)
+            benchmark_result["summary"]["average_render_time_ms"] = sum(
+                render_times
+            ) / len(render_times)
 
             # Find fastest and slowest files
             min_time_idx = render_times.index(min(render_times))
@@ -973,7 +1096,11 @@ class TemplateOptimizer:
         benchmark_dir = self.templates_dir / "benchmarks"
         benchmark_dir.mkdir(exist_ok=True)
 
-        benchmark_file = benchmark_dir / f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
-        benchmark_file.write_text(json.dumps(benchmark_result, indent=2, ensure_ascii=False), encoding="utf-8")
+        benchmark_file = (
+            benchmark_dir / f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        )
+        benchmark_file.write_text(
+            json.dumps(benchmark_result, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
         return benchmark_result

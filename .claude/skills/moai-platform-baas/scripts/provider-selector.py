@@ -48,7 +48,11 @@ class BaaSProviderSelector:
             "convex": {
                 "strengths": ["realtime_backend", "reactive", "optimistic_updates"],
                 "cost_tier": "mid_tier",
-                "use_cases": ["collaborative_apps", "realtime_features", "typescript_apps"],
+                "use_cases": [
+                    "collaborative_apps",
+                    "realtime_features",
+                    "typescript_apps",
+                ],
             },
             "firestore": {
                 "strengths": ["mobile_sync", "offline_support", "google_integration"],
@@ -206,7 +210,9 @@ class BaaSProviderSelector:
 
         return score
 
-    def score_deployment_provider(self, provider: str, scores: Dict[str, float]) -> float:
+    def score_deployment_provider(
+        self, provider: str, scores: Dict[str, float]
+    ) -> float:
         """Score deployment provider against requirements."""
         score = 0.0
 
@@ -246,12 +252,19 @@ class BaaSProviderSelector:
         scores = self.analyze_requirements(requirements)
 
         # Score all providers
-        auth_scores = {provider: self.score_auth_provider(provider, scores) for provider in self.auth_providers}
+        auth_scores = {
+            provider: self.score_auth_provider(provider, scores)
+            for provider in self.auth_providers
+        }
 
-        db_scores = {provider: self.score_database_provider(provider, scores) for provider in self.database_providers}
+        db_scores = {
+            provider: self.score_database_provider(provider, scores)
+            for provider in self.database_providers
+        }
 
         deploy_scores = {
-            provider: self.score_deployment_provider(provider, scores) for provider in self.deployment_providers
+            provider: self.score_deployment_provider(provider, scores)
+            for provider in self.deployment_providers
         }
 
         # Select top providers
@@ -263,7 +276,11 @@ class BaaSProviderSelector:
 
         return {
             "recommendation": recommendation,
-            "scores": {"authentication": auth_scores, "database": db_scores, "deployment": deploy_scores},
+            "scores": {
+                "authentication": auth_scores,
+                "database": db_scores,
+                "deployment": deploy_scores,
+            },
             "requirement_analysis": scores,
         }
 

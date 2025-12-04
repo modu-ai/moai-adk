@@ -27,7 +27,10 @@ class TestKoreanUserWorkflow:
         config = {
             "name": "한국 프로젝트",
             "description": "한국어로 된 프로젝트 설명",
-            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            },
             "project": {"mode": "personal"},
         }
 
@@ -53,7 +56,10 @@ class TestKoreanUserWorkflow:
 
         config = {
             "name": "한국 프로젝트",
-            "language": {"conversation_language": "ko", "conversation_language_name": "한국어"},
+            "language": {
+                "conversation_language": "ko",
+                "conversation_language_name": "한국어",
+            },
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -74,7 +80,11 @@ class TestKoreanUserWorkflow:
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
         processor.set_context(
-            {"CONVERSATION_LANGUAGE": "ko", "CONVERSATION_LANGUAGE_NAME": "한국어", "PROJECT_NAME": "MoAI-ADK"}
+            {
+                "CONVERSATION_LANGUAGE": "ko",
+                "CONVERSATION_LANGUAGE_NAME": "한국어",
+                "PROJECT_NAME": "MoAI-ADK",
+            }
         )
 
         # Template that would be used in documentation
@@ -104,7 +114,10 @@ class TestJapaneseUserWorkflow:
         config = {
             "name": "日本語プロジェクト",
             "description": "日本語で書かれたプロジェクト説明",
-            "language": {"conversation_language": "ja", "conversation_language_name": "日本語"},
+            "language": {
+                "conversation_language": "ja",
+                "conversation_language_name": "日本語",
+            },
         }
 
         # Act
@@ -129,7 +142,10 @@ class TestJapaneseUserWorkflow:
 
         config = {
             "name": "日本語プロジェクト",
-            "language": {"conversation_language": "ja", "conversation_language_name": "日本語"},
+            "language": {
+                "conversation_language": "ja",
+                "conversation_language_name": "日本語",
+            },
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -148,7 +164,9 @@ class TestJapaneseUserWorkflow:
         """Japanese language variables substitute in templates."""
         # Arrange
         processor = TemplateProcessor(Path("/tmp"))
-        processor.set_context({"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語"})
+        processor.set_context(
+            {"CONVERSATION_LANGUAGE": "ja", "CONVERSATION_LANGUAGE_NAME": "日本語"}
+        )
 
         template = "ドキュメント言語: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})"
 
@@ -170,7 +188,10 @@ class TestSpanishUserWorkflow:
         config = {
             "name": "Proyecto Español",
             "description": "Descripción del proyecto en español",
-            "language": {"conversation_language": "es", "conversation_language_name": "Español"},
+            "language": {
+                "conversation_language": "es",
+                "conversation_language_name": "Español",
+            },
         }
 
         # Act
@@ -194,7 +215,10 @@ class TestSpanishUserWorkflow:
 
         config = {
             "name": "Proyecto Español",
-            "language": {"conversation_language": "es", "conversation_language_name": "Español"},
+            "language": {
+                "conversation_language": "es",
+                "conversation_language_name": "Español",
+            },
         }
 
         with TemporaryDirectory() as tmpdir:
@@ -219,7 +243,10 @@ class TestEnglishUserWorkflow:
         config = {
             "name": "English Project",
             "description": "Project description in English",
-            "language": {"conversation_language": "en", "conversation_language_name": "English"},
+            "language": {
+                "conversation_language": "en",
+                "conversation_language_name": "English",
+            },
         }
 
         # Act
@@ -257,7 +284,9 @@ class TestMultiLanguageMigration:
             ("en", "English"),
         ],
     )
-    def test_migrate_all_supported_languages(self, language_code: str, language_name: str) -> None:
+    def test_migrate_all_supported_languages(
+        self, language_code: str, language_name: str
+    ) -> None:
         """Migration works for all supported languages."""
         # Arrange
         legacy_config = {"conversation_language": language_code}

@@ -60,7 +60,9 @@ class OutputStyleDetector:
         self.cache = {}
         self.cache_ttl = 5  # Cache for 5 seconds to balance performance and accuracy
 
-    def detect_from_session_context(self, session_data: Dict[str, Any]) -> Optional[str]:
+    def detect_from_session_context(
+        self, session_data: Dict[str, Any]
+    ) -> Optional[str]:
         """
         Detect output style from Claude Code session context.
 
@@ -149,7 +151,9 @@ class OutputStyleDetector:
                 yoda_files = list(moai_dir.rglob("*yoda*"))
                 if yoda_files:
                     # Check if any Yoda files are recently modified
-                    recent_yoda = any(f.stat().st_mtime > (time.time() - 300) for f in yoda_files)  # Last 5 minutes
+                    recent_yoda = any(
+                        f.stat().st_mtime > (time.time() - 300) for f in yoda_files
+                    )  # Last 5 minutes
                     if recent_yoda:
                         return "🧙 Yoda Master"
 
@@ -244,7 +248,11 @@ class OutputStyleDetector:
                 return None
 
             # Look for style indicators in recent responses
-            full_text = " ".join(msg.get("content", "") for msg in messages[-3:] if msg.get("role") == "assistant")
+            full_text = " ".join(
+                msg.get("content", "")
+                for msg in messages[-3:]
+                if msg.get("role") == "assistant"
+            )
 
             if not full_text:
                 return None
@@ -253,8 +261,16 @@ class OutputStyleDetector:
             text_lower = full_text.lower()
 
             # Yoda Master indicators
-            yoda_indicators = ["young padawan", "the force", "master", "wisdom", "patience"]
-            yoda_count = sum(1 for indicator in yoda_indicators if indicator in text_lower)
+            yoda_indicators = [
+                "young padawan",
+                "the force",
+                "master",
+                "wisdom",
+                "patience",
+            ]
+            yoda_count = sum(
+                1 for indicator in yoda_indicators if indicator in text_lower
+            )
 
             if yoda_count >= 2:
                 return "🧙 Yoda Master"
@@ -263,7 +279,12 @@ class OutputStyleDetector:
             if len(full_text) > 2000:  # Long responses
                 explanatory_count = sum(
                     1
-                    for phrase in ["let me explain", "here's how", "the reason is", "to understand"]
+                    for phrase in [
+                        "let me explain",
+                        "here's how",
+                        "the reason is",
+                        "to understand",
+                    ]
                     if phrase in text_lower
                 )
                 if explanatory_count >= 2:
@@ -301,7 +322,10 @@ class OutputStyleDetector:
 
         # Detection methods in priority order
         detection_methods = [
-            ("Session Context", lambda: self.detect_from_session_context(session_context or {})),
+            (
+                "Session Context",
+                lambda: self.detect_from_session_context(session_context or {}),
+            ),
             ("Environment", self.detect_from_environment),
             ("Behavioral Analysis", self.detect_from_behavioral_analysis),
             ("Settings File", self.detect_from_settings),

@@ -84,7 +84,9 @@ class TestAlfredDetector:
             result2 = detector.detect_active_task()
 
             # Results should be identical
-            assert result1.command == result2.command, "Cache should return identical results"
+            assert (
+                result1.command == result2.command
+            ), "Cache should return identical results"
 
 
 if __name__ == "__main__":

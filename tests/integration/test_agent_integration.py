@@ -15,7 +15,9 @@ def test_tdd_implementer_detects_python_project(tmp_path):
     project_dir.mkdir()
     (project_dir / "pyproject.toml").touch()
     (project_dir / ".moai").mkdir()
-    (project_dir / ".moai/config.json").write_text('{"project": {"language": "python"}}')
+    (project_dir / ".moai/config.json").write_text(
+        '{"project": {"language": "python"}}'
+    )
 
     # Action: Simulate tdd-implementer workflow generation
     detector = LanguageDetector()

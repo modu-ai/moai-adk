@@ -33,7 +33,9 @@ class TestGitCollector:
 
             git_info = collector.collect_git_info()
 
-            assert git_info.branch == "feature/SPEC-AUTH-001", f"Expected feature/SPEC-AUTH-001, got {git_info.branch}"
+            assert (
+                git_info.branch == "feature/SPEC-AUTH-001"
+            ), f"Expected feature/SPEC-AUTH-001, got {git_info.branch}"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_collect_develop_branch(self):
@@ -78,8 +80,12 @@ class TestGitCollector:
             git_info = collector.collect_git_info()
 
             assert git_info.staged == 3, f"Expected 3 staged, got {git_info.staged}"
-            assert git_info.modified == 2, f"Expected 2 modified, got {git_info.modified}"
-            assert git_info.untracked == 1, f"Expected 1 untracked, got {git_info.untracked}"
+            assert (
+                git_info.modified == 2
+            ), f"Expected 2 modified, got {git_info.modified}"
+            assert (
+                git_info.untracked == 1
+            ), f"Expected 1 untracked, got {git_info.untracked}"
 
     @pytest.mark.xfail(reason="Test data migration needed")
     def test_empty_git_status(self):
@@ -158,7 +164,11 @@ class TestGitCollector:
             git_info = collector.collect_git_info()
 
             # Should gracefully handle error
-            assert git_info.branch in ["unknown", "N/A", "?"], f"Expected graceful default, got {git_info.branch}"
+            assert git_info.branch in [
+                "unknown",
+                "N/A",
+                "?",
+            ], f"Expected graceful default, got {git_info.branch}"
             assert git_info.staged == 0
             assert git_info.modified == 0
             assert git_info.untracked == 0
