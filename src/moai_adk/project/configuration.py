@@ -112,7 +112,7 @@ class ConfigurationManager:
             "conversation_language": ("language", "conversation_language"),
             "agent_prompt_language": ("language", "agent_prompt_language"),
             "project_name": ("project", "name"),
-            "project_owner": ("project", "owner"),
+            "github_profile_name": ("github", "profile_name"),
             "project_description": ("project", "description"),
             "git_strategy_mode": ("git_strategy", "mode"),
             "git_strategy_workflow": ("git_strategy", "workflow"),
@@ -154,12 +154,12 @@ class ConfigurationManager:
             "language.conversation_language",
             "language.agent_prompt_language",
             "project.name",
-            "project.owner",
             "git_strategy.mode",
             "constitution.test_coverage_target",
             "constitution.enforce_tdd",
             "project.documentation_mode",
         ]
+        # Note: github.profile_name is optional (can be set later)
 
         flat = self._flatten_config(config)
         return all(field in flat for field in required_fields)
@@ -449,8 +449,9 @@ class ConfigurationCoverageValidator:
     """Validates that all 31 configuration settings are covered.
 
     Coverage Matrix (31 settings total):
-    - User Input (10): user.name, language.*, project.name/owner/description,
-                      git_strategy.mode, constitution.*, project.documentation_mode
+    - User Input (10): user.name, language.*, project.name/description,
+                      github.profile_name, git_strategy.mode, constitution.*,
+                      project.documentation_mode
     - Auto-Detect (5): project.language, project.locale, language.conversation_language_name,
                        project.template_version, moai.version
     - Conditional (1): project.documentation_depth
@@ -493,7 +494,7 @@ class ConfigurationCoverageValidator:
             "language.conversation_language",
             "language.agent_prompt_language",
             "project.name",
-            "project.owner",
+            "github.profile_name",  # GitHub Profile Name (e.g., @GoosLab)
             "project.description",
             "git_strategy.mode",
             "constitution.test_coverage_target",
@@ -830,11 +831,11 @@ class TemplateVariableInterpolator:
         Example:
             >>> config = {
             ...     'user': {'name': 'GOOS'},
-            ...     'project': {'owner': 'GoosLab'}
+            ...     'github': {'profile_name': '@GoosLab'}
             ... }
-            >>> template = 'User: {{user.name}}, Owner: {{project.owner}}'
+            >>> template = 'User: {{user.name}}, GitHub: {{github.profile_name}}'
             >>> TemplateVariableInterpolator.interpolate(template, config)
-            'User: GOOS, Owner: GoosLab'
+            'User: GOOS, GitHub: @GoosLab'
         """
         result = template
 

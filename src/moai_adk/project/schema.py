@@ -118,14 +118,14 @@ def _create_tab1_quick_start() -> Dict[str, Any]:
                         ],
                     },
                     {
-                        "id": "project_owner",
-                        "question": "Project Owner?",
+                        "id": "github_profile_name",
+                        "question": "GitHub Profile Name? (e.g., @GoosLab)",
                         "type": "text_input",
-                        "required": True,
-                        "smart_default": "{{user.name}}",
+                        "required": False,
+                        "smart_default": "",
                         "options": [
-                            {"label": "Enter Owner", "value": "custom"},
-                            {"label": "Use User Name", "value": "default"},
+                            {"label": "Enter GitHub Profile", "value": "custom"},
+                            {"label": "Skip (set later)", "value": "skip"},
                         ],
                     },
                     {

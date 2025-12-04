@@ -390,9 +390,9 @@ Options:
 
    - Configure user name, conversation language, agent prompt language
 
-2. Tab 2: Project Basic Information
+2. Tab 2: Project & GitHub Settings
 
-   - Configure project name, description, owner, mode
+   - Configure project name, description, mode, GitHub Profile Name
 
 3. Tab 3: Git Strategy & Workflow
 
@@ -430,10 +430,10 @@ Tab 1: User & Language (Required Foundation)
   - NOTE: conversation_language_name is auto-updated when conversation_language changes
 - Setting count: 3 | Critical checkpoint
 
-Tab 2: Project Basic Information (Recommended)
+Tab 2: Project & GitHub Settings (Recommended)
 
 - Batch 2.1: Project metadata (4 questions)
-  - Project name, description, owner, mode
+  - Project name, description, mode, GitHub Profile Name (e.g., @GoosLab)
 - Batch 2.2: Auto-processed locale settings (0 questions - UPDATED: internal analysis only)
   - project.locale, default_language, optimized_for_language (auto-determined from conversation_language)
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
@@ -786,7 +786,7 @@ Goal: Persist phase execution results for explicit context passing to subsequent
 
 After manager-project agent completes, extract the following information:
 
-- Project metadata: name, mode, owner, language
+- Project metadata: name, mode, language, GitHub Profile Name
 - Files created: List of generated files with absolute paths
 - Tech stack: Primary codebase language
 - Next phase: Recommended next command (1-plan)

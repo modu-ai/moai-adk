@@ -67,7 +67,6 @@ language:
 project:
   name: "{{PROJECT_NAME}}"
   description: "{{PROJECT_DESCRIPTION}}"
-  owner: "{{PROJECT_OWNER}}"
   mode: development
   created_at: "{{CREATED_AT}}"
   initialized: true
@@ -115,6 +114,9 @@ analytics:
 # 'develop_direct' is recommended for rapid development in personal projects
 # Options: 'develop_direct' (direct commits), 'feature_branch' (always create branches), 'per_spec' (ask user per SPEC)
 github:
+  # GitHub Profile Name (e.g., @GoosLab, @username)
+  # Used for repository ownership, mentions, and attribution
+  profile_name: "{{GITHUB_PROFILE_NAME}}"
   enable_trust_5: true
   spec_git_workflow: develop_direct
 

@@ -214,7 +214,8 @@ class TemplateEngine:
         Returns:
             Dictionary of template variables
         """
-        github_config = config.get("github", {}).get("templates", {})
+        github_templates_config = config.get("github", {}).get("templates", {})
+        github_config = config.get("github", {})
         project_config = config.get("project", {})
         user_config = config.get("user", {})
 
@@ -222,18 +223,18 @@ class TemplateEngine:
             # Project information
             "PROJECT_NAME": project_config.get("name", "MyProject"),
             "PROJECT_DESCRIPTION": project_config.get("description", ""),
-            "PROJECT_OWNER": project_config.get("owner", ""),
+            "GITHUB_PROFILE_NAME": github_config.get("profile_name", ""),
             "PROJECT_MODE": project_config.get("mode", "team"),  # team or personal
             "CODEBASE_LANGUAGE": project_config.get("codebase_language", "python"),
             # User information
             "USER_NAME": user_config.get("name", ""),
             # Directory structure
-            "SPEC_DIR": github_config.get("spec_directory", ".moai/specs"),
-            "DOCS_DIR": github_config.get("docs_directory", ".moai/docs"),
-            "TEST_DIR": github_config.get("test_directory", "tests"),
+            "SPEC_DIR": github_templates_config.get("spec_directory", ".moai/specs"),
+            "DOCS_DIR": github_templates_config.get("docs_directory", ".moai/docs"),
+            "TEST_DIR": github_templates_config.get("test_directory", "tests"),
             # Feature flags
             "ENABLE_TRUST_5": github_config.get("enable_trust_5", True),
-            "ENABLE_ALFRED_COMMANDS": github_config.get("enable_alfred_commands", True),
+            "ENABLE_ALFRED_COMMANDS": github_templates_config.get("enable_alfred_commands", True),
             # Language configuration
             "CONVERSATION_LANGUAGE": config.get("language", {}).get("conversation_language", "en"),
             "CONVERSATION_LANGUAGE_NAME": config.get("language", {}).get("conversation_language_name", "English"),

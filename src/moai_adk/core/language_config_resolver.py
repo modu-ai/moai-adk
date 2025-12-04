@@ -143,11 +143,10 @@ class LanguageConfigResolver:
             if "name" in user_config:
                 config["user_name"] = user_config["name"]
 
-            # Project owner (fallback for user name)
-            if not config.get("user_name"):
-                project_config = full_config.get("project", {})
-                if "owner" in project_config:
-                    config["user_name"] = project_config["owner"]
+            # GitHub profile name (stored separately, not as user name fallback)
+            github_config = full_config.get("github", {})
+            if "profile_name" in github_config:
+                config["github_profile_name"] = github_config["profile_name"]
 
             # Language settings
             language_config = full_config.get("language", {})

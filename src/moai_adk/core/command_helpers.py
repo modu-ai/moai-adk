@@ -49,7 +49,7 @@ def extract_project_metadata(project_root: str) -> Dict[str, Any]:
     metadata = {
         "project_name": config.get("project", {}).get("name", "Unknown"),
         "mode": config.get("project", {}).get("mode", "personal"),
-        "owner": config.get("project", {}).get("owner", "@user"),
+        "github_profile": config.get("github", {}).get("profile_name", ""),
         "language": config.get("language", {}).get("conversation_language", "en"),
         "tech_stack": [],  # To be detected separately
     }
