@@ -46,6 +46,8 @@ import json
 import logging
 import shutil
 import subprocess
+
+import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Union, cast
@@ -104,6 +106,45 @@ class TemplateSyncError(UpdateError):
     """Raised when template sync fails."""
 
     pass
+
+
+def _get_config_path(project_path: Path) -> tuple[Path, bool]:
+    """Get config file path, preferring YAML over JSON.
+
+    Returns:
+        Tuple of (config_path, is_yaml)
+    """
+    yaml_path = project_path / ".moai" / "config" / "config.yaml"
+    json_path = project_path / ".moai" / "config" / "config.json"
+
+    if yaml_path.exists():
+        return yaml_path, True
+    return json_path, False
+
+
+def _load_config(config_path: Path) -> dict[str, Any]:
+    """Load config from YAML or JSON file."""
+    if not config_path.exists():
+        return {}
+
+    is_yaml = config_path.suffix in (".yaml", ".yml")
+    content = config_path.read_text(encoding="utf-8")
+
+    if is_yaml:
+        return yaml.safe_load(content) or {}
+    return json.loads(content)
+
+
+def _save_config(config_path: Path, config_data: dict[str, Any]) -> None:
+    """Save config to YAML or JSON file."""
+    is_yaml = config_path.suffix in (".yaml", ".yml")
+
+    if is_yaml:
+        content = yaml.safe_dump(config_data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    else:
+        content = json.dumps(config_data, indent=2, ensure_ascii=False) + "\n"
+
+    config_path.write_text(content, encoding="utf-8")
 
 
 def _is_installed_via_uv_tool() -> bool:
@@ -288,35 +329,35 @@ def _get_project_config_version(project_path: Path) -> str:
         Returns "0.0.0" if template_version field not found (indicates no prior sync)
 
     Raises:
-        ValueError: If config.json exists but cannot be parsed
+        ValueError: If config file exists but cannot be parsed
     """
 
-    def _is_placeholder(value: str) -> bool:
+    def _is_placeholder_val(value: str) -> bool:
         """Check if value contains unsubstituted template placeholders."""
         return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
 
-    config_path = project_path / ".moai" / "config" / "config.json"
+    config_path, _ = _get_config_path(project_path)
 
     if not config_path.exists():
         # No config yet, treat as version 0.0.0 (needs initial sync)
         return "0.0.0"
 
     try:
-        config_data = json.loads(config_path.read_text(encoding="utf-8"))
+        config_data = _load_config(config_path)
         # Check for template_version in project section
         template_version = config_data.get("project", {}).get("template_version")
-        if template_version and not _is_placeholder(template_version):
+        if template_version and not _is_placeholder_val(template_version):
             return template_version
 
         # Fallback to moai version if no template_version exists
         moai_version = config_data.get("moai", {}).get("version")
-        if moai_version and not _is_placeholder(moai_version):
+        if moai_version and not _is_placeholder_val(moai_version):
             return moai_version
 
         # If values are placeholders or don't exist, treat as uninitialized (0.0.0 triggers sync)
         return "0.0.0"
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse project config.json: {e}") from e
+    except (json.JSONDecodeError, yaml.YAMLError) as e:
+        raise ValueError(f"Failed to parse project config: {e}") from e
 
 
 def _ask_merge_strategy(yes: bool = False) -> str:
@@ -1598,35 +1639,32 @@ def get_latest_version() -> str | None:
 
 
 def set_optimized_false(project_path: Path) -> None:
-    """Set config.json's optimized field to false.
+    """Set config's optimized field to false.
 
     Args:
         project_path: Project path (absolute).
     """
-    config_path = project_path / ".moai" / "config" / "config.json"
+    config_path, _ = _get_config_path(project_path)
     if not config_path.exists():
         return
 
     try:
-        config_data = json.loads(config_path.read_text(encoding="utf-8"))
+        config_data = _load_config(config_path)
         config_data.setdefault("project", {})["optimized"] = False
-        config_path.write_text(
-            json.dumps(config_data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-    except (json.JSONDecodeError, KeyError):
-        # Ignore errors if config.json is invalid
+        _save_config(config_path, config_data)
+    except (json.JSONDecodeError, yaml.YAMLError, KeyError):
+        # Ignore errors if config is invalid
         pass
 
 
 def _load_existing_config(project_path: Path) -> dict[str, Any]:
-    """Load existing config.json if available."""
-    config_path = project_path / ".moai" / "config" / "config.json"
+    """Load existing config (YAML or JSON) if available."""
+    config_path, _ = _get_config_path(project_path)
     if config_path.exists():
         try:
-            return json.loads(config_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            console.print("[yellow]⚠ Existing config.json could not be parsed. Proceeding with defaults.[/yellow]")
+            return _load_config(config_path)
+        except (json.JSONDecodeError, yaml.YAMLError):
+            console.print("[yellow]⚠ Existing config could not be parsed. Proceeding with defaults.[/yellow]")
     return {}
 
 
@@ -1804,18 +1842,18 @@ def _preserve_project_metadata(
     existing_config: dict[str, Any],
     version_for_config: str,
 ) -> None:
-    """Restore project-specific metadata in the new config.json.
+    """Restore project-specific metadata in the new config (YAML or JSON).
 
     Also updates template_version to track which template version is synchronized.
     """
-    config_path = project_path / ".moai" / "config" / "config.json"
+    config_path, _ = _get_config_path(project_path)
     if not config_path.exists():
         return
 
     try:
-        config_data = json.loads(config_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        console.print("[red]✗ Failed to parse config.json after template copy[/red]")
+        config_data = _load_config(config_path)
+    except (json.JSONDecodeError, yaml.YAMLError):
+        console.print("[red]✗ Failed to parse config after template copy[/red]")
         return
 
     project_data = config_data.setdefault("project", {})
@@ -1845,7 +1883,7 @@ def _preserve_project_metadata(
     # This allows Stage 2 to compare package vs project template versions
     project_data["template_version"] = version_for_config
 
-    config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    _save_config(config_path, config_data)
 
 
 def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> None:

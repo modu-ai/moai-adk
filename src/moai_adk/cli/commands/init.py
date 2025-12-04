@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Sequence
 
 import click
+import yaml
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 
@@ -213,11 +214,20 @@ def init(
                     except Exception:
                         pass  # Ignore removal failures
 
-            config_path = project_path / ".moai" / "config" / "config.json"
+            # Support both YAML (v0.32.5+) and JSON (legacy) config files
+            config_yaml_path = project_path / ".moai" / "config" / "config.yaml"
+            config_json_path = project_path / ".moai" / "config" / "config.json"
+
+            config_path = config_yaml_path if config_yaml_path.exists() else config_json_path
+            is_yaml = config_path.suffix in (".yaml", ".yml")
+
             if config_path.exists():
                 try:
                     with open(config_path, "r", encoding="utf-8") as f:
-                        config_data = json.load(f)
+                        if is_yaml:
+                            config_data = yaml.safe_load(f) or {}
+                        else:
+                            config_data = json.load(f)
 
                     # Update version and optimization flags
                     if "moai" not in config_data:
@@ -242,9 +252,12 @@ def init(
                     config_data["project"]["optimized"] = False
 
                     with open(config_path, "w", encoding="utf-8") as f:
-                        json.dump(config_data, f, indent=2, ensure_ascii=False)
+                        if is_yaml:
+                            yaml.safe_dump(config_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+                        else:
+                            json.dump(config_data, f, indent=2, ensure_ascii=False)
                 except Exception:
-                    # Ignore read/write failures; config.json is regenerated during initialization
+                    # Ignore read/write failures; config is regenerated during initialization
                     pass
 
         with Progress(

@@ -3,11 +3,8 @@
 SPEC-First TDD Framework with Alfred SuperAgent
 """
 
-from importlib.metadata import PackageNotFoundError, version
+from moai_adk.version import MOAI_VERSION
 
-try:
-    __version__ = version("moai-adk")
-except PackageNotFoundError:
-    __version__ = "0.32.6"
+__version__ = MOAI_VERSION
 
 __all__ = ["__version__"]

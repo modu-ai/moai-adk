@@ -7,10 +7,14 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 
 # MoAI Framework Version
+# Fallback version for development environment (only used when package not installed)
+# This is automatically overwritten by importlib.metadata when package is installed via pip/uv
+_FALLBACK_VERSION = "0.32.6"
+
 try:
     MOAI_VERSION = pkg_version("moai-adk")
 except PackageNotFoundError:
-    MOAI_VERSION = "0.30.0"
+    MOAI_VERSION = _FALLBACK_VERSION
 
 # Template Schema Version
 TEMPLATE_VERSION = "3.0.0"
