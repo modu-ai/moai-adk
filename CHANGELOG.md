@@ -8,6 +8,14 @@
 
 ### New Features
 
+- **YAML Configuration Migration**: Complete migration from JSON to YAML format for configuration files
+  - 27% reduction in lines (better readability with comments)
+  - Auto-detection mechanism (YAML preferred, JSON fallback)
+  - Unified git_strategy schema with preset-based mode switching
+  - All parsers updated: UnifiedConfigManager, LanguageConfigResolver, hooks ConfigManager
+  - AI-based migration in `/moai:0-project update` for intelligent conversion
+  - Dead configuration removed: pipeline, analytics.daily, github.templates subfields
+  - Backward compatible with existing JSON configs
 - **Comprehensive Version Management System**: Implemented release automation with version synchronization across all configuration files (`3b15de80`)
 - **Enhanced CLI UI**: Improved user interface aesthetics and cleaned up hook implementations (`199b6555`)
 - **Claude 4.5 Best Practices**: Applied latest prompt engineering patterns to all prompt artifacts (`482cad9d`)
@@ -24,6 +32,14 @@
 - **Strategic Skip Markers**: Added temporary skips for CI environment limitations (questionary, TTY)
 - **Final Result**: 3,751 tests passing, 1 skipped (Windows-only), 0 failures
 
+### Configuration Optimization
+
+- **Config File Cleanup**: Reduced template config from 340 lines to ~150 lines of actual configuration
+  - Removed dead configuration: `pipeline` section, `analytics.daily.*`, `github.templates.*` subfields
+  - Consolidated duplicates: removed standalone `cleanup` section (merged into `document_management`)
+  - Unified `git_strategy` schema: 69 lines (3 mode blocks) reduced to 38 lines (unified schema + presets)
+  - Removed redundant version check settings
+
 ### Code Style & CI Improvements
 
 - **Ruff Formatting**: Applied consistent code formatting across all source files (`9d9afd22`)
@@ -31,6 +47,18 @@
 - **CI Skip Fixes**: Added skip markers for tests incompatible with CI environment (`cc4f7484`)
 
 ## Breaking Changes
+
+### Configuration Format Migration (v0.32.0)
+
+- **Old format**: `.moai/config/config.json` (JSON)
+- **New format**: `.moai/config/config.yaml` (YAML, preferred)
+
+**Migration Path**:
+1. **Automatic**: Run `moai-adk update` or `/moai:0-project update` - AI will intelligently convert your config.json to config.yaml
+2. **Manual**: Rename `config.json` to `config.yaml` and adjust syntax (or keep JSON - backward compatible)
+3. **No action needed**: Existing JSON configs continue to work (auto-detection fallback)
+
+**Git Preset Files**: If using custom git_strategy presets, migrate `.moai/config/presets/*.json` to `*.yaml`
 
 ### Path Migration
 

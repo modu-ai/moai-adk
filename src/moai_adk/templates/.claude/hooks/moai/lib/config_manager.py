@@ -8,6 +8,12 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
 from .path_utils import find_project_root
 
 # Default configuration
@@ -70,9 +76,24 @@ class ConfigManager:
         """Initialize configuration manager.
 
         Args:
-            config_path: Path to configuration file (defaults to .moai/config/config.json)
+            config_path: Path to configuration file (defaults to .moai/config/config.yaml or config.json)
         """
-        self.config_path = config_path or find_project_root() / ".moai" / "config" / "config.json"
+        if config_path:
+            self.config_path = config_path
+        else:
+            # Auto-detect YAML (preferred) or JSON (fallback)
+            project_root = find_project_root()
+            yaml_path = project_root / ".moai" / "config" / "config.yaml"
+            json_path = project_root / ".moai" / "config" / "config.json"
+
+            if YAML_AVAILABLE and yaml_path.exists():
+                self.config_path = yaml_path
+            elif json_path.exists():
+                self.config_path = json_path
+            else:
+                # Default to YAML for new projects
+                self.config_path = yaml_path if YAML_AVAILABLE else json_path
+
         self._config: Optional[Dict[str, Any]] = None
 
     def load_config(self) -> Dict[str, Any]:
@@ -89,9 +110,17 @@ class ConfigManager:
         if self.config_path.exists():
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
-                    file_config = json.load(f)
-                    config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
-            except (json.JSONDecodeError, IOError, OSError):
+                    if self.config_path.suffix in [".yaml", ".yml"]:
+                        if not YAML_AVAILABLE:
+                            # Fall back to defaults if YAML not available
+                            config = DEFAULT_CONFIG.copy()
+                        else:
+                            file_config = yaml.safe_load(f) or {}
+                            config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
+                    else:
+                        file_config = json.load(f)
+                        config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
+            except (json.JSONDecodeError, yaml.YAMLError if YAML_AVAILABLE else Exception, IOError, OSError):
                 # Use defaults if file is corrupted or unreadable
                 config = DEFAULT_CONFIG.copy()
         else:

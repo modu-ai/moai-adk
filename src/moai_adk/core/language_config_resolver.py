@@ -15,6 +15,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
 
 class LanguageConfigResolver:
     """
@@ -46,7 +52,19 @@ class LanguageConfigResolver:
             project_root: Root directory of the project. If None, uses current working directory.
         """
         self.project_root = Path(project_root) if project_root else Path.cwd()
-        self.config_file_path = self.project_root / ".moai" / "config" / "config.json"
+
+        # Auto-detect YAML (preferred) or JSON (fallback)
+        yaml_path = self.project_root / ".moai" / "config" / "config.yaml"
+        json_path = self.project_root / ".moai" / "config" / "config.json"
+
+        if YAML_AVAILABLE and yaml_path.exists():
+            self.config_file_path = yaml_path
+        elif json_path.exists():
+            self.config_file_path = json_path
+        else:
+            # Default to YAML for new projects
+            self.config_file_path = yaml_path if YAML_AVAILABLE else json_path
+
         self._cached_config: Optional[Dict[str, Any]] = None
 
     def resolve_config(self, force_refresh: bool = False) -> Dict[str, Any]:
@@ -98,7 +116,7 @@ class LanguageConfigResolver:
 
     def _load_config_file(self) -> Optional[Dict[str, Any]]:
         """
-        Load configuration from .moai/config/config.json file.
+        Load configuration from .moai/config/config.yaml or config.json file.
 
         Returns:
             Configuration dictionary or None if file doesn't exist
@@ -108,7 +126,13 @@ class LanguageConfigResolver:
                 return None
 
             with open(self.config_file_path, "r", encoding="utf-8") as f:
-                full_config = json.load(f)
+                if self.config_file_path.suffix in [".yaml", ".yml"]:
+                    if not YAML_AVAILABLE:
+                        print(f"Warning: PyYAML not available, skipping {self.config_file_path}")
+                        return None
+                    full_config = yaml.safe_load(f) or {}
+                else:
+                    full_config = json.load(f)
 
             # Extract only relevant fields
             config = {}
@@ -149,7 +173,7 @@ class LanguageConfigResolver:
 
             return config
 
-        except (json.JSONDecodeError, IOError, KeyError) as e:
+        except (json.JSONDecodeError, yaml.YAMLError if YAML_AVAILABLE else Exception, IOError, KeyError) as e:
             # Log error but don't fail - fall back to defaults
             print(f"Warning: Failed to load config file {self.config_file_path}: {e}")
             return None

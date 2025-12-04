@@ -97,6 +97,56 @@ WHY: Mode-specific language handling respects existing configuration while enabl
 
 ---
 
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining ✅
+
+Command implements sequential chaining through 3 main phases:
+
+Phase Flow:
+- Phase 1: Mode Detection & Language Configuration (determines operation mode and loads language)
+- Phase 2: User Intent Collection (gathers project metadata and preferences via AskUserQuestion)
+- Phase 3: Configuration & Documentation Generation (manager-project generates all project files)
+
+Each phase receives outputs from previous phases as context.
+
+WHY: Sequential execution ensures proper configuration and file generation
+- Phase 2 requires mode and language from Phase 1 to display appropriate questions
+- Phase 3 requires user responses from Phase 2 to generate correct configuration
+- File generation requires complete configuration before creating documentation
+
+IMPACT: Skipping phases would create incomplete or misconfigured project setup
+
+### Parallel Execution ❌
+
+Not applicable - configuration requires sequential processing
+
+WHY: Project initialization has strict ordering requirements
+- Language must be determined before asking questions
+- User responses must be collected before generating files
+- Configuration must be validated before documentation generation
+
+IMPACT: Parallel execution would create configuration conflicts and invalid project state
+
+### Resumable Agent Support ❌
+
+Not applicable - command completes in single execution
+
+WHY: Project setup is fast atomic operation
+- Most setups complete in under 1 minute
+- Configuration operations are atomic and transactional
+- No long-running processes requiring checkpoints
+
+IMPACT: Resume pattern unnecessary for typical project initialization
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
+
+---
+
 ##  Execution Philosophy
 
 The project setup follows explicit delegation pattern: Understand the user intent, Plan the execution, Execute through specialized agents.
@@ -282,6 +332,19 @@ SETTINGS MODE (NEW):
 UPDATE MODE:
 
 - Preserve language from config backup
+- **Config Format Migration (v0.32.0+):**
+  - Check if `.moai/config/config.json` exists (legacy format)
+  - If exists: Convert to `config.yaml` with intelligent optimization:
+    - Preserve all user settings and customizations
+    - Add meaningful comments explaining each section
+    - Optimize structure (remove dead fields, consolidate duplicates)
+    - Convert preset files (presets/*.json → presets/*.yaml)
+    - Remove old JSON files after successful migration
+  - Use YAML's native features:
+    - Multi-line strings for long descriptions
+    - Inline comments for field explanations
+    - Better readability with proper indentation
+  - Report migration success to user
 - Analyze backup and compare templates
 - Perform smart template merging
 - Update `.moai/` files with new features
@@ -458,7 +521,7 @@ options: [...]
 ]
 )
 
-Wait for user responses, then process each response into config update:
+Process user responses from AskUserQuestion into config update:
 user.name → user_input_or_keep_current
 language.conversation_language → selected_value
 language.conversation_language_name → user_input_or_keep_current

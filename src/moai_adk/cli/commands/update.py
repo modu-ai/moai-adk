@@ -2271,6 +2271,11 @@ def update(
             console.print("[yellow]⚠️  Update continuing without migration[/yellow]")
             console.print("[cyan]💡 Some features may require migration to work correctly[/cyan]")
 
+        # Migrate config.json → config.yaml (v0.32.0+)
+        console.print("\n[cyan]🔍 Checking for config format migration...[/cyan]")
+        if not _migrate_config_json_to_yaml(project_path):
+            console.print("[yellow]⚠️  Config migration failed, continuing with existing format[/yellow]")
+
         # Stage 2: Config Version Comparison
         try:
             package_config_version = _get_package_config_version()
@@ -2516,3 +2521,132 @@ def _cleanup_legacy_presets(project_path: Path) -> None:
             console.print(f"   [yellow]⚠️ Failed to remove legacy presets directory: {e}[/yellow]")
             logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
             # Don't fail the update process, just log the warning
+
+
+def _migrate_config_json_to_yaml(project_path: Path) -> bool:
+    """Migrate legacy config.json to config.yaml format.
+
+    This function:
+    1. Checks if config.json exists
+    2. Converts it to config.yaml using YAML format
+    3. Removes the old config.json file
+    4. Also migrates preset files from JSON to YAML
+
+    Args:
+        project_path: Project directory path (absolute)
+
+    Returns:
+        bool: True if migration successful or not needed, False on error
+    """
+    try:
+        import yaml
+    except ImportError:
+        console.print("   [yellow]⚠️ PyYAML not available, skipping config migration[/yellow]")
+        return True  # Not a critical error
+
+    config_dir = project_path / ".moai" / "config"
+    json_path = config_dir / "config.json"
+    yaml_path = config_dir / "config.yaml"
+
+    # Check if migration needed
+    if not json_path.exists():
+        # No JSON file, migration not needed
+        return True
+
+    if yaml_path.exists():
+        # YAML already exists, just remove JSON
+        try:
+            json_path.unlink()
+            console.print("   [cyan]🔄 Removed legacy config.json (YAML version exists)[/cyan]")
+            logger.info(f"Removed legacy config.json: {json_path}")
+            return True
+        except Exception as e:
+            console.print(f"   [yellow]⚠️ Failed to remove legacy config.json: {e}[/yellow]")
+            logger.warning(f"Failed to remove {json_path}: {e}")
+            return True  # Not critical
+
+    # Perform migration
+    try:
+        # Read JSON config
+        with open(json_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+
+        # Write YAML config
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                config_data,
+                f,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False
+            )
+
+        # Remove old JSON file
+        json_path.unlink()
+
+        console.print("   [green]✓ Migrated config.json → config.yaml[/green]")
+        logger.info(f"Migrated config from JSON to YAML: {json_path} → {yaml_path}")
+
+        # Migrate preset files if they exist
+        _migrate_preset_files_to_yaml(config_dir)
+
+        return True
+
+    except Exception as e:
+        console.print(f"   [red]✗ Config migration failed: {e}[/red]")
+        logger.error(f"Failed to migrate config.json to YAML: {e}")
+        return False
+
+
+def _migrate_preset_files_to_yaml(config_dir: Path) -> None:
+    """Migrate preset files from JSON to YAML format.
+
+    Args:
+        config_dir: .moai/config directory path
+    """
+    try:
+        import yaml
+    except ImportError:
+        return
+
+    presets_dir = config_dir / "presets"
+    if not presets_dir.exists():
+        return
+
+    migrated_count = 0
+    for json_file in presets_dir.glob("*.json"):
+        yaml_file = json_file.with_suffix(".yaml")
+
+        # Skip if YAML already exists
+        if yaml_file.exists():
+            # Just remove the JSON file
+            try:
+                json_file.unlink()
+                migrated_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to remove {json_file}: {e}")
+            continue
+
+        # Migrate JSON → YAML
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                preset_data = json.load(f)
+
+            with open(yaml_file, "w", encoding="utf-8") as f:
+                yaml.safe_dump(
+                    preset_data,
+                    f,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False
+                )
+
+            json_file.unlink()
+            migrated_count += 1
+
+        except Exception as e:
+            logger.warning(f"Failed to migrate preset {json_file}: {e}")
+
+    if migrated_count > 0:
+        console.print(f"   [cyan]🔄 Migrated {migrated_count} preset file(s) to YAML[/cyan]")
+        logger.info(f"Migrated {migrated_count} preset files to YAML")

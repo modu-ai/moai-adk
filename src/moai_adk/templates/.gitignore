@@ -184,6 +184,10 @@ secret-*.*
 !.moai/specs/
 !.moai/specs/**
 
+# Legacy config format (migrated to YAML in v0.32.0)
+.moai/config/config.json
+.moai/config/presets/*.json
+
 # .moai local-only directories (user projects only)
 .moai/cache/
 .moai/logs/
