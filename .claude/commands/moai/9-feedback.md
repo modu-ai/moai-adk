@@ -77,6 +77,54 @@ This command exclusively uses these tools:
 
 ---
 
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining ✅
+
+Command implements simple sequential execution through 2 phases:
+
+Phase Flow:
+- Phase 1: Feedback Collection (manager-quality analyzes type and collects details)
+- Phase 2: GitHub Issue Creation (manager-quality creates issue with collected information)
+
+Each phase receives outputs from previous phase as context.
+
+WHY: Sequential execution ensures complete feedback capture before submission
+- Phase 2 requires validated feedback details from Phase 1
+- Issue creation requires all user input to be collected
+
+IMPACT: Skipping Phase 1 would create incomplete GitHub issues
+
+### Parallel Execution ❌
+
+Not applicable - simple linear workflow
+
+WHY: Feedback workflow has minimal complexity
+- Only one agent (manager-quality) handles entire process
+- Single feedback submission at a time
+- No independent operations to parallelize
+
+IMPACT: Parallel execution unnecessary for single-agent linear workflow
+
+### Resumable Agent Support ❌
+
+Not applicable - command completes in single execution
+
+WHY: Feedback submission is fast atomic operation
+- Typical execution completes in under 30 seconds
+- GitHub API calls are atomic and fast
+- No long-running processes requiring checkpoints
+
+IMPACT: Resume pattern unnecessary for simple feedback workflows
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
+
+---
+
 ##  Execution Process
 
 ### Step 1: Delegate to Quality Gate Agent

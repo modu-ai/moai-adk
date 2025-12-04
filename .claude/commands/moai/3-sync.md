@@ -95,6 +95,55 @@ Command usage examples:
 
 ---
 
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining ✅
+
+Command implements sequential chaining through 3 core phases:
+
+Phase Flow:
+- Phase 1: Analysis & Planning (manager-docs analyzes changed files and sync scope)
+- Phase 2: Execute Sync (manager-docs updates documentation, manager-quality validates)
+- Phase 3: Git Operations & PR (manager-git creates commits and prepares PR if applicable)
+
+Each phase receives outputs from previous phases as context.
+
+WHY: Sequential execution ensures documentation consistency and validation
+- Phase 2 requires analysis results from Phase 1 to determine sync scope
+- Phase 3 requires validated documentation from Phase 2 before commit
+- PR creation requires successful commit from Phase 3
+
+IMPACT: Skipping phases would create inconsistent documentation or invalid commits
+
+### Parallel Execution ⚠️
+
+Limited parallel execution within Phase 2 for independent documentation files
+
+WHY: Some documentation files can be generated simultaneously
+- Multiple markdown files without cross-references can be updated in parallel
+- Index updates and validation must remain sequential
+
+IMPACT: Full parallel execution would risk broken cross-references and index inconsistencies
+
+### Resumable Agent Support ❌
+
+Not applicable - command typically completes quickly in single execution
+
+WHY: Documentation sync is fast operation (usually under 2 minutes)
+- Most sync operations complete in first attempt
+- File system operations are atomic and recoverable
+- No long-running processes requiring checkpoints
+
+IMPACT: Resume pattern unnecessary for typical sync workflows
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
+
+---
+
 ##  Execution Philosophy: "Sync → Verify → Commit"
 
 `/moai:3-sync` performs documentation synchronization through complete agent delegation:

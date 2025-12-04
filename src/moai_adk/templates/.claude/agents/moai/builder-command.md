@@ -437,18 +437,19 @@ skills:
 
 ### Step 5.3: Generate Required Sections
 
-[HARD] Generate all 11 required sections to ensure complete command specification
+[HARD] Generate all 12 required sections to ensure complete command specification
 
 Complete section list:
 1. Pre-execution Context
 2. Essential Files
 3. Command Purpose
 4. Associated Agents & Skills
-5. Execution Philosophy
-6-8. Phase Workflow (3 sections minimum)
-9. Quick Reference
-10. Final Step (Next Action Selection)
-11. Execution Directive
+5. Agent Invocation Patterns (NEW - CLAUDE.md Compliance)
+6. Execution Philosophy
+7-9. Phase Workflow (3 sections minimum)
+10. Quick Reference
+11. Final Step (Next Action Selection)
+12. Execution Directive
 
 Section 1: Pre-execution Context
 
@@ -503,7 +504,105 @@ Section 4: Associated Agents & Skills
 {agent_skill_table_rows}
 ```
 
-Section 5: Execution Philosophy
+Section 5: Agent Invocation Patterns (NEW)
+
+[HARD] Generate Agent Invocation Patterns section documenting command execution patterns
+
+WHY: Pattern documentation helps users understand command execution model and debug workflows
+IMPACT: Missing pattern documentation creates confusion about agent orchestration
+
+Pattern Determination Logic:
+- Sequential Chaining: If command has 2+ phases where each depends on previous → ✅
+- Parallel Execution: If command executes multiple agents simultaneously → ✅ or ⚠️ or ❌
+- Resumable Agents: If command can resume from checkpoint after interruption → ✅ or ❌
+
+```markdown
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining {✅|❌}
+
+{If ✅:
+Command implements sequential chaining through {N} phases:
+
+Phase Flow:
+- Phase 1: {description} ({agent_name} subagent)
+- Phase 2: {description} ({agent_name} subagent)
+- Phase N: {description} ({agent_name} subagent)
+
+Each phase receives outputs from previous phases as context.
+
+WHY: Sequential execution ensures {reason}
+- {dependency_1}
+- {dependency_2}
+
+IMPACT: {consequence_of_violation}
+}
+
+{If ❌:
+Not applicable - {reason}
+
+WHY: {explanation}
+IMPACT: {why_not_applicable}
+}
+
+### Parallel Execution {✅|⚠️|❌}
+
+{If ✅:
+Command executes multiple agents simultaneously:
+- {parallel_operation_1}
+- {parallel_operation_2}
+
+WHY: {reason_for_parallel}
+IMPACT: {benefit_of_parallel}
+}
+
+{If ⚠️:
+Limited parallel execution {where}
+
+WHY: {specific_limitations}
+IMPACT: {consequences}
+}
+
+{If ❌:
+Not applicable - {reason}
+
+WHY: {explanation}
+IMPACT: {why_sequential_required}
+}
+
+### Resumable Agent Support {✅|❌}
+
+{If ✅:
+Command supports resume pattern:
+
+Resume Command:
+- `/{command_name} {resume_args}`
+- {resume_behavior}
+
+WHY: {reason_for_resume_support}
+IMPACT: {benefit_of_resume}
+}
+
+{If ❌:
+Not applicable - {reason}
+
+WHY: {explanation}
+- {typical_execution_time}
+- {atomicity_characteristics}
+
+IMPACT: {why_resume_unnecessary}
+}
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
+
+---
+```
+
+Section 6: Execution Philosophy
 
 ```markdown
 ## Execution Philosophy: "{tagline}"
@@ -537,7 +636,7 @@ Output: {expected_output}
   IMPACT: Complex multi-agent workflows remain coherent and recoverable
 ```
 
-Sections 6-8: Phase Workflow
+Sections 7-9: Phase Workflow
 
 ```markdown
 ## PHASE {n}: {Phase Name}
@@ -557,7 +656,7 @@ Use Alfred delegation:
   """
 ```
 
-Section 9: Quick Reference
+Section 10: Quick Reference
 
 ```markdown
 ## Quick Reference
@@ -572,7 +671,7 @@ Last Updated: 2025-11-25
 Architecture: Commands → Agents → Skills (Complete delegation)
 ```
 
-Section 10: Final Step
+Section 11: Final Step
 
 ````markdown
 ## Final Step: Next Action Selection
@@ -606,7 +705,7 @@ IMPACT: Unclear options confuse users and block workflow progression
 
 ````
 
-Section 11: Execution Directive
+Section 12: Execution Directive
 ```markdown
 ##  EXECUTION DIRECTIVE
 

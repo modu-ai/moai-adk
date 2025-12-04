@@ -166,38 +166,29 @@ Detailed Reference: [Worktree Commands Module](modules/worktree-commands.md)
 
 Purpose: Enable true parallel development without context switching.
 
-**Workflow Phases (Corrected):**
+Workflow Integration:
 
 ```
-Plan Phase: Create Isolated Workspace
-/moai:1-plan 'requirements' --worktree
-→ moai-worktree new SPEC-XXX
-→ Creates dedicated workspace for SPEC development
+1. Plan Phase (/moai:1-plan):
+ SPEC creation
+ moai-worktree new SPEC-XXX
+ Automatic worktree setup
 
-Run Phase: Isolated Development Environment
-moai-worktree go SPEC-XXX
-→ Switch to isolated worktree
-→ Work on SPEC without affecting other SPECs
-→ Independent Git state and files
+2. Development Phase:
+ Isolated worktree environment
+ Independent Git state
+ Zero context switching
 
-Sync Phase: Clean Integration Guarantee
-/moai:3-sync
-→ Synchronizes documentation and finalizes PR
-→ Separate from worktree git sync
-→ Focuses on MoAI workflow integration
+3. Sync Phase (/moai:3-sync):
+ moai-worktree sync SPEC-XXX
+ Clean integration
+ Conflict resolution
 
-Cleanup Phase: Workspace Management
-moai-worktree clean
-→ Removes completed worktrees
-→ Independent command from MoAI workflow
-→ Maintains workspace hygiene
+4. Cleanup Phase:
+ moai-worktree clean
+ Automatic cleanup
+ Registry maintenance
 ```
-
-**Important Distinctions:**
-
-- **moai-worktree sync SPEC-XXX**: Git synchronization with base branch
-- **/moai:3-sync**: MoAI workflow documentation synchronization and PR finalization
-- These are completely separate operations with different purposes
 
 Parallel Development Benefits:
 
@@ -207,49 +198,30 @@ Parallel Development Benefits:
 4. Safe Experimentation: Isolated environment for experimental features
 5. Clean Integration: Automatic sync and conflict resolution
 
-**Complete Example Workflow:**
-
+Example Workflow:
 ```bash
-# === Plan Phase: SPEC Creation ===
-/moai:1-plan 'user authentication system' --worktree
-# → Automatically creates: moai-worktree new SPEC-AUTH-001
-
-# === Run Phase: Isolated Development ===
-# Navigate to worktree
-moai-worktree go SPEC-AUTH-001
-# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
+# Create SPEC-001 worktree
+moai-worktree new SPEC-001 "User Authentication"
+cd $(moai-worktree go SPEC-001)
 
 # Develop in isolation
-/moai:2-run SPEC-AUTH-001
-# → TDD implementation in isolated environment
+/moai:2-run SPEC-001
 
-# === Parallel Development Example ===
-# Create another SPEC while first is in progress
-/moai:1-plan 'payment integration' --worktree
-# → Creates: moai-worktree new SPEC-PAY-002
+# Create another worktree
+cd /path/to/main/repo
+moai-worktree new SPEC-002 "Payment Integration"
+cd $(moai-worktree go SPEC-002)
 
-# Switch between worktrees freely
-moai-worktree go SPEC-PAY-002
-/moai:2-run SPEC-PAY-002  # Work on payment system
+# Parallel development on SPEC-002
+/moai:2-run SPEC-002
 
-moai-worktree go SPEC-AUTH-001
-moai:2-run SPEC-AUTH-001  # Continue authentication work
+# Switch back and continue
+moai-worktree switch SPEC-001
+# Continue development...
 
-# === Sync Phase: Clean Integration ===
-# IMPORTANT: Two different sync operations!
-
-# Git sync (worktree management) - Update from main branch
-moai-worktree sync SPEC-AUTH-001
-moai-worktree sync SPEC-PAY-002
-
-# MoAI workflow sync (documentation and PR)
-/moai:3-sync SPEC-AUTH-001
-/moai:3-sync SPEC-PAY-002
-
-# === Cleanup Phase: Workspace Management ===
-# After SPECs are completed and merged
-moai-worktree clean
-# → Removes completed worktrees, maintains workspace hygiene
+# Sync and integrate
+moai-worktree sync SPEC-001
+moai-worktree sync SPEC-002
 ```
 
 Detailed Reference: [Parallel Development Module](modules/parallel-development.md)
@@ -260,53 +232,30 @@ Detailed Reference: [Parallel Development Module](modules/parallel-development.m
 
 Purpose: Seamless integration with MoAI-ADK Plan-Run-Sync workflow.
 
-**Clear Separation of Responsibilities:**
-
-**moai-worktree Commands (Git Workspace Management):**
-- `moai-worktree new SPEC-XXX`: Creates isolated Git workspace
-- `moai-worktree go SPEC-XXX`: Navigation to worktree
-- `moai-worktree sync SPEC-XXX`: Git synchronization with base branch
-- `moai-worktree clean`: Workspace cleanup and maintenance
-
-**MoAI Workflow Commands (`/moai:*`):**
-- `/moai:1-plan 'requirements' --worktree`: SPEC creation and planning
-- `/moai:2-run SPEC-XXX`: TDD implementation cycle
-- `/moai:3-sync`: Documentation synchronization and PR finalization
-
-**Integration Points:**
+Integration Points:
 
 1. Plan Phase Integration (`/moai:1-plan`):
  ```bash
- # SPEC creation with worktree setup
- /moai:1-plan 'user authentication system' --worktree
- → Automatically creates moai-worktree new SPEC-XXX
-
- # Manual worktree creation (if needed)
+ # After SPEC creation
  moai-worktree new SPEC-{SPEC_ID}
- echo "Switch to worktree: moai-worktree go SPEC-{SPEC_ID}"
+
+ # Output guidance
+ echo "1. Switch to worktree: moai-worktree switch SPEC-{SPEC_ID}"
+ echo "2. Or use shell eval: eval $(moai-worktree go SPEC-{SPEC_ID})"
  ```
 
 2. Development Phase (`/moai:2-run`):
  - Worktree isolation provides clean development environment
- - Independent Git state prevents conflicts between SPECs
- - Work on multiple SPECs in parallel without interference
+ - Independent Git state prevents conflicts
+ - Automatic registry tracking
 
-3. **IMPORTANT: Sync Phase Distinction**
+3. Sync Phase (`/moai:3-sync`):
  ```bash
- # Git synchronization (worktree management)
- moai-worktree sync SPEC-{SPEC_ID}  # ← Git sync with base branch
+ # Before PR creation
+ moai-worktree sync SPEC-{SPEC_ID}
 
- # MoAI workflow synchronization (documentation)
- /moai:3-sync  # ← Documentation sync and PR finalization
- ```
- **These are completely separate operations!**
-
-4. Cleanup Phase:
- ```bash
- # Workspace cleanup (independent command)
- moai-worktree clean  # ← Remove completed worktrees
-
- # Not part of MoAI workflow, but maintains workspace hygiene
+ # After PR merge
+ moai-worktree clean --merged-only
  ```
 
 Auto-Detection Patterns:
@@ -415,16 +364,11 @@ moai-worktree config set cache_ttl 3600
 
 ## Works Well With
 
-**MoAI Workflow Commands (Separate from worktree management):**
-- `/moai:1-plan 'requirements' --worktree` - SPEC creation with automatic worktree setup
-- `/moai:2-run SPEC-XXX` - TDD development in isolated worktree environment
-- `/moai:3-sync` - Documentation synchronization and PR finalization (NOT git sync)
-- `/moai:9-feedback` - Worktree workflow improvements
-
-**Important Clarification:**
-- `moai-worktree sync SPEC-XXX` = Git synchronization with base branch
-- `/moai:3-sync` = MoAI documentation synchronization and PR finalization
-- These serve completely different purposes and are not interchangeable
+Commands:
+- moai:1-plan - SPEC creation with automatic worktree setup
+- moai:2-run - Development in isolated worktree environment
+- moai:3-sync - Integration with automatic worktree sync
+- moai:9-feedback - Worktree workflow improvements
 
 Skills:
 - moai-foundation-core - Parallel development patterns

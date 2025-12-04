@@ -138,6 +138,60 @@ The command orchestrates phases sequentially; specialized agents handle all impl
 
 ---
 
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining ✅
+
+Command implements strict sequential chaining through 5 phases:
+
+Phase Flow:
+- Phase 1: Analysis & Planning (manager-strategy subagent)
+- Phase 2: TDD Implementation (manager-tdd subagent with RED-GREEN-REFACTOR)
+- Phase 2.5: Quality Validation (manager-quality subagent with TRUST 5 assessment)
+- Phase 3: Git Operations (manager-git subagent for commits and branch)
+- Phase 4: Completion Guidance (AskUserQuestion for next steps)
+
+Each phase receives outputs from all previous phases as context.
+
+WHY: Sequential execution ensures TDD discipline and quality gates
+- Phase 2 requires approved execution plan from Phase 1
+- Phase 2.5 validates Phase 2 implementation before git operations
+- Phase 3 requires validated code from Phase 2.5
+- Phase 4 provides guidance based on complete implementation status
+
+IMPACT: Skipping phases or parallel execution would violate TDD cycle and bypass quality gates
+
+### Parallel Execution ❌
+
+Not applicable - TDD workflow requires sequential execution
+
+WHY: Test-Driven Development mandates specific ordering
+- Cannot write tests in parallel with implementation (RED phase first)
+- Cannot validate quality before implementation completes
+- Cannot commit code before quality validation passes
+
+IMPACT: Parallel execution would break TDD discipline and compromise code quality
+
+### Resumable Agent Support ✅
+
+Command supports resume pattern after interruptions:
+
+Resume Command:
+- `/moai:2-run SPEC-XXX` (retry same command)
+- Resumes from last successful phase checkpoint
+- Preserves execution context and implementation state
+
+WHY: Complex implementations may encounter interruptions or token limits
+IMPACT: Resume capability prevents loss of implementation progress and enables recovery
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
+
+---
+
 ##  Phase Execution Details
 
 ### Phase 1: Analysis & Planning
@@ -363,7 +417,7 @@ PHASE 3: manager-git subagent
     Decision: Proceed to Phase 4
     ↓
 PHASE 4: AskUserQuestion()
-    Action: Display summary → Show next action options → Wait for user decision
+    Action: Display summary → Show next action options → Process user decision
     Output: User selection (sync docs / implement more / review / finish)
     Checkpoint: User direction selected
     ↓
@@ -784,7 +838,7 @@ When implementing this command, you MUST follow the execution philosophy and pha
 2. Proceed through all phases sequentially with context propagation
    - Each phase receives outputs from previous phases
    - Quality gates block progression if status is CRITICAL
-   - User approval checkpoints are blocking (wait for user response)
+   - User approval checkpoints require user response before proceeding
 
 3. Generate proper output formats with XML tags
    - All phase outputs follow the expected output format specified above

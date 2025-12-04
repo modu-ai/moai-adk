@@ -130,6 +130,57 @@ Phase 1B: Specialized Analysis
 
 ---
 
+## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
+
+### Sequential Phase-Based Chaining ✅
+
+Command implements sequential chaining through 4 distinct phases:
+
+Phase Flow:
+- Phase 1A (Optional): Project Exploration via Explore subagent
+- Phase 1B (Required): SPEC Planning via manager-spec subagent
+- Phase 2: SPEC Document Creation via manager-spec subagent
+- Phase 3: Git Branch Setup via manager-git subagent (conditional)
+
+Each phase receives context and outputs from previous phases.
+
+WHY: Sequential execution ensures proper dependency management
+- Phase 1B needs exploration results from 1A (if applicable)
+- Phase 2 requires approved plan from Phase 1B
+- Phase 3 depends on created SPEC files from Phase 2
+
+IMPACT: Skipping phases or parallel execution would violate dependencies and create incomplete specifications
+
+### Parallel Execution ❌
+
+Not applicable - phases have explicit dependencies
+
+WHY: Each phase depends on outputs from previous phase
+- Cannot create SPEC documents before plan approval
+- Cannot create git branch before SPEC files exist
+
+IMPACT: Parallel execution would cause file system inconsistencies and incomplete workflows
+
+### Resumable Agent Support ✅
+
+Command supports resume pattern for draft SPECs:
+
+Resume Command:
+- `/moai:1-plan resume SPEC-XXX`
+- Continues from last saved draft state
+- Preserves user input and planning context
+
+WHY: Complex planning sessions may require multiple iterations
+IMPACT: Resume capability prevents loss of planning work and enables iterative refinement
+
+---
+
+Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern architecture.
+
+---
+
 ##  Execution Philosophy: "Always make a plan first and then proceed."
 
 `/moai:1-plan` performs SPEC planning through complete agent delegation:
@@ -415,7 +466,7 @@ questions:
   - label: "Cancel"
     description: "Discard plan and return to planning stage"
 
-Wait for user response, then proceed to Step 3.5.
+After AskUserQuestion returns user selection, proceed to Step 3.5.
 
 #### Step 3.5: Progress Report and User Confirmation
 
@@ -467,7 +518,7 @@ questions:
   - label: "Cancel"
     description: "Cancel operation and discard plan"
 
-Wait for user response, then proceed to Step 4.
+Process user response from AskUserQuestion in Step 4.
 
 #### Step 4: Process user's answer
 
@@ -482,7 +533,7 @@ IF user selected "Proceed":
 IF user selected "Detailed Revision":
 
 1. Ask the user: "What changes would you like to make to the plan?"
-2. Wait for user's feedback
+2. Collect user's feedback via AskUserQuestion
 3. Pass feedback to manager-spec agent
 4. manager-spec updates the plan
 5. Return to Step 3.5 (request approval again with updated plan)
@@ -613,8 +664,7 @@ Step 2: Verify ID Uniqueness
 Step 3: Create Directory Structure
 
 - Create directory: .moai/specs/SPEC-{SPEC_ID}/
-- Wait for directory creation to complete
-- Proceed to Step 4 ONLY AFTER directory exists
+- Directory creation completes synchronously before Step 4
 
 Step 4: Generate 3 SPEC Files (SIMULTANEOUS - Required)
 
@@ -1072,7 +1122,7 @@ Display status based on configuration and execution result:
  Configuration: git_strategy.mode = "{git_mode}" (personal or team)
  Branch Creation: prompt_always = false, auto_enabled = false → Manual Default
 
- Branch Creation: Not created yet (waiting for approval)
+ Branch Creation: Not created yet (pending user approval)
 - SPEC files created on current branch
 - Ready for implementation
 - Commits will be made directly to current branch initially

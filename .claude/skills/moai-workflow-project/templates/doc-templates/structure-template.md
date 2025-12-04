@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} - System Architecture
+# MoAI-ADK - System Architecture
 
 ## Overall Design Pattern
 {{ARCHITECTURE_PATTERN}}
