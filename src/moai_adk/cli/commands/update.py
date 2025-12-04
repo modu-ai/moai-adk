@@ -2489,27 +2489,37 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
 
 
 def _cleanup_legacy_presets(project_path: Path) -> None:
-    """Remove legacy presets directory if it exists.
+    """Remove legacy JSON preset files (not the entire directory).
 
-    This function cleans up the obsolete .moai/config/presets directory
-    that may exist from previous versions of MoAI-ADK.
+    This function cleans up obsolete .json preset files in .moai/config/presets/
+    that may exist from previous versions of MoAI-ADK. The directory itself
+    and .yaml files are preserved since they are part of the current template.
 
     Args:
         project_path: Project directory path (absolute)
     """
-    import shutil
-
     presets_dir = project_path / ".moai" / "config" / "presets"
 
-    if presets_dir.exists() and presets_dir.is_dir():
+    if not presets_dir.exists() or not presets_dir.is_dir():
+        return
+
+    # Only remove legacy .json files, preserve .yaml files and the directory
+    json_files = list(presets_dir.glob("*.json"))
+    if not json_files:
+        return
+
+    removed_count = 0
+    for json_file in json_files:
         try:
-            shutil.rmtree(presets_dir)
-            console.print("   [cyan]🧹 Cleaned up legacy presets directory[/cyan]")
-            logger.info(f"Removed legacy presets directory: {presets_dir}")
+            json_file.unlink()
+            removed_count += 1
+            logger.debug(f"Removed legacy preset file: {json_file}")
         except Exception as e:
-            console.print(f"   [yellow]⚠️ Failed to remove legacy presets directory: {e}[/yellow]")
-            logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
-            # Don't fail the update process, just log the warning
+            logger.warning(f"Failed to remove legacy preset {json_file}: {e}")
+
+    if removed_count > 0:
+        console.print(f"   [cyan]🧹 Cleaned up {removed_count} legacy JSON preset files[/cyan]")
+        logger.info(f"Removed {removed_count} legacy JSON preset files from {presets_dir}")
 
 
 def _migrate_config_json_to_yaml(project_path: Path) -> bool:
