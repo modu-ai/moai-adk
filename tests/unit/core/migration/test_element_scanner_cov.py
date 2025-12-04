@@ -128,36 +128,47 @@ class TestCustomElementScanner:
             }
 
             with patch("pathlib.Path.exists", return_value=True):
-                with patch("pathlib.Path.rglob", return_value=[]):
+                with patch("pathlib.Path.iterdir", return_value=[]):
                     scanner = CustomElementScanner(Path("/project"))
                     result = scanner._scan_custom_agents()
                     assert result == []
 
     def test_scan_custom_agents_filters_template(self):
-        """Test scanning agents filters out template agents."""
+        """Test scanning agents skips moai/ subdirectory."""
         with patch.object(CustomElementScanner, "_get_template_elements") as mock_get:
-            template_agents = {"template-agent.md"}
             mock_get.return_value = {
-                "agents": template_agents,
+                "agents": set(),
                 "commands": set(),
                 "skills": set(),
                 "hooks": set(),
             }
 
             agents_dir = Path("/project/.claude/agents")
-            template_file = agents_dir / "template-agent.md"
-            custom_file = agents_dir / "custom-agent.md"
+            moai_dir = MagicMock()
+            moai_dir.is_dir.return_value = True
+            moai_dir.name = "moai"  # Should be skipped
+            custom_dir = MagicMock()
+            custom_dir.is_dir.return_value = True
+            custom_dir.name = "custom"  # Should be included
+
+            # Mock files
+            moai_file = Path("/project/.claude/agents/moai/template.md")
+            custom_file = Path("/project/.claude/agents/custom/custom-agent.md")
 
             with patch("pathlib.Path.exists", return_value=True):
-                with patch("pathlib.Path.rglob") as mock_rglob:
+                with patch("pathlib.Path.iterdir", return_value=[moai_dir, custom_dir]):
+                    # moai_dir.rglob should return template file (but will be skipped)
+                    moai_dir.rglob.return_value = [moai_file]
+                    # custom_dir.rglob should return custom file (will be included)
+                    custom_dir.rglob.return_value = [custom_file]
+
                     with patch("pathlib.Path.relative_to") as mock_relative:
-                        mock_rglob.return_value = [template_file, custom_file]
-                        mock_relative.side_effect = lambda p: Path(f".claude/agents/{p.name}")
+                        mock_relative.return_value = Path(".claude/agents/custom/custom-agent.md")
 
                         scanner = CustomElementScanner(Path("/project"))
                         result = scanner._scan_custom_agents()
 
-                        # Only custom-agent.md should be returned
+                        # Only custom-agent.md should be returned (moai/ dir is skipped)
                         assert len(result) == 1
 
     def test_scan_custom_commands_in_moai_subdirectory(self):

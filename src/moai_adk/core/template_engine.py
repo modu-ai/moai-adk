@@ -223,6 +223,7 @@ class TemplateEngine:
             # Project information
             "PROJECT_NAME": project_config.get("name", "MyProject"),
             "PROJECT_DESCRIPTION": project_config.get("description", ""),
+            "PROJECT_OWNER": project_config.get("owner", ""),  # GitHub username (project owner)
             "GITHUB_PROFILE_NAME": github_config.get("profile_name", ""),
             "PROJECT_MODE": project_config.get("mode", "team"),  # team or personal
             "CODEBASE_LANGUAGE": project_config.get("codebase_language", "python"),
