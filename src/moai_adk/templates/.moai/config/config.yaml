@@ -1,9 +1,9 @@
 # MoAI-ADK Configuration
-# Version: 0.32.0
+# Version: 0.32.6
 # Format: YAML (migrated from JSON for better readability and comments)
 
 moai:
-  version: "0.30.2"
+  version: "0.32.6"
   version_check:
     enabled: true
     cache_ttl_hours: 24
