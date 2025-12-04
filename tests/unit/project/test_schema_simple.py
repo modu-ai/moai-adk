@@ -104,7 +104,7 @@ class TestCreateTab1QuickStart:
 
         assert len(batch2["questions"]) == 3
         assert batch2["questions"][0]["id"] == "project_name"
-        assert batch2["questions"][1]["id"] == "project_owner"
+        assert batch2["questions"][1]["id"] == "github_profile_name"  # Changed from project_owner
         assert batch2["questions"][2]["id"] == "project_description"
 
     def test_tab1_batch3_questions(self):

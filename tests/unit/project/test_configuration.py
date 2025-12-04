@@ -25,7 +25,7 @@ class TestConfigurationManager:
     def test_init_with_default_path(self):
         """Test ConfigurationManager initialization with default path."""
         manager = ConfigurationManager()
-        assert manager.config_path == Path(".moai/config/config.json")
+        assert manager.config_path == Path(".moai/config/config.yaml")
         assert manager.schema is None
         assert manager._config_cache is None
 

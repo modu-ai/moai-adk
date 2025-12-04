@@ -330,16 +330,16 @@ class TestGetDefaultVariables:
                 "conversation_language_name": "English",
                 "agent_prompt_language": "english",
             },
-            "moai": {"version": "1.0.0"},
+            "moai": {"version": "0.32.8"},
         }
 
         variables = TemplateEngine.get_default_variables(config)
 
         assert variables["PROJECT_NAME"] == "MyProject"
         assert variables["PROJECT_DESCRIPTION"] == "My Description"
-        assert variables["PROJECT_OWNER"] == "Alice"
+        assert variables["GITHUB_PROFILE_NAME"] == ""  # Changed from PROJECT_OWNER
         assert variables["CODEBASE_LANGUAGE"] == "python"
-        assert variables["MOAI_VERSION"] == "1.0.0"
+        assert variables["MOAI_VERSION"] == "0.32.8"
 
     def test_get_default_variables_empty_config(self):
         """Test getting default variables with empty config."""
