@@ -1,3 +1,38 @@
+# v0.32.6 - Dynamic Version Management & YAML Config Support (2025-12-04)
+
+## Summary
+
+This release completes the YAML configuration migration and introduces dynamic version management, eliminating manual version synchronization across files.
+
+## Changes (v0.32.1 - v0.32.6)
+
+### v0.32.6 - Dynamic Version Management
+- **Template placeholder**: `config.yaml` now uses `{{MOAI_VERSION}}` placeholder
+- **Centralized version**: All version constants consolidated in `version.py`
+- **Automatic sync**: Version dynamically loaded from installed package metadata
+- **No manual updates**: Eliminates need to update version in multiple files on each release
+
+### v0.32.5 - YAML Configuration Migration Complete
+- **Full migration**: All `config.json` references migrated to `config.yaml`
+- **Dual format support**: `init.py` and `update.py` support both YAML and JSON
+- **Helper functions**: New `_get_config_path()`, `_load_config()`, `_save_config()` utilities
+- **Backward compatible**: Existing JSON configs continue to work
+
+### v0.32.4 - Configuration Schema Updates
+- **Renamed**: `project.owner` → `github.profile_name` for clarity
+- **Consistency**: All GitHub-related settings now under `github` section
+
+### v0.32.3 - Bug Fix
+- Fixed presets directory not being preserved during update cleanup
+
+### v0.32.2 - Bug Fix
+- Fixed template elements incorrectly appearing in custom restoration UI
+
+### v0.32.1 - Bug Fix
+- Fixed SpinnerContext causing stdin blocking during template sync
+
+---
+
 # v0.32.0 - Test Suite Cleanup & Alfred to MoAI Migration (2025-12-04)
 
 ## Summary
