@@ -266,6 +266,8 @@ def get_git_info() -> Dict[str, Any]:
         # Define git commands to run in parallel
         git_commands = [
             (["git", "branch", "--show-current"], "branch"),
+            (["git", "rev-parse", "--abbrev-ref", "HEAD"], "head_ref"),
+            (["git", "rev-parse", "--short", "HEAD"], "head_commit"),
             (["git", "log", "--pretty=format:%h %s", "-1"], "last_commit"),
             (["git", "log", "--pretty=format:%ar", "-1"], "commit_time"),
             (["git", "status", "--porcelain"], "changes_raw"),
@@ -288,10 +290,16 @@ def get_git_info() -> Dict[str, Any]:
 
         # Process results with proper handling for empty values
         branch = results.get("branch", "")
+        head_ref = results.get("head_ref", "")
+        head_commit = results.get("head_commit", "")
         last_commit = results.get("last_commit", "")
 
-        # FIX #1: Handle empty branch (no commits yet)
-        if not branch:
+        # FIX: Detect detached HEAD state
+        if not branch and head_ref == "HEAD":
+            # Detached HEAD state - show commit hash
+            branch = f"HEAD detached at {head_commit}"
+        elif not branch:
+            # No commits yet
             branch = "No commits yet → Make your first commit"
 
         # FIX #4: Handle no commits case

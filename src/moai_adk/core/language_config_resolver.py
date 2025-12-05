@@ -117,6 +117,93 @@ class LanguageConfigResolver:
 
     def _load_config_file(self) -> Optional[Dict[str, Any]]:
         """
+        Load configuration from .moai/config/config.yaml or section files.
+
+        Priority:
+        1. Section files (.moai/config/sections/*.yaml) - highest
+        2. Main config file (.moai/config/config.yaml)
+        3. None if neither exists
+
+        Returns:
+            Configuration dictionary or None if file doesn't exist
+        """
+        config = {}
+
+        # Try loading from section files first (higher priority)
+        section_config = self._load_section_files()
+        if section_config:
+            config.update(section_config)
+
+        # Try loading from main config file (fallback)
+        main_config = self._load_main_config_file()
+        if main_config:
+            # Only update fields not already set by section files
+            for key, value in main_config.items():
+                if key not in config:
+                    config[key] = value
+
+        return config if config else None
+
+    def _load_section_files(self) -> Optional[Dict[str, Any]]:
+        """
+        Load configuration from section files in .moai/config/sections/
+
+        Section files:
+        - user.yaml: User identification
+        - language.yaml: Language preferences
+
+        Returns:
+            Configuration dictionary or None if section files don't exist
+        """
+        if not YAML_AVAILABLE:
+            return None
+
+        sections_dir = self.project_root / ".moai" / "config" / "sections"
+        if not sections_dir.exists():
+            return None
+
+        config = {}
+
+        try:
+            # Load user.yaml
+            user_file = sections_dir / "user.yaml"
+            if user_file.exists():
+                with open(user_file, "r", encoding="utf-8") as f:
+                    user_data = yaml.safe_load(f) or {}
+                    user_config = user_data.get("user", {})
+                    if "name" in user_config:
+                        config["user_name"] = user_config["name"]
+
+            # Load language.yaml
+            language_file = sections_dir / "language.yaml"
+            if language_file.exists():
+                with open(language_file, "r", encoding="utf-8") as f:
+                    lang_data = yaml.safe_load(f) or {}
+                    language_config = lang_data.get("language", {})
+
+                    if "conversation_language" in language_config:
+                        config["conversation_language"] = language_config["conversation_language"]
+                    if "conversation_language_name" in language_config:
+                        config["conversation_language_name"] = language_config["conversation_language_name"]
+                    if "agent_prompt_language" in language_config:
+                        config["agent_prompt_language"] = language_config["agent_prompt_language"]
+                    if "git_commit_messages" in language_config:
+                        config["git_commit_messages"] = language_config["git_commit_messages"]
+                    if "code_comments" in language_config:
+                        config["code_comments"] = language_config["code_comments"]
+                    if "documentation" in language_config:
+                        config["documentation"] = language_config["documentation"]
+                    if "error_messages" in language_config:
+                        config["error_messages"] = language_config["error_messages"]
+
+            return config if config else None
+
+        except (yaml.YAMLError, IOError, KeyError) as e:
+            print(f"Warning: Failed to load section files: {e}")
+            return None
+
+    def _load_main_config_file(self) -> Optional[Dict[str, Any]]:
+        """
         Load configuration from .moai/config/config.yaml or config.json file.
 
         Returns:
