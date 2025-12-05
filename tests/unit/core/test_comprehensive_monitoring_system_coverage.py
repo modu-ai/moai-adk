@@ -21,7 +21,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-import numpy as np
 import psutil
 
 from moai_adk.core.comprehensive_monitoring_system import (
@@ -665,7 +664,7 @@ class TestPredictiveAnalytics:
         # Setup mocks
         mock_mean.return_value = 75.0
         mock_polyfit.return_value = [0.5, 70.0]  # slope, intercept
-        mock_polyval.return_value = np.array([75.5, 76.0])
+        mock_polyval.return_value = [75.5, 76.0]
 
         # Mock historical data
         mock_metrics = []
@@ -738,7 +737,7 @@ class TestPredictiveAnalytics:
         # Setup mocks
         mock_mean.return_value = 75.0
         mock_std.return_value = 5.0
-        mock_abs.return_value = np.array([0.5, 1.0, 2.5, 3.0])
+        mock_abs.return_value = [0.5, 1.0, 2.5, 3.0]
 
         # Mock metrics
         mock_metrics = [
