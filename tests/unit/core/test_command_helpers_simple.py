@@ -32,7 +32,7 @@ class TestExtractProjectMetadata:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
             config_data = {
                 "project": {
@@ -42,7 +42,9 @@ class TestExtractProjectMetadata:
                 },
                 "language": {"conversation_language": "en"},
             }
-            config_file.write_text(json.dumps(config_data))
+            import yaml
+
+            config_file.write_text(yaml.dump(config_data))
 
             # Act
             result = extract_project_metadata(tmpdir)
@@ -50,7 +52,7 @@ class TestExtractProjectMetadata:
             # Assert
             assert result["project_name"] == "TestProject"
             assert result["mode"] == "team"
-            assert result["owner"] == "test_owner"
+            assert result["github_profile"] == ""  # Updated field name
             assert result["language"] == "en"
 
     def test_extract_with_defaults(self):
@@ -59,10 +61,12 @@ class TestExtractProjectMetadata:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
             config_data = {"project": {}, "language": {}}
-            config_file.write_text(json.dumps(config_data))
+            import yaml
+
+            config_file.write_text(yaml.dump(config_data))
 
             # Act
             result = extract_project_metadata(tmpdir)
@@ -70,7 +74,7 @@ class TestExtractProjectMetadata:
             # Assert
             assert result["project_name"] == "Unknown"
             assert result["mode"] == "personal"
-            assert result["owner"] == "@user"
+            assert result["github_profile"] == ""  # Updated field name
             assert result["language"] == "en"
 
     def test_extract_missing_config_file(self):
@@ -82,16 +86,18 @@ class TestExtractProjectMetadata:
                 extract_project_metadata(tmpdir)
 
     def test_extract_invalid_json(self):
-        """Test error on invalid JSON."""
+        """Test error on invalid YAML."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True)
-            config_file = config_dir / "config.json"
-            config_file.write_text("{ invalid json }")
+            config_file = config_dir / "config.yaml"
+            config_file.write_text("{ invalid yaml content: [unclosed")
 
             # Act & Assert
-            with pytest.raises(json.JSONDecodeError):
+            import yaml
+
+            with pytest.raises(yaml.YAMLError):
                 extract_project_metadata(tmpdir)
 
 

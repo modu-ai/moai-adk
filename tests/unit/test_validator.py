@@ -60,7 +60,7 @@ class TestProjectValidatorConstants:
         """Should define required files"""
         assert hasattr(ProjectValidator, "REQUIRED_FILES")
         assert isinstance(ProjectValidator.REQUIRED_FILES, list)
-        assert ".moai/config/config.json" in ProjectValidator.REQUIRED_FILES
+        assert ".moai/config/config.yaml" in ProjectValidator.REQUIRED_FILES
         assert "CLAUDE.md" in ProjectValidator.REQUIRED_FILES
 
 

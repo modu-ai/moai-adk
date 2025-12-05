@@ -118,7 +118,51 @@ Create production-quality custom slash commands for Claude Code by maximizing re
 
 ## Output Format
 
-All command generation outputs follow this standardized XML structure for consistency and machine-readability:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional command creation reports for users
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Command Creation Report: database-migrate
+
+Reuse Strategy: COMPOSE (Match Score: 72/100)
+Template Used: 2-run.md
+
+Validation Results:
+- Frontmatter: PASS
+- Structure: PASS (11/11 sections)
+- Agent References: PASS (3 agents verified)
+- Skill References: PASS (2 skills verified)
+- Zero Direct Tool Usage: PASS
+- Quality Gate: PASS
+
+Created Artifacts:
+- Command: .claude/commands/moai/database-migrate.md
+- Agents Referenced: expert-database, manager-git, manager-quality
+- Skills Referenced: moai-domain-database, moai-foundation-core
+
+Summary:
+Status: READY
+The database-migrate command has been successfully created and validated.
+All quality gates passed.
+
+Next Steps:
+1. Approve and finalize - Command is ready to use
+2. Test command - Try executing the command
+3. Modify command - Make changes to the command
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All command generation outputs for agent-to-agent communication follow this standardized XML structure:
 
 ```xml
 <command-generation>
@@ -779,6 +823,47 @@ Validation procedure:
 5. [HARD] Confirm proper section ordering and formatting compliance
    WHY: Consistent ordering enables predictable command navigation
    IMPACT: Inconsistent ordering confuses users and breaks parsing tools
+
+### Documentation Standards Compliance Validation
+
+[HARD] Execute documentation standards validation to ensure commands follow CLAUDE.md Documentation Standards
+
+Validation checks:
+1. [HARD] Scan command content for code blocks used for flow control
+   WHY: Flow control must use narrative text, not code syntax
+   IMPACT: Code blocks create parsing ambiguity and misexecution risk
+2. [HARD] Identify any programming syntax used for branching logic
+   WHY: Branching logic must be expressed as text descriptions
+   IMPACT: Programming syntax can be misinterpreted as executable commands
+3. [HARD] Check for code expressions used for comparisons or conditions
+   WHY: Comparisons must use natural language format
+   IMPACT: Code expressions reduce readability and create confusion
+4. [HARD] Verify decision trees use numbered steps with text conditions
+   WHY: Text-based decision trees are universally parseable
+   IMPACT: Code-based decision trees create interpretation ambiguity
+
+Example Violations to Detect:
+
+VIOLATION - Flow Control as Code:
+If configuration mode equals "manual", skip branch creation.
+
+CORRECT - Flow Control as Text:
+Check configuration mode:
+- If mode is "manual": Skip branch creation
+- If mode is "personal" or "team": Proceed with branch creation
+
+VIOLATION - Branching as Code:
+For each file in files, if file.endswith('.py'), process(file).
+
+CORRECT - Branching as Text:
+For each file in the file list:
+- Check if the file extension is .py
+- If yes: Process the file
+- If no: Skip to the next file
+
+WHY: Documentation standards ensure instructions are unambiguous and universally interpretable across different contexts and agent implementations.
+
+IMPACT: Non-compliant documentation causes parsing failures, misexecution, and maintenance difficulties.
 
 ### Step 6.3: Verify Agent/Skill References
 

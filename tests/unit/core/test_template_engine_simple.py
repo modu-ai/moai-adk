@@ -388,7 +388,7 @@ class TestGetDefaultVariables:
                     "enable_alfred_commands": True,
                 }
             },
-            "moai": {"version": "1.0.0"},
+            "moai": {"version": "0.32.8"},
         }
 
         # Act
@@ -396,7 +396,7 @@ class TestGetDefaultVariables:
 
         # Assert
         assert variables["PROJECT_NAME"] == "MyProject"
-        assert variables["PROJECT_OWNER"] == "test_owner"
+        assert variables["GITHUB_PROFILE_NAME"] == ""  # Changed from PROJECT_OWNER
         assert variables["CODEBASE_LANGUAGE"] == "python"
         assert variables["CONVERSATION_LANGUAGE"] == "en"
 

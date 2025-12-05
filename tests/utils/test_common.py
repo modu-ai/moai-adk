@@ -17,7 +17,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, mock_open, patch
 
 import aiohttp
 import pytest
@@ -861,33 +861,23 @@ class TestLoadHookTimeout:
             timeout = load_hook_timeout()
             assert timeout == 5000
 
-    @pytest.mark.skipif(sys.version_info < (3, 12), reason="Path mock issues on Python < 3.12")
     def test_load_hook_timeout_from_config(self):
         """Test loading timeout from config file."""
         config = {"hooks": {"timeout_ms": 10000}}
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(config, f)
-            config_path = f.name
-
-        try:
-            with patch("pathlib.Path.exists", return_value=True):
-                with patch("builtins.open", create=True) as mock_open:
-                    mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(config)
-                    # Need to patch json.load as well
-                    with patch("json.load", return_value=config):
-                        with patch("pathlib.Path", return_value=Path(config_path)):
-                            timeout = load_hook_timeout()
-                            assert timeout == 10000
-        finally:
-            Path(config_path).unlink()
-
-    def test_load_hook_timeout_malformed_json(self):
-        """Test handling malformed JSON in config."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = "invalid json"
-                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
+                    timeout = load_hook_timeout()
+                    assert timeout == 10000
+
+    def test_load_hook_timeout_malformed_yaml(self):
+        """Test handling malformed YAML in config."""
+        import yaml as yaml_module
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", side_effect=yaml_module.YAMLError("parse error")):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -896,8 +886,8 @@ class TestLoadHookTimeout:
         config = {"other": "data"}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -906,8 +896,8 @@ class TestLoadHookTimeout:
         config = {"hooks": {"other": "value"}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     timeout = load_hook_timeout()
                     assert timeout == 5000
 
@@ -919,8 +909,8 @@ class TestLoadHookTimeout:
             config = {"hooks": {"timeout_ms": timeout_ms}}
 
             with patch("pathlib.Path.exists", return_value=True):
-                with patch("builtins.open", create=True):
-                    with patch("json.load", return_value=config):
+                with patch("builtins.open", mock_open()):
+                    with patch("yaml.safe_load", return_value=config):
                         result = load_hook_timeout()
                         assert result == timeout_ms
 
@@ -939,8 +929,8 @@ class TestGetGracefulDegradation:
         config = {"hooks": {"graceful_degradation": True}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -949,17 +939,18 @@ class TestGetGracefulDegradation:
         config = {"hooks": {"graceful_degradation": False}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is False
 
-    def test_graceful_degradation_malformed_json(self):
-        """Test handling malformed JSON in config."""
+    def test_graceful_degradation_malformed_yaml(self):
+        """Test handling malformed YAML in config."""
+        import yaml as yaml_module
+
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = "invalid"
-                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", side_effect=yaml_module.YAMLError("parse error")):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -968,8 +959,8 @@ class TestGetGracefulDegradation:
         config = {"other": "data"}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -978,8 +969,8 @@ class TestGetGracefulDegradation:
         config = {"hooks": {"other": "value"}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 

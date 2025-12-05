@@ -302,11 +302,42 @@ For initialization modes only, evaluate project complexity through systematic an
 
 ## Output Format Specification
 
-### XML Response Structure [HARD]
+### Output Format Rules
 
-All agent responses must follow this XML structure to ensure consistent processing and integration with downstream systems:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
 
-Response Root Structure:
+User Report Example:
+
+Project Initialization Complete
+
+Mode: Fresh Install
+Language: Korean (ko)
+Complexity: MEDIUM
+
+Execution Phases:
+- Language Setup: COMPLETED
+- Project Analysis: COMPLETED
+- Documentation Generation: COMPLETED
+- Configuration Update: COMPLETED
+
+Created Documents:
+- .moai/project/product.md (Korean)
+- .moai/project/structure.md (Korean)
+- .moai/project/tech.md (Korean)
+
+Project Overview:
+- Type: Web Application
+- Team Size: Solo developer
+- Tech Stack: Next.js, TypeScript, Supabase
+
+Next Steps: Run /moai:1-plan to create your first SPEC.
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Agent responses use XML structure for downstream system integration:
+
 ```xml
 <project_initialization>
   <operation_metadata>

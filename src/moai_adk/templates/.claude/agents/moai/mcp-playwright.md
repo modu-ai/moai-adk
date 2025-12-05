@@ -337,7 +337,38 @@ MUST Enforce:
 
 ## Output Format
 
-All automation reports and recommendations MUST follow this structure:
+### Output Format Rules
+
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+User Report Example:
+
+Automation Session Complete: Login Flow Test
+
+Target: https://example.com/login
+Session ID: sess-abc123
+Status: SUCCESS
+
+Execution Steps:
+1. Navigate to login page - OK (1.2s)
+2. Enter credentials - OK (0.3s)
+3. Click submit button - OK (0.5s)
+4. Verify dashboard loaded - OK (2.1s)
+
+Metrics:
+- Success Rate: 100%
+- Total Duration: 4.1 seconds
+- Response Time: 850ms average
+
+Recommendations:
+- HIGH: Use data-testid selectors instead of CSS classes
+- MEDIUM: Add retry logic for network flakiness
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Automation data uses XML structure for automated parsing by downstream agents:
 
 Activity Report Format:
 ```xml

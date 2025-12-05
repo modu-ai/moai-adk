@@ -4,12 +4,12 @@ Comprehensive tests for command_helpers module.
 Tests helper functions for command context management and project metadata extraction.
 """
 
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import yaml
 
 from moai_adk.core.command_helpers import (
     build_phase_result,
@@ -25,30 +25,32 @@ class TestExtractProjectMetadata:
     """Test extract_project_metadata function."""
 
     def test_extract_valid_config(self):
-        """Test extracting metadata from valid config.json."""
+        """Test extracting metadata from valid config.yaml."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create config directory and file
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
             config_data = {
                 "project": {
                     "name": "test-project",
                     "mode": "team",
-                    "owner": "@john",
+                },
+                "github": {
+                    "profile_name": "john",
                 },
                 "language": {"conversation_language": "ko"},
             }
 
-            config_file.write_text(json.dumps(config_data))
+            config_file.write_text(yaml.dump(config_data))
 
             # Test
             metadata = extract_project_metadata(tmpdir)
 
             assert metadata["project_name"] == "test-project"
             assert metadata["mode"] == "team"
-            assert metadata["owner"] == "@john"
+            assert metadata["github_profile"] == "john"
             assert metadata["language"] == "ko"
 
     def test_extract_with_defaults(self):
@@ -56,18 +58,18 @@ class TestExtractProjectMetadata:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
             # Minimal config
             config_data = {"project": {"name": "minimal"}, "language": {}}
 
-            config_file.write_text(json.dumps(config_data))
+            config_file.write_text(yaml.dump(config_data))
 
             metadata = extract_project_metadata(tmpdir)
 
             assert metadata["project_name"] == "minimal"
             assert metadata["mode"] == "personal"  # Default value
-            assert metadata["owner"] == "@user"  # Default value
+            assert metadata["github_profile"] == ""  # Default value
             assert metadata["language"] == "en"  # Default value
 
     def test_extract_missing_config_file(self):
@@ -76,16 +78,16 @@ class TestExtractProjectMetadata:
             with pytest.raises(FileNotFoundError, match="Config file not found"):
                 extract_project_metadata(tmpdir)
 
-    def test_extract_invalid_json(self):
-        """Test error handling for invalid JSON."""
+    def test_extract_invalid_yaml(self):
+        """Test error handling for invalid YAML."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
-            config_file.write_text("{ invalid json }")
+            config_file.write_text("invalid: yaml: content:")
 
-            with pytest.raises(json.JSONDecodeError):
+            with pytest.raises(yaml.YAMLError):
                 extract_project_metadata(tmpdir)
 
     def test_extract_empty_config(self):
@@ -93,9 +95,9 @@ class TestExtractProjectMetadata:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
-            config_file.write_text(json.dumps({}))
+            config_file.write_text(yaml.dump({}))
 
             metadata = extract_project_metadata(tmpdir)
 
@@ -473,13 +475,13 @@ class TestIntegrationMetadataExtraction:
             # Create config
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
             config_data = {
                 "project": {"name": "full-project"},
                 "language": {"conversation_language": "en"},
             }
-            config_file.write_text(json.dumps(config_data))
+            config_file.write_text(yaml.dump(config_data))
 
             # Create tech indicators
             Path(tmpdir, "pyproject.toml").touch()
@@ -530,20 +532,23 @@ class TestEdgeCases:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir) / ".moai" / "config"
             config_dir.mkdir(parents=True, exist_ok=True)
-            config_file = config_dir / "config.json"
+            config_file = config_dir / "config.yaml"
 
             config_data = {
                 "project": {
                     "name": "프로젝트-特殊文字",
-                    "owner": "@user@example.com",
+                },
+                "github": {
+                    "profile_name": "user_example",
                 },
                 "language": {"conversation_language": "en"},
             }
 
-            config_file.write_text(json.dumps(config_data, ensure_ascii=False))
+            config_file.write_text(yaml.dump(config_data, allow_unicode=True))
 
             metadata = extract_project_metadata(tmpdir)
             assert "프로젝트" in metadata["project_name"]
+            assert metadata["github_profile"] == "user_example"
 
     def test_build_phase_with_complex_outputs(self):
         """Test building phase with nested output structures."""

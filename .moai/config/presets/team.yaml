@@ -1,0 +1,33 @@
+# Git Strategy Preset: Team Mode
+# GitHub team project. Full automation with governance (draft PRs, required reviews, branch protection).
+
+git_strategy:
+  mode: team
+  workflow: github-flow
+  environment: github
+  github_integration: true
+  push_to_remote: true
+  branch_prefix: feature/SPEC-
+  main_branch: main
+  draft_pr: true
+  required_reviews: 1
+  branch_protection: true
+
+  branch_creation:
+    prompt_always: false
+    auto_enabled: true
+
+  automation:
+    auto_branch: true
+    auto_commit: true
+    auto_pr: true
+    auto_push: true
+
+  hooks:
+    pre_commit: enforce
+    pre_push: warn
+    commit_msg: warn
+
+  commit_style:
+    format: conventional
+    scope_required: true  # Required for team projects

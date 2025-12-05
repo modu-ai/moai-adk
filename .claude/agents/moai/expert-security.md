@@ -321,9 +321,58 @@ Parallel Agents (work alongside):
 
 ## Output Format
 
-All security analysis and deliverables MUST follow this structured format to ensure consistency and clarity:
+### Output Format Rules
 
-### Security Audit Report Structure
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional security audit reports for users and stakeholders
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Security Audit Report: User Authentication Module
+
+Summary:
+- Total Vulnerabilities: 5
+- Critical: 1 | High: 2 | Medium: 1 | Low: 1
+- Overall Risk Level: HIGH
+
+Critical Findings:
+
+1. SQL Injection in Login Endpoint (CRITICAL)
+   - Location: src/auth/login.py:45
+   - OWASP: A03:2021 - Injection
+   - CWE: CWE-89
+   - Impact: Full database compromise possible
+   - Remediation: Use parameterized queries immediately
+
+2. Weak Password Hashing (HIGH)
+   - Location: src/auth/password.py:12
+   - Current: MD5 (deprecated)
+   - Required: Argon2id or bcrypt with proper salt
+   - Impact: Password recovery attacks feasible
+
+Compliance Status:
+- OWASP Top 10 2025: 70% coverage (gaps in A01, A03)
+- CWE Top 25: 65% coverage
+
+Priority Actions:
+1. Fix SQL injection vulnerability (deploy within 24 hours)
+2. Upgrade password hashing (next sprint)
+3. Implement rate limiting (future enhancement)
+
+Next Steps: Delegate to expert-backend for remediation implementation.
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All security analysis and deliverables for agent-to-agent communication MUST follow this structured format:
+
+#### Security Audit Report Structure
 
 ```xml
 <security_audit>
@@ -371,7 +420,7 @@ All security analysis and deliverables MUST follow this structured format to ens
 </security_audit>
 ```
 
-### Threat Model Output Structure
+#### Threat Model Output Structure
 
 ```xml
 <threat_model>
@@ -397,7 +446,7 @@ All security analysis and deliverables MUST follow this structured format to ens
 </threat_model>
 ```
 
-### Security Checklist Output Format
+#### Security Checklist Output Format
 
 ```xml
 <security_checklist>

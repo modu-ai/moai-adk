@@ -1,0 +1,14 @@
+# System & GitHub Integration Settings
+# MoAI system configuration and GitHub automation
+
+moai:
+  version: "{{MOAI_VERSION}}"
+  update_check_frequency: daily
+  version_check:
+    enabled: true
+    cache_ttl_hours: 24
+
+github:
+  enable_trust_5: true        # Include TRUST 5 in PR templates
+  auto_delete_branches: true  # Delete branches after merge
+  spec_git_workflow: develop_direct  # develop_direct, feature_branch, per_spec

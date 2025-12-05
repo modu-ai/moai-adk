@@ -1631,9 +1631,9 @@ class TestEdgeCases:
                     "call_count": 100,
                 }
             )
-            assert (
-                result["performance_rating"] == expected_rating
-            ), f"Expected {expected_rating} for avg_time {avg_time}, got {result['performance_rating']}"
+            assert result["performance_rating"] == expected_rating, (
+                f"Expected {expected_rating} for avg_time {avg_time}, got {result['performance_rating']}"
+            )
 
     def test_connection_usage_at_exact_thresholds(self):
         """Test connection usage monitoring at exact threshold values."""

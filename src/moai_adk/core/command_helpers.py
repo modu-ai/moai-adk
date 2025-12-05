@@ -5,6 +5,7 @@ Provides helper functions for commands to interact with ContextManager
 and perform common operations like context extraction and validation.
 """
 
+import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional

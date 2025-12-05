@@ -1,4 +1,4 @@
-# MoAI-ADK - Technology Stack
+# {{PROJECT_NAME}} - Technology Stack
 
 ## Programming Languages
 {{PROGRAMMING_LANGUAGES}}

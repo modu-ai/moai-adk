@@ -8,10 +8,11 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, mock_open, patch
 
 import aiohttp
 import pytest
+import yaml
 
 from moai_adk.utils.common import (
     HTTPClient,
@@ -546,22 +547,12 @@ class TestLoadHookTimeout:
 
     def test_load_hook_timeout_from_config(self):
         """Test load_hook_timeout reads from config file."""
-        config_content = json.dumps({"hooks": {"timeout_ms": 3000}})
+        mock_config = {"hooks": {"timeout_ms": 3000}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.open", create=True):
-                with patch(
-                    "builtins.open",
-                    MagicMock(
-                        return_value=MagicMock(
-                            __enter__=lambda s: MagicMock(__enter__=lambda x: MagicMock(read=lambda: config_content)),
-                            __exit__=lambda s, *args: None,
-                        )
-                    ),
-                ):
-                    # Patch json.load directly
-                    with patch("json.load", return_value={"hooks": {"timeout_ms": 3000}}):
-                        timeout = load_hook_timeout()
-                        assert timeout == 3000
+            with patch("builtins.open", mock_open(read_data=json.dumps(mock_config))):
+                with patch("json.load", return_value=mock_config):
+                    timeout = load_hook_timeout()
+                    assert timeout == 3000
 
     def test_load_hook_timeout_invalid_json(self):
         """Test load_hook_timeout handles invalid JSON."""
@@ -575,17 +566,21 @@ class TestLoadHookTimeout:
 
     def test_load_hook_timeout_missing_key(self):
         """Test load_hook_timeout when timeout_ms key is missing."""
+        mock_config = {"hooks": {}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {}}):
-                timeout = load_hook_timeout()
-                assert timeout == 5000
+            with patch("builtins.open", mock_open(read_data=json.dumps(mock_config))):
+                with patch("json.load", return_value=mock_config):
+                    timeout = load_hook_timeout()
+                    assert timeout == 5000
 
     def test_load_hook_timeout_invalid_value(self):
         """Test load_hook_timeout with invalid timeout value."""
+        mock_config = {"hooks": {"timeout_ms": "invalid"}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {"timeout_ms": "invalid"}}):
-                timeout = load_hook_timeout()
-                assert timeout == 5000
+            with patch("builtins.open", mock_open(read_data=json.dumps(mock_config))):
+                with patch("json.load", return_value=mock_config):
+                    timeout = load_hook_timeout()
+                    assert timeout == 5000
 
 
 class TestGetGracefulDegradation:
@@ -600,42 +595,34 @@ class TestGetGracefulDegradation:
     def test_get_graceful_degradation_true(self):
         """Test get_graceful_degradation reads true value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {"graceful_degradation": True}}):
-                result = get_graceful_degradation()
-                assert result is True
+            with patch("builtins.open", mock_open(read_data="hooks:\n  graceful_degradation: true")):
+                with patch("yaml.safe_load", return_value={"hooks": {"graceful_degradation": True}}):
+                    result = get_graceful_degradation()
+                    assert result is True
 
     def test_get_graceful_degradation_false(self):
         """Test get_graceful_degradation reads false value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "builtins.open",
-                MagicMock(
-                    return_value=MagicMock(
-                        __enter__=lambda s: MagicMock(read=lambda: '{"hooks": {"graceful_degradation": false}}'),
-                        __exit__=lambda s, *args: None,
-                    )
-                ),
-            ):
-                with patch("json.load", return_value={"hooks": {"graceful_degradation": False}}):
+            with patch("builtins.open", mock_open(read_data="hooks:\n  graceful_degradation: false")):
+                with patch("yaml.safe_load", return_value={"hooks": {"graceful_degradation": False}}):
                     result = get_graceful_degradation()
                     assert result is False
 
     def test_get_graceful_degradation_invalid_json(self):
-        """Test get_graceful_degradation handles invalid JSON."""
+        """Test get_graceful_degradation handles invalid YAML."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "builtins.open",
-                MagicMock(side_effect=json.JSONDecodeError("msg", "doc", 0)),
-            ):
-                result = get_graceful_degradation()
-                assert result is True
+            with patch("builtins.open", mock_open(read_data="invalid: yaml: content")):
+                with patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")):
+                    result = get_graceful_degradation()
+                    assert result is True
 
     def test_get_graceful_degradation_missing_key(self):
         """Test get_graceful_degradation when key is missing."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {}}):
-                result = get_graceful_degradation()
-                assert result is True
+            with patch("builtins.open", mock_open(read_data="hooks: {}")):
+                with patch("yaml.safe_load", return_value={"hooks": {}}):
+                    result = get_graceful_degradation()
+                    assert result is True
 
 
 class TestRateLimitError:

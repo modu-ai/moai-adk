@@ -1,0 +1,28 @@
+# Git Strategy Preset: Manual Mode
+# Local Git only. Branch creation is prompted. TDD and docs commits are automatic.
+
+git_strategy:
+  mode: manual
+  workflow: github-flow
+  environment: local
+  github_integration: false
+  push_to_remote: false
+
+  branch_creation:
+    prompt_always: true
+    auto_enabled: false
+
+  automation:
+    auto_branch: false
+    auto_commit: true
+    auto_pr: false
+    auto_push: false
+
+  hooks:
+    pre_commit: enforce
+    pre_push: warn
+    commit_msg: warn
+
+  commit_style:
+    format: conventional
+    scope_required: false

@@ -1,0 +1,30 @@
+# Git Strategy Preset: Personal Mode
+# GitHub individual project. Full automation except PR (manual review suggested).
+
+git_strategy:
+  mode: personal
+  workflow: github-flow
+  environment: github
+  github_integration: true
+  push_to_remote: true
+  branch_prefix: feature/SPEC-
+  main_branch: main
+
+  branch_creation:
+    prompt_always: false
+    auto_enabled: true
+
+  automation:
+    auto_branch: true
+    auto_commit: true
+    auto_pr: false  # Manual PR for review
+    auto_push: true
+
+  hooks:
+    pre_commit: enforce
+    pre_push: warn
+    commit_msg: warn
+
+  commit_style:
+    format: conventional
+    scope_required: false

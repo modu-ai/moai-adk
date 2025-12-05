@@ -6,12 +6,13 @@ functionality including priority handling, template variable export,
 and integration with other MoAI-ADK components.
 """
 
-import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+import yaml
 
 from moai_adk.core.language_config_resolver import (
     LanguageConfigResolver,
@@ -28,7 +29,7 @@ class TestLanguageConfigResolver(unittest.TestCase):
         self.test_dir = Path(tempfile.mkdtemp())
         self.moai_dir = self.test_dir / ".moai" / "config"
         self.moai_dir.mkdir(parents=True)
-        self.config_file = self.moai_dir / "config.json"
+        self.config_file = self.moai_dir / "config.yaml"
 
         # Clear all MOAI environment variables to ensure test isolation
         self._env_vars_to_clear = [
@@ -62,7 +63,7 @@ class TestLanguageConfigResolver(unittest.TestCase):
 
     def _write_config(self, config_data):
         """Write configuration data to test config file."""
-        self.config_file.write_text(json.dumps(config_data, indent=2))
+        self.config_file.write_text(yaml.dump(config_data))
 
     def _set_env_vars(self, env_vars):
         """Set environment variables for testing."""
@@ -184,9 +185,8 @@ class TestLanguageConfigResolver(unittest.TestCase):
         self.assertEqual(config["conversation_language_name"], "Zz")
 
     def test_project_owner_fallback(self):
-        """Test fallback to project.owner when user.name is not available."""
+        """Test empty user_name when user.name is not available."""
         config_data = {
-            "project": {"owner": "ProjectOwner"},
             "language": {"conversation_language": "ko"},
         }
         self._write_config(config_data)
@@ -194,7 +194,8 @@ class TestLanguageConfigResolver(unittest.TestCase):
         resolver = LanguageConfigResolver(str(self.test_dir))
         config = resolver.resolve_config()
 
-        self.assertEqual(config["user_name"], "ProjectOwner")
+        # When user.name is not provided, it should default to empty string
+        self.assertEqual(config["user_name"], "")
 
     def test_template_variables_export(self):
         """Test template variables export functionality."""

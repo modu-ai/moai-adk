@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local MoAI-ADK development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2025-11-26
+> **Last Updated**: 2025-12-04
 
 ---
 
@@ -11,7 +11,7 @@
 ### Work Location
 ```bash
 # Primary work location (template development)
-/Users/goos/MoAI/MoAI-ADK/src/moai_adk/
+/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/
 
 # Local project (testing & git)
 /Users/goos/MoAI/MoAI-ADK/
@@ -31,9 +31,9 @@
 
 ### Auto-Sync Directories
 ```bash
-src/moai_adk/.claude/    → .claude/
-src/moai_adk/.moai/      → .moai/
-src/moai_adk/templates/  → ./
+src/moai_adk/templates/.claude/    → .claude/
+src/moai_adk/templates/.moai/      → .moai/
+src/moai_adk/templates/CLAUDE.md   → ./CLAUDE.md
 ```
 
 ### Local-Only Files (Never Sync)
@@ -43,7 +43,13 @@ src/moai_adk/templates/  → ./
 CLAUDE.local.md                      # This file
 .moai/cache/                         # Cache
 .moai/logs/                          # Logs
-.moai/config/config.json             # Personal config
+.moai/rollbacks/                     # Rollback data
+```
+
+### Template-Only Files (Distribution)
+```
+src/moai_adk/templates/.moai/config/config.yaml     # Default config template
+src/moai_adk/templates/.moai/config/presets/        # Configuration presets
 ```
 
 ---
@@ -90,8 +96,9 @@ def calculate():  # Calculate score
 ### Sync
 ```bash
 # Sync from template to local
-rsync -avz src/moai_adk/.claude/ .claude/
-rsync -avz src/moai_adk/.moai/ .moai/
+rsync -avz src/moai_adk/templates/.claude/ .claude/
+rsync -avz src/moai_adk/templates/.moai/ .moai/
+cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
 ```
 
 ### Validation
@@ -118,16 +125,29 @@ python .moai/tools/validate-docs.py
 
 ```
 MoAI-ADK/
-├── src/moai_adk/          # Package source (work here)
-│   ├── .claude/           # Templates
-│   ├── .moai/             # Templates
-│   └── templates/         # User templates
+├── src/moai_adk/              # Package source
+│   ├── cli/                   # CLI commands
+│   ├── core/                  # Core modules
+│   ├── foundation/            # Foundation components
+│   ├── project/               # Project management
+│   ├── statusline/            # Statusline features
+│   ├── templates/             # Distribution templates (work here)
+│   │   ├── .claude/           # Claude Code config templates
+│   │   │   ├── agents/        # Agent definitions
+│   │   │   ├── commands/      # Slash commands
+│   │   │   ├── hooks/         # Hook scripts
+│   │   │   ├── output-styles/ # Output style definitions
+│   │   │   └── skills/        # Skill definitions
+│   │   ├── .moai/             # MoAI config templates
+│   │   │   └── config/        # config.yaml template
+│   │   └── CLAUDE.md          # Alfred execution directives
+│   └── utils/                 # Utility modules
 │
-├── .claude/               # Synced from src
-├── .moai/                 # Synced from src
-├── CLAUDE.md              # Synced from templates
-├── CLAUDE.local.md        # This file (local only)
-└── tests/                 # Test suite
+├── .claude/                   # Synced from templates
+├── .moai/                     # Synced from templates
+├── CLAUDE.md                  # Synced from templates
+├── CLAUDE.local.md            # This file (local only)
+└── tests/                     # Test suite
 ```
 
 ---
@@ -135,9 +155,9 @@ MoAI-ADK/
 ## Important Notes
 
 - `/Users/goos/MoAI/MoAI-ADK/.claude/settings.json` uses substituted variables
-- Never commit time estimates ("4-6 hours") - avoid unverified timeframes
 - Template changes trigger auto-sync via hooks
-- Local config.json is never synced to package
+- Local config is never synced to package (user-specific)
+- Output styles allow visual emphasis emoji (🤖 R2-D2 ★) per CLAUDE.md Documentation Standards
 
 ---
 
@@ -176,7 +196,7 @@ MoAI-ADK uses different path variable strategies for template and local environm
    - Ensures new projects get correct absolute paths
    - Part of the package distribution system
 
-2. **Local (`"$CLAUDE_PROJECT_DIR}")**:
+2. **Local (`"$CLAUDE_PROJECT_DIR"`)**:
    - Dynamic runtime variable resolved by Claude Code
    - No hardcoded paths in version control
    - Works across different developer environments
@@ -217,14 +237,64 @@ Expected output:
 
 ---
 
+## Output Styles
+
+### Visual Emphasis Emoji Policy
+
+Per CLAUDE.md Documentation Standards, output styles may use visual emphasis emoji:
+
+**Allowed in output styles:**
+- Header decorations: `🤖 R2-D2 ★ Code Insight`, `🧙 Yoda ★ Deep Understanding`
+- Section markers: `💡`, `📊`, `⚡`, `✅`, `❓`, `🔍`
+- Brand identity: `🗿 MoAI-ADK`
+- Numbered items: `1️⃣`, `2️⃣`, `3️⃣`, `4️⃣`
+
+**NOT allowed in AskUserQuestion:**
+- No emoji in question text, headers, or option labels
+
+### Output Style Locations
+
+```
+src/moai_adk/templates/.claude/output-styles/moai/
+├── r2d2.md    # Pair programming partner (v2.0.0)
+└── yoda.md    # Technical wisdom master (v2.0.0)
+```
+
+---
+
+## Configuration System
+
+### Config File Format
+
+MoAI-ADK uses YAML for configuration:
+
+**Template config** (`src/moai_adk/templates/.moai/config/config.yaml`):
+- Default configuration template
+- Distributed to new projects via `moai-adk init`
+- Contains presets for different languages/regions
+
+**User config** (created by users, not synced):
+- Personal configuration overrides
+- Language preferences
+- User identification
+
+### Configuration Priority
+
+1. Environment Variables (highest priority): `MOAI_USER_NAME`, `MOAI_CONVERSATION_LANG`
+2. User Configuration File: `.moai/config/config.yaml` (user-created)
+3. Template Defaults: From package distribution
+
+---
+
 ## Reference
 
-- CLAUDE.md: Alfred execution directives
+- CLAUDE.md: Alfred execution directives (v8.1.0)
 - README.md: Project overview
 - Skills: `Skill("moai-foundation-core")` for execution rules
+- Output Styles: r2d2.md, yoda.md (v2.0.0)
 
 ---
 
 **Status**: ✅ Active (Local Development)
-**Version**: 2.1.0 (Path Variable Strategy Added)
-**Last Updated**: 2025-11-26
+**Version**: 2.2.0 (Config YAML, Output Styles, Directory Structure Update)
+**Last Updated**: 2025-12-04

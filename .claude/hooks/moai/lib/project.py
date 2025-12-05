@@ -12,6 +12,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 # Import TimeoutError from lib.timeout (canonical definition)
 try:
     from lib.timeout import TimeoutError  # noqa: F401
@@ -28,9 +30,9 @@ CACHE_DIR_NAME = ".moai/cache"
 
 
 def find_project_root(start_path: str | Path = ".") -> Path:
-    """Find MoAI-ADK project root by searching upward for .moai/config/config.json
+    """Find MoAI-ADK project root by searching upward for .moai/config/config.yaml
 
-    Traverses up the directory tree until it finds .moai/config/config.json or CLAUDE.md,
+    Traverses up the directory tree until it finds .moai/config/config.yaml or CLAUDE.md,
     which indicates the project root. This ensures cache and other files are
     always created in the correct location, regardless of where hooks execute.
 
@@ -47,22 +49,22 @@ def find_project_root(start_path: str | Path = ".") -> Path:
         Path("/Users/user/my-project")  # Found root 3 levels up
 
     Notes:
-        - Searches for .moai/config/config.json first (most reliable)
-        - Falls back to CLAUDE.md if config.json not found
+        - Searches for .moai/config/config.yaml first (most reliable)
+        - Falls back to CLAUDE.md if config.yaml not found
         - Max depth: 10 levels up (prevent infinite loop)
         - Returns absolute path for consistency
 
     TDD History:
         - RED: 4 test scenarios (root, nested, not found, symlinks)
-        - GREEN: Minimal upward search with .moai/config/config.json detection
+        - GREEN: Minimal upward search with .moai/config/config.yaml detection
         - REFACTOR: Add CLAUDE.md fallback, max depth limit, absolute path return
     """
     current = Path(start_path).resolve()
     max_depth = 10  # Prevent infinite loop
 
     for _ in range(max_depth):
-        # Check for .moai/config/config.json (primary indicator)
-        if (current / ".moai" / "config.json").exists():
+        # Check for .moai/config/config.yaml (primary indicator)
+        if (current / ".moai" / "config" / "config.yaml").exists():
             return current
 
         # Check for CLAUDE.md (secondary indicator)
@@ -378,7 +380,7 @@ def count_specs(cwd: str) -> dict[str, int]:
 
 
 def get_project_language(cwd: str) -> str:
-    """Determine the primary project language (prefers config.json).
+    """Determine the primary project language (prefers config.yaml).
 
     Args:
         cwd: Project root directory (or any subdirectory, will search upward).
@@ -387,20 +389,20 @@ def get_project_language(cwd: str) -> str:
         Language string in lower-case.
 
     Notes:
-        - Reads ``.moai/config/config.json`` first for a quick answer.
+        - Reads ``.moai/config/config.yaml`` first for a quick answer.
         - Falls back to ``detect_language`` if configuration is missing.
-        - Automatically finds project root to locate .moai/config/config.json
+        - Automatically finds project root to locate .moai/config/config.yaml
     """
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config.json"
+    config_path = project_root / ".moai" / "config" / "config.yaml"
     if config_path.exists():
         try:
-            config = json.loads(config_path.read_text())
+            config = yaml.safe_load(config_path.read_text()) or {}
             lang = config.get("language", "")
             if lang:
                 return lang
-        except (OSError, json.JSONDecodeError):
+        except (OSError, yaml.YAMLError):
             # Fall back to detection on parse errors
             pass
 
@@ -415,14 +417,14 @@ def _validate_project_structure(cwd: str) -> bool:
         cwd: Project root directory path
 
     Returns:
-        bool: True if .moai/config/config.json exists, False otherwise
+        bool: True if .moai/config/config.yaml exists, False otherwise
     """
     project_root = find_project_root(cwd)
-    return (project_root / ".moai" / "config.json").exists()
+    return (project_root / ".moai" / "config" / "config.yaml").exists()
 
 
 def get_version_check_config(cwd: str) -> dict[str, Any]:
-    """Read version check configuration from .moai/config/config.json
+    """Read version check configuration from .moai/config/config.yaml
 
     Returns version check settings with sensible defaults.
     Supports frequency-based cache TTL configuration.
@@ -455,12 +457,12 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
 
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config.json"
+    config_path = project_root / ".moai" / "config" / "config.yaml"
     if not config_path.exists():
         return defaults
 
     try:
-        config = json.loads(config_path.read_text())
+        config = yaml.safe_load(config_path.read_text()) or {}
 
         # Extract moai.version_check section
         moai_config = config.get("moai", {})

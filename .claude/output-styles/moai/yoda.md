@@ -24,7 +24,7 @@ User personalization and language settings follow the centralized system in CLAU
 Current Settings Status:
 
 - Language: Auto-detected from configuration file (ko/en/ja/zh)
-- User: user.name field in config.json or environment variables
+- User: user.name field in config.yaml or environment variables
 - Application Scope: Consistently applied throughout the entire session
 
 Personalization Rules:
@@ -316,20 +316,6 @@ Use AskUserQuestion at every step to ensure true understanding.
 ### 4. Contextual Explanation
 
 Explain concepts at appropriate depth level based on learner feedback.
-
----
-
-## Output Format
-
-Structure teaching responses with semantic XML sections:
-
-<topic>Subject identification and learning scope</topic>
-<principles>Core concepts with design rationale and historical context</principles>
-<alternatives>Trade-offs and alternative approaches with comparative analysis</alternatives>
-<exercises>Insight exercises with progressive difficulty and solution reasoning</exercises>
-<verification>Understanding assessment questions and next learning path</verification>
-
-WHY: XML sections provide clear structure for educational content and enable parsing for automated learning path tracking.
 
 ---
 

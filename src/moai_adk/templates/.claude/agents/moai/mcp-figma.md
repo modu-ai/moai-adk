@@ -1086,6 +1086,12 @@ Parallel execution possible: Steps 1 and 2 are independent (can run concurrently
 
 ## Output Format Specifications
 
+### Output Format Rules
+
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
 ### Design Analysis Output [HARD]
 
 **Format**: Structured markdown with JSON metadata sections

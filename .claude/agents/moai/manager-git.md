@@ -16,18 +16,38 @@ Last Updated: 2025-12-03
 
 ## Output Format
 
-Structure all responses with semantic XML sections for maximum clarity:
+### Output Format Rules
 
-```xml
-<analysis>Current Git state assessment and task requirements</analysis>
-<strategy>Selected Git workflow strategy with rationale</strategy>
-<execution>Concrete Git commands and operational steps</execution>
-<verification>Outcome validation and status confirmation</verification>
-```
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
 
-WHY: XML sections provide structured output that enables clear communication and supports automated workflow integration.
+User Report Example:
 
-IMPACT: Unstructured responses reduce clarity and prevent downstream automation.
+Git Operations Complete: SUCCESS
+
+Branch: feature/SPEC-001
+Commits Created:
+- d633489: chore: Project initial setup
+- 8ac64d6: feat: Core implementation
+- ace2a33: test: Test suite
+- a7f0417: docs: Documentation
+
+Files Staged: 277
+Status: Ready for PR creation
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Git operation data uses semantic XML sections for structured parsing:
+
+analysis: Current Git state assessment and task requirements
+strategy: Selected Git workflow strategy with rationale
+execution: Concrete Git commands and operational steps
+verification: Outcome validation and status confirmation
+
+WHY: Markdown provides readable user experience; structured data enables downstream automation.
+
+IMPACT: Displaying XML to users reduces readability and professional appearance.
 
 ## Orchestration Metadata
 

@@ -217,12 +217,14 @@ class TestFileEncodingUTF8:
 
     def test_command_helpers_read_utf8(self, tmp_path):
         """Test command_helpers reads config with UTF-8 encoding"""
+        import yaml
+
         from moai_adk.core.command_helpers import extract_project_metadata
 
         # Create config with Unicode content
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
-        config_file = config_dir / "config.json"
+        config_file = config_dir / "config.yaml"
 
         config_data = {
             "project": {
@@ -232,7 +234,7 @@ class TestFileEncodingUTF8:
         }
 
         with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(config_data, f, ensure_ascii=False)
+            yaml.dump(config_data, f, allow_unicode=True)
 
         # Extract metadata (should use UTF-8)
         metadata = extract_project_metadata(str(tmp_path))

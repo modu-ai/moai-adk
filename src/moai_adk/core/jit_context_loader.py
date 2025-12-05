@@ -719,12 +719,12 @@ class JITContextLoader:
         """Generate unique cache key for context request"""
         key_data = {
             "phase": phase.value,
-            "input_hash": hashlib.md5(user_input.encode()).hexdigest()[:16],
+            "input_hash": hashlib.md5(user_input.encode(), usedforsecurity=False).hexdigest()[:16],
             "context_keys": sorted(context.keys()),
             "timestamp": datetime.now().strftime("%Y%m%d"),  # Daily cache
         }
 
-        return hashlib.md5(json.dumps(key_data, sort_keys=True).encode()).hexdigest()
+        return hashlib.md5(json.dumps(key_data, sort_keys=True).encode(), usedforsecurity=False).hexdigest()
 
     async def _build_context(self, phase: Phase, phase_config: PhaseConfig, context: Dict[str, Any]) -> Dict[str, Any]:
         """Build optimized context for the current phase"""

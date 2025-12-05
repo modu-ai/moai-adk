@@ -207,7 +207,7 @@ class TestEnvironmentCheck:
         assert "Python >= 3.11" in result
         assert "Git installed" in result
         assert "Project structure (.moai/)" in result
-        assert "Config file (.moai/config/config.json)" in result
+        assert "Config file (.moai/config/config.yaml)" in result
 
         # All values should be boolean
         for value in result.values():

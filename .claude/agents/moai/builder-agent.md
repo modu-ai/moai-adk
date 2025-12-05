@@ -292,6 +292,48 @@ Organize agent files in this directory structure:
 ├── integration.md (integration patterns)
 └── validation.md (quality checks)
 
+### Documentation Standards Compliance
+
+When creating agents, ensure all instruction documents follow CLAUDE.md Documentation Standards:
+
+Prohibited Content:
+- Code blocks for flow control (if/else/for/while)
+- Programming syntax for branching logic
+- Code expressions for comparisons or conditions
+- Executable code examples in conceptual explanations
+
+Required Format:
+- Use narrative text for all workflow descriptions
+- Express conditions as "If X, then Y. Otherwise, Z."
+- Describe loops as "For each item: Step 1, Step 2..."
+- Document decision trees as numbered steps with conditions
+
+Example - Flow Control:
+
+WRONG (code block):
+If user role is admin, grant full access. Otherwise, grant read-only access.
+
+CORRECT (text):
+Check user role and grant access:
+- If role is "admin": Grant full access to all resources
+- If role is "user": Grant read-only access to public resources
+- If role is "guest": Grant limited access to welcome page only
+
+Example - Decision Trees:
+
+WRONG (code):
+Based on complexity, choose model. If complex, use sonnet. If simple, use haiku.
+
+CORRECT (text):
+Determine model selection based on task complexity:
+- High complexity (10+ files, architecture changes): Use sonnet model
+- Medium complexity (3-9 files, feature additions): Use sonnet model
+- Low complexity (1-2 files, simple changes): Use haiku model
+
+WHY: Code blocks in instructions can be misinterpreted as executable commands. Text format ensures clear understanding across all contexts.
+
+IMPACT: Using code blocks causes parsing ambiguity and potential misexecution by downstream agents or tools.
+
 ## Usage Patterns
 
 ### When to Use Agent Factory

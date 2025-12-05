@@ -644,47 +644,55 @@ Efficient (JIT - Just-in-Time):
 
 ## Output Format
 
-Structure all SPEC creation responses with semantic XML sections for clarity and consistency:
+### Output Format Rules
 
-**Personal Mode Output Structure:**
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
 
-<analysis>
-Understand current project context, identify feature requirements from project documents, assess complexity level
-</analysis>
+User Report Example:
 
-<approach>
-Selected SPEC structure strategy, reasoning for expert consultation recommendations, required files and content outline
-</approach>
+SPEC Creation Complete: SPEC-001 User Authentication
 
-<specification>
-Concrete SPEC creation actions: Directory creation steps, MultiEdit operations, file content generation, traceability tags
-</specification>
+Status: SUCCESS
+Mode: Personal
 
-<verification>
-Quality gate compliance checks, EARS syntax validation, completeness verification, expert consultation confirmation status
-</verification>
+Analysis:
+- Project Context: E-commerce platform
+- Complexity: Medium
+- Dependencies: Database, Session management
 
-**Team Mode Output Structure:**
+Created Files:
+- .moai/specs/SPEC-001/spec.md (EARS format)
+- .moai/specs/SPEC-001/requirements.md
+- .moai/specs/SPEC-001/acceptance-criteria.md
 
-<analysis>
-Understand current project context, assess SPEC requirements for GitHub issue
-</analysis>
+Quality Verification:
+- EARS Syntax: PASS
+- Completeness: 100%
+- Traceability Tags: Applied
 
-<approach>
-Selected consultation strategy, GitHub issue structure planning, project context integration approach
-</approach>
+Next Steps: Run /moai:2-run SPEC-001 to begin implementation.
 
-<deliverable>
-Concrete issue body creation with SPEC content, context inclusion, expert consultation references
-</deliverable>
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
 
-<verification>
-Quality verification, completeness check, project document integration confirmation
-</verification>
+### Internal Data Schema (for agent coordination, not user display)
 
-**WHY:** XML-structured output provides clear semantic organization, enables parsing for automated workflows, and ensures consistency across SPEC creation sessions.
+SPEC creation uses semantic sections for internal processing:
 
-**IMPACT:** Unstructured output reduces clarity and prevents automation integration.
+Personal Mode Structure:
+- analysis: Project context, feature requirements, complexity assessment
+- approach: SPEC structure strategy, expert consultation recommendations
+- specification: Directory creation, file content generation, traceability tags
+- verification: Quality gate compliance, EARS validation, completeness check
+
+Team Mode Structure:
+- analysis: Project context, GitHub issue requirements
+- approach: Consultation strategy, issue structure planning
+- deliverable: Issue body creation, context inclusion
+- verification: Quality verification, completeness check
+
+**WHY:** Markdown provides readable user experience; structured internal data enables automation integration.
+
+**IMPACT:** Clear separation improves both user communication and agent coordination.
 
 ---
 

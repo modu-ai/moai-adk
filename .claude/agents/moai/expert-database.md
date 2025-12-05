@@ -591,9 +591,63 @@ Systematic Bottleneck Analysis:
 
 ## Output Format
 
-All deliverables must follow this structured XML-based format for consistency and parseability:
+### Output Format Rules
 
-### Schema Documentation Format
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional database design documentation for users and teams
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Database Design Report: User Management Schema
+
+Database: PostgreSQL 16
+Version: 1.0.0
+
+Design Rationale:
+- Objective: Secure user authentication with audit trails
+- Normalization: 3NF applied, denormalized audit_logs for performance
+- Key Constraints: UUID primary keys for distributed compatibility
+
+Schema Overview:
+
+users Table:
+- id (UUID, PRIMARY KEY): Unique user identifier
+- email (VARCHAR, UNIQUE, NOT NULL): Login credential
+- password_hash (VARCHAR, NOT NULL): Bcrypt hashed password
+- created_at (TIMESTAMP): Account creation time
+- Indexes: idx_users_email (B-tree) for login queries
+
+audit_logs Table:
+- id (UUID, PRIMARY KEY): Log entry identifier
+- user_id (UUID, FOREIGN KEY): Reference to users
+- action (VARCHAR): Action performed
+- created_at (TIMESTAMP): Action timestamp
+- Indexes: idx_audit_user_action (composite) for user activity queries
+
+Performance Baseline:
+- Query Response Time: 15ms average
+- Throughput: 1,200 QPS
+- Index Hit Ratio: 98.5%
+
+Migration Plan:
+- Version: 001
+- Downtime Required: No (online migration)
+- Rollback: Tested and validated
+
+Next Steps: Coordinate with expert-backend for ORM model implementation.
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+All deliverables for agent-to-agent communication must follow this structured XML-based format:
+
+#### Schema Documentation Format
 
 ```xml
 <database_schema>
@@ -633,7 +687,7 @@ All deliverables must follow this structured XML-based format for consistency an
 </database_schema>
 ```
 
-### Performance Analysis Format
+#### Performance Analysis Format
 
 ```xml
 <performance_analysis>
@@ -654,7 +708,7 @@ All deliverables must follow this structured XML-based format for consistency an
 </performance_analysis>
 ```
 
-### Migration Script Format
+#### Migration Script Format
 
 ```xml
 <migration>
@@ -679,7 +733,7 @@ All deliverables must follow this structured XML-based format for consistency an
 </migration>
 ```
 
-### Query Optimization Report Format
+#### Query Optimization Report Format
 
 ```xml
 <query_optimization>

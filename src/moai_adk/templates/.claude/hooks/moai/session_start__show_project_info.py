@@ -88,7 +88,9 @@ except ImportError:
     import yaml as yaml_fallback
 
     def get_cached_config():
-        config_path = Path(".moai/config/config.yaml")
+        # FIX: Use absolute path from find_project_root() to ensure correct directory
+        project_root = find_project_root()
+        config_path = project_root / ".moai" / "config" / "config.yaml"
         if config_path.exists():
             try:
                 return yaml_fallback.safe_load(config_path.read_text()) or {}
@@ -648,7 +650,9 @@ def load_user_personalization() -> dict:
             "personalized_greeting": (
                 f"{user_name}님"
                 if has_valid_name and conversation_lang == "ko"
-                else user_name if has_valid_name else ""
+                else user_name
+                if has_valid_name
+                else ""
             ),
             "needs_setup": not has_valid_name,  # FIX #5: Flag for setup guidance
         }
@@ -673,7 +677,6 @@ def format_session_output() -> str:
     """
     # Gather information (in parallel for git, cached for config/SPEC)
     git_info = get_git_info()
-    spec_progress = get_spec_progress()
 
     # Get config for language and version info
     config = get_cached_config()
@@ -706,7 +709,6 @@ def format_session_output() -> str:
         "🚀 MoAI-ADK Session Started",
         f"   📦 Version: {moai_version} {version_status}",
         f"   🔄 Changes: {git_info['changes']}",
-        f"   🎯 SPEC: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']:.0f}%)",
         f"   🌿 Branch: {git_info['branch']}",
         # FIX #2: Add Git Strategy information
         f"   🔧 Github-Flow: {git_strategy['git_flow']} | Auto Branch: {git_strategy['auto_branch']}",

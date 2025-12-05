@@ -1,0 +1,344 @@
+# MoAI-ADK Configuration
+# Version: {{MOAI_VERSION}}
+# Format: YAML (migrated from JSON for better readability and comments)
+
+moai:
+  version: "{{MOAI_VERSION}}"
+  version_check:
+    enabled: true
+    cache_ttl_hours: 24
+
+# Agent TDD Constitution
+constitution:
+  enforce_tdd: true
+  test_coverage_target: 90
+
+# Git Workflow Strategy
+# Unified schema for all modes: manual (local only), personal (GitHub individual), team (GitHub team)
+# Change mode via moai-adk init/update or /moai:0-project
+# See .moai/config/presets/ for mode templates
+git_strategy:
+  mode: manual
+  workflow: github-flow
+  environment: local
+  github_integration: false
+  push_to_remote: false
+
+  # Branch creation settings
+  branch_creation:
+    prompt_always: true  # Ask user for branch creation on every SPEC
+    auto_enabled: false  # Disabled for manual mode
+
+  # Automation settings
+  automation:
+    auto_branch: false
+    auto_commit: true   # TDD and docs commits are automatic
+    auto_pr: false
+    auto_push: false
+
+  # Git hooks behavior
+  hooks:
+    pre_commit: enforce
+    pre_push: warn
+    commit_msg: warn
+
+  # Commit message style
+  commit_style:
+    format: conventional
+    scope_required: false
+
+# Language and Localization Settings
+# conversation_language: user interaction language
+# agent_prompt_language: internal agent prompts
+# git_commit_messages: git commit message language
+# code_comments: source code comments
+# documentation: documentation language
+# error_messages: user-facing error messages
+language:
+  conversation_language: ko
+  conversation_language_name: Korean
+  agent_prompt_language: en
+  git_commit_messages: en
+  code_comments: en
+  documentation: ko
+  error_messages: en
+
+# Project Metadata
+project:
+  name: "{{PROJECT_NAME}}"
+  description: "{{PROJECT_DESCRIPTION}}"
+  mode: development
+  created_at: "{{CREATED_AT}}"
+  initialized: true
+
+# User Personalization
+# Personal name for Alfred's personalized greetings (e.g., '철수', 'John')
+# Leave empty for default greetings like '사용자님'
+user:
+  name: ""
+
+# Session Management
+# Controls startup messages, end-of-session behavior, metrics saving, and work state preservation
+session:
+  suppress_setup_messages: false
+
+  end:
+    enabled: true
+
+    # Session metrics
+    metrics:
+      enabled: true
+      save_location: .moai/logs/sessions/
+
+    # Work state preservation
+    work_state:
+      enabled: true
+      save_location: .moai/memory/last-session-state.json
+
+    # Session end warnings
+    warnings:
+      uncommitted_changes: true
+
+# Hook Execution Configuration
+# Timeout optimized to 15 seconds to prevent Aborted() errors from timeout conflicts
+hooks:
+  timeout_ms: 15000
+  graceful_degradation: true  # Continue even if a hook fails
+
+# Analytics Configuration
+# Daily analysis and advanced reporting features planned for future releases
+analytics:
+  enabled: true
+
+# GitHub Integration
+# 'develop_direct' is recommended for rapid development in personal projects
+# Options: 'develop_direct' (direct commits), 'feature_branch' (always create branches), 'per_spec' (ask user per SPEC)
+github:
+  # GitHub Profile Name (e.g., @GoosLab, @username)
+  # Used for repository ownership, mentions, and attribution
+  profile_name: "{{GITHUB_PROFILE_NAME}}"
+  enable_trust_5: true
+  spec_git_workflow: develop_direct
+
+# Document Management System
+# Prevents project root pollution by enforcing .moai/ hierarchy for all internal files
+# Auto-categorizes by file patterns with cleanup policy that preserves recent files
+document_management:
+  enabled: true
+  enforce_structure: true
+  block_root_pollution: true
+
+  # Separation policy between logs and docs
+  separation_policy:
+    strict_separation: true
+    description: Clear separation between logs (runtime data) and docs (documentation content)
+    logs_scope: runtime sessions, errors, execution traces, agent transcripts
+    docs_scope: reports, analysis, validation, sync, inspection, documentation files
+
+  # Directory structure and retention policies
+  directories:
+    # Documentation files
+    docs:
+      base: .moai/docs/
+      retention_days: null  # Keep indefinitely
+      categories:
+        reports:
+          subcategories:
+            - inspection
+            - phases
+            - sync
+            - analysis
+            - validation
+            - daily
+          auto_categorize: true
+          retention_days: 90
+        specs:
+          retention_days: null
+        api:
+          retention_days: null
+        guides:
+          retention_days: null
+
+    # Log files (runtime data)
+    logs:
+      base: .moai/logs/
+      categories:
+        - sessions
+        - agent-transcripts
+        - errors
+        - execution
+      retention_days: 30
+      description: Pure log files only - runtime sessions, errors, execution traces
+
+    # Scripts and tools
+    scripts:
+      base: .moai/scripts/
+      categories:
+        - dev
+        - conversion
+        - validation
+        - analysis
+        - maintenance
+      retention_days: null
+
+    # Temporary files
+    temp:
+      base: .moai/temp/
+      categories:
+        - tests
+        - coverage
+        - work
+        - research
+      retention_days: 7
+      auto_cleanup: true
+
+    # Backup files
+    backups:
+      base: .moai/backups/
+      categories:
+        - specs
+        - docs
+        - hooks
+        - skills
+        - config
+        - legacy
+      retention_days: 90
+      max_backups_per_type: 10
+
+    # Cache files
+    cache:
+      base: .moai/cache/
+      categories:
+        - mcp
+        - analysis
+      retention_days: 30
+      auto_cleanup: true
+
+  # Project root whitelist (allowed files in project root)
+  root_whitelist:
+    - README.md
+    - README.*.md
+    - CHANGELOG.md
+    - CONTRIBUTING.md
+    - CLAUDE.md
+    - LICENSE
+    - LICENSE.*
+    - pyproject.toml
+    - setup.py
+    - setup.cfg
+    - package.json
+    - package-lock.json
+    - yarn.lock
+    - pnpm-lock.yaml
+    - .gitignore
+    - .gitattributes
+    - .editorconfig
+    - .prettierrc
+    - .eslintrc*
+    - Makefile
+    - Dockerfile
+    - docker-compose.yml
+    - .dockerignore
+    - tsconfig.json
+    - jsconfig.json
+    - next.config.js
+    - vite.config.js
+
+  # File pattern matching for auto-categorization
+  file_patterns:
+    docs:
+      reports:
+        inspection:
+          - FINAL-INSPECTION-*.md
+          - "*-inspection-*.md"
+        phases:
+          - PHASE*-COMPLETION-*.md
+          - "*-phase-*.md"
+        sync:
+          - sync-report-*.md
+          - "*-sync-*.md"
+        analysis:
+          - "*-ANALYSIS-*.md"
+          - "*-analysis-*.md"
+        validation:
+          - "*-validation-*.md"
+          - "*-quality-*.md"
+        daily:
+          - daily-*.md
+          - "*-daily-report-*.md"
+      specs:
+        - SPEC-*.md
+        - spec-*.md
+      api:
+        - api-*.md
+        - "*-api-*.md"
+      guides:
+        - guide-*.md
+        - "*-guide-*.md"
+        - README-*.md
+
+    scripts:
+      dev:
+        - init-*.sh
+        - setup-*.sh
+        - "*-dev-*.py"
+      conversion:
+        - fix-*.js
+        - convert-*.py
+        - migrate-*.js
+      validation:
+        - validate_*.py
+        - lint_*.py
+        - check_*.sh
+      analysis:
+        - "*_analyzer.py"
+        - analyze_*.py
+        - "*_monitor.py"
+      maintenance:
+        - cleanup_*.sh
+        - maintain_*.py
+
+    temp:
+      tests:
+        - test-*.spec.js
+        - "*_test.tmp"
+        - "*.test.temp"
+      coverage:
+        - coverage.json
+        - .coverage
+        - "*.lcov"
+      work:
+        - "*.tmp"
+        - "*.temp"
+        - "*.bak"
+        - "*.draft"
+
+    backups:
+      docs:
+        - docs_backup_*
+        - docs-backup-*
+      hooks:
+        - hooks_backup_*
+        - hooks-backup-*
+      specs:
+        - specs_backup_*
+        - specs-backup-*
+      config:
+        - config_backup_*
+        - config-backup-*
+
+  # Validation settings
+  validation:
+    enabled: true
+    on_file_create: true
+    on_session_end: true
+    warn_violations: true
+    block_violations: false
+
+  # Auto-migration for misplaced files
+  auto_migration:
+    enabled: true
+    scan_on_startup: false
+    suggest_moves: true
+    auto_move: false
+    require_user_approval: true

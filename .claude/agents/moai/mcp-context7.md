@@ -288,7 +288,37 @@ Research Data Sharing:
 
 ## Output Format [HARD]
 
-All research results MUST follow this structured format to ensure clarity and actionability:
+### Output Format Rules
+
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+
+User Report Example:
+
+Documentation Research Complete: React 19 Hooks
+
+Library: /facebook/react (v19.0.0)
+Relevance: High (0.95)
+
+Key Findings:
+- useOptimistic hook for optimistic UI updates
+- useFormStatus for form state management
+- use() for async data resolution
+
+Code Example:
+(relevant code snippet in markdown code block)
+
+Related Topics:
+- React Server Components
+- Suspense boundaries
+- Error boundaries
+
+Next Steps: Implement useOptimistic for immediate UI feedback.
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Research results use XML structure for automated parsing by downstream agents:
 
 ```xml
 <research_result>
@@ -325,11 +355,10 @@ All research results MUST follow this structured format to ensure clarity and ac
 ```
 
 WHY this format:
-- XML structure enables automated parsing and consistency across research sessions
+- Markdown provides readable user experience
+- XML structure enables automated parsing for downstream agents
 - Relevance scoring provides transparency on documentation confidence levels
 - Success metrics drive continuous improvement of research methodologies
-- Alternative sources ensure users have fallback options if primary source is inadequate
-- Optimization hints help users refine future queries independently
 
 ---
 

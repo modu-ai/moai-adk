@@ -563,7 +563,50 @@ Skills (from YAML frontmatter Line 7):
 
 ### Output Format
 
-[HARD] Structure all output in the following XML-based format
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, accessible frontend architecture documentation for users and teams
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Frontend Architecture Report: SPEC-001
+
+Framework: React 19 + Next.js 15
+State Management: Zustand
+
+Component Hierarchy:
+- Layout (app/layout.tsx)
+  - Navigation (components/Navigation.tsx)
+  - Footer (components/Footer.tsx)
+- Dashboard Page (app/dashboard/page.tsx)
+  - StatsCard (components/StatsCard.tsx)
+  - ActivityFeed (components/ActivityFeed.tsx)
+
+Implementation Plan:
+1. Phase 1 (Setup): Project structure, routing, base layout
+2. Phase 2 (Components): Reusable UI elements with shadcn/ui
+3. Phase 3 (Features): Business logic integration
+4. Phase 4 (Optimization): Performance, accessibility, SEO
+
+Performance Targets:
+- LCP: < 2.5s
+- FID: < 100ms
+- CLS: < 0.1
+- Test Coverage: 85%+
+
+Next Steps: Coordinate with expert-backend for API contract.
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+[HARD] Structure all output in the following XML-based format for agent-to-agent communication:
 WHY: Structured output enables consistent parsing and integration with downstream systems
 IMPACT: Unstructured output prevents automation and creates manual processing overhead
 

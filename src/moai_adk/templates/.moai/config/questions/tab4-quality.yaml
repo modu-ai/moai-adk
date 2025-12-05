@@ -1,0 +1,167 @@
+# Tab 4: Quality Principles & Reports
+# Priority: OPTIONAL
+# Questions: 7
+
+metadata:
+  id: tab_4_quality_reports
+  label: "Tab 4: Quality Principles & Reports"
+  description: "Configure TRUST 5, test coverage, report generation"
+  priority: OPTIONAL
+  order: 4
+  setting_count: 7
+
+target_sections:
+  - sections/quality.yaml
+
+batches:
+  # Batch 4.1: Constitution Settings
+  - batch_id: "4.1"
+    label: "Constitution Settings"
+    conditional: false
+    questions:
+      - id: enforce_tdd
+        question: "Enforce TDD (Test-Driven Development)?"
+        header: "Enforce TDD"
+        field: "constitution.enforce_tdd"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Require tests before implementation (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Allow implementation without tests"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "constitution.enforce_tdd"
+
+      - id: test_coverage_target
+        question: "Test coverage target percentage?"
+        header: "Coverage"
+        field: "constitution.test_coverage_target"
+        type: number_input
+        multi_select: false
+        required: true
+        options:
+          - label: "90%"
+            description: "High quality coverage (recommended)"
+            value: 90
+          - label: "85%"
+            description: "Standard coverage"
+            value: 85
+          - label: "Other"
+            description: "Enter custom percentage (0-100)"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/quality.yaml"
+          path: "constitution.test_coverage_target"
+
+      - id: max_projects
+        question: "Maximum concurrent projects?"
+        header: "Max Projects"
+        field: "constitution.principles.simplicity.max_projects"
+        type: number_input
+        multi_select: false
+        required: true
+        options:
+          - label: "5 projects"
+            description: "Default recommendation"
+            value: 5
+          - label: "Other"
+            description: "Enter custom number"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/quality.yaml"
+          path: "constitution.principles.simplicity.max_projects"
+
+  # Batch 4.2: Report Generation Policy
+  - batch_id: "4.2"
+    label: "Report Generation Policy"
+    conditional: false
+    questions:
+      - id: report_enabled
+        question: "Enable report generation?"
+        header: "Reports"
+        field: "report_generation.enabled"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Generate reports (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "No report generation"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.enabled"
+
+      - id: report_auto_create
+        question: "Auto-create full reports?"
+        header: "Auto Create"
+        field: "report_generation.auto_create"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Automatically generate full reports"
+            value: true
+          - label: "Disabled"
+            description: "Generate minimal reports (recommended, saves tokens)"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.auto_create"
+
+      - id: report_warn_user
+        question: "Warn user before report creation?"
+        header: "Warn User"
+        field: "report_generation.warn_user"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Ask user before generating reports (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Generate reports without asking"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.warn_user"
+
+      - id: report_user_choice
+        question: "Default user choice for reports?"
+        header: "Default"
+        field: "report_generation.user_choice"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Minimal"
+            description: "Generate minimal reports (recommended)"
+            value: "Minimal"
+          - label: "Full"
+            description: "Generate full reports"
+            value: "Full"
+          - label: "None"
+            description: "Skip report generation"
+            value: "None"
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.user_choice"
+
+validation:
+  checkpoint: "after_tab_4"
+  rules:
+    - name: "validate_coverage_range"
+      description: "Coverage target must be 0-100"
+      field: "constitution.test_coverage_target"
+      validation: "range"
+      min: 0
+      max: 100

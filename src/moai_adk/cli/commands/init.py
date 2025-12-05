@@ -253,7 +253,9 @@ def init(
 
                     with open(config_path, "w", encoding="utf-8") as f:
                         if is_yaml:
-                            yaml.safe_dump(config_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+                            yaml.safe_dump(
+                                config_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False
+                            )
                         else:
                             json.dump(config_data, f, indent=2, ensure_ascii=False)
                 except Exception:

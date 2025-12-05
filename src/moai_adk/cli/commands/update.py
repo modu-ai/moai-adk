@@ -46,13 +46,12 @@ import json
 import logging
 import shutil
 import subprocess
-
-import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Union, cast
 
 import click
+import yaml
 from packaging import version
 from rich.console import Console
 
@@ -269,9 +268,7 @@ def _get_latest_version() -> str:
         import urllib.request
 
         url = "https://pypi.org/pypi/moai-adk/json"
-        with urllib.request.urlopen(
-            url, timeout=5
-        ) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
+        with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
             data = json.loads(response.read().decode("utf-8"))
             return cast(str, data["info"]["version"])
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError) as e:

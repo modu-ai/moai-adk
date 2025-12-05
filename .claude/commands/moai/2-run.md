@@ -15,7 +15,7 @@ model: inherit
 
 ##  Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 @.moai/specs/
 
 ---
@@ -48,7 +48,27 @@ The `/moai:2-run` command orchestrates the complete implementation workflow by d
 
 The `/moai:2-run` command executes SPEC implementation through sequential phase-based agent delegation.
 
-**Output Format** (XML tags for clear phase boundaries):
+### Output Format Rules
+
+[HARD] User-Facing Reports: Always use Markdown formatting for all user communication.
+
+User Report Example (Phase 2.5 Completion):
+
+Phase 2.5 Complete: Quality Verification Passed
+
+TRUST 5 Validation Results:
+- Test First: PASS - 14/14 tests passed
+- Readable: WARNING - 4 linting warnings (auto-fixable)
+- Unified: PASS - Framework patterns followed
+- Secured: PASS - No security vulnerabilities
+- Trackable: PASS - Changes tracked
+
+Coverage: 90%+
+Status: PASS
+
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only. Never display XML tags to users.
+
+**Internal Phase Structure** (for agent coordination, not user display):
 
 ```xml
 <execution>
@@ -310,15 +330,24 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 
 **Agent**: manager-git
 
-**Condition** [HARD]: Only execute if `quality_status == PASS` or `quality_status == WARNING`
-  - WHY: Ensures only validated code reaches version control
-  - IMPACT: Prevents broken code from blocking other developers
+**Condition** [HARD]: Only execute if:
+1. `quality_status == PASS` or `quality_status == WARNING`
+2. AND config.yaml `git_strategy.automation.auto_branch == true`
+
+If `git_strategy.automation.auto_branch == false`:
+- Skip branch creation entirely
+- Commit directly to current branch
+- Use current branch name in all outputs and commits
+
+  - WHY: Ensures only validated code reaches version control; respects user's branch configuration
+  - IMPACT: Prevents broken code from blocking other developers; allows manual Git workflow
 
 **Requirements** [HARD]:
 
-- Create feature branch using naming convention: `feature/SPEC-{ID}`
-  - WHY: Enables clear association with SPEC requirements
-  - IMPACT: Simplifies PR reviews and change tracking
+- If `auto_branch == true`: Create feature branch using naming convention: `feature/SPEC-{ID}`
+- If `auto_branch == false`: Use current branch (skip branch creation)
+  - WHY: Enables clear association with SPEC requirements when branching enabled; respects manual workflow preference
+  - IMPACT: Simplifies PR reviews and change tracking; allows direct commits to main/current branch
 
 - Stage all relevant implementation and test files
   - WHY: Ensures complete feature change set is captured
@@ -810,7 +839,7 @@ After Phase 4 completes, the user is guided to their next action through AskUser
 
 **User Interface Standards**:
 
-- Use conversation language from `.moai/config/config.json`
+- Use conversation language from `.moai/config/config.yaml`
   - WHY: Respects user language preferences
   - IMPACT: Improves user experience for international teams
 

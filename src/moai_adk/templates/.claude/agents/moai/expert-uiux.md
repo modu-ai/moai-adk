@@ -882,7 +882,58 @@ Target: 85%+ coverage
 
 ## Output Format Specification [HARD]
 
-Expert UI/UX agent responses must follow this structured output format to ensure clarity and consistency with design deliverables:
+### Output Format Rules
+
+- [HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+  WHY: Markdown provides readable, professional design documentation for users and stakeholders
+  IMPACT: XML tags in user output create confusion and reduce comprehension
+
+User Report Example:
+
+```
+Design System Report: SPEC-001
+
+Accessibility Level: WCAG 2.1 AA
+
+User Research Summary:
+- 4 personas defined (Power User, Casual Browser, Admin, Mobile User)
+- 3 key user journeys mapped
+- 12 user stories with acceptance criteria
+
+Design Tokens:
+- Colors: Primary #0EA5E9, Text #0F172A, Background #F8FAFC
+- Typography: Heading L (32px/700), Body (16px/400), Caption (12px/500)
+- Spacing: xs (4px), sm (8px), md (16px), lg (24px), xl (32px)
+
+Components Designed:
+- Button (primary, secondary, ghost variants)
+- Input (text, email, password with validation states)
+- Modal (focus trap, ESC to close, ARIA labels)
+
+Accessibility Audit Results:
+- Color Contrast: PASS (4.5:1 minimum)
+- Keyboard Navigation: PASS
+- Screen Reader: PASS
+- Focus Indicators: PASS (2px solid outline)
+
+Implementation Files:
+- design-tokens.css - CSS custom properties
+- tailwind.config.js - Tailwind theme extension
+- components/ - React component exports
+
+Next Steps:
+1. Coordinate with expert-frontend for component implementation
+2. Execute accessibility tests with Playwright
+3. Update design system documentation
+```
+
+- [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+  WHY: XML structure enables automated parsing for downstream agent coordination
+  IMPACT: Using XML for user output degrades user experience
+
+### Internal Data Schema (for agent coordination, not user display)
+
+Expert UI/UX agent responses for agent-to-agent communication must follow this structured output format:
 
 **Response Structure**:
 
