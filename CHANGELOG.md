@@ -1,3 +1,97 @@
+# v0.32.11 - Release Workflow Simplification & Config Enhancement (2025-12-05)
+
+## Summary
+
+This patch release simplifies the release workflow with tag-based deployment, enhances configuration system with section file support, and separates user-facing output from internal agent data formats.
+
+## Changes
+
+### New Features
+
+- **feat**: Separate user-facing output (Markdown) from internal agent data (XML)
+  - User-facing responses now consistently use Markdown formatting
+  - XML tags reserved exclusively for agent-to-agent data transfer
+  - Clarifies output format usage across all agents and documentation
+
+### Bug Fixes
+
+- **fix**: Implement section files support and detached HEAD detection
+  - Added support for modular section file configuration loading
+  - Enhanced detached HEAD state detection in language config resolver
+  - Improves robustness of configuration system
+  - Location: `src/moai_adk/core/language_config_resolver.py`
+
+### Refactoring
+
+- **refactor**: Simplify release workflow with tag-based deployment
+  - Streamlined release command with focused tag-based approach
+  - Removed complex branching and PR creation logic
+  - Single workflow: quality gates → review → tag → GitHub Actions deploy
+  - Reduced release.md from complex multi-step to simple 6-phase process
+  - Location: `.claude/commands/moai/99-release.md`
+
+### Version Management
+
+- **chore**: Bump version to 0.32.11
+  - Version synchronization across all files
+
+## Breaking Changes
+
+None
+
+## Migration Guide
+
+No migration required. This is a workflow improvement and bug fix release.
+
+---
+
+# v0.32.11 - 릴리즈 워크플로우 간소화 및 설정 개선 (2025-12-05)
+
+## 요약
+
+이번 패치 릴리즈는 태그 기반 배포로 릴리즈 워크플로우를 단순화하고, 섹션 파일 지원으로 설정 시스템을 개선하며, 사용자 대면 출력과 내부 에이전트 데이터 형식을 분리합니다.
+
+## 변경 사항
+
+### 신규 기능
+
+- **feat**: 사용자 대면 출력(Markdown)과 내부 에이전트 데이터(XML) 분리
+  - 사용자 대면 응답이 이제 일관되게 Markdown 형식 사용
+  - XML 태그는 에이전트 간 데이터 전송 전용으로 예약
+  - 모든 에이전트와 문서에 걸쳐 출력 형식 사용 명확화
+
+### 버그 수정
+
+- **fix**: 섹션 파일 지원 및 detached HEAD 감지 구현
+  - 모듈화된 섹션 파일 설정 로딩 지원 추가
+  - 언어 설정 리졸버에서 detached HEAD 상태 감지 개선
+  - 설정 시스템의 견고성 향상
+  - 위치: `src/moai_adk/core/language_config_resolver.py`
+
+### 리팩토링
+
+- **refactor**: 태그 기반 배포로 릴리즈 워크플로우 단순화
+  - 집중된 태그 기반 접근 방식으로 릴리즈 명령어 간소화
+  - 복잡한 브랜치 및 PR 생성 로직 제거
+  - 단일 워크플로우: 품질 게이트 → 리뷰 → 태그 → GitHub Actions 배포
+  - release.md를 복잡한 다단계에서 간단한 6단계 프로세스로 축소
+  - 위치: `.claude/commands/moai/99-release.md`
+
+### 버전 관리
+
+- **chore**: 버전을 0.32.11로 업데이트
+  - 모든 파일에서 버전 동기화
+
+## 호환성 변경
+
+없음
+
+## 마이그레이션 가이드
+
+마이그레이션 불필요. 워크플로우 개선 및 버그 수정 릴리즈입니다.
+
+---
+
 # v0.32.10 - Worktree Registry Validation & CI/CD Improvements (2025-12-05)
 
 ## Summary
