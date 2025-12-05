@@ -1,3 +1,177 @@
+# v0.32.10 - Worktree Registry Validation & CI/CD Improvements (2025-12-05)
+
+## Summary
+
+This patch release focuses on improving Git worktree management reliability and streamlining CI/CD workflows. Key improvements include registry data validation, recovery commands, and CI workflow optimization.
+
+## Changes
+
+### New Features
+
+- **feat**: Add Makefile and pre-commit hooks for streamlined development
+  - Simplifies development workflow with standardized commands
+  - Automatic code quality checks via pre-commit hooks
+
+### Bug Fixes
+
+- **fix(worktree)**: Add registry data validation and recovery command
+  - Validates registry data structure on load
+  - Filters out invalid entries automatically
+  - New `moai-worktree recover` command for disaster recovery
+  - Defensive programming in `sync_with_git()` method
+  - Location: `src/moai_adk/cli/worktree/registry.py`, `cli.py`
+
+- **fix**: Add PROJECT_OWNER variable and fix test mocking issues
+  - Resolves test environment configuration issues
+
+- **fix**: Update remaining tests for config.json → config.yaml migration
+  - Completes YAML configuration migration across test suite
+
+### Documentation
+
+- **docs(spec)**: Add SPEC-TS-MIGRATION-001 for TypeScript migration
+  - Specification documents for TypeScript migration task
+  - Includes spec.md, plan.md, acceptance.md
+
+### CI/CD
+
+- **ci**: Simplify CI workflow and remove unused workflows
+  - Streamlined CI pipeline for faster execution
+  - Removed redundant workflow files
+
+- **ci**: Unify release workflows into single release.yml
+  - Consolidated release automation
+
+- **refactor**: Unify release workflows into single release.yml
+  - Improved maintainability of release process
+
+- **ci**: Re-add Python 3.11 and 3.14 to test matrix
+  - Expanded test coverage across Python versions
+
+- **ci**: Increase test timeout from 10 to 15 minutes
+  - Prevents timeout issues in comprehensive test suites
+
+- **ci**: Exclude Python 3.14 from CI matrix (temporary)
+  - Temporary exclusion for compatibility investigation
+
+### Testing
+
+- **test**: Migrate 19 tests from config.json to config.yaml
+  - Aligns test suite with YAML configuration standard
+
+- **test**: Fix TestGetGracefulDegradation to use yaml.safe_load mock
+  - Improves test reliability and security
+
+- **test**: Fix 58 tests for config.json → config.yaml migration
+  - Large-scale test migration for YAML support
+
+### Code Quality
+
+- **style**: Format test files with ruff
+  - Consistent code formatting across test suite
+
+### Version Management
+
+- **chore**: Bump version to 0.32.10
+  - Version synchronization across all files
+
+## Breaking Changes
+
+None
+
+## Migration Guide
+
+No migration required. Existing Git worktree registries will be automatically validated and cleaned on first use.
+
+---
+
+# v0.32.10 - Worktree 레지스트리 검증 및 CI/CD 개선 (2025-12-05)
+
+## 요약
+
+이번 패치 릴리즈는 Git worktree 관리 안정성 향상 및 CI/CD 워크플로우 간소화에 초점을 맞추고 있습니다. 주요 개선 사항으로는 레지스트리 데이터 검증, 복구 명령어, CI 워크플로우 최적화가 있습니다.
+
+## 변경 사항
+
+### 신규 기능
+
+- **feat**: 간소화된 개발을 위한 Makefile 및 pre-commit 훅 추가
+  - 표준화된 명령어로 개발 워크플로우 단순화
+  - pre-commit 훅을 통한 자동 코드 품질 검사
+
+### 버그 수정
+
+- **fix(worktree)**: 레지스트리 데이터 검증 및 복구 명령어 추가
+  - 로드 시 레지스트리 데이터 구조 검증
+  - 잘못된 엔트리 자동 필터링
+  - 재해 복구를 위한 새로운 `moai-worktree recover` 명령어
+  - `sync_with_git()` 메서드에 방어적 프로그래밍 적용
+  - 위치: `src/moai_adk/cli/worktree/registry.py`, `cli.py`
+
+- **fix**: PROJECT_OWNER 변수 추가 및 테스트 모킹 문제 수정
+  - 테스트 환경 설정 문제 해결
+
+- **fix**: config.json → config.yaml 마이그레이션을 위한 나머지 테스트 업데이트
+  - 테스트 스위트 전체에서 YAML 설정 마이그레이션 완료
+
+### 문서
+
+- **docs(spec)**: TypeScript 마이그레이션을 위한 SPEC-TS-MIGRATION-001 추가
+  - TypeScript 마이그레이션 작업을 위한 사양 문서
+  - spec.md, plan.md, acceptance.md 포함
+
+### CI/CD
+
+- **ci**: CI 워크플로우 단순화 및 미사용 워크플로우 제거
+  - 더 빠른 실행을 위한 간소화된 CI 파이프라인
+  - 중복 워크플로우 파일 제거
+
+- **ci**: 릴리즈 워크플로우를 단일 release.yml로 통합
+  - 릴리즈 자동화 통합
+
+- **refactor**: 릴리즈 워크플로우를 단일 release.yml로 통합
+  - 릴리즈 프로세스 유지보수성 향상
+
+- **ci**: Python 3.11 및 3.14를 테스트 매트릭스에 재추가
+  - Python 버전 전체에서 테스트 커버리지 확장
+
+- **ci**: 테스트 타임아웃을 10분에서 15분으로 증가
+  - 포괄적인 테스트 스위트에서 타임아웃 문제 방지
+
+- **ci**: Python 3.14를 CI 매트릭스에서 제외 (임시)
+  - 호환성 조사를 위한 임시 제외
+
+### 테스트
+
+- **test**: config.json에서 config.yaml로 19개 테스트 마이그레이션
+  - YAML 설정 표준에 테스트 스위트 정렬
+
+- **test**: yaml.safe_load 모킹을 사용하도록 TestGetGracefulDegradation 수정
+  - 테스트 안정성 및 보안 향상
+
+- **test**: config.json → config.yaml 마이그레이션을 위한 58개 테스트 수정
+  - YAML 지원을 위한 대규모 테스트 마이그레이션
+
+### 코드 품질
+
+- **style**: ruff로 테스트 파일 포맷
+  - 테스트 스위트 전체에서 일관된 코드 포맷팅
+
+### 버전 관리
+
+- **chore**: 버전을 0.32.10으로 업데이트
+  - 모든 파일에서 버전 동기화
+
+## 호환성 변경
+
+없음
+
+## 마이그레이션 가이드
+
+마이그레이션 불필요. 기존 Git worktree 레지스트리는 첫 사용 시 자동으로 검증 및 정리됩니다.
+
+---
+
 # v0.32.8 - Documentation Standards & Code Quality Improvements (2025-12-04)
 
 ## Summary
