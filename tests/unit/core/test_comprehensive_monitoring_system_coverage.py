@@ -656,15 +656,8 @@ class TestPredictiveAnalytics:
         assert len(self.analytics.models) == 0
         assert len(self.analytics.predictions) == 0
 
-    @patch('numpy.polyfit')
-    @patch('numpy.polyval')
-    @patch('numpy.mean')
-    def test_predict_metric_trend_success(self, mock_mean, mock_polyval, mock_polyfit):
+    def test_predict_metric_trend_success(self):
         """Test successful metric trend prediction"""
-        # Setup mocks
-        mock_mean.return_value = 75.0
-        mock_polyfit.return_value = [0.5, 70.0]  # slope, intercept
-        mock_polyval.return_value = [75.5, 76.0]
 
         # Mock historical data
         mock_metrics = []
@@ -682,7 +675,7 @@ class TestPredictiveAnalytics:
         # Make prediction
         result = self.analytics.predict_metric_trend(MetricType.CPU_USAGE)
 
-        # The prediction might fail due to numpy array shape issues
+        # The prediction might fail due to data processing issues
         # So we just check that it returns a valid structure
         assert isinstance(result, dict)
         assert "confidence" in result
@@ -729,15 +722,8 @@ class TestPredictiveAnalytics:
         assert result["confidence"] == 0.0
         assert "Analysis error" in result["reason"]
 
-    @patch('numpy.std')
-    @patch('numpy.mean')
-    @patch('numpy.abs')
-    def test_detect_anomalies_success(self, mock_abs, mock_mean, mock_std):
+    def test_detect_anomalies_success(self):
         """Test successful anomaly detection"""
-        # Setup mocks
-        mock_mean.return_value = 75.0
-        mock_std.return_value = 5.0
-        mock_abs.return_value = [0.5, 1.0, 2.5, 3.0]
 
         # Mock metrics
         mock_metrics = [
