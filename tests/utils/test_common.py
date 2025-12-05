@@ -929,8 +929,8 @@ class TestGetGracefulDegradation:
         config = {"hooks": {"graceful_degradation": True}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -939,17 +939,18 @@ class TestGetGracefulDegradation:
         config = {"hooks": {"graceful_degradation": False}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is False
 
-    def test_graceful_degradation_malformed_json(self):
-        """Test handling malformed JSON in config."""
+    def test_graceful_degradation_malformed_yaml(self):
+        """Test handling malformed YAML in config."""
+        import yaml as yaml_module
+
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = "invalid"
-                with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", side_effect=yaml_module.YAMLError("parse error")):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -958,8 +959,8 @@ class TestGetGracefulDegradation:
         config = {"other": "data"}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
@@ -968,8 +969,8 @@ class TestGetGracefulDegradation:
         config = {"hooks": {"other": "value"}}
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", create=True):
-                with patch("json.load", return_value=config):
+            with patch("builtins.open", mock_open()):
+                with patch("yaml.safe_load", return_value=config):
                     result = get_graceful_degradation()
                     assert result is True
 
