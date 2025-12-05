@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, call, mock_open, patch
 
 import aiohttp
 import pytest
+import yaml
 
 from moai_adk.utils.common import (
     HTTPClient,
@@ -594,42 +595,34 @@ class TestGetGracefulDegradation:
     def test_get_graceful_degradation_true(self):
         """Test get_graceful_degradation reads true value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {"graceful_degradation": True}}):
-                result = get_graceful_degradation()
-                assert result is True
+            with patch("builtins.open", mock_open(read_data="hooks:\n  graceful_degradation: true")):
+                with patch("yaml.safe_load", return_value={"hooks": {"graceful_degradation": True}}):
+                    result = get_graceful_degradation()
+                    assert result is True
 
     def test_get_graceful_degradation_false(self):
         """Test get_graceful_degradation reads false value."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "builtins.open",
-                MagicMock(
-                    return_value=MagicMock(
-                        __enter__=lambda s: MagicMock(read=lambda: '{"hooks": {"graceful_degradation": false}}'),
-                        __exit__=lambda s, *args: None,
-                    )
-                ),
-            ):
-                with patch("json.load", return_value={"hooks": {"graceful_degradation": False}}):
+            with patch("builtins.open", mock_open(read_data="hooks:\n  graceful_degradation: false")):
+                with patch("yaml.safe_load", return_value={"hooks": {"graceful_degradation": False}}):
                     result = get_graceful_degradation()
                     assert result is False
 
     def test_get_graceful_degradation_invalid_json(self):
-        """Test get_graceful_degradation handles invalid JSON."""
+        """Test get_graceful_degradation handles invalid YAML."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch(
-                "builtins.open",
-                MagicMock(side_effect=json.JSONDecodeError("msg", "doc", 0)),
-            ):
-                result = get_graceful_degradation()
-                assert result is True
+            with patch("builtins.open", mock_open(read_data="invalid: yaml: content")):
+                with patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")):
+                    result = get_graceful_degradation()
+                    assert result is True
 
     def test_get_graceful_degradation_missing_key(self):
         """Test get_graceful_degradation when key is missing."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("json.load", return_value={"hooks": {}}):
-                result = get_graceful_degradation()
-                assert result is True
+            with patch("builtins.open", mock_open(read_data="hooks: {}")):
+                with patch("yaml.safe_load", return_value={"hooks": {}}):
+                    result = get_graceful_degradation()
+                    assert result is True
 
 
 class TestRateLimitError:
