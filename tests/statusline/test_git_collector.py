@@ -133,9 +133,9 @@ class TestGitCollector:
             call_count_after_second = mock_run.call_count
 
             # Git command should only be called once (cache works)
-            assert (
-                call_count_after_first == call_count_after_second
-            ), f"Git command called {call_count_after_second - call_count_after_first} more times (cache not working)"
+            assert call_count_after_first == call_count_after_second, (
+                f"Git command called {call_count_after_second - call_count_after_first} more times (cache not working)"
+            )
 
             # Results should be identical
             assert result1.branch == result2.branch

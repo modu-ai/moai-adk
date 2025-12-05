@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch, mock_open
 import re
 
 import pytest
+import yaml
 
 from moai_adk.statusline.version_reader import (
     VersionSource,
@@ -91,13 +92,13 @@ class TestVersionReaderConfigFile:
 
     def test_read_version_from_config_sync_file_exists(self):
         """Test synchronous config file reading when file exists."""
-        config_data = {"moai": {"version": "0.20.1"}}
+        config_data = {"moai": {"version": "0.32.8"}}
         reader = VersionReader()
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(reader, "_read_json_sync", return_value=config_data):
+            with patch.object(reader, "_read_config_sync", return_value=config_data):
                 result = reader._read_version_from_config_sync()
-                assert result == "0.20.1"
+                assert result == "0.32.8"
 
     def test_read_version_from_config_sync_file_not_exists(self):
         """Test synchronous config file reading when file doesn't exist."""
@@ -108,14 +109,14 @@ class TestVersionReaderConfigFile:
             assert result == ""
 
     def test_read_version_from_config_sync_json_error(self):
-        """Test synchronous config file reading with JSON error."""
+        """Test synchronous config file reading with YAML error."""
         reader = VersionReader()
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch.object(
                 reader,
-                "_read_json_sync",
-                side_effect=json.JSONDecodeError("msg", "doc", 0),
+                "_read_config_sync",
+                side_effect=yaml.YAMLError("YAML parse error"),
             ):
                 result = reader._read_version_from_config_sync()
                 assert result == ""
@@ -131,13 +132,13 @@ class TestVersionReaderConfigFile:
     @pytest.mark.asyncio
     async def test_read_version_from_config_async_file_exists(self):
         """Test async config file reading when file exists."""
-        config_data = {"moai": {"version": "0.20.1"}}
+        config_data = {"moai": {"version": "0.32.8"}}
         reader = VersionReader()
 
         with patch.object(reader, "_file_exists_async", return_value=True):
-            with patch.object(reader, "_read_json_async", return_value=config_data):
+            with patch.object(reader, "_read_config_async", return_value=config_data):
                 result = await reader._read_version_from_config_async()
-                assert result == "0.20.1"
+                assert result == "0.32.8"
 
     @pytest.mark.asyncio
     async def test_read_version_from_config_async_file_not_exists(self):
@@ -533,14 +534,14 @@ class TestVersionReaderIntegration:
 
     def test_full_sync_flow(self):
         """Test complete synchronous version reading flow."""
-        config_data = {"moai": {"version": "0.20.1"}}
+        config_data = {"moai": {"version": "0.32.8"}}
         reader = VersionReader(config=VersionConfig(enable_async=False))
 
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(reader, "_read_json_sync", return_value=config_data):
+            with patch.object(reader, "_read_config_sync", return_value=config_data):
                 with patch.object(reader, "_get_package_version", return_value=""):
                     result = reader.get_version()
-                    assert result == "0.20.1"
+                    assert result == "0.32.8"
 
     @pytest.mark.asyncio
     async def test_full_async_flow(self):

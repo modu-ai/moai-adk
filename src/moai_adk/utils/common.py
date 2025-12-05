@@ -4,7 +4,6 @@ Common utility functions
 """
 
 import asyncio
-import json
 import logging
 import re
 from dataclasses import dataclass, field

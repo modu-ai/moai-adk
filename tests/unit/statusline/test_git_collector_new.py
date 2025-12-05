@@ -171,7 +171,7 @@ class TestGitCollectorParseGitOutput:
     def test_parse_git_output_mixed_changes(self):
         """Test parsing with mixed file changes."""
         collector = GitCollector()
-        output = "## develop...origin/develop\n" "A  new.py\n" "M  modified.py\n" "?? untracked.py\n"
+        output = "## develop...origin/develop\nA  new.py\nM  modified.py\n?? untracked.py\n"
         result = collector._parse_git_output(output)
         assert result.branch == "develop"
         assert result.staged == 2  # A and M are both staged changes

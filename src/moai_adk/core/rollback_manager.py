@@ -426,7 +426,7 @@ class RollbackManager:
     def _generate_rollback_id(self) -> str:
         """Generate unique rollback point ID"""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        random_suffix = hashlib.md5(os.urandom(4)).hexdigest()[:8]
+        random_suffix = hashlib.md5(os.urandom(4), usedforsecurity=False).hexdigest()[:8]
         return f"rollback_{timestamp}_{random_suffix}"
 
     def _load_registry(self) -> Dict[str, Any]:

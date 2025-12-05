@@ -165,18 +165,19 @@ class TestLoadConfigFile:
         assert config.get("agent_prompt_language") == "en"
 
     def test_load_config_file_project_owner_fallback(self, tmp_path):
-        """Should use project owner as fallback for user name."""
+        """Should extract github profile name separately."""
         from moai_adk.core.language_config_resolver import LanguageConfigResolver
+        import yaml
 
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_file = config_dir / "config.json"
-        config_file.write_text('{"project": {"owner": "ProjectOwner"}}')
+        config_file = config_dir / "config.yaml"
+        config_file.write_text(yaml.dump({"github": {"profile_name": "GitHubUser"}}))
 
         resolver = LanguageConfigResolver(str(tmp_path))
         config = resolver._load_config_file()
 
-        assert config.get("user_name") == "ProjectOwner"
+        assert config.get("github_profile_name") == "GitHubUser"
 
 
 class TestLoadEnvConfig:

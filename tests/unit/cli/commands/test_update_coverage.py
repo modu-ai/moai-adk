@@ -8,12 +8,12 @@ Target Coverage: 70%+
 Test Pattern: AAA (Arrange-Act-Assert)
 """
 
-import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call, mock_open
 import pytest
+import yaml
 from packaging import version
 
 from moai_adk.cli.commands.update import (
@@ -249,6 +249,8 @@ class TestVersionFunctions:
         mock_response = MagicMock()
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
+        import json
+
         mock_response.read.return_value = json.dumps({"info": {"version": "0.9.0"}}).encode("utf-8")
         mock_urlopen.return_value = mock_response
 
@@ -336,7 +338,7 @@ class TestConfigVersionFunctions:
     """Test suite for config version detection."""
 
     def test_get_project_config_version_no_config(self):
-        """Test project config version when config.json missing."""
+        """Test project config version when config.yaml missing."""
         # Arrange
         with patch("pathlib.Path.exists", return_value=False):
             # Act
@@ -355,7 +357,7 @@ class TestConfigVersionFunctions:
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text") as mock_read:
-                mock_read.return_value = json.dumps(config_data)
+                mock_read.return_value = yaml.dump(config_data)
 
                 # Act
                 result = _get_project_config_version(Path("/mock/project"))
@@ -370,7 +372,7 @@ class TestConfigVersionFunctions:
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text") as mock_read:
-                mock_read.return_value = json.dumps(config_data)
+                mock_read.return_value = yaml.dump(config_data)
 
                 # Act
                 result = _get_project_config_version(Path("/mock/project"))
@@ -385,7 +387,7 @@ class TestConfigVersionFunctions:
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text") as mock_read:
-                mock_read.return_value = json.dumps(config_data)
+                mock_read.return_value = yaml.dump(config_data)
 
                 # Act
                 result = _get_project_config_version(Path("/mock/project"))
@@ -393,12 +395,12 @@ class TestConfigVersionFunctions:
                 # Assert
                 assert result == "0.0.0"
 
-    def test_get_project_config_version_invalid_json(self):
-        """Test project config version with invalid JSON."""
+    def test_get_project_config_version_invalid_yaml(self):
+        """Test project config version with invalid YAML."""
         # Arrange
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text") as mock_read:
-                mock_read.return_value = "invalid json"
+                mock_read.return_value = "invalid: yaml: content:"
 
                 # Act & Assert
                 with pytest.raises(ValueError):

@@ -613,6 +613,44 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
         raise click.Abort()
 
 
+@worktree.command(name="recover")
+@click.option("--repo", type=click.Path(), default=None, help="Repository path")
+@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+def recover_worktrees(repo: str | None, worktree_root: str | None) -> None:
+    """Recover worktree registry from existing directories.
+
+    Scans the worktree root directory for existing worktrees and
+    re-registers them in the registry file.
+
+    Args:
+        repo: Repository path (optional)
+        worktree_root: Worktree root directory (optional)
+    """
+    try:
+        repo_path = Path(repo) if repo else Path.cwd()
+        wt_root = Path(worktree_root) if worktree_root else None
+
+        manager = get_manager(repo_path, wt_root)
+
+        console.print(f"[cyan]Scanning {manager.worktree_root} for worktrees...[/cyan]")
+        recovered = manager.registry.recover_from_disk()
+
+        if recovered > 0:
+            console.print(f"[green]✓[/green] Recovered {recovered} worktree(s)")
+
+            # Show recovered worktrees
+            worktrees = manager.list()
+            for info in worktrees:
+                if info.status == "recovered":
+                    console.print(f"  - {info.spec_id} ({info.branch})")
+        else:
+            console.print("[yellow]No new worktrees found to recover[/yellow]")
+
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error recovering worktrees: {e}")
+        raise click.Abort()
+
+
 @worktree.command(name="config")
 @click.argument("key", required=False)
 @click.argument("value", required=False)

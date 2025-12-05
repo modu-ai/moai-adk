@@ -16,10 +16,10 @@ Test Organization:
 - Mock external dependencies (git, console, click)
 """
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import yaml
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.status import status
@@ -29,14 +29,14 @@ class TestStatusConfigReading:
     """Test config.json reading and validation (lines 62-67)"""
 
     def test_status_reads_config_successfully(self, tmp_path: Path) -> None:
-        """Should read config.json and display project information"""
-        # Setup: Create config.json
+        """Should read config.yaml and display project information"""
+        # Setup: Create config.yaml
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         config_data = {"project": {"mode": "personal", "locale": "en_US"}}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         runner = CliRunner()
 
@@ -49,7 +49,7 @@ class TestStatusConfigReading:
                 assert mock_console.print.called
 
     def test_status_missing_config_shows_warning(self, tmp_path: Path) -> None:
-        """Should show warning and abort when config.json is missing (lines 57-60)"""
+        """Should show warning and abort when config.yaml is missing (lines 57-60)"""
         runner = CliRunner()
 
         with patch("moai_adk.cli.commands.status.Path.cwd", return_value=tmp_path):
@@ -57,7 +57,7 @@ class TestStatusConfigReading:
 
             # Should abort with exit code 1
             assert result.exit_code == 1
-            assert "No .moai/config/config.json found" in result.output
+            assert "No .moai/config/config.yaml found" in result.output
             assert "moai_adk init" in result.output
 
     def test_status_counts_spec_documents_correctly(self, tmp_path: Path) -> None:
@@ -65,8 +65,8 @@ class TestStatusConfigReading:
         # Setup: Create config and SPEC files
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         # Create multiple SPEC directories
         specs_dir = tmp_path / ".moai" / "specs"
@@ -90,8 +90,8 @@ class TestStatusConfigReading:
         # Setup: Create config but no specs directory
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -109,10 +109,10 @@ class TestStatusTableBuilding:
         """Should read mode from project section (line 76)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         config_data = {"project": {"mode": "team", "locale": "ja_JP"}}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         runner = CliRunner()
 
@@ -125,10 +125,10 @@ class TestStatusTableBuilding:
         """Should read locale from project section (line 77)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         config_data = {"project": {"mode": "personal", "locale": "ko_KR"}}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         runner = CliRunner()
 
@@ -141,11 +141,11 @@ class TestStatusTableBuilding:
         """Should fallback to root-level mode if project section missing (line 76)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         # Old config format (mode at root level)
         config_data = {"mode": "personal", "locale": "en_US"}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         runner = CliRunner()
 
@@ -158,11 +158,11 @@ class TestStatusTableBuilding:
         """Should fallback to root-level locale if project section missing (line 77)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         # Old config format (locale at root level)
         config_data = {"mode": "team", "locale": "fr_FR"}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         runner = CliRunner()
 
@@ -175,11 +175,11 @@ class TestStatusTableBuilding:
         """Should display 'unknown' for missing mode/locale (lines 76-77)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         # Empty config
         config_data = {}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         runner = CliRunner()
 
@@ -198,8 +198,8 @@ class TestStatusGitIntegration:
         # Setup: Create config
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -219,8 +219,8 @@ class TestStatusGitIntegration:
         """Should display 'Clean' when Git status is clean (line 86)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -239,8 +239,8 @@ class TestStatusGitIntegration:
         """Should display 'Modified' when Git status is dirty (line 86)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -259,8 +259,8 @@ class TestStatusGitIntegration:
         """Should continue gracefully when Git is not available (lines 87-88)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -276,8 +276,8 @@ class TestStatusGitIntegration:
         """Should handle when directory is not a Git repository (lines 87-88)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -293,13 +293,13 @@ class TestStatusErrorHandling:
     """Test error handling paths (lines 102-104)"""
 
     def test_status_handles_malformed_json_config(self, tmp_path: Path) -> None:
-        """Should handle malformed JSON in config file (lines 102-104)"""
+        """Should handle malformed YAML in config file (lines 102-104)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
-        # Write malformed JSON
-        config_path.write_text("{ invalid json }")
+        # Write malformed YAML
+        config_path.write_text("{ invalid: yaml: }")
 
         runner = CliRunner()
 
@@ -315,13 +315,13 @@ class TestStatusErrorHandling:
         """Should handle permission errors when reading config (lines 102-104)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal"}}))
 
         runner = CliRunner()
 
         def mock_open_permission_error(*args, **kwargs):
-            if "config.json" in str(args[0]):
+            if "config.yaml" in str(args[0]):
                 raise PermissionError("Access denied")
             # Allow other file operations
             return open(*args, **kwargs)
@@ -338,14 +338,14 @@ class TestStatusErrorHandling:
         """Should handle unexpected exceptions gracefully (lines 102-104)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal"}}))
 
         runner = CliRunner()
 
         with patch("moai_adk.cli.commands.status.Path.cwd", return_value=tmp_path):
             with patch(
-                "moai_adk.cli.commands.status.json.load",
+                "moai_adk.cli.commands.status.yaml.safe_load",
                 side_effect=RuntimeError("Unexpected error"),
             ):
                 result = runner.invoke(status)
@@ -362,8 +362,8 @@ class TestStatusPanelRendering:
         """Should render panel with status table (lines 91-98)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -385,8 +385,8 @@ class TestStatusPanelRendering:
         """Should render panel with 'Project Status' title (line 93)"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {"mode": "personal", "locale": "en_US"}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {"mode": "personal", "locale": "en_US"}}))
 
         runner = CliRunner()
 
@@ -410,10 +410,10 @@ class TestStatusFullIntegration:
         # Setup: Create complete project structure
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
+        config_path = config_dir / "config.yaml"
 
         config_data = {"project": {"mode": "team", "locale": "ko_KR"}}
-        config_path.write_text(json.dumps(config_data))
+        config_path.write_text(yaml.dump(config_data))
 
         # Create SPEC documents
         specs_dir = tmp_path / ".moai" / "specs"
@@ -439,8 +439,8 @@ class TestStatusFullIntegration:
         """Should display status with minimal config and no Git"""
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
-        config_path = config_dir / "config.json"
-        config_path.write_text(json.dumps({"project": {}}))
+        config_path = config_dir / "config.yaml"
+        config_path.write_text(yaml.dump({"project": {}}))
 
         runner = CliRunner()
 

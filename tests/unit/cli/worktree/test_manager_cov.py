@@ -350,7 +350,7 @@ class TestWorktreeManagerList:
 
             # Register multiple worktrees
             for i in range(3):
-                spec_id = f"SPEC-AUTH-00{i+1}"
+                spec_id = f"SPEC-AUTH-00{i + 1}"
                 path = worktree_root / spec_id
                 path.mkdir(parents=True, exist_ok=True)
                 info = WorktreeInfo(
