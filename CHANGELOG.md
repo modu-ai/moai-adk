@@ -1,8 +1,19 @@
-# v0.32.12 - Test Coverage Excellence (95% Achieved) (2025-12-05)
+# v0.32.12.1 - Test Coverage Release CI/CD Fix (2025-12-05)
 
 ## Summary
 
-This release achieves the 95% test coverage target through comprehensive test additions across critical modules, significantly improving code quality and reliability.
+Patch release to fix CI/CD deployment issue for v0.32.12.
+
+### Fixes
+
+- **fix**: Remove numpy dependency from test files
+  - Fixed import error in test_comprehensive_monitoring_system_coverage.py
+  - Replaced numpy arrays with Python lists
+  - Ensures all tests run in CI environment
+
+## Previous Improvements (from v0.32.12)
+
+The v0.32.12 release achieved the 95% test coverage target through comprehensive test additions across critical modules, significantly improving code quality and reliability.
 
 ## Changes
 
@@ -63,11 +74,22 @@ No migration required. This is a quality improvement release.
 
 ---
 
-# v0.32.12 - 테스트 커버리지 우수성 (95% 달성) (2025-12-05)
+# v0.32.12.1 - 테스트 커버리지 릴리즈 CI/CD 수정 (2025-12-05)
 
 ## 요약
 
-이번 릴리즈는 핵심 모듈들에 대한 포괄적인 테스트 추가를 통해 95% 테스트 커버리지 목표를 달성하며, 코드 품질과 신뢰성을 크게 향상시켰습니다.
+v0.32.12의 CI/CD 배포 문제를 수정하는 패치 릴리즈입니다.
+
+### 수정 사항
+
+- **fix**: 테스트 파일에서 numpy 의존성 제거
+  - test_comprehensive_monitoring_system_coverage.py import 오류 수정
+  - numpy 배열을 Python 리스트로 대체
+  - CI 환경에서 모든 테스트 실행 보장
+
+## v0.32.12 개선사항
+
+v0.32.12은 95% 테스트 커버리지 목표를 달성했습니다.
 
 ## 변경 사항
 
