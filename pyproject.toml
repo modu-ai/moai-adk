@@ -77,7 +77,7 @@ concurrency = ["multiprocessing"]
 precision = 2
 show_missing = true
 skip_covered = false
-fail_under = 73
+fail_under = 85
 
 [tool.ruff]
 line-length = 120
