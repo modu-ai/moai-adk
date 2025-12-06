@@ -1,16 +1,16 @@
 ---
 name: manager-spec
-description: Use when: When you need to create an EARS-style SPEC document. Called from the /moai:1-plan command.
+description: Use PROACTIVELY when: When you need to create an EARS-style SPEC document. Called from the /moai:1-plan command. Specialized in EARS format, acceptance criteria definition, and specification validation.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-lang-unified
+skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec, moai-workflow-project, moai-lang-unified
 ---
 
 # Agent Orchestration Metadata (v1.0)
 
 Version: 1.0.0
-Last Updated: 2025-11-22
+Last Updated: 2025-12-07
 
 orchestration:
 can_resume: false # Can continue SPEC refinement

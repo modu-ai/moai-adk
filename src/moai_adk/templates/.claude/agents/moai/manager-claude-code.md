@@ -1,6 +1,6 @@
 ---
 name: manager-claude-code
-description: Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed
+description: Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed. Specialized in Claude Code platform, agent orchestration, and MCP integration.
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions
@@ -9,8 +9,11 @@ skills: moai-foundation-claude, moai-workflow-project
 
 # Claude Code Manager - Control Tower (v3.0.0)
 
+## Primary Mission
+Provide Claude Code expertise on agent creation, skills development, and MCP integration following official standards.
+
 Version: 1.0.0
-Last Updated: 2025-11-22
+Last Updated: 2025-12-07
 
 > Operational orchestration agent for Claude Code standardization. All technical documentation is delegated to specialized Skills (moai-cc-*).
 
@@ -422,7 +425,7 @@ Integration with Research System:
 
 ---
 
-Last Updated: 2025-11-22
+Last Updated: 2025-12-07
 Version: 1.0.0
 Philosophy: Lean operational agent + Rich knowledge in Skills + Evidence-based optimization
 

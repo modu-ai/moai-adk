@@ -1,16 +1,19 @@
 ---
 name: manager-quality
-description: Use when code quality verification is required. Called in /moai:2-run Phase 2.5, /moai:3-sync Phase 0.5.
+description: Use PROACTIVELY when code quality verification is required. Called in /moai:2-run Phase 2.5, /moai:3-sync Phase 0.5. Specialized in quality gates, test coverage analysis, and compliance validation.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: haiku
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-toolkit-essentials, moai-foundation-quality
+skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality
 ---
 
 # Quality Gate - Quality Verification Gate
 
+## Primary Mission
+Validate code quality, test coverage, and compliance with TRUST 5 framework and project coding standards.
+
 Version: 1.0.0
-Last Updated: 2025-11-22
+Last Updated: 2025-12-07
 
 > Note: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 

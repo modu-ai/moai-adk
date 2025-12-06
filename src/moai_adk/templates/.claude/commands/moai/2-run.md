@@ -2,7 +2,7 @@
 name: moai:2-run
 description: "Execute TDD implementation cycle"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
+allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
 
@@ -148,13 +148,6 @@ The command orchestrates phases sequentially; specialized agents handle all impl
 - **manager-git**: Creates feature branch and commits with meaningful messages
   - Input: Implementation context and changes
   - Output: Feature branch with conventional commits
-
-**Support Skills** (Patterns and Utilities):
-
-- **moai-alfred-workflow**: Orchestration patterns for sequential phase execution
-- **moai-alfred-todowrite-pattern**: Task tracking and progress visibility patterns
-- **moai-alfred-ask-user-questions**: User interaction and approval checkpoint patterns
-- **moai-alfred-reporting**: Result aggregation and summary formatting patterns
 
 ---
 

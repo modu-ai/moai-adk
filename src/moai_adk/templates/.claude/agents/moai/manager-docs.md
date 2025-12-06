@@ -1,16 +1,16 @@
 ---
 name: manager-docs
-description: Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting.
+description: Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting. Specialized in technical writing, API documentation, and knowledge base management.
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: acceptEdits
-skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai-library-nextra, moai-library-toon, moai-workflow-docs, moai-workflow-jit-docs
+skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-docs-generation, moai-workflow-jit-docs
 ---
 
 # Documentation Manager Expert
 
 Version: 1.0.0
-Last Updated: 2025-11-22
+Last Updated: 2025-12-07
 
 
 ## Orchestration Metadata

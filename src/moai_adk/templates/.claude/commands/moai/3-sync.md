@@ -2,7 +2,7 @@
 name: moai:3-sync
 description: "Synchronize documentation and finalize PR"
 argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
+allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
 
@@ -81,17 +81,13 @@ Command usage examples:
 
 ---
 
-##  Associated Agents & Skills
+##  Associated Agents
 
-| Agent/Skill                  | Purpose                                         |
-| ---------------------------- | ----------------------------------------------- |
-| manager-docs                 | Synchronize Living Documents with code changes  |
-| manager-quality              | Verify project integrity and TRUST 5 compliance |
-| manager-git                  | Handle Git operations and commit management     |
-| moai-docs-toolkit            | Documentation generation and validation         |
-| moai-alfred-reporting        | Result reporting and summaries                  |
-| moai-alfred-trust-validation | Project validation and quality gates            |
-| moai-alfred-git-workflow     | Git workflow patterns                           |
+| Agent           | Purpose                                         |
+| --------------- | ----------------------------------------------- |
+| manager-docs    | Synchronize Living Documents with code changes  |
+| manager-quality | Verify project integrity and TRUST 5 compliance |
+| manager-git     | Handle Git operations and commit management     |
 
 ---
 

@@ -1,7 +1,7 @@
 {
-  "last_updated": "2025-12-05T20:19:32.343734",
+  "last_updated": "2025-12-05T20:39:31.857060",
   "current_branch": "main",
-  "uncommitted_changes": null,
-  "uncommitted_files": 0,
+  "uncommitted_changes": "⚠️  1 uncommitted files detected - Consider committing or stashing changes",
+  "uncommitted_files": 1,
   "specs_in_progress": []
 }

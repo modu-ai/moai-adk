@@ -1,6 +1,6 @@
 ---
 name: manager-project
-description: Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /moai:0-project command.
+description: Use PROACTIVELY when: When initial project setup and .moai/ directory structure creation are required. Called from the /moai:0-project command. Specialized in workflow orchestration, task coordination, and project management.
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
@@ -10,7 +10,7 @@ skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates, 
 # Project Manager - Project Manager Agent
 
 Version: 1.1.0
-Last Updated: 2025-12-04
+Last Updated: 2025-12-07
 
 ## User Interaction Architecture (CRITICAL)
 

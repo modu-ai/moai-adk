@@ -2,7 +2,7 @@
 name: moai:1-plan
 description: "Define specifications and create development branch or worktree"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications [--worktree | --branch]
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
+allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
 
@@ -105,14 +105,6 @@ Associated Agents for SPEC Planning and Creation:
 - manager-git: Git workflow and branch management
   WHY: Encapsulates git operations with proper error handling
   IMPACT: Prevents manual git errors and ensures consistency
-
-- moai-spec-intelligent-workflow: SPEC workflow orchestration
-  WHY: Cross-phase workflow coordination
-  IMPACT: Ensures sequential phase execution and context continuity
-
-- moai-alfred-ask-user-questions: User interaction patterns
-  WHY: Centralized user interaction management
-  IMPACT: Consistent question formatting and response handling
 
 ### Agent Delegation Strategy
 
