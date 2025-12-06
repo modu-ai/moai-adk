@@ -3,6 +3,7 @@ name: moai-domain-database
 description: Database specialist covering PostgreSQL, MongoDB, Redis, and advanced data patterns for modern applications
 version: 1.0.0
 category: domain
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 tags:
  - database
  - postgresql
@@ -10,7 +11,7 @@ tags:
  - redis
  - data-patterns
  - performance
-updated: 2025-11-30
+updated: 2025-12-06
 status: active
 author: MoAI-ADK Team
 ---

@@ -342,86 +342,16 @@ Detailed Reference: [Modular System Module](modules/modular-system.md)
 
 ## Advanced Implementation (10+ minutes)
 
-### Cross-Module Integration
+Advanced patterns including cross-module integration, quality validation, and error handling are available in the detailed module references.
 
-TRUST 5 + SPEC-First TDD:
-```python
-spec = Task(subagent_type="workflow-spec", prompt="SPEC with TRUST 5")
-impl = Task(subagent_type="workflow-tdd", prompt="≥85% coverage",
- context={"spec": spec, "quality_gates": ["TRUST5"]})
-validation = Task(subagent_type="core-quality", prompt="Validate TRUST 5",
- context={"implementation": impl})
-```
+Key Advanced Topics:
+- Cross-Module Integration: Combining TRUST 5 + SPEC-First TDD
+- Token-Optimized Delegation: Parallel execution with context reset
+- Progressive Agent Workflows: Escalation patterns
+- Quality Validation: Pre/Post execution validation
+- Error Handling: Delegation failure recovery
 
-Token-Optimized Delegation:
-```python
-spec = Task(subagent_type="workflow-spec", prompt="Generate SPEC")
-execute_clear() # Save 45-50K
-results = await Promise.all([
- Task(subagent_type="backend-expert", prompt="Backend", context={"spec_id": spec.id}),
- Task(subagent_type="frontend-expert", prompt="Frontend", context={"spec_id": spec.id})
-])
-Task(subagent_type="workflow-docs", prompt="Docs", context={"results": results})
-```
-
-Progressive Agent Workflows:
-```python
-quick = Task(subagent_type="debug-helper", prompt="Quick diagnosis")
-if quick.complexity == "high":
- detailed = Task(subagent_type="debug-helper", prompt="Detailed analysis")
- if detailed.requires_expert:
- expert = Task(subagent_type="security-expert", prompt="Deep dive")
-```
-
-### Quality Validation
-
-Pre-Execution:
-```python
-def validate_execution_requirements(task, context):
- return all([
- validate_security_clearance(task),
- validate_resource_availability(context),
- validate_quality_standards(task),
- validate_permission_compliance(task)
- ])
-```
-
-Post-Execution:
-```python
-def validate_execution_results(result, task):
- validations = [
- validate_output_quality(result),
- validate_security_compliance(result),
- validate_test_coverage(result),
- validate_documentation_completeness(result)
- ]
- if not all(validations):
- raise QualityGateError("Quality gate failures")
- return True
-```
-
-### Error Handling
-
-Delegation Failure:
-```python
-try:
- result = Task(subagent_type="backend-expert", prompt="Complex task")
-except AgentExecutionError as e:
- analysis = Task(subagent_type="debug-helper", prompt=f"Analyze: {e}")
- if analysis.issue == "complexity":
- results = await Promise.all([
- Task(subagent_type="backend-expert", prompt="Subtask 1"),
- Task(subagent_type="backend-expert", prompt="Subtask 2")
- ])
-```
-
-Token Budget Exceeded:
-```python
-if token_usage > 150_000:
- execute_clear()
- context = {"spec_id": current_spec.id, "phase_results": summarize(previous_results)}
- Task(subagent_type="next-agent", prompt="Continue", context=context)
-```
+Detailed Reference: [examples.md](examples.md) for working code samples
 
 ---
 
@@ -458,41 +388,14 @@ Foundation Modules (Extended Documentation):
 
 ## Quick Decision Matrix
 
-New Agent Scenario:
-- Primary Principle: TRUST 5 Framework and Delegation Patterns
-- Supporting Principles: Token Optimization and Modular System
-- WHY: Agents require quality gates and proper task orchestration
-- IMPACT: Ensures reliable, maintainable agent implementations
-
-New Skill Scenario:
-- Primary Principle: Progressive Disclosure and Modular System
-- Supporting Principles: TRUST 5 Framework and Token Optimization
-- WHY: Skills balance immediate value with comprehensive depth
-- IMPACT: Maximizes learning efficiency and adoption rate
-
-Workflow Scenario:
-- Primary Principle: Delegation Patterns
-- Supporting Principles: SPEC-First TDD and Token Optimization
-- WHY: Complex workflows require proper task orchestration
-- IMPACT: Enables reliable multi-step process execution
-
-Quality Scenario:
-- Primary Principle: TRUST 5 Framework
-- Supporting Principles: SPEC-First TDD
-- WHY: Quality requires systematic validation at every phase
-- IMPACT: Reduces defects by 85+ percent through automated gates
-
-Budget Scenario:
-- Primary Principle: Token Optimization
-- Supporting Principles: Progressive Disclosure and Modular System
-- WHY: Efficient token usage enables larger project scope
-- IMPACT: Doubles effective project size within same budget
-
-Documentation Scenario:
-- Primary Principle: Progressive Disclosure and Modular System
-- Supporting Principles: Token Optimization
-- WHY: Documentation must serve diverse user needs efficiently
-- IMPACT: Reduces time-to-value by 70 percent across user segments
+| Scenario | Primary Principle | Supporting Principles |
+|----------|------------------|----------------------|
+| New Agent | TRUST 5, Delegation | Token Opt, Modular |
+| New Skill | Progressive, Modular | TRUST 5, Token Opt |
+| Workflow | Delegation Patterns | SPEC-First, Token Opt |
+| Quality | TRUST 5 Framework | SPEC-First TDD |
+| Budget | Token Optimization | Progressive, Modular |
+| Docs | Progressive, Modular | Token Optimization |
 
 Module Deep Dives:
 - [TRUST 5 Framework](modules/trust-5-framework.md)
@@ -510,6 +413,6 @@ External Resources: [reference.md](reference.md)
 
 ---
 
-Version: 2.3.0
-Last Updated: 2025-12-03
-Status: Active (515 lines, enhanced with Claude 4 positive requirements and WHY/IMPACT)
+Version: 2.4.0
+Last Updated: 2025-12-06
+Status: Active (optimized to <500 lines)

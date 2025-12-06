@@ -370,4 +370,4 @@ module.exports = {
 ---
 
 Last Updated: 2025-11-26
-Related: [Main Skill](../SKILL.md), [shadcn Components](shadcn-components.md)
+Related: [Main Skill](../SKILL.md), [Component Architecture](component-architecture.md)

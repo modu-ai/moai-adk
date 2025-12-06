@@ -3,6 +3,7 @@ name: moai-integration-mcp
 description: Universal MCP integration specialist combining Figma, Notion, Nano-Banana, and custom connectors with comprehensive orchestration patterns
 version: 1.0.0
 category: integration
+tools: Read, Write, Edit, Bash, Grep, Glob
 tags:
  - mcp
  - figma

@@ -3,6 +3,7 @@ name: moai-formats-data
 description: Data format specialist covering TOON encoding, JSON/YAML optimization, serialization patterns, and data validation for modern applications
 version: 1.0.0
 category: library
+allowed-tools: Read, Write, Edit, Grep, Glob
 tags:
  - formats
  - data
@@ -10,7 +11,7 @@ tags:
  - serialization
  - validation
  - optimization
-updated: 2025-11-30
+updated: 2025-12-06
 status: active
 author: MoAI-ADK Team
 ---
