@@ -16,6 +16,8 @@ tags:
  - trust-5
  - best-practices
  - code-review
+---
+
 # Enterprise Code Quality Orchestrator
 
 Enterprise-grade code quality management system that combines systematic code review, proactive improvement suggestions, and automated best practices enforcement. Provides comprehensive quality assurance through TRUST 5 framework validation with Context7 integration for real-time best practices.

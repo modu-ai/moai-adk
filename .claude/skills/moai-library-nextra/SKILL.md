@@ -3,10 +3,12 @@ name: moai-library-nextra
 description: Enterprise Nextra documentation framework with Next.js
 version: 2.0.0
 modularized: true
-tools: Read, Write, Edit, Grep, Glob
+allowed-tools: Read, Write, Edit, Grep, Glob
 aliases:
  - moai-library-nextra
 category: library
+---
+
 ## Quick Reference (30 seconds)
 
 Purpose: Build professional documentation sites with Nextra + Next.js.

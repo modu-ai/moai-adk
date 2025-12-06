@@ -5,9 +5,11 @@ description: Enterprise Mermaid diagramming skill for Claude Code using MCP Play
 version: 7.0.0
 modularized: true
 category: library
+---
+
 ## Quick Reference (30 seconds)
 
-# Skill: Mermaid Diagram Expert v6.0.0-skill-edition
+# Skill: Mermaid Diagram Expert v7.0.0-skill-edition
 
 Pure skill-based Mermaid rendering for Claude Code with MCP Playwright integration.
 

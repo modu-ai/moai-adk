@@ -6,6 +6,9 @@ version: 3.0.0
 category: workflow
 modularized: true
 replaces: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
+allowed-tools: Read, Write, Edit, Grep, Glob
+---
+
 # Enterprise Template Management
 
 Unified template system combining code boilerplates, feedback templates, and project optimization workflows for rapid development and consistent patterns.

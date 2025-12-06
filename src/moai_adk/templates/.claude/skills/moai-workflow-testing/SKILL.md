@@ -14,6 +14,7 @@ tags:
 updated: 2025-11-30
 status: active
 author: MoAI-ADK Team
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
 # Development Workflow Specialist

@@ -9,8 +9,9 @@ skills: moai-foundation-claude, moai-workflow-project
 
 # Skill Orchestration Metadata (v1.0)
 
-Version: 1.0.0
-Last Updated: 2025-11-25
+Version: 1.1.0
+Last Updated: 2025-12-07
+Changes: Added Skills Mastery best practices compliance
 
 orchestration:
 can_resume: false # Can continue skill refinement through iterations
@@ -110,6 +111,14 @@ Progressive Disclosure Structure:
 - Implementation Guide: Step-by-step guidance
 - Advanced Patterns: Expert-level knowledge
 
+Naming Convention Standards:
+- Use gerund form (verb + -ing) for action-oriented skills
+- Examples: "generating-commit-messages", "analyzing-code-quality", "testing-api-endpoints"
+- Pattern: [action-gerund]-[target-noun] or [domain]-[action-gerund]
+- Kebab-case only: lowercase letters, numbers, hyphens
+- Maximum 64 characters
+- Avoid noun forms like "helper", "tool", "validator" (not discoverable)
+
 Critical 500-Line Limit Enforcement:
 
 SKILL.md Line Budget (Hard Limit: 500 lines):
@@ -143,12 +152,28 @@ Organize skill files in this directory structure:
 
 Frontmatter Requirements:
 
-Use this YAML frontmatter format:
+CRITICAL YAML Structure:
+- Exactly 2 `---` delimiters (opening on line 1, closing after all fields)
+- No extra `---` delimiters anywhere in skill body
+- Use `allowed-tools` field (not `tools`)
+- Comma-separated format, NO brackets
+
+Correct Format:
 ---
-name: skill-identifier (kebab-case, max 64 chars)
-description: Brief description and usage context
-tools: Read, Bash, WebFetch, Grep, Glob (comma-separated, no brackets)
+name: generating-commit-messages
+description: Generate semantic commit messages following Conventional Commits. Use when creating git commits, PRs, or changelog entries.
+allowed-tools: Read, Grep, Glob
+version: 1.0.0
+status: active
+updated: 2025-12-07
 ---
+
+Description Quality Requirements:
+- Must include WHAT (function) AND WHEN (trigger scenarios)
+- Format: "[Function verb] [target domain]. Use when [trigger 1], [trigger 2], or [trigger 3]."
+- 2-3 specific trigger scenarios required
+- Maximum 1024 characters
+- Avoid generic phrases like "helps with" or "handles various"
 
 ### Phase 5: Testing & Validation
 

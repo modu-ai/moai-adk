@@ -5,7 +5,7 @@ category: foundation
 description: Canonical Claude Code skill authoring kit covering agent Skills, sub-agent templates, custom slash commands, orchestration patterns, hooks, memory, settings, and IAM permission rules aligned with official documentation.
 version: 2.0.0
 modularized: false
-tools: Read, Write, Edit, Grep, Glob
+allowed-tools: Read, Write, Edit, Grep, Glob
 tags:
  - foundation
  - claude-code

@@ -3,13 +3,14 @@ name: moai-domain-backend
 description: Backend development specialist covering API design, database integration, microservices architecture, and modern backend patterns
 version: 1.0.0
 category: domain
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 tags:
  - backend
  - api
  - database
  - microservices
  - architecture
-updated: 2025-11-30
+updated: 2025-12-06
 status: active
 author: MoAI-ADK Team
 ---

@@ -3,6 +3,7 @@ name: moai-domain-frontend
 description: Frontend development specialist covering React 19, Next.js 16, Vue 3.5, and modern UI/UX patterns with component architecture
 version: 1.0.0
 category: domain
+allowed-tools: Read, Write, Edit, Grep, Glob
 tags:
  - frontend
  - react
@@ -10,7 +11,7 @@ tags:
  - vue
  - ui
  - components
-updated: 2025-11-30
+updated: 2025-12-06
 status: active
 author: MoAI-ADK Team
 ---

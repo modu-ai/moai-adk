@@ -5,7 +5,10 @@ description: Enterprise context and session management with token budget optimiz
 version: 3.0.0
 modularized: false
 category: foundation
+allowed-tools: Read, Grep, Glob
 replaces: moai-core-context-budget, moai-core-session-state
+---
+
 ## Quick Reference (30 seconds)
 
 # Enterprise Context & Session Management

@@ -7,6 +7,9 @@ updated: 2025-11-27
 status: active
 aliases: [moai-workflow-project]
 category: workflow
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+---
+
 # MoAI Command Project - Integrated Project Management System
 
 Purpose: Comprehensive project management system that integrates documentation generation, multilingual support, and template optimization into unified architecture with intelligent automation and Claude Code integration.

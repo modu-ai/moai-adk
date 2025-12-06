@@ -3,6 +3,7 @@ name: moai-worktree
 description: Git worktree management for parallel SPEC development with isolated workspaces, automatic registration, and seamless MoAI-ADK integration
 version: 1.0.0
 modularized: true
+category: workflow
 updated: 2025-11-29
 status: active
 tags:

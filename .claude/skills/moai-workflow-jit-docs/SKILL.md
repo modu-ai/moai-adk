@@ -4,9 +4,11 @@ description: Enhanced Just-In-Time document loading system that intelligently di
 version: 2.0.0
 modularized: false
 category: workflow
-tools: Read, Write, Edit, Grep, Glob
+allowed-tools: Read, Write, Edit, Grep, Glob
 aliases:
  - moai-workflow-jit-docs
+---
+
 ## Quick Reference (30 seconds)
 
 # Enhanced JIT Documentation Loader

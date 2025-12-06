@@ -15,6 +15,8 @@ tags:
  - theming
 updated: 2025-11-30
 status: active
+---
+
 ## Quick Reference (30 seconds)
 
 # Core UI/UX Foundation

@@ -3,6 +3,7 @@ name: moai-docs-generation
 description: Automated documentation generation specialist for technical specs, API docs, user guides, and knowledge bases with multi-format output
 version: 1.0.0
 category: workflow
+allowed-tools: Read, Write, Edit, Grep, Glob
 tags:
  - documentation
  - generation
@@ -10,7 +11,7 @@ tags:
  - markdown
  - html
  - api-docs
-updated: 2025-11-30
+updated: 2025-12-06
 status: active
 author: MoAI-ADK Team
 ---

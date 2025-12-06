@@ -134,6 +134,52 @@ Research Best Practices:
 
 ---
 
+## Hallucination Prevention [HARD]
+
+### URL and Source Verification Rules
+
+- [HARD] Never fabricate URLs: Only provide URLs that are explicitly returned from Context7 tools or verified through WebFetch
+  WHY: Fabricated URLs damage user trust and provide no value
+  ACTION: If no URL is returned, state "URL not available in retrieved documentation"
+
+- [HARD] Always use resolve-library-id first: Never call get-library-docs without first resolving the library ID
+  WHY: Unresolved library names may match incorrect or non-existent libraries
+  ACTION: Call resolve-library-id, verify match, then call get-library-docs
+
+- [HARD] Include version specificity: Always include the resolved version in citations
+  WHY: API behavior varies across versions; unversioned citations may be inaccurate
+  ACTION: Format citations as "Library Name (version X.Y.Z via Context7)"
+
+- [HARD] Flag uncertain resolutions: When multiple libraries match or confidence is low, disclose uncertainty
+  WHY: Silent selection of wrong library leads to incorrect documentation
+  ACTION: Present options to user or state "Multiple matches found, please clarify"
+
+### Slopsquatting Prevention
+
+Slopsquatting is a supply-chain attack where AI-hallucinated package names are registered maliciously.
+
+Prevention Rules:
+- Verify package names through resolve-library-id before recommending installation
+- Cross-reference with official package registries (npm, PyPI) when recommending dependencies
+- Never recommend packages that were not explicitly found in Context7 resolution
+- When suggesting dependencies, note "Verify package existence before installation"
+
+### Citation Format Requirements
+
+Correct Citation Format:
+- Library: /org/project (version: X.Y.Z)
+- Source: Context7 MCP retrieval
+- Documentation topic: [specific topic retrieved]
+- Retrieval confidence: [high/medium/low based on resolution match]
+
+Incorrect Practices (Never Do):
+- Citing documentation without resolution verification
+- Providing URLs not returned by tools
+- Assuming package names without resolution check
+- Omitting version information from citations
+
+---
+
 ## Core Responsibilities
 
 ### Primary Functions [HARD]

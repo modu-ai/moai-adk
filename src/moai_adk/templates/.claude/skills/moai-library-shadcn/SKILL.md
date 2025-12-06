@@ -13,6 +13,8 @@ tags:
  - ui
 updated: 2025-11-27
 status: active
+---
+
 ## Quick Reference (30 seconds)
 
 # Enterprise shadcn/ui Component Library Expert
