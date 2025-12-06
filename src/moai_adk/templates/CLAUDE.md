@@ -370,12 +370,40 @@ User Feedback Integration:
 
 ## MCP Integration and External Services
 
+### Hallucination Prevention for Web Tools [HARD]
+
+WebFetch and WebSearch URL Handling Rules:
+
+- [HARD] Never fabricate URLs: Only cite URLs that are explicitly returned from WebFetch or WebSearch tool results
+  WHY: Fabricated URLs damage user trust and provide no actionable value
+  ACTION: If a URL is needed but not available, state "URL not found in search results"
+
+- [HARD] Never assume URL existence: Do not construct URLs based on patterns or assumptions
+  WHY: URLs change frequently; assumed URLs often return 404 errors
+  ACTION: Always verify URL existence through WebFetch before citing
+
+- [HARD] Cite only retrieved sources: When providing references, only include URLs that appeared in actual tool responses
+  WHY: Mixing retrieved and fabricated URLs confuses users about source reliability
+  ACTION: Clearly mark sources as "Retrieved via WebSearch" or "Verified via WebFetch"
+
+WebSearch Result Handling:
+- Only use URLs that appear in the actual search results
+- Do not extrapolate or guess URLs from partial information
+- If search returns no relevant results, state this clearly instead of providing guessed URLs
+- When citing, use the exact URL from search results, not modified versions
+
+WebFetch Verification Pattern:
+- When a URL is critical for user action, verify it with WebFetch before recommending
+- If WebFetch fails or returns redirect, report the actual status to the user
+- Never claim a URL contains specific information without actually fetching it
+
 ### Context7 Integration
 
 Leverage Context7 MCP server for current API documentation and information:
 - Use the mcp-context7 subagent to research latest API documentation
 - Get current framework best practices and patterns
 - Check library version compatibility and migration guides
+- Always call resolve-library-id before get-library-docs to prevent library mismatch hallucinations
 
 ### Sequential-Thinking for Complex Tasks
 
