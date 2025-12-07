@@ -1,0 +1,331 @@
+# Skills Library
+
+MoAI-ADK provides a comprehensive collection of 22+ Skills that extend Claude Code's capabilities across multiple domains and technologies.
+
+## Overview
+
+Skills are modular, reusable knowledge modules that provide:
+
+- **Domain Expertise**: Specialized knowledge for specific technologies
+- **Best Practices**: Proven patterns and coding standards
+- **Context7 Integration**: Real-time documentation access
+- **Hallucination Prevention**: All code backed by verified sources
+- **Progressive Disclosure**: Load only what you need
+
+## Skill Categories
+
+### 1. Language Skills (moai-lang-*)
+
+#### moai-lang-unified
+Comprehensive programming language support covering 25+ languages:
+- Python 3.13, TypeScript 5.9, Go 1.23
+- Rust 1.91, Java 21, JavaScript ES2025
+- C++, C#, PHP, Swift, Kotlin, Scala
+- Elixir, Ruby, R, SQL, Shell scripting
+
+**Use Cases**:
+- Multi-language projects
+- Language migration
+- Best practices enforcement
+- Type system guidance
+
+### 2. Platform Skills (moai-platform-*)
+
+#### moai-platform-baas
+Backend-as-a-Service integration hub for 9 major providers:
+- **Authentication**: Auth0, Clerk, Firebase Auth
+- **Databases**: Supabase, Neon, Convex, Firebase Firestore
+- **Deployment**: Vercel, Railway
+- **AI-Powered Selection**: Recommends optimal provider
+- **Migration Guides**: Cross-provider patterns
+
+**Features**:
+- Provider comparison matrices
+- Setup automation
+- Cost optimization
+- Security best practices
+
+### 3. Connector Skills (moai-connector-*)
+
+#### moai-connector-figma
+Design system integration with Figma:
+- Component extraction
+- Design token generation
+- Design-to-code conversion
+- Design system management
+
+#### moai-connector-notion
+Enterprise Notion workspace management:
+- Database operations
+- Page creation/updates
+- Content automation
+- Team collaboration
+
+#### moai-connector-mcp
+Custom MCP server development:
+- FastMCP framework integration
+- Tool and resource definitions
+- Security and authentication
+- Deployment patterns
+
+#### moai-connector-nano-banana
+Professional image generation:
+- Google Gemini 3 Pro integration
+- Prompt optimization
+- Batch processing
+- Quality control
+
+### 4. Foundation Skills (moai-foundation-*)
+
+#### moai-foundation-core
+Core MoAI-ADK execution rules and patterns:
+- Agent delegation strategies
+- Token budget management
+- SPEC-first development
+- TRUST 5 quality framework
+
+#### moai-foundation-claude
+Official Claude Code authoring kit:
+- Agent creation (Skills, sub-agents)
+- Custom slash commands
+- Hooks and memory systems
+- IAM permission rules
+
+#### moai-foundation-quality
+Enterprise code quality orchestrator:
+- TRUST 5 validation (Test-first, Readable, Unified, Secured, Trackable)
+- Proactive analysis
+- Automated best practices
+- Quality gate enforcement
+
+#### moai-foundation-context
+Session and context management:
+- Token budget optimization
+- State persistence
+- Context switching
+- Memory management
+
+#### moai-foundation-uiux
+Core UI/UX foundation:
+- Design systems
+- Component architecture
+- Accessibility (WCAG 2.1 AA+)
+- Theming and icons
+
+### 5. Workflow Skills (moai-workflow-*)
+
+#### moai-workflow-project
+Integrated project management:
+- Documentation generation
+- Language initialization
+- Template optimization
+- Project structure
+
+#### moai-workflow-docs
+Documentation with AI features:
+- Nextra integration
+- Markdown/Mermaid validation
+- SEO optimization
+- Link integrity checks
+
+#### moai-workflow-templates
+Enterprise template management:
+- Code boilerplates
+- Feedback templates
+- Project optimization
+- Reusable patterns
+
+#### moai-workflow-testing
+Enterprise web testing orchestrator:
+- Visual regression testing
+- Cross-browser coordination
+- Automated QA workflows
+- Test generation
+
+#### moai-workflow-jit-docs
+Just-In-Time documentation loading:
+- Intent-based discovery
+- Smart caching
+- Documentation gaps detection
+- Context awareness
+
+### 6. Toolkit Skills (moai-toolkit-*)
+
+#### moai-toolkit-essentials
+Unified development orchestrator:
+- Debugging workflows
+- Refactoring patterns
+- Performance optimization
+- Code review automation
+- Testing integration
+- Profiling tools
+
+### 7. Library Skills (moai-library-*)
+
+#### moai-library-shadcn
+Professional shadcn/ui implementation:
+- Component patterns
+- Customization guides
+- Accessibility compliance
+- Theme integration
+
+#### moai-library-nextra
+Enterprise Nextra documentation:
+- Next.js 15 integration
+- MDX best practices
+- Search and navigation
+- Deployment strategies
+
+#### moai-library-mermaid
+Enterprise Mermaid diagramming:
+- Playwright MCP integration
+- Diagram validation
+- Export automation
+- Real-time preview
+
+#### moai-library-toon
+TOON Format specialist:
+- Token-efficient encoding
+- LLM communication optimization
+- Data serialization
+- Protocol specification
+
+## How to Use Skills
+
+### Loading Skills
+
+Skills are automatically loaded based on agent YAML frontmatter:
+
+```yaml
+---
+name: expert-backend
+skills: moai-lang-unified, moai-platform-baas, moai-connector-mcp
+---
+```
+
+### Progressive Loading
+
+Alfred uses conditional loading based on task complexity:
+
+**Auto-Load Triggers**:
+1. Command execution (`/moai:*` commands)
+2. Agent delegation (`Task()` calls)
+3. SPEC analysis or creation
+4. Architecture decisions
+5. Medium+ complexity (3+ criteria met)
+
+**Zero-Token Quick Reference**: For simple tasks, Alfred uses inlined Quick Reference without loading skills.
+
+### Skill Invocation
+
+```typescript
+// In agent prompts or CLAUDE.md
+Skill("moai-lang-unified")      // Language patterns
+Skill("moai-platform-baas")     // BaaS integration
+Skill("moai-foundation-core")   // Core execution rules
+```
+
+## Skills + Context7 Pattern
+
+All code generation follows the **hallucination-free pattern**:
+
+1. **Load Skill**: Start with proven patterns
+2. **Query Context7**: Check latest API versions
+3. **Combine Both**: Merge stability (Skills) + freshness (Context7)
+4. **Cite Sources**: Every pattern has attribution
+5. **Include Tests**: Follow Skill test patterns
+
+**Example**:
+
+```python
+# R2-D2 Generated Code
+# Pattern: Skill("moai-lang-python") - FastAPI Route Handler
+# API: Context7("/tiangolo/fastapi/latest") - Current version
+
+from fastapi import FastAPI, Depends
+from pydantic import BaseModel
+
+# Pattern source: moai-platform-baas Skill
+class UserCreate(BaseModel):
+    username: str
+    email: str
+
+app = FastAPI()
+
+# Latest API: Context7 - FastAPI async syntax
+@app.post("/users/", status_code=201)
+async def create_user(user: UserCreate):
+    # Implementation per Skills backend patterns
+    pass
+```
+
+## Creating Custom Skills
+
+See [Builder Agent Guide](/advanced/builder-agents) for creating custom skills using the `builder-skill` agent.
+
+**Skill Standards**:
+- Modular design (single responsibility)
+- Progressive disclosure (essential → advanced)
+- Context7 integration
+- Example code with tests
+- Clear documentation
+
+## Skill Performance
+
+**Token Efficiency**:
+- Average skill size: 8,470 tokens
+- Quick Reference: 0 tokens
+- Auto-load only when needed
+- 40-60% token savings vs full load
+
+**Loading Strategy**:
+- Simple tasks (60%): Quick Reference only
+- Complex tasks (40%): Auto-load relevant skills
+- Average savings: ~5,000 tokens per session
+
+## Best Practices
+
+### 1. Load Minimal Skills
+Only load skills needed for current task.
+
+### 2. Use Quick Reference
+For simple operations, leverage the zero-token Quick Reference.
+
+### 3. Combine with Context7
+Always verify latest APIs via Context7 integration.
+
+### 4. Follow Skill Patterns
+Adhere to proven patterns provided by skills.
+
+### 5. Cite Sources
+Always attribute code to specific Skills or Context7 sources.
+
+## Troubleshooting
+
+### Skill Not Loading
+- Verify skill name format (lowercase, hyphenated)
+- Check YAML frontmatter syntax
+- Ensure skill exists in `.claude/skills/` directory
+
+### Version Conflicts
+- Use Context7 to verify latest API versions
+- Update skill if patterns are outdated
+- Report issues via `/moai:9-feedback`
+
+### Performance Issues
+- Review auto-load triggers
+- Use Quick Reference for simple tasks
+- Monitor token usage via session metrics
+
+## Next Steps
+
+- [Agent Delegation Patterns](/advanced/patterns)
+- [Context7 Integration](/advanced/context7)
+- [Custom Skill Development](/advanced/builder-agents)
+- [Performance Optimization](/advanced/performance-optimization)
+
+---
+
+**Last Updated**: 2025-11-28
+**Version**: 1.0.0
+**Total Skills**: 22+

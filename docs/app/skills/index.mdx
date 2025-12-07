@@ -1,0 +1,234 @@
+# MoAI-ADK Skills Library
+
+The MoAI-ADK Skills Library provides 22 specialized skills that power Alfred's capabilities across different domains. Each skill represents a focused area of expertise, from programming languages and frameworks to design systems and quality assurance.
+
+## What Are Skills?
+
+Skills are reusable knowledge modules that Alfred can load to enhance his capabilities in specific domains. They provide:
+
+- **Progressive Disclosure**: Information organized from quick reference to advanced implementation
+- **Context-Aware Loading**: Auto-loaded based on task requirements
+- **Domain Expertise**: Specialized knowledge in specific technologies or patterns
+- **Best Practices**: Curated patterns and anti-patterns
+
+## Skill Categories
+
+### Foundation Skills (5)
+
+Core execution frameworks and quality systems that underpin all MoAI-ADK operations.
+
+| Skill | Description | Auto-Trigger Conditions |
+|-------|-------------|------------------------|
+| [moai-foundation-core](/skills/moai-foundation-core) | TRUST 5 principles, SPEC-First TDD, agent delegation | Command execution, SPEC analysis, complexity ≥ medium |
+| [moai-foundation-claude](/skills/moai-foundation-claude) | Claude Code authoring: agents, commands, hooks, MCP | Creating agents/commands, MCP integration |
+| [moai-foundation-quality](/skills/moai-foundation-quality) | Quality orchestration, proactive testing, validation | Quality gate checks, test generation |
+| [moai-foundation-context](/skills/moai-foundation-context) | 200K token optimization, session management | Context > 180K, session persistence needed |
+| [moai-foundation-uiux](/skills/moai-foundation-uiux) | UI/UX design systems, accessibility, components | UI implementation, design system work |
+
+### Language & Platform Skills (2)
+
+Unified expertise across programming languages and backend-as-a-service platforms.
+
+| Skill | Description | Languages/Platforms |
+|-------|-------------|---------------------|
+| [moai-lang-unified](/skills/moai-lang-unified) | 25+ programming languages expert | Python, TypeScript, Go, Rust, Java, C++, PHP, Ruby, etc. |
+| [moai-platform-baas](/skills/moai-platform-baas) | 9+ BaaS platform integration | Supabase, Firebase, Clerk, Auth0, PocketBase, etc. |
+
+### Workflow Skills (5)
+
+Project management, documentation, testing, and template workflows.
+
+| Skill | Description | Key Features |
+|-------|-------------|--------------|
+| [moai-workflow-project](/skills/moai-workflow-project) | Project initialization and management | Language setup, template optimization |
+| [moai-workflow-docs](/skills/moai-workflow-docs) | Documentation validation and generation | Markdown linting, Mermaid validation, quality reports |
+| [moai-workflow-templates](/skills/moai-workflow-templates) | Code boilerplates and feedback templates | Template management, code generation |
+| [moai-workflow-testing](/skills/moai-workflow-testing) | E2E testing orchestration | Playwright, visual regression, cross-browser |
+| [moai-workflow-jit-docs](/skills/moai-workflow-jit-docs) | Just-in-time documentation loading | Intent-based doc search, intelligent caching |
+
+### Library Skills (4)
+
+Framework and library-specific implementation expertise.
+
+| Skill | Description | Technology |
+|-------|-------------|------------|
+| [moai-library-shadcn](/skills/moai-library-shadcn) | shadcn/ui component implementation | Radix UI, Tailwind, React components |
+| [moai-library-nextra](/skills/moai-library-nextra) | Nextra documentation sites | Next.js, MDX, static site generation |
+| [moai-library-mermaid](/skills/moai-library-mermaid) | Mermaid diagram generation | 21 diagram types, MCP Playwright rendering |
+| [moai-library-toon](/skills/moai-library-toon) | TOON format encoding | 40-60% token savings, structured data |
+
+### Connector Skills (4)
+
+Integration with external tools and services.
+
+| Skill | Description | Integration |
+|-------|-------------|-------------|
+| [moai-connector-mcp](/skills/moai-connector-mcp) | MCP server integration guide | 10+ MCP servers, custom server development |
+| [moai-connector-figma](/skills/moai-connector-figma) | Figma design system integration | UI kits, design tokens, component sync |
+| [moai-connector-notion](/skills/moai-connector-notion) | Notion workspace integration | Databases, content management |
+| [moai-connector-nano-banana](/skills/moai-connector-nano-banana) | AI image generation | Gemini 3 Pro, text/image-to-image |
+
+### Toolkit & System Skills (2)
+
+Development toolkits and universal system integration.
+
+| Skill | Description | Capabilities |
+|-------|-------------|--------------|
+| [moai-toolkit-essentials](/skills/moai-toolkit-essentials) | Essential development tools | Debugging, refactoring, optimization, code review |
+| [moai-system-universal](/skills/moai-system-universal) | Ultimate unified development skill | 25+ languages + 9+ BaaS + security + compliance |
+
+## How Skills Work
+
+### Auto-Loading Strategy
+
+Alfred automatically loads skills based on context:
+
+```python
+# Zero tokens (Quick Reference) - Simple tasks
+- File reading
+- Basic questions
+- Simple modifications
+
+# 8,470 tokens (Auto-load) - Complex tasks
+- Command execution (/moai:* commands)
+- Agent delegation (Task() calls)
+- SPEC analysis
+- Architectural decisions
+- Complexity ≥ medium
+```
+
+### Conditional Loading
+
+Skills are conditionally loaded when:
+
+1. **Command Execution**: Any `/moai:*` command
+2. **Agent Delegation**: Calling `Task()` for specialized agents
+3. **SPEC Involvement**: SPEC analysis, creation, validation
+4. **Architecture Decisions**: System/API/database/security design
+5. **Medium+ Complexity**: 3+ of these criteria:
+   - Files to modify: 3+
+   - Architecture impact: Medium or High
+   - Implementation time: 1+ hours
+   - Feature integration: Multiple layers
+   - Maintenance need: Ongoing
+
+### Skill Composition
+
+Skills work together to solve complex problems:
+
+```python
+# Backend API Development
+Skill("moai-foundation-core")        # SPEC-First TDD
+Skill("moai-lang-unified")           # Python/TypeScript
+Skill("moai-platform-baas")          # Supabase integration
+
+# Frontend UI Implementation
+Skill("moai-foundation-uiux")        # Design systems
+Skill("moai-lang-unified")           # TypeScript/React
+Skill("moai-library-shadcn")         # Component library
+
+# Documentation Generation
+Skill("moai-library-nextra")         # Documentation framework
+Skill("moai-workflow-docs")          # Validation & generation
+Skill("moai-library-mermaid")        # Diagram creation
+
+# E2E Testing
+Skill("moai-lang-unified")           # TypeScript
+Skill("moai-workflow-testing")       # Playwright orchestration
+Skill("moai-foundation-quality")     # Quality gates
+```
+
+## Progressive Disclosure Architecture
+
+Each skill follows a consistent structure:
+
+### Quick Reference (30 seconds)
+Core capabilities, key features, when to use
+
+### Implementation Guide (5 minutes)
+- Features and capabilities
+- When to use this skill
+- Core patterns (3 examples)
+
+### Core Patterns (10+ minutes)
+- Pattern 1-5: Detailed implementation patterns
+- Real-world code examples
+- Best practices
+
+### Advanced Documentation (Reference)
+- Detailed modules and references
+- API documentation
+- Integration guides
+
+### Works Well With
+- Related agents
+- Complementary skills
+- Relevant commands
+
+## Token Efficiency
+
+Skills are designed for token efficiency:
+
+| Task Complexity | Loading Strategy | Token Cost | Percentage of Tasks |
+|-----------------|------------------|------------|---------------------|
+| Simple | Quick Reference Only | 0 tokens | 60% |
+| Complex | Auto-load Skill | ~8,470 tokens | 40% |
+| **Average** | **Conditional** | **~3,400 tokens** | **100%** |
+
+**Savings**: ~5,000 tokens per session vs. loading all skills upfront.
+
+## Finding the Right Skill
+
+### By Technology
+- **Python**: moai-lang-unified
+- **TypeScript/React**: moai-lang-unified, moai-library-shadcn
+- **Next.js**: moai-library-nextra
+- **Supabase**: moai-platform-baas
+- **Figma**: moai-connector-figma
+
+### By Task
+- **SPEC Creation**: moai-foundation-core
+- **Quality Assurance**: moai-foundation-quality
+- **Documentation**: moai-workflow-docs, moai-library-nextra
+- **Testing**: moai-workflow-testing
+- **UI Components**: moai-library-shadcn, moai-foundation-uiux
+
+### By Role
+- **Backend Developer**: moai-lang-unified, moai-platform-baas
+- **Frontend Developer**: moai-foundation-uiux, moai-library-shadcn
+- **Technical Writer**: moai-workflow-docs, moai-library-nextra
+- **QA Engineer**: moai-workflow-testing, moai-foundation-quality
+
+## Best Practices
+
+### DO
+✅ Let Alfred auto-load skills based on context
+✅ Reference skills explicitly when needed: `Skill("moai-foundation-core")`
+✅ Combine multiple skills for complex tasks
+✅ Use Quick Reference sections for fast lookups
+
+### DON'T
+❌ Manually load all skills at once (wastes tokens)
+❌ Ignore skill recommendations from Alfred
+❌ Use skills outside their intended domain
+❌ Bypass skill architecture by direct implementation
+
+## Getting Help
+
+- **General Questions**: See [FAQ](/faq)
+- **Skill-Specific Issues**: Check individual skill pages
+- **New Skill Requests**: Use `/moai:9-feedback`
+- **Integration Examples**: See [Patterns](/advanced/patterns)
+
+---
+
+**Next Steps**:
+- Explore individual skill pages (left sidebar)
+- Learn about [Agent-Skill Integration](/advanced/patterns#agent-skill-patterns)
+- Understand [Auto-Loading Triggers](/advanced/performance-optimization#skill-loading)
+
+---
+
+**Last Updated**: 2025-11-28
+**Total Skills**: 22
+**Version**: 2.0

@@ -1,0 +1,510 @@
+# moai-foundation-core: Core Execution Framework
+
+The foundational skill that powers MoAI-ADK's SPEC-First TDD methodology, agent orchestration, and quality assurance through TRUST 5 principles.
+
+## Quick Reference (30 seconds)
+
+**Core Capabilities**:
+- SPEC-First TDD workflow (RED-GREEN-REFACTOR)
+- TRUST 5 quality framework (Testable, Reproducible, Understandable, Secure, Trackable)
+- Agent delegation and orchestration
+- Token budget optimization (200K management)
+- Context engineering strategies
+
+**Auto-Trigger Conditions**:
+- Any `/moai:*` command execution
+- Task complexity ≥ medium (3+ files, architectural impact)
+- Agent delegation via `Task()`
+- SPEC analysis or creation
+- Quality gate validation
+
+**Key Patterns**:
+1. **SPEC-First**: All development starts with clear specifications (EARS format)
+2. **TDD Enforcement**: Automatic RED-GREEN-REFACTOR cycle
+3. **Agent Orchestration**: Sequential, parallel, and conditional delegation
+4. **TRUST 5 Quality**: Enterprise-grade quality assurance
+5. **Token Optimization**: Aggressive `/clear` strategy for 200K budget
+
+---
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+The `moai-foundation-core` skill provides:
+
+- **SPEC-First Development**: EARS (Easy Approach to Requirements Syntax) format specifications
+- **TDD Workflow**: Automated RED-GREEN-REFACTOR cycle with 85%+ coverage target
+- **Agent System**: 26 specialized agents across 5-tier hierarchy
+- **Quality Framework**: TRUST 5 principles for enterprise-grade code
+- **Token Management**: 200K context budget optimization strategies
+- **Execution Rules**: Security, permissions, Git 3-Mode strategy
+
+### When to Use
+
+Load this skill when:
+
+✅ Starting any new feature or project
+✅ Creating SPEC documents
+✅ Implementing TDD cycles
+✅ Orchestrating multiple agents
+✅ Managing complex workflows
+✅ Ensuring quality standards
+✅ Optimizing token usage
+
+### Core Patterns
+
+**Pattern 1: SPEC-First Development**
+
+```markdown
+## Requirements (EARS Format)
+
+### Ubiquitous Requirements
+- System SHALL support user authentication
+- All data SHALL be encrypted at rest
+
+### Event-Driven Requirements
+- WHEN user clicks "Login" THEN system SHALL validate credentials
+
+### State-Driven Requirements
+- WHILE user is authenticated THEN dashboard SHALL be accessible
+
+### Interface Requirements
+- System SHALL provide RESTful API endpoints
+- API SHALL return JSON responses
+```
+
+**Pattern 2: TDD Cycle Automation**
+
+```python
+# RED Phase: Write failing test
+def test_user_authentication():
+    user = User(email="test@example.com", password="secure123")
+    assert user.authenticate() == True  # FAILS - not implemented yet
+
+# GREEN Phase: Make test pass
+class User:
+    def authenticate(self):
+        # Minimal implementation
+        return self.password == "secure123"
+
+# REFACTOR Phase: Improve code quality
+class User:
+    def authenticate(self):
+        # Proper implementation with hashing
+        return bcrypt.verify(self.password, self.hashed_password)
+```
+
+**Pattern 3: Agent Orchestration**
+
+```python
+# Sequential Execution
+result1 = Task(subagent_type="workflow-spec", prompt="Analyze requirements")
+result2 = Task(subagent_type="code-backend", prompt="Implement API", context=result1)
+result3 = Task(subagent_type="core-quality", prompt="Validate implementation", context=result2)
+
+# Parallel Execution
+results = await Promise.all([
+    Task(subagent_type="code-backend", prompt="Backend API"),
+    Task(subagent_type="code-frontend", prompt="Frontend UI"),
+    Task(subagent_type="workflow-docs", prompt="Documentation")
+])
+
+# Conditional Execution
+if complexity > "medium":
+    Task(subagent_type="workflow-spec", prompt="Create detailed SPEC")
+else:
+    Task(subagent_type="code-backend", prompt="Direct implementation")
+```
+
+---
+
+## 5 Core Patterns
+
+### Pattern 1: EARS Specification Format
+
+**Ubiquitous Requirements** (always true):
+```
+System SHALL enforce HTTPS for all connections
+Database SHALL use PostgreSQL 15+
+Code SHALL maintain 85%+ test coverage
+```
+
+**Event-Driven Requirements** (triggered by events):
+```
+WHEN user submits form THEN system SHALL validate input
+WHEN API receives request THEN response SHALL be within 200ms
+WHEN error occurs THEN system SHALL log to monitoring service
+```
+
+**State-Driven Requirements** (conditional based on state):
+```
+WHILE user is authenticated THEN admin panel SHALL be accessible
+WHILE system is under load THEN rate limiting SHALL apply
+WHILE maintenance mode THEN read-only operations SHALL be allowed
+```
+
+**Interface Requirements** (system boundaries):
+```
+API SHALL accept POST /api/users with JSON body
+System SHALL integrate with Auth0 for authentication
+Database SHALL expose connection pool with max 20 connections
+```
+
+### Pattern 2: TRUST 5 Quality Framework
+
+**Testable**: All code must be verifiable
+```python
+# ❌ BAD: Untestable code
+def process_data():
+    # Direct database call, hard to test
+    db.execute("UPDATE users SET status='active'")
+
+# ✅ GOOD: Testable code
+def process_data(db_connection):
+    # Dependency injection allows mocking
+    db_connection.execute("UPDATE users SET status='active'")
+
+# Test
+def test_process_data():
+    mock_db = Mock()
+    process_data(mock_db)
+    mock_db.execute.assert_called_once()
+```
+
+**Reproducible**: Same inputs → same outputs
+```python
+# ❌ BAD: Non-reproducible
+def get_user_data():
+    return {"id": uuid4(), "timestamp": datetime.now()}
+
+# ✅ GOOD: Reproducible
+def get_user_data(user_id: str, current_time: datetime):
+    return {"id": user_id, "timestamp": current_time}
+```
+
+**Understandable**: Clear code and documentation
+```python
+# ❌ BAD: Cryptic
+def f(x, y):
+    return x + y if y > 0 else x
+
+# ✅ GOOD: Self-documenting
+def calculate_total_price(base_price: float, discount: float) -> float:
+    """Calculate final price after applying discount.
+
+    Args:
+        base_price: Original price before discount
+        discount: Discount amount (positive values only)
+
+    Returns:
+        Final price after discount applied
+    """
+    return base_price + discount if discount > 0 else base_price
+```
+
+**Secure**: Security by design
+```python
+# ❌ BAD: SQL injection vulnerability
+def get_user(username):
+    query = f"SELECT * FROM users WHERE username='{username}'"
+    return db.execute(query)
+
+# ✅ GOOD: Parameterized queries
+def get_user(username: str):
+    query = "SELECT * FROM users WHERE username = ?"
+    return db.execute(query, (username,))
+```
+
+**Trackable**: Version control and audit logs
+```bash
+# All changes tracked in Git
+git log --oneline --all
+
+# Meaningful commit messages
+git commit -m "feat: Add user authentication with JWT"
+git commit -m "fix: Resolve SQL injection in user search"
+git commit -m "test: Add integration tests for login flow"
+```
+
+### Pattern 3: Agent Delegation Hierarchy
+
+**5-Tier Agent System**:
+
+```
+Tier 1: Core Planners (2 agents)
+├── core-planner         # Strategic planning
+└── core-quality         # Quality assurance
+
+Tier 2: Workflow Managers (6 agents)
+├── workflow-spec        # SPEC generation
+├── workflow-tdd         # TDD execution
+├── workflow-docs        # Documentation
+├── workflow-git         # Git operations
+├── workflow-review      # Code review
+└── workflow-deployment  # Deployment
+
+Tier 3: Domain Experts (9 agents)
+├── code-backend         # Backend development
+├── code-frontend        # Frontend development
+├── code-database        # Database design
+├── code-api             # API design
+├── security-expert      # Security analysis
+├── performance-expert   # Performance optimization
+├── design-uiux          # UI/UX design
+├── devops-expert        # DevOps/infrastructure
+└── debug-expert         # Debugging
+
+Tier 4: Language Specialists (5 agents)
+├── lang-python          # Python expert
+├── lang-typescript      # TypeScript expert
+├── lang-rust            # Rust expert
+├── lang-go              # Go expert
+└── lang-java            # Java expert
+
+Tier 5: Tool Integrators (4 agents)
+├── mcp-context7         # Real-time documentation
+├── mcp-figma            # Design system integration
+├── mcp-notion           # Knowledge management
+└── mcp-playwright       # Web testing automation
+```
+
+**Delegation Pattern Example**:
+
+```python
+# Step 1: Plan agent analyzes request
+plan = Task(subagent_type="core-planner", prompt="Analyze: Build user auth system")
+
+# Step 2: SPEC agent creates specifications
+spec = Task(subagent_type="workflow-spec", prompt=f"Create SPEC for: {plan}")
+
+# Step 3: Domain experts implement features
+backend = Task(subagent_type="code-backend", prompt=f"Implement backend: {spec}")
+frontend = Task(subagent_type="code-frontend", prompt=f"Implement UI: {spec}")
+
+# Step 4: Quality agent validates
+quality = Task(subagent_type="core-quality", prompt=f"Validate: {backend}, {frontend}")
+
+# Step 5: Docs agent generates documentation
+docs = Task(subagent_type="workflow-docs", prompt=f"Document: {spec}, {backend}, {frontend}")
+```
+
+### Pattern 4: Token Budget Management
+
+**200K Token Optimization**:
+
+```python
+# Track context usage
+current_tokens = 150000  # approaching limit
+
+# Aggressive /clear strategy
+if current_tokens > 180000:
+    execute_command("/clear")
+    # Context resets to 0 tokens
+
+# Skill loading strategy
+if complexity == "simple":
+    # Use Quick Reference (0 tokens)
+    use_inline_reference()
+elif complexity == "medium":
+    # Auto-load specific skill (~8,470 tokens)
+    Skill("moai-foundation-core")
+else:
+    # Load multiple skills conditionally
+    Skill("moai-foundation-core")
+    Skill("moai-lang-unified")
+    Skill("moai-platform-baas")
+```
+
+**Context Engineering**:
+
+```python
+# Efficient task delegation
+def delegate_task(task_description):
+    """Each Task() call creates new 200K context"""
+    # Independent 200K session
+    result = Task(subagent_type="code-backend", prompt=task_description)
+    return result
+
+# Multiple tasks run in separate contexts
+task1 = delegate_task("Build auth API")      # 200K context
+task2 = delegate_task("Create user UI")      # New 200K context
+task3 = delegate_task("Write tests")         # New 200K context
+```
+
+### Pattern 5: Git 3-Mode Strategy
+
+**Manual Mode** (Local Development):
+```bash
+# Local-only Git operations
+git checkout -b feature/new-feature
+# Code changes...
+git add .
+git commit -m "feat: Add new feature"
+# NO automatic push
+```
+
+**Personal Mode** (Individual Projects):
+```bash
+# Automatic branch + commit + push
+/moai:1-plan "user authentication"
+# Auto: git checkout -b feature/SPEC-001
+# Auto: git commit -m "feat: Implement user auth"
+# Auto: git push origin feature/SPEC-001
+# Manual: Create PR when ready
+```
+
+**Team Mode** (Collaborative Projects):
+```bash
+# Full automation with governance
+/moai:1-plan "payment integration"
+# Auto: Create branch feature/SPEC-002
+# Auto: Commit with conventional format
+# Auto: Push to remote
+# Auto: Create Draft PR
+# Auto: Request reviews from team
+# Require: 1+ approval before merge
+```
+
+---
+
+## Advanced Documentation
+
+### Detailed Modules
+
+- **SPEC Format Reference**: `.moai/specs/SPEC-TEMPLATE.md`
+- **Agent Reference**: `.claude/agents/`
+- **Commands Reference**: `.claude/commands/moai/`
+- **Execution Rules**: `modules/execution-rules.md`
+- **Token Optimization**: `modules/token-optimization.md`
+- **Delegation Patterns**: `modules/delegation-patterns.md`
+
+### Configuration
+
+```json
+// .moai/config/config.json
+{
+  "constitution": {
+    "enforce_tdd": true,
+    "test_coverage_target": 90
+  },
+  "git_strategy": {
+    "mode": "manual",  // or "personal" or "team"
+    "auto_branch": false,
+    "auto_commit": true,
+    "auto_pr": false
+  }
+}
+```
+
+---
+
+## Works Well With
+
+### Agents
+- **core-planner**: Strategic planning and analysis
+- **workflow-spec**: SPEC document generation
+- **workflow-tdd**: TDD implementation execution
+- **core-quality**: Quality validation and testing
+
+### Skills
+- **moai-foundation-quality**: Extended quality patterns
+- **moai-foundation-context**: Token optimization strategies
+- **moai-workflow-docs**: Documentation generation
+- **moai-lang-unified**: Language-specific implementations
+
+### Commands
+- `/moai:1-plan`: SPEC generation workflow
+- `/moai:2-run`: TDD implementation workflow
+- `/moai:3-sync`: Documentation synchronization
+- `/clear`: Context reset for token management
+
+---
+
+## Best Practices
+
+### DO
+✅ Always start with SPEC documents (EARS format)
+✅ Enforce TDD with RED-GREEN-REFACTOR cycle
+✅ Maintain 85%+ test coverage
+✅ Follow TRUST 5 principles
+✅ Use `/clear` when context > 180K tokens
+✅ Delegate to specialized agents for complex tasks
+✅ Track all changes with meaningful Git commits
+
+### DON'T
+❌ Skip SPEC creation for "simple" features
+❌ Write code before writing tests (TDD violation)
+❌ Ignore test coverage requirements
+❌ Bypass security checks
+❌ Hard-code configuration values
+❌ Use multiple agents when one suffices
+❌ Let context exceed 200K tokens
+
+---
+
+## Troubleshooting
+
+### Issue: Context Token Overflow
+
+**Symptom**: "Context limit exceeded" error
+
+**Solution**:
+```bash
+# Execute immediately when context > 180K
+/clear
+
+# Restart with fresh context
+/moai:1-plan "continue previous work"
+```
+
+### Issue: Test Coverage Below Target
+
+**Symptom**: Coverage report shows \<85%
+
+**Solution**:
+```python
+# Use core-quality agent to auto-generate tests
+Task(subagent_type="core-quality", prompt="Generate tests for uncovered code")
+
+# Or manually add tests
+pytest --cov=src --cov-report=html
+# Identify uncovered lines, add tests
+```
+
+### Issue: SPEC Not Clear Enough
+
+**Symptom**: Implementation doesn't match requirements
+
+**Solution**:
+```bash
+# Regenerate SPEC with more detail
+/moai:1-plan "detailed SPEC for: <feature description>"
+
+# Use AskUserQuestion for clarification
+AskUserQuestion({
+    "questions": [{
+        "question": "What should happen when...?",
+        "multiSelect": false
+    }]
+})
+```
+
+---
+
+## Related Resources
+
+### Agents
+Check the [Agent Guide](/advanced/agents-guide) to see which agents use this skill.
+
+### Commands
+See [Core Commands](/reference/commands) for commands that leverage this skill.
+
+### Patterns
+Explore [Composition Patterns](/advanced/patterns) for real-world usage examples.
+
+---
+
+**Last Updated**: 2025-11-28
+**Skill Type**: Foundation
+**Version**: 2.2.0

@@ -1,0 +1,200 @@
+# 설치 및 설정
+
+MoAI-ADK를 설치하고 개발 환경을 구성하는 방법을 알아봅니다.
+
+## 필수 요구사항
+
+### 시스템 요구사항
+- **운영체제**: macOS, Linux, Windows (WSL2 권장)
+- **Node.js**: 18.17+ LTS (권장: 20.x)
+- **Git**: 2.39+ (Worktree 지원)
+- **메모리**: 최소 4GB, 권장 8GB+
+
+### 개발 환경
+```bash
+# Node.js 버전 확인
+node --version  # v18.17.0+
+
+# Git 버전 확인
+git --version   # 2.39.0+
+```
+
+## 설치 방법
+
+### 1단계: npm 또는 yarn으로 설치
+
+```bash
+# npm 사용
+npm install -g moai-adk
+
+# 또는 yarn 사용
+yarn global add moai-adk
+
+# 또는 pnpm 사용
+pnpm add -g moai-adk
+```
+
+### 2단계: 설치 확인
+
+```bash
+moai --version
+moai doctor
+```
+
+정상적으로 설치되었다면 버전 정보와 환경 진단 결과가 표시됩니다.
+
+## 첫 프로젝트 생성
+
+### 프로젝트 초기화
+
+```bash
+# 새 디렉토리 생성
+mkdir my-first-project
+cd my-first-project
+
+# MoAI-ADK 프로젝트 초기화
+moai init
+```
+
+### 프로젝트 구조
+
+초기화 후 다음과 같은 구조가 생성됩니다:
+
+```
+my-first-project/
+├── .claude/              # Claude Code 설정
+├── .moai/                # MoAI-ADK 설정
+├── src/                  # 소스 코드
+├── tests/                # 테스트
+├── .git/                 # Git 저장소
+├── README.md             # 프로젝트 설명
+└── package.json          # 의존성 정의
+```
+
+## 설정 파일
+
+### config.json 커스터마이징
+
+`.moai/config/config.json`을 편집하여 프로젝트별 설정을 조정합니다:
+
+```json
+{
+  "project": {
+    "name": "내 프로젝트",
+    "description": "프로젝트 설명",
+    "language": "python"
+  },
+  "constitution": {
+    "enforce_tdd": true,
+    "test_coverage_target": 85
+  }
+}
+```
+
+### Git 설정
+
+```bash
+# Git 전역 설정
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# 프로젝트별 설정 (선택사항)
+git config user.name "Project Name"
+```
+
+## IDE 설정
+
+### VS Code 권장 확장
+
+MoAI-ADK와 함께 사용하면 좋은 VS Code 확장:
+
+1. **Python** (ms-python.python)
+   - Python 개발 기본 확장
+
+2. **Pylance** (ms-python.vscode-pylance)
+   - 고급 타입 체크 및 완성
+
+3. **ESLint** (dbaeumer.vscode-eslint)
+   - JavaScript/TypeScript 린팅
+
+4. **Prettier** (esbenp.prettier-vscode)
+   - 코드 포맷팅
+
+5. **Git Graph** (mhutchie.git-graph)
+   - Git 시각화
+
+### VS Code 설정
+
+`.vscode/settings.json`에 다음을 추가:
+
+```json
+{
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true
+}
+```
+
+## 환경 변수 설정
+
+필요한 경우 `.env` 파일을 생성합니다:
+
+```bash
+# .env
+CLAUDE_API_KEY=your_key_here
+MOAI_ENV=development
+LOG_LEVEL=info
+```
+
+## 트러블슈팅
+
+### 설치 문제
+
+**문제**: `moai: command not found`
+```bash
+# npm 글로벌 경로 확인
+npm list -g moai-adk
+
+# npm 경로 확인
+npm config get prefix
+```
+
+**문제**: `Node.js 버전 호환성`
+```bash
+# nvm으로 버전 변경
+nvm use 20
+```
+
+### 프로젝트 초기화 문제
+
+**문제**: `Git 저장소 초기화 실패`
+```bash
+# 기존 .git 디렉토리 제거
+rm -rf .git
+
+# 다시 초기화
+moai init
+```
+
+## 다음 단계
+
+설치 완료 후:
+
+1. [빠른 시작](/getting-started/quickstart)으로 이동
+2. [첫 SPEC 작성](/getting-started/first-spec)하기
+3. [핵심 개념](/core-concepts) 학습하기
+
+## 지원
+
+문제가 발생하면:
+
+- **GitHub Issues**: [github.com/moai-ai/moai-adk/issues](https://github.com/moai-ai/moai-adk/issues)
+- **Discord 커뮤니티**: [discord.gg/moai-adk](https://discord.gg/moai-adk)
+- **문서**: [docs.moai-ai.dev](/reference)

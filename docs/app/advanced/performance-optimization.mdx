@@ -1,0 +1,1305 @@
+# Performance Optimization
+
+Comprehensive guide to optimizing MoAI-ADK performance through token management, agent delegation strategies, and monitoring best practices.
+
+## Overview
+
+Performance optimization in MoAI-ADK focuses on three key areas:
+
+1. **Token Budget Management** - Efficient use of 200K context window
+2. **Agent Delegation Efficiency** - Strategic sequential vs parallel execution
+3. **MCP Resume Pattern** - Context continuity with 40-60% token savings
+4. **Memory Optimization** - State persistence and context management
+5. **Monitoring & Profiling** - Real-time performance tracking
+
+**Performance Targets**:
+- Token usage: < 150K per workflow cycle
+- Agent delegation latency: < 2 seconds
+- MCP resume savings: 40-60% tokens
+- Context retention: 95%+ accuracy
+- Session efficiency: 5,000+ token average savings
+
+## Token Budget Management
+
+### Understanding the 200K Context Window
+
+MoAI-ADK operates within Claude Code's 200K token budget:
+
+```python
+# Token budget allocation
+TOTAL_BUDGET = 200_000  # Total available tokens
+
+# Recommended allocation
+RESERVED_BUDGET = {
+    "alfred_orchestration": 20_000,     # 10% - Alfred's coordination
+    "skill_loading": 25_000,            # 12.5% - Skills and agents
+    "file_context": 80_000,             # 40% - Source code and files
+    "agent_work": 60_000,               # 30% - Agent execution
+    "buffer": 15_000,                   # 7.5% - Safety buffer
+}
+
+# Critical threshold
+CLEAR_THRESHOLD = 150_000  # Execute /clear when exceeded
+```
+
+**Token Usage Breakdown**:
+
+| Component | Tokens | Percentage | Notes |
+|-----------|--------|------------|-------|
+| CLAUDE.md + config.json | 8,000 | 4% | Loaded on session start |
+| Skill auto-loading | 8,470 | 4.2% | Per skill (conditional) |
+| Agent YAML frontmatter | 500-1,000 | 0.5% | Per agent invocation |
+| File reading | Variable | 40% | Depends on codebase size |
+| Agent execution | Variable | 30% | Depends on complexity |
+
+### Conditional Skill Loading
+
+Alfred uses intelligent skill loading to minimize token waste:
+
+**Auto-Load Triggers** (from CLAUDE.md):
+
+```python
+class SkillLoadingStrategy:
+    """Conditional skill loading based on triggers"""
+
+    AUTO_LOAD_TRIGGERS = {
+        "command_execution": ["/moai:0-project", "/moai:1-plan", "/moai:2-run", "/moai:3-sync"],
+        "agent_delegation": True,  # Any Task() call
+        "spec_analysis": True,
+        "architecture_decisions": True,
+        "medium_complexity": {
+            "files_to_modify": 3,
+            "architecture_impact": "medium",
+            "implementation_time": "1+ hours",
+            "feature_integration": "multiple layers",
+        }
+    }
+
+    def should_load_skill(self, context: dict) -> bool:
+        """Determine if skill loading is necessary"""
+        # Check triggers
+        if context.get("command") in self.AUTO_LOAD_TRIGGERS["command_execution"]:
+            return True
+
+        if context.get("agent_delegation"):
+            return True
+
+        # Check complexity criteria
+        complexity_score = self.calculate_complexity(context)
+        return complexity_score >= 3  # 3+ criteria met
+
+    def calculate_complexity(self, context: dict) -> int:
+        """Count complexity criteria"""
+        score = 0
+
+        if context.get("files_to_modify", 0) >= 3:
+            score += 1
+
+        if context.get("architecture_impact") in ["medium", "high"]:
+            score += 1
+
+        if context.get("implementation_time", 0) >= 60:  # minutes
+            score += 1
+
+        if context.get("feature_integration") == "multiple layers":
+            score += 1
+
+        if context.get("maintenance_need"):
+            score += 1
+
+        return score
+```
+
+**Token Savings**:
+
+```python
+# Token efficiency comparison
+token_usage = {
+    "simple_tasks": {
+        "without_optimization": 15_000,  # Load everything
+        "with_optimization": 0,           # Quick Reference only
+        "savings": 15_000,
+        "percentage": "100%"
+    },
+    "medium_tasks": {
+        "without_optimization": 30_000,  # Load multiple skills
+        "with_optimization": 8_470,      # Load one targeted skill
+        "savings": 21_530,
+        "percentage": "72%"
+    },
+    "complex_tasks": {
+        "without_optimization": 50_000,  # Load all skills
+        "with_optimization": 25_000,     # Load only necessary skills
+        "savings": 25_000,
+        "percentage": "50%"
+    }
+}
+
+# Average savings per session
+average_savings = sum(t["savings"] for t in token_usage.values()) / len(token_usage)
+# Result: ~20,510 tokens per session (68% average)
+```
+
+### Quick Reference vs Full Skill Loading
+
+Alfred maintains a **zero-token Quick Reference** for simple tasks:
+
+**Quick Reference (0 tokens)**:
+
+```python
+# Always available without loading skills
+QUICK_REFERENCE = {
+    "agent_naming": "{role}-{domain} pattern",
+    "hierarchy": "expert → manager → builder → mcp → ai",
+    "token_threshold": "150K → /clear",
+    "spec_decision": "3+ criteria → SPEC recommended",
+    "delegation_principle": "NEVER execute directly, ALWAYS delegate",
+    "mcp_resume": "Store agent_id for context continuity",
+}
+
+# Usage: Simple file operations, basic questions
+if task_complexity == "simple":
+    use_quick_reference()  # 0 tokens
+else:
+    load_skill("moai-foundation-core")  # 8,470 tokens
+```
+
+**Full Skill Loading (8,470 tokens)**:
+
+```python
+# Load complete skill when needed
+FULL_SKILL_MODULES = {
+    "modules/agents-reference.md": 2_000,
+    "modules/commands-reference.md": 1_500,
+    "modules/delegation-patterns.md": 2_000,
+    "modules/token-optimization.md": 1_500,
+    "modules/execution-rules.md": 1_470,
+}
+# Total: 8,470 tokens
+```
+
+### /clear Strategy
+
+Execute `/clear` at strategic points to reset token budget:
+
+**When to Execute /clear**:
+
+```python
+class ClearStrategy:
+    """Determine optimal /clear execution timing"""
+
+    CLEAR_TRIGGERS = {
+        "token_threshold": 150_000,      # Hard limit
+        "after_moai_1_plan": True,       # Mandatory after SPEC creation
+        "after_moai_2_run": False,       # Optional (if low tokens)
+        "after_moai_3_sync": False,      # Optional
+        "between_specs": True,           # Start fresh for new SPEC
+    }
+
+    def should_clear(self, context_tokens: int, last_command: str) -> bool:
+        """Determine if /clear should be executed"""
+        # Always clear after /moai:1-plan (CLAUDE.md Rule 2)
+        if last_command == "/moai:1-plan":
+            return True
+
+        # Clear if approaching token limit
+        if context_tokens > self.CLEAR_TRIGGERS["token_threshold"]:
+            return True
+
+        # Clear between different SPECs
+        if self.is_new_spec_starting(context_tokens):
+            return True
+
+        return False
+
+    def recommend_clear_timing(self, workflow_phase: str) -> dict:
+        """Recommend /clear execution timing"""
+        recommendations = {
+            "after_plan": {
+                "execute": True,
+                "reason": "SPEC generated, context no longer needed",
+                "token_savings": "~50,000 tokens",
+            },
+            "before_run": {
+                "execute": True,
+                "reason": "Fresh context for TDD implementation",
+                "token_savings": "~60,000 tokens",
+            },
+            "before_sync": {
+                "execute": False,
+                "reason": "Implementation context still useful",
+                "token_savings": "N/A",
+            },
+        }
+        return recommendations.get(workflow_phase, {})
+```
+
+**Optimal Clear Workflow**:
+
+```
+User Request
+    ↓
+/moai:1-plan (SPEC creation)
+    ↓
+SPEC-001 generated
+    ↓
+/clear ← MANDATORY (CLAUDE.md Rule 2)
+    ↓
+/moai:2-run SPEC-001 (TDD implementation)
+    ↓
+Implementation complete
+    ↓
+/clear ← RECOMMENDED (if tokens > 100K)
+    ↓
+/moai:3-sync SPEC-001 (Documentation)
+    ↓
+Documentation complete
+```
+
+### File Loading Optimization
+
+Load only necessary files to minimize token usage:
+
+```python
+class FileLoadingOptimizer:
+    """Optimize file loading strategies"""
+
+    def load_files_strategically(self, task: str) -> list:
+        """Load only essential files for current task"""
+
+        # Analyze task requirements
+        required_files = self.analyze_required_files(task)
+
+        # Filter by relevance
+        ranked_files = self.rank_by_relevance(required_files, task)
+
+        # Load top N files (avoid loading entire codebase)
+        max_files = 10  # Token budget consideration
+        files_to_load = ranked_files[:max_files]
+
+        return files_to_load
+
+    def rank_by_relevance(self, files: list, task: str) -> list:
+        """Rank files by relevance to current task"""
+        scored_files = []
+
+        for file in files:
+            score = 0
+
+            # Keyword matching
+            if any(keyword in file for keyword in self.extract_keywords(task)):
+                score += 10
+
+            # Recency (modified recently)
+            if self.is_recently_modified(file):
+                score += 5
+
+            # Dependency importance
+            if self.is_core_dependency(file):
+                score += 3
+
+            scored_files.append((file, score))
+
+        # Sort by score descending
+        return [f for f, s in sorted(scored_files, key=lambda x: x[1], reverse=True)]
+
+    def estimate_file_tokens(self, file_path: str) -> int:
+        """Estimate token count for file"""
+        # Rough estimate: 1 line ≈ 10 tokens
+        with open(file_path, "r") as f:
+            line_count = sum(1 for _ in f)
+
+        return line_count * 10
+```
+
+**Best Practices**:
+
+```python
+# ❌ BAD: Load entire codebase
+all_files = glob("src/**/*.py", recursive=True)
+for file in all_files:  # Could be 100+ files
+    Read(file)
+
+# ✅ GOOD: Load only relevant files
+task_keywords = extract_keywords(user_request)
+relevant_files = find_files_with_keywords(task_keywords)
+top_files = relevant_files[:10]  # Limit to 10 most relevant
+
+for file in top_files:
+    Read(file)
+```
+
+---
+
+## Agent Delegation Efficiency
+
+### Sequential vs Parallel Execution
+
+Choose the right delegation strategy based on dependencies:
+
+**Sequential Delegation** (Dependencies exist):
+
+```python
+# Use when output of Agent A needed for Agent B
+class SequentialDelegation:
+    """Execute agents one after another"""
+
+    def execute_sequential(self, spec_id: str):
+        """Sequential workflow with dependencies"""
+
+        # Step 1: Create SPEC (depends on user input)
+        spec_result = Task(
+            subagent_type="manager-spec",
+            prompt=f"Create SPEC for {spec_id}"
+        )
+
+        # Step 2: Plan execution (depends on SPEC)
+        strategy_result = Task(
+            subagent_type="manager-strategy",
+            prompt=f"Plan implementation for {spec_result.spec_id}"
+        )
+
+        # Step 3: Implement (depends on strategy)
+        tdd_result = Task(
+            subagent_type="manager-tdd",
+            prompt=f"Implement {spec_result.spec_id} following {strategy_result.plan_id}"
+        )
+
+        # Step 4: Validate (depends on implementation)
+        quality_result = Task(
+            subagent_type="manager-quality",
+            prompt=f"Validate {tdd_result.implementation_id}"
+        )
+
+        return quality_result
+
+# Performance characteristics
+sequential_performance = {
+    "total_time": "sum of all agent execution times",
+    "latency": "high (blocking)",
+    "token_efficiency": "high (no redundant context)",
+    "use_when": "dependencies exist between agents",
+}
+```
+
+**Parallel Delegation** (No dependencies):
+
+```python
+# Use when agents work independently
+class ParallelDelegation:
+    """Execute agents simultaneously"""
+
+    def execute_parallel(self, spec_id: str):
+        """Parallel workflow for independent tasks"""
+
+        # All agents can work independently
+        results = []
+
+        # Launch all agents in parallel
+        backend_result = Task(
+            subagent_type="expert-backend",
+            prompt="Design API endpoints for authentication"
+        )
+        results.append(backend_result)
+
+        frontend_result = Task(
+            subagent_type="expert-frontend",
+            prompt="Design login UI components"
+        )
+        results.append(frontend_result)
+
+        database_result = Task(
+            subagent_type="expert-database",
+            prompt="Design user authentication schema"
+        )
+        results.append(database_result)
+
+        # Integrate results
+        integration_result = self.integrate_results(results)
+
+        return integration_result
+
+# Performance characteristics
+parallel_performance = {
+    "total_time": "max(agent execution times)",
+    "latency": "low (non-blocking)",
+    "token_efficiency": "medium (some redundant context)",
+    "use_when": "no dependencies between agents",
+}
+```
+
+**Hybrid Delegation** (Mixed dependencies):
+
+```python
+class HybridDelegation:
+    """Combine sequential and parallel strategies"""
+
+    def execute_hybrid(self, spec_id: str):
+        """Optimize with mixed delegation pattern"""
+
+        # Phase 1: Sequential (SPEC creation)
+        spec = Task(subagent_type="manager-spec", prompt="...")
+
+        # Phase 2: Parallel (independent design work)
+        backend = Task(subagent_type="expert-backend", prompt="...")
+        frontend = Task(subagent_type="expert-frontend", prompt="...")
+        database = Task(subagent_type="expert-database", prompt="...")
+
+        # Wait for all parallel tasks
+        design_results = [backend, frontend, database]
+
+        # Phase 3: Sequential (integration and validation)
+        integration = Task(
+            subagent_type="manager-strategy",
+            prompt=f"Integrate {design_results}"
+        )
+
+        quality = Task(
+            subagent_type="manager-quality",
+            prompt=f"Validate {integration}"
+        )
+
+        return quality
+```
+
+### Agent Performance Metrics
+
+Track and optimize agent performance:
+
+```python
+@dataclass
+class AgentPerformanceMetrics:
+    """Agent execution performance tracking"""
+
+    agent_type: str
+    execution_time: float  # seconds
+    tokens_consumed: int
+    success_rate: float  # 0.0 - 1.0
+    average_latency: float  # seconds
+
+    # Quality metrics
+    output_quality_score: float  # 0-100
+    retry_count: int
+    error_count: int
+
+    def calculate_efficiency_score(self) -> float:
+        """Calculate overall efficiency (0-100)"""
+        # Lower latency = better
+        latency_score = max(0, 100 - (self.average_latency * 10))
+
+        # Lower token usage = better
+        token_score = max(0, 100 - (self.tokens_consumed / 1000))
+
+        # Higher success rate = better
+        success_score = self.success_rate * 100
+
+        # Higher quality = better
+        quality_score = self.output_quality_score
+
+        # Weighted average
+        weights = {
+            "latency": 0.25,
+            "tokens": 0.25,
+            "success": 0.25,
+            "quality": 0.25,
+        }
+
+        efficiency = (
+            latency_score * weights["latency"] +
+            token_score * weights["tokens"] +
+            success_score * weights["success"] +
+            quality_score * weights["quality"]
+        )
+
+        return min(100, max(0, efficiency))
+
+
+# Example metrics
+agent_metrics = {
+    "manager-spec": AgentPerformanceMetrics(
+        agent_type="manager-spec",
+        execution_time=45.2,
+        tokens_consumed=12_000,
+        success_rate=0.98,
+        average_latency=2.3,
+        output_quality_score=92,
+        retry_count=1,
+        error_count=0,
+    ),
+    "manager-tdd": AgentPerformanceMetrics(
+        agent_type="manager-tdd",
+        execution_time=180.5,
+        tokens_consumed=45_000,
+        success_rate=0.95,
+        average_latency=5.1,
+        output_quality_score=95,
+        retry_count=2,
+        error_count=1,
+    ),
+}
+```
+
+### Agent Session Management
+
+Each `Task()` creates an independent 200K session:
+
+```python
+class AgentSessionManager:
+    """Manage independent agent sessions"""
+
+    def create_agent_session(self, agent_type: str, prompt: str) -> AgentSession:
+        """Create new 200K token session for agent"""
+
+        session = AgentSession(
+            agent_type=agent_type,
+            token_budget=200_000,
+            tokens_used=0,
+            start_time=datetime.now(),
+        )
+
+        # Each agent gets fresh 200K context
+        result = Task(
+            subagent_type=agent_type,
+            prompt=prompt
+        )
+
+        session.tokens_used = result.tokens_consumed
+        session.end_time = datetime.now()
+
+        return session
+
+    def optimize_session_usage(self, sessions: list) -> dict:
+        """Analyze and optimize session usage"""
+
+        total_tokens = sum(s.tokens_used for s in sessions)
+        avg_tokens = total_tokens / len(sessions)
+
+        optimization_report = {
+            "total_sessions": len(sessions),
+            "total_tokens": total_tokens,
+            "average_tokens_per_session": avg_tokens,
+            "budget_utilization": (avg_tokens / 200_000) * 100,
+            "recommendations": [],
+        }
+
+        # Identify optimization opportunities
+        if avg_tokens > 150_000:
+            optimization_report["recommendations"].append(
+                "High token usage detected. Consider breaking tasks into smaller agents."
+            )
+
+        if len(sessions) > 10:
+            optimization_report["recommendations"].append(
+                "Many agents spawned. Consider hybrid delegation pattern."
+            )
+
+        return optimization_report
+```
+
+---
+
+## MCP Resume Pattern
+
+MCP agents support context continuity with massive token savings:
+
+### Resume Pattern Implementation
+
+```python
+class MCPResumePattern:
+    """MCP context continuity with resume parameter"""
+
+    def research_with_resume(self, topic: str) -> dict:
+        """Multi-step research with context retention"""
+
+        # Initial MCP call (full context)
+        initial_result = Task(
+            subagent_type="mcp-context7",
+            prompt=f"Research {topic} latest APIs and patterns"
+        )
+
+        # Store agent_id for resume
+        agent_id = initial_result.agent_id
+
+        # Resume with full context (40-60% token savings)
+        comparison_result = Task(
+            subagent_type="mcp-context7",
+            prompt=f"Compare {topic} with alternatives",
+            resume=agent_id  # ← Context continuity
+        )
+
+        # Continue investigation (cumulative context)
+        migration_result = Task(
+            subagent_type="mcp-context7",
+            prompt=f"Provide migration guide for {topic}",
+            resume=agent_id  # ← Still same context
+        )
+
+        return {
+            "initial": initial_result,
+            "comparison": comparison_result,
+            "migration": migration_result,
+            "total_token_savings": self.calculate_savings(
+                [initial_result, comparison_result, migration_result]
+            ),
+        }
+
+    def calculate_savings(self, results: list) -> dict:
+        """Calculate token savings from resume pattern"""
+
+        # Without resume (load full context each time)
+        without_resume = sum(r.full_context_tokens for r in results)
+
+        # With resume (only incremental context after first)
+        with_resume = results[0].full_context_tokens + sum(
+            r.incremental_tokens for r in results[1:]
+        )
+
+        savings = without_resume - with_resume
+        savings_percentage = (savings / without_resume) * 100
+
+        return {
+            "without_resume": without_resume,
+            "with_resume": with_resume,
+            "savings": savings,
+            "savings_percentage": f"{savings_percentage:.1f}%",
+        }
+```
+
+**Token Savings Example**:
+
+```python
+# Example: 3-step research workflow
+research_workflow = {
+    "step_1_initial": {
+        "prompt": "Research React 19 APIs",
+        "tokens_without_resume": 15_000,
+        "tokens_with_resume": 15_000,  # First call (no difference)
+    },
+    "step_2_comparison": {
+        "prompt": "Compare with React 18",
+        "tokens_without_resume": 15_000,  # Full context again
+        "tokens_with_resume": 5_000,     # Only incremental (67% savings)
+    },
+    "step_3_migration": {
+        "prompt": "Migration examples",
+        "tokens_without_resume": 15_000,  # Full context again
+        "tokens_with_resume": 4_000,     # Only incremental (73% savings)
+    },
+}
+
+# Total comparison
+total_without_resume = 45_000  # 15K + 15K + 15K
+total_with_resume = 24_000     # 15K + 5K + 4K
+total_savings = 21_000         # 47% savings
+```
+
+### MCP Integration Best Practices
+
+```python
+class MCPBestPractices:
+    """Optimize MCP agent usage"""
+
+    def use_mcp_efficiently(self, research_topics: list) -> dict:
+        """Efficient MCP integration patterns"""
+
+        results = {}
+
+        # Pattern 1: Single-topic deep research (use resume)
+        if len(research_topics) == 1:
+            topic = research_topics[0]
+
+            # Initial research
+            result = Task(subagent_type="mcp-context7", prompt=f"Research {topic}")
+            agent_id = result.agent_id
+
+            # Deep dive with resume
+            detailed_result = Task(
+                subagent_type="mcp-context7",
+                prompt=f"Detailed analysis of {topic}",
+                resume=agent_id
+            )
+
+            results[topic] = {"initial": result, "detailed": detailed_result}
+
+        # Pattern 2: Multiple independent topics (parallel, no resume)
+        else:
+            for topic in research_topics:
+                result = Task(
+                    subagent_type="mcp-context7",
+                    prompt=f"Research {topic}"
+                )
+                results[topic] = result
+
+        return results
+
+    def choose_mcp_agent(self, task_type: str) -> str:
+        """Select optimal MCP agent for task"""
+
+        mcp_agents = {
+            "documentation": "mcp-context7",      # Latest API docs
+            "complex_reasoning": "mcp-sequential-thinking",  # Architecture decisions
+            "web_testing": "mcp-playwright",      # Browser automation
+            "design_system": "mcp-design",        # Figma integration
+            "browser_automation": "mcp-browser",  # Web scraping
+        }
+
+        return mcp_agents.get(task_type, "mcp-context7")  # Default to Context7
+```
+
+---
+
+## Memory Optimization
+
+### State Persistence Strategies
+
+```python
+class StateManager:
+    """Optimize state persistence and retrieval"""
+
+    def __init__(self):
+        self.session_state = {}
+        self.persistent_state = {}
+
+    def save_session_state(self, key: str, value: any) -> None:
+        """Save state for current session only"""
+        self.session_state[key] = {
+            "value": value,
+            "timestamp": datetime.now(),
+            "size_bytes": self.estimate_size(value),
+        }
+
+    def save_persistent_state(self, key: str, value: any) -> None:
+        """Save state across sessions (to .moai/memory/)"""
+        state_file = f".moai/memory/{key}.json"
+
+        with open(state_file, "w") as f:
+            json.dump({
+                "value": value,
+                "timestamp": datetime.now().isoformat(),
+                "version": "1.0.0",
+            }, f, indent=2)
+
+    def load_state(self, key: str, scope: str = "session") -> any:
+        """Load state from session or persistent storage"""
+
+        if scope == "session":
+            state = self.session_state.get(key)
+            return state["value"] if state else None
+
+        elif scope == "persistent":
+            state_file = f".moai/memory/{key}.json"
+
+            if os.path.exists(state_file):
+                with open(state_file, "r") as f:
+                    data = json.load(f)
+                    return data["value"]
+
+        return None
+
+    def cleanup_old_state(self, max_age_days: int = 30) -> dict:
+        """Remove stale state data"""
+
+        cutoff_date = datetime.now() - timedelta(days=max_age_days)
+        removed_count = 0
+
+        # Clean session state
+        keys_to_remove = [
+            k for k, v in self.session_state.items()
+            if v["timestamp"] < cutoff_date
+        ]
+
+        for key in keys_to_remove:
+            del self.session_state[key]
+            removed_count += 1
+
+        return {
+            "removed_count": removed_count,
+            "remaining_count": len(self.session_state),
+        }
+```
+
+### Context Switching Optimization
+
+```python
+class ContextSwitcher:
+    """Optimize context switching between tasks"""
+
+    def switch_context(
+        self,
+        from_task: str,
+        to_task: str,
+        preserve_context: bool = True
+    ) -> dict:
+        """Switch context between tasks efficiently"""
+
+        # Save current task context
+        if preserve_context:
+            current_context = self.capture_context(from_task)
+            self.save_context(from_task, current_context)
+
+        # Load new task context
+        new_context = self.load_context(to_task)
+
+        # Calculate token cost
+        token_cost = self.estimate_context_tokens(new_context)
+
+        return {
+            "from_task": from_task,
+            "to_task": to_task,
+            "context_preserved": preserve_context,
+            "token_cost": token_cost,
+        }
+
+    def capture_context(self, task: str) -> dict:
+        """Capture current working context"""
+
+        return {
+            "task_id": task,
+            "loaded_files": self.get_loaded_files(),
+            "agent_results": self.get_agent_results(),
+            "user_preferences": self.get_user_preferences(),
+            "timestamp": datetime.now(),
+        }
+
+    def minimize_context_switching(self, tasks: list) -> list:
+        """Reorder tasks to minimize context switches"""
+
+        # Group similar tasks together
+        grouped_tasks = self.group_by_similarity(tasks)
+
+        # Reorder to minimize switches
+        optimized_order = []
+        for group in grouped_tasks:
+            optimized_order.extend(group)
+
+        return optimized_order
+```
+
+---
+
+## Monitoring & Profiling
+
+### Performance Monitoring Dashboard
+
+```python
+class PerformanceMonitor:
+    """Real-time performance monitoring"""
+
+    def __init__(self):
+        self.metrics = {
+            "token_usage": [],
+            "agent_latency": [],
+            "skill_loading": [],
+            "file_reads": [],
+        }
+
+    def track_token_usage(self, operation: str, tokens: int) -> None:
+        """Track token consumption by operation"""
+
+        self.metrics["token_usage"].append({
+            "operation": operation,
+            "tokens": tokens,
+            "timestamp": datetime.now(),
+            "cumulative": sum(m["tokens"] for m in self.metrics["token_usage"]) + tokens,
+        })
+
+        # Alert if approaching limit
+        cumulative = self.metrics["token_usage"][-1]["cumulative"]
+        if cumulative > 150_000:
+            self.alert_high_token_usage(cumulative)
+
+    def track_agent_latency(self, agent: str, latency: float) -> None:
+        """Track agent execution latency"""
+
+        self.metrics["agent_latency"].append({
+            "agent": agent,
+            "latency": latency,
+            "timestamp": datetime.now(),
+        })
+
+        # Alert if latency too high
+        if latency > 10.0:  # 10 seconds
+            self.alert_high_latency(agent, latency)
+
+    def generate_performance_report(self) -> dict:
+        """Generate comprehensive performance report"""
+
+        # Token usage analysis
+        total_tokens = sum(m["tokens"] for m in self.metrics["token_usage"])
+        avg_tokens_per_operation = total_tokens / len(self.metrics["token_usage"]) if self.metrics["token_usage"] else 0
+
+        # Agent latency analysis
+        agent_latencies = {}
+        for metric in self.metrics["agent_latency"]:
+            agent = metric["agent"]
+            if agent not in agent_latencies:
+                agent_latencies[agent] = []
+            agent_latencies[agent].append(metric["latency"])
+
+        avg_latencies = {
+            agent: sum(latencies) / len(latencies)
+            for agent, latencies in agent_latencies.items()
+        }
+
+        # Generate report
+        report = {
+            "summary": {
+                "total_tokens": total_tokens,
+                "budget_utilization": (total_tokens / 200_000) * 100,
+                "avg_tokens_per_operation": avg_tokens_per_operation,
+                "total_agents_executed": len(agent_latencies),
+            },
+            "token_usage": {
+                "by_operation": self.group_tokens_by_operation(),
+                "timeline": self.metrics["token_usage"],
+            },
+            "agent_performance": {
+                "average_latencies": avg_latencies,
+                "slowest_agents": self.find_slowest_agents(avg_latencies),
+            },
+            "recommendations": self.generate_recommendations(total_tokens, avg_latencies),
+        }
+
+        return report
+
+    def group_tokens_by_operation(self) -> dict:
+        """Group token usage by operation type"""
+
+        operations = {}
+        for metric in self.metrics["token_usage"]:
+            op = metric["operation"]
+            if op not in operations:
+                operations[op] = {"count": 0, "total_tokens": 0}
+
+            operations[op]["count"] += 1
+            operations[op]["total_tokens"] += metric["tokens"]
+
+        # Calculate averages
+        for op in operations:
+            operations[op]["avg_tokens"] = (
+                operations[op]["total_tokens"] / operations[op]["count"]
+            )
+
+        return operations
+
+    def find_slowest_agents(self, latencies: dict, top_n: int = 5) -> list:
+        """Identify slowest agents"""
+
+        sorted_agents = sorted(
+            latencies.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        return sorted_agents[:top_n]
+
+    def generate_recommendations(self, total_tokens: int, latencies: dict) -> list:
+        """Generate optimization recommendations"""
+
+        recommendations = []
+
+        # Token recommendations
+        if total_tokens > 150_000:
+            recommendations.append({
+                "category": "tokens",
+                "priority": "high",
+                "message": "Execute /clear to reset token budget",
+                "impact": "Prevent token overflow",
+            })
+
+        if total_tokens < 50_000:
+            recommendations.append({
+                "category": "tokens",
+                "priority": "low",
+                "message": "Token usage efficient, no optimization needed",
+                "impact": "N/A",
+            })
+
+        # Latency recommendations
+        slow_agents = [agent for agent, latency in latencies.items() if latency > 5.0]
+        if slow_agents:
+            recommendations.append({
+                "category": "latency",
+                "priority": "medium",
+                "message": f"Optimize slow agents: {', '.join(slow_agents)}",
+                "impact": "Reduce execution time",
+            })
+
+        return recommendations
+```
+
+### Profiling Tools
+
+```python
+class Profiler:
+    """Profile MoAI-ADK operations"""
+
+    def profile_workflow(self, workflow_name: str, func):
+        """Profile complete workflow execution"""
+
+        import time
+        import tracemalloc
+
+        # Start profiling
+        tracemalloc.start()
+        start_time = time.time()
+        start_tokens = self.get_current_token_usage()
+
+        # Execute workflow
+        result = func()
+
+        # Stop profiling
+        end_time = time.time()
+        end_tokens = self.get_current_token_usage()
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        # Generate profile report
+        profile = {
+            "workflow": workflow_name,
+            "execution_time": end_time - start_time,
+            "tokens_consumed": end_tokens - start_tokens,
+            "memory_current": current / 1024 / 1024,  # MB
+            "memory_peak": peak / 1024 / 1024,  # MB
+            "result": result,
+        }
+
+        self.save_profile(profile)
+
+        return profile
+
+    def compare_implementations(
+        self,
+        implementation_a: callable,
+        implementation_b: callable,
+        iterations: int = 10
+    ) -> dict:
+        """Compare two implementations"""
+
+        results_a = []
+        results_b = []
+
+        for _ in range(iterations):
+            profile_a = self.profile_workflow("implementation_a", implementation_a)
+            profile_b = self.profile_workflow("implementation_b", implementation_b)
+
+            results_a.append(profile_a)
+            results_b.append(profile_b)
+
+        # Calculate averages
+        avg_a = {
+            "execution_time": sum(r["execution_time"] for r in results_a) / iterations,
+            "tokens": sum(r["tokens_consumed"] for r in results_a) / iterations,
+            "memory": sum(r["memory_peak"] for r in results_a) / iterations,
+        }
+
+        avg_b = {
+            "execution_time": sum(r["execution_time"] for r in results_b) / iterations,
+            "tokens": sum(r["tokens_consumed"] for r in results_b) / iterations,
+            "memory": sum(r["memory_peak"] for r in results_b) / iterations,
+        }
+
+        # Determine winner
+        comparison = {
+            "implementation_a": avg_a,
+            "implementation_b": avg_b,
+            "winner": self.determine_winner(avg_a, avg_b),
+            "improvements": {
+                "execution_time": ((avg_a["execution_time"] - avg_b["execution_time"]) / avg_a["execution_time"]) * 100,
+                "tokens": ((avg_a["tokens"] - avg_b["tokens"]) / avg_a["tokens"]) * 100,
+                "memory": ((avg_a["memory"] - avg_b["memory"]) / avg_a["memory"]) * 100,
+            }
+        }
+
+        return comparison
+```
+
+---
+
+## Best Practices Summary
+
+### 1. Token Budget Best Practices
+
+```python
+# ✅ GOOD: Conditional skill loading
+if complexity >= "medium":
+    load_skill("moai-foundation-core")  # 8,470 tokens
+else:
+    use_quick_reference()  # 0 tokens
+
+# ✅ GOOD: Strategic /clear usage
+execute_after_moai_1_plan()  # Mandatory
+execute_before_moai_2_run()  # Recommended
+execute_when_tokens_exceed_150k()  # Critical
+
+# ✅ GOOD: Selective file loading
+load_only_relevant_files(task, max_files=10)
+
+# ❌ BAD: Load everything
+load_all_skills()
+load_entire_codebase()
+```
+
+### 2. Agent Delegation Best Practices
+
+```python
+# ✅ GOOD: Choose appropriate delegation pattern
+if has_dependencies(tasks):
+    execute_sequential(tasks)
+elif tasks_independent(tasks):
+    execute_parallel(tasks)
+else:
+    execute_hybrid(tasks)
+
+# ✅ GOOD: Use MCP resume pattern
+agent_id = initial_call()
+follow_up_with_resume(agent_id)  # 40-60% token savings
+
+# ❌ BAD: Always sequential
+for task in tasks:
+    execute_one_by_one(task)  # Slow, even if independent
+```
+
+### 3. Performance Monitoring Best Practices
+
+```python
+# ✅ GOOD: Track metrics continuously
+monitor.track_token_usage(operation, tokens)
+monitor.track_agent_latency(agent, latency)
+monitor.generate_performance_report()
+
+# ✅ GOOD: Set up alerts
+if tokens > 150_000:
+    alert_and_recommend_clear()
+
+if latency > 10.0:
+    alert_high_latency(agent)
+
+# ✅ GOOD: Regular profiling
+profile_critical_workflows()
+compare_optimization_strategies()
+```
+
+---
+
+## Troubleshooting Performance Issues
+
+### Issue 1: Token Budget Exceeded
+
+```bash
+# Symptom: Context > 180K tokens
+# Solution: Execute /clear immediately
+
+# Prevention strategies:
+1. Monitor token usage continuously
+2. Execute /clear after /moai:1-plan (mandatory)
+3. Load only necessary files
+4. Use Quick Reference for simple tasks
+```
+
+### Issue 2: Slow Agent Execution
+
+```python
+# Symptom: Agent latency > 10 seconds
+# Solution: Profile and optimize
+
+# Investigation steps:
+1. Profile agent execution
+profiler.profile_workflow("slow_agent", agent.execute)
+
+2. Identify bottlenecks
+- Large file loads?
+- Complex computations?
+- Many sub-agent calls?
+
+3. Optimize based on findings
+- Reduce file loading
+- Break into smaller agents
+- Use parallel delegation
+```
+
+### Issue 3: Memory Issues
+
+```python
+# Symptom: High memory usage, slow performance
+# Solution: Cleanup and optimization
+
+# Cleanup strategies:
+1. Clear old session state
+state_manager.cleanup_old_state(max_age_days=7)
+
+2. Minimize context switching
+context_switcher.minimize_context_switching(tasks)
+
+3. Release unused resources
+gc.collect()  # Force garbage collection
+```
+
+---
+
+## Performance Benchmarks
+
+### Expected Performance Targets
+
+```python
+performance_targets = {
+    "token_usage": {
+        "simple_task": "< 15,000 tokens",
+        "medium_task": "< 50,000 tokens",
+        "complex_task": "< 150,000 tokens",
+    },
+    "agent_latency": {
+        "manager_spec": "< 60 seconds",
+        "manager_tdd": "< 180 seconds",
+        "expert_backend": "< 120 seconds",
+        "mcp_context7": "< 30 seconds",
+    },
+    "workflow_efficiency": {
+        "plan_run_sync_cycle": "< 300 seconds total",
+        "token_savings_with_resume": "> 40%",
+        "skill_loading_optimization": "> 60%",
+    },
+}
+```
+
+### Performance Optimization Checklist
+
+```markdown
+## Pre-Workflow Checklist
+
+- [ ] Review current token usage (should be < 50K to start)
+- [ ] Identify required skills (load only necessary)
+- [ ] Plan delegation strategy (sequential/parallel/hybrid)
+- [ ] Estimate token budget for workflow
+- [ ] Set up performance monitoring
+
+## During Workflow
+
+- [ ] Track token usage continuously
+- [ ] Monitor agent latency
+- [ ] Use MCP resume pattern when applicable
+- [ ] Execute /clear at strategic points
+- [ ] Load files selectively
+
+## Post-Workflow
+
+- [ ] Review performance report
+- [ ] Identify optimization opportunities
+- [ ] Document lessons learned
+- [ ] Update performance baselines
+```
+
+---
+
+## Next Steps
+
+- [TRUST 5 Quality](/advanced/trust5-quality)
+- [Agent Delegation Patterns](/advanced/patterns)
+- [Skills Library](/advanced/skills-library)
+- [Development Workflow](/core/workflow)
+
+---
+
+**Last Updated**: 2025-11-28
+**Version**: 1.0.0
+**Focus**: Token Optimization, Agent Efficiency, Monitoring

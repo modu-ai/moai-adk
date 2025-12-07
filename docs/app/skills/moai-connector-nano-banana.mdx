@@ -1,0 +1,310 @@
+---
+title: "Use reference images to guide style"
+description: "##  Core Patterns (5-10 minutes)"
+---
+
+
+
+---
+name: moai-connector-nano-banana
+description: Professional image generation with Google Nano Banana Pro (Gemini 3 Pro)
+version: 1.0.1
+modularized: true
+tags:
+  - enterprise
+  - patterns
+  - nano
+  - banana
+  - architecture
+updated: 2025-11-24
+status: active
+---
+
+## 🎯 Quick Reference (30 seconds)
+
+**Purpose**: Professional image generation using Google's Nano Banana Pro (Gemini 3 Pro Image Preview).
+
+**Key Features**:
+- **Text-to-Image**: Detailed prompts → 1K/2K/4K resolution images
+- **Image-to-Image**: Style transfer, object manipulation, editing
+- **Real-time Grounding**: Google Search integration for factual content
+- **Multi-Reference**: Up to 14 reference images (6 objects + 5 humans)
+- **Advanced Text**: Sophisticated text rendering directly in images
+
+**Two Models**:
+1. **Nano Banana Pro** (gemini-3-pro-image-preview) - Professional quality, 10-60s
+2. **Gemini 2.5 Flash** (gemini-2.5-flash-image) - Fast, ~5-15s
+
+---
+
+
+## Implementation Guide (5 minutes)
+
+### Features
+
+- Text-to-Image generation with 1K/2K/4K resolutions
+- Image-to-Image editing and style transfer
+- Multi-turn refinement for iterative improvements
+- Reference image guidance (up to 14 references)
+- Real-time Google Search grounding for factual content
+- Advanced text rendering directly in images
+
+### When to Use
+
+- Generating professional visual assets for documentation or marketing
+- Creating UI mockups and design concepts quickly
+- Producing social media graphics and promotional images
+- Illustrating technical documentation with custom diagrams
+- Rapid prototyping of visual ideas before final design work
+
+### Core Patterns
+
+**Pattern 1: Structured Prompt for Quality**
+```python
+prompt = """
+A serene Japanese garden at golden hour.
+Lighting: warm sunset light filtering through maple trees.
+Camera: wide-angle 35mm lens, low angle shot.
+Composition: Rule of thirds, stone path leading to pagoda.
+Color palette: warm gold, jade green, soft cream.
+Style: photorealistic with slight cinematic color grading.
+Quality: 4K resolution. Final output: PNG.
+"""
+```
+
+**Pattern 2: Multi-Turn Refinement**
+1. Generate initial image with base prompt
+2. Review output and identify areas for improvement
+3. Provide targeted refinement: "Make sky more dramatic"
+4. Iterate up to 5 turns for perfect result
+
+**Pattern 3: Reference-Guided Generation**
+```python
+# Use reference images to guide style
+generate_image(
+    prompt="Mountain landscape in the style of reference",
+    reference_images=["style_ref.png", "composition_ref.png"],
+    resolution="2K",
+    aspect_ratio="16:9"
+)
+```
+
+## 📚 Core Patterns (5-10 minutes)
+
+### Pattern 1: Prompt Structure for Quality Images
+
+**Key Concept**: Well-structured prompts generate better images
+
+**Template**:
+```
+[Scene Description]
+A [adjective] [subject] doing [action].
+Setting: [location] with [environmental details].
+
+[Photographic Elements]
+Lighting: [type], creating [mood].
+Camera: [angle] shot with [lens] lens.
+Composition: [framing_details].
+
+[Color & Style]
+Color palette: [colors]. Style: [art_style].
+Quality: [resolution]. Final output: [format].
+```
+
+**Example**:
+```
+A serene Japanese garden at golden hour.
+Lighting: warm sunset light, creating peaceful mood.
+Camera: wide-angle 35mm lens shot.
+Color palette: gold, jade green, cream.
+Quality: 4K photorealistic. Final: PNG.
+```
+
+### Pattern 2: Text-to-Image Generation
+
+**Key Concept**: Generate professional images from text prompts
+
+**Basic Flow**:
+1. Write detailed, structured prompt
+2. Choose resolution (1K, 2K, 4K)
+3. Select aspect ratio (1:1, 16:9, 3:2, etc.)
+4. Enable Google Search for current information (optional)
+5. Generate and retrieve Base64 PNG
+
+**Execution**:
+```python
+image_data = generate_image(
+    prompt="Your detailed prompt here",
+    resolution="2K",
+    aspect_ratio="16:9",
+    enable_google_search=True,  # For current info
+    thinking_process=True        # Auto-optimize
+)
+```
+
+### Pattern 3: Image-to-Image Editing
+
+**Key Concept**: Transform existing images with detailed instructions
+
+**Common Tasks**:
+- **Style Transfer**: Convert to art style (Van Gogh, anime, etc.)
+- **Object Manipulation**: Add, remove, or modify elements
+- **Composition Change**: Reframe, zoom, or reposition subjects
+- **Quality Enhancement**: Upscale, improve detail, adjust colors
+
+**Flow**:
+1. Load original image
+2. Write transformation instruction
+3. Reference images (optional)
+4. Apply edit maintaining coherence
+5. Retrieve edited image
+
+### Pattern 4: Multi-Turn Refinement
+
+**Key Concept**: Iteratively improve images through conversation
+
+**Workflow**:
+1. Generate initial image
+2. Review output
+3. Provide refinement instruction
+4. Regenerate with improvements
+5. Repeat (max 5 turns)
+
+**Example**:
+```
+Turn 1: "A mountain landscape at sunset"
+Turn 2: "Make the sky more dramatic with purple clouds"
+Turn 3: "Add a lone tree in foreground"
+```
+
+### Pattern 5: Reference Image Guidance
+
+**Key Concept**: Use reference images to guide generation style
+
+**Supported References**:
+- Up to 6 object references
+- Up to 5 human references
+- Style influences
+- Composition guides
+
+**Usage**:
+```python
+generate_image(
+    prompt="Similar style to reference",
+    reference_images=[
+        "path/to/style_reference.png",
+        "path/to/composition_ref.png"
+    ]
+)
+```
+
+---
+
+## 📖 Advanced Documentation
+
+This Skill uses Progressive Disclosure. For detailed implementation:
+
+- **[modules/prompt-engineering.md](modules/prompt-engineering.md)** - Professional prompt templates
+- **[modules/api-reference.md](modules/api-reference.md)** - Complete API documentation
+- **[modules/examples.md](modules/examples.md)** - Real-world usage examples
+- **[modules/troubleshooting.md](modules/troubleshooting.md)** - Common issues and solutions
+
+---
+
+## 🎨 Model Selection Guide
+
+**Choose Nano Banana Pro when**:
+- Professional quality required
+- 2K/4K resolution needed
+- Complex compositions
+- Sophisticated text in images
+- Real-time information important
+- Budget allows (higher cost)
+
+**Choose Gemini 2.5 Flash when**:
+- Quick iterations needed
+- Prototyping and testing
+- High volume generation
+- 1K resolution sufficient
+- Speed critical
+- Cost sensitive
+
+---
+
+## Quick Reference (30 seconds)
+
+**Core Purpose**: Professional AI image generation using Nano Banana Pro (Gemini 3 Pro) and Gemini 2.5 Flash.
+
+**Key Features**: Text-to-image, image-to-image editing, multi-turn refinement, reference guidance, 4K resolution.
+
+**When to Use**: Visual asset creation, prototyping, documentation, UI mockups, marketing materials.
+
+---
+
+## Works Well With
+
+**Agents**:
+- **design-uiux** - UI/UX design integration
+- **code-frontend** - Frontend asset implementation
+- **workflow-docs** - Visual documentation generation
+
+**Skills**:
+- **moai-lang-unified** - UI/UX implementation with generated assets
+- **moai-docs-generation** - Create visual documentation
+- **moai-cc-claude-md** - Embed generated images in markdown
+- **moai-domain-frontend** - Frontend integration
+
+**Commands**:
+- `/moai:3-sync` - Documentation with visual assets
+- `/moai:9-feedback` - Image generation improvements
+
+---
+
+## 🔗 Integration with Other Skills
+
+**Typical Workflow**:
+1. Use this Skill to generate visual assets
+2. Use moai-domain-frontend to implement in UI
+3. Use moai-docs-generation to document with images
+
+---
+
+## 📈 Version History
+
+**1.0.1** (2025-11-23)
+- 🔄 Refactored with Progressive Disclosure pattern
+- 📚 Detailed prompts moved to modules/
+- ✨ Core patterns highlighted in SKILL.md
+- ✨ Added model selection guide
+
+**1.0.0** (2025-11-12)
+- ✨ Nano Banana Pro (Gemini 3 Pro) support
+- ✨ Text-to-Image and Image-to-Image
+- ✨ Multi-turn refinement capability
+- ✨ Reference image guidance
+
+---
+
+**Maintained by**: alfred
+**Domain**: Image Generation & Visual Creation
+**Generated with**: MoAI-ADK Skill Factory
+
+
+---
+
+## Related Resources
+
+### Agents
+Check the [Agent Guide](/advanced/agents-guide) to see which agents use this skill.
+
+### Commands
+See [Core Commands](/reference/commands) for commands that leverage this skill.
+
+### Patterns
+Explore [Composition Patterns](/advanced/patterns) for real-world usage examples.
+
+---
+
+**Last Updated**: 2025-11-28
+**Skill Type**: Connector
+**Version**: 2.0

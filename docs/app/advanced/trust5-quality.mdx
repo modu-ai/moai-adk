@@ -1,0 +1,1609 @@
+# TRUST 5 Quality Framework
+
+MoAI-ADK's comprehensive quality assurance framework built on five essential principles: Test-first, Readable, Unified, Secured, and Trackable.
+
+## Overview
+
+TRUST 5 is an enterprise-grade quality framework that ensures every feature meets professional standards through systematic validation and automated enforcement.
+
+**Framework Benefits**:
+- **99% reduction** in post-deployment emergency patches
+- **Enterprise-grade** quality assurance across all code
+- **Automated enforcement** through manager-quality agent
+- **Proactive analysis** before code is written
+- **Multi-layer validation** from tests to security
+
+**Integration Points**:
+- Automatically enforced during `/moai:2-run` implementation
+- Quality gates prevent substandard code from progressing
+- Integrated with TDD workflow (RED-GREEN-REFACTOR)
+- Real-time feedback during development
+
+## The 5 Principles of TRUST
+
+### T: Test-First Development
+
+**Principle**: Write tests before implementation code.
+
+**Why It Matters**:
+- Catches bugs 70% earlier than manual testing
+- Guarantees 85%+ test coverage
+- Creates living documentation
+- Prevents regression issues
+
+**Implementation Pattern**:
+
+```python
+# RED Phase: Write failing test first
+def test_user_login_success():
+    """Test successful user login with valid credentials"""
+    # Arrange
+    user = create_test_user(email="test@example.com", password="secure123")
+
+    # Act
+    result = login_service.authenticate(
+        email="test@example.com",
+        password="secure123"
+    )
+
+    # Assert
+    assert result.success is True
+    assert result.token is not None
+    assert result.user_id == user.id
+
+# GREEN Phase: Implement minimal code to pass
+def authenticate(email: str, password: str) -> AuthResult:
+    """Authenticate user with email and password"""
+    user = db.get_user_by_email(email)
+    if user and verify_password(password, user.password_hash):
+        token = generate_jwt_token(user.id)
+        return AuthResult(success=True, token=token, user_id=user.id)
+    return AuthResult(success=False, token=None, user_id=None)
+
+# REFACTOR Phase: Optimize and clean
+def authenticate(email: str, password: str) -> AuthResult:
+    """
+    Authenticate user credentials and issue JWT token.
+
+    Args:
+        email: User email address
+        password: Plain text password (hashed internally)
+
+    Returns:
+        AuthResult with success status, token (if successful), and user_id
+
+    Raises:
+        AuthenticationError: If credentials are invalid
+    """
+    user = UserRepository.get_by_email(email)
+
+    if not user:
+        raise AuthenticationError("User not found")
+
+    if not PasswordHasher.verify(password, user.password_hash):
+        raise AuthenticationError("Invalid password")
+
+    token = JWTTokenService.generate(user.id, expires_in=3600)
+
+    return AuthResult(
+        success=True,
+        token=token,
+        user_id=user.id
+    )
+```
+
+**Test Coverage Requirements**:
+
+| Coverage Type | Target | Why |
+|--------------|--------|-----|
+| Line Coverage | 85%+ | Ensures most code paths tested |
+| Branch Coverage | 80%+ | Tests conditional logic |
+| Function Coverage | 90%+ | All functions have tests |
+| Integration Coverage | 70%+ | Component interactions tested |
+
+**Testing Pyramid**:
+
+```
+        /\
+       /  \      Unit Tests (70%)
+      /____\     - Fast execution (milliseconds)
+     /      \    - Isolated components
+    /________\   - High coverage
+   /          \  Integration Tests (20%)
+  /____________\ - API endpoints
+ /              \- Database interactions
+/________________\System Tests (10%)
+                  - End-to-end flows
+                  - User scenarios
+```
+
+**manager-tdd Agent Implementation**:
+
+The manager-tdd agent automatically enforces Test-First during `/moai:2-run`:
+
+```python
+# TDD Agent Workflow
+class ManagerTDD:
+    def execute_tdd_cycle(self, spec_id: str):
+        """Execute complete RED-GREEN-REFACTOR cycle"""
+
+        # Phase 1: RED (Write failing tests)
+        tests = self.generate_tests_from_spec(spec_id)
+        self.run_tests(tests)  # Should fail
+        assert all(test.status == "FAIL" for test in tests)
+
+        # Phase 2: GREEN (Minimal implementation)
+        code = self.implement_minimal_code(spec_id, tests)
+        self.run_tests(tests)  # Should pass
+        assert all(test.status == "PASS" for test in tests)
+
+        # Phase 3: REFACTOR (Optimize and clean)
+        code = self.refactor_code(code)
+        self.run_tests(tests)  # Should still pass
+        assert all(test.status == "PASS" for test in tests)
+
+        # Phase 4: Coverage validation
+        coverage = self.measure_coverage(code, tests)
+        assert coverage >= 0.85, f"Coverage {coverage} below 85%"
+
+        return TDDResult(code=code, tests=tests, coverage=coverage)
+```
+
+**Test Organization**:
+
+```
+tests/
+├── unit/               # Unit tests (isolated components)
+│   ├── test_auth.py
+│   ├── test_models.py
+│   └── test_utils.py
+├── integration/        # Integration tests (component interactions)
+│   ├── test_api_endpoints.py
+│   ├── test_database.py
+│   └── test_services.py
+├── e2e/               # End-to-end tests (full workflows)
+│   ├── test_user_journey.py
+│   └── test_checkout_flow.py
+└── fixtures/          # Test data and mocks
+    ├── users.json
+    └── mock_services.py
+```
+
+**Best Practices**:
+
+1. **AAA Pattern** (Arrange-Act-Assert):
+```python
+def test_calculate_discount():
+    # Arrange: Set up test data
+    cart = ShoppingCart()
+    cart.add_item(Item(price=100, quantity=2))
+
+    # Act: Execute the behavior
+    discount = calculate_discount(cart, coupon="SAVE20")
+
+    # Assert: Verify the result
+    assert discount == 40  # 20% of 200
+```
+
+2. **Single Responsibility per Test**:
+```python
+# ❌ Bad: Testing multiple things
+def test_user_operations():
+    user = create_user()
+    update_user(user)
+    delete_user(user)
+    # Too many responsibilities
+
+# ✅ Good: One test per behavior
+def test_create_user():
+    user = create_user(email="test@example.com")
+    assert user.email == "test@example.com"
+
+def test_update_user():
+    user = create_user()
+    updated = update_user(user, name="New Name")
+    assert updated.name == "New Name"
+
+def test_delete_user():
+    user = create_user()
+    result = delete_user(user)
+    assert result.success is True
+```
+
+3. **Use Descriptive Test Names**:
+```python
+# ❌ Bad: Unclear intent
+def test_login():
+    pass
+
+# ✅ Good: Clear behavior description
+def test_user_login_success_with_valid_credentials():
+    pass
+
+def test_user_login_fails_with_invalid_password():
+    pass
+
+def test_user_login_locks_account_after_five_failures():
+    pass
+```
+
+---
+
+### R: Readable Code
+
+**Principle**: Code should be self-documenting and easily understood.
+
+**Why It Matters**:
+- Reduces onboarding time by 60%
+- Minimizes maintenance costs
+- Prevents bugs from misunderstanding
+- Improves team collaboration
+
+**Readability Guidelines**:
+
+**1. Clear Naming Conventions**:
+
+```python
+# ❌ Bad: Unclear abbreviations
+def calc(u, p):
+    return u * p * 0.85
+
+# ✅ Good: Descriptive names
+def calculate_discounted_price(unit_price: float, quantity: int) -> float:
+    """
+    Calculate final price with standard 15% discount.
+
+    Args:
+        unit_price: Price per unit in USD
+        quantity: Number of units purchased
+
+    Returns:
+        Final price after applying 15% discount
+    """
+    STANDARD_DISCOUNT_RATE = 0.85
+    return unit_price * quantity * STANDARD_DISCOUNT_RATE
+```
+
+**2. Function Size Limits**:
+
+| Metric | Target | Rationale |
+|--------|--------|-----------|
+| Lines per function | < 50 | Easier to understand and test |
+| Parameters | < 5 | Simpler function signatures |
+| Nesting depth | < 4 | Reduces cognitive load |
+| Cyclomatic complexity | < 10 | Fewer code paths to trace |
+
+**3. Code Documentation**:
+
+```python
+from typing import Optional, List
+from datetime import datetime
+
+class UserService:
+    """
+    Service layer for user management operations.
+
+    This service handles user authentication, profile management,
+    and account lifecycle operations. All methods enforce
+    security policies and audit logging.
+
+    Example:
+        >>> service = UserService(db_session)
+        >>> user = service.create_user(email="test@example.com")
+        >>> service.verify_email(user.id, token="abc123")
+    """
+
+    def create_user(
+        self,
+        email: str,
+        password: str,
+        name: Optional[str] = None
+    ) -> User:
+        """
+        Create new user account with email verification.
+
+        This method:
+        1. Validates email format and uniqueness
+        2. Hashes password using bcrypt
+        3. Sends verification email
+        4. Creates audit log entry
+
+        Args:
+            email: Valid email address (RFC 5322)
+            password: Plain text password (min 8 chars)
+            name: Optional display name
+
+        Returns:
+            Created User object with unverified status
+
+        Raises:
+            ValidationError: If email format invalid
+            DuplicateUserError: If email already exists
+            WeakPasswordError: If password too weak
+
+        Example:
+            >>> user = service.create_user(
+            ...     email="john@example.com",
+            ...     password="SecurePass123!",
+            ...     name="John Doe"
+            ... )
+            >>> assert user.email_verified is False
+        """
+        # Implementation here
+        pass
+```
+
+**4. Code Organization**:
+
+```
+src/
+├── models/              # Data models (business entities)
+│   ├── user.py
+│   └── product.py
+├── services/            # Business logic layer
+│   ├── auth_service.py
+│   └── order_service.py
+├── repositories/        # Data access layer
+│   ├── user_repository.py
+│   └── order_repository.py
+├── api/                 # API endpoints
+│   ├── routes/
+│   │   ├── auth.py
+│   │   └── orders.py
+│   └── middleware/
+│       ├── auth.py
+│       └── logging.py
+└── utils/              # Shared utilities
+    ├── validators.py
+    └── formatters.py
+```
+
+**5. Consistent Formatting**:
+
+```python
+# Use automated formatters
+# - Black (Python): Line length 88, automatic formatting
+# - Prettier (TypeScript/JavaScript): Consistent style
+# - Ruff: Fast linting and formatting
+
+# Example: Black formatted code
+from typing import Dict, List, Optional
+
+
+class DataProcessor:
+    """Process and transform data according to business rules."""
+
+    def __init__(self, config: Dict[str, any]) -> None:
+        self.config = config
+        self.cache = {}
+
+    def process(
+        self,
+        data: List[Dict[str, any]],
+        filters: Optional[List[str]] = None,
+    ) -> List[Dict[str, any]]:
+        """
+        Process data with optional filtering.
+
+        Args:
+            data: Raw data records
+            filters: Optional list of filter criteria
+
+        Returns:
+            Processed and filtered data
+        """
+        if filters is None:
+            filters = []
+
+        processed = [self._transform(record) for record in data]
+        filtered = [
+            record for record in processed if self._matches_filters(record, filters)
+        ]
+
+        return filtered
+```
+
+**manager-quality Readability Checks**:
+
+```python
+class ReadabilityValidator:
+    """Automated readability validation"""
+
+    RULES = {
+        "max_function_lines": 50,
+        "max_parameters": 5,
+        "max_nesting_depth": 4,
+        "max_complexity": 10,
+        "min_docstring_coverage": 0.80,
+    }
+
+    def validate(self, code_file: str) -> ValidationResult:
+        """Run all readability checks"""
+        results = []
+
+        # Check function length
+        for func in self.extract_functions(code_file):
+            if len(func.lines) > self.RULES["max_function_lines"]:
+                results.append(
+                    Issue(
+                        severity="WARNING",
+                        message=f"Function {func.name} too long ({len(func.lines)} lines)",
+                        suggestion="Break into smaller functions"
+                    )
+                )
+
+        # Check docstring coverage
+        coverage = self.calculate_docstring_coverage(code_file)
+        if coverage < self.RULES["min_docstring_coverage"]:
+            results.append(
+                Issue(
+                    severity="ERROR",
+                    message=f"Docstring coverage {coverage:.0%} below 80%",
+                    suggestion="Add docstrings to public functions and classes"
+                )
+            )
+
+        return ValidationResult(issues=results, passed=len(results) == 0)
+```
+
+---
+
+### U: Unified Standards
+
+**Principle**: Maintain consistent coding standards across the entire codebase.
+
+**Why It Matters**:
+- Reduces cognitive load when reading code
+- Prevents style-related merge conflicts
+- Enables automated tooling
+- Improves code review efficiency
+
+**Unified Standards Categories**:
+
+**1. Code Style Standards**:
+
+```python
+# Python: PEP 8 + Black + Ruff
+# - Line length: 88 characters
+# - Indentation: 4 spaces
+# - Quotes: Double quotes for strings
+# - Import order: stdlib → third-party → local
+
+# Correct example
+from typing import Dict, List, Optional
+
+import requests
+from pydantic import BaseModel
+
+from .models import User
+from .services import UserService
+
+
+class UserAPI:
+    """REST API client for user operations."""
+
+    def __init__(self, base_url: str, api_key: str) -> None:
+        self.base_url = base_url
+        self.api_key = api_key
+
+    def get_user(self, user_id: int) -> Optional[User]:
+        """Fetch user by ID."""
+        response = requests.get(
+            f"{self.base_url}/users/{user_id}",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+        )
+        return User(**response.json()) if response.ok else None
+```
+
+**2. Naming Conventions**:
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Variables | snake_case | `user_count`, `is_active` |
+| Functions | snake_case | `get_user()`, `calculate_total()` |
+| Classes | PascalCase | `UserService`, `OrderRepository` |
+| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`, `API_VERSION` |
+| Private members | _leading_underscore | `_internal_cache`, `_validate()` |
+| Modules | lowercase | `auth.py`, `database.py` |
+
+**3. Type Annotations**:
+
+```python
+# Always use type hints (Python 3.11+)
+from typing import Dict, List, Optional, Union
+from datetime import datetime
+
+
+def process_orders(
+    orders: List[Dict[str, any]],
+    start_date: datetime,
+    end_date: Optional[datetime] = None,
+) -> Dict[str, Union[int, float]]:
+    """
+    Process orders within date range and return statistics.
+
+    Args:
+        orders: List of order dictionaries
+        start_date: Filter start date (inclusive)
+        end_date: Optional filter end date (exclusive)
+
+    Returns:
+        Dictionary with order statistics:
+        - total_count: Number of orders
+        - total_amount: Sum of order values
+        - average_amount: Mean order value
+    """
+    filtered_orders = [
+        order
+        for order in orders
+        if start_date <= order["created_at"] < (end_date or datetime.now())
+    ]
+
+    total_amount = sum(order["amount"] for order in filtered_orders)
+    total_count = len(filtered_orders)
+
+    return {
+        "total_count": total_count,
+        "total_amount": total_amount,
+        "average_amount": total_amount / total_count if total_count > 0 else 0,
+    }
+```
+
+**4. Error Handling Standards**:
+
+```python
+# Use custom exception hierarchy
+class ApplicationError(Exception):
+    """Base exception for all application errors."""
+    pass
+
+
+class ValidationError(ApplicationError):
+    """Raised when data validation fails."""
+    pass
+
+
+class AuthenticationError(ApplicationError):
+    """Raised when authentication fails."""
+    pass
+
+
+class AuthorizationError(ApplicationError):
+    """Raised when user lacks required permissions."""
+    pass
+
+
+# Consistent error handling pattern
+def create_user(email: str, password: str) -> User:
+    """
+    Create new user with validation.
+
+    Args:
+        email: User email address
+        password: Plain text password
+
+    Returns:
+        Created User object
+
+    Raises:
+        ValidationError: If email or password invalid
+        DuplicateUserError: If email already exists
+    """
+    # Validate inputs
+    if not is_valid_email(email):
+        raise ValidationError(f"Invalid email format: {email}")
+
+    if len(password) < 8:
+        raise ValidationError("Password must be at least 8 characters")
+
+    # Check for duplicates
+    if user_exists(email):
+        raise DuplicateUserError(f"User already exists: {email}")
+
+    # Create user
+    try:
+        user = User.create(email=email, password=hash_password(password))
+        return user
+    except DatabaseError as e:
+        # Log and re-raise as application error
+        logger.error(f"Failed to create user: {e}")
+        raise ApplicationError("Failed to create user") from e
+```
+
+**5. Configuration Management**:
+
+```python
+# Centralized configuration using Pydantic
+from pydantic import BaseSettings, Field
+from typing import Optional
+
+
+class DatabaseConfig(BaseSettings):
+    """Database configuration."""
+
+    host: str = Field(..., env="DB_HOST")
+    port: int = Field(5432, env="DB_PORT")
+    database: str = Field(..., env="DB_NAME")
+    username: str = Field(..., env="DB_USER")
+    password: str = Field(..., env="DB_PASSWORD")
+    pool_size: int = Field(10, env="DB_POOL_SIZE")
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+
+class ApplicationConfig(BaseSettings):
+    """Application-wide configuration."""
+
+    app_name: str = "MoAI App"
+    debug: bool = False
+    log_level: str = "INFO"
+
+    database: DatabaseConfig = DatabaseConfig()
+
+    api_key: str = Field(..., env="API_KEY")
+    secret_key: str = Field(..., env="SECRET_KEY")
+
+    class Config:
+        env_file = ".env"
+
+
+# Usage
+config = ApplicationConfig()
+print(f"Connecting to {config.database.host}:{config.database.port}")
+```
+
+**manager-quality Unified Standards Validation**:
+
+```python
+class UnifiedStandardsValidator:
+    """Validate code against unified standards"""
+
+    def validate_project(self, project_path: str) -> ValidationResult:
+        """Run comprehensive standards validation"""
+        results = []
+
+        # 1. Code style validation (Black, Ruff)
+        style_result = self.run_formatter_check(project_path)
+        results.extend(style_result.issues)
+
+        # 2. Type annotation coverage
+        type_coverage = self.check_type_annotations(project_path)
+        if type_coverage < 0.90:
+            results.append(
+                Issue(
+                    severity="WARNING",
+                    message=f"Type annotation coverage {type_coverage:.0%} below 90%",
+                    suggestion="Add type hints to function signatures",
+                )
+            )
+
+        # 3. Naming convention validation
+        naming_issues = self.validate_naming_conventions(project_path)
+        results.extend(naming_issues)
+
+        # 4. Import order validation
+        import_issues = self.validate_import_order(project_path)
+        results.extend(import_issues)
+
+        # 5. Configuration consistency
+        config_issues = self.validate_configuration(project_path)
+        results.extend(config_issues)
+
+        return ValidationResult(
+            issues=results,
+            passed=all(issue.severity != "ERROR" for issue in results),
+        )
+```
+
+**Automated Enforcement**:
+
+```yaml
+# .github/workflows/quality.yml
+name: Code Quality
+
+on: [push, pull_request]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Format check (Black)
+        run: |
+          pip install black
+          black --check .
+
+      - name: Lint check (Ruff)
+        run: |
+          pip install ruff
+          ruff check .
+
+      - name: Type check (mypy)
+        run: |
+          pip install mypy
+          mypy --strict .
+
+      - name: Test coverage
+        run: |
+          pip install pytest pytest-cov
+          pytest --cov=src --cov-report=term-missing --cov-fail-under=85
+```
+
+---
+
+### S: Secured
+
+**Principle**: Implement security best practices at every layer.
+
+**Why It Matters**:
+- Prevents data breaches and vulnerabilities
+- Ensures compliance with regulations (GDPR, HIPAA)
+- Protects user privacy and trust
+- Reduces legal and financial risks
+
+**Security Layers**:
+
+**1. Authentication & Authorization**:
+
+```python
+# JWT-based authentication with proper security
+from datetime import datetime, timedelta
+import jwt
+from passlib.context import CryptContext
+
+
+class AuthenticationService:
+    """Secure authentication service."""
+
+    def __init__(self, secret_key: str, algorithm: str = "HS256"):
+        self.secret_key = secret_key
+        self.algorithm = algorithm
+        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    def hash_password(self, password: str) -> str:
+        """Hash password using bcrypt."""
+        return self.pwd_context.hash(password)
+
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify password against hash."""
+        return self.pwd_context.verify(plain_password, hashed_password)
+
+    def create_access_token(self, user_id: int, expires_delta: timedelta = None) -> str:
+        """
+        Create JWT access token with expiration.
+
+        Args:
+            user_id: User identifier
+            expires_delta: Token lifetime (default 1 hour)
+
+        Returns:
+            Signed JWT token string
+        """
+        if expires_delta is None:
+            expires_delta = timedelta(hours=1)
+
+        expire = datetime.utcnow() + expires_delta
+
+        to_encode = {
+            "sub": str(user_id),
+            "exp": expire,
+            "iat": datetime.utcnow(),
+        }
+
+        encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
+        return encoded_jwt
+
+    def verify_token(self, token: str) -> Optional[int]:
+        """
+        Verify JWT token and extract user ID.
+
+        Args:
+            token: JWT token string
+
+        Returns:
+            User ID if valid, None otherwise
+        """
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            user_id = int(payload.get("sub"))
+            return user_id
+        except jwt.ExpiredSignatureError:
+            logger.warning("Token expired")
+            return None
+        except jwt.InvalidTokenError:
+            logger.warning("Invalid token")
+            return None
+```
+
+**2. Input Validation**:
+
+```python
+from pydantic import BaseModel, Field, validator
+from typing import Optional
+
+
+class UserCreateRequest(BaseModel):
+    """Validated user creation request."""
+
+    email: str = Field(..., regex=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+    password: str = Field(..., min_length=8, max_length=128)
+    name: Optional[str] = Field(None, max_length=100)
+
+    @validator("password")
+    def validate_password_strength(cls, v):
+        """Ensure password meets complexity requirements."""
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
+            raise ValueError("Password must contain at least one special character")
+        return v
+
+    @validator("name")
+    def sanitize_name(cls, v):
+        """Remove potentially dangerous characters."""
+        if v:
+            # Remove HTML tags, scripts, etc.
+            import re
+            v = re.sub(r"<[^>]+>", "", v)
+            v = v.strip()
+        return v
+```
+
+**3. SQL Injection Prevention**:
+
+```python
+# ❌ WRONG: Vulnerable to SQL injection
+def get_user_by_email(email: str) -> Optional[User]:
+    query = f"SELECT * FROM users WHERE email = '{email}'"
+    result = db.execute(query)
+    return result.first()
+
+# ✅ CORRECT: Use parameterized queries
+def get_user_by_email(email: str) -> Optional[User]:
+    query = "SELECT * FROM users WHERE email = :email"
+    result = db.execute(query, {"email": email})
+    return result.first()
+
+# ✅ CORRECT: Use ORM (SQLAlchemy)
+def get_user_by_email(email: str) -> Optional[User]:
+    return db.query(User).filter(User.email == email).first()
+```
+
+**4. Secrets Management**:
+
+```python
+# NEVER hardcode secrets
+# ❌ WRONG
+API_KEY = "sk-1234567890abcdef"
+DATABASE_PASSWORD = "mypassword123"
+
+# ✅ CORRECT: Use environment variables
+import os
+
+API_KEY = os.getenv("API_KEY")
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
+
+if not API_KEY:
+    raise ValueError("API_KEY environment variable not set")
+
+# ✅ CORRECT: Use secrets management service
+from azure.keyvault.secrets import SecretClient
+from azure.identity import DefaultAzureCredential
+
+credential = DefaultAzureCredential()
+client = SecretClient(vault_url="https://myvault.vault.azure.net/", credential=credential)
+
+api_key = client.get_secret("api-key").value
+```
+
+**5. HTTPS and Secure Headers**:
+
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+
+app = FastAPI()
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://yourdomain.com"],  # Never use "*" in production
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
+
+# Trusted host middleware
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["yourdomain.com", "*.yourdomain.com"],
+)
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+
+    return response
+```
+
+**OWASP Top 10 Coverage**:
+
+| Risk | MoAI-ADK Protection | Implementation |
+|------|-------------------|----------------|
+| A01: Broken Access Control | Role-based authorization | Middleware validation |
+| A02: Cryptographic Failures | Strong encryption (bcrypt, JWT) | AuthenticationService |
+| A03: Injection | Parameterized queries, input validation | SQLAlchemy ORM |
+| A04: Insecure Design | SPEC-first security requirements | Security expert agent |
+| A05: Security Misconfiguration | Automated security headers | Middleware |
+| A06: Vulnerable Components | Dependency scanning | GitHub Dependabot |
+| A07: Identification Failures | Strong password policy | Pydantic validators |
+| A08: Software Integrity Failures | Code signing, SRI | CI/CD pipeline |
+| A09: Security Logging Failures | Comprehensive audit logging | Logging middleware |
+| A10: SSRF | Input validation, allowlisting | URL validators |
+
+**manager-quality Security Validation**:
+
+```python
+class SecurityValidator:
+    """Automated security validation"""
+
+    def validate(self, project_path: str) -> ValidationResult:
+        """Run security checks"""
+        results = []
+
+        # 1. Dependency vulnerability scan
+        vulnerabilities = self.scan_dependencies(project_path)
+        results.extend(vulnerabilities)
+
+        # 2. Hardcoded secrets detection
+        secrets = self.detect_hardcoded_secrets(project_path)
+        if secrets:
+            results.append(
+                Issue(
+                    severity="CRITICAL",
+                    message=f"Found {len(secrets)} hardcoded secrets",
+                    suggestion="Move secrets to environment variables",
+                    files=secrets,
+                )
+            )
+
+        # 3. SQL injection vulnerability scan
+        sql_issues = self.scan_sql_injection_risks(project_path)
+        results.extend(sql_issues)
+
+        # 4. XSS vulnerability scan
+        xss_issues = self.scan_xss_risks(project_path)
+        results.extend(xss_issues)
+
+        # 5. Authentication strength check
+        auth_issues = self.validate_authentication(project_path)
+        results.extend(auth_issues)
+
+        return ValidationResult(
+            issues=results,
+            passed=all(issue.severity != "CRITICAL" for issue in results),
+        )
+```
+
+---
+
+### T: Trackable
+
+**Principle**: Every change is version-controlled and traceable.
+
+**Why It Matters**:
+- Enables rollback to any previous state
+- Provides complete audit trail
+- Facilitates team collaboration
+- Supports compliance requirements
+
+**Git Workflow Integration**:
+
+**1. Conventional Commits**:
+
+```bash
+# Format: <type>(<scope>): <subject>
+
+# Types:
+# - feat: New feature
+# - fix: Bug fix
+# - docs: Documentation changes
+# - style: Code style changes (formatting)
+# - refactor: Code refactoring
+# - test: Adding or updating tests
+# - chore: Maintenance tasks
+
+# Examples:
+feat(auth): Add JWT authentication
+fix(api): Resolve null pointer in user endpoint
+docs(readme): Update installation instructions
+test(auth): Add integration tests for login flow
+refactor(database): Optimize query performance
+```
+
+**2. Branch Strategy**:
+
+```
+main (production)
+├── develop (integration)
+│   ├── feature/SPEC-001-user-auth
+│   ├── feature/SPEC-002-payment
+│   └── hotfix/critical-security-patch
+```
+
+**3. Automated Git Integration**:
+
+```python
+# manager-git agent workflow
+class ManagerGit:
+    """Automated Git workflow management"""
+
+    def create_commit(self, spec_id: str, changes: List[str]) -> GitCommit:
+        """
+        Create conventional commit with SPEC reference.
+
+        Args:
+            spec_id: SPEC identifier (e.g., "SPEC-001")
+            changes: List of changed files
+
+        Returns:
+            GitCommit object with hash and metadata
+        """
+        # Analyze changes
+        commit_type = self.determine_commit_type(changes)
+        scope = self.determine_scope(changes)
+
+        # Generate commit message
+        message = self.generate_commit_message(spec_id, commit_type, scope)
+
+        # Stage changes
+        self.git.add(changes)
+
+        # Create commit
+        commit = self.git.commit(message=message)
+
+        return GitCommit(hash=commit.hexsha, message=message, files=changes)
+
+    def generate_commit_message(
+        self, spec_id: str, commit_type: str, scope: str
+    ) -> str:
+        """Generate conventional commit message."""
+        spec = self.load_spec(spec_id)
+
+        subject = f"{commit_type}({scope}): {spec.title}"
+        body = f"""
+Implemented according to {spec_id}
+
+Changes:
+{self.summarize_changes()}
+
+Test Coverage: {self.calculate_coverage():.0%}
+Quality Score: {self.calculate_quality_score()}/100
+
+Closes #{spec_id}
+"""
+        return f"{subject}\n{body}"
+```
+
+**4. Change Tracking**:
+
+```python
+# Comprehensive audit logging
+import logging
+from datetime import datetime
+from typing import Dict, Any
+
+
+class AuditLogger:
+    """Track all system changes for compliance"""
+
+    def __init__(self, logger: logging.Logger):
+        self.logger = logger
+
+    def log_change(
+        self,
+        entity_type: str,
+        entity_id: int,
+        action: str,
+        changes: Dict[str, Any],
+        user_id: int,
+    ) -> None:
+        """
+        Log entity change with full context.
+
+        Args:
+            entity_type: Type of entity (User, Order, etc.)
+            entity_id: Entity identifier
+            action: Action performed (CREATE, UPDATE, DELETE)
+            changes: Dictionary of changed fields
+            user_id: User who made the change
+        """
+        audit_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "action": action,
+            "changes": changes,
+            "user_id": user_id,
+        }
+
+        self.logger.info(
+            f"AUDIT: {action} {entity_type}#{entity_id} by user#{user_id}",
+            extra=audit_entry,
+        )
+
+        # Store in database for compliance
+        self.store_audit_entry(audit_entry)
+
+
+# Usage example
+audit_logger = AuditLogger(logger)
+
+def update_user(user_id: int, updates: Dict[str, Any], current_user_id: int) -> User:
+    """Update user with audit trail."""
+    user = db.get_user(user_id)
+    old_values = {k: getattr(user, k) for k in updates.keys()}
+
+    # Apply updates
+    for key, value in updates.items():
+        setattr(user, key, value)
+
+    db.commit()
+
+    # Log the change
+    audit_logger.log_change(
+        entity_type="User",
+        entity_id=user_id,
+        action="UPDATE",
+        changes={"old": old_values, "new": updates},
+        user_id=current_user_id,
+    )
+
+    return user
+```
+
+**5. Deployment Tracking**:
+
+```yaml
+# Track every deployment
+# .moai/deployments/deployment-log.json
+{
+  "deployments": [
+    {
+      "id": "deploy-001",
+      "timestamp": "2025-11-28T10:30:00Z",
+      "environment": "production",
+      "version": "v1.2.0",
+      "git_commit": "abc123",
+      "spec_ids": ["SPEC-001", "SPEC-002"],
+      "deployed_by": "alfred",
+      "status": "success",
+      "rollback_available": true
+    }
+  ]
+}
+```
+
+---
+
+## manager-quality Agent Integration
+
+The manager-quality agent automatically enforces TRUST 5 during `/moai:2-run`:
+
+### Quality Gate Workflow
+
+```python
+class ManagerQuality:
+    """TRUST 5 quality validation orchestrator"""
+
+    def validate_implementation(self, spec_id: str) -> QualityReport:
+        """
+        Run comprehensive TRUST 5 validation.
+
+        Args:
+            spec_id: SPEC identifier
+
+        Returns:
+            QualityReport with pass/fail status and detailed metrics
+        """
+        report = QualityReport(spec_id=spec_id)
+
+        # T: Test-First validation
+        test_result = self.validate_test_first(spec_id)
+        report.add_result("Test-First", test_result)
+
+        # R: Readability validation
+        readability_result = self.validate_readability(spec_id)
+        report.add_result("Readability", readability_result)
+
+        # U: Unified standards validation
+        unified_result = self.validate_unified_standards(spec_id)
+        report.add_result("Unified Standards", unified_result)
+
+        # S: Security validation
+        security_result = self.validate_security(spec_id)
+        report.add_result("Security", security_result)
+
+        # T: Trackability validation
+        trackability_result = self.validate_trackability(spec_id)
+        report.add_result("Trackability", trackability_result)
+
+        # Calculate overall score
+        report.calculate_overall_score()
+
+        return report
+
+    def validate_test_first(self, spec_id: str) -> ValidationResult:
+        """Validate Test-First principle"""
+        results = []
+
+        # Check test coverage
+        coverage = self.measure_test_coverage(spec_id)
+        if coverage < 0.85:
+            results.append(
+                Issue(
+                    severity="ERROR",
+                    principle="Test-First",
+                    message=f"Test coverage {coverage:.0%} below 85%",
+                    suggestion="Add more unit and integration tests",
+                )
+            )
+
+        # Check test quality
+        test_quality = self.analyze_test_quality(spec_id)
+        if test_quality.has_assertions < 0.95:
+            results.append(
+                Issue(
+                    severity="WARNING",
+                    principle="Test-First",
+                    message="Some tests lack assertions",
+                    suggestion="Ensure all tests have meaningful assertions",
+                )
+            )
+
+        return ValidationResult(
+            principle="Test-First",
+            passed=all(issue.severity != "ERROR" for issue in results),
+            issues=results,
+            score=self.calculate_test_score(coverage, test_quality),
+        )
+```
+
+### Quality Metrics
+
+```python
+@dataclass
+class QualityMetrics:
+    """Comprehensive quality metrics"""
+
+    # Test-First metrics
+    test_coverage: float  # 0.0 - 1.0
+    test_count: int
+    assertion_count: int
+
+    # Readability metrics
+    avg_function_length: float
+    docstring_coverage: float
+    complexity_score: float
+
+    # Unified standards metrics
+    style_violations: int
+    type_annotation_coverage: float
+    naming_violations: int
+
+    # Security metrics
+    vulnerability_count: int
+    hardcoded_secrets: int
+    security_score: float  # 0-100
+
+    # Trackability metrics
+    commit_quality_score: float
+    audit_coverage: float
+    git_compliance: bool
+
+    def overall_score(self) -> float:
+        """Calculate weighted overall quality score (0-100)"""
+        weights = {
+            "test": 0.25,
+            "readability": 0.20,
+            "unified": 0.20,
+            "security": 0.25,
+            "trackability": 0.10,
+        }
+
+        scores = {
+            "test": self.test_coverage * 100,
+            "readability": (1 - self.complexity_score / 20) * 100,
+            "unified": (1 - self.style_violations / 100) * 100,
+            "security": self.security_score,
+            "trackability": self.commit_quality_score,
+        }
+
+        overall = sum(scores[k] * weights[k] for k in weights.keys())
+        return min(100, max(0, overall))
+```
+
+### Quality Report Example
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║               TRUST 5 Quality Report: SPEC-001               ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Overall Score: 92/100 ✅ PASS                               ║
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  T: Test-First Development                        95/100 ✅  ║
+║     • Test Coverage: 89% (target: 85%)                       ║
+║     • Test Count: 47 tests                                   ║
+║     • All tests passing                                      ║
+║                                                              ║
+║  R: Readable Code                                 88/100 ✅  ║
+║     • Avg Function Length: 23 lines (target: \<50)            ║
+║     • Docstring Coverage: 82% (target: 80%)                  ║
+║     • Complexity Score: 6.2 (target: \<10)                    ║
+║     ⚠ 2 functions exceed 40 lines                            ║
+║                                                              ║
+║  U: Unified Standards                             94/100 ✅  ║
+║     • Style Violations: 0                                    ║
+║     • Type Annotation Coverage: 94%                          ║
+║     • Import Order: Compliant                                ║
+║                                                              ║
+║  S: Secured                                       90/100 ✅  ║
+║     • Vulnerability Count: 0                                 ║
+║     • Hardcoded Secrets: 0                                   ║
+║     • OWASP Coverage: 9/10 risks mitigated                   ║
+║     ⚠ Recommend adding rate limiting                         ║
+║                                                              ║
+║  T: Trackable                                     93/100 ✅  ║
+║     • Git Compliance: Yes                                    ║
+║     • Conventional Commits: 100%                             ║
+║     • Audit Coverage: 93%                                    ║
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  Recommendations:                                            ║
+║  1. Refactor 2 long functions in auth_service.py             ║
+║  2. Add rate limiting middleware for API endpoints           ║
+║  3. Increase docstring coverage to 85%+                      ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## Quality Gates
+
+Quality gates prevent substandard code from progressing:
+
+### Gate Levels
+
+| Level | Requirements | Action if Failed |
+|-------|-------------|------------------|
+| **CRITICAL** | Security score > 80 | Block commit |
+| **ERROR** | Test coverage >= 85% | Block commit |
+| **WARNING** | Readability score >= 70 | Allow with warning |
+| **INFO** | Style violations < 10 | Log only |
+
+### Automated Enforcement
+
+```python
+class QualityGate:
+    """Enforce quality standards before commit"""
+
+    GATES = {
+        "CRITICAL": {
+            "security_score": 80,
+            "vulnerability_count": 0,
+        },
+        "ERROR": {
+            "test_coverage": 0.85,
+            "test_pass_rate": 1.0,
+        },
+        "WARNING": {
+            "readability_score": 70,
+            "complexity_max": 15,
+        },
+    }
+
+    def check(self, metrics: QualityMetrics) -> GateResult:
+        """Check if implementation passes quality gates"""
+        issues = []
+
+        # CRITICAL gates
+        if metrics.security_score < self.GATES["CRITICAL"]["security_score"]:
+            issues.append(
+                GateIssue(
+                    level="CRITICAL",
+                    message=f"Security score {metrics.security_score} below 80",
+                    blocking=True,
+                )
+            )
+
+        if metrics.vulnerability_count > 0:
+            issues.append(
+                GateIssue(
+                    level="CRITICAL",
+                    message=f"Found {metrics.vulnerability_count} vulnerabilities",
+                    blocking=True,
+                )
+            )
+
+        # ERROR gates
+        if metrics.test_coverage < self.GATES["ERROR"]["test_coverage"]:
+            issues.append(
+                GateIssue(
+                    level="ERROR",
+                    message=f"Test coverage {metrics.test_coverage:.0%} below 85%",
+                    blocking=True,
+                )
+            )
+
+        # Determine overall status
+        has_blocking = any(issue.blocking for issue in issues)
+
+        return GateResult(
+            passed=not has_blocking,
+            issues=issues,
+            can_commit=not has_blocking,
+        )
+```
+
+---
+
+## Best Practices
+
+### 1. Proactive Quality
+
+Run quality checks during development, not after:
+
+```bash
+# Pre-commit hook: .git/hooks/pre-commit
+#!/bin/bash
+
+echo "Running TRUST 5 quality checks..."
+
+# Test coverage
+pytest --cov=src --cov-fail-under=85 || exit 1
+
+# Code style
+black --check . || exit 1
+ruff check . || exit 1
+
+# Type checking
+mypy --strict src/ || exit 1
+
+# Security scan
+bandit -r src/ || exit 1
+
+echo "✅ All quality checks passed"
+```
+
+### 2. Continuous Monitoring
+
+Track quality trends over time:
+
+```python
+# Quality metrics history
+quality_history = {
+    "2025-11-01": {"overall_score": 85, "test_coverage": 0.82},
+    "2025-11-15": {"overall_score": 88, "test_coverage": 0.87},
+    "2025-11-28": {"overall_score": 92, "test_coverage": 0.89},
+}
+
+# Alert if quality degrades
+if current_score < previous_score - 5:
+    alert_team("Quality degradation detected")
+```
+
+### 3. Documentation
+
+Document quality decisions and trade-offs:
+
+```markdown
+# ADR-005: Quality Standards
+
+## Context
+Project requires enterprise-grade quality assurance.
+
+## Decision
+Adopt TRUST 5 framework with 85% coverage target.
+
+## Consequences
+- Longer initial development time
+- Fewer production bugs
+- Easier maintenance
+- Better team collaboration
+
+## Alternatives Considered
+1. No formal quality framework (rejected: too risky)
+2. 95% coverage target (rejected: diminishing returns)
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue 1: Test Coverage Below 85%**
+
+```bash
+# Identify untested code
+pytest --cov=src --cov-report=html
+
+# Open htmlcov/index.html to see coverage gaps
+
+# Add tests for uncovered lines
+```
+
+**Issue 2: Security Vulnerabilities**
+
+```bash
+# Scan for vulnerabilities
+bandit -r src/ -f json -o security-report.json
+
+# Update vulnerable dependencies
+pip install --upgrade package-name
+
+# Review and fix hardcoded secrets
+```
+
+**Issue 3: Code Complexity Too High**
+
+```python
+# ❌ Complex function (complexity: 15)
+def process_order(order):
+    if order.status == "pending":
+        if order.payment_method == "credit_card":
+            if order.amount > 1000:
+                if order.user.verified:
+                    # ... more nesting
+                    pass
+
+# ✅ Refactored (complexity: 4)
+def process_order(order):
+    if not can_process_order(order):
+        raise OrderProcessingError("Cannot process order")
+
+    payment_processor = get_payment_processor(order.payment_method)
+    return payment_processor.process(order)
+
+def can_process_order(order):
+    return (
+        order.status == "pending"
+        and is_payment_method_valid(order)
+        and is_amount_valid(order)
+        and order.user.verified
+    )
+```
+
+---
+
+## Next Steps
+
+- [Agent Delegation Patterns](/advanced/patterns)
+- [Skills Library](/advanced/skills-library)
+- [Performance Optimization](/advanced/performance-optimization)
+- [Development Workflow](/core/workflow)
+
+---
+
+**Last Updated**: 2025-11-28
+**Version**: 1.0.0
+**Framework**: TRUST 5 Quality Assurance

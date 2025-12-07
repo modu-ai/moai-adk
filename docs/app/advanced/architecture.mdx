@@ -1,0 +1,684 @@
+# MoAI-ADK System Architecture
+
+Comprehensive guide to MoAI-ADK's architecture, including the 5-tier agent hierarchy, component relationships, data flows, and system integration patterns.
+
+## Architecture Overview
+
+MoAI-ADK (Agentic Development Kit) is built on a layered architecture that separates concerns while maintaining tight integration between components.
+
+```mermaid
+graph TB
+    subgraph "User Layer"
+        USER[Developer/User]
+        CLI[Claude Code Interface]
+    end
+
+    subgraph "Orchestration Layer"
+        ALFRED[Mr.Alfred<br/>Super Agent Orchestrator]
+        CMD[Command System<br/>/moai:0-3, 9]
+    end
+
+    subgraph "Agent Layer - 5 Tiers"
+        T1[Tier 1: Core Planners]
+        T2[Tier 2: Workflow Managers]
+        T3[Tier 3: Domain Experts]
+        T4[Tier 4: Language Specialists]
+        T5[Tier 5: Tool Integrators]
+    end
+
+    subgraph "Skills Layer"
+        SKILLS[22 Specialized Skills<br/>Foundation, Workflow, Library, etc.]
+    end
+
+    subgraph "Integration Layer"
+        MCP[MCP Servers<br/>Context7, Playwright, etc.]
+        GIT[Git 3-Mode Strategy]
+        FS[File System Operations]
+    end
+
+    subgraph "Data Layer"
+        CONFIG[.moai/config/]
+        SPECS[.moai/specs/]
+        DOCS[.moai/docs/]
+        MEMORY[.moai/memory/]
+    end
+
+    USER --> CLI
+    CLI --> ALFRED
+    ALFRED --> CMD
+    CMD --> T1
+    T1 --> T2
+    T2 --> T3
+    T3 --> T4
+    T4 --> T5
+    T1 -.loads.-> SKILLS
+    T2 -.loads.-> SKILLS
+    T3 -.loads.-> SKILLS
+    T5 --> MCP
+    ALFRED --> GIT
+    ALFRED --> FS
+    FS --> CONFIG
+    FS --> SPECS
+    FS --> DOCS
+    FS --> MEMORY
+
+    style ALFRED fill:#e3f2fd
+    style SKILLS fill:#fff3e0
+    style MCP fill:#e8f5e9
+```
+
+---
+
+## Core Components
+
+### 1. Mr.Alfred - Super Agent Orchestrator
+
+**Role**: Central orchestrator that manages all commands, agents, and skills.
+
+**Responsibilities**:
+- User request analysis (8-step process)
+- Agent selection and delegation
+- Skill loading and management
+- Token budget optimization
+- Quality assurance coordination
+
+**Decision Flow**:
+
+```mermaid
+flowchart TD
+    START[User Request] --> ANALYZE[Step 1-3: Analyze & Clarify]
+    ANALYZE --> PLAN[Step 4: Call Plan Agent]
+    PLAN --> REPORT[Step 5: Report to User]
+    REPORT --> APPROVE{Step 6: User Approval?}
+    APPROVE -->|No| ANALYZE
+    APPROVE -->|Yes| DELEGATE[Step 7: Delegate to Agents]
+    DELEGATE --> INTEGRATE[Step 8: Integrate Results]
+    INTEGRATE --> END[Report to User]
+```
+
+**Configuration**:
+```json
+// .moai/config/config.json
+{
+  "language": {
+    "conversation_language": "ko",
+    "agent_prompt_language": "ko"
+  },
+  "constitution": {
+    "enforce_tdd": true,
+    "test_coverage_target": 90
+  }
+}
+```
+
+---
+
+### 2. Five-Tier Agent Hierarchy
+
+#### Tier 1: Core Planners (2 agents)
+
+```mermaid
+graph LR
+    A[core-planner] -->|Strategic Planning| B[Execution Plan]
+    C[core-quality] -->|Quality Gates| D[Validation Report]
+
+    style A fill:#e3f2fd
+    style C fill:#e8f5e9
+```
+
+**core-planner**:
+- Analyzes user requests
+- Creates execution strategies
+- Estimates complexity and time
+- Recommends agent combinations
+
+**core-quality**:
+- Enforces TRUST 5 principles
+- Validates test coverage (85%+)
+- Runs quality gates
+- Auto-generates missing tests
+
+#### Tier 2: Workflow Managers (6 agents)
+
+```mermaid
+graph TD
+    A[workflow-spec] --> B[SPEC Generation]
+    C[workflow-tdd] --> D[TDD Execution]
+    E[workflow-docs] --> F[Documentation]
+    G[workflow-git] --> H[Git Operations]
+    I[workflow-review] --> J[Code Review]
+    K[workflow-deployment] --> L[Deployment]
+
+    style A fill:#fff3e0
+    style C fill:#fff3e0
+    style E fill:#fff3e0
+    style G fill:#fff3e0
+    style I fill:#fff3e0
+    style K fill:#fff3e0
+```
+
+**Responsibilities**:
+- **workflow-spec**: EARS format SPEC creation
+- **workflow-tdd**: RED-GREEN-REFACTOR cycle management
+- **workflow-docs**: Documentation generation and validation
+- **workflow-git**: Git operations, branching, PR creation
+- **workflow-review**: Code review and analysis
+- **workflow-deployment**: Deployment orchestration
+
+#### Tier 3: Domain Experts (9 agents)
+
+```mermaid
+graph LR
+    subgraph Backend
+        A[code-backend]
+        B[code-database]
+        C[code-api]
+    end
+
+    subgraph Frontend
+        D[code-frontend]
+        E[design-uiux]
+    end
+
+    subgraph Operations
+        F[devops-expert]
+        G[security-expert]
+        H[performance-expert]
+        I[debug-expert]
+    end
+
+    style A fill:#e8f5e9
+    style D fill:#e8f5e9
+    style F fill:#e8f5e9
+```
+
+**Specializations**:
+- **code-backend**: Server-side logic, APIs, business logic
+- **code-frontend**: UI implementation, React/Vue/Angular
+- **code-database**: Schema design, migrations, optimization
+- **code-api**: RESTful/GraphQL API design
+- **security-expert**: OWASP Top 10, threat modeling
+- **performance-expert**: Profiling, optimization, caching
+- **design-uiux**: Design systems, accessibility (WCAG 2.1)
+- **devops-expert**: CI/CD, containerization, infrastructure
+- **debug-expert**: Error analysis, debugging strategies
+
+#### Tier 4: Language Specialists (5 agents)
+
+```mermaid
+graph TD
+    A[lang-python] -->|Python 3.13+| B[FastAPI, Django]
+    C[lang-typescript] -->|TS 5.9+| D[React 19, Next.js 15]
+    E[lang-rust] -->|Rust 1.75+| F[Tokio, Actix]
+    G[lang-go] -->|Go 1.22+| H[Gin, Fiber]
+    I[lang-java] -->|Java 21+| J[Spring Boot 3.2]
+
+    style A fill:#fce4ec
+    style C fill:#fce4ec
+    style E fill:#fce4ec
+    style G fill:#fce4ec
+    style I fill:#fce4ec
+```
+
+**Language-Specific Expertise**:
+- Latest language features and idioms
+- Framework best practices
+- Performance optimization patterns
+- Testing frameworks and tooling
+
+#### Tier 5: Tool Integrators (4 agents)
+
+```mermaid
+graph LR
+    A[mcp-context7] -->|Real-time Docs| B[API References]
+    C[mcp-figma] -->|Design Tokens| D[UI Components]
+    E[mcp-notion] -->|Knowledge Base| F[Documentation]
+    G[mcp-playwright] -->|E2E Testing| H[Test Reports]
+
+    style A fill:#f3e5f5
+    style C fill:#f3e5f5
+    style E fill:#f3e5f5
+    style G fill:#f3e5f5
+```
+
+**External Integrations**:
+- **mcp-context7**: Latest library documentation and version checking
+- **mcp-figma**: Design system sync, UI kit integration
+- **mcp-notion**: Workspace management, content databases
+- **mcp-playwright**: Web testing, visual regression
+
+---
+
+### 3. Skills System
+
+**Architecture**:
+
+```mermaid
+graph TD
+    subgraph Skill Loading
+        A[Request Analysis] --> B{Complexity?}
+        B -->|Simple| C[Quick Reference<br/>0 tokens]
+        B -->|Medium+| D[Auto-load Skill<br/>~8,470 tokens]
+    end
+
+    subgraph Skill Categories
+        E[Foundation Skills<br/>5 skills] --> F[Core execution,<br/>quality, context]
+        G[Workflow Skills<br/>5 skills] --> H[Project, docs,<br/>testing]
+        I[Library Skills<br/>4 skills] --> J[shadcn, Nextra,<br/>Mermaid, TOON]
+        K[Connector Skills<br/>4 skills] --> L[MCP, Figma,<br/>Notion, AI]
+        M[Language/Platform<br/>2 skills] --> N[25+ languages,<br/>9+ BaaS]
+        O[System Skills<br/>2 skills] --> P[Toolkit,<br/>Universal]
+    end
+
+    D --> E
+    D --> G
+    D --> I
+    D --> K
+    D --> M
+    D --> O
+
+    style C fill:#e8f5e9
+    style D fill:#fff3e0
+```
+
+**Progressive Disclosure Structure**:
+1. **Quick Reference (30s)**: Core capabilities, triggers
+2. **Implementation Guide (5min)**: Features, when to use, patterns
+3. **Core Patterns (10+min)**: Detailed implementations
+4. **Advanced Documentation**: Deep-dive modules
+5. **Works Well With**: Related components
+
+---
+
+### 4. Command System
+
+**Command Execution Flow**:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Alfred
+    participant Command
+    participant Agent
+    participant Skill
+    participant FileSystem
+
+    User->>Alfred: /moai:1-plan "feature"
+    Alfred->>Command: Load command definition
+    Command->>Alfred: Parse arguments
+    Alfred->>Skill: Load moai-foundation-core
+    Skill-->>Alfred: Skill content loaded
+    Alfred->>Agent: Task(subagent_type="workflow-spec")
+    Agent->>FileSystem: Create .moai/specs/SPEC-001/
+    FileSystem-->>Agent: Files created
+    Agent-->>Alfred: SPEC generated
+    Alfred-->>User: SPEC-001 created successfully
+```
+
+**Available Commands**:
+1. `/moai:0-project` → manager-project agent
+2. `/moai:1-plan` → workflow-spec agent
+3. `/moai:2-run` → workflow-tdd + domain experts
+4. `/moai:3-sync` → workflow-docs + workflow-git
+5. `/moai:9-feedback` → manager-strategy agent
+6. `/clear` → System command (context reset)
+
+---
+
+### 5. Data Layer
+
+**Directory Structure**:
+
+```
+.moai/
+├── config/
+│   ├── config.json           # Main configuration
+│   └── presets/              # Git strategy presets
+├── specs/
+│   └── SPEC-{ID}/
+│       ├── spec.md           # Requirements (EARS)
+│       ├── plan.md           # Implementation plan
+│       ├── acceptance.md     # Acceptance criteria
+│       └── implementation.md # Implementation notes
+├── docs/
+│   ├── architecture.md
+│   ├── api-reference.md
+│   └── guides/
+├── memory/
+│   └── last-session-state.json  # Session persistence
+├── logs/
+│   └── sessions/
+└── reports/
+    └── quality/
+```
+
+**Data Flow**:
+
+```mermaid
+graph LR
+    A[User Input] --> B[Alfred]
+    B --> C[.moai/config/]
+    C --> D{Config Values}
+    D --> E[Agent Selection]
+    E --> F[.moai/specs/]
+    F --> G[SPEC Document]
+    G --> H[Implementation]
+    H --> I[.moai/docs/]
+    I --> J[Documentation]
+    B --> K[.moai/memory/]
+    K --> L[Session State]
+
+    style C fill:#e3f2fd
+    style F fill:#fff3e0
+    style I fill:#e8f5e9
+    style K fill:#fce4ec
+```
+
+---
+
+## Integration Patterns
+
+### 1. MCP Server Integration
+
+```mermaid
+graph LR
+    subgraph Alfred Ecosystem
+        A[Alfred]
+        B[mcp-context7 Agent]
+    end
+
+    subgraph MCP Servers
+        C[Context7 Server<br/>@upstash/context7-mcp]
+        D[Playwright Server<br/>@anthropic-ai/playwright-mcp]
+        E[Sequential Thinking<br/>@modelcontextprotocol/server-sequential-thinking]
+    end
+
+    A --> B
+    B --> C
+    B --> D
+    B --> E
+
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#e8f5e9
+    style E fill:#fce4ec
+```
+
+**Configuration** (.mcp.json):
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/playwright-mcp@latest"]
+    }
+  }
+}
+```
+
+### 2. Git 3-Mode Strategy
+
+```mermaid
+graph TD
+    A{Git Mode?} --> B[Manual Mode]
+    A --> C[Personal Mode]
+    A --> D[Team Mode]
+
+    B --> B1[Local commits only]
+    B1 --> B2[Manual branch creation]
+    B2 --> B3[Manual push/PR]
+
+    C --> C1[Auto branch creation]
+    C1 --> C2[Auto commit + push]
+    C2 --> C3[Manual PR creation]
+
+    D --> D1[Auto branch creation]
+    D1 --> D2[Auto commit + push]
+    D2 --> D3[Auto Draft PR]
+    D3 --> D4[Required reviews: 1+]
+
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#e8f5e9
+```
+
+**Configuration**:
+```json
+{
+  "git_strategy": {
+    "mode": "manual",  // "personal" or "team"
+    "automation": {
+      "auto_branch": false,
+      "auto_commit": true,
+      "auto_pr": false,
+      "auto_push": false
+    }
+  }
+}
+```
+
+### 3. TDD Workflow Integration
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Alfred
+    participant TDD_Manager as workflow-tdd
+    participant Backend as code-backend
+    participant Quality as core-quality
+    participant Git as workflow-git
+
+    User->>Alfred: /moai:2-run SPEC-001
+    Alfred->>TDD_Manager: Start TDD cycle
+    TDD_Manager->>TDD_Manager: RED: Write failing tests
+    TDD_Manager->>Backend: GREEN: Implement code
+    Backend-->>TDD_Manager: Implementation complete
+    TDD_Manager->>TDD_Manager: REFACTOR: Optimize
+    TDD_Manager->>Quality: Validate coverage
+    Quality-->>TDD_Manager: 87% coverage ✓
+    TDD_Manager->>Git: Commit changes
+    Git-->>Alfred: Committed to feature/SPEC-001
+    Alfred-->>User: TDD cycle complete
+```
+
+---
+
+## Token Budget Architecture
+
+### Context Window Management
+
+```mermaid
+graph TD
+    A[200K Token Budget] --> B{Current Usage?}
+    B -->|< 150K| C[Continue normally]
+    B -->|150K-180K| D[Warning: Approaching limit]
+    B -->|> 180K| E[Critical: Execute /clear]
+
+    C --> F[Load skills conditionally]
+    D --> G[Aggressive skill loading]
+    E --> H[Context reset]
+    H --> I[Preserve session state]
+    I --> J[.moai/memory/last-session-state.json]
+
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+    style J fill:#e8f5e9
+```
+
+**Optimization Strategies**:
+1. **Conditional Skill Loading**: Only load when needed
+2. **Quick Reference**: 0-token inline docs for simple tasks
+3. **Task Delegation**: New 200K context per agent
+4. **Aggressive /clear**: Reset at natural boundaries
+
+---
+
+## Security Architecture
+
+### IAM & Permissions
+
+```mermaid
+graph TD
+    A[Permission Tiers] --> B[Read Only]
+    A --> C[Bash Execution]
+    A --> D[Write Operations]
+    A --> E[Admin Operations]
+
+    B --> B1[Glob, Grep, Read]
+    C --> C1[Bash commands]
+    D --> D1[Write, Edit files]
+    E --> E1[Git operations,<br/>System config]
+
+    style B fill:#e8f5e9
+    style C fill:#fff3e0
+    style D fill:#fce4ec
+    style E fill:#ffebee
+```
+
+**Permission Hierarchy**:
+- **Read**: Lowest risk (file reading, searching)
+- **Bash**: Medium risk (command execution)
+- **Write**: High risk (file modifications)
+- **Admin**: Highest risk (Git, system changes)
+
+**Configuration** (.claude/settings.json):
+```json
+{
+  "permissions": {
+    "allowedTools": ["Read", "Glob", "Grep", "Bash", "Write", "Edit"],
+    "allowedDirectories": [
+      "/Users/goos/worktrees/MoAI-ADK/SPEC-NEXTRA-001"
+    ]
+  }
+}
+```
+
+---
+
+## Performance Characteristics
+
+### Agent Delegation Performance
+
+| Pattern | Token Cost | Response Time | Use Case |
+|---------|------------|---------------|----------|
+| Quick Reference | 0 tokens | \<1s | Simple queries |
+| Single Skill Load | ~8,470 tokens | 1-2s | Medium complexity |
+| Multi-Skill Load | ~25,000 tokens | 3-5s | High complexity |
+| Multi-Agent Sequential | Variable | 10-30s | Complex workflows |
+| Multi-Agent Parallel | Variable | 5-15s | Independent tasks |
+
+### Skill Loading Performance
+
+```python
+# Performance comparison
+if complexity == "simple":
+    # 0 tokens, instant
+    use_quick_reference()
+
+elif complexity == "medium":
+    # 8,470 tokens, ~1-2s
+    Skill("moai-foundation-core")
+
+elif complexity == "high":
+    # 25,000+ tokens, ~3-5s
+    Skill("moai-foundation-core")
+    Skill("moai-lang-unified")
+    Skill("moai-platform-baas")
+```
+
+---
+
+## Extension Points
+
+### 1. Custom Agents
+
+Create custom agents in `.claude/agents/`:
+
+```yaml
+---
+name: custom-agent
+type: expert
+domain: custom-domain
+skills: moai-foundation-core, moai-lang-unified
+---
+
+# Agent Implementation
+```
+
+### 2. Custom Skills
+
+Create custom skills in `.claude/skills/`:
+
+```markdown
+---
+name: custom-skill
+version: 1.0.0
+---
+
+## Quick Reference (30 seconds)
+## Implementation Guide (5 minutes)
+## Core Patterns
+```
+
+### 3. Custom Commands
+
+Create custom commands in `.claude/commands/`:
+
+```markdown
+---
+command: /custom:action
+description: Custom workflow command
+---
+
+# Command Implementation
+```
+
+---
+
+## Deployment Architecture
+
+### Local Development
+
+```
+Developer Machine
+├── MoAI-ADK Project
+├── Claude Code (Alfred)
+├── MCP Servers (local)
+└── Git (local repository)
+```
+
+### Team Collaboration
+
+```
+Team Environment
+├── GitHub Repository
+│   ├── .moai/ (shared config)
+│   ├── .claude/ (shared resources)
+│   └── src/ (code)
+├── CI/CD Pipeline
+│   ├── Quality Gates
+│   ├── Test Execution
+│   └── Documentation Build
+└── Shared MCP Servers
+```
+
+---
+
+## Related Resources
+
+- [5-Tier Agent Hierarchy](/advanced/agents-guide)
+- [Skills Library](/skills)
+- [Command Reference](/commands)
+- [TRUST 5 Quality](/advanced/trust5-quality)
+- [Performance Optimization](/advanced/performance-optimization)
+
+---
+
+**Last Updated**: 2025-11-28
+**Architecture Version**: 2.0
+**Status**: Production

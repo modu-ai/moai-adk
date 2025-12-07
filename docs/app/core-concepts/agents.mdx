@@ -1,0 +1,58 @@
+# 에이전트 시스템
+
+MoAI-ADK의 26개 전문 에이전트에 대해 알아봅니다.
+
+## 에이전트란?
+
+에이전트는 특정 도메인에서 전문적인 작업을 수행하는 AI입니다.
+
+### 에이전트 계층 구조
+
+```
+Tier 1: expert-*  (도메인 전문가)
+Tier 2: manager-* (워크플로우 관리자)
+Tier 3: builder-* (메타 생성기)
+Tier 4: mcp-*     (MCP 통합)
+Tier 5: ai-*      (AI 서비스 통합)
+```
+
+## 도메인 전문가 (Tier 1)
+
+- **expert-backend**: 백엔드 아키텍처, API 설계
+- **expert-frontend**: 프론트엔드 UI/UX, 컴포넌트 개발
+- **expert-database**: 데이터베이스 설계, 쿼리 최적화
+- **expert-devops**: CI/CD, 배포, 인프라
+- **expert-security**: 보안, 취약점 분석
+- **expert-uiux**: UI/UX 디자인
+- **expert-debug**: 디버깅, 성능 분석
+
+## 워크플로우 관리자 (Tier 2)
+
+- **manager-spec**: SPEC 생성 및 관리
+- **manager-tdd**: TDD 프로세스 자동화
+- **manager-docs**: 문서 생성 및 동기화
+- **manager-project**: 프로젝트 초기화
+- **manager-quality**: 품질 검증
+- **manager-git**: Git 워크플로우 관리
+- **manager-strategy**: 개발 전략 수립
+- **manager-claude-code**: Claude Code 통합
+
+## 메타 생성기 (Tier 3)
+
+- **builder-agent**: 새로운 에이전트 생성
+- **builder-skill**: 새로운 스킬 생성
+- **builder-command**: 새로운 명령어 생성
+
+## MCP 통합 (Tier 4)
+
+- **mcp-context7**: 실시간 라이브러리 문서 조회
+- **mcp-sequential-thinking**: 복잡한 문제 분석
+- **mcp-figma**: Figma 디자인 통합
+- **mcp-notion**: Notion 연동
+- **mcp-playwright**: 웹 자동화 테스트
+
+## AI 서비스 (Tier 5)
+
+- **ai-nano-banana**: Banana AI 연동
+
+더 자세한 정보는 [심화 학습](/advanced/agents-guide)을 참고하세요.

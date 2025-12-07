@@ -1,0 +1,26 @@
+# 실제 사용 예제
+
+실무에서 Git Worktree를 활용하는 예제들입니다.
+
+## 예제 1: 새 기능 개발
+
+```bash
+# SPEC 생성
+/moai:1-plan "사용자 프로필 기능"
+
+# 워크트리 생성
+moai-worktree create SPEC-002
+
+# 코드 작성 및 테스트
+/moai:2-run SPEC-002
+
+# 변경사항 커밋
+git add .
+git commit -m "feat: add user profile"
+
+# 메인 브랜치로 병합
+git checkout main
+git merge feature/SPEC-002
+```
+
+더 많은 예제는 문서의 다른 섹션을 참고하세요.

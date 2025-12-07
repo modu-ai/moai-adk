@@ -1,0 +1,862 @@
+---
+title: "프롬프트 문제 해결"
+description: "프롬프트 엔지니어링 시 발생하는 일반적인 문제와 해결 방법, 디버깅 및 최적화 기법"
+---
+
+# 프롬프트 문제 해결
+
+프롬프트 엔지니어링 과정에서 자주 발생하는 문제들을 진단하고 해결하는 방법을 학습합니다. 체계적인 문제 해결 접근법을 통해 프롬프트 품질을 지속적으로 개선할 수 있습니다.
+
+## 🔍 문제 진단 프레임워크
+
+### 1. 문제 분류 체계
+
+```python
+# 프롬프트 문제 분류
+class PromptProblemClassifier:
+    def __init__(self):
+        self.problem_categories = {
+            "ambiguity": "모호성 문제",
+            "insufficient_context": "컨텍스트 부족",
+            "scope_issues": "범위 문제",
+            "format_problems": "형식 문제",
+            "clarity_issues": "명확성 문제",
+            "complexity_mismatch": "복잡도 불일치"
+        }
+
+    def classify_problem(self, prompt, response, user_feedback=None):
+        """프롬프트 문제 분류"""
+        problems = []
+
+        # 모호성 문제 진단
+        if self.detect_ambiguity(prompt):
+            problems.append({
+                "type": "ambiguity",
+                "severity": "high",
+                "description": "여러 해석이 가능한 표현이 있습니다",
+                "suggestions": self.get_ambiguity_suggestions(prompt)
+            })
+
+        # 컨텍스트 부족 진단
+        if self.detect_insufficient_context(prompt):
+            problems.append({
+                "type": "insufficient_context",
+                "severity": "medium",
+                "description": "충분한 배경 정보가 제공되지 않았습니다",
+                "suggestions": self.get_context_suggestions(prompt)
+            })
+
+        # 범위 문제 진단
+        if self.detect_scope_issues(prompt, response):
+            problems.append({
+                "type": "scope_issues",
+                "severity": "medium",
+                "description": "요청 범위가 너무 넓거나 좁습니다",
+                "suggestions": self.get_scope_suggestions(prompt, response)
+            })
+
+        return problems
+
+    def detect_ambiguity(self, prompt):
+        """모호성 탐지"""
+        ambiguity_indicators = [
+            "좋은", "나쁜", "적절한", "효율적인",  # 주관적 표현
+            "어떤", "몇몇", "대략", "약간",  # 불명확한 수량
+            "개선", "최적화", "향상"  # 추상적 목표
+        ]
+
+        prompt_lower = prompt.lower()
+        return any(indicator in prompt_lower for indicator in ambiguity_indicators)
+
+    def detect_insufficient_context(self, prompt):
+        """컨텍스트 부족 탐지"""
+        context_elements = [
+            "프로젝트", "목표", "요구사항", "제약사항",
+            "환경", "기술 스택", "팀 규모", "마감일"
+        ]
+
+        prompt_lower = prompt.lower()
+        context_count = sum(element in prompt_lower for element in context_elements)
+
+        return context_count < 2  # 컨텍스트 요소가 2개 미만이면 부족
+
+    def detect_scope_issues(self, prompt, response):
+        """범위 문제 탐지"""
+        # 프롬프트 길이와 응답 길이 비교
+        prompt_length = len(prompt.split())
+        response_length = len(response.split())
+
+        # 너무 짧은 프롬프트에 대한 너무 긴 응답
+        if prompt_length < 50 and response_length > 1000:
+            return True
+
+        # 너무 광범위한 요청 키워드
+        broad_requests = ["모든 것", "전체 시스템", "완전한 솔루션", "모든 기능"]
+        prompt_lower = prompt.lower()
+
+        return any(request in prompt_lower for request in broad_requests)
+
+# 문제 분류 예시
+classifier = PromptProblemClassifier()
+
+problem_prompt = "좋은 API를 만들어줘"
+problem_response = "[매우 긴 API 설계와 코드...]"
+
+problems = classifier.classify_problem(problem_prompt, problem_response)
+for problem in problems:
+    print(f"{problem['type']}: {problem['description']}")
+```
+
+### 2. 응답 품질 분석
+
+```python
+# 응답 품질 분석기
+class ResponseQualityAnalyzer:
+    def __init__(self):
+        self.quality_metrics = {
+            "completeness": "완성도",
+            "accuracy": "정확성",
+            "relevance": "관련성",
+            "clarity": "명확성",
+            "consistency": "일관성"
+        }
+
+    def analyze_response_quality(self, prompt, response, expected_aspects=None):
+        """응답 품질 분석"""
+        analysis = {}
+
+        # 완성도 분석
+        analysis["completeness"] = self.assess_completeness(
+            response, expected_aspects
+        )
+
+        # 관련성 분석
+        analysis["relevance"] = self.assess_relevance(prompt, response)
+
+        # 명확성 분석
+        analysis["clarity"] = self.assess_clarity(response)
+
+        # 일관성 분석
+        analysis["consistency"] = self.assess_consistency(response)
+
+        # 종합 점수
+        analysis["overall_score"] = self.calculate_overall_score(analysis)
+
+        return analysis
+
+    def assess_completeness(self, response, expected_aspects):
+        """완성도 평가"""
+        if not expected_aspects:
+            return {"score": 0.8, "feedback": "기대 요소 미정의"}
+
+        response_lower = response.lower()
+        found_aspects = []
+
+        for aspect in expected_aspects:
+            if aspect.lower() in response_lower:
+                found_aspects.append(aspect)
+
+        completeness_score = len(found_aspects) / len(expected_aspects)
+
+        return {
+            "score": completeness_score,
+            "found_aspects": found_aspects,
+            "missing_aspects": [a for a in expected_aspects if a not in found_aspects],
+            "feedback": self.get_completeness_feedback(completeness_score)
+        }
+
+    def assess_relevance(self, prompt, response):
+        """관련성 평가"""
+        # 키워드 기반 관련성 측정
+        prompt_keywords = self.extract_keywords(prompt)
+        response_keywords = self.extract_keywords(response)
+
+        common_keywords = set(prompt_keywords) & set(response_keywords)
+        relevance_score = len(common_keywords) / max(len(prompt_keywords), 1)
+
+        return {
+            "score": relevance_score,
+            "prompt_keywords": prompt_keywords,
+            "response_keywords": response_keywords,
+            "common_keywords": list(common_keywords),
+            "feedback": self.get_relevance_feedback(relevance_score)
+        }
+
+    def assess_clarity(self, response):
+        """명확성 평가"""
+        clarity_issues = []
+
+        # 너무 긴 문장 검사
+        sentences = response.split('.')
+        long_sentences = [s for s in sentences if len(s.split()) > 30]
+        if long_sentences:
+            clarity_issues.append(f"너무 긴 문장 {len(long_sentences)}개")
+
+        # 모호한 표현 검사
+        ambiguous_terms = ["약간", "어느 정도", "대략", "아마도"]
+        for term in ambiguous_terms:
+            if term in response:
+                clarity_issues.append(f"모호한 표현: {term}")
+
+        clarity_score = max(0.3, 1.0 - len(clarity_issues) * 0.2)
+
+        return {
+            "score": clarity_score,
+            "issues": clarity_issues,
+            "feedback": self.get_clarity_feedback(clarity_score)
+        }
+
+    def extract_keywords(self, text):
+        """키워드 추출"""
+        # 간단한 키워드 추출 (실제로는 NLP 라이브러리 사용 권장)
+        import re
+        # 명사와 기술 용어 추출
+        words = re.findall(r'\b[A-Z][a-z]+|[A-Z]{2,}|[a-z]+(?:-[a-z]+)*\b', text)
+        # 불용어 제거
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'}
+        return [word for word in words if word.lower() not in stop_words and len(word) > 2]
+```
+
+## 🛠️ 일반적인 문제와 해결 방법
+
+### 1. 모호성 문제
+
+#### 문제 증상
+```python
+# 모호성 문제 예시
+AMBIGUOUS_PROMPTS = [
+    "좋은 코드를 작성해줘",  # "좋은"이 모호함
+    "성능을 개선해줘",       # 어떤 성능인지 명시되지 않음
+    "사용자 친화적인 UI 만들어줘",  # "사용자 친화적" 기준 불명확
+    "효율적인 알고리즘을 제안해줘",  # "효율적" 기준 부재
+]
+```
+
+#### 해결 방법
+```python
+# 모호성 해결 템플릿
+CLARIFICATION_TEMPLATE = """
+# 구체화된 요청
+모호한 요청: "{vague_request}"
+
+# 명확한 요청으로 개선
+개선된 요청:
+{improved_request}
+
+# 개선 포인트
+{improvements}
+
+# 추가 구체화 방안
+{further_clarification}
+"""
+
+# 모호성 해결 예시
+def resolve_ambiguity(vague_request):
+    """모호성 해결"""
+    ambiguity_solutions = {
+        "좋은 코드": """
+        명확한 요청:
+        "다음 기준을 만족하는 Python 코드를 작성해주세요:
+        - PEP 8 코딩 스타일 준수
+        - 타입 힌트 포함
+        - 단위 테스트 커버리지 90% 이상
+        - 실행 시간 O(n) 이내"
+        """,
+
+        "성능 개선": """
+        명확한 요청:
+        "다음 성능 지표를 개선하는 최적화를 진행해주세요:
+        - 현재 응답 시간: 2.5초 → 목표: 200ms
+        - 메모리 사용량: 500MB → 목표: 100MB
+        - CPU 사용률: 80% → 목표: 50%"
+        """
+    }
+
+    # 실제 구현에서는 더 정교한 매칭 로직 필요
+    for vague_term, solution in ambiguity_solutions.items():
+        if vague_term in vague_request:
+            return solution
+
+    return "구체적인 개선 요구사항을 명시해주세요."
+```
+
+### 2. 컨텍스트 부족 문제
+
+#### 문제 증상
+```python
+# 컨텍스트 부족 예시
+INSUFFICIENT_CONTEXT_EXAMPLES = [
+    {
+        "prompt": "로그인 기능을 만들어줘",
+        "missing_context": ["기술 스택", "데이터베이스", "보안 요구사항", "사용자 유형"]
+    },
+    {
+        "prompt": "데이터 분석을 해줘",
+        "missing_context": ["데이터 소스", "분석 목표", "예상 결과물", "시간 제약"]
+    }
+]
+```
+
+#### 해결 방법
+```python
+# 컨텍스트 보강 템플릿
+CONTEXT_ENHANCEMENT_TEMPLATE = """
+# 컨텍스트 부족 문제 해결
+
+원본 요청: "{original_prompt}"
+
+# 필요한 컨텍스트 정보
+{required_context}
+
+# 컨텍스트가 포함된 개선된 요청
+{enhanced_prompt}
+"""
+
+def enhance_context(prompt):
+    """컨텍스트 보강"""
+    context_checklist = {
+        "프로젝트 정보": ["프로젝트명", "목표", "규모"],
+        "기술적 요구사항": ["언어/버전", "프레임워크", "데이터베이스"],
+        "비즈니스 요구사항": ["타겟 사용자", "주요 기능", "성능 요구사항"],
+        "제약사항": ["마감일", "예산", "팀 규모", "기존 시스템"]
+    }
+
+    # 현재 프롬프트에서 찾은 컨텍스트
+    found_context = {}
+    missing_context = {}
+
+    for category, items in context_checklist.items():
+        found_items = []
+        for item in items:
+            if item.lower() in prompt.lower():
+                found_items.append(item)
+
+        if found_items:
+            found_context[category] = found_items
+        else:
+            missing_context[category] = items
+
+    # 컨텍스트 질문 생성
+    context_questions = []
+    for category, items in missing_context.items():
+        if items:  # 빈 리스트가 아닌 경우에만 질문 추가
+            question = f"{category}에 대해 알려주세요 (예: {', '.join(items[:2])})"
+            context_questions.append(question)
+
+    return {
+        "found_context": found_context,
+        "missing_context": missing_context,
+        "clarification_questions": context_questions,
+        "enhancement_suggestion": generate_enhancement_suggestion(
+            prompt, context_questions
+        )
+    }
+```
+
+### 3. 범위 문제
+
+#### 문제 증상
+```python
+# 범위 문제 유형
+SCOPE_ISSUES = {
+    "too_broad": [
+        "완전한 전자상거래 플랫폼 만들어줘",
+        "인공지능 시스템 설계해줘",
+        "모든 것을 최적화해줘"
+    ],
+    "too_narrow": [
+        "세미콜론 하나 추가해줘",
+        "변수명만 바꿔줘",
+        "주석 한 줄 추가해줘"
+    ]
+}
+```
+
+#### 해결 방법
+```python
+# 범위 조정 템플릿
+SCOPE_ADJUSTMENT_TEMPLATE = """
+# 범위 조정 가이드
+
+원본 요청: "{original_prompt}"
+문제 유형: "{scope_problem_type}"
+
+# 조정된 요청
+{adjusted_request}
+
+# 조정 이유
+{adjustment_reasoning}
+
+# 단계별 접근 제안
+{phased_approach}
+"""
+
+def adjust_scope(prompt, problem_type):
+    """범위 조정"""
+    if problem_type == "too_broad":
+        return break_down_complex_task(prompt)
+    elif problem_type == "too_narrow":
+        return broaden_simple_task(prompt)
+    else:
+        return prompt
+
+def break_down_complex_task(complex_prompt):
+    """복잡한 과업 분해"""
+    breakdown_strategies = {
+        "전자상거래 플랫폼": """
+        단계별 접근:
+        1단계: 사용자 인증 시스템 (가장 기본적)
+        2단계: 상품 관리 시스템
+        3단계: 장바구니 기능
+        4단계: 결제 시스템
+        5단계: 주문 관리
+
+        현재는 어떤 단계를 진행하시겠습니까?
+        """,
+        "인공지능 시스템": """
+        구체적인 범위 지정이 필요합니다:
+        - 데이터 전처리 파이프라인
+        - 모델 훈련 및 평가
+        - 예측 API 개발
+        - 모델 모니터링 시스템
+        - 결과 시각화 대시보드
+
+        어느 부분에 집중하시겠습니까?
+        """
+    }
+
+    return breakdown_strategies.get(complex_prompt, "구체적인 기능 목록을 제공해주세요.")
+
+def broaden_simple_task(simple_prompt):
+    """단순한 과업 확장"""
+    broadening_strategies = {
+        "세미콜론 추가": """
+        더 포괄적인 코드 리뷰 및 개선 제안:
+        - 코드 스타일 검토
+        - 잠재적 버그 식별
+        - 성능 개선 제안
+        - 가독성 향상
+        - 테스트 케이스 추가 제안
+        """,
+        "변수명 변경": """
+        전체적인 코드 품질 개선:
+        - 명명 규칙 일관성 검토
+        - 함수/클래스 구조 개선
+        - 타입 힌트 추가
+        - 문서화 개선
+        - 아키텍처 패턴 제안
+        """
+    }
+
+    return broadening_strategies.get(simple_prompt, "더 큰 맥락에서의 개선을 제안합니다.")
+```
+
+### 4. 형식 문제
+
+#### 문제 증상
+```python
+# 형식 문제 예시
+FORMAT_ISSUES = {
+    "missing_structure": "구조화된 응답 형식을 지정하지 않음",
+    "unclear_output": "원하는 출력 형식을 명시하지 않음",
+    "inconsistent_formatting": "일관되지 않은 형식 요구"
+}
+```
+
+#### 해결 방법
+```python
+# 형식 표준화 템플릿
+FORMAT_STANDARDIZATION_TEMPLATE = """
+# 형식 표준화 가이드
+
+## 출력 형식 지정
+원본 요청: "{original_prompt}"
+출력 형식: "{specified_format}"
+
+## 구조화된 프롬프트
+{structured_prompt}
+
+## 형식 검증 체크리스트
+{format_checklist}
+"""
+
+def standardize_format(prompt):
+    """형식 표준화"""
+    format_patterns = {
+        "코드": """
+        # 코드 요청 형식
+        언어: [Python/JavaScript/Java 등]
+        프레임워크: [FastAPI/React/Spring 등]
+        파일 구조: [단일 파일/모듈/패키지]
+        테스트: [포함 여부]
+
+        # 출력 형식
+        ```[언어]
+        # 여기에 코드
+        ```
+
+        # 관련 설명
+        - 사용법
+        - 주요 특징
+        - 의존성
+        """,
+
+        "분석": """
+        # 분석 요청 형식
+        분석 대상: [데이터/코드/시스템]
+        분석 목표: [성능/보안/구조]
+        분석 범위: [전체/특정 모듈]
+
+        # 출력 형식
+        ## 1. 개요
+        ## 2. 상세 분석
+        ## 3. 문제점
+        ## 4. 개선 제안
+        ## 5. 결론
+        """,
+
+        "설계": """
+        # 설계 요청 형식
+        설계 대상: [아키텍처/API/UI/데이터베이스]
+        요구사항: [기능/비기능]
+        제약사항: [기술/시간/예산]
+
+        # 출력 형식
+        ## 1. 설계 목표
+        ## 2. 아키텍처 다이어그램
+        ## 3. 상세 설계
+        ## 4. 기술 선택 근거
+        ## 5. 구현 계획
+        """
+    }
+
+    # 요청 유형 감지
+    request_type = detect_request_type(prompt)
+    if request_type in format_patterns:
+        return format_patterns[request_type]
+
+    return "원하는 출력 형식을 구체적으로 지정해주세요 (예: 마크다운, JSON, 표 등)."
+```
+
+## 🔄 반복적 개선 프로세스
+
+### 1. 프롬프트 최적화 루프
+
+```python
+# 프롬프트 최적화 시스템
+class PromptOptimizer:
+    def __init__(self):
+        self.optimization_history = []
+        self.performance_metrics = {}
+
+    def optimize_prompt(self, original_prompt, response, feedback, target_metrics=None):
+        """프롬프트 최적화"""
+        # 1. 현재 성능 분석
+        current_performance = self.analyze_performance(original_prompt, response, feedback)
+
+        # 2. 문제점 식별
+        problems = self.identify_problems(current_performance, target_metrics)
+
+        # 3. 개선 전략 수립
+        improvement_strategies = self.develop_strategies(problems)
+
+        # 4. 최적화된 프롬프트 생성
+        optimized_prompt = self.generate_optimized_prompt(
+            original_prompt, improvement_strategies
+        )
+
+        # 5. 기록
+        self.record_optimization(original_prompt, optimized_prompt, problems)
+
+        return {
+            "original_prompt": original_prompt,
+            "optimized_prompt": optimized_prompt,
+            "identified_problems": problems,
+            "improvement_strategies": improvement_strategies,
+            "expected_improvements": self.predict_improvements(improvement_strategies)
+        }
+
+    def analyze_performance(self, prompt, response, feedback):
+        """성능 분석"""
+        return {
+            "response_quality": self.evaluate_response_quality(response),
+            "user_satisfaction": self.parse_user_feedback(feedback),
+            "efficiency": self.measure_efficiency(prompt, response),
+            "reproducibility": self.assess_reproducibility(prompt, response)
+        }
+
+    def identify_problems(self, performance, targets):
+        """문제점 식별"""
+        problems = []
+
+        if targets:
+            for metric, target_value in targets.items():
+                current_value = performance.get(metric, 0)
+                if current_value < target_value:
+                    problems.append({
+                        "metric": metric,
+                        "current": current_value,
+                        "target": target_value,
+                        "gap": target_value - current_value
+                    })
+
+        return problems
+
+    def develop_strategies(self, problems):
+        """개선 전략 수립"""
+        strategies = []
+
+        for problem in problems:
+            if problem["metric"] == "response_quality":
+                strategies.extend(self.get_quality_improvement_strategies())
+            elif problem["metric"] == "user_satisfaction":
+                strategies.extend(self.get_satisfaction_improvement_strategies())
+            elif problem["metric"] == "efficiency":
+                strategies.extend(self.get_efficiency_improvement_strategies())
+
+        return strategies
+
+    def generate_optimized_prompt(self, original_prompt, strategies):
+        """최적화된 프롬프트 생성"""
+        optimized = original_prompt
+
+        for strategy in strategies:
+            optimized = self.apply_strategy(optimized, strategy)
+
+        return optimized
+
+    def apply_strategy(self, prompt, strategy):
+        """개선 전략 적용"""
+        strategy_implementations = {
+            "add_context": self.add_context,
+            "clarify_requirements": self.clarify_requirements,
+            "specify_format": self.specify_format,
+            "break_down_task": self.break_down_task,
+            "add_examples": self.add_examples
+        }
+
+        if strategy["type"] in strategy_implementations:
+            return strategy_implementations[strategy["type"]](prompt, strategy)
+
+        return prompt
+```
+
+### 2. A/B 테스트 프레임워크
+
+```python
+# 프롬프트 A/B 테스트
+class PromptABTest:
+    def __init__(self):
+        self.test_results = {}
+
+    def create_test(self, prompt_a, prompt_b, test_input, evaluation_criteria):
+        """A/B 테스트 생성"""
+        test_id = f"test_{len(self.test_results) + 1}"
+
+        self.test_results[test_id] = {
+            "prompt_a": prompt_a,
+            "prompt_b": prompt_b,
+            "test_input": test_input,
+            "criteria": evaluation_criteria,
+            "results_a": None,
+            "results_b": None,
+            "winner": None
+        }
+
+        return test_id
+
+    def run_test(self, test_id):
+        """A/B 테스트 실행"""
+        test = self.test_results[test_id]
+
+        # 두 프롬프트 실행
+        response_a = self.execute_prompt(test["prompt_a"], test["test_input"])
+        response_b = self.execute_prompt(test["prompt_b"], test["test_input"])
+
+        # 결과 평가
+        score_a = self.evaluate_response(response_a, test["criteria"])
+        score_b = self.evaluate_response(response_b, test["criteria"])
+
+        # 결과 저장
+        test["results_a"] = {"response": response_a, "score": score_a}
+        test["results_b"] = {"response": response_b, "score": score_b}
+
+        # 승자 결정
+        test["winner"] = "A" if score_a > score_b else "B"
+
+        return self.generate_test_report(test_id)
+
+    def evaluate_response(self, response, criteria):
+        """응답 평가"""
+        total_score = 0
+        detailed_scores = {}
+
+        for criterion, weight in criteria.items():
+            if criterion == "completeness":
+                score = self.assess_completeness(response)
+            elif criterion == "accuracy":
+                score = self.assess_accuracy(response)
+            elif criterion == "clarity":
+                score = self.assess_clarity(response)
+            else:
+                score = 0.5  # 기본 점수
+
+            detailed_scores[criterion] = score
+            total_score += score * weight
+
+        return {
+            "total_score": total_score,
+            "detailed_scores": detailed_scores
+        }
+
+    def generate_test_report(self, test_id):
+        """테스트 보고서 생성"""
+        test = self.test_results[test_id]
+
+        return f"""
+# 프롬프트 A/B 테스트 결과
+
+## 테스트 설정
+- 프롬프트 A: {test['prompt_a'][:100]}...
+- 프롬프트 B: {test['prompt_b'][:100]}...
+- 테스트 입력: {test['test_input']}
+
+## 결과 비교
+### 프롬프트 A
+- 총점: {test['results_a']['score']['total_score']}
+- 상세 점수: {test['results_a']['score']['detailed_scores']}
+
+### 프롬프트 B
+- 총점: {test['results_b']['score']['total_score']}
+- 상세 점수: {test['results_b']['score']['detailed_scores']}
+
+## 승자
+프롬프트 {test['winner']}가 더 나은 성능을 보였습니다.
+
+## 개선 제안
+{self.generate_improvement_suggestions(test)}
+        """
+```
+
+## 📊 성능 측정 및 모니터링
+
+### 1. 프롬프트 성능 메트릭
+
+```python
+# 프롬프트 성능 측정
+class PromptPerformanceMonitor:
+    def __init__(self):
+        self.metrics_history = []
+        self.baseline_metrics = {}
+
+    def measure_performance(self, prompt_id, prompt, response, context=None):
+        """성능 측정"""
+        metrics = {
+            "prompt_id": prompt_id,
+            "timestamp": datetime.now(),
+            "prompt_length": len(prompt),
+            "response_length": len(response),
+            "response_time": self.measure_response_time(prompt, response),
+            "quality_score": self.calculate_quality_score(prompt, response),
+            "token_efficiency": self.calculate_token_efficiency(prompt, response),
+            "reusability": self.assess_reusability(prompt),
+            "user_satisfaction": context.get("user_feedback", 0) if context else 0
+        }
+
+        self.metrics_history.append(metrics)
+        return metrics
+
+    def calculate_quality_score(self, prompt, response):
+        """품질 점수 계산"""
+        quality_indicators = {
+            "completeness": self.check_completeness(prompt, response),
+            "relevance": self.check_relevance(prompt, response),
+            "clarity": self.check_clarity(response),
+            "accuracy": self.check_accuracy(response),
+            "structure": self.check_structure(response)
+        }
+
+        # 가중 평균
+        weights = {"completeness": 0.3, "relevance": 0.25, "clarity": 0.2,
+                  "accuracy": 0.15, "structure": 0.1}
+
+        total_score = sum(
+            quality_indicators[metric] * weights[metric]
+            for metric in quality_indicators
+        )
+
+        return {
+            "total_score": total_score,
+            "indicators": quality_indicators
+        }
+
+    def calculate_token_efficiency(self, prompt, response):
+        """토큰 효율성 계산"""
+        prompt_tokens = self.count_tokens(prompt)
+        response_tokens = self.count_tokens(response)
+
+        # 토큰 효율성 = 응답 품질 / 사용된 토큰 수
+        efficiency_score = len(response.split()) / (prompt_tokens + response_tokens)
+
+        return {
+            "prompt_tokens": prompt_tokens,
+            "response_tokens": response_tokens,
+            "total_tokens": prompt_tokens + response_tokens,
+            "efficiency_score": efficiency_score
+        }
+
+    def generate_performance_report(self, prompt_id=None, time_range=None):
+        """성능 보고서 생성"""
+        if prompt_id:
+            metrics = [m for m in self.metrics_history if m["prompt_id"] == prompt_id]
+        else:
+            metrics = self.metrics_history
+
+        if time_range:
+            start_date, end_date = time_range
+            metrics = [
+                m for m in metrics
+                if start_date <= m["timestamp"] <= end_date
+            ]
+
+        if not metrics:
+            return "분석할 데이터가 없습니다."
+
+        # 통계 계산
+        avg_quality = sum(m["quality_score"]["total_score"] for m in metrics) / len(metrics)
+        avg_efficiency = sum(m["token_efficiency"]["efficiency_score"] for m in metrics) / len(metrics)
+        avg_response_time = sum(m["response_time"] for m in metrics) / len(metrics)
+
+        # 트렌드 분석
+        trend_analysis = self.analyze_trends(metrics)
+
+        return f"""
+# 프롬프트 성능 보고서
+
+## 기본 통계
+- 분석된 프롬프트 수: {len(metrics)}
+- 평균 품질 점수: {avg_quality:.2f}
+- 평균 토큰 효율성: {avg_efficiency:.4f}
+- 평균 응답 시간: {avg_response_time:.2f}초
+
+## 트렌드 분석
+{trend_analysis}
+
+## 개선 제안
+{self.generate_improvement_recommendations(metrics)}
+        """
+```
+
+## 📖 다음 단계
+
+이제 프롬프트 문제 해결 방법을 학습했으니, 다음으로 진행할 수 있습니다:
+
+1. **[모범 사례](./best-practices)** - Claude 4.5 최적화와 전문가 팁
+
+---
+
+## 🔗 관련 자료
+
+- [Anthropic Claude 디버깅 가이드](https://docs.anthropic.com/claude/docs/debugging)
+- [MoAI-ADK 품질 관리](../core-concepts/workflow)
+- [성능 최적화](../skills/moai-workflow-docs)

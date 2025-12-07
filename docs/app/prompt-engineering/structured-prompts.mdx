@@ -1,0 +1,1035 @@
+---
+title: "구조화된 프롬프트"
+description: "체계적인 프롬프트 설계, 템플릿, 변수 활용 및 다단계 프롬프트 체인 구성 방법"
+---
+
+# 구조화된 프롬프트
+
+체계적으로 설계된 구조화된 프롬프트는 일관성 있는 결과물을 보장하고 재사용성을 높여줍니다. 템플릿 기반 접근법을 통해 효율적인 프롬프트 관리를 배워봅니다.
+
+## 🏗️ 구조화된 프롬프트 설계 원칙
+
+### 1. 모듈러 설계
+
+구조화된 프롬프트는 독립적인 모듈들의 조합으로 구성됩니다.
+
+```python
+# 기본 구조 템플릿
+class StructuredPrompt:
+    def __init__(self):
+        self.role = ""           # 역할 정의
+        self.context = ""        # 배경 정보
+        self.task = ""           # 주요 작업
+        self.constraints = ""    # 제약 조건
+        self.format = ""         # 출력 형식
+        self.examples = []       # 예시 목록
+
+    def build_prompt(self):
+        return f"""
+# 역할 정의
+{self.role}
+
+# 배경 정보
+{self.context}
+
+# 주요 작업
+{self.task}
+
+# 제약 조건
+{self.constraints}
+
+# 출력 형식
+{self.format}
+
+# 예시
+{self.format_examples()}
+        """
+```
+
+### 2. 계층적 구조
+
+복잡한 작업은 계층적으로 분해하여 관리합니다.
+
+```python
+# 계층적 프롬프트 구조
+1. 최상위 목표 (High-level Goal)
+   ├── 2. 주요 구성 요소 (Major Components)
+   │   ├── 3. 세부 구현 (Implementation Details)
+   │   └── 3. 유효성 검사 (Validation)
+   └── 2. 통합 및 테스트 (Integration & Testing)
+```
+
+## 📋 표준화된 프롬프트 템플릿
+
+### 1. 개발 작업 템플릿
+
+```python
+# 표준 개발 작업 템플릿
+DEVELOPMENT_TEMPLATE = """
+# 역할 정의
+당신은 {role}입니다.
+- 경험: {experience}
+- 전문 분야: {expertise}
+- 작업 스타일: {work_style}
+
+# 프로젝트 정보
+프로젝트명: {project_name}
+설명: {project_description}
+기술 스택: {tech_stack}
+팀 규모: {team_size}
+
+# 세부 요구사항
+{requirements}
+
+# 제약 조건
+- 반드시 포함: {must_include}
+- 제외할 항목: {must_exclude}
+- 코드 스타일: {code_style}
+- 테스트 요구사항: {test_requirements}
+
+# 예상 결과물
+{expected_deliverables}
+
+# 구체적인 지시
+{specific_instructions}
+
+# 평가 기준
+{evaluation_criteria}
+"""
+
+# 사용 예시
+prompt = DEVELOPMENT_TEMPLATE.format(
+    role="시니어 백엔드 개발자",
+    experience="8년",
+    expertise="FastAPI, PostgreSQL, 마이크로서비스",
+    work_style="TDD, 애자일 방법론",
+    project_name="사용자 인증 시스템",
+    project_description="JWT 기반의 확장 가능한 인증 API",
+    tech_stack="Python 3.11, FastAPI, PostgreSQL, Redis",
+    team_size="3명 (백엔드 2, 프론트엔드 1)",
+    requirements="""
+    - JWT 토큰 기반 인증/인가
+    - 리프레시 토큰 메커니즘
+    - 비밀번호 재설정 기능
+    - 이메일 인증
+    - 속도 제한 (Rate Limiting)
+    """,
+    must_include="단위 테스트, API 문서, 에러 핸들링",
+    must_exclude="하드코딩된 값, 실제 서버 정보",
+    code_style="PEP 8, 타입 힌트, docstring",
+    test_requirements="pytest 85% 이상 커버리지",
+    expected_deliverables="API 코드, 테스트 슈트, API 문서, 배포 스크립트",
+    specific_instructions="1. 모델부터 설계하고 2. API 구현 3. 테스트 작성 순서로 진행",
+    evaluation_criteria="성능, 보안, 유지보수성, 테스트 커버리지"
+)
+```
+
+### 2. 코드 리뷰 템플릿
+
+```python
+# 코드 리뷰 템플릿
+CODE_REVIEW_TEMPLATE = """
+# 역할
+당신은 {reviewer_role}입니다.
+
+# 리뷰 대상 코드
+언어: {language}
+프레임워크: {framework}
+파일: {file_path}
+라인 수: {line_count}
+
+# 리뷰 기준
+{review_criteria}
+
+# 코드
+{code_content}
+
+# 체크리스트
+- [ ] 코드 가독성 및 명명 규칙
+- [ ] 성능 및 효율성
+- [ ] 보안 취약점
+- [ ] 테스트 가능성
+- [ ] 모범 사례 준수
+
+# 분석 결과 제출
+다음 형식으로 리뷰 결과를 제출해주세요:
+
+## 전체 평가
+- 점수: /10
+- 주요 장점:
+- 개선 필요 사항:
+
+## 세부 분석
+### 1. 코드 품질
+{code_quality_analysis}
+
+### 2. 성능 분석
+{performance_analysis}
+
+### 3. 보안 검토
+{security_analysis}
+
+### 4. 구체적인 개선 제안
+{improvement_suggestions}
+
+## 수정된 코드
+{improved_code}
+"""
+
+# 사용 예시
+review_prompt = CODE_REVIEW_TEMPLATE.format(
+    reviewer_role="시니어 Python 개발자 (10년 경험)",
+    language="Python",
+    framework="FastAPI",
+    file_path="/src/auth/token_manager.py",
+    line_count="85",
+    review_criteria="""
+    - PEP 8 준수
+    - 타입 힌트 사용
+    - 에러 처리 완전성
+    - JWT 보안 모범 사례
+    - 성능 최적화
+    """,
+    code_content="# 실제 코드 내용",
+    code_quality_analysis="[분석 결과]",
+    performance_analysis="[성능 분석]",
+    security_analysis="[보안 분석]",
+    improvement_suggestions="[개선 제안]",
+    improved_code="[수정된 코드]"
+)
+```
+
+## 🔄 변수와 파라미터 활용
+
+### 1. 동적 변수 시스템
+
+```python
+# 동적 변수 관리 클래스
+class PromptVariables:
+    def __init__(self):
+        self.global_vars = {}      # 전역 변수
+        self.session_vars = {}     # 세션 변수
+        self.context_vars = {}     # 컨텍스트 변수
+
+    def set_variable(self, name, value, scope="session"):
+        """변수 설정"""
+        if scope == "global":
+            self.global_vars[name] = value
+        elif scope == "session":
+            self.session_vars[name] = value
+        else:
+            self.context_vars[name] = value
+
+    def get_variable(self, name):
+        """변수 가져오기 (우선순위: context > session > global)"""
+        return (self.context_vars.get(name) or
+                self.session_vars.get(name) or
+                self.global_vars.get(name))
+
+    def substitute_variables(self, template):
+        """템플릿에서 변수 치환"""
+        import re
+
+        def replace_var(match):
+            var_name = match.group(1)
+            return str(self.get_variable(var_name) or f"{{{var_name}}}")
+
+        return re.sub(r'\{(\w+)\}', replace_var, template)
+
+# 변수 활용 예시
+variables = PromptVariables()
+variables.set_variable("project_name", "MoAI-ADK", "global")
+variables.set_variable("current_user", "개발자A", "session")
+variables.set_variable("task_type", "API 개발", "context")
+
+template = """
+프로젝트: {project_name}
+사용자: {current_user}
+작업: {task_type}
+"""
+
+result = variables.substitute_variables(template)
+print(result)
+# 출력:
+# 프로젝트: MoAI-ADK
+# 사용자: 개발자A
+# 작업: API 개발
+```
+
+### 2. 컨텍스트 인식 프롬프트
+
+```python
+# 컨텍스트 인식 프롬프트 생성기
+class ContextAwarePrompt:
+    def __init__(self):
+        self.context_history = []
+        self.current_context = {}
+
+    def add_context(self, context_type, content):
+        """컨텍스트 추가"""
+        self.context_history.append({
+            'type': context_type,
+            'content': content,
+            'timestamp': datetime.now()
+        })
+
+    def build_aware_prompt(self, base_prompt):
+        """컨텍스트를 고려한 프롬프트 생성"""
+        recent_context = self.get_relevant_context()
+
+        return f"""
+# 현재 컨텍스트
+{self.format_context(recent_context)}
+
+# 기본 프롬프트
+{base_prompt}
+
+# 컨텍스트 기반 지시
+{self.generate_context_instructions(recent_context)}
+        """
+
+    def get_relevant_context(self, hours=2):
+        """최근 관련 컨텍스트 가져오기"""
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+        return [ctx for ctx in self.context_history
+                if ctx['timestamp'] > cutoff_time]
+
+    def format_context(self, contexts):
+        """컨텍스트 포맷팅"""
+        formatted = []
+        for ctx in contexts:
+            formatted.append(f"**{ctx['type']}**: {ctx['content']}")
+        return "\n".join(formatted)
+
+    def generate_context_instructions(self, contexts):
+        """컨텍스트 기반 추가 지시 생성"""
+        instructions = []
+
+        for ctx in contexts:
+            if ctx['type'] == 'previous_error':
+                instructions.append("이전 오류를 피하세요.")
+            elif ctx['type'] == 'user_preference':
+                instructions.append(f"사용자 선호: {ctx['content']}")
+            elif ctx['type'] == 'tech_stack':
+                instructions.append(f"사용 기술: {ctx['content']}")
+
+        return "\n".join(instructions) if instructions else "특별한 컨텍스트 지시 없음"
+```
+
+## ⛓️ 다단계 프롬프트 체인
+
+### 1. 순차적 처리 체인
+
+```python
+# 순차적 프롬프트 체인
+class SequentialPromptChain:
+    def __init__(self):
+        self.steps = []
+        self.intermediate_results = {}
+
+    def add_step(self, name, prompt_template, dependencies=None):
+        """처리 단계 추가"""
+        self.steps.append({
+            'name': name,
+            'template': prompt_template,
+            'dependencies': dependencies or []
+        })
+
+    def execute_chain(self, initial_input):
+        """체인 실행"""
+        current_input = initial_input
+        results = {}
+
+        for step in self.steps:
+            # 의존성 확인
+            if self.check_dependencies(step['dependencies'], results):
+                # 프롬프트 생성
+                prompt = self.build_step_prompt(step, results, current_input)
+
+                # Claude 실행 (실제로는 Task() 호출)
+                result = self.execute_claude(prompt)
+
+                # 결과 저장
+                results[step['name']] = result
+                current_input = result
+            else:
+                raise Exception(f"Step {step['name']} 의존성 미충족")
+
+        return results
+
+    def build_step_prompt(self, step, previous_results, input_data):
+        """단계별 프롬프트 생성"""
+        prompt = step['template']
+
+        # 이전 결과 통합
+        for dep_name in step['dependencies']:
+            if dep_name in previous_results:
+                prompt = prompt.replace(f"{{{dep_name}}}", previous_results[dep_name])
+
+        # 입력 데이터 통합
+        prompt = prompt.replace("{input}", input_data)
+
+        return prompt
+
+# 실제 사용 예시
+chain = SequentialPromptChain()
+
+# 1단계: 요구사항 분석
+chain.add_step(
+    name="analysis",
+    prompt_template="""
+    다음 요구사항을 분석해주세요: {input}
+
+    분석 결과:
+    - 핵심 기능:
+    - 기술 요구사항:
+    - 복잡도 평가:
+    - 예상 개발 시간:
+    """
+)
+
+# 2단계: 아키텍처 설계
+chain.add_step(
+    name="architecture",
+    prompt_template="""
+    다음 분석 결과를 기반으로 아키텍처를 설계해주세요:
+
+    분석 결과:
+    {analysis}
+
+    설계 내용:
+    - 시스템 구조:
+    - 주요 컴포넌트:
+    - 데이터 흐름:
+    - 기술 스택 선택:
+    """,
+    dependencies=["analysis"]
+)
+
+# 3단계: 구현 계획
+chain.add_step(
+    name="implementation",
+    prompt_template="""
+    다음 아키텍처 설계를 기반으로 구현 계획을 수립해주세요:
+
+    아키텍처:
+    {architecture}
+
+    구현 계획:
+    - 개발 단계:
+    - 우선순위:
+    - 리스크 관리:
+    - 테스트 전략:
+    """,
+    dependencies=["architecture"]
+)
+```
+
+### 2. 병렬 처리 체인
+
+```python
+# 병렬 처리 프롬프트 체인
+class ParallelPromptChain:
+    def __init__(self):
+        self.parallel_tasks = {}
+        self.merge_strategy = None
+
+    def add_parallel_task(self, task_name, prompt_template):
+        """병렬 작업 추가"""
+        self.parallel_tasks[task_name] = {
+            'template': prompt_template,
+            'result': None
+        }
+
+    def set_merge_strategy(self, merge_template):
+        """결과 병합 전략 설정"""
+        self.merge_strategy = merge_template
+
+    def execute_parallel(self, input_data):
+        """병렬 작업 실행"""
+        import asyncio
+
+        async def run_task(task_name, task_info):
+            prompt = task_info['template'].replace("{input}", input_data)
+            # 실제로는 비동기 Claude 호출
+            result = await self.execute_claude_async(prompt)
+            self.parallel_tasks[task_name]['result'] = result
+            return result
+
+        # 모든 작업 병렬 실행
+        tasks = [
+            run_task(name, info)
+            for name, info in self.parallel_tasks.items()
+        ]
+
+        results = asyncio.run(asyncio.gather(*tasks))
+
+        # 결과 병합
+        if self.merge_strategy:
+            merged_result = self.merge_results(results)
+            return merged_result
+
+        return results
+
+    def merge_results(self, results):
+        """병합 전략으로 결과 통합"""
+        # 결과들을 템플릿에 통합
+        merge_prompt = self.merge_strategy
+
+        for i, (task_name, task_info) in enumerate(self.parallel_tasks.items()):
+            merge_prompt = merge_prompt.replace(
+                f"{{{task_name}}}",
+                task_info['result']
+            )
+
+        return self.execute_claude(merge_prompt)
+
+# 병렬 체인 예시
+parallel_chain = ParallelPromptChain()
+
+# UI 디자인과 API 설계 병렬 처리
+parallel_chain.add_parallel_task(
+    "ui_design",
+    """
+    사용자 인터페이스 디자인을 제안해주세요: {input}
+    - 와이어프레임
+    - 컴포넌트 구조
+    - 사용자 플로우
+    """
+)
+
+parallel_chain.add_parallel_task(
+    "api_design",
+    """
+    API 설계를 제안해주세요: {input}
+    - 엔드포인트 정의
+    - 데이터 모델
+    - 인증 방식
+    """
+)
+
+parallel_chain.add_parallel_task(
+    "database_schema",
+    """
+    데이터베이스 스키마를 설계해주세요: {input}
+    - 테이블 구조
+    - 관계 정의
+    - 인덱스 전략
+    """
+)
+
+# 결과 병합 전략
+parallel_chain.set_merge_strategy("""
+    다음 세 가지 설계 결과를 통합하여 전체 솔루션을 제안해주세요:
+
+    UI 디자인:
+    {ui_design}
+
+    API 설계:
+    {api_design}
+
+    데이터베이스 스키마:
+    {database_schema}
+
+    통합된 솔루션:
+    - 아키텍처 개요
+    - 구현 우선순위
+    - 기술 통합 방안
+    - 개발 계획
+""")
+```
+
+## 🎯 조건부 프롬프트
+
+### 1. 분기 로직
+
+```python
+# 조건부 프롬프트 생성
+class ConditionalPrompt:
+    def __init__(self):
+        self.conditions = []
+
+    def add_condition(self, condition, prompt_template):
+        """조건과 해당 프롬프트 추가"""
+        self.conditions.append({
+            'condition': condition,
+            'template': prompt_template
+        })
+
+    def evaluate_and_build(self, context):
+        """조건 평가 및 프롬프트 빌드"""
+        for cond in self.conditions:
+            if self.evaluate_condition(cond['condition'], context):
+                return self.build_prompt(cond['template'], context)
+
+        # 기본 프롬프트
+        return self.build_default_prompt(context)
+
+    def evaluate_condition(self, condition, context):
+        """조건 평가"""
+        # 간단한 조건 평가 로직
+        try:
+            return eval(condition, {"__builtins__": {}}, context)
+        except:
+            return False
+
+    def build_prompt(self, template, context):
+        """컨텍스트로 프롬프트 빌드"""
+        import re
+
+        def replace_var(match):
+            var_name = match.group(1)
+            return str(context.get(var_name, f"{{{var_name}}}"))
+
+        return re.sub(r'\{(\w+)\}', replace_var, template)
+
+# 조건부 프롬프트 예시
+conditional = ConditionalPrompt()
+
+# 복잡도에 따른 프롬프트
+conditional.add_condition(
+    "complexity >= 8",
+    """
+    복잡한 작업입니다. 체계적인 접근이 필요합니다.
+
+    프로젝트: {project_name}
+    복잡도: {complexity}/10
+
+    단계별 접근:
+    1. 문제 분해
+    2. 우선순위 설정
+    3. 세부 계획 수립
+    4. 위험 관리
+    5. 검증 전략
+    """
+)
+
+conditional.add_condition(
+    "time_constraint == 'urgent'",
+    """
+    긴급 작업입니다. 빠른 해결책이 필요합니다.
+
+    프로젝트: {project_name}
+    마감일: {deadline}
+
+    신속 접근:
+    1. MVP 범위 정의
+    2. 핵심 기능 우선
+    3. 단순한 솔루션 선택
+    4. 후반 개선 계획
+    """
+)
+
+# 컨텍스트에 따른 동적 프롬프트 생성
+context = {
+    "project_name": "사용자 대시보드",
+    "complexity": 9,
+    "time_constraint": "urgent",
+    "deadline": "3일"
+}
+
+prompt = conditional.evaluate_and_build(context)
+```
+
+### 2. 동적 프롬프트 생성
+
+```python
+# 동적 프롬프트 생성기
+class DynamicPromptGenerator:
+    def __init__(self):
+        self.prompt_templates = {}
+        self.context_analyzers = {}
+
+    def register_template(self, name, template):
+        """프롬프트 템플릿 등록"""
+        self.prompt_templates[name] = template
+
+    def analyze_context(self, context):
+        """컨텍스트 분석"""
+        analysis = {}
+
+        # 복잡도 분석
+        if 'requirements' in context:
+            analysis['complexity'] = self.calculate_complexity(
+                context['requirements']
+            )
+
+        # 기술 스택 분석
+        if 'tech_stack' in context:
+            analysis['tech_complexity'] = len(context['tech_stack'])
+
+        # 시간 제약 분석
+        if 'deadline' in context:
+            analysis['urgency'] self.calculate_urgency(context['deadline'])
+
+        return analysis
+
+    def generate_optimal_prompt(self, context):
+        """최적의 프롬프트 생성"""
+        analysis = self.analyze_context(context)
+
+        # 분석 결과에 따라 템플릿 선택
+        if analysis.get('complexity', 0) > 8:
+            template_name = "complex_project"
+        elif analysis.get('urgency', 0) > 7:
+            template_name = "urgent_task"
+        elif analysis.get('tech_complexity', 0) > 5:
+            template_name = "multi_tech"
+        else:
+            template_name = "standard"
+
+        template = self.prompt_templates.get(template_name)
+        if template:
+            return self.build_prompt_from_template(template, context, analysis)
+        else:
+            return self.generate_basic_prompt(context)
+
+    def build_prompt_from_template(self, template, context, analysis):
+        """템플릿으로 프롬프트 빌드"""
+        import re
+
+        def replace_placeholders(match):
+            var_name = match.group(1)
+
+            # 컨텍스트에서 찾기
+            if var_name in context:
+                return str(context[var_name])
+            # 분석 결과에서 찾기
+            elif var_name in analysis:
+                return str(analysis[var_name])
+            else:
+                return f"{{{var_name}}}"
+
+        return re.sub(r'\{(\w+)\}', replace_placeholders, template)
+
+# 동적 프롬프트 생성기 설정
+generator = DynamicPromptGenerator()
+
+generator.register_template("complex_project", """
+복잡도 {complexity}/10의 복잡한 프로젝트입니다.
+
+프로젝트: {project_name}
+핵심 요구사항: {requirements}
+
+체계적 접근법:
+1. 아키텍처 설계 (중요도: 높음)
+2. 컴포넌트 분리 (중요도: 높음)
+3. 인터페이스 정의 (중요도: 중간)
+4. 구현 전략 수립 (중요도: 중간)
+5. 테스트 계획 (중요도: 높음)
+
+주의사항:
+- 반복적인 리팩토링 준비
+- 명확한 문서화 필수
+- 점진적 개발 접근
+""")
+
+generator.register_template("urgent_task", """
+긴급도 {urgency}/10의 시급한 작업입니다.
+
+프로젝트: {project_name}
+마감일: {deadline}
+
+신속 해결 전략:
+1. MVP 범위 축소
+2. 핵심 기능 집중
+3. 단순한 구현 선택
+4. 후반 개선 계획
+5. 빠른 검증 프로세스
+
+시간 관리:
+- 불필요한 기능 제거
+- 재사용 가능한 컴포넌트 활용
+- 위험 요소 최소화
+""")
+```
+
+## 📊 템플릿 관리 시스템
+
+### 1. 템플릿 저장소
+
+```python
+# 템플릿 관리 시스템
+class PromptTemplateRepository:
+    def __init__(self):
+        self.templates = {}
+        self.template_categories = {}
+        self.usage_stats = {}
+
+    def save_template(self, name, template, category="general", metadata=None):
+        """템플릿 저장"""
+        self.templates[name] = {
+            'content': template,
+            'category': category,
+            'metadata': metadata or {},
+            'created_at': datetime.now(),
+            'updated_at': datetime.now(),
+            'version': 1
+        }
+
+        # 카테고리 등록
+        if category not in self.template_categories:
+            self.template_categories[category] = []
+        if name not in self.template_categories[category]:
+            self.template_categories[category].append(name)
+
+    def get_template(self, name):
+        """템플릿 가져오기"""
+        if name in self.templates:
+            # 사용 통계 업데이트
+            self.update_usage_stats(name)
+            return self.templates[name]
+        return None
+
+    def update_template(self, name, new_content, metadata_updates=None):
+        """템플릿 업데이트"""
+        if name in self.templates:
+            self.templates[name]['content'] = new_content
+            self.templates[name]['updated_at'] = datetime.now()
+            self.templates[name]['version'] += 1
+
+            if metadata_updates:
+                self.templates[name]['metadata'].update(metadata_updates)
+
+    def search_templates(self, keyword, category=None):
+        """템플릿 검색"""
+        results = []
+
+        for name, template in self.templates.items():
+            # 카테고리 필터
+            if category and template['category'] != category:
+                continue
+
+            # 키워드 검색
+            if (keyword.lower() in name.lower() or
+                keyword.lower() in template['content'].lower() or
+                keyword.lower() in str(template['metadata']).lower()):
+                results.append((name, template))
+
+        return results
+
+    def update_usage_stats(self, template_name):
+        """사용 통계 업데이트"""
+        if template_name not in self.usage_stats:
+            self.usage_stats[template_name] = {
+                'usage_count': 0,
+                'last_used': None,
+                'success_rate': 0.0
+            }
+
+        stats = self.usage_stats[template_name]
+        stats['usage_count'] += 1
+        stats['last_used'] = datetime.now()
+
+    def get_popular_templates(self, limit=10):
+        """인기 템플릿 가져오기"""
+        sorted_templates = sorted(
+            self.usage_stats.items(),
+            key=lambda x: x[1]['usage_count'],
+            reverse=True
+        )
+        return sorted_templates[:limit]
+```
+
+### 2. 템플릿 버전 관리
+
+```python
+# 템플릿 버전 관리
+class TemplateVersionManager:
+    def __init__(self, repository):
+        self.repo = repository
+        self.version_history = {}
+
+    def create_version(self, template_name, change_description=""):
+        """새 버전 생성"""
+        template = self.repo.get_template(template_name)
+        if not template:
+            return None
+
+        # 버전 기록
+        if template_name not in self.version_history:
+            self.version_history[template_name] = []
+
+        version_info = {
+            'version': template['version'],
+            'content': template['content'],
+            'metadata': template['metadata'].copy(),
+            'created_at': template['updated_at'],
+            'change_description': change_description
+        }
+
+        self.version_history[template_name].append(version_info)
+        return version_info
+
+    def rollback_to_version(self, template_name, target_version):
+        """특정 버전으로 롤백"""
+        if template_name in self.version_history:
+            for version_info in self.version_history[template_name]:
+                if version_info['version'] == target_version:
+                    self.repo.update_template(
+                        template_name,
+                        version_info['content'],
+                        version_info['metadata']
+                    )
+                    return True
+        return False
+
+    def compare_versions(self, template_name, version1, version2):
+        """버전 간 차이점 비교"""
+        if template_name not in self.version_history:
+            return None
+
+        versions = {}
+        for version_info in self.version_history[template_name]:
+            if version_info['version'] in [version1, version2]:
+                versions[version_info['version']] = version_info['content']
+
+        if len(versions) == 2:
+            return {
+                'version1': version1,
+                'version2': version2,
+                'content1': versions[version1],
+                'content2': versions[version2],
+                'diff': self.calculate_diff(versions[version1], versions[version2])
+            }
+
+        return None
+```
+
+## 🎯 실전 예제: 통합 프롬프트 시스템
+
+```python
+# 통합 프롬프트 시스템 예시
+class IntegratedPromptSystem:
+    def __init__(self):
+        self.repo = PromptTemplateRepository()
+        self.version_manager = TemplateVersionManager(self.repo)
+        self.variables = PromptVariables()
+        self.dynamic_generator = DynamicPromptGenerator()
+
+        # 표준 템플릿 로드
+        self.load_standard_templates()
+
+    def load_standard_templates(self):
+        """표준 템플릿 로드"""
+        # API 개발 템플릿
+        self.repo.save_template(
+            "api_development",
+            API_DEVELOPMENT_TEMPLATE,
+            category="development",
+            metadata={
+                "purpose": "API 개발",
+                "complexity": "medium",
+                "tech_stack": ["FastAPI", "REST"]
+            }
+        )
+
+        # 코드 리뷰 템플릿
+        self.repo.save_template(
+            "code_review",
+            CODE_REVIEW_TEMPLATE,
+            category="quality",
+            metadata={
+                "purpose": "코드 품질 검토",
+                "complexity": "low",
+                "languages": ["Python", "JavaScript", "TypeScript"]
+            }
+        )
+
+    def generate_contextual_prompt(self, task_type, context):
+        """컨텍스트 기반 프롬프트 생성"""
+        # 1. 관련 템플릿 검색
+        templates = self.repo.search_templates(
+            task_type,
+            category=context.get('category')
+        )
+
+        if templates:
+            # 2. 가장 적합한 템플릿 선택
+            best_template = self.select_best_template(templates, context)
+
+            # 3. 변수 치환
+            self.variables.set_variables_from_context(context)
+            final_prompt = self.variables.substitute_variables(
+                best_template['content']
+            )
+
+            # 4. 사용 통계 기록
+            self.repo.update_usage_stats(best_template['name'])
+
+            return final_prompt
+        else:
+            # 동적 생성으로 대체
+            return self.dynamic_generator.generate_optimal_prompt(context)
+
+    def select_best_template(self, templates, context):
+        """컨텍스트에 가장 적합한 템플릿 선택"""
+        scored_templates = []
+
+        for name, template in templates:
+            score = self.calculate_template_score(template, context)
+            scored_templates.append((score, name, template))
+
+        # 점수순 정렬 후 최상위 템플릿 반환
+        scored_templates.sort(reverse=True, key=lambda x: x[0])
+        return scored_templates[0][2] if scored_templates else None
+
+    def calculate_template_score(self, template, context):
+        """템플릿 적합도 점수 계산"""
+        score = 0
+
+        # 카테고리 일치
+        if template['category'] == context.get('category'):
+            score += 30
+
+        # 메타데이터 일치
+        metadata = template['metadata']
+
+        if 'tech_stack' in context and 'tech_stack' in metadata:
+            common_techs = set(context['tech_stack']) & set(metadata['tech_stack'])
+            score += len(common_techs) * 10
+
+        if 'complexity' in context and 'complexity' in metadata:
+            if context['complexity'] == metadata['complexity']:
+                score += 20
+
+        # 사용 빈도 가중치
+        usage_stats = self.repo.usage_stats.get(template['name'], {})
+        score += min(usage_stats.get('usage_count', 0), 20)
+
+        return score
+
+# 실제 사용 예시
+prompt_system = IntegratedPromptSystem()
+
+# 컨텍스트 정의
+context = {
+    "task_type": "api_development",
+    "category": "development",
+    "tech_stack": ["FastAPI", "PostgreSQL", "Redis"],
+    "complexity": "medium",
+    "project_name": "사용자 관리 시스템",
+    "timeline": "2주",
+    "team_size": 3
+}
+
+# 최적의 프롬프트 생성
+optimal_prompt = prompt_system.generate_contextual_prompt("api_development", context)
+print(optimal_prompt)
+```
+
+## 📖 다음 단계
+
+이제 구조화된 프롬프트 설계를 학습했으니, 다음으로 진행할 수 있습니다:
+
+1. **[일반적인 패턴](./common-patterns)** - 코딩, 디버깅, 문서화용 패턴
+2. **[문제 해결](./troubleshooting)** - 일반적인 문제와 해결 방법
+3. **[모범 사례](./best-practices)** - Claude 4.5 최적화와 전문가 팁
+
+---
+
+## 🔗 관련 자료
+
+- [Anthropic 프롬프트 엔지니어링 가이드](https://docs.anthropic.com/claude/docs/prompt-engineering)
+- [MoAI-ADK 워크플로우](../core-concepts/workflow)
+- [Nextra 문서화](../skills/moai-library-nextra)

@@ -1,0 +1,456 @@
+# MoAI-ADK Commands Reference
+
+MoAI-ADK provides six core commands that orchestrate the complete development lifecycle from planning through implementation to documentation. These commands integrate seamlessly with Alfred and the agent system.
+
+## Command Overview
+
+| Command | Purpose | Typical Usage | Agents Involved |
+|---------|---------|---------------|-----------------|
+| [/moai:0-project](#moai0-project) | Initialize new MoAI-ADK project | Project setup | manager-project |
+| [/moai:1-plan](#moai1-plan) | Generate SPEC document | Feature planning | manager-spec |
+| [/moai:2-run](#moai2-run) | Execute TDD implementation | Development | manager-tdd, domain experts |
+| [/moai:3-sync](#moai3-sync) | Synchronize documentation | Doc updates | manager-docs, manager-git |
+| [/moai:9-feedback](#moai9-feedback) | Submit feedback/improvements | Error reporting | manager-strategy |
+| [/clear](#clear) | Reset context window | Token management | System command |
+
+## Complete Workflow
+
+The commands follow a natural development flow:
+
+```mermaid
+graph LR
+    A[/moai:0-project] --> B[/moai:1-plan]
+    B --> C[/moai:2-run]
+    C --> D[/moai:3-sync]
+    D --> E{More features?}
+    E -->|Yes| B
+    E -->|No| F[/clear]
+    F --> B
+
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#fce4ec
+    style F fill:#f3e5f5
+```
+
+---
+
+## `/moai:0-project`
+
+**Initialize New Project**
+
+Creates a complete MoAI-ADK project structure with configuration, templates, and Git setup.
+
+### Quick Start
+
+```bash
+/moai:0-project
+```
+
+Alfred will guide you through:
+1. Language selection (Python, TypeScript, Go, etc.)
+2. Project mode (development, production)
+3. Git strategy (manual, personal, team)
+4. Additional configurations
+
+### What It Creates
+
+```
+my-project/
+├── .moai/
+│   ├── config/config.json    # Project configuration
+│   ├── specs/                # SPEC documents directory
+│   ├── docs/                 # Documentation
+│   └── memory/               # Session state
+├── .claude/
+│   ├── commands/             # Custom commands
+│   ├── skills/               # Project skills
+│   └── agents/               # Custom agents
+├── src/                      # Source code
+├── tests/                    # Test files
+└── README.md                 # Project documentation
+```
+
+### Key Features
+
+- **Language Templates**: Optimized structure for 25+ languages
+- **Git Integration**: 3-mode strategy (manual/personal/team)
+- **Quality Gates**: TDD enforcement, coverage targets
+- **Documentation**: Auto-generated README and SPEC templates
+
+[Learn more about /moai:0-project →](/commands/moai-0-project)
+
+---
+
+## `/moai:1-plan`
+
+**Generate SPEC Document**
+
+Creates a comprehensive SPEC (specification) document using EARS format for clear, testable requirements.
+
+### Quick Start
+
+```bash
+/moai:1-plan "user authentication with JWT"
+```
+
+Alfred will:
+1. Analyze requirements using `manager-spec` agent
+2. Generate EARS-formatted SPEC
+3. Create `.moai/specs/SPEC-\{ID\}/` directory
+4. Save `spec.md`, `plan.md`, `acceptance.md`
+
+### SPEC Structure
+
+```markdown
+## Requirements (EARS Format)
+
+### Ubiquitous Requirements
+- System SHALL enforce HTTPS
+- Code SHALL maintain 85%+ coverage
+
+### Event-Driven Requirements
+- WHEN user logs in THEN JWT token SHALL be issued
+
+### State-Driven Requirements
+- WHILE user is authenticated THEN API SHALL accept requests
+
+### Interface Requirements
+- API SHALL provide POST /auth/login endpoint
+```
+
+### Auto vs Manual
+
+- **Auto Mode**: Alfred suggests SPEC ID automatically
+- **Manual Mode**: You specify SPEC-XXX format
+
+[Learn more about /moai:1-plan →](/commands/moai-1-plan)
+
+---
+
+## `/moai:2-run`
+
+**Execute TDD Implementation**
+
+Runs the complete TDD (Test-Driven Development) cycle: RED → GREEN → REFACTOR.
+
+### Quick Start
+
+```bash
+/moai:2-run SPEC-001
+```
+
+Alfred orchestrates:
+1. **RED Phase**: Write failing tests (`manager-tdd`)
+2. **GREEN Phase**: Implement minimal code to pass (`code-backend`, `code-frontend`)
+3. **REFACTOR Phase**: Optimize and improve (`core-quality`)
+4. **Validation**: Ensure 85%+ coverage
+
+### TDD Cycle
+
+```python
+# RED: Write test first (should fail)
+def test_user_login():
+    response = client.post("/auth/login", json={
+        "email": "user@example.com",
+        "password": "secure123"
+    })
+    assert response.status_code == 200
+    assert "token" in response.json()
+
+# GREEN: Implement to pass test
+@app.post("/auth/login")
+def login(credentials: LoginRequest):
+    # Minimal implementation
+    return {"token": "jwt_token_here"}
+
+# REFACTOR: Improve code quality
+@app.post("/auth/login")
+def login(credentials: LoginRequest):
+    user = authenticate_user(credentials)
+    token = generate_jwt_token(user)
+    return {"token": token}
+```
+
+### Multi-Agent Coordination
+
+```python
+# Sequential execution
+tests = Task(subagent_type="manager-tdd", prompt="Generate tests for SPEC-001")
+backend = Task(subagent_type="code-backend", prompt="Implement backend", context=tests)
+frontend = Task(subagent_type="code-frontend", prompt="Implement UI", context=backend)
+quality = Task(subagent_type="core-quality", prompt="Validate all", context=frontend)
+```
+
+[Learn more about /moai:2-run →](/commands/moai-2-run)
+
+---
+
+## `/moai:3-sync`
+
+**Synchronize Documentation**
+
+Auto-generates or updates documentation based on code changes and SPEC documents.
+
+### Quick Start
+
+```bash
+/moai:3-sync SPEC-001
+```
+
+Alfred will:
+1. Analyze code changes since last commit
+2. Update documentation files
+3. Generate API references
+4. Create/update README sections
+5. Optionally create Draft PR
+
+### Documentation Types
+
+| Type | Generated From | Output |
+|------|----------------|--------|
+| API Docs | Code docstrings | `docs/api/` |
+| Architecture | SPEC + code structure | `docs/architecture.md` |
+| User Guide | SPEC requirements | `docs/guides/` |
+| Changelog | Git commits | `CHANGELOG.md` |
+| README | SPEC + implementation | `README.md` |
+
+### Git Integration
+
+```bash
+# Manual mode: Local docs only
+/moai:3-sync SPEC-001  # Updates local files
+
+# Personal mode: Auto-commit + push
+/moai:3-sync SPEC-001  # Commits, pushes, no PR
+
+# Team mode: Full automation
+/moai:3-sync SPEC-001  # Commits, pushes, creates Draft PR
+```
+
+[Learn more about /moai:3-sync →](/commands/moai-3-sync)
+
+---
+
+## `/moai:9-feedback`
+
+**Submit Feedback**
+
+Report issues, suggest improvements, or provide feedback on MoAI-ADK functionality.
+
+### Quick Start
+
+```bash
+/moai:9-feedback "error: SPEC generation fails with special characters"
+```
+
+or
+
+```bash
+/moai:9-feedback "improvement: Add support for GraphQL in API templates"
+```
+
+### Feedback Categories
+
+- **Error Reports**: Bugs, failures, unexpected behavior
+- **Feature Requests**: New capabilities, enhancements
+- **Documentation**: Unclear guides, missing examples
+- **Performance**: Speed, memory, token usage issues
+
+### What Happens
+
+1. Alfred collects feedback details
+2. Generates structured issue report
+3. Saves to `.moai/feedback/` directory
+4. Optionally creates GitHub issue
+5. Tracks in feedback registry
+
+[Learn more about /moai:9-feedback →](/commands/moai-9-feedback)
+
+---
+
+## `/clear`
+
+**Reset Context Window**
+
+Clears conversation context to free up tokens and start fresh.
+
+### Quick Start
+
+```bash
+/clear
+```
+
+### When to Use
+
+Execute `/clear` when:
+- Context usage > 180K tokens (90% of 200K limit)
+- Starting new major task or SPEC
+- Completing workflow phase (plan → run → sync)
+- Switching between unrelated features
+
+### What's Preserved
+
+✅ Session metadata and configuration
+✅ Last session state (`.moai/memory/last-session-state.json`)
+✅ Git status and current branch
+✅ Project structure
+
+### What's Cleared
+
+❌ Conversation history
+❌ Loaded skills content
+❌ Agent delegation context
+❌ Cached analysis results
+
+### Token Management
+
+```python
+# Aggressive clear strategy
+/moai:1-plan "feature"  # Uses ~30K tokens
+/clear                  # Reset to 0
+
+/moai:2-run SPEC-001    # Uses ~50K tokens
+/clear                  # Reset to 0
+
+/moai:3-sync SPEC-001   # Uses ~20K tokens
+/clear                  # Reset to 0
+```
+
+[Learn more about /clear →](/commands/clear)
+
+---
+
+## Command Combinations
+
+### New Feature Development
+
+```bash
+# 1. Create SPEC
+/moai:1-plan "user profile management"
+# → Generates SPEC-002
+
+# 2. Implement with TDD
+/moai:2-run SPEC-002
+# → RED-GREEN-REFACTOR cycle
+
+# 3. Update docs
+/moai:3-sync SPEC-002
+# → Auto-generates documentation
+
+# 4. Clean up context
+/clear
+```
+
+### Bug Fix Workflow
+
+```bash
+# 1. Report the issue
+/moai:9-feedback "error: Login fails with special characters in password"
+
+# 2. Create SPEC for fix
+/moai:1-plan "fix password validation to support special chars"
+# → SPEC-003
+
+# 3. Implement fix
+/moai:2-run SPEC-003
+
+# 4. Update docs
+/moai:3-sync SPEC-003
+```
+
+### Project Initialization
+
+```bash
+# 1. Initialize project
+/moai:0-project
+# → Choose Python, Development mode, Manual Git
+
+# 2. Plan first feature
+/moai:1-plan "REST API with JWT authentication"
+# → SPEC-001
+
+# 3. Implement
+/moai:2-run SPEC-001
+
+# 4. Document
+/moai:3-sync SPEC-001
+```
+
+---
+
+## Best Practices
+
+### DO
+✅ Always start with `/moai:1-plan` for new features
+✅ Use `/moai:2-run` for TDD implementation
+✅ Execute `/moai:3-sync` to keep docs updated
+✅ Run `/clear` when context > 180K tokens
+✅ Report issues with `/moai:9-feedback`
+
+### DON'T
+❌ Skip SPEC creation (anti-pattern)
+❌ Run `/moai:2-run` without existing SPEC
+❌ Forget to sync docs after implementation
+❌ Let context exceed 200K tokens
+❌ Manually create SPEC files (use command)
+
+---
+
+## Troubleshooting
+
+### Command Not Found
+
+**Issue**: `/moai:X` command not recognized
+
+**Solution**:
+1. Ensure MoAI-ADK is installed: `moai-adk --version`
+2. Check Claude Code settings: `.claude/settings.json`
+3. Verify commands directory: `.claude/commands/moai/`
+
+### SPEC ID Conflicts
+
+**Issue**: SPEC-001 already exists
+
+**Solution**:
+```bash
+# Use manual SPEC ID
+/moai:1-plan --id SPEC-002 "description"
+
+# Or let Alfred auto-increment
+/moai:1-plan "description"  # Alfred suggests next ID
+```
+
+### Token Limit Reached
+
+**Issue**: "Context limit exceeded" error
+
+**Solution**:
+```bash
+# Execute immediately
+/clear
+
+# Continue with fresh context
+/moai:1-plan "continue previous work"
+```
+
+---
+
+## Related Resources
+
+### Skills
+- [moai-foundation-core](/skills/moai-foundation-core) - Core execution framework
+- [moai-workflow-docs](/skills/moai-workflow-docs) - Documentation workflow
+- [moai-foundation-context](/skills/moai-foundation-context) - Token optimization
+
+### Guides
+- [SPEC Format](/core-concepts/spec-format) - EARS specification guide
+- [TDD Workflow](/core-concepts/workflow) - Development workflow
+- [Agent Guide](/advanced/agents-guide) - Agent delegation patterns
+
+---
+
+**Last Updated**: 2025-11-28
+**Total Commands**: 6
+**Version**: 2.0

@@ -1,0 +1,474 @@
+# Agent Delegation Patterns
+
+MoAI-ADK provides sophisticated agent delegation patterns that enable complex workflows through strategic coordination of specialized agents.
+
+## Overview
+
+Agent delegation is the core mechanism by which Alfred orchestrates work across the 24-agent ecosystem. Understanding delegation patterns is essential for:
+
+- **Efficient Execution**: Choose sequential vs parallel strategies
+- **Token Optimization**: Minimize context usage through smart delegation
+- **Quality Assurance**: Ensure proper workflow validation
+- **Complexity Management**: Break down complex tasks systematically
+
+## The 24-Agent Ecosystem
+
+### 5-Tier Agent Hierarchy
+
+```
+Tier 1: expert-*   (Domain Experts)      - 7 agents  - Lazy-loaded
+Tier 2: manager-*  (Workflow Managers)   - 8 agents  - Auto-triggered
+Tier 3: builder-*  (Meta-creation)       - 3 agents  - On-demand
+Tier 4: mcp-*      (MCP Integrations)    - 5 agents  - Resume-enabled
+Tier 5: ai-*       (AI Services)         - 1 agent   - On-demand
+```
+
+### Agent Naming Convention
+
+All agents follow `{role}-{domain}` pattern:
+
+- `expert-*` - Implementation specialists
+- `manager-*` - Workflow orchestration
+- `builder-*` - Meta-generators
+- `mcp-*` - External service integration
+- `ai-*` - AI model connections
+
+## Delegation Strategies
+
+### 1. Sequential Delegation
+
+**When to Use**:
+- Tasks have dependencies between steps
+- Output of one agent needed for next agent
+- Order of operations matters
+
+**Pattern**:
+```python
+# Sequential: Step 2 depends on Step 1
+result1 = Task(subagent_type="manager-spec",
+               prompt="Create SPEC for user auth")
+
+# Wait for result1 before proceeding
+result2 = Task(subagent_type="manager-tdd",
+               prompt=f"Implement {result1.spec_id}")
+
+result3 = Task(subagent_type="manager-quality",
+               prompt=f"Validate {result1.spec_id}")
+```
+
+**Example Workflow**:
+```
+Alfred
+  ↓
+manager-spec (Create SPEC)
+  ↓
+manager-strategy (Plan execution)
+  ↓
+manager-tdd (Implement with TDD)
+  ↓
+manager-quality (TRUST 5 validation)
+  ↓
+manager-git (Create commit)
+```
+
+### 2. Parallel Delegation
+
+**When to Use**:
+- Tasks are independent
+- No dependencies between agents
+- Want to maximize throughput
+
+**Pattern**:
+```python
+# Parallel: All can run simultaneously
+Task(subagent_type="expert-backend",
+     prompt="Design API endpoints")
+
+Task(subagent_type="expert-frontend",
+     prompt="Design UI components")
+
+Task(subagent_type="expert-database",
+     prompt="Design database schema")
+```
+
+**Example Workflow**:
+```
+Alfred
+  ├─ expert-backend (API design)
+  ├─ expert-frontend (UI design)
+  └─ expert-database (Schema design)
+      ↓
+  (Integrate all results)
+```
+
+### 3. Conditional Delegation
+
+**When to Use**:
+- Decision point based on previous result
+- Different paths based on conditions
+- Adaptive workflows
+
+**Pattern**:
+```python
+result = Task(subagent_type="manager-quality",
+              prompt="Validate implementation")
+
+if result.status == "CRITICAL":
+    # Fix quality issues first
+    Task(subagent_type="manager-tdd",
+         prompt="Fix critical issues")
+elif result.status == "WARNING":
+    # Continue with warnings
+    Task(subagent_type="manager-git",
+         prompt="Create commit with warnings")
+else:
+    # All good, proceed
+    Task(subagent_type="manager-git",
+         prompt="Create commit")
+```
+
+### 4. Recursive Delegation
+
+**When to Use**:
+- Agent needs to spawn sub-agents
+- Multi-level task decomposition
+- Complex nested workflows
+
+**Pattern**:
+```python
+# Manager agent spawns expert agents
+Task(subagent_type="manager-strategy",
+     prompt="Plan implementation of user auth")
+
+# manager-strategy internally delegates to:
+#   - expert-backend (API design)
+#   - expert-database (Schema design)
+#   - expert-security (Auth patterns)
+```
+
+## Common Delegation Patterns
+
+### /moai:2-run Pattern (Full Implementation Cycle)
+
+```
+Alfred
+  ↓
+manager-strategy
+  ├─ Analyze SPEC
+  ├─ Create execution plan
+  └─ Return strategy
+      ↓
+manager-tdd
+  ├─ RED: Write failing tests
+  ├─ GREEN: Implement to pass
+  └─ REFACTOR: Optimize code
+      ↓
+manager-quality
+  ├─ TRUST 5 validation
+  ├─ Test coverage check
+  └─ Return quality report
+      ↓
+manager-git (if quality passes)
+  ├─ Stage changes
+  ├─ Create commit
+  └─ Push (if configured)
+```
+
+### Research + Implement Pattern
+
+```
+Alfred
+  ↓
+Explore (built-in)
+  └─ Search codebase (read-only)
+      ↓
+expert-* (domain specialist)
+  └─ Implement changes
+      ↓
+manager-quality
+  └─ Validate quality
+```
+
+### Documentation Pattern
+
+```
+Alfred
+  ↓
+manager-spec
+  └─ Create SPEC document
+      ↓
+manager-docs (parallel)
+  ├─ Generate README
+  ├─ Generate API docs
+  └─ Generate examples
+      ↓
+manager-quality
+  └─ Validate docs (links, format)
+```
+
+## MCP Resume Pattern
+
+MCP agents support context continuity across multiple calls:
+
+```python
+# Initial MCP call
+result1 = Task(subagent_type="mcp-context7",
+               prompt="Research React 19 APIs")
+agent_id = result1.agent_id
+
+# Resume with full context (40-60% token savings)
+result2 = Task(subagent_type="mcp-context7",
+               prompt="Compare with React 18",
+               resume=agent_id)
+
+# Continue investigation
+result3 = Task(subagent_type="mcp-context7",
+               prompt="Find migration examples",
+               resume=agent_id)
+```
+
+**Benefits**:
+- 40-60% token savings
+- 95%+ context accuracy
+- Multi-day analysis support
+- No context loss between calls
+
+## Agent Selection Decision Tree
+
+```
+Is it read-only exploration?
+├─ YES → Use Explore (built-in)
+└─ NO → Continue
+
+Does it need MCP service?
+├─ YES → Use mcp-* agent
+│   ├─ Documentation → mcp-context7
+│   ├─ Browser testing → mcp-playwright
+│   ├─ Design access → mcp-figma
+│   ├─ Notion ops → mcp-notion
+│   └─ Complex reasoning → mcp-sequential-thinking
+└─ NO → Continue
+
+Does it match domain specialty?
+├─ YES → Use expert-* agent
+│   ├─ Backend → expert-backend
+│   ├─ Frontend → expert-frontend
+│   ├─ Database → expert-database
+│   ├─ DevOps → expert-devops
+│   ├─ Security → expert-security
+│   ├─ UI/UX → expert-uiux
+│   └─ Debug → expert-debug
+└─ NO → Continue
+
+Does it match workflow?
+├─ YES → Use manager-* agent
+│   ├─ SPEC → manager-spec
+│   ├─ Strategy → manager-strategy
+│   ├─ TDD → manager-tdd
+│   ├─ Docs → manager-docs
+│   ├─ Quality → manager-quality
+│   ├─ Git → manager-git
+│   ├─ Project → manager-project
+│   └─ Claude Code → manager-claude-code
+└─ NO → Use general-purpose (built-in)
+```
+
+## Performance Optimization
+
+### Token Budget Management
+
+**Rule**: Context > 150K → Execute `/clear`
+
+**Strategy**:
+- Load only necessary agents
+- Use MCP resume for continuity
+- Leverage built-in Explore for searches
+- Defer detailed work to specialized agents
+
+### Parallel Execution Guidelines
+
+**Parallelizable**:
+```python
+# ✅ Good: Independent tasks
+Task(subagent_type="expert-backend", prompt="API")
+Task(subagent_type="expert-frontend", prompt="UI")
+Task(subagent_type="expert-database", prompt="Schema")
+```
+
+**Sequential Required**:
+```python
+# ✅ Correct: Dependencies exist
+spec = Task(subagent_type="manager-spec", ...)
+impl = Task(subagent_type="manager-tdd",
+            prompt=f"Implement {spec.id}")
+```
+
+### Agent Reuse
+
+**MCP agents** - Always use resume pattern:
+```python
+agent_id = result.agent_id
+# Reuse for related queries
+Task(subagent_type="mcp-context7", resume=agent_id, ...)
+```
+
+**Domain experts** - Create new instance per task:
+```python
+# Each task gets fresh agent
+Task(subagent_type="expert-backend", ...)
+```
+
+## Error Handling
+
+### Agent Not Found
+
+```python
+# ❌ Wrong: Invalid agent name
+Task(subagent_type="backend_expert", ...)
+
+# ✅ Correct: Follow naming convention
+Task(subagent_type="expert-backend", ...)
+```
+
+### Token Limit Exceeded
+
+```python
+# Check context before delegation
+if context_tokens > 150000:
+    # Execute /clear first
+    # Then delegate
+    Task(subagent_type="...", ...)
+```
+
+### Quality Gate Failure
+
+```python
+quality = Task(subagent_type="manager-quality", ...)
+
+if quality.status == "CRITICAL":
+    # Don't proceed to git commit
+    # Fix issues first
+    AskUserQuestion([{
+        "question": "Quality issues found. Fix before commit?",
+        "options": [...]
+    }])
+```
+
+## Best Practices
+
+### 1. Always Clarify First
+```python
+# ✅ Good: Clarify before delegation
+AskUserQuestion([{
+    "question": "Which auth method?",
+    "options": ["JWT", "Session", "OAuth"]
+}])
+
+# Then delegate with clear intent
+Task(subagent_type="expert-backend",
+     prompt=f"Implement {selected_method} auth")
+```
+
+### 2. Use Appropriate Agent Tier
+
+```
+Simple task (1-2 files) → expert-* agent
+Medium task (3-5 files) → manager-* agent
+Complex task (10+ files) → manager-* with expert-* delegation
+```
+
+### 3. Validate at Checkpoints
+
+```python
+# After each major phase
+impl = Task(subagent_type="manager-tdd", ...)
+quality = Task(subagent_type="manager-quality", ...)
+
+# Check before proceeding
+if quality.pass:
+    git = Task(subagent_type="manager-git", ...)
+```
+
+### 4. Document Delegation Rationale
+
+```python
+# Good: Explain why this agent
+Task(subagent_type="expert-database",
+     prompt="Design schema - requires SQL expertise")
+```
+
+## Advanced Patterns
+
+### Fan-Out / Fan-In
+
+```python
+# Fan-out: Parallel research
+results = []
+for topic in ["React", "Vue", "Angular"]:
+    r = Task(subagent_type="mcp-context7",
+             prompt=f"Research {topic} patterns")
+    results.append(r)
+
+# Fan-in: Aggregate results
+comparison = Task(subagent_type="expert-frontend",
+                  prompt=f"Compare frameworks: {results}")
+```
+
+### Pipeline Pattern
+
+```python
+# Stage 1: Data preparation
+data = Task(subagent_type="expert-database",
+            prompt="Extract user data")
+
+# Stage 2: Processing
+processed = Task(subagent_type="expert-backend",
+                 prompt=f"Process {data}")
+
+# Stage 3: Output
+output = Task(subagent_type="manager-docs",
+              prompt=f"Generate report from {processed}")
+```
+
+### Fallback Pattern
+
+```python
+# Try primary agent
+result = Task(subagent_type="expert-backend", ...)
+
+if result.status == "FAILED":
+    # Fallback to general-purpose
+    result = Task(subagent_type="general-purpose", ...)
+```
+
+## Troubleshooting
+
+### Agent Selection Issues
+- Review agent catalog: `.claude/agents/`
+- Verify naming convention: `{role}-{domain}`
+- Check agent availability in current config
+
+### Performance Degradation
+- Monitor token usage via session metrics
+- Use `/clear` when context > 150K
+- Leverage MCP resume pattern
+- Minimize agent spawning
+
+### Quality Issues
+- Always run manager-quality before commit
+- Follow TRUST 5 principles
+- Validate at each checkpoint
+- Don't skip validation steps
+
+## Next Steps
+
+- [Skills Library](/advanced/skills-library)
+- [TRUST 5 Quality](/advanced/trust5-quality)
+- [Performance Optimization](/advanced/performance-optimization)
+- [Custom Agent Creation](/advanced/builder-agents)
+
+---
+
+**Last Updated**: 2025-11-28
+**Version**: 1.0.0
+**Patterns**: 24 agents, 5 tiers

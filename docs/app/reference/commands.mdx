@@ -1,0 +1,56 @@
+# 명령어 레퍼런스
+
+MoAI-ADK의 모든 명령어 완전 레퍼런스입니다.
+
+## /moai:0-project
+
+프로젝트 초기화 및 관리
+
+```bash
+# 프로젝트 초기화
+moai init
+
+# 프로젝트 상태 확인
+moai status
+
+# 설정 변경
+moai config set <key> <value>
+```
+
+## /moai:1-plan
+
+SPEC 생성 및 계획 수립
+
+```bash
+# SPEC 생성
+/moai:1-plan "기능 설명"
+
+# 기존 SPEC 수정
+/moai:1-plan --edit SPEC-001
+```
+
+## /moai:2-run
+
+TDD 구현 자동 실행
+
+```bash
+# SPEC 구현
+/moai:2-run SPEC-001
+
+# 특정 TAG 구현
+/moai:2-run SPEC-001 --tag TAG-001
+```
+
+## /moai:3-sync
+
+구현 결과 문서화
+
+```bash
+# 문서 동기화
+/moai:3-sync SPEC-001
+
+# 자동 커밋과 함께 동기화
+/moai:3-sync SPEC-001 --commit
+```
+
+더 자세한 정보는 [핵심 명령어](/core-concepts/commands)를 참고하세요.

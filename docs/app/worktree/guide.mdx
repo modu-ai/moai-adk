@@ -1,0 +1,30 @@
+# Git Worktree 완벽 가이드
+
+Git Worktree의 기본 사용법을 배웁니다.
+
+## 기본 명령어
+
+```bash
+# 새 워크트리 생성
+moai-worktree create SPEC-001
+
+# 워크트리 목록 확인
+moai-worktree list
+
+# 워크트리 전환
+moai-worktree switch feature/SPEC-001
+
+# 워크트리 삭제
+moai-worktree remove feature/SPEC-001
+```
+
+## 워크트리 워크플로우
+
+1. SPEC 생성
+2. 워크트리 생성
+3. 기능 구현
+4. 테스트 및 검증
+5. PR 생성 및 병합
+6. 워크트리 정리
+
+자세한 예제는 [실제 사용 예제](/worktree/examples)를 참고하세요.

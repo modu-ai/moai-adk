@@ -1,0 +1,974 @@
+---
+title: "일반적인 프롬프트 패턴"
+description: "코딩, 디버깅, 문서화, 아키텍처 설계 등 특정 작업에 최적화된 검증된 프롬프트 패턴"
+---
+
+# 일반적인 프롬프트 패턴
+
+특정 작업 유형에 최적화된 검증된 프롬프트 패턴들을 학습합니다. 이 패턴들은 실무에서 즉시 적용할 수 있는 베스트 프랙티스입니다.
+
+## 💻 코딩 패턴
+
+### 1. 기능 구현 패턴
+
+```python
+# 기능 구현을 위한 표준 패턴
+CODE_IMPLEMENTATION_PATTERN = """
+# 역할 정의
+당신은 {language} 전문 개발자입니다. {experience}년의 경력을 가졌으며, {domain} 분야의 전문가입니다.
+
+# 기능 요구사항
+기능명: {feature_name}
+설명: {feature_description}
+입력: {inputs}
+출력: {outputs}
+예외 처리: {exceptions}
+
+# 기술적 요구사항
+언어/버전: {language_version}
+프레임워크: {framework}
+라이브러리: {libraries}
+코드 스타일: {code_style}
+
+# 구현 가이드라인
+{implementation_guidelines}
+
+# 예시 코드
+```python
+# 기대되는 구현 패턴 예시
+{example_pattern}
+```
+
+# 제약사항
+✅ 반드시 포함:
+- {must_include_1}
+- {must_include_2}
+- {must_include_3}
+
+❌ 제외할 것:
+- {must_exclude_1}
+- {must_exclude_2}
+
+# 테스트 요구사항
+{test_requirements}
+
+# 결과물 형식
+{output_format}
+"""
+
+# 실제 사용 예시
+implementation_prompt = CODE_IMPLEMENTATION_PATTERN.format(
+    language="Python",
+    experience="8",
+    domain="백엔드 API 개발",
+    feature_name="JWT 토큰 관리자",
+    feature_description="JWT 토큰의 생성, 검증, 갱신을 담당하는 클래스",
+    inputs="user_id, access_token_ttl, refresh_token_ttl",
+    outputs="access_token, refresh_token, token_claims",
+    exceptions="TokenExpiredError, InvalidTokenError",
+    language_version="Python 3.11",
+    framework="FastAPI",
+    libraries="PyJWT, python-jose[cryptography]",
+    code_style="PEP 8, 타입 힌트, docstring",
+    implementation_guidelines="""
+    1. 비동기 지원 (async/await)
+    2. 환경변수에서 시크릿 키 로드
+    3. 토큰 블랙리스트 지원
+    4. 리프레시 토큰 로테이션
+    5. 보안 모범 사례 적용
+    """,
+    example_pattern="""
+class TokenManager:
+    def __init__(self, secret_key: str):
+        self.secret_key = secret_key
+        self.algorithm = "HS256"
+
+    async def create_access_token(self, user_id: str) -> str:
+        # 액세스 토큰 생성 로직
+        pass
+    """,
+    must_include_1="완전한 타입 힌트",
+    must_include_2="포괄적인 예외 처리",
+    must_include_3="보안 검증 로직",
+    must_exclude_1="하드코딩된 시크릿 키",
+    must_exclude_2="디버그 출력",
+    test_requirements="pytest, 90% 이상 커버리지, 모든 예외 케이스 테스트",
+    output_format="""
+## 결과물
+### 1. TokenManager 클래스 전체 코드
+### 2. 관련 모델/DTO 정의
+### 3. 단위 테스트 코드
+### 4. 사용 예시 코드
+### 5. 설정 가이드
+    """
+)
+```
+
+### 2. 리팩토링 패턴
+
+```python
+# 코드 리팩토링 전용 패턴
+REFACTORING_PATTERN = """
+# 역할
+당신은 코드 리팩토링 전문가입니다. {refactoring_goal}에 초점을 맞춰 코드 개선을 진행합니다.
+
+# 리팩토링 대상 코드
+```{language}
+{original_code}
+```
+
+# 현재 코드 문제점
+{code_issues}
+
+# 리팩토링 목표
+{refactoring_goals}
+
+# 리팩토링 원칙
+{refactoring_principles}
+
+# 평가 기준
+{evaluation_criteria}
+
+# 리팩토링 결과물 형식
+## 1. 문제 분석
+- 현재 코드의 문제점 상세 분석
+- 개선이 필요한 부분 식별
+
+## 2. 리팩토링 전략
+- 적용할 리팩토링 기법
+- 변경 순서와 이유
+
+## 3. 개선된 코드
+- 리팩토링된 최종 코드
+- 변경사항 주석 표시
+
+## 4. 개선 효과
+- 성능 향상 측정
+- 가독성 개선
+- 유지보수성 향상
+
+## 5. 테스트 결과
+- 기존 테스트 통과 여부
+- 추가된 테스트 케이스
+"""
+
+# 리팩토링 적용 예시
+refactoring_prompt = REFACTORING_PATTERN.format(
+    refactoring_goal="성능 최적화 및 가독성 개선",
+    language="python",
+    original_code="""
+class UserProcessor:
+    def process_users(self, users):
+        result = []
+        for i in range(len(users)):
+            if users[i]['age'] > 18:
+                if users[i]['status'] == 'active':
+                    user_data = {}
+                    user_data['id'] = users[i]['id']
+                    user_data['name'] = users[i]['name']
+                    user_data['email'] = users[i]['email']
+                    result.append(user_data)
+        return result
+    """,
+    code_issues="""
+    1. 리스트 인덱스 접근으로 인한 가독성 저하
+    2. 중첩된 if 문으로 인한 복잡성 증가
+    3. 불필요한 임시 딕셔너리 생성
+    4. 타입 힌트 부재
+    5. 예외 처리 부재
+    """,
+    refactoring_goals="""
+    - 성능 최적화 (리스트 컴프리헨션 활용)
+    - 가독성 향상 (명확한 조건문)
+    - 타입 안정성 확보
+    - 예외 처리 강화
+    - 함수형 프로그래밍 스타일 적용
+    """,
+    refactoring_principles="""
+    - KISS (Keep It Simple, Stupid)
+    - DRY (Don't Repeat Yourself)
+    - SOLID 원칙
+    - Clean Code 원칙
+    """,
+    evaluation_criteria="""
+    - 실행 속도 (benchmark)
+    - 코드 라인 수 감소
+    - 복잡도 지수 (Cyclomatic Complexity)
+    - 타입 안정성
+    - 테스트 커버리지
+    """
+)
+```
+
+### 3. API 설계 패턴
+
+```python
+# REST API 설계 패턴
+API_DESIGN_PATTERN = """
+# 역할
+당신은 REST API 설계 전문가입니다. {api_type} API 설계에 풍부한 경험이 있습니다.
+
+# API 요구사항
+도메인: {domain}
+목표: {api_goal}
+사용자: {api_users}
+예상 트래픽: {expected_traffic}
+
+# 기능 요구사항
+{functional_requirements}
+
+# 비기능 요구사항
+{non_functional_requirements}
+
+# 설계 원칙
+{design_principles}
+
+# 결과물 형식
+## 1. API 아키텍처 개요
+- 전체 구조도 (Mermaid)
+- 마이크로서비스 분리 전략
+- 데이터 흐름
+
+## 2. 엔드포인트 설계
+- 리소스 모델링
+- URI 설계 원칙
+- HTTP 메서드 매핑
+
+## 3. 데이터 모델
+- JSON 스키마 정의
+- 데이터 관계 모델
+- 상태 전이 다이어그램
+
+## 4. 인증/인가 설계
+- 인증 방식 선택
+- 권한 모델 설계
+- 보안 정책
+
+## 5. OpenAPI 명세서
+- 완전한 API 문서
+- 예시 요청/응답
+
+## 6. 구현 가이드
+- 기술 스택 추천
+- 배포 전략
+- 모니터링 계획
+"""
+
+# API 설계 예시
+api_design_prompt = API_DESIGN_PATTERN.format(
+    api_type="전자상거래",
+    domain="E-Commerce",
+    api_goal="확장 가능한 상품 관리 및 주문 처리 시스템",
+    api_users="프론트엔드 개발자, 모바일 앱, 파트너 시스템",
+    expected_traffic="일 100만 요청, 피크 시 500만 요청",
+    functional_requirements="""
+    - 상품 관리 (CRUD)
+    - 재고 관리
+    - 주문 처리
+    - 결제 연동
+    - 사용자 관리
+    - 검색 및 필터링
+    - 리뷰 및 평점
+    """,
+    non_functional_requirements="""
+    - 응답 시간: 95%ile < 200ms
+    - 가용성: 99.9%
+    - 확장성: 수평적 확장 지원
+    - 보안: PCI-DSS 준수
+    - 데이터 일관성: 최종 일관성 허용
+    """,
+    design_principles="""
+    - RESTful 원칙 준수
+    - HATEOAS 적용
+    - 버전 관리 (URL 기반)
+    - 이벤트 기반 아키텍처
+    - 마이크로서비스 패턴
+    - API 우선 개발 (API-first)
+    """
+)
+```
+
+## 🐛 디버깅 패턴
+
+### 1. 오류 분석 패턴
+
+```python
+# 오류 분석 및 해결 패턴
+ERROR_ANALYSIS_PATTERN = """
+# 역할
+당신은 {language} 디버깅 전문가입니다. 복잡한 시스템의 문제를 체계적으로 분석하고 해결합니다.
+
+# 오류 정보
+에러 유형: {error_type}
+에러 메시지: {error_message}
+발생 위치: {error_location}
+재현 단계: {reproduction_steps}
+환경 정보: {environment}
+
+# 관련 코드
+```{language}
+{related_code}
+```
+
+# 시스템 정보
+아키텍처: {architecture}
+의존성: {dependencies}
+최근 변경: {recent_changes}
+
+# 분석 접근법
+{analysis_approach}
+
+# 결과물 형식
+## 1. 근본 원인 분석 (Root Cause Analysis)
+- 에러 발생의 직접적 원인
+- 간접적 원인 및 관련 요인
+- 시스템적 관점의 문제점
+
+## 2. 문제 재현
+- 최소 재현 코드
+- 테스트 케이스
+- 재현 조건 정리
+
+## 3. 해결 방안
+- 즉각적인 해결책
+- 근본적 해결책
+- 예방 방안
+
+## 4. 코드 수정
+- 수정된 코드
+- 수정 이유 설명
+- 부작용 검증
+
+## 5. 테스트 계획
+- 회귀 테스트
+- 통합 테스트
+- 성능 영향 검증
+
+## 6. 장기적 개선
+- 코드 리팩토링 제안
+- 아키텍처 개선
+- 프로세스 개선
+"""
+
+# 오류 분석 예시
+error_analysis_prompt = ERROR_ANALYSIS_PATTERN.format(
+    language="Python",
+    error_type="MemoryError",
+    error_message="MemoryError: Unable to allocate array with shape (1000000, 1000000)",
+    error_location="data_processor.py:42 in process_large_dataset()",
+    reproduction_steps="""
+    1. 대용량 CSV 파일 (10GB) 로드
+    2. 데이터 전처리 수행
+    3. 머신러닝 모델 피쳐 생성
+    4. 메모리 오류 발생
+    """,
+    environment="""
+    OS: Ubuntu 20.04
+    Python: 3.9
+    RAM: 16GB
+    라이브러리: pandas, numpy, scikit-learn
+    """,
+    related_code="""
+import pandas as pd
+import numpy as np
+
+def process_large_dataset(file_path):
+    # 데이터 로드
+    df = pd.read_csv(file_path)
+
+    # 피쳐 생성
+    features = np.zeros((len(df), len(df)))  # 메모리 오류 발생 지점
+
+    for i, row in df.iterrows():
+        for j, other_row in df.iterrows():
+            features[i, j] = calculate_similarity(row, other_row)
+
+    return features
+    """,
+    architecture="단일 머신 데이터 처리 파이프라인",
+    dependencies="pandas==1.3.0, numpy==1.21.0, scikit-learn==0.24.2",
+    recent_changes="데이터셋 크기 100GB로 증가",
+    analysis_approach="""
+    1. 메모리 사용 패턴 분석
+    2. 알고리즘 복잡도 검토
+    3. 데이터 구조 최적화
+    4. 스트리밍 처리 방안 고려
+    5. 분산 처리 전략 검토
+    """
+)
+```
+
+### 2. 성능 최적화 패턴
+
+```python
+# 성능 최적화 패턴
+PERFORMANCE_OPTIMIZATION_PATTERN = """
+# 역할
+당신은 성능 최적화 전문가입니다. {optimization_type} 분야의 깊은 경험을 가지고 있습니다.
+
+# 성능 문제
+현재 성능: {current_performance}
+목표 성능: {target_performance}
+병목 지점: {bottlenecks}
+사용자 피드백: {user_feedback}
+
+# 시스템 정보
+아키텍처: {architecture}
+데이터 크기: {data_size}
+동시 사용자: {concurrent_users}
+하드웨어: {hardware}
+
+# 프로파일링 결과
+{profiling_results}
+
+# 최적화 목표
+{optimization_goals}
+
+# 제약사항
+{constraints}
+
+# 결과물 형식
+## 1. 성능 분석
+- 현재 성능 지표
+- 병목 지점 식별
+- 성능 저하 원인
+
+## 2. 최적화 전략
+- 단기적 해결책
+- 장기적 해결책
+- 우선순위 순 최적화
+
+## 3. 구체적 최적화
+- 코드 레벨 최적화
+- 아키텍처 개선
+- 인프라 최적화
+
+## 4. 최적화 결과
+- 성능 향상 측정
+- 리소스 사용량 변화
+- 부작용 분석
+
+## 5. 모니터링 계획
+- 성능 메트릭 정의
+- 알림 설정
+- 지속적 최적화 계획
+"""
+
+# 성능 최적화 예시
+performance_prompt = PERFORMANCE_OPTIMIZATION_PATTERN.format(
+    optimization_type="데이터베이스 쿼리",
+    current_performance="평균 응답 시간: 2.5초",
+    target_performance="평균 응답 시간: 200ms",
+    bottlenecks="N+1 쿼리 문제, 인덱스 부재",
+    user_feedback="페이지 로딩이 너무 느림",
+    architecture="3-tier 웹 애플리케이션",
+    data_size="사용자 100만명, 게시글 500만개",
+    concurrent_users="최대 5000명",
+    hardware="AWS RDS r5.large",
+    profiling_results="""
+    Top 5 Slow Queries:
+    1. SELECT * FROM posts WHERE user_id = ? (2.1s) - 1000회/분
+    2. SELECT * FROM comments WHERE post_id = ? (1.8s) - 500회/분
+    3. SELECT COUNT(*) FROM likes WHERE target_id = ? (0.9s) - 2000회/분
+    """,
+    optimization_goals="""
+    - 평균 응답 시간 200ms 이하
+    - CPU 사용률 50% 이하
+    - 메모리 사용량 70% 이하
+    - 쿼리 응답 시간 50ms 이하
+    """,
+    constraints="""
+    - 다운타임 없이 적용
+    - 기존 API 호환성 유지
+    - 데이터 정합성 보장
+    - 예산 내에서 해결
+    """
+)
+```
+
+## 📚 문서화 패턴
+
+### 1. API 문서 생성 패턴
+
+```python
+# API 문서 생성 패턴
+API_DOCUMENTATION_PATTERN = """
+# 역할
+당신은 기술 문서 작성 전문가입니다. {doc_type} 문서화에 풍부한 경험이 있습니다.
+
+# 문서화 대상
+시스템: {system_name}
+버전: {version}
+대상 독자: {target_audience}
+문서 목적: {documentation_purpose}
+
+# 소스 정보
+코드 베이스: {codebase_location}
+API 명세: {api_specification}
+테스트 결과: {test_results}
+
+# 문서화 요구사항
+{documentation_requirements}
+
+# 스타일 가이드
+{style_guide}
+
+# 결과물 형식
+## 1. 개요
+- 시스템 소개
+- 아키텍처 개요
+- 주요 기능
+- 사용 시나리오
+
+## 2. 시작하기
+- 설치 및 설정
+- 빠른 시작 가이드
+- 기본 사용법
+- 첫 API 호출
+
+## 3. API 참조
+- 인증 방법
+- 엔드포인트 목록
+- 요청/응답 형식
+- 에러 코드
+- 예제 코드
+
+## 4. 가이드
+- 일반적인 사용 패턴
+- 모범 사례
+- 문제 해결
+- 고급 기능
+
+## 5. 부록
+- 용어집
+- 변경 로그
+- FAQ
+- 지원 정보
+"""
+
+# API 문서 생성 예시
+doc_prompt = API_DOCUMENTATION_PATTERN.format(
+    doc_type="REST API",
+    system_name="MoAI-ADK API",
+    version="v1.0.0",
+    target_audience="개발자, 시스템 통합팀",
+    documentation_purpose="외부 파트너를 위한 API 통합 가이드",
+    codebase_location="/src/api/",
+    api_specification="OpenAPI 3.0",
+    test_results="테스트 커버리지 95%, 모든 엔드포인트 통과",
+    documentation_requirements="""
+    - OpenAPI 3.0 호환
+    - 다국어 지원 (한글, 영어)
+    - 대화형 API 테스트
+    - SDK 예제 코드
+    - Postman 컬렉션
+    """,
+    style_guide="""
+    - 기술 문서 작성 표준
+    - Markdown 형식
+    - 코드 예시 포함
+    - 다이어그램 활용
+    - 일관된 용어 사용
+    """
+)
+```
+
+### 2. 코드 문서화 패턴
+
+```python
+# 코드 문서화 패턴
+CODE_DOCUMENTATION_PATTERN = """
+# 역할
+당신은 코드 문서화 전문가입니다. {code_language} 코드의 가독성과 유지보수성을 높이는 문서화를 전문으로 합니다.
+
+# 문서화 대상 코드
+프로젝트: {project_name}
+모듈: {module_name}
+기능: {module_function}
+작성자: {original_author}
+
+# 소스 코드
+```{language}
+{source_code}
+```
+
+# 현재 문서화 상태
+{current_documentation_status}
+
+# 문서화 요구사항
+{documentation_requirements}
+
+# 대상 독자
+{target_audience}
+
+# 결과물 형식
+## 1. 모듈 개요
+- 모듈의 목적과 역할
+- 주요 기능 설명
+- 의존성 관계
+
+## 2. 개선된 코드
+- 주석이 추가된 코드
+- docstring 개선
+- 타입 힌트 추가
+
+## 3. API 문서
+- 함수/클래스 설명
+- 파라미터 상세 정보
+- 반환값 설명
+- 예외 처리
+- 사용 예시
+
+## 4. 아키텍처 문서
+- 클래스 다이어그램
+- 시퀀스 다이어그램
+- 데이터 흐름
+
+## 5. 사용 가이드
+- 사용법 예시
+- 일반적인 패턴
+- 주의사항
+"""
+
+# 코드 문서화 예시
+code_doc_prompt = CODE_DOCUMENTATION_PATTERN.format(
+    code_language="Python",
+    project_name="MoAI-ADK",
+    module_name="auth",
+    module_function="JWT 기반 인증 처리",
+    original_author="개발팀",
+    language="python",
+    source_code="""
+class AuthManager:
+    def __init__(self, config):
+        self.config = config
+
+    def authenticate(self, username, password):
+        # 인증 로직
+        pass
+
+    def generate_token(self, user_id):
+        # 토큰 생성
+        pass
+    """,
+    current_documentation_status="기본적인 주석만 존재, docstring 부재",
+    documentation_requirements="""
+    - Google Style docstring 적용
+    - 타입 힌트 완성
+    - 사용 예시 추가
+    - 에러 처리 명시
+    - 보안 관련 주의사항
+    """,
+    target_audience="프레임워크 사용 개발자, 새로운 팀원"
+)
+```
+
+## 🏗️ 아키텍처 설계 패턴
+
+### 1. 마이크로서비스 아키텍처 패턴
+
+```python
+# 마이크로서비스 아키텍처 설계 패턴
+MICROSERVICE_ARCHITECTURE_PATTERN = """
+# 역할
+당신은 마이크로서비스 아키텍처 전문가입니다. 대규모 분산 시스템 설계 경험이 풍부합니다.
+
+# 프로젝트 정보
+프로젝트: {project_name}
+도메인: {domain}
+규모: {scale}
+성장 예측: {growth_projection}
+
+# 비즈니스 요구사항
+{business_requirements}
+
+# 기술적 요구사항
+{technical_requirements}
+
+# 현재 상황
+{current_situation}
+
+# 제약사항
+{constraints}
+
+# 결과물 형식
+## 1. 아키텍처 개요
+- 비즈니스 컨텍스트 맵
+- 마이크로서비스 분리 전략
+- 서비스 경계 정의
+
+## 2. 서비스 상세 설계
+{service_designs}
+
+## 3. 데이터 아키텍처
+- 데이터베이스 선택 전략
+- 데이터 일관성 보장
+- 이벤트 기반 아키텍처
+
+## 4. 통신 패턴
+- 동기 통신 (REST, gRPC)
+- 비동기 통신 (Message Queue)
+- 서비스 메시 (Service Mesh)
+
+## 5. 운영/인프라
+- 컨테이너화 전략
+- 오케스트레이션
+- CI/CD 파이프라인
+- 모니터링 및 로깅
+
+## 6. 마이그레이션 전략
+- 단계적 마이그레이션 계획
+- 리스크 관리
+- 롤백 전략
+"""
+
+# 마이크로서비스 아키텍처 예시
+microservice_prompt = MICROSERVICE_ARCHITECTURE_PATTERN.format(
+    project_name="전자상거래 플랫폼",
+    domain="E-Commerce",
+    scale="대규모 (일 100만 트랜잭션)",
+    growth_projection="연 200% 성장 예상",
+    business_requirements="""
+    - 24/7 서비스 가용성
+    - 빠른 기능 출시 (주 2회)
+    - 글로벌 확장 지원
+    - 개인화된 사용자 경험
+    - 실시간 재고 관리
+    """,
+    technical_requirements="""
+    - 99.99% 가용성
+    - 100ms 이하 응답 시간
+    - 수평적 확장 지원
+    - 다국어 지원
+    - PCI-DSS 준수
+    """,
+    current_situation="모놀리식 아키텍처, 확장성 한계 도달",
+    constraints="""
+    - 다운타임 최소화
+    - 기존 데이터 마이그레이션
+    - 예산 제약
+    - 팀 전문성 수준
+    """,
+    service_designs="""
+    ### 사용자 서비스 (User Service)
+    - 사용자 관리, 인증, 프로필
+    - 기술 스택: Node.js + MongoDB
+
+    ### 상품 서비스 (Product Service)
+    - 상품 정보, 재고, 검색
+    - 기술 스택: Python + Elasticsearch
+
+    ### 주문 서비스 (Order Service)
+    - 주문 처리, 결제, 배송
+    - 기술 스택: Java + PostgreSQL
+
+    ### 알림 서비스 (Notification Service)
+    - 이메일, SMS, 푸시 알림
+    - 기술 스택: Go + Redis
+    """
+)
+```
+
+### 2. 시스템 통합 패턴
+
+```python
+# 시스템 통합 패턴
+SYSTEM_INTEGRATION_PATTERN = """
+# 역할
+당신은 시스템 통합 전문가입니다. 레거시 시스템과 현대 시스템의 통합에 경험이 풍부합니다.
+
+# 통합 요구사항
+소스 시스템: {source_systems}
+타겟 시스템: {target_systems}
+통합 목표: {integration_goals}
+
+# 기술 스택
+소스 기술: {source_technologies}
+타겟 기술: {target_technologies}
+미들웨어: {middleware_options}
+
+# 통합 패턴
+{integration_patterns}
+
+# 데이터 요구사항
+{data_requirements}
+
+# 제약사항
+{constraints}
+
+# 결과물 형식
+## 1. 통합 아키텍처
+- 전체 통합 다이어그램
+- 데이터 흐름 분석
+- 통합 패턴 선택 이유
+
+## 2. 상세 설계
+- 인터페이스 정의
+- 데이터 매핑
+- 프로토콜 선택
+- 보안 고려사항
+
+## 3. 구현 계획
+- 단계별 통합 계획
+- 리스크 관리
+- 테스트 전략
+- 롤백 계획
+
+## 4. 운영 가이드
+- 모니터링 전략
+- 장애 처리
+- 성능 최적화
+- 유지보수 가이드
+"""
+
+# 시스템 통합 예시
+integration_prompt = SYSTEM_INTEGRATION_PATTERN.format(
+    source_systems="레거시 ERP 시스템 (Java, Oracle DB)",
+    target_systems="클라우드 기반 CRM (Salesforce, AWS)",
+    integration_goals="실시간 데이터 동기화, 통합 고객 360도 뷰",
+    source_technologies="Java 8, Oracle 11g, SOAP 웹서비스",
+    target_technologies="AWS Lambda, DynamoDB, REST API, EventBridge",
+    middleware_options="Apache Kafka, AWS SQS, MuleSoft",
+    integration_patterns="""
+    - API Gateway 패턴
+    - Event-driven 아키텍처
+    - Strangler Fig 패턴
+    - Anti-corruption Layer
+    """,
+    data_requirements="""
+    - 실시간 동기화 (1초 이내)
+    - 데이터 정합성 보장
+    - 역방향 동기화 지원
+    - 대용량 데이터 처리
+    """,
+    constraints="""
+    - 레거시 시스템 수정 최소화
+    - 다운타임 없이 통합
+    - 데이터 보안 규정 준수
+    - 예산 제한
+    """
+)
+```
+
+## 📊 테스트 패턴
+
+### 1. 테스트 전략 패턴
+
+```python
+# 테스트 전략 패턴
+TESTING_STRATEGY_PATTERN = """
+# 역할
+당신은 테스트 전략 전문가입니다. {testing_type} 테스트 설계와 자동화에 전문성을 가지고 있습니다.
+
+# 프로젝트 정보
+프로젝트: {project_name}
+애플리케이션: {application_type}
+복잡도: {complexity}
+팀 규모: {team_size}
+
+# 테스트 요구사항
+{testing_requirements}
+
+# 품질 목표
+{quality_goals}
+
+# 기술 스택
+{tech_stack}
+
+# 제약사항
+{constraints}
+
+# 결과물 형식
+## 1. 테스트 전략 개요
+- 테스트 피라미드 구성
+- 테스트 범위 정의
+- 품질 게이트 설정
+
+## 2. 테스트 종류별 계획
+{test_type_plans}
+
+## 3. 테스트 자동화
+- 자동화 전략
+- 툴 선택
+- CI/CD 통합
+- 테스트 데이터 관리
+
+## 4. 테스트 환경
+- 테스트 환경 구성
+- 데이터베이스 전략
+- 모의 객체 활용
+
+## 5. 성능 테스트
+- 부하 테스트 계획
+- 성능 기준 설정
+- 모니터링 전략
+
+## 6. 실행 계획
+- 일정 계획
+- 리소스 배분
+- 위험 관리
+"""
+
+# 테스트 전략 예시
+testing_prompt = TESTING_STRATEGY_PATTERN.format(
+    testing_type="웹 애플리케이션",
+    project_name="온라인 쇼핑몰",
+    application_type="React + FastAPI",
+    complexity="중간 (5개 주요 모듈)",
+    team_size="개발자 4명, QA 2명",
+    testing_requirements="""
+    - 단위 테스트: 80% 이상 커버리지
+    - 통합 테스트: API 엔드포인트 전체
+    - E2E 테스트: 주요 사용자 시나리오
+    - 성능 테스트: 1000 동시 사용자
+    """,
+    quality_goals="""
+    - 치명적 버그: 0개
+    - 주요 버그: 5개 이하
+    - 사용자 만족도: 95% 이상
+    - 평균 응답 시간: 500ms 이하
+    """,
+    tech_stack="React, FastAPI, PostgreSQL, Docker, AWS",
+    constraints="""
+    - 2주 내 테스트 체계 구축
+    - 기존 코드 변경 최소화
+    - 자동화 테스트 비중 70% 이상
+    """,
+    test_type_plans="""
+    ### 단위 테스트 (Unit Tests)
+    - 도구: Jest (Frontend), pytest (Backend)
+    - 대상: 모든 비즈니스 로직, 유틸리티 함수
+    - 목표: 80% 코드 커버리지
+
+    ### 통합 테스트 (Integration Tests)
+    - 도구: Supertest, TestContainers
+    - 대상: API 엔드포인트, 데이터베이스 연동
+    - 목표: 모든 API 경로 테스트
+
+    ### E2E 테스트 (End-to-End Tests)
+    - 도구: Playwright
+    - 대상: 주요 사용자 시나리오
+    - 목표: 크리티컬 경로 100% 커버
+
+    ### 성능 테스트 (Performance Tests)
+    - 도구: k6, Artillery
+    - 대상: 핵심 API, 페이지 로딩
+    - 목표: 1000 동시 사용자 처리
+    """
+)
+```
+
+## 📖 다음 단계
+
+이제 일반적인 프롬프트 패턴을 학습했으니, 다음으로 진행할 수 있습니다:
+
+1. **[문제 해결](./troubleshooting)** - 일반적인 문제와 해결 방법
+2. **[모범 사례](./best-practices)** - Claude 4.5 최적화와 전문가 팁
+
+---
+
+## 🔗 관련 자료
+
+- [Anthropic Claude 가이드](https://docs.anthropic.com/claude/docs/prompt-engineering)
+- [MoAI-ADK 테스트 워크플로우](../core-concepts/workflow)
+- [에이전트 패턴](../skills/moai-foundation-claude)
