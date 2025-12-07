@@ -1,0 +1,88 @@
+{
+  "name": "concept-explanation",
+  "genre_type": "개념 설명형",
+  "description": "기초 개념 설명, 이해 중심",
+  "position": "본문 중간",
+  "word_count_range": [
+    600,
+    1000
+  ],
+  "content_flow": [
+    {
+      "stage": "definition",
+      "description": "정의 (X란 무엇인가?)"
+    },
+    {
+      "stage": "importance",
+      "description": "중요성 (왜 중요한가?)"
+    },
+    {
+      "stage": "principle",
+      "description": "원리 (어떻게 동작하는가?)"
+    },
+    {
+      "stage": "example",
+      "description": "실제 예시"
+    }
+  ],
+  "tone": "설명하고 이해시키는",
+  "structure": {
+    "definition": {
+      "paragraphs": 1,
+      "sentences": [
+        2,
+        3
+      ]
+    },
+    "importance": {
+      "paragraphs": 1,
+      "sentences": [
+        3,
+        4
+      ]
+    },
+    "principle": {
+      "paragraphs": 2,
+      "sentences_per_paragraph": [
+        4,
+        5
+      ]
+    },
+    "example": {
+      "paragraphs": 1,
+      "sentences": [
+        3,
+        4
+      ]
+    },
+    "total_paragraphs": 5,
+    "total_sentences": [
+      15,
+      20
+    ]
+  },
+  "writing_style": {
+    "endings": {
+      "-다": 50,
+      "-습니다": 50
+    },
+    "active_voice_ratio": 80,
+    "sentence_length_avg": 20
+  },
+  "code_examples": {
+    "count_range": [
+      1,
+      2
+    ],
+    "lines_per_example": [
+      10,
+      15
+    ]
+  },
+  "required_elements": {
+    "definition": 1,
+    "analogy": 1,
+    "principle_explanation": 1,
+    "real_example": 1
+  }
+}

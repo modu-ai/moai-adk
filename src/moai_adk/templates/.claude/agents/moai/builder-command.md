@@ -596,18 +596,18 @@ WHY: Pattern documentation helps users understand command execution model and de
 IMPACT: Missing pattern documentation creates confusion about agent orchestration
 
 Pattern Determination Logic:
-- Sequential Chaining: If command has 2+ phases where each depends on previous → ✅
-- Parallel Execution: If command executes multiple agents simultaneously → ✅ or ⚠️ or ❌
-- Resumable Agents: If command can resume from checkpoint after interruption → ✅ or ❌
+- Sequential Chaining: If command has 2+ phases where each depends on previous → PASS
+- Parallel Execution: If command executes multiple agents simultaneously → PASS or WARNING or FAIL
+- Resumable Agents: If command can resume from checkpoint after interruption → PASS or FAIL
 
 ```markdown
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 
-### Sequential Phase-Based Chaining {✅|❌}
+### Sequential Phase-Based Chaining {PASS|FAIL}
 
-{If ✅:
+{If PASS:
 Command implements sequential chaining through {N} phases:
 
 Phase Flow:
@@ -624,16 +624,16 @@ WHY: Sequential execution ensures {reason}
 IMPACT: {consequence_of_violation}
 }
 
-{If ❌:
+{If FAIL:
 Not applicable - {reason}
 
 WHY: {explanation}
 IMPACT: {why_not_applicable}
 }
 
-### Parallel Execution {✅|⚠️|❌}
+### Parallel Execution {PASS|WARNING|FAIL}
 
-{If ✅:
+{If PASS:
 Command executes multiple agents simultaneously:
 - {parallel_operation_1}
 - {parallel_operation_2}
@@ -642,23 +642,23 @@ WHY: {reason_for_parallel}
 IMPACT: {benefit_of_parallel}
 }
 
-{If ⚠️:
+{If WARNING:
 Limited parallel execution {where}
 
 WHY: {specific_limitations}
 IMPACT: {consequences}
 }
 
-{If ❌:
+{If FAIL:
 Not applicable - {reason}
 
 WHY: {explanation}
 IMPACT: {why_sequential_required}
 }
 
-### Resumable Agent Support {✅|❌}
+### Resumable Agent Support {PASS|FAIL}
 
-{If ✅:
+{If PASS:
 Command supports resume pattern:
 
 Resume Command:
@@ -669,7 +669,7 @@ WHY: {reason_for_resume_support}
 IMPACT: {benefit_of_resume}
 }
 
-{If ❌:
+{If FAIL:
 Not applicable - {reason}
 
 WHY: {explanation}
@@ -1098,7 +1098,7 @@ description: "Generate usage documentation"
 - User requests: "Create a command for environment setup"
 - Strategy: Clone `/moai:0-project` template
 - Agents: manager-project, manager-quality
-- Skills: moai-toolkit-essentials (contains environment security)
+- Skills: moai-foundation-quality (contains environment security)
 
 3. Simple Utility Command
 

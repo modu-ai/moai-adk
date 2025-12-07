@@ -95,7 +95,7 @@ Command usage examples:
 
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 
-### Sequential Phase-Based Chaining ✅
+### Sequential Phase-Based Chaining PASS
 
 Command implements sequential chaining through 3 core phases:
 
@@ -113,7 +113,7 @@ WHY: Sequential execution ensures documentation consistency and validation
 
 IMPACT: Skipping phases would create inconsistent documentation or invalid commits
 
-### Parallel Execution ⚠️
+### Parallel Execution WARNING
 
 Limited parallel execution within Phase 2 for independent documentation files
 
@@ -123,7 +123,7 @@ WHY: Some documentation files can be generated simultaneously
 
 IMPACT: Full parallel execution would risk broken cross-references and index inconsistencies
 
-### Resumable Agent Support ❌
+### Resumable Agent Support FAIL
 
 Not applicable - command typically completes quickly in single execution
 

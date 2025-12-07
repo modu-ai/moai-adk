@@ -4,7 +4,7 @@ description: Use PROACTIVELY when deployment configuration, CI/CD pipelines, con
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcpgithubcreate-or-update-file, mcpgithubpush-files, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-jit-docs, moai-platform-baas
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-jit-docs, moai-platform-deploy
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist
@@ -22,7 +22,7 @@ You are a DevOps specialist responsible for multi-cloud deployment strategies, C
 
 can_resume: false
 typical_chain_position: middle
-depends_on: ["code-backend", "code-frontend", "core-planner"]
+depends_on: ["expert-backend", "expert-frontend"]
 spawns_subagents: false
 token_budget: medium
 context_retention: medium

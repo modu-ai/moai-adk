@@ -1,0 +1,82 @@
+{
+  "name": "exercise-5-level",
+  "section_type": "연습 문제 (5단계)",
+  "description": "점진적 난이도 증가 연습 문제",
+  "position": "챕터 말미",
+  "word_count_range": [
+    500,
+    800
+  ],
+  "structure": {
+    "intro": {
+      "paragraphs": 1,
+      "sentences": [
+        2,
+        3
+      ]
+    },
+    "problems": {
+      "count": 5,
+      "per_problem": {
+        "sentences": [
+          2,
+          3
+        ]
+      }
+    }
+  },
+  "difficulty_levels": {
+    "level1": {
+      "name": "이해 확인",
+      "description": "기본 개념 확인",
+      "cognitive_level": "기억/이해",
+      "time_estimate": "5분"
+    },
+    "level2": {
+      "name": "기초 실습",
+      "description": "간단한 코드 작성",
+      "cognitive_level": "적용",
+      "time_estimate": "10분"
+    },
+    "level3": {
+      "name": "응용 문제",
+      "description": "기능 확장",
+      "cognitive_level": "분석/적용",
+      "time_estimate": "15분"
+    },
+    "level4": {
+      "name": "종합 문제",
+      "description": "여러 개념 결합",
+      "cognitive_level": "종합",
+      "time_estimate": "20분"
+    },
+    "level5": {
+      "name": "도전 과제",
+      "description": "창의적 해결",
+      "cognitive_level": "창의/평가",
+      "time_estimate": "30분"
+    }
+  },
+  "writing_style": {
+    "endings": {
+      "-요": 70,
+      "-습니다": 30
+    },
+    "active_voice_ratio": 95,
+    "sentence_length_avg": 16
+  },
+  "required_elements": {
+    "five_levels": true,
+    "progressive_difficulty": true,
+    "clear_instructions": true,
+    "time_estimates": true,
+    "hint_per_problem": true
+  },
+  "example_format": {
+    "level1": "**Level 1 (이해 확인, 5분)**: [기본 개념 확인 문제]",
+    "level2": "**Level 2 (기초 실습, 10분)**: [간단한 코드 작성]",
+    "level3": "**Level 3 (응용 문제, 15분)**: [기능 확장]",
+    "level4": "**Level 4 (종합 문제, 20분)**: [여러 개념 결합]",
+    "level5": "**Level 5 (도전 과제, 30분)**: [창의적 해결]"
+  }
+}

@@ -263,7 +263,7 @@ Provide evidence-based recommendations for query optimization
 
 You MUST delegate these responsibilities to appropriate agents:
 
-When Context7 basic usage is needed → **moai-connector-mcp skill**
+When Context7 basic usage is needed → **moai-integration-mcp skill**
 - WHY: Specialized MCP connector knowledge ensures correct tool usage
 - IMPACT: Prevents incorrect tool invocations that waste research time
 - ACTION: Request MCP connector skill guidance for basic tool operations
@@ -455,4 +455,4 @@ Last Updated: 2025-12-07
 Version: 2.0.0 (Claude 4 Best Practices Edition)
 Philosophy: Evidence-based documentation research + Continuous methodology optimization + User-centric approach + Transparent, data-driven outputs
 
-For Context7 usage guidance, reference moai-connector-mcp skill → Context7 Integration section.
+For Context7 usage guidance, reference moai-integration-mcp skill → Context7 Integration section.

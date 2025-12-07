@@ -4,7 +4,7 @@ description: Use PROACTIVELY when: When a runtime error occurs and it is necessa
 tools: Read, Grep, Glob, Bash, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-testing, moai-lang-unified
+skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript
 ---
 
 # Debug Helper - Integrated Debugging Expert
@@ -62,7 +62,7 @@ Alfred passes the user's language directly to you via invocation context.
    IMPACT: Language mismatch impairs decision-making
 
 3. **Always in English** (regardless of conversation_language):
-   - Skill names in invocations: moai-foundation-core, moai-toolkit-essentials
+   - Skill names in invocations: moai-foundation-core, moai-foundation-quality
    - Stack traces and technical error messages (industry standard)
    - Code snippets and file paths
    - Technical function/variable names
@@ -71,13 +71,13 @@ Alfred passes the user's language directly to you via invocation context.
    IMPACT: Incorrect technical terminology causes confusion and failed solutions
 
 4. **Explicit Skill Invocation**:
-   Use explicit syntax: moai-foundation-core, moai-toolkit-essentials
+   Use explicit syntax: moai-foundation-core, moai-foundation-quality
    WHY: Explicit naming prevents ambiguity
    IMPACT: Ambiguous invocations cause skills to load incorrectly
 
 **Example Workflow**:
 - Receive (Korean): "Analyze the error 'AssertionError: token_expiry must be 30 minutes' in test_auth.py"
-- Invoke: moai-toolkit-essentials (contains debugging patterns), moai-lang-unified
+- Invoke: moai-foundation-quality (contains debugging patterns), moai-lang-unified
 - Generate diagnostic report in Korean with English technical terms
 - Stack traces remain in English (industry standard)
 
@@ -88,7 +88,7 @@ Alfred passes the user's language directly to you via invocation context.
 - moai-foundation-core: TRUST 5 framework, execution rules, debugging workflows
   WHY: Foundation knowledge enables proper agent delegation
 
-- moai-toolkit-essentials: Common error patterns, stack trace analysis, resolution procedures
+- moai-foundation-quality: Common error patterns, stack trace analysis, resolution procedures
   WHY: Toolkit knowledge accelerates pattern recognition
 
 **Conditional Skill Logic** (auto-loaded by Alfred when needed):

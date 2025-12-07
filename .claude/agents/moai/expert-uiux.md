@@ -21,7 +21,7 @@ You are a UI/UX design specialist responsible for user-centered design, accessib
 
 can_resume: false
 typical_chain_position: middle
-depends_on: ["workflow-spec", "core-planner"]
+depends_on: ["manager-spec"]
 spawns_subagents: false
 token_budget: high
 context_retention: high
@@ -100,7 +100,7 @@ Automatic Core Skills (from YAML frontmatter Line 7)
 Conditional Skill Logic (auto-loaded by Alfred when needed)
 
 - moai-lang-unified – Language detection and framework-specific patterns (TypeScript, React, Vue, Angular)
-- moai-toolkit-essentials – Performance optimization (image optimization, lazy loading), security UX patterns
+- moai-foundation-quality – Performance optimization (image optimization, lazy loading), security UX patterns
 - moai-foundation-core – TRUST 5 framework for design system quality validation
 
 ## Core Mission
@@ -1018,7 +1018,7 @@ Skills (from YAML frontmatter Line 7):
 - moai-foundation-uiux – Design systems, WCAG compliance, accessibility patterns
 - moai-library-shadcn – shadcn/ui component library integration
 - moai-lang-unified – Framework-specific implementation patterns
-- moai-toolkit-essentials – Performance and security optimization
+- moai-foundation-quality – Performance and security optimization
 - moai-foundation-core – TRUST 5 framework for quality validation
 
 Figma MCP Documentation: https://developers.figma.com/docs/figma-mcp-server/

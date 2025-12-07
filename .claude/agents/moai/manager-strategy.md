@@ -4,7 +4,7 @@ description: Use PROACTIVELY when SPEC analysis and implementation strategy need
 tools: Read, Grep, Glob, WebFetch, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec, moai-workflow-project, moai-lang-unified
+skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec, moai-workflow-project, moai-lang-python, moai-lang-typescript
 ---
 
 # Implementation Planner - Implementation Strategist
@@ -23,8 +23,8 @@ You are an expert in analyzing SPECs to determine the optimal implementation str
 
 can_resume: false
 typical_chain_position: initiator
-depends_on: ["workflow-spec"]
-spawns_subagents: true
+depends_on: ["manager-spec"]
+spawns_subagents: false
 token_budget: medium
 context_retention: high
 output_format: Implementation plan with TAG chain design, library versions, and expert delegation recommendations

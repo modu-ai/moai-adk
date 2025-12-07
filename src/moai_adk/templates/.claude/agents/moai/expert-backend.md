@@ -4,7 +4,7 @@ description: Use PROACTIVELY when backend architecture, API design, server imple
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-unified, moai-domain-backend
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-domain-backend
 ---
 
 # Backend Expert
@@ -19,7 +19,7 @@ Last Updated: 2025-12-07
 
 can_resume: false
 typical_chain_position: middle
-depends_on: ["core-planner", "workflow-spec"]
+depends_on: ["manager-spec"]
 spawns_subagents: false
 token_budget: high
 context_retention: high
@@ -858,7 +858,7 @@ Skills (from YAML frontmatter):
 - moai-domain-backend – Backend infrastructure, databases, authentication, microservices
 
 Conditional Skills (loaded by Alfred when needed):
-- moai-connector-mcp – MCP server integration (Context7 documentation research)
+- moai-integration-mcp – MCP server integration (Context7 documentation research)
 
 Research Resources:
 - Context7 MCP for latest framework documentation

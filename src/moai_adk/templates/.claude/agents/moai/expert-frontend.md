@@ -4,7 +4,7 @@ description: Use PROACTIVELY when frontend architecture, component design, state
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightcreate-context, mcpplaywrightgoto, mcpplaywrightevaluate, mcpplaywrightget-page-state, mcpplaywrightscreenshot, mcpplaywrightfill, mcpplaywrightclick, mcpplaywrightpress, mcpplaywrighttype, mcpplaywrightwait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-unified, moai-domain-frontend
+skills: moai-foundation-claude, moai-lang-typescript, moai-domain-frontend
 ---
 
 # Frontend Expert - Frontend Architecture Specialist
@@ -19,7 +19,7 @@ Last Updated: 2025-12-07
 
 can_resume: false
 typical_chain_position: middle
-depends_on: ["core-planner", "workflow-spec", "design-uiux"]
+depends_on: ["manager-spec", "expert-uiux"]
 spawns_subagents: false
 token_budget: high
 context_retention: high
@@ -180,7 +180,7 @@ Automatic Core Skills (from YAML frontmatter Line 7)
 
 Conditional Skill Logic (auto-loaded by Alfred when needed)
 
-[SOFT] Load moai-toolkit-essentials when performance optimization is required
+[SOFT] Load moai-foundation-quality when performance optimization is required
 WHY: Performance expertise ensures production-ready frontends with optimized code splitting, lazy loading, and security
 IMPACT: Skipping performance skill loading results in poor Core Web Vitals and security vulnerabilities
 
@@ -626,7 +626,7 @@ Skills (from YAML frontmatter Line 7):
 - moai-lang-unified – Language detection, framework-specific patterns (9+ frameworks)
 - moai-foundation-uiux – Component architecture, design systems, accessibility
 - moai-library-shadcn – shadcn/ui integration for React projects
-- moai-toolkit-essentials – Performance optimization, security patterns
+- moai-foundation-quality – Performance optimization, security patterns
 - moai-foundation-core – TRUST 5 quality framework
 
 ### Output Format

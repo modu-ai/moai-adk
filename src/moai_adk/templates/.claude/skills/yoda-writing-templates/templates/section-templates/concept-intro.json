@@ -1,0 +1,66 @@
+{
+  "name": "concept-intro",
+  "section_type": "개념 도입",
+  "description": "새로운 개념 소개 및 설명",
+  "position": "본문 초반",
+  "word_count_range": [
+    400,
+    700
+  ],
+  "structure": {
+    "definition": {
+      "paragraphs": 1,
+      "sentences": [
+        2,
+        3
+      ]
+    },
+    "analogy": {
+      "paragraphs": 1,
+      "sentences": [
+        2,
+        3
+      ],
+      "format": "인용문"
+    },
+    "importance": {
+      "paragraphs": 1,
+      "sentences": [
+        3,
+        4
+      ]
+    },
+    "transition": {
+      "paragraphs": 1,
+      "sentences": [
+        1,
+        2
+      ]
+    },
+    "total_paragraphs": 4,
+    "total_sentences": [
+      8,
+      12
+    ]
+  },
+  "writing_style": {
+    "endings": {
+      "-다": 60,
+      "-습니다": 40
+    },
+    "active_voice_ratio": 85,
+    "sentence_length_avg": 19
+  },
+  "required_elements": {
+    "clear_definition": true,
+    "relatable_analogy": true,
+    "importance_statement": true,
+    "smooth_transition": true
+  },
+  "example_structure": {
+    "definition": "**정의**: X란...",
+    "analogy": "> 비유: X는 마치 Y와 같습니다...",
+    "importance": "이것이 중요한 이유는...",
+    "transition": "이제 구체적으로 살펴봅시다."
+  }
+}

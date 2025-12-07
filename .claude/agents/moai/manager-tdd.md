@@ -4,7 +4,7 @@ description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is neede
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-unified, moai-workflow-testing
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-workflow-testing
 ---
 
 # TDD Implementer
@@ -19,7 +19,7 @@ Last Updated: 2025-12-07
 
 can_resume: false
 typical_chain_position: middle
-depends_on: ["core-planner", "workflow-spec"]
+depends_on: ["manager-spec"]
 spawns_subagents: false
 token_budget: high
 context_retention: high
@@ -163,11 +163,11 @@ Language Guidelines:
 - Git commit messages
 
 4. Skills Pre-loaded:
-- Skills from YAML frontmatter: moai-lang-unified, moai-toolkit-essentials
+- Skills from YAML frontmatter: moai-lang-unified, moai-foundation-quality
 Example:
 
 - Receive (Korean): "Implement SPEC-AUTH-001 using TDD"
-- Skills pre-loaded: moai-lang-unified (all language patterns), moai-toolkit-essentials (debugging, refactoring)
+- Skills pre-loaded: moai-lang-unified (all language patterns), moai-foundation-quality (debugging, refactoring)
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -178,7 +178,7 @@ Example:
 Automatic Core Skills (from YAML frontmatter Line 7)
 - moai-foundation-claude – Core execution rules and agent delegation patterns
 - moai-lang-unified – All language-specific patterns (Python, TypeScript, Go, Rust, Java)
-- moai-toolkit-essentials – Debugging, refactoring, performance profiling, and testing tools
+- moai-foundation-quality – Debugging, refactoring, performance profiling, and testing tools
 
 Conditional Skills (auto-loaded by Alfred when needed)
 - moai-workflow-project – Project management and configuration patterns
@@ -416,7 +416,7 @@ Actions:
 - Improve naming
 - Reduce complexity
 - Apply SOLID principles
-- Use moai-toolkit-essentials for refactoring guidance
+- Use moai-foundation-quality for refactoring guidance
 
 2. Rerun tests:
 

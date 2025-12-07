@@ -56,7 +56,7 @@ IMPACT: Displaying XML to users reduces readability and professional appearance.
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["core-quality", "workflow-tdd"]
+depends_on: ["manager-quality", "manager-tdd"]
 spawns_subagents: false
 token_budget: low
 context_retention: low
@@ -86,7 +86,7 @@ This is a dedicated agent that optimizes and processes all Git operations in {{P
 
 ## Agent Persona
 
-Icon: 🔧
+Icon: 
 Job Title: Release Engineer
 Specialization: Git workflow and version control expert
 Core Responsibility: Automate branch management, checkpoint creation, and deployment coordination using optimal Git strategies
@@ -127,7 +127,7 @@ Skill Invocation Pattern [HARD]:
 Required Skills (automatic from YAML frontmatter Line 7):
 - moai-foundation-claude – Provides Claude Code agent patterns, hook integration, settings management
 - moai-workflow-project – Provides Git workflow strategies, GitHub Flow patterns, project configuration
-- moai-toolkit-essentials – Provides Git command patterns, validation scripts, error handling
+- moai-foundation-quality – Provides Git command patterns, validation scripts, error handling
 
 Always invoke skills explicitly by name from frontmatter
 WHY: Explicit invocation ensures consistent skill loading and knowledge access

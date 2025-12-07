@@ -1,0 +1,180 @@
+{
+  "name": "project-walkthrough",
+  "part_number": 4,
+  "description": "PART 4 (프로젝트) 용 템플릿",
+  "target_audience": [
+    "중급",
+    "고급"
+  ],
+  "experience_years": "2-5년",
+  "tone": "실전적이고 동료와 함께",
+  "word_count_range": [
+    2500,
+    3500
+  ],
+  "document_structure": {
+    "project_goal": {
+      "sections": 1,
+      "paragraphs": [
+        1,
+        2
+      ],
+      "sentences_per_paragraph": [
+        3,
+        4
+      ]
+    },
+    "preparation": {
+      "sections": 1,
+      "paragraphs": 2,
+      "sentences_per_paragraph": [
+        3,
+        4
+      ]
+    },
+    "step1": {
+      "sections": 2,
+      "paragraphs_per_section": [
+        2,
+        3
+      ],
+      "sentences_per_paragraph": [
+        4,
+        5
+      ]
+    },
+    "step2": {
+      "sections": 2,
+      "paragraphs_per_section": [
+        2,
+        3
+      ],
+      "sentences_per_paragraph": [
+        4,
+        5
+      ]
+    },
+    "step3": {
+      "sections": 2,
+      "paragraphs_per_section": [
+        2,
+        3
+      ],
+      "sentences_per_paragraph": [
+        4,
+        5
+      ]
+    },
+    "completion": {
+      "sections": 1,
+      "paragraphs": [
+        1,
+        2
+      ],
+      "sentences_per_paragraph": [
+        3,
+        4
+      ]
+    },
+    "retrospective": {
+      "sections": 1,
+      "paragraphs": 1,
+      "sentences": [
+        3,
+        4
+      ]
+    },
+    "total_sections": [
+      10,
+      11
+    ],
+    "total_paragraphs": [
+      15,
+      20
+    ],
+    "avg_sentences_per_paragraph": 4
+  },
+  "code_examples": {
+    "count_range": [
+      7,
+      10
+    ],
+    "step1": {
+      "count": [
+        2,
+        3
+      ],
+      "lines": 10
+    },
+    "step2": {
+      "count": [
+        2,
+        3
+      ],
+      "lines": 20
+    },
+    "step3": {
+      "count": [
+        2,
+        3
+      ],
+      "lines": 35
+    },
+    "languages": [
+      "typescript",
+      "python",
+      "bash",
+      "javascript"
+    ]
+  },
+  "difficulty_distribution": {
+    "intermediate": 50,
+    "advanced": 50
+  },
+  "writing_style": {
+    "endings": {
+      "-요": 60,
+      "-다": 40
+    },
+    "active_voice_ratio": 90,
+    "sentence_length_avg": 20,
+    "terminology": "실무 용어 (한국어 우선)"
+  },
+  "required_elements": {
+    "project_goal": 1,
+    "preparation": 1,
+    "steps": {
+      "count": 3,
+      "sections_per_step": 2
+    },
+    "completion": 1,
+    "retrospective": 1
+  },
+  "optional_elements": {
+    "troubleshooting": [
+      2,
+      3
+    ],
+    "optimization_tips": [
+      1,
+      2
+    ]
+  },
+  "content_flow": [
+    "목표 (무엇을 만들까요?)",
+    "준비 (설치, 설정)",
+    "Step 1 (기본 구조)",
+    "Step 2 (기능 추가)",
+    "Step 3 (완성 및 최적화)",
+    "완성 확인",
+    "회고"
+  ],
+  "previous_chapter_reference": 40,
+  "complexity_score": 4,
+  "icons": {
+    "goal": "🎯",
+    "preparation": "📋",
+    "checkpoint": "✅",
+    "retrospective": "📝"
+  }
+}

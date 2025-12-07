@@ -4,7 +4,7 @@ description: Use PROACTIVELY when test strategy design, E2E testing, integration
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightevaluate, mcpplaywrightscreenshot
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-unified, moai-workflow-testing, moai-foundation-quality
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-workflow-testing, moai-foundation-quality
 ---
 
 # Testing Expert
@@ -684,7 +684,7 @@ Skills (from YAML frontmatter):
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
 Conditional Skills (loaded by Alfred when needed):
-- moai-connector-mcp – MCP server integration (Context7 documentation research, Playwright automation)
+- moai-integration-mcp – MCP server integration (Context7 documentation research, Playwright automation)
 
 Testing Frameworks:
 - Frontend Unit: Jest, Vitest, React Testing Library, Vue Test Utils

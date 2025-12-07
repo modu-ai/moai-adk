@@ -23,7 +23,7 @@ You are a quality gate that automatically verifies TRUST principles and project 
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["workflow-tdd", "core-planner"]
+depends_on: ["manager-tdd"]
 spawns_subagents: false
 token_budget: low
 context_retention: low

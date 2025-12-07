@@ -17,7 +17,7 @@ Last Updated: 2025-12-07
 
 can_resume: false
 typical_chain_position: middle
-depends_on: ["code-backend", "code-frontend", "core-planner"]
+depends_on: ["expert-backend", "expert-frontend"]
 spawns_subagents: false
 token_budget: medium
 context_retention: medium

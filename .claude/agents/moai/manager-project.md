@@ -45,7 +45,7 @@ You are a Senior Project Manager Agent managing successful projects.
 can_resume: false
 typical_chain_position: initiator
 depends_on: none
-spawns_subagents: true
+spawns_subagents: false
 token_budget: medium
 context_retention: high
 output_format: Project initialization documentation with product.md, structure.md, tech.md, and config.json setup
@@ -400,7 +400,7 @@ Agent responses use XML structure for downstream system integration:
 - WHY: Ensures consistent system integration while supporting user language preferences
 - IMPACT: Enables seamless internationalization without breaking system dependencies
 
-## 📦 Deliverables and Delivery
+##  Deliverables and Delivery
 
 - Updated `.moai/project/{product,structure,tech}.md` (in the selected language)
 - Updated `.moai/config.json` (language already set, only settings modified via Skill delegation)

@@ -237,15 +237,15 @@ Output Language:
 Automatic Core Skills (from YAML frontmatter Line 7)
 
 - moai-foundation-core – TRUST 5 framework, execution rules, quality validation
-- moai-connector-mcp – MCP integration patterns, error handling, optimization
+- moai-integration-mcp – MCP integration patterns, error handling, optimization
 - moai-foundation-uiux – WCAG 2.1/2.2 compliance, design systems, accessibility
-- moai-connector-figma – Figma API, Design Tokens (DTCG), Code Connect workflows
+- moai-integration-mcp – Figma API, Design Tokens (DTCG), Code Connect workflows
 
 Conditional Skill Logic (auto-loaded by Alfred when needed)
 
 - moai-lang-unified – Language detection, React/TypeScript/Vue code generation patterns
 - moai-library-shadcn – shadcn/ui component library integration
-- moai-toolkit-essentials – Image optimization, lazy loading, asset handling
+- moai-foundation-quality – Image optimization, lazy loading, asset handling
 
 ---
 
@@ -842,7 +842,7 @@ Always include the scope specifier (/local or /published) in the endpoint path.
 
 ---
 
-### Priority 3: Talk To Figma MCP (When Modification Needed) 💻
+### Priority 3: Talk To Figma MCP (When Modification Needed) 
 
 Source: `/sethdford/mcp-figma` | Reputation: High | Code Snippets: 79
 
@@ -1342,7 +1342,7 @@ Next Steps:
 
 ---
 
-### With code-frontend 💻
+### With code-frontend 
 
 Share:
 
@@ -1468,7 +1468,7 @@ Next Steps:
 
 ---
 
-### Code Generation Quality 💻
+### Code Generation Quality 
 
 - Pixel-Perfect: Generated code matches Figma design exactly (99%+)
 - TypeScript: Full type definitions for all Props
@@ -1575,12 +1575,12 @@ Performance Impact:
 Skills (from YAML frontmatter Line 7):
 
 - moai-foundation-core – TRUST 5 framework, execution rules
-- moai-connector-mcp – MCP integration patterns, optimization
+- moai-integration-mcp – MCP integration patterns, optimization
 - moai-foundation-uiux – WCAG 2.1/2.2, design systems
-- moai-connector-figma – Figma API, Design Tokens (DTCG), Code Connect
+- moai-integration-mcp – Figma API, Design Tokens (DTCG), Code Connect
 - moai-lang-unified – Language detection, React/TypeScript/Vue patterns
 - moai-library-shadcn – shadcn/ui component library
-- moai-toolkit-essentials – Performance optimization, asset handling
+- moai-foundation-quality – Performance optimization, asset handling
 
 MCP Tools:
 

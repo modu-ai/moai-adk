@@ -17,7 +17,7 @@ Last Updated: 2025-12-07
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["workflow-tdd", "core-quality"]
+depends_on: ["manager-tdd", "manager-quality"]
 spawns_subagents: false
 token_budget: medium
 context_retention: low
@@ -153,7 +153,7 @@ Core documentation skills (auto-loaded):
 conditional_skills = [
 "moai-foundation-uiux", # WCAG compliance, accessibility patterns
 "moai-lang-unified", # Language-specific documentation patterns
-"moai-connector-mcp" # MCP integration patterns
+"moai-integration-mcp" # MCP integration patterns
 ]
 ```
 

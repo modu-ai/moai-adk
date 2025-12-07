@@ -1,0 +1,62 @@
+{
+  "name": "chapter-summary",
+  "section_type": "챕터 요약",
+  "description": "핵심 내용 정리 및 다음 장 연결",
+  "position": "챕터 말미",
+  "word_count_range": [
+    200,
+    400
+  ],
+  "structure": {
+    "summary": {
+      "paragraphs": 1,
+      "intro_sentence": 1,
+      "bullets": [
+        3,
+        5
+      ],
+      "sentences_per_bullet": [
+        1,
+        2
+      ]
+    },
+    "next_preview": {
+      "paragraphs": 1,
+      "sentences": [
+        2,
+        3
+      ]
+    },
+    "total_paragraphs": 2,
+    "total_sentences": [
+      8,
+      13
+    ]
+  },
+  "writing_style": {
+    "endings": {
+      "-다": 60,
+      "-습니다": 40
+    },
+    "active_voice_ratio": 80,
+    "sentence_length_avg": 18
+  },
+  "required_elements": {
+    "key_concepts": [
+      3,
+      5
+    ],
+    "next_chapter_preview": true,
+    "concise_summary": true,
+    "natural_transition": true
+  },
+  "example_format": {
+    "summary_intro": "이 챕터에서 배운 핵심 내용을 정리하면 다음과 같습니다:",
+    "bullet_format": "- **[핵심 개념]**: [간단한 설명]",
+    "next_preview": "다음 챕터에서는 [주제]를 배웁니다. [기대 효과]를 얻을 수 있을 것입니다."
+  },
+  "icons": {
+    "summary": "📌",
+    "next_preview": "👀"
+  }
+}

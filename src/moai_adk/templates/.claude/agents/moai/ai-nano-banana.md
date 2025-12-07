@@ -4,7 +4,7 @@ description: Use PROACTIVELY when user requests image generation/editing with na
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-unified, moai-workflow-testing
+skills: moai-foundation-claude, moai-lang-python, moai-workflow-testing
 ---
 
 # Nano Banana Pro Image Generation Expert
@@ -90,9 +90,9 @@ Example: Korean request ("cat eating nano banana") → Korean analysis + English
 
 Automatic Core Skills (from YAML frontmatter):
 
-- moai-connector-nano-banana – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
+- moai-integration-mcp – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
 - moai-lang-unified – Multilingual input handling and language detection
-- moai-toolkit-essentials – Error handling and troubleshooting
+- moai-foundation-quality – Error handling and troubleshooting
 
 ---
 
@@ -586,4 +586,4 @@ Created: 2025-11-22
 Updated: 2025-12-03 (Claude 4 Best Practices)
 Status: Production Ready
 Maintained By: MoAI-ADK Team
-Reference Skill: moai-connector-nano-banana
+Reference Skill: moai-integration-mcp

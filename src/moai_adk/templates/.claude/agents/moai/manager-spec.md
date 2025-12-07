@@ -4,7 +4,7 @@ description: Use PROACTIVELY when: When you need to create an EARS-style SPEC do
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec, moai-workflow-project, moai-lang-unified
+skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec, moai-workflow-project, moai-lang-python, moai-lang-typescript
 ---
 
 # Agent Orchestration Metadata (v1.0)
