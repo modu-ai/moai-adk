@@ -1396,7 +1396,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. Agent Guide (24 Agents)
+## 8. Agent Guide (28 Agents)
 
 ### 🎯 Agent Selection Guide
 
@@ -1516,7 +1516,39 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 2: Workflow Managers (Workflow Managers)
+#### expert-performance (Performance Optimization)
+
+**Expertise**: Performance profiling, load testing, optimization strategies
+**Use cases**:
+
+- Application performance optimization
+- Memory usage analysis
+- Database query optimization
+- Caching strategies
+
+```bash
+> @agent-expert-performance "Optimize application response time"
+```
+
+---
+
+#### expert-testing (Testing Strategy)
+
+**Expertise**: Test planning, test automation, quality assurance
+**Use cases**:
+
+- Test strategy design
+- Test automation framework setup
+- Performance testing
+- Integration testing
+
+```bash
+> @agent-expert-testing "Design comprehensive test strategy"
+```
+
+---
+
+### Tier 2: Workflow Managers (8 Managers)
 
 #### manager-spec (SPEC Writing)
 
@@ -1579,7 +1611,50 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 3: Meta-generators (Meta-generators)
+#### manager-claude-code (Claude Code Integration)
+
+**Purpose**: Claude Code configuration, optimization, and integration management
+**Use cases**:
+
+- Claude Code settings optimization
+- Hook configuration and management
+- MCP server integration
+- Performance tuning
+
+```bash
+> @agent-manager-claude-code "Optimize Claude Code configuration"
+```
+
+---
+
+#### manager-git (Git Workflow)
+
+**Purpose**: Git workflow management, branch strategies, and automation
+**Use cases**:
+
+- Git workflow setup
+- Branch strategy design
+- Commit message optimization
+- Merge request automation
+
+```bash
+> @agent-manager-git "Setup Git workflow for team collaboration"
+```
+
+---
+
+#### manager-project (Project Management)
+
+**Purpose**: Project initialization, metadata management, and template optimization
+**Auto-invoked**: When executing `> /moai:0-project`
+
+```bash
+> @agent-manager-project "Initialize project with optimal settings"
+```
+
+---
+
+### Tier 3: Meta-generators (3 Generators)
 
 #### builder-agent
 
@@ -1614,7 +1689,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 4: MCP Integrators (MCP Integrators)
+### Tier 4: MCP Integrators (6 Integrators)
 
 #### mcp-context7 (Documentation Lookup)
 
@@ -1662,7 +1737,39 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 5: AI Services (AI Services)
+#### mcp-figma (Design Integration)
+
+**Purpose**: Figma design system integration, UI components extraction
+**Use cases**:
+
+- Design system analysis
+- UI component extraction
+- Design token management
+- Design-to-code workflow
+
+```bash
+> @agent-mcp-figma "Extract design system from Figma file"
+```
+
+---
+
+#### mcp-notion (Workspace Management)
+
+**Purpose**: Notion workspace management, database operations, content management
+**Use cases**:
+
+- Documentation management
+- Database operations
+- Content synchronization
+- Knowledge base organization
+
+```bash
+> @agent-mcp-notion "Sync project documentation with Notion"
+```
+
+---
+
+### Tier 5: AI Services (1 Service)
 
 #### ai-nano-banana (Image Generation)
 
@@ -1678,38 +1785,49 @@ For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-
 
 ---
 
-## 9. Skill Library (24 Skills)
+## 9. Skill Library (33 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **24 specialized skills** in 6 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **33 specialized skills** in 7 categories. Each skill can be used independently or in combination.
 
 ### 📊 Complete Skill List
 
-| Category       | Skill Name                 | Description                                            | Version |
-| -------------- | -------------------------- | ------------------------------------------------------ | ------- |
-| **Foundation** | moai-foundation-core       | TRUST 5, SPEC-First TDD, agent delegation, token opt   | 2.2.0   |
-|                | moai-foundation-uiux       | Design systems, components, accessibility, icons       | 2.0.0   |
-|                | moai-foundation-quality    | Proactive quality verification, auto-testing           | 2.0.0   |
-|                | moai-foundation-claude     | Agents, slash commands, MCP, hooks, memory, IAM        | 2.0.0   |
-| **Platform**   | moai-lang-unified          | 25+ languages (Python, TS, Go, Rust, Java, C++, etc)   | 2.0.0   |
-|                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase, etc)        | 2.0.0   |
-| **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React components           | 2.0.0   |
-|                | moai-library-toon          | TOON format, token-efficient encoding (40-60% savings) | 3.0.0   |
-|                | moai-library-mermaid       | 21 diagram types, Playwright MCP rendering             | 7.0.0   |
-| **Connector**  | moai-connector-mcp         | 10+ MCP server integration guide                       | 2.0.0   |
-|                | moai-connector-figma       | Design systems, UI kits, design tokens                 | 1.0.0   |
-|                | moai-connector-notion      | Workspace, databases, content management               | 1.0.0   |
-|                | moai-connector-nano-banana | Gemini 3 Pro image generation (Text/Image-to-Image)    | 1.0.1   |
-| **Workflow**   | moai-workflow-project      | Project management, language init, template opt        | 2.0.0   |
-|                | moai-workflow-docs         | Markdown/Mermaid/Korean validation, reporting          | 2.0.0   |
-|                | moai-workflow-templates    | Code boilerplates, feedback templates                  | 3.0.0   |
-|                | moai-workflow-testing      | Playwright E2E, visual regression, cross-browser       | 2.0.0   |
-|                | moai-workflow-jit-docs     | Intent-based doc auto-search & caching                 | 2.0.0   |
-|                | moai-toolkit-essentials    | Debugging, refactoring, optimization, review           | 2.0.0   |
-| **System**     | moai-system-universal      | 25+ languages + 9+ BaaS + security + compliance        | 2.0.0   |
+| Category       | Skill Name                     | Description                                            | Version |
+| -------------- | ------------------------------ | ------------------------------------------------------ | ------- |
+| **Foundation** | moai-foundation-core         | TRUST 5, SPEC-First TDD, agent delegation, token opt   | 2.2.0   |
+|                | moai-foundation-uiux         | Design systems, components, accessibility, icons       | 2.0.0   |
+|                | moai-foundation-quality      | Proactive quality verification, auto-testing           | 2.0.0   |
+|                | moai-foundation-claude       | Agents, slash commands, MCP, hooks, memory, IAM        | 2.0.0   |
+|                | moai-foundation-context      | Enterprise context and session management             | 2.0.0   |
+| **Language**   | moai-lang-unified            | 25+ languages (Python, TS, Go, Rust, Java, C++, etc)   | 2.0.0   |
+|                | moai-lang-python             | Python 3.13+ development with FastAPI, Django, async   | 2.0.0   |
+|                | moai-lang-typescript          | TypeScript 5.9+ with React 19, Next.js 16, tRPC, Zod   | 2.0.0   |
+|                | moai-lang-jvm                | JVM languages: Java 21, Kotlin 2.0, Scala 3.4         | 2.0.0   |
+|                | moai-lang-systems            | Go 1.23 and Rust 1.91 for high-performance systems     | 2.0.0   |
+|                | moai-lang-mobile             | Swift 6 for iOS, Kotlin for Android, Dart/Flutter   | 2.0.0   |
+| **Platform**   | moai-platform-baas           | 9+ BaaS (Auth0, Clerk, Firebase, Supabase, etc)        | 2.0.0   |
+|                | moai-platform-auth           | Authentication platforms: Auth0, Clerk, Firebase Auth | 2.0.0   |
+|                | moai-platform-database       | Database platforms: Supabase, Neon, Convex, Firestore | 2.0.0   |
+|                | moai-platform-deploy         | Deployment platforms: Vercel and Railway            | 2.0.0   |
+| **Domain**     | moai-domain-backend          | Backend architecture, API development                | 2.0.0   |
+|                | moai-domain-frontend          | Frontend development, React 19, Next.js 16           | 2.0.0   |
+|                | moai-domain-database          | Database design, PostgreSQL, MongoDB, Redis, optimization | 2.0.0   |
+|                | moai-domain-uiux              | UI/UX design systems, components, accessibility      | 2.0.0   |
+|                | moai-domain-security          | Security analysis, vulnerability scanning, OWASP    | 2.0.0   |
+| **Integration**| moai-integration-mcp          | MCP server integration for 10+ services               | 2.0.0   |
+| **Library**    | moai-library-shadcn           | shadcn/ui, Radix, Tailwind, React components           | 2.0.0   |
+|                | moai-library-nextra           | Enterprise Nextra documentation with Next.js         | 2.0.0   |
+|                | moai-library-mermaid          | 21 diagram types, Playwright MCP rendering             | 7.0.0   |
+|                | moai-formats-data             | TOON encoding, JSON/YAML optimization, validation     | 3.0.0   |
+| **Workflow**   | moai-workflow-project         | Project management, language init, template opt        | 2.0.0   |
+|                | moai-workflow-docs            | Markdown/Mermaid validation, Korean support, reporting | 2.0.0   |
+|                | moai-workflow-templates       | Code boilerplates, feedback templates                  | 3.0.0   |
+|                | moai-workflow-testing         | Playwright E2E, visual regression, cross-browser       | 2.0.0   |
+|                | moai-workflow-jit-docs        | Intent-based doc auto-search & caching                 | 2.0.0   |
+| **Utilities**  | moai-worktree                 | Git worktree management for parallel SPEC development   | 2.0.0   |
 
-**Usage frequency**: Foundation (90%+), Platform (80%+), Workflow (85%), Connector (70%), Library (60%), System (40%)
+**Usage frequency**: Foundation (90%+), Language (85%+), Platform (80%+), Domain (75%+), Workflow (85%), Library (60%), Integration (70%), Utilities (40%)
 
 ### 🎯 Skill Usage Guide
 
@@ -1740,7 +1858,7 @@ Skill("moai-lang-unified")
 
 ### 🎭 Agent Composition Patterns
 
-MoAI-ADK's 24 agents execute in optimal combinations based on task type.
+MoAI-ADK's 28 agents execute in optimal combinations based on task type.
 
 ### Pattern 1: New Feature Development
 
@@ -2373,7 +2491,231 @@ White background, consistent style"
 
 ---
 
-## 16. Additional Resources
+## 16. 🚀 GLM Integration with z.ai (Cost-Effective Alternative)
+
+### Overview
+
+For developers concerned about Claude Code usage costs, MoAI-ADK supports **GLM 4.6** integration through **z.ai** at a fraction of the cost. This configuration provides full compatibility with Claude Code while offering significant cost savings.
+
+### 💡 Why Choose GLM over Claude?
+
+| Feature               | Claude Code                     | z.ai GLM 4.6                  |
+| --------------------- | ------------------------------- | ----------------------------- |
+| **Cost**              | $20/month (Pro plan)            | **$6-$60/month (Flexible)**   |
+| **Models**            | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air         |
+| **Compatibility**     | Native                           | **100% Claude Compatible**    |
+| **Token Limits**      | Limited                         | **Unlimited on paid plans**   |
+| **API Access**        | Included                        | **Full API access**           |
+| **Speed**             | Fast                            | **Comparable performance**    |
+
+### 🎯 GLM Coding Plan Subscription
+
+**Exclusive Invitation Link**:
+🚀 **You've been invited to join the GLM Coding Plan! Enjoy full support for Claude Code, Cline, and 10+ top coding tools. Starting from $3/month.**
+
+👉 **Subscribe here**: https://z.ai/subscribe?ic=1NDV03BGWU
+By subscribing through this link, you'll receive a 10% additional discount and dedicated credits from Z.AI to support MoAI-ADK open source development.
+
+#### Subscription Plans:
+
+| Plan          | Price                              | Features                                                                 | Best For                          |
+| ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
+| **Lite**      | First month $3<br/>From 2nd month $6/month | • 3x Claude Pro usage<br/>• GLM-4.6 powered<br/>• 10+ coding tools compatible | Lightweight workloads, getting started |
+| **Pro**       | First month $15<br/>From 2nd month $30/month | • All Lite benefits<br/>• 5× Lite plan usage<br/>• 40-60% faster<br/>• Vision, Web Search, Web Reader | Professional developers, teams    |
+| **Max**       | First month $30<br/>From 2nd month $60/month | • All Pro benefits<br/>• 4× Pro plan usage<br/>• Guaranteed peak performance<br/>• Early feature access | High-volume workloads, power users |
+| **Enterprise**| Custom                             | • Custom pricing<br/>• Dedicated support<br/>• SLA guarantees | Large organizations, custom needs |
+
+#### Benefits for GLM Coding Plan Subscribers:
+
+1. **Massive Cost Savings**: Lite plan at $6/month (3x Claude Pro usage)
+2. **Full Tool Compatibility**: Supports Claude Code, Roo Code, Cline, Kilo Code, OpenCode, Crush, Goose, and more
+3. **High-Performance Models**: Powered by GLM-4.6 (comparable to Claude 4.5 Sonnet)
+4. **Flexible Pricing**: From $6 Lite to $60 Max (scales with your needs)
+5. **Performance Options**: Pro plan 40-60% faster, Max plan with guaranteed peak performance
+6. **Advanced Features**: Vision Understanding, Web Search, Web Reader MCP (Pro+)
+7. **Support MoAI-ADK**: A portion of your subscription supports continued MoAI-ADK development
+
+#### **🌟 Recommended Upgrade Path**
+
+**Step 1: Start with Lite Plan ($6/month)**
+- Get 3x Claude Pro usage at just $6/month
+- Try GLM-4.6 with your actual projects for 2-3 weeks
+- Experience compatibility with 10+ coding tools
+
+**Step 2: Upgrade Based on Usage**
+- **For regular development**: Upgrade to **Pro ($30/month)** for 40-60% faster performance
+- **For heavy workloads**: Choose **Max ($60/month)** for guaranteed peak performance
+- **Power users benefit**: Pro gives 5× Lite usage, Max gives 20× Lite usage
+
+**Why This Approach Works:**
+- **Low barrier entry**: Only $6/month to start with professional AI coding
+- **Scale as needed**: Upgrade only when your workload requires it
+- **Performance gains**: Pro plan significantly faster for complex tasks
+- **Advanced features**: Vision, Web Search, and Web Reader MCP available on Pro+
+
+#### Campaign Details (Credit Rules):
+
+- 📋 **Official Rules**: https://docs.z.ai/devpack/credit-campaign-rules
+- 🎁 **Special Offer**: MoAI-ADK users receive additional credits
+- 💝 **Community Support**: Your subscription helps fund MoAI-ADK development
+- 🔄 **Flexible Usage**: Credits roll over monthly
+
+### ⚙️ Quick Setup: GLM Configuration
+
+#### Step 1: Subscribe to GLM Coding Plan
+
+1. Visit: https://z.ai/subscribe?ic=1NDV03BGWU
+2. Choose a plan:
+   - **Lite (First month $3, from 2nd month $6/month)**: Perfect for getting started, 3x Claude Pro usage
+   - **Pro (First month $15, from 2nd month $30/month)**: 40-60% faster, includes Vision and Web features
+   - **Max (First month $30, from 2nd month $60/month)**: Guaranteed performance, early feature access
+   - **Enterprise**: Custom pricing for large organizations
+3. Complete registration and payment
+4. Note your API token from the dashboard
+
+**💡 Pro Tip**: Start with the $6 Lite plan to test GLM-4.6, then upgrade to Pro for faster performance or Max for high-volume workloads!
+
+#### Step 2: Configure MoAI-ADK for GLM
+
+In Claude Code, run:
+
+```bash
+# Configure GLM with your API token
+> /moai:0-project --glm-on YOUR_API_TOKEN
+
+# Or without token (will prompt for input)
+> /moai:0-project --glm-on
+```
+
+**What happens during configuration:**
+
+✅ **API Token Setup**: Securely stores your GLM API token
+✅ **Endpoint Configuration**: Sets up z.ai API endpoints
+✅ **Model Mapping**: Maps GLM 4.6 to Claude model tiers
+✅ **Verification**: Tests connection and model availability
+✅ **Fallback Ready**: Keeps Claude as backup option
+
+#### Step 3: Verify Configuration
+
+```bash
+# Check current configuration
+> cat .claude/settings.local.json
+
+# Expected output:
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+  }
+}
+```
+
+#### Step 4: Restart Claude Code
+
+```bash
+# Exit Claude Code and restart
+> /exit
+# Then
+claude
+```
+
+GLM 4.6 is now active and ready to use!
+
+### 🔄 Managing GLM Configuration
+
+#### Enable GLM Mode:
+
+```bash
+> /moai:0-project --glm-on [YOUR_TOKEN]
+```
+
+#### Disable GLM (Switch back to Claude):
+
+```bash
+> /moai:0-project --glm-off
+```
+
+#### Check Current Mode:
+
+GLM is active when:
+- `.claude/settings.local.json` contains GLM configuration
+- Base URL is set to `https://api.z.ai/api/anthropic`
+- Models are mapped to GLM variants
+
+### 📊 Performance Comparison
+
+Based on real-world testing with MoAI-ADK:
+
+| Task                           | Claude 4.5 Sonnet | GLM 4.6      | Performance Gap |
+| ------------------------------ | ----------------- | ------------ | --------------- |
+| **Code Generation**           | Excellent         | **Excellent** | < 5% difference |
+| **TDD Implementation**         | Excellent         | **Very Good** | 10% faster      |
+| **Documentation Writing**      | Very Good         | **Good**      | 15% faster      |
+| **Complex Problem Solving**    | Excellent         | **Very Good** | Comparable     |
+| **API Rate Limits**           | Moderate          | **Higher**    | 3x-20x more usage |
+| **Performance Speed**         | Fast              | **40-60% faster (Pro+)** | Significant improvement |
+| **Advanced Features**        | Basic             | **Vision, Web Search, Web Reader (Pro+)** | Enhanced capabilities |
+| **Cost Efficiency**           | $20-$200/month    | **$6-$60/month** | **Save up to 70%** |
+
+### ✅ Recommended Usage Scenarios
+
+#### **GLM Lite ($6/month) Usage:**
+- **Getting Started**: 3x Claude Pro usage at 70% less cost
+- **Lightweight Workloads**: Small projects, occasional coding
+- **Learning Projects**: Practice, tutorials, experiments
+- **Budget-Conscious**: Professional AI coding at just $6/month
+
+#### **GLM Pro ($30/month) Usage:**
+- **Professional Developers**: 40-60% faster performance for complex tasks
+- **Daily Development**: 5× Lite usage limit with advanced features
+- **Team Collaboration**: Vision understanding, web search capabilities
+- **Power Users**: Faster responses for complex problem solving
+
+#### **GLM Max ($60/month) Usage:**
+- **High-Volume Workloads**: 20× Lite usage for intensive development
+- **Enterprise Teams**: Guaranteed peak-hour performance
+- **Continuous Integration**: No rate limits for automated workflows
+- **Early Adopters**: First access to new features and improvements
+
+#### **Consider Claude for:**
+- **Enterprise Production**: Mission-critical deployments
+- **Complex Research**: Advanced reasoning tasks
+- **Large-Scale Migration**: Complex system transformations
+- **Compliance Requirements**: Specific model certifications
+
+### 🛠️ Troubleshooting
+
+| Issue                    | Solution                                                                 |
+| ------------------------ | ------------------------------------------------------------------------ |
+| **Token not working**    | Verify token from z.ai dashboard, ensure Coding Plan subscription         |
+| **Model errors**         | Check endpoint URL: `https://api.z.ai/api/anthropic`                    |
+| **Slow responses**       | GLM may have higher latency during peak hours                            |
+| **Connection refused**   | Firewall may block z.ai domain, check network settings                   |
+| **Fallback needed**      | Use `--glm-off` to switch back to Claude temporarily                   |
+
+### 🔗 Useful Links
+
+- **GLM Coding Plan**: https://z.ai/subscribe?ic=1NDV03BGWU
+- **Credit Campaign Rules**: https://docs.z.ai/devpack/credit-campaign-rules
+- **GLM Documentation**: https://docs.z.ai/
+- **MoAI-ADK GLM Guide**: https://github.com/modu-ai/moai-adk/docs/glm-integration
+- **Support**: support@z.ai
+
+### 💬 Community & Support
+
+- **Discord**: Join the z.ai community for tips and updates
+- **GitHub**: Report issues and request features
+- **Email**: support@z.ai for technical assistance
+- **MoAI-ADK**: github.com/modu-ai/moai-adk for framework-specific help
+
+---
+
+**Start saving today while maintaining full development productivity!** 🚀
+
+## 17. Additional Resources
 
 ### 🆘 Support (Support)
 

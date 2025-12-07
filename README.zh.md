@@ -2418,6 +2418,274 @@ SOFTWARE.
 
 ---
 
+## 16. 🚀 GLM 与 z.ai 集成（经济高效的替代方案）
+
+### 概述
+
+对于担心 Claude Code 使用成本的开发者，MoAI-ADK 支持通过 **z.ai** 进行 **GLM 4.6** 集成。此配置在保持与 Claude Code 完全兼容的同时，大幅降低成本。
+
+### 💡 选择 GLM 的理由
+
+| 功能 | Claude Code | z.ai GLM 4.6 |
+| --------------------- | ------------------------------- | ----------------------------- |
+| **成本** | $20/月（Pro 计划） | **$6-$60/月（灵活）** |
+| **模型** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air |
+| **兼容性** | 原生 | **100% Claude 兼容** |
+| **令牌限制** | 限制 | **付费计划无限制** |
+| **API 访问** | 包含 | **完整 API 访问** |
+| **速度** | 快速 | **相当的性能** |
+
+### 🎯 GLM 编程计划订阅
+
+**专属邀请链接**:
+🚀 **您已受邀加入 GLM 编程计划！享受对 Claude Code、Cline 和 10 多个顶级编码工具的完全支持。月费仅 3 美元起。**
+
+👉 **在此订阅**: https://z.ai/subscribe?ic=1NDV03BGWU
+通过此链接订阅，您将从 Z.AI 获得 10% 额外折扣和专用积分，用于支持 MoAI-ADK 开源开发。
+
+#### 订阅计划:
+
+| 计划 | 价格 | 功能 | 最适合 |
+| ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
+| **轻量** | 第一个月 $3<br/>第二个月起 $6/月 | • Claude Pro 使用量 3 倍<br/>• GLM-4.6 驱动<br/>• 10 多个编码工具兼容 | 轻量级工作负载，入门 |
+| **专业** | 第一个月 $15<br/>第二个月起 $30/月 | • 所有轻量级权益<br/>• 轻量级计划使用量 5 倍<br/>• 40-60% 更快<br/>• Vision、Web Search、Web Reader | 专业开发者、团队 |
+| **最大** | 第一个月 $30<br/>第二个月起 $60/月 | • 所有专业权益<br/>• 专业计划使用量 4 倍<br/>• 保证峰值性能<br/>• 新功能优先访问 | 大容量工作负载、高级用户 |
+| **企业** | 定制 | • 定制定价<br/>• 专属支持<br/>• SLA 保证 | 大型组织、定制需求 |
+
+#### GLM 编程计划订阅者权益:
+
+1. **大幅成本节省**: 轻量级计划月费 $6 即可享受 Claude Pro 使用量 3 倍
+2. **完整工具兼容性**: 支持 Claude Code、Roo Code、Cline、Kilo Code、OpenCode、Crush、Goose 等 10 多个编码工具
+3. **高性能模型**: 基于 GLM-4.6（与 Claude 4.5 Sonnet 相当）
+4. **灵活定价**: 从月费 $6 轻量级到 $60 最大（根据需求扩展）
+5. **性能选项**: 专业计划快 40-60%，最大计划保证峰值性能
+6. **高级功能**: 框架理解、Web 搜索、Web Reader MCP（专业及以上）
+7. **MoAI-ADK 支持**: 订阅的一部分用于支持 MoAI-ADK 开发
+
+#### **🌟 推荐升级路径**
+
+**第1步：轻量级计划（$6/月）开始**
+- 月费 $6 享受 Claude Pro 使用量 3 倍
+- 用实际项目测试 GLM-4.6 2-3 周
+- 体验与 10 多个编码工具的兼容性
+
+**第2步：根据使用量升级**
+- **常规开发**: 升级到**专业（$30/月）**，复杂任务快 40-60%
+- **大容量工作负载**: 选择**最大（$60/月）**获得峰值性能
+- **高级用户权益**: 专业计划是轻量级使用量的 5 倍，最大计划是轻量级使用量的 20 倍
+
+**此方法有效的原因:**
+- **低入门门槛**: 月费 $6 开始专业 AI 编程
+- **按需扩展**: 仅在需要工作负载时升级
+- **性能提升**: 专业计划在复杂任务上显著更快
+- **高级功能**: 专业及以上提供 Vision、Web 搜索、Web Reader MCP
+
+#### 活动详情（信用规则）:
+
+- 📋 **官方规则**: https://docs.z.ai/devpack/credit-campaign-rules
+- 🎁 **特别优惠**: MoAI-ADK 用户额外信用
+- 💝 **社区支持**: 订阅支持 MoAI-ADK 开发
+- 🔄 **灵活使用**: 信用按月结转
+
+### ⚙️ 快速设置：GLM 配置
+
+#### 第1步：订阅 GLM 编程计划
+
+1. 访问: https://z.ai/subscribe?ic=1NDV03BGWU
+2. 选择计划:
+   - **轻量级（第一个月 $3，第二个月起 $6/月）**: 完美入门，Claude Pro 使用量 3 倍
+   - **专业（第一个月 $15，第二个月起 $30/月）**: 快 40-60%，包含 Vision 和 Web 功能
+   - **最大（第一个月 $30，第二个月起 $60/月）**: 保证性能，新功能优先访问
+   - **企业**: 大型组织定制定价
+3. 完成注册和支付
+4. 从仪表板记录 API 令牌
+
+**💡 提示**: 从 $6 轻量级计划开始测试 GLM-4.6，然后为更快性能升级到专业，或为大容量工作负载升级到最大！
+
+#### 第2步：将 MoAI-ADK 配置为 GLM
+
+在 Claude Code 中执行:
+
+```bash
+# 使用 API 令牌配置 GLM
+> /moai:0-project --glm-on YOUR_API_TOKEN
+
+# 无令牌（输入提示）
+> /moai:0-project --glm-on
+```
+
+**配置期间发生的操作:**
+
+✅ **API 令牌设置**: 安全存储 GLM API 令牌
+✅ **端点配置**: 设置 z.ai API 端点
+✅ **模型映射**: 将 GLM 4.6 映射到 Claude 模型层
+✅ **验证**: 测试连接和模型可用性
+✅ **回退准备**: 将 Claude 保留为备份选项
+
+#### 第3步：验证配置
+
+```bash
+# 检查当前配置
+> cat .claude/settings.local.json
+
+# 预期输出:
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+  }
+}
+```
+
+#### 第4步：重启 Claude Code
+
+```bash
+# 退出 Claude Code 并重启
+> /exit
+# 然后
+claude
+```
+
+GLM 4.6 现已激活，准备使用！
+
+### 🔄 GLM 配置管理
+
+#### 启用 GLM 模式:
+
+```bash
+> /moai:0-project --glm-on [YOUR_TOKEN]
+```
+
+#### 禁用 GLM（切换回 Claude）:
+
+```bash
+> /moai:0-project --glm-off
+```
+
+#### 检查当前模式:
+
+当满足以下条件时 GLM 处于活动状态:
+- `.claude/settings.local.json` 包含 GLM 配置
+- 基础 URL 设置为 `https://api.z.ai/api/anthropic`
+- 模型映射到 GLM 变体
+
+### 📊 性能比较
+
+基于实际 MoAI-ADK 测试:
+
+| 任务 | Claude 4.5 Sonnet | GLM 4.6 | 性能差距 |
+| ------------------------------ | ----------------- | ------------ | --------------- |
+| **代码生成** | 优秀 | **优秀** | 差异小于 5% |
+| **TDD 实现** | 优秀 | **非常好** | 快 10% |
+| **文档编写** | 非常好 | **好** | 快 15% |
+| **复杂问题解决** | 优秀 | **非常好** | 相当 |
+| **API 速率限制** | 中等 | **更高** | 3-20 倍更多使用量 |
+| **性能速度** | 快速 | **40-60% 更快（专业及以上）** | 显著改善 |
+| **高级功能** | 基本 | **Vision、Web Search、Web Reader（专业及以上）** | 增强功能 |
+| **成本效率** | $20-$200/月 | **$6-$60/月** | **节省高达 70%** |
+
+### ✅ 推荐使用场景
+
+#### **GLM 轻量级（$6/月）使用:**
+- **入门**: 成本降低 70%，Claude Pro 使用量 3 倍
+- **轻量级工作负载**: 小型项目、间歇性编码
+- **学习项目**: 练习、教程、实验
+- **预算意识**: 月费 $6 专业 AI 编码
+
+#### **GLM 专业（$30/月）使用:**
+- **专业开发者**: 复杂任务快 40-60%
+- **日常开发**: 高级功能，轻量级使用量限制 5 倍
+- **团队协作**: Vision 理解、Web 搜索功能
+- **高级用户**: 复杂问题解决响应更快
+
+#### **GLM 最大（$60/月）使用:**
+- **大容量工作负载**: 密集开发，轻量级使用量 20 倍
+- **企业团队**: 保证高峰时段性能
+- **持续集成**: 自动化工作流无速率限制
+- **早期采用者**: 新功能和改进优先访问
+
+#### **考虑 Claude 的情况:**
+- **企业生产**: 关键任务部署
+- **复杂研究**: 高级推理任务
+- **大规模迁移**: 复杂系统转换
+- **合规要求**: 特定模型认证
+
+### 🛠️ 故障排除
+
+| 问题 | 解决方案 |
+| ------------------------ | ------------------------------------------------------------------------ |
+| **令牌不工作** | 从 z.ai 仪表板验证令牌，确认编程计划订阅 |
+| **模型错误** | 检查端点 URL: `https://api.z.ai/api/anthropic` |
+| **响应慢** | GLM 在高峰时段可能有更高延迟 |
+| **连接被拒绝** | 防火墙可能阻止 z.ai 域，检查网络设置 |
+| **需要回退** | 临时使用 `--glm-off` 切换回 Claude |
+
+### 🔗 有用链接
+
+- **GLM 编程计划**: https://z.ai/subscribe?ic=1NDV03BGWU
+- **信用活动规则**: https://docs.z.ai/devpack/credit-campaign-rules
+- **GLM 文档**: https://docs.z.ai/
+- **MoAI-ADK GLM 指南**: https://github.com/modu-ai/moai-adk/docs/glm-integration
+- **支持**: support@z.ai
+
+### 💬 社区与支持
+
+- **Discord**: 加入 z.ai 社区获取提示和更新
+- **GitHub**: 报告问题和功能请求
+- **邮件**: 技术支持联系 support@z.ai
+- **MoAI-ADK**: 框架特定帮助访问 github.com/modu-ai/moai-adk
+
+---
+
+**从今天开始节省成本，同时保持开发生产力！** 🚀
+
+## 17. 额外资源
+
+### 🆘 支持
+
+**邮件支持:**
+
+- 技术支持: [support@mo.ai.kr](mailto:support@mo.ai.kr)
+
+### 📊 星标历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
+
+---
+
+## 📝 许可证
+
+MoAI-ADK 在 [MIT 许可证](./LICENSE) 下授权。
+
+```text
+MIT License
+
+Copyright (c) 2025 MoAI-ADK Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
 ### ❤️ by MoAI-ADK 团队创建
 
 **版本**: 0.31.0

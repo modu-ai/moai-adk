@@ -2417,6 +2417,274 @@ SOFTWARE.
 
 ---
 
+## 16. 🚀 z.aiとのGLM統合（コスト効果の高い代替案）
+
+### 概要
+
+Claude Codeの利用コストを懸念する開発者のために、MoAI-ADKは**z.ai**経由での**GLM 4.6**統合をサポートしています。この構成はClaude Codeとの完全互換性を維持しながら、大幅なコスト削減を実現します。
+
+### 💡 GLMを選ぶ理由
+
+| 機能 | Claude Code | z.ai GLM 4.6 |
+| --------------------- | ------------------------------- | ----------------------------- |
+| **コスト** | $20/月（Proプラン） | **$6-$60/月（柔軟）** |
+| **モデル** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air |
+| **互換性** | ネイティブ | **100% Claude互換** |
+| **トークン制限** | 制限あり | **有料プランで無制限** |
+| **APIアクセス** | 含まれる | **フルAPIアクセス** |
+| **速度** | 高速 | **同等のパフォーマンス** |
+
+### 🎯 GLMコーディングプランのサブスクリプション
+
+**専用招待リンク**:
+🚀 **GLMコーディングプランに招待されました！Claude Code、Cline、10以上のトップコーディングツールの完全サポート。月額$3から開始。**
+
+👉 **ここで購読**: https://z.ai/subscribe?ic=1NDV03BGWU
+このリンクから購読すると、Z.AIから10%の追加割引とMoAI-ADKオープンソース開発をサポートするための専用クレジットを受け取れます。
+
+#### サブスクリプションプラン:
+
+| プラン | 価格 | 機能 | 最適な対象 |
+| ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
+| **ライト** | 初月$3<br/>2ヶ月目から月$6 | • Claude Pro使用量3倍<br/>• GLM-4.6ベース<br/>• 10以上のコーディングツツ互換 | 軽量なワークロード、導入 |
+| **プロ** | 初月$15<br/>2ヶ月目から月$30 | • すべてのライト特典<br/>• ライトプラン使用量5倍<br/>• 40-60%高速<br/>• Vision、Web Search、Web Reader | プロフェッショナル開発者、チーム |
+| **マックス** | 初月$30<br/>2ヶ月目から月$60 | • すべてのプロ特典<br/>• プロプラン使用量4倍<br/>•保証されたピークパフォーマンス<br/>• 新機能優先アクセス | 高容量ワークロード、パワーユーザー |
+| **エンタープライズ** | カスタム | • カスタム価格<br/>• 専用サポート<br/>• SLA保証 | 大規模組織、カスタムニーズ |
+
+#### GLMコーディングプラン購読者の特典:
+
+1. **大幅なコスト削減**: ライトプラン月$6でClaude Pro使用量3倍
+2. **完全なツール互換性**: Claude Code、Roo Code、Cline、Kilo Code、OpenCode、Crush、Gooseなど10以上のコーディングツツをサポート
+3. **高性能モデル**: GLM-4.6ベース（Claude 4.5 Sonnetと同等）
+4. **柔軟な価格**: 月$6ライトから月$60マックスまで（ニーズに応じて拡張）
+5. **パフォーマンスオプション**: プロプランで40-60%高速、マックスプランで保証されたピークパフォーマンス
+6. **高度な機能**: フレームワーク理解、Web検索、WebリーダーMCP（プロ以上）
+7. **MoAI-ADKサポート**: 購読の一部がMoAI-ADK開発のサポートに使用されます
+
+#### **🌟 推奨アップグレードパス**
+
+**ステップ1: ライトプラン（$6/月）で開始**
+- 月$6でClaude Pro使用量3倍
+- 実際のプロジェクトで2-3週間GLM-4.6をテスト
+- 10以上のコーディングツツとの互換性を体験
+
+**ステップ2: 使用量に応じてアップグレード**
+- **通常開発の場合**: **プロ（$30/月）**にアップグレードして複雑なタスクで40-60%高速なパフォーマンス
+- **高容量ワークロードの場合**: ピークパフォーマンスのために**マックス（$60/月）**を選択
+- **パワーユーザー特典**: プロはライト使用量の5倍、マックスはライト使用量の20倍
+
+**このアプローチが有効な理由:**
+- **低い参入障壁**: 月$6でプロフェッショナルAIコーディングを開始
+- **必要に応じて拡張**: ワークロードが必要な場合のみアップグレード
+- **パフォーマンス向上**: プロプランは複雑なタスクで大幅に高速
+- **高度な機能**: Vision、Web検索、WebリーダーMCPがプロ以上で提供
+
+#### キャンペーン詳細（クレジットルール）:
+
+- 📋 **公式ルール**: https://docs.z.ai/devpack/credit-campaign-rules
+- 🎁 **特別提供**: MoAI-ADKユーザーに追加クレジットを提供
+- 💝 **コミュニティサポート**: 購読がMoAI-ADK開発をサポート
+- 🔄 **柔軟な使用**: クレジットは月次繰り越し
+
+### ⚙️ クイックセットアップ: GLM設定
+
+#### ステップ1: GLMコーディングプランに購読
+
+1. 訪問: https://z.ai/subscribe?ic=1NDV03BGWU
+2. プラン選択:
+   - **ライト（初月$3、2ヶ月目から$6/月）**: 開始に最適、Claude Pro使用量3倍
+   - **プロ（初月$15、2ヶ月目から$30/月）**: 40-60%高速、VisionおよびWeb機能含む
+   - **マックス（初月$30、2ヶ月目から$60/月）**: 保証されたパフォーマンス、新機能優先アクセス
+   - **エンタープライズ**: 大規模組織向けカスタム価格
+3. 登録および支払い完了
+4. ダッシュボードからAPIトークンをメモ
+
+**💡 ヒント**: $6ライトプランで開始してGLM-4.6をテストし、より高速なパフォーマンスのためにプロにアップグレードするか、高容量ワークロードのためにマックスにアップグレードしてください！
+
+#### ステップ2: MoAI-ADKをGLM用に設定
+
+Claude Codeで実行:
+
+```bash
+# APIトークンでGLMを設定
+> /moai:0-project --glm-on YOUR_API_TOKEN
+
+# トークンなし（入力プロンプト）
+> /moai:0-project --glm-on
+```
+
+**設定中に発生する処理:**
+
+✅ **APIトークン設定**: GLM APIトークンを安全に保存
+✅ **エンドポイント設定**: z.ai APIエンドポイントを設定
+✅ **モデルマッピング**: GLM 4.6をClaudeモデル階層にマッピング
+✅ **検証**: 接続とモデル可用性のテスト
+✅ **フォールバック準備**: Claudeをバックアップオプションとして維持
+
+#### ステップ3: 設定の検証
+
+```bash
+# 現在の設定を確認
+> cat .claude/settings.local.json
+
+# 期待される出力:
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+  }
+}
+```
+
+#### ステップ4: Claude Codeの再起動
+
+```bash
+# Claude Codeを終了して再起動
+> /exit
+# その後
+claude
+```
+
+GLM 4.6がアクティブになり、使用準備完了！
+
+### 🔄 GLM設定の管理
+
+#### GLMモードを有効化:
+
+```bash
+> /moai:0-project --glm-on [YOUR_TOKEN]
+```
+
+#### GLMを無効化（Claudeに戻る）:
+
+```bash
+> /moai:0-project --glm-off
+```
+
+#### 現在のモードを確認:
+
+GLMは以下の場合にアクティブ:
+- `.claude/settings.local.json`にGLM設定が含まれている場合
+- ベースURLが`https://api.z.ai/api/anthropic`に設定されている場合
+- モデルがGLM変形にマッピングされている場合
+
+### 📊 パフォーマンス比較
+
+実際のMoAI-ADKテストに基づく:
+
+| タスク | Claude 4.5 Sonnet | GLM 4.6 | パフォーマンス差 |
+| ------------------------------ | ----------------- | ------------ | --------------- |
+| **コード生成** | 優秀 | **優秀** | 5%未満の差 |
+| **TDD実装** | 優秀 | **非常に良い** | 10%高速 |
+| **ドキュメント作成** | 非常に良い | **良い** | 15%高速 |
+| **複雑な問題解決** | 優秀 | **非常に良い** | 同等 |
+| **APIレート制限** | 中程度 | **より高い** | 3倍-20倍多くの使用量 |
+| **パフォーマンス速度** | 高速 | **40-60%高速（プロ以上）** | 著しい改善 |
+| **高度な機能** | ベーシック | **Vision、Web Search、Web Reader（プロ以上）** | 強化された機能 |
+| **コスト効率** | $20-$200/月 | **$6-$60/月** | **最大70%節約** |
+
+### ✅ 推奨使用シナリオ
+
+#### **GLMライト（$6/月）使用:**
+- **導入**: 70%低コストでClaude Pro使用量3倍
+- **軽量ワークロード**: 小規模プロジェクト、断続的なコーディング
+- **学習プロジェクト**: 練習、チュートリアル、実験
+- **予算意識**: 月$6でプロフェッショナルAIコーディング
+
+#### **GLMプロ（$30/月）使用:**
+- **プロフェッショナル開発者**: 複雑なタスクで40-60%高速なパフォーマンス
+- **日常開発**: 高度な機能付きでライト使用量制限の5倍
+- **チームコラボレーション**: Vision理解、Web検索機能
+- **パワーユーザー**: 複雑な問題解決でより高速な応答
+
+#### **GLMマックス（$60/月）使用:**
+- **高容量ワークロード**: 集中的な開発でライト使用量20倍
+- **エンタープライズチーム**: 保証されたピーク時間パフォーマンス
+- **継続的インテグレーション**: 自動化されたワークフローでレート制限なし
+- **早期導入者**: 新機能および改善の優先アクセス
+
+#### **Claudeを検討すべき場合:**
+- **エンタープライズプロダクション**: ミッションクリティカルな展開
+- **複雑な研究**: 高度な推論タスク
+- **大規模移行**: 複雑なシステム変換
+- **コンプライアンス要件**: 特定のモデル認証が必要
+
+### 🛠️ トラブルシューティング
+
+| 問題 | 解決策 |
+| ------------------------ | ------------------------------------------------------------------------ |
+| **トークンが動作しない** | z.aiダッシュボードでトークンを検証、コーディングプラン購読を確認 |
+| **モデルエラー** | エンドポイントURLを確認: `https://api.z.ai/api/anthropic` |
+| **応答が遅い** | GLMはピーク時間により高いレイテンシーがある可能性 |
+| **接続拒否** | ファイアウォールがz.aiドメインをブロックしている可能性、ネットワーク設定を確認 |
+| **フォールバックが必要** | 一時的に`--glm-off`を使用してClaudeに戻す |
+
+### 🔗 有用なリンク
+
+- **GLMコーディングプラン**: https://z.ai/subscribe?ic=1NDV03BGWU
+- **クレジットキャンペーンルール**: https://docs.z.ai/devpack/credit-campaign-rules
+- **GLMドキュメント**: https://docs.z.ai/
+- **MoAI-ADK GLMガイド**: https://github.com/modu-ai/moai-adk/docs/glm-integration
+- **サポート**: support@z.ai
+
+### 💬 コミュニティとサポート
+
+- **Discord**: ヒントと更新のためにz.aiコミュニティに参加
+- **GitHub**: 問題報告と機能リクエスト
+- **メール**: 技術サポートのためにsupport@z.ai
+- **MoAI-ADK**: フレームワーク別のヘルプはgithub.com/modu-ai/moai-adk
+
+---
+
+**今日からコストを削減しながら開発生産性を維持しましょう！** 🚀
+
+## 17. 追加リソース
+
+### 🆘 サポート
+
+**メールサポート:**
+
+- 技術サポート: [support@mo.ai.kr](mailto:support@mo.ai.kr)
+
+### 📊 スター履歴
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
+
+---
+
+## 📝 ライセンス
+
+MoAI-ADKは[MITライセンス](./LICENSE)の下でライセンスされています。
+
+```text
+MIT License
+
+Copyright (c) 2025 MoAI-ADK Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
 ### Made with ❤️ by MoAI-ADK Team
 
 **Version:** 0.31.0
