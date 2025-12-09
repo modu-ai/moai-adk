@@ -1,5 +1,8 @@
 # 🗿 MoAI-ADK: Agentic AI-Based SPEC-First TDD Development Framework
 
+[![Run in Smithery](https://smithery.ai/badge/skills/modu-ai)](https://smithery.ai/skills?ns=modu-ai&utm_source=github&utm_medium=badge)
+
+
 ![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
 **Available Languages:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
