@@ -105,8 +105,8 @@ All configuration questions are defined in YAML files under .moai/config/questio
 
 - _schema.yaml: Schema definition and constraints
 - tab1-user.yaml: User and language settings (3 questions)
-- tab2-project.yaml: Project metadata (4 questions)
-- tab3-git.yaml: Git strategy and workflow (25 conditional questions)
+- tab2-project.yaml: Project metadata (2 questions)
+- tab3-git.yaml: Git strategy and workflow (26 questions, includes GitHub Profile)
 - tab4-quality.yaml: Quality principles and reports (7 questions)
 - tab5-system.yaml: System and GitHub integration (7 questions)
 
@@ -450,13 +450,13 @@ Options:
 
    - Configure user name, conversation language, agent prompt language
 
-2. Tab 2: Project & GitHub Settings
+2. Tab 2: Project Settings
 
-   - Configure project name, description, mode, GitHub Profile Name
+   - Configure project name, description
 
 3. Tab 3: Git Strategy & Workflow
 
-   - Configure Personal/Team Git settings, commit/branch strategy
+   - Configure GitHub profile, Manual/Personal/Team Git settings, commit/branch strategy
 
 4. Tab 4: Quality Principles & Reports
 
@@ -490,26 +490,32 @@ Tab 1: User & Language (Required Foundation)
   - NOTE: conversation_language_name is auto-updated when conversation_language changes
 - Setting count: 3 | Critical checkpoint
 
-Tab 2: Project & GitHub Settings (Recommended)
+Tab 2: Project Settings (Recommended)
 
-- Batch 2.1: Project metadata (4 questions)
-  - Project name, description, mode, GitHub Profile Name (e.g., @GoosLab)
-- Batch 2.2: Auto-processed locale settings (0 questions - UPDATED: internal analysis only)
+- Batch 2.1: Project metadata (2 questions)
+  - Project name, description
+  - NOTE: GitHub Profile moved to Tab 3, Project Mode removed
+- Batch 2.2: Auto-processed locale settings (0 questions - internal analysis only)
   - project.locale, default_language, optimized_for_language (auto-determined from conversation_language)
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
   - Auto-Processing Delegation: Command does NOT perform auto-processing. manager-project agent receives user selections, determines derived fields, then delegates atomic update to UnifiedConfigManager skill.
-- Setting count: 4
+- Setting count: 2
 
 Tab 3: Git Strategy & Workflow (Recommended with Validation - REDESIGNED v2.0.0)
 
-- Batch 3.0: Workflow mode selection (1 question - Personal/Team/Hybrid) → Controls visibility of subsequent batches
-- Batch 3.1: Personal core settings (4 questions) - CONDITIONAL (Personal/Hybrid only)
-- Batch 3.2: Personal branch & cleanup (4 questions) - CONDITIONAL (Personal/Hybrid only)
-- Batch 3.3: Personal protection & merge (4 questions) - CONDITIONAL (Personal/Hybrid only)
-- Batch 3.4: Team core settings (4 questions) - CONDITIONAL (Team/Hybrid only)
-- Batch 3.5: Team branch & protection (4 questions) - CONDITIONAL (Team/Hybrid only)
-- Batch 3.6: Team safety & merge (2 questions) - CONDITIONAL (Team/Hybrid only)
-- Setting count: 29 (+13 from v1.0.0) | Critical checkpoint for Git conflicts & mode consistency
+- Batch 3.0a: GitHub Profile (1 question) - Always shown, required for all modes
+  - GitHub username (e.g., @GoosLab) - moved from Tab 2
+- Batch 3.0: Workflow mode selection (1 question - Manual/Personal/Team) - Controls visibility of subsequent batches
+- Batch 3.1: Manual core settings (4 questions) - CONDITIONAL (Manual only)
+- Batch 3.2: Manual push settings (1 question) - CONDITIONAL (Manual only)
+- Batch 3.3: Personal core settings (4 questions) - CONDITIONAL (Personal only)
+- Batch 3.4: Personal commit & push settings (3 questions) - CONDITIONAL (Personal only)
+- Batch 3.5: Personal branch settings (2 questions) - CONDITIONAL (Personal only)
+- Batch 3.6: Team core settings (4 questions) - CONDITIONAL (Team only)
+- Batch 3.7: Team commit & PR settings (3 questions) - CONDITIONAL (Team only)
+- Batch 3.8: Team branch & protection settings (3 questions) - CONDITIONAL (Team only)
+- Batch 3.9: Team branch naming settings (2 questions) - CONDITIONAL (Team only)
+- Setting count: 26 | Critical checkpoint for Git conflicts & mode consistency
 
 Tab 4: Quality Principles & Reports (Optional - UPDATED v2.0.0)
 
@@ -746,12 +752,13 @@ Flow:
 2. User selects tab or "Modify All Tabs"
 3. Execute selected tab
    - Tab 1 (REQUIRED): User & Language (1 batch, 3 questions)
-   - Tab 2 (RECOMMENDED): Project Info (2 batches, 4 questions in batch 2.1 + 0 questions auto-processing in batch 2.2)
-   - Tab 3 (RECOMMENDED): Git Strategy (6 batches, 23 questions total, conditional by mode)
+   - Tab 2 (RECOMMENDED): Project Info (2 batches, 2 questions in batch 2.1 + 0 questions auto-processing in batch 2.2)
+   - Tab 3 (RECOMMENDED): Git Strategy (10 batches, 26 questions total, conditional by mode)
+     * Batch 3.0a: GitHub Profile (1 question) - always shown
      * Batch 3.0: Mode selection (1 question)
-     * Personal mode: Batches 3.1-3.3 (12 questions)
-     * Team mode: Batches 3.4-3.6 (10 questions)
-     * Hybrid mode: All batches (22 questions)
+     * Manual mode: Batches 3.1-3.2 (5 questions)
+     * Personal mode: Batches 3.3-3.5 (9 questions)
+     * Team mode: Batches 3.6-3.9 (12 questions)
    - Tab 4 (OPTIONAL): Quality & Reports (2 batches, 7 questions)
    - Tab 5 (OPTIONAL): System & GitHub (2 batches, 8 questions)
 4. After tab completion, ask: "Would you like to modify another settings tab?"
@@ -769,7 +776,7 @@ Tab-level behavior:
 Tab completion order (recommended):
   - Tab 1 (REQUIRED): Foundation language settings
   - Tab 2: Project metadata
-  - Tab 3: Git workflow strategy
+  - Tab 3: Git workflow strategy (includes GitHub Profile)
   - Tab 4: Quality principles
   - Tab 5: System integration
 ```
@@ -846,7 +853,7 @@ Goal: Persist phase execution results for explicit context passing to subsequent
 
 After manager-project agent completes, extract the following information:
 
-- Project metadata: name, mode, language, GitHub Profile Name
+- Project metadata: name, description, language
 - Files created: List of generated files with absolute paths
 - Tech stack: Primary codebase language
 - Next phase: Recommended next command (1-plan)
@@ -864,9 +871,10 @@ Context data to persist:
 - Status: completed|failed
 - Outputs:
   - project_name
-  - mode (personal|team)
+  - project_description
   - language (conversation_language)
   - tech_stack (detected primary language)
+  - github_profile (from Tab 3)
 - Files created: [list of absolute paths]
 - Next phase: "1-plan"
 

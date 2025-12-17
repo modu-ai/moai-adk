@@ -150,7 +150,7 @@ def should_show_setup_messages() -> bool:
     """Determine whether to show setup completion messages (cached version).
 
     Logic:
-    1. Read .moai/config/config.json (using cache)
+    1. Read .moai/config/config.yaml (using cache)
     2. Check session.suppress_setup_messages flag
     3. If suppress_setup_messages is False, always show messages
     4. If suppress_setup_messages is True:
@@ -685,6 +685,7 @@ def format_session_output() -> str:
     """
     # Gather information (in parallel for git, cached for config/SPEC)
     git_info = get_git_info()
+    spec_progress = get_spec_progress()
 
     # Get config for language and version info
     config = get_cached_config()

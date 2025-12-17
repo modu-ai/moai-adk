@@ -188,7 +188,7 @@ class GitOperationsManager:
             # Fallback to simple key
             key_data = f"{operation_type.value}:{args}"
 
-        return hashlib.md5(key_data.encode(), usedforsecurity=False).hexdigest()
+        return hashlib.md5(key_data.encode()).hexdigest()
 
     def _is_cache_valid(self, entry: CacheEntry) -> bool:
         """Check if cache entry is still valid"""

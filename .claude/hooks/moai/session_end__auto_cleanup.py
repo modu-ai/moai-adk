@@ -126,7 +126,7 @@ def load_hook_timeout() -> int:
         Timeout in milliseconds
     """
     try:
-        config_file = Path(".moai/config/config.json")
+        config_file = Path(".moai/config/config.yaml")
         if config_file.exists():
             with open(config_file, "r", encoding="utf-8") as f:
                 config: Dict[str, Any] = json.load(f)
@@ -143,7 +143,7 @@ def get_graceful_degradation() -> bool:
         Whether graceful degradation is enabled
     """
     try:
-        config_file = Path(".moai/config/config.json")
+        config_file = Path(".moai/config/config.yaml")
         if config_file.exists():
             with open(config_file, "r", encoding="utf-8") as f:
                 config: Dict[str, Any] = json.load(f)
@@ -525,7 +525,7 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
 
     try:
         # Get project root
-        project_root = Path(".moai/config/config.json").parent.parent
+        project_root = Path(".moai/config/config.yaml").parent.parent
         if not project_root.exists():
             project_root = find_project_root()
 

@@ -150,7 +150,7 @@ def should_show_setup_messages() -> bool:
     """Determine whether to show setup completion messages (cached version).
 
     Logic:
-    1. Read .moai/config/config.json (using cache)
+    1. Read .moai/config/config.yaml (using cache)
     2. Check session.suppress_setup_messages flag
     3. If suppress_setup_messages is False, always show messages
     4. If suppress_setup_messages is True:
