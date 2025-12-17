@@ -283,7 +283,6 @@ uv.lock
 .playwright-mcp
 .venv_issue43_py313
 theme.config.tsx
-docs/
 
 # Keep local development guide tracked
 !CLAUDE.local.md

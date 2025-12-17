@@ -1678,38 +1678,223 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. 스킬 라이브러리 (24개)
+## 9. 스킬 라이브러리 (46개)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK는 **24개의 전문 스킬**을 6개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
+MoAI-ADK는 **46개의 전문 스킬**을 7개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
 
-### 📊 전체 스킬 목록
+### 🏗️ Foundation (기반)
 
-| 카테고리       | 스킬명                     | 설명                                                | 버전  |
-| -------------- | -------------------------- | --------------------------------------------------- | ----- |
-| **Foundation** | moai-foundation-core       | TRUST 5, SPEC-First TDD, 에이전트 위임, 토큰 최적화 | 2.2.0 |
-|                | moai-foundation-uiux       | 디자인 시스템, 컴포넌트, 접근성, 아이콘, 테마       | 2.0.0 |
-|                | moai-foundation-quality    | 프로액티브 품질 검증, 자동 테스트, 커버리지         | 2.0.0 |
-|                | moai-foundation-claude     | 에이전트, 슬래시 명령, MCP, 훅, 메모리, IAM         | 2.0.0 |
-| **Platform**   | moai-lang-unified          | 25+ 언어 (Python, TS, Go, Rust, Java, C++ 등)       | 2.0.0 |
-|                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase 등)       | 2.0.0 |
-| **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React 컴포넌트          | 2.0.0 |
-|                | moai-library-toon          | TOON 포맷, 토큰 효율 인코딩 (40-60% 절감)           | 3.0.0 |
-|                | moai-library-mermaid       | 21종 다이어그램, Playwright MCP 렌더링              | 7.0.0 |
-| **Connector**  | moai-connector-mcp         | 10+ MCP 서버 통합 가이드                            | 2.0.0 |
-|                | moai-connector-figma       | 디자인 시스템, UI 키트, 디자인 토큰                 | 1.0.0 |
-|                | moai-connector-notion      | 워크스페이스, 데이터베이스, 콘텐츠 관리             | 1.0.0 |
-|                | moai-connector-nano-banana | Gemini 3 Pro 이미지 생성 (Text/Image-to-Image)      | 1.0.1 |
-| **Workflow**   | moai-workflow-project      | 프로젝트 관리, 언어 초기화, 템플릿 최적화           | 2.0.0 |
-|                | moai-workflow-docs         | Markdown/Mermaid/한글 검증, 보고서 생성             | 2.0.0 |
-|                | moai-workflow-templates    | 코드 보일러플레이트, 피드백 템플릿                  | 3.0.0 |
-|                | moai-workflow-testing      | Playwright E2E, 시각적 회귀, 크로스 브라우저        | 2.0.0 |
-|                | moai-workflow-jit-docs     | 사용자 의도 기반 문서 자동 검색 & 캐싱              | 2.0.0 |
-|                | moai-toolkit-essentials    | 디버깅, 리팩토링, 최적화, 리뷰, 프로파일링          | 2.0.0 |
-| **System**     | moai-system-universal      | 25+ 언어 + 9+ BaaS + 보안 + 컴플라이언스 통합       | 2.0.0 |
+핵심 철학과 실행 규칙을 정의하는 기반 스킬들입니다.
 
-**사용 빈도**: Foundation (90%+), Platform (80%+), Workflow (85%), Connector (70%), Library (60%), System (40%)
+- **moai-foundation-core**
+  - TRUST 5, SPEC-First TDD, 에이전트 위임 패턴, 토큰 최적화
+  - 모든 AI 구동 개발 워크플로우 구축을 위한 실행 규칙 제공
+
+- **moai-foundation-context**
+  - 토큰 예산 최적화 및 상태 지속성을 통한 엔터프라이즈 컨텍스트 관리
+  - 세션 메모리 시스템과 효율적인 토큰 활용 전략
+
+- **moai-foundation-claude**
+  - Claude Code 공식 문서에 부합한 스킬 작성 키트
+  - 에이전트, 서브에이전트 템플릿, 슬래시 명령, 훅, 메모리, IAM 규칙
+
+- **moai-foundation-quality**
+  - TRUST 5 검증, 프로액티브 분석, 자동화된 최적적 베스트프랙티스 적용
+  - 엔터프라이즈급 코드 품질 보증 시스템
+
+### 🎯 Domain (도메인 전문)
+
+특정 기술 도메인에 대한 깊은 전문성을 제공합니다.
+
+- **moai-domain-backend**
+  - 프레임워크에 구애받지 않는 백엔드 설계, 13+ 프레임워크 전문성
+  - API 설계, 데이터베이스 통합, 마이크로서비스 아키텍처
+
+- **moai-domain-frontend**
+  - React 19, Next.js 16, Vue 3.5를 포함한 최신 UI/UX 패턴
+  - 컴포넌트 아키텍처, 상태 관리, 반응형 디자인
+
+- **moai-domain-database**
+  - PostgreSQL, MongoDB, Redis를 포함한 데이터베이스 전문성
+  - 쿼리 성능 최적화, 데이터 모델링, 데이터베이스 전략
+
+- **moai-domain-uiux**
+  - 엔터프라이즈 디자인 시스템, 컴포넌트 아키텍처, 접근성
+  - WCAG 준수, 디자인 토큰, 아이콘, 테마 시스템
+
+### 💻 Language (언어)
+
+다양한 프로그래밍 언어와 프레임워크를 지원합니다.
+
+- **moai-lang-python**
+  - FastAPI, Django, async 패턴, 데이터 사이언스를 위한 Python 3.13+
+  - pytest로 테스트, 최신 Python 기능과 비동기 프로그래밍
+
+- **moai-lang-typescript**
+  - React 19, Next.js 16 App Router, tRPC로 타입 안전 API
+  - Zod 검증, 최신 TypeScript 5.9+ 패턴과 모던 프론트엔드
+
+- **moai-lang-go**
+  - Fiber, Gin, GORM을 사용한 고성능 마이크로서비스
+  - Go 1.23+ 동시성 패턴과 클라우드 네이티브 애플리케이션
+
+- **moai-lang-rust**
+  - Axum, Tokio, SQLx를 사용한 메모리 안전 시스템 프로그래밍
+  - Rust 1.91+로 WebAssembly와 고성능 애플리케이션 개발
+
+- **moai-lang-java**
+  - Spring Boot 3.3, 가상 스레드, Java 21 LTS 엔터프라이즈 패턴
+  - 마이크로서비스, Android 앱, Akka 액터 시스템
+
+- **moai-lang-csharp**
+  - ASP.NET Core, Entity Framework, Blazor를 위한 C# 12/.NET 8
+  - 엔터프라이즈 애플리케이션과 MAUI 크로스플랫폼 개발
+
+- **moai-lang-swift**
+  - SwiftUI, Combine, Swift 6 동시성을 위한 iOS/macOS 개발
+  - Apple 생태계와 최신 Swift 언어 기능
+
+- **moai-lang-kotlin**
+  - Ktor, 코루틴, Compose Multiplatform을 위한 Kotlin 2.0
+  - Android 15, KMP 크로스플랫폼과 코틀린 관용성 패턴
+
+- **moai-lang-ruby**
+  - Ruby on Rails 8, ActiveRecord, Hotwire/Turbo를 위한 Ruby 3.3+
+  - 모던 Ruby 패턴과 웹 개발 자동화
+
+- **moai-lang-php**
+  - Laravel 11, Symfony 7, Eloquent ORM을 위한 PHP 8.3+
+  - 모던 PHP 아키텍처와 웹 애플리케이션 개발
+
+- **moai-lang-elixir**
+  - Phoenix 1.7, LiveView, Ecto를 사용한 Elixir 1.17+ 개발
+  - 실시간 애플리케이션, 분산 시스템, OTP 패턴
+
+- **moai-lang-scala**
+  - Akka, Cats Effect, ZIO, Spark를 위한 Scala 3.4+
+  - 분산 시스템과 빅 데이터 애플리케이션
+
+- **moai-lang-cpp**
+  - RAII, 스마트 포인터, 컨셉트, 모듈을 사용한 C++23/20
+  - 고성능 시스템, 게임 엔진, 임베디드 시스템
+
+- **moai-lang-flutter**
+  - Riverpod, go_router를 사용한 Flutter 3.24+/Dart 3.5+ 개발
+  - 크로스플랫폼 모바일 앱과 데스크톱 애플리케이션
+
+- **moai-lang-r**
+  - tidyverse, ggplot2, Shiny를 사용한 R 4.4+ 데이터 분석
+  - 통계 모델링, 데이터 시각화, 대화형 웹 애플리케이션
+
+### 🚀 Platform (플랫폼)
+
+주요 클라우드 플랫폼과 BaaS 서비스 통합을 지원합니다.
+
+- **moai-platform-supabase**
+  - PostgreSQL 16, pgvector, RLS, 실시간 구독을 사용한 Supabase
+  - 서버리스 함수, 자동 동기화, 엣지 함수 배포
+
+- **moai-platform-auth0**
+  - SSO, SAML, OIDC, 조직, B2B 멀티테넌시를 위한 Auth0
+  - 엔터프라이즈 인증 페더레이션과 복잡한 인증 워크플로우
+
+- **moai-platform-clerk**
+  - WebAuthn, 패스키, 비밀번호 없는 인증을 위한 Clerk
+  - 모던 사용자 관리와 아름다운 UI 컴포넌트
+
+- **moai-platform-neon**
+  - 오토 스케일링, 데이터베이스 브랜칭, PITR을 지원하는 Neon
+  - 서버리스 PostgreSQL과 커넥션 풀링 최적화
+
+- **moai-platform-firebase-auth**
+  - 소셜 인증, 전화 인증, 익명 로그인을 포함한 Firebase 인증
+  - Google 생태계와 모바일 우선 인증 패턴
+
+- **moai-platform-firestore**
+  - NoSQL 데이터 모델링, 실시간 동기화, 오프라인 지원
+  - 모바일 우선 앱과 보안 규칙 설정
+
+- **moai-platform-vercel**
+  - 엣지 함수, Next.js 최적화, ISR을 위한 Vercel
+  - 엣지 우선 배포와 프리뷰 배포 전략
+
+- **moai-platform-railway**
+  - Docker, 멀티서비스 아키텍처, 영구 볼륨을 위한 Railway
+  - 컨테이너화된 풀스택 애플리케이션과 오토 스케일링
+
+- **moai-platform-convex**
+  - TypeScript 우선 리액티브 패턴, 낙관적 업데이트를 위한 Convex
+  - 실시간 협업 앱과 서버 함수
+
+### 📋 Workflow (워크플로우)
+
+개발 프로세스를 자동화하고 최적화하는 워크플로우 스킬들입니다.
+
+- **moai-workflow-spec**
+  - EARS 포맷, 요구사항 명확화, Plan-Run-Sync 통합
+  - SPEC 워크플로우 오케스트레이션과 수용 기준 정의
+
+- **moai-workflow-testing**
+  - TDD, 디버깅, 성능 최적화, 코드 리뷰를 통합
+  - 포괄적인 개발 워크플로우와 품질 보증
+
+- **moai-workflow-project**
+  - 프로젝트 관리, 문서화, 언어 초기화 모듈
+  - 통합 프로젝트 시스템과 템플릿 최적화
+
+- **moai-workflow-templates**
+  - 코드 보일러플레이트, 피드백 템플릿, 프로젝트 최적화
+  - 엔터프라이즈 템플릿 관리와 자산 재사용 극대화
+
+- **moai-workflow-jit-docs**
+  - 사용자 의도 기반 지능형 문서 검색 및 캐싱
+  - 실시간 API 문서 접근과 버전 호환성 검사
+
+- **moai-workflow-docs**
+  - Nextra 문서 시스템, 기술 라이팅, API 문서화
+  - 자동화된 문서 생성과 지식 베이스 관리
+
+- **moai-worktree**
+  - 병렬 SPEC 개발을 위한 Git 워크트리 관리
+  - 격리된 작업 공간, 자동 등록, MoAI-ADK 통합
+
+### 📚 Library (라이브러리)
+
+특정 라이브러리와 프레임워크 전문화 스킬들입니다.
+
+- **moai-library-shadcn**
+  - shadcn/ui, Radix, Tailwind CSS를 위한 전문 구현 가이드
+  - React 컴포넌트와 모던 UI 디자인 시스템
+
+- **moai-library-mermaid**
+  - MCP Playwright를 사용한 엔터프라이즈 Mermaid 다이어그래밍
+  - 21종 다이어그램 타입과 시각적 워크플로우 문서화
+
+- **moai-library-nextra**
+  - Next.js 기반 엔터프라이즈 문서 프레임워크
+  - 마크다운 최적화와 동적 문서 생성
+
+- **moai-formats-data**
+  - TOON 인코딩, JSON/YAML 최적화, 데이터 직렬화
+  - 모던 애플리케이션을 위한 데이터 검증 및 처리
+
+### 🔌 MCP (Model Context Protocol)
+
+MCP 서버 통합을 위한 전문 스킬들입니다.
+
+- **moai-mcp-notion**
+  - Notion MCP 통합으로 워크스페이스 관리와 데이터베이스 운영
+  - 페이지 생성, 콘텐츠 자동화, 지식 구성
+
+- **moai-mcp-figma**
+  - Figma MCP 통합으로 디자인 시스템 추출과 컴포넌트 생성
+  - 디자인-투-코드 워크플로우와 디자인 토큰 관리
+
+- **moai-ai-nano-banana**
+  - Gemini 3 Nano Banana Pro를 사용한 이미지 생성
+  - 자연어 프롬프트로 전문적인 시각적 콘텐츠 생성
 
 ### 🎯 스킬 사용 가이드
 
@@ -1717,22 +1902,24 @@ MoAI-ADK는 **24개의 전문 스킬**을 6개 카테고리로 제공합니다. 
 
 ```python
 # 방법 1: 직접 호출 (개발자)
-Skill("moai-lang-unified")
+Skill("moai-lang-python")
 
 # 방법 2: Alfred 자동 선택 (일반 사용자)
 "Python으로 FastAPI 서버를 만들어줘"
-→ Alfred가 moai-lang-unified + moai-platform-baas 자동 선택
+→ Alfred가 moai-lang-python + moai-platform-supabase 자동 선택
 ```
 
 #### 스킬 조합 패턴
 
-**백엔드 API**: `moai-foundation-core` + `moai-lang-unified` + `moai-platform-baas`
+**백엔드 API**: `moai-foundation-core` + `moai-lang-python` + `moai-platform-supabase`
 
-**프론트엔드 UI**: `moai-foundation-uiux` + `moai-lang-unified` + `moai-library-shadcn`
+**프론트엔드 UI**: `moai-domain-uiux` + `moai-lang-typescript` + `moai-library-shadcn`
 
 **문서화**: `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`
 
-**테스트**: `moai-lang-unified` + `moai-workflow-testing` + `moai-foundation-quality`
+**테스트**: `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`
+
+**데이터 분석**: `moai-lang-r` + `moai-domain-database` + `moai-formats-data`
 
 ---
 
