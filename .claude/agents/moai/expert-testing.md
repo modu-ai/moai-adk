@@ -179,7 +179,8 @@ Example: Korean prompt → Korean test strategy guidance + English code examples
 
 Automatic Core Skills (from YAML frontmatter)
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – Language detection and framework-specific patterns
+- moai-lang-python – Python/pytest/unittest testing patterns
+- moai-lang-typescript – TypeScript/Jest/Vitest/Playwright testing patterns
 - moai-workflow-testing – Testing strategies and comprehensive test patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
@@ -679,12 +680,13 @@ IMPACT: Unstructured output requires stakeholder parsing and creates interpretat
 
 Skills (from YAML frontmatter):
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – All framework patterns and testing approaches
+- moai-lang-python – Python/pytest/unittest testing patterns
+- moai-lang-typescript – TypeScript/Jest/Vitest/Playwright testing patterns
 - moai-workflow-testing – Comprehensive testing strategies and patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
 Conditional Skills (loaded by Alfred when needed):
-- moai-integration-mcp – MCP server integration (Context7 documentation research, Playwright automation)
+- moai-workflow-testing – Testing patterns and automation workflows
 
 Testing Frameworks:
 - Frontend Unit: Jest, Vitest, React Testing Library, Vue Test Utils

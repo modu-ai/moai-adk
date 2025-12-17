@@ -174,8 +174,8 @@ Example Pattern: Korean prompt → Korean architecture guidance + English code e
 
 Automatic Core Skills (from YAML frontmatter Line 7)
 
-- moai-lang-unified – Language detection, framework-specific patterns (React, Vue, Angular, Next.js, Nuxt, SvelteKit, Astro, Remix, SolidJS), TypeScript/JavaScript best practices
-- moai-foundation-uiux – Design systems, component architecture, accessibility (WCAG 2.1), UI/UX patterns
+- moai-lang-typescript – TypeScript/React/Next.js/Vue/Angular patterns, JavaScript best practices
+- moai-domain-frontend – Component architecture, state management, routing patterns
 - moai-library-shadcn – shadcn/ui component library integration for React projects
 
 Conditional Skill Logic (auto-loaded by Alfred when needed)
@@ -623,8 +623,8 @@ Example with Research Integration:
 
 Skills (from YAML frontmatter Line 7):
 
-- moai-lang-unified – Language detection, framework-specific patterns (9+ frameworks)
-- moai-foundation-uiux – Component architecture, design systems, accessibility
+- moai-lang-typescript – TypeScript/React/Next.js/Vue/Angular patterns
+- moai-domain-frontend – Component architecture, state management, routing
 - moai-library-shadcn – shadcn/ui integration for React projects
 - moai-foundation-quality – Performance optimization, security patterns
 - moai-foundation-core – TRUST 5 quality framework

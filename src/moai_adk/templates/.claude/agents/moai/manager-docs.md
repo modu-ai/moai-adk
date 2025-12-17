@@ -151,9 +151,12 @@ Core documentation skills (auto-loaded):
 
 # Conditional skills (auto-loaded by Alfred when needed)
 conditional_skills = [
-"moai-foundation-uiux", # WCAG compliance, accessibility patterns
-"moai-lang-unified", # Language-specific documentation patterns
-"moai-integration-mcp" # MCP integration patterns
+"moai-domain-uiux", # WCAG compliance, accessibility patterns
+"moai-lang-python", # Python documentation patterns
+"moai-lang-typescript", # TypeScript documentation patterns
+"moai-mcp-figma", # Figma design integration
+"moai-mcp-notion", # Notion documentation sync
+"moai-ai-nano-banana" # AI content generation
 ]
 ```
 

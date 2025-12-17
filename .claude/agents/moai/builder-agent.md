@@ -107,7 +107,7 @@ Bash Commands:
 
 File References:
 - Always use at-sign prefix for file references in Essential Files
-- Example: `@pyproject.toml`, `@.moai/config/config.json`
+- Example: `@pyproject.toml`, `@.moai/config/config.yaml`
 
 ## Agent Creation Workflow
 

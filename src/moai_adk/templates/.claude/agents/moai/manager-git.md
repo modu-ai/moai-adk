@@ -68,17 +68,17 @@ output_format: Git operation status reports with commit history, branch informat
 
 This agent implements Selection-Based GitHub Flow - a simple Git strategy with manual mode selection:
 
-| Aspect | Personal Mode | Team Mode |
-|--------|---------------|-----------|
-| Selection | Manual (enabled: true/false) | Manual (enabled: true/false) |
-| Base Branch | `main` | `main` |
-| Workflow | GitHub Flow | GitHub Flow |
-| Release | Tag on main → PyPI | Tag on main → PyPI |
-| Release Cycle | 10 minutes | 10 minutes |
-| Conflicts | Minimal (main-based) | Minimal (main-based) |
-| Code Review | Optional | Required (min_reviewers: 1) |
-| Deployment | Continuous | Continuous |
-| Best For | 1-2 developers | 3+ developers |
+| Aspect        | Personal Mode                | Team Mode                    |
+| ------------- | ---------------------------- | ---------------------------- |
+| Selection     | Manual (enabled: true/false) | Manual (enabled: true/false) |
+| Base Branch   | `main`                       | `main`                       |
+| Workflow      | GitHub Flow                  | GitHub Flow                  |
+| Release       | Tag on main → PyPI           | Tag on main → PyPI           |
+| Release Cycle | 10 minutes                   | 10 minutes                   |
+| Conflicts     | Minimal (main-based)         | Minimal (main-based)         |
+| Code Review   | Optional                     | Required (min_reviewers: 1)  |
+| Deployment    | Continuous                   | Continuous                   |
+| Best For      | 1-2 developers               | 3+ developers                |
 
 Key Advantage: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
@@ -305,7 +305,7 @@ Benefits of PR-based workflow (when using feature_branch):
 Philosophy: "Systematic collaboration, fully automated with GitHub Flow"
 
 Mode Activation [HARD]:
-- Manually enable via `.moai/config/config.json` configuration
+- Manually enable via `.moai/config/config.yaml` configuration
 - Set `git_strategy.team.enabled` to `true` to activate Team Mode
 - No automatic mode switching; explicit configuration required
 
@@ -314,7 +314,7 @@ IMPACT: Automatic switching causes confusion and unexpected merge requirements
 
 Configuration Requirements [HARD]:
 
-File Location: `.moai/config/config.json`
+File Location: `.moai/config/config.yaml`
 Configuration Structure:
 - Section: `git_strategy.team`
 - Property: `enabled` (boolean)
@@ -458,11 +458,11 @@ git push origin --delete hotfix/v{{PROJECT_VERSION}}
 
 #### Branch life cycle summary (GitHub Flow)
 
-| Job type | Based Branch | Target Branch | PR Required | Merge Method |
-|----------|--------------|---------------|-------------|--------------|
-| Feature (feature/SPEC-*) | main | main | Yes (review) | Squash + delete |
-| Hotfix (hotfix/*) | main | main | Yes (review) | Squash + delete |
-| Release | N/A (tag on main) | N/A | N/A (direct tag) | Tag only |
+| Job type                 | Based Branch      | Target Branch | PR Required      | Merge Method    |
+| ------------------------ | ----------------- | ------------- | ---------------- | --------------- |
+| Feature (feature/SPEC-*) | main              | main          | Yes (review)     | Squash + delete |
+| Hotfix (hotfix/*)        | main              | main          | Yes (review)     | Squash + delete |
+| Release                  | N/A (tag on main) | N/A           | N/A (direct tag) | Tag only        |
 
 Team Mode Core Requirements [HARD]:
 
@@ -561,7 +561,7 @@ IMPACT: Localized commit messages break CI/CD parsing and team collaboration
 Commit Creation Process [HARD]:
 
 Step 1: Read Configuration
-- Access: `.moai/config/config.json`
+- Access: `.moai/config/config.yaml`
 - Retrieve: `project.locale` setting
 
 Step 2: Select Message Template
@@ -615,7 +615,7 @@ IMPACT: Different strategies per mode increase confusion during team growth
 Personal Mode Branch Operations [HARD]:
 
 Configuration:
-- Read base branch from `.moai/config/config.json`
+- Read base branch from `.moai/config/config.yaml`
 - Configure branch creation patterns per workflow strategy
 - Validate configuration before operations
 
@@ -649,7 +649,7 @@ Branch Creation:
 - Target main branch for all feature PRs
 
 Mode Selection Process [HARD]:
-- Read configuration from `.moai/config/config.json`
+- Read configuration from `.moai/config/config.yaml`
 - Parse personal and team mode enabled flags
 - Respect manual mode selection without automatic switching
 - Validate configuration consistency before branch operations

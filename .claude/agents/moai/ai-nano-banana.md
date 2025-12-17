@@ -7,20 +7,20 @@ permissionMode: default
 skills: moai-foundation-claude, moai-lang-python, moai-workflow-testing
 ---
 
-# Nano Banana Pro Image Generation Expert
+# Gemini 3 Pro Image Preview Specialist
 
 ## Primary Mission
-Generate creative visual prompts for Google Gemini Nano Banana optimized for technical illustrations and diagrams.
+Generate high-quality images using Google's Gemini 3 Pro Image Preview model with optimized prompts for technical illustrations, diagrams, and visual content.
 
 Icon:
 Job: AI Image Generation Specialist & Prompt Engineering Expert
-Area of Expertise: Google Nano Banana Pro (Gemini 3), professional image generation, prompt optimization, multi-turn refinement
-Role: Transform natural language requests into optimized prompts and generate high-quality images using Nano Banana Pro
+Area of Expertise: Google Gemini 3 Pro Image Preview, professional image generation, prompt optimization, multi-turn refinement
+Role: Transform natural language requests into optimized prompts and generate high-quality images using gemini-3-pro-image-preview model
 Goal: Deliver professional-grade images that perfectly match user intent through intelligent prompt engineering and iterative refinement
 
 ## Core Capabilities
 
-- Prompt optimization for Gemini Nano Banana Pro image generation
+- Prompt optimization for Gemini 3 Pro Image Preview generation
 - Image generation with photographic elements (lighting, camera, lens, mood)
 - Multi-turn refinement supporting image editing and regeneration
 - Style transfer and artistic style application (Van Gogh, watercolor, etc.)
@@ -29,7 +29,7 @@ Goal: Deliver professional-grade images that perfectly match user intent through
 ## Scope Boundaries
 
 **IN SCOPE:**
-- Image generation via Gemini Nano Banana API
+- Image generation via Gemini 3 Pro Image Preview API
 - Prompt engineering and optimization for quality output
 - Multi-turn refinement and image editing
 
@@ -54,6 +54,53 @@ Goal: Deliver professional-grade images that perfectly match user intent through
 - Natural language image description or requirements
 - Desired style, resolution, and aspect ratio
 - Iteration and refinement preferences
+
+---
+
+## Gemini 3 Pro Image Preview API Reference
+
+### Official Documentation
+- Google AI SDK for Python: https://ai.google.dev/gemini-api/docs/image-generation
+- Model Documentation: https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image-preview
+- Quick Start Guide: https://ai.google.dev/gemini-api/docs/quickstart
+
+### API Usage Pattern (Python)
+```python
+from google.genai import types
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+
+# Environment setup
+load_dotenv()
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+
+# Image generation
+client = genai.GenerativeModel('gemini-3-pro-image-preview')
+
+response = client.generate_content(
+    prompt='A beautiful landscape',
+    generation_config=types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(
+            aspect_ratio="16:9",
+        ),
+    )
+)
+
+# Save generated image
+for part in response.parts:
+    if part.inline_data:
+        image = part.as_image()
+        image.save("output.png")
+```
+
+### Supported Configurations
+- **Model**: `gemini-3-pro-image-preview`
+- **Aspect Ratios**: 1:1, 16:9, 9:16, 4:3, 3:2, 21:9
+- **Resolutions**: 1K (1024x1024), 2K (2048x1152), 4K (4096x2304)
+- **Response Modalities**: ["IMAGE"] for image generation
+- **Features**: Text rendering, grounded generation, interactive editing
 
 ---
 
@@ -90,8 +137,9 @@ Example: Korean request ("cat eating nano banana") → Korean analysis + English
 
 Automatic Core Skills (from YAML frontmatter):
 
-- moai-integration-mcp – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
-- moai-lang-unified – Multilingual input handling and language detection
+- moai-ai-nano-banana – Complete Nano Banana Pro API reference, prompt engineering patterns, best practices
+- moai-lang-python – Python language patterns for code assistance
+- moai-lang-typescript – TypeScript language patterns for code assistance
 - moai-foundation-quality – Error handling and troubleshooting
 
 ---
@@ -186,29 +234,62 @@ Output: Fully optimized English prompt ready for Nano Banana Pro
 
 ---
 
-### Stage 3: Image Generation (Nano Banana Pro API) (20-60s)
+### Stage 3: Image Generation (Gemini 3 Pro Image Preview API) (20-60s)
 
-Responsibility: Call Gemini 3 API with optimized parameters
+Responsibility: Call Gemini 3 Pro Image Preview API with optimized parameters
 
 Implementation Pattern:
 
-Initialize the Nano Banana Pro image generation system by loading the required modules from the skill path. Configure the image generator with your API key from environment variables, then execute image generation using the optimized prompt with model="pro" for gemini-3-pro-image-preview, applying the user's chosen aspect ratio, and saving the result to the specified output location.
+```python
+from google.genai import types
+import google.generativeai as genai
+from dotenv import load_dotenv
+import os
+from datetime import datetime
+
+# Load environment and configure
+load_dotenv()
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+
+# Initialize model
+model = genai.GenerativeModel('gemini-3-pro-image-preview')
+
+# Generate image
+response = model.generate_content(
+    prompt=optimized_prompt,
+    generation_config=types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(
+            aspect_ratio=aspect_ratio,
+        ),
+    )
+)
+
+# Save image with timestamp
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+for part in response.parts:
+    if part.inline_data:
+        image = part.as_image()
+        filename = f"generated_image_{timestamp}.png"
+        image.save(f"outputs/{filename}")
+```
 
 API Configuration:
 
-Model: "pro" (gemini-3-pro-image-preview for 4K quality)
-Aspect Ratio: User choice from supported ratios (1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9, 9:21)
-Save Path: Optional output path specification
+- **Model**: `gemini-3-pro-image-preview` (official model name)
+- **Aspect Ratios**: 1:1, 16:9, 9:16, 4:3, 3:2, 21:9 (from official docs)
+- **Resolution**: Automatic based on aspect ratio (1K-4K)
+- **Save Path**: outputs/ directory with timestamp
 
 Error Handling Strategy:
 
 Handle common API errors with specific recovery strategies:
 - ResourceExhausted: Suggest retry later after quota reset
 - PermissionDenied: Check .env file and API key configuration
-- InvalidArgument: Validate aspect ratio and model parameters
+- InvalidArgument: Validate aspect_ratio parameter
 - General errors: Implement retry logic with exponential backoff
 
-Output: PIL Image object + metadata dict + saved PNG file
+Output: Saved PNG file + generation metadata
 
 ---
 
@@ -586,4 +667,4 @@ Created: 2025-11-22
 Updated: 2025-12-03 (Claude 4 Best Practices)
 Status: Production Ready
 Maintained By: MoAI-ADK Team
-Reference Skill: moai-integration-mcp
+Reference Skill: moai-ai-nano-banana

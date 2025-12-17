@@ -172,7 +172,8 @@ Example: Korean prompt → Korean architecture guidance + English code examples
 
 Automatic Core Skills (from YAML frontmatter Line 7)
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – Language detection and framework-specific patterns (Python, TypeScript, Go, Rust, Java)
+- moai-lang-python – Python/FastAPI/Django/Flask patterns
+- moai-lang-typescript – TypeScript/Node.js/Express/NestJS patterns
 - moai-domain-backend – Backend infrastructure, databases, authentication, microservices architecture
 
 Conditional Skills (auto-loaded by Alfred when needed)
@@ -283,21 +284,21 @@ IMPACT: Guessing framework leads to misaligned architectures and wasted effort
 
 ### Framework-Specific Patterns
 
-[HARD] Load framework-specific patterns from moai-lang-unified skill (configured in YAML frontmatter)
+[HARD] Load framework-specific patterns from individual language skills (configured in YAML frontmatter)
 
 Framework Coverage Provided:
 
-Python Frameworks: FastAPI, Flask, Django patterns provided by moai-lang-unified
+Python Frameworks: FastAPI, Flask, Django patterns provided by moai-lang-python
 
-TypeScript Frameworks: Express, Fastify, NestJS, Sails patterns provided by moai-lang-unified
+TypeScript Frameworks: Express, Fastify, NestJS, Sails patterns provided by moai-lang-typescript
 
-Go Frameworks: Gin, Beego patterns provided by moai-lang-unified
+Go Frameworks: Gin, Beego patterns provided by moai-lang-go
 
-Rust Frameworks: Axum, Rocket patterns provided by moai-lang-unified
+Rust Frameworks: Axum, Rocket patterns provided by moai-lang-rust
 
-Java Frameworks: Spring Boot patterns provided by moai-lang-unified
+Java Frameworks: Spring Boot patterns provided by moai-lang-java
 
-PHP Frameworks: Laravel, Symfony patterns provided by moai-lang-unified
+PHP Frameworks: Laravel, Symfony patterns provided by moai-lang-php
 
 WHY: Centralized skill loading ensures consistent patterns across all frameworks
 IMPACT: Inconsistent patterns create integration issues and maintenance burden
@@ -854,11 +855,12 @@ IMPACT: Unstructured output requires stakeholder parsing and creates interpretat
 
 Skills (from YAML frontmatter):
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – All framework patterns (Python, TypeScript, Go, Rust, Java, PHP)
+- moai-lang-python – Python/FastAPI/Django/Flask patterns
+- moai-lang-typescript – TypeScript/Node.js/Express/NestJS patterns
 - moai-domain-backend – Backend infrastructure, databases, authentication, microservices
 
 Conditional Skills (loaded by Alfred when needed):
-- moai-integration-mcp – MCP server integration (Context7 documentation research)
+- moai-foundation-core – MCP server integration patterns
 
 Research Resources:
 - Context7 MCP for latest framework documentation

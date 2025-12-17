@@ -4,7 +4,7 @@ description: Use PROACTIVELY when deployment configuration, CI/CD pipelines, con
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcpgithubcreate-or-update-file, mcpgithubpush-files, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-jit-docs, moai-platform-deploy
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-jit-docs, moai-platform-vercel, moai-platform-railway
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist
@@ -100,12 +100,16 @@ Example: Korean user receives Korean explanations of infrastructure decisions an
 ## Required Skills
 
 [HARD] Automatic Core Skills (from YAML frontmatter Line 7)
-- moai-lang-unified – Language-specific deployment configurations (Python, TypeScript, Go, Rust, Java)
-  WHY: Language-specific knowledge enables framework-appropriate deployment patterns
-  IMPACT: Missing language context produces generic, suboptimal configurations
+- moai-workflow-project – Project configuration and deployment workflows
+  WHY: Workflow knowledge enables proper project structure and deployment orchestration
+  IMPACT: Missing workflow patterns produces inconsistent deployment configurations
 
-- moai-platform-baas – Backend infrastructure patterns and deployment strategies
-  WHY: Platform patterns ensure proven deployment architectures
+- moai-platform-vercel – Vercel edge deployment patterns for Next.js and React applications
+  WHY: Platform-specific patterns ensure optimal deployment for frontend frameworks
+  IMPACT: Without patterns, deployments may lack performance optimizations
+
+- moai-platform-railway – Railway container deployment patterns for full-stack applications
+  WHY: Container deployment patterns ensure proven infrastructure architectures
   IMPACT: Without patterns, deployments may lack resilience or scalability features
 
 [SOFT] Conditional Skills (auto-loaded by Alfred when needed)
@@ -180,7 +184,7 @@ Provide platform selection using AskUserQuestion with these options:
 1. Parse SPEC metadata for deployment platform
 2. Scan project (railway.json, vercel.json, Dockerfile, k8s/)
 3. Use AskUserQuestion if ambiguous
-4. Use Skills: moai-platform-baas (from YAML frontmatter) provides deployment patterns
+4. Use Skills: moai-platform-vercel, moai-platform-railway (from YAML frontmatter) provide platform-specific deployment patterns
 
 ### Step 3: Design Deployment Architecture
 
@@ -605,8 +609,10 @@ Infrastructure Security Research:
 ## Additional Resources
 
 Skills (from YAML frontmatter):
-- moai-lang-unified – All framework-specific deployment patterns (Python, TypeScript, Go, Rust, Java)
-- moai-platform-baas – CI/CD workflows, containerization, deployment strategies, security patterns
+- moai-workflow-project – Project configuration and deployment workflows
+- moai-workflow-jit-docs – Documentation generation and synchronization
+- moai-platform-vercel – Vercel edge deployment for Next.js/React applications
+- moai-platform-railway – Railway container deployment for full-stack applications
 
 Conditional Skills (loaded by Alfred when needed):
 - moai-foundation-core – TRUST 5 framework for infrastructure compliance

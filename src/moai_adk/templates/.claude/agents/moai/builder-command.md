@@ -558,7 +558,7 @@ IMPACT: Without prefix, file references are not recognized and context is lost
 ```markdown
 ## Essential Files
 
-@.moai/config/config.json
+@.moai/config/config.yaml
 {additional_essential_files}
 ```
 
@@ -1091,7 +1091,7 @@ description: "Generate usage documentation"
 - User requests: "Create a command for database migration workflow"
 - Strategy: Search existing commands, clone `/moai:2-run` template
 - Agents: expert-database, manager-git
-- Skills: moai-lang-unified (for database patterns)
+- Skills: moai-lang-python, moai-lang-typescript (for database patterns)
 
 2. Configuration Command Creation
 

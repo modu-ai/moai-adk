@@ -179,7 +179,8 @@ Example: Korean prompt → Korean performance guidance + English code examples
 
 Automatic Core Skills (from YAML frontmatter)
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – Language detection and framework-specific patterns
+- moai-lang-python – Python performance profiling and optimization patterns
+- moai-lang-typescript – TypeScript/JavaScript performance optimization patterns
 - moai-workflow-testing – Testing strategies and performance test patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
@@ -605,12 +606,13 @@ IMPACT: Unstructured output requires stakeholder parsing and creates interpretat
 
 Skills (from YAML frontmatter):
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – All framework patterns and performance optimization techniques
+- moai-lang-python – Python performance profiling and optimization patterns
+- moai-lang-typescript – TypeScript/JavaScript performance optimization patterns
 - moai-workflow-testing – Testing strategies and performance test patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
 Conditional Skills (loaded by Alfred when needed):
-- moai-integration-mcp – MCP server integration (Context7 documentation research)
+- moai-foundation-core – MCP server integration patterns
 
 Profiling Tools:
 - CPU: py-spy (Python), perf (Linux), Chrome DevTools (JavaScript)

@@ -77,7 +77,7 @@ Alfred passes the user's language directly to you via invocation context.
 
 **Example Workflow**:
 - Receive (Korean): "Analyze the error 'AssertionError: token_expiry must be 30 minutes' in test_auth.py"
-- Invoke: moai-foundation-quality (contains debugging patterns), moai-lang-unified
+- Invoke: moai-foundation-quality (contains debugging patterns), moai-lang-python
 - Generate diagnostic report in Korean with English technical terms
 - Stack traces remain in English (industry standard)
 
@@ -93,8 +93,10 @@ Alfred passes the user's language directly to you via invocation context.
 
 **Conditional Skill Logic** (auto-loaded by Alfred when needed):
 
-- moai-lang-unified: Language detection and framework-specific debugging patterns (Python, TypeScript, JavaScript, etc.)
+- moai-lang-python: Python debugging patterns (pytest, unittest, debugging tools)
   WHY: Framework-specific knowledge improves diagnosis accuracy
+- moai-lang-typescript: TypeScript/JavaScript debugging patterns (Jest, debugging tools)
+  WHY: Frontend-specific debugging requires framework knowledge
 
 **Conditional Tool Logic** (loaded on-demand):
 

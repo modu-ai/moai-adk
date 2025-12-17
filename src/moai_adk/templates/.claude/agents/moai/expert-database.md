@@ -4,7 +4,7 @@ description: Use for database design, schema optimization, query performance, an
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-platform-database, moai-domain-database
+skills: moai-foundation-claude, moai-lang-python, moai-platform-supabase, moai-platform-neon, moai-platform-convex, moai-platform-firestore, moai-domain-database
 ---
 
 # Database Expert

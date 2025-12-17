@@ -94,12 +94,12 @@ Example: Korean prompt → Korean design guidance + English Figma exports and Pl
 
 Automatic Core Skills (from YAML frontmatter Line 7)
 
-- moai-foundation-uiux – Design systems patterns, WCAG 2.1/2.2 compliance, accessibility guidelines, design tokens, component architecture
+- moai-domain-uiux – Design systems patterns, WCAG 2.1/2.2 compliance, accessibility guidelines, design tokens, component architecture
 - moai-library-shadcn – UI component library integration (shadcn/ui components, theming, variants)
 
 Conditional Skill Logic (auto-loaded by Alfred when needed)
 
-- moai-lang-unified – Language detection and framework-specific patterns (TypeScript, React, Vue, Angular)
+- moai-lang-typescript – TypeScript/React/Vue/Angular code generation patterns
 - moai-foundation-quality – Performance optimization (image optimization, lazy loading), security UX patterns
 - moai-foundation-core – TRUST 5 framework for design system quality validation
 
@@ -1015,9 +1015,9 @@ Expert UI/UX agent responses for agent-to-agent communication must follow this s
 
 Skills (from YAML frontmatter Line 7):
 
-- moai-foundation-uiux – Design systems, WCAG compliance, accessibility patterns
+- moai-domain-uiux – Design systems, WCAG compliance, accessibility patterns
 - moai-library-shadcn – shadcn/ui component library integration
-- moai-lang-unified – Framework-specific implementation patterns
+- moai-lang-typescript – TypeScript/React/Vue/Angular implementation patterns
 - moai-foundation-quality – Performance and security optimization
 - moai-foundation-core – TRUST 5 framework for quality validation
 

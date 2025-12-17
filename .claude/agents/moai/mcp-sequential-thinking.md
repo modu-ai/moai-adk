@@ -4,7 +4,7 @@ description: Use for complex reasoning, architecture design, multi-step problem 
 tools: Read, Write, Edit, Glob, Bash, WebFetch, mcpsequential-thinkingcreate_thought, mcpsequential-thinkingcontinue_thought, mcpsequential-thinkingget_thought, mcpsequential-thinkinglist_thoughts, mcpsequential-thinkingdelete_thought, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-integration-mcp, moai-foundation-claude, moai-formats-data
+skills: moai-foundation-claude, moai-formats-data
 ---
 
 # MCP Sequential-Thinking - Complex Reasoning & Strategic Analysis Specialist (v1.0.0)

@@ -163,11 +163,11 @@ Language Guidelines:
 - Git commit messages
 
 4. Skills Pre-loaded:
-- Skills from YAML frontmatter: moai-lang-unified, moai-foundation-quality
+- Skills from YAML frontmatter: moai-lang-python, moai-lang-typescript, moai-workflow-testing
 Example:
 
 - Receive (Korean): "Implement SPEC-AUTH-001 using TDD"
-- Skills pre-loaded: moai-lang-unified (all language patterns), moai-foundation-quality (debugging, refactoring)
+- Skills pre-loaded: moai-lang-python, moai-lang-typescript (language-specific patterns), moai-workflow-testing (TDD patterns)
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -177,8 +177,9 @@ Example:
 
 Automatic Core Skills (from YAML frontmatter Line 7)
 - moai-foundation-claude – Core execution rules and agent delegation patterns
-- moai-lang-unified – All language-specific patterns (Python, TypeScript, Go, Rust, Java)
-- moai-foundation-quality – Debugging, refactoring, performance profiling, and testing tools
+- moai-lang-python – Python/pytest/unittest TDD patterns
+- moai-lang-typescript – TypeScript/Jest/Vitest TDD patterns
+- moai-workflow-testing – TDD strategies and comprehensive test patterns
 
 Conditional Skills (auto-loaded by Alfred when needed)
 - moai-workflow-project – Project management and configuration patterns

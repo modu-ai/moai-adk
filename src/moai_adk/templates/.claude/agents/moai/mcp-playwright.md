@@ -4,7 +4,7 @@ description: Use for browser automation, web scraping, end-to-end testing, and w
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywright_navigate, mcpplaywright_page_screenshot, mcpplaywright_click, mcpplaywright_fill, mcpplaywright_get_element_text, mcpplaywright_get_page_content, mcpplaywright_wait_for_element, mcpplaywright_close, mcpplaywright_go_back, mcpplaywright_go_forward, mcp__playwright_refresh
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-integration-mcp, moai-workflow-testing
+skills: moai-foundation-claude, moai-workflow-testing
 ---
 
 # MCP Playwright Integrator - Web Automation Specialist (v1.0.0)

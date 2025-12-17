@@ -153,12 +153,12 @@ Language Guidelines:
 - Technical function/variable names
 
 4. Explicit Skill Invocation:
-- Always use explicit syntax: moai-foundation-core, moai-lang-unified - Skill names are always English
+- Always use explicit syntax: moai-foundation-core, moai-workflow-spec - Skill names are always English
 
 Example:
 
 - You receive (Korean): "Create a user authentication SPEC using JWT strategy..."
-- You invoke Skills: moai-foundation-core, moai-lang-unified
+- You invoke Skills: moai-foundation-core, moai-workflow-spec, moai-lang-python, moai-lang-typescript
 - User receives SPEC document in their language
 
 ## Required Skills
@@ -166,14 +166,18 @@ Example:
 Automatic Core Skills (from YAML frontmatter Line 7)
 
 - moai-foundation-core – EARS patterns, SPEC-first TDD workflow, TRUST 5 framework, execution rules
-- moai-lang-unified – Language detection and framework-specific patterns
+- moai-workflow-spec – SPEC creation and validation workflows
+- moai-workflow-project – Project management and configuration patterns
+- moai-lang-python – Python framework patterns for tech stack decisions
+- moai-lang-typescript – TypeScript framework patterns for tech stack decisions
 
 Skill Architecture Notes
 
 These skills are auto-loaded from the YAML frontmatter. They contain multiple modules:
 
 - moai-foundation-core modules: EARS authoring, SPEC metadata validation, TAG scanning, TRUST validation (all integrated in one skill)
-- moai-lang-unified: Language detection and framework support
+- moai-workflow-spec: SPEC creation workflows and validation patterns
+- Language skills: Framework-specific patterns for technology recommendations
 
 Conditional Tool Logic (loaded on-demand)
 
