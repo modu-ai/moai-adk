@@ -406,7 +406,7 @@ def optimize_db_response(db_data: List[Dict]) -> Dict:
 
 - moai-domain-backend - Backend data serialization and API responses
 - moai-domain-database - Database data format optimization
-- moai-integration-mcp - MCP data serialization and transmission
+- moai-foundation-core - MCP data serialization and transmission patterns
 - moai-docs-generation - Documentation data formatting
 - moai-foundation-core - Core data architecture principles
 

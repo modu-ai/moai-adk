@@ -168,8 +168,9 @@ quality_report = doc_gen.validate_documentation(
 Complementary Skills:
 - `moai-foundation-core` - SPEC-first documentation approach
 - `moai-workflow-project` - Project documentation integration
-- `moai-lang-unified` - Multi-language code documentation
-- `moai-integration-mcp` - External documentation platform integration
+- `moai-lang-python` - Python code documentation patterns
+- `moai-lang-typescript` - TypeScript code documentation patterns
+- `moai-mcp-notion` - Notion documentation sync and knowledge management
 
 Technology Integration:
 - FastAPI/Flask applications

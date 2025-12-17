@@ -389,7 +389,7 @@ IMPACT: Missing loading states create poor user experience with unclear interfac
 ## Works Well With
 
 Skills:
-- `moai-lang-unified` - TypeScript and JavaScript best practices
+- `moai-lang-typescript` - TypeScript and JavaScript best practices
 - `moai-foundation-core` - TRUST 5 quality validation
 - `moai-library-nextra` - Documentation generation
 - `moai-library-shadcn` - shadcn/ui specialized patterns (complementary)

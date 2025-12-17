@@ -289,7 +289,7 @@ def create_optimized_engine(database_url: str):
 
 - moai-domain-frontend - Full-stack development integration
 - moai-domain-database - Advanced database patterns
-- moai-integration-mcp - MCP server development for backend services
+- moai-foundation-core - MCP server development patterns for backend services
 - moai-quality-security - Security validation and compliance
 - moai-foundation-core - Core architectural principles
 

@@ -216,7 +216,9 @@ Complementary Skills:
 - `moai-domain-backend` - API integration and business logic
 - `moai-foundation-core` - Database migration and schema management
 - `moai-workflow-project` - Database project setup and configuration
-- `moai-platform-baas` - BaaS database integration patterns
+- `moai-platform-supabase` - Supabase database integration patterns
+- `moai-platform-neon` - Neon database integration patterns
+- `moai-platform-firestore` - Firestore database integration patterns
 
 Technology Integration:
 - ORMs and ODMs (SQLAlchemy, Mongoose, TypeORM)
