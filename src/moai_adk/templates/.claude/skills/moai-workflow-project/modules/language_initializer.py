@@ -81,7 +81,7 @@ class LanguageInitializer:
     def __init__(self, project_root: str, config: Dict[str, Any]):
         self.project_root = Path(project_root)
         self.config = config
-        self.config_path = self.project_root / ".moai/config/config.json"
+        self.config_path = self.project_root / ".moai/config/config.yaml"
         self._ensure_config_exists()
 
     def _ensure_config_exists(self):

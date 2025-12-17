@@ -303,7 +303,9 @@ class QualityGateManager:
 - moai-domain-backend - Backend development workflows and API testing
 - moai-domain-frontend - Frontend development workflows and UI testing
 - moai-foundation-core - Core SPEC system and workflow management
-- moai-platform-baas - Backend-as-a-Service integration patterns
+- moai-platform-supabase - Supabase testing patterns
+- moai-platform-vercel - Vercel deployment testing
+- moai-platform-firebase-auth - Firebase authentication testing
 - moai-workflow-project - Project management and documentation workflows
 
 ---

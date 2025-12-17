@@ -26,11 +26,22 @@
             "type": "single_choice",
             "required": true,
             "options": [
-              {"label": "GitHub", "value": "github"},
-              {"label": "GitLab", "value": "gitlab"},
-              {"label": "Bitbucket", "value": "bitbucket"}
+              {
+                "label": "GitHub",
+                "value": "github"
+              },
+              {
+                "label": "GitLab",
+                "value": "gitlab"
+              },
+              {
+                "label": "Bitbucket",
+                "value": "bitbucket"
+              }
             ],
-            "conditional_on": {"use_git": true}
+            "conditional_on": {
+              "use_git": true
+            }
           }
         ]
       }
@@ -45,10 +56,22 @@
             "type": "multi_choice",
             "required": true,
             "options": [
-              {"label": "Authentication", "value": "auth"},
-              {"label": "Database", "value": "database"},
-              {"label": "API", "value": "api"},
-              {"label": "Web UI", "value": "web_ui"}
+              {
+                "label": "Authentication",
+                "value": "auth"
+              },
+              {
+                "label": "Database",
+                "value": "database"
+              },
+              {
+                "label": "API",
+                "value": "api"
+              },
+              {
+                "label": "Web UI",
+                "value": "web_ui"
+              }
             ]
           }
         ]
@@ -64,7 +87,11 @@
             "type": "text_input",
             "required": true,
             "validation": {
-              "rules": ["required", "min_length", "regex"],
+              "rules": [
+                "required",
+                "min_length",
+                "regex"
+              ],
               "parameters": {
                 "min_length": 3,
                 "regex": "^[a-zA-Z][a-zA-Z0-9-_]*$"
@@ -79,7 +106,7 @@
   "integration_patterns": {
     "with_config_manager": {
       "description": "Integrating with configuration management",
-      "code": "# Process responses into config\nconfig = manager.process_responses_for_config(\n    responses, \n    config_path='.moai/config/config.json'\n)\n# Save updated config\nwith open('.moai/config/config.json', 'w') as f:\n    json.dump(config, f, indent=2)"
+      "code": "# Process responses into config\nconfig = manager.process_responses_for_config(\n    responses, \n    config_path='.moai/config/config.yaml'\n)\n# Save updated config\nwith open('.moai/config/config.yaml', 'w') as f:\n    json.dump(config, f, indent=2)"
     },
     "with_menu_system": {
       "description": "Using with menu system integration",
@@ -98,10 +125,21 @@
         "text": "Select from custom options:",
         "type": "single_choice",
         "options": [
-          {"label": "Custom Option 1", "value": "custom1", "description": "Description for custom option"},
-          {"label": "Custom Option 2", "value": "custom2", "description": "Another custom option"}
+          {
+            "label": "Custom Option 1",
+            "value": "custom1",
+            "description": "Description for custom option"
+          },
+          {
+            "label": "Custom Option 2",
+            "value": "custom2",
+            "description": "Another custom option"
+          }
         ],
-        "metadata": {"category": "custom", "priority": "high"}
+        "metadata": {
+          "category": "custom",
+          "priority": "high"
+        }
       }
     },
     "dynamic_options": {
@@ -114,7 +152,9 @@
         "id": "git_strategy.branch_creation.prompt_always",
         "text": "Always prompt for branch creation?",
         "type": "boolean",
-        "metadata": {"config_path": "git_strategy.branch_creation.prompt_always"}
+        "metadata": {
+          "config_path": "git_strategy.branch_creation.prompt_always"
+        }
       }
     }
   },

@@ -176,7 +176,7 @@ def quick_start():
     print("\n🎉 Quick start completed!")
     print("\nNext steps:")
     print("   1. Explore the generated documentation in ./my-awesome-project/docs/")
-    print("   2. Check the configuration in ./my-awesome-project/.moai/config/config.json")
+    print("   2. Check the configuration in ./my-awesome-project/.moai/config/config.yaml")
     print("   3. Customize templates in ./my-awesome-project/.claude/skills/moai-menu-project/templates/")
     print("   4. Run additional optimizations with: project.optimize_project_templates()")
 

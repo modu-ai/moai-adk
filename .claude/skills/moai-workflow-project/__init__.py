@@ -62,7 +62,7 @@ class MoaiMenuProject:
     def _load_or_create_config(self) -> Dict[str, Any]:
         """Load existing configuration or create default."""
 
-        config_path = self.project_root / ".moai/config/config.json"
+        config_path = self.project_root / ".moai/config/config.yaml"
 
         if config_path.exists():
             try:
@@ -395,7 +395,7 @@ class MoaiMenuProject:
     def _save_config(self):
         """Save current configuration to file."""
 
-        config_path = self.project_root / ".moai/config/config.json"
+        config_path = self.project_root / ".moai/config/config.yaml"
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         config_path.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")

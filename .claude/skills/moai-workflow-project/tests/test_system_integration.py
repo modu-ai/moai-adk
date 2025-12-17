@@ -48,7 +48,7 @@ class TestSystemIntegration(unittest.TestCase):
         self.assertEqual(len(result["modules_initialized"]), 3)  # All 3 modules
 
         # Check configuration was created
-        config_path = self.test_dir / ".moai/config/config.json"
+        config_path = self.test_dir / ".moai/config/config.yaml"
         self.assertTrue(config_path.exists())
 
         # Verify configuration content
