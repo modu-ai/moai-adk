@@ -1,19 +1,43 @@
 # Tab 3: Git Strategy & Workflow
 # Priority: RECOMMENDED
-# Questions: 25 (conditional based on mode)
+# Questions: 26 (conditional based on mode, +1 GitHub Profile)
 
 metadata:
   id: tab_3_git_strategy
   label: "Tab 3: Git Strategy & Workflow"
-  description: "Configure Personal/Team Git settings, commit/branch strategy"
+  description: "Configure GitHub profile, Personal/Team Git settings, commit/branch strategy"
   priority: RECOMMENDED
   order: 3
-  setting_count: 25
+  setting_count: 26
 
 target_sections:
   - sections/git-strategy.yaml
+  - sections/project.yaml
 
 batches:
+  # Batch 3.0a: GitHub Profile (always shown, required for all modes)
+  - batch_id: "3.0a"
+    label: "GitHub Profile"
+    conditional: false
+    questions:
+      - id: github_profile_name
+        question: "What is your GitHub profile name?"
+        header: "GitHub Profile"
+        field: "github.profile_name"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current profile"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Select Other to enter GitHub username (e.g., @GoosLab)"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/project.yaml"
+          path: "github.profile_name"
+
   # Batch 3.0: Mode Selection (always shown)
   - batch_id: "3.0"
     label: "Workflow Mode Selection"

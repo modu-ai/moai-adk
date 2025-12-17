@@ -259,24 +259,37 @@ Total Agents: 26 (down from 35, -26% reduction)
 
 ---
 
-### Skill Consolidation Reference
+### Skill Architecture Reference
 
-The following legacy skills have been consolidated into unified skills:
+The following skills are organized for token efficiency and domain specialization:
 
-| Legacy Skills (Removed) | Unified Skill (Current) | Reason |
-|------------------------|------------------------|--------|
-| moai-foundation-specs, moai-foundation-ears, moai-foundation-trust, moai-foundation-git, moai-foundation-langs | moai-foundation-core | Core principles consolidation |
-| moai-lang-python, moai-lang-typescript, moai-lang-sql | moai-lang-unified | Language unification |
-| moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor | moai-toolkit-essentials | Development tools unification |
-| moai-cc-claude-md, moai-cc-configuration, moai-cc-hooks, moai-cc-claude-settings | moai-foundation-claude | Claude Code features consolidation |
-| moai-domain-backend, moai-domain-frontend | moai-lang-unified | Domain expertise integration |
-| moai-domain-database, moai-domain-devops | moai-platform-baas | Infrastructure consolidation |
-| moai-domain-security, moai-security-owasp | moai-system-universal | Security consolidation |
-| moai-core-spec-authoring, moai-core-todowrite-pattern | moai-foundation-core | Core workflow patterns |
-| moai-core-context-budget | moai-foundation-context | Token budget management |
-| moai-quality-validation | moai-foundation-quality | Quality gate consolidation |
+| Category | Skills | Purpose |
+|----------|--------|---------|
+| Language (Separated) | moai-lang-python, moai-lang-typescript, moai-lang-systems, moai-lang-jvm, moai-lang-mobile | Domain-specific language skills for 40-60% token savings |
+| Platform (Separated) | moai-platform-auth, moai-platform-database, moai-platform-deploy | Domain-specific platform skills for 30-50% token savings |
+| Foundation | moai-foundation-core, moai-foundation-claude, moai-foundation-context, moai-foundation-quality | Core principles and quality gates |
+| Workflow | moai-workflow-spec, moai-workflow-project, moai-workflow-testing, moai-workflow-jit-docs | Workflow automation and testing |
+| Domain | moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-uiux | Domain expertise patterns |
 
-Note: All agent_skills_mapping references have been updated to use unified skills. Legacy skill names are no longer valid.
+Language Skills Selection Guide:
+
+| Language Skill | Coverage | Use When |
+|----------------|----------|----------|
+| moai-lang-python | Python 3.13, FastAPI, Django, pytest | Backend APIs, data science, automation |
+| moai-lang-typescript | TypeScript 5.9, React 19, Next.js 16, tRPC | Frontend, full-stack web development |
+| moai-lang-systems | Go 1.23, Rust 1.91, Fiber, Axum | Microservices, CLI tools, systems programming |
+| moai-lang-jvm | Java 21, Kotlin 2.0, Scala 3.4, Spring | Enterprise applications, big data |
+| moai-lang-mobile | Swift 6, Kotlin Android, Flutter 3.24 | iOS, Android, cross-platform mobile |
+
+Platform Skills Selection Guide:
+
+| Platform Skill | Providers | Use When |
+|----------------|-----------|----------|
+| moai-platform-auth | Auth0, Clerk, Firebase Auth | Authentication implementation |
+| moai-platform-database | Supabase, Neon, Convex, Firestore | Database platform integration |
+| moai-platform-deploy | Vercel, Railway | Deployment and CI/CD |
+
+Note: Agents now use specific skills based on their domain. Cross-language agents include moai-lang-python and moai-lang-typescript by default.
 
 ---
 

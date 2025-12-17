@@ -11,14 +11,14 @@ Version: 2.0.0
 
 MoAI-ADK provides 6 core commands for SPEC-First TDD execution:
 
-| Command | Purpose | Phase |
-|---------|---------|-------|
-| `/moai:0-project` | Project initialization | Setup |
-| `/moai:1-plan` | SPEC generation | Planning |
-| `/moai:2-run` | TDD implementation | Development |
-| `/moai:3-sync` | Documentation sync | Documentation |
-| `/moai:9-feedback` | Feedback collection | Improvement |
-| `/moai:99-release` | Production deployment | Release |
+| Command            | Purpose                | Phase         |
+| ------------------ | ---------------------- | ------------- |
+| `/moai:0-project`  | Project initialization | Setup         |
+| `/moai:1-plan`     | SPEC generation        | Planning      |
+| `/moai:2-run`      | TDD implementation     | Development   |
+| `/moai:3-sync`     | Documentation sync     | Documentation |
+| `/moai:9-feedback` | Feedback collection    | Improvement   |
+| `/moai:99-release` | Production deployment  | Release       |
 
 Required Workflow:
 ```
@@ -56,7 +56,7 @@ What It Does:
 
 Output:
 - `.moai/` directory
-- `.moai/config/config.json`
+- `.moai/config/config.yaml`
 - `.moai/memory/` (empty, ready for session state)
 - `.moai/logs/` (empty, ready for logging)
 
@@ -66,7 +66,7 @@ Example:
 ```
 User: /moai:0-project
 Alfred: Project initialized successfully.
- - .moai/config/config.json created
+ - .moai/config/config.yaml created
  - Git workflow set to 'manual' mode
  Ready for SPEC generation.
 ```
@@ -308,14 +308,14 @@ With /clear:
 
 Each command delegates to a specific agent:
 
-| Command | Agent | Agent Type |
-|---------|-------|------------|
-| `/moai:0-project` | `workflow-project` | Tier 1 (Always Active) |
-| `/moai:1-plan` | `workflow-spec` | Tier 1 (Always Active) |
-| `/moai:2-run` | `workflow-tdd` | Tier 1 (Always Active) |
-| `/moai:3-sync` | `workflow-docs` | Tier 1 (Always Active) |
-| `/moai:9-feedback` | `core-quality` | Tier 2 (Auto-triggered) |
-| `/moai:99-release` | `infra-devops` | Tier 3 (Lazy-loaded) |
+| Command            | Agent              | Agent Type              |
+| ------------------ | ------------------ | ----------------------- |
+| `/moai:0-project`  | `workflow-project` | Tier 1 (Always Active)  |
+| `/moai:1-plan`     | `workflow-spec`    | Tier 1 (Always Active)  |
+| `/moai:2-run`      | `workflow-tdd`     | Tier 1 (Always Active)  |
+| `/moai:3-sync`     | `workflow-docs`    | Tier 1 (Always Active)  |
+| `/moai:9-feedback` | `core-quality`     | Tier 2 (Auto-triggered) |
+| `/moai:99-release` | `infra-devops`     | Tier 3 (Lazy-loaded)    |
 
 Delegation Flow:
 ```
@@ -334,12 +334,12 @@ Results reported to user
 
 ### Token Budget by Command
 
-| Command | Average Tokens | Phase Budget |
-|---------|----------------|--------------|
-| `/moai:1-plan` | 45-50K | Planning Phase (30K allocated) |
-| `/moai:2-run` | 80-100K | Implementation Phase (180K allocated) |
-| `/moai:3-sync` | 20-25K | Documentation Phase (40K allocated) |
-| Total | 145-175K | 250K per feature |
+| Command        | Average Tokens | Phase Budget                          |
+| -------------- | -------------- | ------------------------------------- |
+| `/moai:1-plan` | 45-50K         | Planning Phase (30K allocated)        |
+| `/moai:2-run`  | 80-100K        | Implementation Phase (180K allocated) |
+| `/moai:3-sync` | 20-25K         | Documentation Phase (40K allocated)   |
+| Total          | 145-175K       | 250K per feature                      |
 
 Optimization:
 - Use Haiku 4.5 for `/moai:2-run` (fast, cost-effective)
@@ -352,12 +352,12 @@ Optimization:
 
 Common Errors:
 
-| Error | Command | Solution |
-|-------|---------|----------|
-| "Project not initialized" | `/moai:1-plan` | Run `/moai:0-project` first |
-| "SPEC not found" | `/moai:2-run SPEC-999` | Verify SPEC ID exists |
-| "Token limit exceeded" | Any | Execute `/clear` immediately |
-| "Test coverage < 85%" | `/moai:2-run` | `core-quality` auto-generates missing tests |
+| Error                     | Command                | Solution                                    |
+| ------------------------- | ---------------------- | ------------------------------------------- |
+| "Project not initialized" | `/moai:1-plan`         | Run `/moai:0-project` first                 |
+| "SPEC not found"          | `/moai:2-run SPEC-999` | Verify SPEC ID exists                       |
+| "Token limit exceeded"    | Any                    | Execute `/clear` immediately                |
+| "Test coverage < 85%"     | `/moai:2-run`          | `core-quality` auto-generates missing tests |
 
 Recovery Pattern:
 ```bash

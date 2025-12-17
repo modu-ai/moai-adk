@@ -47,22 +47,6 @@ git_strategy:
     format: conventional
     scope_required: false
 
-# Language and Localization Settings
-# conversation_language: user interaction language
-# agent_prompt_language: internal agent prompts
-# git_commit_messages: git commit message language
-# code_comments: source code comments
-# documentation: documentation language
-# error_messages: user-facing error messages
-language:
-  conversation_language: ko
-  conversation_language_name: Korean
-  agent_prompt_language: en
-  git_commit_messages: en
-  code_comments: en
-  documentation: ko
-  error_messages: en
-
 # Project Metadata
 project:
   name: "{{PROJECT_NAME}}"

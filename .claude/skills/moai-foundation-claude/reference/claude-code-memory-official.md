@@ -174,7 +174,7 @@ Project Bootstrap:
 /moai:0-project
 
 # Creates:
-# - .moai/config/config.json
+# - .moai/config/config.yaml
 # - .moai/memory/ directory
 # - CLAUDE.md template
 # - Memory structure files
@@ -269,7 +269,7 @@ class AgentMemory:
  essential_files = [
  ".claude/memory/execution-rules.md",
  ".claude/memory/agents.md",
- ".moai/config/config.json"
+ ".moai/config/config.yaml"
  ]
 
  for file_path in essential_files:

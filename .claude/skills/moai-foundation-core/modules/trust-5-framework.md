@@ -62,11 +62,11 @@ REFACTOR Phase: Improve quality
 
 Test Coverage Requirements:
 
-| Level | Coverage | Action |
-|-------|----------|--------|
-| Critical | ≥85% | Required for merge |
-| Warning | 70-84% | Review required |
-| Failing | <70% | Block merge, generate tests |
+| Level    | Coverage | Action                      |
+| -------- | -------- | --------------------------- |
+| Critical | ≥85%     | Required for merge          |
+| Warning  | 70-84%   | Review required             |
+| Failing  | <70%     | Block merge, generate tests |
 
 Implementation Pattern:
 
@@ -124,13 +124,13 @@ coverage html && open htmlcov/index.html
 
 Readability Metrics:
 
-| Metric | Target | Tool | Max Threshold |
-|--------|--------|------|---------------|
-| Cyclomatic Complexity | ≤10 | pylint | 15 |
-| Function Length | ≤50 lines | custom | 100 |
-| Nesting Depth | ≤3 levels | pylint | 5 |
-| Comment Ratio | 15-20% | custom | Min 10% |
-| Type Hint Coverage | 100% | mypy | 90% |
+| Metric                | Target    | Tool   | Max Threshold |
+| --------------------- | --------- | ------ | ------------- |
+| Cyclomatic Complexity | ≤10       | pylint | 15            |
+| Function Length       | ≤50 lines | custom | 100           |
+| Nesting Depth         | ≤3 levels | pylint | 5             |
+| Comment Ratio         | 15-20%    | custom | Min 10%       |
+| Type Hint Coverage    | 100%      | mypy   | 90%           |
 
 Readability Checklist:
 
@@ -275,18 +275,18 @@ isort --check-only src/
 
 OWASP Top 10 (2024) Compliance:
 
-| Risk | Mitigation | Validation |
-|------|------------|------------|
-| Broken Access Control | RBAC, permission checks | security-expert review |
-| Cryptographic Failures | bcrypt, proper encryption | Bandit scan |
-| Injection | Parameterized queries | SQLMap test |
-| Insecure Design | Threat modeling | Architecture review |
-| Security Misconfiguration | Environment variables | Config audit |
-| Vulnerable Components | Dependency scanning | pip-audit, safety |
-| Authentication Failures | MFA, secure sessions | Penetration test |
-| Data Integrity | Checksums, signatures | Integrity validation |
-| Logging Failures | Comprehensive logging | Log analysis |
-| SSRF | URL validation | Security test |
+| Risk                      | Mitigation                | Validation             |
+| ------------------------- | ------------------------- | ---------------------- |
+| Broken Access Control     | RBAC, permission checks   | security-expert review |
+| Cryptographic Failures    | bcrypt, proper encryption | Bandit scan            |
+| Injection                 | Parameterized queries     | SQLMap test            |
+| Insecure Design           | Threat modeling           | Architecture review    |
+| Security Misconfiguration | Environment variables     | Config audit           |
+| Vulnerable Components     | Dependency scanning       | pip-audit, safety      |
+| Authentication Failures   | MFA, secure sessions      | Penetration test       |
+| Data Integrity            | Checksums, signatures     | Integrity validation   |
+| Logging Failures          | Comprehensive logging     | Log analysis           |
+| SSRF                      | URL validation            | Security test          |
 
 Security Patterns:
 
@@ -972,7 +972,7 @@ Commands:
 
 Memory:
 - Skill("moai-foundation-core") modules/execution-rules.md - Quality gates
-- @.moai/config/config.json - constitution.test_coverage_target
+- @.moai/config/config.yaml - constitution.test_coverage_target
 
 ---
 

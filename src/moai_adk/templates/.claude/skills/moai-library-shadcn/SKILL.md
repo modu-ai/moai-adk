@@ -342,7 +342,7 @@ export function LoginForm() {
 - [shadcn Components](modules/shadcn-components.md) - Advanced component patterns and implementation
 - [shadcn Theming](modules/shadcn-theming.md) - Theme system and customization strategies
 - `moai-domain-uiux` - Design system architecture and principles
-- `moai-lang-unified` - TypeScript best practices
+- `moai-lang-typescript` - TypeScript best practices
 - `code-frontend` - Frontend development patterns
 
 ---
