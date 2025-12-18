@@ -345,11 +345,14 @@ class StatuslineConfig:
         display_data = self.get("statusline.display", {})
         return DisplayConfig(
             model=display_data.get("model", True),
-            duration=display_data.get("duration", True),
-            directory=display_data.get("directory", True),
             version=display_data.get("version", True),
+            output_style=display_data.get("output_style", True),
+            memory_usage=display_data.get("memory_usage", True),
+            todo_count=display_data.get("todo_count", True),
             branch=display_data.get("branch", True),
             git_status=display_data.get("git_status", True),
+            duration=display_data.get("duration", True),
+            directory=display_data.get("directory", True),
             active_task=display_data.get("active_task", True),
             update_indicator=display_data.get("update_indicator", True),
         )

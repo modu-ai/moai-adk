@@ -1,3 +1,131 @@
+# v0.33.0 - Major Skill & Agent Expansion Release (2025-12-19)
+
+## Summary
+
+Major release expanding the skill library from 24 to 46 skills, enhancing agent system to 28 agents with 7-tier architecture, and introducing the Philosopher Framework for strategic decision-making.
+
+## Changes
+
+### New Features
+
+- **feat(skills)**: Expand skill library to 46 skills (+22 new skills)
+  - 15 language skills (Python, TypeScript, Go, Rust, Java, C#, Swift, Kotlin, Ruby, PHP, Elixir, Scala, C++, Flutter, R)
+  - 9 platform integration skills (Supabase, Auth0, Clerk, Neon, Firebase Auth, Firestore, Vercel, Railway, Convex)
+  - AI-powered nano-banana and MCP integration skills
+  - Comprehensive workflow management skills
+
+- **feat(agents)**: Expand agent system to 28 agents with 7-tier architecture
+  - Tier 1: 9 Domain Experts (backend, frontend, database, security, devops, uiux, debug, performance, testing)
+  - Tier 2: 8 Workflow Managers (spec, tdd, docs, quality, strategy, project, git, claude-code)
+  - Tier 3: 3 Meta-generators (builder-agent, builder-skill, builder-command)
+  - Tier 4: 6 MCP Integrators (context7, sequential-thinking, playwright, figma, notion)
+  - Tier 5: 1 AI Service (ai-nano-banana)
+
+- **feat(philosopher)**: Add Philosopher Framework for strategic thinking
+  - Assumption Audit phase
+  - First Principles Decomposition
+  - Alternative Generation (minimum 2-3 options)
+  - Trade-off Analysis with weighted scoring
+  - Cognitive Bias Check
+
+- **feat(docs)**: Add GLM Integration section for cost-effective alternative
+  - z.ai GLM 4.6 integration guide
+  - Subscription plans (Lite $6, Pro $30, Max $60)
+  - Performance comparison and usage scenarios
+
+### Refactoring
+
+- **refactor(skills)**: Modular skill structure with examples.md and reference.md
+- **refactor(agents)**: Standardized agent definitions with enhanced capabilities
+- **refactor(config)**: Section-based configuration system for token efficiency
+- **refactor(hooks)**: Enhanced hook system with improved functionality
+
+### Documentation
+
+- **docs**: Complete README synchronization across 4 languages (EN, KO, JA, ZH)
+- **docs**: Add Web Search Guidelines with anti-hallucination policies
+- **docs**: Add Nextra-based documentation system skill
+
+### Bug Fixes
+
+- **fix(output-styles)**: Add language enforcement rules to prevent English-only responses
+- **fix(statusline)**: Fix DisplayConfig field initialization
+
+## Breaking Changes
+
+- Skill directory structure changed to modular format (examples.md, reference.md)
+- Legacy Yoda-based skill modules removed
+
+## Migration Guide
+
+Existing projects should run `moai-adk update` to sync new skill structures.
+
+---
+
+# v0.33.0 - 대규모 스킬 & 에이전트 확장 릴리즈 (2025-12-19)
+
+## 요약
+
+스킬 라이브러리를 24개에서 46개로 확장하고, 에이전트 시스템을 7-Tier 아키텍처의 28개 에이전트로 강화하며, 전략적 의사결정을 위한 Philosopher Framework를 도입한 메이저 릴리즈입니다.
+
+## 변경 사항
+
+### 신규 기능
+
+- **feat(skills)**: 스킬 라이브러리를 46개로 확장 (+22개 신규 스킬)
+  - 15개 언어 스킬 (Python, TypeScript, Go, Rust, Java, C#, Swift, Kotlin, Ruby, PHP, Elixir, Scala, C++, Flutter, R)
+  - 9개 플랫폼 통합 스킬 (Supabase, Auth0, Clerk, Neon, Firebase Auth, Firestore, Vercel, Railway, Convex)
+  - AI 기반 nano-banana 및 MCP 통합 스킬
+  - 포괄적인 워크플로우 관리 스킬
+
+- **feat(agents)**: 에이전트 시스템을 7-Tier 아키텍처의 28개 에이전트로 확장
+  - Tier 1: 9개 도메인 전문가 (backend, frontend, database, security, devops, uiux, debug, performance, testing)
+  - Tier 2: 8개 워크플로우 매니저 (spec, tdd, docs, quality, strategy, project, git, claude-code)
+  - Tier 3: 3개 메타 생성기 (builder-agent, builder-skill, builder-command)
+  - Tier 4: 6개 MCP 통합기 (context7, sequential-thinking, playwright, figma, notion)
+  - Tier 5: 1개 AI 서비스 (ai-nano-banana)
+
+- **feat(philosopher)**: 전략적 사고를 위한 Philosopher Framework 추가
+  - 가정 감사(Assumption Audit) 단계
+  - 1차 원칙 분해(First Principles Decomposition)
+  - 대안 생성(Alternative Generation) - 최소 2-3개 옵션
+  - 가중치 점수를 통한 트레이드오프 분석
+  - 인지 편향 검사(Cognitive Bias Check)
+
+- **feat(docs)**: 비용 효율적 대안을 위한 GLM Integration 섹션 추가
+  - z.ai GLM 4.6 통합 가이드
+  - 구독 플랜 (Lite $6, Pro $30, Max $60)
+  - 성능 비교 및 사용 시나리오
+
+### 리팩토링
+
+- **refactor(skills)**: examples.md 및 reference.md가 포함된 모듈식 스킬 구조
+- **refactor(agents)**: 향상된 기능을 갖춘 표준화된 에이전트 정의
+- **refactor(config)**: 토큰 효율성을 위한 섹션 기반 설정 시스템
+- **refactor(hooks)**: 향상된 기능을 갖춘 훅 시스템 개선
+
+### 문서화
+
+- **docs**: 4개 언어(EN, KO, JA, ZH)에 걸친 README 완전 동기화
+- **docs**: 환각 방지 정책이 포함된 웹 검색 가이드라인 추가
+- **docs**: Nextra 기반 문서화 시스템 스킬 추가
+
+### 버그 수정
+
+- **fix(output-styles)**: 영어 전용 응답 방지를 위한 언어 강제 규칙 추가
+- **fix(statusline)**: DisplayConfig 필드 초기화 수정
+
+## 호환성 변경
+
+- 스킬 디렉토리 구조가 모듈식 형식으로 변경됨 (examples.md, reference.md)
+- 레거시 Yoda 기반 스킬 모듈 제거
+
+## 마이그레이션 가이드
+
+기존 프로젝트는 `moai-adk update`를 실행하여 새로운 스킬 구조를 동기화해야 합니다.
+
+---
+
 # v0.32.12.1 - Test Coverage Release CI/CD Fix (2025-12-05)
 
 ## Summary
