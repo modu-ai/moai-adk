@@ -85,19 +85,167 @@ try:
     from core.config_cache import get_cached_config, get_cached_spec_progress
 except ImportError:
     # Fallback to direct functions if cache not available
-    import yaml as yaml_fallback
+    # Try PyYAML first, then use simple parser
+    try:
+        import yaml as yaml_fallback
+
+        HAS_YAML_FALLBACK = True
+    except ImportError:
+        HAS_YAML_FALLBACK = False
+
+    def _simple_yaml_parse(content: str) -> dict:
+        """Simple YAML parser for basic key-value configs without PyYAML dependency.
+
+        Handles:
+        - Top-level keys with nested values
+        - String values (quoted or unquoted)
+        - Boolean values (true/false)
+        - Numeric values
+        - Comments (lines starting with #)
+
+        Does NOT handle:
+        - Lists
+        - Complex nested structures beyond 2 levels
+        - Multi-line strings
+        """
+        result = {}
+        current_section = None
+        lines = content.split("\n")
+
+        for line in lines:
+            # Skip empty lines and comments
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+
+            # Count leading spaces for indentation
+            indent = len(line) - len(line.lstrip())
+
+            # Check if this is a key-value pair
+            if ":" in stripped:
+                key_part, _, value_part = stripped.partition(":")
+                key = key_part.strip()
+                value = value_part.strip()
+
+                # Remove inline comments
+                if "#" in value and not value.startswith('"') and not value.startswith("'"):
+                    value = value.split("#")[0].strip()
+
+                # Handle quoted strings
+                if (value.startswith('"') and value.endswith('"')) or (
+                    value.startswith("'") and value.endswith("'")
+                ):
+                    value = value[1:-1]
+
+                # Top-level key (no indentation or minimal indentation)
+                if indent == 0:
+                    if value:
+                        # Simple key: value
+                        result[key] = _parse_simple_value(value)
+                    else:
+                        # Section header (e.g., "user:", "language:")
+                        current_section = key
+                        result[current_section] = {}
+                elif current_section and indent > 0:
+                    # Nested key under current section
+                    if value:
+                        result[current_section][key] = _parse_simple_value(value)
+                    else:
+                        # Nested section (2-level nesting)
+                        result[current_section][key] = {}
+
+        return result
+
+    def _parse_simple_value(value: str):
+        """Parse a simple value string into appropriate Python type."""
+        if not value:
+            return ""
+
+        # Boolean
+        if value.lower() == "true":
+            return True
+        if value.lower() == "false":
+            return False
+
+        # Numeric
+        try:
+            if "." in value:
+                return float(value)
+            return int(value)
+        except ValueError:
+            pass
+
+        return value
+
+    def _merge_configs(base: dict, override: dict) -> dict:
+        """Recursively merge two configuration dictionaries."""
+        result = base.copy()
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = _merge_configs(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def _load_yaml_file(file_path: Path) -> dict:
+        """Load a YAML file using PyYAML or simple parser."""
+        if not file_path.exists():
+            return {}
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            if HAS_YAML_FALLBACK:
+                return yaml_fallback.safe_load(content) or {}
+            else:
+                return _simple_yaml_parse(content)
+        except Exception:
+            return {}
 
     def get_cached_config():
-        # FIX: Use absolute path from find_project_root() to ensure correct directory
+        """Load config with section file merging for complete configuration.
+
+        FIX #245/#243: Properly loads both config.yaml AND section files,
+        merging them to provide complete configuration data.
+
+        Priority (highest to lowest):
+        1. Section files (.moai/config/sections/*.yaml)
+        2. Main config file (.moai/config/config.yaml)
+        """
         project_root = find_project_root()
-        config_path = project_root / ".moai" / "config" / "config.yaml"
-        if config_path.exists():
-            try:
-                return yaml_fallback.safe_load(config_path.read_text()) or {}
-            except (yaml_fallback.YAMLError, OSError, UnicodeDecodeError):
-                # YAML parsing, file read, or encoding errors
-                return None
-        return None
+        config_dir = project_root / ".moai" / "config"
+
+        # Start with main config file
+        main_config_path = config_dir / "config.yaml"
+        config = _load_yaml_file(main_config_path)
+
+        # If main config failed, try JSON fallback
+        if not config:
+            json_config_path = config_dir / "config.json"
+            if json_config_path.exists():
+                try:
+                    config = json.loads(json_config_path.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    config = {}
+
+        # Merge section files (they take priority for their specific keys)
+        sections_dir = config_dir / "sections"
+        if sections_dir.exists():
+            section_files = [
+                ("user.yaml", "user"),
+                ("language.yaml", "language"),
+                ("git-strategy.yaml", "git_strategy"),
+                ("project.yaml", "project"),
+                ("quality.yaml", "quality"),
+                ("system.yaml", "system"),
+            ]
+
+            for filename, key in section_files:
+                section_path = sections_dir / filename
+                section_data = _load_yaml_file(section_path)
+                if section_data:
+                    # Merge section data into config
+                    config = _merge_configs(config, section_data)
+
+        return config if config else None
 
     def get_cached_spec_progress():
         """Get SPEC progress information - FIXED to use YAML frontmatter parsing"""

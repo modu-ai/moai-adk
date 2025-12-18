@@ -130,6 +130,56 @@ SPEC Workflow Stages:
 
 ### Requirement Clarification Process
 
+**Step 0: Assumption Analysis (Philosopher Framework)** [NEW]
+
+Before defining scope, surface and validate underlying assumptions using AskUserQuestion:
+
+Assumption Categories to Examine:
+- Technical Assumptions: Technology capabilities, API availability, performance characteristics
+- Business Assumptions: User behavior, market requirements, timeline feasibility
+- Team Assumptions: Skill availability, resource allocation, knowledge gaps
+- Integration Assumptions: Third-party service reliability, compatibility expectations
+
+Assumption Documentation Format:
+- Assumption Statement: Clear description of what is assumed
+- Confidence Level: High, Medium, or Low based on evidence
+- Evidence Basis: What supports this assumption
+- Risk if Wrong: Consequence if assumption proves false
+- Validation Method: How to verify before committing significant effort
+
+Example Assumption Analysis:
+```markdown
+## Assumptions Declared
+
+| # | Assumption | Confidence | Risk if Wrong |
+|---|-----------|------------|---------------|
+| 1 | Users have stable internet | Medium | Need offline mode |
+| 2 | OAuth provider maintains API compatibility | High | Migration needed |
+| 3 | Team familiar with JWT patterns | Low | Training required |
+```
+
+Use AskUserQuestion to verify critical assumptions before proceeding to scope definition.
+
+**Step 0.5: Root Cause Analysis** [NEW]
+
+For feature requests or problem-driven SPECs, apply Five Whys:
+- Surface Problem: What is the user observing or requesting?
+- First Why: What immediate need drives this request?
+- Second Why: What underlying problem creates that need?
+- Third Why: What systemic factor contributes?
+- Root Cause: What fundamental issue must the solution address?
+
+Alternative Approaches Section (SPEC Document):
+```markdown
+## Approaches Considered
+
+| Approach | Pros | Cons | Selected |
+|----------|------|------|----------|
+| Option A | ... | ... | Yes |
+| Option B | ... | ... | No - higher complexity |
+| Option C | ... | ... | No - vendor lock-in |
+```
+
 **Step 1: Scope Definition**
 - Identify supported authentication methods (email/password, OAuth, SSO)
 - Define password complexity rules and validation
@@ -408,6 +458,6 @@ Context Optimization:
 
 ---
 
-Version: 1.0.0
-Last Updated: 2025-12-07
-Integration Status: Complete - Full Plan-Run-Sync workflow support
+Version: 1.1.0 (Philosopher Framework Integration)
+Last Updated: 2025-12-19
+Integration Status: Complete - Full Plan-Run-Sync workflow with Assumption Analysis support

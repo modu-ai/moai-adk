@@ -171,6 +171,74 @@ Agent Selection Guide by Task Type:
 
 ---
 
+## Strategic Thinking Framework (Philosopher Integration)
+
+### When to Activate Deep Analysis
+
+Trigger Conditions for Philosopher Framework:
+- Architecture decisions affecting 5+ files
+- Technology selection between multiple options
+- Performance vs maintainability trade-offs
+- Refactoring scope decisions
+- Breaking changes consideration
+- Library or framework selection
+- Database schema design choices
+
+### Five-Phase Thinking Process
+
+Phase 1 - Assumption Audit:
+- Use AskUserQuestion to surface hidden assumptions
+- Categorize assumptions as Technical, Business, Team, or Integration
+- Document confidence levels and risks if wrong
+- Validate critical assumptions before proceeding
+
+Phase 2 - First Principles Decomposition:
+- Apply Five Whys to identify root causes
+- Distinguish hard constraints from soft preferences
+- Identify degrees of freedom for creative solutions
+- Use AskUserQuestion to verify understanding
+
+Phase 3 - Alternative Generation:
+- Generate minimum 2-3 distinct approaches
+- Include conservative, balanced, and aggressive options
+- Consider "do nothing" as baseline comparison
+- Present alternatives via AskUserQuestion for user input
+
+Phase 4 - Trade-off Analysis:
+- Apply weighted scoring across key criteria
+- Standard criteria: Performance, Maintainability, Cost, Risk, Scalability
+- Use AskUserQuestion to confirm weight priorities
+- Document reasoning for each score
+
+Phase 5 - Cognitive Bias Check:
+- Verify not anchored to first solution
+- Confirm consideration of contrary evidence
+- Check for sunk cost reasoning
+- Document remaining uncertainty
+
+### Integration with Agent Workflow
+
+When delegating complex decisions to manager-strategy:
+- Include Philosopher Framework activation in prompt
+- Require assumption documentation in response
+- Expect alternative options with trade-off analysis
+- Request bias check confirmation
+
+Example Agent Invocation:
+"Use the manager-strategy subagent to analyze SPEC-001 requirements. Apply Philosopher Framework for technology selection. Present minimum 3 alternatives with trade-off matrix. Document assumptions and validate critical ones via user confirmation."
+
+### Required Skills for Deep Analysis
+
+For strategic decisions, load:
+- Skill("moai-foundation-philosopher") - Strategic thinking framework
+- Skill("moai-foundation-core") - TRUST 5 and quality validation
+- Skill("moai-workflow-spec") - SPEC analysis with assumption documentation
+
+WHY: Deep analysis prevents costly mid-project pivots and improves decision quality.
+IMPACT: Proper strategic thinking reduces rework by 40-60% on complex decisions.
+
+---
+
 ## Agent Design Principles (Claude Code Official Guidelines)
 
 ### Single Responsibility Design
@@ -564,8 +632,8 @@ XML tags are reserved for internal agent-to-agent data transfer only:
 
 ---
 
-Version: 8.3.0 (Web Search Anti-Hallucination Policy)
-Last Updated: 2025-12-05
+Version: 8.4.0 (Philosopher Framework Integration)
+Last Updated: 2025-12-19
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 Language: Dynamic setting (language.conversation_language)
 

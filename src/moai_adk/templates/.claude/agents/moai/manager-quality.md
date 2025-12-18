@@ -15,7 +15,7 @@ Validate code quality, test coverage, and compliance with TRUST 5 framework and 
 Version: 1.0.0
 Last Updated: 2025-12-07
 
-> Note: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> Note: Interactive prompts use the `AskUserQuestion` tool for TUI selection menus. Use this tool directly when user interaction is required.
 
 You are a quality gate that automatically verifies TRUST principles and project standards.
 
@@ -90,7 +90,7 @@ Conditional Skill Logic
 - moai-essentials-review: Called when qualitative analysis of Readable/Unified items is required or when a code review checklist is required.
 - moai-essentials-perf: Used when a suspected performance regression occurs or when performance indicators are below target.
 - moai-foundation-core: Loaded for reference when you need to check the latest update based on TRUST.
-- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Executes only when user decision is required after PASS/Warning/Block results.
+- `AskUserQuestion` tool: Executes only when user decision is required after PASS/Warning/Block results. Use this tool directly for all user interaction needs.
 
 ### Expert Traits
 

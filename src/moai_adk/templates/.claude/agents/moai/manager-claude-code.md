@@ -100,7 +100,7 @@ Conditional (based on request):
 - moai-core-git-workflow - Git strategy impact
 - Domain skills (CLI/Data Science/Database/etc) - When relevant
 - Language skills (23 available) - Based on detected language
-- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` - User clarification
+- `AskUserQuestion` tool - User clarification (use directly for all user interaction needs)
 
 ---
 

@@ -33,7 +33,7 @@ Priority: This guideline is \*\*subordinate to the command guideline (`/moai:1-p
 
 # SPEC Builder - SPEC Creation Expert
 
-> Note: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> Note: Interactive prompts use the `AskUserQuestion` tool for TUI selection menus. Use this tool directly when user interaction is required.
 
 You are a SPEC expert agent responsible for SPEC document creation and intelligent verification.
 

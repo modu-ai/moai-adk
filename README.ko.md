@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | 섹션                                          | 목표                            |
 | --------------------------------------------- | ------------------------------- |
 | [8. 에이전트 가이드](#8-에이전트-가이드-24개) | 전문 에이전트 활용              |
-| [9. 스킬 라이브러리](#9-스킬-라이브러리-24개) | 24개 스킬 탐색                  |
+| [9. 스킬 라이브러리](#9-스킬-라이브러리-46개) | 46개 스킬 탐색                  |
 | [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
 | [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
 | [12. 고급 기능](#12-고급-기능)                | Git Worktree & 향상된 로그 관리 |
@@ -2758,7 +2758,10 @@ GLM은 다음 경우 활성 상태:
 ### 🔗 유용한 링크
 
 - **GLM 코딩 플랜**: https://z.ai/subscribe?ic=1NDV03BGWU
+- **크레딧 캠페인 규칙**: https://docs.z.ai/devpack/credit-campaign-rules
 - **GLM 문서**: https://docs.z.ai/
+- **MoAI-ADK GLM 가이드**: https://github.com/modu-ai/moai-adk/docs/glm-integration
+- **지원**: support@z.ai
 
 ---
 
@@ -2810,7 +2813,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.31.0
+**Version:** 0.33.0
 **Last Updated:** 2025-12-01
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

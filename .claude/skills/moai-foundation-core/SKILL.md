@@ -369,8 +369,10 @@ Skills:
 - moai-cc-claude-md - CLAUDE.md with foundation patterns
 - moai-cc-configuration - Config with TRUST 5
 - moai-cc-memory - Token optimization
-- moai-core-ask-user-questions - User clarification
 - moai-context7-integration - MCP integration
+
+Tools:
+- AskUserQuestion - Use directly for all user interaction and clarification needs
 
 Commands:
 - /moai:1-plan - SPEC-First Phase 1

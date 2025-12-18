@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 | セクション                                               | 目標                   |
 | -------------------------------------------------------- | ---------------------- |
 | [8. エージェントガイド](#8-エージェントガイド-24個)      | 専門エージェントの活用 |
-| [9. スキルライブラリ](#9-スキルライブラリ-24個)          | 24 個のスキル探索      |
+| [9. スキルライブラリ](#9-スキルライブラリ-46-個)          | 46 個のスキル探索      |
 | [10. 組み合わせパターンと例](#10-組み合わせパターンと例) | 実際のプロジェクト例   |
 | [11. TRUST 5 品質保証](#11-trust-5-品質保証)             | 品質保証システム       |
 | [12. 高度な機能](#12-高度な機能)                         | Git Worktree & 強化されたログ管理 |
@@ -1678,38 +1678,114 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. スキルライブラリ（24 個）
+## 9. スキルライブラリ（46 個）
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK は **24 個の専門スキル**を 6 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
+MoAI-ADK は **46 個の専門スキル**を 7 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
 
-### 📊 全体スキルリスト
+### 🏗️ Foundation（基盤）
 
-| カテゴリ       | スキル名                     | 説明                                            | バージョン |
-| -------------- | -------------------------- | ----------------------------------------------- | ----- |
-| **Foundation** | moai-foundation-core       | TRUST 5, SPEC-First TDD, エージェント委任, トークン最適化 | 2.2.0 |
-|                | moai-foundation-uiux       | デザインシステム, コンポーネント, アクセシビリティ, アイコン, テーマ | 2.0.0 |
-|                | moai-foundation-quality    | プロアクティブ品質検証, 自動テスト, カバレッジ | 2.0.0 |
-|                | moai-foundation-claude     | エージェント, スラッシュコマンド, MCP, フック, メモリ, IAM | 2.0.0 |
-| **Platform**   | moai-lang-unified          | 25+ 言語 (Python, TS, Go, Rust, Java, C++ 等) | 2.0.0 |
-|                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase 等) | 2.0.0 |
-| **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React コンポーネント | 2.0.0 |
-|                | moai-library-toon          | TOON フォーマット, トークン効率エンコーディング (40-60% 節約) | 3.0.0 |
-|                | moai-library-mermaid       | 21 種図表, Playwright MCP レンダリング | 7.0.0 |
-| **Connector**  | moai-connector-mcp         | 10+ MCP サーバー統合ガイド | 2.0.0 |
-|                | moai-connector-figma       | デザインシステム, UI キット, デザイントークン | 1.0.0 |
-|                | moai-connector-notion      | ワークスペース, データベース, コンテンツ管理 | 1.0.0 |
-|                | moai-connector-nano-banana | Gemini 3 Pro 画像生成 (Text/Image-to-Image) | 1.0.1 |
-| **Workflow**   | moai-workflow-project      | プロジェクト管理, 言語初期化, テンプレート最適化 | 2.0.0 |
-|                | moai-workflow-docs         | Markdown/Mermaid/韓国語検証, レポート生成 | 2.0.0 |
-|                | moai-workflow-templates    | コードボイラープレート, フィードバックテンプレート | 3.0.0 |
-|                | moai-workflow-testing      | Playwright E2E, 視覚回帰, クロスブラウザ | 2.0.0 |
-|                | moai-workflow-jit-docs     | ユーザー意図ベースドキュメント自動検索 & キャッシュ | 2.0.0 |
-|                | moai-toolkit-essentials    | デバッグ, リファクタリング, 最適化, レビュー, プロファイリング | 2.0.0 |
-| **System**     | moai-system-universal      | 25+ 言語 + 9+ BaaS + セキュリティ + コンプライアンス統合 | 2.0.0 |
+コア哲学と実行ルールを定義する基盤スキルです。
 
-**使用頻度**: Foundation (90%+), Platform (80%+), Workflow (85%), Connector (70%), Library (60%), System (40%)
+- **moai-foundation-core**
+  - TRUST 5, SPEC-First TDD, エージェント委任パターン, トークン最適化
+  - すべての AI 駆動開発ワークフローを構築するための実行ルールを提供
+
+- **moai-foundation-context**
+  - トークン予算最適化と状態永続化を備えたエンタープライズコンテキスト管理
+  - セッションメモリシステムと効率的なトークン活用戦略
+
+- **moai-foundation-claude**
+  - Claude Code 公式ドキュメントに準拠したスキル作成キット
+  - エージェント, サブエージェントテンプレート, スラッシュコマンド, フック, メモリ, IAM ルール
+
+- **moai-foundation-quality**
+  - TRUST 5 検証, プロアクティブ分析, 自動化されたベストプラクティス適用
+  - エンタープライズ級コード品質保証システム
+
+### 🎯 Domain（ドメイン専門）
+
+特定の技術ドメインに対する深い専門性を提供します。
+
+- **moai-domain-backend**
+  - フレームワークに依存しないバックエンド設計, 13+ フレームワーク専門性
+  - API 設計, データベース統合, マイクロサービスアーキテクチャ
+
+- **moai-domain-frontend**
+  - React 19, Next.js 16, Vue 3.5 を含む最新 UI/UX パターン
+  - コンポーネントアーキテクチャ, 状態管理, レスポンシブデザイン
+
+- **moai-domain-database**
+  - PostgreSQL, MongoDB, Redis を含むデータベース専門性
+  - クエリ性能最適化, データモデリング, データベース戦略
+
+- **moai-domain-uiux**
+  - エンタープライズデザインシステム, コンポーネントアーキテクチャ, アクセシビリティ
+  - WCAG 準拠, デザイントークン, アイコン, テーマシステム
+
+### 💻 Language（言語）
+
+さまざまなプログラミング言語とフレームワークをサポートします。
+
+- **moai-lang-python** - FastAPI, Django, async パターン, データサイエンス向け Python 3.13+
+- **moai-lang-typescript** - React 19, Next.js 16 App Router, tRPC で型安全 API, Zod 検証
+- **moai-lang-go** - Fiber, Gin, GORM を使用した高性能マイクロサービス
+- **moai-lang-rust** - Axum, Tokio, SQLx を使用したメモリ安全システムプログラミング
+- **moai-lang-java** - Spring Boot 3.3, 仮想スレッド, Java 21 LTS エンタープライズパターン
+- **moai-lang-csharp** - ASP.NET Core, Entity Framework, Blazor 向け C# 12/.NET 8
+- **moai-lang-swift** - SwiftUI, Combine, Swift 6 並行処理向け iOS/macOS 開発
+- **moai-lang-kotlin** - Ktor, コルーチン, Compose Multiplatform 向け Kotlin 2.0
+- **moai-lang-ruby** - Ruby on Rails 8, ActiveRecord, Hotwire/Turbo 向け Ruby 3.3+
+- **moai-lang-php** - Laravel 11, Symfony 7, Eloquent ORM 向け PHP 8.3+
+- **moai-lang-elixir** - Phoenix 1.7, LiveView, Ecto を使用した Elixir 1.17+ 開発
+- **moai-lang-scala** - Akka, Cats Effect, ZIO, Spark 向け Scala 3.4+
+- **moai-lang-cpp** - RAII, スマートポインタ, コンセプト, モジュールを使用した C++23/20
+- **moai-lang-flutter** - Riverpod, go_router を使用した Flutter 3.24+/Dart 3.5+ 開発
+- **moai-lang-r** - tidyverse, ggplot2, Shiny を使用した R 4.4+ データ分析
+
+### 🚀 Platform（プラットフォーム）
+
+主要なクラウドプラットフォームと BaaS サービス統合をサポートします。
+
+- **moai-platform-supabase** - PostgreSQL 16, pgvector, RLS, リアルタイムサブスクリプション
+- **moai-platform-auth0** - SSO, SAML, OIDC, 組織, B2B マルチテナンシー
+- **moai-platform-clerk** - WebAuthn, パスキー, パスワードレス認証
+- **moai-platform-neon** - オートスケーリング, データベースブランチング, PITR
+- **moai-platform-firebase-auth** - ソーシャル認証, 電話認証, 匿名ログイン
+- **moai-platform-firestore** - NoSQL データモデリング, リアルタイム同期, オフラインサポート
+- **moai-platform-vercel** - Edge Functions, Next.js 最適化, ISR
+- **moai-platform-railway** - Docker, マルチサービスアーキテクチャ, 永続ボリューム
+- **moai-platform-convex** - TypeScript ファースト リアクティブパターン, 楽観的更新
+
+### 📋 Workflow（ワークフロー）
+
+開発プロセスを自動化・最適化するワークフロースキルです。
+
+- **moai-workflow-spec** - EARS フォーマット, 要件明確化, Plan-Run-Sync 統合
+- **moai-workflow-testing** - TDD, デバッグ, 性能最適化, コードレビュー統合
+- **moai-workflow-project** - プロジェクト管理, ドキュメント化, 言語初期化モジュール
+- **moai-workflow-templates** - コードボイラープレート, フィードバックテンプレート
+- **moai-workflow-jit-docs** - ユーザー意図ベース知的ドキュメント検索＆キャッシュ
+- **moai-workflow-docs** - Nextra ドキュメントシステム, 技術ライティング, API ドキュメント
+- **moai-worktree** - 並行 SPEC 開発のための Git ワークツリー管理
+
+### 📚 Library（ライブラリ）
+
+特定のライブラリとフレームワーク専門スキルです。
+
+- **moai-library-shadcn** - shadcn/ui, Radix, Tailwind CSS 専門実装ガイド
+- **moai-library-mermaid** - MCP Playwright を使用したエンタープライズ Mermaid ダイアグラミング
+- **moai-library-nextra** - Next.js ベースエンタープライズドキュメントフレームワーク
+- **moai-formats-data** - TOON エンコーディング, JSON/YAML 最適化, データ検証
+
+### 🔌 MCP（Model Context Protocol）
+
+MCP サーバー統合のための専門スキルです。
+
+- **moai-mcp-notion** - Notion MCP 統合でワークスペース管理とデータベース運用
+- **moai-mcp-figma** - Figma MCP 統合でデザインシステム抽出とコンポーネント生成
+- **moai-ai-nano-banana** - Gemini 3 Nano Banana Pro を使用した画像生成
 
 ### 🎯 スキル使用ガイド
 
@@ -1717,22 +1793,24 @@ MoAI-ADK は **24 個の専門スキル**を 6 個のカテゴリで提供しま
 
 ```python
 # 方法1: 直接呼び出し（開発者）
-Skill("moai-lang-unified")
+Skill("moai-lang-python")
 
 # 方法2: Alfred 自動選択（一般ユーザー）
 "Python で FastAPI サーバーを作成して"
-→ Alfred が moai-lang-unified + moai-platform-baas 自動選択
+→ Alfred が moai-lang-python + moai-platform-supabase 自動選択
 ```
 
 #### スキル組合せパターン
 
-**バックエンド API**: `moai-foundation-core` + `moai-lang-unified` + `moai-platform-baas`
+**バックエンド API**: `moai-foundation-core` + `moai-lang-python` + `moai-platform-supabase`
 
-**フロントエンド UI**: `moai-foundation-uiux` + `moai-lang-unified` + `moai-library-shadcn`
+**フロントエンド UI**: `moai-domain-uiux` + `moai-lang-typescript` + `moai-library-shadcn`
 
 **ドキュメント化**: `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`
 
-**テスト**: `moai-lang-unified` + `moai-workflow-testing` + `moai-foundation-quality`
+**テスト**: `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`
+
+**データ分析**: `moai-lang-r` + `moai-domain-database` + `moai-formats-data`
 
 ---
 
@@ -2687,7 +2765,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.31.0
+**Version:** 0.33.0
 **Last Updated:** 2025-12-01
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

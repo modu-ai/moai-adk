@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 | Section                                                           | Goal                       |
 | ----------------------------------------------------------------- | -------------------------- |
 | [8. Agent Guide](#8-agent-guide-24-agents)                        | Utilize specialized agents |
-| [9. Skill Library](#9-skill-library-24-skills)                    | Explore 24 skills          |
+| [9. Skill Library](#9-skill-library-46-skills)                    | Explore 46 skills          |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
 | [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
@@ -1785,49 +1785,223 @@ For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-
 
 ---
 
-## 9. Skill Library (33 Skills)
+## 9. Skill Library (46 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **33 specialized skills** in 7 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **46 specialized skills** in 7 categories. Each skill can be used independently or in combination.
 
-### 📊 Complete Skill List
+### 🏗️ Foundation
 
-| Category       | Skill Name                     | Description                                            | Version |
-| -------------- | ------------------------------ | ------------------------------------------------------ | ------- |
-| **Foundation** | moai-foundation-core         | TRUST 5, SPEC-First TDD, agent delegation, token opt   | 2.2.0   |
-|                | moai-foundation-uiux         | Design systems, components, accessibility, icons       | 2.0.0   |
-|                | moai-foundation-quality      | Proactive quality verification, auto-testing           | 2.0.0   |
-|                | moai-foundation-claude       | Agents, slash commands, MCP, hooks, memory, IAM        | 2.0.0   |
-|                | moai-foundation-context      | Enterprise context and session management             | 2.0.0   |
-| **Language**   | moai-lang-unified            | 25+ languages (Python, TS, Go, Rust, Java, C++, etc)   | 2.0.0   |
-|                | moai-lang-python             | Python 3.13+ development with FastAPI, Django, async   | 2.0.0   |
-|                | moai-lang-typescript          | TypeScript 5.9+ with React 19, Next.js 16, tRPC, Zod   | 2.0.0   |
-|                | moai-lang-jvm                | JVM languages: Java 21, Kotlin 2.0, Scala 3.4         | 2.0.0   |
-|                | moai-lang-systems            | Go 1.23 and Rust 1.91 for high-performance systems     | 2.0.0   |
-|                | moai-lang-mobile             | Swift 6 for iOS, Kotlin for Android, Dart/Flutter   | 2.0.0   |
-| **Platform**   | moai-platform-baas           | 9+ BaaS (Auth0, Clerk, Firebase, Supabase, etc)        | 2.0.0   |
-|                | moai-platform-auth           | Authentication platforms: Auth0, Clerk, Firebase Auth | 2.0.0   |
-|                | moai-platform-database       | Database platforms: Supabase, Neon, Convex, Firestore | 2.0.0   |
-|                | moai-platform-deploy         | Deployment platforms: Vercel and Railway            | 2.0.0   |
-| **Domain**     | moai-domain-backend          | Backend architecture, API development                | 2.0.0   |
-|                | moai-domain-frontend          | Frontend development, React 19, Next.js 16           | 2.0.0   |
-|                | moai-domain-database          | Database design, PostgreSQL, MongoDB, Redis, optimization | 2.0.0   |
-|                | moai-domain-uiux              | UI/UX design systems, components, accessibility      | 2.0.0   |
-|                | moai-domain-security          | Security analysis, vulnerability scanning, OWASP    | 2.0.0   |
-| **Integration**| moai-integration-mcp          | MCP server integration for 10+ services               | 2.0.0   |
-| **Library**    | moai-library-shadcn           | shadcn/ui, Radix, Tailwind, React components           | 2.0.0   |
-|                | moai-library-nextra           | Enterprise Nextra documentation with Next.js         | 2.0.0   |
-|                | moai-library-mermaid          | 21 diagram types, Playwright MCP rendering             | 7.0.0   |
-|                | moai-formats-data             | TOON encoding, JSON/YAML optimization, validation     | 3.0.0   |
-| **Workflow**   | moai-workflow-project         | Project management, language init, template opt        | 2.0.0   |
-|                | moai-workflow-docs            | Markdown/Mermaid validation, Korean support, reporting | 2.0.0   |
-|                | moai-workflow-templates       | Code boilerplates, feedback templates                  | 3.0.0   |
-|                | moai-workflow-testing         | Playwright E2E, visual regression, cross-browser       | 2.0.0   |
-|                | moai-workflow-jit-docs        | Intent-based doc auto-search & caching                 | 2.0.0   |
-| **Utilities**  | moai-worktree                 | Git worktree management for parallel SPEC development   | 2.0.0   |
+Core philosophy and execution rules foundation skills.
 
-**Usage frequency**: Foundation (90%+), Language (85%+), Platform (80%+), Domain (75%+), Workflow (85%), Library (60%), Integration (70%), Utilities (40%)
+- **moai-foundation-core**
+  - TRUST 5, SPEC-First TDD, agent delegation patterns, token optimization
+  - Execution rules for building all AI-powered development workflows
+
+- **moai-foundation-context**
+  - Enterprise context management with token budget optimization and state persistence
+  - Session memory system and efficient token utilization strategies
+
+- **moai-foundation-claude**
+  - Skill authoring kit aligned with Claude Code official documentation
+  - Agents, sub-agent templates, slash commands, hooks, memory, IAM rules
+
+- **moai-foundation-quality**
+  - TRUST 5 validation, proactive analysis, automated best practices enforcement
+  - Enterprise-grade code quality assurance system
+
+### 🎯 Domain
+
+Deep expertise for specific technology domains.
+
+- **moai-domain-backend**
+  - Framework-agnostic backend design, 13+ framework expertise
+  - API design, database integration, microservices architecture
+
+- **moai-domain-frontend**
+  - Modern UI/UX patterns including React 19, Next.js 16, Vue 3.5
+  - Component architecture, state management, responsive design
+
+- **moai-domain-database**
+  - Database expertise including PostgreSQL, MongoDB, Redis
+  - Query performance optimization, data modeling, database strategies
+
+- **moai-domain-uiux**
+  - Enterprise design systems, component architecture, accessibility
+  - WCAG compliance, design tokens, icons, theming system
+
+### 💻 Language (15 Skills)
+
+Support for various programming languages and frameworks.
+
+- **moai-lang-python**
+  - Python 3.13+ for FastAPI, Django, async patterns, data science
+  - Testing with pytest, modern Python features and async programming
+
+- **moai-lang-typescript**
+  - React 19, Next.js 16 App Router, type-safe APIs with tRPC
+  - Zod validation, modern TypeScript 5.9+ patterns and frontend
+
+- **moai-lang-go**
+  - High-performance microservices with Fiber, Gin, GORM
+  - Go 1.23+ concurrency patterns and cloud-native applications
+
+- **moai-lang-rust**
+  - Memory-safe systems programming with Axum, Tokio, SQLx
+  - Rust 1.91+ for WebAssembly and high-performance applications
+
+- **moai-lang-java**
+  - Spring Boot 3.3, virtual threads, Java 21 LTS enterprise patterns
+  - Microservices, Android apps, Akka actor systems
+
+- **moai-lang-csharp**
+  - C# 12/.NET 8 for ASP.NET Core, Entity Framework, Blazor
+  - Enterprise applications and MAUI cross-platform development
+
+- **moai-lang-swift**
+  - iOS/macOS development with SwiftUI, Combine, Swift 6 concurrency
+  - Apple ecosystem and modern Swift language features
+
+- **moai-lang-kotlin**
+  - Kotlin 2.0 for Ktor, coroutines, Compose Multiplatform
+  - Android 15, KMP cross-platform and Kotlin-idiomatic patterns
+
+- **moai-lang-ruby**
+  - Ruby 3.3+ for Ruby on Rails 8, ActiveRecord, Hotwire/Turbo
+  - Modern Ruby patterns and web development automation
+
+- **moai-lang-php**
+  - PHP 8.3+ for Laravel 11, Symfony 7, Eloquent ORM
+  - Modern PHP architecture and web application development
+
+- **moai-lang-elixir**
+  - Elixir 1.17+ development with Phoenix 1.7, LiveView, Ecto
+  - Real-time applications, distributed systems, OTP patterns
+
+- **moai-lang-scala**
+  - Scala 3.4+ for Akka, Cats Effect, ZIO, Spark
+  - Distributed systems and big data applications
+
+- **moai-lang-cpp**
+  - C++23/20 with RAII, smart pointers, concepts, modules
+  - High-performance systems, game engines, embedded systems
+
+- **moai-lang-flutter**
+  - Flutter 3.24+/Dart 3.5+ development with Riverpod, go_router
+  - Cross-platform mobile apps and desktop applications
+
+- **moai-lang-r**
+  - R 4.4+ data analysis with tidyverse, ggplot2, Shiny
+  - Statistical modeling, data visualization, interactive web apps
+
+### 🚀 Platform (9 Skills)
+
+Integration with major cloud platforms and BaaS services.
+
+- **moai-platform-supabase**
+  - Supabase with PostgreSQL 16, pgvector, RLS, real-time subscriptions
+  - Serverless functions, auto-sync, Edge Functions deployment
+
+- **moai-platform-auth0**
+  - Auth0 for SSO, SAML, OIDC, organizations, B2B multi-tenancy
+  - Enterprise identity federation and complex auth workflows
+
+- **moai-platform-clerk**
+  - Clerk for WebAuthn, passkeys, passwordless authentication
+  - Modern user management and beautiful UI components
+
+- **moai-platform-neon**
+  - Neon with auto-scaling, database branching, PITR
+  - Serverless PostgreSQL and connection pooling optimization
+
+- **moai-platform-firebase-auth**
+  - Firebase Authentication with social auth, phone auth, anonymous login
+  - Google ecosystem and mobile-first authentication patterns
+
+- **moai-platform-firestore**
+  - NoSQL data modeling, real-time sync, offline support
+  - Mobile-first apps and Security Rules configuration
+
+- **moai-platform-vercel**
+  - Vercel for Edge Functions, Next.js optimization, ISR
+  - Edge-first deployment and preview deployment strategies
+
+- **moai-platform-railway**
+  - Railway for Docker, multi-service architectures, persistent volumes
+  - Containerized full-stack applications and auto-scaling
+
+- **moai-platform-convex**
+  - Convex for TypeScript-first reactive patterns, optimistic updates
+  - Real-time collaborative apps and server functions
+
+### 📋 Workflow (7 Skills)
+
+Workflow skills for automating and optimizing development processes.
+
+- **moai-workflow-spec**
+  - EARS format, requirements clarification, Plan-Run-Sync integration
+  - SPEC workflow orchestration and acceptance criteria definition
+
+- **moai-workflow-testing**
+  - TDD, debugging, performance optimization, code review integration
+  - Comprehensive development workflows and quality assurance
+
+- **moai-workflow-project**
+  - Project management, documentation, language initialization modules
+  - Integrated project system and template optimization
+
+- **moai-workflow-templates**
+  - Code boilerplates, feedback templates, project optimization
+  - Enterprise template management and asset reuse maximization
+
+- **moai-workflow-jit-docs**
+  - Intent-based intelligent document search and caching
+  - Real-time API documentation access and version compatibility checks
+
+- **moai-workflow-docs**
+  - Nextra documentation system, technical writing, API documentation
+  - Automated documentation generation and knowledge base management
+
+- **moai-worktree**
+  - Git worktree management for parallel SPEC development
+  - Isolated workspaces, automatic registration, MoAI-ADK integration
+
+### 📚 Library (4 Skills)
+
+Skills specialized for specific libraries and frameworks.
+
+- **moai-library-shadcn**
+  - Professional implementation guide for shadcn/ui, Radix, Tailwind CSS
+  - React components and modern UI design systems
+
+- **moai-library-mermaid**
+  - Enterprise Mermaid diagramming with MCP Playwright
+  - 21 diagram types and visual workflow documentation
+
+- **moai-library-nextra**
+  - Next.js-based enterprise documentation framework
+  - Markdown optimization and dynamic documentation generation
+
+- **moai-formats-data**
+  - TOON encoding, JSON/YAML optimization, data serialization
+  - Data validation and processing for modern applications
+
+### 🔌 MCP (3 Skills)
+
+Specialized skills for MCP server integration.
+
+- **moai-mcp-notion**
+  - Notion MCP integration for workspace management and database operations
+  - Page creation, content automation, knowledge organization
+
+- **moai-mcp-figma**
+  - Figma MCP integration for design system extraction and component generation
+  - Design-to-code workflows and design token management
+
+- **moai-ai-nano-banana**
+  - Image generation with Gemini 3 Nano Banana Pro
+  - Professional visual content creation with natural language prompts
 
 ### 🎯 Skill Usage Guide
 
@@ -1835,22 +2009,24 @@ MoAI-ADK provides **33 specialized skills** in 7 categories. Each skill can be u
 
 ```python
 # Method 1: Direct invocation (developers)
-Skill("moai-lang-unified")
+Skill("moai-lang-python")
 
 # Method 2: Alfred auto-selection (general users)
 "Create a FastAPI server in Python"
-→ Alfred automatically selects moai-lang-unified + moai-platform-baas
+→ Alfred automatically selects moai-lang-python + moai-platform-supabase
 ```
 
 #### Skill Composition Patterns
 
-**Backend API**: `moai-foundation-core` + `moai-lang-unified` + `moai-platform-baas`
+**Backend API**: `moai-foundation-core` + `moai-lang-python` + `moai-platform-supabase`
 
-**Frontend UI**: `moai-foundation-uiux` + `moai-lang-unified` + `moai-library-shadcn`
+**Frontend UI**: `moai-domain-uiux` + `moai-lang-typescript` + `moai-library-shadcn`
 
 **Documentation**: `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`
 
-**Testing**: `moai-lang-unified` + `moai-workflow-testing` + `moai-foundation-quality`
+**Testing**: `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`
+
+**Data Analysis**: `moai-lang-r` + `moai-domain-database` + `moai-formats-data`
 
 ---
 
@@ -2761,7 +2937,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.31.0
+**Version:** 0.33.0
 **Last Updated:** 2025-12-01
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

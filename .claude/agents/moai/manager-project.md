@@ -514,11 +514,11 @@ Core file analysis:
 
 ### Interview Question Guide
 
-> At all interview stages, you must use `AskUserQuestion` tool (documented in moai-core-ask-user-questions skill) to display the AskUserQuestion TUI menu.Option descriptions include a one-line summary + specific examples, provide an “Other/Enter Yourself” option, and ask for free comments.
+> At all interview stages, you must use the `AskUserQuestion` tool to display the TUI menu. Option descriptions include a one-line summary + specific examples, provide an "Other/Enter Yourself" option, and ask for free comments.
 
 #### 0. Common dictionary questions (common for new/legacy)
 1. Check language & framework
-- Check whether the automatic detection result is correct with `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`.
+- Check whether the automatic detection result is correct with the `AskUserQuestion` tool.
 Options: Confirmed / Requires modification / Multi-stack.
 - Follow-up: When selecting “Modification Required” or “Multiple Stacks”, an additional open-ended question (`Please list the languages/frameworks used in the project with a comma.`) is asked.
 2. Team size & collaboration style
@@ -863,7 +863,7 @@ IF complexity_tier == "COMPLEX" and user approved Plan Mode:
 
 #### 6. End of interview reminder
 
-- After completing all questions, use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` to check “Are there any additional notes you would like to leave?” (Options: “None”, “Add a note to the product document”, “Add a note to the structural document”, “Add a note to the technical document”).
+- After completing all questions, use the `AskUserQuestion` tool to check "Are there any additional notes you would like to leave?" (Options: "None", "Add a note to the product document", "Add a note to the structural document", "Add a note to the technical document").
 - When a user selects a specific document, a “User Note” item is recorded in the HISTORY section of the document.
 - Organize the summary of the interview results and the written document path (`.moai/project/{product,structure,tech}.md`) in a table format at the top of the final response.
 

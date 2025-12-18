@@ -43,16 +43,18 @@ statusline:
     update_ttl_seconds: 600      # Update check (300→600: network I/O reduced 83%)
 
   # Information display settings - Custom ordered status bar
+  # Format: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
   display:
-    model: true                  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
-    version: true                # 🗿 MoAI-ADK version (0.23.0, etc.)
-    output_style: true           # ✍️ Output style (Explanatory, Concise, etc.)
-    memory_usage: true           # 💾 Session memory usage
-    todo_count: true             # 📋 Active TODO items count
+    model: true                  # 🤖 Model name (Opus 4.5, Sonnet, etc.)
+    version: false               # 🗿 MoAI-ADK version (disabled - context window replaces it)
+    context_window: true         # 💰 Context window usage (15K/200K)
+    output_style: true           # 💬 Output style (R2-D2, Yoda, etc.)
+    memory_usage: false          # 💾 Session memory usage (disabled)
+    todo_count: false            # 📋 Active TODO items count (disabled)
     branch: true                 # 🔀 Git branch
-    git_status: true             # ✅2 M1 ?10 Git changes status
-    duration: true               # ⏱️ Session elapsed time
-    directory: true              # 📁 Project name/directory
+    git_status: true             # 📊 +0 M25 ?3 Git changes status
+    duration: false              # ⏱️ Session elapsed time (disabled)
+    directory: false             # 📁 Project name/directory (disabled)
     active_task: true            # 🎯 Alfred active task
     update_indicator: true       # 🔄 Update notification
 
@@ -69,17 +71,21 @@ statusline:
     separator: " | "             # Section separator
 
     # Icon configuration for better visual recognition
+    # Format: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
     icons:
-      git: "🔀"                 # Git branch icon (more intuitive than 📊)
-      staged: "✅"              # Staged files
-      modified: "📝"            # Modified files
-      untracked: "❓"           # Untracked files
+      git: "🔀"                 # Git branch icon
+      git_status: "📊"          # Git changes status (+0 M25 ?3)
+      staged: "+"               # Staged files count prefix
+      modified: "M"             # Modified files count prefix
+      untracked: "?"            # Untracked files count prefix
       added: "➕"               # Added files
       deleted: "➖"             # Deleted files
       renamed: "🔄"             # Renamed files
       conflict: "⚠️"           # Conflict files
       model: "🤖"               # AI model
-      output_style: "💬"        # Writing style
+      claude_version: "🔅"      # Claude Code version
+      context_window: "💰"      # Context window usage
+      output_style: "💬"        # Output style (R2-D2, etc.)
       duration: "⏱️"            # Time duration
       todo: "📋"                # TODO items
       update: "🔄"              # Update available

@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit) 是结合 **SPEC-First 开发**、**测试驱
 | 章节                                         | 目标                     |
 | -------------------------------------------- | ------------------------ |
 | [8. 智能体指南](#8-智能体指南-24个)              | 专业智能体利用           |
-| [9. 技能库](#9-技能库-24个)                  | 24 个技能探索            |
+| [9. 技能库](#9-技能库46个)                  | 46 个技能探索            |
 | [10. 组合模式和示例](#10-组合模式和示例)     | 实际项目示例             |
 | [11. TRUST 5 质量保证](#11-trust-5-质量保证) | 质量保证系统             |
 | [12. 高级功能](#12-高级功能)                 | Git Worktree & 增强的日志管理 |
@@ -1678,38 +1678,114 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. 技能库（24个）
+## 9. 技能库（46个）
 
 ![技能使用统计](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK 在 6 个类别中提供 **24 个专业技能**。每个技能可以独立或组合使用。
+MoAI-ADK 在 7 个类别中提供 **46 个专业技能**。每个技能可以独立或组合使用。
 
-### 📊 完整技能列表
+### 🏗️ Foundation（基础）
 
-| 类别           | 技能名                     | 描述                                                | 版本  |
-| -------------- | -------------------------- | --------------------------------------------------- | ----- |
-| **Foundation** | moai-foundation-core       | TRUST 5、SPEC-First TDD、智能体委派、令牌优化          | 2.2.0 |
-|                | moai-foundation-uiux       | 设计系统、组件、可访问性、图标、主题                 | 2.0.0 |
-|                | moai-foundation-quality    | 主动质量验证、自动测试、覆盖率                       | 2.0.0 |
-|                | moai-foundation-claude     | 智能体、斜杠命令、MCP、钩子、内存、IAM                 | 2.0.0 |
-| **Platform**   | moai-lang-unified          | 25+ 语言 (Python, TS, Go, Rust, Java, C++ 等)        | 2.0.0 |
-|                | moai-platform-baas         | 9+ BaaS (Auth0, Clerk, Firebase, Supabase 等)        | 2.0.0 |
-| **Library**    | moai-library-shadcn        | shadcn/ui, Radix, Tailwind, React 组件                | 2.0.0 |
-|                | moai-library-toon          | TOON 格式、令牌高效编码 (40-60% 节省)                | 3.0.0 |
-|                | moai-library-mermaid       | 21 种图表、Playwright MCP 渲染                       | 7.0.0 |
-| **Connector**  | moai-connector-mcp         | 10+ MCP 服务器集成指南                                | 2.0.0 |
-|                | moai-connector-figma       | 设计系统、UI 工具包、设计令牌                         | 1.0.0 |
-|                | moai-connector-notion      | 工作空间、数据库、内容管理                            | 1.0.0 |
-|                | moai-connector-nano-banana | Gemini 3 Pro 图像生成 (Text/Image-to-Image)          | 1.0.1 |
-| **Workflow**   | moai-workflow-project      | 项目管理、语言初始化、模板优化                        | 2.0.0 |
-|                | moai-workflow-docs         | Markdown/Mermaid/中文验证、报告生成                  | 2.0.0 |
-|                | moai-workflow-templates    | 代码样板、反馈模板                                    | 3.0.0 |
-|                | moai-workflow-testing      | Playwright E2E、视觉回归、跨浏览器                    | 2.0.0 |
-|                | moai-workflow-jit-docs     | 用户意图基础文档自动搜索 & 缓存                       | 2.0.0 |
-|                | moai-toolkit-essentials    | 调试、重构、优化、审查、分析                          | 2.0.0 |
-| **System**     | moai-system-universal      | 25+ 语言 + 9+ BaaS + 安全 + 合规集成                  | 2.0.0 |
+定义核心哲学和执行规则的基础技能。
 
-**使用频率**: Foundation (90%+), Platform (80%+), Workflow (85%), Connector (70%), Library (60%), System (40%)
+- **moai-foundation-core**
+  - TRUST 5、SPEC-First TDD、智能体委派模式、令牌优化
+  - 为所有 AI 驱动开发工作流提供执行规则
+
+- **moai-foundation-context**
+  - 具有令牌预算优化和状态持久化的企业级上下文管理
+  - 会话内存系统和高效令牌利用策略
+
+- **moai-foundation-claude**
+  - 符合 Claude Code 官方文档的技能编写套件
+  - 智能体、子智能体模板、斜杠命令、钩子、内存、IAM 规则
+
+- **moai-foundation-quality**
+  - TRUST 5 验证、主动分析、自动化最佳实践执行
+  - 企业级代码质量保证系统
+
+### 🎯 Domain（领域专业）
+
+为特定技术领域提供深度专业知识。
+
+- **moai-domain-backend**
+  - 框架无关的后端设计，13+ 框架专业知识
+  - API 设计、数据库集成、微服务架构
+
+- **moai-domain-frontend**
+  - 包括 React 19、Next.js 16、Vue 3.5 的现代 UI/UX 模式
+  - 组件架构、状态管理、响应式设计
+
+- **moai-domain-database**
+  - 包括 PostgreSQL、MongoDB、Redis 的数据库专业知识
+  - 查询性能优化、数据建模、数据库策略
+
+- **moai-domain-uiux**
+  - 企业设计系统、组件架构、可访问性
+  - WCAG 合规、设计令牌、图标、主题系统
+
+### 💻 Language（语言）
+
+支持各种编程语言和框架。
+
+- **moai-lang-python** - Python 3.13+ 用于 FastAPI、Django、async 模式、数据科学
+- **moai-lang-typescript** - React 19、Next.js 16 App Router、tRPC 类型安全 API、Zod 验证
+- **moai-lang-go** - Fiber、Gin、GORM 高性能微服务
+- **moai-lang-rust** - Axum、Tokio、SQLx 内存安全系统编程
+- **moai-lang-java** - Spring Boot 3.3、虚拟线程、Java 21 LTS 企业模式
+- **moai-lang-csharp** - C# 12/.NET 8 用于 ASP.NET Core、Entity Framework、Blazor
+- **moai-lang-swift** - iOS/macOS 开发用 SwiftUI、Combine、Swift 6 并发
+- **moai-lang-kotlin** - Kotlin 2.0 用于 Ktor、协程、Compose Multiplatform
+- **moai-lang-ruby** - Ruby 3.3+ 用于 Ruby on Rails 8、ActiveRecord、Hotwire/Turbo
+- **moai-lang-php** - PHP 8.3+ 用于 Laravel 11、Symfony 7、Eloquent ORM
+- **moai-lang-elixir** - Elixir 1.17+ 开发用 Phoenix 1.7、LiveView、Ecto
+- **moai-lang-scala** - Scala 3.4+ 用于 Akka、Cats Effect、ZIO、Spark
+- **moai-lang-cpp** - C++23/20 用 RAII、智能指针、概念、模块
+- **moai-lang-flutter** - Flutter 3.24+/Dart 3.5+ 开发用 Riverpod、go_router
+- **moai-lang-r** - R 4.4+ 数据分析用 tidyverse、ggplot2、Shiny
+
+### 🚀 Platform（平台）
+
+支持主要云平台和 BaaS 服务集成。
+
+- **moai-platform-supabase** - PostgreSQL 16、pgvector、RLS、实时订阅
+- **moai-platform-auth0** - SSO、SAML、OIDC、组织、B2B 多租户
+- **moai-platform-clerk** - WebAuthn、密钥、无密码认证
+- **moai-platform-neon** - 自动扩展、数据库分支、PITR
+- **moai-platform-firebase-auth** - 社交认证、电话认证、匿名登录
+- **moai-platform-firestore** - NoSQL 数据建模、实时同步、离线支持
+- **moai-platform-vercel** - Edge Functions、Next.js 优化、ISR
+- **moai-platform-railway** - Docker、多服务架构、持久卷
+- **moai-platform-convex** - TypeScript 优先响应式模式、乐观更新
+
+### 📋 Workflow（工作流）
+
+自动化和优化开发流程的工作流技能。
+
+- **moai-workflow-spec** - EARS 格式、需求澄清、Plan-Run-Sync 集成
+- **moai-workflow-testing** - TDD、调试、性能优化、代码审查集成
+- **moai-workflow-project** - 项目管理、文档化、语言初始化模块
+- **moai-workflow-templates** - 代码样板、反馈模板
+- **moai-workflow-jit-docs** - 用户意图基础智能文档搜索和缓存
+- **moai-workflow-docs** - Nextra 文档系统、技术写作、API 文档
+- **moai-worktree** - 并行 SPEC 开发的 Git worktree 管理
+
+### 📚 Library（库）
+
+特定库和框架的专业技能。
+
+- **moai-library-shadcn** - shadcn/ui、Radix、Tailwind CSS 专业实现指南
+- **moai-library-mermaid** - 使用 MCP Playwright 的企业 Mermaid 图表
+- **moai-library-nextra** - 基于 Next.js 的企业文档框架
+- **moai-formats-data** - TOON 编码、JSON/YAML 优化、数据验证
+
+### 🔌 MCP（Model Context Protocol）
+
+MCP 服务器集成的专业技能。
+
+- **moai-mcp-notion** - Notion MCP 集成用于工作空间管理和数据库操作
+- **moai-mcp-figma** - Figma MCP 集成用于设计系统提取和组件生成
+- **moai-ai-nano-banana** - 使用 Gemini 3 Nano Banana Pro 的图像生成
 
 ### 🎯 技能使用指南
 
@@ -1717,22 +1793,24 @@ MoAI-ADK 在 6 个类别中提供 **24 个专业技能**。每个技能可以独
 
 ```python
 # 方法 1: 直接调用 (开发者)
-Skill("moai-lang-unified")
+Skill("moai-lang-python")
 
 # 方法 2: Alfred 自动选择 (普通用户)
 "用 Python 创建 FastAPI 服务器"
-→ Alfred 自动选择 moai-lang-unified + moai-platform-baas
+→ Alfred 自动选择 moai-lang-python + moai-platform-supabase
 ```
 
 #### 技能组合模式
 
-**后端 API**: `moai-foundation-core` + `moai-lang-unified` + `moai-platform-baas`
+**后端 API**: `moai-foundation-core` + `moai-lang-python` + `moai-platform-supabase`
 
-**前端 UI**: `moai-foundation-uiux` + `moai-lang-unified` + `moai-library-shadcn`
+**前端 UI**: `moai-domain-uiux` + `moai-lang-typescript` + `moai-library-shadcn`
 
 **文档化**: `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`
 
-**测试**: `moai-lang-unified` + `moai-workflow-testing` + `moai-foundation-quality`
+**测试**: `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`
+
+**数据分析**: `moai-lang-r` + `moai-domain-database` + `moai-formats-data`
 
 ---
 
@@ -2688,7 +2766,7 @@ SOFTWARE.
 
 ### ❤️ by MoAI-ADK 团队创建
 
-**版本**: 0.31.0
+**版本**: 0.33.0
 **最后更新**: 2025-12-01
 **理念**: SPEC-First TDD + 智能体编排 + 85% Token 效率
 **MoAI**: MoAI 意为"所有人的 AI (Modu-ui AI)"。我们的目标是让每个人都能使用 AI。

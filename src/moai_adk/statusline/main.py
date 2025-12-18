@@ -145,6 +145,59 @@ def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
         return False, None
 
 
+def format_token_count(tokens: int) -> str:
+    """
+    Format token count for display (e.g., 15234 -> "15K").
+
+    Args:
+        tokens: Number of tokens
+
+    Returns:
+        Formatted string
+    """
+    if tokens >= 1000:
+        return f"{tokens // 1000}K"
+    return str(tokens)
+
+
+def extract_context_window(session_context: dict) -> str:
+    """
+    Extract and format context window usage from session context.
+
+    Args:
+        session_context: Context passed from Claude Code via stdin
+
+    Returns:
+        Formatted context window string (e.g., "15K/200K")
+    """
+    context_info = session_context.get("context_window", {})
+
+    if not context_info:
+        return ""
+
+    # Get context window size
+    context_size = context_info.get("context_window_size", 0)
+    if not context_size:
+        return ""
+
+    # Get current usage
+    current_usage = context_info.get("current_usage", {})
+    if current_usage:
+        # Calculate total current tokens
+        input_tokens = current_usage.get("input_tokens", 0)
+        cache_creation = current_usage.get("cache_creation_input_tokens", 0)
+        cache_read = current_usage.get("cache_read_input_tokens", 0)
+        current_tokens = input_tokens + cache_creation + cache_read
+    else:
+        # Fallback to total tokens
+        current_tokens = context_info.get("total_input_tokens", 0)
+
+    if current_tokens > 0:
+        return f"{format_token_count(current_tokens)}/{format_token_count(context_size)}"
+
+    return ""
+
+
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     """
     Build complete statusline string from all data sources.
@@ -157,6 +210,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     - MoAI-ADK version
     - Update checker
     - Output style
+    - Context window usage
 
     Args:
         session_context: Context passed from Claude Code via stdin
@@ -184,6 +238,9 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         # Extract output style from session context
         output_style = session_context.get("output_style", {}).get("name", "")
 
+        # Extract context window usage
+        context_window = extract_context_window(session_context)
+
         # Collect all information from local sources
         branch, git_status = safe_collect_git_info()
         duration = safe_collect_duration()
@@ -205,6 +262,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
             output_style=output_style,
             update_available=update_available,
             latest_version=latest_version,
+            context_window=context_window,
         )
 
         # Render statusline with labeled sections
