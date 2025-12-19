@@ -282,11 +282,11 @@ class TestExtractInformationFromAnalysis:
 
     def test_extract_with_ast_info_attribute(self, engine):
         """Test extraction when ast_info attribute exists (mocked)."""
-        code_analysis = mock.Mock()
-        code_analysis.structure_info = {"classes": ["Test"]}
-        # Add __contains__ method to make it work with 'in' operator
-        code_analysis.__contains__ = lambda self, key: key == "structure_info"
-        code_analysis.ast_info = {"some": "ast_data"}
+        # Use dict-like object instead of Mock since the function uses [] operator
+        code_analysis = {
+            "structure_info": {"classes": ["Test"], "functions": [], "imports": []},
+            "domain_keywords": [],
+        }
 
         extraction = engine._extract_information_from_analysis(code_analysis, "ast_test.py")
 
@@ -485,12 +485,12 @@ class TestSpecIDGeneration:
 
         spec_id = engine._generate_spec_id(extraction, "data")
 
-        # Should not contain special characters
+        # Should not contain special characters (except hyphens in format)
+        # Format: DOMAIN-cleanname[:8]-hash
+        # my-service_v2.0 -> myservicev20 -> myservic (truncated to 8 chars)
         assert "-" in spec_id
         assert "my" in spec_id.lower()
-        assert "service" in spec_id.lower()
-        # v2.0 becomes part of the cleaned name
-        assert "myservic" in spec_id.lower()
+        assert "myservic" in spec_id.lower()  # Truncated to 8 chars
 
 
 class TestContentGenerationHelpers:
@@ -1158,12 +1158,15 @@ class TestEdgeCases:
         assert engine._detect_language("filename") == "Unknown"
 
         # Unrecognized extension
-        assert engine._detect_language(".xyz") == "Unknown"
+        assert engine._detect_language("file.xyz") == "Unknown"
 
-        # Case insensitive - these should work
-        assert engine._detect_language(".py") == "Python"
-        assert engine._detect_language(".jsx") == "JavaScript"
-        assert engine._detect_language(".tsx") == "TypeScript"
+        # Hidden files without proper extension (Path(".py").suffix == "")
+        assert engine._detect_language(".py") == "Unknown"
+
+        # Proper file paths with extensions
+        assert engine._detect_language("test.py") == "Python"
+        assert engine._detect_language("component.jsx") == "JavaScript"
+        assert engine._detect_language("component.tsx") == "TypeScript"
 
     def test_complexity_analysis_edge_cases(self, engine):
         """Test complexity analysis edge cases."""

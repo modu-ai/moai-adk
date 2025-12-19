@@ -184,9 +184,19 @@ class TestWorktreeRegistryDataPersistence:
         with tempfile.TemporaryDirectory() as tmpdir:
             worktree_root = Path(tmpdir)
 
-            # Create first instance and add data
+            # Create first instance and add data with all required fields
+            # Required: spec_id, path, branch, created_at, last_accessed, status
             registry1 = WorktreeRegistry(worktree_root)
-            registry1._data = {"SPEC-001": {"spec_id": "SPEC-001", "path": "/test"}}
+            registry1._data = {
+                "SPEC-001": {
+                    "spec_id": "SPEC-001",
+                    "path": "/test",
+                    "branch": "feature/SPEC-001",
+                    "created_at": "2025-01-01T00:00:00Z",
+                    "last_accessed": "2025-01-01T00:00:00Z",
+                    "status": "active",
+                }
+            }
             registry1._save()
 
             # Create second instance and verify data persists
