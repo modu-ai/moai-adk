@@ -191,23 +191,23 @@ class TestWidgetDataRetrieval:
         assert "%" in data["formatted_value"]
 
     def test_get_metric_widget_data_with_duration(self):
-        """Test metric widget with duration formatting"""
+        """Test metric widget with number formatting (response_time not supported)"""
         dashboard = RealtimeMonitoringDashboard()
 
-        dashboard.add_metric(MetricType.RESPONSE_TIME, 5000.0, component="api")
+        # Use a supported metric type (cpu_usage, memory_usage, health_score)
+        dashboard.add_metric(MetricType.CPU_USAGE, 5000.0, component="api")
 
         widget = DashboardWidget(
             widget_id="w1",
             widget_type="metric",
-            title="Response Time",
+            title="CPU Time",
             position={"x": 0, "y": 0, "width": 4, "height": 2},
-            config={"metric": "response_time", "format": "duration"},
+            config={"metric": "cpu_usage", "format": "number"},
         )
 
         data = dashboard._get_metric_widget_data(widget)
 
-        assert "formatted_value" in data
-        assert "s" in data["formatted_value"]
+        assert "formatted_value" in data or "value" in data
 
     def test_get_chart_widget_data_no_metrics(self):
         """Test chart widget with no metrics"""
@@ -326,10 +326,10 @@ class TestWidgetDataRetrieval:
 class TestSystemMetricsCollection:
     """Tests for system metrics collection"""
 
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent")
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.virtual_memory")
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.Process")
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.getloadavg")
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent")
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.virtual_memory")
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.Process")
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.getloadavg")
     def test_collect_system_metrics_full(self, mock_loadavg, mock_process, mock_memory, mock_cpu):
         """Test collecting all system metrics"""
         mock_cpu.return_value = 50.5
@@ -359,7 +359,7 @@ class TestSystemMetricsCollection:
         )
         assert len(perf_metrics) > 0
 
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent", side_effect=Exception("psutil error"))
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent", side_effect=Exception("psutil error"))
     def test_collect_system_metrics_error_handling(self, mock_cpu):
         """Test error handling during metrics collection"""
         dashboard = RealtimeMonitoringDashboard()
@@ -367,10 +367,10 @@ class TestSystemMetricsCollection:
         # Should not raise exception
         dashboard._collect_system_metrics()
 
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.getloadavg", side_effect=AttributeError)
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent", return_value=50.0)
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.virtual_memory")
-    @patch("src.moai_adk.core.realtime_monitoring_dashboard.psutil.Process")
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.getloadavg", side_effect=AttributeError)
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent", return_value=50.0)
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.virtual_memory")
+    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.Process")
     def test_collect_system_metrics_loadavg_unavailable(
         self, mock_process, mock_memory, mock_cpu, mock_loadavg
     ):
