@@ -1,14 +1,38 @@
-# System & GitHub Integration Settings
-# MoAI system configuration and GitHub automation
+# System Settings (CLAUDE.md Reference)
+# This file configures MoAI system behavior
 
-moai:
-  version: "{{MOAI_VERSION}}"
-  update_check_frequency: daily
-  version_check:
+system:
+  # MoAI Version Information
+  moai:
+    version: "0.33.1"
+    version_check:
+      enabled: true
+      cache_ttl_hours: 24
+
+  # Session Management
+  session:
+    suppress_setup_messages: false
+    end:
+      enabled: true
+      metrics:
+        enabled: true
+        save_location: .moai/logs/sessions/
+      work_state:
+        enabled: true
+        save_location: .moai/memory/last-session-state.json
+      warnings:
+        uncommitted_changes: true
+
+  # Hook Execution Configuration
+  hooks:
+    timeout_ms: 15000
+    graceful_degradation: true        # Continue even if a hook fails
+
+  # Analytics Configuration
+  analytics:
     enabled: true
-    cache_ttl_hours: 24
 
-github:
-  enable_trust_5: true        # Include TRUST 5 in PR templates
-  auto_delete_branches: true  # Delete branches after merge
-  spec_git_workflow: develop_direct  # develop_direct, feature_branch, per_spec
+  # GitHub Integration
+  github:
+    enable_trust_5: true
+    spec_git_workflow: develop_direct

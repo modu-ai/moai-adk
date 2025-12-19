@@ -1,40 +1,35 @@
-# Git Strategy Settings
-# Workflow configuration for Manual/Personal/Team modes
+# Git Strategy Settings (CLAUDE.md Reference)
+# This file configures Git workflow behavior
 
 git_strategy:
-  mode: manual                # manual, personal, team
+  mode: manual                        # Options: manual, personal, team
+  workflow: github-flow
+  environment: local
+  github_integration: false
+  push_to_remote: false
 
-  # Manual Mode Settings (Local Git)
-  manual:
-    workflow: github-flow
-    environment: local
-    github_integration: false
-    auto_checkpoint: disabled
-    push_to_remote: false
+  # GitHub Profile
+  github_profile: "GoosLab"
 
-  # Personal Mode Settings (GitHub Individual)
-  personal:
-    workflow: github-flow
-    environment: github
-    github_integration: true
-    auto_branch: true
-    auto_commit: true
+  # Branch creation settings
+  branch_creation:
+    prompt_always: true               # Ask user for branch creation on every SPEC
+    auto_enabled: false               # Disabled for manual mode
+
+  # Automation settings
+  automation:
+    auto_branch: false
+    auto_commit: true                 # TDD and docs commits are automatic
     auto_pr: false
-    auto_push: true
-    branch_prefix: "feature/SPEC-"
-    main_branch: main
+    auto_push: false
 
-  # Team Mode Settings (GitHub Team)
-  team:
-    workflow: github-flow
-    environment: github
-    github_integration: true
-    auto_branch: true
-    auto_commit: true
-    auto_pr: true
-    auto_push: true
-    draft_pr: true
-    required_reviews: 1
-    branch_protection: true
-    feature_prefix: "feature/SPEC-"
-    main_branch: main
+  # Git hooks behavior
+  hooks:
+    pre_commit: enforce
+    pre_push: warn
+    commit_msg: warn
+
+  # Commit message style
+  commit_style:
+    format: conventional
+    scope_required: false

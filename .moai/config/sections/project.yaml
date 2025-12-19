@@ -1,13 +1,10 @@
-# Project Settings
-# Basic project metadata
+# Project Settings (CLAUDE.md Reference)
+# This file contains project metadata
 
 project:
-  name: ""                    # Project name
-  description: ""             # Project description
-  mode: development           # development, production, maintenance
-  locale: en_US               # Auto-derived from conversation_language
-  created_at: ""              # Auto-set during init
-  initialized: false          # Auto-set during init
-
-github:
-  profile_name: ""            # GitHub username (e.g., @GoosLab)
+  name: "MoAI-ADK"
+  description: "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Unified moai-core-* Skills"
+  type: "library"                     # Project type: web_app, mobile_app, cli_tool, library, data_science
+  mode: development
+  created_at: "2025-12-19T00:00:00Z"
+  initialized: true

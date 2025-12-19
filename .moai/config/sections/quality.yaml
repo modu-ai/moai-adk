@@ -1,15 +1,30 @@
-# Quality & Constitution Settings
-# TDD enforcement and report generation
+# Quality Settings (CLAUDE.md Reference)
+# This file configures TDD and quality assurance standards
 
-constitution:
-  enforce_tdd: true           # Require tests before implementation
-  test_coverage_target: 90    # Minimum test coverage percentage
-  principles:
-    simplicity:
-      max_projects: 5         # Maximum concurrent projects
+quality:
+  # Agent TDD Constitution
+  constitution:
+    enforce_tdd: true
+    test_coverage_target: 90
 
-report_generation:
-  enabled: true               # Enable report generation
-  auto_create: false          # Auto-create full reports (false = minimal)
-  warn_user: true             # Ask before generating reports
-  user_choice: Minimal        # Default: Minimal, Full, None
+  # TRUST 5 Quality Framework
+  trust5:
+    test_first: true                  # T: All implementation starts with tests
+    readable: true                    # R: Code must be clear and easy to understand
+    unified: true                     # U: Maintain consistent style across the project
+    secured: true                     # S: All code must pass security verification
+    trackable: true                   # T: All changes must be clearly trackable
+
+  # Linting and Formatting
+  linting:
+    enabled: true
+    tools:
+      - ruff
+      - mypy
+    auto_fix: true
+
+  # Security Scanning
+  security:
+    enabled: true
+    scan_dependencies: true
+    owasp_top10_check: true
