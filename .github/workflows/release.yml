@@ -283,19 +283,33 @@ jobs:
           # Add installation instructions
           release_body += f"""
 
-          ## Installation
+## Installation & Update
 
-          ```bash
-          # UV (Recommended)
-          uv add moai-adk=={version}
+### Fresh Install (uv tool - Recommended)
+```bash
+uv tool install moai-adk
+```
 
-          # pip
-          pip install moai-adk=={version}
-          ```
+### Update Existing Installation
+```bash
+uv tool upgrade moai-adk
+```
 
-          ---
-          🤖 MoAI-ADK Unified Release Pipeline
-          """
+### Alternative Methods
+```bash
+# Using uvx (no install needed)
+uvx moai-adk --help
+
+# Using pip
+pip install moai-adk=={version}
+
+# Add to project dependencies
+uv add moai-adk=={version}
+```
+
+---
+🤖 MoAI-ADK Unified Release Pipeline
+"""
 
           with open('release_notes.md', 'w', encoding='utf-8') as f:
               f.write(release_body)

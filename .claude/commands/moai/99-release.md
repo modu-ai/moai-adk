@@ -294,6 +294,21 @@ Create new CHANGELOG entry with format:
 
 [other sections as needed]
 
+## Installation & Update
+
+### Fresh Install (uv tool - Recommended)
+uv tool install moai-adk
+
+### Update Existing Installation
+uv tool upgrade moai-adk
+
+### Alternative Methods
+# Using uvx (no install needed)
+uvx moai-adk --help
+
+# Using pip
+pip install moai-adk==X.Y.Z
+
 ---
 
 # vX.Y.Z - [Korean Title] (YYYY-MM-DD)
@@ -310,6 +325,21 @@ Create new CHANGELOG entry with format:
 - [fix commits in Korean]
 
 [other sections as needed]
+
+## 설치 및 업데이트
+
+### 신규 설치 (uv tool - 권장)
+uv tool install moai-adk
+
+### 기존 설치 업데이트
+uv tool upgrade moai-adk
+
+### 대체 방법
+# uvx 사용 (설치 없이)
+uvx moai-adk --help
+
+# pip 사용
+pip install moai-adk==X.Y.Z
 
 ---
 ```
