@@ -69,10 +69,10 @@ jobs:
             CREATE_RELEASE="${{ github.event.inputs.create_release }}"
             TRIGGER_TYPE="manual"
           else
-            # Tag push trigger
+            # Tag push trigger - Deploy directly to Production PyPI
             TAG="${{ github.ref_name }}"
             VERSION="${TAG#v}"  # Remove 'v' prefix
-            ENVIRONMENT="test"  # Tag push always goes to test first
+            ENVIRONMENT="production"  # Tag push goes directly to production (1-person dev workflow)
             CREATE_RELEASE="true"
             TRIGGER_TYPE="tag"
           fi
