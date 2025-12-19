@@ -347,13 +347,17 @@ Claude Code에서:
 
 ### 💡 EARS 포맷의 5가지 유형
 
-| 유형             | 문법           | 예시                                            |
-| ---------------- | -------------- | ----------------------------------------------- |
-| **Ubiquitous**   | 항상 수행      | "시스템은 항상 로그를 기록해야 한다"            |
-| **Event-driven** | WHEN...THEN    | "사용자가 로그인할 때, 토큰을 발급한다"         |
-| **State-driven** | IF...THEN      | "계정이 활성 상태일 때, 로그인 허용"            |
-| **Unwanted**     | shall not      | "시스템은 평문 비밀번호를 저장하지 않아야 한다" |
-| **Optional**     | where possible | "가능하면 OAuth 로그인 제공"                    |
+EARS(Easy Approach to Requirements Syntax)는 2009년 Rolls-Royce의 Alistair Mavin 연구진이 IEEE 국제 요구사항 공학 컨퍼런스에서 발표한 표준으로, NASA와 항공우주 산업에서 널리 채택되었습니다. 2025년에는 AWS Kiro IDE와 GitHub Spec-Kit에서도 EARS를 공식 채택했습니다.
+
+| 유형             | 공식 영어 문법                                           | MoAI-ADK 한국어                                 |
+| ---------------- | -------------------------------------------------------- | ----------------------------------------------- |
+| **Ubiquitous**   | The [system] shall [response].                           | "시스템은 항상 [동작]해야 한다"                 |
+| **Event-driven** | **When** [event], the [system] shall [response].         | "WHEN [이벤트] THEN [동작]"                     |
+| **State-driven** | **While** [condition], the [system] shall [response].    | "IF [조건] THEN [동작]"                         |
+| **Optional**     | **Where** [feature exists], the [system] shall [response]. | "가능하면 [동작]을 제공한다"                    |
+| **Unwanted**     | **If** [undesired], then the [system] shall [response].  | "시스템은 [동작]하지 않아야 한다"               |
+
+> **참고**: MoAI-ADK는 한국어 개발 환경에 맞게 EARS 패턴을 적응시켰습니다. State-driven의 `While`을 `IF`로 변경한 것은 한국어에서 더 자연스럽기 때문입니다.
 
 ---
 

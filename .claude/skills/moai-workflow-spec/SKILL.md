@@ -39,6 +39,16 @@ Unwanted:      "시스템은 [동작]하지 않아야 한다" - Prohibition
 Optional:      "가능하면 [동작]을 제공한다" - Nice-to-have
 ```
 
+EARS Official Grammar (Industry Standard):
+
+| Type | English Pattern | Korean Adaptation |
+|------|----------------|-------------------|
+| Ubiquitous | The [system] shall [response]. | 시스템은 항상 [동작]해야 한다 |
+| Event-Driven | When [event], the [system] shall [response]. | WHEN [이벤트] THEN [동작] |
+| State-Driven | While [condition], the [system] shall [response]. | IF [조건] THEN [동작] |
+| Optional | Where [feature], the [system] shall [response]. | 가능하면 [동작] 제공 |
+| Unwanted | If [undesired], then the [system] shall [response]. | 시스템은 [동작]하지 않아야 한다 |
+
 When to Use:
 - Feature planning and requirement definition
 - SPEC document creation and maintenance
@@ -203,6 +213,21 @@ Alternative Approaches Section (SPEC Document):
 - Error Cases: Invalid inputs with error handling
 - Edge Cases: Boundary conditions and corner cases
 - Security Cases: Injection attacks, privilege escalation attempts
+
+### SPEC File Structure Options
+
+**Standard 3-File Structure:**
+- spec.md: EARS requirements and constraints
+- plan.md: Implementation approach and phases
+- acceptance.md: Gherkin acceptance criteria
+
+**Enhanced 4-File Structure (Complex SPECs):**
+- spec.md: EARS requirements (core specification)
+- design.md: Technical design (architecture, API, data model)
+- tasks.md: Implementation checklist with progress tracking
+- acceptance.md: Gherkin acceptance criteria (Given-When-Then)
+
+See [reference.md](reference.md) for detailed templates of each file type.
 
 ### SPEC Document Structure
 
@@ -406,6 +431,16 @@ Validation Checklist:
 - All error cases documented
 - Performance targets quantified
 - Security requirements OWASP-compliant
+
+### Industry Alignment (2025)
+
+MoAI-ADK SPEC workflow aligns with industry-leading specification tools:
+
+- AWS Kiro IDE: requirements.md, design.md, tasks.md
+- GitHub Spec-Kit: spec.md, plan.md, tasks.md, constitution.md
+- MoAI-ADK: spec.md, plan.md, acceptance.md (+ design.md, tasks.md optional)
+
+The 4-file structure provides compatibility with modern AI-assisted development workflows while maintaining flexibility for simpler projects using the standard 3-file approach.
 
 ### Works Well With
 

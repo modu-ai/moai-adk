@@ -312,6 +312,25 @@ moai-worktree status --team-overview
 
 ### Advanced Synchronization Strategies
 
+Batch Synchronization:
+When developing multiple SPECs in parallel, use batch sync to keep all worktrees updated:
+```bash
+# Sync all worktrees with auto-resolve
+moai-worktree sync --all --auto-resolve
+
+# Daily best practice workflow
+moai-worktree status          # Check all worktree states
+moai-worktree sync --all      # Sync all (manual conflict resolution)
+```
+
+How batch sync works:
+1. Queries all active worktrees from the registry
+2. Performs git merge or git rebase from main branch for each worktree
+3. With `--auto-resolve`: Automatically resolves simple conflicts (different regions of same file)
+4. Complex conflicts: Skips that worktree and notifies user of manual intervention needed
+
+Use cases: After large-scale refactoring, daily routine before work, weekly maintenance.
+
 Selective Sync Patterns:
 ```bash
 # Sync only specific files

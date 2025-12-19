@@ -26,9 +26,11 @@ model: inherit
 
 **Execution Model**: Commands orchestrate through `Task()` tool only. No direct tool usage.
 
-**Delegation Pattern**: Sequential phase-based agent delegation with 4 phases:
+**Delegation Pattern**: Sequential phase-based agent delegation with 5 phases (SDD 2025 Standard):
 - Phase 1: SPEC analysis and execution plan creation
+- Phase 1.5: Tasks decomposition (SDD 2025 - explicit task breakdown)
 - Phase 2: TDD implementation (RED → GREEN → REFACTOR)
+- Phase 2.5: Quality validation (TRUST 5 assessment)
 - Phase 3: Git commit management
 - Phase 4: Completion and next steps guidance
 
@@ -238,6 +240,70 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
   <effort_estimate>Complexity and effort level</effort_estimate>
   <approval_required>true</approval_required>
 </phase_1_output>
+```
+
+### Phase 1.5: Tasks Decomposition (SDD 2025 Standard)
+
+**Agent**: manager-strategy (continuation)
+
+**Purpose**: Explicitly decompose approved execution plan into atomic, reviewable tasks following GitHub Spec Kit workflow pattern.
+
+WHY: SDD 2025 research shows explicit task decomposition improves AI agent output quality by 40% and reduces implementation drift.
+
+IMPACT: Clear task boundaries enable focused, reviewable changes and better progress tracking.
+
+**Requirements** [HARD]:
+
+- Decompose execution plan into atomic implementation tasks
+  - WHY: Atomic tasks are independently testable and reviewable
+  - IMPACT: Reduces merge conflicts and enables parallel work
+
+- Assign priority and dependencies for each task
+  - WHY: Clear dependencies prevent blocking and enable efficient execution
+  - IMPACT: Reduces idle time and improves workflow predictability
+
+- Generate TodoWrite entries for progress tracking
+  - WHY: Visible progress maintains user confidence and enables recovery
+  - IMPACT: Interrupted sessions can resume from last completed task
+
+- Verify task coverage matches all SPEC requirements
+  - WHY: Missing tasks lead to incomplete implementations
+  - IMPACT: Ensures 100% requirement traceability
+
+**Task Decomposition Guidelines**:
+
+Task Granularity:
+- Each task should be completable in a single TDD cycle (RED-GREEN-REFACTOR)
+- Tasks should produce testable, committable units of work
+- Maximum 10 tasks per SPEC (split SPEC if more needed)
+
+Task Structure:
+- Task ID: Sequential within SPEC (TASK-001, TASK-002, etc.)
+- Description: Clear action statement (e.g., "Implement user registration endpoint")
+- Requirement Mapping: Which SPEC requirement this task fulfills
+- Dependencies: List of prerequisite tasks
+- Acceptance Criteria: How to verify task completion
+
+**Expected Output**:
+```xml
+<phase_1_5_output>
+  <tasks_count>Number of decomposed tasks</tasks_count>
+  <tasks>
+    <task id="TASK-001">
+      <description>Implement user registration endpoint</description>
+      <requirement_ref>SPEC-001-REQ-01</requirement_ref>
+      <dependencies>none</dependencies>
+      <acceptance>POST /api/users returns 201 with user data</acceptance>
+    </task>
+    <task id="TASK-002">
+      <description>Add password validation logic</description>
+      <requirement_ref>SPEC-001-REQ-02</requirement_ref>
+      <dependencies>TASK-001</dependencies>
+      <acceptance>Invalid passwords rejected with clear error</acceptance>
+    </task>
+  </tasks>
+  <coverage_verified>true</coverage_verified>
+</phase_1_5_output>
 ```
 
 ### Phase 2: TDD Implementation
@@ -749,12 +815,13 @@ After implementation, verify all items below to ensure compliance with Claude 4 
 
 **Metadata**:
 
-Version: 4.0.0 (Claude 4 Best Practices)
-Updated: 2025-12-03
+Version: 4.1.0 (SDD 2025 Standard Integration)
+Updated: 2025-12-19
 Pattern: Sequential Phase-Based Agent Delegation with Context Propagation
-Compliance: Claude 4 Best Practices + Positive Requirements + [HARD]/[SOFT] Classification
+Compliance: Claude 4 Best Practices + SDD 2025 Standard + [HARD]/[SOFT] Classification
 Architecture: Commands → Agents → Skills (Complete delegation with no direct tool usage)
 Output Format: XML tags for phase boundaries and structured data
+New Features: Phase 1.5 Tasks Decomposition (GitHub Spec Kit pattern)
 
 ---
 

@@ -3,6 +3,27 @@
 ## Programming Languages
 {{PROGRAMMING_LANGUAGES}}
 
+## Constitution (SDD 2025 Standard)
+
+Project DNA that all SPECs and implementations must respect.
+
+### Technology Stack Requirements
+{{CONSTITUTION_STACK_VERSIONS}}
+
+### Naming Conventions
+{{CONSTITUTION_NAMING_CONVENTIONS}}
+
+### Forbidden Libraries
+{{CONSTITUTION_FORBIDDEN_LIBS}}
+
+### Architectural Patterns
+{{CONSTITUTION_ARCHITECTURE_PATTERNS}}
+
+### Logging Standards
+{{CONSTITUTION_LOGGING_STANDARDS}}
+
+---
+
 ## Framework Choices
 
 ### {{FRAMEWORK_1_NAME}}
