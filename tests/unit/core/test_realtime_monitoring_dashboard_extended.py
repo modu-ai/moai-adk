@@ -326,10 +326,10 @@ class TestWidgetDataRetrieval:
 class TestSystemMetricsCollection:
     """Tests for system metrics collection"""
 
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent")
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.virtual_memory")
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.Process")
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.getloadavg")
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.Process")
+    @patch("psutil.getloadavg")
     def test_collect_system_metrics_full(self, mock_loadavg, mock_process, mock_memory, mock_cpu):
         """Test collecting all system metrics"""
         mock_cpu.return_value = 50.5
@@ -359,7 +359,7 @@ class TestSystemMetricsCollection:
         )
         assert len(perf_metrics) > 0
 
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent", side_effect=Exception("psutil error"))
+    @patch("psutil.cpu_percent", side_effect=Exception("psutil error"))
     def test_collect_system_metrics_error_handling(self, mock_cpu):
         """Test error handling during metrics collection"""
         dashboard = RealtimeMonitoringDashboard()
@@ -367,10 +367,10 @@ class TestSystemMetricsCollection:
         # Should not raise exception
         dashboard._collect_system_metrics()
 
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.getloadavg", side_effect=AttributeError)
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.cpu_percent", return_value=50.0)
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.virtual_memory")
-    @patch("moai_adk.core.realtime_monitoring_dashboard.psutil.Process")
+    @patch("psutil.getloadavg", side_effect=AttributeError)
+    @patch("psutil.cpu_percent", return_value=50.0)
+    @patch("psutil.virtual_memory")
+    @patch("psutil.Process")
     def test_collect_system_metrics_loadavg_unavailable(
         self, mock_process, mock_memory, mock_cpu, mock_loadavg
     ):
