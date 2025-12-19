@@ -1232,9 +1232,24 @@ class TestDashboardManager:
         """Test listing dashboards"""
         manager = DashboardManager()
 
+        # Create a dashboard first
+        widget = DashboardWidget(
+            widget_id="test_widget",
+            widget_type="metric",
+            title="Test",
+            position={"x": 0, "y": 0, "width": 4, "height": 2},
+            config={},
+        )
+        manager.create_dashboard(
+            name="Test Dashboard",
+            description="Test",
+            dashboard_type=DashboardType.SYSTEM_OVERVIEW,
+            widgets=[widget],
+        )
+
         dashboards = manager.list_dashboards()
 
-        # Should include default dashboards
+        # Should include created dashboard
         assert len(dashboards) > 0
 
     def test_list_dashboards_by_type(self):

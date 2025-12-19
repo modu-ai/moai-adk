@@ -208,7 +208,7 @@ class MetricsCollector:
         self.metrics_buffer: Dict[str, deque] = defaultdict(lambda: deque(maxlen=buffer_size))
         self.aggregated_metrics: Dict[str, Dict[str, Any]] = defaultdict(dict)
         self.tenant_metrics: Dict[str, Dict[str, deque]] = defaultdict(lambda: defaultdict(deque))
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._last_cleanup = datetime.now()
 
     def add_metric(self, metric: MetricData) -> None:
@@ -437,7 +437,7 @@ class AlertManager:
         self.alert_history: List[Alert] = []
         self.alert_callbacks: List[Callable[[Alert], None]] = []
         self.tenant_alerts: Dict[str, Dict[str, Alert]] = defaultdict(dict)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def add_alert_rule(
         self,
@@ -706,7 +706,7 @@ class DashboardManager:
         self.dashboards: Dict[str, Dashboard] = {}
         self.tenant_dashboards: Dict[str, Dict[str, Dashboard]] = defaultdict(dict)
         self.default_dashboards: Dict[str, Dashboard] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         # Create default dashboards
         self._create_default_dashboards()
