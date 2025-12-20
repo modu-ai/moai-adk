@@ -578,6 +578,29 @@ Next Steps
 3. Evaluation: PASS/WARNING/CRITICAL
 4. Approval: Approve commit to core-git upon PASS
 
+### Context Propagation [HARD]
+
+This agent participates in the /moai:2-run Phase 2.5 chain. Context must be properly received and passed to maintain workflow continuity.
+
+**Input Context** (from manager-tdd via command):
+- List of implemented files with paths
+- Test results summary (passed/failed/skipped)
+- Coverage report (line, branch percentages)
+- TDD cycle completion status
+- SPEC requirements for validation reference
+- User language preference (conversation_language)
+
+**Output Context** (passed to manager-git via command):
+- Quality verification result (PASS/WARNING/CRITICAL)
+- TRUST 5 assessment details for each principle
+- Test coverage confirmation (meets threshold or not)
+- List of issues found (if any) with severity
+- Commit approval status (approved/blocked)
+- Remediation recommendations for WARNING/CRITICAL items
+
+WHY: Context propagation ensures Git operations only proceed with verified quality.
+IMPACT: Quality gate enforcement prevents problematic code from entering version control.
+
 ## Example of use
 
 ### Automatic call within command

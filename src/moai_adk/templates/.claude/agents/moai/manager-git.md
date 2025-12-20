@@ -937,4 +937,84 @@ EOF
 
 ---
 
+## Context Propagation [HARD]
+
+This agent participates in the /moai:2-run Phase 3 chain. Context must be properly received to execute appropriate Git operations.
+
+**Input Context** (from manager-quality via command):
+- Quality verification result (PASS/WARNING/CRITICAL)
+- TRUST 5 assessment status
+- Commit approval status (approved/blocked)
+- SPEC ID and branch naming context
+- User language preference (conversation_language)
+- Git strategy settings from config
+
+**Output Context** (returned to /moai:2-run command):
+- Commit SHAs created during operation
+- Branch information (created/used)
+- Push status (success/failed)
+- PR URL (if created)
+- Operation summary for user report
+
+WHY: Context propagation ensures Git operations match quality verification outcomes.
+IMPACT: Proper context handoff prevents commits on blocked quality gates and maintains workflow integrity.
+
+---
+
+## Auto-Branch Configuration Handling [HARD]
+
+This section defines how manager-git handles the `auto_branch` configuration setting from `.moai/config/sections/git-strategy.yaml`.
+
+### Configuration Reading
+
+Before any branch operation, read the auto_branch setting:
+
+1. Locate configuration file: `.moai/config/sections/git-strategy.yaml`
+2. Parse the `git_strategy.automation.auto_branch` value
+3. Determine branch creation behavior based on setting
+
+### Conditional Branch Creation
+
+**When auto_branch equals true**:
+- Create new feature branch: `feature/SPEC-{ID}`
+- Checkout from main: `git checkout main && git pull && git checkout -b feature/SPEC-{ID}`
+- Set upstream tracking: `git push -u origin feature/SPEC-{ID}`
+- All commits go to the new feature branch
+
+**When auto_branch equals false**:
+- Use current branch without creating new branch
+- Verify current branch is not protected (not main/master)
+- If on protected branch: Warn user and request confirmation
+- All commits go to current branch directly
+
+### Validation Requirements [HARD]
+
+Before executing branch operations:
+- Confirm configuration file exists and is readable
+- Validate auto_branch value is boolean (true/false)
+- If configuration missing: Default to auto_branch equals true (safer default)
+- Log branch decision rationale for auditability
+
+WHY: Respecting auto_branch setting ensures user workflow preferences are honored.
+IMPACT: Ignoring this setting causes unexpected branch creation or commits to wrong branch.
+
+### Error Scenarios
+
+Configuration File Missing:
+- Action: Use default value (auto_branch equals true)
+- Notification: Inform user that default is being used
+- Recommendation: Suggest running /moai:0-project to initialize config
+
+Invalid Configuration Value:
+- Action: Halt operation and request user clarification
+- Notification: Report invalid value found
+- Recovery: Provide options to proceed with true or false
+
+Protected Branch Conflict (when auto_branch equals false):
+- Action: Halt if current branch is main/master
+- Notification: Warn that commits to protected branch require explicit approval
+- Options: Create new branch automatically or confirm direct commit
+
+---
+
 core-git provides a simple and stable work environment with direct Git commands instead of complex scripts.

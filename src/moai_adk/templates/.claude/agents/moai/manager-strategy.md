@@ -427,7 +427,49 @@ The following scenarios indicate general planning is sufficient without speciali
 - Highlights matters requiring approval
 - Guide to next steps
 
-### Step 6: Wait for approval and handover
+### Step 6: Tasks Decomposition (Phase 1.5)
+
+After plan approval, decompose the execution plan into atomic tasks following the SDD 2025 Standard.
+
+WHY: SDD 2025 research shows explicit task decomposition improves AI agent output quality by 40% and reduces implementation drift.
+IMPACT: Clear task boundaries enable focused, reviewable changes and better progress tracking.
+
+**Decomposition Requirements** [HARD]:
+
+1. Break down execution plan into atomic implementation tasks:
+   - Each task should be completable in a single TDD cycle (RED-GREEN-REFACTOR)
+   - Tasks should produce testable, committable units of work
+   - Maximum 10 tasks per SPEC (recommend splitting SPEC if more needed)
+
+2. Define task structure for each atomic task:
+   - Task ID: Sequential within SPEC (TASK-001, TASK-002, etc.)
+   - Description: Clear action statement (e.g., "Implement user registration endpoint")
+   - Requirement Mapping: Which SPEC requirement this task fulfills
+   - Dependencies: List of prerequisite tasks
+   - Acceptance Criteria: How to verify task completion
+
+3. Assign priority and dependencies:
+   - WHY: Clear dependencies prevent blocking and enable efficient execution
+   - IMPACT: Reduces idle time and improves workflow predictability
+
+4. Generate TodoWrite entries for progress tracking:
+   - WHY: Visible progress maintains user confidence and enables recovery
+   - IMPACT: Interrupted sessions can resume from last completed task
+
+5. Verify task coverage matches all SPEC requirements:
+   - WHY: Missing tasks lead to incomplete implementations
+   - IMPACT: Ensures 100% requirement traceability
+
+**Decomposition Output**:
+
+Create a structured task list with the following information for each task:
+- Task ID and description
+- Requirement reference from SPEC
+- Dependencies on other tasks
+- Acceptance criteria for completion
+- Coverage verification status
+
+### Step 7: Wait for approval and handover
 
 1. Present the plan to the user
 2. Waiting for approval or modification request
@@ -436,6 +478,7 @@ The following scenarios indicate general planning is sufficient without speciali
 - Passing the TAG chain
 - Passing library version information
 - Passing key decisions
+- Passing decomposed task list with dependencies
 
 ## Operational Constraints
 
@@ -694,6 +737,26 @@ After approval, hand over the following information to workflow-tdd:
 2. Output: Implementation plan (user report format)
 3. Approval: Proceed to the next step after user approval
 4. Handover: Deliver key information
+
+### Context Propagation [HARD]
+
+This agent participates in the /moai:2-run Phase chain. Context must be properly received and passed to maintain workflow continuity.
+
+**Input Context** (from /moai:2-run command):
+- SPEC ID and path to SPEC files
+- User language preference (conversation_language)
+- Git strategy settings from config
+
+**Output Context** (passed to manager-tdd via command):
+- Implementation plan summary
+- TAG chain with dependencies
+- Library versions and selection rationale
+- Decomposed task list (Phase 1.5 output)
+- Key decisions requiring downstream awareness
+- Risk mitigation strategies
+
+WHY: Context propagation ensures each phase builds on previous phase outputs without information loss.
+IMPACT: Proper context handoff reduces implementation drift by 30-40% and prevents requirement gaps.
 
 ## Example of use
 

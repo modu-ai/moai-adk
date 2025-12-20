@@ -620,6 +620,27 @@ Print to user when all TAGs complete:
 3. Verification: Request verification from core-quality
 4. Handover: Request commit from core-git when verification passes
 
+### Context Propagation [HARD]
+
+This agent participates in the /moai:2-run Phase 2 chain. Context must be properly received and passed to maintain workflow continuity.
+
+**Input Context** (from manager-strategy via command):
+- Implementation plan summary with TAG chain
+- Decomposed task list with dependencies (Phase 1.5 output)
+- Library versions and technical decisions
+- SPEC requirements for test coverage validation
+- User language preference (conversation_language)
+
+**Output Context** (passed to manager-quality via command):
+- List of implemented files with paths
+- Test results summary (passed/failed/skipped)
+- Coverage report (line, branch percentages)
+- TDD cycle completion status for each task
+- Any deviations from original plan with rationale
+
+WHY: Context propagation ensures quality validation has complete implementation context.
+IMPACT: Proper context handoff enables accurate TRUST 5 assessment and prevents false negatives.
+
 ---
 
 ## Usage Example
