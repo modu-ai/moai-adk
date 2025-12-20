@@ -817,13 +817,9 @@ moai-worktree new SPEC-AUTH-001
 **Step 2: Navigate to Worktree and Start Development**
 
 ```bash
-# Navigate to worktree (recommended method)
+# Navigate to worktree (opens new shell)
 moai-worktree go SPEC-AUTH-001
-# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
-
-# Or navigate directly in new shell
-moai-worktree switch SPEC-AUTH-001
-# → Navigate to worktree in new terminal
+# → Opens new shell in ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 ```
 
 **Step 3: Develop in Isolated Environment**
@@ -974,9 +970,8 @@ moai-worktree status                  # Detailed status check
 moai-worktree sync SPEC-AUTH-001      # Sync specific worktree
 moai-worktree sync --all              # Sync all worktrees
 
-# Worktree navigation and work
-moai-worktree go SPEC-001     # Navigate in current shell
-moai-worktree switch SPEC-001         # Open worktree in new shell
+# Worktree navigation
+moai-worktree go SPEC-001             # Open worktree in new shell
 
 # Automatic conflict resolution
 moai-worktree sync SPEC-AUTH-001 --auto-resolve
@@ -1011,8 +1006,7 @@ This section details direct commands that can be used alongside Claude Code auto
 | ---------------------- | --------------------------- | ----------------------------------- | -------------------------------------------- |
 | `moai-worktree new`    | Create new worktree         | `moai-worktree new SPEC-001`    | Create isolated workspace for SPEC-001       |
 | `moai-worktree list`   | List worktrees              | `moai-worktree list`            | Display all active worktrees                  |
-| `moai-worktree go`     | Navigate to worktree        | `moai-worktree go SPEC-001`     | Navigate to worktree in current shell        |
-| `moai-worktree switch` | Open worktree in new shell  | `moai-worktree switch SPEC-001` | Navigate to worktree in new terminal        |
+| `moai-worktree go`     | Go to worktree              | `moai-worktree go SPEC-001`     | Open worktree in new shell                   |
 | `moai-worktree remove` | Remove worktree             | `moai-worktree remove SPEC-001` | Delete specific worktree                     |
 | `moai-worktree status` | Check status                | `moai-worktree status`          | Display all worktree statuses                |
 
@@ -1371,11 +1365,8 @@ moai-worktree new SPEC-001
 # List all active worktrees
 moai-worktree list
 
-# Navigate to specific worktree
+# Go to worktree (opens new shell)
 moai-worktree go SPEC-001
-
-# Switch to worktree (open new shell)
-moai-worktree switch SPEC-001
 
 # Sync worktree with base branch
 moai-worktree sync SPEC-001
@@ -2258,8 +2249,8 @@ moai worktree create SPEC-001 feature/user-auth
 # List all worktrees
 moai worktree list
 
-# Switch between worktrees
-moai worktree switch SPEC-001
+# Go to worktree
+moai worktree go SPEC-001
 
 # Remove completed worktree
 moai worktree remove SPEC-001
@@ -2287,8 +2278,8 @@ cd ~/project-worktrees/SPEC-001
 > /moai:2-run SPEC-001
 # ... implement authentication ...
 
-# Switch back to main for new feature
-moai worktree switch main
+# Go back to main for new feature
+moai worktree go main
 > /moai:1-plan "user dashboard"     # Creates SPEC-002
 ```
 

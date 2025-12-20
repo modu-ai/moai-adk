@@ -25,12 +25,13 @@ except ImportError:
 console = Console()
 
 
-def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None) -> WorktreeManager:
+def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None, project_name: str | None = None) -> WorktreeManager:
     """Get or create a WorktreeManager instance.
 
     Args:
         repo_path: Path to Git repository. Defaults to current directory.
         worktree_root: Root directory for worktrees. Auto-detects optimal location.
+        project_name: Project name for namespace organization. Auto-detected from repo if not provided.
 
     Returns:
         WorktreeManager instance.
@@ -53,7 +54,11 @@ def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None
     if worktree_root is None:
         worktree_root = _detect_worktree_root(repo_path)
 
-    return WorktreeManager(repo_path=repo_path, worktree_root=worktree_root)
+    # 3. Auto-detect project_name if not specified
+    if project_name is None:
+        project_name = repo_path.name
+
+    return WorktreeManager(repo_path=repo_path, worktree_root=worktree_root, project_name=project_name)
 
 
 def _detect_worktree_root(repo_path: Path) -> Path:
@@ -193,8 +198,7 @@ def new_worktree(
         console.print(f"  Status:     {info.status}")
         console.print()
         console.print("[yellow]Next steps:[/yellow]")
-        console.print(f"  moai-worktree switch {spec_id}   # Switch to this worktree")
-        console.print(f"  moai-worktree go {spec_id}       # Get cd command")
+        console.print(f"  moai-worktree go {spec_id}       # Go to this worktree")
 
     except WorktreeExistsError as e:
         console.print(f"[red]✗[/red] {e}")
@@ -260,15 +264,15 @@ def list_worktrees(format: str, repo: str | None, worktree_root: str | None) -> 
         raise click.Abort()
 
 
-@worktree.command(name="switch")
+@worktree.command(name="go")
 @click.argument("spec_id")
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
 @click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def switch_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> None:
-    """Switch to a worktree (opens new shell).
+def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> None:
+    """Go to a worktree (opens new shell).
 
     Args:
-        spec_id: SPEC ID to switch to
+        spec_id: SPEC ID to go to
         repo: Repository path (optional)
         worktree_root: Worktree root directory (optional)
     """
@@ -291,7 +295,7 @@ def switch_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -
         subprocess.call([shell], cwd=str(info.path))
 
     except Exception as e:
-        console.print(f"[red]✗[/red] Error switching worktree: {e}")
+        console.print(f"[red]✗[/red] Error: {e}")
         raise click.Abort()
 
 
@@ -367,39 +371,6 @@ def status_worktrees(repo: str | None, worktree_root: str | None) -> None:
 
     except Exception as e:
         console.print(f"[red]✗[/red] Error getting status: {e}")
-        raise click.Abort()
-
-
-@worktree.command(name="go")
-@click.argument("spec_id")
-@click.option("--repo", type=click.Path(), default=None, help="Repository path")
-@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
-def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> None:
-    """Print cd command for shell eval.
-
-    Usage: eval $(moai-worktree go SPEC-001)
-
-    Args:
-        spec_id: SPEC ID to navigate to
-        repo: Repository path (optional)
-        worktree_root: Worktree root directory (optional)
-    """
-    try:
-        repo_path = Path(repo) if repo else Path.cwd()
-        wt_root = Path(worktree_root) if worktree_root else None
-
-        manager = get_manager(repo_path, wt_root)
-        info = manager.registry.get(spec_id)
-
-        if not info:
-            console.print(f"[red]✗[/red] Worktree not found: {spec_id}")
-            raise click.Abort()
-
-        # Print cd command that can be eval'd
-        click.echo(f"cd {info.path}")
-
-    except Exception as e:
-        console.print(f"[red]✗[/red] Error: {e}")
         raise click.Abort()
 
 

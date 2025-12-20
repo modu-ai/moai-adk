@@ -18,23 +18,26 @@ from moai_adk.cli.worktree.registry import WorktreeRegistry
 
 
 class WorktreeManager:
-    """Manages Git worktrees for parallel SPEC development.
+    """Manages Git worktrees for parallel SPEC development with project namespace support.
 
     This class provides high-level operations for creating, removing,
     switching, and maintaining Git worktrees. It integrates with
     GitPython for Git operations and WorktreeRegistry for metadata
-    persistence.
+    persistence. Worktrees are organized by project name namespace to
+    support multiple projects: /worktrees/{project-name}/{SPEC-ID}
     """
 
-    def __init__(self, repo_path: Path, worktree_root: Path) -> None:
+    def __init__(self, repo_path: Path, worktree_root: Path, project_name: str | None = None) -> None:
         """Initialize the worktree manager.
 
         Args:
             repo_path: Path to the main Git repository.
             worktree_root: Root directory for all worktrees.
+            project_name: Project name for namespace organization. Defaults to repo directory name.
         """
         self.repo = Repo(repo_path)
         self.worktree_root = Path(worktree_root)
+        self.project_name = project_name or repo_path.name
         self.registry = WorktreeRegistry(self.worktree_root)
 
     def create(
@@ -77,8 +80,8 @@ class WorktreeManager:
         if branch_name is None:
             branch_name = f"feature/{spec_id}"
 
-        # Create worktree path
-        worktree_path = self.worktree_root / spec_id
+        # Create worktree path with project_name namespace
+        worktree_path = self.worktree_root / self.project_name / spec_id
 
         try:
             # Create parent directory if needed

@@ -821,13 +821,9 @@ moai-worktree new SPEC-AUTH-001
 **2단계: 워크트리로 이동하여 개발 시작**
 
 ```bash
-# 워크트리로 이동 (추천 방식)
+# 워크트리로 이동 (새 쉘 열기)
 moai-worktree go SPEC-AUTH-001
-# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
-
-# 또는 새 쉘에서 직접 이동
-moai-worktree switch SPEC-AUTH-001
-# → 새 터미널 창에서 워크트리로 이동
+# → ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001에서 새 쉘 열림
 ```
 
 **3단계: 격리된 환경에서 개발**
@@ -978,9 +974,8 @@ moai-worktree status                  # 상세 상태 확인
 moai-worktree sync SPEC-AUTH-001      # 특정 워크트리 동기화
 moai-worktree sync --all              # 모든 워크트리 동기화
 
-# 워크트리 이동 및 작업
-moai-worktree go SPEC-001     # 현재 셸에서 이동
-moai-worktree switch SPEC-001         # 새 셸에서 워크트리 열기
+# 워크트리 이동
+moai-worktree go SPEC-001             # 새 셸에서 워크트리 열기
 
 # 충돌 자동 해결
 moai-worktree sync SPEC-AUTH-001 --auto-resolve
@@ -1015,8 +1010,7 @@ moai-worktree clean --merged-only           # 완료된 워크트리 정리
 | ---------------------- | ----------------------- | ------------------------------- | ------------------------------------ |
 | `moai-worktree new`    | 새 워크트리 생성        | `moai-worktree new SPEC-001`    | SPEC-001을 위한 격리된 작업공간 생성 |
 | `moai-worktree list`   | 워크트리 목록           | `moai-worktree list`            | 모든 활성 워크트리 표시              |
-| `moai-worktree go`     | 워크트리 이동           | `moai-worktree go SPEC-001`     | 현재 셸에서 워크트리로 이동          |
-| `moai-worktree switch` | 새 셸에서 워크트리 열기 | `moai-worktree switch SPEC-001` | 새 터미널에서 워크트리로 이동        |
+| `moai-worktree go`     | 워크트리 이동           | `moai-worktree go SPEC-001`     | 새 셸에서 워크트리로 이동            |
 | `moai-worktree remove` | 워크트리 제거           | `moai-worktree remove SPEC-001` | 특정 워크트리 삭제                   |
 | `moai-worktree status` | 상태 확인               | `moai-worktree status`          | 모든 워크트리 상태 표시              |
 
