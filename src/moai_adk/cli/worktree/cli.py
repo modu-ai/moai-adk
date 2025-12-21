@@ -25,7 +25,11 @@ except ImportError:
 console = Console()
 
 
-def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None, project_name: str | None = None) -> WorktreeManager:
+def get_manager(
+    repo_path: Path | None = None,
+    worktree_root: Path | None = None,
+    project_name: str | None = None,
+) -> WorktreeManager:
     """Get or create a WorktreeManager instance.
 
     Args:
