@@ -1,7 +1,7 @@
 """Tests for moai_adk.core.unified_permission_manager module."""
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestUnifiedPermissionManager:
@@ -18,14 +18,16 @@ class TestUnifiedPermissionManager:
         except ImportError:
             pytest.skip("Module not available")
 
-    def test_permission_manager_instantiation(self):
+    def test_permission_manager_instantiation(self, tmp_path):
         """Test permission manager can be instantiated."""
         try:
             from moai_adk.core.unified_permission_manager import (
                 UnifiedPermissionManager,
             )
 
-            manager = UnifiedPermissionManager()
+            # Use tmp_path to avoid modifying real settings.json
+            config_path = tmp_path / "settings.json"
+            manager = UnifiedPermissionManager(config_path=str(config_path))
             assert manager is not None
         except (ImportError, Exception):
             pytest.skip("Module or dependencies not available")
@@ -41,8 +43,10 @@ class TestPermissionChecks:
                 UnifiedPermissionManager,
             )
 
-            manager = UnifiedPermissionManager()
-            assert hasattr(manager, "has_permission")
+            with patch.object(UnifiedPermissionManager, "_load_configuration", return_value={}):
+                with patch.object(UnifiedPermissionManager, "_validate_all_permissions"):
+                    manager = UnifiedPermissionManager()
+                    assert hasattr(manager, "has_permission")
         except (ImportError, Exception):
             pytest.skip("Module not available")
 
@@ -53,7 +57,9 @@ class TestPermissionChecks:
                 UnifiedPermissionManager,
             )
 
-            manager = UnifiedPermissionManager()
-            assert hasattr(manager, "grant")
+            with patch.object(UnifiedPermissionManager, "_load_configuration", return_value={}):
+                with patch.object(UnifiedPermissionManager, "_validate_all_permissions"):
+                    manager = UnifiedPermissionManager()
+                    assert hasattr(manager, "grant")
         except (ImportError, Exception):
             pytest.skip("Module not available")
