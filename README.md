@@ -539,12 +539,20 @@ In this phase:
 
 This phase automatically executes:
 
+- 🔍 **Phase 0.5: Quality Verification** *(NEW)*
+  - Auto-detect project language (16 languages supported)
+  - Run language-specific test runner, linter, and type checker
+  - Execute code-review via manager-quality agent
+  - Coverage target from config (`constitution.test_coverage_target`)
 - 🔴 **Final test execution**: Auto-run all tests
-- 📊 **Coverage verification**: Auto-guarantee 95%+ coverage
-- 🔍 **Code quality check**: Auto-run ruff, mypy
+- 📊 **Coverage verification**: Auto-guarantee configured coverage target
+- 🔍 **Code quality check**: Language-specific linting (ruff/eslint/clippy/etc.)
 - 📝 **Auto commit generation**: Auto-create "Ready for merge" commit
 - 📚 **Documentation update**: Auto-update API docs, README
 - 🚀 **Merge readiness**: Claude Code auto-completes merge preparation
+
+**Supported Languages for Phase 0.5**:
+Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#, C++, Elixir, R, Flutter/Dart, Scala
 
 **Output**: Tests pass + documentation complete + merge ready
 
@@ -1822,13 +1830,17 @@ Deep expertise for specific technology domains.
   - Enterprise design systems, component architecture, accessibility
   - WCAG compliance, design tokens, icons, theming system
 
-### 💻 Language (15 Skills)
+### 💻 Language (16 Skills)
 
 Support for various programming languages and frameworks.
 
 - **moai-lang-python**
   - Python 3.13+ for FastAPI, Django, async patterns, data science
   - Testing with pytest, modern Python features and async programming
+
+- **moai-lang-javascript** *(NEW)*
+  - ES2024+, Node.js 22 LTS, Deno, Bun runtimes
+  - Express, Fastify, Hono frameworks; Vitest/Jest testing; ESLint 9 flat config
 
 - **moai-lang-typescript**
   - React 19, Next.js 16 App Router, type-safe APIs with tRPC
