@@ -103,18 +103,12 @@ WHY: Mode-specific language handling respects existing configuration while enabl
 
 All configuration questions are defined in YAML files under .moai/config/questions/:
 
-- _schema.yaml: Schema definition and constraints (v1.1.0)
-- tab0-init.yaml: Project initialization with Smart Question System (3 questions, INITIALIZATION mode only)
+- _schema.yaml: Schema definition and constraints
 - tab1-user.yaml: User and language settings (3 questions)
 - tab2-project.yaml: Project metadata (2 questions)
-- tab3-git.yaml: Git strategy and workflow (29 questions, includes GitHub Profile and GitHub Automation)
-- tab4-quality.yaml: Quality principles and reports (6 questions)
-- tab5-system.yaml: System settings (3 questions, GitHub automation moved to Tab 3)
-
-Tab 0 (tab0-init.yaml) contains the Smart Question System for INITIALIZATION mode:
-- mode_condition: INITIALIZATION (only shown during first-time setup)
-- special_features: trigger_web_search, generate_proposal, complexity_detection
-- Questions: project name, project type, project description
+- tab3-git.yaml: Git strategy and workflow (26 questions, includes GitHub Profile)
+- tab4-quality.yaml: Quality principles and reports (7 questions)
+- tab5-system.yaml: System and GitHub integration (7 questions)
 
 WHY: YAML-based questions enable consistent structure and easy maintenance.
 
@@ -361,57 +355,15 @@ WHY: Reduce user burden from 40+ questions to 3 essential questions while provid
 
 IMPACT: Non-developers can create production-ready projects with minimal technical knowledge.
 
-### Question Definitions Source
-
-[HARD] All Smart Question System questions are defined in tab0-init.yaml.
-
-Reference: @.moai/config/questions/tab0-init.yaml
-
-The tab0-init.yaml file contains:
-- metadata: mode_condition set to INITIALIZATION
-- special_features: trigger_web_search, generate_proposal, complexity_detection
-- batches: 3 essential questions with translations
-- complexity_detection: simple, medium, complex project classification
-- post_collection: web_search, proposal, and approval workflow
-
 ### Step 1: Collect Essential Information (3 Questions Only)
 
 [HARD] Use AskUserQuestion to collect ONLY 3 required fields at COMMAND level.
-
-[HARD] Load question definitions from tab0-init.yaml and translate to user's conversation_language.
 
 WHY: Minimal questions reduce user friction while capturing essential project identity.
 
 IMPACT: More questions would overwhelm non-developers and slow down project creation.
 
-Question 1 - Project Name (from tab0-init.yaml, id: init_project_name):
-
-- field: project.name
-- type: text_input
-- validation: pattern "^[a-z][a-z0-9-]*$"
-- translations: Available in ko, ja, es (defined in tab0-init.yaml)
-
-Question 2 - Project Type (from tab0-init.yaml, id: init_project_type):
-
-- field: project.type
-- type: select_single
-- options: web_browser_app, mobile_app, cli_tool, backend_api
-- translations: Available in ko (defined in tab0-init.yaml)
-
-Question 3 - Project Description (from tab0-init.yaml, id: init_project_description):
-
-- field: project.description
-- type: text_input
-- validation: required, min_length 10
-- translations: Available in ko, ja, es (defined in tab0-init.yaml)
-
-Store responses in: $PROJECT_ESSENTIAL_INFO
-
-### Deprecated Inline Question Definitions
-
-The following inline question definitions have been moved to tab0-init.yaml:
-
-Moved to tab0-init.yaml Question 1 - Project Name:
+Question 1 - Project Name:
 
 - question: Translate to user's conversation_language with friendly guidance:
   - Korean: "프로젝트 이름을 정해주세요. 영어 소문자와 하이픈(-)만 사용할 수 있어요."
@@ -425,7 +377,7 @@ Moved to tab0-init.yaml Question 1 - Project Name:
 - validation: lowercase, no spaces, valid directory name
 - helper: If user enters Korean or spaces, suggest alternatives automatically
 
-Moved to tab0-init.yaml Question 2 - Project Type:
+Question 2 - Project Type:
 
 - question: Translate to user's conversation_language with beginner-friendly tone:
   - Korean: "어떤 종류의 프로젝트를 만들고 싶으세요?"
@@ -681,8 +633,6 @@ UPDATE MODE:
     - Preserve all user settings and customizations
     - Add meaningful comments explaining each section
     - Optimize structure (remove dead fields, consolidate duplicates)
-    - Convert preset files (presets/*.json → presets/*.yaml)
-    - Remove old JSON files after successful migration
   - Use YAML's native features:
     - Multi-line strings for long descriptions
     - Inline comments for field explanations
@@ -745,9 +695,9 @@ Options:
 
    - Configure TRUST 5, report generation, storage location
 
-5. Tab 5: System Settings
+5. Tab 5: System & GitHub Integration
 
-   - Configure MoAI system settings (version check, cache)
+   - Configure MoAI system, GitHub automation
 
 6. Modify All Tabs
    - Recommended: Tab 1 → Tab 2 → Tab 3 → Others
@@ -784,7 +734,7 @@ Tab 2: Project Settings (Recommended)
   - Auto-Processing Delegation: Command does NOT perform auto-processing. manager-project agent receives user selections, determines derived fields, then delegates atomic update to UnifiedConfigManager skill.
 - Setting count: 2
 
-Tab 3: Git Strategy & Workflow (Recommended with Validation - REDESIGNED v2.1.0)
+Tab 3: Git Strategy & Workflow (Recommended with Validation - REDESIGNED v2.0.0)
 
 - Batch 3.0a: GitHub Profile (1 question) - Always shown, required for all modes
   - GitHub username (e.g., @GoosLab) - moved from Tab 2
@@ -798,21 +748,19 @@ Tab 3: Git Strategy & Workflow (Recommended with Validation - REDESIGNED v2.1.0)
 - Batch 3.7: Team commit & PR settings (3 questions) - CONDITIONAL (Team only)
 - Batch 3.8: Team branch & protection settings (3 questions) - CONDITIONAL (Team only)
 - Batch 3.9: Team branch naming settings (2 questions) - CONDITIONAL (Team only)
-- Batch 3.10: GitHub Automation (3 questions) - CONDITIONAL (Personal/Team only)
-  - TRUST 5, Auto-delete branches, SPEC workflow (moved from Tab 5)
-- Setting count: 29 | Critical checkpoint for Git conflicts & mode consistency
+- Setting count: 26 | Critical checkpoint for Git conflicts & mode consistency
 
 Tab 4: Quality Principles & Reports (Optional - UPDATED v2.0.0)
 
-- Batch 4.1: Constitution settings (2 questions - enforce_tdd, test_coverage_target; max_projects removed)
+- Batch 4.1: Constitution settings (3 questions - reduced from 4, renamed minimum_test_coverage→test_coverage_target)
 - Batch 4.2: Report generation policy (4 questions - expanded, added warn_user & user_choice)
-- Setting count: 6
+- Setting count: 9 (same count, better fields)
 
-Tab 5: System Settings (Optional - UPDATED v2.1.0)
+Tab 5: System & GitHub Integration (Optional - UPDATED v2.0.0)
 
-- Batch 5.1: MoAI system settings (3 questions - version check, cache TTL)
-- GitHub automation moved to Tab 3, Batch 3.10 for better organization
-- Setting count: 3
+- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.yaml v0.28.0)
+- Batch 5.2: GitHub automation settings (5 questions - expanded from 3, added templates & spec_workflow fields)
+- Setting count: 11 (+3 from v1.0.0)
 
 ### Batch Execution Flow
 
@@ -1044,8 +992,8 @@ Flow:
      * Manual mode: Batches 3.1-3.2 (5 questions)
      * Personal mode: Batches 3.3-3.5 (9 questions)
      * Team mode: Batches 3.6-3.9 (12 questions)
-   - Tab 4 (OPTIONAL): Quality & Reports (2 batches, 6 questions)
-   - Tab 5 (OPTIONAL): System Settings (1 batch, 3 questions)
+   - Tab 4 (OPTIONAL): Quality & Reports (2 batches, 7 questions)
+   - Tab 5 (OPTIONAL): System & GitHub (2 batches, 8 questions)
 4. After tab completion, ask: "Would you like to modify another settings tab?"
    - No, finish settings (exit)
    - Select another tab (return to step 1)
@@ -1061,9 +1009,9 @@ Tab-level behavior:
 Tab completion order (recommended):
   - Tab 1 (REQUIRED): Foundation language settings
   - Tab 2: Project metadata
-  - Tab 3: Git workflow strategy (includes GitHub Profile and GitHub Automation)
+  - Tab 3: Git workflow strategy (includes GitHub Profile)
   - Tab 4: Quality principles
-  - Tab 5: System settings (version check only)
+  - Tab 5: System integration
 ```
 
 ### Tab Schema Structure

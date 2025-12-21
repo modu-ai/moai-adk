@@ -313,7 +313,7 @@ class ProjectInitializer:
                         "auto_pr": False,
                         "develop_branch": "develop",
                         "draft_pr": False,
-                        "feature_prefix": "feature/SPEC-",
+                        "branch_prefix": "feature/SPEC-",
                         "main_branch": "main",
                         "use_gitflow": True,
                         "default_pr_base": "develop",

@@ -2524,37 +2524,28 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
 
 
 def _cleanup_legacy_presets(project_path: Path) -> None:
-    """Remove legacy JSON preset files (not the entire directory).
+    """Remove legacy presets directory entirely.
 
-    This function cleans up obsolete .json preset files in .moai/config/presets/
-    that may exist from previous versions of MoAI-ADK. The directory itself
-    and .yaml files are preserved since they are part of the current template.
+    This function removes the entire .moai/config/presets/ directory as it is
+    no longer used. All preset settings are now consolidated in sections/git-strategy.yaml.
 
     Args:
         project_path: Project directory path (absolute)
     """
+    import shutil
+
     presets_dir = project_path / ".moai" / "config" / "presets"
 
     if not presets_dir.exists() or not presets_dir.is_dir():
         return
 
-    # Only remove legacy .json files, preserve .yaml files and the directory
-    json_files = list(presets_dir.glob("*.json"))
-    if not json_files:
-        return
-
-    removed_count = 0
-    for json_file in json_files:
-        try:
-            json_file.unlink()
-            removed_count += 1
-            logger.debug(f"Removed legacy preset file: {json_file}")
-        except Exception as e:
-            logger.warning(f"Failed to remove legacy preset {json_file}: {e}")
-
-    if removed_count > 0:
-        console.print(f"   [cyan]🧹 Cleaned up {removed_count} legacy JSON preset files[/cyan]")
-        logger.info(f"Removed {removed_count} legacy JSON preset files from {presets_dir}")
+    try:
+        # Remove entire presets directory (no longer needed)
+        shutil.rmtree(presets_dir)
+        console.print("   [cyan]🧹 Removed legacy presets directory (now in sections/git-strategy.yaml)[/cyan]")
+        logger.info(f"Removed legacy presets directory: {presets_dir}")
+    except Exception as e:
+        logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
 
 
 def _migrate_config_json_to_yaml(project_path: Path) -> bool:

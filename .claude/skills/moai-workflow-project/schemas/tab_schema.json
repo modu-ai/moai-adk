@@ -959,15 +959,15 @@
           },
           "questions": [
             {
-              "question": "Feature branch prefix for Team mode? (current: {{git_strategy.team.feature_prefix}})",
-              "header": "Feature Prefix",
-              "field": "git_strategy.team.feature_prefix",
+              "question": "Branch prefix for Team mode? (current: {{git_strategy.team.branch_prefix}})",
+              "header": "Branch Prefix",
+              "field": "git_strategy.team.branch_prefix",
               "type": "text_input",
               "multiSelect": false,
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using {{git_strategy.team.feature_prefix}}",
+                  "description": "Continue using {{git_strategy.team.branch_prefix}}",
                   "value": "{{current}}"
                 },
                 {
@@ -976,7 +976,7 @@
                   "value": "{{prompt_user}}"
                 }
               ],
-              "current_value_path": "git_strategy.team.feature_prefix",
+              "current_value_path": "git_strategy.team.branch_prefix",
               "required": true
             },
             {
@@ -1419,7 +1419,7 @@
             "validation": "pattern",
             "fields": [
               "git_strategy.personal.branch_prefix",
-              "git_strategy.team.feature_prefix"
+              "git_strategy.team.branch_prefix"
             ]
           }
         ]

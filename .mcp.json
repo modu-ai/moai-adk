@@ -9,10 +9,7 @@
     },
     "playwright": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ]
+      "args": ["-y", "@playwright/mcp@latest"]
     },
     "figma-dev-mode-mcp-server": {
       "type": "sse",

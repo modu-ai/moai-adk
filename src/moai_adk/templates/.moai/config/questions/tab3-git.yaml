@@ -631,4 +631,4 @@ validation:
       validation: "pattern"
       fields:
         - "git_strategy.personal.branch_prefix"
-        - "git_strategy.team.feature_prefix"
+        - "git_strategy.team.branch_prefix"
