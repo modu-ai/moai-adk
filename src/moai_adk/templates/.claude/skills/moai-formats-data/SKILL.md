@@ -65,7 +65,7 @@ result = validator.validate({"name": "John"}, schema)
 
 TOON (Token-Optimized Object Notation):
 - Custom binary-compatible format optimized for LLM token usage
-- Type markers: `#` (numbers), `!` (booleans), `@` (timestamps), `~` (null)
+- Type markers: # (numbers), ! (booleans), @ (timestamps), ~ (null)
 - 40-60% size reduction vs JSON for typical data structures
 - Lossless round-trip encoding/decoding
 

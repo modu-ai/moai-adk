@@ -252,12 +252,12 @@ def demonstrate_toon_optimization():
 ## TOON Format Specification
 
 ### Type Markers
-- `string`: No marker (default)
-- `number`: `#` prefix
-- `boolean`: `!` prefix (`!t`, `!f`)
-- `null`: `~`
-- `timestamp`: `@` prefix (ISO 8601)
-- `json-fallback`: `$` prefix (JSON-encoded)
+- string: No marker (default)
+- number: # prefix
+- boolean: ! prefix (!t, !f)
+- null: ~
+- timestamp: @ prefix (ISO 8601)
+- json-fallback: $ prefix (JSON-encoded)
 
 ### Structure Rules
 - Objects: `{key1:value1,key2:value2}`
