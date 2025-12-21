@@ -1,6 +1,6 @@
 ---
 name: moai:3-sync
-description: "Synchronize documentation and finalize PR"
+description: "Synchronize documentation with Phase 0.5 quality verification and finalize PR"
 argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
 allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
@@ -215,6 +215,7 @@ IMPACT: Unstructured output reduces comprehension and prevents automated process
 │ PHASE 1: Analysis & Planning (tag-agent + manager-docs)│
 │  - Verify prerequisites                                  │
 │  - Analyze project status (Git + SPEC)                    │
+│  - Execute quality verification (Phase 0.5)              │
 │  - Request user approval                                 │
 └──────────────────────────────────────────────────────────┘
                           ↓
@@ -351,11 +352,225 @@ Gather context for synchronization planning:
    - Report: Current project health assessment
    - Report: Count of changed files
    - Report: Synchronization recommendation
+   - If status mode: Execute Phase 0.5 quality verification before reporting
    - Exit: Command completes with success code (no further phases)
-   WHY: Status mode serves quick health check without making changes
-   IMPACT: Skipping status check causes unnecessary sync execution
+   WHY: Status mode serves quick health check without making changes, but still validates project quality
+   IMPACT: Skipping quality check in status mode reduces visibility of project health
 
-Result: Project context gathered. Synchronization mode established. Ready for next step.
+Result: Project context gathered. Synchronization mode established. Ready for quality verification (Phase 0.5).
+
+---
+
+### Step 1.2.5: Phase 0.5 Quality Verification
+
+[HARD] Execute quality verification pipeline before document synchronization begins.
+
+WHY: Quality checks prevent synchronizing broken states. Early validation catches issues before expensive document updates.
+IMPACT: Skipping quality checks risks propagating issues to documentation.
+
+Quality Verification Pipeline:
+
+This phase runs the following verification sequence for Python projects:
+
+```
+Detect Python Project?
+    ↓ YES                          ↓ NO
+pytest execution              Skip to code-review
+    ↓                             ↓
+ruff execution           code-review invocation
+    ↓                             ↓
+mypy execution           Quality Report
+    ↓
+code-review invocation
+    ↓
+Quality Report
+```
+
+#### Task 1.2.5.1: Detect Project Language
+
+Determine if this is a Python project:
+
+1. Check for Python indicator files:
+   - Action: Look for `pyproject.toml`, `setup.py`, `requirements.txt`, or `.python-version`
+   - IF found: Store `$PYTHON_PROJECT=true`
+   - IF not found: Store `$PYTHON_PROJECT=false` and skip to code-review
+
+2. When not Python project:
+   - Execute only code-review with manager-quality agent
+   - Skip pytest, ruff, and mypy steps
+   - WHY: Non-Python projects cannot use Python-specific tools
+
+3. Log detection result:
+   - Print to user: "Project language detection: [Python/Non-Python]"
+
+---
+
+#### Task 1.2.5.2: Execute pytest Quality Check
+
+Execute only if $PYTHON_PROJECT=true:
+
+1. Check pytest installation:
+   - Action: Execute `which pytest` or equivalent check
+   - IF pytest not found: Print warning "[pytest not installed - skipping]" and skip to ruff
+   - IF pytest found: Continue to next step
+
+2. Execute pytest with coverage reporting:
+   - Action: Execute `pytest --tb=short --co -q` to list tests
+   - Action: Execute `pytest -v --tb=short` for actual test execution
+   - Capture all output including test results and failures
+
+3. Parse pytest results:
+   - Count passed tests
+   - Count failed tests
+   - Identify failed test names
+   - Note any test collection errors
+
+4. Determine pytest status:
+   - IF all tests passed: Store `$PYTEST_STATUS=PASS`
+   - IF any tests failed: Store `$PYTEST_STATUS=FAIL` and store failed test details
+   - IF tool not installed: Store `$PYTEST_STATUS=WARN`
+
+5. IF pytest failure occurs:
+   - Ask user for decision using AskUserQuestion
+   - Question: "pytest execution result: X tests failed. How would you like to proceed?"
+   - Header: "Quality Verification"
+   - Options:
+     - "Continue" - Ignore test failures and proceed with sync
+     - "Abort" - Stop sync and fix tests first
+   - IF user chooses "Continue": Set flag and proceed to next tool
+   - IF user chooses "Abort": Exit command with graceful exit message (Phase 4)
+
+---
+
+#### Task 1.2.5.3: Execute ruff Quality Check
+
+Execute only if $PYTHON_PROJECT=true:
+
+1. Check ruff installation:
+   - Action: Execute `which ruff` or equivalent check
+   - IF ruff not found: Print warning "[ruff not installed - skipping]" and skip to mypy
+   - IF ruff found: Continue to next step
+
+2. Execute ruff linting:
+   - Action: Execute `ruff check .` or equivalent
+   - Capture all output including violations found
+
+3. Parse ruff results:
+   - Count total violations
+   - Categorize violations by severity
+   - Identify files with violations
+
+4. Determine ruff status:
+   - IF no violations: Store `$RUFF_STATUS=PASS`
+   - IF violations found: Store `$RUFF_STATUS=FAIL`
+   - IF tool not installed: Store `$RUFF_STATUS=WARN`
+
+5. Report findings:
+   - Print to user: "ruff check: [result] - X violations found"
+
+---
+
+#### Task 1.2.5.4: Execute mypy Quality Check
+
+Execute only if $PYTHON_PROJECT=true:
+
+1. Check mypy installation:
+   - Action: Execute `which mypy` or equivalent check
+   - IF mypy not found: Print warning "[mypy not installed - skipping]" and skip to code-review
+   - IF mypy found: Continue to next step
+
+2. Execute mypy type checking:
+   - Action: Execute `mypy .` or equivalent
+   - Capture all output including type errors
+
+3. Parse mypy results:
+   - Count total type errors
+   - Identify files with type issues
+   - Note any configuration issues
+
+4. Determine mypy status:
+   - IF no errors: Store `$MYPY_STATUS=PASS`
+   - IF errors found: Store `$MYPY_STATUS=FAIL`
+   - IF tool not installed: Store `$MYPY_STATUS=WARN`
+
+5. Report findings:
+   - Print to user: "mypy check: [result] - X type errors found"
+
+---
+
+#### Task 1.2.5.5: Invoke manager-quality for Code Review
+
+Execute code-review agent regardless of project type:
+
+Use the manager-quality subagent to:
+
+Perform automated code review and TRUST 5 validation
+
+Critical Language Configuration:
+
+- Receive instructions in agent_prompt_language from config (default: English)
+- Respond in conversation_language from config (user's preferred language)
+
+Task Instructions:
+
+1. Execute TRUST 5 quality validation:
+   - Test: Verify test coverage is adequate
+   - Readable: Check code readability and standards
+   - Understandable: Verify code organization and documentation
+   - Secure: Check for security issues and best practices
+   - Tagged: Verify TAG annotations are present (if applicable)
+
+2. Generate quality report:
+   - Summary of findings
+   - List of issues found (if any)
+   - Recommendations for improvements
+
+3. Determine overall code review status:
+   - IF no issues found: Store `$CODE_REVIEW_STATUS=PASS`
+   - IF issues found: Store `$CODE_REVIEW_STATUS=WARN`
+
+Store: Response in `$CODE_REVIEW_RESULTS`
+
+---
+
+#### Task 1.2.5.6: Generate Quality Report
+
+After all checks complete, generate comprehensive quality report:
+
+1. Create quality report output:
+
+   ```
+   Phase 0.5 Quality Verification Results
+   =====================================
+
+   Python Project: [Yes/No]
+
+   Tool Verification Results:
+   pytest:      [PASS|FAIL|WARN|SKIP]
+   ruff:        [PASS|FAIL|WARN|SKIP]
+   mypy:        [PASS|FAIL|WARN|SKIP]
+   code-review: [PASS|WARN]
+
+   Details:
+   - pytest: [summary]
+   - ruff: [summary]
+   - mypy: [summary]
+   - code-review: [summary]
+
+   Overall Status: [PASS|WARN]
+
+   Next Step: Proceeding to document synchronization
+   ```
+
+2. Store report:
+   - Save complete report in `$QUALITY_REPORT`
+   - Print summary to user
+
+3. Determine phase outcome:
+   - IF pytest user chose "Abort": Go to PHASE 4 (exit)
+   - IF all checks complete: Continue to Step 1.3
+
+Result: Quality verification complete. All issues documented. Ready for project status verification.
 
 ---
 
@@ -914,13 +1129,15 @@ Exit command with code 0.
 
 ##  Quick Reference
 
-| Scenario             | Mode    | Entry Point                 | Key Phases                                          | Expected Outcome          |
-| -------------------- | ------- | --------------------------- | --------------------------------------------------- | ------------------------- |
-| Daily development    | auto    | `/moai:3-sync`              | Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git | PR Ready + docs synced    |
-| Error recovery       | force   | `/moai:3-sync force`        | Full project re-sync                                | All docs regenerated      |
-| Quick health check   | status  | `/moai:3-sync status`       | Status check only                                   | Health report             |
-| Milestone completion | project | `/moai:3-sync project`      | Integrated sync                                     | Project-wide updates      |
-| Auto-merge workflow  | auto    | `/moai:3-sync --auto-merge` | PR auto-merge + cleanup                             | Branch merged and deleted |
+| Scenario             | Mode    | Entry Point                 | Key Phases                                                    | Expected Outcome          |
+| -------------------- | ------- | --------------------------- | ------------------------------------------------------------- | ------------------------- |
+| Daily development    | auto    | `/moai:3-sync`              | Phase 0.5 (QV) → Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git | PR Ready + docs synced    |
+| Error recovery       | force   | `/moai:3-sync force`        | Phase 0.5 (QV) → Full project re-sync                         | All docs regenerated      |
+| Quick health check   | status  | `/moai:3-sync status`       | Phase 0.5 (QV) → Status check only                            | Health report             |
+| Milestone completion | project | `/moai:3-sync project`      | Phase 0.5 (QV) → Integrated sync                              | Project-wide updates      |
+| Auto-merge workflow  | auto    | `/moai:3-sync --auto-merge` | Phase 0.5 (QV) → PR auto-merge + cleanup                      | Branch merged and deleted |
+
+Note: Phase 0.5 = Quality Verification (pytest, ruff, mypy, code-review)
 
 Associated Agents:
 
@@ -935,10 +1152,10 @@ Documentation Outputs:
 - Reports: `.moai/reports/sync-report-{timestamp}.md`
 - Backup: `.moai-backups/sync-{timestamp}/` (safety backup)
 
-Version: 3.1.0 (Agent-Delegated Pattern)
-Last Updated: 2025-11-25
+Version: 3.2.0 (Phase 0.5 Quality Verification)
+Last Updated: 2025-12-22
 Architecture: Commands → Agents → Skills (Complete delegation)
-Total Lines: ~725 (optimized from 2,096)
+Total Lines: ~920 (Phase 0.5 added with 195 new lines)
 
 ---
 
