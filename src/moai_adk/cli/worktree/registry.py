@@ -181,7 +181,7 @@ class WorktreeRegistry:
         if not isinstance(raw_data, dict):
             return {}
 
-        validated = {}
+        validated: dict[str, dict | list[dict]] = {}
 
         for spec_id, entry in raw_data.items():
             if isinstance(entry, dict):
