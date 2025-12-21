@@ -183,6 +183,39 @@ Conditional Tool Logic (loaded on-demand)
 
 - `AskUserQuestion tool`: Run when user approval/modification options need to be collected
 
+### EARS Official Grammar Patterns (2025 Industry Standard)
+
+EARS (Easy Approach to Requirements Syntax) was developed by Rolls-Royce's Alistair Mavin in 2009 and adopted by AWS Kiro IDE and GitHub Spec-Kit in 2025 as the industry standard for requirement specification.
+
+EARS Grammar Pattern Reference:
+
+Ubiquitous Requirements:
+- Official English Pattern: The [system] **shall** [response].
+- MoAI-ADK Korean Pattern: 시스템은 **항상** [동작]해야 한다
+
+Event-Driven Requirements:
+- Official English Pattern: **When** [event], the [system] **shall** [response].
+- MoAI-ADK Korean Pattern: **WHEN** [이벤트] **THEN** [동작]
+
+State-Driven Requirements:
+- Official English Pattern: **While** [condition], the [system] **shall** [response].
+- MoAI-ADK Korean Pattern: **IF** [조건] **THEN** [동작]
+
+Optional Requirements:
+- Official English Pattern: **Where** [feature exists], the [system] **shall** [response].
+- MoAI-ADK Korean Pattern: **가능하면** [동작] 제공
+
+Unwanted Behavior Requirements:
+- Official English Pattern: **If** [undesired], **then** the [system] **shall** [response].
+- MoAI-ADK Korean Pattern: 시스템은 [동작]**하지 않아야 한다**
+
+Complex Requirements (Combined Patterns):
+- Official English Pattern: **While** [state], **when** [event], the [system] **shall** [response].
+- MoAI-ADK Korean Pattern: **IF** [상태] **AND WHEN** [이벤트] **THEN** [동작]
+
+WHY: EARS provides unambiguous, testable requirement syntax that eliminates interpretation errors.
+IMPACT: Non-EARS requirements create implementation ambiguity and testing gaps.
+
 ### Expert Traits
 
 - Thinking Style: Structure business requirements into systematic EARS syntax and architectural patterns
@@ -211,6 +244,29 @@ Conditional Tool Logic (loaded on-demand)
 - Team mode → Create SPEC issue based on `gh issue create` (e.g. `[SPEC-AUTH-001] user authentication`).
 
 4. Next step guidance: Guide to `/moai:2-run SPEC-XXX` and `/moai:3-sync`.
+
+### Enhanced 4-File SPEC Structure (Optional)
+
+For complex SPECs requiring detailed technical design, consider the enhanced 4-file structure:
+
+Standard 3-File Structure (Default):
+- spec.md: EARS requirements (core specification)
+- plan.md: Implementation plan, milestones, technical approach
+- acceptance.md: Gherkin acceptance criteria (Given-When-Then format)
+
+Enhanced 4-File Structure (Complex Projects):
+- spec.md: EARS requirements (core specification)
+- design.md: Technical design (architecture diagrams, API contracts, data models)
+- tasks.md: Implementation checklist with prioritized task breakdown
+- acceptance.md: Gherkin acceptance criteria
+
+When to Use 4-File Structure:
+- Architecture changes affecting 5+ files
+- New API endpoints requiring detailed contract design
+- Database schema changes requiring migration planning
+- Integration with external services requiring interface specification
+
+Reference: moai-workflow-spec skill for complete template details and examples.
 
 Important: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the core-git agent. workflow-spec is only responsible for creating SPEC documents and intelligent verification.
 
@@ -697,6 +753,42 @@ Team Mode Structure:
 **WHY:** Markdown provides readable user experience; structured internal data enables automation integration.
 
 **IMPACT:** Clear separation improves both user communication and agent coordination.
+
+---
+
+## Industry Standards Reference (2025)
+
+EARS-based specification methodology has gained significant industry adoption in 2025:
+
+AWS Kiro IDE:
+- Adopted EARS syntax for Spec-Driven Development (SDD)
+- Implements automated SPEC validation and code generation
+- Integrates EARS requirements with test generation
+
+GitHub Spec-Kit:
+- Promotes Spec-First Development methodology
+- Provides EARS templates and validation tools
+- Enables SPEC-to-implementation traceability
+
+MoAI-ADK Integration:
+- Korean EARS adaptation with localized patterns
+- Plan-Run-Sync workflow integration
+- TRUST 5 quality framework alignment
+- Automated SPEC validation and expert consultation
+
+Industry Trend Alignment:
+- [HARD] Follow EARS syntax patterns for requirement specification
+  WHY: Industry standardization ensures tool compatibility and team familiarity
+  IMPACT: Non-standard formats reduce interoperability and knowledge transfer
+
+- [SOFT] Consider 4-file SPEC structure for complex projects matching enterprise patterns
+  WHY: Enhanced structure aligns with enterprise development practices
+  IMPACT: Missing design artifacts create implementation gaps
+
+Reference Sources:
+- AWS Kiro IDE Documentation (2025): Spec-Driven Development practices
+- GitHub Spec-Kit (2025): Spec-First methodology guidelines
+- Alistair Mavin (2009): Original EARS methodology paper
 
 ---
 

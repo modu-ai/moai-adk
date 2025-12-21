@@ -1,6 +1,6 @@
 ---
 name: moai:3-sync
-description: "Synchronize documentation and finalize PR"
+description: "Synchronize documentation with Phase 0.5 quality verification and finalize PR"
 argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
 allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
@@ -215,6 +215,7 @@ IMPACT: Unstructured output reduces comprehension and prevents automated process
 │ PHASE 1: Analysis & Planning (tag-agent + manager-docs)│
 │  - Verify prerequisites                                  │
 │  - Analyze project status (Git + SPEC)                    │
+│  - Execute quality verification (Phase 0.5)              │
 │  - Request user approval                                 │
 └──────────────────────────────────────────────────────────┘
                           ↓
@@ -351,11 +352,346 @@ Gather context for synchronization planning:
    - Report: Current project health assessment
    - Report: Count of changed files
    - Report: Synchronization recommendation
+   - If status mode: Execute Phase 0.5 quality verification before reporting
    - Exit: Command completes with success code (no further phases)
-   WHY: Status mode serves quick health check without making changes
-   IMPACT: Skipping status check causes unnecessary sync execution
+   WHY: Status mode serves quick health check without making changes, but still validates project quality
+   IMPACT: Skipping quality check in status mode reduces visibility of project health
 
-Result: Project context gathered. Synchronization mode established. Ready for next step.
+Result: Project context gathered. Synchronization mode established. Ready for quality verification (Phase 0.5).
+
+---
+
+### Step 1.2.5: Phase 0.5 Quality Verification
+
+[HARD] Execute quality verification pipeline before document synchronization begins.
+
+WHY: Quality checks prevent synchronizing broken states. Early validation catches issues before expensive document updates.
+IMPACT: Skipping quality checks risks propagating issues to documentation.
+
+Quality Verification Pipeline:
+
+This phase automatically detects the project language and runs appropriate quality tools:
+
+```
+Detect Project Language
+    ↓
+Language-specific tool execution
+    ├── Test Runner (pytest/jest/go test/cargo test/etc.)
+    ├── Linter (ruff/eslint/golangci-lint/clippy/etc.)
+    └── Type Checker (mypy/tsc/go vet/etc.)
+    ↓
+code-review invocation (manager-quality)
+    ↓
+Quality Report
+```
+
+---
+
+#### Task 1.2.5.1: Detect Project Language
+
+Automatically detect the primary project language by checking indicator files:
+
+Language Detection Rules (check in order, first match wins):
+
+1. Python Detection:
+   - Indicator files: pyproject.toml, setup.py, requirements.txt, .python-version, Pipfile
+   - IF found: Store PROJECT_LANGUAGE as python
+
+2. TypeScript/JavaScript Detection:
+   - Indicator files: tsconfig.json, package.json (with typescript dependency), .nvmrc
+   - IF tsconfig.json exists: Store PROJECT_LANGUAGE as typescript
+   - IF package.json exists without tsconfig: Store PROJECT_LANGUAGE as javascript
+
+3. Go Detection:
+   - Indicator files: go.mod, go.sum
+   - IF found: Store PROJECT_LANGUAGE as go
+
+4. Rust Detection:
+   - Indicator files: Cargo.toml, Cargo.lock
+   - IF found: Store PROJECT_LANGUAGE as rust
+
+5. Ruby Detection:
+   - Indicator files: Gemfile, .ruby-version, Rakefile
+   - IF found: Store PROJECT_LANGUAGE as ruby
+
+6. Java Detection:
+   - Indicator files: pom.xml, build.gradle, build.gradle.kts
+   - IF found: Store PROJECT_LANGUAGE as java
+
+7. PHP Detection:
+   - Indicator files: composer.json, composer.lock
+   - IF found: Store PROJECT_LANGUAGE as php
+
+8. Kotlin Detection:
+   - Indicator files: build.gradle.kts (with kotlin plugin), settings.gradle.kts
+   - IF found with kotlin references: Store PROJECT_LANGUAGE as kotlin
+
+9. Swift Detection:
+   - Indicator files: Package.swift, .xcodeproj, .xcworkspace
+   - IF found: Store PROJECT_LANGUAGE as swift
+
+10. C#/.NET Detection:
+    - Indicator files: .csproj, .sln, .fsproj
+    - IF found: Store PROJECT_LANGUAGE as csharp
+
+11. C++ Detection:
+    - Indicator files: CMakeLists.txt, .cpp, .hpp, Makefile (with C++ content)
+    - IF found: Store PROJECT_LANGUAGE as cpp
+
+12. Elixir Detection:
+    - Indicator files: mix.exs, .exs, .ex
+    - IF found: Store PROJECT_LANGUAGE as elixir
+
+13. R Detection:
+    - Indicator files: DESCRIPTION (R package), .Rproj, renv.lock
+    - IF found: Store PROJECT_LANGUAGE as r
+
+14. Flutter/Dart Detection:
+    - Indicator files: pubspec.yaml, .dart
+    - IF found: Store PROJECT_LANGUAGE as flutter
+
+15. Scala Detection:
+    - Indicator files: build.sbt, .scala, build.sc (mill)
+    - IF found: Store PROJECT_LANGUAGE as scala
+
+16. Fallback:
+    - IF no indicators found: Store PROJECT_LANGUAGE as unknown
+    - Skip language-specific tools, proceed directly to code-review
+
+Log detection result:
+- Print to user: "Project language detection: [detected_language]"
+
+---
+
+#### Task 1.2.5.2: Execute Language-Specific Test Runner
+
+Execute the appropriate test runner based on detected language:
+
+Test Runner Configuration by Language:
+
+- Python: Execute pytest -v --tb=short or python -m unittest discover
+- TypeScript/JavaScript: Execute npm test or npx vitest run or npx jest
+- Go: Execute go test ./... -v
+- Rust: Execute cargo test
+- Ruby: Execute bundle exec rspec or rake test
+- Java: Execute mvn test or gradle test
+- PHP: Execute vendor/bin/phpunit or composer test
+- Kotlin: Execute gradle test
+- Swift: Execute swift test
+- C#/.NET: Execute dotnet test
+- C++: Execute ctest or catch2 or gtest
+- Elixir: Execute mix test
+- R: Execute testthat or devtools::test()
+- Flutter/Dart: Execute flutter test or dart test
+- Scala: Execute sbt test or mill test
+
+Execution Steps:
+
+1. Check tool availability:
+   - Verify the test runner is installed
+   - IF not installed: Print warning "[test runner] not installed - skipping" and proceed to linter
+   - IF installed: Continue to execution
+
+2. Execute test runner:
+   - Run the appropriate command for detected language
+   - Capture all output including test results and failures
+
+3. Parse test results:
+   - Count passed tests
+   - Count failed tests
+   - Identify failed test names
+
+4. Determine test status:
+   - IF all tests passed: Store TEST_STATUS as PASS
+   - IF any tests failed: Store TEST_STATUS as FAIL
+   - IF tool not installed: Store TEST_STATUS as WARN
+
+5. IF test failure occurs:
+   - Ask user for decision using AskUserQuestion
+   - Question: "Test execution result: X tests failed. How would you like to proceed?"
+   - Header: "Quality Verification"
+   - Options:
+     - "Continue" - Ignore test failures and proceed with sync
+     - "Abort" - Stop sync and fix tests first
+   - IF user chooses "Continue": Set flag and proceed to linter
+   - IF user chooses "Abort": Exit command with graceful exit message (Phase 4)
+
+---
+
+#### Task 1.2.5.3: Execute Language-Specific Linter
+
+Execute the appropriate linter based on detected language:
+
+Linter Configuration by Language:
+
+- Python: Execute ruff check . or flake8 .
+- TypeScript/JavaScript: Execute npx eslint . or npm run lint
+- Go: Execute golangci-lint run or go vet ./...
+- Rust: Execute cargo clippy
+- Ruby: Execute bundle exec rubocop or rubocop
+- Java: Execute mvn checkstyle:check or gradle checkstyleMain
+- PHP: Execute vendor/bin/phpstan analyse or php-cs-fixer fix --dry-run
+- Kotlin: Execute gradle ktlintCheck or detekt
+- Swift: Execute swiftlint
+- C#/.NET: Execute dotnet format --verify-no-changes
+- C++: Execute clang-tidy or cppcheck
+- Elixir: Execute mix credo
+- R: Execute lintr
+- Flutter/Dart: Execute dart analyze
+- Scala: Execute scalafmt --check or scalafix
+
+Execution Steps:
+
+1. Check tool availability:
+   - Verify the linter is installed
+   - IF not installed: Print warning "[linter] not installed - skipping" and proceed to type checker
+   - IF installed: Continue to execution
+
+2. Execute linter:
+   - Run the appropriate command for detected language
+   - Capture all output including violations found
+
+3. Parse linter results:
+   - Count total violations
+   - Categorize by severity if available
+   - Identify files with violations
+
+4. Determine linter status:
+   - IF no violations: Store LINT_STATUS as PASS
+   - IF violations found: Store LINT_STATUS as FAIL
+   - IF tool not installed: Store LINT_STATUS as WARN
+
+5. Report findings:
+   - Print to user: "[linter name] check: [result] - X violations found"
+
+---
+
+#### Task 1.2.5.4: Execute Language-Specific Type Checker
+
+Execute the appropriate type checker based on detected language:
+
+Type Checker Configuration by Language:
+
+- Python: Execute mypy . or pyright .
+- TypeScript: Execute npx tsc --noEmit
+- JavaScript: Skip (no native type checking) or use TypeScript in check mode
+- Go: Execute go vet ./... (already includes type checking)
+- Rust: Skip (type checking is part of cargo build/test)
+- Ruby: Execute bundle exec steep check or sorbet tc
+- Java: Skip (compilation handles type checking)
+- PHP: Execute vendor/bin/phpstan analyse --level max
+- Kotlin: Skip (compilation handles type checking)
+- Swift: Skip (compilation handles type checking)
+- C#/.NET: Execute dotnet build --no-restore (type check via compilation)
+- C++: Skip (compilation handles type checking)
+- Elixir: Execute mix dialyzer (optional, requires dialyxir dependency)
+- R: Skip (no native type checking)
+- Flutter/Dart: Execute dart analyze (includes type checking)
+- Scala: Skip (compilation handles type checking)
+
+Execution Steps:
+
+1. Check if type checking is applicable:
+   - Some languages include type checking in compilation
+   - IF not applicable: Print info "[language] uses compilation for type checking - skipping separate check"
+   - IF applicable: Continue to tool check
+
+2. Check tool availability:
+   - Verify the type checker is installed
+   - IF not installed: Print warning "[type checker] not installed - skipping" and proceed to code-review
+   - IF installed: Continue to execution
+
+3. Execute type checker:
+   - Run the appropriate command for detected language
+   - Capture all output including type errors
+
+4. Parse type checker results:
+   - Count total type errors
+   - Identify files with type issues
+
+5. Determine type checker status:
+   - IF no errors: Store TYPE_STATUS as PASS
+   - IF errors found: Store TYPE_STATUS as FAIL
+   - IF tool not installed or not applicable: Store TYPE_STATUS as SKIP
+
+6. Report findings:
+   - Print to user: "[type checker] check: [result] - X type errors found"
+
+---
+
+#### Task 1.2.5.5: Invoke manager-quality for Code Review
+
+Execute code-review agent regardless of project language:
+
+Use the manager-quality subagent to:
+
+Perform automated code review and TRUST 5 validation
+
+Critical Language Configuration:
+
+- Receive instructions in agent_prompt_language from config (default: English)
+- Respond in conversation_language from config (user's preferred language)
+
+Task Instructions:
+
+1. Execute TRUST 5 quality validation:
+   - Test: Verify test coverage is adequate
+   - Readable: Check code readability and standards
+   - Understandable: Verify code organization and documentation
+   - Secure: Check for security issues and best practices
+   - Tagged: Verify TAG annotations are present (if applicable)
+
+2. Generate quality report:
+   - Summary of findings
+   - List of issues found (if any)
+   - Recommendations for improvements
+
+3. Determine overall code review status:
+   - IF no issues found: Store CODE_REVIEW_STATUS as PASS
+   - IF issues found: Store CODE_REVIEW_STATUS as WARN
+
+Store: Response in CODE_REVIEW_RESULTS
+
+---
+
+#### Task 1.2.5.6: Generate Quality Report
+
+After all checks complete, generate comprehensive quality report:
+
+1. Create quality report output:
+
+   ```
+   Phase 0.5 Quality Verification Results
+   =====================================
+
+   Project Language: [detected_language]
+
+   Tool Verification Results:
+   test-runner:  [PASS|FAIL|WARN|SKIP] ([tool_name])
+   linter:       [PASS|FAIL|WARN|SKIP] ([tool_name])
+   type-checker: [PASS|FAIL|WARN|SKIP] ([tool_name])
+   code-review:  [PASS|WARN]
+
+   Details:
+   - test-runner: [summary]
+   - linter: [summary]
+   - type-checker: [summary]
+   - code-review: [summary]
+
+   Overall Status: [PASS|WARN]
+
+   Next Step: Proceeding to document synchronization
+   ```
+
+2. Store report:
+   - Save complete report in QUALITY_REPORT
+   - Print summary to user
+
+3. Determine phase outcome:
+   - IF test runner user chose "Abort": Go to PHASE 4 (exit)
+   - IF all checks complete: Continue to Step 1.3
+
+Result: Quality verification complete. All issues documented. Ready for project status verification.
 
 ---
 
@@ -914,13 +1250,15 @@ Exit command with code 0.
 
 ##  Quick Reference
 
-| Scenario             | Mode    | Entry Point                 | Key Phases                                          | Expected Outcome          |
-| -------------------- | ------- | --------------------------- | --------------------------------------------------- | ------------------------- |
-| Daily development    | auto    | `/moai:3-sync`              | Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git | PR Ready + docs synced    |
-| Error recovery       | force   | `/moai:3-sync force`        | Full project re-sync                                | All docs regenerated      |
-| Quick health check   | status  | `/moai:3-sync status`       | Status check only                                   | Health report             |
-| Milestone completion | project | `/moai:3-sync project`      | Integrated sync                                     | Project-wide updates      |
-| Auto-merge workflow  | auto    | `/moai:3-sync --auto-merge` | PR auto-merge + cleanup                             | Branch merged and deleted |
+| Scenario             | Mode    | Entry Point                 | Key Phases                                                    | Expected Outcome          |
+| -------------------- | ------- | --------------------------- | ------------------------------------------------------------- | ------------------------- |
+| Daily development    | auto    | `/moai:3-sync`              | Phase 0.5 (QV) → Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git | PR Ready + docs synced    |
+| Error recovery       | force   | `/moai:3-sync force`        | Phase 0.5 (QV) → Full project re-sync                         | All docs regenerated      |
+| Quick health check   | status  | `/moai:3-sync status`       | Phase 0.5 (QV) → Status check only                            | Health report             |
+| Milestone completion | project | `/moai:3-sync project`      | Phase 0.5 (QV) → Integrated sync                              | Project-wide updates      |
+| Auto-merge workflow  | auto    | `/moai:3-sync --auto-merge` | Phase 0.5 (QV) → PR auto-merge + cleanup                      | Branch merged and deleted |
+
+Note: Phase 0.5 = Quality Verification (pytest, ruff, mypy, code-review)
 
 Associated Agents:
 
@@ -935,10 +1273,11 @@ Documentation Outputs:
 - Reports: `.moai/reports/sync-report-{timestamp}.md`
 - Backup: `.moai-backups/sync-{timestamp}/` (safety backup)
 
-Version: 3.1.0 (Agent-Delegated Pattern)
-Last Updated: 2025-11-25
+Version: 3.4.0 (Full Language Support with Config-Based Coverage)
+Last Updated: 2025-12-22
 Architecture: Commands → Agents → Skills (Complete delegation)
-Total Lines: ~725 (optimized from 2,096)
+Supported Languages: Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#, C++, Elixir, R, Flutter/Dart, Scala
+Coverage Target: Read from .moai/config/sections/quality.yaml (constitution.test_coverage_target)
 
 ---
 
