@@ -27,8 +27,8 @@ def temp_repo_dir(tmp_path: Path) -> Generator[Path, None, None]:
     repo_dir = tmp_path / "test_repo"
     repo_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initialize Git repository
-    repo = Repo.init(repo_dir)
+    # Initialize Git repository with explicit initial branch name
+    repo = Repo.init(repo_dir, initial_branch="main")
     repo.config_writer().set_value("user", "name", "Test User").release()
     repo.config_writer().set_value("user", "email", "test@example.com").release()
 
