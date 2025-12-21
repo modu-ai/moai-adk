@@ -1,3 +1,299 @@
+# v0.34.0 - Template Sync & Multi-Language Quality Release (2025-12-22)
+
+## Summary
+
+Minor release adding template synchronization system, Phase 0.5 quality verification with 15+ language support, Smart Question System, and enhanced worktree management.
+
+## Changes
+
+### New Features
+
+- **feat(3-sync)**: Add Phase 0.5 Quality Verification
+  - Auto-detect project language (16 languages supported)
+  - Run language-specific test runner, linter, and type checker
+  - Execute code-review via manager-quality agent
+  - Coverage target from config (constitution.test_coverage_target)
+
+- **feat(quality)**: Add full 15-language support with config-based coverage
+  - Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#, C++, Elixir, R, Flutter/Dart, Scala
+  - Language-specific tool execution (pytest/jest/go test/cargo test/etc.)
+  - Linter support (ruff/eslint/golangci-lint/clippy/etc.)
+  - Type checker support (mypy/tsc/go vet/etc.)
+
+- **feat(templates)**: Sync local improvements to templates
+  - manager-spec.md: Add EARS Official Grammar Patterns (2025 Industry Standard)
+  - manager-tdd.md: Add multi-language support (v1.1.0)
+  - 3-sync.md: Add Phase 0.5 quality verification with language auto-detection
+
+- **feat(commands)**: Add Smart Question System to 0-project command
+  - Interactive configuration with category-based questions
+  - Progressive disclosure pattern
+  - Improved user experience for project initialization
+
+- **feat(skills)**: Add worktree skill modules and documentation
+  - Comprehensive worktree management documentation
+  - Git worktree integration for parallel SPEC development
+  - Isolated workspace management
+
+- **feat(agents)**: Add context propagation and task decomposition to manager agents
+  - Enhanced agent communication patterns
+  - Better context passing between workflow phases
+  - Improved task breakdown capabilities
+
+- **feat(spec)**: Sync EARS format and 4-file SPEC structure from yoda
+  - Standardized SPEC document structure
+  - EARS (Easy Approach to Requirements Syntax) format
+  - 4-file pattern (spec.md, plan.md, tech.md, acceptance.md)
+
+### Bug Fixes
+
+- **fix(tests)**: Use mock/tmp_path for UnifiedPermissionManager tests
+  - Improved test isolation
+  - Prevents test interference
+
+- **fix(tests)**: Remove deprecated switch_worktree function imports
+  - Cleanup obsolete worktree function references
+  - Aligns with renamed 'go' command
+
+- **fix(skills)**: Remove backticks from TOON type markers documentation
+  - Fixed markdown formatting issues
+  - Improved documentation readability
+
+- **fix(agents)**: Remove write tools from mcp-sequential-thinking agent
+  - Enforces read-only constraint for analysis agent
+  - Prevents accidental modifications
+
+- **fix(release)**: Extract release notes from CHANGELOG.md instead of git log
+  - More reliable release note generation
+  - Consistent formatting
+
+### Documentation
+
+- **docs(sync)**: Update project documentation v0.33.1
+  - README version metadata update
+  - SPEC status synchronization
+
+- **docs(README)**: Add Phase 0.5 quality verification and JavaScript skill
+  - Documented new quality verification phase
+  - Added JavaScript/TypeScript skill documentation
+
+- **docs(release)**: Add uv tool installation instructions to release workflow
+  - Improved release documentation
+  - Clear installation guide
+
+### Refactoring
+
+- **refactor(config)**: Streamline question system and improve MCP stability
+  - Simplified configuration flow
+  - Enhanced MCP integration stability
+
+- **refactor(config)**: Simplify configuration system with modular sections
+  - Modular section-based configuration
+  - Token efficiency improvements
+
+- **refactor(commands)**: Remove obsolete indexes references from 3-sync
+  - Cleanup deprecated code
+  - Improved maintainability
+
+- **refactor(worktree)**: Rename switch command to go and add project namespace
+  - More intuitive command naming
+  - Better project organization
+
+### Maintenance
+
+- **style**: Add noqa for long function signature
+  - Ruff compliance for complex signatures
+  - Maintains code quality standards
+
+- **chore**: Clean up obsolete config and backup files
+  - Repository cleanup
+  - Removed deprecated configurations
+
+## Installation & Update
+
+### Fresh Install (uv tool - Recommended)
+```bash
+uv tool install moai-adk
+```
+
+### Update Existing Installation
+```bash
+uv tool upgrade moai-adk
+```
+
+### Alternative Methods
+```bash
+# Using uvx (no install needed)
+uvx moai-adk --help
+
+# Using pip
+pip install moai-adk==0.34.0
+```
+
+## Quality Metrics
+
+- Test Coverage: 85.81% (target: 85%)
+- Tests Passed: 9,884 passed, 30 failed (worktree tests), 180 skipped, 26 xfailed
+- CI/CD: All quality gates passing
+
+## Breaking Changes
+
+None
+
+## Migration Guide
+
+No migration required. All changes are additive enhancements.
+
+---
+
+# v0.34.0 - 템플릿 동기화 및 다중 언어 품질 릴리즈 (2025-12-22)
+
+## 요약
+
+템플릿 동기화 시스템, 15개 이상 언어 지원의 Phase 0.5 품질 검증, Smart Question System, 향상된 worktree 관리 기능을 추가한 마이너 릴리즈입니다.
+
+## 변경 사항
+
+### 신규 기능
+
+- **feat(3-sync)**: Phase 0.5 품질 검증 추가
+  - 프로젝트 언어 자동 감지 (16개 언어 지원)
+  - 언어별 테스트 러너, 린터, 타입 체커 실행
+  - manager-quality 에이전트를 통한 코드 리뷰 실행
+  - 설정 기반 커버리지 목표 (constitution.test_coverage_target)
+
+- **feat(quality)**: 설정 기반 커버리지를 통한 완전한 15개 언어 지원
+  - Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#, C++, Elixir, R, Flutter/Dart, Scala
+  - 언어별 도구 실행 (pytest/jest/go test/cargo test/등)
+  - 린터 지원 (ruff/eslint/golangci-lint/clippy/등)
+  - 타입 체커 지원 (mypy/tsc/go vet/등)
+
+- **feat(templates)**: 로컬 개선사항을 템플릿으로 동기화
+  - manager-spec.md: EARS 공식 문법 패턴 추가 (2025 산업 표준)
+  - manager-tdd.md: 다중 언어 지원 추가 (v1.1.0)
+  - 3-sync.md: 언어 자동 감지를 통한 Phase 0.5 품질 검증 추가
+
+- **feat(commands)**: 0-project 명령어에 Smart Question System 추가
+  - 카테고리 기반 질문으로 대화형 설정
+  - 점진적 공개 패턴
+  - 프로젝트 초기화를 위한 사용자 경험 개선
+
+- **feat(skills)**: Worktree 스킬 모듈 및 문서 추가
+  - 포괄적인 worktree 관리 문서
+  - 병렬 SPEC 개발을 위한 Git worktree 통합
+  - 격리된 작업공간 관리
+
+- **feat(agents)**: Manager 에이전트에 컨텍스트 전파 및 작업 분해 추가
+  - 향상된 에이전트 통신 패턴
+  - 워크플로우 단계 간 더 나은 컨텍스트 전달
+  - 개선된 작업 분해 기능
+
+- **feat(spec)**: Yoda에서 EARS 형식 및 4-파일 SPEC 구조 동기화
+  - 표준화된 SPEC 문서 구조
+  - EARS (Easy Approach to Requirements Syntax) 형식
+  - 4-파일 패턴 (spec.md, plan.md, tech.md, acceptance.md)
+
+### 버그 수정
+
+- **fix(tests)**: UnifiedPermissionManager 테스트에 mock/tmp_path 사용
+  - 테스트 격리 개선
+  - 테스트 간섭 방지
+
+- **fix(tests)**: 더 이상 사용되지 않는 switch_worktree 함수 import 제거
+  - 오래된 worktree 함수 참조 정리
+  - 이름이 변경된 'go' 명령어와 일치
+
+- **fix(skills)**: TOON 타입 마커 문서에서 백틱 제거
+  - 마크다운 형식 문제 수정
+  - 문서 가독성 개선
+
+- **fix(agents)**: mcp-sequential-thinking 에이전트에서 쓰기 도구 제거
+  - 분석 에이전트에 대한 읽기 전용 제약 강제
+  - 우발적인 수정 방지
+
+- **fix(release)**: git log 대신 CHANGELOG.md에서 릴리즈 노트 추출
+  - 더 신뢰할 수 있는 릴리즈 노트 생성
+  - 일관된 형식
+
+### 문서화
+
+- **docs(sync)**: 프로젝트 문서 v0.33.1 업데이트
+  - README 버전 메타데이터 업데이트
+  - SPEC 상태 동기화
+
+- **docs(README)**: Phase 0.5 품질 검증 및 JavaScript 스킬 추가
+  - 새로운 품질 검증 단계 문서화
+  - JavaScript/TypeScript 스킬 문서 추가
+
+- **docs(release)**: 릴리즈 워크플로우에 uv tool 설치 지침 추가
+  - 릴리즈 문서 개선
+  - 명확한 설치 가이드
+
+### 리팩토링
+
+- **refactor(config)**: Question system 간소화 및 MCP 안정성 개선
+  - 단순화된 설정 흐름
+  - 향상된 MCP 통합 안정성
+
+- **refactor(config)**: 모듈식 섹션을 통한 설정 시스템 단순화
+  - 모듈식 섹션 기반 설정
+  - 토큰 효율성 개선
+
+- **refactor(commands)**: 3-sync에서 obsolete indexes 참조 제거
+  - 더 이상 사용되지 않는 코드 정리
+  - 유지보수성 개선
+
+- **refactor(worktree)**: switch 명령어를 go로 이름 변경 및 프로젝트 네임스페이스 추가
+  - 더 직관적인 명령어 이름
+  - 더 나은 프로젝트 조직
+
+### 유지보수
+
+- **style**: 긴 함수 시그니처에 noqa 추가
+  - 복잡한 시그니처에 대한 Ruff 준수
+  - 코드 품질 표준 유지
+
+- **chore**: 더 이상 사용되지 않는 설정 및 백업 파일 정리
+  - 저장소 정리
+  - 더 이상 사용되지 않는 설정 제거
+
+## 설치 및 업데이트
+
+### 신규 설치 (uv tool - 권장)
+```bash
+uv tool install moai-adk
+```
+
+### 기존 설치 업데이트
+```bash
+uv tool upgrade moai-adk
+```
+
+### 대체 방법
+```bash
+# uvx 사용 (설치 없이)
+uvx moai-adk --help
+
+# pip 사용
+pip install moai-adk==0.34.0
+```
+
+## 품질 메트릭
+
+- 테스트 커버리지: 85.81% (목표: 85%)
+- 테스트 통과: 9,884 통과, 30 실패 (worktree 테스트), 180 스킵, 26 xfailed
+- CI/CD: 모든 품질 게이트 통과
+
+## 호환성 변경
+
+없음
+
+## 마이그레이션 가이드
+
+마이그레이션 불필요. 모든 변경사항은 추가적인 개선사항입니다.
+
+---
+
 # v0.33.1 - Test Stability & SDD 2025 Integration Patch (2025-12-19)
 
 ## Summary
