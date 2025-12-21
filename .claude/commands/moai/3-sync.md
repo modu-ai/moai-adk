@@ -370,137 +370,223 @@ IMPACT: Skipping quality checks risks propagating issues to documentation.
 
 Quality Verification Pipeline:
 
-This phase runs the following verification sequence for Python projects:
+This phase automatically detects the project language and runs appropriate quality tools:
 
 ```
-Detect Python Project?
-    ↓ YES                          ↓ NO
-pytest execution              Skip to code-review
-    ↓                             ↓
-ruff execution           code-review invocation
-    ↓                             ↓
-mypy execution           Quality Report
+Detect Project Language
     ↓
-code-review invocation
+Language-specific tool execution
+    ├── Test Runner (pytest/jest/go test/cargo test/etc.)
+    ├── Linter (ruff/eslint/golangci-lint/clippy/etc.)
+    └── Type Checker (mypy/tsc/go vet/etc.)
+    ↓
+code-review invocation (manager-quality)
     ↓
 Quality Report
 ```
 
+---
+
 #### Task 1.2.5.1: Detect Project Language
 
-Determine if this is a Python project:
+Automatically detect the primary project language by checking indicator files:
 
-1. Check for Python indicator files:
-   - Action: Look for `pyproject.toml`, `setup.py`, `requirements.txt`, or `.python-version`
-   - IF found: Store `$PYTHON_PROJECT=true`
-   - IF not found: Store `$PYTHON_PROJECT=false` and skip to code-review
+Language Detection Rules (check in order, first match wins):
 
-2. When not Python project:
-   - Execute only code-review with manager-quality agent
-   - Skip pytest, ruff, and mypy steps
-   - WHY: Non-Python projects cannot use Python-specific tools
+1. Python Detection:
+   - Indicator files: pyproject.toml, setup.py, requirements.txt, .python-version, Pipfile
+   - IF found: Store PROJECT_LANGUAGE as python
 
-3. Log detection result:
-   - Print to user: "Project language detection: [Python/Non-Python]"
+2. TypeScript/JavaScript Detection:
+   - Indicator files: tsconfig.json, package.json (with typescript dependency), .nvmrc
+   - IF tsconfig.json exists: Store PROJECT_LANGUAGE as typescript
+   - IF package.json exists without tsconfig: Store PROJECT_LANGUAGE as javascript
+
+3. Go Detection:
+   - Indicator files: go.mod, go.sum
+   - IF found: Store PROJECT_LANGUAGE as go
+
+4. Rust Detection:
+   - Indicator files: Cargo.toml, Cargo.lock
+   - IF found: Store PROJECT_LANGUAGE as rust
+
+5. Ruby Detection:
+   - Indicator files: Gemfile, .ruby-version, Rakefile
+   - IF found: Store PROJECT_LANGUAGE as ruby
+
+6. Java Detection:
+   - Indicator files: pom.xml, build.gradle, build.gradle.kts
+   - IF found: Store PROJECT_LANGUAGE as java
+
+7. PHP Detection:
+   - Indicator files: composer.json, composer.lock
+   - IF found: Store PROJECT_LANGUAGE as php
+
+8. Kotlin Detection:
+   - Indicator files: build.gradle.kts (with kotlin plugin), settings.gradle.kts
+   - IF found with kotlin references: Store PROJECT_LANGUAGE as kotlin
+
+9. Swift Detection:
+   - Indicator files: Package.swift, .xcodeproj, .xcworkspace
+   - IF found: Store PROJECT_LANGUAGE as swift
+
+10. C#/.NET Detection:
+    - Indicator files: .csproj, .sln, .fsproj
+    - IF found: Store PROJECT_LANGUAGE as csharp
+
+11. Fallback:
+    - IF no indicators found: Store PROJECT_LANGUAGE as unknown
+    - Skip language-specific tools, proceed directly to code-review
+
+Log detection result:
+- Print to user: "Project language detection: [detected_language]"
 
 ---
 
-#### Task 1.2.5.2: Execute pytest Quality Check
+#### Task 1.2.5.2: Execute Language-Specific Test Runner
 
-Execute only if $PYTHON_PROJECT=true:
+Execute the appropriate test runner based on detected language:
 
-1. Check pytest installation:
-   - Action: Execute `which pytest` or equivalent check
-   - IF pytest not found: Print warning "[pytest not installed - skipping]" and skip to ruff
-   - IF pytest found: Continue to next step
+Test Runner Configuration by Language:
 
-2. Execute pytest with coverage reporting:
-   - Action: Execute `pytest --tb=short --co -q` to list tests
-   - Action: Execute `pytest -v --tb=short` for actual test execution
+- Python: Execute pytest -v --tb=short or python -m unittest discover
+- TypeScript/JavaScript: Execute npm test or npx vitest run or npx jest
+- Go: Execute go test ./... -v
+- Rust: Execute cargo test
+- Ruby: Execute bundle exec rspec or rake test
+- Java: Execute mvn test or gradle test
+- PHP: Execute vendor/bin/phpunit or composer test
+- Kotlin: Execute gradle test
+- Swift: Execute swift test
+- C#/.NET: Execute dotnet test
+
+Execution Steps:
+
+1. Check tool availability:
+   - Verify the test runner is installed
+   - IF not installed: Print warning "[test runner] not installed - skipping" and proceed to linter
+   - IF installed: Continue to execution
+
+2. Execute test runner:
+   - Run the appropriate command for detected language
    - Capture all output including test results and failures
 
-3. Parse pytest results:
+3. Parse test results:
    - Count passed tests
    - Count failed tests
    - Identify failed test names
-   - Note any test collection errors
 
-4. Determine pytest status:
-   - IF all tests passed: Store `$PYTEST_STATUS=PASS`
-   - IF any tests failed: Store `$PYTEST_STATUS=FAIL` and store failed test details
-   - IF tool not installed: Store `$PYTEST_STATUS=WARN`
+4. Determine test status:
+   - IF all tests passed: Store TEST_STATUS as PASS
+   - IF any tests failed: Store TEST_STATUS as FAIL
+   - IF tool not installed: Store TEST_STATUS as WARN
 
-5. IF pytest failure occurs:
+5. IF test failure occurs:
    - Ask user for decision using AskUserQuestion
-   - Question: "pytest execution result: X tests failed. How would you like to proceed?"
+   - Question: "Test execution result: X tests failed. How would you like to proceed?"
    - Header: "Quality Verification"
    - Options:
      - "Continue" - Ignore test failures and proceed with sync
      - "Abort" - Stop sync and fix tests first
-   - IF user chooses "Continue": Set flag and proceed to next tool
+   - IF user chooses "Continue": Set flag and proceed to linter
    - IF user chooses "Abort": Exit command with graceful exit message (Phase 4)
 
 ---
 
-#### Task 1.2.5.3: Execute ruff Quality Check
+#### Task 1.2.5.3: Execute Language-Specific Linter
 
-Execute only if $PYTHON_PROJECT=true:
+Execute the appropriate linter based on detected language:
 
-1. Check ruff installation:
-   - Action: Execute `which ruff` or equivalent check
-   - IF ruff not found: Print warning "[ruff not installed - skipping]" and skip to mypy
-   - IF ruff found: Continue to next step
+Linter Configuration by Language:
 
-2. Execute ruff linting:
-   - Action: Execute `ruff check .` or equivalent
+- Python: Execute ruff check . or flake8 .
+- TypeScript/JavaScript: Execute npx eslint . or npm run lint
+- Go: Execute golangci-lint run or go vet ./...
+- Rust: Execute cargo clippy
+- Ruby: Execute bundle exec rubocop or rubocop
+- Java: Execute mvn checkstyle:check or gradle checkstyleMain
+- PHP: Execute vendor/bin/phpstan analyse or php-cs-fixer fix --dry-run
+- Kotlin: Execute gradle ktlintCheck or detekt
+- Swift: Execute swiftlint
+- C#/.NET: Execute dotnet format --verify-no-changes
+
+Execution Steps:
+
+1. Check tool availability:
+   - Verify the linter is installed
+   - IF not installed: Print warning "[linter] not installed - skipping" and proceed to type checker
+   - IF installed: Continue to execution
+
+2. Execute linter:
+   - Run the appropriate command for detected language
    - Capture all output including violations found
 
-3. Parse ruff results:
+3. Parse linter results:
    - Count total violations
-   - Categorize violations by severity
+   - Categorize by severity if available
    - Identify files with violations
 
-4. Determine ruff status:
-   - IF no violations: Store `$RUFF_STATUS=PASS`
-   - IF violations found: Store `$RUFF_STATUS=FAIL`
-   - IF tool not installed: Store `$RUFF_STATUS=WARN`
+4. Determine linter status:
+   - IF no violations: Store LINT_STATUS as PASS
+   - IF violations found: Store LINT_STATUS as FAIL
+   - IF tool not installed: Store LINT_STATUS as WARN
 
 5. Report findings:
-   - Print to user: "ruff check: [result] - X violations found"
+   - Print to user: "[linter name] check: [result] - X violations found"
 
 ---
 
-#### Task 1.2.5.4: Execute mypy Quality Check
+#### Task 1.2.5.4: Execute Language-Specific Type Checker
 
-Execute only if $PYTHON_PROJECT=true:
+Execute the appropriate type checker based on detected language:
 
-1. Check mypy installation:
-   - Action: Execute `which mypy` or equivalent check
-   - IF mypy not found: Print warning "[mypy not installed - skipping]" and skip to code-review
-   - IF mypy found: Continue to next step
+Type Checker Configuration by Language:
 
-2. Execute mypy type checking:
-   - Action: Execute `mypy .` or equivalent
+- Python: Execute mypy . or pyright .
+- TypeScript: Execute npx tsc --noEmit
+- JavaScript: Skip (no native type checking) or use TypeScript in check mode
+- Go: Execute go vet ./... (already includes type checking)
+- Rust: Skip (type checking is part of cargo build/test)
+- Ruby: Execute bundle exec steep check or sorbet tc
+- Java: Skip (compilation handles type checking)
+- PHP: Execute vendor/bin/phpstan analyse --level max
+- Kotlin: Skip (compilation handles type checking)
+- Swift: Skip (compilation handles type checking)
+- C#/.NET: Execute dotnet build --no-restore (type check via compilation)
+
+Execution Steps:
+
+1. Check if type checking is applicable:
+   - Some languages include type checking in compilation
+   - IF not applicable: Print info "[language] uses compilation for type checking - skipping separate check"
+   - IF applicable: Continue to tool check
+
+2. Check tool availability:
+   - Verify the type checker is installed
+   - IF not installed: Print warning "[type checker] not installed - skipping" and proceed to code-review
+   - IF installed: Continue to execution
+
+3. Execute type checker:
+   - Run the appropriate command for detected language
    - Capture all output including type errors
 
-3. Parse mypy results:
+4. Parse type checker results:
    - Count total type errors
    - Identify files with type issues
-   - Note any configuration issues
 
-4. Determine mypy status:
-   - IF no errors: Store `$MYPY_STATUS=PASS`
-   - IF errors found: Store `$MYPY_STATUS=FAIL`
-   - IF tool not installed: Store `$MYPY_STATUS=WARN`
+5. Determine type checker status:
+   - IF no errors: Store TYPE_STATUS as PASS
+   - IF errors found: Store TYPE_STATUS as FAIL
+   - IF tool not installed or not applicable: Store TYPE_STATUS as SKIP
 
-5. Report findings:
-   - Print to user: "mypy check: [result] - X type errors found"
+6. Report findings:
+   - Print to user: "[type checker] check: [result] - X type errors found"
 
 ---
 
 #### Task 1.2.5.5: Invoke manager-quality for Code Review
 
-Execute code-review agent regardless of project type:
+Execute code-review agent regardless of project language:
 
 Use the manager-quality subagent to:
 
@@ -526,10 +612,10 @@ Task Instructions:
    - Recommendations for improvements
 
 3. Determine overall code review status:
-   - IF no issues found: Store `$CODE_REVIEW_STATUS=PASS`
-   - IF issues found: Store `$CODE_REVIEW_STATUS=WARN`
+   - IF no issues found: Store CODE_REVIEW_STATUS as PASS
+   - IF issues found: Store CODE_REVIEW_STATUS as WARN
 
-Store: Response in `$CODE_REVIEW_RESULTS`
+Store: Response in CODE_REVIEW_RESULTS
 
 ---
 
@@ -543,18 +629,18 @@ After all checks complete, generate comprehensive quality report:
    Phase 0.5 Quality Verification Results
    =====================================
 
-   Python Project: [Yes/No]
+   Project Language: [detected_language]
 
    Tool Verification Results:
-   pytest:      [PASS|FAIL|WARN|SKIP]
-   ruff:        [PASS|FAIL|WARN|SKIP]
-   mypy:        [PASS|FAIL|WARN|SKIP]
-   code-review: [PASS|WARN]
+   test-runner:  [PASS|FAIL|WARN|SKIP] ([tool_name])
+   linter:       [PASS|FAIL|WARN|SKIP] ([tool_name])
+   type-checker: [PASS|FAIL|WARN|SKIP] ([tool_name])
+   code-review:  [PASS|WARN]
 
    Details:
-   - pytest: [summary]
-   - ruff: [summary]
-   - mypy: [summary]
+   - test-runner: [summary]
+   - linter: [summary]
+   - type-checker: [summary]
    - code-review: [summary]
 
    Overall Status: [PASS|WARN]
@@ -563,11 +649,11 @@ After all checks complete, generate comprehensive quality report:
    ```
 
 2. Store report:
-   - Save complete report in `$QUALITY_REPORT`
+   - Save complete report in QUALITY_REPORT
    - Print summary to user
 
 3. Determine phase outcome:
-   - IF pytest user chose "Abort": Go to PHASE 4 (exit)
+   - IF test runner user chose "Abort": Go to PHASE 4 (exit)
    - IF all checks complete: Continue to Step 1.3
 
 Result: Quality verification complete. All issues documented. Ready for project status verification.
@@ -1152,10 +1238,10 @@ Documentation Outputs:
 - Reports: `.moai/reports/sync-report-{timestamp}.md`
 - Backup: `.moai-backups/sync-{timestamp}/` (safety backup)
 
-Version: 3.2.0 (Phase 0.5 Quality Verification)
+Version: 3.3.0 (Multi-Language Quality Verification)
 Last Updated: 2025-12-22
 Architecture: Commands → Agents → Skills (Complete delegation)
-Total Lines: ~920 (Phase 0.5 added with 195 new lines)
+Supported Languages: Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#
 
 ---
 
