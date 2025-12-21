@@ -39,16 +39,31 @@ while read local_ref local_oid remote_ref remote_oid; do
 
     # Check commits being pushed for secrets
     if [ "$local_oid" != "0000000000000000000000000000000000000000" ]; then
+        # Get the remote main/develop branch to exclude already-pushed commits
+        REMOTE_MAIN=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/develop 2>/dev/null || echo "")
+
         remote_base="$remote_oid"
         if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
-            # New branch - check all commits on this branch
-            remote_base=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/develop 2>/dev/null || echo "HEAD")
+            # New branch - check all commits on this branch that are not on remote main
+            remote_base="$REMOTE_MAIN"
         fi
 
-        # Get commits being pushed
-        PUSHED_COMMITS=$(git rev-list $remote_base..$local_oid 2>/dev/null)
+        # Get commits being pushed (only if we have a valid base)
+        if [ -n "$remote_base" ]; then
+            PUSHED_COMMITS=$(git rev-list $remote_base..$local_oid 2>/dev/null)
+        else
+            PUSHED_COMMITS=$(git rev-list $local_oid 2>/dev/null | head -20)
+        fi
 
         for COMMIT in $PUSHED_COMMITS; do
+            # Skip commits that are already on the remote main branch (false positive prevention)
+            if [ -n "$REMOTE_MAIN" ]; then
+                if git merge-base --is-ancestor "$COMMIT" "$REMOTE_MAIN" 2>/dev/null; then
+                    # This commit is already on origin/main, skip it
+                    continue
+                fi
+            fi
+
             COMMIT_CONTENT=$(git show $COMMIT 2>/dev/null)
 
             for PATTERN in "${PATTERNS[@]}"; do
