@@ -347,6 +347,241 @@ Store: Response in `$MODE_EXECUTION_RESULT`
 
 ---
 
+##  PHASE 1.5: Smart Question System (INITIALIZATION Mode Only)
+
+Goal: Collect minimal user input, research best practices via web search, and propose optimized project configuration.
+
+WHY: Reduce user burden from 40+ questions to 3 essential questions while providing expert-level recommendations based on current industry standards.
+
+IMPACT: Non-developers can create production-ready projects with minimal technical knowledge.
+
+### Step 1: Collect Essential Information (3 Questions Only)
+
+[HARD] Use AskUserQuestion to collect ONLY 3 required fields at COMMAND level.
+
+WHY: Minimal questions reduce user friction while capturing essential project identity.
+
+IMPACT: More questions would overwhelm non-developers and slow down project creation.
+
+Question 1 - Project Name:
+
+- question: Translate to user's conversation_language with friendly guidance:
+  - Korean: "프로젝트 이름을 정해주세요. 영어 소문자와 하이픈(-)만 사용할 수 있어요."
+  - English: "Choose a project name. Use only lowercase letters and hyphens (-)."
+- header: "Project Name"
+- type: text input (user selects "Other" to type)
+- examples shown to user:
+  - "snake-game" (게임 프로젝트)
+  - "my-first-app" (첫 번째 앱)
+  - "todo-list" (할 일 목록)
+- validation: lowercase, no spaces, valid directory name
+- helper: If user enters Korean or spaces, suggest alternatives automatically
+
+Question 2 - Project Type:
+
+- question: Translate to user's conversation_language with beginner-friendly tone:
+  - Korean: "어떤 종류의 프로젝트를 만들고 싶으세요?"
+  - English: "What kind of project would you like to create?"
+- header: "Project Type"
+- multiSelect: false
+- options (max 4, beginner-friendly labels):
+  - label: "Web Browser App"
+    korean_label: "웹 브라우저에서 보는 것"
+    description: "크롬, 사파리 등 브라우저에서 열어보는 프로그램 (게임, 웹사이트 등)"
+    tech_hint: "HTML, CSS, JavaScript 또는 React, Vue 사용"
+  - label: "Mobile App"
+    korean_label: "스마트폰 앱"
+    description: "아이폰이나 안드로이드에서 설치해서 사용하는 앱"
+    tech_hint: "React Native, Flutter 사용"
+  - label: "Command Line Tool"
+    korean_label: "터미널에서 실행하는 도구"
+    description: "명령어로 실행하는 프로그램 (자동화 스크립트 등)"
+    tech_hint: "Python, Node.js, Go 사용"
+  - label: "Backend API"
+    korean_label: "서버/백엔드 서비스"
+    description: "데이터를 저장하고 처리하는 서버 프로그램"
+    tech_hint: "FastAPI, Express, Django 사용"
+
+Question 3 - Project Description:
+
+- question: Translate to user's conversation_language with examples:
+  - Korean: "만들고 싶은 것을 한 문장으로 설명해주세요."
+  - English: "Describe what you want to build in one sentence."
+- header: "Description"
+- type: text input (user selects "Other" to type)
+- examples shown to user (in conversation_language):
+  - "방향키로 뱀을 조종해서 음식을 먹는 게임" (스네이크 게임)
+  - "할 일을 추가하고 완료 표시하는 앱" (투두 리스트)
+  - "날씨 정보를 보여주는 웹페이지" (날씨 앱)
+  - "사진을 업로드하고 공유하는 서비스" (갤러리)
+- validation: non-empty string
+- helper: Encourage natural language description, no technical terms required
+
+Store responses in: $PROJECT_ESSENTIAL_INFO
+
+### Step 2: Web Search for Best Practices
+
+[HARD] After collecting essential info, perform targeted web searches using WebSearch tool.
+
+WHY: Real-time research ensures recommendations reflect current industry standards (2025).
+
+IMPACT: Outdated recommendations would create technical debt from project start.
+
+Based on collected project_type, execute 3 parallel searches:
+
+Search Query 1: "[project_type] best practices 2025"
+- Extract: Design patterns, architecture recommendations, common pitfalls
+
+Search Query 2: "[project_type] recommended tech stack 2025"
+- Extract: Framework comparisons, library recommendations, version requirements
+
+Search Query 3: "[project_type] [project_description keywords] architecture patterns"
+- Extract: Domain-specific patterns, similar project architectures
+
+Analyze search results and compile:
+
+- Recommended Frameworks: Top 2-3 options with pros/cons
+- UI Library: Best options for project type
+- Testing Framework: Industry standard for project type
+- Build Tools: Current best practices
+- Deployment Target: Common deployment platforms
+
+Store analysis in: $BEST_PRACTICES_ANALYSIS
+
+### Step 3: Generate Smart Proposal
+
+[HARD] Create structured proposal based on web search analysis.
+
+WHY: Expert-curated recommendations reduce decision paralysis for non-developers.
+
+IMPACT: Poor recommendations would lead to project failure or rework.
+
+Proposal Structure:
+
+Complexity Detection (before proposing):
+- Simple Projects (recommend NO framework):
+  - Keywords: "게임", "game", "간단한", "simple", "첫", "first", "연습", "practice"
+  - Project types: Browser games, simple utilities, learning projects
+  - Recommended stack: HTML5 + CSS3 + Vanilla JavaScript (+ Canvas for games)
+  - Rationale: "프레임워크 없이 기본 기술만으로 빠르게 만들 수 있어요"
+
+- Medium Projects (recommend lightweight framework):
+  - Keywords: "블로그", "포트폴리오", "랜딩페이지"
+  - Recommended stack: Next.js or Astro with minimal dependencies
+
+- Complex Projects (recommend full framework):
+  - Keywords: "대시보드", "관리자", "SaaS", "플랫폼"
+  - Recommended stack: Full framework with state management, testing, etc.
+
+Technology Stack Proposal:
+- For Simple Projects (games, learning):
+  - Framework: "프레임워크 없음 - 순수 HTML/CSS/JavaScript로 충분해요"
+  - UI: "CSS만 사용 (Canvas for games)"
+  - Testing: "브라우저 개발자 도구로 확인"
+  - Build: "빌드 도구 없음 - 파일을 바로 브라우저에서 열면 됩니다"
+
+- For Medium/Complex Projects:
+  - Framework: Primary recommendation with rationale
+  - UI Library: Recommended option
+  - Testing: Standard for project type
+  - Build Tools: Current best practice
+
+Architecture Proposal:
+- Directory Structure: Recommended layout for project type
+- Key Patterns: Component patterns, state management approach
+- Data Flow: How data moves through the application
+
+Quality Standards:
+- Test Coverage Target: Industry standard percentage
+- TRUST 5 Level: Recommended validation level
+- Accessibility: WCAG level appropriate for project
+
+Store proposal in: $SMART_PROPOSAL
+
+### Step 4: Present Proposal and Get User Approval
+
+[HARD] Use AskUserQuestion to present proposal and get explicit user approval.
+
+WHY: User must consent before any files are created or configuration applied.
+
+IMPACT: Automatic execution without approval violates user autonomy and may create unwanted configuration.
+
+Proposal Presentation Format:
+
+Present in user's conversation_language with clear sections:
+
+```markdown
+Based on your project "{project_name}" ({project_type}), here is my recommendation:
+
+**Technology Stack**
+- Framework: {framework} - {brief_rationale}
+- UI: {ui_library} - {brief_rationale}
+- Testing: {test_framework}
+- Build: {build_tools}
+
+**Architecture**
+- Structure: {directory_pattern}
+- Patterns: {key_patterns}
+
+**Quality Standards**
+- Coverage: {coverage_target}%
+- TRUST Level: {trust_level}
+
+Sources: [List actual WebSearch sources used]
+```
+
+Approval Question:
+
+- question: Translate "Do you approve this configuration? You can modify specific parts or request a different approach." to user's conversation_language
+- header: "Approval"
+- multiSelect: false
+- options:
+  - label: "Approve and Continue"
+    description: "Create project with these settings"
+  - label: "Modify Tech Stack"
+    description: "Keep architecture, change framework/libraries"
+  - label: "Modify Architecture"
+    description: "Keep tech stack, change structure/patterns"
+  - label: "Start Over"
+    description: "Re-run search with different criteria"
+
+If user selects "Modify":
+- Use additional AskUserQuestion to collect specific changes
+- Update $SMART_PROPOSAL with modifications
+- Re-present for approval
+
+Loop until user selects "Approve and Continue"
+
+Store approval in: $USER_APPROVAL
+
+### Step 5: Delegate to Manager-Project Agent
+
+[HARD] After user approval, invoke manager-project agent with complete context.
+
+WHY: Agent receives all necessary information to generate files without further user interaction.
+
+IMPACT: Missing context would force agent to make assumptions or fail.
+
+Pass to manager-project via Task():
+
+- Mode: INITIALIZATION
+- Language: User's conversation_language
+- Project Essential Info: $PROJECT_ESSENTIAL_INFO (name, type, description)
+- Approved Proposal: $SMART_PROPOSAL (tech stack, architecture, quality)
+- User Approval Status: $USER_APPROVAL
+- WebSearch Sources: URLs used for recommendations
+
+Agent responsibilities:
+- Generate .moai/project/product.md from project description + approved proposal
+- Generate .moai/project/structure.md from architecture proposal
+- Generate .moai/project/tech.md from technology stack proposal
+- Create .moai/config/config.yaml with all settings
+- Apply language settings throughout
+
+Output: Complete project initialization with documentation
+
+---
+
 ##  PHASE 2: Execute Mode
 
 Goal: Execute the appropriate mode based on routing decision.
