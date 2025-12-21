@@ -78,7 +78,9 @@ class TestGetManager:
 
         # Assert
         assert result == mock_manager_instance
-        mock_manager_class.assert_called_once_with(repo_path=repo_path, worktree_root=wt_root)
+        mock_manager_class.assert_called_once_with(
+            repo_path=repo_path, worktree_root=wt_root, project_name="repo"
+        )
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")
     @patch("moai_adk.cli.worktree.cli._detect_worktree_root")
@@ -440,22 +442,25 @@ class TestStatusWorktreesCommand:
 class TestGoWorktreeCommand:
     """Test suite for go worktree command."""
 
+    @patch("subprocess.call")
     @patch("moai_adk.cli.worktree.cli.get_manager")
-    def test_go_worktree_success(self, mock_get_manager):
+    def test_go_worktree_success(self, mock_get_manager, mock_subprocess_call):
         """Test successful cd command generation."""
         # Arrange
         runner = CliRunner()
         mock_manager = MagicMock()
+        mock_manager.project_name = "test-repo"
         mock_worktree_info = MagicMock(path=Path("/mock/worktree"))
         mock_manager.registry.get.return_value = mock_worktree_info
         mock_get_manager.return_value = mock_manager
+        mock_subprocess_call.return_value = 0
 
         # Act
         result = runner.invoke(go_worktree, ["SPEC-001"])
 
         # Assert
-        assert result.exit_code == 0
-        assert "cd" in result.output
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        assert "Opening new shell" in result.output
 
     @patch("moai_adk.cli.worktree.cli.get_manager")
     def test_go_worktree_not_found(self, mock_get_manager):

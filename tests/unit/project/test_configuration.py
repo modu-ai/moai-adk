@@ -151,7 +151,7 @@ class TestSmartDefaultsEngine:
         """Test get_default with existing key."""
         engine = SmartDefaultsEngine()
         default = engine.get_default("constitution.test_coverage_target")
-        assert default == 90
+        assert default == 85
 
     def test_get_default_nonexistent_key(self):
         """Test get_default with nonexistent key."""
@@ -166,7 +166,7 @@ class TestSmartDefaultsEngine:
         complete_config = engine.apply_defaults(partial_config)
         assert complete_config["user"]["name"] == "Test"
         assert complete_config["git_strategy"]["personal"]["workflow"] == "github-flow"
-        assert complete_config["constitution"]["test_coverage_target"] == 90
+        assert complete_config["constitution"]["test_coverage_target"] == 85
 
 
 class TestAutoDetectionEngine:

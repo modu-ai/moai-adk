@@ -338,13 +338,16 @@ class TestStatusWorktreesCommand:
 class TestGoWorktreeCommand:
     """Test go worktree command."""
 
+    @patch("subprocess.call")
     @patch("moai_adk.cli.worktree.cli.get_manager")
-    def test_go_worktree_success(self, mock_get_manager):
+    def test_go_worktree_success(self, mock_get_manager, mock_subprocess_call):
         """Test go command returns cd command."""
         # Arrange
         runner = CliRunner()
         mock_manager = MagicMock()
+        mock_manager.project_name = "test-repo"
         mock_get_manager.return_value = mock_manager
+        mock_subprocess_call.return_value = 0
 
         now = "2025-01-01T12:00:00Z"
         worktree_info = WorktreeInfo(
@@ -361,8 +364,8 @@ class TestGoWorktreeCommand:
         result = runner.invoke(worktree, ["go", "SPEC-001"])
 
         # Assert
-        assert result.exit_code == 0
-        assert "cd" in result.output
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+        assert "Opening new shell" in result.output
 
     @patch("moai_adk.cli.worktree.cli.get_manager")
     def test_go_worktree_not_found(self, mock_get_manager):
@@ -752,7 +755,6 @@ class TestWorktreeCommandIntegration:
         expected_commands = [
             "new",
             "list",
-            "switch",
             "remove",
             "status",
             "go",

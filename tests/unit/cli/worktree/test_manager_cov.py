@@ -107,7 +107,7 @@ class TestWorktreeManagerCreate:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(existing)
+            manager.registry.register(existing, project_name=manager.project_name)
 
             # Act & Assert
             with pytest.raises(WorktreeExistsError):
@@ -145,7 +145,7 @@ class TestWorktreeManagerCreate:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(existing)
+            manager.registry.register(existing, project_name=manager.project_name)
 
             # Act
             result = manager.create("SPEC-AUTH-001", force=True)
@@ -232,7 +232,7 @@ class TestWorktreeManagerRemove:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(info)
+            manager.registry.register(info, project_name=manager.project_name)
 
             # Act
             manager.remove("SPEC-AUTH-001")
@@ -291,7 +291,7 @@ class TestWorktreeManagerRemove:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(info)
+            manager.registry.register(info, project_name=manager.project_name)
 
             # Act & Assert - should NOT raise UncommittedChangesError because status check fails gracefully
             # The code has try/except that ignores status check errors, so this will succeed
@@ -323,7 +323,7 @@ class TestWorktreeManagerRemove:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(info)
+            manager.registry.register(info, project_name=manager.project_name)
 
             # Act - should not raise
             manager.remove("SPEC-AUTH-001", force=True)
@@ -361,7 +361,7 @@ class TestWorktreeManagerList:
                     last_accessed=datetime.now().isoformat() + "Z",
                     status="active",
                 )
-                manager.registry.register(info)
+                manager.registry.register(info, project_name=manager.project_name)
 
             # Act
             result = manager.list()
@@ -426,7 +426,7 @@ class TestWorktreeManagerSync:
                     last_accessed=datetime.now().isoformat() + "Z",
                     status="active",
                 )
-                manager.registry.register(info)
+                manager.registry.register(info, project_name=manager.project_name)
 
                 # Act
                 manager.sync("SPEC-AUTH-001")
@@ -489,7 +489,7 @@ class TestWorktreeManagerSync:
                     last_accessed=datetime.now().isoformat() + "Z",
                     status="active",
                 )
-                manager.registry.register(info)
+                manager.registry.register(info, project_name=manager.project_name)
 
                 # Act & Assert
                 with pytest.raises(MergeConflictError):
@@ -529,7 +529,7 @@ class TestWorktreeManagerSync:
                     last_accessed=datetime.now().isoformat() + "Z",
                     status="active",
                 )
-                manager.registry.register(info)
+                manager.registry.register(info, project_name=manager.project_name)
 
                 # Act
                 manager.sync("SPEC-AUTH-001", rebase=True)
@@ -571,7 +571,7 @@ class TestWorktreeManagerSync:
                     last_accessed=datetime.now().isoformat() + "Z",
                     status="active",
                 )
-                manager.registry.register(info)
+                manager.registry.register(info, project_name=manager.project_name)
 
                 # Act
                 manager.sync("SPEC-AUTH-001", ff_only=True)
@@ -611,7 +611,7 @@ class TestWorktreeManagerCleanMerged:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(info)
+            manager.registry.register(info, project_name=manager.project_name)
 
             # Act
             cleaned = manager.clean_merged()
@@ -644,7 +644,7 @@ class TestWorktreeManagerCleanMerged:
                 last_accessed=datetime.now().isoformat() + "Z",
                 status="active",
             )
-            manager.registry.register(info)
+            manager.registry.register(info, project_name=manager.project_name)
 
             # Act
             cleaned = manager.clean_merged()

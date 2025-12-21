@@ -394,7 +394,7 @@ class TestConfigurationMigratorAdvanced:
         # Assert
         assert v3_config["git_strategy"]["personal"]["workflow"] == "github-flow"
         assert v3_config["git_strategy"]["team"]["workflow"] == "git-flow"
-        assert v3_config["constitution"]["test_coverage_target"] == 90
+        assert v3_config["constitution"]["test_coverage_target"] == 85
 
     def test_migrate_handles_missing_sections(self):
         """Test migration handles missing sections gracefully."""

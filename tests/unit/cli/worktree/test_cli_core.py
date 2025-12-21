@@ -39,7 +39,9 @@ class TestGetManager:
 
         # Assert
         assert result == mock_manager
-        mock_manager_class.assert_called_once_with(repo_path=repo_path, worktree_root=worktree_root)
+        mock_manager_class.assert_called_once_with(
+            repo_path=repo_path, worktree_root=worktree_root, project_name="repo"
+        )
         mock_detect.assert_not_called()
 
     @patch("moai_adk.cli.worktree.cli.WorktreeManager")

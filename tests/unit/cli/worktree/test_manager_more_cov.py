@@ -98,7 +98,7 @@ class TestWorktreeManagerCreate:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(existing_info)
+            manager.registry.register(existing_info, project_name=manager.project_name)
 
             # Act & Assert
             with pytest.raises(WorktreeExistsError):
@@ -132,7 +132,7 @@ class TestWorktreeManagerCreate:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(existing_info)
+            manager.registry.register(existing_info, project_name=manager.project_name)
 
             # Act
             result = manager.create(spec_id="SPEC-001", force=True)
@@ -191,7 +191,7 @@ class TestWorktreeManagerRemove:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             manager.remove(spec_id="SPEC-001")
@@ -243,7 +243,7 @@ class TestWorktreeManagerRemove:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act - The code catches the exception, so removal still succeeds
             manager.remove(spec_id="SPEC-001", force=False)
@@ -276,7 +276,7 @@ class TestWorktreeManagerRemove:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             manager.remove(spec_id="SPEC-001", force=True)
@@ -326,7 +326,7 @@ class TestWorktreeManagerSync:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             manager.sync(spec_id="SPEC-001")
@@ -389,7 +389,7 @@ class TestWorktreeManagerSync:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             manager.sync(spec_id="SPEC-001", rebase=True)
@@ -433,7 +433,7 @@ class TestWorktreeManagerSync:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             manager.sync(spec_id="SPEC-001", ff_only=True)
@@ -480,7 +480,7 @@ class TestWorktreeManagerSync:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act & Assert
             with pytest.raises(MergeConflictError):
@@ -518,7 +518,7 @@ class TestWorktreeManagerCleanMerged:
                     last_accessed=now,
                     status="active",
                 )
-                manager.registry.register(worktree_info)
+                manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             cleaned = manager.clean_merged()
@@ -636,7 +636,7 @@ class TestWorktreeManagerList:
                     last_accessed=now,
                     status="active",
                 )
-                manager.registry.register(worktree_info)
+                manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act
             worktrees = manager.list()
@@ -727,7 +727,7 @@ class TestWorktreeManagerEdgeCases:
                 last_accessed=now,
                 status="active",
             )
-            manager.registry.register(worktree_info)
+            manager.registry.register(worktree_info, project_name=manager.project_name)
 
             # Act & Assert
             with pytest.raises(GitOperationError):
