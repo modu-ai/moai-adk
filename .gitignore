@@ -123,6 +123,9 @@ logs/
 hooks_backup_*/
 docs_backup_*/
 
+# Documentation build output (Nextra)
+docs/
+
 # ===========================================
 # Secrets and Credentials (CRITICAL)
 # ===========================================
