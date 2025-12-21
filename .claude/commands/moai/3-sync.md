@@ -18,7 +18,6 @@ model: inherit
 
 @.moai/config/config.yaml
 @.moai/specs/
-@.moai/indexes/tags.db
 @README.md
 
 ---
@@ -501,7 +500,6 @@ IMPACT: Missing backup eliminates recovery option if sync produces errors
    - README.md (if exists) - Project documentation
    - docs/ directory (if exists) - Additional documentation
    - .moai/specs/ directory - SPEC definitions
-   - .moai/indexes/ directory (if exists) - Project indexes
    WHY: Backing up all critical files enables complete state restoration
 
 4. [HARD] Verify Backup Integrity:
@@ -550,7 +548,6 @@ Task Instructions:
 
 2. Project improvements:
 
-   - Update SPEC index (.moai/indexes/tags.db)
    - Fix project issues (if possible)
    - Restore broken references
 
@@ -663,7 +660,6 @@ Commit Scope:
 
 - All changed document files
 - .moai/reports/ directory
-- .moai/indexes/ directory (if changed)
 - README.md (if changed)
 - docs/ directory (if changed)
 
