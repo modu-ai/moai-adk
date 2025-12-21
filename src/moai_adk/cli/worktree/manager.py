@@ -67,7 +67,7 @@ class WorktreeManager:
             GitOperationError: If Git operation fails.
         """
         # Check if worktree already exists
-        existing = self.registry.get(spec_id)
+        existing = self.registry.get(spec_id, project_name=self.project_name)
         if existing and not force:
             raise WorktreeExistsError(spec_id, existing.path)
 
@@ -133,7 +133,7 @@ class WorktreeManager:
             )
 
             # Register in registry
-            self.registry.register(info)
+            self.registry.register(info, project_name=self.project_name)
 
             return info
 
@@ -156,7 +156,7 @@ class WorktreeManager:
             UncommittedChangesError: If worktree has uncommitted changes (unless force=True).
             GitOperationError: If Git operation fails.
         """
-        info = self.registry.get(spec_id)
+        info = self.registry.get(spec_id, project_name=self.project_name)
         if not info:
             raise WorktreeNotFoundError(spec_id)
 
@@ -182,7 +182,7 @@ class WorktreeManager:
                     shutil.rmtree(info.path)
 
             # Unregister from registry
-            self.registry.unregister(spec_id)
+            self.registry.unregister(spec_id, project_name=self.project_name)
 
         except (WorktreeNotFoundError, UncommittedChangesError):
             raise
@@ -197,7 +197,7 @@ class WorktreeManager:
         Returns:
             List of WorktreeInfo instances.
         """
-        return self.registry.list_all()
+        return self.registry.list_all(project_name=self.project_name)
 
     def sync(
         self,
@@ -223,7 +223,7 @@ class WorktreeManager:
             MergeConflictError: If merge conflict occurs and auto_resolve is False.
             GitOperationError: If Git operation fails.
         """
-        info = self.registry.get(spec_id)
+        info = self.registry.get(spec_id, project_name=self.project_name)
         if not info:
             raise WorktreeNotFoundError(spec_id)
 
@@ -394,7 +394,7 @@ class WorktreeManager:
 
             # Update last accessed time
             info.last_accessed = datetime.now().isoformat() + "Z"
-            self.registry.register(info)
+            self.registry.register(info, project_name=self.project_name)
 
         except (WorktreeNotFoundError, MergeConflictError):
             raise

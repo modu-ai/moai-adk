@@ -222,7 +222,7 @@ class SmartDefaultsEngine:
             "git_strategy.personal.push_to_remote": False,
             "git_strategy.team.auto_pr": False,
             "git_strategy.team.draft_pr": False,
-            "constitution.test_coverage_target": 90,
+            "constitution.test_coverage_target": 85,
             "constitution.enforce_tdd": True,
             "language.agent_prompt_language": "en",
             "project.description": "",

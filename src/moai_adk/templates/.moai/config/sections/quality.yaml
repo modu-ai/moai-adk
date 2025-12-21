@@ -3,7 +3,9 @@
 
 constitution:
   enforce_tdd: true           # Require tests before implementation
-  test_coverage_target: 90    # Minimum test coverage percentage
+  test_coverage_target: 85    # Minimum test coverage percentage (recommended: 85%)
+
+  # Quality principles (TRUST 5 framework)
   principles:
     simplicity:
       max_projects: 5         # Maximum concurrent projects

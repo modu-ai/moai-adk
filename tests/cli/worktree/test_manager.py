@@ -175,6 +175,40 @@ class TestWorktreePathWithProjectName:
         assert manager_a.registry.get(spec_id_a) is not None
         assert manager_b.registry.get(spec_id_b) is not None
 
+    def test_same_spec_id_different_projects_can_coexist(
+        self, temp_repo_dir: Path, temp_worktree_root: Path
+    ) -> None:
+        """Test that identical spec_id values can exist across projects."""
+        manager_a = WorktreeManager(
+            repo_path=temp_repo_dir,
+            worktree_root=temp_worktree_root,
+            project_name="project-a",
+        )
+        manager_b = WorktreeManager(
+            repo_path=temp_repo_dir,
+            worktree_root=temp_worktree_root,
+            project_name="project-b",
+        )
+
+        spec_id = "SPEC-SHARED-001"
+        info_a = manager_a.create(
+            spec_id=spec_id,
+            branch_name="feature/project-a-SPEC-SHARED-001",
+            base_branch="main",
+        )
+        info_b = manager_b.create(
+            spec_id=spec_id,
+            branch_name="feature/project-b-SPEC-SHARED-001",
+            base_branch="main",
+        )
+
+        assert info_a.path == temp_worktree_root / "project-a" / spec_id
+        assert info_b.path == temp_worktree_root / "project-b" / spec_id
+        assert info_a.path != info_b.path
+
+        assert manager_a.registry.get(spec_id, project_name="project-a") is not None
+        assert manager_b.registry.get(spec_id, project_name="project-b") is not None
+
     def test_worktree_creation_creates_project_namespace_directory(
         self, manager: WorktreeManager, temp_repo_dir: Path
     ) -> None:

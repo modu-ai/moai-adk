@@ -24,8 +24,128 @@ class WorktreeRegistry:
         """
         self.worktree_root = worktree_root
         self.registry_path = worktree_root / ".moai-worktree-registry.json"
-        self._data: dict[str, dict] = {}
+        self._data: dict[str, dict | list[dict]] = {}
         self._load()
+
+    def _is_valid_entry(self, entry: dict) -> bool:
+        """Check if a registry entry has the required fields and types."""
+        required_fields = {
+            "spec_id",
+            "path",
+            "branch",
+            "created_at",
+            "last_accessed",
+            "status",
+        }
+
+        if not required_fields.issubset(entry.keys()):
+            return False
+
+        return all(isinstance(entry.get(f), str) for f in required_fields)
+
+    def _entries_for_spec(self, spec_id: str) -> list[dict]:
+        """Return all entries for a spec_id, normalized as a list."""
+        entry = self._data.get(spec_id)
+        if isinstance(entry, list):
+            return [item for item in entry if isinstance(item, dict)]
+        if isinstance(entry, dict):
+            return [entry]
+        return []
+
+    def _entry_project_name(self, entry: dict) -> str | None:
+        """Infer project_name for an entry from explicit field or path."""
+        project_name = entry.get("project_name")
+        if isinstance(project_name, str) and project_name:
+            return project_name
+
+        path_value = entry.get("path")
+        if not isinstance(path_value, str):
+            return None
+
+        path = Path(path_value)
+        if not path.is_absolute():
+            path = self.worktree_root / path
+
+        try:
+            relative = path.relative_to(self.worktree_root)
+        except Exception:
+            return None
+
+        if len(relative.parts) >= 2:
+            return relative.parts[0]
+        return None
+
+    def _entry_matches_project(self, entry: dict, project_name: str) -> bool:
+        """Check whether a registry entry matches a project_name."""
+        if not project_name:
+            return False
+        return self._entry_project_name(entry) == project_name
+
+    def _entry_matches_path(self, entry: dict, path: Path | None) -> bool:
+        """Check whether a registry entry matches a path."""
+        if path is None:
+            return False
+        path_value = entry.get("path")
+        return isinstance(path_value, str) and path_value == str(path)
+
+    def _set_entries(self, spec_id: str, entries: list[dict]) -> None:
+        """Set normalized entries for a spec_id in the registry."""
+        if not entries:
+            self._data.pop(spec_id, None)
+            return
+
+        if len(entries) == 1:
+            self._data[spec_id] = entries[0]
+        else:
+            self._data[spec_id] = entries
+
+    def _upsert_entry(
+        self,
+        spec_id: str,
+        entry: dict,
+        project_name: str | None = None,
+        path: Path | None = None,
+    ) -> None:
+        """Insert or update a registry entry without writing to disk."""
+        if project_name:
+            entry = dict(entry)
+            entry["project_name"] = project_name
+
+        if project_name is None:
+            self._data[spec_id] = entry
+            return
+
+        entries = self._entries_for_spec(spec_id)
+        if not entries:
+            self._data[spec_id] = entry
+            return
+
+        for index, existing in enumerate(entries):
+            if self._entry_matches_project(existing, project_name) or self._entry_matches_path(
+                existing, path
+            ):
+                entries[index] = entry
+                self._set_entries(spec_id, entries)
+                return
+
+        entries.append(entry)
+        self._set_entries(spec_id, entries)
+
+    def _has_entry(
+        self, spec_id: str, project_name: str | None, path: Path | None
+    ) -> bool:
+        """Check whether an entry already exists for this spec/project/path."""
+        entries = self._entries_for_spec(spec_id)
+        if not entries:
+            return False
+
+        for entry in entries:
+            if self._entry_matches_path(entry, path):
+                return True
+            if project_name and self._entry_matches_project(entry, project_name):
+                return True
+
+        return False
 
     def _load(self) -> None:
         """Load registry from disk.
@@ -51,7 +171,7 @@ class WorktreeRegistry:
             self._data = {}
             self._save()
 
-    def _validate_data(self, raw_data: dict) -> dict[str, dict]:
+    def _validate_data(self, raw_data: dict) -> dict[str, dict | list[dict]]:
         """Validate registry data structure.
 
         Filters out invalid entries and ensures all entries have required fields.
@@ -65,23 +185,22 @@ class WorktreeRegistry:
         if not isinstance(raw_data, dict):
             return {}
 
-        required_fields = {"spec_id", "path", "branch", "created_at", "last_accessed", "status"}
         validated = {}
 
         for spec_id, entry in raw_data.items():
-            # Skip if entry is not a dictionary
-            if not isinstance(entry, dict):
+            if isinstance(entry, dict):
+                if self._is_valid_entry(entry):
+                    validated[spec_id] = entry
                 continue
 
-            # Skip if missing required fields
-            if not required_fields.issubset(entry.keys()):
+            if isinstance(entry, list):
+                valid_entries = [
+                    item for item in entry if isinstance(item, dict) and self._is_valid_entry(item)
+                ]
+                if not valid_entries:
+                    continue
+                validated[spec_id] = valid_entries[0] if len(valid_entries) == 1 else valid_entries
                 continue
-
-            # Validate field types
-            if not all(isinstance(entry.get(f), str) for f in required_fields):
-                continue
-
-            validated[spec_id] = entry
 
         return validated
 
@@ -91,45 +210,84 @@ class WorktreeRegistry:
         with open(self.registry_path, "w") as f:
             json.dump(self._data, f, indent=2)
 
-    def register(self, info: WorktreeInfo) -> None:
+    def register(self, info: WorktreeInfo, project_name: str | None = None) -> None:
         """Register a new worktree.
 
         Args:
             info: WorktreeInfo instance to register.
+            project_name: Project name for namespace organization.
         """
-        self._data[info.spec_id] = info.to_dict()
+        self._upsert_entry(
+            info.spec_id, info.to_dict(), project_name=project_name, path=info.path
+        )
         self._save()
 
-    def unregister(self, spec_id: str) -> None:
+    def unregister(self, spec_id: str, project_name: str | None = None) -> None:
         """Unregister a worktree.
 
         Args:
             spec_id: SPEC ID to unregister.
+            project_name: Project name for namespace organization.
         """
-        if spec_id in self._data:
-            del self._data[spec_id]
-            self._save()
+        if project_name is None:
+            if spec_id in self._data:
+                del self._data[spec_id]
+                self._save()
+            return
 
-    def get(self, spec_id: str) -> WorktreeInfo | None:
+        entries = self._entries_for_spec(spec_id)
+        if not entries:
+            return
+
+        remaining = [
+            entry for entry in entries if not self._entry_matches_project(entry, project_name)
+        ]
+        if len(remaining) == len(entries):
+            return
+
+        self._set_entries(spec_id, remaining)
+        self._save()
+
+    def get(self, spec_id: str, project_name: str | None = None) -> WorktreeInfo | None:
         """Get worktree information by SPEC ID.
 
         Args:
             spec_id: SPEC ID to retrieve.
+            project_name: Project name for namespace organization.
 
         Returns:
             WorktreeInfo if found, None otherwise.
         """
-        if spec_id in self._data:
-            return WorktreeInfo.from_dict(self._data[spec_id])
+        entries = self._entries_for_spec(spec_id)
+        if not entries:
+            return None
+
+        if project_name:
+            for entry in entries:
+                if self._entry_matches_project(entry, project_name):
+                    return WorktreeInfo.from_dict(entry)
+            return None
+
+        if len(entries) == 1:
+            return WorktreeInfo.from_dict(entries[0])
         return None
 
-    def list_all(self) -> list[WorktreeInfo]:
+    def list_all(self, project_name: str | None = None) -> list[WorktreeInfo]:
         """List all registered worktrees.
+
+        Args:
+            project_name: Project name for namespace organization.
 
         Returns:
             List of WorktreeInfo instances.
         """
-        return [WorktreeInfo.from_dict(data) for data in self._data.values()]
+        items: list[WorktreeInfo] = []
+        for spec_id in self._data:
+            for entry in self._entries_for_spec(spec_id):
+                if project_name and not self._entry_matches_project(entry, project_name):
+                    continue
+                items.append(WorktreeInfo.from_dict(entry))
+        return items
 
     def sync_with_git(self, repo) -> None:
         """Synchronize registry with actual Git worktree state.
@@ -152,20 +310,38 @@ class WorktreeRegistry:
                         actual_paths.add(path)
 
             # Remove registry entries for non-existent worktrees
-            spec_ids_to_remove = []
-            for spec_id, data in self._data.items():
-                # Defensive check: ensure data is a dict with 'path' key
-                if not isinstance(data, dict):
-                    spec_ids_to_remove.append(spec_id)
+            changed = False
+            for spec_id in list(self._data.keys()):
+                entries = self._entries_for_spec(spec_id)
+                if not entries:
+                    self._data.pop(spec_id, None)
+                    changed = True
                     continue
-                if "path" not in data:
-                    spec_ids_to_remove.append(spec_id)
-                    continue
-                if data["path"] not in actual_paths:
-                    spec_ids_to_remove.append(spec_id)
 
-            for spec_id in spec_ids_to_remove:
-                self.unregister(spec_id)
+                kept_entries = []
+                for entry in entries:
+                    path_value = entry.get("path")
+                    if not isinstance(path_value, str):
+                        changed = True
+                        continue
+                    if path_value in actual_paths:
+                        kept_entries.append(entry)
+                    else:
+                        changed = True
+
+                if kept_entries:
+                    normalized = (
+                        kept_entries[0] if len(kept_entries) == 1 else kept_entries
+                    )
+                    if self._data.get(spec_id) != normalized:
+                        self._data[spec_id] = normalized
+                        changed = True
+                else:
+                    self._data.pop(spec_id, None)
+                    changed = True
+
+            if changed:
+                self._save()
 
         except Exception:
             # If sync fails, just continue
@@ -187,26 +363,20 @@ class WorktreeRegistry:
         if not self.worktree_root.exists():
             return 0
 
-        for item in self.worktree_root.iterdir():
-            # Skip registry file and hidden files
-            if item.name.startswith("."):
-                continue
+        def register_candidate(
+            worktree_path: Path, spec_id: str, project_name: str | None
+        ) -> None:
+            nonlocal recovered
 
-            # Skip if not a directory
-            if not item.is_dir():
-                continue
+            if self._has_entry(spec_id, project_name, worktree_path):
+                return
 
-            # Skip if already registered
-            if item.name in self._data:
-                continue
-
-            # Check if it's a valid worktree (has .git file or directory)
-            git_path = item / ".git"
+            git_path = worktree_path / ".git"
             if not git_path.exists():
-                continue
+                return
 
             # Try to detect branch name
-            branch = f"feature/{item.name}"
+            branch = f"feature/{spec_id}"
             try:
                 if git_path.is_file():
                     # It's a worktree - read the gitdir to find HEAD
@@ -224,18 +394,43 @@ class WorktreeRegistry:
             except Exception:
                 pass
 
-            # Create WorktreeInfo and register
             now = datetime.now().isoformat() + "Z"
             info_dict = {
-                "spec_id": item.name,
-                "path": str(item),
+                "spec_id": spec_id,
+                "path": str(worktree_path),
                 "branch": branch,
                 "created_at": now,
                 "last_accessed": now,
                 "status": "recovered",
             }
-            self._data[item.name] = info_dict
+            self._upsert_entry(
+                spec_id, info_dict, project_name=project_name, path=worktree_path
+            )
             recovered += 1
+
+        for item in self.worktree_root.iterdir():
+            # Skip registry file and hidden files
+            if item.name.startswith("."):
+                continue
+
+            # Skip if not a directory
+            if not item.is_dir():
+                continue
+
+            # Legacy layout: worktree directly under root
+            if (item / ".git").exists():
+                register_candidate(item, item.name, None)
+                continue
+
+            # Namespaced layout: /worktrees/{project}/{spec_id}
+            for child in item.iterdir():
+                if child.name.startswith("."):
+                    continue
+                if not child.is_dir():
+                    continue
+                if not (child / ".git").exists():
+                    continue
+                register_candidate(child, child.name, item.name)
 
         if recovered > 0:
             self._save()

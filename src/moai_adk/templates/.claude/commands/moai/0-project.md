@@ -633,8 +633,6 @@ UPDATE MODE:
     - Preserve all user settings and customizations
     - Add meaningful comments explaining each section
     - Optimize structure (remove dead fields, consolidate duplicates)
-    - Convert preset files (presets/*.json → presets/*.yaml)
-    - Remove old JSON files after successful migration
   - Use YAML's native features:
     - Multi-line strings for long descriptions
     - Inline comments for field explanations

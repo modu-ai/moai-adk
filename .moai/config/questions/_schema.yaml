@@ -1,9 +1,9 @@
 # MoAI-ADK Question Schema Definition
-# Version: 1.0.0
+# Version: 1.1.0
 # Language: English only (runtime translation via conversation_language)
 
-schema_version: "1.0.0"
-last_updated: "2025-12-04"
+schema_version: "1.1.0"
+last_updated: "2025-12-22"
 
 # AskUserQuestion Constraints (Claude Code)
 constraints:
@@ -30,10 +30,22 @@ question_types:
 
 # Conditional Logic Operators
 condition_operators:
-  - equals
-  - not_equals
-  - in
-  - not_in
+  basic:
+    - equals
+    - not_equals
+    - in
+    - not_in
+  compound:
+    - and           # All conditions must be true
+    - or            # At least one condition must be true
+  usage_notes:
+    simple_condition: "condition: {field: 'git_strategy.mode', operator: 'equals', value: 'personal'}"
+    compound_condition: |
+      condition:
+        operator: and
+        conditions:
+          - {field: 'git_strategy.mode', operator: 'not_equals', value: 'manual'}
+          - {field: 'git_strategy.{mode}.auto_branch', operator: 'equals', value: true}
 
 # Special Values
 special_values:
@@ -77,3 +89,63 @@ priorities:
   REQUIRED: "Must complete before proceeding"
   RECOMMENDED: "Strongly suggested to configure"
   OPTIONAL: "Configure if needed"
+
+# Mode Conditions (Tab visibility control)
+mode_conditions:
+  INITIALIZATION: "Tab shown only during first-time project setup"
+  SETTINGS: "Tab shown only in settings management mode"
+  ALL: "Tab shown in all modes (default)"
+
+# Tab 0 Special Features (Smart Question System)
+tab0_features:
+  trigger_web_search:
+    description: "After collecting questions, trigger WebSearch for best practices"
+    enabled: true
+  generate_proposal:
+    description: "Generate smart technology proposal based on web search"
+    enabled: true
+  complexity_detection:
+    description: "Auto-detect project complexity from description keywords"
+    levels:
+      - simple
+      - medium
+      - complex
+
+# Validation Types (Extended)
+validation_types_extended:
+  min_length:
+    description: "Minimum string length validation"
+  range:
+    description: "Numeric value must be within range"
+    parameters:
+      - min
+      - max
+
+# Question Properties (Extended for Tab 0)
+question_properties:
+  tech_hint:
+    description: "Technology hint for project type options"
+  validation:
+    description: "Field validation rules"
+    properties:
+      - type
+      - pattern
+      - min_length
+      - error_message
+
+# Workflow Properties (Tab 0 specific)
+workflow_properties:
+  steps:
+    description: "Sequential workflow steps after question collection"
+    actions:
+      - collect_essential_info
+      - web_search
+      - generate_proposal
+      - user_approval
+      - delegate_to_agent
+  post_collection:
+    description: "Actions to perform after collecting all answers"
+    sections:
+      - web_search
+      - proposal
+      - approval

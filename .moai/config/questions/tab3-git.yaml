@@ -1,19 +1,44 @@
 # Tab 3: Git Strategy & Workflow
 # Priority: RECOMMENDED
-# Questions: 25 (conditional based on mode)
+# Questions: 29 (conditional based on mode, +1 GitHub Profile, +3 GitHub Automation)
 
 metadata:
   id: tab_3_git_strategy
   label: "Tab 3: Git Strategy & Workflow"
-  description: "Configure Personal/Team Git settings, commit/branch strategy"
+  description: "Configure GitHub profile, Personal/Team Git settings, commit/branch strategy"
   priority: RECOMMENDED
   order: 3
-  setting_count: 25
+  setting_count: 29
 
 target_sections:
   - sections/git-strategy.yaml
+  - sections/project.yaml
+  - sections/system.yaml
 
 batches:
+  # Batch 3.0a: GitHub Profile (always shown, required for all modes)
+  - batch_id: "3.0a"
+    label: "GitHub Profile"
+    conditional: false
+    questions:
+      - id: github_profile_name
+        question: "What is your GitHub profile name?"
+        header: "GitHub Profile"
+        field: "github.profile_name"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current profile"
+            value: "{{current}}"
+          - label: "Change"
+            description: "Select Other to enter GitHub username (e.g., @GoosLab)"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/project.yaml"
+          path: "github.profile_name"
+
   # Batch 3.0: Mode Selection (always shown)
   - batch_id: "3.0"
     label: "Workflow Mode Selection"
@@ -490,10 +515,10 @@ batches:
       operator: equals
       value: "team"
     questions:
-      - id: team_feature_prefix
-        question: "Feature branch prefix for Team mode?"
+      - id: team_branch_prefix
+        question: "Branch prefix for Team mode?"
         header: "Prefix"
-        field: "git_strategy.team.feature_prefix"
+        field: "git_strategy.team.branch_prefix"
         type: text_input
         options:
           - label: "Keep Current Value"
@@ -504,7 +529,7 @@ batches:
             value: "{{prompt_user}}"
         target:
           file: "sections/git-strategy.yaml"
-          path: "git_strategy.team.feature_prefix"
+          path: "git_strategy.team.branch_prefix"
 
       - id: team_main_branch
         question: "Main branch for Team mode?"
@@ -521,6 +546,73 @@ batches:
         target:
           file: "sections/git-strategy.yaml"
           path: "git_strategy.team.main_branch"
+
+  # Batch 3.10: GitHub Automation Settings (for personal/team modes only)
+  - batch_id: "3.10"
+    label: "GitHub Automation Settings"
+    conditional: true
+    condition:
+      field: "git_strategy.mode"
+      operator: not_equals
+      value: "manual"
+    questions:
+      - id: enable_trust_5
+        question: "Enable TRUST 5 in GitHub PR templates?"
+        header: "TRUST 5"
+        field: "github.enable_trust_5"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Include TRUST 5 sections in PR templates (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Omit TRUST 5 sections"
+            value: false
+        target:
+          file: "sections/system.yaml"
+          path: "github.enable_trust_5"
+
+      - id: auto_delete_branches
+        question: "Auto-delete merged branches?"
+        header: "Auto Delete"
+        field: "github.auto_delete_branches"
+        type: select_single
+        multi_select: false
+        required: false
+        options:
+          - label: "Enabled"
+            description: "Delete branches after merge (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Keep branches after merge"
+            value: false
+        target:
+          file: "sections/system.yaml"
+          path: "github.auto_delete_branches"
+
+      - id: spec_git_workflow
+        question: "How should SPEC implementations be committed?"
+        header: "SPEC Workflow"
+        field: "github.spec_git_workflow"
+        type: select_single
+        multi_select: false
+        required: true
+        note: "Only relevant when auto_branch is enabled. If auto_branch is disabled, commits go to current branch."
+        options:
+          - label: "Direct Commit"
+            description: "Commit directly to base branch (main/develop) - fast for personal projects"
+            value: "develop_direct"
+          - label: "Feature Branch"
+            description: "Create feature/SPEC-xxx branch for each SPEC - better for code review"
+            value: "feature_branch"
+          - label: "Per SPEC"
+            description: "Ask for branching strategy on each SPEC creation"
+            value: "per_spec"
+        target:
+          file: "sections/system.yaml"
+          path: "github.spec_git_workflow"
 
 validation:
   checkpoint: "after_tab_3"

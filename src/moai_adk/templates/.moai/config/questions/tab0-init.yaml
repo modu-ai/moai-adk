@@ -1,0 +1,251 @@
+# Tab 0: Project Initialization (INITIALIZATION Mode Only)
+# Priority: REQUIRED
+# Questions: 3
+# Mode Condition: INITIALIZATION only (first-time setup)
+
+metadata:
+  id: tab_0_initialization
+  label: "Tab 0: Project Initialization"
+  description: "Essential project setup with minimal questions and smart recommendations"
+  priority: REQUIRED
+  order: 0
+  setting_count: 3
+  mode_condition: INITIALIZATION
+  special_features:
+    trigger_web_search: true
+    generate_proposal: true
+
+# Target files for storing collected data
+target_sections:
+  - sections/project.yaml
+
+# Smart Question System Workflow
+workflow:
+  description: "Collect 3 essential questions, perform web search, generate smart proposal"
+  steps:
+    - step: 1
+      action: collect_essential_info
+      description: "Collect project name, type, and description"
+    - step: 2
+      action: web_search
+      description: "Search for best practices based on project type"
+      queries:
+        - pattern: "{project_type} best practices 2025"
+        - pattern: "{project_type} recommended tech stack 2025"
+        - pattern: "{project_type} {project_description_keywords} architecture patterns"
+    - step: 3
+      action: generate_proposal
+      description: "Create smart proposal with technology recommendations"
+    - step: 4
+      action: user_approval
+      description: "Present proposal and get user approval"
+    - step: 5
+      action: delegate_to_agent
+      description: "Pass approved configuration to manager-project agent"
+
+batches:
+  - batch_id: "0.1"
+    label: "Essential Project Information"
+    conditional: false
+    questions:
+      # Q1: Project Name
+      - id: init_project_name
+        question: "Choose a project name. Use only lowercase letters and hyphens (-)."
+        header: "Project Name"
+        field: "project.name"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Example: snake-game"
+            description: "A game project"
+            value: "snake-game"
+          - label: "Example: my-first-app"
+            description: "First application"
+            value: "my-first-app"
+          - label: "Example: todo-list"
+            description: "Task management app"
+            value: "todo-list"
+        target:
+          file: "sections/project.yaml"
+          path: "project.name"
+        validation:
+          type: pattern
+          pattern: "^[a-z][a-z0-9-]*$"
+          error_message: "Project name must be lowercase, start with letter, use only letters, numbers, and hyphens"
+
+      # Q2: Project Type
+      - id: init_project_type
+        question: "What kind of project would you like to create?"
+        header: "Project Type"
+        field: "project.type"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Web Browser App"
+            description: "Programs that open in Chrome, Safari (games, websites, etc.)"
+            value: "web_browser_app"
+            tech_hint: "HTML, CSS, JavaScript or React, Vue"
+          - label: "Mobile App"
+            description: "Apps installed on iPhone or Android"
+            value: "mobile_app"
+            tech_hint: "React Native, Flutter"
+          - label: "Command Line Tool"
+            description: "Programs that run in terminal (automation scripts, etc.)"
+            value: "cli_tool"
+            tech_hint: "Python, Node.js, Go"
+          - label: "Backend API"
+            description: "Server programs that store and process data"
+            value: "backend_api"
+            tech_hint: "FastAPI, Express, Django"
+        target:
+          file: "sections/project.yaml"
+          path: "project.type"
+
+      # Q3: Project Description
+      - id: init_project_description
+        question: "Describe what you want to build in one sentence."
+        header: "Description"
+        field: "project.description"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Example description"
+            description: "A game where you control a snake to eat food"
+            value: "{{prompt_user}}"
+        target:
+          file: "sections/project.yaml"
+          path: "project.description"
+        validation:
+          type: required
+          min_length: 10
+          error_message: "Please provide a description of at least 10 characters"
+
+# Complexity Detection for Smart Proposal
+complexity_detection:
+  simple:
+    keywords:
+      - "game"
+      - "simple"
+      - "first"
+      - "practice"
+      - "learning"
+    project_types:
+      - "Browser games"
+      - "Simple utilities"
+      - "Learning projects"
+    recommended_stack:
+      framework: "None - Pure HTML5 + CSS3 + Vanilla JavaScript"
+      ui: "CSS only (Canvas for games)"
+      testing: "Browser developer tools"
+      build: "None - Open files directly in browser"
+    rationale: "No framework needed, basic technologies are sufficient for quick development"
+
+  medium:
+    keywords:
+      - "blog"
+      - "portfolio"
+      - "landing"
+      - "website"
+    recommended_stack:
+      framework: "Next.js or Astro with minimal dependencies"
+      ui: "Tailwind CSS"
+      testing: "Vitest"
+      build: "Vite"
+    rationale: "Lightweight framework for moderate complexity"
+
+  complex:
+    keywords:
+      - "dashboard"
+      - "admin"
+      - "SaaS"
+      - "platform"
+      - "enterprise"
+    recommended_stack:
+      framework: "Full framework with state management"
+      ui: "Component library (shadcn/ui, HeroUI)"
+      testing: "Vitest + Playwright"
+      build: "Vite or Turbopack"
+    rationale: "Full framework stack for complex applications"
+
+# Post-Collection Actions
+post_collection:
+  # Web Search Configuration
+  web_search:
+    enabled: true
+    parallel_queries: 3
+    query_templates:
+      - template: "{project_type} best practices 2025"
+        extract: "Design patterns, architecture recommendations, common pitfalls"
+      - template: "{project_type} recommended tech stack 2025"
+        extract: "Framework comparisons, library recommendations, version requirements"
+      - template: "{project_type} {description_keywords} architecture patterns"
+        extract: "Domain-specific patterns, similar project architectures"
+    analysis_output:
+      - "Recommended Frameworks: Top 2-3 options with pros/cons"
+      - "UI Library: Best options for project type"
+      - "Testing Framework: Industry standard for project type"
+      - "Build Tools: Current best practices"
+      - "Deployment Target: Common deployment platforms"
+
+  # Proposal Generation
+  proposal:
+    structure:
+      - section: "Technology Stack"
+        fields:
+          - "Framework with rationale"
+          - "UI Library with rationale"
+          - "Testing framework"
+          - "Build tools"
+      - section: "Architecture"
+        fields:
+          - "Directory structure"
+          - "Key patterns"
+          - "Data flow"
+      - section: "Quality Standards"
+        fields:
+          - "Test coverage target"
+          - "TRUST 5 level"
+          - "Accessibility level"
+
+  # User Approval
+  approval:
+    question: "Do you approve this configuration? You can modify specific parts or request a different approach."
+    header: "Approval"
+    options:
+      - label: "Approve and Continue"
+        description: "Create project with these settings"
+        value: "approve"
+      - label: "Modify Tech Stack"
+        description: "Keep architecture, change framework/libraries"
+        value: "modify_tech"
+      - label: "Modify Architecture"
+        description: "Keep tech stack, change structure/patterns"
+        value: "modify_arch"
+      - label: "Start Over"
+        description: "Re-run search with different criteria"
+        value: "restart"
+
+validation:
+  checkpoint: "after_tab_0"
+  rules:
+    - name: "validate_project_name"
+      description: "Project name must be valid directory name"
+      field: "project.name"
+      validation: "pattern"
+      pattern: "^[a-z][a-z0-9-]*$"
+    - name: "validate_project_type"
+      description: "Project type must be one of allowed values"
+      field: "project.type"
+      validation: "enum"
+      allowed_values:
+        - "web_browser_app"
+        - "mobile_app"
+        - "cli_tool"
+        - "backend_api"
+    - name: "validate_project_description"
+      description: "Project description must not be empty"
+      field: "project.description"
+      validation: "required"

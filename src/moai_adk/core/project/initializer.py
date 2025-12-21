@@ -286,14 +286,7 @@ class ProjectInitializer:
                 "language": language_config,
                 "constitution": {
                     "enforce_tdd": True,
-                    "principles": {
-                        "simplicity": {
-                            "max_projects": 5,
-                            "notes": "Default recommendation. Adjust in .moai/config.json "
-                            "or via SPEC/ADR with documented rationale based on project size.",
-                        }
-                    },
-                    "test_coverage_target": 90,
+                    "test_coverage_target": 85,
                 },
                 "git_strategy": {
                     "personal": {

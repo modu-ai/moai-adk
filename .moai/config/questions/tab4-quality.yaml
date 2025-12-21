@@ -5,7 +5,7 @@
 metadata:
   id: tab_4_quality_reports
   label: "Tab 4: Quality Principles & Reports"
-  description: "Configure TRUST 5, test coverage, report generation"
+  description: "Configure TRUST 5, test coverage, max projects, report generation"
   priority: OPTIONAL
   order: 4
   setting_count: 7
@@ -45,12 +45,12 @@ batches:
         multi_select: false
         required: true
         options:
-          - label: "90%"
-            description: "High quality coverage (recommended)"
-            value: 90
           - label: "85%"
-            description: "Standard coverage"
+            description: "Standard coverage (recommended)"
             value: 85
+          - label: "90%"
+            description: "High quality coverage"
+            value: 90
           - label: "Other"
             description: "Enter custom percentage (0-100)"
             value: "{{prompt_user}}"
@@ -69,6 +69,9 @@ batches:
           - label: "5 projects"
             description: "Default recommendation"
             value: 5
+          - label: "10 projects"
+            description: "For larger teams"
+            value: 10
           - label: "Other"
             description: "Enter custom number"
             value: "{{prompt_user}}"

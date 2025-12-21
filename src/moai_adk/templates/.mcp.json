@@ -4,10 +4,6 @@
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
     },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
-    },
     "figma-dev-mode-mcp-server": {
       "type": "sse",
       "url": "http://127.0.0.1:3845/sse"

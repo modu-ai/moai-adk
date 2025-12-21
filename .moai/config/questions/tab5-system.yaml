@@ -1,14 +1,14 @@
-# Tab 5: System & GitHub Integration
+# Tab 5: System Settings
 # Priority: OPTIONAL
-# Questions: 7
+# Questions: 3 (GitHub Automation moved to Tab 3)
 
 metadata:
-  id: tab_5_system_github
-  label: "Tab 5: System & GitHub Integration"
-  description: "Configure MoAI system settings, GitHub automation"
+  id: tab_5_system
+  label: "Tab 5: System Settings"
+  description: "Configure MoAI system settings (version check, cache)"
   priority: OPTIONAL
   order: 5
-  setting_count: 7
+  setting_count: 3
 
 target_sections:
   - sections/system.yaml
@@ -75,71 +75,6 @@ batches:
         target:
           file: "sections/system.yaml"
           path: "moai.version_check.cache_ttl_hours"
-
-  # Batch 5.2: GitHub Automation Settings
-  - batch_id: "5.2"
-    label: "GitHub Automation Settings"
-    conditional: false
-    questions:
-      - id: enable_trust_5
-        question: "Enable TRUST 5 in GitHub templates?"
-        header: "TRUST 5"
-        field: "github.enable_trust_5"
-        type: select_single
-        multi_select: false
-        required: true
-        options:
-          - label: "Enabled"
-            description: "Include TRUST 5 sections in PR templates (recommended)"
-            value: true
-          - label: "Disabled"
-            description: "Omit TRUST 5 sections"
-            value: false
-        target:
-          file: "sections/system.yaml"
-          path: "github.enable_trust_5"
-
-      - id: auto_delete_branches
-        question: "Auto-delete merged branches?"
-        header: "Auto Delete"
-        field: "github.auto_delete_branches"
-        type: select_single
-        multi_select: false
-        required: false
-        options:
-          - label: "Enabled"
-            description: "Delete branches after merge (recommended)"
-            value: true
-          - label: "Disabled"
-            description: "Keep branches after merge"
-            value: false
-          - label: "Not Set"
-            description: "Use GitHub default"
-            value: null
-        target:
-          file: "sections/system.yaml"
-          path: "github.auto_delete_branches"
-
-      - id: spec_git_workflow
-        question: "SPEC Git workflow?"
-        header: "SPEC Workflow"
-        field: "github.spec_git_workflow"
-        type: select_single
-        multi_select: false
-        required: true
-        options:
-          - label: "Develop Direct"
-            description: "Direct commits to develop (recommended for personal)"
-            value: "develop_direct"
-          - label: "Feature Branch"
-            description: "Always create feature branches"
-            value: "feature_branch"
-          - label: "Per SPEC"
-            description: "Ask user for each SPEC"
-            value: "per_spec"
-        target:
-          file: "sections/system.yaml"
-          path: "github.spec_git_workflow"
 
 validation:
   checkpoint: "after_tab_5"

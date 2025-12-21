@@ -879,11 +879,11 @@ def format_session_output() -> str:
         if personalization["is_korean"]:
             output.append(
                 "   👋 환영합니다! 프로젝트를 시작하기 전에 "
-                "'moai:0-project setting' 명령어로 사용자 이름과 설정을 구성해주세요"
+                "'/moai:0-project setting' 명령어로 사용자 이름과 설정을 구성해주세요"
             )
         else:
             output.append(
-                "   👋 Welcome! Before starting, please run 'moai:0-project setting' "
+                "   👋 Welcome! Before starting, please run '/moai:0-project setting' "
                 "to configure your name and project settings"
             )
     elif personalization["has_personalization"]:

@@ -186,7 +186,6 @@ secret-*.*
 
 # Legacy config format (migrated to YAML in v0.32.0)
 .moai/config/config.json
-.moai/config/presets/*.json
 
 # .moai local-only directories (user projects only)
 .moai/cache/
@@ -198,8 +197,6 @@ secret-*.*
 .moai/archived-skills/
 .moai/backups/
 .moai/error_logs/
-.moai/indexes/
-.moai/learning/
 .moai/temp/
 .moai/work/
 

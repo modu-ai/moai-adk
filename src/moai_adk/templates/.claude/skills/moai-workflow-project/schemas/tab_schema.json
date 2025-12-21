@@ -1,12 +1,140 @@
 {
-  "version": "2.0.0",
-  "schema_updated": "2025-11-26",
-  "config_version": "0.28.0",
-  "description": "Tab-based configuration schema for /moai:0-project SETTINGS mode with conditional logic support",
-  "total_settings": 57,
-  "total_tabs": 5,
-  "total_batches": 17,
+  "version": "2.1.0",
+  "schema_updated": "2025-12-22",
+  "config_version": "0.29.0",
+  "description": "Tab-based configuration schema for /moai:0-project with INITIALIZATION mode (Tab 0) and SETTINGS mode (Tabs 1-5) support",
+  "total_settings": 60,
+  "total_tabs": 6,
+  "total_batches": 18,
   "tabs": [
+    {
+      "id": "tab_0_initialization",
+      "label": "Tab 0: Project Initialization",
+      "description": "Essential project setup with minimal questions and smart recommendations (INITIALIZATION mode only)",
+      "priority": "REQUIRED",
+      "mode_condition": "INITIALIZATION",
+      "order": 0,
+      "special_features": {
+        "trigger_web_search": true,
+        "generate_proposal": true,
+        "complexity_detection": true
+      },
+      "batches": [
+        {
+          "batch_id": "0.1",
+          "label": "Essential Project Information",
+          "conditional": false,
+          "questions": [
+            {
+              "question": "Choose a project name. Use only lowercase letters and hyphens (-).",
+              "header": "Project Name",
+              "field": "project.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Example: snake-game",
+                  "description": "A game project",
+                  "value": "snake-game"
+                },
+                {
+                  "label": "Example: my-first-app",
+                  "description": "First application",
+                  "value": "my-first-app"
+                },
+                {
+                  "label": "Example: todo-list",
+                  "description": "Task management app",
+                  "value": "todo-list"
+                }
+              ],
+              "current_value_path": "project.name",
+              "required": true,
+              "validation": {
+                "type": "pattern",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "error_message": "Project name must be lowercase, start with letter, use only letters, numbers, and hyphens"
+              }
+            },
+            {
+              "question": "What kind of project would you like to create?",
+              "header": "Project Type",
+              "field": "project.type",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Web Browser App",
+                  "description": "Programs that open in Chrome, Safari (games, websites, etc.)",
+                  "value": "web_browser_app",
+                  "tech_hint": "HTML, CSS, JavaScript or React, Vue"
+                },
+                {
+                  "label": "Mobile App",
+                  "description": "Apps installed on iPhone or Android",
+                  "value": "mobile_app",
+                  "tech_hint": "React Native, Flutter"
+                },
+                {
+                  "label": "Command Line Tool",
+                  "description": "Programs that run in terminal (automation scripts, etc.)",
+                  "value": "cli_tool",
+                  "tech_hint": "Python, Node.js, Go"
+                },
+                {
+                  "label": "Backend API",
+                  "description": "Server programs that store and process data",
+                  "value": "backend_api",
+                  "tech_hint": "FastAPI, Express, Django"
+                }
+              ],
+              "current_value_path": "project.type",
+              "required": true
+            },
+            {
+              "question": "Describe what you want to build in one sentence.",
+              "header": "Description",
+              "field": "project.description",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Example description",
+                  "description": "A game where you control a snake to eat food",
+                  "value": "{{prompt_user}}"
+                }
+              ],
+              "current_value_path": "project.description",
+              "required": true,
+              "validation": {
+                "type": "required",
+                "min_length": 10,
+                "error_message": "Please provide a description of at least 10 characters"
+              }
+            }
+          ]
+        }
+      ],
+      "post_collection": {
+        "web_search": {
+          "enabled": true,
+          "parallel_queries": 3,
+          "query_templates": [
+            "{project_type} best practices 2025",
+            "{project_type} recommended tech stack 2025",
+            "{project_type} {description_keywords} architecture patterns"
+          ]
+        },
+        "proposal": {
+          "generate": true,
+          "sections": ["Technology Stack", "Architecture", "Quality Standards"]
+        },
+        "approval": {
+          "required": true,
+          "options": ["approve", "modify_tech", "modify_arch", "restart"]
+        }
+      }
+    },
     {
       "id": "tab_1_user_language",
       "label": "Tab 1: User & Language",
@@ -178,32 +306,6 @@
                 }
               ],
               "current_value_path": "project.owner",
-              "required": true
-            },
-            {
-              "question": "Project mode? (current: {{project.mode}})",
-              "header": "Mode",
-              "field": "project.mode",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Development",
-                  "description": "Active development phase",
-                  "value": "development"
-                },
-                {
-                  "label": "Production",
-                  "description": "Stable production phase",
-                  "value": "production"
-                },
-                {
-                  "label": "Maintenance",
-                  "description": "Maintenance/bug fix phase",
-                  "value": "maintenance"
-                }
-              ],
-              "current_value_path": "project.mode",
               "required": true
             }
           ]
@@ -899,6 +1001,87 @@
               "required": true
             }
           ]
+        },
+        {
+          "batch_id": "3.10",
+          "label": "GitHub Automation Settings",
+          "conditional": true,
+          "condition": {
+            "field": "git_strategy.mode",
+            "operator": "not_equals",
+            "value": "manual"
+          },
+          "questions": [
+            {
+              "question": "Enable TRUST 5 in GitHub PR templates? (current: {{github.enable_trust_5}})",
+              "header": "TRUST 5",
+              "field": "github.enable_trust_5",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Include TRUST 5 sections in PR templates (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Omit TRUST 5 sections",
+                  "value": false
+                }
+              ],
+              "current_value_path": "github.enable_trust_5",
+              "required": true
+            },
+            {
+              "question": "Auto-delete merged branches? (current: {{github.auto_delete_branches}})",
+              "header": "Auto Delete",
+              "field": "github.auto_delete_branches",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "Enabled",
+                  "description": "Delete branches after merge (recommended)",
+                  "value": true
+                },
+                {
+                  "label": "Disabled",
+                  "description": "Keep branches after merge",
+                  "value": false
+                }
+              ],
+              "current_value_path": "github.auto_delete_branches",
+              "required": false
+            },
+            {
+              "question": "How should SPEC implementations be committed? (current: {{github.spec_git_workflow}})",
+              "header": "SPEC Workflow",
+              "field": "github.spec_git_workflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "note": "Only relevant when auto_branch is enabled. If auto_branch is disabled, commits go to current branch.",
+              "options": [
+                {
+                  "label": "Direct Commit",
+                  "description": "Commit directly to base branch (main/develop) - fast for personal projects",
+                  "value": "develop_direct"
+                },
+                {
+                  "label": "Feature Branch",
+                  "description": "Create feature/SPEC-xxx branch for each SPEC - better for code review",
+                  "value": "feature_branch"
+                },
+                {
+                  "label": "Per SPEC",
+                  "description": "Ask for branching strategy on each SPEC creation",
+                  "value": "per_spec"
+                }
+              ],
+              "current_value_path": "github.spec_git_workflow",
+              "required": true
+            }
+          ]
         }
       ]
     },
@@ -942,14 +1125,14 @@
               "multiSelect": false,
               "options": [
                 {
-                  "label": "90%",
-                  "description": "High quality coverage (recommended)",
-                  "value": 90
+                  "label": "85%",
+                  "description": "Standard coverage (recommended)",
+                  "value": 85
                 },
                 {
-                  "label": "85%",
-                  "description": "Standard coverage",
-                  "value": 85
+                  "label": "90%",
+                  "description": "High quality coverage",
+                  "value": 90
                 },
                 {
                   "label": "Other",
@@ -958,27 +1141,6 @@
                 }
               ],
               "current_value_path": "constitution.test_coverage_target",
-              "required": true
-            },
-            {
-              "question": "Maximum concurrent projects? (current: {{constitution.principles.simplicity.max_projects}})",
-              "header": "Max Projects",
-              "field": "constitution.principles.simplicity.max_projects",
-              "type": "number_input",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "5 projects",
-                  "description": "Default recommendation",
-                  "value": 5
-                },
-                {
-                  "label": "Other",
-                  "description": "Select Other to enter custom number",
-                  "value": "{{prompt_user}}"
-                }
-              ],
-              "current_value_path": "constitution.principles.simplicity.max_projects",
               "required": true
             }
           ]
@@ -1082,9 +1244,9 @@
       ]
     },
     {
-      "id": "tab_5_system_github",
-      "label": "Tab 5: System & GitHub Integration",
-      "description": "Configure MoAI system settings, GitHub automation",
+      "id": "tab_5_system",
+      "label": "Tab 5: System Settings",
+      "description": "Configure MoAI system settings (version check, cache). GitHub automation moved to Tab 3.",
       "priority": "OPTIONAL",
       "batches": [
         {
@@ -1161,120 +1323,58 @@
               "required": true
             }
           ]
-        },
-        {
-          "batch_id": "5.2",
-          "label": "GitHub Automation Settings",
-          "conditional": false,
-          "questions": [
-            {
-              "question": "Enable TRUST 5 in GitHub templates? (current: {{github.templates.enable_trust_5}})",
-              "header": "TRUST 5",
-              "field": "github.templates.enable_trust_5",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Include TRUST 5 sections in PR templates (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Omit TRUST 5 sections",
-                  "value": false
-                }
-              ],
-              "current_value_path": "github.templates.enable_trust_5",
-              "required": true
-            },
-            {
-              "question": "Enable MoAI commands in GitHub templates? (current: {{github.templates.enable_moai_commands}})",
-              "header": "MoAI Commands",
-              "field": "github.templates.enable_moai_commands",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Include MoAI command references (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Omit MoAI command references",
-                  "value": false
-                }
-              ],
-              "current_value_path": "github.templates.enable_moai_commands",
-              "required": true
-            },
-            {
-              "question": "Auto-delete merged branches? (current: {{github.auto_delete_branches}})",
-              "header": "Auto Delete",
-              "field": "github.auto_delete_branches",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Delete branches after merge (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Keep branches after merge",
-                  "value": false
-                },
-                {
-                  "label": "Not Set",
-                  "description": "Use GitHub default",
-                  "value": null
-                }
-              ],
-              "current_value_path": "github.auto_delete_branches",
-              "required": false
-            },
-            {
-              "question": "SPEC Git workflow? (current: {{github.spec_git_workflow}})",
-              "header": "SPEC Workflow",
-              "field": "github.spec_git_workflow",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Develop Direct",
-                  "description": "Direct commits to develop, no branches (recommended for personal projects)",
-                  "value": "develop_direct"
-                },
-                {
-                  "label": "Feature Branch",
-                  "description": "Always create feature branches",
-                  "value": "feature_branch"
-                },
-                {
-                  "label": "Per SPEC",
-                  "description": "Ask user for each SPEC",
-                  "value": "per_spec"
-                }
-              ],
-              "current_value_path": "github.spec_git_workflow",
-              "required": true
-            }
-          ]
         }
       ]
     }
   ],
   "navigation_flow": {
+    "mode_specific_order": {
+      "INITIALIZATION": [
+        "tab_0_initialization"
+      ],
+      "SETTINGS": [
+        "tab_1_user_language",
+        "tab_2_project_info",
+        "tab_3_git_strategy",
+        "tab_4_quality_reports",
+        "tab_5_system"
+      ]
+    },
     "completion_order": [
+      "tab_0_initialization",
       "tab_1_user_language",
       "tab_2_project_info",
       "tab_3_git_strategy",
       "tab_4_quality_reports",
-      "tab_5_system_github"
+      "tab_5_system"
     ],
     "validation_sequence": [
+      {
+        "checkpoint": "after_tab_0",
+        "mode_condition": "INITIALIZATION",
+        "rules": [
+          {
+            "name": "validate_project_name",
+            "description": "Project name must be valid directory name",
+            "field": "project.name",
+            "validation": "pattern",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          {
+            "name": "validate_project_type",
+            "description": "Project type must be one of allowed values",
+            "field": "project.type",
+            "validation": "enum",
+            "allowed_values": ["web_browser_app", "mobile_app", "cli_tool", "backend_api"]
+          },
+          {
+            "name": "validate_project_description",
+            "description": "Project description must not be empty",
+            "field": "project.description",
+            "validation": "required"
+          }
+        ]
+      },
       {
         "checkpoint": "after_tab_1",
         "rules": [

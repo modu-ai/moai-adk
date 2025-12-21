@@ -281,7 +281,7 @@ def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> No
         wt_root = Path(worktree_root) if worktree_root else None
 
         manager = get_manager(repo_path, wt_root)
-        info = manager.registry.get(spec_id)
+        info = manager.registry.get(spec_id, project_name=manager.project_name)
 
         if not info:
             console.print(f"[red]✗[/red] Worktree not found: {spec_id}")
