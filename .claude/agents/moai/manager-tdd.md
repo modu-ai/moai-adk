@@ -2,7 +2,7 @@
 name: manager-tdd
 description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. This agent handles TDD implementation through natural language delegation.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
-model: haiku
+model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-workflow-testing
 ---
@@ -249,6 +249,11 @@ Step 2: Select appropriate workflow template
 - IF language is Kotlin → Use kotlin-tag-validation.yml template
 - IF language is Swift → Use swift-tag-validation.yml template
 - IF language is C#/.NET → Use csharp-tag-validation.yml template
+- IF language is C++ → Use cpp-tag-validation.yml template
+- IF language is Elixir → Use elixir-tag-validation.yml template
+- IF language is R → Use r-tag-validation.yml template
+- IF language is Flutter/Dart → Use flutter-tag-validation.yml template
+- IF language is Scala → Use scala-tag-validation.yml template
 - IF language not supported → Use generic workflow or create custom template
 
 Step 3: Generate project-specific workflow
@@ -259,9 +264,15 @@ Step 3: Generate project-specific workflow
 
 Workflow Features by Language:
 
+Coverage Target Configuration:
+- Read from: .moai/config/sections/quality.yaml
+- Path: constitution.test_coverage_target
+- Default: 85% (if not configured)
+- All languages use the same configured coverage target for consistency
+
 Python:
 
-- Test framework: pytest with 85% coverage target
+- Test framework: pytest
 - Type checking: mypy
 - Linting: ruff
 - Python versions: 3.11, 3.12, 3.13
@@ -271,7 +282,6 @@ JavaScript:
 - Package manager: Auto-detect (npm, yarn, pnpm, bun)
 - Test: npm test (or yarn test, pnpm test, bun test)
 - Linting: eslint or biome
-- Coverage target: 80%
 - Node versions: 20, 22 LTS
 
 TypeScript:
@@ -279,7 +289,6 @@ TypeScript:
 - Type checking: tsc --noEmit
 - Test: npm test (vitest/jest)
 - Linting: biome or eslint
-- Coverage target: 85%
 - Node versions: 20, 22 LTS
 
 Go:
@@ -287,14 +296,12 @@ Go:
 - Test: go test -v -cover
 - Linting: golangci-lint
 - Format check: gofmt
-- Coverage target: 75%
 
 Rust:
 
 - Test: cargo test
 - Linting: cargo clippy
 - Format check: cargo fmt --check
-- Coverage target: 75%
 - Type checking: Built-in (Rust compiler)
 
 Ruby:
@@ -302,7 +309,6 @@ Ruby:
 - Test: bundle exec rspec or rake test
 - Linting: rubocop
 - Type checking: sorbet tc (optional)
-- Coverage target: 80%
 - Ruby versions: 3.2, 3.3
 
 Java:
@@ -310,7 +316,6 @@ Java:
 - Test: mvn test or gradle test
 - Linting: checkstyle or spotbugs
 - Format check: google-java-format
-- Coverage target: 80%
 - Java versions: 17, 21 LTS
 
 PHP:
@@ -318,7 +323,6 @@ PHP:
 - Test: vendor/bin/phpunit or composer test
 - Linting: phpstan analyse
 - Format check: php-cs-fixer fix --dry-run
-- Coverage target: 75%
 - PHP versions: 8.2, 8.3
 
 Kotlin:
@@ -326,7 +330,6 @@ Kotlin:
 - Test: gradle test
 - Linting: ktlint or detekt
 - Format check: ktlint --format
-- Coverage target: 80%
 - Kotlin versions: 1.9, 2.0
 
 Swift:
@@ -334,7 +337,6 @@ Swift:
 - Test: swift test
 - Linting: swiftlint
 - Format check: swift-format lint
-- Coverage target: 75%
 - Swift versions: 5.9, 5.10
 
 C#/.NET:
@@ -342,8 +344,42 @@ C#/.NET:
 - Test: dotnet test
 - Linting: dotnet format --verify-no-changes
 - Type checking: dotnet build --no-restore
-- Coverage target: 80%
 - .NET versions: 8.0, 9.0 LTS
+
+C++:
+
+- Test: ctest or catch2 or gtest
+- Linting: clang-tidy or cppcheck
+- Format check: clang-format --dry-run
+- Standards: C++20, C++23
+
+Elixir:
+
+- Test: mix test
+- Linting: credo
+- Format check: mix format --check-formatted
+- Elixir versions: 1.16, 1.17
+
+R:
+
+- Test: testthat or devtools::test()
+- Linting: lintr
+- Format check: styler
+- R versions: 4.3, 4.4
+
+Flutter/Dart:
+
+- Test: flutter test or dart test
+- Linting: dart analyze
+- Format check: dart format --set-exit-if-changed
+- Flutter versions: 3.22, 3.24
+
+Scala:
+
+- Test: sbt test or mill test
+- Linting: scalafmt --check or scalafix
+- Format check: scalafmt --check
+- Scala versions: 2.13, 3.4
 
 Error Handling:
 

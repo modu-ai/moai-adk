@@ -434,7 +434,27 @@ Language Detection Rules (check in order, first match wins):
     - Indicator files: .csproj, .sln, .fsproj
     - IF found: Store PROJECT_LANGUAGE as csharp
 
-11. Fallback:
+11. C++ Detection:
+    - Indicator files: CMakeLists.txt, .cpp, .hpp, Makefile (with C++ content)
+    - IF found: Store PROJECT_LANGUAGE as cpp
+
+12. Elixir Detection:
+    - Indicator files: mix.exs, .exs, .ex
+    - IF found: Store PROJECT_LANGUAGE as elixir
+
+13. R Detection:
+    - Indicator files: DESCRIPTION (R package), .Rproj, renv.lock
+    - IF found: Store PROJECT_LANGUAGE as r
+
+14. Flutter/Dart Detection:
+    - Indicator files: pubspec.yaml, .dart
+    - IF found: Store PROJECT_LANGUAGE as flutter
+
+15. Scala Detection:
+    - Indicator files: build.sbt, .scala, build.sc (mill)
+    - IF found: Store PROJECT_LANGUAGE as scala
+
+16. Fallback:
     - IF no indicators found: Store PROJECT_LANGUAGE as unknown
     - Skip language-specific tools, proceed directly to code-review
 
@@ -459,6 +479,11 @@ Test Runner Configuration by Language:
 - Kotlin: Execute gradle test
 - Swift: Execute swift test
 - C#/.NET: Execute dotnet test
+- C++: Execute ctest or catch2 or gtest
+- Elixir: Execute mix test
+- R: Execute testthat or devtools::test()
+- Flutter/Dart: Execute flutter test or dart test
+- Scala: Execute sbt test or mill test
 
 Execution Steps:
 
@@ -509,6 +534,11 @@ Linter Configuration by Language:
 - Kotlin: Execute gradle ktlintCheck or detekt
 - Swift: Execute swiftlint
 - C#/.NET: Execute dotnet format --verify-no-changes
+- C++: Execute clang-tidy or cppcheck
+- Elixir: Execute mix credo
+- R: Execute lintr
+- Flutter/Dart: Execute dart analyze
+- Scala: Execute scalafmt --check or scalafix
 
 Execution Steps:
 
@@ -553,6 +583,11 @@ Type Checker Configuration by Language:
 - Kotlin: Skip (compilation handles type checking)
 - Swift: Skip (compilation handles type checking)
 - C#/.NET: Execute dotnet build --no-restore (type check via compilation)
+- C++: Skip (compilation handles type checking)
+- Elixir: Execute mix dialyzer (optional, requires dialyxir dependency)
+- R: Skip (no native type checking)
+- Flutter/Dart: Execute dart analyze (includes type checking)
+- Scala: Skip (compilation handles type checking)
 
 Execution Steps:
 
@@ -1238,10 +1273,11 @@ Documentation Outputs:
 - Reports: `.moai/reports/sync-report-{timestamp}.md`
 - Backup: `.moai-backups/sync-{timestamp}/` (safety backup)
 
-Version: 3.3.0 (Multi-Language Quality Verification)
+Version: 3.4.0 (Full Language Support with Config-Based Coverage)
 Last Updated: 2025-12-22
 Architecture: Commands → Agents → Skills (Complete delegation)
-Supported Languages: Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#
+Supported Languages: Python, TypeScript, JavaScript, Go, Rust, Ruby, Java, PHP, Kotlin, Swift, C#, C++, Elixir, R, Flutter/Dart, Scala
+Coverage Target: Read from .moai/config/sections/quality.yaml (constitution.test_coverage_target)
 
 ---
 
