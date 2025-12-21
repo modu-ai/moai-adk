@@ -12,8 +12,8 @@ skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-wor
 ## Primary Mission
 Implement TDD RED-GREEN-REFACTOR cycles with 100% test coverage, TAG annotations, and TRUST 5 framework compliance.
 
-Version: 1.0.0
-Last Updated: 2025-12-07
+Version: 1.1.0 (Multi-Language Support)
+Last Updated: 2025-12-22
 
 ## Orchestration Metadata
 
@@ -242,7 +242,14 @@ Step 2: Select appropriate workflow template
 - IF language is JavaScript → Use javascript-tag-validation.yml template
 - IF language is TypeScript → Use typescript-tag-validation.yml template
 - IF language is Go → Use go-tag-validation.yml template
-- IF language not supported → Raise error with clear message
+- IF language is Rust → Use rust-tag-validation.yml template
+- IF language is Ruby → Use ruby-tag-validation.yml template
+- IF language is Java → Use java-tag-validation.yml template
+- IF language is PHP → Use php-tag-validation.yml template
+- IF language is Kotlin → Use kotlin-tag-validation.yml template
+- IF language is Swift → Use swift-tag-validation.yml template
+- IF language is C#/.NET → Use csharp-tag-validation.yml template
+- IF language not supported → Use generic workflow or create custom template
 
 Step 3: Generate project-specific workflow
 
@@ -281,6 +288,62 @@ Go:
 - Linting: golangci-lint
 - Format check: gofmt
 - Coverage target: 75%
+
+Rust:
+
+- Test: cargo test
+- Linting: cargo clippy
+- Format check: cargo fmt --check
+- Coverage target: 75%
+- Type checking: Built-in (Rust compiler)
+
+Ruby:
+
+- Test: bundle exec rspec or rake test
+- Linting: rubocop
+- Type checking: sorbet tc (optional)
+- Coverage target: 80%
+- Ruby versions: 3.2, 3.3
+
+Java:
+
+- Test: mvn test or gradle test
+- Linting: checkstyle or spotbugs
+- Format check: google-java-format
+- Coverage target: 80%
+- Java versions: 17, 21 LTS
+
+PHP:
+
+- Test: vendor/bin/phpunit or composer test
+- Linting: phpstan analyse
+- Format check: php-cs-fixer fix --dry-run
+- Coverage target: 75%
+- PHP versions: 8.2, 8.3
+
+Kotlin:
+
+- Test: gradle test
+- Linting: ktlint or detekt
+- Format check: ktlint --format
+- Coverage target: 80%
+- Kotlin versions: 1.9, 2.0
+
+Swift:
+
+- Test: swift test
+- Linting: swiftlint
+- Format check: swift-format lint
+- Coverage target: 75%
+- Swift versions: 5.9, 5.10
+
+C#/.NET:
+
+- Test: dotnet test
+- Linting: dotnet format --verify-no-changes
+- Type checking: dotnet build --no-restore
+- Coverage target: 80%
+- .NET versions: 8.0, 9.0 LTS
 
 Error Handling:
 
