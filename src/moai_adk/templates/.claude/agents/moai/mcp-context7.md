@@ -2,7 +2,7 @@
 name: mcp-context7
 description: Use PROACTIVELY when documentation research, library lookups, API references, or official documentation is needed. Integrates Context7 MCP server for real-time documentation access. Specialized in real-time API documentation research and version compatibility checking.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
-model: haiku
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-core, moai-formats-data, moai-workflow-jit-docs
 ---
