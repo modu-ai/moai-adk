@@ -23,7 +23,6 @@ from moai_adk.cli.worktree.cli import (
     _find_main_repository,
     new_worktree,
     list_worktrees,
-    switch_worktree,
     remove_worktree,
     status_worktrees,
     go_worktree,
@@ -329,45 +328,6 @@ class TestListWorktreesCommand:
         # Assert
         assert result.exit_code == 0
         assert "No worktrees found" in result.output
-
-
-class TestSwitchWorktreeCommand:
-    """Test suite for switch worktree command."""
-
-    @patch("subprocess.call")
-    @patch("moai_adk.cli.worktree.cli.get_manager")
-    def test_switch_worktree_success(self, mock_get_manager, mock_call):
-        """Test successful worktree switch."""
-        # Arrange
-        runner = CliRunner()
-        mock_manager = MagicMock()
-        mock_worktree_info = MagicMock(path=Path("/mock/worktree"))
-        mock_manager.registry.get.return_value = mock_worktree_info
-        mock_get_manager.return_value = mock_manager
-        mock_call.return_value = 0
-
-        # Act
-        result = runner.invoke(switch_worktree, ["SPEC-001"])
-
-        # Assert
-        assert result.exit_code == 0
-        mock_call.assert_called_once()
-
-    @patch("moai_adk.cli.worktree.cli.get_manager")
-    def test_switch_worktree_not_found(self, mock_get_manager):
-        """Test switch when worktree not found."""
-        # Arrange
-        runner = CliRunner()
-        mock_manager = MagicMock()
-        mock_manager.registry.get.return_value = None
-        mock_get_manager.return_value = mock_manager
-
-        # Act
-        result = runner.invoke(switch_worktree, ["NONEXISTENT"])
-
-        # Assert
-        assert result.exit_code != 0
-        assert "not found" in result.output
 
 
 class TestRemoveWorktreeCommand:
