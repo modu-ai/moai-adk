@@ -25,7 +25,9 @@ except ImportError:
 console = Console()
 
 
-def get_manager(repo_path: Path | None = None, worktree_root: Path | None = None, project_name: str | None = None) -> WorktreeManager:  # noqa: E501
+def get_manager(
+    repo_path: Path | None = None, worktree_root: Path | None = None, project_name: str | None = None
+) -> WorktreeManager:  # noqa: E501
     """Get or create a WorktreeManager instance.
 
     Args:

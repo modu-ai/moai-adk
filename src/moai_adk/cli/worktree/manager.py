@@ -27,9 +27,7 @@ class WorktreeManager:
     support multiple projects: /worktrees/{project-name}/{SPEC-ID}
     """
 
-    def __init__(
-        self, repo_path: Path, worktree_root: Path, project_name: str | None = None
-    ) -> None:
+    def __init__(self, repo_path: Path, worktree_root: Path, project_name: str | None = None) -> None:
         """Initialize the worktree manager.
 
         Args:
@@ -289,9 +287,7 @@ class WorktreeManager:
                                     except Exception:
                                         # Strategy 2: Accept incoming changes (theirs) if ours fails
                                         try:
-                                            worktree_repo.git.checkout(
-                                                "--theirs", file_path
-                                            )
+                                            worktree_repo.git.checkout("--theirs", file_path)
                                             worktree_repo.git.add(file_path)
                                         except Exception:
                                             # Strategy 3: Remove conflict markers and keep both
@@ -309,10 +305,7 @@ class WorktreeManager:
                                                     in_conflict = False
 
                                                     for line in lines:
-                                                        if (
-                                                            "<<<<<<<" in line
-                                                            or ">>>>>>>" in line
-                                                        ):
+                                                        if "<<<<<<<" in line or ">>>>>>>" in line:
                                                             in_conflict = True
                                                             continue
                                                         elif "======" in line:
@@ -326,9 +319,7 @@ class WorktreeManager:
                                                             cleaned_lines.append(line)
 
                                                     with open(file_full_path, "w") as f:
-                                                        f.write(
-                                                            "\n".join(cleaned_lines)
-                                                        )
+                                                        f.write("\n".join(cleaned_lines))
 
                                                     worktree_repo.git.add(file_path)
                                             except Exception:
@@ -353,15 +344,9 @@ class WorktreeManager:
                                     worktree_repo.git.rebase("--abort")
                                 except Exception:
                                     pass
-                                conflict_list = (
-                                    conflicted
-                                    if isinstance(conflicted, list)
-                                    else [str(conflicted)]
-                                )
+                                conflict_list = conflicted if isinstance(conflicted, list) else [str(conflicted)]
                                 error_msg = f"auto-resolve failed: {resolve_error}"
-                                raise MergeConflictError(
-                                    spec_id, conflict_list + [error_msg]
-                                )
+                                raise MergeConflictError(spec_id, conflict_list + [error_msg])
                         else:
                             # Auto-abort merge/rebase on conflicts
                             try:
@@ -417,9 +402,7 @@ class WorktreeManager:
             # Get list of merged branches
             try:
                 merged_branches = self.repo.git.branch("--merged", "main").split("\n")
-                merged_branches = [
-                    b.strip().lstrip("*").strip() for b in merged_branches
-                ]
+                merged_branches = [b.strip().lstrip("*").strip() for b in merged_branches]
             except Exception:
                 merged_branches = []
 
@@ -437,9 +420,7 @@ class WorktreeManager:
 
         return cleaned
 
-    def auto_resolve_conflicts(
-        self, worktree_repo: Repo, spec_id: str, conflicted_files: List[str]
-    ) -> None:
+    def auto_resolve_conflicts(self, worktree_repo: Repo, spec_id: str, conflicted_files: List[str]) -> None:
         """Automatically resolve conflicts in worktree.
 
         Args:
@@ -505,9 +486,7 @@ class WorktreeManager:
             worktree_repo.git.add(".")
 
             # Commit the merge resolution
-            worktree_repo.git.commit(
-                "-m", f"Auto-resolved conflicts during sync of {spec_id}"
-            )
+            worktree_repo.git.commit("-m", f"Auto-resolved conflicts during sync of {spec_id}")
 
         except Exception as e:
             # Auto-resolution failed, raise error for manual intervention

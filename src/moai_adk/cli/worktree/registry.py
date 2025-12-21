@@ -121,9 +121,7 @@ class WorktreeRegistry:
             return
 
         for index, existing in enumerate(entries):
-            if self._entry_matches_project(existing, project_name) or self._entry_matches_path(
-                existing, path
-            ):
+            if self._entry_matches_project(existing, project_name) or self._entry_matches_path(existing, path):
                 entries[index] = entry
                 self._set_entries(spec_id, entries)
                 return
@@ -131,9 +129,7 @@ class WorktreeRegistry:
         entries.append(entry)
         self._set_entries(spec_id, entries)
 
-    def _has_entry(
-        self, spec_id: str, project_name: str | None, path: Path | None
-    ) -> bool:
+    def _has_entry(self, spec_id: str, project_name: str | None, path: Path | None) -> bool:
         """Check whether an entry already exists for this spec/project/path."""
         entries = self._entries_for_spec(spec_id)
         if not entries:
@@ -194,9 +190,7 @@ class WorktreeRegistry:
                 continue
 
             if isinstance(entry, list):
-                valid_entries = [
-                    item for item in entry if isinstance(item, dict) and self._is_valid_entry(item)
-                ]
+                valid_entries = [item for item in entry if isinstance(item, dict) and self._is_valid_entry(item)]
                 if not valid_entries:
                     continue
                 validated[spec_id] = valid_entries[0] if len(valid_entries) == 1 else valid_entries
@@ -217,9 +211,7 @@ class WorktreeRegistry:
             info: WorktreeInfo instance to register.
             project_name: Project name for namespace organization.
         """
-        self._upsert_entry(
-            info.spec_id, info.to_dict(), project_name=project_name, path=info.path
-        )
+        self._upsert_entry(info.spec_id, info.to_dict(), project_name=project_name, path=info.path)
         self._save()
 
     def unregister(self, spec_id: str, project_name: str | None = None) -> None:
@@ -239,9 +231,7 @@ class WorktreeRegistry:
         if not entries:
             return
 
-        remaining = [
-            entry for entry in entries if not self._entry_matches_project(entry, project_name)
-        ]
+        remaining = [entry for entry in entries if not self._entry_matches_project(entry, project_name)]
         if len(remaining) == len(entries):
             return
 
@@ -330,9 +320,7 @@ class WorktreeRegistry:
                         changed = True
 
                 if kept_entries:
-                    normalized = (
-                        kept_entries[0] if len(kept_entries) == 1 else kept_entries
-                    )
+                    normalized = kept_entries[0] if len(kept_entries) == 1 else kept_entries
                     if self._data.get(spec_id) != normalized:
                         self._data[spec_id] = normalized
                         changed = True
@@ -363,9 +351,7 @@ class WorktreeRegistry:
         if not self.worktree_root.exists():
             return 0
 
-        def register_candidate(
-            worktree_path: Path, spec_id: str, project_name: str | None
-        ) -> None:
+        def register_candidate(worktree_path: Path, spec_id: str, project_name: str | None) -> None:
             nonlocal recovered
 
             if self._has_entry(spec_id, project_name, worktree_path):
@@ -403,9 +389,7 @@ class WorktreeRegistry:
                 "last_accessed": now,
                 "status": "recovered",
             }
-            self._upsert_entry(
-                spec_id, info_dict, project_name=project_name, path=worktree_path
-            )
+            self._upsert_entry(spec_id, info_dict, project_name=project_name, path=worktree_path)
             recovered += 1
 
         for item in self.worktree_root.iterdir():
