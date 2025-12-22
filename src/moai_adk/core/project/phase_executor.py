@@ -304,9 +304,13 @@ class PhaseExecutor:
 
         # Set template variable context (if provided)
         if config:
-            language_config: dict[str, Any] = config.get("language", {})
-            if not isinstance(language_config, dict):
-                language_config = {}
+            # Get language settings from 'language_settings' key (dict)
+            # Falls back to 'language' key for backwards compatibility
+            language_config: dict[str, Any] = config.get("language_settings") or {}
+            if not language_config or not isinstance(language_config, dict):
+                # Backwards compatibility: try 'language' key as dict
+                legacy_lang = config.get("language", {})
+                language_config = legacy_lang if isinstance(legacy_lang, dict) else {}
 
             # Detect OS for cross-platform Hook path configuration
             hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"

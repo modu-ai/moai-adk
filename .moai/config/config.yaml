@@ -1,5 +1,4 @@
 # MoAI-ADK Configuration
-# Version: 0.33.1
 # Format: YAML (modular section-based configuration)
 #
 # This is the main configuration file that references modular section files.
@@ -19,7 +18,7 @@
 # @.moai/config/sections/language.yaml
 
 moai:
-  version: "0.33.1"
+  version: "0.34.0"
   initialized: true
   initialized_at: "2025-12-19T00:00:00Z"
 
@@ -42,7 +41,7 @@ document_management:
     # Documentation files
     docs:
       base: .moai/docs/
-      retention_days: null  # Keep indefinitely
+      retention_days: null # Keep indefinitely
     # Log files (runtime data)
     logs:
       base: .moai/logs/

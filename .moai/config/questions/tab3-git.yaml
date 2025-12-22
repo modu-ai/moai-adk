@@ -17,12 +17,14 @@ target_sections:
 
 batches:
   # Batch 3.0a: GitHub Profile (always shown, required for all modes)
+  # UX Note: For text_input, only show "Keep Current" option.
+  # Users should type directly in "Type something" field to enter new value.
   - batch_id: "3.0a"
     label: "GitHub Profile"
     conditional: false
     questions:
       - id: github_profile_name
-        question: "What is your GitHub profile name?"
+        question: "What is your GitHub profile name? To change, type your username (e.g., @GoosLab) in the text field below."
         header: "GitHub Profile"
         field: "github.profile_name"
         type: text_input
@@ -30,11 +32,8 @@ batches:
         required: true
         options:
           - label: "Keep Current Value"
-            description: "Continue using current profile"
+            description: "Continue using current profile (to change, type in the field below)"
             value: "{{current}}"
-          - label: "Change"
-            description: "Select Other to enter GitHub username (e.g., @GoosLab)"
-            value: "{{prompt_user}}"
         target:
           file: "sections/project.yaml"
           path: "github.profile_name"
@@ -290,18 +289,16 @@ batches:
       operator: equals
       value: "personal"
     questions:
+      # UX Note: For text_input, only show "Keep Current" option.
       - id: personal_branch_prefix
-        question: "Branch prefix for Personal mode?"
+        question: "Branch prefix for Personal mode? To change, type the new prefix (e.g., feature/SPEC-) in the text field below."
         header: "Prefix"
         field: "git_strategy.personal.branch_prefix"
         type: text_input
         options:
           - label: "Keep Current Value"
-            description: "Continue using current prefix"
+            description: "Continue using current prefix (to change, type in the field below)"
             value: "{{current}}"
-          - label: "Change"
-            description: "Enter new prefix (e.g., feature/SPEC-)"
-            value: "{{prompt_user}}"
         target:
           file: "sections/git-strategy.yaml"
           path: "git_strategy.personal.branch_prefix"
@@ -515,18 +512,16 @@ batches:
       operator: equals
       value: "team"
     questions:
+      # UX Note: For text_input, only show "Keep Current" option.
       - id: team_branch_prefix
-        question: "Branch prefix for Team mode?"
+        question: "Branch prefix for Team mode? To change, type the new prefix (e.g., feature/SPEC-) in the text field below."
         header: "Prefix"
         field: "git_strategy.team.branch_prefix"
         type: text_input
         options:
           - label: "Keep Current Value"
-            description: "Continue using current prefix"
+            description: "Continue using current prefix (to change, type in the field below)"
             value: "{{current}}"
-          - label: "Change"
-            description: "Enter new prefix (e.g., feature/SPEC-)"
-            value: "{{prompt_user}}"
         target:
           file: "sections/git-strategy.yaml"
           path: "git_strategy.team.branch_prefix"

@@ -70,18 +70,18 @@ Once you have your Mermaid code:
 ```python
 # This skill integrates with MCP Playwright
 # You can use the playwright MCP server to render the diagram
-# The MCP server is configured in .mcp.json
+# The MCP server is configured in .claude/mcp.json
 ```
 
-The MCP configuration in `.mcp.json` enables:
+The MCP configuration in `.claude/mcp.json` enables:
 ```json
 {
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
-    }
-  }
+ "mcpServers": {
+ "playwright": {
+ "command": "npx",
+ "args": ["-y", "@anthropic-ai/playwright-mcp"]
+ }
+ }
 }
 ```
 
@@ -112,9 +112,9 @@ For Mermaid syntax questions:
 - Use https://mermaid.live for interactive testing
 
 For Claude Code integration:
-- Ensure `.mcp.json` has Playwright configured
+- Ensure `.claude/mcp.json` has Playwright configured
 - Verify Node.js is installed (`node --version`)
-- Check Playwright is available (`npx @playwright/mcp@latest --version`)
+- Check Playwright is available (`npx @anthropic-ai/playwright-mcp --version`)
 
 Version: 6.0.0-skill-edition
 Last Updated: 2025-11-20

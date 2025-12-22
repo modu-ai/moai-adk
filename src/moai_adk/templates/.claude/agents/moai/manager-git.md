@@ -230,22 +230,62 @@ Philosophy: “Safe Experiments, Simple Git”
 
 Personal Mode Core Features (Based on github.spec_git_workflow):
 
-Direct Commit Strategy (spec_git_workflow == "develop_direct") [RECOMMENDED]:
+SPEC Git Workflow Options:
+- main_direct: Commit directly to main branch (simple personal projects) [RECOMMENDED]
+- main_feature: Create feature branch from main, merge back to main (personal with branch management)
+- develop_direct: Commit directly to develop branch (traditional git-flow)
+- feature_branch: Create feature branch, PR to develop (team projects)
+- per_spec: Create dedicated branch per SPEC
+
+Main Direct Strategy (spec_git_workflow == "main_direct") [RECOMMENDED for Personal]:
 
 Implementation Pattern [HARD]:
-- Commit directly to main/develop branch without intermediate branches
+- Commit directly to main branch without intermediate branches
 - Execute TDD structure within single branch lifecycle
-- Minimize intermediate branch overhead
+- Minimize workflow complexity for solo developers
 
-WHY: Direct commits reduce workflow complexity for solo developers
+WHY: Direct commits to main reduce workflow complexity for solo developers
 IMPACT: Eliminates feature branch management overhead; simplifies history
 
 Characteristics:
 - Branch Creation: Not required for individual commits
-- PR Creation: Not used; direct commits to main/develop
+- PR Creation: Not used; direct commits to main
 - Code Review: Self-review only
-- Best For: Personal projects, rapid iteration, minimal overhead
-- Release Cycle: Shorter (commits on main trigger immediate CI/CD)
+- Best For: Simple personal projects, rapid iteration, minimal overhead
+- Release Cycle: Shortest (commits on main trigger immediate CI/CD)
+
+Main Feature Strategy (spec_git_workflow == "main_feature"):
+
+Implementation Pattern [HARD]:
+- Create feature branches from main: `git checkout main && git checkout -b feature/SPEC-001`
+- Merge back to main after completion
+- Use for personal projects requiring branch management
+
+WHY: Feature branches from main provide isolation without develop branch complexity
+IMPACT: Clear feature boundaries while maintaining simple main-based workflow
+
+Characteristics:
+- Branch Creation: Required for all features
+- Base Branch: main (not develop)
+- PR Creation: Optional (can merge directly or via PR)
+- Code Review: Self-review only
+- Best For: Personal projects with feature isolation needs
+
+Develop Direct Strategy (spec_git_workflow == "develop_direct"):
+
+Implementation Pattern [HARD]:
+- Commit directly to develop branch without intermediate branches
+- Periodically merge develop to main for releases
+- Traditional git-flow pattern
+
+WHY: Provides staging area (develop) before production (main)
+IMPACT: Extra merge step but clearer release process
+
+Characteristics:
+- Branch Creation: Not required for individual commits
+- PR Creation: Not used; direct commits to develop
+- Code Review: Self-review only
+- Best For: Projects following traditional git-flow
 
 Branch-Based Strategy (spec_git_workflow == "feature_branch" OR "per_spec"):
 
@@ -274,10 +314,10 @@ Characteristics:
 - Commit Template: Use simple structured message format
 - Best For: Quality gates, audit trails, multi-developer scenarios
 
-Direct Commit Workflow (Personal Mode - spec_git_workflow == "develop_direct"):
-1. Implement TDD cycle: RED → GREEN → REFACTOR commits directly on main/develop
+Direct Commit Workflow (Personal Mode - spec_git_workflow == "main_direct" or "develop_direct"):
+1. Implement TDD cycle: RED → GREEN → REFACTOR commits directly on main (or develop)
 2. Commit with TDD structure: Separate commits for RED/GREEN/REFACTOR phases
-3. Push to remote: `git push origin main` or `git push origin develop`
+3. Push to remote: `git push origin main` (or `git push origin develop` for develop_direct)
 4. CI/CD runs automatically on push
 5. Deployment triggered on main push
 6. Simple, clean commit history

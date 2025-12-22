@@ -132,9 +132,7 @@ except ImportError:
                     value = value.split("#")[0].strip()
 
                 # Handle quoted strings
-                if (value.startswith('"') and value.endswith('"')) or (
-                    value.startswith("'") and value.endswith("'")
-                ):
+                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
                     value = value[1:-1]
 
                 # Top-level key (no indentation or minimal indentation)
@@ -833,7 +831,6 @@ def format_session_output() -> str:
     """
     # Gather information (in parallel for git, cached for config/SPEC)
     git_info = get_git_info()
-    spec_progress = get_spec_progress()
 
     # Get config for language and version info
     config = get_cached_config()

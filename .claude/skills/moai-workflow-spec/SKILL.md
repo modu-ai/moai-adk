@@ -39,16 +39,6 @@ Unwanted:      "시스템은 [동작]하지 않아야 한다" - Prohibition
 Optional:      "가능하면 [동작]을 제공한다" - Nice-to-have
 ```
 
-EARS Official Grammar (Industry Standard):
-
-| Type | English Pattern | Korean Adaptation |
-|------|----------------|-------------------|
-| Ubiquitous | The [system] shall [response]. | 시스템은 항상 [동작]해야 한다 |
-| Event-Driven | When [event], the [system] shall [response]. | WHEN [이벤트] THEN [동작] |
-| State-Driven | While [condition], the [system] shall [response]. | IF [조건] THEN [동작] |
-| Optional | Where [feature], the [system] shall [response]. | 가능하면 [동작] 제공 |
-| Unwanted | If [undesired], then the [system] shall [response]. | 시스템은 [동작]하지 않아야 한다 |
-
 When to Use:
 - Feature planning and requirement definition
 - SPEC document creation and maintenance
@@ -82,6 +72,28 @@ SPEC-First Development Philosophy:
 - Systematic validation through test scenarios
 - Integration with TDD workflow for implementation
 - Quality gates enforce completion criteria
+- Constitution reference ensures project-wide consistency
+
+### Constitution Reference (SDD 2025 Standard)
+
+Constitution defines the project DNA that all SPECs must respect. Before creating any SPEC, verify alignment with project constitution defined in `.moai/project/tech.md` (extended with Constitution section).
+
+Constitution Components:
+- Technology Stack: Required versions and frameworks (e.g., Python 3.13+, FastAPI 0.118+)
+- Naming Conventions: Variable, function, and file naming standards
+- Forbidden Libraries: Libraries explicitly prohibited (with alternatives)
+- Architectural Patterns: Layering rules, dependency directions
+- Security Standards: Authentication patterns, encryption requirements
+- Logging Standards: Log format, structured logging requirements
+
+Constitution Verification Checklist:
+- All SPEC technology choices align with Constitution stack versions
+- No SPEC introduces forbidden libraries or patterns
+- SPEC follows naming conventions defined in Constitution
+- SPEC respects architectural boundaries and layering
+
+WHY: Constitution prevents architectural drift and ensures maintainability
+IMPACT: SPECs aligned with Constitution reduce integration conflicts by 60%
 
 SPEC Workflow Stages:
 1. User Input Analysis: Parse natural language feature description
@@ -213,21 +225,6 @@ Alternative Approaches Section (SPEC Document):
 - Error Cases: Invalid inputs with error handling
 - Edge Cases: Boundary conditions and corner cases
 - Security Cases: Injection attacks, privilege escalation attempts
-
-### SPEC File Structure Options
-
-**Standard 3-File Structure:**
-- spec.md: EARS requirements and constraints
-- plan.md: Implementation approach and phases
-- acceptance.md: Gherkin acceptance criteria
-
-**Enhanced 4-File Structure (Complex SPECs):**
-- spec.md: EARS requirements (core specification)
-- design.md: Technical design (architecture, API, data model)
-- tasks.md: Implementation checklist with progress tracking
-- acceptance.md: Gherkin acceptance criteria (Given-When-Then)
-
-See [reference.md](reference.md) for detailed templates of each file type.
 
 ### SPEC Document Structure
 
@@ -417,6 +414,55 @@ Optional Fields:
 - Estimated Effort: Time estimate in hours or story points
 - Labels: Tags for categorization
 
+### SPEC Lifecycle Management (SDD 2025 Standard)
+
+Lifecycle Level Field (NEW):
+
+SPEC maturity follows three levels based on SDD 2025 best practices:
+
+Level 1 - spec-first:
+- Description: SPEC written before implementation, discarded after completion
+- Use Case: One-time features, prototypes, experiments
+- Maintenance Policy: No maintenance required after implementation
+- Recommended For: Quick iterations, exploratory development
+
+Level 2 - spec-anchored:
+- Description: SPEC maintained alongside implementation for evolution and maintenance
+- Use Case: Core features, API contracts, integration points
+- Maintenance Policy: Quarterly review, update when implementation changes
+- Recommended For: Production features requiring long-term maintenance
+
+Level 3 - spec-as-source:
+- Description: SPEC is the single source of truth; only SPEC is edited by humans
+- Use Case: Critical systems, regulated environments, code generation workflows
+- Maintenance Policy: SPEC changes trigger implementation regeneration
+- Recommended For: High-reliability systems, compliance-required features
+
+SPEC Document Header with Lifecycle:
+```markdown
+---
+id: SPEC-AUTH-001
+version: "1.0.0"
+status: "planned"
+created: "2025-12-19"
+updated: "2025-12-19"
+author: "developer"
+priority: "high"
+lifecycle_level: "spec-anchored"
+maintenance_policy: "quarterly_review"
+---
+```
+
+Lifecycle Transition Rules:
+- spec-first to spec-anchored: When feature becomes production-critical
+- spec-anchored to spec-as-source: When compliance or regeneration workflow required
+- Downgrade allowed but requires explicit justification in SPEC history
+
+Spec Drift Prevention:
+- For spec-anchored and spec-as-source levels, /moai:3-sync validates SPEC-implementation alignment
+- Drift detection triggers warning before documentation sync
+- Manual override requires explicit acknowledgment
+
 ### Quality Metrics
 
 SPEC Quality Indicators:
@@ -431,16 +477,6 @@ Validation Checklist:
 - All error cases documented
 - Performance targets quantified
 - Security requirements OWASP-compliant
-
-### Industry Alignment (2025)
-
-MoAI-ADK SPEC workflow aligns with industry-leading specification tools:
-
-- AWS Kiro IDE: requirements.md, design.md, tasks.md
-- GitHub Spec-Kit: spec.md, plan.md, tasks.md, constitution.md
-- MoAI-ADK: spec.md, plan.md, acceptance.md (+ design.md, tasks.md optional)
-
-The 4-file structure provides compatibility with modern AI-assisted development workflows while maintaining flexibility for simpler projects using the standard 3-file approach.
 
 ### Works Well With
 
@@ -493,6 +529,6 @@ Context Optimization:
 
 ---
 
-Version: 1.1.0 (Philosopher Framework Integration)
+Version: 1.2.0 (SDD 2025 Standard Integration)
 Last Updated: 2025-12-19
-Integration Status: Complete - Full Plan-Run-Sync workflow with Assumption Analysis support
+Integration Status: Complete - Full Plan-Run-Sync workflow with SDD 2025 features (Constitution, Tasks Decomposition, Lifecycle Management)

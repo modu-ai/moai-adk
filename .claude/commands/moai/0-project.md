@@ -785,12 +785,11 @@ Single Batch Execution Example (Tab 1, Batch 1.1):
 Call: AskUserQuestion(
 questions: [
 {
-question: "How would you like to configure the user name? (current: GoosLab)",
+question: "What is your name? To change, type your name in the text field below. (current: GoosLab)",
 header: "User Name",
 multiSelect: false,
 options: [
-{label: "Keep Current Value", description: "Continue using GoosLab"},
-{label: "Change", description: "Select Other to enter a new name"}
+{label: "Keep Current Value", description: "Continue using GoosLab (to change, type in the field below)"}
 ]
 },
 {
@@ -904,7 +903,7 @@ User runs: `/moai:0-project setting tab_1_user_language`
 ```
 Step 1: Project-manager loads tab schema
 Step 2: Extracts Tab 1 (tab_1_user_language)
-Step 3: Gets Batch 1.1 (基本設定)
+Step 3: Gets Batch 1.1
 Step 4: Loads current values from config.yaml including extended language settings:
   - User configuration: user.name value
   - Conversation language: language.conversation_language (ko, en, ja, zh, etc.)
@@ -1268,7 +1267,7 @@ IMPACT: Deferred language selection complicates initial setup.
 
 ---
 
-##  Output Format
+## Output Format
 
 Responses and status reports must follow structured XML format for clarity and automated processing:
 

@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/session_start__show_project_info.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
           }
         ]
       }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/session_end__auto_cleanup.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py"
           }
         ]
       }
@@ -164,9 +164,7 @@
     "padding": 0,
     "refreshInterval": 300
   },
-  "spinnerTipsEnabled": false,
   "outputStyle": "R2-D2",
-  "includeCoAuthoredBy": false,
   "cleanupPeriodDays": 30,
   "env": {
     "MOAI_CONFIG_SOURCE": "sections"

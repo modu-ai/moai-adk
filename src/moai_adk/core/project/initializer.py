@@ -213,12 +213,38 @@ class ProjectInitializer:
             # Phase 2: Directory (create directories)
             self.executor.execute_directory_phase(self.path, progress_callback)
 
+            # Build language_config BEFORE Phase 3 for template variable substitution
+            # This fixes the bug where language selection was not applied to section files
+            language_names = {
+                "ko": "Korean",
+                "en": "English",
+                "ja": "Japanese",
+                "zh": "Chinese",
+            }
+            if locale == "other" and custom_language:
+                language_config = {
+                    "conversation_language": "other",
+                    "conversation_language_name": custom_language,
+                }
+            elif locale in language_names:
+                language_config = {
+                    "conversation_language": locale,
+                    "conversation_language_name": language_names[locale],
+                }
+            else:
+                # Default fallback
+                language_config = {
+                    "conversation_language": locale or "en",
+                    "conversation_language_name": language_names.get(locale, "English"),
+                }
+
             # Prepare config for template variable substitution (Phase 3)
             config = {
                 "name": self.path.name,
                 "mode": mode,
                 "locale": locale,
-                "language": detected_language,
+                "language": detected_language,  # Programming language (string)
+                "language_settings": language_config,  # Language settings (dict)
                 "description": "",
                 "version": "0.1.0",
                 "author": "@user",
@@ -243,31 +269,7 @@ class ProjectInitializer:
                         pass  # Silently ignore permission errors
 
             # Phase 4: Configuration (generate config.json)
-            # Handle language configuration
-            language_config = {}
-            if locale == "other" and custom_language:
-                language_config = {
-                    "conversation_language": "other",
-                    "conversation_language_name": custom_language,
-                }
-            elif locale in ["ko", "en", "ja", "zh"]:
-                language_names = {
-                    "ko": "Korean",
-                    "en": "English",
-                    "ja": "Japanese",
-                    "zh": "Chinese",
-                }
-                language_config = {
-                    "conversation_language": locale,
-                    "conversation_language_name": language_names.get(locale, "English"),
-                }
-            else:
-                # Default fallback
-                language_config = {
-                    "conversation_language": locale,
-                    "conversation_language_name": "English",
-                }
-
+            # Note: language_config is already created before Phase 3
             config_data: dict[str, str | bool | dict] = {
                 "project": {
                     "name": self.path.name,

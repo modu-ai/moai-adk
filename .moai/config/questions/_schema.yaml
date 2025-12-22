@@ -22,11 +22,17 @@ question_types:
     description: "Multiple selection from options"
     multi_select: true
   text_input:
-    description: "Text input via 'Other' option"
+    description: "Text input via 'Type something' field (auto-added 'Other' option)"
     use_other_for_input: true
+    # UX Guidelines for text_input questions:
+    # - Only include 'Keep Current Value' option for existing values
+    # - DO NOT include 'Change' option - it confuses users who think they should select it
+    # - Include guidance in question text: "To change, type in the text field below"
+    # - Users type directly in the 'Type something' field (auto-added 'Other' option)
   number_input:
-    description: "Number input via 'Other' option or predefined values"
+    description: "Number input via 'Type something' field or predefined values"
     use_other_for_input: true
+    # UX Guidelines: Same as text_input - users type in the 'Type something' field
 
 # Conditional Logic Operators
 condition_operators:
@@ -50,8 +56,10 @@ condition_operators:
 # Special Values
 special_values:
   "{{current}}": "Keep current value from config"
-  "{{prompt_user}}": "Prompt user via 'Other' option"
   "{{field_path}}": "Reference another field value"
+  # DEPRECATED: "{{prompt_user}}" - DO NOT USE
+  # Reason: For text_input, users type directly in 'Type something' field
+  # Instead of a 'Change' option, include guidance in the question text
 
 # Auto-Update Rules
 auto_update_patterns:

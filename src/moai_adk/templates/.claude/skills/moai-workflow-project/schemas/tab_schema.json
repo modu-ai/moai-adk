@@ -147,7 +147,7 @@
           "conditional": false,
           "questions": [
             {
-              "question": "What is your name? (current: {{user.name}})",
+              "question": "What is your name? To change, type your name in the text field below. (current: {{user.name}})",
               "header": "User Name",
               "field": "user.name",
               "type": "text_input",
@@ -155,13 +155,8 @@
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using {{user.name}}",
+                  "description": "Continue using {{user.name}} (to change, type in the field below)",
                   "value": "{{current}}"
-                },
-                {
-                  "label": "Change",
-                  "description": "Select Other to enter new name",
-                  "value": "{{prompt_user}}"
                 }
               ],
               "current_value_path": "user.name",
@@ -254,20 +249,15 @@
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using {{project.name}}",
+                  "description": "Continue using {{project.name}} (to change, type in the field below)",
                   "value": "{{current}}"
-                },
-                {
-                  "label": "Change",
-                  "description": "Select Other to enter new name",
-                  "value": "{{prompt_user}}"
                 }
               ],
               "current_value_path": "project.name",
               "required": true
             },
             {
-              "question": "Project description? (current: {{project.description}})",
+              "question": "Project description? To change, type in the text field below. (current: {{project.description}})",
               "header": "Description",
               "field": "project.description",
               "type": "text_input",
@@ -275,20 +265,15 @@
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using current description",
+                  "description": "Continue using current description (to change, type in the field below)",
                   "value": "{{current}}"
-                },
-                {
-                  "label": "Change",
-                  "description": "Select Other to enter new description",
-                  "value": "{{prompt_user}}"
                 }
               ],
               "current_value_path": "project.description",
               "required": true
             },
             {
-              "question": "Project owner? (current: {{project.owner}})",
+              "question": "Project owner? To change, type in the text field below. (current: {{project.owner}})",
               "header": "Owner",
               "field": "project.owner",
               "type": "text_input",
@@ -296,13 +281,8 @@
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using {{project.owner}}",
+                  "description": "Continue using {{project.owner}} (to change, type in the field below)",
                   "value": "{{current}}"
-                },
-                {
-                  "label": "Change",
-                  "description": "Select Other to enter new owner",
-                  "value": "{{prompt_user}}"
                 }
               ],
               "current_value_path": "project.owner",
@@ -664,7 +644,7 @@
           },
           "questions": [
             {
-              "question": "Branch prefix for Personal mode? (current: {{git_strategy.personal.branch_prefix}})",
+              "question": "Branch prefix for Personal mode? To change, type the new prefix (e.g., feature/SPEC-) in the text field below. (current: {{git_strategy.personal.branch_prefix}})",
               "header": "Branch Prefix",
               "field": "git_strategy.personal.branch_prefix",
               "type": "text_input",
@@ -672,13 +652,8 @@
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using {{git_strategy.personal.branch_prefix}}",
+                  "description": "Continue using {{git_strategy.personal.branch_prefix}} (to change, type in the field below)",
                   "value": "{{current}}"
-                },
-                {
-                  "label": "Change",
-                  "description": "Select Other to enter new prefix (e.g., feature/SPEC-)",
-                  "value": "{{prompt_user}}"
                 }
               ],
               "current_value_path": "git_strategy.personal.branch_prefix",
@@ -959,7 +934,7 @@
           },
           "questions": [
             {
-              "question": "Branch prefix for Team mode? (current: {{git_strategy.team.branch_prefix}})",
+              "question": "Branch prefix for Team mode? To change, type the new prefix (e.g., feature/SPEC-) in the text field below. (current: {{git_strategy.team.branch_prefix}})",
               "header": "Branch Prefix",
               "field": "git_strategy.team.branch_prefix",
               "type": "text_input",
@@ -967,13 +942,8 @@
               "options": [
                 {
                   "label": "Keep Current Value",
-                  "description": "Continue using {{git_strategy.team.branch_prefix}}",
+                  "description": "Continue using {{git_strategy.team.branch_prefix}} (to change, type in the field below)",
                   "value": "{{current}}"
-                },
-                {
-                  "label": "Change",
-                  "description": "Select Other to enter new prefix (e.g., feature/SPEC-)",
-                  "value": "{{prompt_user}}"
                 }
               ],
               "current_value_path": "git_strategy.team.branch_prefix",
@@ -1447,8 +1417,10 @@
     "dot_notation": "Use dot notation for nested fields (e.g., user.name, language.conversation_language)",
     "template_variables": "Use {{field_path}} for current value interpolation",
     "special_values": {
-      "{{current}}": "Keep current value from config.json",
-      "{{prompt_user}}": "Prompt user for custom input via 'Other' option"
+      "{{current}}": "Keep current value from config.json"
+    },
+    "deprecated_values": {
+      "{{prompt_user}}": "DEPRECATED - For text_input, users type directly in 'Type something' field. Do not use 'Change' option."
     },
     "auto_update_fields": "Some fields auto-update when related fields change (e.g., conversation_language_name when conversation_language changes)"
   },

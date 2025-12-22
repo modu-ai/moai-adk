@@ -785,12 +785,11 @@ Single Batch Execution Example (Tab 1, Batch 1.1):
 Call: AskUserQuestion(
 questions: [
 {
-question: "How would you like to configure the user name? (current: GoosLab)",
+question: "What is your name? To change, type your name in the text field below. (current: GoosLab)",
 header: "User Name",
 multiSelect: false,
 options: [
-{label: "Keep Current Value", description: "Continue using GoosLab"},
-{label: "Change", description: "Select Other to enter a new name"}
+{label: "Keep Current Value", description: "Continue using GoosLab (to change, type in the field below)"}
 ]
 },
 {
