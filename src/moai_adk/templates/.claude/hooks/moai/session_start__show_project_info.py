@@ -127,13 +127,21 @@ except ImportError:
                 key = key_part.strip()
                 value = value_part.strip()
 
-                # Remove inline comments
-                if "#" in value and not value.startswith('"') and not value.startswith("'"):
-                    value = value.split("#")[0].strip()
-
-                # Handle quoted strings
-                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
-                    value = value[1:-1]
+                # Handle quoted strings first - extract value within quotes
+                if value.startswith('"'):
+                    # Find the closing quote
+                    close_quote = value.find('"', 1)
+                    if close_quote > 0:
+                        value = value[1:close_quote]
+                elif value.startswith("'"):
+                    # Find the closing quote
+                    close_quote = value.find("'", 1)
+                    if close_quote > 0:
+                        value = value[1:close_quote]
+                else:
+                    # Remove inline comments for unquoted values
+                    if "#" in value:
+                        value = value.split("#")[0].strip()
 
                 # Top-level key (no indentation or minimal indentation)
                 if indent == 0:
