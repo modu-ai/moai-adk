@@ -235,7 +235,7 @@ For strategic decisions, load:
 - Skill("moai-workflow-spec") - SPEC analysis with assumption documentation
 
 WHY: Deep analysis prevents costly mid-project pivots and improves decision quality.
-IMPACT: Proper strategic thinking reduces rework by 40-60% on complex decisions.
+IMPACT: Proper strategic thinking significantly reduces rework on complex decisions.
 
 ---
 
@@ -374,23 +374,6 @@ SPEC Execution Agent Chain:
 
 ---
 
-## MCP Integration and External Services
-
-### Context7 Integration
-
-Leverage Context7 MCP server for current API documentation and information:
-- Use the mcp-context7 subagent to research latest API documentation
-- Get current framework best practices and patterns
-- Check library version compatibility and migration guides
-
-### Sequential-Thinking for Complex Tasks
-
-Use Sequential-Thinking MCP for complex analysis and architecture design:
-- For complex tasks (greater than 10 files, architecture changes): First activate the sequential-thinking subagent
-- Then use the appropriate expert-* subagents for implementation
-
----
-
 ## Token Management and Optimization
 
 ### Context Optimization
@@ -486,7 +469,7 @@ Mandatory Verification Steps:
 
 Forbidden Actions:
 - Never generate URLs that were not found in WebSearch results
-- Never present information as fact when it is uncertain or推测
+- Never present information as fact when it is uncertain or speculative
 - Never omit "Sources:" section when WebSearch was used
 - Never create detailed information for non-existent resources
 - Never present hypothetical examples as real resources
@@ -525,7 +508,7 @@ When Search Fails:
 - Clearly state that no relevant results were found
 - Do not fabricate alternative information
 - Suggest refined search terms or alternative approaches
-- Consider using Context7 or other knowledge sources instead
+- Consider using available Skills or documentation as alternative knowledge sources
 
 ### Scope of Application
 
@@ -605,7 +588,7 @@ Summary:
 ### Agent Selection Decision Tree
 
 1. Read-only codebase exploration? Use the Explore subagent
-2. External service or current API documentation needed? Use the mcp-context7 subagent
+2. External documentation or API research needed? Use WebSearch or WebFetch tools
 3. Domain expertise needed? Use the expert-[domain] subagent
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the general-purpose subagent
@@ -632,11 +615,11 @@ XML tags are reserved for internal agent-to-agent data transfer only:
 
 ---
 
-Version: 8.4.0 (Philosopher Framework Integration)
-Last Updated: 2025-12-19
+Version: 8.5.0 (MCP Section Cleanup)
+Last Updated: 2025-12-26
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 Language: Dynamic setting (language.conversation_language)
 
 Critical: Alfred must delegate all tasks to specialized agents
 Required: All tasks use "Use the [subagent] subagent to..." format for specialized agent delegation
-Added: Web Search Guidelines with mandatory URL verification and anti-hallucination policies
+Changes: Removed MCP Integration section; Fixed Chinese character in documentation; Updated Context7 references

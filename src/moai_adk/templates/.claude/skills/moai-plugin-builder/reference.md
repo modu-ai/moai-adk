@@ -392,7 +392,7 @@ Hooks:
 - Must be valid JSON
 - Event names must be valid hook events
 - Matcher must be string or array
-- Hook type must be: command, prompt
+- Hook type must be: command, prompt, agent
 
 ### Server Validation
 
@@ -407,6 +407,7 @@ LSP Servers:
 - Must contain extensionToLanguage mapping
 - Extensions must start with "."
 - Language values must be strings
+- Optional advanced fields: transport, initializationOptions, settings, workspaceFolder, startupTimeout, shutdownTimeout, restartOnCrash, maxRestarts, loggingConfig
 
 ## Environment Variables
 
