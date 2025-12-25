@@ -5,11 +5,16 @@ Target: 70%+ code coverage with actual code path execution and mocked dependenci
 """
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
+
+# Check if Claude Code CLI is available (not installed in CI environments)
+CLAUDE_AVAILABLE = shutil.which("claude") is not None
 
 
 class TestMergeAnalyzerInit:
@@ -284,6 +289,7 @@ class TestDetectClaudeErrors:
         assert error_msg == ""
 
 
+@pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude Code CLI not installed")
 class TestBuildClaudeCommand:
     """Test _build_claude_command method."""
 
