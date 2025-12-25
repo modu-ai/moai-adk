@@ -245,17 +245,25 @@ jobs:
           VERSION="${{ needs.extract-metadata.outputs.version }}"
           TAG="${{ needs.extract-metadata.outputs.tag }}"
 
-          echo "📋 Extracting release notes for v$VERSION from CHANGELOG.md..."
+          echo "📋 Extracting bilingual release notes for v$VERSION from CHANGELOG.md..."
 
-          # Extract English release notes (from version header to first ---)
-          # Use awk to extract the section
+          # Extract both English and Korean sections from CHANGELOG.md
+          # Pattern: From "# vX.Y.Z -" to "# v0.34.1" (next version) or end of Korean section
           awk -v ver="$VERSION" '
-            BEGIN { found=0; printing=0 }
+            BEGIN { found=0; printing=0; sections=0 }
             /^# v/ {
-              if (index($0, "v" ver) > 0 && !found) { found=1; printing=1; print; next }
-              else if (found && printing) { printing=0 }
+              if (index($0, "v" ver) > 0) {
+                if (!found) { found=1; printing=1; sections=1; print; next }
+                else if (sections == 1) { sections=2; print; next }
+              } else if (found && printing && sections >= 2) {
+                printing=0
+                exit
+              }
             }
-            /^---$/ { if (printing) { printing=0; exit } }
+            /^---$/ {
+              if (printing && sections == 1) { print; next }
+              else if (printing && sections == 2) { print; printing=0; exit }
+            }
             printing { print }
           ' CHANGELOG.md > release_notes.md
 
@@ -267,33 +275,16 @@ jobs:
             echo "## Changes" >> release_notes.md
             git log --format="- %s (%h)" --reverse -10 >> release_notes.md
           else
-            echo "✅ Found release notes for v$VERSION"
+            echo "✅ Found bilingual release notes for v$VERSION"
           fi
 
-          # Add installation instructions
-          cat >> release_notes.md << 'INSTALL_EOF'
-
-          ## Installation & Update
-
-          **Fresh Install (uv tool - Recommended)**
-
-              uv tool install moai-adk
-
-          **Update Existing Installation**
-
-              uv tool update moai-adk
-
-          **Alternative Methods**
-
-              uvx moai-adk --help
-              pip install moai-adk
-
-          ---
-          MoAI-ADK Unified Release Pipeline
-          INSTALL_EOF
+          # Add footer
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "🤖 MoAI-ADK Unified Release Pipeline" >> release_notes.md
 
           echo "📄 Generated release notes:"
-          cat release_notes.md
+          head -50 release_notes.md
 
           # Output for GitHub Release
           echo "body<<RELEASE_NOTES_EOF" >> "$GITHUB_OUTPUT"
