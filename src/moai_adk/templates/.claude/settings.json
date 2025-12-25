@@ -160,7 +160,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run moai-adk statusline",
+    "command": "{{STATUSLINE_COMMAND}}",
     "padding": 0,
     "refreshInterval": 300
   },

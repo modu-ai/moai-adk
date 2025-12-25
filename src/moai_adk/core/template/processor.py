@@ -107,6 +107,7 @@ class TemplateProcessor:
         "MOAI_VERSION_SOURCE": "Version source information",
         "MOAI_VERSION_CACHE_AGE": "Cache age for debugging",
         "CREATION_TIMESTAMP": "Project creation timestamp",
+        "STATUSLINE_COMMAND": "Cross-platform statusline command (OS-specific)",
     }
 
     def __init__(self, target_path: Path, config: Optional[TemplateProcessorConfig] = None) -> None:

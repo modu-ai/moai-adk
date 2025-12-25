@@ -295,7 +295,8 @@ class TestBuildClaudeCommand:
         command = analyzer._build_claude_command()
 
         assert isinstance(command, list)
-        assert "claude" in command
+        # First element is the full path to claude executable (Windows compatibility)
+        assert "claude" in command[0].lower()  # Check executable contains "claude"
         assert "-p" in command
         assert "--model" in command
         assert "--output-format" in command

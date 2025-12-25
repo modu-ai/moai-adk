@@ -5,7 +5,7 @@ version: 1.0.0
 category: platform
 tags: [auth0, sso, saml, oidc, enterprise, identity]
 context7-libraries: [/auth0/auth0-docs]
-related-skills: [moai-platform-clerk, moai-domain-backend]
+related-skills: [moai-platform-clerk, moai-domain-backend, moai-security-auth0]
 updated: 2025-12-07
 status: active
 allowed-tools: Read, Write, Bash, Grep, Glob
@@ -265,6 +265,7 @@ Use resolve-library-id with "auth0" then get-library-docs for comprehensive API 
 
 Works Well With:
 
+- moai-security-auth0: Auth0-specific security (Attack Protection, MFA, Token Security, Compliance)
 - moai-platform-clerk: Alternative for WebAuthn-first authentication
 - moai-platform-supabase: Supabase authentication integration
 - moai-platform-firebase-auth: Firebase authentication comparison

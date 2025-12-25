@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | 섹션                                          | 목표                            |
 | --------------------------------------------- | ------------------------------- |
 | [8. 에이전트 가이드](#8-에이전트-가이드-24개) | 전문 에이전트 활용              |
-| [9. 스킬 라이브러리](#9-스킬-라이브러리-46개) | 46개 스킬 탐색                  |
+| [9. 스킬 라이브러리](#9-스킬-라이브러리-48개) | 48개 스킬 탐색                  |
 | [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
 | [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
 | [12. 고급 기능](#12-고급-기능)                | Git Worktree & 향상된 로그 관리 |
@@ -1394,7 +1394,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. 에이전트 가이드 (24개)
+## 8. 에이전트 가이드 (25개)
 
 ### 🎯 에이전트 선택 가이드
 
@@ -1577,7 +1577,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-### Tier 3: Meta-generators (메타 생성기)
+### Tier 3: Meta-generators (메타 생성기, 4개)
 
 #### builder-agent
 
@@ -1608,6 +1608,17 @@ moai-worktree config set <key> <value>
 
 ```bash
 > @agent-builder-command "> /moai:deploy 커맨드 생성 (자동 배포 워크플로우)"
+```
+
+---
+
+#### builder-plugin
+
+**목적**: Claude Code 플러그인 생성 및 관리
+**사용 사례**: 플러그인 생성, 검증, 마이그레이션
+
+```bash
+> @agent-builder-plugin "commands, agents, hooks가 포함된 security-tools 플러그인 생성"
 ```
 
 ---
@@ -1676,11 +1687,11 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. 스킬 라이브러리 (46개)
+## 9. 스킬 라이브러리 (48개)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK는 **46개의 전문 스킬**을 7개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
+MoAI-ADK는 **48개의 전문 스킬**을 7개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
 
 ### 🏗️ Foundation (기반)
 
@@ -1701,6 +1712,10 @@ MoAI-ADK는 **46개의 전문 스킬**을 7개 카테고리로 제공합니다. 
 - **moai-foundation-quality**
   - TRUST 5 검증, 프로액티브 분석, 자동화된 최적적 베스트프랙티스 적용
   - 엔터프라이즈급 코드 품질 보증 시스템
+
+- **moai-plugin-builder**
+  - Claude Code 플러그인 개발 패턴, 템플릿, 모범 사례
+  - 플러그인 구조, 컴포넌트 생성, 검증, 마이그레이션 가이드
 
 ### 🎯 Domain (도메인 전문)
 
@@ -1797,6 +1812,10 @@ MoAI-ADK는 **46개의 전문 스킬**을 7개 카테고리로 제공합니다. 
 - **moai-platform-auth0**
   - SSO, SAML, OIDC, 조직, B2B 멀티테넌시를 위한 Auth0
   - 엔터프라이즈 인증 페더레이션과 복잡한 인증 워크플로우
+
+- **moai-security-auth0** *(NEW)*
+  - Auth0 보안 전문가: Attack Protection, MFA, 토큰 보안
+  - DPoP/mTLS 송신자 제약, FAPI/GDPR/HIPAA 컴플라이언스
 
 - **moai-platform-clerk**
   - WebAuthn, 패스키, 비밀번호 없는 인증을 위한 Clerk

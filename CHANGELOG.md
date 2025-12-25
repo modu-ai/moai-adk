@@ -1,3 +1,145 @@
+# v0.34.1 - Windows Compatibility & UX Improvements (2025-12-25)
+
+## Summary
+
+Patch release improving Windows compatibility for Claude Code detection and statusline rendering, plus UX improvements for AskUserQuestion configuration prompts.
+
+## Changes
+
+### Bug Fixes
+
+- **fix(windows)**: Improve Claude Code executable detection on Windows
+  - Add `_find_claude_executable()` method with comprehensive path search
+  - Search npm global directory (`%APPDATA%\npm\claude.cmd`)
+  - Search Local AppData installation paths
+  - Use `shutil.which()` with Windows fallback paths
+  - Location: `src/moai_adk/core/merge/analyzer.py`
+
+- **fix(windows)**: Fix statusline command for Windows compatibility
+  - Add `{{STATUSLINE_COMMAND}}` template variable
+  - Windows: Use `python -m moai_adk statusline` for better PATH compatibility
+  - Unix: Use `moai-adk statusline` directly
+  - Location: `src/moai_adk/core/project/phase_executor.py`, `src/moai_adk/cli/commands/update.py`
+
+- **fix(ux)**: Improve AskUserQuestion prompts for text input
+  - Replace confusing "Other" option with clear "Type something..." guidance
+  - Remove deprecated `{{prompt_user}}` placeholder usage
+  - Add preset options (4 max) with custom input field guidance
+  - Location: `.moai/config/questions/` YAML files
+
+### Maintenance
+
+- **test**: Update `test_build_claude_command_structure` for new executable path format
+- **style**: Fix unused variable warnings in batch_generate.py
+
+## Installation & Update
+
+### Fresh Install (uv tool - Recommended)
+```bash
+uv tool install moai-adk
+```
+
+### Update Existing Installation
+```bash
+uv tool upgrade moai-adk
+```
+
+### Alternative Methods
+```bash
+# Using uvx (no install needed)
+uvx moai-adk --help
+
+# Using pip
+pip install moai-adk==0.34.1
+```
+
+## Quality Metrics
+
+- Test Coverage: 86.78% (target: 85%)
+- Tests Passed: 10,037 passed, 180 skipped, 26 xfailed
+- CI/CD: All quality gates passing
+
+## Breaking Changes
+
+None
+
+## Migration Guide
+
+Windows users should run `moai-adk update` after upgrading to apply the new statusline command format.
+
+---
+
+# v0.34.1 - Windows 호환성 및 UX 개선 (2025-12-25)
+
+## 요약
+
+Windows에서 Claude Code 감지 및 statusline 렌더링 호환성을 개선하고, AskUserQuestion 설정 프롬프트의 UX를 개선한 패치 릴리즈입니다.
+
+## 변경 사항
+
+### 버그 수정
+
+- **fix(windows)**: Windows에서 Claude Code 실행 파일 감지 개선
+  - 포괄적인 경로 검색을 포함한 `_find_claude_executable()` 메서드 추가
+  - npm 전역 디렉토리 검색 (`%APPDATA%\npm\claude.cmd`)
+  - Local AppData 설치 경로 검색
+  - Windows 폴백 경로와 함께 `shutil.which()` 사용
+  - 위치: `src/moai_adk/core/merge/analyzer.py`
+
+- **fix(windows)**: Windows 호환성을 위한 statusline 명령어 수정
+  - `{{STATUSLINE_COMMAND}}` 템플릿 변수 추가
+  - Windows: PATH 호환성을 위해 `python -m moai_adk statusline` 사용
+  - Unix: `moai-adk statusline` 직접 사용
+  - 위치: `src/moai_adk/core/project/phase_executor.py`, `src/moai_adk/cli/commands/update.py`
+
+- **fix(ux)**: 텍스트 입력을 위한 AskUserQuestion 프롬프트 개선
+  - 혼란스러운 "Other" 옵션을 명확한 "Type something..." 안내로 대체
+  - 더 이상 사용되지 않는 `{{prompt_user}}` 플레이스홀더 사용 제거
+  - 커스텀 입력 필드 안내와 함께 프리셋 옵션 추가 (최대 4개)
+  - 위치: `.moai/config/questions/` YAML 파일
+
+### 유지보수
+
+- **test**: 새로운 실행 파일 경로 형식에 맞게 `test_build_claude_command_structure` 업데이트
+- **style**: batch_generate.py의 사용되지 않는 변수 경고 수정
+
+## 설치 및 업데이트
+
+### 신규 설치 (uv tool - 권장)
+```bash
+uv tool install moai-adk
+```
+
+### 기존 설치 업데이트
+```bash
+uv tool upgrade moai-adk
+```
+
+### 대체 방법
+```bash
+# uvx 사용 (설치 없이)
+uvx moai-adk --help
+
+# pip 사용
+pip install moai-adk==0.34.1
+```
+
+## 품질 메트릭
+
+- 테스트 커버리지: 86.78% (목표: 85%)
+- 테스트 통과: 10,037 통과, 180 스킵, 26 xfailed
+- CI/CD: 모든 품질 게이트 통과
+
+## 호환성 변경
+
+없음
+
+## 마이그레이션 가이드
+
+Windows 사용자는 업그레이드 후 `moai-adk update`를 실행하여 새로운 statusline 명령어 형식을 적용해야 합니다.
+
+---
+
 # v0.34.0 - Template Sync & Multi-Language Quality Release (2025-12-22)
 
 ## Summary

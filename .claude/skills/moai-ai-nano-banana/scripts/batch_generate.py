@@ -28,13 +28,13 @@ import argparse
 import asyncio
 import json
 import os
+import random
 import sys
 import time
-import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 try:
     from google import genai
@@ -295,7 +295,6 @@ async def generate_single_image(
 
             # Save image
             image_saved = False
-            text_response = ""
 
             for part in response.candidates[0].content.parts:
                 if part.inline_data is not None:
@@ -303,7 +302,7 @@ async def generate_single_image(
                         f.write(part.inline_data.data)
                     image_saved = True
                 elif hasattr(part, 'text') and part.text:
-                    text_response = part.text
+                    _ = part.text  # Text response captured but not used for image generation
 
             if not image_saved:
                 raise RuntimeError("No image data in response")

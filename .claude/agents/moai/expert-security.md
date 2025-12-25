@@ -3,7 +3,7 @@ name: expert-security
 description: Use for security analysis, vulnerability assessment, secure code reviews, and security best practices. Specialized in OWASP Top 10, security code review, and threat modeling.
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-quality, moai-workflow-testing
+skills: moai-foundation-claude, moai-foundation-quality, moai-workflow-testing, moai-security-auth0
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 ---
 
@@ -351,6 +351,10 @@ Downstream Agents (this agent typically calls):
 Parallel Agents (work alongside):
 - infra-devops: Infrastructure security and deployment hardening
 - core-planner: Security requirements analysis during planning
+
+Related Skills:
+- moai-security-auth0: Auth0-specific security (Attack Protection, MFA, Token Security, DPoP/mTLS, Compliance)
+- moai-platform-auth0: Auth0 platform integration (SSO, SAML, OIDC, Organizations)
 
 ---
 

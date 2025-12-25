@@ -18,21 +18,36 @@ question_types:
   select_single:
     description: "Single selection from options"
     multi_select: false
+    # UX Guidelines:
+    # - Provide clear, distinct options (max 4 per question)
+    # - Include descriptive text for each option
+    # - Use "(recommended)" suffix for default/preferred options
   select_multiple:
     description: "Multiple selection from options"
     multi_select: true
+    # UX Guidelines:
+    # - Clearly indicate "multiple selections allowed" in question text
+    # - Limit to 4 options maximum
   text_input:
-    description: "Text input via 'Type something' field (auto-added 'Other' option)"
+    description: "Text input via 'Type something' field (auto-added by AskUserQuestion tool)"
     use_other_for_input: true
     # UX Guidelines for text_input questions:
     # - Only include 'Keep Current Value' option for existing values
-    # - DO NOT include 'Change' option - it confuses users who think they should select it
+    # - DO NOT include 'Change' or 'Other' options - they confuse users
     # - Include guidance in question text: "To change, type in the text field below"
-    # - Users type directly in the 'Type something' field (auto-added 'Other' option)
+    # - The 'Type something...' input field is automatically added by the tool
+    # - Users type directly in this auto-added field for custom values
+    # IMPORTANT: Never use {{prompt_user}} - it is DEPRECATED
   number_input:
-    description: "Number input via 'Type something' field or predefined values"
+    description: "Number input via 'Type something' field or predefined numeric values"
     use_other_for_input: true
-    # UX Guidelines: Same as text_input - users type in the 'Type something' field
+    # UX Guidelines for number_input questions:
+    # - Provide common preset values as options (max 4)
+    # - Include guidance in question text: "To enter a custom number, type in the text field below"
+    # - DO NOT include 'Other' option with {{prompt_user}} - it is DEPRECATED
+    # - Users type custom numbers directly in the auto-added 'Type something...' field
+    # - Include valid range in question text if applicable (e.g., "0-100", "1-168")
+    # IMPORTANT: Never use {{prompt_user}} - it is DEPRECATED
 
 # Conditional Logic Operators
 condition_operators:

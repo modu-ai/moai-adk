@@ -315,6 +315,14 @@ class PhaseExecutor:
             # Detect OS for cross-platform Hook path configuration
             hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
 
+            # Detect OS for cross-platform statusline command
+            # Windows: Use python -m for better PATH compatibility
+            # Unix: Use moai-adk directly (assumes installed via uv tool)
+            if platform.system() == "Windows":
+                statusline_command = "python -m moai_adk statusline"
+            else:
+                statusline_command = "moai-adk statusline"
+
             # Get enhanced version context with fallback strategies
             version_context = self._get_enhanced_version_context()
 
@@ -331,6 +339,7 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
                 "PROJECT_DIR": hook_project_dir,
+                "STATUSLINE_COMMAND": statusline_command,
             }
             processor.set_context(context)
 

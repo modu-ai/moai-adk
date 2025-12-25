@@ -37,44 +37,56 @@ batches:
           file: "sections/quality.yaml"
           path: "constitution.enforce_tdd"
 
+      # Q: Test Coverage Target - number_input type
+      # UX Note: For number_input, only show preset values.
+      # Users should type directly in "Type something" field for custom values.
       - id: test_coverage_target
-        question: "Test coverage target percentage?"
+        question: "Test coverage target percentage? To enter a custom percentage (0-100), type in the text field below."
         header: "Coverage"
         field: "constitution.test_coverage_target"
         type: number_input
         multi_select: false
         required: true
         options:
+          - label: "80%"
+            description: "Minimum acceptable coverage"
+            value: 80
           - label: "85%"
             description: "Standard coverage (recommended)"
             value: 85
           - label: "90%"
             description: "High quality coverage"
             value: 90
-          - label: "Other"
-            description: "Enter custom percentage (0-100)"
-            value: "{{prompt_user}}"
+          - label: "95%"
+            description: "Comprehensive coverage"
+            value: 95
         target:
           file: "sections/quality.yaml"
           path: "constitution.test_coverage_target"
 
+      # Q: Max Projects - number_input type
+      # UX Note: For number_input, only show preset values.
+      # Users should type directly in "Type something" field for custom values.
       - id: max_projects
-        question: "Maximum concurrent projects?"
+        question: "Maximum concurrent projects? To enter a custom number, type in the text field below."
         header: "Max Projects"
         field: "constitution.principles.simplicity.max_projects"
         type: number_input
         multi_select: false
         required: true
         options:
+          - label: "3 projects"
+            description: "Small team or individual"
+            value: 3
           - label: "5 projects"
             description: "Default recommendation"
             value: 5
           - label: "10 projects"
             description: "For larger teams"
             value: 10
-          - label: "Other"
-            description: "Enter custom number"
-            value: "{{prompt_user}}"
+          - label: "20 projects"
+            description: "For enterprise teams"
+            value: 20
         target:
           file: "sections/quality.yaml"
           path: "constitution.principles.simplicity.max_projects"

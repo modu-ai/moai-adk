@@ -25,9 +25,9 @@ Model: gemini-3-pro-image-preview (hardcoded)
 
 import argparse
 import os
+import random
 import sys
 import time
-import random
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -81,7 +81,7 @@ def validate_aspect_ratio(ratio: str) -> str:
     if ratio not in SUPPORTED_ASPECT_RATIOS:
         print(f"Warning: '{ratio}' is not a standard aspect ratio.")
         print(f"Supported ratios: {', '.join(SUPPORTED_ASPECT_RATIOS)}")
-        print(f"Using default: 16:9")
+        print("Using default: 16:9")
         return "16:9"
     return ratio
 
@@ -92,7 +92,7 @@ def validate_resolution(resolution: str) -> str:
     if normalized not in SUPPORTED_RESOLUTIONS:
         print(f"Warning: '{resolution}' is not a valid resolution.")
         print(f"Supported resolutions: {', '.join(SUPPORTED_RESOLUTIONS)}")
-        print(f"Using default: 2K")
+        print("Using default: 2K")
         return "2K"
     return normalized
 
@@ -375,7 +375,7 @@ Environment:
     )
 
     if result["success"]:
-        print(f"\nSuccess!")
+        print("\nSuccess!")
         print(f"  File: {result['output_path']}")
         print(f"  Time: {result['generation_time_seconds']}s")
         print(f"  Attempts: {result['attempts']}")

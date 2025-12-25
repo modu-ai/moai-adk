@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 | Section                                                           | Goal                       |
 | ----------------------------------------------------------------- | -------------------------- |
 | [8. Agent Guide](#8-agent-guide-24-agents)                        | Utilize specialized agents |
-| [9. Skill Library](#9-skill-library-46-skills)                    | Explore 46 skills          |
+| [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills          |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
 | [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
@@ -1395,7 +1395,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. Agent Guide (28 Agents)
+## 8. Agent Guide (29 Agents)
 
 ### 🎯 Agent Selection Guide
 
@@ -1653,7 +1653,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 3: Meta-generators (3 Generators)
+### Tier 3: Meta-generators (4 Generators)
 
 #### builder-agent
 
@@ -1684,6 +1684,17 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ```bash
 > @agent-builder-command "Create > /moai:deploy command (auto-deployment workflow)"
+```
+
+---
+
+#### builder-plugin
+
+**Purpose**: Create and manage Claude Code plugins
+**Use case**: Plugin creation, validation, and migration
+
+```bash
+> @agent-builder-plugin "Create security-tools plugin with commands, agents, and hooks"
 ```
 
 ---
@@ -1784,11 +1795,11 @@ For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-
 
 ---
 
-## 9. Skill Library (46 Skills)
+## 9. Skill Library (48 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **46 specialized skills** in 7 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **48 specialized skills** in 7 categories. Each skill can be used independently or in combination.
 
 ### 🏗️ Foundation
 
@@ -1809,6 +1820,10 @@ Core philosophy and execution rules foundation skills.
 - **moai-foundation-quality**
   - TRUST 5 validation, proactive analysis, automated best practices enforcement
   - Enterprise-grade code quality assurance system
+
+- **moai-plugin-builder**
+  - Claude Code plugin development patterns, templates, and best practices
+  - Plugin structure, component generation, validation, and migration guides
 
 ### 🎯 Domain
 
@@ -1898,7 +1913,7 @@ Support for various programming languages and frameworks.
   - R 4.4+ data analysis with tidyverse, ggplot2, Shiny
   - Statistical modeling, data visualization, interactive web apps
 
-### 🚀 Platform (9 Skills)
+### 🚀 Platform (10 Skills)
 
 Integration with major cloud platforms and BaaS services.
 
@@ -1909,6 +1924,10 @@ Integration with major cloud platforms and BaaS services.
 - **moai-platform-auth0**
   - Auth0 for SSO, SAML, OIDC, organizations, B2B multi-tenancy
   - Enterprise identity federation and complex auth workflows
+
+- **moai-security-auth0** *(NEW)*
+  - Auth0 security specialist: Attack Protection, MFA, Token Security
+  - DPoP/mTLS sender constraining, FAPI/GDPR/HIPAA compliance
 
 - **moai-platform-clerk**
   - Clerk for WebAuthn, passkeys, passwordless authentication

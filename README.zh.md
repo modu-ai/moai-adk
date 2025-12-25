@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit) 是结合 **SPEC-First 开发**、**测试驱
 | 章节                                         | 目标                     |
 | -------------------------------------------- | ------------------------ |
 | [8. 智能体指南](#8-智能体指南-24个)              | 专业智能体利用           |
-| [9. 技能库](#9-技能库46个)                  | 46 个技能探索            |
+| [9. 技能库](#9-技能库48个)                  | 48 个技能探索            |
 | [10. 组合模式和示例](#10-组合模式和示例)     | 实际项目示例             |
 | [11. TRUST 5 质量保证](#11-trust-5-质量保证) | 质量保证系统             |
 | [12. 高级功能](#12-高级功能)                 | Git Worktree & 增强的日志管理 |
@@ -1396,7 +1396,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. 智能体指南（24个）
+## 8. 智能体指南（25个）
 
 ### 🎯 智能体选择指南
 
@@ -1579,7 +1579,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-### Tier 3: Meta-generators (元生成器)
+### Tier 3: Meta-generators (元生成器, 4个)
 
 #### builder-agent
 
@@ -1610,6 +1610,17 @@ moai-worktree config set <key> <value>
 
 ```bash
 > @agent-builder-command "创建 > /moai:deploy 命令 (自动部署工作流)"
+```
+
+---
+
+#### builder-plugin
+
+**目的**: 创建和管理 Claude Code 插件
+**使用场景**: 插件创建、验证、迁移
+
+```bash
+> @agent-builder-plugin "创建包含 commands、agents、hooks 的 security-tools 插件"
 ```
 
 ---
@@ -1678,11 +1689,11 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. 技能库（46个）
+## 9. 技能库（48个）
 
 ![技能使用统计](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK 在 7 个类别中提供 **46 个专业技能**。每个技能可以独立或组合使用。
+MoAI-ADK 在 7 个类别中提供 **48 个专业技能**。每个技能可以独立或组合使用。
 
 ### 🏗️ Foundation（基础）
 
@@ -1703,6 +1714,10 @@ MoAI-ADK 在 7 个类别中提供 **46 个专业技能**。每个技能可以独
 - **moai-foundation-quality**
   - TRUST 5 验证、主动分析、自动化最佳实践执行
   - 企业级代码质量保证系统
+
+- **moai-plugin-builder**
+  - Claude Code 插件开发模式、模板、最佳实践
+  - 插件结构、组件生成、验证、迁移指南
 
 ### 🎯 Domain（领域专业）
 
@@ -1750,6 +1765,7 @@ MoAI-ADK 在 7 个类别中提供 **46 个专业技能**。每个技能可以独
 
 - **moai-platform-supabase** - PostgreSQL 16、pgvector、RLS、实时订阅
 - **moai-platform-auth0** - SSO、SAML、OIDC、组织、B2B 多租户
+- **moai-security-auth0** *(NEW)* - Auth0 安全专家：攻击防护、MFA、令牌安全、DPoP/mTLS、FAPI/GDPR
 - **moai-platform-clerk** - WebAuthn、密钥、无密码认证
 - **moai-platform-neon** - 自动扩展、数据库分支、PITR
 - **moai-platform-firebase-auth** - 社交认证、电话认证、匿名登录

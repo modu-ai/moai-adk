@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 | セクション                                               | 目標                   |
 | -------------------------------------------------------- | ---------------------- |
 | [8. エージェントガイド](#8-エージェントガイド-24個)      | 専門エージェントの活用 |
-| [9. スキルライブラリ](#9-スキルライブラリ-46-個)          | 46 個のスキル探索      |
+| [9. スキルライブラリ](#9-スキルライブラリ-48-個)          | 48 個のスキル探索      |
 | [10. 組み合わせパターンと例](#10-組み合わせパターンと例) | 実際のプロジェクト例   |
 | [11. TRUST 5 品質保証](#11-trust-5-品質保証)             | 品質保証システム       |
 | [12. 高度な機能](#12-高度な機能)                         | Git Worktree & 強化されたログ管理 |
@@ -1396,7 +1396,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. エージェントガイド（24 個）
+## 8. エージェントガイド（25 個）
 
 ### 🎯 エージェント選択ガイド
 
@@ -1579,7 +1579,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-### Tier 3: Meta-generators（メタ生成器）
+### Tier 3: Meta-generators（メタ生成器、4個）
 
 #### builder-agent
 
@@ -1610,6 +1610,17 @@ moai-worktree config set <key> <value>
 
 ```bash
 > @agent-builder-command "> /moai:deploy コマンド生成（自動デプロイワークフロー）"
+```
+
+---
+
+#### builder-plugin
+
+**目的**: Claude Code プラグインの作成と管理
+**使用例**: プラグイン作成、検証、マイグレーション
+
+```bash
+> @agent-builder-plugin "commands、agents、hooksを含むsecurity-toolsプラグイン作成"
 ```
 
 ---
@@ -1678,11 +1689,11 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. スキルライブラリ（46 個）
+## 9. スキルライブラリ（48 個）
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK は **46 個の専門スキル**を 7 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
+MoAI-ADK は **48 個の専門スキル**を 7 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
 
 ### 🏗️ Foundation（基盤）
 
@@ -1703,6 +1714,10 @@ MoAI-ADK は **46 個の専門スキル**を 7 個のカテゴリで提供しま
 - **moai-foundation-quality**
   - TRUST 5 検証, プロアクティブ分析, 自動化されたベストプラクティス適用
   - エンタープライズ級コード品質保証システム
+
+- **moai-plugin-builder**
+  - Claude Code プラグイン開発パターン、テンプレート、ベストプラクティス
+  - プラグイン構造、コンポーネント生成、検証、マイグレーションガイド
 
 ### 🎯 Domain（ドメイン専門）
 
@@ -1750,6 +1765,7 @@ MoAI-ADK は **46 個の専門スキル**を 7 個のカテゴリで提供しま
 
 - **moai-platform-supabase** - PostgreSQL 16, pgvector, RLS, リアルタイムサブスクリプション
 - **moai-platform-auth0** - SSO, SAML, OIDC, 組織, B2B マルチテナンシー
+- **moai-security-auth0** *(NEW)* - Auth0 セキュリティ：Attack Protection, MFA, トークンセキュリティ, DPoP/mTLS, FAPI/GDPR
 - **moai-platform-clerk** - WebAuthn, パスキー, パスワードレス認証
 - **moai-platform-neon** - オートスケーリング, データベースブランチング, PITR
 - **moai-platform-firebase-auth** - ソーシャル認証, 電話認証, 匿名ログイン

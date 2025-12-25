@@ -468,8 +468,11 @@ batches:
           file: "sections/git-strategy.yaml"
           path: "git_strategy.team.draft_pr"
 
+      # Q: Required Reviews - number_input type
+      # UX Note: For number_input, only show preset values and "Keep Current" option.
+      # Users should type directly in "Type something" field for custom values.
       - id: team_required_reviews
-        question: "Required reviews for Team mode?"
+        question: "Required reviews for Team mode? To enter a custom number, type in the text field below."
         header: "Reviews"
         field: "git_strategy.team.required_reviews"
         type: number_input
@@ -480,9 +483,9 @@ batches:
           - label: "2 reviewers"
             description: "Minimum 2 approvals"
             value: 2
-          - label: "Other"
-            description: "Enter custom number"
-            value: "{{prompt_user}}"
+          - label: "3 reviewers"
+            description: "Minimum 3 approvals (strict)"
+            value: 3
         target:
           file: "sections/git-strategy.yaml"
           path: "git_strategy.team.required_reviews"

@@ -834,13 +834,16 @@ Mapping Logic:
 For each question in batch:
 
 1. Get field path from schema (e.g., "user.name")
-2. Get user's response (selected option or custom input)
+2. Get user's response (selected option or custom input from "Type something" field)
 3. Convert to config.yaml value:
-   - "Other" option → Use custom input from user
-   - Selected option → Use option's mapped value
-   - "Keep current" → Use existing value
+   - Custom text input (from "Type something" field) → Use the typed value directly
+   - Selected preset option → Use option's mapped value
+   - "Keep Current Value" option → Use existing value from config
 4. Build update object: {field_path: new_value}
 5. Collect all updates from batch
+
+Note: The "Type something" input field is auto-added by AskUserQuestion tool.
+Users type custom values directly in this field instead of selecting an "Other" option.
 ```
 
 #### Step 4: Validate at Checkpoints

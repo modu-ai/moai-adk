@@ -6,11 +6,14 @@ for intelligent backup vs new template comparison and recommendations.
 
 import json
 import logging
+import os
 import re
+import shutil
 import subprocess
+import sys
 from difflib import unified_diff
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import click
 from rich.console import Console
@@ -388,6 +391,67 @@ Analyze the following items and provide a JSON response:
         # Return generic error if no specific pattern matches
         return f"Claude Code error: {stderr[:200]}"
 
+    def _find_claude_executable(self) -> Optional[str]:
+        """Find Claude Code executable path with Windows compatibility.
+
+        Searches for Claude Code in:
+        1. System PATH (shutil.which)
+        2. Windows npm global directory
+        3. Windows local AppData directory
+        4. Common installation paths
+
+        Returns:
+            Full path to Claude executable or None if not found
+        """
+        # First try system PATH
+        claude_path = shutil.which("claude")
+        if claude_path:
+            return claude_path
+
+        # Windows-specific additional paths
+        if sys.platform == "win32":
+            possible_paths = []
+
+            # npm global installation
+            appdata = os.environ.get("APPDATA", "")
+            if appdata:
+                possible_paths.extend([
+                    Path(appdata) / "npm" / "claude.cmd",
+                    Path(appdata) / "npm" / "claude.exe",
+                    Path(appdata) / "npm" / "claude",
+                ])
+
+            # Local AppData installation
+            localappdata = os.environ.get("LOCALAPPDATA", "")
+            if localappdata:
+                possible_paths.extend([
+                    Path(localappdata) / "Programs" / "claude" / "claude.exe",
+                    Path(localappdata) / "Microsoft" / "WinGet" / "Packages" / "Anthropic.ClaudeCode_*" / "claude.exe",
+                ])
+
+            # User profile paths
+            userprofile = os.environ.get("USERPROFILE", "")
+            if userprofile:
+                possible_paths.extend([
+                    Path(userprofile) / ".claude" / "claude.exe",
+                    Path(userprofile) / "AppData" / "Local" / "Programs" / "claude" / "claude.exe",
+                ])
+
+            # Check each possible path
+            for p in possible_paths:
+                # Handle glob patterns
+                if "*" in str(p):
+                    parent = p.parent
+                    pattern = p.name
+                    if parent.exists():
+                        matches = list(parent.glob(pattern))
+                        if matches:
+                            return str(matches[0])
+                elif p.exists():
+                    return str(p)
+
+        return None
+
     def _build_claude_command(self) -> list[str]:
         """Build Claude Code headless command (based on official v4.0+)
 
@@ -400,12 +464,20 @@ Analyze the following items and provide a JSON response:
 
         Returns:
             List of Claude CLI command arguments
+
+        Raises:
+            FileNotFoundError: If Claude Code executable is not found
         """
+        # Find Claude executable with Windows compatibility
+        claude_path = self._find_claude_executable()
+        if not claude_path:
+            raise FileNotFoundError("Claude Code executable not found")
+
         # Tools list space-separated (POSIX standard, officially recommended)
         tools_str = " ".join(self.CLAUDE_TOOLS)
 
         return [
-            "claude",
+            claude_path,  # Use full path instead of just "claude"
             "-p",  # Non-interactive headless mode
             "--model",
             self.CLAUDE_MODEL,  # Explicit model specification (Haiku)

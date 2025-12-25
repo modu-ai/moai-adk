@@ -1733,6 +1733,14 @@ def _build_template_context(
     # Detect OS for cross-platform Hook path configuration
     hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
 
+    # Detect OS for cross-platform statusline command
+    # Windows: Use python -m for better PATH compatibility
+    # Unix: Use moai-adk directly (assumes installed via uv tool)
+    if platform.system() == "Windows":
+        statusline_command = "python -m moai_adk statusline"
+    else:
+        statusline_command = "moai-adk statusline"
+
     # Extract and resolve language configuration using centralized resolver
     try:
         from moai_adk.core.language_config_resolver import get_resolver
@@ -1830,6 +1838,7 @@ def _build_template_context(
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
         "PROJECT_OWNER": project_section.get("author", "@user"),
         "AUTHOR": project_section.get("author", "@user"),
+        "STATUSLINE_COMMAND": statusline_command,
     }
 
 
