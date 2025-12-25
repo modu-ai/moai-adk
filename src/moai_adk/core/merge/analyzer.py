@@ -415,27 +415,38 @@ Analyze the following items and provide a JSON response:
             # npm global installation
             appdata = os.environ.get("APPDATA", "")
             if appdata:
-                possible_paths.extend([
-                    Path(appdata) / "npm" / "claude.cmd",
-                    Path(appdata) / "npm" / "claude.exe",
-                    Path(appdata) / "npm" / "claude",
-                ])
+                possible_paths.extend(
+                    [
+                        Path(appdata) / "npm" / "claude.cmd",
+                        Path(appdata) / "npm" / "claude.exe",
+                        Path(appdata) / "npm" / "claude",
+                    ]
+                )
 
             # Local AppData installation
             localappdata = os.environ.get("LOCALAPPDATA", "")
             if localappdata:
-                possible_paths.extend([
-                    Path(localappdata) / "Programs" / "claude" / "claude.exe",
-                    Path(localappdata) / "Microsoft" / "WinGet" / "Packages" / "Anthropic.ClaudeCode_*" / "claude.exe",
-                ])
+                possible_paths.extend(
+                    [
+                        Path(localappdata) / "Programs" / "claude" / "claude.exe",
+                        Path(localappdata)
+                        / "Microsoft"
+                        / "WinGet"
+                        / "Packages"
+                        / "Anthropic.ClaudeCode_*"
+                        / "claude.exe",
+                    ]
+                )
 
             # User profile paths
             userprofile = os.environ.get("USERPROFILE", "")
             if userprofile:
-                possible_paths.extend([
-                    Path(userprofile) / ".claude" / "claude.exe",
-                    Path(userprofile) / "AppData" / "Local" / "Programs" / "claude" / "claude.exe",
-                ])
+                possible_paths.extend(
+                    [
+                        Path(userprofile) / ".claude" / "claude.exe",
+                        Path(userprofile) / "AppData" / "Local" / "Programs" / "claude" / "claude.exe",
+                    ]
+                )
 
             # Check each possible path
             for p in possible_paths:

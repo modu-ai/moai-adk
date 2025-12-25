@@ -1,7 +1,0 @@
-# Language Settings (CLAUDE.md Reference)
-# This file is auto-loaded by CLAUDE.md for language configuration
-
-language:
-  conversation_language: "ko"
-  conversation_language_name: "Korean"
-  agent_prompt_language: "en"

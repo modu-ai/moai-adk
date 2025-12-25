@@ -1,0 +1,159 @@
+{
+  "agents": {
+    "backend-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for backend-expert",
+      "systemPrompt": "Default system prompt for backend-expert"
+    },
+    "security-expert": {
+      "permissionMode": "plan",
+      "description": "Auto-generated configuration for security-expert",
+      "systemPrompt": "Default system prompt for security-expert"
+    },
+    "api-designer": {
+      "permissionMode": "plan",
+      "description": "Auto-generated configuration for api-designer",
+      "systemPrompt": "Default system prompt for api-designer"
+    },
+    "monitoring-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for monitoring-expert",
+      "systemPrompt": "Default system prompt for monitoring-expert"
+    },
+    "performance-engineer": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for performance-engineer",
+      "systemPrompt": "Default system prompt for performance-engineer"
+    },
+    "migration-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for migration-expert",
+      "systemPrompt": "Default system prompt for migration-expert"
+    },
+    "mcp-playwright-integrator": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for mcp-playwright-integrator",
+      "systemPrompt": "Default system prompt for mcp-playwright-integrator"
+    },
+    "quality-gate": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for quality-gate",
+      "systemPrompt": "Default system prompt for quality-gate"
+    },
+    "frontend-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for frontend-expert",
+      "systemPrompt": "Default system prompt for frontend-expert"
+    },
+    "debug-helper": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for debug-helper",
+      "systemPrompt": "Default system prompt for debug-helper"
+    },
+    "ui-ux-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for ui-ux-expert",
+      "systemPrompt": "Default system prompt for ui-ux-expert"
+    },
+    "trust-checker": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for trust-checker",
+      "systemPrompt": "Default system prompt for trust-checker"
+    },
+    "project-manager": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for project-manager",
+      "systemPrompt": "Default system prompt for project-manager"
+    },
+    "mcp-context7-integrator": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for mcp-context7-integrator",
+      "systemPrompt": "Default system prompt for mcp-context7-integrator"
+    },
+    "mcp-figma-integrator": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for mcp-figma-integrator",
+      "systemPrompt": "Default system prompt for mcp-figma-integrator"
+    },
+    "tdd-implementer": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for tdd-implementer",
+      "systemPrompt": "Default system prompt for tdd-implementer"
+    },
+    "format-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for format-expert",
+      "systemPrompt": "Default system prompt for format-expert"
+    },
+    "mcp-notion-integrator": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for mcp-notion-integrator",
+      "systemPrompt": "Default system prompt for mcp-notion-integrator"
+    },
+    "devops-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for devops-expert",
+      "systemPrompt": "Default system prompt for devops-expert"
+    },
+    "docs-manager": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for docs-manager",
+      "systemPrompt": "Default system prompt for docs-manager"
+    },
+    "implementation-planner": {
+      "permissionMode": "plan",
+      "description": "Auto-generated configuration for implementation-planner",
+      "systemPrompt": "Default system prompt for implementation-planner"
+    },
+    "skill-factory": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for skill-factory",
+      "systemPrompt": "Default system prompt for skill-factory"
+    },
+    "component-designer": {
+      "permissionMode": "plan",
+      "description": "Auto-generated configuration for component-designer",
+      "systemPrompt": "Default system prompt for component-designer"
+    },
+    "database-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for database-expert",
+      "systemPrompt": "Default system prompt for database-expert"
+    },
+    "agent-factory": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for agent-factory",
+      "systemPrompt": "Default system prompt for agent-factory"
+    },
+    "git-manager": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for git-manager",
+      "systemPrompt": "Default system prompt for git-manager"
+    },
+    "sync-manager": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for sync-manager",
+      "systemPrompt": "Default system prompt for sync-manager"
+    },
+    "spec-builder": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for spec-builder",
+      "systemPrompt": "Default system prompt for spec-builder"
+    },
+    "doc-syncer": {
+      "permissionMode": "default",
+      "description": "Auto-generated configuration for doc-syncer",
+      "systemPrompt": "Default system prompt for doc-syncer"
+    },
+    "accessibility-expert": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for accessibility-expert",
+      "systemPrompt": "Default system prompt for accessibility-expert"
+    },
+    "cc-manager": {
+      "permissionMode": "acceptEdits",
+      "description": "Auto-generated configuration for cc-manager",
+      "systemPrompt": "Default system prompt for cc-manager"
+    }
+  }
+}
