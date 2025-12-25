@@ -1,3 +1,63 @@
+# v0.35.2 - Plugin Documentation Update & YAML Parser Fix (2025-12-26)
+
+## Summary
+
+Patch release updating plugin documentation with official Claude Code standards and fixing a critical YAML parser bug in session startup hook that caused empty string values to be incorrectly parsed as empty dictionaries.
+
+## Changes
+
+### New Features
+
+- **feat(docs)**: Update plugin documentation with official standards (01bb8c36)
+  - Update `builder-plugin.md` agent to v1.1.0 with complete hook events and LSP options
+  - Add PostToolUseFailure, SubagentStart, Notification, PreCompact hook events
+  - Add agent hook type alongside command and prompt types
+  - Document 12 LSP server advanced options (transport, initializationOptions, settings, etc.)
+  - Add Plugin Caching and Security section with installation scopes
+  - Add managed installation scope for enterprise deployments
+  - Update `moai-plugin-builder` skill to v1.1.0 with synchronized changes
+  - Location: `src/moai_adk/templates/.claude/agents/moai/builder-plugin.md`, `src/moai_adk/templates/.claude/skills/moai-plugin-builder/`
+
+- **feat(docs)**: Cleanup CLAUDE.md and remove outdated sections (01bb8c36)
+  - Remove MCP Integration and External Services section
+  - Fix Chinese character "推测" to "speculative" in documentation
+  - Update Context7 references to use WebSearch/WebFetch tools
+  - Remove unverified percentage claim (40-60% → significantly)
+  - Update version to 8.5.0
+  - Location: `src/moai_adk/templates/CLAUDE.md`, `CLAUDE.md`
+
+### Bug Fixes
+
+- **fix(hooks)**: Fix empty string YAML values incorrectly parsed as empty dict (ad949745)
+  - Add was_quoted flag to _simple_yaml_parse function
+  - Properly handle quoted empty strings like `name: ""` in YAML
+  - Prevent empty strings from being stored as empty dicts `{}`
+  - Fix welcome message bug showing dict values instead of empty strings
+  - Location: `.claude/hooks/moai/session_start__show_project_info.py`, `src/moai_adk/templates/.claude/hooks/moai/session_start__show_project_info.py`
+
+## Installation & Update
+
+### Fresh Install (uv tool - Recommended)
+```bash
+uv tool install moai-adk
+```
+
+### Update Existing Installation
+```bash
+uv tool update moai-adk
+```
+
+### Alternative Methods
+```bash
+# Using uvx (no install needed)
+uvx moai-adk --help
+
+# Using pip
+pip install --upgrade moai-adk
+```
+
+---
+
 # v0.35.1 - Update Error Detection Improvement (2025-12-25)
 
 ## Summary
