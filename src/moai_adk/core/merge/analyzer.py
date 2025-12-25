@@ -36,7 +36,7 @@ class MergeAnalyzer:
     ANALYZED_FILES = [
         "CLAUDE.md",
         ".claude/settings.json",
-        ".moai/config/config.json",
+        ".moai/config/config.yaml",  # Updated: JSON → YAML migration
         ".gitignore",
     ]
 
@@ -93,8 +93,17 @@ class MergeAnalyzer:
                     console.print(f"[yellow]⚠️  Analysis failed: {analysis.get('summary', 'Unknown error')}[/yellow]")
                     return self._fallback_analysis(backup_path, template_path, diff_files)
             else:
-                # Use improved error detection
-                error_msg = self._detect_claude_errors(result.stderr)
+                # Use improved error detection with full context
+                error_msg = self._detect_claude_errors(
+                    result.stderr,
+                    returncode=result.returncode,
+                    stdout=result.stdout,
+                )
+                logger.warning(
+                    f"Claude Code failed: returncode={result.returncode}, "
+                    f"stderr={result.stderr[:200] if result.stderr else 'empty'}, "
+                    f"stdout_hint={result.stdout[:100] if result.stdout else 'empty'}"
+                )
                 console.print(f"[yellow]⚠️  Claude execution error: {error_msg}[/yellow]")
                 return self._fallback_analysis(backup_path, template_path, diff_files)
 
@@ -359,22 +368,44 @@ Analyze the following items and provide a JSON response:
             "raw_response": response_text[:500] if response_text else "",
         }
 
-    def _detect_claude_errors(self, stderr: str) -> str:
+    def _detect_claude_errors(
+        self,
+        stderr: str,
+        returncode: int = None,
+        stdout: str = None,
+    ) -> str:
         """Detect and interpret Claude Code specific errors.
 
         Args:
             stderr: Standard error output from Claude Code
+            returncode: Process exit code (optional, for better diagnostics)
+            stdout: Standard output (optional, may contain error hints)
 
         Returns:
-            User-friendly error message
+            User-friendly error message with actionable guidance
         """
+        # Case 1: Process failed but stderr is empty (silent failure)
+        if not stderr and returncode is not None and returncode != 0:
+            # Try to extract hints from stdout
+            if stdout:
+                stdout_lower = stdout.lower()
+                if "error" in stdout_lower or "failed" in stdout_lower or "exception" in stdout_lower:
+                    stdout_hint = stdout[:300] if len(stdout) > 300 else stdout
+                    return f"Process failed (exit code {returncode}). Output: {stdout_hint}"
+            return (
+                f"Process failed silently (exit code {returncode}). "
+                "No error details available. Try 'claude --version' to verify installation."
+            )
+
+        # Case 2: No stderr and no returncode context
         if not stderr:
-            return ""
+            return "No error details available. Try running 'claude --version' to verify installation."
 
         error_lower = stderr.lower()
 
+        # Pattern matching for specific known errors
         if "model not found" in error_lower or "unknown model" in error_lower:
-            return f"Claude model '{self.CLAUDE_MODEL}' not found. Please check available models with 'claude --models'"
+            return f"Claude model '{self.CLAUDE_MODEL}' not found. Run 'claude --models' to see available models."
 
         if "permission denied" in error_lower:
             return "Permission denied. Check file permissions and Claude Code access rights."
@@ -386,10 +417,20 @@ Analyze the following items and provide a JSON response:
             return "Required files not found. Check project structure and file paths."
 
         if "invalid argument" in error_lower or "unknown option" in error_lower:
-            return "Invalid Claude Code arguments. This might be a version compatibility issue."
+            return "Invalid Claude Code arguments. This might be a version compatibility issue. Try 'claude --help'."
 
-        # Return generic error if no specific pattern matches
-        return f"Claude Code error: {stderr[:200]}"
+        if "api key" in error_lower or "authentication" in error_lower or "unauthorized" in error_lower:
+            return "Authentication error. Check your Claude API key configuration."
+
+        if "rate limit" in error_lower or "too many requests" in error_lower:
+            return "Rate limit exceeded. Please wait a moment and try again."
+
+        if "connection" in error_lower or "network" in error_lower:
+            return "Network connection error. Check your internet connection."
+
+        # Return generic error with exit code if available (extended to 300 chars)
+        exit_info = f" (exit code {returncode})" if returncode is not None else ""
+        return f"Claude Code error{exit_info}: {stderr[:300]}"
 
     def _find_claude_executable(self) -> Optional[str]:
         """Find Claude Code executable path with Windows compatibility.

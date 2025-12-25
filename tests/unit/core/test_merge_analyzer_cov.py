@@ -279,14 +279,41 @@ class TestDetectClaudeErrors:
         assert "timeout" in error_msg.lower()
 
     def test_detect_claude_errors_empty_stderr(self, tmp_path):
-        """Should handle empty stderr."""
+        """Should return helpful message for empty stderr."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
 
+        # Empty stderr without returncode context should provide helpful guidance
         error_msg = analyzer._detect_claude_errors("")
+        assert "No error details available" in error_msg
+        assert "claude --version" in error_msg
 
-        assert error_msg == ""
+    def test_detect_claude_errors_empty_stderr_with_returncode(self, tmp_path):
+        """Should include exit code in error message when process fails silently."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+
+        # Empty stderr with non-zero returncode should indicate silent failure
+        error_msg = analyzer._detect_claude_errors("", returncode=1)
+        assert "exit code 1" in error_msg
+        assert "silently" in error_msg
+
+    def test_detect_claude_errors_with_stdout_hint(self, tmp_path):
+        """Should extract error hints from stdout when stderr is empty."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+
+        # When stderr is empty but stdout contains error info
+        error_msg = analyzer._detect_claude_errors(
+            "",
+            returncode=1,
+            stdout="Error: Something went wrong"
+        )
+        assert "exit code 1" in error_msg
+        assert "Something went wrong" in error_msg
 
 
 @pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude Code CLI not installed")
