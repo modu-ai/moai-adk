@@ -247,75 +247,50 @@ jobs:
 
           echo "📋 Extracting release notes for v$VERSION from CHANGELOG.md..."
 
-          # Extract release notes from CHANGELOG.md (English section only)
-          # Pattern: From "# vX.Y.Z -" to next "---" separator
-          python3 << 'PYTHON'
-          import re
+          # Extract English release notes (from version header to first ---)
+          # Use awk to extract the section
+          awk -v ver="$VERSION" '
+            BEGIN { found=0; printing=0 }
+            /^# v/ {
+              if (index($0, "v" ver) > 0 && !found) { found=1; printing=1; print; next }
+              else if (found && printing) { printing=0 }
+            }
+            /^---$/ { if (printing) { printing=0; exit } }
+            printing { print }
+          ' CHANGELOG.md > release_notes.md
 
-          version = "$VERSION"
-
-          with open('CHANGELOG.md', 'r', encoding='utf-8') as f:
-              content = f.read()
-
-          # Pattern to match the version section (English part before Korean)
-          # Matches from "# vX.Y.Z -" to the first "---" separator
-          pattern = rf'^# v{re.escape(version)} - .+?\n(.*?)^---$'
-          match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
-
-          if match:
-              release_body = f"# v{version} Release\n\n{match.group(1).strip()}"
-              print(f"✅ Found release notes for v{version}")
-          else:
-              # Fallback: use git log
-              print(f"⚠️ No CHANGELOG entry found for v{version}, using git log fallback")
-              import subprocess
-              result = subprocess.run(
-                  ['git', 'log', '--format=- %s (%h)', '--reverse', '-10'],
-                  capture_output=True, text=True
-              )
-              commits = result.stdout.strip() or "- Initial release"
-              release_body = f"""# v{version} Release
-
-          ## Changes
-          {commits}
-          """
+          # Check if we found content
+          if [ ! -s release_notes.md ]; then
+            echo "⚠️ No CHANGELOG entry found for v$VERSION, using git log fallback"
+            echo "# v$VERSION Release" > release_notes.md
+            echo "" >> release_notes.md
+            echo "## Changes" >> release_notes.md
+            git log --format="- %s (%h)" --reverse -10 >> release_notes.md
+          else
+            echo "✅ Found release notes for v$VERSION"
+          fi
 
           # Add installation instructions
-          release_body += f"""
+          cat >> release_notes.md << 'INSTALL_EOF'
 
-## Installation & Update
+          ## Installation & Update
 
-### Fresh Install (uv tool - Recommended)
-```bash
-uv tool install moai-adk
-```
+          **Fresh Install (uv tool - Recommended)**
 
-### Update Existing Installation
-```bash
-uv tool update moai-adk
-```
+              uv tool install moai-adk
 
-### Alternative Methods
-```bash
-# Using uvx (no install needed)
-uvx moai-adk --help
+          **Update Existing Installation**
 
-# Using pip
-pip install moai-adk=={version}
+              uv tool update moai-adk
 
-# Add to project dependencies
-uv add moai-adk=={version}
-```
+          **Alternative Methods**
 
----
-🤖 MoAI-ADK Unified Release Pipeline
-"""
+              uvx moai-adk --help
+              pip install moai-adk
 
-          with open('release_notes.md', 'w', encoding='utf-8') as f:
-              f.write(release_body)
-
-          print("📝 Release notes generated successfully")
-          PYTHON
+          ---
+          MoAI-ADK Unified Release Pipeline
+          INSTALL_EOF
 
           echo "📄 Generated release notes:"
           cat release_notes.md
