@@ -9,7 +9,7 @@ from importlib.metadata import version as pkg_version
 # MoAI Framework Version
 # Fallback version for development environment (only used when package not installed)
 # This is automatically overwritten by importlib.metadata when package is installed via pip/uv
-_FALLBACK_VERSION = "0.35.0"
+_FALLBACK_VERSION = "0.35.1"
 
 try:
     MOAI_VERSION = pkg_version("moai-adk")
