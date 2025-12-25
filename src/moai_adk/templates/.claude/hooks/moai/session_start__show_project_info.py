@@ -98,10 +98,10 @@ except ImportError:
 
         Handles:
         - Top-level keys with nested values
-        - String values (quoted or unquoted)
+        - String values (quoted or unquoted, including empty strings)
         - Boolean values (true/false)
         - Numeric values
-        - Comments (lines starting with #)
+        - Comments (lines starting with # or inline after values)
 
         Does NOT handle:
         - Lists
@@ -127,17 +127,30 @@ except ImportError:
                 key = key_part.strip()
                 value = value_part.strip()
 
+                # Track if value was explicitly quoted (including empty strings)
+                was_quoted = False
+
                 # Handle quoted strings first - extract value within quotes
                 if value.startswith('"'):
                     # Find the closing quote
                     close_quote = value.find('"', 1)
                     if close_quote > 0:
                         value = value[1:close_quote]
+                        was_quoted = True
+                    elif value == '""':
+                        # Handle explicit empty string ""
+                        value = ""
+                        was_quoted = True
                 elif value.startswith("'"):
                     # Find the closing quote
                     close_quote = value.find("'", 1)
                     if close_quote > 0:
                         value = value[1:close_quote]
+                        was_quoted = True
+                    elif value == "''":
+                        # Handle explicit empty string ''
+                        value = ""
+                        was_quoted = True
                 else:
                     # Remove inline comments for unquoted values
                     if "#" in value:
@@ -145,8 +158,8 @@ except ImportError:
 
                 # Top-level key (no indentation or minimal indentation)
                 if indent == 0:
-                    if value:
-                        # Simple key: value
+                    if value or was_quoted:
+                        # Simple key: value (including empty quoted strings)
                         result[key] = _parse_simple_value(value)
                     else:
                         # Section header (e.g., "user:", "language:")
@@ -154,10 +167,11 @@ except ImportError:
                         result[current_section] = {}
                 elif current_section and indent > 0:
                     # Nested key under current section
-                    if value:
+                    if value or was_quoted:
+                        # Store value (including empty quoted strings)
                         result[current_section][key] = _parse_simple_value(value)
                     else:
-                        # Nested section (2-level nesting)
+                        # Nested section (2-level nesting) - only when no value at all
                         result[current_section][key] = {}
 
         return result
