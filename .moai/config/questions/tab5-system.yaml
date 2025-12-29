@@ -1,0 +1,96 @@
+# Tab 5: System Settings
+# Priority: OPTIONAL
+# Questions: 3 (GitHub Automation moved to Tab 3)
+
+metadata:
+  id: tab_5_system
+  label: "Tab 5: System Settings"
+  description: "Configure MoAI system settings (version check, cache)"
+  priority: OPTIONAL
+  order: 5
+  setting_count: 3
+
+target_sections:
+  - sections/system.yaml
+
+batches:
+  # Batch 5.1: MoAI System Settings
+  - batch_id: "5.1"
+    label: "MoAI System Settings"
+    conditional: false
+    questions:
+      - id: update_check_frequency
+        question: "MoAI version check frequency?"
+        header: "Update Check"
+        field: "moai.update_check_frequency"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Daily"
+            description: "Check for updates daily (recommended)"
+            value: "daily"
+          - label: "Weekly"
+            description: "Check for updates weekly"
+            value: "weekly"
+          - label: "Never"
+            description: "Disable update checks"
+            value: "never"
+        target:
+          file: "sections/system.yaml"
+          path: "moai.update_check_frequency"
+
+      - id: version_check_enabled
+        question: "Enable version checking?"
+        header: "Version Check"
+        field: "moai.version_check.enabled"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Enable version checking (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Disable version checking"
+            value: false
+        target:
+          file: "sections/system.yaml"
+          path: "moai.version_check.enabled"
+
+      # Q: Cache TTL Hours - number_input type
+      # UX Note: For number_input, only show preset values.
+      # Users should type directly in "Type something" field for custom values.
+      - id: cache_ttl_hours
+        question: "Version check cache TTL hours? To enter a custom value (1-168), type in the text field below."
+        header: "Cache TTL"
+        field: "moai.version_check.cache_ttl_hours"
+        type: number_input
+        multi_select: false
+        required: true
+        options:
+          - label: "12 hours"
+            description: "Frequent checks"
+            value: 12
+          - label: "24 hours"
+            description: "Cache version info for 24 hours (recommended)"
+            value: 24
+          - label: "48 hours"
+            description: "Less frequent checks"
+            value: 48
+          - label: "168 hours (1 week)"
+            description: "Weekly checks"
+            value: 168
+        target:
+          file: "sections/system.yaml"
+          path: "moai.version_check.cache_ttl_hours"
+
+validation:
+  checkpoint: "after_tab_5"
+  rules:
+    - name: "validate_cache_ttl"
+      description: "Cache TTL must be positive"
+      field: "moai.version_check.cache_ttl_hours"
+      validation: "range"
+      min: 1
+      max: 168

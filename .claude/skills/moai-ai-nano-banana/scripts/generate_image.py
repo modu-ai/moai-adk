@@ -42,6 +42,7 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # dotenv is optional
@@ -51,10 +52,7 @@ except ImportError:
 MODEL_NAME = "gemini-3-pro-image-preview"
 
 # Supported configurations
-SUPPORTED_ASPECT_RATIOS = [
-    "1:1", "2:3", "3:2", "3:4", "4:3",
-    "4:5", "5:4", "9:16", "16:9", "21:9"
-]
+SUPPORTED_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 SUPPORTED_RESOLUTIONS = ["1K", "2K", "4K"]  # Must be uppercase
 
 # Retry configuration
@@ -106,7 +104,7 @@ def build_prompt_with_style(prompt: str, style: Optional[str] = None) -> str:
 
 def calculate_backoff_delay(attempt: int, jitter: bool = True) -> float:
     """Calculate exponential backoff delay with optional jitter."""
-    delay = min(BASE_DELAY * (2 ** attempt), MAX_DELAY)
+    delay = min(BASE_DELAY * (2**attempt), MAX_DELAY)
     if jitter:
         delay = delay * (0.5 + random.random())
     return delay
@@ -120,7 +118,7 @@ def generate_image(
     style: Optional[str] = None,
     enable_grounding: bool = False,
     max_retries: int = MAX_RETRIES,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> dict:
     """
     Generate an image using Nano Banana Pro (gemini-3-pro-image-preview).
@@ -158,10 +156,7 @@ def generate_image(
     # Build configuration
     config_params = {
         "response_modalities": ["TEXT", "IMAGE"],
-        "image_config": types.ImageConfig(
-            aspect_ratio=aspect_ratio,
-            image_size=resolution
-        )
+        "image_config": types.ImageConfig(aspect_ratio=aspect_ratio, image_size=resolution),
     }
 
     # Optionally enable Google Search grounding
@@ -180,11 +175,7 @@ def generate_image(
             start_time = time.time()
 
             # Generate image
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=final_prompt,
-                config=config
-            )
+            response = client.models.generate_content(model=MODEL_NAME, contents=final_prompt, config=config)
 
             generation_time = time.time() - start_time
 
@@ -202,7 +193,7 @@ def generate_image(
                     with open(output_path, "wb") as f:
                         f.write(part.inline_data.data)
                     image_saved = True
-                elif hasattr(part, 'text') and part.text:
+                elif hasattr(part, "text") and part.text:
                     text_response = part.text
 
             if not image_saved:
@@ -222,7 +213,7 @@ def generate_image(
                 "timestamp": datetime.now().isoformat(),
                 "text_response": text_response if text_response else None,
                 "grounding_enabled": enable_grounding,
-                "attempts": attempt + 1
+                "attempts": attempt + 1,
             }
 
         except Exception as e:
@@ -263,7 +254,7 @@ def generate_image(
         "style": style,
         "error": str(last_error),
         "timestamp": datetime.now().isoformat(),
-        "attempts": max_retries
+        "attempts": max_retries,
     }
 
 
@@ -300,58 +291,39 @@ Style Prefix Examples:
 
 Environment:
     GOOGLE_API_KEY - Required. Get from https://aistudio.google.com/apikey
-        """
+        """,
+    )
+
+    parser.add_argument("-p", "--prompt", required=True, help="Image generation prompt (descriptive text)")
+
+    parser.add_argument("-o", "--output", required=True, help="Output file path for the generated image (PNG format)")
+
+    parser.add_argument(
+        "-a", "--aspect-ratio", default="16:9", choices=SUPPORTED_ASPECT_RATIOS, help="Aspect ratio (default: 16:9)"
     )
 
     parser.add_argument(
-        "-p", "--prompt",
-        required=True,
-        help="Image generation prompt (descriptive text)"
-    )
-
-    parser.add_argument(
-        "-o", "--output",
-        required=True,
-        help="Output file path for the generated image (PNG format)"
-    )
-
-    parser.add_argument(
-        "-a", "--aspect-ratio",
-        default="16:9",
-        choices=SUPPORTED_ASPECT_RATIOS,
-        help="Aspect ratio (default: 16:9)"
-    )
-
-    parser.add_argument(
-        "-r", "--resolution",
+        "-r",
+        "--resolution",
         default="2K",
         choices=SUPPORTED_RESOLUTIONS,
-        help="Resolution: 1K, 2K, or 4K (default: 2K)"
+        help="Resolution: 1K, 2K, or 4K (default: 2K)",
     )
 
-    parser.add_argument(
-        "--style",
-        help="Style prefix to prepend to prompt (e.g., 'photorealistic', 'minimalist')"
-    )
+    parser.add_argument("--style", help="Style prefix to prepend to prompt (e.g., 'photorealistic', 'minimalist')")
 
     parser.add_argument(
-        "-g", "--enable-grounding",
-        action="store_true",
-        help="Enable Google Search grounding for factual content"
+        "-g", "--enable-grounding", action="store_true", help="Enable Google Search grounding for factual content"
     )
 
     parser.add_argument(
         "--max-retries",
         type=int,
         default=MAX_RETRIES,
-        help=f"Maximum retry attempts for transient errors (default: {MAX_RETRIES})"
+        help=f"Maximum retry attempts for transient errors (default: {MAX_RETRIES})",
     )
 
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Print detailed progress information"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print detailed progress information")
 
     args = parser.parse_args()
 
@@ -371,7 +343,7 @@ Environment:
         style=args.style,
         enable_grounding=args.enable_grounding,
         max_retries=args.max_retries,
-        verbose=args.verbose
+        verbose=args.verbose,
     )
 
     if result["success"]:

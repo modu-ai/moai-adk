@@ -1,7 +1,7 @@
 ---
 name: moai-plugin-builder
 description: Claude Code plugin development patterns, templates, and best practices. Use when creating plugins, defining plugin components, or troubleshooting plugin issues.
-version: 1.0.0
+version: 1.1.0
 category: foundation
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
 tags:
@@ -15,7 +15,7 @@ tags:
   - skills
   - mcp
   - lsp
-updated: 2025-12-25
+updated: 2025-12-26
 status: active
 author: MoAI-ADK Team
 ---
@@ -258,19 +258,22 @@ hooks.json Structure:
 
 Available Hook Events:
 - PreToolUse - Before tool execution
-- PostToolUse - After tool execution
+- PostToolUse - After successful tool execution
+- PostToolUseFailure - After tool execution failure
 - PermissionRequest - Permission dialog display
 - UserPromptSubmit - User message submission
+- Notification - Notification trigger
+- Stop - Execution interruption
+- SubagentStart - Sub-agent invocation start
+- SubagentStop - Sub-agent completion
 - SessionStart - Session initialization
 - SessionEnd - Session termination
-- Stop - Execution interruption
-- SubagentStop - Sub-agent completion
-- Notification - Notification trigger
 - PreCompact - Before context compaction
 
 Hook Types:
 - command: Execute bash command
 - prompt: Send LLM prompt
+- agent: Invoke agent for processing
 
 Matcher Patterns:
 - Exact tool name: "Write", "Bash"
@@ -332,8 +335,17 @@ Required Fields:
 - extensionToLanguage: File extension to language mapping
 
 Optional Fields:
-- args: Command arguments
+- args: Command arguments array
 - env: Environment variables
+- transport: Connection type (stdio default)
+- initializationOptions: LSP initialization options
+- settings: Runtime settings for the server
+- workspaceFolder: Override workspace folder
+- startupTimeout: Server startup timeout in milliseconds
+- shutdownTimeout: Server shutdown timeout in milliseconds
+- restartOnCrash: Automatically restart on crash (boolean)
+- maxRestarts: Maximum restart attempts
+- loggingConfig: Debug logging configuration
 
 ---
 
@@ -385,9 +397,10 @@ Permission Guidelines:
 ### Distribution and Installation
 
 Plugin Installation Scopes:
-- user: `~/.claude/settings.json` (personal)
-- project: `.claude/settings.json` (team)
-- local: `.claude/settings.local.json` (developer)
+- user: `~/.claude/settings.json` (personal, default)
+- project: `.claude/settings.json` (team, version controlled)
+- local: `.claude/settings.local.json` (developer, gitignored)
+- managed: `managed-settings.json` (enterprise, read-only)
 
 CLI Commands:
 ```bash
@@ -470,5 +483,6 @@ Extended Documentation:
 ---
 
 Status: Production Ready
-Last Updated: 2025-12-25
+Last Updated: 2025-12-26
 Maintained by: MoAI-ADK Team
+Version Changes: v1.1.0 - Added PostToolUseFailure, SubagentStart hook events; Added agent hook type; Added LSP advanced options; Added managed installation scope

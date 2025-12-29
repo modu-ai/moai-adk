@@ -46,12 +46,14 @@ except ImportError:
 
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # dotenv is optional
@@ -61,10 +63,7 @@ except ImportError:
 MODEL_NAME = "gemini-3-pro-image-preview"
 
 # Supported configurations
-SUPPORTED_ASPECT_RATIOS = [
-    "1:1", "2:3", "3:2", "3:4", "4:3",
-    "4:5", "5:4", "9:16", "16:9", "21:9"
-]
+SUPPORTED_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 SUPPORTED_RESOLUTIONS = ["1K", "2K", "4K"]
 
 # Retry configuration
@@ -76,6 +75,7 @@ MAX_DELAY = 120.0
 @dataclass
 class ImageTask:
     """Represents a single image generation task."""
+
     prompt: str
     output_path: str
     aspect_ratio: str = "16:9"
@@ -89,6 +89,7 @@ class ImageTask:
 @dataclass
 class BatchResult:
     """Represents results of a batch generation."""
+
     total: int = 0
     successful: int = 0
     failed: int = 0
@@ -136,7 +137,7 @@ def build_prompt_with_style(prompt: str, style: Optional[str] = None) -> str:
 
 def calculate_backoff_delay(attempt: int, jitter: bool = True) -> float:
     """Calculate exponential backoff delay with optional jitter."""
-    delay = min(BASE_DELAY * (2 ** attempt), MAX_DELAY)
+    delay = min(BASE_DELAY * (2**attempt), MAX_DELAY)
     if jitter:
         delay = delay * (0.5 + random.random())
     return delay
@@ -159,10 +160,7 @@ def load_config_file(config_path: str) -> Dict[str, Any]:
         return json.loads(content)
 
 
-def parse_tasks_from_config(
-    config: Dict[str, Any],
-    output_dir: str
-) -> List[ImageTask]:
+def parse_tasks_from_config(config: Dict[str, Any], output_dir: str) -> List[ImageTask]:
     """Parse image tasks from configuration dictionary."""
     tasks = []
 
@@ -188,7 +186,7 @@ def parse_tasks_from_config(
                 resolution=validate_resolution(global_resolution),
                 style=global_style,
                 enable_grounding=global_grounding,
-                task_id=idx + 1
+                task_id=idx + 1,
             )
         else:
             # Dictionary with full configuration
@@ -202,16 +200,12 @@ def parse_tasks_from_config(
             task = ImageTask(
                 prompt=prompt,
                 output_path=str(Path(output_dir) / filename),
-                aspect_ratio=validate_aspect_ratio(
-                    item.get("aspect_ratio", global_aspect_ratio)
-                ),
-                resolution=validate_resolution(
-                    item.get("resolution", global_resolution)
-                ),
+                aspect_ratio=validate_aspect_ratio(item.get("aspect_ratio", global_aspect_ratio)),
+                resolution=validate_resolution(item.get("resolution", global_resolution)),
                 style=item.get("style", global_style),
                 enable_grounding=item.get("enable_grounding", global_grounding),
                 task_id=idx + 1,
-                metadata=item.get("metadata", {})
+                metadata=item.get("metadata", {}),
             )
 
         if task.prompt:
@@ -221,11 +215,7 @@ def parse_tasks_from_config(
 
 
 def create_tasks_from_prompts(
-    prompts: List[str],
-    output_dir: str,
-    style: Optional[str] = None,
-    resolution: str = "2K",
-    aspect_ratio: str = "16:9"
+    prompts: List[str], output_dir: str, style: Optional[str] = None, resolution: str = "2K", aspect_ratio: str = "16:9"
 ) -> List[ImageTask]:
     """Create tasks from command-line prompts."""
     tasks = []
@@ -238,7 +228,7 @@ def create_tasks_from_prompts(
             aspect_ratio=validate_aspect_ratio(aspect_ratio),
             resolution=validate_resolution(resolution),
             style=style,
-            task_id=idx + 1
+            task_id=idx + 1,
         )
         tasks.append(task)
 
@@ -246,10 +236,7 @@ def create_tasks_from_prompts(
 
 
 async def generate_single_image(
-    client: genai.Client,
-    task: ImageTask,
-    max_retries: int = MAX_RETRIES,
-    verbose: bool = False
+    client: genai.Client, task: ImageTask, max_retries: int = MAX_RETRIES, verbose: bool = False
 ) -> Dict[str, Any]:
     """Generate a single image with retry logic."""
     final_prompt = build_prompt_with_style(task.prompt, task.style)
@@ -257,10 +244,7 @@ async def generate_single_image(
     # Build configuration
     config_params = {
         "response_modalities": ["TEXT", "IMAGE"],
-        "image_config": types.ImageConfig(
-            aspect_ratio=task.aspect_ratio,
-            image_size=task.resolution
-        )
+        "image_config": types.ImageConfig(aspect_ratio=task.aspect_ratio, image_size=task.resolution),
     }
 
     if task.enable_grounding:
@@ -278,12 +262,7 @@ async def generate_single_image(
 
             # Generate image (sync call in async context)
             response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: client.models.generate_content(
-                    model=MODEL_NAME,
-                    contents=final_prompt,
-                    config=config
-                )
+                None, lambda: client.models.generate_content(model=MODEL_NAME, contents=final_prompt, config=config)
             )
 
             generation_time = time.time() - start_time
@@ -301,7 +280,7 @@ async def generate_single_image(
                     with open(task.output_path, "wb") as f:
                         f.write(part.inline_data.data)
                     image_saved = True
-                elif hasattr(part, 'text') and part.text:
+                elif hasattr(part, "text") and part.text:
                     _ = part.text  # Text response captured but not used for image generation
 
             if not image_saved:
@@ -314,7 +293,7 @@ async def generate_single_image(
                 "output_path": str(Path(task.output_path).absolute()),
                 "generation_time_seconds": round(generation_time, 2),
                 "attempts": attempt + 1,
-                "metadata": task.metadata
+                "metadata": task.metadata,
             }
 
         except Exception as e:
@@ -330,8 +309,7 @@ async def generate_single_image(
             # Retryable errors with exponential backoff
             if attempt < max_retries - 1:
                 is_quota_error = any(
-                    kw in error_str
-                    for kw in ["quota", "rate", "429", "resource_exhausted", "too_many"]
+                    kw in error_str for kw in ["quota", "rate", "429", "resource_exhausted", "too_many"]
                 )
                 delay = calculate_backoff_delay(attempt, jitter=is_quota_error)
 
@@ -349,7 +327,7 @@ async def generate_single_image(
         "prompt": task.prompt,
         "error": str(last_error),
         "attempts": max_retries,
-        "metadata": task.metadata
+        "metadata": task.metadata,
     }
 
 
@@ -358,13 +336,10 @@ async def run_batch_generation(
     concurrency: int = 2,
     max_retries: int = MAX_RETRIES,
     verbose: bool = False,
-    delay_between_tasks: float = 1.0
+    delay_between_tasks: float = 1.0,
 ) -> BatchResult:
     """Run batch generation with concurrency control."""
-    result = BatchResult(
-        total=len(tasks),
-        start_time=datetime.now()
-    )
+    result = BatchResult(total=len(tasks), start_time=datetime.now())
 
     # Get API key and create client
     api_key = get_api_key()
@@ -375,9 +350,7 @@ async def run_batch_generation(
 
     async def process_with_semaphore(task: ImageTask) -> Dict[str, Any]:
         async with semaphore:
-            task_result = await generate_single_image(
-                client, task, max_retries, verbose
-            )
+            task_result = await generate_single_image(client, task, max_retries, verbose)
             # Add delay between tasks to avoid rate limiting
             await asyncio.sleep(delay_between_tasks)
             return task_result
@@ -385,20 +358,15 @@ async def run_batch_generation(
     # Process all tasks
     print(f"\nProcessing {len(tasks)} images with concurrency={concurrency}...")
 
-    task_results = await asyncio.gather(
-        *[process_with_semaphore(task) for task in tasks],
-        return_exceptions=True
-    )
+    task_results = await asyncio.gather(*[process_with_semaphore(task) for task in tasks], return_exceptions=True)
 
     # Collect results
     for idx, task_result in enumerate(task_results):
         if isinstance(task_result, Exception):
             result.failed += 1
-            result.errors.append({
-                "task_id": tasks[idx].task_id,
-                "prompt": tasks[idx].prompt,
-                "error": str(task_result)
-            })
+            result.errors.append(
+                {"task_id": tasks[idx].task_id, "prompt": tasks[idx].prompt, "error": str(task_result)}
+            )
         elif task_result.get("success"):
             result.successful += 1
             result.results.append(task_result)
@@ -424,10 +392,10 @@ def save_batch_report(result: BatchResult, output_path: str) -> None:
             "success_rate": f"{(result.successful / result.total * 100):.1f}%" if result.total > 0 else "0%",
             "duration_seconds": round(result.total_duration_seconds, 2),
             "start_time": result.start_time.isoformat() if result.start_time else None,
-            "end_time": result.end_time.isoformat() if result.end_time else None
+            "end_time": result.end_time.isoformat() if result.end_time else None,
         },
         "results": result.results,
-        "errors": result.errors
+        "errors": result.errors,
     }
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -479,81 +447,48 @@ Config File Format (YAML):
 
 Environment:
     GOOGLE_API_KEY - Required. Get from https://aistudio.google.com/apikey
-        """
+        """,
     )
 
     # Input options (mutually exclusive)
     input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
-        "-c", "--config",
-        help="Path to JSON or YAML config file"
-    )
-    input_group.add_argument(
-        "--prompts",
-        nargs="+",
-        help="List of prompts to generate"
-    )
+    input_group.add_argument("-c", "--config", help="Path to JSON or YAML config file")
+    input_group.add_argument("--prompts", nargs="+", help="List of prompts to generate")
 
     # Output options
-    parser.add_argument(
-        "-d", "--output-dir",
-        required=True,
-        help="Output directory for generated images"
-    )
+    parser.add_argument("-d", "--output-dir", required=True, help="Output directory for generated images")
 
     # Generation options
     parser.add_argument(
-        "-r", "--resolution",
-        default="2K",
-        choices=SUPPORTED_RESOLUTIONS,
-        help="Default resolution (default: 2K)"
+        "-r", "--resolution", default="2K", choices=SUPPORTED_RESOLUTIONS, help="Default resolution (default: 2K)"
     )
 
     parser.add_argument(
-        "-a", "--aspect-ratio",
+        "-a",
+        "--aspect-ratio",
         default="16:9",
         choices=SUPPORTED_ASPECT_RATIOS,
-        help="Default aspect ratio (default: 16:9)"
+        help="Default aspect ratio (default: 16:9)",
     )
 
-    parser.add_argument(
-        "--style",
-        help="Default style prefix for all prompts"
-    )
+    parser.add_argument("--style", help="Default style prefix for all prompts")
 
     # Processing options
-    parser.add_argument(
-        "--concurrency",
-        type=int,
-        default=2,
-        help="Number of concurrent generations (default: 2)"
-    )
+    parser.add_argument("--concurrency", type=int, default=2, help="Number of concurrent generations (default: 2)")
 
     parser.add_argument(
         "--max-retries",
         type=int,
         default=MAX_RETRIES,
-        help=f"Maximum retry attempts per image (default: {MAX_RETRIES})"
+        help=f"Maximum retry attempts per image (default: {MAX_RETRIES})",
     )
 
-    parser.add_argument(
-        "--delay",
-        type=float,
-        default=1.0,
-        help="Delay between tasks in seconds (default: 1.0)"
-    )
+    parser.add_argument("--delay", type=float, default=1.0, help="Delay between tasks in seconds (default: 1.0)")
 
     # Report options
-    parser.add_argument(
-        "--report",
-        help="Path to save JSON report (optional)"
-    )
+    parser.add_argument("--report", help="Path to save JSON report (optional)")
 
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Print detailed progress information"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print detailed progress information")
 
     args = parser.parse_args()
 
@@ -568,11 +503,7 @@ Environment:
         tasks = parse_tasks_from_config(config, str(output_dir))
     else:
         tasks = create_tasks_from_prompts(
-            args.prompts,
-            str(output_dir),
-            style=args.style,
-            resolution=args.resolution,
-            aspect_ratio=args.aspect_ratio
+            args.prompts, str(output_dir), style=args.style, resolution=args.resolution, aspect_ratio=args.aspect_ratio
         )
 
     if not tasks:
@@ -590,7 +521,7 @@ Environment:
             concurrency=args.concurrency,
             max_retries=args.max_retries,
             verbose=args.verbose,
-            delay_between_tasks=args.delay
+            delay_between_tasks=args.delay,
         )
     )
 

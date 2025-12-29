@@ -282,10 +282,10 @@ merge_result = optimizer.smart_merge(
 ```toml
 # templates/fastapi-backend/pyproject.toml.template
 [project]
-name = "{{PROJECT_NAME}}"
+name = "MoAI-ADK"
 version = "0.1.0"
 requires-python = ">={{PYTHON_VERSION}}"
-authors = [{ name = "{{AUTHOR}}" }]
+authors = [{ name = "@user" }]
 
 [tool.uv]
 dev-dependencies = [

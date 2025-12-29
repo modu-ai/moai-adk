@@ -77,8 +77,8 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
             "ANTHROPIC_AUTH_TOKEN": api_token,
             "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7",
         }
 
         # Write back to file
@@ -91,8 +91,8 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         print(f"   • ANTHROPIC_AUTH_TOKEN: {api_token[:20]}... (loaded from .env.glm)")
         print("   • ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic")
         print("   • ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air")
-        print("   • ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6")
-        print("   • ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6")
+        print("   • ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.7")
+        print("   • ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.7")
         print()
         print("✓ GLM configuration complete!")
         print("Note: Restart Claude Code to load the new configuration automatically.")

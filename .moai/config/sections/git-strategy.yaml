@@ -1,0 +1,116 @@
+# Git Strategy Settings
+# Workflow configuration for Manual/Personal/Team modes
+# Complete field coverage for all Git workflow modes
+
+git_strategy:
+  mode: manual                # manual, personal, team
+
+  # Manual Mode Settings (Local Git)
+  manual:
+    workflow: github-flow
+    environment: local
+    github_integration: false
+    auto_checkpoint: disabled
+    push_to_remote: false
+
+    # Branch creation policy
+    branch_creation:
+      prompt_always: true       # Always ask before creating branch
+      auto_enabled: false       # Do not auto-create branches
+
+    # Automation settings
+    automation:
+      auto_branch: false
+      auto_commit: true
+      auto_pr: false
+      auto_push: false
+
+    # Git hooks policy
+    hooks:
+      pre_commit: enforce       # enforce, warn, skip
+      pre_push: warn
+      commit_msg: warn
+
+    # Commit message style
+    commit_style:
+      format: conventional      # conventional, simple
+      scope_required: false
+
+  # Personal Mode Settings (GitHub Individual)
+  personal:
+    workflow: github-flow
+    environment: github
+    github_integration: true
+    push_to_remote: true
+    branch_prefix: "feature/SPEC-"
+    main_branch: main
+
+    # Branch creation policy
+    branch_creation:
+      prompt_always: false
+      auto_enabled: true
+
+    # Automation settings (duplicated for clarity, matches top-level auto_*)
+    automation:
+      auto_branch: true
+      auto_commit: true
+      auto_pr: false            # Manual PR for review
+      auto_push: true
+
+    # Convenience aliases (backward compatibility)
+    auto_branch: true
+    auto_commit: true
+    auto_pr: false
+    auto_push: true
+
+    # Git hooks policy
+    hooks:
+      pre_commit: enforce
+      pre_push: warn
+      commit_msg: warn
+
+    # Commit message style
+    commit_style:
+      format: conventional
+      scope_required: false
+
+  # Team Mode Settings (GitHub Team)
+  team:
+    workflow: github-flow
+    environment: github
+    github_integration: true
+    push_to_remote: true
+    branch_prefix: "feature/SPEC-"  # Unified field name (was: feature_prefix)
+    main_branch: main
+    draft_pr: true
+    required_reviews: 1
+    branch_protection: true
+
+    # Branch creation policy
+    branch_creation:
+      prompt_always: false
+      auto_enabled: true
+
+    # Automation settings
+    automation:
+      auto_branch: true
+      auto_commit: true
+      auto_pr: true
+      auto_push: true
+
+    # Convenience aliases (backward compatibility)
+    auto_branch: true
+    auto_commit: true
+    auto_pr: true
+    auto_push: true
+
+    # Git hooks policy
+    hooks:
+      pre_commit: enforce
+      pre_push: warn
+      commit_msg: warn
+
+    # Commit message style
+    commit_style:
+      format: conventional
+      scope_required: true      # Required for team projects

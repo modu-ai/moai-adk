@@ -153,7 +153,7 @@ Required Fields:
 Optional Fields:
 - author: Object containing name, email, and url properties
 - homepage: Documentation or project website URL
-- repository: Source code repository URL
+- repository: Source code repository URL (string) or object with type and url properties
 - license: SPDX license identifier (e.g., "MIT", "Apache-2.0")
 - keywords: Array of discovery keywords
 - commands: Path or array of paths to command directories (must start with "./")
@@ -323,8 +323,8 @@ Create hooks/hooks.json with event handlers:
 - Configure matchers for specific tools or wildcard patterns
 
 Hook Structure:
-- Event types: PreToolUse, PostToolUse, PermissionRequest, UserPromptSubmit, SessionStart, SessionEnd, SubagentStop, Stop
-- Hook types: command (shell execution), prompt (LLM evaluation)
+- Event types: PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest, UserPromptSubmit, Notification, Stop, SubagentStart, SubagentStop, SessionStart, SessionEnd, PreCompact
+- Hook types: command (shell execution), prompt (LLM evaluation), agent (agent invocation)
 - Matchers: Tool names or patterns for filtering
 - Blocking: Whether hook can prevent tool execution
 
@@ -340,6 +340,21 @@ If MCP servers are required, create .mcp.json:
 If LSP servers are required, create .lsp.json:
 - Configure language server connections
 - Define file patterns and language associations
+
+LSP Server Fields:
+- command (required): LSP server executable
+- extensionToLanguage (required): File extension to language ID mapping
+- args: Command arguments array
+- transport: Connection type (stdio default)
+- env: Environment variables
+- initializationOptions: LSP initialization options
+- settings: Runtime settings for the server
+- workspaceFolder: Override workspace folder
+- startupTimeout: Server startup timeout in milliseconds
+- shutdownTimeout: Server shutdown timeout in milliseconds
+- restartOnCrash: Automatically restart on crash (boolean)
+- maxRestarts: Maximum restart attempts
+- loggingConfig: Debug logging configuration with args and env
 
 ---
 
@@ -591,6 +606,51 @@ Steps:
 
 ---
 
+## Plugin Caching and Security
+
+### Caching Behavior
+
+How Plugin Caching Works:
+- Plugins are copied to a cache directory for security and verification
+- For marketplace plugins: the source path is copied recursively
+- For local plugins: the .claude-plugin/ parent directory is copied
+- All relative paths resolve within the cached plugin directory
+
+Path Traversal Limitations:
+- Plugins cannot reference files outside their copied directory
+- Paths like "../shared-utils" will not work after installation
+- Workaround: Create symbolic links within the plugin directory before distribution
+
+### Plugin Trust and Security
+
+Security Warning:
+- Before installing plugins, verify you trust the source
+- Anthropic does not control what MCP servers, files, or software are included in third-party plugins
+- Check each plugin's homepage and repository for security information
+
+Security Best Practices:
+- Review plugin source code before installation
+- Verify plugin author reputation
+- Check for suspicious hook commands or MCP servers
+- Monitor plugin behavior after installation
+
+### Installation Scopes
+
+Plugin Installation Scopes:
+- user: Personal plugins in ~/.claude/settings.json (default)
+- project: Team plugins in .claude/settings.json (version controlled)
+- local: Developer-only in .claude/settings.local.json (gitignored)
+- managed: Enterprise-managed plugins in managed-settings.json (read-only)
+
+### Debugging
+
+Debug Plugin Loading:
+- Run "claude --debug" to see plugin loading details and error messages
+- Check console output for path resolution issues
+- Verify plugin.json syntax with JSON validators
+
+---
+
 ## Critical Standards Compliance
 
 Claude Code Plugin Standards:
@@ -631,7 +691,9 @@ MoAI-ADK Patterns:
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Created: 2025-12-25
+Updated: 2025-12-26
 Pattern: Comprehensive 6-Phase Plugin Creation Workflow
 Compliance: Claude Code Official Plugin Standards + MoAI-ADK Conventions
+Changes: Added PostToolUseFailure, SubagentStart, Notification, PreCompact hook events; Added agent hook type; Added LSP server advanced options; Added Plugin Caching and Security section; Added managed installation scope
