@@ -92,9 +92,7 @@ class MergeAnalyzer:
                 continue
 
             # Analyze based on file type
-            analysis = self._analyze_file_semantic(
-                file_name, backup_path, template_path, info
-            )
+            analysis = self._analyze_file_semantic(file_name, backup_path, template_path, info)
             files_analysis.append(analysis)
             total_risk_score += analysis.get("risk_score", 0)
 
@@ -144,9 +142,7 @@ class MergeAnalyzer:
 
         return proceed
 
-    def _collect_diff_files(
-        self, backup_path: Path, template_path: Path
-    ) -> dict[str, dict[str, Any]]:
+    def _collect_diff_files(self, backup_path: Path, template_path: Path) -> dict[str, dict[str, Any]]:
         """Collect differences between backup and template files
 
         Returns:
@@ -230,9 +226,7 @@ class MergeAnalyzer:
         else:
             return self._analyze_generic(file_name, info)
 
-    def _analyze_claude_md(
-        self, file_name: str, info: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _analyze_claude_md(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:
         """Analyze CLAUDE.md with section-aware logic
 
         Detects user-customized sections and determines merge strategy.
@@ -301,9 +295,7 @@ class MergeAnalyzer:
             "user_customizations": user_customizations,
         }
 
-    def _analyze_settings_json(
-        self, file_name: str, info: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _analyze_settings_json(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:
         """Analyze settings.json with JSON structure comparison
 
         Focuses on permissions, env variables, and hooks.
@@ -396,9 +388,7 @@ class MergeAnalyzer:
             "critical_changes": critical_changes,
         }
 
-    def _analyze_config_yaml(
-        self, file_name: str, info: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _analyze_config_yaml(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:
         """Analyze config.yaml with YAML structure comparison
 
         Preserves user settings while updating schema.
@@ -488,9 +478,7 @@ class MergeAnalyzer:
             "user_customizations": user_customizations,
         }
 
-    def _analyze_gitignore(
-        self, file_name: str, info: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _analyze_gitignore(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:
         """Analyze .gitignore with line-based comparison
 
         Preserves user additions, only adds new template entries.
@@ -551,9 +539,7 @@ class MergeAnalyzer:
             "user_entries": list(removed_in_template),
         }
 
-    def _analyze_generic(
-        self, file_name: str, info: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _analyze_generic(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:
         """Generic file analysis for unknown file types"""
         risk_score = 0
 
