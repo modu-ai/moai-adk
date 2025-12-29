@@ -1,3 +1,80 @@
+# v0.36.1 - Skill Library Consolidation (2025-12-30)
+
+## Summary
+
+Patch release consolidating and optimizing the skill library, reducing from 50 to 47 skills by removing virtual implementations and merging duplicate functionalities. This release improves maintainability and eliminates hallucination-prone virtual skills.
+
+## Changes
+
+### Skill Refactoring
+
+- **refactor(skills)**: Consolidate and optimize skill library (576697e8)
+  - Delete moai-mcp-figma (virtual implementation with non-existent module)
+  - Delete moai-mcp-notion (virtual implementation with non-existent module)
+  - Merge moai-security-auth0 into moai-platform-auth0 (consolidate 36 security modules)
+  - Rename moai-worktree to moai-workflow-worktree (consistent naming convention)
+  - Update skill count from 50 to 47 in all README files (English, Korean, Japanese, Chinese)
+  - Reduce skill file sizes for better maintainability:
+    - Ruby: 688 → 424 lines (-38%)
+    - C++: 650 → 422 lines (-35%)
+    - PHP: 645 → 496 lines (-23%)
+    - Elixir: 613 → 386 lines (-37%)
+    - R: 580 → 381 lines (-34%)
+  - Update technology version references:
+    - Rust: 1.91 → 1.92 (latest stable)
+    - Mermaid.js: 10.x → 11.12.2 (latest stable)
+  - Update all agent references (expert-security, manager-docs, mcp-figma, mcp-notion)
+  - Update command references (1-plan, 3-sync)
+  - Consolidate MCP section to AI Integration section in documentation
+  - Total changes: 165 files, 10,669 insertions(+), 12,727 deletions(-)
+
+### Breaking Changes
+
+⚠️ **Important**: The following changes may affect existing workflows:
+
+- **moai-mcp-figma** skill removed
+  - Migration: Use `moai-domain-uiux` skill with `mcp-figma` agent
+  - Reason: Virtual implementation without actual module support
+
+- **moai-mcp-notion** skill removed
+  - Migration: Use `moai-workflow-project` skill with `mcp-notion` agent
+  - Reason: Virtual implementation without actual module support
+
+- **moai-security-auth0** renamed to **moai-platform-auth0**
+  - Migration: Update skill references to `moai-platform-auth0`
+  - Reason: Consolidate security and platform features into single comprehensive skill
+
+- **moai-worktree** renamed to **moai-workflow-worktree**
+  - Migration: Update skill references to `moai-workflow-worktree`
+  - Reason: Consistent naming convention (all workflow skills use `moai-workflow-*` prefix)
+
+## Installation & Update
+
+### Fresh Install (uv tool - Recommended)
+```bash
+uv tool install moai-adk
+```
+
+### Update Existing Installation
+```bash
+uv tool update moai-adk
+```
+
+### Alternative Methods
+- **pip**: `pip install moai-adk`
+- **pipx**: `pipx install moai-adk`
+- **uv (global)**: `uv pip install moai-adk`
+
+## Quality Metrics
+
+- ✅ All 10,037 tests passing (180 skipped, 26 xfailed, 36 xpassed)
+- ✅ Test coverage: 86.90% (above 85% threshold)
+- ✅ Ruff checks: All checks passed
+- ✅ Ruff format: 191 files unchanged
+- ✅ Mypy: No issues found in 146 source files
+
+---
+
 # v0.36.0 - JavaScript Skill & Merge Analyzer Refactoring (2025-12-29)
 
 ## Summary
